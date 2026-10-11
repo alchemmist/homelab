@@ -3,3 +3,11 @@
 # Starship uses runtime `hostname`, so the same config works for every node:
 #   (socrat-master), (socrat-1), ...
 starship_show_hostname: true
+
+homelab_users:
+  - name: tim
+    shell: /bin/bash
+    sudo: false
+    groups: []
+    authorized_keys:
+      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILjT3ii4vL1FL9TRws08QCzIZhrHFG69Q5K9Adtm0y1F antropophag@gmail.com"

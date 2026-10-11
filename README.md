@@ -2,7 +2,7 @@
 
 Personal homelab automation for Socrat nodes.
 
-This repo starts small: Ansible inventory + a `starship` role that deploys the shared prompt config to `socrat-master` and `socrat-1`.
+This repo starts small: Ansible inventory + roles for shared users and the machine-wide Starship prompt config on `socrat-master` and `socrat-1`.
 
 ## Layout
 
@@ -12,9 +12,11 @@ ansible/
   inventory/hosts.yml
   group_vars/
   playbooks/
+    users.yml
     starship.yml
     site.yml
   roles/
+    users/
     starship/
 ```
 

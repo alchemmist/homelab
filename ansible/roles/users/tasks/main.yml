@@ -1,0 +1,69 @@
+---
+- name: Create homelab users
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    state: present
+    create_home: true
+    shell: "{{ item.shell | default('/bin/bash') }}"
+    groups: "{{ item.groups | default([]) | join(',') }}"
+    append: false
+  become: true
+  loop: "{{ homelab_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Ensure user .ssh directories exist
+  ansible.builtin.file:
+    path: "/home/{{ item.name }}/.ssh"
+    state: directory
+    owner: "{{ item.name }}"
+    group: "{{ item.name }}"
+    mode: "0700"
+  become: true
+  loop: "{{ homelab_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Ensure authorized_keys files exist
+  ansible.builtin.file:
+    path: "/home/{{ item.name }}/.ssh/authorized_keys"
+    state: touch
+    owner: "{{ item.name }}"
+    group: "{{ item.name }}"
+    mode: "0600"
+  become: true
+  loop: "{{ homelab_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Install authorized SSH keys
+  ansible.builtin.lineinfile:
+    path: "/home/{{ item.0.name }}/.ssh/authorized_keys"
+    line: "{{ item.1 }}"
+    state: present
+    owner: "{{ item.0.name }}"
+    group: "{{ item.0.name }}"
+    mode: "0600"
+  become: true
+  loop: "{{ homelab_users | subelements('authorized_keys', skip_missing=True) }}"
+  loop_control:
+    label: "{{ item.0.name }}"
+
+- name: Remove non-sudo users from privilege groups
+  ansible.builtin.command: "gpasswd -d {{ item.0.name }} {{ item.1 }}"
+  become: true
+  register: remove_priv_group
+  changed_when: remove_priv_group.rc == 0
+  failed_when: false
+  loop: "{{ homelab_users | selectattr('sudo', 'defined') | selectattr('sudo', 'equalto', false) | list | product(['sudo', 'wheel', 'admin']) | list }}"
+  loop_control:
+    label: "{{ item.0.name }} -> !{{ item.1 }}"
+
+- name: Remove direct sudoers drop-ins for non-sudo users
+  ansible.builtin.file:
+    path: "/etc/sudoers.d/{{ item.name }}"
+    state: absent
+  become: true
+  loop: "{{ homelab_users | selectattr('sudo', 'defined') | selectattr('sudo', 'equalto', false) | list }}"
+  loop_control:
+    label: "{{ item.name }}"
