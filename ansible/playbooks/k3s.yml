@@ -173,7 +173,7 @@
             app: socrat-home
           ports:
             - name: http
-              port: 80
+              port: 8080
               targetPort: 80
         ---
         apiVersion: networking.k8s.io/v1
@@ -199,7 +199,7 @@
                       service:
                         name: socrat-home
                         port:
-                          number: 80
+                          number: 8080
         EOF
       register: home_apply
       changed_when: "'created' in home_apply.stdout or 'configured' in home_apply.stdout"
