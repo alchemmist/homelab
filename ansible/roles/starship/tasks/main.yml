@@ -4,30 +4,36 @@
   changed_when: false
   register: starship_binary
 
-- name: Ensure starship config directory exists
+- name: Ensure machine-wide starship config directories exist
   ansible.builtin.file:
-    path: "{{ homelab_user_home }}/.config/starship"
+    path: "{{ item.path }}"
     state: directory
-    owner: "{{ homelab_user }}"
-    group: "{{ homelab_user }}"
-    mode: "0755"
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  become: true
+  loop:
+    - { path: /etc/starship, mode: "0755" }
+    - { path: /etc/starship/bin, mode: "0755" }
 
-- name: Deploy starship.toml
+- name: Deploy machine-wide starship.toml
   ansible.builtin.template:
     src: starship.toml.j2
-    dest: "{{ homelab_user_home }}/.config/starship/starship.toml"
-    owner: "{{ homelab_user }}"
-    group: "{{ homelab_user }}"
+    dest: /etc/starship/starship.toml
+    owner: root
+    group: root
     mode: "0644"
     backup: true
+  become: true
 
-- name: Deploy starship helper scripts
+- name: Deploy machine-wide starship helper scripts
   ansible.builtin.copy:
     src: "{{ item }}"
-    dest: "{{ homelab_user_home }}/.config/starship/{{ item }}"
-    owner: "{{ homelab_user }}"
-    group: "{{ homelab_user }}"
+    dest: "/etc/starship/bin/{{ item }}"
+    owner: root
+    group: root
     mode: "0755"
+  become: true
   loop:
     - arc_metrics.sh
     - arc_state.sh
@@ -37,10 +43,69 @@
     - gh-prompt.py
     - arc-pr.py
 
+- name: Export machine-wide STARSHIP_CONFIG for login shells
+  ansible.builtin.copy:
+    dest: /etc/profile.d/homelab-starship.sh
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # Managed by homelab Ansible.
+      export STARSHIP_CONFIG=/etc/starship/starship.toml
+  become: true
+
+- name: Check global shell rc files
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - /etc/zsh/zshrc
+    - /etc/bash.bashrc
+  register: global_shell_rc
+
+- name: Enable starship in global zshrc
+  ansible.builtin.blockinfile:
+    path: /etc/zsh/zshrc
+    marker: "# {mark} HOMELAB STARSHIP"
+    block: |
+      if command -v starship >/dev/null 2>&1; then
+        export STARSHIP_CONFIG=${STARSHIP_CONFIG:-/etc/starship/starship.toml}
+        eval "$(starship init zsh)"
+      fi
+  become: true
+  when: >-
+    global_shell_rc.results
+    | selectattr('stat.path', 'equalto', '/etc/zsh/zshrc')
+    | map(attribute='stat.exists')
+    | first
+
+- name: Enable starship in global bashrc
+  ansible.builtin.blockinfile:
+    path: /etc/bash.bashrc
+    marker: "# {mark} HOMELAB STARSHIP"
+    block: |
+      if command -v starship >/dev/null 2>&1; then
+        export STARSHIP_CONFIG=${STARSHIP_CONFIG:-/etc/starship/starship.toml}
+        eval "$(starship init bash)"
+      fi
+  become: true
+  when: >-
+    global_shell_rc.results
+    | selectattr('stat.path', 'equalto', '/etc/bash.bashrc')
+    | map(attribute='stat.exists')
+    | first
+
+- name: Keep compatibility symlink for homelab user starship config
+  ansible.builtin.file:
+    src: /etc/starship/starship.toml
+    dest: "{{ homelab_user_home }}/.config/starship/starship.toml"
+    state: link
+    force: true
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+  become: true
+
 - name: Validate deployed starship config
   ansible.builtin.command: starship explain
   environment:
-    STARSHIP_CONFIG: "{{ homelab_user_home }}/.config/starship/starship.toml"
-  become: true
-  become_user: "{{ homelab_user }}"
+    STARSHIP_CONFIG: /etc/starship/starship.toml
   changed_when: false

@@ -30,16 +30,18 @@ ansible/
 Install Ansible locally, then from `ansible/`:
 
 ```bash
-ansible-playbook playbooks/starship.yml
+ansible-playbook playbooks/starship.yml --ask-become-pass
 ```
 
 Limit to one node:
 
 ```bash
-ansible-playbook playbooks/starship.yml --limit socrat-1
+ansible-playbook playbooks/starship.yml --limit socrat-1 --ask-become-pass
 ```
 
 ## Starship prompt
+
+The role deploys a machine-wide Starship config to `/etc/starship/starship.toml` and enables it from global shell rc files (`/etc/zsh/zshrc`, `/etc/bash.bashrc` when present), so it applies to every interactive user, not only `alchemmist`.
 
 The deployed prompt includes a grey host marker on the command line:
 
