@@ -82,7 +82,8 @@ Caddy is stopped/disabled by the k3s playbook so Traefik can own HTTP/HTTPS.
 The current homepage is served by a dedicated Kubernetes container:
 
 ```text
-Deployment: socrat-home/nginx:1.27-alpine
+Deployment: socrat-home, 2 replicas, one per node via topology spread
+Image:      localhost/socrat-home:latest, built from /var/www/socrat and imported into k3s containerd on every node
 Service:    socrat-home:8080 -> container:80
 Ingress:    socrat.alchemmist.xyz -> socrat-home:8080
 TLS:        cert-manager / letsencrypt-http01

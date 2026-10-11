@@ -127,6 +127,45 @@
       failed_when: ns_create.rc not in [0, 1]
       changed_when: ns_create.rc == 0
 
+    - name: Build homepage container image from /var/www/socrat
+      ansible.builtin.shell: |
+        set -eu
+        workdir=/tmp/socrat-home-image
+        rm -rf "$workdir"
+        mkdir -p "$workdir"
+        cp -a /var/www/socrat/. "$workdir/"
+        cat > "$workdir/Dockerfile" <<'EOF'
+        FROM nginx:1.27-alpine
+        COPY . /usr/share/nginx/html/
+        EOF
+        docker build -t localhost/socrat-home:latest "$workdir"
+        docker save localhost/socrat-home:latest -o /tmp/socrat-home-image.tar
+        k3s ctr -n k8s.io images import /tmp/socrat-home-image.tar
+      register: home_image_build
+      changed_when: true
+
+    - name: Fetch homepage image archive locally
+      ansible.builtin.fetch:
+        src: /tmp/socrat-home-image.tar
+        dest: /tmp/socrat-home-image.tar
+        flat: true
+
+    - name: Copy homepage image archive to worker nodes
+      ansible.builtin.copy:
+        src: /tmp/socrat-home-image.tar
+        dest: /tmp/socrat-home-image.tar
+        mode: "0644"
+      delegate_to: "{{ item }}"
+      loop: "{{ groups['socrat'] | difference(['socrat-master']) }}"
+      become: true
+
+    - name: Import homepage image on worker nodes
+      ansible.builtin.command: k3s ctr -n k8s.io images import /tmp/socrat-home-image.tar
+      delegate_to: "{{ item }}"
+      loop: "{{ groups['socrat'] | difference(['socrat-master']) }}"
+      become: true
+      changed_when: true
+
     - name: Deploy homepage app, service and ingress
       ansible.builtin.shell: |
         set -eu
@@ -137,7 +176,7 @@
           name: socrat-home
           namespace: socrat-home
         spec:
-          replicas: 1
+          replicas: 2
           selector:
             matchLabels:
               app: socrat-home
@@ -146,22 +185,19 @@
               labels:
                 app: socrat-home
             spec:
-              nodeSelector:
-                kubernetes.io/hostname: socrat-master
+              topologySpreadConstraints:
+                - maxSkew: 1
+                  topologyKey: kubernetes.io/hostname
+                  whenUnsatisfiable: DoNotSchedule
+                  labelSelector:
+                    matchLabels:
+                      app: socrat-home
               containers:
                 - name: nginx
-                  image: nginx:1.27-alpine
+                  image: localhost/socrat-home:latest
+                  imagePullPolicy: Never
                   ports:
                     - containerPort: 80
-                  volumeMounts:
-                    - name: www
-                      mountPath: /usr/share/nginx/html
-                      readOnly: true
-              volumes:
-                - name: www
-                  hostPath:
-                    path: /var/www/socrat
-                    type: Directory
         ---
         apiVersion: v1
         kind: Service
