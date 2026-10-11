@@ -1,0 +1,6 @@
+---
+- name: Deploy shell prompt config to Socrat nodes
+  hosts: socrat
+  gather_facts: false
+  roles:
+    - starship

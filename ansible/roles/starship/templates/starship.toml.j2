@@ -1,0 +1,122 @@
+"$schema" = 'https://starship.rs/config-schema.json'
+
+add_newline = true
+
+# Managed by homelab Ansible. Source: ansible/roles/starship/templates/starship.toml.j2
+# Git: built-in modules + custom segments (status, ahead/behind, async GitHub PR cache).
+command_timeout = 2000
+scan_timeout = 1000
+
+format = """
+$directory\
+$git_branch\
+${custom.ghpr}\
+$git_state\
+${custom.gstatus}\
+$git_metrics\
+${custom.gahead}\
+${custom.gbehind}\
+${custom.venv}\
+${custom.docker}\
+${custom.makefile}\
+$python\n\
+$jobs\
+${custom.server_name}\
+$character\
+"""
+
+[character]
+success_symbol = "[](fg)"
+error_symbol = "[](red)"
+vicmd_symbol = "[](green)"
+vimcmd_replace_one_symbol = "[](green)"
+vimcmd_replace_symbol = "[](green)"
+vimcmd_visual_symbol = "[](green)"
+
+[directory]
+style = "fg"
+format = "[$path]($style) "
+truncation_length = 3
+truncate_to_repo = false
+
+# ===== GIT =====
+
+[git_branch]
+symbol = ""
+format = "[$symbol $branch](blue) "
+
+[git_state]
+format = "[\\($state $progress_current/$progress_total\\)]($style) "
+style = "yellow"
+
+[custom.gstatus]
+description = "Total changed files in git working tree"
+shell = ["/bin/sh"]
+when = '[ -n "$(git status --porcelain 2>/dev/null)" ]'
+command = 'git status --porcelain 2>/dev/null | grep -c .'
+format = "[ $output](fg) "
+
+[git_metrics]
+disabled = false
+format = "([+$added]($added_style) )([-$deleted]($deleted_style) )"
+added_style = "green"
+deleted_style = "red"
+
+[custom.ghpr]
+description = "GitHub PR number — read from async cache written by zsh precmd"
+shell = ["/bin/sh"]
+when = '[ -n "$STARSHIP_GH_PR" ]'
+command = 'cat "$STARSHIP_GH_PR" 2>/dev/null'
+format = "([$output](purple) )"
+
+[custom.gahead]
+description = "Dots by number of local commits ahead of upstream"
+command = """
+git rev-list --count @{u}..HEAD 2>/dev/null | awk '{for(i=0;i<$1;i++) printf ""}'
+"""
+style = "($fg)"
+detect_folders = [".git"]
+
+[custom.gbehind]
+description = "Dots by number of local commits behind upstream"
+command = """
+git rev-list --count HEAD..@{u} 2>/dev/null | awk '{for(i=0;i<$1;i++) printf ""}'
+"""
+style = "($fg)"
+detect_folders = [".git"]
+
+# ===== Common =====
+
+[python]
+symbol = ""
+format = ""
+
+[custom.docker]
+shell = ["/bin/sh"]
+symbol = ""
+style = "($fg)"
+format = "[$symbol]($style)  "
+when = """
+command -v docker >/dev/null 2>&1 &&
+{ [ -f Dockerfile ] || [ -f docker-compose.yml ] || [ -f docker-compose.yaml ]; }
+"""
+
+[custom.makefile]
+detect_files = ["Makefile", "makefile"]
+symbol = " "
+style = "($fg)"
+format = "[$symbol]($style)"
+
+[custom.venv]
+shell = ["/bin/sh"]
+description = "Shows Python virtual environment if active"
+command = "echo  $(basename $VIRTUAL_ENV)"
+when = 'test -n "$VIRTUAL_ENV"'
+style = "#d787af"
+
+[custom.server_name]
+description = "Grey host marker for Socrat nodes"
+command = "hostname"
+when = true
+shell = ["/bin/sh"]
+format = '[\\($output\\)](fg:#808080) '

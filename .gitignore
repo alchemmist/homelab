@@ -1,0 +1,12 @@
+# Python / Ansible
+__pycache__/
+*.py[cod]
+.retry
+.ansible/
+
+# Secrets
+*.vault.yml
+.vault-pass
+
+# macOS
+.DS_Store

@@ -1,0 +1,5 @@
+---
+# Shared defaults for Socrat nodes.
+# Starship uses runtime `hostname`, so the same config works for every node:
+#   (socrat-master), (socrat-1), ...
+starship_show_hostname: true

@@ -1,0 +1,46 @@
+---
+- name: Check that starship is installed
+  ansible.builtin.shell: command -v starship
+  changed_when: false
+  register: starship_binary
+
+- name: Ensure starship config directory exists
+  ansible.builtin.file:
+    path: "{{ homelab_user_home }}/.config/starship"
+    state: directory
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: "0755"
+
+- name: Deploy starship.toml
+  ansible.builtin.template:
+    src: starship.toml.j2
+    dest: "{{ homelab_user_home }}/.config/starship/starship.toml"
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: "0644"
+    backup: true
+
+- name: Deploy starship helper scripts
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ homelab_user_home }}/.config/starship/{{ item }}"
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: "0755"
+  loop:
+    - arc_metrics.sh
+    - arc_state.sh
+    - arc-refresh.sh
+    - arc_dots.sh
+    - arc_status.sh
+    - gh-prompt.py
+    - arc-pr.py
+
+- name: Validate deployed starship config
+  ansible.builtin.command: starship explain
+  environment:
+    STARSHIP_CONFIG: "{{ homelab_user_home }}/.config/starship/starship.toml"
+  become: true
+  become_user: "{{ homelab_user }}"
+  changed_when: false

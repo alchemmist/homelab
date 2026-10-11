@@ -1,0 +1,6 @@
+---
+- name: Configure Socrat homelab nodes
+  hosts: socrat
+  gather_facts: true
+  roles:
+    - starship
