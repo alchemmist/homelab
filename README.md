@@ -96,6 +96,19 @@ Logo:         assets/rancher/socrat-logo.png, applied to Rancher light/dark UI l
 TLS:          Rancher Helm chart + cert-manager Let's Encrypt
 ```
 
+Cluster applications are Helm-managed where appropriate. Resource requests/limits are configured for our managed workloads:
+
+```text
+socrat-home nginx:      requests 10m/32Mi, limits memory 128Mi
+Rancher server:         requests 250m/1Gi, limits memory 3Gi
+Rancher webhook:        requests 20m/64Mi, limits memory 256Mi
+system-upgrade-controller: requests 10m/64Mi, limits memory 256Mi
+cert-manager:          requests 50m/128Mi, limits memory 512Mi
+cert-manager webhook:  requests 20m/64Mi, limits memory 256Mi
+cert-manager cainjector: requests 50m/128Mi, limits memory 512Mi
+Traefik:               requests 100m/128Mi, limits memory 512Mi
+```
+
 Cluster applications are Helm-managed where appropriate:
 
 ```text

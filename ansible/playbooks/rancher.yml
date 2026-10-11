@@ -50,6 +50,13 @@
           replicas: {{ rancher_replicas }}
           bootstrapPassword: {{ rancher_bootstrap_password | quote }}
 
+          resources:
+            requests:
+              cpu: 250m
+              memory: 1Gi
+            limits:
+              memory: 3Gi
+
           ingress:
             tls:
               source: letsEncrypt
@@ -88,10 +95,34 @@
       ansible.builtin.command: k3s kubectl -n cattle-system rollout status deploy/rancher --timeout=600s
       changed_when: false
 
+    - name: Set Rancher auxiliary deployment resources
+      ansible.builtin.command: >-
+        k3s kubectl -n cattle-system set resources deployment/{{ item.name }}
+        --requests=cpu={{ item.requests_cpu }},memory={{ item.requests_memory }}
+        --limits=memory={{ item.limits_memory }}
+      loop:
+        - name: rancher-webhook
+          requests_cpu: 20m
+          requests_memory: 64Mi
+          limits_memory: 256Mi
+        - name: system-upgrade-controller
+          requests_cpu: 10m
+          requests_memory: 64Mi
+          limits_memory: 256Mi
+      register: rancher_aux_resources
+      failed_when: rancher_aux_resources.rc != 0 and 'not found' not in rancher_aux_resources.stderr
+      changed_when: rancher_aux_resources.rc == 0
+
     - name: Wait for Rancher webhook rollout when present
       ansible.builtin.command: k3s kubectl -n cattle-system rollout status deploy/rancher-webhook --timeout=600s
       register: rancher_webhook_rollout
       failed_when: rancher_webhook_rollout.rc != 0 and 'not found' not in rancher_webhook_rollout.stderr
+      changed_when: false
+
+    - name: Wait for system-upgrade-controller rollout when present
+      ansible.builtin.command: k3s kubectl -n cattle-system rollout status deploy/system-upgrade-controller --timeout=600s
+      register: system_upgrade_controller_rollout
+      failed_when: system_upgrade_controller_rollout.rc != 0 and 'not found' not in system_upgrade_controller_rollout.stderr
       changed_when: false
 
     - name: Rename Rancher local cluster display name

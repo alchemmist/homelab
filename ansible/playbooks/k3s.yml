@@ -154,13 +154,50 @@
         adopt_cluster crd certificaterequests.cert-manager.io certificates.cert-manager.io challenges.acme.cert-manager.io clusterissuers.cert-manager.io issuers.cert-manager.io orders.acme.cert-manager.io
       changed_when: false
 
+    - name: Render cert-manager Helm values
+      ansible.builtin.copy:
+        dest: /tmp/cert-manager-values.yaml
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          crds:
+            enabled: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+          webhook:
+            resources:
+              requests:
+                cpu: 20m
+                memory: 64Mi
+              limits:
+                memory: 256Mi
+          cainjector:
+            resources:
+              requests:
+                cpu: 50m
+                memory: 128Mi
+              limits:
+                memory: 512Mi
+          startupapicheck:
+            resources:
+              requests:
+                cpu: 10m
+                memory: 32Mi
+              limits:
+                memory: 128Mi
+
     - name: Install cert-manager with Helm
       ansible.builtin.command: >-
         helm upgrade --install cert-manager jetstack/cert-manager
         --namespace cert-manager
         --kubeconfig /etc/rancher/k3s/k3s.yaml
         --version {{ cert_manager_version }}
-        --set crds.enabled=true
+        --values /tmp/cert-manager-values.yaml
         --wait
         --timeout 5m
       register: cert_manager_helm
@@ -173,6 +210,27 @@
         k3s kubectl -n cert-manager rollout status deploy/cert-manager-cainjector --timeout=180s
         k3s kubectl -n cert-manager rollout status deploy/cert-manager-webhook --timeout=180s
       changed_when: false
+
+    - name: Configure k3s Traefik resources
+      ansible.builtin.shell: |
+        set -eu
+        cat <<'EOF' | k3s kubectl apply -f -
+        apiVersion: helm.cattle.io/v1
+        kind: HelmChartConfig
+        metadata:
+          name: traefik
+          namespace: kube-system
+        spec:
+          valuesContent: |-
+            resources:
+              requests:
+                cpu: 100m
+                memory: 128Mi
+              limits:
+                memory: 512Mi
+        EOF
+      register: traefik_config_apply
+      changed_when: "'created' in traefik_config_apply.stdout or 'configured' in traefik_config_apply.stdout"
 
     - name: Create Let's Encrypt ClusterIssuer
       ansible.builtin.shell: |
