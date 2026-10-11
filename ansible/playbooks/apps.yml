@@ -1,0 +1,54 @@
+---
+- name: Deploy homelab applications
+  hosts: socrat-0
+  gather_facts: false
+  become: true
+  vars:
+    apps:
+      - name: cats
+        namespace: cats
+        chart: cats
+      - name: img-proxy
+        namespace: img-proxy
+        chart: img-proxy
+  tasks:
+    - name: Ensure app namespaces exist
+      ansible.builtin.command: k3s kubectl create namespace {{ item.namespace }}
+      loop: "{{ apps }}"
+      register: app_ns
+      failed_when: app_ns.rc not in [0, 1]
+      changed_when: app_ns.rc == 0
+
+    - name: Copy app Helm charts to control-plane
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../charts/{{ item.chart }}/"
+        dest: "/tmp/charts/{{ item.chart }}/"
+        owner: root
+        group: root
+        mode: preserve
+      loop: "{{ apps }}"
+
+    - name: Install or upgrade app Helm releases
+      ansible.builtin.command: >-
+        helm upgrade --install {{ item.name }} /tmp/charts/{{ item.chart }}
+        --namespace {{ item.namespace }}
+        --kubeconfig /etc/rancher/k3s/k3s.yaml
+        --wait
+        --timeout 5m
+      loop: "{{ apps }}"
+      register: app_helm
+      changed_when: "'has been upgraded' in app_helm.stdout or 'has been installed' in app_helm.stdout"
+
+    - name: Show app status
+      ansible.builtin.shell: |
+        set -eu
+        for ns in {% for app in apps %}{{ app.namespace }} {% endfor %}; do
+          echo "--- namespace: $ns"
+          k3s kubectl -n "$ns" get deploy,pod,svc,ingress,certificate -o wide
+        done
+      changed_when: false
+      register: app_status
+
+    - name: Print app status
+      ansible.builtin.debug:
+        var: app_status.stdout_lines

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: img-proxy
+description: Proxy img.alchemmist.xyz to images.weserv.nl
+version: 0.1.0
+appVersion: latest
+type: application

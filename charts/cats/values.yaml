@@ -1,0 +1,29 @@
+replicaCount: 2
+
+image:
+  repository: alchemmist/cats
+  tag: latest
+  pullPolicy: Always
+
+service:
+  port: 80
+  targetPort: 5173
+
+ingress:
+  className: traefik
+  host: cats.socrat.alchemmist.xyz
+  tlsSecretName: cats-tls
+  clusterIssuer: letsencrypt-http01
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    memory: 128Mi
+
+topologySpreadConstraints:
+  enabled: true
+  maxSkew: 1
+  topologyKey: kubernetes.io/hostname
+  whenUnsatisfiable: ScheduleAnyway
