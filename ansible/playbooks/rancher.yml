@@ -1,6 +1,6 @@
 ---
 - name: Install Rancher on k3s
-  hosts: socrat-master
+  hosts: socrat-0
   gather_facts: false
   become: true
   vars:
@@ -60,7 +60,7 @@
               class: traefik
 
           nodeSelector:
-            kubernetes.io/hostname: socrat-master
+            kubernetes.io/hostname: socrat-0
 
     - name: Install or upgrade Rancher
       ansible.builtin.command: >-
@@ -73,10 +73,10 @@
       register: rancher_helm
       changed_when: "'has been upgraded' in rancher_helm.stdout or 'has been installed' in rancher_helm.stdout"
 
-    - name: Pin Rancher deployments to socrat-master
+    - name: Pin Rancher deployments to socrat-0
       ansible.builtin.command: >-
         k3s kubectl -n cattle-system patch deploy {{ item }} --type merge
-        -p '{"spec":{"template":{"spec":{"nodeSelector":{"kubernetes.io/hostname":"socrat-master"}}}}}'
+        -p '{"spec":{"template":{"spec":{"nodeSelector":{"kubernetes.io/hostname":"socrat-0"}}}}}'
       loop:
         - rancher
         - rancher-webhook

@@ -1,11 +1,15 @@
 ---
-- name: Install k3s server on socrat-master
-  hosts: socrat-master
+- name: Install k3s server on socrat-0
+  hosts: socrat-0
   gather_facts: true
   become: true
   vars:
     k3s_server_ip: 192.168.0.23
   tasks:
+    - name: Set primary hostname
+      ansible.builtin.hostname:
+        name: socrat-0
+
     - name: Stop and disable host Caddy before Traefik takes 80/443
       ansible.builtin.systemd:
         name: caddy
@@ -17,16 +21,15 @@
       ansible.builtin.shell: |
         set -eu
         curl -sfL https://get.k3s.io | \
-          INSTALL_K3S_EXEC="server --node-ip {{ k3s_server_ip }} --advertise-address {{ k3s_server_ip }} --write-kubeconfig-mode 644" \
+          INSTALL_K3S_EXEC="server --node-name socrat-0 --node-ip {{ k3s_server_ip }} --advertise-address {{ k3s_server_ip }} --write-kubeconfig-mode 644" \
           sh -
-      args:
-        creates: /usr/local/bin/k3s
 
     - name: Ensure k3s server is running
       ansible.builtin.systemd:
         name: k3s
-        state: started
+        state: restarted
         enabled: true
+        daemon_reload: true
 
     - name: Wait for Kubernetes API
       ansible.builtin.command: k3s kubectl get nodes
@@ -46,7 +49,7 @@
         k3s_node_token: "{{ k3s_node_token_raw.content | b64decode | trim }}"
 
 - name: Install k3s agents
-  hosts: socrat:!socrat-master
+  hosts: socrat:!socrat-0
   gather_facts: true
   become: true
   vars:
@@ -59,7 +62,7 @@
         set -eu
         curl -sfL https://get.k3s.io | \
           K3S_URL="https://{{ k3s_server_ip }}:6443" \
-          K3S_TOKEN="{{ hostvars['socrat-master'].k3s_node_token }}" \
+          K3S_TOKEN="{{ hostvars['socrat-0'].k3s_node_token }}" \
           INSTALL_K3S_EXEC="agent --node-ip {{ k3s_node_ip_map[inventory_hostname] }}" \
           sh -
       args:
@@ -72,7 +75,7 @@
         enabled: true
 
 - name: Install cluster addons and migrate homepage
-  hosts: socrat-master
+  hosts: socrat-0
   gather_facts: false
   become: true
   vars:
@@ -82,7 +85,7 @@
     - name: Wait until control-plane node is Ready
       ansible.builtin.shell: |
         set -eu
-        k3s kubectl wait --for=condition=Ready node/socrat-master --timeout=180s
+        k3s kubectl wait --for=condition=Ready node/socrat-0 --timeout=180s
       changed_when: false
 
     - name: Install Helm if missing
@@ -228,13 +231,13 @@
         dest: /tmp/socrat-home-image.tar
         mode: "0644"
       delegate_to: "{{ item }}"
-      loop: "{{ groups['socrat'] | difference(['socrat-master']) }}"
+      loop: "{{ groups['socrat'] | difference(['socrat-0']) }}"
       become: true
 
     - name: Import homepage image on worker nodes
       ansible.builtin.command: k3s ctr -n k8s.io images import /tmp/socrat-home-image.tar
       delegate_to: "{{ item }}"
-      loop: "{{ groups['socrat'] | difference(['socrat-master']) }}"
+      loop: "{{ groups['socrat'] | difference(['socrat-0']) }}"
       become: true
       changed_when: true
 

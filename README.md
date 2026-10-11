@@ -2,7 +2,7 @@
 
 Personal homelab automation for Socrat nodes.
 
-This repo starts small: Ansible inventory + roles for shared users and the machine-wide Starship prompt config on `socrat-master` and `socrat-1`.
+This repo starts small: Ansible inventory + roles for shared users and the machine-wide Starship prompt config on `socrat-0` and `socrat-1`.
 
 ## Layout
 
@@ -30,7 +30,7 @@ charts/
 
 | Host | Address | Notes |
 | --- | --- | --- |
-| `socrat-master` / `socrat-0` | LAN `192.168.0.23:22`, public `socrat.alchemmist.xyz:2222` | `socrat-0` is an alias for the master node; public SSH via router port-forward `2222 -> 192.168.0.23:22` |
+| `socrat-0` / `socrat-master` | LAN `192.168.0.23:22`, public `socrat.alchemmist.xyz:2222` | `socrat-0` is the primary name; `socrat-master` remains a compatibility alias; public SSH via router port-forward `2222 -> 192.168.0.23:22` |
 | `socrat-1` | LAN `192.168.0.24:22`, public `socrat.alchemmist.xyz:2223` | Public SSH via router port-forward `2223 -> 192.168.0.24:22` |
 
 ## Run
@@ -54,7 +54,7 @@ The role deploys a machine-wide Starship config to `/etc/starship/starship.toml`
 The deployed prompt includes a grey host marker on the command line:
 
 ```text
-(socrat-master) 
+(socrat-0) 
 (socrat-1) 
 ```
 
@@ -91,7 +91,7 @@ URL:          https://rancher.socrat.alchemmist.xyz
 Namespace:    cattle-system
 Cluster name: socrat (Rancher local cluster display name)
 Replicas:     1
-Placement:    pinned to socrat-master
+Placement:    pinned to socrat-0
 Logo:         assets/rancher/socrat-logo.png, applied to Rancher light/dark UI logo settings
 TLS:          Rancher Helm chart + cert-manager Let's Encrypt
 ```

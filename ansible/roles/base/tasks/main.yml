@@ -1,9 +1,22 @@
 ---
+- name: Set primary hostname on master
+  ansible.builtin.hostname:
+    name: socrat-0
+  when: inventory_hostname == 'socrat-0'
+  become: true
+
+- name: Remove legacy unmanaged master host alias line
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '^192\.168\.0\.23\s+socrat-master\s+socrat-0$'
+    state: absent
+  become: true
+
 - name: Manage homelab host aliases
   ansible.builtin.blockinfile:
     path: /etc/hosts
     marker: "# {mark} HOMELAB HOST ALIASES"
     block: |
-      192.168.0.23    socrat-master socrat-0
+      192.168.0.23    socrat-0 socrat-master
       192.168.0.24    socrat-1
   become: true
