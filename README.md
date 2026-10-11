@@ -23,7 +23,7 @@ ansible/
 | Host | Address | Notes |
 | --- | --- | --- |
 | `socrat-master` | `ai.alchemmist.xyz:2222` | Public SSH via router port-forward |
-| `socrat-1` | `192.168.0.24:22` | LAN SSH |
+| `socrat-1` | `192.168.0.24:2222` | LAN SSH, sshd also keeps port 22 as fallback |
 
 ## Run
 
