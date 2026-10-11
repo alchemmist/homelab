@@ -1,0 +1,221 @@
+---
+- name: Install k3s server on socrat-master
+  hosts: socrat-master
+  gather_facts: true
+  become: true
+  vars:
+    k3s_server_ip: 192.168.0.23
+  tasks:
+    - name: Stop and disable host Caddy before Traefik takes 80/443
+      ansible.builtin.systemd:
+        name: caddy
+        state: stopped
+        enabled: false
+      failed_when: false
+
+    - name: Install k3s server with default Traefik and ServiceLB
+      ansible.builtin.shell: |
+        set -eu
+        curl -sfL https://get.k3s.io | \
+          INSTALL_K3S_EXEC="server --node-ip {{ k3s_server_ip }} --advertise-address {{ k3s_server_ip }} --write-kubeconfig-mode 644" \
+          sh -
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Ensure k3s server is running
+      ansible.builtin.systemd:
+        name: k3s
+        state: started
+        enabled: true
+
+    - name: Wait for Kubernetes API
+      ansible.builtin.command: k3s kubectl get nodes
+      register: k3s_api
+      retries: 30
+      delay: 5
+      until: k3s_api.rc == 0
+      changed_when: false
+
+    - name: Read k3s node token
+      ansible.builtin.slurp:
+        src: /var/lib/rancher/k3s/server/node-token
+      register: k3s_node_token_raw
+
+    - name: Store k3s token for agent play
+      ansible.builtin.set_fact:
+        k3s_node_token: "{{ k3s_node_token_raw.content | b64decode | trim }}"
+
+- name: Install k3s agents
+  hosts: socrat:!socrat-master
+  gather_facts: true
+  become: true
+  vars:
+    k3s_server_ip: 192.168.0.23
+    k3s_node_ip_map:
+      socrat-1: 192.168.0.24
+  tasks:
+    - name: Install k3s agent
+      ansible.builtin.shell: |
+        set -eu
+        curl -sfL https://get.k3s.io | \
+          K3S_URL="https://{{ k3s_server_ip }}:6443" \
+          K3S_TOKEN="{{ hostvars['socrat-master'].k3s_node_token }}" \
+          INSTALL_K3S_EXEC="agent --node-ip {{ k3s_node_ip_map[inventory_hostname] }}" \
+          sh -
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Ensure k3s agent is running
+      ansible.builtin.systemd:
+        name: k3s-agent
+        state: started
+        enabled: true
+
+- name: Install cluster addons and migrate homepage
+  hosts: socrat-master
+  gather_facts: false
+  become: true
+  vars:
+    letsencrypt_email: antropophag@gmail.com
+  tasks:
+    - name: Wait until control-plane node is Ready
+      ansible.builtin.shell: |
+        set -eu
+        k3s kubectl wait --for=condition=Ready node/socrat-master --timeout=180s
+      changed_when: false
+
+    - name: Install cert-manager CRDs/controllers
+      ansible.builtin.shell: |
+        set -eu
+        k3s kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.2/cert-manager.yaml
+      register: cert_manager_apply
+      changed_when: "'created' in cert_manager_apply.stdout or 'configured' in cert_manager_apply.stdout"
+
+    - name: Wait for cert-manager deployments
+      ansible.builtin.shell: |
+        set -eu
+        k3s kubectl -n cert-manager rollout status deploy/cert-manager --timeout=180s
+        k3s kubectl -n cert-manager rollout status deploy/cert-manager-cainjector --timeout=180s
+        k3s kubectl -n cert-manager rollout status deploy/cert-manager-webhook --timeout=180s
+      changed_when: false
+
+    - name: Create Let's Encrypt ClusterIssuer
+      ansible.builtin.shell: |
+        set -eu
+        cat <<'EOF' | k3s kubectl apply -f -
+        apiVersion: cert-manager.io/v1
+        kind: ClusterIssuer
+        metadata:
+          name: letsencrypt-http01
+        spec:
+          acme:
+            email: {{ letsencrypt_email }}
+            server: https://acme-v02.api.letsencrypt.org/directory
+            privateKeySecretRef:
+              name: letsencrypt-http01-account-key
+            solvers:
+              - http01:
+                  ingress:
+                    class: traefik
+        EOF
+      register: issuer_apply
+      changed_when: "'created' in issuer_apply.stdout or 'configured' in issuer_apply.stdout"
+
+    - name: Create homepage namespace
+      ansible.builtin.command: k3s kubectl create namespace socrat-home
+      register: ns_create
+      failed_when: ns_create.rc not in [0, 1]
+      changed_when: ns_create.rc == 0
+
+    - name: Deploy homepage app, service and ingress
+      ansible.builtin.shell: |
+        set -eu
+        cat <<'EOF' | k3s kubectl apply -f -
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          name: socrat-home
+          namespace: socrat-home
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app: socrat-home
+          template:
+            metadata:
+              labels:
+                app: socrat-home
+            spec:
+              nodeSelector:
+                kubernetes.io/hostname: socrat-master
+              containers:
+                - name: nginx
+                  image: nginx:1.27-alpine
+                  ports:
+                    - containerPort: 80
+                  volumeMounts:
+                    - name: www
+                      mountPath: /usr/share/nginx/html
+                      readOnly: true
+              volumes:
+                - name: www
+                  hostPath:
+                    path: /var/www/socrat
+                    type: Directory
+        ---
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: socrat-home
+          namespace: socrat-home
+        spec:
+          selector:
+            app: socrat-home
+          ports:
+            - name: http
+              port: 80
+              targetPort: 80
+        ---
+        apiVersion: networking.k8s.io/v1
+        kind: Ingress
+        metadata:
+          name: socrat-home
+          namespace: socrat-home
+          annotations:
+            cert-manager.io/cluster-issuer: letsencrypt-http01
+        spec:
+          ingressClassName: traefik
+          tls:
+            - hosts:
+                - socrat.alchemmist.xyz
+              secretName: socrat-home-tls
+          rules:
+            - host: socrat.alchemmist.xyz
+              http:
+                paths:
+                  - path: /
+                    pathType: Prefix
+                    backend:
+                      service:
+                        name: socrat-home
+                        port:
+                          number: 80
+        EOF
+      register: home_apply
+      changed_when: "'created' in home_apply.stdout or 'configured' in home_apply.stdout"
+
+    - name: Wait for homepage deployment
+      ansible.builtin.command: k3s kubectl -n socrat-home rollout status deploy/socrat-home --timeout=180s
+      changed_when: false
+
+    - name: Show cluster status
+      ansible.builtin.shell: |
+        k3s kubectl get nodes -o wide
+        k3s kubectl -n kube-system get svc traefik
+        k3s kubectl -n socrat-home get ingress,certificate,pod,svc
+      changed_when: false
+      register: cluster_status
+
+    - name: Print cluster status
+      ansible.builtin.debug:
+        var: cluster_status.stdout_lines

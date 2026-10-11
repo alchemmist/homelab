@@ -14,6 +14,7 @@ ansible/
   playbooks/
     users.yml
     starship.yml
+    k3s.yml
     site.yml
   roles/
     users/
@@ -53,6 +54,30 @@ The deployed prompt includes a grey host marker on the command line:
 ```
 
 The marker uses runtime `hostname`, so the same `starship.toml` works on future nodes like `socrat-2`, `socrat-3`, etc.
+
+## k3s
+
+The default k3s stack is used for ingress:
+
+- Traefik: ingress controller
+- ServiceLB/klipper-lb: exposes Traefik `LoadBalancer` on node ports 80/443
+- cert-manager: issues Let's Encrypt certificates via HTTP-01
+
+Run:
+
+```bash
+cd ansible
+ansible-playbook playbooks/k3s.yml --ask-become-pass
+```
+
+Current public router forwards expected by the cluster:
+
+```text
+80  -> 192.168.0.23:80
+443 -> 192.168.0.23:443
+```
+
+Caddy is stopped/disabled by the k3s playbook so Traefik can own HTTP/HTTPS.
 
 ## Secrets
 
