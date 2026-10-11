@@ -87,11 +87,13 @@ Caddy is stopped/disabled by the k3s playbook so Traefik can own HTTP/HTTPS.
 Rancher is installed as the Kubernetes management UI:
 
 ```text
-URL:       https://rancher.socrat.alchemmist.xyz
-Namespace: cattle-system
-Replicas:  1
-Placement: pinned to socrat-master
-TLS:       Rancher Helm chart + cert-manager Let's Encrypt
+URL:          https://rancher.socrat.alchemmist.xyz
+Namespace:    cattle-system
+Cluster name: socrat (Rancher local cluster display name)
+Replicas:     1
+Placement:    pinned to socrat-master
+Logo:         assets/rancher/socrat-logo.png, applied to Rancher light/dark UI logo settings
+TLS:          Rancher Helm chart + cert-manager Let's Encrypt
 ```
 
 Cluster applications are Helm-managed where appropriate:

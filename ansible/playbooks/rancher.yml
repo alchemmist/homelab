@@ -7,6 +7,7 @@
     rancher_hostname: rancher.socrat.alchemmist.xyz
     rancher_email: antropophag@gmail.com
     rancher_replicas: 1
+    rancher_cluster_display_name: socrat
   tasks:
     - name: Require rancher_bootstrap_password variable
       ansible.builtin.fail:
@@ -93,9 +94,46 @@
       failed_when: rancher_webhook_rollout.rc != 0 and 'not found' not in rancher_webhook_rollout.stderr
       changed_when: false
 
+    - name: Rename Rancher local cluster display name
+      ansible.builtin.command: >-
+        k3s kubectl patch clusters.management.cattle.io local --type merge
+        -p '{"spec":{"displayName":"{{ rancher_cluster_display_name }}"}}'
+      changed_when: false
+
+    - name: Copy Rancher UI logo to control-plane
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../assets/rancher/socrat-logo.png"
+        dest: /tmp/socrat-logo.png
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Set Rancher UI logo
+      ansible.builtin.shell: |
+        set -eu
+        python3 - <<'PY'
+        import base64
+        import json
+        import subprocess
+        from pathlib import Path
+
+        patch_dir = Path("/tmp/rancher-logo-patches")
+        patch_dir.mkdir(exist_ok=True)
+        val = "data:image/png;base64," + base64.b64encode(Path("/tmp/socrat-logo.png").read_bytes()).decode()
+        for name in ["ui-logo-light", "ui-logo-dark"]:
+            patch_file = patch_dir / f"{name}-patch.json"
+            patch_file.write_text(json.dumps({"value": val, "customized": True}))
+            subprocess.run(
+                ["k3s", "kubectl", "patch", "settings.management.cattle.io", name, "--type", "merge", "--patch-file", str(patch_file)],
+                check=True,
+            )
+        PY
+      changed_when: false
+
     - name: Show Rancher status
       ansible.builtin.shell: |
         k3s kubectl -n cattle-system get pods,svc,ingress -o wide
+        k3s kubectl get clusters.management.cattle.io local -o jsonpath='{.spec.displayName}{"\n"}'
       changed_when: false
       register: rancher_status
 
