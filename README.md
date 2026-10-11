@@ -24,8 +24,8 @@ ansible/
 
 | Host | Address | Notes |
 | --- | --- | --- |
-| `socrat-master` | LAN `192.168.0.23:22`, public `ai.alchemmist.xyz:2222` | Public SSH via router port-forward `2222 -> 192.168.0.23:22` |
-| `socrat-1` | LAN `192.168.0.24:22`, public `ai.alchemmist.xyz:2223` | Public SSH via router port-forward `2223 -> 192.168.0.24:22` |
+| `socrat-master` | LAN `192.168.0.23:22`, public `socrat.alchemmist.xyz:2222` | Public SSH via router port-forward `2222 -> 192.168.0.23:22` |
+| `socrat-1` | LAN `192.168.0.24:22`, public `socrat.alchemmist.xyz:2223` | Public SSH via router port-forward `2223 -> 192.168.0.24:22` |
 
 ## Run
 
