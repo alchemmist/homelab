@@ -1,0 +1,6 @@
+apiVersion: v2
+name: socrat-home
+description: Socrat static homepage
+version: 0.1.0
+appVersion: latest
+type: application

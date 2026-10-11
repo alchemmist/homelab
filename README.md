@@ -12,13 +12,18 @@ ansible/
   inventory/hosts.yml
   group_vars/
   playbooks/
+    base.yml
     users.yml
     starship.yml
     k3s.yml
+    rancher.yml
     site.yml
   roles/
+    base/
     users/
     starship/
+charts/
+  socrat-home/
 ```
 
 ## Current nodes
@@ -61,7 +66,7 @@ The default k3s stack is used for ingress:
 
 - Traefik: ingress controller
 - ServiceLB/klipper-lb: exposes Traefik `LoadBalancer` on node ports 80/443
-- cert-manager: issues Let's Encrypt certificates via HTTP-01
+- cert-manager: Helm-managed, issues Let's Encrypt certificates via HTTP-01
 
 Run:
 
@@ -89,10 +94,20 @@ Placement: pinned to socrat-master
 TLS:       Rancher Helm chart + cert-manager Let's Encrypt
 ```
 
+Cluster applications are Helm-managed where appropriate:
+
+```text
+cert-manager  -> Helm release cert-manager in cert-manager
+Rancher       -> Helm release rancher in cattle-system
+socrat-home   -> local Helm chart charts/socrat-home
+Traefik       -> k3s-managed Helm release in kube-system
+```
+
 The current homepage is served by a dedicated Kubernetes container:
 
 ```text
-Deployment: socrat-home, 2 replicas, one per node via topology spread
+Helm:      release socrat-home from charts/socrat-home
+Deployment: socrat-home, 2 replicas, one per node via pod anti-affinity/topology spread
 Image:      localhost/socrat-home:latest, built from /var/www/socrat and imported into k3s containerd on every node
 Service:    socrat-home:8080 -> container:80
 Ingress:    socrat.alchemmist.xyz -> socrat-home:8080

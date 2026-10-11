@@ -77,6 +77,7 @@
   become: true
   vars:
     letsencrypt_email: antropophag@gmail.com
+    cert_manager_version: v1.16.2
   tasks:
     - name: Wait until control-plane node is Ready
       ansible.builtin.shell: |
@@ -84,12 +85,83 @@
         k3s kubectl wait --for=condition=Ready node/socrat-master --timeout=180s
       changed_when: false
 
-    - name: Install cert-manager CRDs/controllers
+    - name: Install Helm if missing
       ansible.builtin.shell: |
         set -eu
-        k3s kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.2/cert-manager.yaml
-      register: cert_manager_apply
-      changed_when: "'created' in cert_manager_apply.stdout or 'configured' in cert_manager_apply.stdout"
+        if ! command -v helm >/dev/null 2>&1; then
+          curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+        fi
+      args:
+        creates: /usr/local/bin/helm
+
+    - name: Add Jetstack Helm repository
+      ansible.builtin.command: helm repo add jetstack https://charts.jetstack.io
+      register: jetstack_repo_add
+      failed_when: jetstack_repo_add.rc not in [0, 1]
+      changed_when: jetstack_repo_add.rc == 0 and 'already exists' not in (jetstack_repo_add.stderr + jetstack_repo_add.stdout)
+
+    - name: Update Helm repositories
+      ansible.builtin.command: helm repo update
+      changed_when: false
+
+    - name: Ensure cert-manager namespace exists
+      ansible.builtin.command: k3s kubectl create namespace cert-manager
+      register: cert_manager_ns
+      failed_when: cert_manager_ns.rc not in [0, 1]
+      changed_when: cert_manager_ns.rc == 0
+
+    - name: Adopt existing cert-manager resources into Helm release
+      ansible.builtin.shell: |
+        set -eu
+        adopt_namespaced() {
+          kind="$1"
+          for name in cert-manager cert-manager-cainjector cert-manager-webhook; do
+            if k3s kubectl -n cert-manager get "$kind" "$name" >/dev/null 2>&1; then
+              k3s kubectl -n cert-manager label "$kind" "$name" app.kubernetes.io/managed-by=Helm --overwrite
+              k3s kubectl -n cert-manager annotate "$kind" "$name" meta.helm.sh/release-name=cert-manager meta.helm.sh/release-namespace=cert-manager --overwrite
+            fi
+          done
+        }
+        adopt_cluster() {
+          kind="$1"
+          shift
+          for name in "$@"; do
+            if k3s kubectl get "$kind" "$name" >/dev/null 2>&1; then
+              k3s kubectl label "$kind" "$name" app.kubernetes.io/managed-by=Helm --overwrite
+              k3s kubectl annotate "$kind" "$name" meta.helm.sh/release-name=cert-manager meta.helm.sh/release-namespace=cert-manager --overwrite
+            fi
+          done
+        }
+
+        for namespace in cert-manager kube-system; do
+          for kind in serviceaccount service deployment role rolebinding; do
+            for name in $(k3s kubectl -n "$namespace" get "$kind" -o name 2>/dev/null | grep cert-manager || true); do
+              k3s kubectl -n "$namespace" label "$name" app.kubernetes.io/managed-by=Helm --overwrite
+              k3s kubectl -n "$namespace" annotate "$name" meta.helm.sh/release-name=cert-manager meta.helm.sh/release-namespace=cert-manager --overwrite
+            done
+          done
+        done
+
+        for kind in clusterrole clusterrolebinding mutatingwebhookconfiguration validatingwebhookconfiguration; do
+          for name in $(k3s kubectl get "$kind" -o name 2>/dev/null | grep cert-manager || true); do
+            k3s kubectl label "$name" app.kubernetes.io/managed-by=Helm --overwrite
+            k3s kubectl annotate "$name" meta.helm.sh/release-name=cert-manager meta.helm.sh/release-namespace=cert-manager --overwrite
+          done
+        done
+        adopt_cluster crd certificaterequests.cert-manager.io certificates.cert-manager.io challenges.acme.cert-manager.io clusterissuers.cert-manager.io issuers.cert-manager.io orders.acme.cert-manager.io
+      changed_when: false
+
+    - name: Install cert-manager with Helm
+      ansible.builtin.command: >-
+        helm upgrade --install cert-manager jetstack/cert-manager
+        --namespace cert-manager
+        --kubeconfig /etc/rancher/k3s/k3s.yaml
+        --version {{ cert_manager_version }}
+        --set crds.enabled=true
+        --wait
+        --timeout 5m
+      register: cert_manager_helm
+      changed_when: "'has been upgraded' in cert_manager_helm.stdout or 'has been installed' in cert_manager_helm.stdout"
 
     - name: Wait for cert-manager deployments
       ansible.builtin.shell: |
@@ -166,79 +238,34 @@
       become: true
       changed_when: true
 
-    - name: Deploy homepage app, service and ingress
+    - name: Copy homepage Helm chart to control-plane
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../charts/socrat-home/"
+        dest: /tmp/charts/socrat-home/
+        owner: root
+        group: root
+        mode: preserve
+
+    - name: Adopt existing homepage resources into Helm release
       ansible.builtin.shell: |
         set -eu
-        cat <<'EOF' | k3s kubectl apply -f -
-        apiVersion: apps/v1
-        kind: Deployment
-        metadata:
-          name: socrat-home
-          namespace: socrat-home
-        spec:
-          replicas: 2
-          selector:
-            matchLabels:
-              app: socrat-home
-          template:
-            metadata:
-              labels:
-                app: socrat-home
-            spec:
-              topologySpreadConstraints:
-                - maxSkew: 1
-                  topologyKey: kubernetes.io/hostname
-                  whenUnsatisfiable: DoNotSchedule
-                  labelSelector:
-                    matchLabels:
-                      app: socrat-home
-              containers:
-                - name: nginx
-                  image: localhost/socrat-home:latest
-                  imagePullPolicy: Never
-                  ports:
-                    - containerPort: 80
-        ---
-        apiVersion: v1
-        kind: Service
-        metadata:
-          name: socrat-home
-          namespace: socrat-home
-        spec:
-          selector:
-            app: socrat-home
-          ports:
-            - name: http
-              port: 8080
-              targetPort: 80
-        ---
-        apiVersion: networking.k8s.io/v1
-        kind: Ingress
-        metadata:
-          name: socrat-home
-          namespace: socrat-home
-          annotations:
-            cert-manager.io/cluster-issuer: letsencrypt-http01
-        spec:
-          ingressClassName: traefik
-          tls:
-            - hosts:
-                - socrat.alchemmist.xyz
-              secretName: socrat-home-tls
-          rules:
-            - host: socrat.alchemmist.xyz
-              http:
-                paths:
-                  - path: /
-                    pathType: Prefix
-                    backend:
-                      service:
-                        name: socrat-home
-                        port:
-                          number: 8080
-        EOF
-      register: home_apply
-      changed_when: "'created' in home_apply.stdout or 'configured' in home_apply.stdout"
+        for resource in deployment/socrat-home service/socrat-home ingress/socrat-home; do
+          if k3s kubectl -n socrat-home get "$resource" >/dev/null 2>&1; then
+            k3s kubectl -n socrat-home label "$resource" app.kubernetes.io/managed-by=Helm --overwrite
+            k3s kubectl -n socrat-home annotate "$resource" meta.helm.sh/release-name=socrat-home meta.helm.sh/release-namespace=socrat-home --overwrite
+          fi
+        done
+      changed_when: false
+
+    - name: Install or upgrade homepage Helm release
+      ansible.builtin.command: >-
+        helm upgrade --install socrat-home /tmp/charts/socrat-home
+        --namespace socrat-home
+        --kubeconfig /etc/rancher/k3s/k3s.yaml
+        --wait
+        --timeout 5m
+      register: home_helm
+      changed_when: "'has been upgraded' in home_helm.stdout or 'has been installed' in home_helm.stdout"
 
     - name: Wait for homepage deployment
       ansible.builtin.command: k3s kubectl -n socrat-home rollout status deploy/socrat-home --timeout=180s

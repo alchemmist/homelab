@@ -1,0 +1,25 @@
+replicaCount: 2
+
+image:
+  repository: localhost/socrat-home
+  tag: latest
+  pullPolicy: Never
+
+service:
+  port: 8080
+  targetPort: 80
+
+ingress:
+  className: traefik
+  host: socrat.alchemmist.xyz
+  tlsSecretName: socrat-home-tls
+  clusterIssuer: letsencrypt-http01
+
+topologySpreadConstraints:
+  enabled: true
+  maxSkew: 1
+  topologyKey: kubernetes.io/hostname
+  whenUnsatisfiable: DoNotSchedule
+
+podAntiAffinity:
+  enabled: true
