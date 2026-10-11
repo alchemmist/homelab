@@ -1,0 +1,104 @@
+---
+- name: Install Rancher on k3s
+  hosts: socrat-master
+  gather_facts: false
+  become: true
+  vars:
+    rancher_hostname: rancher.socrat.alchemmist.xyz
+    rancher_email: antropophag@gmail.com
+    rancher_replicas: 1
+  tasks:
+    - name: Require rancher_bootstrap_password variable
+      ansible.builtin.fail:
+        msg: "Pass -e rancher_bootstrap_password=... (do not commit it to git)"
+      when: rancher_bootstrap_password is not defined or rancher_bootstrap_password | length < 8
+
+    - name: Install Helm if missing
+      ansible.builtin.shell: |
+        set -eu
+        if ! command -v helm >/dev/null 2>&1; then
+          curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+        fi
+      args:
+        creates: /usr/local/bin/helm
+
+    - name: Add Rancher stable Helm repository
+      ansible.builtin.command: helm repo add rancher-stable https://releases.rancher.com/server-charts/stable
+      register: helm_repo_add
+      failed_when: helm_repo_add.rc not in [0, 1]
+      changed_when: helm_repo_add.rc == 0 and 'already exists' not in (helm_repo_add.stderr + helm_repo_add.stdout)
+
+    - name: Update Helm repositories
+      ansible.builtin.command: helm repo update
+      changed_when: false
+
+    - name: Ensure cattle-system namespace exists
+      ansible.builtin.command: k3s kubectl create namespace cattle-system
+      register: cattle_ns
+      failed_when: cattle_ns.rc not in [0, 1]
+      changed_when: cattle_ns.rc == 0
+
+    - name: Render Rancher Helm values
+      ansible.builtin.copy:
+        dest: /tmp/rancher-values.yaml
+        owner: root
+        group: root
+        mode: "0600"
+        content: |
+          hostname: {{ rancher_hostname }}
+          replicas: {{ rancher_replicas }}
+          bootstrapPassword: {{ rancher_bootstrap_password | quote }}
+
+          ingress:
+            tls:
+              source: letsEncrypt
+
+          letsEncrypt:
+            email: {{ rancher_email }}
+            ingress:
+              class: traefik
+
+          nodeSelector:
+            kubernetes.io/hostname: socrat-master
+
+    - name: Install or upgrade Rancher
+      ansible.builtin.command: >-
+        helm upgrade --install rancher rancher-stable/rancher
+        --namespace cattle-system
+        --kubeconfig /etc/rancher/k3s/k3s.yaml
+        --values /tmp/rancher-values.yaml
+        --wait
+        --timeout 10m
+      register: rancher_helm
+      changed_when: "'has been upgraded' in rancher_helm.stdout or 'has been installed' in rancher_helm.stdout"
+
+    - name: Pin Rancher deployments to socrat-master
+      ansible.builtin.command: >-
+        k3s kubectl -n cattle-system patch deploy {{ item }} --type merge
+        -p '{"spec":{"template":{"spec":{"nodeSelector":{"kubernetes.io/hostname":"socrat-master"}}}}}'
+      loop:
+        - rancher
+        - rancher-webhook
+      register: rancher_pin
+      failed_when: rancher_pin.rc != 0 and 'not found' not in rancher_pin.stderr
+      changed_when: rancher_pin.rc == 0
+
+    - name: Wait for Rancher rollout
+      ansible.builtin.command: k3s kubectl -n cattle-system rollout status deploy/rancher --timeout=600s
+      changed_when: false
+
+    - name: Wait for Rancher webhook rollout when present
+      ansible.builtin.command: k3s kubectl -n cattle-system rollout status deploy/rancher-webhook --timeout=600s
+      register: rancher_webhook_rollout
+      failed_when: rancher_webhook_rollout.rc != 0 and 'not found' not in rancher_webhook_rollout.stderr
+      changed_when: false
+
+    - name: Show Rancher status
+      ansible.builtin.shell: |
+        k3s kubectl -n cattle-system get pods,svc,ingress -o wide
+      changed_when: false
+      register: rancher_status
+
+    - name: Print Rancher status
+      ansible.builtin.debug:
+        var: rancher_status.stdout_lines

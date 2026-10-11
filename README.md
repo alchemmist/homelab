@@ -79,6 +79,16 @@ Current public router forwards expected by the cluster:
 
 Caddy is stopped/disabled by the k3s playbook so Traefik can own HTTP/HTTPS.
 
+Rancher is installed as the Kubernetes management UI:
+
+```text
+URL:       https://rancher.socrat.alchemmist.xyz
+Namespace: cattle-system
+Replicas:  1
+Placement: pinned to socrat-master
+TLS:       Rancher Helm chart + cert-manager Let's Encrypt
+```
+
 The current homepage is served by a dedicated Kubernetes container:
 
 ```text
