@@ -54,45 +54,53 @@
       export STARSHIP_CONFIG=/etc/starship/starship.toml
   become: true
 
-- name: Check global shell rc files
+- name: Check global zsh config directory
   ansible.builtin.stat:
-    path: "{{ item }}"
-  loop:
-    - /etc/zsh/zshrc
-    - /etc/bash.bashrc
-  register: global_shell_rc
+    path: /etc/zsh
+  register: global_zsh_dir
+
+- name: Check global bashrc
+  ansible.builtin.stat:
+    path: /etc/bash.bashrc
+  register: global_bashrc
 
 - name: Enable starship in global zshrc
   ansible.builtin.blockinfile:
     path: /etc/zsh/zshrc
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
     marker: "# {mark} HOMELAB STARSHIP"
     block: |
+      case $- in
+        *i*) ;;
+        *) return ;;
+      esac
+
       if command -v starship >/dev/null 2>&1; then
         export STARSHIP_CONFIG=${STARSHIP_CONFIG:-/etc/starship/starship.toml}
         eval "$(starship init zsh)"
       fi
   become: true
-  when: >-
-    global_shell_rc.results
-    | selectattr('stat.path', 'equalto', '/etc/zsh/zshrc')
-    | map(attribute='stat.exists')
-    | first
+  when: global_zsh_dir.stat.isdir | default(false)
 
 - name: Enable starship in global bashrc
   ansible.builtin.blockinfile:
     path: /etc/bash.bashrc
     marker: "# {mark} HOMELAB STARSHIP"
     block: |
+      case $- in
+        *i*) ;;
+        *) return ;;
+      esac
+
       if command -v starship >/dev/null 2>&1; then
         export STARSHIP_CONFIG=${STARSHIP_CONFIG:-/etc/starship/starship.toml}
         eval "$(starship init bash)"
       fi
   become: true
-  when: >-
-    global_shell_rc.results
-    | selectattr('stat.path', 'equalto', '/etc/bash.bashrc')
-    | map(attribute='stat.exists')
-    | first
+  when: global_bashrc.stat.exists
 
 - name: Keep compatibility symlink for homelab user starship config
   ansible.builtin.file:
@@ -100,8 +108,6 @@
     dest: "{{ homelab_user_home }}/.config/starship/starship.toml"
     state: link
     force: true
-    owner: "{{ homelab_user }}"
-    group: "{{ homelab_user }}"
   become: true
 
 - name: Validate deployed starship config
