@@ -1,0 +1,9 @@
+---
+- name: Manage homelab host aliases
+  ansible.builtin.blockinfile:
+    path: /etc/hosts
+    marker: "# {mark} HOMELAB HOST ALIASES"
+    block: |
+      192.168.0.23    socrat-master socrat-0
+      192.168.0.24    socrat-1
+  become: true
