@@ -237,6 +237,9 @@
           namespace: kube-system
         spec:
           valuesContent: |-
+            deployment:
+              nodeSelector:
+                kubernetes.io/hostname: socrat-0
             resources:
               requests:
                 cpu: 100m

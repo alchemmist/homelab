@@ -3,11 +3,16 @@ kind: Deployment
 metadata: { name: remark42 }
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector: { matchLabels: { app: remark42 } }
   template:
     metadata: { labels: { app: remark42 } }
     spec:
-      nodeSelector: { kubernetes.io/hostname: socrat-0 }
+      hostNetwork: true
+      dnsPolicy: Default
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.nodeName | quote }}
       containers:
       - name: remark42
         image: {{ .Values.image }}

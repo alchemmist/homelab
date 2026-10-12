@@ -1,5 +1,6 @@
 image: ghcr.io/umputun/remark42:v1.17.1
 hostPath: /srv/remark42
+nodeName: socrat-2
 host: remark42.alchemmist.xyz
 secretName: remark42-env
 tlsSecret: remark42-tls

@@ -29,7 +29,7 @@ Target cluster: `Socrat` (`socrat-0`, `socrat-1`) behind `109.173.40.247`.
 | cats | `cats` | `cats.alchemmist.xyz` | stateless | image `alchemmist/cats:latest` | `charts/cats` |
 | img proxy | Caddy reverse proxy | `img.alchemmist.xyz` | stateless | none | `charts/img-proxy` |
 | redirects | Caddy redirects/respond | `www`, maybe old CV redirects | stateless | none | part of `blog` or `charts/redirects` |
-| remark42 | stopped on `socrat-2`; `remark42` in k3s | `remark42.alchemmist.xyz` | `/srv/var`, custom CSS, OAuth/GitHub secrets in K8s Secret | upstream image | `charts/remark42` |
+| remark42 | `remark42` in k3s, pinned to `socrat-2` with `hostNetwork` | `remark42.alchemmist.xyz` | `/srv/remark42`, custom CSS, OAuth/GitHub/Telegram secrets in K8s Secret | upstream image | `charts/remark42` |
 | umami | stopped on `socrat-2`; `umami`, `umami-db` in k3s | `umami.alchemmist.xyz` | Postgres restored from `pg_dump` | upstream image | `charts/umami` |
 | format-quorum | `format-quorum` | `fq.alchemmist.xyz` | PVCs for versions/tests/config history; configs bind | `github.com/alchemmist/format-quorum` | `charts/format-quorum` |
 | lms | `lms` | `lms.alchemmist.xyz` | `/data` volume | `github.com/alchemmist/lms` | `charts/lms` |
@@ -74,6 +74,7 @@ Do not use wildcard blindly while `vpn` and `sync` remain on VPS.
 ## 3x-ui / VPN Kubernetes migration status
 
 - `socrat-2` has been joined to the k3s cluster over WireGuard (`wg-socrat`, node IP `10.250.0.2`).
+- Workloads that must live on the VPS (`remark42`, `x-ui-lab`) are pinned with `nodeSelector: kubernetes.io/hostname=socrat-2`. They use `hostNetwork: true` where needed so traffic from home Traefik reaches them over the WireGuard node IP instead of the currently unreliable cross-node pod overlay to `socrat-2`.
 - ServiceLB is explicitly enabled only on `socrat-0` and `socrat-1`; it is disabled on `socrat-2` so existing Caddy/VPN ports on the VPS are not taken by Traefik.
 - Host administration on `socrat-2` is through `alchemmist`; legacy `www` user and `/home/www` were removed. The remaining Caddy container mounts `/srv/caddy/Caddyfile`.
 - Offline backup before the attempted cutover:
