@@ -73,14 +73,13 @@ Do not use wildcard blindly while `vpn` and `sync` remain on VPS.
 
 ## 3x-ui / VPN Kubernetes migration status
 
-- `socrat-2` has been joined to the k3s cluster as `socrat-2` over WireGuard (`wg-socrat`, node IP `10.250.0.2`).
+- `socrat-2` has been joined to the k3s cluster over WireGuard (`wg-socrat`, node IP `10.250.0.2`).
 - ServiceLB is explicitly enabled only on `socrat-0` and `socrat-1`; it is disabled on `socrat-2` so existing Caddy/VPN ports on the VPS are not taken by Traefik.
-- Native `x-ui.service` on `socrat-2` is disabled/inactive after cutover.
-- 3x-ui now runs as Helm release `x-ui` in namespace `x-ui`, pinned to `socrat-2`, using the official `ghcr.io/mhsanaei/3x-ui:latest` image with `hostNetwork: true`.
-- Persistent data is mounted from host paths on `socrat-2`:
-  - `/srv/x-ui/db` -> `/etc/x-ui`
-  - `/srv/x-ui/cert` -> `/root/cert`
-  - `/srv/x-ui/acme` -> `/root/.acme.sh`
-- Offline backup before cutover:
+- Offline backup before the attempted cutover:
   - `/root/backups/x-ui-20261012133959`
-- Caddy still handles public `vpn.alchemmist.xyz:443` and proxies to xray/panel ports on the host. Removing Caddy and replacing it with Traefik routing is a separate future step.
+- A Helm chart exists at `charts/x-ui`, but it is not in `apps.yml` and the in-cluster Deployment is scaled to `0` after rollback.
+- Rollback state: production VPN is back on native `x-ui.service` on `socrat-2`:
+  - `x-ui.service` active/enabled
+  - data path `/etc/x-ui`
+  - Caddy still handles public `vpn.alchemmist.xyz:443` and proxies to xray/panel ports on the host.
+- Containerized 3x-ui attempt preserved data but real client traffic did not pass; do not re-enable the Helm Deployment without a separate debug plan.
