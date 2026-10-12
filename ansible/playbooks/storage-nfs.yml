@@ -1,0 +1,150 @@
+---
+- name: Prepare NFS client packages for shared Kubernetes storage
+  hosts: Socrat
+  gather_facts: true
+  become: true
+  ignore_unreachable: true
+  tasks:
+    - name: Install NFS client packages on Debian nodes
+      ansible.builtin.apt:
+        name:
+          - nfs-common
+        state: present
+        update_cache: true
+      when: ansible_os_family == 'Debian'
+
+    - name: Install NFS client packages on Arch nodes
+      community.general.pacman:
+        name:
+          - nfs-utils
+        state: present
+        update_cache: true
+      when: ansible_os_family == 'Archlinux'
+
+- name: Configure socrat-0 as NFS backing store for Kubernetes PVCs
+  hosts: socrat-0
+  gather_facts: false
+  become: true
+  vars:
+    nfs_export_path: /srv/k8s-nfs
+    nfs_storage_class: nfs-shared
+    nfs_provisioner_namespace: storage
+    nfs_provisioner_release: nfs-subdir-external-provisioner
+    nfs_server_ip: 192.168.0.23
+  tasks:
+    - name: Install NFS server packages
+      ansible.builtin.apt:
+        name:
+          - nfs-kernel-server
+          - nfs-common
+        state: present
+        update_cache: true
+
+    - name: Raise inotify limits for rpc.mountd on busy Kubernetes hosts
+      ansible.builtin.copy:
+        dest: /etc/sysctl.d/99-inotify.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          fs.inotify.max_user_instances = 1024
+          fs.inotify.max_user_watches = 1048576
+      register: inotify_sysctl
+
+    - name: Apply inotify sysctl settings
+      ansible.builtin.command: sysctl -p /etc/sysctl.d/99-inotify.conf
+      when: inotify_sysctl.changed
+
+    - name: Ensure NFS export directory exists
+      ansible.builtin.file:
+        path: "{{ nfs_export_path }}"
+        state: directory
+        owner: nobody
+        group: nogroup
+        mode: '0775'
+
+    - name: Ensure exports.d exists
+      ansible.builtin.file:
+        path: /etc/exports.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Configure Kubernetes NFS export
+      ansible.builtin.copy:
+        dest: /etc/exports.d/k8s-nfs.exports
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          {{ nfs_export_path }} 192.168.0.0/24(rw,sync,no_subtree_check,no_root_squash,fsid=0) 10.250.0.0/24(rw,sync,no_subtree_check,no_root_squash,fsid=0)
+      notify: Reload NFS exports
+
+    - name: Ensure /etc/exports exists
+      ansible.builtin.file:
+        path: /etc/exports
+        state: touch
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Enable and start NFS server
+      ansible.builtin.systemd:
+        name: nfs-server
+        enabled: true
+        state: started
+
+    - name: Ensure storage namespace exists
+      ansible.builtin.command: k3s kubectl create namespace {{ nfs_provisioner_namespace }}
+      register: storage_ns
+      failed_when: storage_ns.rc not in [0, 1]
+      changed_when: storage_ns.rc == 0
+
+    - name: Add NFS provisioner Helm repo
+      ansible.builtin.command: helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner
+      register: nfs_repo
+      failed_when: nfs_repo.rc not in [0, 1]
+      changed_when: nfs_repo.rc == 0
+
+    - name: Update NFS provisioner Helm repo
+      ansible.builtin.command: helm repo update nfs-subdir-external-provisioner
+      changed_when: false
+
+    - name: Install or upgrade NFS subdir external provisioner
+      ansible.builtin.command: >-
+        helm upgrade --install {{ nfs_provisioner_release }}
+        nfs-subdir-external-provisioner/nfs-subdir-external-provisioner
+        --namespace {{ nfs_provisioner_namespace }}
+        --kubeconfig /etc/rancher/k3s/k3s.yaml
+        --set nfs.server={{ nfs_server_ip }}
+        --set nfs.path={{ nfs_export_path }}
+        --set storageClass.name={{ nfs_storage_class }}
+        --set storageClass.defaultClass=true
+        --set storageClass.reclaimPolicy=Retain
+        --wait
+        --timeout 5m
+      register: nfs_helm
+      changed_when: "'has been upgraded' in nfs_helm.stdout or 'has been installed' in nfs_helm.stdout"
+
+    - name: Ensure local-path is not default storage class
+      ansible.builtin.command: >-
+        k3s kubectl patch storageclass local-path
+        -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
+      changed_when: false
+      failed_when: false
+
+    - name: Show storage classes
+      ansible.builtin.command: k3s kubectl get storageclass
+      changed_when: false
+      register: storage_classes
+
+    - name: Print storage classes
+      ansible.builtin.debug:
+        var: storage_classes.stdout_lines
+
+  handlers:
+    - name: Reload NFS exports
+      ansible.builtin.shell: |
+        exportfs -ra
+        systemctl restart nfs-mountd nfs-server
