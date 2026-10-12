@@ -19,5 +19,5 @@
     block: |
       192.168.0.23    socrat-0 socrat-master
       192.168.0.24    socrat-1
-      10.250.0.2      socrat-2 laba
+      10.250.0.2      socrat-2
   become: true

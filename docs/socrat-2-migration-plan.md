@@ -1,6 +1,6 @@
-# Laba -> Socrat migration plan
+# Socrat-2 migration plan
 
-Source VPS: `laba` (`176.98.185.59`).
+Source VPS, now `socrat-2` (`176.98.185.59`).
 Target cluster: `socrat` (`socrat-0`, `socrat-1`) behind `109.173.40.247`.
 
 ## Decisions
@@ -29,11 +29,11 @@ Target cluster: `socrat` (`socrat-0`, `socrat-1`) behind `109.173.40.247`.
 | cats | `cats` | `cats.alchemmist.xyz` | stateless | image `alchemmist/cats:latest` | `charts/cats` |
 | img proxy | Caddy reverse proxy | `img.alchemmist.xyz` | stateless | none | `charts/img-proxy` |
 | redirects | Caddy redirects/respond | `www`, maybe old CV redirects | stateless | none | part of `blog` or `charts/redirects` |
-| remark42 | stopped on `laba`; `remark42` in k3s | `remark42.alchemmist.xyz` | `/srv/var`, custom CSS, OAuth/GitHub secrets in K8s Secret | upstream image | `charts/remark42` |
-| umami | stopped on `laba`; `umami`, `umami-db` in k3s | `umami.alchemmist.xyz` | Postgres restored from `pg_dump` | upstream image | `charts/umami` |
+| remark42 | stopped on `socrat-2`; `remark42` in k3s | `remark42.alchemmist.xyz` | `/srv/var`, custom CSS, OAuth/GitHub secrets in K8s Secret | upstream image | `charts/remark42` |
+| umami | stopped on `socrat-2`; `umami`, `umami-db` in k3s | `umami.alchemmist.xyz` | Postgres restored from `pg_dump` | upstream image | `charts/umami` |
 | format-quorum | `format-quorum` | `fq.alchemmist.xyz` | PVCs for versions/tests/config history; configs bind | `github.com/alchemmist/format-quorum` | `charts/format-quorum` |
 | lms | `lms` | `lms.alchemmist.xyz` | `/data` volume | `github.com/alchemmist/lms` | `charts/lms` |
-| monori | stopped on `laba`; `monori`, `monori-back`, `monori-sync` in k3s | `monori.alchemmist.xyz` | SQLite/data + sync debug | `github.com/alchemmist/monori` | `charts/monori` |
+| monori | stopped on `socrat-2`; `monori`, `monori-back`, `monori-sync` in k3s | `monori.alchemmist.xyz` | SQLite/data + sync debug | `github.com/alchemmist/monori` | `charts/monori` |
 | rooms | not currently running | `rooms.alchemmist.xyz` | Postgres if enabled | `github.com/alchemmist/rooms` | decide later |
 
 ## Migration waves
@@ -73,9 +73,9 @@ Do not use wildcard blindly while `vpn` and `sync` remain on VPS.
 
 ## 3x-ui / VPN Kubernetes migration status
 
-- `laba` has been joined to the k3s cluster as `socrat-2` over WireGuard (`wg-socrat`, node IP `10.250.0.2`).
+- `socrat-2` has been joined to the k3s cluster as `socrat-2` over WireGuard (`wg-socrat`, node IP `10.250.0.2`).
 - ServiceLB is explicitly enabled only on `socrat-0` and `socrat-1`; it is disabled on `socrat-2` so existing Caddy/VPN ports on the VPS are not taken by Traefik.
-- Native `x-ui.service` on `laba` is disabled/inactive after cutover.
+- Native `x-ui.service` on `socrat-2` is disabled/inactive after cutover.
 - 3x-ui now runs as Helm release `x-ui` in namespace `x-ui`, pinned to `socrat-2`, using the official `ghcr.io/mhsanaei/3x-ui:latest` image with `hostNetwork: true`.
 - Persistent data is mounted from host paths on `socrat-2`:
   - `/srv/x-ui/db` -> `/etc/x-ui`
