@@ -75,6 +75,7 @@ Do not use wildcard blindly while `vpn` and `sync` remain on VPS.
 
 - `socrat-2` has been joined to the k3s cluster over WireGuard (`wg-socrat`, node IP `10.250.0.2`).
 - ServiceLB is explicitly enabled only on `socrat-0` and `socrat-1`; it is disabled on `socrat-2` so existing Caddy/VPN ports on the VPS are not taken by Traefik.
+- Host administration on `socrat-2` is through `alchemmist`; legacy `www` user and `/home/www` were removed. The remaining Caddy container mounts `/srv/caddy/Caddyfile`.
 - Offline backup before the attempted cutover:
   - `/root/backups/x-ui-20261012133959`
 - A parallel containerized 3x-ui lab/prod-candidate is running as Helm release `x-ui-lab` in namespace `x-ui-lab`, pinned to `socrat-2`.
