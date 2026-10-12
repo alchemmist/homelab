@@ -32,6 +32,9 @@
       - name: format-quorum
         namespace: format-quorum
         chart: format-quorum
+      - name: uptime-kuma
+        namespace: uptime-kuma
+        chart: uptime-kuma
   tasks:
     - name: Ensure app namespaces exist
       ansible.builtin.command: k3s kubectl create namespace {{ item.namespace }}
