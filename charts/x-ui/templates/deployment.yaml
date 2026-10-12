@@ -20,7 +20,7 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
       hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
+      dnsPolicy: Default
       nodeSelector:
         kubernetes.io/hostname: {{ .Values.nodeName | quote }}
       containers:

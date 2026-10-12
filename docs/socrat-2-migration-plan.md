@@ -87,4 +87,5 @@ Do not use wildcard blindly while `vpn` and `sync` remain on VPS.
   - Trojan WS container port: `32087`, exposed to clients through Caddy on `vpn.alchemmist.xyz:443` path `/connect-4e15326936f20a7a4f2cac67`
 - The initial lab issue was caused by `hosts` overrides in the 3x-ui DB forcing Trojan subscriptions back to production `443/tls` while Caddy still proxied that path to native x-ui. Fixed by routing Caddy's Trojan path to container port `32087` and keeping the subscription override as `443/tls` for clients that cannot use high ports.
 - All enabled clients are also attached to the containerized Trojan inbound, so every refreshed subscription has at least one compatibility profile on `vpn.alchemmist.xyz:443`.
+- The container runs with `hostNetwork: true` and `dnsPolicy: Default`. Do not use `ClusterFirstWithHostNet` here: xray/free outbound needs working host DNS; with cluster DNS (`10.43.0.10`) Telegram-by-IP worked but general domain traffic failed.
 - Do not stop native `x-ui.service` until all important clients have refreshed their subscriptions and moved off old non-Trojan ports.
