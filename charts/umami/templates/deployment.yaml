@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: umami-db }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: umami-db } }
+  template:
+    metadata: { labels: { app: umami-db } }
+    spec:
+      nodeSelector: { kubernetes.io/hostname: socrat-0 }
+      containers:
+      - name: postgres
+        image: {{ .Values.postgresImage }}
+        env:
+        - { name: POSTGRES_USER, value: umami }
+        - { name: POSTGRES_DB, value: umami }
+        - name: POSTGRES_PASSWORD
+          valueFrom: { secretKeyRef: { name: {{ .Values.secretName }}, key: POSTGRES_PASSWORD } }
+        ports: [{ name: postgres, containerPort: 5432 }]
+        volumeMounts: [{ name: data, mountPath: /var/lib/postgresql/data }]
+      volumes:
+      - name: data
+        hostPath: { path: {{ printf "%s/postgres" .Values.hostPath | quote }}, type: DirectoryOrCreate }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: umami }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: umami } }
+  template:
+    metadata: { labels: { app: umami } }
+    spec:
+      containers:
+      - name: umami
+        image: {{ .Values.umamiImage }}
+        envFrom: [{ secretRef: { name: {{ .Values.secretName }} } }]
+        env:
+        - { name: DISABLE_TELEMETRY, value: "true" }
+        - { name: TRACKER_SCRIPT_NAME, value: script.js }
+        ports: [{ name: http, containerPort: 3000 }]

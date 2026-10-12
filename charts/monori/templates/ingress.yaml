@@ -1,0 +1,15 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: monori
+  annotations: { cert-manager.io/cluster-issuer: {{ .Values.clusterIssuer | quote }} }
+spec:
+  ingressClassName: traefik
+  tls: [{ hosts: [{{ .Values.host | quote }}], secretName: {{ .Values.tlsSecret }} }]
+  rules:
+  - host: {{ .Values.host }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend: { service: { name: monori, port: { number: 80 } } }

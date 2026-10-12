@@ -1,0 +1,7 @@
+umamiImage: ghcr.io/umami-software/umami:latest
+postgresImage: postgres:15
+hostPath: /srv/umami
+host: umami.alchemmist.xyz
+tlsSecret: umami-tls
+secretName: umami-env
+clusterIssuer: letsencrypt-http01

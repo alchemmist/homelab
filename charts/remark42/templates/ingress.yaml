@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: remark42
+  annotations:
+    cert-manager.io/cluster-issuer: {{ .Values.clusterIssuer }}
+spec:
+  ingressClassName: traefik
+  tls: [{ hosts: [{{ .Values.host | quote }}], secretName: {{ .Values.tlsSecret }} }]
+  rules:
+  - host: {{ .Values.host }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend: { service: { name: remark42, port: { number: 80 } } }

@@ -20,6 +20,15 @@
       - name: syncthing
         namespace: syncthing
         chart: syncthing
+      - name: remark42
+        namespace: remark42
+        chart: remark42
+      - name: umami
+        namespace: umami
+        chart: umami
+      - name: monori
+        namespace: monori
+        chart: monori
       - name: format-quorum
         namespace: format-quorum
         chart: format-quorum

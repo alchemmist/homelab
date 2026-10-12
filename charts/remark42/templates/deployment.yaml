@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: remark42 }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: remark42 } }
+  template:
+    metadata: { labels: { app: remark42 } }
+    spec:
+      nodeSelector: { kubernetes.io/hostname: socrat-0 }
+      containers:
+      - name: remark42
+        image: {{ .Values.image }}
+        ports: [{ name: http, containerPort: 8080 }]
+        envFrom: [{ secretRef: { name: {{ .Values.secretName }} } }]
+        volumeMounts:
+        - { name: data, mountPath: /srv/var, subPath: data }
+        - { name: data, mountPath: /srv/web/remark.css, subPath: remark42/custom.css }
+        resources: {{ toYaml .Values.resources | nindent 10 }}
+      volumes:
+      - name: data
+        hostPath: { path: {{ .Values.hostPath | quote }}, type: Directory }

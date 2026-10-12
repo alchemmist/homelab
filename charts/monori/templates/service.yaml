@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata: { name: monori-sync }
+spec: { selector: { app: monori-sync }, ports: [{ name: http, port: 8010, targetPort: http }] }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: back }
+spec: { selector: { app: monori-back }, ports: [{ name: http, port: 8000, targetPort: http }] }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: monori }
+spec: { selector: { app: monori }, ports: [{ name: http, port: 80, targetPort: http }] }

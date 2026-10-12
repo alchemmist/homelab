@@ -1,0 +1,9 @@
+host: monori.alchemmist.xyz
+tlsSecret: monori-tls
+clusterIssuer: letsencrypt-http01
+hostPath: /srv/monori
+secretName: monori-env
+images:
+  front: localhost/monori-front:latest
+  back: localhost/monori-back:latest
+  sync: localhost/monori-sync:latest

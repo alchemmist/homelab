@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: monori-sync }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: monori-sync } }
+  template:
+    metadata: { labels: { app: monori-sync } }
+    spec:
+      nodeSelector: { kubernetes.io/hostname: socrat-0 }
+      containers:
+      - name: sync
+        image: {{ .Values.images.sync }}
+        imagePullPolicy: Never
+        env: [{ name: MONORI_CONNECTOR_DEBUG, value: "1" }]
+        ports: [{ name: http, containerPort: 8010 }]
+        volumeMounts: [{ name: data, mountPath: /app/data }]
+      volumes: [{ name: data, hostPath: { path: {{ printf "%s/sync-debug" .Values.hostPath | quote }}, type: DirectoryOrCreate } }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: monori-back }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: monori-back } }
+  template:
+    metadata: { labels: { app: monori-back } }
+    spec:
+      nodeSelector: { kubernetes.io/hostname: socrat-0 }
+      containers:
+      - name: back
+        image: {{ .Values.images.back }}
+        imagePullPolicy: Never
+        envFrom: [{ secretRef: { name: {{ .Values.secretName }} } }]
+        env:
+        - { name: PYTHONDONTWRITEBYTECODE, value: "1" }
+        - { name: MONORI_SYNC_URL, value: http://monori-sync:8010 }
+        ports: [{ name: http, containerPort: 8000 }]
+        volumeMounts: [{ name: data, mountPath: /app/data }]
+      volumes: [{ name: data, hostPath: { path: {{ printf "%s/data" .Values.hostPath | quote }}, type: DirectoryOrCreate } }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: monori }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: monori } }
+  template:
+    metadata: { labels: { app: monori } }
+    spec:
+      nodeSelector: { kubernetes.io/hostname: socrat-0 }
+      containers:
+      - name: front
+        image: {{ .Values.images.front }}
+        imagePullPolicy: Never
+        ports: [{ name: http, containerPort: 8000 }]

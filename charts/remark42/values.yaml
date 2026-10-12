@@ -1,0 +1,9 @@
+image: ghcr.io/umputun/remark42:v1.17.1
+hostPath: /srv/remark42
+host: remark42.alchemmist.xyz
+secretName: remark42-env
+tlsSecret: remark42-tls
+clusterIssuer: letsencrypt-http01
+resources:
+  requests: { cpu: 50m, memory: 128Mi }
+  limits: { memory: 512Mi }
