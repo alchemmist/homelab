@@ -1,6 +1,6 @@
 ---
 - name: Configure base homelab host settings
-  hosts: socrat
+  hosts: Socrat
   gather_facts: false
   become: true
   roles:

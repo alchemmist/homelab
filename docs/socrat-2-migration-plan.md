@@ -1,7 +1,7 @@
 # Socrat-2 migration plan
 
 Source VPS, now `socrat-2` (`176.98.185.59`).
-Target cluster: `socrat` (`socrat-0`, `socrat-1`) behind `109.173.40.247`.
+Target cluster: `Socrat` (`socrat-0`, `socrat-1`) behind `109.173.40.247`.
 
 ## Decisions
 

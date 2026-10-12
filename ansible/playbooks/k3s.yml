@@ -49,7 +49,7 @@
         k3s_node_token: "{{ k3s_node_token_raw.content | b64decode | trim }}"
 
 - name: Install k3s agents
-  hosts: socrat:!socrat-0
+  hosts: Socrat:!socrat-0
   gather_facts: true
   become: true
   vars:
@@ -304,13 +304,13 @@
         dest: /tmp/socrat-home-image.tar
         mode: "0644"
       delegate_to: "{{ item }}"
-      loop: "{{ groups['socrat'] | difference(['socrat-0']) }}"
+      loop: "{{ groups['Socrat'] | difference(['socrat-0']) }}"
       become: true
 
     - name: Import homepage image on worker nodes
       ansible.builtin.command: k3s ctr -n k8s.io images import /tmp/socrat-home-image.tar
       delegate_to: "{{ item }}"
-      loop: "{{ groups['socrat'] | difference(['socrat-0']) }}"
+      loop: "{{ groups['Socrat'] | difference(['socrat-0']) }}"
       become: true
       changed_when: true
 

@@ -89,7 +89,7 @@ Rancher is installed as the Kubernetes management UI:
 ```text
 URL:          https://rancher.socrat.alchemmist.xyz
 Namespace:    cattle-system
-Cluster name: socrat (Rancher local cluster display name)
+Cluster name: Socrat (Rancher local cluster display name)
 Replicas:     1
 Placement:    pinned to socrat-0
 Logo:         assets/rancher/socrat-logo.png, applied to Rancher light/dark UI logo settings

@@ -7,7 +7,7 @@
     rancher_hostname: rancher.socrat.alchemmist.xyz
     rancher_email: antropophag@gmail.com
     rancher_replicas: 1
-    rancher_cluster_display_name: socrat
+    rancher_cluster_display_name: Socrat
   tasks:
     - name: Require rancher_bootstrap_password variable
       ansible.builtin.fail:

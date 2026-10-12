@@ -1,6 +1,6 @@
 ---
 - name: Configure Socrat homelab nodes
-  hosts: socrat
+  hosts: Socrat
   gather_facts: true
   become: true
   roles:
