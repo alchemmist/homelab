@@ -11,7 +11,7 @@ service:
 
 ingress:
   className: traefik
-  host: cats.socrat.alchemmist.xyz
+  host: cats.alchemmist.xyz
   tlsSecretName: cats-tls
   clusterIssuer: letsencrypt-http01
 

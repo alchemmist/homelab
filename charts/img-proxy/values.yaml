@@ -11,7 +11,7 @@ service:
 
 ingress:
   className: traefik
-  host: img.socrat.alchemmist.xyz
+  host: img.alchemmist.xyz
   tlsSecretName: img-proxy-tls
   clusterIssuer: letsencrypt-http01
 

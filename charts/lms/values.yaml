@@ -8,7 +8,7 @@ service:
   targetPort: 8000
 ingress:
   className: traefik
-  host: lms.socrat.alchemmist.xyz
+  host: lms.alchemmist.xyz
   tlsSecretName: lms-tls
   clusterIssuer: letsencrypt-http01
 persistence:

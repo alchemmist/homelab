@@ -9,7 +9,8 @@ service:
 ingress:
   className: traefik
   hosts:
-    - blog.socrat.alchemmist.xyz
+    - alchemmist.xyz
+    - www.alchemmist.xyz
   tlsSecretName: blog-tls
   clusterIssuer: letsencrypt-http01
 resources:
