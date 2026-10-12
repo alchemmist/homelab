@@ -1,0 +1,6 @@
+apiVersion: v2
+name: lms
+description: lms app
+version: 0.1.0
+appVersion: latest
+type: application

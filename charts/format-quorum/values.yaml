@@ -1,0 +1,32 @@
+replicaCount: 1
+image:
+  repository: localhost/format-quorum
+  tag: latest
+  pullPolicy: Never
+service:
+  port: 80
+  targetPort: 3000
+ingress:
+  className: traefik
+  host: fq.socrat.alchemmist.xyz
+  tlsSecretName: format-quorum-tls
+  clusterIssuer: letsencrypt-http01
+env:
+  PORT: "3000"
+  FRONTEND_DIST: /app/frontend
+  ALLOW_BINARY_UPLOAD: "0"
+  CLANG_FORMAT_BIN: /usr/local/bin/clang-format
+  CLANG_FORMAT_CONFIG: /app/configs/clang-format
+  RUFF_BIN: ruff
+  RUFF_CONFIG: /app/configs/ruff.toml
+  VERSIONS_DIR: /app/clang_versions
+  TESTS_DIR: /app/tests
+  CONFIG_HISTORY_DIR: /app/config_history
+  PUBLISH_ENABLED: "0"
+persistence:
+  clang-versions: { size: 2Gi, mountPath: /app/clang_versions }
+  tests: { size: 2Gi, mountPath: /app/tests }
+  config-history: { size: 1Gi, mountPath: /app/config_history }
+resources:
+  requests: { cpu: 100m, memory: 256Mi }
+  limits: { memory: 1Gi }

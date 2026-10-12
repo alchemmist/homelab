@@ -1,0 +1,6 @@
+apiVersion: v2
+name: format-quorum
+description: format-quorum app
+version: 0.1.0
+appVersion: latest
+type: application

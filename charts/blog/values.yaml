@@ -1,0 +1,17 @@
+replicaCount: 2
+image:
+  repository: ghcr.io/alchemmist/blog
+  tag: latest
+  pullPolicy: Always
+service:
+  port: 80
+  targetPort: 8080
+ingress:
+  className: traefik
+  hosts:
+    - blog.socrat.alchemmist.xyz
+  tlsSecretName: blog-tls
+  clusterIssuer: letsencrypt-http01
+resources:
+  requests: { cpu: 20m, memory: 64Mi }
+  limits: { memory: 256Mi }

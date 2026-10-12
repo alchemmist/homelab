@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Chart.Name }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Chart.Name }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: format-quorum
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.targetPort }}
+          env:
+{{- range $k, $v := .Values.env }}
+            - name: {{ $k }}
+              value: {{ $v | quote }}
+{{- end }}
+          volumeMounts:
+{{- range $name, $cfg := .Values.persistence }}
+            - name: {{ $name }}
+              mountPath: {{ $cfg.mountPath }}
+{{- end }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+      volumes:
+{{- range $name, $cfg := .Values.persistence }}
+        - name: {{ $name }}
+          persistentVolumeClaim:
+            claimName: {{ $.Release.Name }}-{{ $name }}
+{{- end }}

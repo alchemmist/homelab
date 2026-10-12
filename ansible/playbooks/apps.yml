@@ -11,6 +11,12 @@
       - name: img-proxy
         namespace: img-proxy
         chart: img-proxy
+      - name: lms
+        namespace: lms
+        chart: lms
+      - name: format-quorum
+        namespace: format-quorum
+        chart: format-quorum
   tasks:
     - name: Ensure app namespaces exist
       ansible.builtin.command: k3s kubectl create namespace {{ item.namespace }}

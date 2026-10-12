@@ -1,0 +1,22 @@
+replicaCount: 1
+image:
+  repository: localhost/lms
+  tag: latest
+  pullPolicy: Never
+service:
+  port: 80
+  targetPort: 8000
+ingress:
+  className: traefik
+  host: lms.socrat.alchemmist.xyz
+  tlsSecretName: lms-tls
+  clusterIssuer: letsencrypt-http01
+persistence:
+  enabled: true
+  size: 5Gi
+  mountPath: /data
+env:
+  LMS_DATABASE_URL: sqlite:////data/lms.db
+resources:
+  requests: { cpu: 50m, memory: 128Mi }
+  limits: { memory: 512Mi }
