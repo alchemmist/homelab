@@ -73,8 +73,12 @@ Do not use wildcard blindly while `vpn` and `sync` remain on VPS.
 
 ## 3x-ui / VPN Kubernetes migration status
 
+- Socrat nodes share a WireGuard management network `wg-socrat`:
+  - `socrat-0`: `10.250.0.1`
+  - `socrat-2`: `10.250.0.2`
+  - `socrat-1`: `10.250.0.3`
 - `socrat-2` has been joined to the k3s cluster over WireGuard (`wg-socrat`, node IP `10.250.0.2`).
-- Workloads that must live on the VPS (`remark42`, `x-ui-lab`) are pinned with `nodeSelector: kubernetes.io/hostname=socrat-2`. They use `hostNetwork: true` where needed so traffic from home Traefik reaches them over the WireGuard node IP instead of the currently unreliable cross-node pod overlay to `socrat-2`.
+- Workloads that must live on the VPS (`remark42`, `x-ui-lab`) are pinned with `nodeSelector: kubernetes.io/hostname=socrat-2`. They use `hostNetwork: true` where needed so home nodes reach them over the WireGuard node IP. `socrat-1` can now also reach `socrat-2` over `wg-socrat`.
 - ServiceLB is explicitly enabled only on `socrat-0` and `socrat-1`; it is disabled on `socrat-2` so existing Caddy/VPN ports on the VPS are not taken by Traefik.
 - Host administration on `socrat-2` is through `alchemmist`; legacy `www` user and `/home/www` were removed. The remaining Caddy container mounts `/srv/caddy/Caddyfile`.
 - Offline backup before the attempted cutover:
