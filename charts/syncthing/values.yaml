@@ -1,4 +1,6 @@
-replicaCount: 1
+# One Syncthing pod per Socrat Kubernetes node. Each pod stores its own
+# Syncthing identity/config/database under hostPath on that node.
+mode: daemonset
 
 image:
   repository: syncthing/syncthing
@@ -7,8 +9,13 @@ image:
 
 hostPath: /srv/syncthing
 
-nodeSelector:
-  kubernetes.io/hostname: socrat-0
+nodeSelector: {}
+
+hostNetwork: true
+
+env:
+  # Keep the GUI reachable through Kubernetes service/ingress and kubectl port-forward.
+  STGUIADDRESS: http://0.0.0.0:8384
 
 resources:
   requests:
@@ -26,11 +33,27 @@ basicAuth:
 ingress:
   enabled: true
   className: traefik
-  host: sync.alchemmist.xyz
-  tlsSecret: syncthing-tls
   clusterIssuer: letsencrypt-http01
 
 service:
   guiPort: 8384
   syncPort: 22000
   discoveryPort: 21027
+
+# The web UI must not be load-balanced across Syncthing pods. The DaemonSet runs
+# one independent Syncthing device per node; each UI must point to exactly one
+# node-local instance.
+gui:
+  nodes:
+    - name: sync-0
+      host: sync-0.alchemmist.xyz
+      tlsSecret: syncthing-sync-0-tls
+      endpointIP: 192.168.0.23
+    - name: sync-1
+      host: sync-1.alchemmist.xyz
+      tlsSecret: syncthing-sync-1-tls
+      endpointIP: 192.168.0.24
+    - name: sync-2
+      host: sync-2.alchemmist.xyz
+      tlsSecret: syncthing-sync-2-tls
+      endpointIP: 10.250.0.2

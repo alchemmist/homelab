@@ -1,17 +1,39 @@
+{{- range .Values.gui.nodes }}
+---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Chart.Name }}
+  name: {{ $.Chart.Name }}-{{ .name }}
   labels:
-    app.kubernetes.io/name: {{ .Chart.Name }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/name: {{ $.Chart.Name }}
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+    app.kubernetes.io/component: gui
+    socrat-node: {{ .name | quote }}
 spec:
   type: ClusterIP
-  selector:
-    app.kubernetes.io/name: {{ .Chart.Name }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
+  # Intentionally no selector. Each GUI service is pinned to one node-local
+  # Syncthing instance via the Endpoints object below. Balancing between
+  # DaemonSet pods would mix independent Syncthing devices and break the UI.
   ports:
     - name: gui
       port: 80
-      targetPort: gui
+      targetPort: {{ $.Values.service.guiPort }}
       protocol: TCP
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: {{ $.Chart.Name }}-{{ .name }}
+  labels:
+    app.kubernetes.io/name: {{ $.Chart.Name }}
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+    app.kubernetes.io/component: gui
+    socrat-node: {{ .name | quote }}
+subsets:
+  - addresses:
+      - ip: {{ .endpointIP | quote }}
+    ports:
+      - name: gui
+        port: {{ $.Values.service.guiPort }}
+        protocol: TCP
+{{- end }}

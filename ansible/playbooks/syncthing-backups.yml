@@ -1,0 +1,68 @@
+---
+- name: Deploy Syncthing DaemonSet for Socrat backup sync
+  hosts: socrat-0
+  gather_facts: false
+  tasks:
+    - name: Ensure syncthing namespace exists
+      ansible.builtin.command: k3s kubectl create namespace syncthing
+      register: syncthing_ns
+      failed_when: syncthing_ns.rc not in [0, 1]
+      changed_when: syncthing_ns.rc == 0
+
+    - name: Copy Syncthing Helm chart to control-plane user temp dir
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../charts/syncthing/"
+        dest: "~/tmp-charts/syncthing/"
+        mode: preserve
+
+    - name: Install or upgrade Syncthing Helm release
+      ansible.builtin.command: >-
+        helm upgrade --install syncthing ~/tmp-charts/syncthing
+        --namespace syncthing
+        --kubeconfig /etc/rancher/k3s/k3s.yaml
+        --wait
+        --timeout 5m
+      register: syncthing_helm
+      changed_when: "'has been upgraded' in syncthing_helm.stdout or 'has been installed' in syncthing_helm.stdout"
+
+    - name: Show Syncthing DaemonSet status
+      ansible.builtin.command: k3s kubectl -n syncthing get ds,pod -o wide
+      changed_when: false
+      register: syncthing_status
+
+    - name: Print Syncthing status
+      ansible.builtin.debug:
+        var: syncthing_status.stdout_lines
+
+- name: Configure MDB backup Syncthing folder on every Socrat node
+  hosts: Socrat
+  gather_facts: false
+  ignore_unreachable: true
+  become: true
+  tasks:
+    - name: Copy node-local Syncthing backup folder configurator
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../files/configure_syncthing_pg_backups.py"
+        dest: /tmp/configure_syncthing_pg_backups.py
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Configure node-local Syncthing REST config
+      ansible.builtin.command: python3 /tmp/configure_syncthing_pg_backups.py
+      register: configure_syncthing
+      changed_when: "'\"changed\": true' in configure_syncthing.stdout"
+      failed_when: configure_syncthing.rc != 0
+
+    - name: Show configured folder directory
+      ansible.builtin.shell: |
+        set -eu
+        find /srv/syncthing/pg_mdb_encrypted_backups -maxdepth 3 -type f 2>/dev/null | wc -l
+        du -sh /srv/syncthing/pg_mdb_encrypted_backups 2>/dev/null || true
+      changed_when: false
+      register: folder_status
+
+    - name: Print folder status
+      ansible.builtin.debug:
+        var: folder_status.stdout_lines
+      when: folder_status.stdout_lines is defined
