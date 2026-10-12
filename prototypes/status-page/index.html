@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Socrat Status Prototype</title>
+  <link rel="stylesheet" href="./base.css" />
+  <link rel="stylesheet" href="./theme-openai-minimal.css" />
+</head>
+<body>
+  <!-- Simulated Uptime Kuma status page DOM. Keep markup intentionally plain; this is base status page + custom CSS. -->
+  <main class="status-page">
+    <header class="page-header">
+      <a class="brand" href="#">
+        <span class="brand-mark avatar" aria-hidden="true"><img src="./assets/socrat-avatar.png" alt="" /></span>
+        <span>
+          <span class="brand-title">Socrat Status</span>
+          <span class="brand-subtitle">cluster, edge and public projects</span>
+        </span>
+      </a>
+    </header>
+
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="system-line">Last checked 19:17 MSK · 21 monitors · Socrat mesh online</p>
+        <h1 id="hero-title">Socrat Status</h1>
+      </div>
+      <div class="hero-state" role="status">
+        <span class="pulse"></span>
+        <span>Operational</span>
+      </div>
+    </section>
+
+    <section class="summary-strip" aria-label="Summary">
+      <article><strong>21</strong><span>monitors</span></article>
+      <article><strong>100%</strong><span>core uptime</span></article>
+      <article><strong>0</strong><span>active incidents</span></article>
+      <article><strong>3</strong><span>wireguard nodes</span></article>
+    </section>
+
+    <section class="groups" aria-label="Service groups">
+      <article class="group-card">
+        <div class="group-heading"><h2>Socrat core</h2><span class="badge up">Operational</span></div>
+        <ul class="monitor-list">
+          <li><span>Socrat homepage</span><span class="mini-history" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="status-dot up">200 OK</span></li>
+          <li><span>Rancher</span><span class="mini-history" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="status-dot up">200 OK</span></li>
+          <li><span>Status dashboard</span><span class="mini-history" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="status-dot up">200 OK</span></li>
+        </ul>
+      </article>
+
+      <article class="group-card">
+        <div class="group-heading"><h2>Socrat apps</h2><span class="badge up">Operational</span></div>
+        <ul class="monitor-list">
+          <li><span>Blog alchemmist.xyz</span><span class="mini-history" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="status-dot up">200 OK</span></li>
+          <li><span>Remark42 script</span><span class="mini-history" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="status-dot up">200 OK</span></li>
+          <li><span>Umami</span><span class="mini-history" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="status-dot up">200 OK</span></li>
+          <li><span>Monori</span><span class="mini-history" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="status-dot up">200 OK</span></li>
+          <li><span>Syncthing UI</span><span class="mini-history minor" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="minor"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="status-dot warn">401 expected</span></li>
+        </ul>
+      </article>
+
+      <article class="group-card">
+        <div class="group-heading"><h2>VPN and edge</h2><span class="badge up">Operational</span></div>
+        <ul class="monitor-list">
+          <li><span>VPN Trojan 443</span><span class="mini-history" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="status-dot up">TCP OK</span></li>
+          <li><span>x-ui VLESS main 32053</span><span class="mini-history" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="status-dot up">TCP OK</span></li>
+          <li><span>x-ui VLESS backup 32083</span><span class="mini-history" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="status-dot up">TCP OK</span></li>
+          <li><span>x-ui Trojan backend 32087</span><span class="mini-history" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="status-dot up">TCP OK</span></li>
+        </ul>
+      </article>
+
+      <article class="group-card">
+        <div class="group-heading"><h2>GitHub Pages projects</h2><span class="badge up">Operational</span></div>
+        <ul class="monitor-list">
+          <li><span>lazy-tmux.xyz</span><span class="mini-history" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="status-dot up">200 OK</span></li>
+          <li><span>devsyringe.xyz</span><span class="mini-history" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="status-dot up">200 OK</span></li>
+          <li><span>obscuravim.xyz</span><span class="mini-history" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="status-dot up">200 OK</span></li>
+          <li><span>quality-graph.xyz</span><span class="mini-history" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span class="status-dot up">200 OK</span></li>
+        </ul>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,286 @@
+:root {
+  --ink: #101010;
+  --paper: #ffffff;
+  --muted: #6f6f6f;
+  --line: #e7e7e7;
+  --soft: #fafafa;
+  --up: #14883e;
+  --warn: #9a6a00;
+  --switch-bg: #fff;
+  --switch-fg: #101010;
+  --switch-border: #e7e7e7;
+  color: var(--ink);
+  background: var(--paper);
+  font-family: ui-monospace, "SFMono-Regular", "Cascadia Code", "Roboto Mono", Consolas, monospace;
+}
+body { background: var(--paper); }
+::selection { background: var(--ink); color: var(--paper); }
+.status-page {
+  width: min(1120px, calc(100% - 40px));
+  padding: 28px 0 96px;
+}
+.page-header {
+  margin-bottom: 34px;
+  padding: 0;
+}
+.brand { gap: 26px; }
+.brand-mark {
+  width: 94px;
+  height: 94px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 2.5rem;
+  font-weight: 700;
+}
+.brand-title {
+  font-size: 2.35rem;
+  line-height: 1.05;
+  font-weight: 650;
+  letter-spacing: -0.04em;
+}
+.brand-subtitle { display: none; }
+.header-actions {
+  gap: 22px;
+  color: var(--muted);
+  font-size: .86rem;
+}
+.header-actions a { text-decoration: none; }
+.header-actions a:hover { color: var(--ink); }
+.hero {
+  display: block;
+  margin: 0 0 42px;
+  padding-bottom: 42px;
+  border-bottom: 1px solid var(--line);
+}
+.system-line { display: none; }
+h1 {
+  max-width: 760px;
+  font-size: clamp(2.2rem, 5vw, 4.65rem);
+  line-height: 1.04;
+  letter-spacing: -0.08em;
+  font-weight: 650;
+}
+.hero-text {
+  max-width: 620px;
+  margin-top: 18px;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.65;
+}
+.hero-state {
+  margin-top: 32px;
+  padding: 0;
+  color: var(--up);
+  font-size: .98rem;
+  font-weight: 600;
+}
+.pulse {
+  width: 11px;
+  height: 11px;
+  background: var(--up);
+}
+.summary-strip {
+  display: none;
+}
+.groups {
+  gap: 0;
+  border-top: 1px solid var(--line);
+}
+.group-card {
+  padding: 28px 0;
+  border-bottom: 1px solid var(--line);
+}
+.group-heading {
+  margin: 0 0 18px;
+}
+h2 {
+  font-size: 1.08rem;
+  line-height: 1.2;
+  font-weight: 650;
+  letter-spacing: -0.04em;
+}
+.badge {
+  padding: 0;
+  border-radius: 0;
+  color: var(--up);
+  background: transparent;
+  font-size: .9rem;
+  font-weight: 550;
+}
+.monitor-list { gap: 0; }
+.monitor-list li {
+  padding: 10px 0;
+  border: 0;
+  color: var(--ink);
+  font-size: .95rem;
+}
+.monitor-list li span:first-child { color: var(--ink); }
+.status-dot {
+  color: var(--muted);
+  font-size: .9rem;
+}
+.status-dot::before { display: none; }
+.status-dot.up { color: var(--up); }
+.status-dot.warn { color: var(--warn); }
+.incidents {
+  margin-top: 48px;
+  padding: 28px 0;
+  border-bottom: 1px solid var(--line);
+}
+.incidents h2, .history-grid h2 {
+  font-size: 1.08rem;
+  font-weight: 650;
+  letter-spacing: -0.04em;
+}
+.empty-state {
+  margin-top: 16px;
+  padding: 0;
+  display: block;
+  color: var(--muted);
+  border: 0;
+  background: transparent;
+  line-height: 1.6;
+}
+.empty-state strong {
+  display: block;
+  color: var(--ink);
+  margin-bottom: 4px;
+  font-weight: 550;
+}
+.history-grid {
+  margin-top: 44px;
+}
+.bars {
+  gap: 3px;
+  margin-top: 18px;
+}
+.bars span {
+  height: 26px;
+  border-radius: 2px;
+  background: var(--up);
+}
+.bars span.minor { background: var(--warn); }
+.prototype-switcher {
+  box-shadow: none;
+}
+@media (max-width: 760px) {
+  .status-page { width: min(100% - 28px, 880px); padding-top: 44px; }
+  .page-header { gap: 18px; margin-bottom: 48px; }
+  .header-actions { justify-content: start; }
+  h1 { font-size: clamp(2rem, 11vw, 3.2rem); }
+  .group-heading { display: grid; gap: 8px; }
+  .monitor-list li { display: grid; gap: 4px; }
+}
+
+
+/* Uptime Kuma production targets: keep status groups open and remove visual noise. */
+/* Hide footer / powered-by / last-update extras if present in Kuma DOM. */
+footer,
+.footer,
+.powered-by,
+.status-page-footer,
+[class*="powered" i] {
+  display: none !important;
+}
+
+/* Remove accordion/folded affordances; content stays visible. */
+details,
+details[open],
+.collapse,
+.collapsing,
+.accordion-collapse {
+  display: block !important;
+  height: auto !important;
+  visibility: visible !important;
+}
+details > summary,
+.accordion-button,
+.collapse-title,
+.group-toggle,
+[class*="collapse" i] button,
+[class*="accordion" i] button {
+  cursor: default !important;
+}
+details > summary::-webkit-details-marker,
+.accordion-button::after,
+.group-toggle::after,
+[class*="collapse" i] .chevron,
+[class*="accordion" i] .chevron {
+  display: none !important;
+}
+
+/* Chosen simplification: no marketing headline/copy and no nav links. */
+.page-header { justify-content: flex-start; }
+.hero { padding-bottom: 32px; }
+.hero-copy { display: none; }
+.hero-state { margin-top: 0; font-size: 1.15rem; }
+
+/* Keep the page flat: hide the first dividing rule before service groups. */
+.groups { border-top: 0; }
+.hero { border-bottom: 0; margin-bottom: 28px; padding-bottom: 0; }
+
+/* OpenAI-like uptime bars per service. */
+.monitor-list li {
+  display: grid;
+  grid-template-columns: minmax(190px, 1fr) minmax(120px, 180px) auto;
+  align-items: center;
+  gap: 18px;
+}
+.mini-history {
+  display: grid;
+  grid-template-columns: repeat(18, 1fr);
+  gap: 2px;
+  min-width: 120px;
+}
+.mini-history i {
+  display: block;
+  height: 18px;
+  border-radius: 2px;
+  background: var(--up);
+}
+.mini-history i.minor { background: var(--warn); }
+@media (max-width: 760px) {
+  .monitor-list li {
+    grid-template-columns: 1fr auto;
+  }
+  .mini-history {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
+/* Fixed status column so response text length never shifts the uptime bars. */
+.monitor-list li {
+  grid-template-columns: minmax(190px, 1fr) minmax(156px, 220px) 104px;
+}
+.status-dot {
+  justify-self: end;
+  min-width: 104px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 760px) {
+  .monitor-list li {
+    grid-template-columns: 1fr 104px;
+  }
+  .status-dot {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .mini-history {
+    grid-column: 1 / -1;
+  }
+}
+
+.brand-mark.avatar {
+  overflow: hidden;
+  background: transparent;
+  color: inherit;
+}
+.brand-mark.avatar img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}

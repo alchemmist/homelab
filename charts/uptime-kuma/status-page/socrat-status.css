@@ -1,0 +1,330 @@
+:root {
+  --socrat-ink: #101010;
+  --socrat-paper: #ffffff;
+  --socrat-muted: #6f6f6f;
+  --socrat-line: #e7e7e7;
+  --socrat-soft: #fafafa;
+  --socrat-up: #14883e;
+  --socrat-warn: #9a6a00;
+  --socrat-down: #c62828;
+}
+
+body {
+  margin: 0 !important;
+}
+
+body.light,
+body.dark,
+#app,
+body .container.mt-3 {
+  background: var(--socrat-paper) !important;
+  color: var(--socrat-ink) !important;
+  font-family: ui-monospace, "SFMono-Regular", "Cascadia Code", "Roboto Mono", Consolas, monospace !important;
+}
+
+body .container.mt-3 {
+  width: min(1120px, calc(100% - 40px)) !important;
+  max-width: none !important;
+  padding: 28px 0 96px !important;
+  margin: 0 auto !important;
+}
+
+::selection {
+  background: var(--socrat-ink);
+  color: var(--socrat-paper);
+}
+
+a {
+  color: inherit !important;
+  text-underline-offset: .18em;
+}
+
+/* Header: exactly the local prototype lockup. */
+body .container.mt-3 .title-flex,
+body .container.mt-3 .mb-4.title-flex {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 26px !important;
+  margin: 0 0 34px !important;
+  padding: 0 !important;
+}
+
+body .container.mt-3 .title-flex img,
+body .container.mt-3 .title-flex img.logo,
+body .container.mt-3 img.logo {
+  width: 94px !important;
+  height: 94px !important;
+  min-width: 94px !important;
+  max-width: 94px !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+body .container.mt-3 .title-flex h1,
+body .container.mt-3 h1 {
+  margin: 0 !important;
+  padding: 0 !important;
+  color: var(--socrat-ink) !important;
+  font-size: 2.35rem !important;
+  line-height: 1.05 !important;
+  font-weight: 650 !important;
+  letter-spacing: -0.04em !important;
+  text-align: left !important;
+}
+
+/* Hide Uptime Kuma chrome/copy not present in the prototype. */
+body .container.mt-3 footer,
+body .container.mt-3 .footer,
+body .container.mt-3 .powered-by,
+body .container.mt-3 [class*="powered" i],
+body .container.mt-3 .description,
+body .container.mt-3 .status-page-description,
+body .container.mt-3 .subtitle,
+body .container.mt-3 .legend,
+body .container.mt-3 .tag-wrapper,
+body .container.mt-3 .tags,
+body .container.mt-3 .refresh-info,
+body .container.mt-3 .word,
+body .container.mt-3 .connecting-line,
+body .container.mt-3 .date.mt-3,
+body .container.mt-3 .custom-footer-text,
+body .container.mt-3 div.extra-info,
+body .container.mt-3 div.info > span[title="Setting"] {
+  display: none !important;
+}
+
+/* Operational line. */
+body .container.mt-3 div.shadow-box.list.p-4.overall-status.mb-4,
+body .container.mt-3 .overall-status {
+  display: block !important;
+  margin: 0 0 12px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--socrat-up) !important;
+  text-align: left !important;
+}
+
+body .container.mt-3 .overall-status *,
+body .container.mt-3 .overall-status h2,
+body .container.mt-3 .overall-status .alert-heading,
+body .container.mt-3 .overall-status div,
+body .container.mt-3 .overall-status span {
+  color: var(--socrat-up) !important;
+  font-size: 1.15rem !important;
+  line-height: normal !important;
+  font-weight: 600 !important;
+  text-align: left !important;
+}
+
+/* No first split line. */
+body .container.mt-3 .split-line:first-of-type,
+body .container.mt-3 hr:first-of-type {
+  display: none !important;
+}
+
+/* Groups: flat, no cards. */
+body .container.mt-3 div.mb-5 {
+  margin: 0 !important;
+  padding: 28px 0 !important;
+  border-top: 0 !important;
+  border-bottom: 1px solid var(--socrat-line) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body .container.mt-3 .group-title {
+  margin: 0 0 18px !important;
+  padding: 0 !important;
+  color: var(--socrat-ink) !important;
+  font-size: 1.08rem !important;
+  line-height: 1.2 !important;
+  font-weight: 650 !important;
+  letter-spacing: -0.04em !important;
+}
+
+body .container.mt-3 div.shadow-box.monitor-list.mt-4.position-relative,
+body .container.mt-3 div.shadow-box.monitor-list,
+body .container.mt-3 .monitor-list {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body .container.mt-3 div.monitor-list div.item {
+  padding: 10px 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body .container.mt-3 div.monitor-list div.item > div.row {
+  display: grid !important;
+  grid-template-columns: minmax(190px, 1fr) minmax(156px, 220px) 104px !important;
+  align-items: center !important;
+  gap: 18px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+body .container.mt-3 div.monitor-list div.item div.col-9.col-md-8.small-padding,
+body .container.mt-3 div.monitor-list div.item div.info {
+  display: contents !important;
+  padding: 0 !important;
+  width: auto !important;
+  max-width: none !important;
+}
+
+body .container.mt-3 div.monitor-list div.item div.col-3.col-md-4 {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  align-self: center !important;
+  width: auto !important;
+  max-width: none !important;
+  padding: 0 !important;
+}
+
+body .container.mt-3 div.monitor-list div.item a.item-name,
+body .container.mt-3 div.monitor-list div.item p.item-name {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  align-self: center !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: var(--socrat-ink) !important;
+  font-size: .95rem !important;
+  line-height: 1.35 !important;
+  font-weight: 400 !important;
+  text-decoration: none !important;
+}
+
+body .container.mt-3 div.monitor-list div.item span.badge.rounded-pill,
+body .container.mt-3 div.monitor-list div.item span.badge {
+  grid-column: 3 !important;
+  grid-row: 1 !important;
+  justify-self: end !important;
+  align-self: center !important;
+  min-width: 104px !important;
+  width: 104px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  color: var(--socrat-up) !important;
+  text-align: right !important;
+  font-size: .9rem !important;
+  line-height: 1.35 !important;
+  font-weight: 400 !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+body .container.mt-3 div.monitor-list div.item span.badge.bg-danger { color: var(--socrat-down) !important; }
+body .container.mt-3 div.monitor-list div.item span.badge.bg-warning,
+body .container.mt-3 div.monitor-list div.item span.badge.bg-maintenance { color: var(--socrat-warn) !important; }
+
+/* Uptime bars, matching mini-history in prototype. */
+body .container.mt-3 div.monitor-list div.item div.wrap {
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
+  padding: 0 !important;
+}
+
+body .container.mt-3 div.monitor-list div.item div.hp-bar-big {
+  display: flex !important;
+  align-items: center !important;
+  gap: 2px !important;
+  width: 100% !important;
+  height: 18px !important;
+  transform: none !important;
+}
+
+body .container.mt-3 div.monitor-list div.item div.hp-bar-big div.beat {
+  flex: 1 1 0 !important;
+  width: auto !important;
+  height: 18px !important;
+  margin: 0 !important;
+  border-radius: 2px !important;
+  background: var(--socrat-up) !important;
+  opacity: 1 !important;
+}
+
+body .container.mt-3 div.monitor-list div.item div.hp-bar-big div.beat.down { background: var(--socrat-down) !important; }
+body .container.mt-3 div.monitor-list div.item div.hp-bar-big div.beat.pending,
+body .container.mt-3 div.monitor-list div.item div.hp-bar-big div.beat.maintenance { background: var(--socrat-warn) !important; }
+body .container.mt-3 div.monitor-list div.item div.hp-bar-big div.beat.empty { background: var(--socrat-line) !important; }
+
+/* Incidents / maintenance should be plain sections. */
+body .container.mt-3 .incident,
+body .container.mt-3 .maintenance,
+body .container.mt-3 .announcement,
+body .container.mt-3 .mt-5.mb-4 {
+  margin-top: 48px !important;
+  padding: 28px 0 !important;
+  border-top: 1px solid var(--socrat-line) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 760px) {
+  body .container.mt-3 {
+    width: min(100% - 28px, 1120px) !important;
+    padding-top: 28px !important;
+  }
+
+  body .container.mt-3 .title-flex,
+  body .container.mt-3 .mb-4.title-flex {
+    gap: 18px !important;
+    margin-bottom: 34px !important;
+  }
+
+  body .container.mt-3 .title-flex img,
+  body .container.mt-3 .title-flex img.logo,
+  body .container.mt-3 img.logo {
+    width: 72px !important;
+    height: 72px !important;
+    min-width: 72px !important;
+    max-width: 72px !important;
+  }
+
+  body .container.mt-3 .title-flex h1,
+  body .container.mt-3 h1 {
+    font-size: 2rem !important;
+  }
+
+  body .container.mt-3 div.monitor-list div.item > div.row {
+    grid-template-columns: 1fr 104px !important;
+  }
+
+  body .container.mt-3 div.monitor-list div.item div.col-3.col-md-4 {
+    grid-column: 1 / -1 !important;
+    grid-row: 2 !important;
+  }
+}
+
+/* Overall status color follows real Kuma state. */
+body .container.mt-3 .overall-status:has(.warning),
+body .container.mt-3 .overall-status:has(.warning) *,
+body .container.mt-3 .overall-status .warning {
+  color: var(--socrat-warn) !important;
+}
+body .container.mt-3 .overall-status:has(.danger),
+body .container.mt-3 .overall-status:has(.danger) *,
+body .container.mt-3 .overall-status .danger {
+  color: var(--socrat-down) !important;
+}
+body .container.mt-3 .overall-status:has(.ok),
+body .container.mt-3 .overall-status:has(.ok) *,
+body .container.mt-3 .overall-status .ok {
+  color: var(--socrat-up) !important;
+}
