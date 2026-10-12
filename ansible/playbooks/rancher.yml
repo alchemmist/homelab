@@ -131,6 +131,32 @@
         -p '{"spec":{"displayName":"{{ rancher_cluster_display_name }}"}}'
       changed_when: false
 
+    - name: Add official Rancher UI extension repository
+      ansible.builtin.command: k3s kubectl apply -f -
+      args:
+        stdin: |
+          apiVersion: catalog.cattle.io/v1
+          kind: ClusterRepo
+          metadata:
+            name: rancher-ui-plugins
+          spec:
+            gitRepo: https://github.com/rancher/ui-plugin-charts
+            gitBranch: main
+      changed_when: false
+
+    - name: Add Rancher partner extension repository
+      ansible.builtin.command: k3s kubectl apply -f -
+      args:
+        stdin: |
+          apiVersion: catalog.cattle.io/v1
+          kind: ClusterRepo
+          metadata:
+            name: partner-extensions
+          spec:
+            gitRepo: https://github.com/rancher/partner-extensions
+            gitBranch: main
+      changed_when: false
+
     - name: Copy Rancher UI logo to control-plane
       ansible.builtin.copy:
         src: "{{ playbook_dir }}/../../assets/rancher/socrat-logo.png"
