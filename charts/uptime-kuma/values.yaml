@@ -1,7 +1,7 @@
 image: louislam/uptime-kuma:1.23.16
 nodeName: socrat-2
 hostPath: /srv/uptime-kuma
-host: stats.alchemmist.xyz
+host: status.alchemmist.xyz
 tlsSecret: uptime-kuma-tls
 clusterIssuer: letsencrypt-http01
 resources:
