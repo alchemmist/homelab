@@ -102,6 +102,15 @@
   become: true
   when: global_bashrc.stat.exists
 
+- name: Ensure homelab user starship config directory exists
+  ansible.builtin.file:
+    path: "{{ homelab_user_home }}/.config/starship"
+    state: directory
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: "0755"
+  become: true
+
 - name: Keep compatibility symlink for homelab user starship config
   ansible.builtin.file:
     src: /etc/starship/starship.toml

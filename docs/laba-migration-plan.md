@@ -70,3 +70,17 @@ Remove:
 - `devsyringe.alchemmist.xyz` if the canonical domain is only `devsyringe.xyz`
 
 Do not use wildcard blindly while `vpn` and `sync` remain on VPS.
+
+## 3x-ui / VPN Kubernetes migration status
+
+- `laba` has been joined to the k3s cluster as `socrat-2` over WireGuard (`wg-socrat`, node IP `10.250.0.2`).
+- ServiceLB is explicitly enabled only on `socrat-0` and `socrat-1`; it is disabled on `socrat-2` so existing Caddy/VPN ports on the VPS are not taken by Traefik.
+- Native `x-ui.service` on `laba` is disabled/inactive after cutover.
+- 3x-ui now runs as Helm release `x-ui` in namespace `x-ui`, pinned to `socrat-2`, using the official `ghcr.io/mhsanaei/3x-ui:latest` image with `hostNetwork: true`.
+- Persistent data is mounted from host paths on `socrat-2`:
+  - `/srv/x-ui/db` -> `/etc/x-ui`
+  - `/srv/x-ui/cert` -> `/root/cert`
+  - `/srv/x-ui/acme` -> `/root/.acme.sh`
+- Offline backup before cutover:
+  - `/root/backups/x-ui-20261012133959`
+- Caddy still handles public `vpn.alchemmist.xyz:443` and proxies to xray/panel ports on the host. Removing Caddy and replacing it with Traefik routing is a separate future step.

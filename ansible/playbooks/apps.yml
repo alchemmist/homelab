@@ -29,6 +29,9 @@
       - name: monori
         namespace: monori
         chart: monori
+      - name: x-ui
+        namespace: x-ui
+        chart: x-ui
       - name: format-quorum
         namespace: format-quorum
         chart: format-quorum

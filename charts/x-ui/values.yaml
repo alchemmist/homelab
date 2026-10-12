@@ -1,0 +1,15 @@
+image: ghcr.io/mhsanaei/3x-ui:latest
+nodeName: socrat-2
+hostPath:
+  db: /srv/x-ui/db
+  cert: /srv/x-ui/cert
+  acme: /srv/x-ui/acme
+env:
+  XRAY_VMESS_AEAD_FORCED: "false"
+  XUI_ENABLE_FAIL2BAN: "false"
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 768Mi

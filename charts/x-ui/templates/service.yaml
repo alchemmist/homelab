@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: x-ui
+spec:
+  selector:
+    app.kubernetes.io/name: x-ui
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: panel
+      port: 2053
+      targetPort: panel
+      protocol: TCP
+    - name: sub
+      port: 2096
+      targetPort: sub
+      protocol: TCP
+    - name: trojan
+      port: 10443
+      targetPort: trojan
+      protocol: TCP
