@@ -83,6 +83,6 @@ Do not use wildcard blindly while `vpn` and `sync` remain on VPS.
   - VLESS: `32053`, `32083`, `32063`, `32084`
   - WireGuard: `32085/udp`
   - AmneziaWG: `32086/udp`
-  - Trojan WS: `32087`
-- The initial lab issue was caused by `hosts` overrides in the 3x-ui DB forcing Trojan subscriptions back to production `443/tls`; fixed by resetting the Trojan host override to `port=0`, `security=same`.
-- Do not stop native `x-ui.service` until all important clients have refreshed their subscriptions and moved off the old ports.
+  - Trojan WS container port: `32087`, exposed to clients through Caddy on `vpn.alchemmist.xyz:443` path `/connect-4e15326936f20a7a4f2cac67`
+- The initial lab issue was caused by `hosts` overrides in the 3x-ui DB forcing Trojan subscriptions back to production `443/tls` while Caddy still proxied that path to native x-ui. Fixed by routing Caddy's Trojan path to container port `32087` and keeping the subscription override as `443/tls` for clients that cannot use high ports.
+- Do not stop native `x-ui.service` until all important clients have refreshed their subscriptions and moved off old non-Trojan ports.
