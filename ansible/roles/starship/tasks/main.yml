@@ -54,6 +54,18 @@
       export STARSHIP_CONFIG=/etc/starship/starship.toml
   become: true
 
+- name: Ensure homelab user zsh startup file exists
+  ansible.builtin.copy:
+    dest: "{{ homelab_user_home }}/.zshrc"
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: "0644"
+    force: false
+    content: |
+      # Managed by homelab Ansible.
+      # Machine-wide zsh/starship setup is in /etc/zsh/zshrc.
+  become: true
+
 - name: Check global zsh config directory
   ansible.builtin.stat:
     path: /etc/zsh
