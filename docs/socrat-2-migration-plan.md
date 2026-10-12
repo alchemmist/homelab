@@ -77,9 +77,12 @@ Do not use wildcard blindly while `vpn` and `sync` remain on VPS.
 - ServiceLB is explicitly enabled only on `socrat-0` and `socrat-1`; it is disabled on `socrat-2` so existing Caddy/VPN ports on the VPS are not taken by Traefik.
 - Offline backup before the attempted cutover:
   - `/root/backups/x-ui-20261012133959`
-- A Helm chart exists at `charts/x-ui`, but it is not in `apps.yml` and the in-cluster Deployment is scaled to `0` after rollback.
-- Rollback state: production VPN is back on native `x-ui.service` on `socrat-2`:
-  - `x-ui.service` active/enabled
-  - data path `/etc/x-ui`
-  - Caddy still handles public `vpn.alchemmist.xyz:443` and proxies to xray/panel ports on the host.
-- Containerized 3x-ui attempt preserved data but real client traffic did not pass; do not re-enable the Helm Deployment without a separate debug plan.
+- A parallel containerized 3x-ui lab/prod-candidate is running as Helm release `x-ui-lab` in namespace `x-ui-lab`, pinned to `socrat-2`.
+- Native `x-ui.service` still runs production traffic on the old ports for already-configured clients.
+- Caddy now routes subscription paths to the containerized instance (`172.18.0.1:12096`), so refreshed clients receive the new container-backed ports:
+  - VLESS: `32053`, `32083`, `32063`, `32084`
+  - WireGuard: `32085/udp`
+  - AmneziaWG: `32086/udp`
+  - Trojan WS: `32087`
+- The initial lab issue was caused by `hosts` overrides in the 3x-ui DB forcing Trojan subscriptions back to production `443/tls`; fixed by resetting the Trojan host override to `port=0`, `security=same`.
+- Do not stop native `x-ui.service` until all important clients have refreshed their subscriptions and moved off the old ports.
