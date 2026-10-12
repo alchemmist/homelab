@@ -1,8 +1,8 @@
 replicaCount: 1
 image:
-  repository: localhost/lms
+  repository: ghcr.io/alchemmist/homelab-lms
   tag: latest
-  pullPolicy: Never
+  pullPolicy: IfNotPresent
 service:
   port: 80
   targetPort: 8000
@@ -20,3 +20,6 @@ env:
 resources:
   requests: { cpu: 50m, memory: 128Mi }
   limits: { memory: 512Mi }
+
+imagePullSecrets:
+  - ghcr-pull

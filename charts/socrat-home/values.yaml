@@ -1,9 +1,9 @@
 replicaCount: 2
 
 image:
-  repository: localhost/socrat-home
+  repository: ghcr.io/alchemmist/homelab-socrat-home
   tag: latest
-  pullPolicy: Never
+  pullPolicy: IfNotPresent
 
 resources:
   requests:
@@ -30,3 +30,6 @@ topologySpreadConstraints:
 
 podAntiAffinity:
   enabled: true
+
+imagePullSecrets:
+  - ghcr-pull

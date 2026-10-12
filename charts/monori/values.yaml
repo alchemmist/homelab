@@ -4,6 +4,9 @@ clusterIssuer: letsencrypt-http01
 hostPath: /srv/monori
 secretName: monori-env
 images:
-  front: localhost/monori-front:latest
-  back: localhost/monori-back:latest
-  sync: localhost/monori-sync:latest
+  front: ghcr.io/alchemmist/homelab-monori-front:latest
+  back: ghcr.io/alchemmist/homelab-monori-back:latest
+  sync: ghcr.io/alchemmist/homelab-monori-sync:latest
+
+imagePullSecrets:
+  - ghcr-pull

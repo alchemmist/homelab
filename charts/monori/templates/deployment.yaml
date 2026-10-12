@@ -7,11 +7,17 @@ spec:
   template:
     metadata: { labels: { app: monori-sync } }
     spec:
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+        {{- end }}
+      {{- end }}
       nodeSelector: { kubernetes.io/hostname: socrat-0 }
       containers:
       - name: sync
         image: {{ .Values.images.sync }}
-        imagePullPolicy: Never
+        imagePullPolicy: IfNotPresent
         env: [{ name: MONORI_CONNECTOR_DEBUG, value: "1" }]
         ports: [{ name: http, containerPort: 8010 }]
         volumeMounts: [{ name: data, mountPath: /app/data }]
@@ -26,11 +32,17 @@ spec:
   template:
     metadata: { labels: { app: monori-back } }
     spec:
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+        {{- end }}
+      {{- end }}
       nodeSelector: { kubernetes.io/hostname: socrat-0 }
       containers:
       - name: back
         image: {{ .Values.images.back }}
-        imagePullPolicy: Never
+        imagePullPolicy: IfNotPresent
         envFrom: [{ secretRef: { name: {{ .Values.secretName }} } }]
         env:
         - { name: PYTHONDONTWRITEBYTECODE, value: "1" }
@@ -48,9 +60,15 @@ spec:
   template:
     metadata: { labels: { app: monori } }
     spec:
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+        {{- end }}
+      {{- end }}
       nodeSelector: { kubernetes.io/hostname: socrat-0 }
       containers:
       - name: front
         image: {{ .Values.images.front }}
-        imagePullPolicy: Never
+        imagePullPolicy: IfNotPresent
         ports: [{ name: http, containerPort: 8000 }]

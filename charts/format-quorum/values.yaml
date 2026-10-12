@@ -1,8 +1,8 @@
 replicaCount: 1
 image:
-  repository: localhost/format-quorum
+  repository: ghcr.io/alchemmist/homelab-format-quorum
   tag: latest
-  pullPolicy: Never
+  pullPolicy: IfNotPresent
 service:
   port: 80
   targetPort: 3000
@@ -30,3 +30,6 @@ persistence:
 resources:
   requests: { cpu: 100m, memory: 256Mi }
   limits: { memory: 1Gi }
+
+imagePullSecrets:
+  - ghcr-pull

@@ -1,8 +1,8 @@
 replicaCount: 2
 image:
-  repository: localhost/blog
+  repository: ghcr.io/alchemmist/homelab-blog
   tag: latest
-  pullPolicy: Never
+  pullPolicy: IfNotPresent
 service:
   port: 80
   targetPort: 8080
@@ -16,3 +16,6 @@ ingress:
 resources:
   requests: { cpu: 20m, memory: 64Mi }
   limits: { memory: 256Mi }
+
+imagePullSecrets:
+  - ghcr-pull
