@@ -1,0 +1,112 @@
+---
+- name: Install WireGuard packages on Debian nodes
+  ansible.builtin.apt:
+    name:
+      - wireguard-tools
+    state: present
+    update_cache: true
+  when: ansible_os_family == 'Debian'
+
+- name: Install WireGuard packages on Arch nodes
+  community.general.pacman:
+    name:
+      - wireguard-tools
+    state: present
+    update_cache: true
+  when: ansible_os_family == 'Archlinux'
+
+- name: Ensure WireGuard config directory exists
+  ansible.builtin.file:
+    path: /etc/wireguard
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Check existing wg-socrat config
+  ansible.builtin.stat:
+    path: /etc/wireguard/wg-socrat.conf
+  register: wg_socrat_conf_stat
+
+- name: Extract existing wg-socrat private key if interface is running
+  ansible.builtin.command: wg show wg-socrat private-key
+  register: wg_socrat_runtime_private_key
+  changed_when: false
+  failed_when: false
+  no_log: true
+
+- name: Extract existing wg-socrat private key from config if present
+  ansible.builtin.shell: |
+    set -eu
+    awk '/^PrivateKey[[:space:]]*=/ { sub(/^[^=]*=[[:space:]]*/, ""); print; exit }' /etc/wireguard/wg-socrat.conf
+  register: wg_socrat_existing_private_key
+  changed_when: false
+  no_log: true
+  when:
+    - wg_socrat_conf_stat.stat.exists
+    - wg_socrat_runtime_private_key.rc != 0
+
+- name: Generate wg-socrat private key if missing
+  ansible.builtin.command: wg genkey
+  register: wg_socrat_generated_private_key
+  changed_when: true
+  no_log: true
+  when: not wg_socrat_conf_stat.stat.exists
+
+- name: Store wg-socrat private key fact
+  ansible.builtin.set_fact:
+    wg_socrat_private_key: >-
+      {{ (wg_socrat_runtime_private_key.stdout if wg_socrat_runtime_private_key.rc == 0 else (wg_socrat_existing_private_key.stdout if wg_socrat_conf_stat.stat.exists else wg_socrat_generated_private_key.stdout)) | trim }}
+  no_log: true
+
+- name: Render wg-socrat config
+  ansible.builtin.template:
+    src: wg-socrat.conf.j2
+    dest: /etc/wireguard/wg-socrat.conf
+    owner: root
+    group: root
+    mode: '0600'
+  register: wg_socrat_config
+  no_log: true
+
+- name: Enable and start wg-socrat
+  ansible.builtin.systemd:
+    name: wg-quick@wg-socrat
+    enabled: true
+    state: started
+    daemon_reload: true
+  register: wg_socrat_service
+
+- name: Apply wg-socrat peer changes without dropping interface
+  ansible.builtin.shell: |
+    set -eu
+    tmp=$(mktemp)
+    wg-quick strip wg-socrat > "$tmp"
+    wg syncconf wg-socrat "$tmp"
+    rm -f "$tmp"
+  when:
+    - wg_socrat_config.changed
+    - not wg_socrat_service.changed
+  changed_when: true
+
+- name: Read wg-socrat public key
+  ansible.builtin.command: wg show wg-socrat public-key
+  register: wg_socrat_runtime_public_key
+  changed_when: false
+
+- name: Verify configured public key matches inventory
+  ansible.builtin.assert:
+    that:
+      - wg_socrat_runtime_public_key.stdout == wg_socrat_nodes[inventory_hostname].public_key
+    fail_msg: >-
+      wg-socrat public key for {{ inventory_hostname }} does not match inventory.
+      Do not overwrite this host blindly; update wg_socrat_nodes public_key after an intentional key rotation.
+
+- name: Show wg-socrat address
+  ansible.builtin.command: ip -brief address show wg-socrat
+  register: wg_socrat_addr
+  changed_when: false
+
+- name: Print wg-socrat address
+  ansible.builtin.debug:
+    var: wg_socrat_addr.stdout_lines

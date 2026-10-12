@@ -1,0 +1,8 @@
+---
+- name: Configure Socrat WireGuard management mesh
+  hosts: Socrat
+  gather_facts: true
+  become: true
+  ignore_unreachable: true
+  roles:
+    - wireguard_socrat

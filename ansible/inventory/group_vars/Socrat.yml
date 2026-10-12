@@ -4,6 +4,21 @@
 #   (socrat-0), (socrat-1), ...
 starship_show_hostname: true
 
+wg_socrat_port: 51830
+wg_socrat_keepalive: 25
+wg_socrat_nodes:
+  socrat-0:
+    address: 10.250.0.1
+    public_key: V5a15CeZ//mVOdddiIGRI/CLDny6a1r22loXLMcQxkU=
+  socrat-1:
+    address: 10.250.0.3
+    public_key: b2yWaBu06tk67Tx1N1SUktl0DntkcnKU36tIKLiqM0c=
+    endpoint: 192.168.0.24:51830
+  socrat-2:
+    address: 10.250.0.2
+    public_key: LJX3181KA1uD95A+TbaFTiH3lZdjMgf1paV/gPMzAEs=
+    endpoint: 176.98.185.59:51830
+
 homelab_users:
   - name: tim
     shell: /bin/bash

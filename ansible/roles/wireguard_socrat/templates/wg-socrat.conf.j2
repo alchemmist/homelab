@@ -1,0 +1,15 @@
+# Managed by homelab Ansible. Do not edit manually.
+[Interface]
+Address = {{ wg_socrat_nodes[inventory_hostname].address }}/24
+ListenPort = {{ wg_socrat_port }}
+PrivateKey = {{ wg_socrat_private_key }}
+
+{% for peer_name, peer in wg_socrat_nodes.items() if peer_name != inventory_hostname %}
+[Peer]
+# {{ peer_name }}
+PublicKey = {{ peer.public_key }}
+AllowedIPs = {{ peer.address }}/32
+{% if peer.endpoint is defined and peer.endpoint %}Endpoint = {{ peer.endpoint }}
+{% endif %}PersistentKeepalive = {{ wg_socrat_keepalive }}
+
+{% endfor %}
