@@ -1,0 +1,36 @@
+replicaCount: 1
+
+image:
+  repository: syncthing/syncthing
+  tag: latest
+  pullPolicy: IfNotPresent
+
+hostPath: /srv/syncthing
+
+nodeSelector:
+  kubernetes.io/hostname: socrat-0
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
+
+basicAuth:
+  enabled: true
+  # Create this secret manually; do not commit password hashes.
+  existingSecret: syncthing-basic-auth
+  users: ""
+
+ingress:
+  enabled: true
+  className: traefik
+  host: sync.alchemmist.xyz
+  tlsSecret: syncthing-tls
+  clusterIssuer: letsencrypt-http01
+
+service:
+  guiPort: 8384
+  syncPort: 22000
+  discoveryPort: 21027

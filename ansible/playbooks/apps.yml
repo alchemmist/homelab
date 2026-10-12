@@ -17,6 +17,9 @@
       - name: lms
         namespace: lms
         chart: lms
+      - name: syncthing
+        namespace: syncthing
+        chart: syncthing
       - name: format-quorum
         namespace: format-quorum
         chart: format-quorum
