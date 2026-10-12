@@ -92,7 +92,7 @@ def device(device_id: str, name: str, addresses=None) -> dict:
     }
 
 
-def folder(this_id: str, peer_ids: list[str]) -> dict:
+def folder(this_id: str, peer_ids: list[str], paused: bool = False) -> dict:
     return {
         "id": FOLDER_ID,
         "label": LABEL,
@@ -122,7 +122,7 @@ def folder(this_id: str, peer_ids: list[str]) -> dict:
         "pullerDelayS": 1,
         "maxConflicts": 10,
         "disableSparseFiles": False,
-        "paused": False,
+        "paused": paused,
         "markerName": ".stfolder",
         "copyOwnershipFromParent": False,
         "modTimeWindowS": 0,
@@ -199,14 +199,17 @@ def configure(role: str) -> bool:
             d["name"] = wanted_name
             changed = True
 
-    desired_folder = folder(this_id, peers)
+    # socrat-2 has too little local disk for the full pg-mdb-backups mirror.
+    # Keep the Syncthing device alive for other folders, but pause only this
+    # backup folder on socrat-2 so it does not receive multi-GB archives.
+    desired_folder = folder(this_id, peers, paused=(role == "socrat-2"))
     by_folder = {f["id"]: f for f in cfg.get("folders", [])}
     if FOLDER_ID not in by_folder:
         cfg.setdefault("folders", []).append(desired_folder)
         changed = True
     else:
         cur = by_folder[FOLDER_ID]
-        for key in ["label", "path", "type", "rescanIntervalS", "fsWatcherEnabled", "fsWatcherDelayS", "ignorePerms"]:
+        for key in ["label", "path", "type", "rescanIntervalS", "fsWatcherEnabled", "fsWatcherDelayS", "ignorePerms", "paused"]:
             if cur.get(key) != desired_folder[key]:
                 cur[key] = desired_folder[key]
                 changed = True
