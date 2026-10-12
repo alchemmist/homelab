@@ -1,8 +1,8 @@
 replicaCount: 2
 image:
-  repository: ghcr.io/alchemmist/blog
+  repository: localhost/blog
   tag: latest
-  pullPolicy: Always
+  pullPolicy: Never
 service:
   port: 80
   targetPort: 8080

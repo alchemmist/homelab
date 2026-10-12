@@ -5,6 +5,9 @@
   become: true
   vars:
     apps:
+      - name: blog
+        namespace: blog
+        chart: blog
       - name: cats
         namespace: cats
         chart: cats
