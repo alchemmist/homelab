@@ -100,7 +100,7 @@ For future nodes: bring up `wg-socrat` first, then join k3s with WG node IP and 
 - Use cert-manager HTTP-01 for TLS.
 - Traefik is pinned to `socrat-0` for stable home ingress.
 - Avoid host-level Caddy on home Socrat nodes.
-- `socrat-2` still uses host/container Caddy for `vpn.alchemmist.xyz` edge routing.
+- `vpn.alchemmist.xyz` edge routing is now handled by Kubernetes release `caddy-edge` on `socrat-2`, not host Docker Caddy.
 
 Rancher:
 
@@ -378,6 +378,7 @@ ansible-playbook playbooks/apps.yml -e ansible_become_password=...
 Use `socrat-2` for workloads that need public/VPS reachability:
 
 - `x-ui-lab` / containerized 3x-ui/xray
+- `caddy-edge` / Kubernetes-managed Caddy for `vpn.alchemmist.xyz:80/443`
 - `remark42`
 - `uptime-kuma`
 
@@ -390,14 +391,16 @@ dnsPolicy: Default
 
 This pattern fixed DNS problems for hostNetwork pods.
 
+`caddy-edge` replaced the former Docker Caddy container. It runs as a hostNetwork pod on `socrat-2` and proxies `vpn.alchemmist.xyz` traffic to the Kubernetes-managed x-ui/xray listeners on localhost/new ports.
+
 ## 3x-ui / VPN
 
 Current state:
 
-- Containerized 3x-ui lab runs in Kubernetes on `socrat-2`.
-- Production subscription/Caddy routes point to containerized x-ui for new profiles.
-- Native `x-ui.service` remains active temporarily as fallback for old cached client configs.
-- Do not remove native x-ui until important users confirm updated subscriptions.
+- Containerized 3x-ui runs in Kubernetes on `socrat-2`.
+- Production subscription/Caddy routes point to Kubernetes-managed x-ui.
+- Native host `x-ui.service` has been stopped/disabled after users updated subscriptions.
+- Docker Caddy has been removed; `caddy-edge` now owns public 80/443 in Kubernetes.
 
 Important paths on `socrat-2`:
 
@@ -408,7 +411,8 @@ Important paths on `socrat-2`:
 /srv/x-ui-lab/db
 /srv/x-ui-lab/cert
 /srv/x-ui-lab/acme
-/srv/caddy/Caddyfile
+/srv/caddy/data
+/srv/caddy/config
 ```
 
 Containerized ports:
@@ -535,4 +539,5 @@ sudo python3 scripts/apply-uptime-kuma-status-page.py \
 - Add backup strategy for `/srv/k8s-nfs`.
 - Consider object storage/restic as canonical long-term backup sink for MDB backups.
 - Consider retrying Longhorn or another CSI storage backend later.
+- Long-term: replace host-level NFS server with a more Kubernetes-native replicated storage backend if true HA is needed.
 - Implement `socrat_cluster_bot` later.

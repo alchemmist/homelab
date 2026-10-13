@@ -35,6 +35,9 @@
       - name: uptime-kuma
         namespace: uptime-kuma
         chart: uptime-kuma
+      - name: caddy-edge
+        namespace: caddy-edge
+        chart: caddy-edge
   tasks:
     - name: Ensure app namespaces exist
       ansible.builtin.command: k3s kubectl create namespace {{ item.namespace }}

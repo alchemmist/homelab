@@ -1,0 +1,77 @@
+---
+# Socrat nodes should not run application workloads directly on the host.
+# Allowed host-level services are OS/networking, wg-socrat, k3s/containerd,
+# node desktop/session services, and explicitly documented infra exceptions
+# such as the temporary NFS server on socrat-0.
+- name: Stop and disable Docker service if present
+  ansible.builtin.systemd:
+    name: docker.service
+    enabled: false
+    state: stopped
+  failed_when: false
+
+- name: Stop and disable Docker socket if present
+  ansible.builtin.systemd:
+    name: docker.socket
+    enabled: false
+    state: stopped
+  failed_when: false
+
+- name: Stop and disable legacy x-ui host service if present
+  ansible.builtin.systemd:
+    name: x-ui.service
+    enabled: false
+    state: stopped
+  failed_when: false
+
+- name: Look up homelab user for user-level cleanup
+  ansible.builtin.getent:
+    database: passwd
+    key: "{{ homelab_user }}"
+
+- name: Store homelab user uid for user-level cleanup
+  ansible.builtin.set_fact:
+    host_policy_user_uid: "{{ ansible_facts.getent_passwd[homelab_user][1] }}"
+
+- name: Stop legacy OpenClaw user service if present
+  ansible.builtin.command: systemctl --user stop openclaw-gateway.service
+  become: true
+  become_user: "{{ homelab_user }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ host_policy_user_uid }}"
+    DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ host_policy_user_uid }}/bus"
+  register: openclaw_stop
+  failed_when: false
+  changed_when: openclaw_stop.rc == 0
+
+- name: Disable legacy OpenClaw user service if present
+  ansible.builtin.command: systemctl --user disable openclaw-gateway.service
+  become: true
+  become_user: "{{ homelab_user }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ host_policy_user_uid }}"
+    DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ host_policy_user_uid }}/bus"
+  register: openclaw_disable
+  failed_when: false
+  changed_when: openclaw_disable.rc == 0
+
+- name: Remove legacy OpenClaw files
+  ansible.builtin.command: >-
+    rm -rf
+    {{ homelab_user_home }}/.config/systemd/user/openclaw-gateway.service
+    {{ homelab_user_home }}/.config/systemd/user/default.target.wants/openclaw-gateway.service
+    {{ homelab_user_home }}/.openclaw
+    {{ homelab_user_home }}/.npm-global/lib/node_modules/openclaw
+    {{ homelab_user_home }}/.npm-global/bin/openclaw
+  changed_when: false
+
+- name: Reload homelab user systemd manager after OpenClaw cleanup
+  ansible.builtin.command: systemctl --user daemon-reload
+  become: true
+  become_user: "{{ homelab_user }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ host_policy_user_uid }}"
+    DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ host_policy_user_uid }}/bus"
+  register: openclaw_daemon_reload
+  failed_when: false
+  changed_when: false
