@@ -1,0 +1,7 @@
+---
+- name: Prepare nodes for Kubernetes-managed Syncthing
+  hosts: Socrat
+  gather_facts: true
+  become: true
+  roles:
+    - syncthing_node
