@@ -3,6 +3,31 @@
 # Allowed host-level services are OS/networking, wg-socrat, k3s/containerd,
 # node desktop/session services, and explicitly documented infra exceptions
 # such as the temporary NFS server on socrat-0.
+# Docker is installed as an emergency/manual tool, but must stay stopped and
+# disabled by default so application workloads do not drift outside Kubernetes.
+- name: Install Docker tools on Debian nodes
+  ansible.builtin.apt:
+    name:
+      # Use Docker CE packages from Docker's apt repo when present. They avoid
+      # conflicts with previously installed docker-buildx-plugin/containerd.io
+      # packages better than Debian's docker.io package on these nodes.
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+    update_cache: true
+  when: ansible_facts.os_family == 'Debian'
+
+- name: Install Docker tools on Arch nodes
+  community.general.pacman:
+    name:
+      - docker
+    state: present
+    update_cache: true
+  when: ansible_facts.os_family == 'Archlinux'
+
 - name: Stop and disable Docker service if present
   ansible.builtin.systemd:
     name: docker.service
@@ -13,6 +38,13 @@
 - name: Stop and disable Docker socket if present
   ansible.builtin.systemd:
     name: docker.socket
+    enabled: false
+    state: stopped
+  failed_when: false
+
+- name: Stop and disable standalone containerd service if present
+  ansible.builtin.systemd:
+    name: containerd.service
     enabled: false
     state: stopped
   failed_when: false

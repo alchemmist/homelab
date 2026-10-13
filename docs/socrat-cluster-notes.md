@@ -473,6 +473,20 @@ fs.inotify.max_user_instances = 1024
 fs.inotify.max_user_watches = 1048576
 ```
 
+## Host Docker policy
+
+Docker is installed on every node as an emergency/manual tool, but it is not a workload runtime for Socrat services.
+
+Expected default state on every node:
+
+```text
+docker.service: inactive/disabled
+docker.socket: inactive/disabled
+containerd.service: inactive/disabled
+```
+
+Kubernetes uses k3s-managed containerd internally. Application workloads should run through Kubernetes, not host Docker. If Docker is started manually for an experiment, stop it afterwards and do not leave containers running on the host.
+
 ## Cleanup done on `socrat-1`
 
 `socrat-1` disk was cleaned to make room for MDB backups:
