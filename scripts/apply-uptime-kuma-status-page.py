@@ -21,6 +21,7 @@ def main() -> None:
     parser.add_argument("--db", default="/srv/uptime-kuma/kuma.db")
     parser.add_argument("--slug", default="socrat")
     parser.add_argument("--title", default="Socrat Status")
+    parser.add_argument("--domain", default="status.alchemmist.xyz")
     parser.add_argument("--css", required=True)
     parser.add_argument("--icon", required=True)
     args = parser.parse_args()
@@ -46,12 +47,26 @@ def main() -> None:
             """,
             (args.title, icon_data_uri, css, args.slug),
         )
+        status_page_id = con.execute("SELECT id FROM status_page WHERE slug = ?", (args.slug,)).fetchone()[0]
+        con.execute(
+            """
+            INSERT INTO status_page_cname(status_page_id, domain)
+            VALUES(?, ?)
+            ON CONFLICT(domain) DO UPDATE SET status_page_id = excluded.status_page_id
+            """,
+            (status_page_id, args.domain),
+        )
         con.commit()
         row = con.execute(
             "SELECT slug, title, length(icon), theme, show_powered_by, length(custom_css) FROM status_page WHERE slug = ?",
             (args.slug,),
         ).fetchone()
+        cname = con.execute(
+            "SELECT domain FROM status_page_cname WHERE status_page_id = ? ORDER BY domain",
+            (status_page_id,),
+        ).fetchall()
         print(row)
+        print(cname)
     finally:
         con.close()
 
