@@ -20,9 +20,8 @@ from pathlib import Path
 
 MAC_ID = "W6ET4T3-XPAD52O-NJPCT5G-AW3OX7R-NASKRYZ-T2PZ62D-WQSIDM4-CEXOLAV"
 SOCRAT0_ID = "CEUGPOG-MDQD3HI-M7Q5MDE-WOLEW5V-TZFXSBE-FP6VI5W-MGKQAE5-RLPSSAV"
-# socrat-1 is currently offline, but keep it in the folder/device graph so the
-# DaemonSet pod can join automatically when the node returns.
-SOCRAT1_ID = "DYWEDAX-RDGBCC3-4AUXREZ-WGQLZJU-TT3HWIQ-2CSUQSE-WF2WVVH-4VV2IAP"
+SOCRAT1_ID = "OD2HKB5-475B6AK-IWP4H5S-UUMQTMX-3LCMY66-AVY3YME-HRHKCAL-VGW7BAP"
+OLD_SOCRAT1_ID = "DYWEDAX-RDGBCC3-4AUXREZ-WGQLZJU-TT3HWIQ-2CSUQSE-WF2WVVH-4VV2IAP"
 SOCRAT2_ID = "YYSU4UN-WFSESUW-NN7LPMM-JP2XKS6-OTU52IK-Z6SXXHF-TRN6CSJ-7JGCHAM"
 PHONE_ID = "5R2QA45-SCZQL5S-EKW5SDB-C26ZNGK-FMH4KII-AJIRLKX-5EZ27QG-GYDXLQA"
 OLD_YANDEX_MACBOOK_ID = "WEZT5SG-FJUY26T-F6E4XXW-MDP3NTE-PXUOOVU-T234ORE-SM5YIGC-L2OSAAU"
@@ -145,20 +144,20 @@ def desired_for(role: str) -> tuple[str, list[dict], list[str]]:
     if role == "socrat-0":
         return SOCRAT0_ID, [
             device(MAC_ID, "antonmoss-mac", ["dynamic"]),
-            device(SOCRAT1_ID, "socrat-1-syncthing", ["tcp://192.168.0.24:22000", "quic://192.168.0.24:22000", "dynamic"]),
+            device(SOCRAT1_ID, "socrat-1-syncthing", ["tcp://10.250.0.3:22000", "quic://10.250.0.3:22000", "dynamic"]),
             device(SOCRAT2_ID, "socrat-2-syncthing", ["tcp://10.250.0.2:22000", "quic://10.250.0.2:22000", "dynamic"]),
         ], [SOCRAT1_ID, SOCRAT2_ID]
     if role == "socrat-1":
         return SOCRAT1_ID, [
             device(MAC_ID, "antonmoss-mac", ["dynamic"]),
-            device(SOCRAT0_ID, "socrat-0-syncthing", ["tcp://192.168.0.23:22000", "quic://192.168.0.23:22000", "dynamic"]),
-            device(SOCRAT2_ID, "socrat-2-syncthing", ["dynamic"]),
+            device(SOCRAT0_ID, "socrat-0-syncthing", ["tcp://10.250.0.1:22000", "quic://10.250.0.1:22000", "dynamic"]),
+            device(SOCRAT2_ID, "socrat-2-syncthing", ["tcp://10.250.0.2:22000", "quic://10.250.0.2:22000", "dynamic"]),
         ], [SOCRAT0_ID, SOCRAT2_ID]
     if role == "socrat-2":
         return SOCRAT2_ID, [
             device(MAC_ID, "antonmoss-mac", ["dynamic"]),
-            device(SOCRAT0_ID, "socrat-0-syncthing", ["tcp://192.168.0.23:22000", "quic://192.168.0.23:22000", "dynamic"]),
-            device(SOCRAT1_ID, "socrat-1-syncthing", ["dynamic"]),
+            device(SOCRAT0_ID, "socrat-0-syncthing", ["tcp://10.250.0.1:22000", "quic://10.250.0.1:22000", "dynamic"]),
+            device(SOCRAT1_ID, "socrat-1-syncthing", ["tcp://10.250.0.3:22000", "quic://10.250.0.3:22000", "dynamic"]),
         ], [SOCRAT0_ID, SOCRAT1_ID]
     raise SystemExit(f"Unsupported role: {role}")
 
@@ -169,16 +168,16 @@ def configure(role: str) -> bool:
     changed = False
 
     by_dev = {d["deviceID"]: d for d in cfg.get("devices", [])}
-    # Remove the old duplicate yandex-macbook identity. The active Mac device is
-    # MAC_ID above. Keep knowledge-base devices (phone, yandex-macbook,
-    # socrat-*) intact.
+    # Remove old duplicate identities. Keep the active Mac and Socrat device IDs
+    # from the constants above.
+    old_device_ids = {OLD_YANDEX_MACBOOK_ID, OLD_SOCRAT1_ID}
     before_devices = len(cfg.get("devices", []))
-    cfg["devices"] = [d for d in cfg.get("devices", []) if d.get("deviceID") != OLD_YANDEX_MACBOOK_ID]
+    cfg["devices"] = [d for d in cfg.get("devices", []) if d.get("deviceID") not in old_device_ids]
     if len(cfg["devices"]) != before_devices:
         changed = True
     for existing_folder in cfg.get("folders", []):
         before = len(existing_folder.get("devices", []))
-        existing_folder["devices"] = [d for d in existing_folder.get("devices", []) if d.get("deviceID") != OLD_YANDEX_MACBOOK_ID]
+        existing_folder["devices"] = [d for d in existing_folder.get("devices", []) if d.get("deviceID") not in old_device_ids]
         if len(existing_folder["devices"]) != before:
             changed = True
 
@@ -192,6 +191,9 @@ def configure(role: str) -> bool:
             wanted_name = DEVICE_NAMES.get(d["deviceID"], d["name"])
             if by_dev[d["deviceID"]].get("name") != wanted_name:
                 by_dev[d["deviceID"]]["name"] = wanted_name
+                changed = True
+            if by_dev[d["deviceID"]].get("addresses") != d.get("addresses"):
+                by_dev[d["deviceID"]]["addresses"] = d.get("addresses")
                 changed = True
     for d in cfg.get("devices", []):
         wanted_name = DEVICE_NAMES.get(d.get("deviceID"))
