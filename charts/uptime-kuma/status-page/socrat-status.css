@@ -263,6 +263,27 @@ body .container.mt-3 div.monitor-list div.item div.hp-bar-big div.beat.pending,
 body .container.mt-3 div.monitor-list div.item div.hp-bar-big div.beat.maintenance { background: var(--socrat-warn) !important; }
 body .container.mt-3 div.monitor-list div.item div.hp-bar-big div.beat.empty { background: var(--socrat-line) !important; }
 
+/* Kuma makes uptime beats expand/show hover affordances, but the public page is
+   informational and the beats are not useful as interactive controls here. */
+body .container.mt-3 div.monitor-list div.item div.hp-bar-big,
+body .container.mt-3 div.monitor-list div.item div.hp-bar-big div.beat,
+body .container.mt-3 div.monitor-list div.item div.hp-bar-big div.beat:hover,
+body .container.mt-3 div.monitor-list div.item div.hp-bar-big div.beat:focus,
+body .container.mt-3 div.monitor-list div.item div.hp-bar-big div.beat:active {
+  cursor: default !important;
+  transform: none !important;
+  scale: 1 !important;
+  filter: none !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+}
+
+body .container.mt-3 div.monitor-list div.item div.hp-bar-big div.beat::before,
+body .container.mt-3 div.monitor-list div.item div.hp-bar-big div.beat::after {
+  display: none !important;
+  content: none !important;
+}
+
 /* Incidents / maintenance should be plain sections. */
 body .container.mt-3 .incident,
 body .container.mt-3 .maintenance,
