@@ -7,9 +7,13 @@ STATUS_SLUG = 'socrat'
 USER_ID = 1
 GROUP_NAME = 'Syncthing'
 SYNC_MONITORS = [
-    ('Syncthing sync-0', 'https://sync-0.alchemmist.xyz/'),
-    ('Syncthing sync-1', 'https://sync-1.alchemmist.xyz/'),
-    ('Syncthing sync-2', 'https://sync-2.alchemmist.xyz/'),
+    # Uptime Kuma runs on socrat-2; check node-local Syncthing GUIs over the
+    # Socrat WireGuard mesh instead of via public Traefik ingress. Otherwise a
+    # 401 from Traefik/basic-auth can look healthy even when the target
+    # Syncthing pod on that node is crash-looping.
+    ('Syncthing sync-0', 'http://10.250.0.1:8384/'),
+    ('Syncthing sync-1', 'http://10.250.0.3:8384/'),
+    ('Syncthing sync-2', 'http://10.250.0.2:8384/'),
 ]
 
 con = sqlite3.connect(DB)
@@ -56,7 +60,7 @@ for idx, (name, url) in enumerate(SYNC_MONITORS, 1):
         upside_down=0,
         ignore_tls=0,
         expiry_notification=1,
-        description=f'{name} web UI, 401 basic-auth is accepted',
+        description=f'{name} direct node-local Syncthing GUI check',
         timeout=15,
         resend_interval=0,
         weight=300 + idx,
@@ -77,7 +81,7 @@ for idx, (name, url) in enumerate(SYNC_MONITORS, 1):
 
     # Ensure monitor belongs only to Syncthing group on the public page.
     cur.execute('delete from monitor_group where monitor_id=?', (mid,))
-    cur.execute('insert into monitor_group(monitor_id, group_id, weight, send_url) values(?,?,?,1)', (mid, group_id, idx))
+    cur.execute('insert into monitor_group(monitor_id, group_id, weight, send_url) values(?,?,?,0)', (mid, group_id, idx))
 
 con.commit()
 

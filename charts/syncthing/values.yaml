@@ -48,11 +48,11 @@ gui:
     - name: sync-0
       host: sync-0.alchemmist.xyz
       tlsSecret: syncthing-sync-0-tls
-      endpointIP: 192.168.0.23
+      endpointIP: 10.250.0.1
     - name: sync-1
       host: sync-1.alchemmist.xyz
       tlsSecret: syncthing-sync-1-tls
-      endpointIP: 192.168.0.24
+      endpointIP: 10.250.0.3
     - name: sync-2
       host: sync-2.alchemmist.xyz
       tlsSecret: syncthing-sync-2-tls
