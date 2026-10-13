@@ -20,7 +20,7 @@ spec:
     spec:
       {{- if .Values.hostNetwork }}
       hostNetwork: true
-      dnsPolicy: ClusterFirstWithHostNet
+      dnsPolicy: Default
       {{- end }}
       {{- if .Values.nodeSelector }}
       nodeSelector:

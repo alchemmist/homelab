@@ -167,6 +167,16 @@ def configure(role: str) -> bool:
     cfg = req("GET", "/rest/config")
     changed = False
 
+    # The DaemonSet exposes Syncthing sync traffic on hostNetwork port 22000.
+    # Some nodes may carry older Syncthing config with a random listen port
+    # (for example 44315), which makes peers that dial 10.250.0.x:22000 see the
+    # node as Disconnected even though the GUI is up.
+    desired_listen = ["tcp://0.0.0.0:22000", "quic://0.0.0.0:22000", "dynamic+https://relays.syncthing.net/endpoint"]
+    cfg.setdefault("options", {})
+    if cfg["options"].get("listenAddresses") != desired_listen:
+        cfg["options"]["listenAddresses"] = desired_listen
+        changed = True
+
     by_dev = {d["deviceID"]: d for d in cfg.get("devices", [])}
     # Remove old duplicate identities. Keep the active Mac and Socrat device IDs
     # from the constants above.
