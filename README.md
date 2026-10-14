@@ -61,6 +61,10 @@ Limit to one node:
 ansible-playbook playbooks/starship.yml --limit socrat-1 --ask-become-pass
 ```
 
+## Desktop session
+
+Desktop nodes can set `homelab_wayland_launcher_source` to their dotfiles launcher. `site.yml` and `playbooks/desktop.yml` maintain the `~/.local/bin/wlinitrc` symlink used by the login shell. On `socrat-1`, log into the local console as `alchemmist` and select `start-hyprland` from the session menu.
+
 ## Starship prompt
 
 The role deploys a machine-wide Starship config to `/etc/starship/starship.toml` and enables it from global shell rc files (`/etc/zsh/zshrc`, `/etc/bash.bashrc` when present), so it applies to every interactive user, not only `alchemmist`.

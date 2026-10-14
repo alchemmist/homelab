@@ -1,0 +1,32 @@
+---
+- name: Inspect the configured Wayland launcher
+  ansible.builtin.stat:
+    path: "{{ homelab_wayland_launcher_source }}"
+  register: homelab_wayland_launcher
+
+- name: Require the dotfiles launcher to be installed
+  ansible.builtin.assert:
+    that:
+      - homelab_wayland_launcher.stat.exists
+      - homelab_wayland_launcher.stat.executable | default(false)
+    fail_msg: Install the executable wlinitrc from this node's dotfiles before configuring desktop startup.
+
+- name: Ensure the user's launcher directory exists
+  ansible.builtin.file:
+    path: "{{ homelab_user_home }}/.local/bin"
+    state: directory
+    mode: '0755'
+
+- name: Maintain the Wayland launcher referenced by the login shell
+  ansible.builtin.file:
+    src: "{{ homelab_wayland_launcher_source }}"
+    dest: "{{ homelab_user_home }}/.local/bin/wlinitrc"
+    state: link
+
+- name: Validate launcher shell syntax
+  ansible.builtin.command:
+    argv:
+      - /bin/sh
+      - -n
+      - "{{ homelab_user_home }}/.local/bin/wlinitrc"
+  changed_when: false

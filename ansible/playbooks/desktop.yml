@@ -1,0 +1,8 @@
+---
+- name: Configure desktop session startup
+  hosts: Socrat
+  gather_facts: false
+  become: false
+  roles:
+    - role: desktop_session
+      when: homelab_wayland_launcher_source is defined

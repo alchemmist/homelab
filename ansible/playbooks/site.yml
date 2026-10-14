@@ -10,3 +10,6 @@
     - starship
     - syncthing_node
     - host_workload_policy
+    - role: desktop_session
+      become: false
+      when: homelab_wayland_launcher_source is defined
