@@ -6,3 +6,6 @@ wg_socrat_admin_firewall_chain_prefix: WG_SOCRAT_ADMIN
 wg_socrat_admin_firewall_ssh_port: 2222
 wg_socrat_admin_firewall_dns_port: 53
 wg_socrat_admin_clients: {}
+wireguard_private_web_enabled: false
+wireguard_private_web_proxy_port: 18443
+wireguard_private_web_public_port: 443

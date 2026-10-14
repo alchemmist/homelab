@@ -28,6 +28,12 @@ class WireGuardAdminFirewallTests(unittest.TestCase):
         self.assertIn('--ctorigdstport', SCRIPT)
         self.assertIn('REJECT --reject-with icmp-port-unreachable', SCRIPT)
 
+    def test_private_web_access_is_explicitly_disabled_by_default(self):
+        self.assertIn('wireguard_private_web_enabled: false', DEFAULTS)
+        self.assertIn("{% if wireguard_private_web_enabled | bool %}", SCRIPT)
+        self.assertIn('--dport {{ wireguard_private_web_proxy_port }}', SCRIPT)
+        self.assertIn('--ctorigdstport {{ wireguard_private_web_public_port }}', SCRIPT)
+
     def test_forwarding_from_admin_clients_is_rejected(self):
         self.assertIn('FORWARD', SCRIPT)
         self.assertIn('REJECT --reject-with icmp-admin-prohibited', SCRIPT)

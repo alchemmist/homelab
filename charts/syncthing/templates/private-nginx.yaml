@@ -1,0 +1,65 @@
+{{- if .Values.privateGui.enabled }}
+{{- if not .Values.basicAuth.enabled }}
+{{- fail "privateGui requires basicAuth.enabled=true" }}
+{{- end }}
+{{- if not .Values.hostNetwork }}
+{{- fail "privateGui requires hostNetwork=true" }}
+{{- end }}
+{{- if not (hasKey .Values.env "STGUIADDRESS") }}
+{{- fail "privateGui requires env.STGUIADDRESS" }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Chart.Name }}-private-nginx
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  {{ range .Values.privateGui.nodes }}
+  {{ .nodeName }}.conf: |
+    events {}
+    http {
+      access_log /dev/stdout;
+      error_log /dev/stderr warn;
+      server {
+        listen {{ .wgIP }}:{{ $.Values.privateGui.listenPort }} ssl;
+        absolute_redirect off;
+        ssl_certificate /etc/nginx/tls/tls.crt;
+        ssl_certificate_key /etc/nginx/tls/tls.key;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        auth_basic "Syncthing";
+        auth_basic_user_file /etc/nginx/auth/users;
+        location = /sync {
+          return 301 /sync/;
+        }
+        location /sync/ {
+          proxy_pass http://127.0.0.1:{{ $.Values.service.guiPort }}/;
+          proxy_http_version 1.1;
+          proxy_set_header Host $proxy_host;
+          proxy_set_header X-Forwarded-Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_read_timeout 600s;
+          proxy_send_timeout 600s;
+        }
+        location / {
+          return 404;
+        }
+      }
+      server {
+        listen 127.0.0.1:{{ $.Values.privateGui.healthPort }};
+        listen {{ .wgIP }}:{{ $.Values.privateGui.healthPort }};
+        location = /healthz {
+          proxy_pass http://127.0.0.1:{{ $.Values.service.guiPort }}/rest/noauth/health;
+          proxy_set_header Host $proxy_host;
+          proxy_read_timeout 5s;
+        }
+        location / {
+          return 404;
+        }
+      }
+    }
+{{- end }}
+{{- end }}

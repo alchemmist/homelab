@@ -1,0 +1,34 @@
+- name: Require a registered WireGuard address for every Socrat node
+  ansible.builtin.assert:
+    that:
+      - groups['Socrat'] | difference(wg_socrat_nodes.keys() | list) | length == 0
+      - wg_socrat_nodes | length > 0
+
+- name: Initialize private Syncthing node registry
+  ansible.builtin.set_fact:
+    syncthing_private_ui_nodes: []
+
+- name: Derive private Syncthing endpoints from the WireGuard registry
+  ansible.builtin.set_fact:
+    syncthing_private_ui_nodes: "{{ syncthing_private_ui_nodes + [{'nodeName': item.key, 'host': item.key.split('-')[-1] ~ '.' ~ homelab_ssh_public_host, 'wgIP': item.value.address}] }}"
+  loop: "{{ wg_socrat_nodes | dict2items | sort(attribute='key') }}"
+  loop_control:
+    label: "{{ item.key }}"
+
+- name: Copy the Syncthing chart to the controller
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../../../charts/syncthing/"
+    dest: "{{ syncthing_private_ui_chart_dir }}/"
+    mode: preserve
+
+- name: Generate private Syncthing Helm values
+  ansible.builtin.copy:
+    dest: "{{ syncthing_private_ui_values_path }}"
+    content: "{{ {'privateGui': {'enabled': true, 'nodes': syncthing_private_ui_nodes, 'listenPort': syncthing_private_ui_port, 'healthPort': syncthing_private_ui_health_port, 'tlsSecret': syncthing_private_ui_tls_secret, 'certificate': {'enabled': true, 'commonName': syncthing_private_ui_nodes[0].host, 'clusterIssuer': syncthing_private_ui_cluster_issuer}}, 'ingress': {'enabled': false}, 'basicAuth': {'enabled': true, 'existingSecret': syncthing_private_ui_auth_secret}} | to_nice_yaml }}"
+    mode: '0600'
+
+- name: Install the private manifest comparison utility
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../../files/helm_manifest_changed.py"
+    dest: "{{ syncthing_private_ui_chart_dir }}/check-installed-manifest.py"
+    mode: '0644'

@@ -1,0 +1,69 @@
+- name: Require Linux for the private web NAT
+  ansible.builtin.assert:
+    that:
+      - ansible_system == 'Linux'
+      - ansible_os_family in wireguard_private_web_package_by_os_family
+      - ansible_os_family in wireguard_private_web_binary_by_os_family
+      - wireguard_private_web_wg_service | length > 0
+      - wireguard_private_web_interface | length > 0
+      - wireguard_private_web_proxy_port | int > 0
+      - wireguard_private_web_proxy_port | int < 65536
+      - wireguard_private_web_public_port | int > 0
+      - wireguard_private_web_public_port | int < 65536
+      - wg_socrat_nodes[inventory_hostname].address is match('^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$')
+    fail_msg: Private web NAT requires a Linux host with a WireGuard node address and valid ports.
+
+- name: Install nftables on Debian
+  ansible.builtin.apt:
+    name: "{{ wireguard_private_web_package_by_os_family[ansible_os_family] }}"
+    state: present
+    update_cache: true
+  when:
+    - ansible_os_family == 'Debian'
+    - wireguard_private_web_enabled | bool
+
+- name: Install nftables on Arch
+  community.general.pacman:
+    name: "{{ wireguard_private_web_package_by_os_family[ansible_os_family] }}"
+    state: present
+    update_cache: true
+  when:
+    - ansible_os_family == 'Archlinux'
+    - wireguard_private_web_enabled | bool
+
+- name: Ensure private web state directory exists
+  ansible.builtin.file:
+    path: "{{ wireguard_private_web_backup_path | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+  when: wireguard_private_web_enabled | bool
+
+- name: Install private web NAT script
+  ansible.builtin.template:
+    src: wireguard-private-web.sh.j2
+    dest: "{{ wireguard_private_web_script_path }}"
+    owner: root
+    group: root
+    mode: '0755'
+  notify: Restart private web NAT
+  when: wireguard_private_web_enabled | bool
+
+- name: Install private web NAT systemd unit
+  ansible.builtin.template:
+    src: wireguard-private-web.service.j2
+    dest: "/etc/systemd/system/{{ wireguard_private_web_service_name }}"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart private web NAT
+  when: wireguard_private_web_enabled | bool
+
+- name: Enable and start private web NAT
+  ansible.builtin.systemd_service:
+    name: "{{ wireguard_private_web_service_name }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: wireguard_private_web_enabled | bool

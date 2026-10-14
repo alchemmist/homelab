@@ -1,0 +1,12 @@
+[Unit]
+Description=Private WireGuard web NAT
+Wants=network-online.target {{ wireguard_private_web_wg_service }}
+After=network-online.target {{ wireguard_private_web_wg_service }}
+
+[Service]
+Type=oneshot
+ExecStart={{ wireguard_private_web_script_path }}
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -3,6 +3,21 @@
   hosts: socrat-0
   gather_facts: false
   tasks:
+    - name: Derive private Syncthing endpoints from the WireGuard registry
+      ansible.builtin.include_role:
+        name: syncthing_private_ui
+        tasks_from: prepare
+      vars:
+        syncthing_private_ui_chart_dir: "{{ homelab_user_home }}/tmp-charts/syncthing"
+        syncthing_private_ui_values_path: "{{ homelab_user_home }}/tmp-charts/syncthing/private-ui-values.yml"
+
+    - name: Prepare private Syncthing HTTPS before updating pods
+      ansible.builtin.include_role:
+        name: syncthing_private_ui
+        tasks_from: certificate
+      vars:
+        syncthing_private_ui_chart_dir: "{{ homelab_user_home }}/tmp-charts/syncthing"
+
     - name: Ensure syncthing namespace exists
       ansible.builtin.command: k3s kubectl create namespace syncthing
       register: syncthing_ns
@@ -20,6 +35,7 @@
         helm upgrade --install syncthing ~/tmp-charts/syncthing
         --namespace syncthing
         --kubeconfig /etc/rancher/k3s/k3s.yaml
+        --values {{ homelab_user_home }}/tmp-charts/syncthing/private-ui-values.yml
         --wait
         --timeout 5m
       register: syncthing_helm

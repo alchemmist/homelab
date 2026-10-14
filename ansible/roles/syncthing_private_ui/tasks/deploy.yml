@@ -1,0 +1,66 @@
+- name: Check whether the desired Syncthing release differs
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ syncthing_private_ui_chart_dir }}/check-installed-manifest.py"
+      - --release
+      - "{{ syncthing_private_ui_release }}"
+      - --chart
+      - "{{ syncthing_private_ui_chart_dir }}"
+      - --namespace
+      - "{{ syncthing_private_ui_namespace }}"
+      - --values
+      - "{{ syncthing_private_ui_values_path }}"
+      - --kubeconfig
+      - "{{ syncthing_private_ui_kubeconfig }}"
+  register: syncthing_private_ui_manifest
+  changed_when: false
+  retries: 3
+  delay: 3
+  until: syncthing_private_ui_manifest.rc == 0
+
+- name: Deploy the private node-local Syncthing UI
+  ansible.builtin.command:
+    argv:
+      - helm
+      - upgrade
+      - --install
+      - "{{ syncthing_private_ui_release }}"
+      - "{{ syncthing_private_ui_chart_dir }}"
+      - --namespace
+      - "{{ syncthing_private_ui_namespace }}"
+      - --kubeconfig
+      - "{{ syncthing_private_ui_kubeconfig }}"
+      - --values
+      - "{{ syncthing_private_ui_values_path }}"
+      - --atomic
+      - --wait
+      - --timeout
+      - 5m
+  register: syncthing_private_ui_helm
+  changed_when: "'has been upgraded' in syncthing_private_ui_helm.stdout or 'has been installed' in syncthing_private_ui_helm.stdout"
+  when: (syncthing_private_ui_manifest.stdout | from_json).changed
+
+- name: Verify existing authentication was preserved
+  ansible.builtin.shell: |
+    set -eu
+    kubectl --kubeconfig {{ syncthing_private_ui_kubeconfig | quote }} -n {{ syncthing_private_ui_namespace | quote }} get secret {{ syncthing_private_ui_auth_secret | quote }} -o json |
+    python3 -c 'import base64,hashlib,json,sys; value=base64.b64decode(json.load(sys.stdin)["data"]["users"]); assert value.strip(); print(hashlib.sha256(value).hexdigest())'
+  register: syncthing_private_ui_auth_after
+  changed_when: false
+  failed_when: syncthing_private_ui_auth_after.stdout != syncthing_private_ui_auth_before.stdout
+  no_log: true
+
+- name: Verify all Syncthing pods are ready
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig
+      - "{{ syncthing_private_ui_kubeconfig }}"
+      - -n
+      - "{{ syncthing_private_ui_namespace }}"
+      - rollout
+      - status
+      - daemonset/syncthing
+      - --timeout=120s
+  changed_when: false

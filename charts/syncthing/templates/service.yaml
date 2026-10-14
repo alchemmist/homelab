@@ -1,3 +1,4 @@
+{{- if not .Values.privateGui.enabled }}
 {{- range .Values.gui.nodes }}
 ---
 apiVersion: v1
@@ -36,4 +37,5 @@ subsets:
       - name: gui
         port: {{ $.Values.service.guiPort }}
         protocol: TCP
+{{- end }}
 {{- end }}

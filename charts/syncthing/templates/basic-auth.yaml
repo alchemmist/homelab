@@ -20,6 +20,7 @@ stringData:
   users: ""
 {{- end }}
 {{- end }}
+{{- if .Values.ingress.enabled }}
 ---
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
@@ -31,4 +32,5 @@ metadata:
 spec:
   basicAuth:
     secret: {{ .Values.basicAuth.existingSecret }}
+{{- end }}
 {{- end }}
