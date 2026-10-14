@@ -1,6 +1,8 @@
 ---
 homelab_ssh_public_host: socrat.alchemmist.xyz
 homelab_ssh_port_base: 2222
+homelab_ssh_preserve_ports: [22]
+homelab_ssh_router_mapping_mode: static
 ansible_host: "{{ homelab_ssh_public_host }}"
 ansible_port: "{{ homelab_ssh_port_base + (inventory_hostname.split('-')[-1] | int) }}"
 
@@ -11,6 +13,13 @@ starship_show_hostname: true
 
 wg_socrat_port: 51830
 wg_socrat_keepalive: 25
+wg_socrat_peer_endpoints:
+  socrat-2:
+    socrat-1: ''
+wg_socrat_admin_clients:
+  antonmoss-mac:
+    address: 10.250.0.4
+    public_key: wys2VBbZrDMU+a1w5Gjpu4QlEefD7ZhoJEcCT7mKgyA=
 wg_socrat_nodes:
   socrat-0:
     address: 10.250.0.1

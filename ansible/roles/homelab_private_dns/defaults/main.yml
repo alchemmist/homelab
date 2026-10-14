@@ -1,0 +1,17 @@
+---
+homelab_private_dns_interface: wg-socrat
+homelab_private_dns_listen_address: ''
+homelab_private_dns_port: 53
+homelab_private_dns_records: []
+homelab_private_dns_user: homelab-dns
+homelab_private_dns_group: homelab-dns
+homelab_private_dns_package_by_os_family:
+  Debian: dnsmasq-base
+  Archlinux: dnsmasq
+homelab_private_dns_binary_by_os_family:
+  Debian: /usr/sbin/dnsmasq
+  Archlinux: /usr/bin/dnsmasq
+homelab_private_dns_config_path: /etc/homelab-private-dns.conf
+homelab_private_dns_unit_name: homelab-private-dns.service
+homelab_private_dns_pid_file: /run/homelab-private-dns/dnsmasq.pid
+homelab_private_dns_wg_service: wg-quick@wg-socrat.service

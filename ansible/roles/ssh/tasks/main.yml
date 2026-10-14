@@ -23,7 +23,19 @@
       - homelab_ssh_port | string is match('^[0-9]+$')
       - homelab_ssh_port | int > 0
       - homelab_ssh_port | int < 65536
+      - homelab_ssh_preserve_ports is sequence
+      - homelab_ssh_preserve_ports is not string
+      - >-
+        homelab_ssh_preserve_ports | map('string') | select('match', '^[0-9]+$') | list | length
+        == homelab_ssh_preserve_ports | length
+      - >-
+        homelab_ssh_preserve_ports | map('int') | select('gt', 0) | select('lt', 65536) | list | length
+        == homelab_ssh_preserve_ports | length
     fail_msg: This role requires Debian, Ubuntu, or Arch Linux and a valid SSH server port.
+
+- name: Build the final SSH server port list
+  ansible.builtin.set_fact:
+    homelab_ssh_final_ports: "{{ ([homelab_ssh_port | string] + (homelab_ssh_preserve_ports | map('string') | list)) | unique | list }}"
 
 - name: Select platform SSH names
   ansible.builtin.set_fact:
@@ -58,8 +70,8 @@
 - name: Preserve current ports until the new endpoint has been verified
   ansible.builtin.set_fact:
     homelab_ssh_transition_ports: >-
-      {{ ([homelab_ssh_port | string,
-           homelab_ssh_initial_connection.stdout.split()[-1]] +
+      {{ ((homelab_ssh_final_ports +
+           [homelab_ssh_initial_connection.stdout.split()[-1]]) +
           (homelab_sshd_before.stdout_lines | select('match', '^port ')
            | map('regex_replace', '^port ', '') | list)) | unique | list }}
 
@@ -151,7 +163,7 @@
     - name: Write the final server port
       ansible.builtin.copy:
         dest: /etc/ssh/sshd_config.d/10-homelab-ports.conf
-        content: "Port {{ homelab_ssh_port }}\n"
+        content: "{{ homelab_ssh_final_ports | map('regex_replace', '^', 'Port ') | join('\n') }}\n"
         owner: root
         group: root
         mode: '0644'
@@ -168,7 +180,7 @@
         that:
           - >-
             homelab_sshd_final.stdout_lines | select('match', '^port ')
-            | list == ['port ' ~ homelab_ssh_port]
+            | map('regex_replace', '^port ', '') | list | sort == homelab_ssh_final_ports | sort
         fail_msg: Remove conflicting Port directives from sshd_config or its included files before retrying.
   rescue:
     - name: Restore the verified transitional configuration

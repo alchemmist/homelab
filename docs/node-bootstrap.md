@@ -61,7 +61,7 @@ Migrate the VPS through its existing public relay endpoint:
 ansible-playbook playbooks/ssh.yml --limit socrat-2 --ask-become-pass
 ```
 
-The role preserves both the actual connection port and configured server ports until it verifies a fresh connection to the desired server port. Only then does it remove the old port. A conflicting configuration is restored to its transitional state and reported. The gateway timer follows backend changes automatically; public endpoint numbers remain unchanged.
+The role preserves both the actual connection port and configured server ports until it verifies a fresh connection to the desired server port. Only then does it remove ports absent from `homelab_ssh_preserve_ports`. The deployed `[22]` setting retains recovery SSH. A conflicting configuration is restored to its transitional state and reported. Public endpoint numbers remain unchanged; static router mappings are managed separately.
 
 For the VPS direct recovery alias, also allow incoming TCP `2222` in the provider/host firewall and update `homelab_ssh_direct_port` to `2222` after migration. Regenerate the client config.
 
@@ -72,7 +72,7 @@ Do not pass `-e ansible_port=...` to the SSH server migration playbook: extra va
 1. Install Debian, Ubuntu, or Arch Linux with Python 3, working SSH, an administrator account with sudo, and your public SSH key. Verify its host key through a trusted channel.
 2. Add `socrat-N` under `Socrat` in `inventory/hosts.yml`, setting `homelab_ssh_private_host` to its LAN or WireGuard address and `ansible_ssh_private_key_file` to the controller's private key path. Set `ansible_user` if needed. External port `2222 + N` is computed automatically.
 3. For a remote node, configure WireGuard first and set `homelab_ssh_relay: true`. For a home node, reserve its LAN address and add it to `inventory/lan.yml` for direct provisioning.
-4. Rerun `ssh-gateway.yml` and `ssh-client.yml`. Verify the destination host key and test `ssh socrat-N`.
+4. Add the persistent router forward or relay required by the new node, then rerun `ssh-gateway.yml` and `ssh-client.yml`. In static mode the gateway playbook manages relay sockets but does not create router forwards. Verify the destination host key and test `ssh socrat-N`.
 5. Apply the host baseline with `ansible-playbook playbooks/site.yml --limit socrat-N --ask-become-pass`. A new home node initially on server port `22` should first be migrated through a LAN overlay using `ssh.yml` and `homelab_ssh_bootstrap_port=22`.
 
 `site.yml` configures host settings, shared users, Starship, Syncthing host policy, and workload policy. It does not allocate VPN addresses or automatically join Kubernetes. Update the host aliases in the base role, `wg_socrat_nodes`, and the node IP map in `k3s.yml`, then run the corresponding networking and Kubernetes playbooks. Review storage and application placement for the new node separately.
@@ -99,6 +99,6 @@ loginctl show-user alchemmist -p Linger
 upnpc -l
 ```
 
-Expect public TCP mappings `2222`, `2223`, and `2224`, an active timer, and `Linger=yes`. A missing mapping should return during the next successful reconciliation. Test public endpoints from an external network as well as from the LAN.
+In the deployed static mode, expect public TCP mappings `2222`, `2223`, and `2224` in the router configuration, a disabled gateway timer, an active relay socket, and `Linger=yes`. Ansible does not recreate missing static router mappings. See [router desired state](router-static-mappings.md) and the [private administrative access runbook](wireguard-admin-access-plan.md#reapply-the-deployed-configuration). Test public endpoints from an external network as well as from the LAN.
 
 For SSH server persistence, rerun `ssh.yml` without a bootstrap override, check `sudo sshd -T`, and verify the service is enabled (`ssh.service` on Debian, `sshd.service` on Arch). At a suitable maintenance time, reboot the node and verify fresh SSH access.

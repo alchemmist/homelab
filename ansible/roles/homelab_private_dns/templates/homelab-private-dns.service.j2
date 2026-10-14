@@ -1,0 +1,19 @@
+[Unit]
+Description=Private WireGuard DNS for the homelab
+Wants={{ homelab_private_dns_wg_service }}
+Requires={{ homelab_private_dns_wg_service }}
+After=network-online.target {{ homelab_private_dns_wg_service }}
+PartOf={{ homelab_private_dns_wg_service }}
+BindsTo={{ homelab_private_dns_wg_service }}
+
+[Service]
+Type=simple
+ExecStartPre={{ homelab_private_dns_binary }} --test --conf-file={{ homelab_private_dns_config_path }}
+ExecStart={{ homelab_private_dns_binary }} --keep-in-foreground --conf-file={{ homelab_private_dns_config_path }} --user={{ homelab_private_dns_user }} --group={{ homelab_private_dns_group }} --pid-file={{ homelab_private_dns_pid_file }}
+Restart=on-failure
+RestartSec=2s
+RuntimeDirectory=homelab-private-dns
+PIDFile={{ homelab_private_dns_pid_file }}
+
+[Install]
+WantedBy=multi-user.target

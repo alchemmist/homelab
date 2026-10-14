@@ -1,0 +1,154 @@
+---
+- name: Require macOS for WireGuard admin client preparation
+  ansible.builtin.assert:
+    that:
+      - ansible_system == 'Darwin'
+    fail_msg: This role prepares a WireGuard profile and split DNS for macOS only.
+  tags:
+    - prepare
+    - dns
+
+- name: Validate WireGuard admin peer inventory
+  ansible.builtin.assert:
+    that:
+      - wireguard_admin_peers | length == 3
+      - item.public_key | length > 0
+      - item.public_key is match('^[A-Za-z0-9+/]{43}=$')
+      - item.endpoint | length > 0
+      - item.address is match('^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$')
+      - item.address is not search('/')
+    fail_msg: Peer {{ item.name }} must have a WireGuard public key, endpoint, and bare IPv4 address.
+  loop: "{{ wireguard_admin_peers }}"
+  loop_control:
+    label: "{{ item.name }}"
+  tags: prepare
+
+- name: Validate unique WireGuard admin peer addresses and keys
+  ansible.builtin.assert:
+    that:
+      - (wireguard_admin_peers | map(attribute='address') | list | unique | length) == (wireguard_admin_peers | length)
+      - (wireguard_admin_peers | map(attribute='public_key') | list | unique | length) == (wireguard_admin_peers | length)
+    fail_msg: WireGuard admin peer addresses and public keys must be unique.
+  tags: prepare
+
+- name: Create WireGuard app configuration directory
+  ansible.builtin.file:
+    path: "{{ wireguard_admin_config_dir }}"
+    state: directory
+    mode: '0700'
+  tags: prepare
+
+- name: Check for existing Mac private key
+  ansible.builtin.stat:
+    path: "{{ wireguard_admin_private_key_path }}"
+  register: wireguard_admin_private_key_stat
+  tags: prepare
+
+- name: Generate Mac private key
+  ansible.builtin.command: wg genkey
+  register: wireguard_admin_generated_private_key
+  changed_when: true
+  no_log: true
+  when: not wireguard_admin_private_key_stat.stat.exists
+  tags: prepare
+
+- name: Save generated Mac private key
+  ansible.builtin.copy:
+    content: "{{ wireguard_admin_generated_private_key.stdout | trim }}\n"
+    dest: "{{ wireguard_admin_private_key_path }}"
+    mode: '0600'
+    force: false
+  no_log: true
+  when: not wireguard_admin_private_key_stat.stat.exists
+  tags: prepare
+
+- name: Enforce Mac private key permissions
+  ansible.builtin.file:
+    path: "{{ wireguard_admin_private_key_path }}"
+    state: file
+    mode: '0600'
+  no_log: true
+  tags: prepare
+
+- name: Read Mac private key
+  ansible.builtin.slurp:
+    src: "{{ wireguard_admin_private_key_path }}"
+  register: wireguard_admin_private_key_contents
+  no_log: true
+  tags: prepare
+
+- name: Normalize Mac private key fact
+  ansible.builtin.set_fact:
+    wireguard_admin_private_key: "{{ wireguard_admin_private_key_contents.content | b64decode | trim }}"
+  no_log: true
+  tags: prepare
+
+- name: Derive Mac public key
+  ansible.builtin.command: wg pubkey
+  args:
+    stdin: "{{ wireguard_admin_private_key }}\n"
+  register: wireguard_admin_public_key_command
+  changed_when: false
+  no_log: true
+  tags: prepare
+
+- name: Save Mac public key beside private key
+  ansible.builtin.copy:
+    content: "{{ wireguard_admin_public_key_command.stdout | trim }}\n"
+    dest: "{{ wireguard_admin_public_key_path }}"
+    mode: '0644'
+  no_log: true
+  tags: prepare
+
+- name: Render WireGuard Mac profile
+  ansible.builtin.template:
+    src: wg-socrat-admin.conf.j2
+    dest: "{{ wireguard_admin_profile_path }}"
+    mode: '0600'
+  no_log: true
+  tags: prepare
+
+- name: Show Mac public key for separate server inventory update
+  ansible.builtin.debug:
+    msg: "WireGuard admin Mac public key: {{ wireguard_admin_public_key_command.stdout | trim }}"
+  tags: prepare
+
+- name: Create managed macOS resolver directory
+  become: true
+  ansible.builtin.file:
+    path: "{{ wireguard_admin_resolver_dir }}"
+    state: directory
+    owner: root
+    group: wheel
+    mode: '0755'
+  tags: dns
+
+- name: Install split DNS resolver for socrat-0
+  become: true
+  ansible.builtin.copy:
+    dest: "{{ wireguard_admin_resolver_dir }}/0.socrat.alchemmist.xyz"
+    content: "nameserver 10.250.0.2\nnameserver 10.250.0.3\nnameserver 10.250.0.1\ntimeout {{ wireguard_admin_dns_timeout }}\noptions attempts:{{ wireguard_admin_dns_attempts }}\n"
+    owner: root
+    group: wheel
+    mode: '0644'
+  tags: dns
+
+- name: Install split DNS resolver for socrat-1
+  become: true
+  ansible.builtin.copy:
+    dest: "{{ wireguard_admin_resolver_dir }}/1.socrat.alchemmist.xyz"
+    content: "nameserver 10.250.0.2\nnameserver 10.250.0.3\nnameserver 10.250.0.1\ntimeout {{ wireguard_admin_dns_timeout }}\noptions attempts:{{ wireguard_admin_dns_attempts }}\n"
+    owner: root
+    group: wheel
+    mode: '0644'
+  tags: dns
+
+- name: Install split DNS resolver for socrat-2
+  become: true
+  ansible.builtin.copy:
+    dest: "{{ wireguard_admin_resolver_dir }}/2.socrat.alchemmist.xyz"
+    content: "nameserver 10.250.0.2\nnameserver 10.250.0.3\nnameserver 10.250.0.1\ntimeout {{ wireguard_admin_dns_timeout }}\noptions attempts:{{ wireguard_admin_dns_attempts }}\n"
+    owner: root
+    group: wheel
+    mode: '0644'
+  tags: dns

@@ -1,0 +1,8 @@
+---
+wg_socrat_admin_firewall_interface: wg-socrat
+wg_socrat_admin_firewall_service_name: wg-socrat-admin-firewall.service
+wg_socrat_admin_firewall_script_path: /usr/local/libexec/wg-socrat-admin-firewall
+wg_socrat_admin_firewall_chain_prefix: WG_SOCRAT_ADMIN
+wg_socrat_admin_firewall_ssh_port: 2222
+wg_socrat_admin_firewall_dns_port: 53
+wg_socrat_admin_clients: {}

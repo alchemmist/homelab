@@ -1,0 +1,108 @@
+---
+- name: Validate private DNS settings
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family in homelab_private_dns_package_by_os_family
+      - ansible_os_family in homelab_private_dns_binary_by_os_family
+      - homelab_private_dns_listen_address | length > 0
+      - homelab_private_dns_listen_address is match('^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$')
+      - homelab_private_dns_listen_address.split('.') | length == 4
+      - homelab_private_dns_listen_address.split('.') | map('int') | select('le', 255) | list | length == 4
+      - homelab_private_dns_interface | length > 0
+      - homelab_private_dns_port | int > 0
+      - homelab_private_dns_port | int < 65536
+      - homelab_private_dns_records | length > 0
+    fail_msg: Private DNS requires a listen address, a WireGuard interface, and at least one record.
+  tags:
+    - homelab_private_dns_validate
+
+- name: Validate private DNS records
+  ansible.builtin.assert:
+    that:
+      - item.name is match('^[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?\\.?$')
+      - item.address is match('^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$')
+      - item.address.split('.') | length == 4
+      - item.address.split('.') | map('int') | select('le', 255) | list | length == 4
+    fail_msg: Private DNS records and listen address must contain valid DNS names and IP addresses.
+  loop: "{{ homelab_private_dns_records }}"
+  loop_control:
+    label: "{{ item.name | default('unnamed') }}"
+  tags:
+    - homelab_private_dns_validate
+
+- name: Select private DNS package and binary
+  ansible.builtin.set_fact:
+    homelab_private_dns_package: "{{ homelab_private_dns_package_by_os_family[ansible_os_family] }}"
+    homelab_private_dns_binary: "{{ homelab_private_dns_binary_by_os_family[ansible_os_family] }}"
+
+- name: Install private DNS package on Debian
+  ansible.builtin.apt:
+    name: "{{ homelab_private_dns_package }}"
+    state: present
+    update_cache: true
+  when: ansible_os_family == 'Debian'
+
+- name: Install private DNS package on Arch
+  community.general.pacman:
+    name: "{{ homelab_private_dns_package }}"
+    state: present
+    update_cache: true
+  when: ansible_os_family == 'Archlinux'
+
+- name: Ensure private DNS group exists
+  ansible.builtin.group:
+    name: "{{ homelab_private_dns_group }}"
+    system: true
+    state: present
+
+- name: Ensure private DNS user exists
+  ansible.builtin.user:
+    name: "{{ homelab_private_dns_user }}"
+    group: "{{ homelab_private_dns_group }}"
+    system: true
+    create_home: false
+    state: present
+
+- name: Ensure private DNS configuration directory exists
+  ansible.builtin.file:
+    path: "{{ homelab_private_dns_config_path | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Render private DNS configuration
+  ansible.builtin.template:
+    src: dnsmasq.conf.j2
+    dest: "{{ homelab_private_dns_config_path }}"
+    owner: root
+    group: root
+    mode: '0644'
+    validate: "{{ homelab_private_dns_binary }} --test --conf-file=%s"
+  notify: Restart private DNS
+
+- name: Render private DNS systemd unit
+  ansible.builtin.template:
+    src: homelab-private-dns.service.j2
+    dest: "/etc/systemd/system/{{ homelab_private_dns_unit_name }}"
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - Reload systemd
+    - Restart private DNS
+
+- name: Validate private DNS configuration
+  ansible.builtin.command:
+    argv:
+      - "{{ homelab_private_dns_binary }}"
+      - --test
+      - "--conf-file={{ homelab_private_dns_config_path }}"
+  changed_when: false
+
+- name: Enable and start private DNS
+  ansible.builtin.systemd_service:
+    name: "{{ homelab_private_dns_unit_name }}"
+    enabled: true
+    state: started
+    daemon_reload: true

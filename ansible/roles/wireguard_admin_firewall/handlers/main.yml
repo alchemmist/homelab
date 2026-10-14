@@ -1,0 +1,6 @@
+---
+- name: Restart WireGuard administrative firewall
+  ansible.builtin.systemd_service:
+    name: "{{ wg_socrat_admin_firewall_service_name }}"
+    state: restarted
+    daemon_reload: true

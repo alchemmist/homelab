@@ -1,0 +1,13 @@
+[Unit]
+Description=Restrict WireGuard administrative client traffic
+After=network-online.target wg-quick@wg-socrat.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart={{ wg_socrat_admin_firewall_script_path }}
+ExecStop={{ wg_socrat_admin_firewall_script_path }} remove
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

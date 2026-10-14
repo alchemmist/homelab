@@ -1,0 +1,10 @@
+---
+- name: Prepare the Mac administrative WireGuard client
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  become: false
+  vars:
+    wg_socrat_nodes: "{{ hostvars['socrat-0'].wg_socrat_nodes }}"
+  roles:
+    - wireguard_admin_client

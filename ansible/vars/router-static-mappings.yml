@@ -1,0 +1,45 @@
+---
+router_static_mappings:
+  - name: wireguard-socrat-0
+    interface: WAN2
+    protocol: udp
+    external_port: 51830
+    destination_address: 192.168.0.23
+    destination_port: 51830
+  - name: wireguard-socrat-1
+    interface: WAN2
+    protocol: udp
+    external_port: 51831
+    destination_address: 192.168.0.24
+    destination_port: 51830
+  - name: ssh-socrat-0-recovery
+    interface: WAN2
+    protocol: tcp
+    external_port: 2222
+    destination_address: 192.168.0.23
+    destination_port: 22
+  - name: ssh-socrat-1-recovery
+    interface: WAN2
+    protocol: tcp
+    external_port: 2223
+    destination_address: 192.168.0.24
+    destination_port: 2222
+  - name: ssh-socrat-2-relay
+    interface: WAN2
+    protocol: tcp
+    external_port: 2224
+    destination_address: 192.168.0.23
+    destination_port: 2224
+
+router_dhcp_reservations:
+  - name: socrat-0
+    address: 192.168.0.23
+    mac_address: 10:7c:61:08:33:76
+  - name: socrat-1
+    address: 192.168.0.24
+    mac_address: 38:d5:7a:e6:01:8b
+
+router_static_mapping_state:
+  mode: persistent
+  management: manual-vendor-interface
+  router_address: 192.168.0.1

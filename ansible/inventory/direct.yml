@@ -1,0 +1,14 @@
+---
+all:
+  children:
+    Socrat:
+      hosts:
+        socrat-0:
+          ansible_host: 192.168.0.23
+          ansible_port: 22
+        socrat-1:
+          ansible_host: 192.168.0.24
+          ansible_port: 2222
+        socrat-2:
+          ansible_host: 176.98.185.59
+          ansible_port: 22

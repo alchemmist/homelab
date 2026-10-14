@@ -1,6 +1,8 @@
 # WireGuard administrative access plan
 
-Status: proposed; no runtime changes applied by this plan.
+Status: deployed on all three nodes and the administrator Mac on 2026-10-14.
+The phases below retain the design and acceptance checklist; see deployment
+status for completed checks and remaining restart/failure tests.
 
 ## Outcome
 
@@ -63,9 +65,9 @@ No node acts as the Mac's mandatory transit gateway in this phase. Broad forward
 
 ## Phase 4: redundant private DNS
 
-1. Deploy identical host-level DNS records on socrat-1 and socrat-2, independently of Kubernetes and socrat-0.
+1. Deploy identical host-level DNS records on all three nodes, independently of Kubernetes.
 2. Bind resolvers to their WireGuard addresses and restrict TCP/UDP 53 to the management network.
-3. Configure macOS split DNS for the node names with both resolver addresses.
+3. Configure macOS split DNS for the node names with all three resolver addresses.
 4. Preserve public and corporate DNS behavior; do not redirect unrelated public application names into this private zone accidentally.
 5. Verify resolver failover rather than assuming that listing two servers is sufficient.
 6. Define disconnected behavior: private node names must not silently resolve through the public wildcard and connect to a different SSH server.
@@ -121,3 +123,94 @@ Document provisioning of future nodes and administrator devices, including keys,
 - WireGuard NAT keepalives: https://www.wireguard.com/quickstart/
 - WireGuard Apple DNS behavior: https://git.zx2c4.com/wireguard-apple/tree/Sources/WireGuardKit/PacketTunnelSettingsGenerator.swift
 - OpenSSH options: https://man.openbsd.org/ssh_config
+
+## Deployment status — 2026-10-14
+
+The official macOS WireGuard app has the active `wg-socrat-admin` profile.
+The Mac has `10.250.0.4/32` and independent peers for all three nodes.
+Only the three node /32 routes are installed by this profile; it has no default
+route and no `DNS=` setting. Existing VPN resolvers remain present.
+
+All three nodes now run enabled host-level `homelab-private-dns.service` and
+`wg-socrat-admin-firewall.service`. SSH listens on TCP 2222, with TCP 22 retained
+for recovery. The administrative peer is restricted to SSH 2222 and DNS 53;
+transit to other networks is not permitted by the administrative firewall.
+
+Live checks from the Mac passed for SSH to all three private DNS names using
+`-F /dev/null` and explicit identity files. All three names resolve to their
+expected WireGuard addresses. UDP and TCP DNS queries succeeded against each
+of the three resolvers. The unittest suite completed with 44 tests, one skipped.
+Existing `socrat-0`, `socrat-1`, and `socrat-2`
+SSH aliases still work. All three Kubernetes nodes report Ready.
+
+Router mappings are persistent static WAN2 rules. Their declarative reference
+is `ansible/vars/router-static-mappings.yml`; application through the vendor
+interface remains manual, as described in `router-static-mappings.md`:
+
+| External port | Destination | Purpose |
+| --- | --- | --- |
+| UDP 51830 | 192.168.0.23:51830 | Direct WireGuard peer socrat-0 |
+| UDP 51831 | 192.168.0.24:51830 | Direct WireGuard peer socrat-1 |
+| TCP 2222 | 192.168.0.23:22 | Preserved public recovery SSH |
+| TCP 2223 | 192.168.0.24:2222 | Preserved public recovery SSH |
+| TCP 2224 | 192.168.0.23:2224 | Preserved SSH relay to socrat-2 |
+
+The former UPnP reconciliation service/timer on socrat-0 are stopped and disabled;
+the compatibility relay socket remains active. The VPS also retains direct
+public SSH on 22 and 2222. The public recovery mapping to socrat-0 still targets
+22 intentionally during the compatibility period; private WireGuard SSH uses
+2222 on every node.
+
+The Mac profile is stored at
+`~/Library/Application Support/WireGuard/Configurations/wg-socrat-admin.conf`
+with private permissions. Import it through WireGuard's **Import tunnel(s)
+from File** menu and activate it in the app. Opening the file with `open -a`
+does not import it. Never commit this profile or its private key.
+
+Split DNS files are installed at `/etc/resolver/0.socrat.alchemmist.xyz` and the
+corresponding files for nodes 1 and 2. Each lists resolvers 10.250.0.2,
+10.250.0.3, and 10.250.0.1. Ansible maintenance access is available through
+`inventory/direct.yml` alongside `inventory/hosts.yml`.
+
+Still pending acceptance: controlled resolver-failure tests, reconnect and
+sleep/wake checks, and persistence checks after node/router restarts. No
+production nodes or router were deliberately rebooted for these checks.
+
+## Reapply the deployed configuration
+
+Install Ansible and `wireguard-tools` on the controller. Install the official
+WireGuard macOS application separately. Run these commands from `ansible/`:
+
+```bash
+ansible-playbook playbooks/wireguard-admin-client.yml --tags prepare
+ansible-playbook playbooks/wireguard-admin-access.yml -i inventory/hosts.yml -i inventory/direct.yml --ask-become-pass
+ansible-playbook playbooks/wireguard-admin-client.yml --tags dns --ask-become-pass
+ansible-playbook playbooks/ssh-gateway.yml -i inventory/hosts.yml -i inventory/direct.yml
+```
+
+The server playbook deliberately uses the independent maintenance endpoints
+in `inventory/direct.yml`; it does not depend on the new private DNS or Mac
+tunnel working. SSH listeners are managed separately by `playbooks/ssh.yml`;
+`homelab_ssh_preserve_ports: [22]` keeps the current recovery endpoints working.
+For first-time port migration, use the staged procedure in `node-bootstrap.md`
+with a maintenance inventory whose final endpoint is 2222 and bootstrap port 22.
+
+Profile preparation preserves the existing Mac key and shows its public key.
+For a new Mac, add that public key and a unique address to
+`wg_socrat_admin_clients` before applying the server playbook; the current
+registry describes this Mac only. Re-import the generated profile in the app
+if its contents change. Ansible does not automate Apple's VPN approval dialog.
+
+Use the explicit `-i` SSH commands in Phase 6. Public-key authorization on a node
+does not make OpenSSH automatically select an arbitrarily named private key:
+`~/.ssh/socrat-master`, `~/.ssh/socrat-1`, and `~/.ssh/personal_server` are selected
+by the old aliases only. The private DNS names have no identity selectors in
+the SSH client configuration. This deployment therefore keeps the user's
+explicit-key connection workflow.
+
+After the reported YouTube failure, the Mac profile was stopped and started
+through `scutil --nc` for an A/B check. YouTube TLS timed out in both states;
+Google and example.com succeeded in both states. The YouTube route stayed on
+the existing `yteam` OpenVPN tunnel, and ChatGPT used the separate Splitty path.
+WireGuard was restored and all three private SSH connections passed again.
+This check does not establish the upstream cause of the YouTube failure.

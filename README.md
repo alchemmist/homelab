@@ -36,7 +36,7 @@ All primary aliases connect to `socrat.alchemmist.xyz`. External port numbers ar
 | `socrat-1` | `socrat.alchemmist.xyz:2223` | `192.168.0.24:2222` |
 | `socrat-2` | `socrat.alchemmist.xyz:2224` | Relay on `socrat-0` through WireGuard to `10.250.0.2:22` |
 
-The gateway restores missing router mappings every 30 seconds using a lingering systemd user timer. It prefers backend port `2222` and accepts legacy `22`, allowing server migrations without changing public aliases. The relay preserves SSH encryption and uses each destination's own host key and authorized keys. `socrat-2-direct` retains the independent VPS endpoint for recovery when the home gateway is unavailable.
+The home router owns persistent static mappings. `homelab_ssh_router_mapping_mode: static` disables the former UPnP reconciliation timer while preserving the SSH relay. TCP 22 remains enabled alongside 2222 for recovery. The relay preserves SSH encryption and uses each destination's own host key and authorized keys. `socrat-2-direct` retains the independent VPS endpoint for recovery when the home gateway is unavailable.
 
 From `ansible/`:
 
@@ -46,6 +46,28 @@ ansible-playbook playbooks/ssh-client.yml
 ```
 
 The first playbook configures the gateway on `socrat-0`; the second manages local aliases in `~/.ssh/config.d/homelab.conf`. See [node provisioning and SSH migration](docs/node-bootstrap.md) for initial setup, recovery, and adding nodes.
+
+## Private administrative access
+
+The Mac joins `wg-socrat` with one WireGuard profile and a direct peer for each
+node. Private DNS names `0.socrat.alchemmist.xyz`, `1.socrat.alchemmist.xyz`, and
+`2.socrat.alchemmist.xyz` resolve to the individual WireGuard addresses; every
+node accepts private SSH on TCP 2222. DNS runs on all three hosts outside
+Kubernetes. The Mac peer is restricted to SSH and DNS.
+
+Server configuration is managed by `playbooks/wireguard-admin-access.yml`;
+`playbooks/wireguard-admin-client.yml` preserves the local private key and
+renders the Mac profile and split DNS configuration. Profile import and macOS
+VPN approval use the official WireGuard application.
+
+```bash
+ssh -i ~/.ssh/socrat-master -p 2222 alchemmist@0.socrat.alchemmist.xyz
+ssh -i ~/.ssh/socrat-1 -p 2222 alchemmist@1.socrat.alchemmist.xyz
+ssh -i ~/.ssh/personal_server -p 2222 alchemmist@2.socrat.alchemmist.xyz
+```
+
+See the [administrative access runbook](docs/wireguard-admin-access-plan.md#reapply-the-deployed-configuration)
+for Ansible commands, router mappings, provisioning and remaining acceptance checks.
 
 ## Run
 

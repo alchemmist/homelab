@@ -1,0 +1,12 @@
+port={{ homelab_private_dns_port }}
+listen-address={{ homelab_private_dns_listen_address }}
+bind-dynamic
+except-interface=lo
+no-resolv
+no-hosts
+domain-needed
+bogus-priv
+{% for record in homelab_private_dns_records | sort(attribute='name') %}
+host-record={{ record.name }},{{ record.address }}
+local=/{{ record.name }}/
+{% endfor %}

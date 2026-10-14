@@ -51,13 +51,50 @@
   register: wg_socrat_generated_private_key
   changed_when: true
   no_log: true
-  when: not wg_socrat_conf_stat.stat.exists
+  when:
+    - not wg_socrat_conf_stat.stat.exists
+    - wg_socrat_runtime_private_key.rc != 0
 
 - name: Store wg-socrat private key fact
   ansible.builtin.set_fact:
     wg_socrat_private_key: >-
       {{ (wg_socrat_runtime_private_key.stdout if wg_socrat_runtime_private_key.rc == 0 else (wg_socrat_existing_private_key.stdout if wg_socrat_conf_stat.stat.exists else wg_socrat_generated_private_key.stdout)) | trim }}
   no_log: true
+
+- name: Derive selected wg-socrat public key before rendering configuration
+  ansible.builtin.command: wg pubkey
+  args:
+    stdin: "{{ wg_socrat_private_key }}\n"
+  register: wg_socrat_derived_public_key
+  changed_when: false
+  no_log: true
+
+- name: Verify selected wg-socrat public key before applying changes
+  ansible.builtin.assert:
+    that:
+      - >-
+        wg_socrat_derived_public_key.stdout | trim == wg_socrat_nodes[inventory_hostname].public_key
+    fail_msg: >-
+      Selected wg-socrat public key for {{ inventory_hostname }} does not match inventory.
+      Refusing to apply changes; update wg_socrat_nodes public_key after an intentional key rotation.
+
+- name: Collect configured wg-socrat admin client fields
+  ansible.builtin.set_fact:
+    wg_socrat_admin_client_items: "{{ wg_socrat_admin_clients | dict2items }}"
+    wg_socrat_admin_client_addresses: "{{ wg_socrat_admin_clients | dict2items | map(attribute='value.address') | list }}"
+    wg_socrat_admin_client_keys: "{{ wg_socrat_admin_clients | dict2items | map(attribute='value.public_key') | list }}"
+
+- name: Validate configured wg-socrat admin clients
+  ansible.builtin.assert:
+    that:
+      - item.value.address is match('^(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])\\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])$')
+      - item.value.public_key not in (wg_socrat_nodes | dict2items | map(attribute='value.public_key') | list)
+      - item.value.address not in (wg_socrat_nodes | dict2items | map(attribute='value.address') | list)
+      - wg_socrat_admin_client_addresses | length == wg_socrat_admin_client_addresses | unique | length
+      - wg_socrat_admin_client_keys | length == wg_socrat_admin_client_keys | unique | length
+    fail_msg: >-
+      Invalid or conflicting wg-socrat admin client {{ item.key }}. Admin client addresses must be bare IPv4 values.
+  loop: "{{ wg_socrat_admin_client_items }}"
 
 - name: Render wg-socrat config
   ansible.builtin.template:
@@ -80,10 +117,10 @@
 - name: Apply wg-socrat peer changes without dropping interface
   ansible.builtin.shell: |
     set -eu
-    tmp=$(mktemp)
+    tmp=$(mktemp /run/wg-socrat.XXXXXX)
+    trap 'rm -f "$tmp"' EXIT
     wg-quick strip wg-socrat > "$tmp"
     wg syncconf wg-socrat "$tmp"
-    rm -f "$tmp"
   when:
     - wg_socrat_config.changed
     - not wg_socrat_service.changed

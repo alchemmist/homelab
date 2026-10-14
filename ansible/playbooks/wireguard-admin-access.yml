@@ -1,0 +1,24 @@
+---
+- name: Configure independent administrative access on Socrat nodes
+  hosts: Socrat
+  gather_facts: true
+  become: true
+  serial: 1
+  any_errors_fatal: true
+  vars:
+    homelab_private_dns_listen_address: "{{ wg_socrat_nodes[inventory_hostname].address }}"
+  pre_tasks:
+    - name: Initialize private node DNS records
+      ansible.builtin.set_fact:
+        homelab_private_dns_records: []
+
+    - name: Derive private DNS records from the WireGuard inventory
+      ansible.builtin.set_fact:
+        homelab_private_dns_records: "{{ homelab_private_dns_records + [{'name': item.key.split('-')[-1] ~ '.' ~ homelab_ssh_public_host, 'address': item.value.address}] }}"
+      loop: "{{ wg_socrat_nodes | dict2items }}"
+      loop_control:
+        label: "{{ item.key }}"
+  roles:
+    - wireguard_admin_firewall
+    - wireguard_socrat
+    - homelab_private_dns

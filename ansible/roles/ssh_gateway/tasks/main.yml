@@ -1,4 +1,9 @@
 ---
+- name: Validate router mapping management mode
+  ansible.builtin.assert:
+    that:
+      - homelab_ssh_router_mapping_mode in ['upnp', 'static']
+
 - name: Check required gateway tools
   ansible.builtin.command: "test -x {{ item }}"
   loop:
@@ -83,9 +88,28 @@
     enabled: true
     state: started
     daemon_reload: true
+  when: homelab_ssh_router_mapping_mode == 'upnp'
 
 - name: Reconcile public SSH mappings now
   ansible.builtin.systemd_service:
     scope: user
     name: homelab-ssh-gateway.service
     state: started
+  when: homelab_ssh_router_mapping_mode == 'upnp'
+
+- name: Stop dynamic reconciliation when the router owns persistent mappings
+  ansible.builtin.systemd_service:
+    scope: user
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+    daemon_reload: true
+  loop:
+    - homelab-ssh-gateway.timer
+    - homelab-ssh-gateway.service
+  when: homelab_ssh_router_mapping_mode == 'static'
+
+- name: Clear obsolete dynamic mapping errors
+  ansible.builtin.command: systemctl --user reset-failed homelab-ssh-gateway.service
+  changed_when: false
+  when: homelab_ssh_router_mapping_mode == 'static'
