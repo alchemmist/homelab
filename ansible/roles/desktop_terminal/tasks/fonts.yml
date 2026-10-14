@@ -1,0 +1,59 @@
+---
+- name: Install font discovery and archive tools
+  ansible.builtin.package:
+    name: [fontconfig, unzip]
+    state: present
+
+- name: Check the desktop account's terminal font
+  become_user: "{{ homelab_user }}"
+  ansible.builtin.command:
+    argv: [fc-match, -f, '%{family}', "{{ homelab_alacritty_font_family }}"]
+  register: homelab_alacritty_font_match
+  changed_when: false
+  check_mode: false
+
+- name: Install the missing terminal font from a verified release
+  when: homelab_alacritty_font_family not in homelab_alacritty_font_match.stdout.split(',')
+  block:
+    - name: Create managed font directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      loop:
+        - /var/cache/homelab/fonts
+        - /usr/local/share/fonts/homelab-firacode-nerd
+
+    - name: Download the pinned Nerd Font archive
+      ansible.builtin.get_url:
+        url: "{{ homelab_alacritty_font_url }}"
+        checksum: "{{ homelab_alacritty_font_checksum }}"
+        dest: /var/cache/homelab/fonts/FiraCode.zip
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Install the font files and license
+      ansible.builtin.unarchive:
+        src: /var/cache/homelab/fonts/FiraCode.zip
+        dest: /usr/local/share/fonts/homelab-firacode-nerd
+        remote_src: true
+        owner: root
+        group: root
+        mode: 'u=rwX,go=rX'
+
+    - name: Refresh the desktop account font cache
+      become_user: "{{ homelab_user }}"
+      ansible.builtin.command: fc-cache -f /usr/local/share/fonts/homelab-firacode-nerd
+      changed_when: true
+
+- name: Verify the terminal font does not resolve to a fallback
+  become_user: "{{ homelab_user }}"
+  ansible.builtin.command:
+    argv: [fc-match, -f, '%{family}', "{{ homelab_alacritty_font_family }}"]
+  register: homelab_alacritty_font_verified
+  changed_when: false
+  failed_when: homelab_alacritty_font_family not in homelab_alacritty_font_verified.stdout.split(',')
+  when: not ansible_check_mode

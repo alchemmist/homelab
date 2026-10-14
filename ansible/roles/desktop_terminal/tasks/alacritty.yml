@@ -1,4 +1,7 @@
 ---
+- name: Ensure the terminal font is available
+  ansible.builtin.import_tasks: fonts.yml
+
 - name: Validate Alacritty background opacity
   ansible.builtin.assert:
     that:
@@ -53,6 +56,18 @@
     group: "{{ homelab_user }}"
     mode: '0644'
     backup: true
+
+- name: Use the installed terminal font for every face
+  community.general.ini_file:
+    path: "{{ homelab_alacritty_config.stdout }}"
+    section: "font.{{ item }}"
+    option: family
+    value: "{{ homelab_alacritty_font_family | to_json }}"
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: '0644'
+    backup: true
+  loop: [normal, bold, italic, bold_italic]
 
 - name: Validate Alacritty TOML syntax
   ansible.builtin.command:

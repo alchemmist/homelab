@@ -199,7 +199,7 @@ The monitor launcher sets all btm graph windows and retention to `homelab_monito
 
 On `socrat-1`, workspace 1 (the monitoring terminal) is bound to the external `HDMI-A-1` display and is its default workspace. This keeps the monitor visible when the laptop lid is closed.
 
-`desktop_terminal` sets `[window] opacity = 0.0` in Alacritty by default on all desktop nodes, including newly added ones. Override `homelab_alacritty_opacity` in host variables if needed. Existing fonts, theme imports, and key bindings are preserved in node-local configuration; links into personal dotfiles are materialized before editing.
+`desktop_terminal` sets `[window] opacity = 0.0` in Alacritty by default on all desktop nodes, including newly added ones. Override `homelab_alacritty_opacity` in host variables if needed. Font size, theme imports, and key bindings are preserved in node-local configuration; links into personal dotfiles are materialized before editing. The font family is managed as described below.
 
 Alacritty also has `window.blur = false`; the shared Hyprland template explicitly disables compositor blur for Alacritty and `homelab-monitor` windows.
 
@@ -209,3 +209,9 @@ Alacritty also has `window.blur = false`; the shared Hyprland template explicitl
 The shared Hyprland configuration explicitly sets `persistent:false` for workspaces 1–10 to clear persistence left by the earlier live configuration. Win+1 through Win+0 selects or creates the corresponding workspace. Waybar uses an empty `persistent-workspaces` map and `all-outputs:false`, showing occupied/current workspaces for each output rather than a fixed list of empty workspaces. On `socrat-1`, workspace 1 remains assigned to external `HDMI-A-1`.
 
 Personal browsers, Telegram, and Obsidian were removed from automatic startup; the monitor terminal is the only application window opened by the managed baseline. Desktop background services still start normally. Existing application windows are not closed by this change. Isolation has been applied on both home nodes, and the new Hyprland configuration passes native validation; live workspace creation/removal and unchanged restored Dotfiles sources have been verified, without a reboot.
+
+### Terminal font availability
+
+`desktop_terminal` explicitly configures `FiraCode Nerd Font Propo` for normal, bold, italic, and bold-italic faces. It checks fontconfig as the desktop user so an existing per-user installation is recognized. When missing, it installs the pinned Nerd Fonts 3.5.1 FiraCode archive with SHA-256 verification under `/usr/local/share/fonts/homelab-firacode-nerd`, refreshes the font cache, and rejects fallback to a different family. Existing working font installations are retained.
+
+Apply with `ansible-playbook playbooks/desktop.yml --tags alacritty --limit socrat-0,socrat-1 --ask-become-pass`. An Alacritty process started before a missing font was installed may need to be reopened; attaching its existing tmux session preserves running shells and monitors. On socrat-1 the original missing Nerd Font caused fontconfig to substitute proportional Noto Sans, which produced uneven spacing in terminal cells.
