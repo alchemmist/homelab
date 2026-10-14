@@ -1,4 +1,5 @@
 ---
 homelab_terminal_session: tmp
 homelab_monitor_window_seconds: 600
+homelab_monitor_binary: /usr/bin/btm
 homelab_alacritty_opacity: 0.0
