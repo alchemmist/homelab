@@ -1,0 +1,66 @@
+---
+- name: Read the configured bottom version
+  ansible.builtin.command:
+    argv: ["{{ homelab_monitor_binary }}", --version]
+  register: homelab_bottom_version
+  changed_when: false
+  check_mode: false
+  when: homelab_monitor_binary_stat.stat.executable | default(false) or not ansible_check_mode
+
+- name: Require bottom with configurable table sorting
+  ansible.builtin.assert:
+    that:
+      - homelab_bottom_version.stdout.split()[1] is version('0.14.9', '>=')
+    fail_msg: Update the configured bottom binary to version 0.14.9 or newer before applying table sorting.
+    quiet: true
+  when: homelab_monitor_binary_stat.stat.executable | default(false) or not ansible_check_mode
+
+- name: Create the bottom configuration directory
+  ansible.builtin.file:
+    path: "{{ homelab_user_home }}/.config/bottom"
+    state: directory
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: '0755'
+
+- name: Resolve the bottom configuration target
+  ansible.builtin.command:
+    argv: [readlink, -m, "{{ homelab_user_home }}/.config/bottom/bottom.toml"]
+  register: homelab_bottom_config
+  changed_when: false
+  check_mode: false
+
+- name: Keep bottom configuration inside the user home
+  ansible.builtin.assert:
+    that:
+      - homelab_bottom_config.stdout.startswith(homelab_user_home + '/')
+    quiet: true
+
+- name: Sort monitor tables with the largest values first
+  community.general.ini_file:
+    path: "{{ homelab_bottom_config.stdout }}"
+    section: "{{ item.section }}"
+    option: "{{ item.option }}"
+    value: "{{ item.value | to_json }}"
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: '0644'
+    backup: true
+  loop:
+    - {section: temperature, option: default_sort, value: Temperature}
+    - {section: temperature, option: sort_order, value: Descending}
+    - {section: processes, option: default_sort, value: 'CPU%'}
+    - {section: processes, option: sort_order, value: Descending}
+    - {section: disk, option: default_sort, value: Used}
+    - {section: disk, option: sort_order, value: Descending}
+  notify: Restart running desktop monitors
+
+- name: Validate bottom TOML syntax
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/python3
+      - -c
+      - 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))'
+      - "{{ homelab_bottom_config.stdout }}"
+  changed_when: false
+  when: not ansible_check_mode

@@ -1,0 +1,17 @@
+---
+- name: Restart running desktop monitors
+  become: true
+  become_user: "{{ homelab_user }}"
+  ansible.builtin.shell: |
+    set -eu
+    if /usr/bin/tmux has-session -t {{ homelab_terminal_session | quote }} 2>/dev/null; then
+      /usr/bin/tmux list-panes -s -t {{ homelab_terminal_session | quote }} -F '#{pane_id} #{pane_current_command}' |
+      while read -r pane command; do
+        if [ "$command" = btm ]; then
+          /usr/bin/tmux respawn-pane -k -t "$pane" /usr/local/bin/homelab-monitor-shell
+          echo restarted
+        fi
+      done
+    fi
+  register: homelab_monitor_restart
+  changed_when: "'restarted' in homelab_monitor_restart.stdout"

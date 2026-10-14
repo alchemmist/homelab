@@ -17,17 +17,14 @@
     state: present
 
 - name: Find the installed system monitor
+  tags: monitor
   ansible.builtin.stat:
-    path: "{{ item }}"
+    path: "{{ homelab_monitor_binary }}"
     follow: true
-  loop:
-    - /usr/bin/btm
-    - /usr/local/bin/btm
-    - "{{ homelab_user_home }}/.cargo/bin/btm"
-    - "{{ homelab_user_home }}/.local/bin/btm"
-  register: homelab_monitor_binaries
+  register: homelab_monitor_binary_stat
 
 - name: Install bottom when the account has no monitor binary
+  tags: monitor
   block:
     - name: Install the distribution bottom package
       ansible.builtin.package:
@@ -38,9 +35,13 @@
       ansible.builtin.fail:
         msg: >-
           The configured distribution repositories do not provide bottom.
-          Install a trusted bottom package providing /usr/bin/btm or install btm
-          in {{ homelab_user_home }}/.cargo/bin before applying desktop setup.
-  when: homelab_monitor_binaries.results | selectattr('stat.executable', 'defined') | selectattr('stat.executable') | list | length == 0
+          Install a trusted bottom package providing {{ homelab_monitor_binary }}
+          before applying desktop setup.
+  when: not homelab_monitor_binary_stat.stat.executable | default(false)
+
+- name: Configure monitor table sorting
+  ansible.builtin.import_tasks: bottom.yml
+  tags: monitor
 
 - name: Check whether the desktop account has a tmux configuration
   ansible.builtin.stat:
@@ -94,6 +95,7 @@
   loop:
     - homelab-monitor-shell
     - homelab-monitor-terminal
+  notify: Restart running desktop monitors
 
 - name: Configure the shared Alacritty appearance
   ansible.builtin.import_tasks: alacritty.yml
