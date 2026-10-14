@@ -1,0 +1,77 @@
+---
+- name: Validate the Waybar profile
+  ansible.builtin.assert:
+    that:
+      - homelab_waybar_profile in homelab_waybar_profiles
+    quiet: true
+
+- name: Inspect desktop configuration directories
+  ansible.builtin.stat:
+    path: "{{ item }}"
+    follow: true
+  loop:
+    - "{{ homelab_user_home }}/.config/waybar"
+    - "{{ homelab_user_home }}/.config/flameshot"
+    - "{{ homelab_user_home }}/scripts"
+  register: homelab_panel_directories
+
+- name: Create missing desktop configuration directories
+  ansible.builtin.file:
+    path: "{{ item.item }}"
+    state: directory
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: '0755'
+  loop: "{{ homelab_panel_directories.results }}"
+  when: not item.stat.exists
+  loop_control:
+    label: "{{ item.item }}"
+
+- name: Deliver Waybar helper scripts
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ homelab_user_home }}/scripts/{{ item }}"
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: '0755'
+    follow: true
+    backup: true
+  loop: "{{ ['toggle_noscreenshare.sh'] + (['waybar-gpu.py'] if homelab_waybar_profile == 'desktop' else ['battery-degradation.sh', 'pacman_updates.sh', 'paru_updates.sh']) }}"
+
+- name: Deliver the shared Waybar configuration
+  tags: waybar
+  ansible.builtin.template:
+    src: config.json.j2
+    dest: "{{ homelab_user_home }}/.config/waybar/hypr-config.json"
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: '0644'
+    follow: true
+    backup: true
+    validate: /usr/bin/python3 -m json.tool %s
+  register: homelab_waybar_config
+
+- name: Deliver the shared Waybar appearance
+  tags: waybar
+  ansible.builtin.copy:
+    src: style.css
+    dest: "{{ homelab_user_home }}/.config/waybar/hypr-style.css"
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: '0644'
+    follow: true
+    backup: true
+  register: homelab_waybar_style
+
+- name: Hide only the Flameshot tray icon
+  community.general.ini_file:
+    path: "{{ homelab_user_home }}/.config/flameshot/flameshot.ini"
+    section: General
+    option: disabledTrayIcon
+    value: 'true'
+    no_extra_spaces: true
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: '0644'
+    backup: true
+  when: homelab_hide_flameshot_tray

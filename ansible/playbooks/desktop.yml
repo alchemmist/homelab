@@ -1,8 +1,27 @@
 ---
-- name: Configure desktop session startup
+- name: Deliver the default cluster wallpaper
   hosts: Socrat
   gather_facts: false
-  become: false
+  become: true
   roles:
+    - role: wallpaper_asset
+      tags: wallpaper
+
+- name: Configure home node desktops
+  hosts: Socrat
+  gather_facts: false
+  become: true
+  roles:
+    - role: node_config_isolation
+      when: homelab_desktop_autologin | default(false)
+      tags: always
+    - role: node_boot
+      when: homelab_boot_services is defined
     - role: desktop_session
-      when: homelab_wayland_launcher_source is defined
+      when: homelab_desktop_autologin | default(false)
+    - role: desktop_terminal
+      when: homelab_desktop_autologin | default(false)
+    - role: desktop_panel
+      when: homelab_desktop_autologin | default(false)
+    - role: desktop_environment
+      when: homelab_desktop_autologin | default(false)

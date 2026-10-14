@@ -5,13 +5,26 @@
   become: true
   roles:
     - ssh
+    - role: node_config_isolation
+      when: homelab_desktop_autologin | default(false)
+      tags: always
+    - role: node_boot
+      when: homelab_boot_services is defined
+    - role: node_shutdown
+      when: homelab_shutdown_enabled | default(false)
     - role: node_disk_reserve
       when: homelab_kubelet_disk_config is defined
     - base
+    - wallpaper_asset
     - users
     - starship
     - syncthing_node
     - host_workload_policy
     - role: desktop_session
-      become: false
-      when: homelab_wayland_launcher_source is defined
+      when: homelab_desktop_autologin | default(false)
+    - role: desktop_terminal
+      when: homelab_desktop_autologin | default(false)
+    - role: desktop_panel
+      when: homelab_desktop_autologin | default(false)
+    - role: desktop_environment
+      when: homelab_desktop_autologin | default(false)

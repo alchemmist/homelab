@@ -1,0 +1,26 @@
+---
+homelab_desktop_profile: desktop
+homelab_wallpaper_path: /usr/local/share/wallpapers/homelab/default.png
+homelab_hypr_monitors:
+  - ',preferred,auto,1'
+homelab_hypr_blur: "{{ homelab_desktop_profile == 'laptop' }}"
+homelab_hypr_browser: "{{ 'google-chrome-stable' if homelab_desktop_profile == 'laptop' else 'firefox' }}"
+homelab_hypr_file_manager: thunar
+homelab_hypr_logout: wlogout
+homelab_hypr_chat_command: "{{ homelab_hypr_browser }} https://chatgpt.com"
+homelab_hypr_polkit_agent: /usr/lib/polkit-kde-authentication-agent-1
+homelab_hypr_autostart: []
+homelab_hypr_extra_rules: []
+homelab_hypr_environment:
+  XCURSOR_SIZE: '24'
+  HYPRCURSOR_SIZE: '24'
+  XDG_CURRENT_DESKTOP: Hyprland
+  XDG_SESSION_TYPE: wayland
+  XDG_SESSION_DESKTOP: Hyprland
+  QT_QPA_PLATFORM: wayland;xcb
+  QT_QPA_PLATFORMTHEME: qt6ct
+  QT_WAYLAND_DISABLE_WINDOWDECORATION: '1'
+  QT_AUTO_SCREEN_SCALE_FACTOR: '1'
+  MOZ_ENABLE_WAYLAND: '1'
+  GDK_SCALE: '1'
+  OLLAMA_VULKAN: '1'

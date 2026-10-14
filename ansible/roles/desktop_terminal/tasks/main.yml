@@ -1,0 +1,100 @@
+---
+- name: Validate the monitor session name
+  tags: monitor
+  ansible.builtin.assert:
+    that:
+      - homelab_terminal_session is match('^[A-Za-z0-9_-]+$')
+      - homelab_monitor_window_seconds is integer
+      - homelab_monitor_window_seconds >= 60
+    quiet: true
+
+- name: Install the desktop terminal and shell
+  ansible.builtin.package:
+    name:
+      - alacritty
+      - tmux
+      - zsh
+    state: present
+
+- name: Find the installed system monitor
+  ansible.builtin.stat:
+    path: "{{ item }}"
+    follow: true
+  loop:
+    - /usr/bin/btm
+    - /usr/local/bin/btm
+    - "{{ homelab_user_home }}/.cargo/bin/btm"
+    - "{{ homelab_user_home }}/.local/bin/btm"
+  register: homelab_monitor_binaries
+
+- name: Install bottom when the account has no monitor binary
+  block:
+    - name: Install the distribution bottom package
+      ansible.builtin.package:
+        name: bottom
+        state: present
+  rescue:
+    - name: Explain the monitor bootstrap prerequisite
+      ansible.builtin.fail:
+        msg: >-
+          The configured distribution repositories do not provide bottom.
+          Install a trusted bottom package providing /usr/bin/btm or install btm
+          in {{ homelab_user_home }}/.cargo/bin before applying desktop setup.
+  when: homelab_monitor_binaries.results | selectattr('stat.executable', 'defined') | selectattr('stat.executable') | list | length == 0
+
+- name: Check whether the desktop account has a tmux configuration
+  ansible.builtin.stat:
+    path: "{{ homelab_user_home }}/.tmux.conf"
+    follow: true
+  register: homelab_tmux_existing
+
+- name: Install a base tmux configuration on new desktop accounts
+  ansible.builtin.template:
+    src: tmux.conf.j2
+    dest: "{{ homelab_user_home }}/.tmux.conf"
+    owner: "{{ homelab_user }}"
+    mode: '0644'
+  when: not homelab_tmux_existing.stat.exists
+
+- name: Resolve the existing tmux configuration without replacing its symlink
+  ansible.builtin.command:
+    argv:
+      - readlink
+      - -f
+      - "{{ homelab_user_home }}/.tmux.conf"
+  register: homelab_tmux_config
+  changed_when: false
+  check_mode: false
+  when: homelab_tmux_existing.stat.exists or not ansible_check_mode
+
+- name: Restrict the tmux migration to the desktop account
+  ansible.builtin.assert:
+    that:
+      - homelab_tmux_config.stdout.startswith(homelab_user_home + '/')
+    quiet: true
+  when: homelab_tmux_existing.stat.exists or not ansible_check_mode
+
+- name: Make optional popup key removal safe before the table exists
+  ansible.builtin.replace:
+    path: "{{ homelab_tmux_config.stdout }}"
+    regexp: '^(unbind(?:-key)?)([ \t]+-T[ \t]+popup[ \t]+.*)$'
+    replace: '\1 -q\2'
+    backup: true
+  when: homelab_tmux_existing.stat.exists or not ansible_check_mode
+
+- name: Install the monitor terminal launchers
+  tags: monitor
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/usr/local/bin/{{ item }}"
+    owner: root
+    group: root
+    mode: '0755'
+    validate: /bin/sh -n %s
+  loop:
+    - homelab-monitor-shell
+    - homelab-monitor-terminal
+
+- name: Configure the shared Alacritty appearance
+  ansible.builtin.import_tasks: alacritty.yml
+  tags: alacritty

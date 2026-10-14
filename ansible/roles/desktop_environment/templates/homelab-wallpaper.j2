@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:/usr/local/bin:/usr/bin:/bin"
+if ! awww query >/dev/null 2>&1; then
+    awww-daemon --format xrgb >/dev/null 2>&1 &
+fi
+attempt=0
+until awww query >/dev/null 2>&1; do
+    attempt=$((attempt + 1))
+    [ "$attempt" -lt 50 ] || exit 1
+    sleep 0.2
+done
+awww img {{ homelab_wallpaper_path | quote }} --transition-type none

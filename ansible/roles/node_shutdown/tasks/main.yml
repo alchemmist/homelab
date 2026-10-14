@@ -1,0 +1,84 @@
+---
+- name: Validate graceful shutdown settings
+  ansible.builtin.assert:
+    that:
+      - homelab_shutdown_grace_seconds is integer
+      - homelab_shutdown_critical_grace_seconds is integer
+      - homelab_shutdown_grace_seconds > 0
+      - homelab_shutdown_critical_grace_seconds >= 0
+      - homelab_shutdown_critical_grace_seconds < homelab_shutdown_grace_seconds
+      - homelab_boot_k3s_service in ['k3s.service', 'k3s-agent.service']
+    quiet: true
+
+- name: Read installed k3s version
+  ansible.builtin.command: /usr/local/bin/k3s --version
+  register: homelab_shutdown_k3s_version
+  changed_when: false
+  check_mode: false
+
+- name: Require support for kubelet configuration drop-ins
+  ansible.builtin.assert:
+    that:
+      - (homelab_shutdown_k3s_version.stdout | regex_search('[0-9]+\.[0-9]+\.[0-9]+')) is version('1.32.0', '>=')
+    fail_msg: Graceful shutdown configuration requires k3s 1.32 or newer.
+    quiet: true
+
+- name: Check local NFS service availability
+  ansible.builtin.command: systemctl show nfs-server.service --property=LoadState --value
+  register: homelab_shutdown_nfs_state
+  changed_when: false
+  check_mode: false
+  when: homelab_shutdown_nfs_server
+
+- name: Require the local NFS service before ordering shutdown
+  ansible.builtin.assert:
+    that:
+      - homelab_shutdown_nfs_state.stdout == 'loaded'
+    quiet: true
+  when: homelab_shutdown_nfs_server
+
+- name: Create graceful shutdown configuration directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - /var/lib/rancher/k3s/agent/etc/kubelet.conf.d
+    - "/etc/systemd/system/{{ homelab_boot_k3s_service }}.d"
+
+- name: Allow kubelet to terminate pods before host services stop
+  ansible.builtin.template:
+    src: kubelet-shutdown.conf.j2
+    dest: /var/lib/rancher/k3s/agent/etc/kubelet.conf.d/80-homelab-shutdown.conf
+    owner: root
+    group: root
+    mode: '0644'
+    validate: /usr/bin/python3 -m json.tool %s
+  notify: Restart k3s for graceful shutdown configuration
+
+- name: Keep local NFS available until k3s stops
+  ansible.builtin.template:
+    src: k3s-storage.conf.j2
+    dest: "/etc/systemd/system/{{ homelab_boot_k3s_service }}.d/30-homelab-storage.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  when: homelab_shutdown_nfs_server
+  notify: Restart k3s for graceful shutdown configuration
+
+- name: Remove local NFS ordering when no longer needed
+  ansible.builtin.file:
+    path: "/etc/systemd/system/{{ homelab_boot_k3s_service }}.d/30-homelab-storage.conf"
+    state: absent
+  when: not homelab_shutdown_nfs_server
+  notify: Restart k3s for graceful shutdown configuration
+
+- name: Apply graceful shutdown configuration
+  ansible.builtin.meta: flush_handlers
+
+- name: Verify k3s is active
+  ansible.builtin.command: "systemctl is-active {{ homelab_boot_k3s_service }}"
+  changed_when: false
+  when: not ansible_check_mode

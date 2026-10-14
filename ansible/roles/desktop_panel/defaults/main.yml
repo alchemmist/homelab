@@ -1,0 +1,42 @@
+---
+homelab_waybar_profile: desktop
+homelab_hide_flameshot_tray: false
+homelab_waybar_profiles:
+  desktop:
+  - custom/temperature
+  - custom/disk_space
+  - memory
+  - cpu
+  - custom/gpu
+  - network
+  - bluetooth
+  - pulseaudio
+  - pulseaudio#microphone
+  - custom/language
+  - custom/hyprshade
+  - custom/noscreenshare
+  - custom/notifications-manager
+  - tray
+  laptop:
+  - custom/pacman_updates
+  - custom/paru_updates
+  - custom/temperature
+  - custom/disk_space
+  - memory
+  - cpu
+  - network
+  - bluetooth
+  - battery
+  - custom/battery-degradation
+  - backlight
+  - pulseaudio
+  - pulseaudio#microphone
+  - custom/language
+  - custom/wireguard-manager
+  - custom/caffeine
+  - custom/hyprshade
+  - custom/noscreenshare
+  - custom/notifications-manager
+  - custom/pinglo
+homelab_waybar_modules_right: '{{ homelab_waybar_profiles[homelab_waybar_profile]
+  }}'

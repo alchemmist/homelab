@@ -1,0 +1,37 @@
+---
+homelab_desktop_autologin: true
+homelab_desktop_login_file: .zshrc
+homelab_desktop_remove_sway: true
+homelab_desktop_disable_idle_shutdown: true
+homelab_desktop_caffeine_default: true
+homelab_desktop_environment:
+  _JAVA_AWT_WM_NONREPARENTING: '1'
+  XCURSOR_SIZE: '24'
+  QT_QPA_PLATFORM: wayland
+  ELECTRON_OZONE_PLATFORM_HINT: wayland
+  SDL_VIDEODRIVER: wayland
+  CLUTTER_BACKEND: wayland
+  GDK_BACKEND: wayland
+homelab_desktop_profile: laptop
+homelab_waybar_profile: laptop
+homelab_hypr_monitors:
+- eDP-1, 1920x1200@60.002, 0x0, 1
+- HDMI-A-1, 1920x1080@60, 1920x0, 1
+- HEADLESS-1, 1920x1200@60.002, 0x0, 1
+homelab_hypr_file_manager: kitty -o allow_remote_control=yes --title yazi --hold sh -c 'yazi; kitty @ close-window'
+homelab_hypr_logout: hyprctl dispatch movecursor 1920 1200 && wlogout
+homelab_hypr_chat_command: google-chrome-stable --app=https://chatgpt.com
+homelab_hypr_autostart:
+- hyprpm reload
+- ulauncher --hide-window --no-window-shadow
+homelab_hypr_extra_rules:
+- workspace = 1, monitor:HDMI-A-1, default:true
+- layerrule = blur on, match:namespace logout_dialog
+- bind = $mainMod, V, exec, ~/scripts/wireguard-manager.sh -t && pkill -SIGRTMIN+1 waybar
+- bind = $mainMod SHIFT, C, exec, kitty /home/alchemmist/scripts/start_nvim_in_kb.sh
+- 'bind = $mainMod SHIFT, T, exec, kitty --title termdown -e termdown '
+- bind = $mainMod, SPACE, exec, wofi-emoji
+- 'bind = ,237, exec, brightnessctl -d asus::kbd_backlight set 33%- # Keyboard brightness down FN+F2'
+- 'bind = ,238, exec, brightnessctl -d asus::kbd_backlight set 33%+ # Keyboard brightnes up FN+F3'
+- windowrule = float on, center on, size 500 500, match:title ^termdown$
+- layerrule = blur on, ignore_alpha 0, match:namespace notifications

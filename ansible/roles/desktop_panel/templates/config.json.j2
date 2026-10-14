@@ -1,0 +1,251 @@
+{
+  "layer": "top",
+  "position": "top",
+  "mod": "dock",
+  "exclusive": true,
+  "passthrough": false,
+  "gtk-layer-shell": true,
+  "height": 40,
+  "modules-left": [
+    "custom/wofi",
+    "custom/localtime",
+    "clock#date",
+    "hyprland/workspaces"
+  ],
+  "modules-center": [],
+  "modules-right": {{ homelab_waybar_modules_right | to_json }},
+  "custom/pinglo": {
+    "exec-if": "command -v pinglo",
+    "return-type": "json",
+    "exec": "pinglo render --format waybar",
+    "interval": "once",
+    "signal": 4,
+    "escape": false,
+    "tooltip": true,
+    "on-click": "pinglo clear"
+  },
+  "custom/notifications-manager": {
+    "tooltip": false,
+    "format": " {text}",
+    "return-type": "json",
+    "exec-if": "which swaync-client",
+    "exec": "swaync-client -swb",
+    "on-click": "sleep 0.1 && swaync-client -t -sw",
+    "on-click-right": "sleep 0.1 && swaync-client -d -sw",
+    "escape": true
+  },
+  "custom/noscreenshare": {
+    "format": "{icon}",
+    "exec": "~/scripts/toggle_noscreenshare.sh",
+    "on-click": "~/scripts/toggle_noscreenshare.sh toggle && pkill -SIGRTMIN+4 waybar",
+    "tooltip": false,
+    "format-icons": {
+      "off": "",
+      "on": "󰗹"
+    },
+    "interval": "once",
+    "signal": 4,
+    "return-type": "json"
+  },
+  "custom/battery-degradation": {
+    "format": " {}%",
+    "interval": "once",
+    "exec": "~/scripts/battery-degradation.sh",
+    "tooltip": false
+  },
+  "custom/hyprshade": {
+    "format": "{icon}",
+    "format-icons": {
+      "off": "",
+      "on": ""
+    },
+    "interval": "once",
+    "exec": "pgrep -x gammastep >/dev/null && echo '{\"class\": \"on\", \"alt\": \"on\"}' || echo '{\"class\": \"off\", \"alt\": \"off\"}'",
+    "on-click": "pgrep -x gammastep >/dev/null && pkill gammastep || (gammastep -O 4000 &) && pkill -SIGRTMIN+3 waybar",
+    "signal": 3,
+    "tooltip": false,
+    "return-type": "json"
+  },
+  "custom/wireguard-manager": {
+    "exec-if": "test -x \"$HOME/scripts/wireguard-manager.sh\"",
+    "exec": "~/scripts/wireguard-manager.sh -s",
+    "format": "{icon}",
+    "format-icons": {
+      "connected": "<span>󰯄</span>",
+      "disconnected": "<span>󰒙</span>"
+    },
+    "interval": "once",
+    "on-click": "~/scripts/wireguard-manager.sh -t && pkill -SIGRTMIN+1 waybar",
+    "return-type": "json",
+    "signal": 1
+  },
+  "custom/localtime": {
+    "exec": "date +'%H:%M'",
+    "interval": 20,
+    "format": "{}"
+  },
+  "custom/disk_space": {
+    "exec": "df -h / | awk 'NR==2 {print $4}'",
+    "interval": 300,
+    "format": " {}"
+  },
+  "custom/wofi": {
+    "format": "󰣇",
+    "on-click": "wofi"
+  },
+  "custom/caffeine": {
+    "exec": "~/scripts/caffeine-manager.sh -s",
+    "format": "{icon}",
+    "format-icons": {
+      "enabled": "󰌾",
+      "disabled": "󱐋"
+    },
+    "return-type": "json",
+    "interval": "once",
+    "signal": 7,
+    "on-click": "~/scripts/caffeine-manager.sh -t"
+  },
+  "custom/pacman_updates": {
+    "exec": "~/scripts/pacman_updates.sh",
+    "interval": "once",
+    "return-type": "text",
+    "format": " {text}"
+  },
+  "custom/paru_updates": {
+    "exec": "~/scripts/paru_updates.sh",
+    "interval": "once",
+    "return-type": "text",
+    "format": "󰣇 {text}"
+  },
+  "cpu": {
+    "interval": 5,
+    "format": " {usage}%",
+    "tooltip-format": "CPU Load: {load}%",
+    "max-length": 5,
+    "text-max-length": 25
+  },
+  "custom/temperature": {
+    "exec": "echo  $(( $(cat /sys/class/thermal/thermal_zone0/temp) / 1000 ))°C",
+    "interval": 10,
+    "format": "{}"
+  },
+  "memory": {
+    "format": " {}%",
+    "interval": 5
+  },
+  "custom/language": {
+    "format-en": "EN",
+    "format-ru": "RU",
+    "exec": "hyprctl devices -j | jq -r '.keyboards[] | select(.main==true) | .active_keymap' | awk '{print toupper(substr($0,1,2))}'",
+    "on-click": "hyprctl switchxkblayout all next && pkill -SIGRTMIN+5 waybar",
+    "interval": "once",
+    "signal": 5
+  },
+  "hyprland/workspaces": {
+    "active-only": false,
+    "all-outputs": false,
+    "disable-scroll": true,
+    "on-scroll-up": "hyprctl dispatch workspace e-1",
+    "on-scroll-down": "hyprctl dispatch workspace e+1",
+    "sort-by-number": true,
+    "persistent-workspaces": {}
+  },
+  "tray": {
+    "icon-size": 18,
+    "spacing": 10
+  },
+  "clock#date": {
+    "format": "{:%d.%m.%Y}",
+    "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>"
+  },
+  "backlight": {
+    "device": "intel_backlight",
+    "format": "{icon} {percent}%",
+    "format-icons": [
+      "󰃞",
+      "󰃟",
+      "󰃠"
+    ],
+    "on-scroll-up": "brightnessctl set 1%+",
+    "on-scroll-down": "brightnessctl set 1%-",
+    "min-length": 6
+  },
+  "battery": {
+    "states": {
+      "good": 90,
+      "warning": 25,
+      "critical": 10
+    },
+    "format": "{icon} {capacity}%",
+    "format-charging": " {capacity}%",
+    "format-plugged": " {capacity}%",
+    "format-icons": [
+      "󰂎",
+      "󰁺",
+      "󰁻",
+      "󰁼",
+      "󰁽",
+      "󰁾",
+      "󰁿",
+      "󰂀",
+      "󰂁",
+      "󰂂",
+      "󰁹"
+    ],
+    "tooltip": "{time}",
+    "style": "{capacity < 10 ? 'color: red;' : 'color: normal;'}"
+  },
+  "pulseaudio": {
+    "format": "{icon} {volume}%",
+    "tooltip": false,
+    "format-muted": " Muted",
+    "on-click": "pamixer -t",
+    "on-scroll-up": "pamixer -i 5",
+    "on-scroll-down": "pamixer -d 5",
+    "scroll-step": 5,
+    "format-icons": {
+      "headphone": "",
+      "hands-free": "",
+      "headset": "",
+      "phone": "",
+      "portable": "",
+      "car": "",
+      "default": [
+        "",
+        "",
+        ""
+      ]
+    }
+  },
+  "pulseaudio#microphone": {
+    "format": "{format_source}",
+    "format-source": " {volume}%",
+    "format-source-muted": " Muted",
+    "on-click": "pamixer --default-source -t",
+    "on-scroll-up": "pamixer --default-source -i 5",
+    "on-scroll-down": "pamixer --default-source -d 5",
+    "scroll-step": 5
+  },
+  "network": {
+    "format-wifi": "  {essid:.17}",
+    "format-ethernet": "{ipaddr}/{cidr}",
+    "format-linked": "{ifname} (No IP)",
+    "format-disconnected": "Disconnected ⚠",
+    "tooltip-format": "{essid} {signalStrength}% - {ifname} via {gwaddr}"
+  },
+  "bluetooth": {
+    "format": " {status}",
+    "format-disabled": "",
+    "format-connected": " {num_connections}",
+    "tooltip-format": "{device_alias}",
+    "tooltip-format-connected": " {device_enumerate}",
+    "tooltip-format-enumerate-connected": "{device_alias}"
+  },
+  "custom/gpu": {
+    "exec": "python3 \"$HOME/scripts/waybar-gpu.py\"",
+    "return-type": "json",
+    "interval": 3,
+    "format": "{}",
+    "tooltip": true
+  }
+}

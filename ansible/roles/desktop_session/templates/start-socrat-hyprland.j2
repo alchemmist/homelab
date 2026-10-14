@@ -1,0 +1,9 @@
+#!/bin/sh
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/go/bin:$HOME/scripts:/usr/local/bin:/usr/bin:/bin"
+export XDG_CURRENT_DESKTOP=Hyprland
+export XDG_SESSION_DESKTOP=Hyprland
+export XDG_SESSION_TYPE=wayland
+{% for name, value in homelab_desktop_environment.items() %}
+export {{ name }}={{ value | quote }}
+{% endfor %}
+exec /usr/bin/start-hyprland

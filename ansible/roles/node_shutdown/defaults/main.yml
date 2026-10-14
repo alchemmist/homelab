@@ -1,0 +1,5 @@
+---
+homelab_shutdown_enabled: false
+homelab_shutdown_nfs_server: false
+homelab_shutdown_grace_seconds: 60
+homelab_shutdown_critical_grace_seconds: 10

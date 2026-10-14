@@ -1,32 +1,130 @@
 ---
-- name: Inspect the configured Wayland launcher
-  ansible.builtin.stat:
-    path: "{{ homelab_wayland_launcher_source }}"
-  register: homelab_wayland_launcher
+- name: Gather desktop platform facts
+  ansible.builtin.setup:
+    gather_subset:
+      - '!all'
+      - '!min'
+      - distribution
+      - os_family
 
-- name: Require the dotfiles launcher to be installed
+- name: Look up the desktop account
+  ansible.builtin.getent:
+    database: passwd
+    key: "{{ homelab_user }}"
+
+- name: Check the installed Hyprland session launcher
+  ansible.builtin.stat:
+    path: /usr/bin/start-hyprland
+  register: homelab_hyprland_launcher
+
+- name: Require a supported account and installed Hyprland
   ansible.builtin.assert:
     that:
-      - homelab_wayland_launcher.stat.exists
-      - homelab_wayland_launcher.stat.executable | default(false)
-    fail_msg: Install the executable wlinitrc from this node's dotfiles before configuring desktop startup.
+      - ansible_facts.os_family in ['Debian', 'Archlinux']
+      - ansible_facts.getent_passwd[homelab_user][-1].endswith('/zsh')
+      - homelab_hyprland_launcher.stat.executable | default(false)
+    quiet: true
 
-- name: Ensure the user's launcher directory exists
-  ansible.builtin.file:
-    path: "{{ homelab_user_home }}/.local/bin"
-    state: directory
-    mode: '0755'
-
-- name: Maintain the Wayland launcher referenced by the login shell
-  ansible.builtin.file:
-    src: "{{ homelab_wayland_launcher_source }}"
-    dest: "{{ homelab_user_home }}/.local/bin/wlinitrc"
-    state: link
-
-- name: Validate launcher shell syntax
-  ansible.builtin.command:
-    argv:
-      - /bin/sh
-      - -n
-      - "{{ homelab_user_home }}/.local/bin/wlinitrc"
+- name: Ensure Sway is not the active session before cleanup
+  ansible.builtin.command: "pgrep -u {{ ansible_facts.getent_passwd[homelab_user][1] }} -x sway"
+  register: homelab_sway_process
+  check_mode: false
   changed_when: false
+  failed_when: homelab_sway_process.rc != 1
+  when: homelab_desktop_remove_sway
+
+- name: Create desktop administration directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - /usr/local/bin
+    - /usr/local/libexec
+    - /etc/systemd/system/getty@tty1.service.d
+
+- name: Create private user configuration backups directory
+  ansible.builtin.file:
+    path: "{{ homelab_user_home }}/.local/state/homelab/desktop-backups"
+    state: directory
+    owner: "{{ homelab_user }}"
+    group: "{{ ansible_facts.getent_passwd[homelab_user][2] }}"
+    mode: '0700'
+
+- name: Install the direct Hyprland launcher
+  ansible.builtin.template:
+    src: start-socrat-hyprland.j2
+    dest: /usr/local/bin/start-socrat-hyprland
+    owner: root
+    group: root
+    mode: '0755'
+    backup: true
+    validate: /bin/sh -n %s
+
+- name: Install desktop profile migration helper
+  ansible.builtin.copy:
+    src: configure_desktop_startup.py
+    dest: /usr/local/libexec/homelab-desktop-startup.py
+    owner: root
+    group: root
+    mode: '0755'
+  register: homelab_desktop_startup_install
+
+- name: Check availability of the installed desktop migration helper
+  ansible.builtin.stat:
+    path: /usr/local/libexec/homelab-desktop-startup.py
+  register: homelab_desktop_startup_helper
+
+- name: Configure tty1 startup and archive the obsolete selector
+  ansible.builtin.command: >-
+    /usr/bin/python3 /usr/local/libexec/homelab-desktop-startup.py
+    --home {{ homelab_user_home | quote }} --user {{ homelab_user | quote }}
+    --login-file {{ homelab_desktop_login_file | quote }}
+    {{ '--remove-selector' if homelab_desktop_remove_sway else '' }}
+    {{ '--disable-idle-shutdown' if homelab_desktop_disable_idle_shutdown else '' }}
+    {{ '--check' if ansible_check_mode else '' }}
+  register: homelab_desktop_startup
+  check_mode: false
+  when: not ansible_check_mode or (homelab_desktop_startup_helper.stat.exists and not homelab_desktop_startup_install.changed)
+  changed_when: (homelab_desktop_startup.stdout | from_json).changed
+
+- name: Remove the unused Sway compositor and helpers
+  community.general.pacman:
+    name:
+      - sway
+      - swaybg
+      - swaylock
+    state: absent
+    extra_args: --recursive
+  when:
+    - homelab_desktop_remove_sway
+    - ansible_facts.os_family == 'Archlinux'
+
+- name: Configure automatic login on the first local console
+  ansible.builtin.template:
+    src: autologin.conf.j2
+    dest: /etc/systemd/system/getty@tty1.service.d/50-homelab-autologin.conf
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Enable tty1 without restarting the current graphical session
+  ansible.builtin.systemd_service:
+    name: getty@tty1.service
+    enabled: true
+    daemon_reload: true
+
+- name: Read the effective tty1 login command
+  ansible.builtin.command: systemctl show getty@tty1.service --property=ExecStart --value
+  register: homelab_getty_command
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Verify the effective autologin user
+  ansible.builtin.assert:
+    that:
+      - "('--autologin ' ~ homelab_user) in homelab_getty_command.stdout"
+    quiet: true
+  when: not ansible_check_mode

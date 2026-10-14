@@ -1,0 +1,33 @@
+---
+- name: Validate account and inspect node configuration links
+  become: false
+  ansible.builtin.script:
+    cmd: >-
+      isolate_node_configs.py
+      --home {{ homelab_user_home | quote }}
+      --user {{ homelab_user | quote }}
+      --check
+    executable: python3
+  register: homelab_config_isolation_plan
+  check_mode: false
+  changed_when: false
+
+- name: Create the node configuration backup directory
+  ansible.builtin.file:
+    path: "{{ homelab_user_home }}/.local/state/homelab/config-isolation"
+    state: directory
+    owner: "{{ homelab_user }}"
+    mode: '0700'
+
+- name: Detach node configuration from personal dotfiles
+  become: false
+  ansible.builtin.script:
+    cmd: >-
+      isolate_node_configs.py
+      --home {{ homelab_user_home | quote }}
+      --user {{ homelab_user | quote }}
+      {{ '--check' if ansible_check_mode else '' }}
+    executable: python3
+  register: homelab_config_isolation
+  check_mode: false
+  changed_when: (homelab_config_isolation.stdout | from_json).changed

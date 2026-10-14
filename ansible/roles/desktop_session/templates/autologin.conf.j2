@@ -1,0 +1,4 @@
+[Service]
+ExecStart=
+ExecStart=-{{ '/usr/bin/agetty' if ansible_facts.os_family == 'Archlinux' else '/sbin/agetty' }} --autologin {{ homelab_user }} --noreset --noclear - ${TERM}
+RestartSec=5s

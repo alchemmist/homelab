@@ -85,7 +85,23 @@ ansible-playbook playbooks/starship.yml --limit socrat-1 --ask-become-pass
 
 ## Desktop session
 
-Desktop nodes can set `homelab_wayland_launcher_source` to their dotfiles launcher. `site.yml` and `playbooks/desktop.yml` maintain the `~/.local/bin/wlinitrc` symlink used by the login shell. On `socrat-1`, log into the local console as `alchemmist` and select `start-hyprland` from the session menu.
+`socrat-0` and `socrat-1` opt into automatic local login as `alchemmist` on tty1 and direct Hyprland startup. SSH, sudo, and account passwords stay configured. SSH, networking, WireGuard, and k3s start as system services independently of graphical login.
+
+From `ansible/`:
+
+```bash
+ansible-playbook playbooks/desktop.yml --ask-become-pass
+```
+
+The desktop configuration is split into `desktop_session` (console login), `desktop_environment` (Hyprland, idle policy, caffeine, and wallpaper startup), `desktop_panel` (Waybar), and `desktop_terminal` (Alacritty, tmux, and the `btm` monitor). Shared templates use host profiles in `ansible/inventory/host_vars/socrat-0.yml` and `socrat-1.yml`; personal Hyprland additions belong in `~/.config/hypr/local.conf`.
+
+Homelab settings are separate from personal dotfiles. Before desktop roles run, including tagged runs, `node_config_isolation` materializes node-local copies of linked desktop configs, managed scripts, tmux/login files, and the caffeine unit. Backups and a manifest live in `~/.local/state/homelab/config-isolation/`. Homelab does not deploy or push changes to the personal dotfiles repository.
+
+Workspaces are created as needed with Win+1 through Win+0; Waybar shows occupied/current workspaces on each output without a fixed empty 1–10 list. New sessions open the monitor terminal without automatically opening browsers, Telegram, or Obsidian. Existing windows remain open. On `socrat-1`, workspace 1 stays assigned to the external display.
+
+`wallpaper_asset` distributes the same image from `socrat-0` to `/usr/local/share/wallpapers/homelab/default.png` on all three nodes through `base.yml`, `site.yml`, or `desktop.yml`. The VPS receives only the image, with no graphical environment. Use `--limit socrat-0,socrat-1` to apply only to the home nodes. This is not a complete GUI installer: Hyprland, `start-hyprland`, `awww`, and other graphical tools must already exist, and `bottom` is installed from distribution repositories when `btm` is absent (a trusted package must be supplied separately if the repository lacks it). Existing personal application shortcuts retain their external dependencies.
+
+The shared desktop configuration is applied on both home nodes. Wallpaper, tmux/btm, and the hidden Flameshot tray icon were verified in the running sessions; the asset is also installed on the VPS. Startup after reboot/power restoration was verified before this cosmetic rollout; the new terminal startup command has been exercised live without rebooting. See the [boot and recovery runbook](docs/node-bootstrap.md#automatic-boot-and-local-desktop) for settings, backups, prerequisites, and outstanding shutdown verification.
 
 ## Starship prompt
 
