@@ -1,4 +1,16 @@
 ---
+- name: Inspect the VPS native VPN recovery latch
+  ansible.builtin.stat:
+    path: /var/lib/homelab-vpn-failover/active
+  register: host_policy_vpn_latch
+  when: inventory_hostname == 'socrat-2'
+
+- name: Refuse host cleanup while native VPN recovery is active
+  ansible.builtin.assert:
+    that: not host_policy_vpn_latch.stat.exists
+    fail_msg: Native VPN recovery is active. Follow docs/vpn-failover.md before applying host workload policy.
+  when: inventory_hostname == 'socrat-2'
+
 # Socrat nodes should not run application workloads directly on the host.
 # Allowed host-level services are OS/networking, wg-socrat, k3s/containerd,
 # node desktop/session services, and explicitly documented infra exceptions

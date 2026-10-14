@@ -1,0 +1,11 @@
+[Unit]
+Description=Check the VPS VPN every {{ vpn_failover_interval }}
+
+[Timer]
+OnBootSec=45s
+OnUnitInactiveSec={{ vpn_failover_interval }}
+AccuracySec=1s
+Unit=homelab-vpn-watchdog.service
+
+[Install]
+WantedBy=timers.target

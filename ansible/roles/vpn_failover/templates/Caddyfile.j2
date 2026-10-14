@@ -1,0 +1,15 @@
+{
+    admin off
+    email {{ vpn_failover_edge.certificate.email }}
+    storage file_system {
+        root /srv/caddy/data/caddy
+    }
+}
+
+{{ vpn_failover_edge.host }} {
+    @trojan path {{ (vpn_failover_edge.routes | selectattr('name', 'equalto', 'trojan') | first).path }}
+    reverse_proxy @trojan 127.0.0.1:32087
+    @subscriptions path /16a19nq48vtd/* /16a19nq48vtd-json/*
+    reverse_proxy @subscriptions 127.0.0.1:12096
+    reverse_proxy 127.0.0.1:18082
+}

@@ -1,0 +1,47 @@
+---
+vpn_failover_root: /opt/homelab-vpn-failover
+vpn_failover_state: /var/lib/homelab-vpn-failover
+vpn_failover_interval: 30s
+vpn_failover_failure_threshold: 4
+vpn_failover_boot_grace_seconds: 180
+vpn_failover_workloads:
+  - name: primary
+    chart: values.yaml
+    database: /srv/x-ui-lab/db
+    cert: /srv/x-ui-lab/cert
+    acme: /srv/x-ui-lab/acme
+    runtime: ''
+    timezone: Asia/Tehran
+  - name: legacy
+    chart: values-legacy.yaml
+    database: /etc/x-ui
+    cert: /srv/x-ui/cert
+    acme: /srv/x-ui/acme
+    runtime: /usr/local/x-ui/bin
+    timezone: Europe/Moscow
+vpn_failover_primary_ports:
+  - {protocol: tcp, port: 18082}
+  - {protocol: tcp, port: 12096}
+  - {protocol: tcp, port: 32053}
+  - {protocol: tcp, port: 32083}
+  - {protocol: tcp, port: 32063}
+  - {protocol: tcp, port: 32084}
+  - {protocol: tcp, port: 32087}
+  - {protocol: udp, port: 32085}
+  - {protocol: udp, port: 32086}
+vpn_failover_legacy_ports:
+  - {protocol: tcp, port: 16582}
+  - {protocol: tcp, port: 2096}
+  - {protocol: tcp, port: 2053}
+  - {protocol: tcp, port: 2083}
+  - {protocol: tcp, port: 25763}
+  - {protocol: tcp, port: 48702}
+  - {protocol: tcp, port: 10443}
+  - {protocol: udp, port: 51822}
+  - {protocol: udp, port: 51821}
+vpn_failover_caddy_ports:
+  - {protocol: tcp, port: 80}
+  - {protocol: tcp, port: 443}
+  - {protocol: udp, port: 443}
+vpn_failover_arm: true
+vpn_failover_verify_native: true

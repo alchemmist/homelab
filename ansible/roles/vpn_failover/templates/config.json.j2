@@ -1,0 +1,34 @@
+{{ {
+  'state_dir': vpn_failover_state,
+  'failure_threshold': vpn_failover_failure_threshold,
+  'boot_grace_seconds': vpn_failover_boot_grace_seconds,
+  'timeout_seconds': 3,
+  'fence_timeout_seconds': 15,
+  'tcp_endpoints': [
+    ['127.0.0.1', 32087], ['172.18.0.1', 10443],
+    ['127.0.0.1', 32053], ['127.0.0.1', 32083],
+    ['127.0.0.1', 32063], ['127.0.0.1', 32084],
+    ['127.0.0.1', 2053], ['127.0.0.1', 2083],
+    ['127.0.0.1', 25763], ['127.0.0.1', 48702]
+  ],
+  'websocket': {
+    'host': vpn_failover_edge.host,
+    'address': '127.0.0.1',
+    'port': 443,
+    'path': (vpn_failover_edge.routes | selectattr('name', 'equalto', 'trojan') | first).path
+  },
+  'listen_ports': vpn_failover_primary_ports + vpn_failover_legacy_ports + vpn_failover_caddy_ports,
+  'native_unit_ports': {
+    'homelab-vpn-primary.service': vpn_failover_primary_ports,
+    'homelab-vpn-legacy.service': vpn_failover_legacy_ports,
+    'homelab-vpn-caddy.service': vpn_failover_caddy_ports
+  },
+  'databases': ['/srv/x-ui-lab/db/x-ui.db', '/etc/x-ui/x-ui.db'],
+  'preflight_files': [
+    vpn_failover_root + '/primary/app/x-ui',
+    vpn_failover_root + '/legacy/app/x-ui',
+    '/usr/local/x-ui/bin/xray-linux-amd64',
+    vpn_failover_root + '/caddy',
+    '/etc/homelab-vpn-failover/Caddyfile'
+  ]
+} | to_nice_json }}

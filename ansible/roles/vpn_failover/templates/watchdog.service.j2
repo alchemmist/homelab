@@ -1,0 +1,12 @@
+[Unit]
+Description=Check VPN and recover through native services if needed
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/sbin/homelab-vpn-failover tick
+TimeoutStartSec=240s
+Nice=10
+IOSchedulingClass=idle
+UMask=0077
