@@ -2,7 +2,6 @@
 - name: Set primary hostname
   ansible.builtin.hostname:
     name: "{{ inventory_hostname }}"
-  when: inventory_hostname in ['socrat-0', 'socrat-1', 'socrat-2']
   become: true
 
 - name: Remove legacy unmanaged master host alias line

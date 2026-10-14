@@ -1,0 +1,8 @@
+---
+- name: Configure persistent SSH access
+  hosts: Socrat
+  gather_facts: false
+  become: true
+  serial: 1
+  roles:
+    - ssh

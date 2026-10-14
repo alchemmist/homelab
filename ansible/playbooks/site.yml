@@ -1,9 +1,10 @@
 ---
 - name: Configure Socrat homelab nodes
   hosts: Socrat
-  gather_facts: true
+  gather_facts: false
   become: true
   roles:
+    - ssh
     - base
     - users
     - starship

@@ -1,4 +1,6 @@
 ---
+ansible_port: 2222
+
 # Shared defaults for Socrat nodes.
 # Starship uses runtime `hostname`, so the same config works for every node:
 #   (socrat-0), (socrat-1), ...

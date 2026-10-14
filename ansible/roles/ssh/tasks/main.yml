@@ -1,0 +1,202 @@
+---
+- name: Remember the final SSH endpoint port
+  ansible.builtin.set_fact:
+    homelab_ssh_endpoint_port: "{{ ansible_port | default(homelab_ssh_port) }}"
+
+- name: Use the bootstrap port for the initial connection
+  ansible.builtin.set_fact:
+    ansible_port: "{{ homelab_ssh_bootstrap_port }}"
+  when: homelab_ssh_bootstrap_port is defined
+
+- name: Gather operating system facts
+  ansible.builtin.setup:
+    gather_subset:
+      - '!all'
+      - '!min'
+      - distribution
+      - os_family
+
+- name: Validate supported host and SSH port
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.os_family in ['Debian', 'Archlinux']
+      - homelab_ssh_port | string is match('^[0-9]+$')
+      - homelab_ssh_port | int > 0
+      - homelab_ssh_port | int < 65536
+    fail_msg: This role requires Debian, Ubuntu, or Arch Linux and a valid SSH server port.
+
+- name: Select platform SSH names
+  ansible.builtin.set_fact:
+    homelab_sshd_binary: "{{ '/usr/bin/sshd' if ansible_facts.os_family == 'Archlinux' else '/usr/sbin/sshd' }}"
+    homelab_ssh_service: "{{ 'sshd.service' if ansible_facts.os_family == 'Archlinux' else 'ssh.service' }}"
+    homelab_ssh_socket_name: "{{ 'sshd.socket' if ansible_facts.os_family == 'Archlinux' else 'ssh.socket' }}"
+
+- name: Install the SSH server
+  ansible.builtin.package:
+    name: "{{ 'openssh' if ansible_facts.os_family == 'Archlinux' else 'openssh-server' }}"
+    state: present
+
+- name: Read current SSH server ports
+  ansible.builtin.command: "{{ homelab_sshd_binary }} -T"
+  register: homelab_sshd_before
+  changed_when: false
+  check_mode: false
+
+- name: Read the server port of the initial SSH connection
+  ansible.builtin.shell: printf '%s\n' "$SSH_CONNECTION"
+  become: false
+  register: homelab_ssh_initial_connection
+  changed_when: false
+  check_mode: false
+
+- name: Require an SSH connection before changing access settings
+  ansible.builtin.assert:
+    that:
+      - homelab_ssh_initial_connection.stdout.split() | length == 4
+    fail_msg: Run this role over SSH so the current listening port can be preserved during migration.
+
+- name: Preserve current ports until the new endpoint has been verified
+  ansible.builtin.set_fact:
+    homelab_ssh_transition_ports: >-
+      {{ ([homelab_ssh_port | string,
+           homelab_ssh_initial_connection.stdout.split()[-1]] +
+          (homelab_sshd_before.stdout_lines | select('match', '^port ')
+           | map('regex_replace', '^port ', '') | list)) | unique | list }}
+
+- name: Ensure SSH configuration directory exists
+  ansible.builtin.file:
+    path: /etc/ssh/sshd_config.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Add the desired port while preserving existing access
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/10-homelab-ports.conf
+    content: "{{ homelab_ssh_transition_ports | map('regex_replace', '^', 'Port ') | join('\n') }}\n"
+    owner: root
+    group: root
+    mode: '0644'
+    validate: "{{ homelab_sshd_binary }} -t -f %s"
+  register: homelab_ssh_transition
+
+- name: Include managed SSH configuration
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^Include /etc/ssh/sshd_config\.d/\*\.conf$'
+    line: Include /etc/ssh/sshd_config.d/*.conf
+    insertbefore: BOF
+    validate: "{{ homelab_sshd_binary }} -t -f %s"
+  register: homelab_ssh_include
+
+- name: Validate the complete SSH configuration before restarting
+  ansible.builtin.command: "{{ homelab_sshd_binary }} -t"
+  changed_when: false
+  check_mode: false
+
+- name: Check whether SSH socket activation is available
+  ansible.builtin.command: "systemctl show {{ homelab_ssh_socket_name }} --property=LoadState --value"
+  register: homelab_ssh_socket_unit
+  changed_when: false
+  check_mode: false
+
+- name: Disable socket activation so sshd owns its listening ports
+  ansible.builtin.systemd_service:
+    name: "{{ homelab_ssh_socket_name }}"
+    enabled: false
+    masked: true
+    state: stopped
+  when: homelab_ssh_socket_unit.stdout in ['loaded', 'masked']
+  register: homelab_ssh_socket
+
+- name: Enable the SSH service on boot and apply transitional ports
+  ansible.builtin.systemd_service:
+    name: "{{ homelab_ssh_service }}"
+    enabled: true
+    masked: false
+    state: "{{ 'restarted' if homelab_ssh_transition.changed or homelab_ssh_include.changed or homelab_ssh_socket.changed else 'started' }}"
+
+- name: Switch to the final SSH endpoint port
+  ansible.builtin.set_fact:
+    ansible_port: "{{ homelab_ssh_endpoint_port }}"
+
+- name: Open a fresh SSH connection
+  ansible.builtin.meta: reset_connection
+
+- name: Verify the new endpoint before removing old ports
+  ansible.builtin.wait_for_connection:
+    timeout: 30
+  become: false
+  when: not ansible_check_mode
+
+- name: Read the server port used by the new SSH connection
+  ansible.builtin.shell: printf '%s\n' "$SSH_CONNECTION"
+  become: false
+  register: homelab_ssh_connection
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Require the new endpoint to reach the desired server port
+  ansible.builtin.assert:
+    that:
+      - homelab_ssh_connection.stdout.split() | length == 4
+      - homelab_ssh_connection.stdout.split()[-1] | int == homelab_ssh_port | int
+    fail_msg: The endpoint still reaches the old server port. Update the router forwarding or use the LAN inventory, then retry. Both ports remain available.
+  when: not ansible_check_mode
+
+- name: Persist only the desired SSH server port
+  when: not ansible_check_mode
+  block:
+    - name: Write the final server port
+      ansible.builtin.copy:
+        dest: /etc/ssh/sshd_config.d/10-homelab-ports.conf
+        content: "Port {{ homelab_ssh_port }}\n"
+        owner: root
+        group: root
+        mode: '0644'
+        validate: "{{ homelab_sshd_binary }} -t -f %s"
+      register: homelab_ssh_final
+
+    - name: Read the final effective SSH configuration
+      ansible.builtin.command: "{{ homelab_sshd_binary }} -T"
+      register: homelab_sshd_final
+      changed_when: false
+
+    - name: Reject conflicting port directives before restarting
+      ansible.builtin.assert:
+        that:
+          - >-
+            homelab_sshd_final.stdout_lines | select('match', '^port ')
+            | list == ['port ' ~ homelab_ssh_port]
+        fail_msg: Remove conflicting Port directives from sshd_config or its included files before retrying.
+  rescue:
+    - name: Restore the verified transitional configuration
+      ansible.builtin.copy:
+        dest: /etc/ssh/sshd_config.d/10-homelab-ports.conf
+        content: "{{ homelab_ssh_transition_ports | map('regex_replace', '^', 'Port ') | join('\n') }}\n"
+        owner: root
+        group: root
+        mode: '0644'
+        validate: "{{ homelab_sshd_binary }} -t -f %s"
+
+    - name: Report the configuration conflict
+      ansible.builtin.fail:
+        msg: "Final SSH configuration failed validation. Transitional ports remain available. {{ ansible_failed_result.msg | default('Inspect sshd configuration.') }}"
+
+- name: Apply the final SSH server port
+  ansible.builtin.systemd_service:
+    name: "{{ homelab_ssh_service }}"
+    state: restarted
+  when:
+    - not ansible_check_mode
+    - homelab_ssh_final.changed
+
+- name: Reset the connection after the final restart
+  ansible.builtin.meta: reset_connection
+
+- name: Verify SSH authentication with the final configuration
+  ansible.builtin.wait_for_connection:
+    timeout: 30
+  become: false
+  when: not ansible_check_mode

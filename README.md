@@ -2,7 +2,7 @@
 
 Personal homelab automation for Socrat nodes.
 
-This repo starts small: Ansible inventory + roles for shared users and the machine-wide Starship prompt config on `socrat-0` and `socrat-1`.
+Ansible manages the common host baseline: persistent SSH access, hostnames, shared users, the machine-wide Starship prompt, and host workload policies. Kubernetes, networking, storage, and applications have separate playbooks.
 
 ## Layout
 
