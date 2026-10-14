@@ -238,10 +238,16 @@ host path: /srv/syncthing/pg_mdb_encrypted_backups
 Current intent:
 
 - `socrat-0`: full copy/source/peer.
-- `socrat-1`: receive-only copy; has enough disk for current full set with limited spare.
+- `socrat-1`: existing receive-only copy is preserved, but `pg-mdb-backups` is paused to retain approximately 19 GiB for the system. Other Syncthing folders remain enabled.
 - `socrat-2`: folder is paused because VPS disk is too small.
 - Mac participates as backup source/peer.
 - Phone should not be treated as a meaningful peer on `socrat-1`/`socrat-2` unless a shared folder actually involves it.
+
+### socrat-1 disk reserve
+
+`ansible/playbooks/node-disk-reserve.yml` pauses only `pg-mdb-backups` and applies the node-specific kubelet settings from inventory. It does not delete backup archives. The hard free-space threshold is 10 GiB; the soft threshold is 15 GiB with a two-minute grace period. Image garbage collection uses high/low usage thresholds of 96%/95%. Memory and inode safeguards remain configured.
+
+The managed kubelet drop-in is `/var/lib/rancher/k3s/agent/etc/kubelet.conf.d/99-homelab-disk-reserve.conf`. The helper backs up existing configuration before changing it and restarts `k3s-agent` only when the kubelet configuration changes. `site.yml` includes this policy for nodes that define it. The general backup-folder configurator also keeps this folder paused on `socrat-1`, so a later Ansible run does not resume downloads accidentally.
 
 Current `socrat-1` Syncthing device ID:
 

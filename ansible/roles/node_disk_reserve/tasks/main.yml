@@ -1,0 +1,37 @@
+---
+- name: Ensure the local administration directory exists
+  ansible.builtin.file:
+    path: /usr/local/sbin
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Install node disk reserve configurator
+  ansible.builtin.copy:
+    src: configure_node_disk_reserve.py
+    dest: /usr/local/sbin/homelab-node-disk-reserve
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Create node policy directory
+  ansible.builtin.file:
+    path: /etc/homelab
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Render node-specific kubelet disk policy
+  ansible.builtin.template:
+    src: policy.json.j2
+    dest: /etc/homelab/node-disk-reserve.json
+    owner: root
+    group: root
+    mode: '0600'
+
+- name: Pause backup reception and apply kubelet disk reserve
+  ansible.builtin.command: /usr/bin/python3 /usr/local/sbin/homelab-node-disk-reserve --policy /etc/homelab/node-disk-reserve.json
+  register: homelab_disk_reserve_result
+  changed_when: (homelab_disk_reserve_result.stdout | from_json).changed

@@ -1,0 +1,9 @@
+---
+- name: Configure node disk reserves without deleting data
+  hosts: Socrat
+  gather_facts: false
+  become: true
+  serial: 1
+  roles:
+    - role: node_disk_reserve
+      when: homelab_kubelet_disk_config is defined

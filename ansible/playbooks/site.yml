@@ -5,6 +5,8 @@
   become: true
   roles:
     - ssh
+    - role: node_disk_reserve
+      when: homelab_kubelet_disk_config is defined
     - base
     - users
     - starship

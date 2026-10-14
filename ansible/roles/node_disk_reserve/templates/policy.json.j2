@@ -1,0 +1,5 @@
+{
+  "node": {{ inventory_hostname | to_json }},
+  "folder": "pg-mdb-backups",
+  "kubelet": {{ homelab_kubelet_disk_config | to_nice_json }}
+}

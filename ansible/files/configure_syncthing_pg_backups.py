@@ -211,10 +211,7 @@ def configure(role: str) -> bool:
             d["name"] = wanted_name
             changed = True
 
-    # socrat-2 has too little local disk for the full pg-mdb-backups mirror.
-    # Keep the Syncthing device alive for other folders, but pause only this
-    # backup folder on socrat-2 so it does not receive multi-GB archives.
-    desired_folder = folder(this_id, peers, paused=(role == "socrat-2"))
+    desired_folder = folder(this_id, peers, paused=(role in {"socrat-1", "socrat-2"}))
     by_folder = {f["id"]: f for f in cfg.get("folders", [])}
     if FOLDER_ID not in by_folder:
         cfg.setdefault("folders", []).append(desired_folder)
