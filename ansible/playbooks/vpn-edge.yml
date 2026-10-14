@@ -1,0 +1,52 @@
+---
+- name: Deploy VPS ingress for the existing VPN
+  hosts: socrat-0
+  any_errors_fatal: true
+  gather_facts: false
+  become: false
+  tasks:
+    - name: Inspect the previous edge deployment
+      ansible.builtin.command: >-
+        k3s kubectl -n caddy-edge get deployment caddy-edge
+        --ignore-not-found -o jsonpath={.spec.replicas}
+      register: vpn_old_edge
+      changed_when: false
+
+    - name: Require the previous edge to release public ports
+      ansible.builtin.assert:
+        that:
+          - vpn_old_edge.stdout | default('0', true) | int == 0
+        fail_msg: Follow docs/vpn-cutover.md before replacing a live Caddy edge.
+
+    - name: Read the home ingress controller configuration
+      ansible.builtin.command: >-
+        k3s kubectl -n kube-system get deployment traefik
+        -o jsonpath={.spec.template.spec.containers[0].args}
+      register: vpn_home_ingress
+      changed_when: false
+
+    - name: Require independent home and VPS ingress classes
+      ansible.builtin.assert:
+        that:
+          - "'--providers.kubernetesingress.ingressclass=traefik' in vpn_home_ingress.stdout | lower"
+        fail_msg: Apply the Traefik class isolation in playbooks/k3s.yml before deploying VPS ingress.
+
+    - name: Copy the VPS ingress chart
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../charts/traefik-edge/"
+        dest: "{{ homelab_user_home }}/tmp-charts/traefik-edge/"
+        mode: preserve
+
+    - name: Deploy VPS ingress
+      ansible.builtin.command: >-
+        helm upgrade --install traefik-edge {{ homelab_user_home }}/tmp-charts/traefik-edge
+        --namespace traefik-edge --create-namespace
+        --kubeconfig /etc/rancher/k3s/k3s.yaml
+        --wait --timeout 3m
+      changed_when: true
+
+    - name: Verify VPN certificate readiness
+      ansible.builtin.command: >-
+        k3s kubectl -n traefik-edge wait --for=condition=Ready
+        certificate/traefik-edge-vpn --timeout=180s
+      changed_when: false

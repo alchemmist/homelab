@@ -142,7 +142,7 @@ For future nodes: bring up `wg-socrat` first, then join k3s with WG node IP and 
 - Use cert-manager HTTP-01 for TLS.
 - Traefik is pinned to `socrat-0` for stable home ingress.
 - Avoid host-level Caddy on home Socrat nodes.
-- `vpn.alchemmist.xyz` edge routing is now handled by Kubernetes release `caddy-edge` on `socrat-2`, not host Docker Caddy.
+- `vpn.alchemmist.xyz` edge routing is handled by Kubernetes Ingress and the `traefik-edge` controller on `socrat-2`; the Caddy release has been removed.
 
 Rancher:
 
@@ -426,7 +426,7 @@ ansible-playbook playbooks/apps.yml -e ansible_become_password=...
 Use `socrat-2` for workloads that need public/VPS reachability:
 
 - `x-ui-lab` / containerized 3x-ui/xray
-- `caddy-edge` / Kubernetes-managed Caddy for `vpn.alchemmist.xyz:80/443`
+- `traefik-edge` / Kubernetes Ingress for `vpn.alchemmist.xyz:80/443`
 - `remark42`
 - `uptime-kuma`
 
@@ -439,7 +439,7 @@ dnsPolicy: Default
 
 This pattern fixed DNS problems for hostNetwork pods.
 
-`caddy-edge` replaced the former Docker Caddy container. It runs as a hostNetwork pod on `socrat-2` and proxies `vpn.alchemmist.xyz` traffic to the Kubernetes-managed x-ui/xray listeners on localhost/new ports.
+`traefik-edge` replaced Caddy on 2026-10-14. It runs as a hostNetwork pod on `socrat-2`, routes Kubernetes Ingress to local x-ui/xray endpoints over the node WireGuard address, and uses cert-manager for TLS. Home Traefik watches only class `traefik`; the VPS controller watches class `traefik-edge`. See [the migration and verification notes](vpn-cutover.md#traefik-vps-ingress-migration).
 
 ## 3x-ui / VPN
 
@@ -447,10 +447,10 @@ Current state:
 
 - Primary 3x-ui runs in Kubernetes release `x-ui-lab` on `socrat-2`, using the pinned 3.10.0 image and `/srv/x-ui-lab/db`.
 - Legacy ports and clients run in Kubernetes release `x-ui-legacy`, using the pinned 3.9.0 image, `/etc/x-ui`, and the existing Xray assets. The two configurations stay separate.
-- Production subscription/Caddy routes point to Kubernetes-managed x-ui.
+- Production subscription/Traefik routes point to Kubernetes-managed x-ui.
 - Native host `x-ui.service` is stopped/disabled. The emergency Docker container is stopped with restart policy `no`. The cutover preserved client settings, ports, and subscription URLs; no subscription update is required.
 - Deployment, retained legacy ports, backups, and rollback are documented in [vpn-cutover.md](vpn-cutover.md).
-- Docker Caddy has been removed; `caddy-edge` now owns public 80/443 in Kubernetes.
+- Both Docker Caddy and the `caddy-edge` Helm release have been removed. `traefik-edge` owns public TCP 80/443 and UDP 443 in Kubernetes.
 
 Important paths on `socrat-2`:
 

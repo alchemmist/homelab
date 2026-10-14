@@ -129,3 +129,5 @@
       when:
         - item.stdout in ['loaded', 'masked']
         - vpn_docker_containers.stdout | default('') | trim == ''
+
+- ansible.builtin.import_playbook: vpn-edge.yml
