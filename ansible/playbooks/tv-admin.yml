@@ -1,0 +1,94 @@
+---
+- name: Prepare Android TV administration from the home server
+  hosts: socrat-0
+  gather_facts: false
+  vars:
+    homelab_tv_serial: 192.168.0.19:5555
+    homelab_tv_expected_model: MiTV-MOOQ1
+    homelab_tv_select_hdmi: false
+  tasks:
+    - name: Install Android Debug Bridge
+      become: true
+      ansible.builtin.package:
+        name: adb
+        state: present
+
+    - name: Create the private SSH directory
+      ansible.builtin.file:
+        path: "{{ homelab_user_home }}/.ssh"
+        state: directory
+        mode: '0700'
+
+    - name: Create a dedicated TV administration key
+      ansible.builtin.command:
+        argv:
+          - ssh-keygen
+          - -q
+          - -t
+          - ed25519
+          - -N
+          - ''
+          - -C
+          - homelab-socrat-0-tv
+          - -f
+          - "{{ homelab_user_home }}/.ssh/homelab-tv"
+        creates: "{{ homelab_user_home }}/.ssh/homelab-tv"
+
+    - name: Connect to the authorized Android TV
+      ansible.builtin.command:
+        argv: [adb, connect, "{{ homelab_tv_serial }}"]
+      changed_when: false
+      check_mode: false
+
+    - name: Require TV debugging authorization
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", get-state]
+      register: homelab_tv_adb_state
+      changed_when: false
+      check_mode: false
+      failed_when: homelab_tv_adb_state.rc != 0 or homelab_tv_adb_state.stdout != 'device'
+
+    - name: Read the television model
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, getprop, ro.product.model]
+      register: homelab_tv_model
+      changed_when: false
+      check_mode: false
+
+    - name: Require the inspected Xiaomi firmware family
+      ansible.builtin.assert:
+        that:
+          - homelab_tv_model.stdout == homelab_tv_expected_model
+        quiet: true
+
+    - name: Read source restoration behavior
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, settings, get, global, set_auto_play]
+      register: homelab_tv_restore_source
+      changed_when: false
+      check_mode: false
+
+    - name: Restore the last input when the television starts
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, settings, put, global, set_auto_play, '1']
+      when: homelab_tv_restore_source.stdout != '1'
+
+    - name: Select HDMI 1 when explicitly requested
+      ansible.builtin.command:
+        argv:
+          - adb
+          - -s
+          - "{{ homelab_tv_serial }}"
+          - shell
+          - am
+          - start
+          - -W
+          - -n
+          - com.mediatek.wwtv.tvcenter/com.mitv.livetv.tv.MainActivity
+          - -a
+          - android.intent.action.VIEW
+          - -t
+          - vnd.android.cursor.item/channel
+          - -d
+          - content://android.media.tv/passthrough/com.mediatek.tvinput%2F.hdmi.HDMIInputService%2FHW4
+      when: homelab_tv_select_hdmi | bool
