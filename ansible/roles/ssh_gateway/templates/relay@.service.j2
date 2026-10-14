@@ -1,0 +1,10 @@
+[Unit]
+Description=SSH relay to {{ item }} through WireGuard
+
+[Service]
+ExecStart=/usr/bin/python3 %h/.local/bin/homelab-ssh-gateway relay {{ item }}
+StandardInput=socket
+StandardOutput=socket
+StandardError=journal
+NoNewPrivileges=true
+PrivateTmp=true

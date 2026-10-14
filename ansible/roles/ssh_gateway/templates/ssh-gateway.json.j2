@@ -1,0 +1,16 @@
+{
+  "router_description": {{ homelab_ssh_router_description | to_json }},
+  "external_address": {{ homelab_ssh_external_address | to_json }},
+  "gateway_address": {{ homelab_ssh_private_host | to_json }},
+  "nodes": [
+{% for node in groups['Socrat'] | sort %}
+    {
+      "name": {{ node | to_json }},
+      "address": {{ hostvars[node].homelab_ssh_private_host | to_json }},
+      "external_port": {{ homelab_ssh_port_base + (node.split('-')[-1] | int) }},
+      "ports": {{ ([hostvars[node].homelab_ssh_port | default(2222) | int, 22] | unique | list) | to_json }},
+      "relay": {{ hostvars[node].homelab_ssh_relay | default(false) | to_json }}
+    }{{ ',' if not loop.last else '' }}
+{% endfor %}
+  ]
+}

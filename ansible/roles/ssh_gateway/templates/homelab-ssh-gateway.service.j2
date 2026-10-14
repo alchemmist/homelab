@@ -1,0 +1,7 @@
+[Unit]
+Description=Restore homelab public SSH port mappings
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/.local/bin/homelab-ssh-gateway reconcile
+TimeoutStartSec=120

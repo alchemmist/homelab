@@ -26,12 +26,26 @@ charts/
   socrat-home/
 ```
 
-## Current nodes
+## Public SSH access
 
-| Host | Address | Notes |
+All primary aliases connect to `socrat.alchemmist.xyz`. External port numbers are `2222 + node index` and are generated from inventory:
+
+| Alias | Public endpoint | Current destination |
 | --- | --- | --- |
-| `socrat-0` / `socrat-master` | LAN `192.168.0.23:22`, public `socrat.alchemmist.xyz:2222` | `socrat-0` is the primary name; `socrat-master` remains a compatibility alias; public SSH via router port-forward `2222 -> 192.168.0.23:22` |
-| `socrat-1` | LAN `192.168.0.24:22`, public `socrat.alchemmist.xyz:2223` | Public SSH via router port-forward `2223 -> 192.168.0.24:22` |
+| `socrat-0` / `socrat-master` | `socrat.alchemmist.xyz:2222` | `192.168.0.23:22` |
+| `socrat-1` | `socrat.alchemmist.xyz:2223` | `192.168.0.24:2222` |
+| `socrat-2` | `socrat.alchemmist.xyz:2224` | Relay on `socrat-0` through WireGuard to `10.250.0.2:22` |
+
+The gateway restores missing router mappings every 30 seconds using a lingering systemd user timer. It prefers backend port `2222` and accepts legacy `22`, allowing server migrations without changing public aliases. The relay preserves SSH encryption and uses each destination's own host key and authorized keys. `socrat-2-direct` retains the independent VPS endpoint for recovery when the home gateway is unavailable.
+
+From `ansible/`:
+
+```bash
+ansible-playbook playbooks/ssh-gateway.yml
+ansible-playbook playbooks/ssh-client.yml
+```
+
+The first playbook configures the gateway on `socrat-0`; the second manages local aliases in `~/.ssh/config.d/homelab.conf`. See [node provisioning and SSH migration](docs/node-bootstrap.md) for initial setup, recovery, and adding nodes.
 
 ## Run
 

@@ -1,0 +1,20 @@
+{% for node in groups['Socrat'] | sort %}
+Host {{ node }} {{ node }}-public{{ ' socrat-master' if node == 'socrat-0' else '' }}
+    HostName {{ hostvars[node].homelab_ssh_public_host }}
+    Port {{ hostvars[node].homelab_ssh_port_base + (node.split('-')[-1] | int) }}
+    User {{ hostvars[node].ansible_user | default(hostvars[node].homelab_user) }}
+    IdentityFile {{ hostvars[node].ansible_ssh_private_key_file }}
+    IdentitiesOnly yes
+    ServerAliveInterval 30
+    ServerAliveCountMax 3
+
+{% if hostvars[node].homelab_ssh_direct_host is defined %}
+Host {{ node }}-direct
+    HostName {{ hostvars[node].homelab_ssh_direct_host }}
+    Port {{ hostvars[node].homelab_ssh_direct_port }}
+    User {{ hostvars[node].ansible_user | default(hostvars[node].homelab_user) }}
+    IdentityFile {{ hostvars[node].ansible_ssh_private_key_file }}
+    IdentitiesOnly yes
+
+{% endif %}
+{% endfor %}

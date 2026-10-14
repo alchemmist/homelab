@@ -1,0 +1,91 @@
+---
+- name: Check required gateway tools
+  ansible.builtin.command: "test -x {{ item }}"
+  loop:
+    - /usr/bin/python3
+    - /usr/bin/upnpc
+    - /usr/bin/socat
+  changed_when: false
+
+- name: Read user linger state
+  ansible.builtin.command: "loginctl show-user {{ homelab_user }} --property=Linger --value"
+  register: homelab_ssh_linger
+  changed_when: false
+
+- name: Enable gateway services without an interactive login
+  ansible.builtin.command: "loginctl enable-linger {{ homelab_user }}"
+  when: homelab_ssh_linger.stdout != 'yes'
+
+- name: Create gateway configuration directories
+  ansible.builtin.file:
+    path: "{{ homelab_user_home }}/{{ item }}"
+    state: directory
+    mode: '0700'
+  loop:
+    - .local/bin
+    - .config/homelab
+    - .config/systemd/user
+
+- name: Install SSH gateway utility
+  ansible.builtin.copy:
+    src: homelab_ssh_gateway.py
+    dest: "{{ homelab_user_home }}/.local/bin/homelab-ssh-gateway"
+    mode: '0755'
+
+- name: Configure gateway nodes from inventory
+  ansible.builtin.template:
+    src: ssh-gateway.json.j2
+    dest: "{{ homelab_user_home }}/.config/homelab/ssh-gateway.json"
+    mode: '0600'
+
+- name: Install mapping reconciliation service and timer
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "{{ homelab_user_home }}/.config/systemd/user/{{ item }}"
+    mode: '0644'
+  loop:
+    - homelab-ssh-gateway.service
+    - homelab-ssh-gateway.timer
+
+- name: Install WireGuard relay sockets
+  ansible.builtin.template:
+    src: relay.socket.j2
+    dest: "{{ homelab_user_home }}/.config/systemd/user/homelab-ssh-relay-{{ item }}.socket"
+    mode: '0644'
+  loop: "{{ groups['Socrat'] }}"
+  when: hostvars[item].homelab_ssh_relay | default(false)
+  register: homelab_ssh_relay_sockets
+
+- name: Install per-connection WireGuard relay services
+  ansible.builtin.template:
+    src: relay@.service.j2
+    dest: "{{ homelab_user_home }}/.config/systemd/user/homelab-ssh-relay-{{ item }}@.service"
+    mode: '0644'
+  loop: "{{ groups['Socrat'] }}"
+  when: hostvars[item].homelab_ssh_relay | default(false)
+
+- name: Enable WireGuard relay sockets
+  ansible.builtin.systemd_service:
+    scope: user
+    name: "homelab-ssh-relay-{{ item.item }}.socket"
+    enabled: true
+    state: "{{ 'restarted' if item.changed else 'started' }}"
+    daemon_reload: true
+  loop: "{{ homelab_ssh_relay_sockets.results }}"
+  when: not item.skipped | default(false)
+  loop_control:
+    label: "{{ item.item }}"
+
+- name: Enable periodic mapping reconciliation
+  ansible.builtin.systemd_service:
+    scope: user
+    name: homelab-ssh-gateway.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Reconcile public SSH mappings now
+  ansible.builtin.systemd_service:
+    scope: user
+    name: homelab-ssh-gateway.service
+    state: started

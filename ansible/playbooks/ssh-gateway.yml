@@ -1,0 +1,7 @@
+---
+- name: Maintain public SSH access to Socrat nodes
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  roles:
+    - ssh_gateway

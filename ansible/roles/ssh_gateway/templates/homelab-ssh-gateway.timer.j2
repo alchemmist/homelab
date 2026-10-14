@@ -1,0 +1,10 @@
+[Unit]
+Description=Keep homelab public SSH port mappings available
+
+[Timer]
+OnBootSec=15s
+OnUnitInactiveSec=30s
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

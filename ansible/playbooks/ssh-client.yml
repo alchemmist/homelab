@@ -1,0 +1,29 @@
+---
+- name: Configure public SSH aliases on the controller
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+  vars:
+    homelab_local_ssh_dir: "{{ lookup('ansible.builtin.env', 'HOME') }}/.ssh"
+  tasks:
+    - name: Create SSH configuration directory
+      ansible.builtin.file:
+        path: "{{ homelab_local_ssh_dir }}/config.d"
+        state: directory
+        mode: '0700'
+
+    - name: Generate public aliases from inventory
+      ansible.builtin.template:
+        src: ../templates/ssh-client.conf.j2
+        dest: "{{ homelab_local_ssh_dir }}/config.d/homelab.conf"
+        mode: '0600'
+
+    - name: Load managed aliases before existing host definitions
+      ansible.builtin.lineinfile:
+        path: "{{ homelab_local_ssh_dir }}/config"
+        line: Include ~/.ssh/config.d/homelab.conf
+        insertbefore: BOF
+        create: true
+        mode: '0600'
+        backup: true

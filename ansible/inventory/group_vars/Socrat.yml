@@ -1,5 +1,8 @@
 ---
-ansible_port: 2222
+homelab_ssh_public_host: socrat.alchemmist.xyz
+homelab_ssh_port_base: 2222
+ansible_host: "{{ homelab_ssh_public_host }}"
+ansible_port: "{{ homelab_ssh_port_base + (inventory_hostname.split('-')[-1] | int) }}"
 
 # Shared defaults for Socrat nodes.
 # Starship uses runtime `hostname`, so the same config works for every node:

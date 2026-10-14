@@ -1,0 +1,11 @@
+[Unit]
+Description=Public SSH socket for {{ item }}
+
+[Socket]
+ListenStream={{ homelab_ssh_private_host }}:{{ homelab_ssh_port_base + (item.split('-')[-1] | int) }}
+FreeBind=true
+Accept=yes
+MaxConnections=64
+
+[Install]
+WantedBy=sockets.target
