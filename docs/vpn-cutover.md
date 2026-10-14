@@ -45,6 +45,10 @@ This prepares the loopback address on `socrat-2`, verifies that the existing dat
 
 Both releases are also included in `playbooks/apps.yml`; the legacy release uses `charts/x-ui/values-legacy.yaml`. Avoid changing the pinned image versions during a recovery operation.
 
+## Automatic VPS recovery
+
+The optional [native VPN recovery watchdog](vpn-failover.md) prepares an independent systemd fallback for both live VPN configurations and Caddy. It fences Kubernetes locally before starting native database writers and requires explicit failback. Use its dedicated playbook to install it.
+
 ## Emergency runtime state
 
 - `x-ui.service`: stopped and disabled.

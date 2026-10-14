@@ -4,6 +4,17 @@
   any_errors_fatal: true
   gather_facts: false
   become: true
+  pre_tasks:
+    - name: Inspect native VPN recovery latch
+      ansible.builtin.stat:
+        path: /var/lib/homelab-vpn-failover/active
+      register: vpn_recovery_latch
+
+    - name: Require explicit failback before deploying Kubernetes VPN
+      ansible.builtin.assert:
+        that: not vpn_recovery_latch.stat.exists
+        fail_msg: Native VPN recovery is active. Follow docs/vpn-failover.md before deploying Kubernetes VPN.
+
   roles:
     - vpn_legacy_network
   tasks:

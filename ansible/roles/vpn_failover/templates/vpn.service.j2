@@ -1,0 +1,30 @@
+[Unit]
+Description=Emergency native 3x-ui {{ item.name }}
+Requires=vpn-legacy-loopback.service
+After=network-online.target vpn-legacy-loopback.service
+Wants=network-online.target
+ConditionPathExists={{ vpn_failover_state }}/active
+
+[Service]
+Type=simple
+RootDirectory={{ vpn_failover_root }}/{{ item.name }}
+MountAPIVFS=yes
+RootDirectoryStartOnly=yes
+BindPaths={{ item.database }}:/etc/x-ui
+BindPaths={{ item.cert }}:/root/cert
+BindPaths={{ item.acme }}:/root/.acme.sh
+{% if item.runtime %}
+BindPaths={{ item.runtime }}:/app/bin
+{% endif %}
+BindReadOnlyPaths=/etc/resolv.conf
+WorkingDirectory=/app
+Environment=XRAY_VMESS_AEAD_FORCED=false
+Environment=XUI_ENABLE_FAIL2BAN=false
+Environment=TZ={{ item.timezone }}
+ExecStartPre=/usr/bin/python3 /usr/local/sbin/homelab-vpn-failover guard
+ExecStart=/app/x-ui
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=30s
+KillMode=control-group
+UMask=0077

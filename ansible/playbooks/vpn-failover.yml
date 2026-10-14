@@ -1,0 +1,9 @@
+---
+- name: Prepare independent native VPN recovery on the VPS
+  hosts: socrat-2
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  roles:
+    - vpn_legacy_network
+    - vpn_failover

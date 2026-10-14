@@ -1,0 +1,16 @@
+[Unit]
+Description=Emergency native VPN Caddy ingress
+After=network-online.target homelab-vpn-primary.service
+Wants=network-online.target
+ConditionPathExists={{ vpn_failover_state }}/active
+
+[Service]
+Type=simple
+ExecStartPre=/usr/bin/python3 /usr/local/sbin/homelab-vpn-failover guard
+ExecStart={{ vpn_failover_root }}/caddy run --config /etc/homelab-vpn-failover/Caddyfile --adapter caddyfile
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=30s
+Environment=XDG_DATA_HOME=/srv/caddy/data
+Environment=XDG_CONFIG_HOME=/srv/caddy/config
+UMask=0077
