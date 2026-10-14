@@ -1,0 +1,6 @@
+---
+- name: Restart k3s for graceful shutdown configuration
+  ansible.builtin.systemd_service:
+    name: "{{ homelab_boot_k3s_service }}"
+    daemon_reload: true
+    state: restarted

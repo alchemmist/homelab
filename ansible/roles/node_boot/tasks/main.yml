@@ -1,0 +1,86 @@
+---
+- name: Create boot service override directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - "/etc/systemd/system/{{ homelab_boot_k3s_service }}.d"
+    - /etc/systemd/system/wg-quick@wg-socrat.service.d
+
+- name: Start k3s after the management network interface
+  ansible.builtin.template:
+    src: k3s-network.conf.j2
+    dest: "/etc/systemd/system/{{ homelab_boot_k3s_service }}.d/20-homelab-network.conf"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Retry WireGuard startup after a transient failure
+  ansible.builtin.template:
+    src: wireguard-retry.conf.j2
+    dest: /etc/systemd/system/wg-quick@wg-socrat.service.d/20-homelab-retry.conf
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Create laptop power policy directory
+  ansible.builtin.file:
+    path: /etc/systemd/logind.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  when: homelab_ignore_lid_on_ac | default(false)
+
+- name: Keep the plugged-in worker awake when its lid is closed
+  ansible.builtin.template:
+    src: laptop-on-ac.conf.j2
+    dest: /etc/systemd/logind.conf.d/60-homelab-on-ac.conf
+    owner: root
+    group: root
+    mode: '0644'
+  when: homelab_ignore_lid_on_ac | default(false)
+
+- name: Reload boot service definitions
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+- name: Enable headless infrastructure independently of desktop login
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop: "{{ homelab_boot_services }}"
+
+- name: Read Wi-Fi automatic connection settings
+  ansible.builtin.command: >-
+    nmcli --get-values connection.autoconnect,connection.permissions,802-11-wireless-security.psk-flags
+    connection show uuid {{ homelab_boot_wifi_uuid | quote }}
+  register: homelab_wifi_boot
+  check_mode: false
+  changed_when: false
+  when: homelab_boot_wifi_uuid is defined
+
+- name: Require Wi-Fi to connect before user login
+  ansible.builtin.assert:
+    that:
+      - homelab_wifi_boot.stdout_lines | length == 3
+      - homelab_wifi_boot.stdout_lines[0] == 'yes'
+      - homelab_wifi_boot.stdout_lines[1] == ''
+      - homelab_wifi_boot.stdout_lines[2] == '0'
+    fail_msg: Wi-Fi must autoconnect using a system-wide profile with a stored secret; credentials must stay on the node.
+    quiet: true
+  when: homelab_boot_wifi_uuid is defined
+
+- name: Read whether user services survive logout
+  ansible.builtin.command: "loginctl show-user {{ homelab_user }} --property=Linger --value"
+  register: homelab_boot_linger
+  check_mode: false
+  changed_when: false
+
+- name: Keep existing user infrastructure available without an interactive login
+  ansible.builtin.command: "loginctl enable-linger {{ homelab_user }}"
+  when: homelab_boot_linger.stdout != 'yes'

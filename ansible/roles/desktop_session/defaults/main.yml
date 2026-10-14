@@ -1,0 +1,6 @@
+---
+homelab_desktop_login_file: .zprofile
+homelab_desktop_remove_sway: false
+homelab_desktop_disable_idle_shutdown: false
+homelab_desktop_environment: {}
+homelab_desktop_caffeine_default: false

@@ -1,0 +1,275 @@
+$scrPath = {{ homelab_user_home }}/scripts
+{% for monitor in homelab_hypr_monitors %}
+monitor = {{ monitor }}
+{% endfor %}
+{% for name, value in homelab_hypr_environment.items() %}
+env = {{ name }},{{ value }}
+{% endfor %}
+exec-once = ~/scripts/start-desktop-services.sh
+exec-once = waybar -c ~/.config/waybar/hypr-config.json --style ~/.config/waybar/hypr-style.css
+exec-once = /usr/local/bin/homelab-wallpaper
+exec-once = flameshot
+exec-once = {{ homelab_hypr_polkit_agent }}
+exec-once = wl-paste --type text --watch cliphist store
+exec-once = wl-paste --type image --watch cliphist store
+{% if homelab_desktop_caffeine_default | default(false) %}
+exec-once = ~/scripts/caffeine-manager.sh --enable
+{% else %}
+exec-once = systemctl --user start hypridle.service
+{% endif %}
+exec-once = hyprswitch init --size-factor 4 --workspaces-per-row 4
+exec-once = ~/scripts/layout-listener.sh
+exec-once = [workspace 1 silent] /usr/local/bin/homelab-monitor-terminal
+{% for command in homelab_hypr_autostart %}
+exec-once = {{ command }}
+{% endfor %}
+ecosystem {
+    no_donation_nag = true
+    no_update_news = true
+}
+general {
+    gaps_in = 8
+    gaps_out = 8, 15, 15, 15
+    border_size = 0
+    col.active_border=rgb(cdd6f4)
+    col.inactive_border = rgba(595959aa)
+    resize_on_border = false
+    allow_tearing = true
+    layout = dwindle
+}
+cursor {
+    no_hardware_cursors = false
+    enable_hyprcursor = true
+    animation = fade
+}
+xwayland {
+    force_zero_scaling = false
+    use_nearest_neighbor = false
+}
+decoration {
+    dim_modal=true
+    rounding = 15
+    shadow {
+        enabled          = true
+        range            = 155
+        render_power     = 90
+        sharp            = false
+        color            = 0xee000000
+        color_inactive   = 0x66000000
+        scale            = 0.94
+    }
+    blur {
+        enabled = {{ homelab_hypr_blur | ternary("true", "false") }}
+        size = 2
+        passes = 3
+    }
+}
+layerrule = no_anim on, match:namespace hyprpicker
+layerrule = no_anim on, match:namespace selection
+animations {
+    enabled = true
+    bezier = snappy, 0.16, 1, 0.30, 1
+    bezier = glide, 0.22, 0.85, 0.28, 1
+    animation = windowsIn, 1, 4, snappy, popin 88%
+    animation = windowsOut, 1, 3, snappy, popin 92%
+    animation = windowsMove, 1, 4, glide
+    animation = border, 1, 5, snappy
+    animation = borderangle, 1, 6, glide
+    animation = fade, 1, 4, snappy
+    animation = workspaces, 1, 5, glide, slidefade 18%
+    animation = specialWorkspace, 1, 5, glide, slidefadevert 12%
+    animation = zoomFactor, 1, 4, snappy
+}
+dwindle {
+    preserve_split = yes
+}
+master {
+    new_status = master
+}
+scrolling {
+    column_width = 0.56
+    focus_fit_method = 1
+    follow_focus = true
+    follow_min_visible = 0.35
+    explicit_column_widths = 0.333, 0.5, 0.667, 1.0
+    wrap_focus = true
+    wrap_swapcol = true
+    fullscreen_on_one_column = true
+}
+misc {
+    vrr = 0
+    disable_hyprland_logo = true
+    disable_splash_rendering = true
+    force_default_wallpaper = 0
+}
+input {
+    kb_layout = us,ru
+    kb_options = ctrl:nocaps,grp:shifts_toggle
+    follow_mouse = 1
+    touchpad {
+        tap-to-click = true
+        natural_scroll = no
+        middle_button_emulation = false
+        drag_lock = false
+        scroll_factor = 0.70
+    }
+    sensitivity = 0
+    repeat_rate = 50
+    repeat_delay = 200
+}
+gestures {
+    gesture = 3, horizontal, workspace
+    gesture = 4, down, special, notes
+    gesture = 4, up, dispatcher, exec, hyprswitch simple --filter-current-workspace
+    gesture = 2, pinch, cursorZoom, 1, live
+    workspace_swipe_forever = false
+    workspace_swipe_invert = false
+    workspace_swipe_distance = 360
+    workspace_swipe_cancel_ratio = 0.20
+}
+render {
+    new_render_scheduling = true
+    cm_auto_hdr = true
+}
+group {
+    groupbar {
+        enabled = yes
+        render_titles = no
+        font_size = 10
+        height = 10
+        gradients = yes
+        text_padding = 4
+        text_color = rgb(ffffff)
+        col.active = rgba(1010104a)
+        col.inactive = rgba(1010101f)
+    }
+}
+$mainMod = SUPER
+bind = ALT, TAB, exec, hyprswitch simple --filter-current-workspace
+bind = ALT SHIFT, TAB, exec, hyprswitch simple --filter-current-workspace --reverse
+bind = $mainMod, RETURN, exec, alacritty
+bind = $mainMod, Q, killactive,
+bind = , 135, exec, hyprlock
+bind = $mainMod, M, exec, {{ homelab_hypr_logout }}
+bind = $mainMod CTRL SHIFT, M, exit
+bind = $mainMod, E, exec, {{ homelab_hypr_file_manager }}
+bind = $mainMod, B, exec, {{ homelab_hypr_browser }}
+bind = $mainMod, T, togglefloating
+bind = $mainMod, P, pseudo,
+bind = $mainMod, O, layoutmsg, togglesplit
+bind = ALT, SPACE, exec, wofi
+bind = $mainMod, S, exec, flameshot gui --path=$HOME/Pictures/screenshots/ --clipboard
+bind = $mainMod SHIFT, S, exec, ~/scripts/macos-screenshot.sh --flameshot
+bind = $mainMod SHIFT, R, exec, pkill -SIGUSR2 -x waybar
+bind = $mainMod, W, exec, ~/scripts/swww_random.sh
+bind = $mainMod SHIFT, W, exec, kitty --title wallpaper_pack_selector {{ homelab_user_home }}/scripts/wallpaper_pack_selector.sh
+bind = SUPER, C, exec, cliphist list | wofi --dmenu | cliphist decode | wl-copy
+bind = CTRL, apostrophe, exec, wtype -P right -p right
+bind = $mainMod,F,fullscreen
+bind = ,F9,exec, ~/scripts/toggle-waybar.sh
+bind = $mainMod, comma, layoutmsg, focus l
+bind = $mainMod, period, layoutmsg, focus r
+bind = $mainMod SHIFT, comma, layoutmsg, swapcol l
+bind = $mainMod SHIFT, period, layoutmsg, swapcol r
+bind = $mainMod CTRL, comma, layoutmsg, colresize -conf
+bind = $mainMod CTRL, period, layoutmsg, colresize +conf
+bind = $mainMod, backslash, layoutmsg, consume_or_expel next
+bind = $mainMod, equal, layoutmsg, fit active
+bind = $mainMod, minus, layoutmsg, promote
+bind = $mainMod, Page_Down, layoutmsg, cyclenext
+bind = $mainMod, Page_Up, layoutmsg, cycleprev
+bind = $mainMod, i, exec, swaync-client -t
+bind = $mainMod, u, exec, ~/scripts/alacritty-theme-toggle.sh
+bind = $mainMod, x, exec, {{ homelab_hypr_chat_command }}
+windowrule = no_screen_share on, float on, size 568 1068, move (1300) (70), match:class ^(chrome-chatgpt\.com__-Default)$
+bind = $mainMod, N, togglespecialworkspace, notes
+bind = $mainMod SHIFT, N, movetoworkspace, special:notes
+bind = $mainMod, grave, togglespecialworkspace, tmp
+bind = $mainMod SHIFT, grave, movetoworkspace, special:tmp
+bind = $mainMod CTRL, grave, movetoworkspace, 1
+bind = $mainMod, G, togglegroup
+bind = $mainMod SHIFT, G, moveoutofgroup
+bind = $mainMod, TAB, changegroupactive, f
+bind = ,121, exec, pamixer -t
+bind = ,122, exec, pamixer -d 5
+bind = ,123, exec, pamixer -i 5
+bind = ,256, exec, pamixer --default-source -t
+bind = ,232, exec, brightnessctl set 2%-
+bind = ,233, exec, brightnessctl set 2%+
+bind = $mainMod, l, movefocus, r
+bind = $mainMod, h, movefocus, l
+bind = $mainMod, k, movefocus, u
+bind = $mainMod, j, movefocus, d
+bind = $mainMod, 1, workspace, 1
+bind = $mainMod, 2, workspace, 2
+bind = $mainMod, 3, workspace, 3
+bind = $mainMod, 4, workspace, 4
+bind = $mainMod, 5, workspace, 5
+bind = $mainMod, 6, workspace, 6
+bind = $mainMod, 7, workspace, 7
+bind = $mainMod, 8, workspace, 8
+bind = $mainMod, 9, workspace, 9
+bind = $mainMod, 0, workspace, 10
+bind = $mainMod SHIFT, 1, movetoworkspacesilent, 1
+bind = $mainMod SHIFT, 2, movetoworkspacesilent, 2
+bind = $mainMod SHIFT, 3, movetoworkspacesilent, 3
+bind = $mainMod SHIFT, 4, movetoworkspacesilent, 4
+bind = $mainMod SHIFT, 5, movetoworkspacesilent, 5
+bind = $mainMod SHIFT, 6, movetoworkspacesilent, 6
+bind = $mainMod SHIFT, 7, movetoworkspacesilent, 7
+bind = $mainMod SHIFT, 8, movetoworkspacesilent, 8
+bind = $mainMod SHIFT, 9, movetoworkspacesilent, 9
+bind = $mainMod SHIFT, 0, movetoworkspacesilent, 10
+bind = CTRL $mainMod, L, workspace, e+1
+bind = CTRL $mainMod, H, workspace, e-1
+bindm = $mainMod, mouse:272, movewindow
+bindm = $mainMod SHIFT, mouse:272, resizewindow
+bind = $mainMod SHIFT, h, resizeactive, -50 0
+bind = $mainMod SHIFT, l, resizeactive, 50 0
+bind = $mainMod SHIFT, k, resizeactive, 0 -50
+bind = $mainMod SHIFT, j, resizeactive, 0 50
+bind = $mainMod CTRL SHIFT, h, swapwindow, l
+bind = $mainMod CTRL SHIFT, l, swapwindow, r
+bind = $mainMod CTRL SHIFT, k, swapwindow, u
+bind = $mainMod CTRL SHIFT, j, swapwindow, d
+{% for workspace in range(1, 11) %}
+workspace = {{ workspace }}, persistent:false
+{% endfor %}
+workspace = 1, layout:dwindle
+workspace = 2, layout:scroll
+workspace = 9, layout:monocle
+windowrule = no_screen_share on, match:class ^(org.telegram.desktop|obsidian|discord|Time)$
+layerrule = no_screen_share on, match:namespace swaync-notification-window
+windowrule = no_blur on, match:class ^(Alacritty|alacritty|homelab-monitor)$
+windowrule = no_blur on, no_shadow on, immediate on, match:content game
+windowrule = no_blur on, match:content video
+windowrule = float on, size 700 600, match:class ^(imv)$
+windowrule = size 1140 963, move (390) (135), workspace 10, match:class ^(obsidian)$
+windowrule = float on, size 1021 1021, move 100 109, workspace 3, match:initial_class ^(Time)$
+windowrule = float on, size 592 1021, move 1151 109, workspace 3, match:initial_class ^(org.telegram.desktop)$
+windowrule = float on, size 1890 1145, move (15) (45), match:title ^(Media viewer)$
+windowrule = float on, size 747 612, move 569 287, workspace 3, match:initial_title ^(Choose Files)$
+windowrule = float on, size 1035 700, center on, match:title ^(Syncthing)$
+windowrule = float on, size 1110 750, match:class ^(yandex-music)$
+windowrule = move (720) (135), match:title ^(yandex-music)$
+windowrule = float on, size 800 800, center on, match:title ^(yazi)$
+windowrule = float on, size 800 800, center on, match:title ^(Open Files)$
+windowrule = float on, size 800 800, center on, match:title ^(Open File)$
+windowrule = float on, size 800 800, center on, match:title ^(Save File)$
+windowrule = float on, match:class ^(qimgv)$
+windowrule = float on, size 800 800, move (300) (100), match:class ^(org.nomacs.ImageLounge)$
+windowrule = float on, center on, size 300 300, match:title ^wallpaper_pack_selector$
+windowrule = workspace 9, match:class ^(Chromium-browser)$
+windowrule = float on, match:title ^test_window$
+windowrule = float on, center on, size 1200 900, match:class ^(monori)$
+windowrule = float on, center on, size 600 600, match:class ^(xdg-desktop-portal-gtk)$
+windowrule = float on, size 960 980, move (880) (115), match:class ^(org.zealdocs.zeal)$
+windowrule = float on, center on, size 600 600, match:class ^(Thunar)$
+windowrule = float on, center on, size 600 600, match:class ^(thunar)$
+windowrule = float on, center on, size 700 900, match:title ^(Sign in - Google Accounts - Google Chrome)$
+windowrule = workspace 7, match:class ^(org.inkscape.inkscape)$
+windowrule = no_focus on, match:class ^$, match:title ^$, match:xwayland 1, match:float 1, match:fullscreen 0, match:pin 0
+{% for rule in homelab_hypr_extra_rules %}
+{{ rule }}
+{% endfor %}
+source = {{ homelab_user_home }}/.config/hypr/local.conf

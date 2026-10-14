@@ -1,0 +1,65 @@
+---
+- name: Validate Alacritty background opacity
+  ansible.builtin.assert:
+    that:
+      - homelab_alacritty_opacity is number
+      - homelab_alacritty_opacity >= 0
+      - homelab_alacritty_opacity <= 1
+    quiet: true
+
+- name: Create the Alacritty configuration directory
+  ansible.builtin.file:
+    path: "{{ homelab_user_home }}/.config/alacritty"
+    state: directory
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: '0755'
+    follow: true
+
+- name: Resolve the Alacritty configuration target
+  ansible.builtin.command:
+    argv:
+      - readlink
+      - -m
+      - "{{ homelab_user_home }}/.config/alacritty/alacritty.toml"
+  register: homelab_alacritty_config
+  changed_when: false
+  check_mode: false
+
+- name: Keep Alacritty configuration inside the user home
+  ansible.builtin.assert:
+    that:
+      - homelab_alacritty_config.stdout.startswith(homelab_user_home + '/')
+    quiet: true
+
+- name: Set the default terminal background opacity
+  community.general.ini_file:
+    path: "{{ homelab_alacritty_config.stdout }}"
+    section: window
+    option: opacity
+    value: "{{ homelab_alacritty_opacity | float | string }}"
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: '0644'
+    backup: true
+
+- name: Disable Alacritty background blur
+  community.general.ini_file:
+    path: "{{ homelab_alacritty_config.stdout }}"
+    section: window
+    option: blur
+    value: 'false'
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: '0644'
+    backup: true
+
+- name: Validate Alacritty TOML syntax
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/python3
+      - -c
+      - 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))'
+      - "{{ homelab_alacritty_config.stdout }}"
+  changed_when: false
+  when: not ansible_check_mode

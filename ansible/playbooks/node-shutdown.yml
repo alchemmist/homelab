@@ -1,0 +1,9 @@
+---
+- name: Configure graceful Kubernetes node shutdown
+  hosts: Socrat
+  gather_facts: false
+  become: true
+  serial: 1
+  roles:
+    - role: node_shutdown
+      when: homelab_shutdown_enabled | default(false)

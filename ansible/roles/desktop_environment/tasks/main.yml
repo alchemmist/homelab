@@ -1,0 +1,113 @@
+---
+- name: Validate the desktop profile
+  ansible.builtin.assert:
+    that:
+      - homelab_desktop_profile in ['desktop', 'laptop']
+      - homelab_hypr_monitors | length > 0
+    quiet: true
+
+- name: Check the existing graphical tools
+  become: false
+  ansible.builtin.shell: for tool in Hyprland awww awww-daemon waybar hypridle; do command -v "$tool" || exit 1; done
+  environment:
+    PATH: "{{ homelab_user_home }}/.local/bin:/usr/local/bin:/usr/bin:/bin"
+  changed_when: false
+  check_mode: false
+
+- name: Create desktop configuration directories
+  ansible.builtin.file:
+    path: "{{ homelab_user_home }}/{{ item }}"
+    state: directory
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: '0755'
+    follow: true
+  loop:
+    - .config/hypr
+    - .config/systemd/user
+    - scripts
+    - Pictures/wallpapers
+
+- name: Preserve a separate place for local Hyprland overrides
+  ansible.builtin.copy:
+    content: ''
+    dest: "{{ homelab_user_home }}/.config/hypr/local.conf"
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: '0644'
+    force: false
+
+- name: Deliver the desktop support scripts
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ homelab_user_home }}/scripts/{{ item }}"
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: '0755'
+    follow: true
+    backup: true
+    validate: /bin/bash -n %s
+  loop:
+    - start-desktop-services.sh
+    - layout-listener.sh
+    - caffeine-manager.sh
+
+- name: Deliver the caffeine lid inhibitor
+  ansible.builtin.copy:
+    src: caffeine-lid-inhibit.service
+    dest: "{{ homelab_user_home }}/.config/systemd/user/caffeine-lid-inhibit.service"
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: '0644'
+    follow: true
+    backup: true
+  register: homelab_caffeine_unit
+
+- name: Reload user service definitions
+  become: false
+  ansible.builtin.systemd_service:
+    scope: user
+    daemon_reload: true
+  when: homelab_caffeine_unit.changed
+
+- name: Deliver the wallpaper launcher
+  ansible.builtin.template:
+    src: homelab-wallpaper.j2
+    dest: /usr/local/bin/homelab-wallpaper
+    owner: root
+    group: root
+    mode: '0755'
+    validate: /bin/sh -n %s
+
+- name: Select the default image for desktop and lockscreen
+  tags: wallpaper
+  ansible.builtin.file:
+    src: "{{ homelab_wallpaper_path }}"
+    dest: "{{ homelab_user_home }}/Pictures/wallpapers/current-wallpaper"
+    state: link
+    follow: false
+    force: true
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+
+- name: Deliver the idle policy with an independent lockscreen service
+  ansible.builtin.template:
+    src: hypridle.conf.j2
+    dest: "{{ homelab_user_home }}/.config/hypr/hypridle.conf"
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: '0644'
+    follow: true
+    backup: true
+
+- name: Deliver the validated shared Hyprland configuration
+  tags: hyprland
+  become: false
+  ansible.builtin.template:
+    src: hyprland.conf.j2
+    dest: "{{ homelab_user_home }}/.config/hypr/hyprland.conf"
+    mode: '0644'
+    follow: true
+    backup: true
+    validate: /usr/bin/Hyprland --verify-config --config %s
+  register: homelab_hyprland_config

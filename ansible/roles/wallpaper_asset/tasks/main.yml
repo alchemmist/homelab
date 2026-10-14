@@ -1,0 +1,16 @@
+---
+- name: Create the shared wallpaper directory
+  ansible.builtin.file:
+    path: "{{ homelab_wallpaper_path | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Deliver the default cluster wallpaper
+  ansible.builtin.copy:
+    src: default.png
+    dest: "{{ homelab_wallpaper_path }}"
+    owner: root
+    group: root
+    mode: '0644'

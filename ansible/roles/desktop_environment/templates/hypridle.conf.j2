@@ -1,0 +1,16 @@
+general {
+    lock_cmd = pidof hyprlock || systemd-run --user --collect --unit=homelab-hyprlock /usr/bin/hyprlock
+    before_sleep_cmd = loginctl lock-session
+    after_sleep_cmd = hyprctl dispatch dpms on
+}
+{% if homelab_desktop_profile == 'laptop' %}
+listener {
+    timeout = 120
+    on-timeout = brightnessctl -s set 5
+    on-resume = brightnessctl -r
+}
+listener {
+    timeout = 180
+    on-timeout = loginctl lock-session
+}
+{% endif %}

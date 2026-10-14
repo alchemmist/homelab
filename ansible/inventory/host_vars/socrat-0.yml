@@ -1,0 +1,9 @@
+---
+homelab_desktop_autologin: true
+homelab_desktop_profile: desktop
+homelab_waybar_profile: desktop
+homelab_hide_flameshot_tray: true
+homelab_hypr_monitors:
+- HDMI-A-1, 3840x2160@30, 0x0, 1.5
+homelab_hypr_polkit_agent: /usr/lib/x86_64-linux-gnu/libexec/polkit-kde-authentication-agent-1
+homelab_hypr_autostart: []

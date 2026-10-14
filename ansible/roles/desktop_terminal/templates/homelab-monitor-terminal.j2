@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/go/bin:/usr/local/bin:/usr/bin:/bin"
+exec /usr/bin/alacritty --class homelab-monitor -e /usr/bin/tmux new-session -A -s {{ homelab_terminal_session | quote }} -n monitor /usr/local/bin/homelab-monitor-shell

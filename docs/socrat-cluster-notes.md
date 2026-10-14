@@ -32,6 +32,46 @@ socrat-2 public: 176.98.185.59
 home public: 109.173.40.247
 ```
 
+## Home node boot and desktop recovery
+
+`ansible/playbooks/desktop.yml` now defines automatic local tty1 login as `alchemmist` and direct Hyprland startup for `socrat-0` and `socrat-1`. The `node_boot` role keeps existing networking, SSH, WireGuard, and k3s services enabled independently of desktop login, orders k3s after WireGuard, and retries WireGuard startup failures. User lingering remains enabled.
+
+On `socrat-1`, the managed setup archives the old session selector and installed Sway configuration paths, removes Sway and unused helpers, and removes the Hypridle listener that powered the laptop off after 30 minutes. Hyprland, swaync, fzf, and dimming/locking remain. The underlying logind policy ignores lid closure on external power or while docked; its battery policy is unchanged. User configuration backups live in `~/.local/state/homelab/desktop-backups/<timestamp>/`.
+
+Applied on both home nodes on 2026-10-14. The repeat Ansible run completed with `changed=0` and no failures on both nodes; all 20 local tests passed. Existing Hyprland process IDs remained unchanged, all three Kubernetes nodes stayed `Ready`, and `socrat-1` retained 19 GiB free with `DiskPressure=False` and its backup folder paused. These changes did not restart the active desktop or logind. The user subsequently rebooted `socrat-1` and confirmed automatic login and Hyprland startup; fresh SSH access and uptime were verified. The user also completed a physical AC power restoration experiment on `socrat-0`: the machine powered on automatically; subsequent SSH access, Hyprland startup, and all three Kubernetes nodes `Ready` were verified. Automatic AC recovery therefore works on this ASUS PRIME X299-A II; Ansible does not manage its firmware setting. Equivalent AC-attach startup support on the HONOR BRN-HXX laptop is unconfirmed; its battery also means cutting smart-socket power does not switch it off.
+
+`socrat-1` now opts into `homelab_desktop_caffeine_default: true`: each Hyprland session invokes `~/scripts/caffeine-manager.sh --enable` instead of starting Hypridle. This enables the existing Waybar caffeine mode by default: Hypridle stops and `caffeine-lid-inhibit.service` starts. Idle dimming/locking is inactive, and lid closure is inhibited even on battery while the mode is on. The Waybar toggle remains available; disabling caffeine resumes Hypridle, and a new graphical session enables caffeine again. Explicit `--enable` and `--disable` commands allow setting the mode without toggling.
+
+See [the boot and recovery runbook](node-bootstrap.md#automatic-boot-and-local-desktop) for application, validation, and rollback. This automation does not remove the cluster's control-plane, home gateway, or NFS dependence on `socrat-0`.
+
+Caffeine was enabled live on `socrat-1` on 2026-10-14. The first activation exposed a lifecycle bug: Hypridle had launched Hyprlock inside its own service cgroup, so stopping Hypridle also terminated the active locker and triggered Hyprland's crashed-lockscreen screen. The desktop was recovered without restarting Hyprland. The managed `lock_cmd` now launches Hyprlock via `systemd-run --user --collect --unit=homelab-hyprlock`, keeping its lifecycle independent of Hypridle. Caffeine remains enabled at graphical startup and can still be toggled from Waybar.
+
+## Shared desktop configuration refactor
+
+The desktop roles now separate console login (`desktop_session`), Hyprland and idle/caffeine behavior (`desktop_environment`), Waybar (`desktop_panel`), and the monitor terminal (`desktop_terminal`). Common templates use desktop/laptop profiles with monitor layouts, extra rules, and startup applications in `ansible/inventory/host_vars/socrat-0.yml` and `socrat-1.yml`. Local Hyprland overrides belong in `~/.config/hypr/local.conf`.
+
+Homelab configuration is now isolated from personal dotfiles. `node_config_isolation` runs before desktop roles, including tagged runs, and materializes linked Hyprland, Waybar, Alacritty, managed script, tmux/login, and caffeine-unit paths as node-local files. Backups and their manifest are retained under `~/.local/state/homelab/config-isolation/`. The initial rollout's edits through symlinks were corrected: 15 dotfiles source files were restored from exact pre-change backups (seven on `socrat-0`, eight on `socrat-1`), while unrelated original modifications were retained. No claim is made that these personal worktrees are clean; homelab does not deploy or push them.
+
+`desktop_environment` owns the caffeine manager, inhibitor unit, and Hypridle configuration instead of patching the previous files. Laptop caffeine still defaults on, with manual Waybar toggling and an independent Hyprlock service. Common Waybar JSON/CSS preserves the host-specific modules; the Flameshot tray icon is hidden only on `socrat-0`. Existing personal application shortcuts and optional external helpers remain dependencies outside the managed baseline.
+
+`desktop_terminal` installs Alacritty, tmux, and zsh and requires an existing `btm`. `/usr/local/bin/homelab-monitor-terminal` opens the `tmp` tmux session with a monitor window running zsh and `btm`. Existing tmux configuration is retained, with optional popup-table unbind commands changed to quiet mode to avoid missing-table errors.
+
+`wallpaper_asset` delivers the image from `socrat-0` to `/usr/local/share/wallpapers/homelab/default.png` on all three nodes through `base.yml`, `site.yml`, and `desktop.yml`. Home desktop and lockscreen configuration uses this asset; the VPS receives no GUI setup. The roles assume an installed graphical environment, including Hyprland, `start-hyprland`, and `awww`; they do not install every application referenced by personal shortcuts.
+
+The shared desktop refactor was applied on 2026-10-14. Both Hyprland configs passed native validation and report no live config errors. The same wallpaper asset exists on all three nodes and is active on the two graphical nodes. Both have one tmp session/window running btm; socrat-0 Flameshot is running with its tray icon disabled. Live screenshots were checked, Hyprland processes remained running, and all three Kubernetes nodes are Ready. The repository test suite passed all 48 tests. No reboot was performed for this cosmetic rollout.
+
+The latest workspace configuration clears persistent flags for workspaces 1–10, and Waybar uses an empty persistent-workspace map with `all-outputs:false`. It shows occupied/current workspaces per output; Win+1 through Win+0 creates or selects workspaces as needed. Workspace 1 remains assigned to the external display on `socrat-1`. Browser, Telegram, and Obsidian autostart entries were removed so new sessions open only the monitor application window, alongside normal desktop background services. Already open windows are left untouched.
+
+Configuration isolation is applied on both home nodes. Native Hyprland validation still passes; live workspace creation/removal and unchanged restored Dotfiles sources have been verified. No reboot was performed for these changes.
+
+## socrat-0 shutdown delay investigation
+
+The latest inspected shutdown journal (boot ID beginning `f7347a2`) records power-off starting at uptime 109.845 seconds, NFS stopping at 110.511 seconds, and k3s stopping at 112.09 seconds. The LMS Uvicorn process (PID 10058, container ID beginning `6727384`) received SIGKILL at 199.942 seconds but was still present around 290.192 seconds. The journal ends at 290.443 seconds; the user's additional observed waiting time is not captured there.
+
+LMS uses SQLite under `/data`, backed by a hard-mounted NFS volume served by the same node. Effective kubelet settings were `shutdownGracePeriod=0` and `shutdownGracePeriodCriticalPods=0`, with no kubelet shutdown inhibitor. NFS stopping before pod cleanup is a strong explanation for the stall, but no kernel stack from the blocked process was captured, so the specific blocking syscall is not established.
+
+The applied `node_shutdown` role and `ansible/playbooks/node-shutdown.yml` configure `socrat-0` with a 60-second kubelet shutdown window, including 10 seconds for critical pods, in `80-homelab-shutdown.conf`. A k3s systemd drop-in adds `Wants=nfs-server.service` and `After=nfs-server.service` to preserve local NFS until k3s stops. Applied on 2026-10-14 with a k3s service restart. Effective config reports `shutdownGracePeriod=1m0s` and `shutdownGracePeriodCriticalPods=10s`; logind has a kubelet shutdown delay inhibitor and `InhibitDelayMaxUSec=60000000`. All three nodes are `Ready`, LMS is running, and Hyprland remained running. A controlled shutdown/reboot test of the fix remains outstanding.
+
 ## WireGuard management mesh
 
 System WireGuard interface: `wg-socrat`.
@@ -558,6 +598,8 @@ sudo python3 scripts/apply-uptime-kuma-status-page.py \
 
 ## Open items
 
+- Perform a controlled shutdown test of the applied `socrat-0` graceful shutdown configuration. Automatic AC power restoration already works on `socrat-0`; equivalent firmware behavior on `socrat-1` remains unverified.
+
 - Decide whether to remove `cats` temporary exclusion from `socrat-2`.
 - Monitor `socrat-1` MDB backup sync and disk free space.
 - Decide whether `phone` should be removed from `socrat-1`/`socrat-2` Syncthing configs unless it shares a real folder with them.
@@ -566,3 +608,5 @@ sudo python3 scripts/apply-uptime-kuma-status-page.py \
 - Consider retrying Longhorn or another CSI storage backend later.
 - Long-term: replace host-level NFS server with a more Kubernetes-native replicated storage backend if true HA is needed.
 - Implement `socrat_cluster_bot` later.
+
+Dynamic workspace verification passed on both home nodes: selecting an unused workspace created it and returning removed the empty workspace. Repeated scoped Ansible check reported `changed=0` and no errors. Seventeen Ansible backup artifacts were moved out of the remote Dotfiles checkouts into the node-local isolation archive.
