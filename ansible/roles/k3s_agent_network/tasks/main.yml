@@ -1,0 +1,35 @@
+---
+- name: Require the management WireGuard interface
+  ansible.builtin.command: ip link show wg-socrat
+  changed_when: false
+
+- name: Create persistent k3s configuration directory
+  ansible.builtin.file:
+    path: /etc/rancher/k3s/config.yaml.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Configure pod network transport through WireGuard
+  ansible.builtin.copy:
+    dest: /etc/rancher/k3s/config.yaml.d/20-homelab-network.yaml
+    content: "flannel-iface: wg-socrat\n"
+    owner: root
+    group: root
+    mode: '0600'
+  register: homelab_k3s_agent_network
+
+- name: Check whether the k3s agent is already installed
+  ansible.builtin.stat:
+    path: /etc/systemd/system/k3s-agent.service
+  register: homelab_k3s_agent_unit
+
+- name: Apply network settings to an existing k3s agent
+  ansible.builtin.systemd_service:
+    name: k3s-agent
+    state: restarted
+    enabled: true
+  when:
+    - homelab_k3s_agent_network.changed
+    - homelab_k3s_agent_unit.stat.exists

@@ -78,6 +78,8 @@ Root cause fixed earlier: `socrat-0` and `socrat-2` had asymmetric flannel inter
 --flannel-iface wg-socrat
 ```
 
+For already-installed agents, `ansible/playbooks/k3s-agent-network.yml` manages `/etc/rancher/k3s/config.yaml.d/20-homelab-network.yaml` and restarts the agent only when needed. The main k3s playbook runs the same role before agent installation, so its `creates: /usr/local/bin/k3s` shortcut no longer skips network configuration on existing nodes. This corrected `socrat-1` advertising its Wi-Fi address as the VXLAN endpoint instead of `10.250.0.3`.
+
 Relevant playbook:
 
 ```text

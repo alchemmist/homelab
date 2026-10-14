@@ -1,0 +1,8 @@
+---
+- name: Configure existing agent pod networks
+  hosts: Socrat:!socrat-0
+  gather_facts: false
+  become: true
+  serial: 1
+  roles:
+    - k3s_agent_network

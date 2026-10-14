@@ -52,6 +52,8 @@
   hosts: Socrat:!socrat-0
   gather_facts: true
   become: true
+  roles:
+    - k3s_agent_network
   vars:
     k3s_server_ip: 192.168.0.23
     k3s_node_ip_map:
