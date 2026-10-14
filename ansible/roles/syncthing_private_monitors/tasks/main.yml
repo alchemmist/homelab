@@ -1,0 +1,121 @@
+- name: Check for the existing Uptime Kuma database
+  ansible.builtin.stat:
+    path: "{{ syncthing_private_monitors_database }}"
+  register: syncthing_private_monitors_database_stat
+
+- name: Update existing Syncthing health monitors
+  when: syncthing_private_monitors_database_stat.stat.exists
+  block:
+    - name: Ensure local migration directories exist
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0700'
+      loop:
+        - "{{ syncthing_private_monitors_plan | dirname }}"
+
+    - name: Ensure the local utility directory exists
+      ansible.builtin.file:
+        path: /usr/local/libexec
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Install the scoped monitor migration utility
+      ansible.builtin.copy:
+        src: "{{ role_path }}/../../files/migrate_syncthing_health_monitors.py"
+        dest: /usr/local/libexec/migrate-syncthing-health-monitors.py
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Initialize the node health endpoint plan
+      ansible.builtin.set_fact:
+        syncthing_private_monitors_nodes: []
+
+    - name: Derive monitor health URLs from the WireGuard registry
+      ansible.builtin.set_fact:
+        syncthing_private_monitors_nodes: "{{ syncthing_private_monitors_nodes + [{'name': 'Syncthing sync-' ~ item.key.split('-')[-1], 'url': 'http://' ~ item.value.address ~ ':' ~ (syncthing_private_monitors_port | string) ~ '/healthz'}] }}"
+      loop: "{{ wg_socrat_nodes | dict2items | sort(attribute='key') }}"
+      loop_control:
+        label: "{{ item.key }}"
+
+    - name: Write the local health endpoint plan
+      ansible.builtin.copy:
+        dest: "{{ syncthing_private_monitors_plan }}"
+        content: "{{ syncthing_private_monitors_nodes | to_nice_json }}\n"
+        owner: root
+        group: root
+        mode: '0600'
+
+    - name: Check whether existing monitors need migration
+      ansible.builtin.command:
+        argv:
+          - python3
+          - /usr/local/libexec/migrate-syncthing-health-monitors.py
+          - --database
+          - "{{ syncthing_private_monitors_database }}"
+          - --plan
+          - "{{ syncthing_private_monitors_plan }}"
+          - --check
+      register: syncthing_private_monitors_check
+      changed_when: false
+
+    - name: Apply changed monitor URLs while Kuma is stopped
+      when: (syncthing_private_monitors_check.stdout | from_json).changed
+      block:
+        - name: Record the current Kuma replica count
+          become: false
+          delegate_to: "{{ syncthing_private_monitors_controller }}"
+          ansible.builtin.command: "kubectl -n {{ syncthing_private_monitors_namespace }} get deployment {{ syncthing_private_monitors_deployment }} -o jsonpath={.spec.replicas}"
+          register: syncthing_private_monitors_replicas
+          changed_when: false
+
+        - name: Pause Kuma before updating its database
+          become: false
+          delegate_to: "{{ syncthing_private_monitors_controller }}"
+          ansible.builtin.command: "kubectl -n {{ syncthing_private_monitors_namespace }} scale deployment {{ syncthing_private_monitors_deployment }} --replicas=0"
+          register: syncthing_private_monitors_pause
+          changed_when: true
+
+        - name: Wait for Kuma to stop
+          become: false
+          delegate_to: "{{ syncthing_private_monitors_controller }}"
+          ansible.builtin.command: "kubectl -n {{ syncthing_private_monitors_namespace }} wait --for=delete pod -l app=uptime-kuma --timeout=90s"
+          changed_when: false
+
+        - name: Back up the database and migrate only Syncthing monitors
+          ansible.builtin.command:
+            argv:
+              - python3
+              - /usr/local/libexec/migrate-syncthing-health-monitors.py
+              - --database
+              - "{{ syncthing_private_monitors_database }}"
+              - --plan
+              - "{{ syncthing_private_monitors_plan }}"
+          register: syncthing_private_monitors_update
+          changed_when: (syncthing_private_monitors_update.stdout | from_json).changed
+      always:
+        - name: Restore the previous Kuma replica count
+          become: false
+          delegate_to: "{{ syncthing_private_monitors_controller }}"
+          ansible.builtin.command: "kubectl -n {{ syncthing_private_monitors_namespace }} scale deployment {{ syncthing_private_monitors_deployment }} --replicas={{ syncthing_private_monitors_replicas.stdout | int }}"
+          changed_when: true
+          when:
+            - syncthing_private_monitors_pause is defined
+            - syncthing_private_monitors_replicas is defined
+            - syncthing_private_monitors_replicas.rc | default(1) == 0
+
+        - name: Verify Kuma has recovered
+          become: false
+          delegate_to: "{{ syncthing_private_monitors_controller }}"
+          ansible.builtin.command: "kubectl -n {{ syncthing_private_monitors_namespace }} rollout status deployment {{ syncthing_private_monitors_deployment }} --timeout=120s"
+          changed_when: false
+          when:
+            - syncthing_private_monitors_pause is defined
+            - syncthing_private_monitors_replicas is defined
+            - syncthing_private_monitors_replicas.rc | default(1) == 0
+            - syncthing_private_monitors_replicas.stdout | int > 0

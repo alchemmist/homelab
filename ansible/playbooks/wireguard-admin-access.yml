@@ -22,3 +22,5 @@
     - wireguard_admin_firewall
     - wireguard_socrat
     - homelab_private_dns
+    - role: wireguard_private_web
+      when: wireguard_private_web_enabled | default(false)

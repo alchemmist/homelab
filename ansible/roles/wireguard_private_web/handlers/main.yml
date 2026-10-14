@@ -1,0 +1,5 @@
+- name: Restart private web NAT
+  ansible.builtin.systemd_service:
+    name: "{{ wireguard_private_web_service_name }}"
+    state: restarted
+    daemon_reload: true

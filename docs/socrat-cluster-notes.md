@@ -219,7 +219,7 @@ DaemonSet details:
 - `hostNetwork: true`
 - `dnsPolicy: Default`
 - hostPath: `/srv/syncthing`
-- GUI port: `8384`
+- GUI backend: `127.0.0.1:8384`; private HTTPS is delivered on WireGuard TCP 443.
 - sync TCP/QUIC port: `22000`
 - discovery UDP port: `21027`
 
@@ -238,12 +238,12 @@ This fixed the case where `socrat-1` listened on random `44315`, so peers saw it
 Node GUI endpoints:
 
 ```text
-sync-0.alchemmist.xyz -> 10.250.0.1:8384
-sync-1.alchemmist.xyz -> 10.250.0.3:8384
-sync-2.alchemmist.xyz -> 10.250.0.2:8384
+https://0.socrat.alchemmist.xyz/sync/ -> socrat-0 local Syncthing
+https://1.socrat.alchemmist.xyz/sync/ -> socrat-1 local Syncthing
+https://2.socrat.alchemmist.xyz/sync/ -> socrat-2 local Syncthing
 ```
 
-These are behind Traefik/basic auth publicly. Direct node-local checks use WG IPs.
+These interfaces are private to the WireGuard mesh and retain the existing BasicAuth credentials. Public `sync-*` ingresses are removed. A node-local nginx sidecar proxies to loopback; Ansible owns narrowly scoped WireGuard HTTPS routing. See [the private UI runbook](syncthing-private-ui.md) for deployment, certificate renewal and recovery. Device identities and folder pause states were retained during migration.
 
 ### Syncthing philosophy
 
@@ -353,12 +353,12 @@ GitHub Pages projects
 Syncthing monitors are direct WG checks, not public ingress checks:
 
 ```text
-Syncthing sync-0: HEAD http://10.250.0.1:8384/
-Syncthing sync-1: HEAD http://10.250.0.3:8384/
-Syncthing sync-2: HEAD http://10.250.0.2:8384/
+Syncthing sync-0: GET http://10.250.0.1:18444/healthz
+Syncthing sync-1: GET http://10.250.0.3:18444/healthz
+Syncthing sync-2: GET http://10.250.0.2:18444/healthz
 ```
 
-Using HEAD + 30s timeout avoids false timeouts from downloading the whole Syncthing UI while nodes are busy syncing large backups.
+The private health listener proxies Syncthing `/rest/noauth/health` and accepts only HTTP 200. Other paths return 404; the GUI/API itself is not exposed through that listener. The monitor migration backs up Kuma locally and preserves unrelated monitor configuration.
 
 ## GHCR images
 

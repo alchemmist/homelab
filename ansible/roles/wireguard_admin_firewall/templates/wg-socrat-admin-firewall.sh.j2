@@ -91,6 +91,10 @@ ipt -A "$new_input_chain" -s "$client_address/32" -p tcp -m conntrack --ctstate 
 ipt -A "$new_input_chain" -s "$client_address/32" -p udp -m conntrack --ctstate NEW,ESTABLISHED -m udp --dport {{ wg_socrat_admin_firewall_dns_port }} -j ACCEPT
 ipt -A "$new_input_chain" -s "$client_address/32" -m conntrack --ctstate RELATED --ctorigdstport {{ wg_socrat_admin_firewall_ssh_port }} -j ACCEPT
 ipt -A "$new_input_chain" -s "$client_address/32" -m conntrack --ctstate RELATED --ctorigdstport {{ wg_socrat_admin_firewall_dns_port }} -j ACCEPT
+{% if wireguard_private_web_enabled | bool %}
+ipt -A "$new_input_chain" -s "$client_address/32" -p tcp -m tcp --dport {{ wireguard_private_web_proxy_port }} -m conntrack --ctstate NEW,ESTABLISHED --ctorigdstport {{ wireguard_private_web_public_port }} -j ACCEPT
+ipt -A "$new_input_chain" -s "$client_address/32" -m conntrack --ctstate RELATED --ctorigdstport {{ wireguard_private_web_public_port }} -j ACCEPT
+{% endif %}
 ipt -A "$new_input_chain" -s "$client_address/32" -j REJECT --reject-with icmp-port-unreachable
 ipt -A "$new_forward_chain" -s "$client_address/32" -j REJECT --reject-with icmp-admin-prohibited
 {% endfor %}

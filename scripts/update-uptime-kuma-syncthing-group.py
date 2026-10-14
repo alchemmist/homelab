@@ -7,13 +7,9 @@ STATUS_SLUG = 'socrat'
 USER_ID = 1
 GROUP_NAME = 'Syncthing'
 SYNC_MONITORS = [
-    # Uptime Kuma runs on socrat-2; check node-local Syncthing GUIs over the
-    # Socrat WireGuard mesh instead of via public Traefik ingress. Otherwise a
-    # 401 from Traefik/basic-auth can look healthy even when the target
-    # Syncthing pod on that node is crash-looping.
-    ('Syncthing sync-0', 'http://10.250.0.1:8384/'),
-    ('Syncthing sync-1', 'http://10.250.0.3:8384/'),
-    ('Syncthing sync-2', 'http://10.250.0.2:8384/'),
+    ('Syncthing sync-0', 'http://10.250.0.1:18444/healthz'),
+    ('Syncthing sync-1', 'http://10.250.0.3:18444/healthz'),
+    ('Syncthing sync-2', 'http://10.250.0.2:18444/healthz'),
 ]
 
 con = sqlite3.connect(DB)
@@ -40,7 +36,7 @@ if old:
     cur.execute('delete from monitor_group where monitor_id=?', (old_id,))
     cur.execute('update monitor set active=0 where id=?', (old_id,))
 
-accepted = json.dumps(['200-499'])
+accepted = json.dumps(['200'])
 for idx, (name, url) in enumerate(SYNC_MONITORS, 1):
     row = cur.execute('select id from monitor where name=?', (name,)).fetchone()
     vals = dict(
@@ -56,11 +52,11 @@ for idx, (name, url) in enumerate(SYNC_MONITORS, 1):
         port=None,
         maxredirects=10,
         accepted_statuscodes_json=accepted,
-        method='HEAD',
+        method='GET',
         upside_down=0,
         ignore_tls=0,
         expiry_notification=1,
-        description=f'{name} direct node-local Syncthing GUI check',
+        description='Private node-local Syncthing health check',
         timeout=30,
         resend_interval=0,
         weight=300 + idx,

@@ -17,6 +17,30 @@ env:
   # Keep the GUI reachable through Kubernetes service/ingress and kubectl port-forward.
   STGUIADDRESS: http://0.0.0.0:8384
 
+privateGui:
+  enabled: true
+  image:
+    repository: nginx
+    tag: 1.27-alpine
+    pullPolicy: IfNotPresent
+  tlsSecret: syncthing-private-ui-tls
+  certificate:
+    enabled: true
+    commonName: 0.socrat.alchemmist.xyz
+    clusterIssuer: letsencrypt-http01
+  listenPort: 18443
+  healthPort: 18444
+  nodes:
+    - nodeName: socrat-0
+      host: 0.socrat.alchemmist.xyz
+      wgIP: 10.250.0.1
+    - nodeName: socrat-1
+      host: 1.socrat.alchemmist.xyz
+      wgIP: 10.250.0.3
+    - nodeName: socrat-2
+      host: 2.socrat.alchemmist.xyz
+      wgIP: 10.250.0.2
+
 resources:
   requests:
     cpu: 50m
@@ -31,7 +55,7 @@ basicAuth:
   users: ""
 
 ingress:
-  enabled: true
+  enabled: false
   className: traefik
   clusterIssuer: letsencrypt-http01
 

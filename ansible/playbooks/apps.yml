@@ -62,12 +62,23 @@
         mode: preserve
       loop: "{{ apps }}"
 
+    - name: Generate Syncthing private endpoints from the node registry
+      ansible.builtin.include_role:
+        name: syncthing_private_ui
+        tasks_from: prepare
+
+    - name: Prepare Syncthing private HTTPS before changing pod access
+      ansible.builtin.include_role:
+        name: syncthing_private_ui
+        tasks_from: certificate
+
     - name: Install or upgrade app Helm releases
       ansible.builtin.command: >-
         helm upgrade --install {{ item.name }} /tmp/charts/{{ item.chart }}
         --namespace {{ item.namespace }}
         --kubeconfig /etc/rancher/k3s/k3s.yaml
         {{ ('--values /tmp/charts/' ~ item.chart ~ '/' ~ item.valuesFile) if item.valuesFile is defined else '' }}
+        {{ '--values /tmp/charts/syncthing/private-ui-values.yml' if item.name == 'syncthing' else '' }}
         --wait
         --timeout 5m
       loop: "{{ apps }}"

@@ -1,0 +1,44 @@
+#!/bin/sh
+set -eu
+
+nft={{ wireguard_private_web_binary_by_os_family[ansible_os_family] | quote }}
+table={{ wireguard_private_web_table | quote }}
+interface={{ wireguard_private_web_interface | quote }}
+node_address={{ wg_socrat_nodes[inventory_hostname].address | quote }}
+public_port={{ wireguard_private_web_public_port | quote }}
+proxy_port={{ wireguard_private_web_proxy_port | quote }}
+backup={{ wireguard_private_web_backup_path | quote }}
+
+tmp=$(mktemp)
+old=$(mktemp)
+cleanup() {
+    rm -f "$tmp" "$old"
+}
+trap cleanup EXIT
+
+if "$nft" list table ip "$table" >"$old" 2>/dev/null; then
+    cp "$old" "$backup"
+    delete_table="delete table ip $table"
+else
+    : >"$backup"
+    delete_table=''
+fi
+
+{
+    if [ -n "$delete_table" ]; then
+        printf '%s\n' "$delete_table"
+    fi
+    printf 'add table ip %s\n' "$table"
+    printf 'add chain ip %s prerouting { type nat hook prerouting priority -110; policy accept; }\n' "$table"
+    printf 'add chain ip %s output { type nat hook output priority -110; policy accept; }\n' "$table"
+    printf 'add rule ip %s prerouting iifname %s ip daddr %s tcp dport %s dnat to %s:%s\n' "$table" "$interface" "$node_address" "$public_port" "$node_address" "$proxy_port"
+    printf 'add rule ip %s output ip daddr %s tcp dport %s dnat to %s:%s\n' "$table" "$node_address" "$public_port" "$node_address" "$proxy_port"
+} >"$tmp"
+
+if ! "$nft" -c -f "$tmp"; then
+    exit 1
+fi
+
+if ! "$nft" -f "$tmp"; then
+    exit 1
+fi

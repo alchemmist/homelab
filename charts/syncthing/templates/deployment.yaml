@@ -17,6 +17,10 @@ spec:
       labels:
         app.kubernetes.io/name: {{ .Chart.Name }}
         app.kubernetes.io/instance: {{ .Release.Name }}
+      {{- if .Values.privateGui.enabled }}
+      annotations:
+        checksum/private-nginx: {{ include (print $.Template.BasePath "/private-nginx.yaml") . | sha256sum | quote }}
+      {{- end }}
     spec:
       {{- if .Values.hostNetwork }}
       hostNetwork: true
@@ -39,7 +43,7 @@ spec:
           env:
             {{- range $name, $value := .Values.env }}
             - name: {{ $name }}
-              value: {{ $value | quote }}
+              value: {{ if and $.Values.privateGui.enabled (eq $name "STGUIADDRESS") }}{{ printf "http://127.0.0.1:%v" $.Values.service.guiPort | quote }}{{ else }}{{ $value | quote }}{{ end }}
             {{- end }}
           ports:
             - name: gui
@@ -59,8 +63,89 @@ spec:
               mountPath: /var/syncthing
           resources:
 {{ toYaml .Values.resources | indent 12 }}
+        {{- if .Values.privateGui.enabled }}
+        - name: private-gui
+          image: "{{ .Values.privateGui.image.repository }}:{{ .Values.privateGui.image.tag }}"
+          imagePullPolicy: {{ .Values.privateGui.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              cp "/etc/nginx/nodes/${NODE_NAME}.conf" /etc/nginx/nginx.conf
+              nginx -t
+              tls_fingerprint=""
+              nginx_pid=""
+              cleanup() {
+                if [ -n "$nginx_pid" ]; then
+                  kill "$nginx_pid" 2>/dev/null || true
+                  wait "$nginx_pid" 2>/dev/null || true
+                fi
+              }
+              trap cleanup TERM INT EXIT
+              nginx -g 'daemon off;' &
+              nginx_pid=$!
+              while kill -0 "$nginx_pid" 2>/dev/null; do
+                next_fingerprint=$(sha256sum /etc/nginx/tls/tls.crt /etc/nginx/tls/tls.key)
+                if [ -n "$tls_fingerprint" ] && [ "$next_fingerprint" != "$tls_fingerprint" ]; then
+                  nginx -s reload
+                fi
+                tls_fingerprint="$next_fingerprint"
+                sleep 5
+              done
+              wait "$nginx_pid"
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          ports:
+            - name: private-gui
+              containerPort: {{ .Values.privateGui.listenPort }}
+              protocol: TCP
+            - name: private-health
+              containerPort: {{ .Values.privateGui.healthPort }}
+              protocol: TCP
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -ec
+                - wget -qO- http://127.0.0.1:{{ .Values.privateGui.healthPort }}/healthz
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -ec
+                - wget -qO- http://127.0.0.1:{{ .Values.privateGui.healthPort }}/healthz
+            periodSeconds: 30
+          volumeMounts:
+            - name: private-nginx-config
+              mountPath: /etc/nginx/nodes
+              readOnly: true
+            - name: private-tls
+              mountPath: /etc/nginx/tls
+              readOnly: true
+            - name: basic-auth
+              mountPath: /etc/nginx/auth
+              readOnly: true
+        {{- end }}
       volumes:
         - name: data
           hostPath:
             path: {{ .Values.hostPath | quote }}
             type: DirectoryOrCreate
+        {{- if .Values.privateGui.enabled }}
+        - name: private-nginx-config
+          configMap:
+            name: {{ .Chart.Name }}-private-nginx
+        - name: private-tls
+          secret:
+            secretName: {{ .Values.privateGui.tlsSecret }}
+        - name: basic-auth
+          secret:
+            secretName: {{ .Values.basicAuth.existingSecret }}
+            items:
+              - key: users
+                path: users
+        {{- end }}

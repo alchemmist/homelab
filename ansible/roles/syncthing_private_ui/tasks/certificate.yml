@@ -1,0 +1,40 @@
+- name: Read the existing Syncthing authentication fingerprint
+  ansible.builtin.shell: |
+    set -eu
+    kubectl --kubeconfig {{ syncthing_private_ui_kubeconfig | quote }} -n {{ syncthing_private_ui_namespace | quote }} get secret {{ syncthing_private_ui_auth_secret | quote }} -o json |
+    python3 -c 'import base64,hashlib,json,sys; value=base64.b64decode(json.load(sys.stdin)["data"]["users"]); assert value.strip(), "Existing BasicAuth credentials must not be empty"; print(hashlib.sha256(value).hexdigest())'
+  register: syncthing_private_ui_auth_before
+  changed_when: false
+  no_log: true
+
+- name: Prepare a Helm-owned certificate before the pod rollout
+  ansible.builtin.copy:
+    dest: "{{ syncthing_private_ui_chart_dir }}/private-certificate.yml"
+    content: "{{ {'apiVersion': 'cert-manager.io/v1', 'kind': 'Certificate', 'metadata': {'name': syncthing_private_ui_tls_secret, 'namespace': syncthing_private_ui_namespace, 'labels': {'app.kubernetes.io/managed-by': 'Helm'}, 'annotations': {'meta.helm.sh/release-name': syncthing_private_ui_release, 'meta.helm.sh/release-namespace': syncthing_private_ui_namespace}}, 'spec': {'secretName': syncthing_private_ui_tls_secret, 'commonName': syncthing_private_ui_nodes[0].host, 'dnsNames': syncthing_private_ui_nodes | map(attribute='host') | list, 'issuerRef': {'name': syncthing_private_ui_cluster_issuer, 'kind': 'ClusterIssuer'}}} | to_nice_yaml }}"
+    mode: '0600'
+
+- name: Request the certificate without publishing the private UI
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig
+      - "{{ syncthing_private_ui_kubeconfig }}"
+      - apply
+      - -f
+      - "{{ syncthing_private_ui_chart_dir }}/private-certificate.yml"
+  register: syncthing_private_ui_certificate_apply
+  changed_when: "' created' in syncthing_private_ui_certificate_apply.stdout or ' configured' in syncthing_private_ui_certificate_apply.stdout"
+
+- name: Wait for the private UI certificate
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig
+      - "{{ syncthing_private_ui_kubeconfig }}"
+      - -n
+      - "{{ syncthing_private_ui_namespace }}"
+      - wait
+      - --for=condition=Ready
+      - "certificate/{{ syncthing_private_ui_tls_secret }}"
+      - --timeout=300s
+  changed_when: false

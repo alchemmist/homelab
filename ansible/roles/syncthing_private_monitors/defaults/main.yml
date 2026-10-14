@@ -1,0 +1,6 @@
+syncthing_private_monitors_database: /srv/uptime-kuma/kuma.db
+syncthing_private_monitors_plan: /var/lib/homelab/syncthing-health-monitors.json
+syncthing_private_monitors_port: 18444
+syncthing_private_monitors_namespace: uptime-kuma
+syncthing_private_monitors_deployment: uptime-kuma
+syncthing_private_monitors_controller: socrat-0

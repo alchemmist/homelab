@@ -1,0 +1,10 @@
+syncthing_private_ui_namespace: syncthing
+syncthing_private_ui_release: syncthing
+syncthing_private_ui_chart_dir: /tmp/charts/syncthing
+syncthing_private_ui_values_path: /tmp/charts/syncthing/private-ui-values.yml
+syncthing_private_ui_tls_secret: syncthing-private-ui-tls
+syncthing_private_ui_auth_secret: syncthing-basic-auth
+syncthing_private_ui_cluster_issuer: letsencrypt-http01
+syncthing_private_ui_port: "{{ wireguard_private_web_proxy_port | default(18443) }}"
+syncthing_private_ui_health_port: 18444
+syncthing_private_ui_kubeconfig: /etc/rancher/k3s/k3s.yaml

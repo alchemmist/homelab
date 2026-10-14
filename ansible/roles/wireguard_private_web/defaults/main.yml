@@ -1,0 +1,15 @@
+wireguard_private_web_interface: wg-socrat
+wireguard_private_web_service_name: wireguard-private-web.service
+wireguard_private_web_script_path: /usr/local/libexec/wireguard-private-web
+wireguard_private_web_table: homelab_private_web
+wireguard_private_web_proxy_port: 18443
+wireguard_private_web_public_port: 443
+wireguard_private_web_wg_service: wg-quick@wg-socrat.service
+wireguard_private_web_package_by_os_family:
+  Debian: nftables
+  Archlinux: nftables
+wireguard_private_web_binary_by_os_family:
+  Debian: /usr/sbin/nft
+  Archlinux: /usr/bin/nft
+wireguard_private_web_backup_path: /var/lib/wireguard-private-web/owned-table.nft
+wireguard_private_web_enabled: false

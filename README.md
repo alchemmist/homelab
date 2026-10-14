@@ -53,7 +53,7 @@ The Mac joins `wg-socrat` with one WireGuard profile and a direct peer for each
 node. Private DNS names `0.socrat.alchemmist.xyz`, `1.socrat.alchemmist.xyz`, and
 `2.socrat.alchemmist.xyz` resolve to the individual WireGuard addresses; every
 node accepts private SSH on TCP 2222. DNS runs on all three hosts outside
-Kubernetes. The Mac peer is restricted to SSH and DNS.
+Kubernetes. The Mac peer is restricted to SSH, DNS, and the private HTTPS interfaces.
 
 Server configuration is managed by `playbooks/wireguard-admin-access.yml`;
 `playbooks/wireguard-admin-client.yml` preserves the local private key and
@@ -68,6 +68,17 @@ ssh -i ~/.ssh/personal_server -p 2222 alchemmist@2.socrat.alchemmist.xyz
 
 See the [administrative access runbook](docs/wireguard-admin-access-plan.md#reapply-the-deployed-configuration)
 for Ansible commands, router mappings, provisioning and remaining acceptance checks.
+
+## Private Syncthing UI
+
+Each node runs one Syncthing pod with its own local data and identity. With
+WireGuard connected, open `https://0.socrat.alchemmist.xyz/sync/` and the
+corresponding node 1 or 2 name. The existing BasicAuth credentials are retained;
+public `sync-*` ingresses and direct network access to the raw GUI are closed.
+
+Apply `playbooks/syncthing-private-ui.yml` using the direct maintenance
+inventory. See the [Syncthing runbook](docs/syncthing-private-ui.md) for the
+traffic model, certificate renewal, monitoring, provisioning and recovery.
 
 ## Run
 

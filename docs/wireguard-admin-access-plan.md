@@ -133,8 +133,10 @@ route and no `DNS=` setting. Existing VPN resolvers remain present.
 
 All three nodes now run enabled host-level `homelab-private-dns.service` and
 `wg-socrat-admin-firewall.service`. SSH listens on TCP 2222, with TCP 22 retained
-for recovery. The administrative peer is restricted to SSH 2222 and DNS 53;
-transit to other networks is not permitted by the administrative firewall.
+for recovery. The administrative peer is restricted to SSH 2222, DNS 53, and private HTTPS
+443 delivered to the node-local Syncthing proxy. Raw GUI/proxy ports and transit
+to other networks are not permitted by the administrative firewall. See
+`syncthing-private-ui.md` for the HTTPS routing and authentication configuration.
 
 Live checks from the Mac passed for SSH to all three private DNS names using
 `-F /dev/null` and explicit identity files. All three names resolve to their

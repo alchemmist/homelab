@@ -13,6 +13,7 @@ starship_show_hostname: true
 
 wg_socrat_port: 51830
 wg_socrat_keepalive: 25
+wireguard_private_web_enabled: true
 wg_socrat_peer_endpoints:
   socrat-2:
     socrat-1: ''
