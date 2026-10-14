@@ -149,7 +149,7 @@ Current public router forwards expected by the cluster:
 443 -> 192.168.0.23:443
 ```
 
-Caddy is stopped/disabled by the k3s playbook so Traefik can own HTTP/HTTPS.
+Caddy is stopped/disabled by the k3s playbook so Traefik can own HTTP/HTTPS. The VPS VPN now uses the separate `traefik-edge` ingress controller on `socrat-2`; the former Caddy Helm release was removed. See [VPN ingress deployment and verification](docs/vpn-cutover.md#traefik-vps-ingress-migration).
 
 Rancher is installed as the Kubernetes management UI:
 

@@ -82,7 +82,7 @@
   gather_facts: false
   become: true
   tasks:
-    - name: Allow ServiceLB only on home Socrat nodes while VPS keeps Caddy/VPN ports
+    - name: Allow ServiceLB only on home nodes while VPS uses its dedicated ingress
       ansible.builtin.command: >-
         k3s kubectl label node {{ item.name }} svccontroller.k3s.cattle.io/enablelb={{ item.enablelb }} --overwrite
       loop:
@@ -239,6 +239,9 @@
           namespace: kube-system
         spec:
           valuesContent: |-
+            providers:
+              kubernetesIngress:
+                ingressClass: traefik
             deployment:
               nodeSelector:
                 kubernetes.io/hostname: socrat-0

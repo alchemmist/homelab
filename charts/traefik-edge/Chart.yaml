@@ -1,0 +1,5 @@
+apiVersion: v2
+name: traefik-edge
+description: VPS-local Kubernetes ingress for VPN endpoints
+version: 0.1.0
+appVersion: "3.7.13"

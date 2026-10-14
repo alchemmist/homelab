@@ -1,0 +1,38 @@
+{{- if .Values.certificate.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ .Release.Name }}-letsencrypt
+spec:
+  acme:
+    email: {{ .Values.certificate.email }}
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: {{ .Release.Name }}-acme-account
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: {{ .Values.ingressClass }}
+            ingressTemplate:
+              metadata:
+                annotations:
+                  traefik.ingress.kubernetes.io/router.entrypoints: web
+            podTemplate:
+              spec:
+                nodeSelector:
+                  kubernetes.io/hostname: {{ .Values.nodeName }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Release.Name }}-vpn
+spec:
+  secretName: {{ .Values.certificate.secretName }}
+  dnsNames:
+    - {{ .Values.host }}
+  issuerRef:
+    name: {{ .Release.Name }}-letsencrypt
+    kind: Issuer
+  privateKey:
+    rotationPolicy: Always
+{{- end }}

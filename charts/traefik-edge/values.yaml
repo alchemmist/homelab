@@ -1,0 +1,38 @@
+image: rancher/mirrored-library-traefik@sha256:f86a2cab1b5c649070c49f883c743dd32d8485a56e3368c5f93b9e91f1e91259
+nodeName: socrat-2
+publicIP: 176.98.185.59
+backendIP: 10.250.0.2
+host: vpn.alchemmist.xyz
+ingressClass: traefik-edge
+apiEndpoint: https://10.250.0.1:6443
+listenHost: ""
+httpPort: 80
+httpsPort: 443
+healthPort: 19090
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 192Mi
+certificate:
+  enabled: true
+  secretName: vpn-edge-tls
+  email: antropophag@gmail.com
+routes:
+  - name: panel
+    port: 18082
+    path: /
+    pathType: Prefix
+  - name: subscriptions
+    port: 12096
+    path: /16a19nq48vtd/
+    pathType: Prefix
+  - name: subscriptions-json
+    port: 12096
+    path: /16a19nq48vtd-json/
+    pathType: Prefix
+  - name: trojan
+    port: 32087
+    path: /connect-4e15326936f20a7a4f2cac67
+    pathType: Exact

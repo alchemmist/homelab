@@ -35,9 +35,9 @@
       - name: uptime-kuma
         namespace: uptime-kuma
         chart: uptime-kuma
-      - name: caddy-edge
-        namespace: caddy-edge
-        chart: caddy-edge
+      - name: traefik-edge
+        namespace: traefik-edge
+        chart: traefik-edge
       - name: x-ui-lab
         namespace: x-ui-lab
         chart: x-ui

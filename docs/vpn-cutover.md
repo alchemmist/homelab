@@ -29,7 +29,7 @@ Legacy listeners:
 - AmneziaWG: UDP `51821`.
 - Trojan backend: `172.18.0.1:10443`.
 
-`caddy-edge` continues to own public TCP `80`/`443` and UDP `443`. Its routes, TLS state, hostname, and subscription paths were not changed. Public Trojan remains on `vpn.alchemmist.xyz:443`.
+`traefik-edge` owns public TCP `80`/`443` and UDP `443` on `socrat-2`. Kubernetes Ingress routes preserve the existing hostname, panel fallback, subscription prefixes, and exact Trojan WebSocket path. Public Trojan remains on `vpn.alchemmist.xyz:443`. The former `caddy-edge` Helm release and chart have been removed; host Caddy is not used.
 
 The legacy loopback address is maintained by `vpn-legacy-loopback.service`, ordered before `k3s-agent`. It does not depend on Docker's bridge. The legacy release has no Kubernetes Service because its panel/subscription endpoints intentionally retain their original loopback binding.
 
@@ -74,3 +74,25 @@ Check both pods are Ready, retain their pinned images, and have no restarts. Ver
 The cutover was checked against 15 primary and 16 legacy subscriptions, unchanged configuration tables, and an actual Trojan client request through public TLS and Caddy to an HTTPS destination.
 
 Node-local CRI logs may be needed for diagnosis: during this work the control-plane proxy to `socrat-2:10250` returned HTTP 502 for `kubectl logs`. Pod status, readiness, direct listeners, and data-plane checks remained available. This is a separate management-connectivity issue.
+
+## Traefik VPS ingress migration
+
+Applied on 2026-10-14. `charts/traefik-edge` runs a separate host-network Traefik controller on `socrat-2`, with `dnsPolicy: Default`, namespace-scoped application reads and the `traefik-edge` ingress class. The home controller explicitly watches class `traefik`; this setting is persisted in the k3s HelmChartConfig and `ansible/playbooks/k3s.yml`.
+
+Selectorless Services and EndpointSlices route to the existing listeners at `10.250.0.2:18082`, `:12096`, and `:32087`. They do not route VPN traffic through the home ingress, CoreDNS, NFS, or a ClusterIP backend. The controller contacts the Kubernetes API directly at `https://10.250.0.1:6443` over WireGuard: the API Service ClusterIP was unreachable from the VPS during migration. Existing routes are held in memory, but this is not a guarantee of cold-start recovery without the control plane.
+
+TLS uses `vpn-edge-tls`. The existing Caddy certificate was imported privately for staging, then a namespaced cert-manager Issuer successfully issued a replacement using HTTP-01 and ingress class `traefik-edge`. The challenge solver is placed on `socrat-2`, and HTTP redirect priority allows challenge requests through. Certificate renewal still requires the control plane and cert-manager. The controller retains HTTP/3 on UDP 443 and removes the request read deadline for the VPN transport.
+
+The container runs as UID 0 with all capabilities dropped except `NET_BIND_SERVICE`, no privilege escalation, and a read-only root filesystem. The mirrored image could not bind privileged ports as UID 65532 even with the added capability. The first live attempt was rolled back to Caddy; the corrected setup was tested on loopback ports 81/444 before the final cutover.
+
+Reapply from `ansible/`:
+
+```bash
+ansible-playbook playbooks/vpn-edge.yml
+```
+
+`vpn.yml` imports this playbook after deploying the VPN. `apps.yml` includes the new chart and no longer includes Caddy. The dedicated edge playbook refuses to compete with a running Caddy deployment and verifies certificate readiness. No database or client configuration migration is involved.
+
+Validation compared all 15 primary subscriptions (79 normalized links) before and after the switch, ignoring only the existing randomized Reality `sid` field. All 15 JSON subscriptions also matched the direct backend, and the configured panel path returned HTTP 200. A real Xray Trojan-over-WebSocket/TLS client fetched an HTTPS target successfully through both staged Traefik and the public port after cutover. Both 3x-ui pods retained their running processes without restarts. The public HTTP redirect and certificate issuance were verified. A home-network outage or VPS reboot was not part of this test.
+
+The old `/srv/caddy/data` and `/srv/caddy/config` directories remain as recovery data, with no Caddy process using them. To roll back the proxy, recover `charts/caddy-edge` from Git history, stop Traefik and wait for its pod to terminate, then deploy the old Caddy chart against those retained directories. Never run both proxies on the public ports concurrently. Keep 3x-ui pods and their databases running during a proxy rollback.
