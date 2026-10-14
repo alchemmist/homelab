@@ -405,14 +405,17 @@ This pattern fixed DNS problems for hostNetwork pods.
 
 Current state:
 
-- Containerized 3x-ui runs in Kubernetes on `socrat-2`.
+- Primary 3x-ui runs in Kubernetes release `x-ui-lab` on `socrat-2`, using the pinned 3.10.0 image and `/srv/x-ui-lab/db`.
+- Legacy ports and clients run in Kubernetes release `x-ui-legacy`, using the pinned 3.9.0 image, `/etc/x-ui`, and the existing Xray assets. The two configurations stay separate.
 - Production subscription/Caddy routes point to Kubernetes-managed x-ui.
-- Native host `x-ui.service` has been stopped/disabled after users updated subscriptions.
+- Native host `x-ui.service` is stopped/disabled. The emergency Docker container is stopped with restart policy `no`. The cutover preserved client settings, ports, and subscription URLs; no subscription update is required.
+- Deployment, retained legacy ports, backups, and rollback are documented in [vpn-cutover.md](vpn-cutover.md).
 - Docker Caddy has been removed; `caddy-edge` now owns public 80/443 in Kubernetes.
 
 Important paths on `socrat-2`:
 
 ```text
+/etc/x-ui
 /srv/x-ui/db
 /srv/x-ui/cert
 /srv/x-ui/acme

@@ -1,0 +1,131 @@
+---
+- name: Prepare the VPS VPN network compatibility
+  hosts: socrat-2
+  any_errors_fatal: true
+  gather_facts: false
+  become: true
+  roles:
+    - vpn_legacy_network
+  tasks:
+    - name: Check that the native VPN service is stopped
+      ansible.builtin.command: systemctl show x-ui.service --property=ActiveState --value
+      register: vpn_native_state
+      changed_when: false
+
+    - name: Require native-to-Kubernetes cutover before deployment
+      ansible.builtin.assert:
+        that:
+          - vpn_native_state.stdout != 'active'
+        fail_msg: Stop the native VPN only after backing up its database and preparing the matching Kubernetes deployment. See docs/vpn-cutover.md.
+
+    - name: Inspect Docker service state
+      ansible.builtin.service_facts:
+
+    - name: Check the emergency VPN container
+      ansible.builtin.command:
+        argv:
+          - docker
+          - inspect
+          - --format
+          - "{{ '{{.State.Running}}' }}"
+          - x-ui-lab-emergency
+      register: vpn_emergency_state
+      changed_when: false
+      failed_when: vpn_emergency_state.rc != 0 and 'no such object' not in vpn_emergency_state.stderr | lower
+      when: ansible_facts.services.get('docker.service', {}).get('state') == 'running'
+
+    - name: Require the emergency container to release the VPN ports
+      ansible.builtin.assert:
+        that:
+          - vpn_emergency_state.stdout | default('') | trim != 'true'
+        fail_msg: Stop x-ui-lab-emergency after preparing rollback, then deploy the Kubernetes VPN. See docs/vpn-cutover.md.
+
+    - name: Verify the existing VPN databases
+      ansible.builtin.stat:
+        path: "{{ item }}"
+        get_checksum: false
+      loop:
+        - /srv/x-ui-lab/db/x-ui.db
+        - /etc/x-ui/x-ui.db
+      register: vpn_databases
+
+    - name: Refuse to initialize empty replacement databases
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - item.stat.exists
+          - item.stat.size > 0
+      loop: "{{ vpn_databases.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+- name: Deploy the existing VPN configurations in Kubernetes
+  hosts: socrat-0
+  any_errors_fatal: true
+  gather_facts: false
+  become: false
+  tasks:
+    - name: Copy the VPN chart
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../charts/x-ui/"
+        dest: "{{ homelab_user_home }}/tmp-charts/x-ui/"
+        mode: preserve
+
+    - name: Deploy the primary VPN
+      ansible.builtin.command: >-
+        helm upgrade --install x-ui-lab {{ homelab_user_home }}/tmp-charts/x-ui
+        --namespace x-ui-lab --create-namespace
+        --kubeconfig /etc/rancher/k3s/k3s.yaml
+        --wait --timeout 3m
+      changed_when: true
+
+    - name: Deploy legacy VPN compatibility
+      ansible.builtin.command: >-
+        helm upgrade --install x-ui-legacy {{ homelab_user_home }}/tmp-charts/x-ui
+        --namespace x-ui-legacy --create-namespace
+        --values {{ homelab_user_home }}/tmp-charts/x-ui/values-legacy.yaml
+        --kubeconfig /etc/rancher/k3s/k3s.yaml
+        --wait --timeout 3m
+      changed_when: true
+
+- name: Keep emergency host runtimes stopped after successful rollout
+  hosts: socrat-2
+  any_errors_fatal: true
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Keep native VPN disabled
+      ansible.builtin.systemd_service:
+        name: x-ui.service
+        state: stopped
+        enabled: false
+
+    - name: Inspect host services
+      ansible.builtin.service_facts:
+
+    - name: Check whether Docker still runs any containers
+      ansible.builtin.command: docker ps --quiet
+      register: vpn_docker_containers
+      changed_when: false
+      when: ansible_facts.services.get('docker.service', {}).get('state') == 'running'
+
+    - name: Inspect host container units
+      ansible.builtin.command: "systemctl show {{ item }} --property=LoadState --value"
+      loop:
+        - docker.socket
+        - docker.service
+        - containerd.service
+      register: vpn_container_units
+      changed_when: false
+
+    - name: Stop idle host container services
+      ansible.builtin.systemd_service:
+        name: "{{ item.item }}"
+        state: stopped
+        enabled: false
+      loop: "{{ vpn_container_units.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+      when:
+        - item.stdout in ['loaded', 'masked']
+        - vpn_docker_containers.stdout | default('') | trim == ''

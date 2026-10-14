@@ -38,6 +38,13 @@
       - name: caddy-edge
         namespace: caddy-edge
         chart: caddy-edge
+      - name: x-ui-lab
+        namespace: x-ui-lab
+        chart: x-ui
+      - name: x-ui-legacy
+        namespace: x-ui-legacy
+        chart: x-ui
+        valuesFile: values-legacy.yaml
   tasks:
     - name: Ensure app namespaces exist
       ansible.builtin.command: k3s kubectl create namespace {{ item.namespace }}
@@ -60,6 +67,7 @@
         helm upgrade --install {{ item.name }} /tmp/charts/{{ item.chart }}
         --namespace {{ item.namespace }}
         --kubeconfig /etc/rancher/k3s/k3s.yaml
+        {{ ('--values /tmp/charts/' ~ item.chart ~ '/' ~ item.valuesFile) if item.valuesFile is defined else '' }}
         --wait
         --timeout 5m
       loop: "{{ apps }}"

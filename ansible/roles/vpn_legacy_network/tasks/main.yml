@@ -1,0 +1,15 @@
+---
+- name: Install the legacy VPN loopback service
+  ansible.builtin.copy:
+    src: vpn-legacy-loopback.service
+    dest: /etc/systemd/system/vpn-legacy-loopback.service
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Maintain the legacy VPN address across reboots
+  ansible.builtin.systemd_service:
+    name: vpn-legacy-loopback.service
+    enabled: true
+    state: started
+    daemon_reload: true

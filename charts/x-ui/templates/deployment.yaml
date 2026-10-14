@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/name: x-ui
     app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicaCount }}
   strategy:
     type: Recreate
   selector:
@@ -39,14 +39,26 @@ spec:
             {{- end }}
           ports:
             - name: panel
-              containerPort: 2053
+              containerPort: {{ .Values.ports.panel }}
               protocol: TCP
             - name: sub
-              containerPort: 2096
+              containerPort: {{ .Values.ports.sub }}
               protocol: TCP
             - name: trojan
-              containerPort: 10443
+              containerPort: {{ .Values.ports.trojan }}
               protocol: TCP
+          startupProbe:
+            tcpSocket:
+              host: {{ .Values.probeHost | quote }}
+              port: panel
+            periodSeconds: 2
+            failureThreshold: 45
+          readinessProbe:
+            tcpSocket:
+              host: {{ .Values.probeHost | quote }}
+              port: trojan
+            periodSeconds: 3
+            failureThreshold: 3
           volumeMounts:
             - name: db
               mountPath: /etc/x-ui
@@ -54,13 +66,17 @@ spec:
               mountPath: /root/cert
             - name: acme
               mountPath: /root/.acme.sh
+            {{- if .Values.hostPath.runtime }}
+            - name: runtime
+              mountPath: /app/bin
+            {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:
         - name: db
           hostPath:
             path: {{ .Values.hostPath.db | quote }}
-            type: DirectoryOrCreate
+            type: Directory
         - name: cert
           hostPath:
             path: {{ .Values.hostPath.cert | quote }}
@@ -69,3 +85,9 @@ spec:
           hostPath:
             path: {{ .Values.hostPath.acme | quote }}
             type: DirectoryOrCreate
+        {{- if .Values.hostPath.runtime }}
+        - name: runtime
+          hostPath:
+            path: {{ .Values.hostPath.runtime | quote }}
+            type: Directory
+        {{- end }}

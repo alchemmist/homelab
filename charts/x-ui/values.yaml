@@ -1,12 +1,22 @@
-image: ghcr.io/mhsanaei/3x-ui:latest
+image: ghcr.io/mhsanaei/3x-ui@sha256:ef90d07ea00cf3b76bcd37e7c5025d73788dc188894c6a741c22776a83c2c556
+replicaCount: 1
 nodeName: socrat-2
 hostPath:
-  db: /srv/x-ui/db
-  cert: /srv/x-ui/cert
-  acme: /srv/x-ui/acme
+  db: /srv/x-ui-lab/db
+  cert: /srv/x-ui-lab/cert
+  acme: /srv/x-ui-lab/acme
+  runtime: ""
+ports:
+  panel: 18082
+  sub: 12096
+  trojan: 32087
+probeHost: 127.0.0.1
+service:
+  enabled: true
 env:
   XRAY_VMESS_AEAD_FORCED: "false"
   XUI_ENABLE_FAIL2BAN: "false"
+  TZ: Asia/Tehran
 resources:
   requests:
     cpu: 100m

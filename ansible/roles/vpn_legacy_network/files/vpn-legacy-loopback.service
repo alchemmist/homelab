@@ -1,0 +1,12 @@
+[Unit]
+Description=Preserve the legacy VPN loopback address
+After=network-pre.target
+Before=k3s-agent.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/ip address replace 172.18.0.1/16 dev lo
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
