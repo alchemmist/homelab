@@ -1,0 +1,2 @@
+postgresImage: postgres:18.6-alpine
+nodeName: socrat-0

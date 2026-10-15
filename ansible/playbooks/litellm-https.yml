@@ -1,0 +1,106 @@
+---
+- name: Require the private LiteLLM certificate before changing HTTPS routing
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  tasks:
+    - name: Wait for cert-manager to finish domain validation
+      ansible.builtin.command: >-
+        kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml -n syncthing wait
+        --for=condition=Ready certificate/litellm-private-tls --timeout=300s
+      changed_when: false
+
+- name: Preserve Syncthing identities and pause state
+  hosts: Socrat
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - name: Install the scoped state verifier
+      ansible.builtin.copy:
+        src: ../files/syncthing_private_snapshot.py
+        dest: /usr/local/libexec/syncthing-private-snapshot.py
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Record the existing Syncthing state
+      ansible.builtin.command: python3 /usr/local/libexec/syncthing-private-snapshot.py /srv/syncthing/config
+      register: litellm_syncthing_before
+      changed_when: false
+
+- name: Add the LiteLLM to the existing WireGuard HTTPS gateway
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  tasks:
+    - name: Prepare private gateway manifests
+      ansible.builtin.include_role:
+        name: syncthing_private_ui
+        tasks_from: prepare
+
+    - name: Verify the existing gateway certificate and credentials
+      ansible.builtin.include_role:
+        name: syncthing_private_ui
+        tasks_from: certificate
+
+    - name: Deploy private HTTPS routing
+      ansible.builtin.include_role:
+        name: syncthing_private_ui
+        tasks_from: deploy
+
+- name: Verify Syncthing state after private gateway rollout
+  hosts: Socrat
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - name: Verify identities and paused folders were preserved
+      ansible.builtin.command: python3 /usr/local/libexec/syncthing-private-snapshot.py /srv/syncthing/config
+      register: litellm_syncthing_after
+      changed_when: false
+      failed_when: litellm_syncthing_after.stdout != litellm_syncthing_before.stdout
+
+- name: Add the private LiteLLM DNS record on every WireGuard resolver
+  hosts: Socrat
+  gather_facts: true
+  become: true
+  serial: 1
+  any_errors_fatal: true
+  tasks:
+    - name: Ensure the private DNS snippet directory exists
+      ansible.builtin.file:
+        path: /etc/homelab-private-dns.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Write the private LiteLLM record
+      ansible.builtin.copy:
+        dest: /etc/homelab-private-dns.d/litellm.conf
+        content: "host-record=litellm.socrat.alchemmist.xyz,{{ wg_socrat_nodes['socrat-0'].address }}\nlocal=/litellm.socrat.alchemmist.xyz/\n"
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Restart private LiteLLM DNS
+
+    - name: Enable managed DNS snippets
+      ansible.builtin.lineinfile:
+        path: /etc/homelab-private-dns.conf
+        line: 'conf-dir=/etc/homelab-private-dns.d,*.conf'
+        validate: "{{ '/usr/bin/dnsmasq' if ansible_facts['os_family'] == 'Archlinux' else '/usr/sbin/dnsmasq' }} --test --conf-file=%s"
+      notify: Restart private LiteLLM DNS
+
+    - name: Validate the complete private DNS configuration
+      ansible.builtin.command: >-
+        {{ '/usr/bin/dnsmasq' if ansible_facts['os_family'] == 'Archlinux' else '/usr/sbin/dnsmasq' }}
+        --test --conf-file=/etc/homelab-private-dns.conf
+      changed_when: false
+  handlers:
+    - name: Restart private LiteLLM DNS
+      ansible.builtin.systemd_service:
+        name: homelab-private-dns.service
+        state: restarted

@@ -95,6 +95,10 @@ ipt -A "$new_input_chain" -s "$client_address/32" -m conntrack --ctstate RELATED
 ipt -A "$new_input_chain" -s "$client_address/32" -p tcp -m tcp --dport {{ wireguard_private_web_proxy_port }} -m conntrack --ctstate NEW,ESTABLISHED --ctorigdstport {{ wireguard_private_web_public_port }} -j ACCEPT
 ipt -A "$new_input_chain" -s "$client_address/32" -m conntrack --ctstate RELATED --ctorigdstport {{ wireguard_private_web_public_port }} -j ACCEPT
 {% endif %}
+{% if wireguard_private_http_enabled | bool %}
+ipt -A "$new_input_chain" -s "$client_address/32" -p tcp -m tcp --dport {{ wireguard_private_http_proxy_port }} -m conntrack --ctstate NEW,ESTABLISHED --ctorigdstport {{ wireguard_private_http_public_port }} -j ACCEPT
+ipt -A "$new_input_chain" -s "$client_address/32" -m conntrack --ctstate RELATED --ctorigdstport {{ wireguard_private_http_public_port }} -j ACCEPT
+{% endif %}
 ipt -A "$new_input_chain" -s "$client_address/32" -j REJECT --reject-with icmp-port-unreachable
 ipt -A "$new_forward_chain" -s "$client_address/32" -j REJECT --reject-with icmp-admin-prohibited
 {% endfor %}

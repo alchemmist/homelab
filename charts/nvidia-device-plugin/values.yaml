@@ -1,0 +1,28 @@
+image:
+  repository: nvcr.io/nvidia/k8s-device-plugin
+  tag: v0.20.1
+  pullPolicy: IfNotPresent
+
+runtimeClassName: nvidia
+
+nodeSelector:
+  kubernetes.io/hostname: socrat-0
+
+tolerations:
+  - key: nvidia.com/gpu
+    operator: Exists
+    effect: NoSchedule
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+  - key: node-role.kubernetes.io/master
+    operator: Exists
+    effect: NoSchedule
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi

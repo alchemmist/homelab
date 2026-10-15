@@ -1,0 +1,49 @@
+---
+- name: Deploy LiteLLM and persistent credentials
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  tasks:
+    - name: Copy secret initializer
+      ansible.builtin.copy:
+        src: ../files/ensure_litellm_secrets.py
+        dest: /tmp/ensure-litellm-secrets.py
+        mode: '0600'
+    - name: Ensure stable secrets
+      ansible.builtin.command: python3 /tmp/ensure-litellm-secrets.py
+      register: secrets_result
+      changed_when: "'created' in secrets_result.stdout"
+      no_log: true
+    - name: Copy infrastructure chart
+      ansible.builtin.copy:
+        src: ../../charts/litellm-infra/
+        dest: '{{ homelab_user_home }}/tmp-charts/litellm-infra/'
+        mode: preserve
+    - name: Copy gateway values
+      ansible.builtin.copy:
+        src: ../../deploy/litellm/values.yaml
+        dest: '{{ homelab_user_home }}/tmp-charts/litellm-values.yaml'
+        mode: '0644'
+    - name: Deploy database and certificate
+      ansible.builtin.command: >-
+        helm upgrade --install litellm-infra {{ homelab_user_home }}/tmp-charts/litellm-infra
+        -n llm --wait --timeout 10m
+      changed_when: true
+    - name: Deploy official LiteLLM chart
+      ansible.builtin.command: >-
+        helm upgrade --install litellm oci://ghcr.io/berriai/litellm-helm --version 1.105.1
+        -n llm -f {{ homelab_user_home }}/tmp-charts/litellm-values.yaml
+        --wait --timeout 20m
+      changed_when: true
+    - name: Copy Open WebUI virtual key initializer
+      ansible.builtin.copy:
+        src: ../files/ensure_webui_litellm_key.py
+        dest: /tmp/ensure-webui-litellm-key.py
+        mode: '0600'
+    - name: Ensure a dedicated Open WebUI key
+      ansible.builtin.command: python3 /tmp/ensure-webui-litellm-key.py
+      register: webui_key_result
+      changed_when: "'created' in webui_key_result.stdout"
+      no_log: true

@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicas }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      runtimeClassName: {{ .Values.runtimeClassName | quote }}
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.nodeName | quote }}
+      containers:
+        - name: vllm
+          image: {{ .Values.image | quote }}
+          imagePullPolicy: IfNotPresent
+          args:
+            - {{ .Values.model | quote }}
+            - --revision
+            - {{ .Values.revision | quote }}
+            - --tokenizer-revision
+            - {{ .Values.revision | quote }}
+            - --served-model-name
+            - {{ .Values.servedModelName | quote }}
+            - --host
+            - "0.0.0.0"
+            - --port
+            - "8000"
+            {{- toYaml .Values.args | nindent 12 }}
+          env:
+            - name: VLLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.apiKeySecret | quote }}
+                  key: api-key
+            - name: HF_HOME
+              value: /model-cache
+            - name: HF_HUB_DOWNLOAD_TIMEOUT
+              value: "120"
+            - name: OMP_NUM_THREADS
+              value: "1"
+          ports:
+            - name: http
+              containerPort: 8000
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            failureThreshold: 180
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 5
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: model-cache
+              mountPath: /model-cache
+            - name: shm
+              mountPath: /dev/shm
+      volumes:
+        - name: model-cache
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-cache
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 2Gi

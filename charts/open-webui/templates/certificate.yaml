@@ -1,0 +1,16 @@
+{{- if .Values.https.certificateEnabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Values.https.secretName }}
+  namespace: {{ .Values.https.certificateNamespace }}
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  secretName: {{ .Values.https.secretName }}
+  dnsNames:
+    - {{ .Values.https.host | quote }}
+  issuerRef:
+    name: {{ .Values.https.clusterIssuer | quote }}
+    kind: ClusterIssuer
+{{- end }}

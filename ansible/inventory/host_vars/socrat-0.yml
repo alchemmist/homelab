@@ -1,4 +1,18 @@
 ---
+wireguard_private_http_enabled: true
+syncthing_private_ui_extra_virtual_hosts:
+  - name: open-webui
+    host: llm.socrat.alchemmist.xyz
+    nodeName: socrat-0
+    upstream: http://open-webui.llm.svc.cluster.local:8080
+    tlsSecret: open-webui-private-tls
+    resolver: 10.43.0.10
+  - name: litellm
+    host: litellm.socrat.alchemmist.xyz
+    nodeName: socrat-0
+    upstream: http://litellm.llm.svc.cluster.local:4000
+    tlsSecret: litellm-private-tls
+    resolver: 10.43.0.10
 homelab_desktop_autologin: true
 homelab_desktop_profile: desktop
 homelab_waybar_profile: desktop

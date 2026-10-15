@@ -1,0 +1,5 @@
+apiVersion: v2
+name: vllm
+description: Local GPU inference for Socrat
+type: application
+version: 0.1.0

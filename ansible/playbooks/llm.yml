@@ -1,0 +1,103 @@
+---
+- name: Deploy local GPU inference
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  tasks:
+    - name: Verify host GPU driver
+      ansible.builtin.command: nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
+      changed_when: false
+
+    - name: Verify NVIDIA container runtime
+      ansible.builtin.command: nvidia-container-runtime --version
+      changed_when: false
+
+    - name: Copy inference charts
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../charts/{{ item }}/"
+        dest: "{{ homelab_user_home }}/tmp-charts/{{ item }}/"
+        mode: preserve
+      loop:
+        - nvidia-device-plugin
+        - vllm
+
+    - name: Deploy NVIDIA device plugin
+      ansible.builtin.command: >-
+        helm upgrade --install nvidia-device-plugin {{ homelab_user_home }}/tmp-charts/nvidia-device-plugin
+        --namespace kube-system --kubeconfig /etc/rancher/k3s/k3s.yaml
+        --wait --timeout 3m
+      changed_when: true
+
+    - name: Wait for GPU registration
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - get
+          - node
+          - socrat-0
+          - -o
+          - 'jsonpath={.status.allocatable.nvidia\.com/gpu}'
+      register: llm_gpu
+      changed_when: false
+      until: llm_gpu.stdout == '1'
+      retries: 12
+      delay: 5
+
+    - name: Create inference namespace
+      ansible.builtin.shell: kubectl create namespace llm --dry-run=client -o yaml | kubectl apply -f -
+      register: llm_namespace
+      changed_when: "'created' in llm_namespace.stdout"
+
+    - name: Ensure persistent inference API key
+      ansible.builtin.shell: |
+        python3 - <<'PY'
+        import base64
+        import json
+        import secrets
+        import subprocess
+
+        result = subprocess.run(
+            ['kubectl', '-n', 'llm', 'get', 'secret', 'vllm-api', '--ignore-not-found', '-o', 'name'],
+            check=True, capture_output=True, text=True,
+        )
+        if not result.stdout.strip():
+            secret = {
+                'apiVersion': 'v1', 'kind': 'Secret',
+                'metadata': {'name': 'vllm-api', 'namespace': 'llm'},
+                'type': 'Opaque',
+                'data': {'api-key': base64.b64encode(secrets.token_urlsafe(48).encode()).decode()},
+            }
+            subprocess.run(['kubectl', 'create', '-f', '-'], input=json.dumps(secret), text=True, check=True)
+            print('created')
+        PY
+      register: llm_secret
+      changed_when: "'created' in llm_secret.stdout"
+      no_log: true
+
+    - name: Deploy vLLM
+      ansible.builtin.command: >-
+        helm upgrade --install vllm {{ homelab_user_home }}/tmp-charts/vllm
+        --namespace llm --kubeconfig /etc/rancher/k3s/k3s.yaml
+        --wait --timeout 45m
+      changed_when: true
+
+    - name: Copy the model defaults synchronizer
+      ansible.builtin.copy:
+        src: ../files/configure_webui_model.py
+        dest: "{{ homelab_user_home }}/tmp-charts/configure-webui-model.py"
+        mode: '0644'
+
+    - name: Select the deployed model in an existing no-auth Open WebUI
+      ansible.builtin.command:
+        argv:
+          - python3
+          - "{{ homelab_user_home }}/tmp-charts/configure-webui-model.py"
+          - --model
+          - "{{ (lookup('file', playbook_dir ~ '/../../charts/vllm/values.yaml') | from_yaml).servedModelName }}"
+          - --max-output-tokens
+          - '16384'
+      register: llm_webui_defaults
+      changed_when: (llm_webui_defaults.stdout | from_json).changed

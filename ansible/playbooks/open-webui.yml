@@ -1,0 +1,125 @@
+---
+- name: Deploy the private model chat
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  tasks:
+    - name: Require the dedicated LiteLLM client key
+      ansible.builtin.command: kubectl -n llm get secret open-webui-litellm -o name
+      changed_when: false
+
+    - name: Ensure a persistent WebUI session key
+      ansible.builtin.shell: |
+        python3 - <<'PY'
+        import base64
+        import json
+        import secrets
+        import subprocess
+
+        result = subprocess.run(
+            ['kubectl', '-n', 'llm', 'get', 'secret', 'open-webui-auth', '--ignore-not-found', '-o', 'name'],
+            check=True, capture_output=True, text=True,
+        )
+        if not result.stdout.strip():
+            secret = {
+                'apiVersion': 'v1', 'kind': 'Secret',
+                'metadata': {'name': 'open-webui-auth', 'namespace': 'llm'},
+                'type': 'Opaque',
+                'data': {'secret-key': base64.b64encode(secrets.token_urlsafe(48).encode()).decode()},
+            }
+            subprocess.run(['kubectl', 'create', '-f', '-'], input=json.dumps(secret), text=True, check=True)
+            print('created')
+        PY
+      register: webui_secret
+      changed_when: "'created' in webui_secret.stdout"
+      no_log: true
+
+    - name: Copy the Open WebUI chart
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../charts/open-webui/"
+        dest: "{{ homelab_user_home }}/tmp-charts/open-webui/"
+        mode: preserve
+
+    - name: Validate the Open WebUI chart
+      ansible.builtin.command: "helm lint {{ homelab_user_home }}/tmp-charts/open-webui"
+      changed_when: false
+
+    - name: Deploy Open WebUI without public ingress
+      ansible.builtin.command: >-
+        helm upgrade --install open-webui {{ homelab_user_home }}/tmp-charts/open-webui
+        --namespace llm --kubeconfig /etc/rancher/k3s/k3s.yaml
+        --values {{ homelab_user_home }}/tmp-charts/open-webui/values.yaml
+        --atomic --wait --timeout 15m
+      changed_when: true
+
+    - name: Copy the model defaults synchronizer
+      ansible.builtin.copy:
+        src: ../files/configure_webui_model.py
+        dest: "{{ homelab_user_home }}/tmp-charts/configure-webui-model.py"
+        mode: '0644'
+
+    - name: Select the deployed inference model and output allowance
+      ansible.builtin.command:
+        argv:
+          - python3
+          - "{{ homelab_user_home }}/tmp-charts/configure-webui-model.py"
+          - --model
+          - "{{ (lookup('file', playbook_dir ~ '/../../charts/vllm/values.yaml') | from_yaml).servedModelName }}"
+          - --max-output-tokens
+          - '16384'
+      register: webui_model_defaults
+      changed_when: (webui_model_defaults.stdout | from_json).changed
+
+- name: Add the private chat DNS record on every WireGuard resolver
+  hosts: Socrat
+  gather_facts: true
+  become: true
+  serial: 1
+  any_errors_fatal: true
+  tasks:
+    - name: Ensure the private DNS snippet directory exists
+      ansible.builtin.file:
+        path: /etc/homelab-private-dns.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Write the private chat record
+      ansible.builtin.copy:
+        dest: /etc/homelab-private-dns.d/llm.conf
+        content: "host-record=llm.socrat.alchemmist.xyz,{{ wg_socrat_nodes['socrat-0'].address }}\nlocal=/llm.socrat.alchemmist.xyz/\n"
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Restart private chat DNS
+
+    - name: Enable managed DNS snippets
+      ansible.builtin.lineinfile:
+        path: /etc/homelab-private-dns.conf
+        line: 'conf-dir=/etc/homelab-private-dns.d,*.conf'
+        validate: "{{ '/usr/bin/dnsmasq' if ansible_facts['os_family'] == 'Archlinux' else '/usr/sbin/dnsmasq' }} --test --conf-file=%s"
+      notify: Restart private chat DNS
+
+    - name: Validate the complete private DNS configuration
+      ansible.builtin.command: >-
+        {{ '/usr/bin/dnsmasq' if ansible_facts['os_family'] == 'Archlinux' else '/usr/sbin/dnsmasq' }}
+        --test --conf-file=/etc/homelab-private-dns.conf
+      changed_when: false
+  handlers:
+    - name: Restart private chat DNS
+      ansible.builtin.systemd_service:
+        name: homelab-private-dns.service
+        state: restarted
+
+- name: Route private HTTP only through WireGuard
+  hosts: socrat-0
+  gather_facts: true
+  become: true
+  any_errors_fatal: true
+  roles:
+    - wireguard_admin_firewall
+    - wireguard_private_web
