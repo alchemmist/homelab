@@ -80,6 +80,16 @@ Apply `playbooks/syncthing-private-ui.yml` using the direct maintenance
 inventory. See the [Syncthing runbook](docs/syncthing-private-ui.md) for the
 traffic model, certificate renewal, monitoring, provisioning and recovery.
 
+## Local LLM inference
+
+`ansible/playbooks/llm.yml` deploys the NVIDIA device plugin and a single vLLM instance on the RTX 3090 in `socrat-0`. The current model is RedHatAI/Qwen3.8-27B-INT4, served as `qwen3.8-27b`, with a 131072-token context, FP8 KV cache, text-only input and one active request. Open WebUI uses `max_tokens=16384` for output. The public API at `https://llm.alchemmist.xyz/v1` is served by LiteLLM and requires a virtual key; vLLM remains internal. Open WebUI at `https://chat.alchemmist.xyz` requires login and uses its own LiteLLM key. Model weights persist on a local-path PVC.
+
+Inference is running. The earlier Qwen3-8B deployment passed API, concurrency, and pod-recreation checks. An earlier kernel panic did not recur in the controlled retry; its underlying kernel/driver/hardware cause remains unresolved. See the runbook for evidence and the limits of this validation.
+
+See the [local inference runbook](docs/local-llm.md) for deployment, SSH access, smoke checks, resource limits, and registry access requirements.
+
+Open WebUI requires a user login at [chat.alchemmist.xyz](https://chat.alchemmist.xyz). LiteLLM provides the authenticated API and admin UI at [llm.alchemmist.xyz](https://llm.alchemmist.xyz/ui/). Both use cert-manager-managed HTTPS certificates.
+
 ## Run
 
 Install Ansible locally, then from `ansible/`:
@@ -199,3 +209,5 @@ TLS:        cert-manager / letsencrypt-http01
 ## Secrets
 
 Do not commit passwords or private keys. Use SSH keys and, later, `ansible-vault` for real secrets.
+
+LiteLLM API gateway: [deployment and access](docs/litellm.md).

@@ -24,7 +24,7 @@
 - name: Generate private Syncthing Helm values
   ansible.builtin.copy:
     dest: "{{ syncthing_private_ui_values_path }}"
-    content: "{{ {'privateGui': {'enabled': true, 'nodes': syncthing_private_ui_nodes, 'listenPort': syncthing_private_ui_port, 'healthPort': syncthing_private_ui_health_port, 'tlsSecret': syncthing_private_ui_tls_secret, 'certificate': {'enabled': true, 'commonName': syncthing_private_ui_nodes[0].host, 'clusterIssuer': syncthing_private_ui_cluster_issuer}}, 'ingress': {'enabled': false}, 'basicAuth': {'enabled': true, 'existingSecret': syncthing_private_ui_auth_secret}} | to_nice_yaml }}"
+    content: "{{ {'privateGui': {'enabled': true, 'nodes': syncthing_private_ui_nodes, 'extraVirtualHosts': syncthing_private_ui_extra_virtual_hosts, 'listenPort': syncthing_private_ui_port, 'healthPort': syncthing_private_ui_health_port, 'tlsSecret': syncthing_private_ui_tls_secret, 'certificate': {'enabled': true, 'commonName': syncthing_private_ui_nodes[0].host, 'clusterIssuer': syncthing_private_ui_cluster_issuer}}, 'ingress': {'enabled': false}, 'basicAuth': {'enabled': true, 'existingSecret': syncthing_private_ui_auth_secret}} | to_nice_yaml }}"
     mode: '0600'
 
 - name: Install the private manifest comparison utility

@@ -71,6 +71,14 @@
     group: root
     mode: '0755'
 
+- name: Ensure private DNS snippets directory exists
+  ansible.builtin.file:
+    path: "{{ homelab_private_dns_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
 - name: Render private DNS configuration
   ansible.builtin.template:
     src: dnsmasq.conf.j2

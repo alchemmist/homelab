@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: open-webui-gateway
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: open-webui-gateway
+  template:
+    metadata:
+      labels:
+        app: open-webui-gateway
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/gateway-configmap.yaml") . | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.nodeName | quote }}
+      containers:
+        - name: nginx
+          image: {{ .Values.gateway.image | quote }}
+          imagePullPolicy: IfNotPresent
+          resources:
+            {{- toYaml .Values.gateway.resources | nindent 12 }}
+          startupProbe:
+            tcpSocket:
+              host: {{ .Values.gateway.address | quote }}
+              port: {{ .Values.gateway.port }}
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            tcpSocket:
+              host: {{ .Values.gateway.address | quote }}
+              port: {{ .Values.gateway.port }}
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              host: {{ .Values.gateway.address | quote }}
+              port: {{ .Values.gateway.port }}
+            periodSeconds: 30
+          volumeMounts:
+            - name: config
+              mountPath: /etc/nginx/conf.d
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: open-webui-gateway

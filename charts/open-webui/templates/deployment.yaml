@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: open-webui
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: open-webui
+  template:
+    metadata:
+      labels:
+        app: open-webui
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.nodeName | quote }}
+      containers:
+        - name: open-webui
+          image: {{ .Values.image | quote }}
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: WEBUI_AUTH
+              value: "True"
+            - name: WEBUI_AUTH_COOKIE_SECURE
+              value: "True"
+            - name: WEBUI_SESSION_COOKIE_SECURE
+              value: "True"
+            - name: ENABLE_DIRECT_CONNECTIONS
+              value: "False"
+            - name: WEBUI_URL
+              value: {{ .Values.webuiUrl | quote }}
+            - name: CORS_ALLOW_ORIGIN
+              value: {{ .Values.webuiUrl | quote }}
+            - name: ENABLE_SIGNUP
+              value: "False"
+            - name: ENABLE_OLLAMA_API
+              value: "False"
+            - name: ENABLE_OPENAI_API
+              value: "True"
+            - name: OPENAI_API_BASE_URL
+              value: {{ .Values.openai.baseUrl | quote }}
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.openai.apiKeySecret | quote }}
+                  key: {{ .Values.openai.apiKeySecretKey | quote }}
+            - name: WEBUI_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.auth.secret | quote }}
+                  key: {{ .Values.auth.secretKey | quote }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 120
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 5
+          volumeMounts:
+            - name: data
+              mountPath: /app/backend/data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: open-webui-data

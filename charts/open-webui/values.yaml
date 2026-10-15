@@ -1,0 +1,47 @@
+image: ghcr.io/open-webui/open-webui:v0.12.2-slim@sha256:34db70a8e8f305dc996c4b459db0949b715400a489ca8a2d1a2a31ae5ddc67bb
+nodeName: socrat-0
+webuiUrl: https://chat.alchemmist.xyz
+https:
+  certificateEnabled: true
+  certificateNamespace: syncthing
+  secretName: open-webui-private-tls
+  host: llm.socrat.alchemmist.xyz
+  clusterIssuer: letsencrypt-http01
+openai:
+  baseUrl: http://litellm.llm.svc.cluster.local:4000/v1
+  apiKeySecret: open-webui-litellm
+  apiKeySecretKey: api-key
+auth:
+  secret: open-webui-auth
+  secretKey: secret-key
+persistence:
+  storageClass: local-path
+  size: 5Gi
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "2"
+    memory: 2Gi
+ingress:
+  enabled: true
+  className: traefik
+  host: chat.alchemmist.xyz
+  tlsSecret: open-webui-tls
+  clusterIssuer: letsencrypt-http01
+gateway:
+  redirectHttps: true
+  image: nginx:1.28-alpine@sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236
+  address: 10.250.0.1
+  port: 18080
+  host: llm.socrat.alchemmist.xyz
+  allowedCidr: 10.250.0.0/24
+  resolver: 10.43.0.10
+  resources:
+    requests:
+      cpu: 10m
+      memory: 16Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi

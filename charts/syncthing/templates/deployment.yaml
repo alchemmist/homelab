@@ -85,7 +85,7 @@ spec:
               nginx -g 'daemon off;' &
               nginx_pid=$!
               while kill -0 "$nginx_pid" 2>/dev/null; do
-                next_fingerprint=$(sha256sum /etc/nginx/tls/tls.crt /etc/nginx/tls/tls.key)
+                next_fingerprint=$(sha256sum /etc/nginx/tls/tls.crt /etc/nginx/tls/tls.key{{ range .Values.privateGui.extraVirtualHosts }} /etc/nginx/extra-tls/{{ .name }}/tls.crt /etc/nginx/extra-tls/{{ .name }}/tls.key{{ end }})
                 if [ -n "$tls_fingerprint" ] && [ "$next_fingerprint" != "$tls_fingerprint" ]; then
                   nginx -s reload
                 fi
@@ -126,6 +126,11 @@ spec:
             - name: private-tls
               mountPath: /etc/nginx/tls
               readOnly: true
+            {{- range .Values.privateGui.extraVirtualHosts }}
+            - name: extra-tls-{{ .name }}
+              mountPath: /etc/nginx/extra-tls/{{ .name }}
+              readOnly: true
+            {{- end }}
             - name: basic-auth
               mountPath: /etc/nginx/auth
               readOnly: true
@@ -142,6 +147,11 @@ spec:
         - name: private-tls
           secret:
             secretName: {{ .Values.privateGui.tlsSecret }}
+        {{- range .Values.privateGui.extraVirtualHosts }}
+        - name: extra-tls-{{ .name }}
+          secret:
+            secretName: {{ .tlsSecret }}
+        {{- end }}
         - name: basic-auth
           secret:
             secretName: {{ .Values.basicAuth.existingSecret }}

@@ -1,0 +1,93 @@
+fullnameOverride: litellm
+replicaCount: 1
+numWorkers: 1
+image:
+  repository: ghcr.io/berriai/litellm
+  tag: '1.105.1'
+  pullPolicy: IfNotPresent
+strategy:
+  type: Recreate
+nodeSelector:
+  kubernetes.io/hostname: socrat-0
+serviceAccount:
+  create: true
+  automount: false
+masterkeySecretName: litellm-env
+masterkeySecretKey: LITELLM_MASTER_KEY
+environmentSecrets: [litellm-env]
+extraEnvVars:
+  - name: VLLM_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: vllm-api
+        key: api-key
+envVars:
+  LITELLM_TELEMETRY: 'False'
+  PROXY_BASE_URL: https://llm.alchemmist.xyz
+  FORWARDED_ALLOW_IPS: '127.0.0.1,10.42.0.0/16,10.250.0.0/24'
+db:
+  deployStandalone: false
+  useExisting: true
+  endpoint: litellm-postgres.llm.svc.cluster.local
+  database: litellm
+  secret:
+    name: litellm-db
+    usernameKey: username
+    passwordKey: password
+redis:
+  enabled: false
+migrationJob:
+  enabled: true
+  hooks:
+    argocd:
+      enabled: false
+    helm:
+      enabled: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: '2'
+      memory: 2Gi
+resources:
+  requests:
+    cpu: 250m
+    memory: 1Gi
+  limits:
+    cpu: '2'
+    memory: 4Gi
+proxy_config:
+  model_list:
+    - model_name: qwen3.8-27b
+      litellm_params:
+        model: openai/qwen3.8-27b
+        api_base: http://vllm.llm.svc.cluster.local:8000/v1
+        api_key: os.environ/VLLM_API_KEY
+      model_info:
+        max_input_tokens: 131072
+        max_output_tokens: 16384
+        input_cost_per_token: 0
+        output_cost_per_token: 0
+  general_settings:
+    disable_env_credential_login: true
+    master_key: os.environ/LITELLM_MASTER_KEY
+  litellm_settings:
+    request_timeout: 600
+    num_retries: 0
+
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-http01
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+  hosts:
+    - host: llm.alchemmist.xyz
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: litellm-public-tls
+      hosts:
+        - llm.alchemmist.xyz

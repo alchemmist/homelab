@@ -33,6 +33,10 @@ fi
     printf 'add chain ip %s output { type nat hook output priority -110; policy accept; }\n' "$table"
     printf 'add rule ip %s prerouting iifname %s ip daddr %s tcp dport %s dnat to %s:%s\n' "$table" "$interface" "$node_address" "$public_port" "$node_address" "$proxy_port"
     printf 'add rule ip %s output ip daddr %s tcp dport %s dnat to %s:%s\n' "$table" "$node_address" "$public_port" "$node_address" "$proxy_port"
+{% if wireguard_private_http_enabled | bool %}
+    printf 'add rule ip %s prerouting iifname %s ip daddr %s tcp dport %s dnat to %s:%s\n' "$table" "$interface" "$node_address" {{ wireguard_private_http_public_port | quote }} "$node_address" {{ wireguard_private_http_proxy_port | quote }}
+    printf 'add rule ip %s output ip daddr %s tcp dport %s dnat to %s:%s\n' "$table" "$node_address" {{ wireguard_private_http_public_port | quote }} "$node_address" {{ wireguard_private_http_proxy_port | quote }}
+{% endif %}
 } >"$tmp"
 
 if ! "$nft" -c -f "$tmp"; then

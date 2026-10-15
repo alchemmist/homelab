@@ -9,3 +9,6 @@ wg_socrat_admin_clients: {}
 wireguard_private_web_enabled: false
 wireguard_private_web_proxy_port: 18443
 wireguard_private_web_public_port: 443
+wireguard_private_http_enabled: false
+wireguard_private_http_public_port: 80
+wireguard_private_http_proxy_port: 18080

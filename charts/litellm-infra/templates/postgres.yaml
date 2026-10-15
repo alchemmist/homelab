@@ -1,0 +1,88 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: litellm-postgres
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: litellm-postgres
+spec:
+  selector:
+    app: litellm-postgres
+  ports:
+    - port: 5432
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: litellm-postgres
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: litellm-postgres
+  template:
+    metadata:
+      labels:
+        app: litellm-postgres
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.nodeName }}
+      automountServiceAccountToken: false
+      containers:
+        - name: postgres
+          image: {{ .Values.postgresImage }}
+          env:
+            - name: POSTGRES_DB
+              value: litellm
+            - name: POSTGRES_USER
+              value: litellm
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: litellm-db
+                  key: password
+          ports:
+            - containerPort: 5432
+          readinessProbe:
+            exec:
+              command: [pg_isready, -U, litellm, -d, litellm]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: '1'
+              memory: 1Gi
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: litellm-postgres
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: litellm-private-tls
+  namespace: syncthing
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  secretName: litellm-private-tls
+  dnsNames: [litellm.socrat.alchemmist.xyz]
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-http01

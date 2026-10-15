@@ -23,6 +23,7 @@ privateGui:
     repository: nginx
     tag: 1.27-alpine
     pullPolicy: IfNotPresent
+  extraVirtualHosts: []
   tlsSecret: syncthing-private-ui-tls
   certificate:
     enabled: true

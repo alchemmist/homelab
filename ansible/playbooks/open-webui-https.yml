@@ -1,0 +1,79 @@
+---
+- name: Require the private chat certificate before changing HTTPS routing
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  tasks:
+    - name: Wait for cert-manager to finish domain validation
+      ansible.builtin.command: >-
+        kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml -n syncthing wait
+        --for=condition=Ready certificate/open-webui-private-tls --timeout=300s
+      changed_when: false
+
+- name: Preserve Syncthing identities and pause state
+  hosts: Socrat
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - name: Install the scoped state verifier
+      ansible.builtin.copy:
+        src: ../files/syncthing_private_snapshot.py
+        dest: /usr/local/libexec/syncthing-private-snapshot.py
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Record the existing Syncthing state
+      ansible.builtin.command: python3 /usr/local/libexec/syncthing-private-snapshot.py /srv/syncthing/config
+      register: webui_syncthing_before
+      changed_when: false
+
+- name: Add the chat to the existing WireGuard HTTPS gateway
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  tasks:
+    - name: Prepare private gateway manifests
+      ansible.builtin.include_role:
+        name: syncthing_private_ui
+        tasks_from: prepare
+
+    - name: Verify the existing gateway certificate and credentials
+      ansible.builtin.include_role:
+        name: syncthing_private_ui
+        tasks_from: certificate
+
+    - name: Deploy private HTTPS routing
+      ansible.builtin.include_role:
+        name: syncthing_private_ui
+        tasks_from: deploy
+
+    - name: Copy the chat chart
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../charts/open-webui/"
+        dest: "{{ homelab_user_home }}/tmp-charts/open-webui/"
+        mode: preserve
+
+    - name: Switch the chat URL and private HTTP redirect to HTTPS
+      ansible.builtin.command: >-
+        helm upgrade open-webui {{ homelab_user_home }}/tmp-charts/open-webui
+        --namespace llm --kubeconfig /etc/rancher/k3s/k3s.yaml
+        --values {{ homelab_user_home }}/tmp-charts/open-webui/values.yaml
+        --set gateway.redirectHttps=true
+        --atomic --wait --timeout 10m
+      changed_when: true
+
+- name: Verify Syncthing state after private gateway rollout
+  hosts: Socrat
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - name: Verify identities and paused folders were preserved
+      ansible.builtin.command: python3 /usr/local/libexec/syncthing-private-snapshot.py /srv/syncthing/config
+      register: webui_syncthing_after
+      changed_when: false
+      failed_when: webui_syncthing_after.stdout != webui_syncthing_before.stdout
