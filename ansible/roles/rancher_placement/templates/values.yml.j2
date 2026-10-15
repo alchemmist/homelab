@@ -1,0 +1,6 @@
+replicas: {{ rancher_replicas }}
+antiAffinity: required
+extraNodeSelectorTerms:
+  - key: kubernetes.io/hostname
+    operator: In
+    values: {{ rancher_placement_nodes | to_json }}

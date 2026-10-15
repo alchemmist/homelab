@@ -1,0 +1,104 @@
+---
+- name: Point the existing public web forwards at the verified home ingress VIP
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  vars:
+    router_expected_old: 192.168.0.23
+    router_destination: 192.168.0.250
+    router_address: 192.168.0.1
+    router_helper_directory: "{{ homelab_user_home }}/.cache/homelab-router"
+  tasks:
+    - name: Require a private controller-side credentials file
+      ansible.builtin.assert:
+        that: router_credentials_file is defined
+        fail_msg: Pass router_credentials_file pointing to private JSON with username and password; never commit it.
+
+    - name: Verify HTTPS through the new ingress address before changing NAT
+      ansible.builtin.command: >-
+        curl --silent --show-error --fail --max-time 10
+        --resolve rancher.socrat.alchemmist.xyz:443:{{ router_destination }}
+        https://rancher.socrat.alchemmist.xyz/ping
+      register: router_vip_probe
+      changed_when: false
+      failed_when: router_vip_probe.rc != 0 or router_vip_probe.stdout != 'pong'
+
+    - name: Create private router administration storage
+      ansible.builtin.file:
+        path: "{{ router_helper_directory }}"
+        state: directory
+        mode: '0700'
+
+    - name: Install the guarded vendor-form helper
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../roles/home_ingress_ha/files/router_api.py"
+        dest: "{{ router_helper_directory }}/router_api.py"
+        mode: '0700'
+
+    - name: Read the current router forwards without exposing credentials
+      ansible.builtin.command:
+        argv:
+          - python3
+          - "{{ router_helper_directory }}/router_api.py"
+          - --router
+          - "{{ router_address }}"
+        stdin: "{{ lookup('file', router_credentials_file) }}"
+      register: router_current
+      changed_when: false
+      no_log: true
+
+    - name: Inspect the two existing web destinations
+      ansible.builtin.set_fact:
+        router_web_destinations: >-
+          {{ (router_current.stdout | from_json).forwards |
+          selectattr('external_port', 'in', ['80', '443']) | map(attribute='ip') | list | sort }}
+
+    - name: Require a known complete old or new forwarding state
+      ansible.builtin.assert:
+        that: router_web_destinations in [[router_expected_old, router_expected_old], [router_destination, router_destination]]
+        fail_msg: Router web forwards are in an unexpected or partially changed state; no automatic write was made.
+
+    - name: Back up and change only the web forwarding pair
+      when: router_web_destinations == [router_expected_old, router_expected_old]
+      block:
+        - name: Allocate a private configuration backup
+          ansible.builtin.tempfile:
+            path: "{{ router_helper_directory }}"
+            state: file
+            prefix: before-ha-
+            suffix: .json
+          register: router_backup
+
+        - name: Preserve the complete original forwarding table
+          ansible.builtin.copy:
+            content: "{{ router_current.stdout }}\n"
+            dest: "{{ router_backup.path }}"
+            mode: '0600'
+
+        - name: Apply the guarded pair update independently of the SSH connection
+          ansible.builtin.command:
+            argv:
+              - python3
+              - "{{ router_helper_directory }}/router_api.py"
+              - --router
+              - "{{ router_address }}"
+              - --apply
+              - --expected-old
+              - "{{ router_expected_old }}"
+              - --destination
+              - "{{ router_destination }}"
+            stdin: "{{ lookup('file', router_credentials_file) }}"
+          register: router_apply
+          async: 180
+          poll: 3
+          no_log: true
+          changed_when: true
+
+    - name: Verify the public hostname after the router update
+      ansible.builtin.command: curl --silent --show-error --fail --max-time 10 https://rancher.socrat.alchemmist.xyz/ping
+      register: router_public_probe
+      changed_when: false
+      retries: 6
+      delay: 3
+      until: router_public_probe.rc == 0 and router_public_probe.stdout == 'pong'

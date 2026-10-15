@@ -10,14 +10,14 @@ spec:
   ports:
     - name: panel
       port: 2053
-      targetPort: panel
+      targetPort: primary-panel
       protocol: TCP
     - name: sub
       port: 2096
-      targetPort: sub
+      targetPort: primary-sub
       protocol: TCP
     - name: trojan
       port: 10443
-      targetPort: trojan
+      targetPort: primary-trojan
       protocol: TCP
 {{- end }}

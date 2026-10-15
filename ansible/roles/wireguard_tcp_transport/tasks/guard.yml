@@ -1,0 +1,40 @@
+---
+- name: Ensure the packet filter tool is available
+  ansible.builtin.command:
+    argv:
+      - iptables
+      - --version
+  changed_when: false
+
+- name: Create transport helper directory
+  ansible.builtin.file:
+    path: /usr/local/libexec
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Install narrow direct transport guard
+  ansible.builtin.copy:
+    src: guard.py
+    dest: /usr/local/libexec/wireguard-tcp-transport-guard.py
+    owner: root
+    group: root
+    mode: '0700'
+  register: wg_tcp_guard_helper
+
+- name: Install persistent direct transport guard unit
+  ansible.builtin.template:
+    src: guard.service.j2
+    dest: /etc/systemd/system/wireguard-tcp-transport-guard.service
+    owner: root
+    group: root
+    mode: '0644'
+  register: wg_tcp_guard_unit
+
+- name: Activate the direct transport guard before switching the peer endpoint
+  ansible.builtin.systemd:
+    name: wireguard-tcp-transport-guard.service
+    state: "{{ 'restarted' if wg_tcp_guard_helper.changed or wg_tcp_guard_unit.changed else 'started' }}"
+    enabled: true
+    daemon_reload: true

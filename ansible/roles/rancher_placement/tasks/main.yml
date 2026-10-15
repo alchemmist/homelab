@@ -1,0 +1,59 @@
+---
+- name: Allocate temporary Rancher placement values
+  ansible.builtin.tempfile:
+    state: file
+    suffix: -rancher-placement.yml
+  register: rancher_placement_values
+
+- name: Apply Rancher replica placement
+  block:
+    - name: Render Rancher placement values
+      ansible.builtin.template:
+        src: values.yml.j2
+        dest: "{{ rancher_placement_values.path }}"
+        mode: "0600"
+
+    - name: Upgrade Rancher placement while preserving existing release values
+      ansible.builtin.command:
+        argv:
+          - /usr/local/bin/helm
+          - upgrade
+          - rancher
+          - rancher
+          - --repo
+          - https://releases.rancher.com/server-charts/stable
+          - --version
+          - "{{ rancher_chart_version }}"
+          - --namespace
+          - cattle-system
+          - --kubeconfig
+          - "{{ rancher_kubeconfig }}"
+          - --reuse-values
+          - --values
+          - "{{ rancher_placement_values.path }}"
+          - --timeout
+          - 10m
+      register: rancher_placement_upgrade
+      changed_when: "'has been upgraded' in rancher_placement_upgrade.stdout"
+
+    - name: Remove obsolete Rancher pin and allow rolling updates across two nodes
+      ansible.builtin.command: >-
+        /usr/local/bin/k3s kubectl --kubeconfig {{ rancher_kubeconfig }} -n cattle-system
+        patch deployment rancher --type merge
+        -p '{"spec":{"strategy":{"rollingUpdate":{"maxSurge":1,"maxUnavailable":1}},"template":{"spec":{"nodeSelector":null}}}}'
+      register: rancher_placement_selector
+      changed_when: "'(no change)' not in rancher_placement_selector.stdout"
+
+    - name: Wait for Rancher replica rollout
+      ansible.builtin.command: >-
+        /usr/local/bin/k3s kubectl --kubeconfig {{ rancher_kubeconfig }} -n cattle-system
+        rollout status deployment/rancher --timeout=600s
+      changed_when: false
+
+    - name: Verify Rancher replica placement
+      ansible.builtin.include_tasks: verify.yml
+  always:
+    - name: Remove temporary Rancher placement values
+      ansible.builtin.file:
+        path: "{{ rancher_placement_values.path }}"
+        state: absent

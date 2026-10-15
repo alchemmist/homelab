@@ -38,14 +38,24 @@
       - name: traefik-edge
         namespace: traefik-edge
         chart: traefik-edge
-      - name: x-ui-lab
-        namespace: x-ui-lab
+      - name: x-ui
+        namespace: x-ui
         chart: x-ui
-      - name: x-ui-legacy
-        namespace: x-ui-legacy
-        chart: x-ui
-        valuesFile: values-legacy.yaml
   tasks:
+    - name: Require consolidation before deploying the unified VPN
+      ansible.builtin.command: >-
+        k3s kubectl get deployments -A -o json
+      register: apps_deployments
+      changed_when: false
+
+    - name: Refuse to overlap the previous VPN writers
+      ansible.builtin.assert:
+        that: >-
+          (apps_deployments.stdout | from_json)['items'] |
+          selectattr('metadata.namespace', 'in', ['x-ui-lab', 'x-ui-legacy']) |
+          selectattr('spec.replicas', 'gt', 0) | list | length == 0
+        fail_msg: Run playbooks/vpn-consolidate.yml before deploying the unified VPN.
+
     - name: Ensure app namespaces exist
       ansible.builtin.command: k3s kubectl create namespace {{ item.namespace }}
       loop: "{{ apps }}"
@@ -77,6 +87,7 @@
         helm upgrade --install {{ item.name }} /tmp/charts/{{ item.chart }}
         --namespace {{ item.namespace }}
         --kubeconfig /etc/rancher/k3s/k3s.yaml
+        {{ '--reset-values --set replicaCount=1' if item.name == 'x-ui' else '' }}
         {{ ('--values /tmp/charts/' ~ item.chart ~ '/' ~ item.valuesFile) if item.valuesFile is defined else '' }}
         {{ '--values /tmp/charts/syncthing/private-ui-values.yml' if item.name == 'syncthing' else '' }}
         --wait
@@ -98,3 +109,5 @@
     - name: Print app status
       ansible.builtin.debug:
         var: app_status.stdout_lines
+
+- ansible.builtin.import_playbook: rancher-namespaces.yml

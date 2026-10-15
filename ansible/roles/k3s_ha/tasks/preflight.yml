@@ -1,0 +1,40 @@
+---
+- name: Check the installed k3s version
+  ansible.builtin.command: /usr/local/bin/k3s --version
+  register: k3s_ha_installed_version
+  changed_when: false
+
+- name: Require the same pinned binary on every server
+  ansible.builtin.assert:
+    that: k3s_ha_version in k3s_ha_installed_version.stdout
+
+- name: Check available local disk space
+  ansible.builtin.shell: |
+    python3 - <<'PY'
+    import os
+    disk = os.statvfs('/var/lib/rancher/k3s')
+    assert disk.f_bavail * disk.f_frsize > 5 * 2**30, 'Less than 5 GiB available'
+    print(round(disk.f_bavail * disk.f_frsize / 2**30, 2))
+    PY
+  changed_when: false
+
+- name: Verify independent private paths between servers
+  ansible.builtin.command: ping -I wg-socrat -c 2 -W 3 {{ wg_socrat_nodes[item].address }}
+  loop: "{{ k3s_ha_nodes.keys() | list | difference([inventory_hostname]) }}"
+  changed_when: false
+
+- name: Ensure private k3s configuration exists
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Ensure private migration backup storage exists
+  ansible.builtin.file:
+    path: /var/backups/homelab-k3s
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'

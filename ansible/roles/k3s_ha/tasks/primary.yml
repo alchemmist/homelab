@@ -1,0 +1,104 @@
+---
+- name: Inspect the current primary datastore
+  ansible.builtin.stat:
+    path: /var/lib/rancher/k3s/server/db/etcd/member
+  register: k3s_ha_etcd
+
+- name: Install the private backup and rollback utility
+  ansible.builtin.copy:
+    src: backup_server.py
+    dest: /usr/local/sbin/homelab-k3s-backup
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Convert the existing SQLite datastore
+  when: not k3s_ha_etcd.stat.exists
+  block:
+    - name: Stop the server for a consistent datastore backup without killing pods
+      ansible.builtin.systemd_service:
+        name: k3s
+        state: stopped
+
+    - name: Back up the stopped datastore and server configuration
+      ansible.builtin.command: /usr/bin/python3 /usr/local/sbin/homelab-k3s-backup backup
+      register: k3s_ha_backup
+      changed_when: true
+
+    - name: Save the rollback location
+      ansible.builtin.set_fact:
+        k3s_ha_backup_directory: "{{ (k3s_ha_backup.stdout | from_json).backup }}"
+
+    - name: Configure the primary HA server
+      ansible.builtin.include_tasks: configure_primary.yml
+
+    - name: Start the embedded etcd server
+      ansible.builtin.systemd_service:
+        name: k3s
+        state: started
+        no_block: true
+        enabled: true
+        daemon_reload: true
+
+    - name: Wait for the converted API to become ready
+      ansible.builtin.command: /usr/local/bin/k3s kubectl get --raw /readyz
+      register: k3s_ha_primary_ready
+      retries: 48
+      delay: 5
+      until: k3s_ha_primary_ready.rc == 0 and k3s_ha_primary_ready.stdout == 'ok'
+      changed_when: false
+
+  rescue:
+    - name: Stop a failed conversion before restoring its predecessor
+      ansible.builtin.systemd_service:
+        name: k3s
+        state: stopped
+      when: k3s_ha_backup_directory is defined
+
+    - name: Restore the preconversion datastore and configuration
+      ansible.builtin.command: >-
+        /usr/bin/python3 /usr/local/sbin/homelab-k3s-backup restore
+        --directory {{ k3s_ha_backup_directory }}
+      when: k3s_ha_backup_directory is defined
+
+    - name: Restore server operation
+      ansible.builtin.systemd_service:
+        name: k3s
+        state: started
+        daemon_reload: true
+
+    - name: Report conversion failure
+      ansible.builtin.fail:
+        msg: Initial datastore conversion failed; the previous configuration was restored. Additional servers were not joined.
+
+- name: Reconcile an existing primary HA server
+  when: k3s_ha_etcd.stat.exists
+  block:
+    - ansible.builtin.include_tasks: configure_primary.yml
+
+    - name: Restart the primary only when its configuration changed
+      ansible.builtin.systemd_service:
+        name: k3s
+        state: restarted
+        daemon_reload: true
+        no_block: true
+      when: k3s_ha_primary_config.changed or k3s_ha_primary_unit.changed
+
+    - name: Verify the primary API after reconciliation
+      ansible.builtin.command: /usr/local/bin/k3s kubectl get --raw /readyz
+      register: k3s_ha_primary_ready
+      retries: 48
+      delay: 5
+      until: k3s_ha_primary_ready.rc == 0 and k3s_ha_primary_ready.stdout == 'ok'
+      changed_when: false
+
+- name: Read the server join token privately
+  ansible.builtin.slurp:
+    src: /var/lib/rancher/k3s/server/token
+  register: k3s_ha_server_token
+  no_log: true
+
+- name: Retain the join token only for this playbook run
+  ansible.builtin.set_fact:
+    k3s_ha_join_token: "{{ k3s_ha_server_token.content | b64decode | trim }}"
+  no_log: true

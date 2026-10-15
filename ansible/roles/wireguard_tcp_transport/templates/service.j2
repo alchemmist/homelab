@@ -1,0 +1,26 @@
+[Unit]
+Description=Authenticated TLS transport for WireGuard
+Wants=network-online.target
+After=network-online.target
+{% if inventory_hostname == wg_tcp_client %}
+Requires=wireguard-tcp-transport-guard.service
+After=wireguard-tcp-transport-guard.service
+{% endif %}
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/local/bin/gost -C {{ wg_tcp_directory }}/config.yaml
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

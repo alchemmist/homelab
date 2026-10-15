@@ -1,0 +1,44 @@
+---
+- name: Install the etcd administration client
+  ansible.builtin.apt:
+    name: etcd-client
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Wait for three voting etcd members
+  ansible.builtin.command:
+    argv:
+      - etcdctl
+      - --endpoints=https://192.168.0.23:2379
+      - --cacert=/var/lib/rancher/k3s/server/tls/etcd/server-ca.crt
+      - --cert=/var/lib/rancher/k3s/server/tls/etcd/client.crt
+      - --key=/var/lib/rancher/k3s/server/tls/etcd/client.key
+      - member
+      - list
+      - --write-out=json
+  register: k3s_ha_etcd_members
+  changed_when: false
+  retries: 30
+  delay: 5
+  until:
+    - k3s_ha_etcd_members.rc == 0
+    - (k3s_ha_etcd_members.stdout | from_json).members | length == 3
+    - (k3s_ha_etcd_members.stdout | from_json).members | selectattr('isLearner', 'defined') | selectattr('isLearner') | list | length == 0
+
+- name: Verify all three etcd endpoints
+  ansible.builtin.command:
+    argv:
+      - etcdctl
+      - --endpoints=https://192.168.0.23:2379,https://192.168.0.24:2379,https://10.250.0.2:2379
+      - --cacert=/var/lib/rancher/k3s/server/tls/etcd/server-ca.crt
+      - --cert=/var/lib/rancher/k3s/server/tls/etcd/client.crt
+      - --key=/var/lib/rancher/k3s/server/tls/etcd/client.key
+      - endpoint
+      - health
+      - --write-out=json
+  changed_when: false
+
+- name: Save the first verified HA snapshot
+  ansible.builtin.command: /usr/local/bin/k3s etcd-snapshot save --name homelab-ha-verified
+  changed_when: true

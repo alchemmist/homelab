@@ -1,0 +1,8 @@
+---
+- name: Classify infrastructure namespaces in Rancher
+  hosts: socrat-0
+  any_errors_fatal: true
+  gather_facts: false
+  become: false
+  roles:
+    - rancher_system_namespaces

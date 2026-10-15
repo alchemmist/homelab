@@ -1,0 +1,54 @@
+---
+- name: Preserve the complete current CoreDNS deployment specification
+  ansible.builtin.set_fact:
+    ha_coredns_spec: "{{ (ha_dependency_current.stdout | from_json).spec }}"
+
+- name: Build the canonical CoreDNS deployment specification
+  ansible.builtin.set_fact:
+    ha_coredns_spec: "{{ ha_coredns_spec | combine(ha_coredns_overrides, recursive=true) }}"
+  vars:
+    ha_coredns_overrides:
+      replicas: 2
+      strategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxSurge: 1
+          maxUnavailable: 1
+      template:
+        spec:
+          affinity: "{{ ha_dependency_affinity }}"
+          nodeSelector: "{{ ha_coredns_spec.template.spec.get('nodeSelector', {}) | dict2items | rejectattr('key', 'equalto', 'kubernetes.io/hostname') | items2dict }}"
+
+- name: Remove the obsolete CoreDNS hostname pin after merging
+  ansible.builtin.set_fact:
+    ha_coredns_spec: "{{ ha_coredns_spec | combine({'template': ha_coredns_spec.template | combine({'spec': ha_coredns_spec.template.spec | combine({'nodeSelector': ha_coredns_spec.template.spec.get('nodeSelector', {}) | dict2items | rejectattr('key', 'equalto', 'kubernetes.io/hostname') | items2dict})})}) }}"
+
+- name: Prevent packaged CoreDNS reconciliation on every manifest-writing server
+  ansible.builtin.copy:
+    content: ""
+    dest: /var/lib/rancher/k3s/server/manifests/coredns.yaml.skip
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  delegate_to: "{{ item }}"
+  loop: "{{ k3s_ha_dependencies_manifest_servers }}"
+
+- name: Store the canonical CoreDNS deployment on every manifest-writing server
+  ansible.builtin.copy:
+    content: "{{ ha_coredns_manifest | to_nice_yaml }}"
+    dest: /var/lib/rancher/k3s/server/manifests/homelab-coredns-ha.yaml
+    owner: root
+    group: root
+    mode: "0644"
+  vars:
+    ha_coredns_manifest:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: coredns
+        namespace: kube-system
+      spec: "{{ ha_coredns_spec }}"
+  become: true
+  delegate_to: "{{ item }}"
+  loop: "{{ k3s_ha_dependencies_manifest_servers }}"

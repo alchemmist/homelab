@@ -1,0 +1,18 @@
+[Unit]
+Description=Prevent direct packets from overriding the WireGuard TLS endpoint
+Before=wireguard-tcp-transport.service wg-quick@{{ wg_tcp_interface }}.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/libexec/wireguard-tcp-transport-guard.py {{ wg_tcp_client_interface }} {{ wg_tcp_server_address }} {{ wg_socrat_port }}
+RemainAfterExit=true
+User=root
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW
+
+[Install]
+WantedBy=multi-user.target

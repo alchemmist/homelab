@@ -4,7 +4,7 @@ publicIP: 176.98.185.59
 backendIP: 10.250.0.2
 host: vpn.alchemmist.xyz
 ingressClass: traefik-edge
-apiEndpoint: https://10.250.0.1:6443
+apiEndpoint: https://127.0.0.1:6444
 listenHost: ""
 httpPort: 80
 httpsPort: 443

@@ -1,0 +1,80 @@
+---
+- name: Restrict route changes to the VPS
+  ansible.builtin.assert:
+    that:
+      - inventory_hostname == k3s_ha_routes_host
+      - inventory_hostname in wg_socrat_nodes
+
+- name: Initialize home node routes
+  ansible.builtin.set_fact:
+    k3s_ha_routes_config: []
+
+- name: Collect home node routes
+  ansible.builtin.set_fact:
+    k3s_ha_routes_config: >-
+      {{ k3s_ha_routes_config + [{'public_key': wg_socrat_nodes[item].public_key, 'network': hostvars[item].homelab_ssh_private_host + '/32'}] }}
+  loop: "{{ k3s_ha_routes_peers }}"
+
+- name: Ensure helper directory exists
+  ansible.builtin.file:
+    path: /usr/local/libexec
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Install additive WireGuard route helper
+  ansible.builtin.copy:
+    src: k3s-ha-routes.py
+    dest: /usr/local/libexec/k3s-ha-routes.py
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Persist and activate home node routes without restarting WireGuard
+  ansible.builtin.command:
+    argv:
+      - python3
+      - /usr/local/libexec/k3s-ha-routes.py
+      - "{{ k3s_ha_routes_interface }}"
+      - "{{ wg_socrat_nodes[inventory_hostname].address }}"
+      - "{{ k3s_ha_routes_config | to_json }}"
+  register: k3s_ha_routes_result
+  changed_when: (k3s_ha_routes_result.stdout | from_json).changed
+  when: not ansible_check_mode
+
+- name: Verify home node route selection
+  ansible.builtin.command:
+    argv:
+      - ip
+      - route
+      - get
+      - "{{ hostvars[item].homelab_ssh_private_host }}"
+  loop: "{{ k3s_ha_routes_peers }}"
+  register: k3s_ha_routes_lookup
+  changed_when: false
+  failed_when: >-
+    k3s_ha_routes_lookup.rc != 0 or
+    ('dev ' + k3s_ha_routes_interface) not in k3s_ha_routes_lookup.stdout or
+    ('src ' + wg_socrat_nodes[inventory_hostname].address) not in k3s_ha_routes_lookup.stdout
+  when: not ansible_check_mode
+
+- name: Verify existing Kubernetes API through the home node route
+  ansible.builtin.wait_for:
+    host: "{{ hostvars[k3s_ha_routes_peers[0]].homelab_ssh_private_host }}"
+    port: 6443
+    connect_timeout: 5
+    timeout: 30
+  when: not ansible_check_mode
+
+- name: Verify second home node through its route
+  ansible.builtin.command:
+    argv:
+      - ping
+      - -c
+      - '2'
+      - -W
+      - '5'
+      - "{{ hostvars[k3s_ha_routes_peers[1]].homelab_ssh_private_host }}"
+  changed_when: false
+  when: not ansible_check_mode

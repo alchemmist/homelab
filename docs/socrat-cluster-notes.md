@@ -19,9 +19,9 @@ Compact operational notes for the `Socrat` homelab Kubernetes cluster. This file
 
 | Node | Role | Notes |
 |---|---|---|
-| `socrat-0` | k3s control-plane, home ingress, NFS server | Main home node, Traefik pinned here, NFS shared storage lives here. |
-| `socrat-1` | k3s worker | Home node, Arch Linux, now back online. Syncthing receives MDB backups. |
-| `socrat-2` | k3s worker / VPS edge | Former `laba`, public VPS. Runs public/edge workloads needing VPS reachability. |
+| `socrat-0` | k3s control plane + etcd, home ingress, NFS server | First home API server and etcd voter; NFS shared storage remains local. |
+| `socrat-1` | k3s control plane + etcd, home ingress | Second home API server and etcd voter; MDB backup folder stays paused. |
+| `socrat-2` | k3s etcd-only server + agent / VPS edge | Third etcd voter, no local Kubernetes API; runs edge workloads. |
 
 Current important addresses:
 
@@ -42,7 +42,7 @@ Applied on both home nodes on 2026-10-14. The repeat Ansible run completed with 
 
 `socrat-1` now opts into `homelab_desktop_caffeine_default: true`: each Hyprland session invokes `~/scripts/caffeine-manager.sh --enable` instead of starting Hypridle. This enables the existing Waybar caffeine mode by default: Hypridle stops and `caffeine-lid-inhibit.service` starts. Idle dimming/locking is inactive, and lid closure is inhibited even on battery while the mode is on. The Waybar toggle remains available; disabling caffeine resumes Hypridle, and a new graphical session enables caffeine again. Explicit `--enable` and `--disable` commands allow setting the mode without toggling.
 
-See [the boot and recovery runbook](node-bootstrap.md#automatic-boot-and-local-desktop) for application, validation, and rollback. This automation does not remove the cluster's control-plane, home gateway, or NFS dependence on `socrat-0`.
+See [the boot and recovery runbook](node-bootstrap.md#automatic-boot-and-local-desktop) for application, validation, and rollback. The later [HA migration](k3s-ha.md) adds a second control plane and redundant home ingress. NFS and the public SSH relay remain dependent on `socrat-0`.
 
 Caffeine was enabled live on `socrat-1` on 2026-10-14. The first activation exposed a lifecycle bug: Hypridle had launched Hyprlock inside its own service cgroup, so stopping Hypridle also terminated the active locker and triggered Hyprland's crashed-lockscreen screen. The desktop was recovered without restarting Hyprland. The managed `lock_cmd` now launches Hyprlock via `systemd-run --user --collect --unit=homelab-hyprlock`, keeping its lifecycle independent of Hypridle. Caffeine remains enabled at graphical startup and can still be toggled from Waybar.
 
@@ -120,11 +120,7 @@ Root cause fixed earlier: `socrat-0` and `socrat-2` had asymmetric flannel inter
 
 For already-installed agents, `ansible/playbooks/k3s-agent-network.yml` manages `/etc/rancher/k3s/config.yaml.d/20-homelab-network.yaml` and restarts the agent only when needed. The main k3s playbook runs the same role before agent installation, so its `creates: /usr/local/bin/k3s` shortcut no longer skips network configuration on existing nodes. This corrected `socrat-1` advertising its Wi-Fi address as the VXLAN endpoint instead of `10.250.0.3`.
 
-Relevant playbook:
-
-```text
-ansible/playbooks/k3s.yml
-```
+The canonical existing-cluster playbook is now `ansible/playbooks/k3s-ha.yml`; `k3s.yml` refuses the legacy topology while `k3s_ha_enabled` is true. All nodes use `v1.36.5+k3s1`. The VPS has direct WireGuard routes to both home node LAN addresses for etcd peer reachability. See [HA operations and recovery](k3s-ha.md).
 
 Expected flannel local endpoints:
 
@@ -140,7 +136,7 @@ For future nodes: bring up `wg-socrat` first, then join k3s with WG node IP and 
 
 - Use default k3s Traefik, not ingress-nginx.
 - Use cert-manager HTTP-01 for TLS.
-- Traefik is pinned to `socrat-0` for stable home ingress.
+- Home ingress is being configured with two Traefik replicas and a keepalived VIP (`192.168.0.250`) on `socrat-0`/`socrat-1`; router cutover and failure verification are tracked in [the HA runbook](k3s-ha.md).
 - Avoid host-level Caddy on home Socrat nodes.
 - `vpn.alchemmist.xyz` edge routing is handled by Kubernetes Ingress and the `traefik-edge` controller on `socrat-2`; the Caddy release has been removed.
 
@@ -149,6 +145,8 @@ Rancher:
 ```text
 https://rancher.socrat.alchemmist.xyz
 ```
+
+Rancher has two replicas, one each on `socrat-0` and `socrat-1`, managed by `ansible/playbooks/rancher-placement.yml`. Required hostname anti-affinity keeps them separate; the VPS is excluded. Both home nodes now run Kubernetes API servers, backed by three etcd voters including the VPS. Home ingress redundancy requires the VIP and router cutover described in [the HA runbook](k3s-ha.md).
 
 Uptime Kuma / status:
 
@@ -280,7 +278,7 @@ host path: /srv/syncthing/pg_mdb_encrypted_backups
 Current intent:
 
 - `socrat-0`: full copy/source/peer.
-- `socrat-1`: existing receive-only copy is preserved, but `pg-mdb-backups` is paused to retain approximately 19 GiB for the system. Other Syncthing folders remain enabled.
+- `socrat-1`: existing receive-only copy is preserved, but `pg-mdb-backups` is paused to preserve system disk reserve. Other Syncthing folders remain enabled.
 - `socrat-2`: folder is paused because VPS disk is too small.
 - Mac participates as backup source/peer.
 - Phone should not be treated as a meaningful peer on `socrat-1`/`socrat-2` unless a shared folder actually involves it.
@@ -289,7 +287,9 @@ Current intent:
 
 `ansible/playbooks/node-disk-reserve.yml` pauses only `pg-mdb-backups` and applies the node-specific kubelet settings from inventory. It does not delete backup archives. The hard free-space threshold is 10 GiB; the soft threshold is 15 GiB with a two-minute grace period. Image garbage collection uses high/low usage thresholds of 96%/95%. Memory and inode safeguards remain configured.
 
-The managed kubelet drop-in is `/var/lib/rancher/k3s/agent/etc/kubelet.conf.d/99-homelab-disk-reserve.conf`. The helper backs up existing configuration before changing it and restarts `k3s-agent` only when the kubelet configuration changes. `site.yml` includes this policy for nodes that define it. The general backup-folder configurator also keeps this folder paused on `socrat-1`, so a later Ansible run does not resume downloads accidentally.
+The managed kubelet drop-in is `/var/lib/rancher/k3s/agent/etc/kubelet.conf.d/99-homelab-disk-reserve.conf`. The helper backs up existing configuration before changing it and restarts the configured Kubernetes service (`k3s.service` after HA promotion) only when the kubelet configuration changes. `site.yml` includes this policy for nodes that define it. The general backup-folder configurator also keeps this folder paused on `socrat-1`, so a later Ansible run does not resume downloads accidentally.
+
+Before HA migration, seven duplicate encrypted MDB archives were removed only on `socrat-1`, after verifying copies on the Mac and `socrat-0`. This freed 37.95 GiB; the HA preflight retained over 40 GiB free. No Mac archives were deleted.
 
 Current `socrat-1` Syncthing device ID:
 
@@ -305,7 +305,7 @@ DYWEDAX-RDGBCC3-4AUXREZ-WGQLZJU-TT3HWIQ-2CSUQSE-WF2WVVH-4VV2IAP
 
 ## Uptime Kuma
 
-Uptime Kuma is deployed as a single replica. Do not scale to 3 active replicas: it uses SQLite and is not safe as an active-active app.
+Uptime Kuma remains one active replica on `socrat-2`, with its complete data directory at `/srv/uptime-kuma`. Do not scale it to multiple active replicas against the same SQLite database. The attempted move to `socrat-1` was rolled back after disk pressure and the requirement changed to multi-site availability. An inactive data copy remains on `socrat-1`; it is not served or shared with the active database. `ansible/playbooks/uptime-kuma-placement.yml` is an explicit migration tool with stopped-writer transfer, archive SHA256 and SQLite table-count verification; it is not included in normal deployment. The Syncthing monitor maintenance play continues to target `socrat-2`.
 
 Chart:
 
@@ -409,7 +409,7 @@ remark42
 umami
 monori
 uptime-kuma
-x-ui-lab
+x-ui
 ```
 
 Main deploy command:
@@ -425,10 +425,11 @@ ansible-playbook playbooks/apps.yml -e ansible_become_password=...
 
 Use `socrat-2` for workloads that need public/VPS reachability:
 
-- `x-ui-lab` / containerized 3x-ui/xray
+- `x-ui` / one Deployment containing primary and compatibility 3x-ui/Xray runtimes
 - `traefik-edge` / Kubernetes Ingress for `vpn.alchemmist.xyz:80/443`
 - `remark42`
-- `uptime-kuma`
+
+Uptime Kuma remains on `socrat-2` with local data while multi-site status availability is being designed.
 
 These often use:
 
@@ -439,14 +440,17 @@ dnsPolicy: Default
 
 This pattern fixed DNS problems for hostNetwork pods.
 
-`traefik-edge` replaced Caddy on 2026-10-14. It runs as a hostNetwork pod on `socrat-2`, routes Kubernetes Ingress to local x-ui/xray endpoints over the node WireGuard address, and uses cert-manager for TLS. Home Traefik watches only class `traefik`; the VPS controller watches class `traefik-edge`. See [the migration and verification notes](vpn-cutover.md#traefik-vps-ingress-migration).
+`traefik-edge` replaced Caddy on 2026-10-14. It runs as a hostNetwork pod on `socrat-2`, routes Kubernetes Ingress to local x-ui/xray endpoints over the node WireGuard address, and uses cert-manager for TLS. Home Traefik watches only class `traefik`; the VPS controller watches class `traefik-edge`. The VPS controller now reaches the API through the standard k3s agent load balancer at `https://127.0.0.1:6444`, which has both home API servers as backends. See [the migration and verification notes](vpn-cutover.md#traefik-vps-ingress-migration).
+
+`traefik-edge` and `storage` are infrastructure namespaces. `playbooks/rancher-namespaces.yml` marks them with `management.cattle.io/system-namespace=true` to exclude them from Rancher’s **Only User Namespaces** view. Their workloads, project membership and RBAC stay in place.
 
 ## 3x-ui / VPN
 
-Current state:
+Managed configuration:
 
-- Primary 3x-ui runs in Kubernetes release `x-ui-lab` on `socrat-2`, using the pinned 3.10.0 image and `/srv/x-ui-lab/db`.
-- Legacy ports and clients run in Kubernetes release `x-ui-legacy`, using the pinned 3.9.0 image, `/etc/x-ui`, and the existing Xray assets. The two configurations stay separate.
+- Kubernetes release, namespace and Deployment `x-ui` run on `socrat-2` with two containers. `primary` uses the pinned 3.10.0 image and `/srv/x-ui-lab/db`.
+- `compatibility` preserves legacy ports and clients with the pinned 3.9.0 image, `/etc/x-ui`, and the existing Xray assets. The two databases stay separate. The old directory names are intentionally retained.
+- `playbooks/vpn-consolidate.yml` migrates the former `x-ui-lab` and `x-ui-legacy` releases with watchdog inhibition, private backups, configuration/subscription comparison, an authenticated tunnel probe and rollback of workload settings on failure. The 2026-10-15 migration preserved all 31 subscriptions and 155 normalized links and passed authenticated VPN probes before and after cutover. Both former namespaces were removed; see the migration record for the private backup location.
 - Production subscription/Traefik routes point to Kubernetes-managed x-ui.
 - Native host `x-ui.service` is stopped/disabled. The emergency Docker container is stopped with restart policy `no`. The cutover preserved client settings, ports, and subscription URLs; no subscription update is required.
 - Deployment, retained legacy ports, backups, and rollback are documented in [vpn-cutover.md](vpn-cutover.md).

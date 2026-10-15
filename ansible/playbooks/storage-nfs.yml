@@ -148,3 +148,5 @@
       ansible.builtin.shell: |
         exportfs -ra
         systemctl restart nfs-mountd nfs-server
+
+- ansible.builtin.import_playbook: rancher-namespaces.yml

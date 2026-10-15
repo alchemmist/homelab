@@ -1,0 +1,67 @@
+---
+- name: Read Rancher configuration
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - kubectl
+      - --kubeconfig
+      - "{{ k3s_ha_dependencies_kubeconfig }}"
+      - -n
+      - cattle-system
+      - get
+      - configmap
+      - rancher-config
+      - --ignore-not-found
+      - -o
+      - json
+  register: ha_webhook_config
+  changed_when: false
+
+- name: Merge supported webhook chart values
+  ansible.builtin.set_fact:
+    ha_webhook_values: "{{ (((ha_webhook_config.stdout | default('{}', true) | from_json).get('data', {}).get('rancher-webhook', '{}') | from_yaml) | default({}, true)) | combine(ha_webhook_overrides, recursive=true) }}"
+  vars:
+    ha_webhook_overrides:
+      replicaCount: 2
+      affinity: "{{ ha_dependency_affinity }}"
+
+- name: Remove the obsolete pin from persisted chart values
+  ansible.builtin.set_fact:
+    ha_webhook_values: >-
+      {{ ha_webhook_values | combine({'nodeSelector':
+         (ha_webhook_values.get('nodeSelector', {}) | default({}, true) | dict2items |
+          rejectattr('key', 'equalto', 'kubernetes.io/hostname') | items2dict)}) }}
+
+- name: Create Rancher configuration when absent
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - kubectl
+      - --kubeconfig
+      - "{{ k3s_ha_dependencies_kubeconfig }}"
+      - -n
+      - cattle-system
+      - create
+      - configmap
+      - rancher-config
+  when: ha_webhook_config.stdout | length == 0
+  changed_when: true
+
+- name: Persist webhook configuration without changing other Rancher settings
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - kubectl
+      - --kubeconfig
+      - "{{ k3s_ha_dependencies_kubeconfig }}"
+      - -n
+      - cattle-system
+      - patch
+      - configmap
+      - rancher-config
+      - --type
+      - merge
+      - -p
+      - "{{ {'data': {'rancher-webhook': ha_webhook_values | to_nice_yaml}} | to_json }}"
+  register: ha_webhook_config_patch
+  changed_when: "'(no change)' not in ha_webhook_config_patch.stdout"

@@ -1,0 +1,292 @@
+---
+- name: Require the VPS
+  ansible.builtin.assert:
+    that: inventory_hostname == 'socrat-2'
+
+- name: Inspect recovery and maintenance markers
+  ansible.builtin.stat:
+    path: "/var/lib/homelab-vpn-failover/{{ item }}"
+  loop: [active, inhibit]
+  register: vpn_consolidation_markers
+
+- name: Require normal VPN operation without existing maintenance
+  ansible.builtin.assert:
+    that: not item.stat.exists
+    quiet: true
+  loop: "{{ vpn_consolidation_markers.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+
+- name: Verify current VPN health
+  ansible.builtin.command: /usr/bin/python3 /usr/local/sbin/homelab-vpn-failover check
+  changed_when: false
+
+- name: Verify the delegated control-plane endpoint
+  ansible.builtin.command: /bin/hostname
+  delegate_to: socrat-0
+  become: false
+  register: vpn_consolidation_control_plane
+  changed_when: false
+
+- name: Require the actual control-plane host
+  ansible.builtin.assert:
+    that: vpn_consolidation_control_plane.stdout == 'socrat-0'
+
+- name: Copy the unified chart to the control plane
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../charts/x-ui/"
+    dest: "{{ homelab_user_home }}/tmp-charts/x-ui-unified/"
+    mode: preserve
+  delegate_to: socrat-0
+  become: false
+
+- name: Validate the rendered unified chart
+  ansible.builtin.command: >-
+    /usr/local/bin/helm lint {{ homelab_user_home }}/tmp-charts/x-ui-unified
+  delegate_to: socrat-0
+  become: false
+  changed_when: false
+
+- name: Record previous Helm releases
+  ansible.builtin.command: >-
+    /usr/local/bin/helm list -A --filter ^x-ui$ -o json
+    --kubeconfig /etc/rancher/k3s/k3s.yaml
+  delegate_to: socrat-0
+  become: false
+  register: vpn_consolidation_helm
+  changed_when: false
+
+- name: Record previous replica counts
+  ansible.builtin.command: /usr/local/bin/k3s kubectl get deployments -A -o json
+  delegate_to: socrat-0
+  become: false
+  register: vpn_consolidation_deployments
+  changed_when: false
+
+- name: Store previous VPN deployment state
+  ansible.builtin.set_fact:
+    vpn_consolidation_previous: >-
+      {{ (vpn_consolidation_deployments.stdout | from_json)['items'] |
+      selectattr('metadata.namespace', 'in', ['x-ui-lab', 'x-ui-legacy']) | list }}
+    vpn_consolidation_releases: "{{ vpn_consolidation_helm.stdout | from_json }}"
+
+- name: Install VPN configuration and subscription verifier
+  ansible.builtin.copy:
+    src: verify_vpn.py
+    dest: /usr/local/sbin/homelab-verify-vpn
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Install authenticated VPN tunnel probe
+  ansible.builtin.copy:
+    src: probe_vpn.py
+    dest: /usr/local/sbin/homelab-probe-vpn
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Verify the existing authenticated VPN tunnel
+  ansible.builtin.command: /usr/bin/python3 /usr/local/sbin/homelab-probe-vpn
+  changed_when: false
+
+- name: Create a private backup parent
+  ansible.builtin.file:
+    path: /var/backups/homelab-vpn
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Allocate a private migration snapshot
+  ansible.builtin.command: mktemp -d /var/backups/homelab-vpn/consolidation-XXXXXXXX
+  register: vpn_consolidation_backup
+  changed_when: true
+
+- name: Switch VPN workload with recovery on failure
+  block:
+    - name: Pause the watchdog timer
+      ansible.builtin.systemd_service:
+        name: homelab-vpn-watchdog.timer
+        state: stopped
+      register: vpn_consolidation_timer_pause
+
+    - name: Wait for the current check and inhibit automatic actions
+      ansible.builtin.command: >-
+        flock --exclusive --timeout 240 /var/lib/homelab-vpn-failover/lock
+        touch /var/lib/homelab-vpn-failover/inhibit
+      register: vpn_consolidation_inhibit
+      changed_when: true
+
+    - name: Recheck the recovery latch after stopping monitoring
+      ansible.builtin.stat:
+        path: /var/lib/homelab-vpn-failover/active
+      register: vpn_consolidation_active
+
+    - name: Refuse migration if recovery activated concurrently
+      ansible.builtin.assert:
+        that: not vpn_consolidation_active.stat.exists
+
+    - name: Back up both databases and capture all subscriptions
+      ansible.builtin.command: >-
+        /usr/bin/python3 /usr/local/sbin/homelab-verify-vpn snapshot
+        --directory {{ vpn_consolidation_backup.stdout }}
+      changed_when: true
+
+    - name: Stage the unified release without database writers
+      ansible.builtin.command: >-
+        /usr/local/bin/helm upgrade --install x-ui {{ homelab_user_home }}/tmp-charts/x-ui-unified
+        --namespace x-ui --create-namespace --set replicaCount=0
+        --kubeconfig /etc/rancher/k3s/k3s.yaml --wait --timeout 90s
+      delegate_to: socrat-0
+      become: false
+      when: vpn_consolidation_previous | length > 0
+      changed_when: true
+
+    - name: Mark the start of the workload cutover
+      ansible.builtin.set_fact:
+        vpn_consolidation_cutover: true
+
+    - name: Stop previous VPN workloads
+      ansible.builtin.command: >-
+        /usr/local/bin/k3s kubectl -n {{ item.metadata.namespace }} scale deployment
+        {{ item.metadata.name }} --replicas=0
+      loop: "{{ vpn_consolidation_previous }}"
+      loop_control:
+        label: "{{ item.metadata.namespace }}"
+      delegate_to: socrat-0
+      become: false
+      changed_when: true
+
+    - name: Wait for previous VPN database writers to terminate
+      ansible.builtin.command: >-
+        /usr/local/bin/k3s kubectl -n {{ item.metadata.namespace }} wait --for=delete
+        pod --all --timeout=90s
+      loop: "{{ vpn_consolidation_previous }}"
+      loop_control:
+        label: "{{ item.metadata.namespace }}"
+      delegate_to: socrat-0
+      become: false
+      changed_when: false
+
+    - name: Deploy the unified VPN workload
+      ansible.builtin.command: >-
+        /usr/local/bin/helm upgrade --install x-ui {{ homelab_user_home }}/tmp-charts/x-ui-unified
+        --namespace x-ui --create-namespace
+        --kubeconfig /etc/rancher/k3s/k3s.yaml
+        --reset-values --set replicaCount=1 --atomic --wait --timeout 3m
+      delegate_to: socrat-0
+      become: false
+      changed_when: true
+
+    - name: Verify VPN configuration and subscriptions are unchanged
+      ansible.builtin.command: >-
+        /usr/bin/python3 /usr/local/sbin/homelab-verify-vpn verify
+        --directory {{ vpn_consolidation_backup.stdout }}
+      changed_when: false
+
+    - name: Verify the authenticated public VPN tunnel after migration
+      ansible.builtin.command: /usr/bin/python3 /usr/local/sbin/homelab-probe-vpn
+      changed_when: false
+
+    - name: Verify both VPN runtimes and public TLS routing
+      ansible.builtin.command: /usr/bin/python3 /usr/local/sbin/homelab-vpn-failover check
+      changed_when: false
+
+  rescue:
+    - name: Stop the new workload before restoring previous writers
+      ansible.builtin.command: /usr/local/bin/k3s kubectl -n x-ui scale deployment x-ui --replicas=0
+      delegate_to: socrat-0
+      become: false
+      register: vpn_consolidation_stop_new
+      failed_when: vpn_consolidation_stop_new.rc != 0 and 'NotFound' not in vpn_consolidation_stop_new.stderr
+      when:
+        - vpn_consolidation_cutover | default(false)
+        - vpn_consolidation_previous | length > 0
+
+    - name: Restore the former canonical release
+      ansible.builtin.command: >-
+        /usr/local/bin/helm rollback x-ui {{ vpn_consolidation_releases[0].revision }}
+        --namespace x-ui --kubeconfig /etc/rancher/k3s/k3s.yaml
+        --wait --timeout 3m
+      delegate_to: socrat-0
+      become: false
+      when:
+        - vpn_consolidation_cutover | default(false)
+        - vpn_consolidation_releases | length > 0
+        - vpn_consolidation_previous | length == 0
+
+    - name: Remove a newly created canonical release on failure
+      ansible.builtin.command: >-
+        /usr/local/bin/helm uninstall x-ui --namespace x-ui
+        --kubeconfig /etc/rancher/k3s/k3s.yaml --ignore-not-found --wait
+      delegate_to: socrat-0
+      become: false
+      when:
+        - vpn_consolidation_cutover | default(false)
+        - vpn_consolidation_releases | length == 0
+
+    - name: Ensure unified writers are gone before restoring old deployments
+      ansible.builtin.command: >-
+        /usr/local/bin/k3s kubectl -n x-ui wait --for=delete pod --all --timeout=90s
+      delegate_to: socrat-0
+      become: false
+      when:
+        - vpn_consolidation_cutover | default(false)
+        - vpn_consolidation_previous | length > 0
+
+    - name: Restore former VPN replica counts
+      ansible.builtin.command: >-
+        /usr/local/bin/k3s kubectl -n {{ item.metadata.namespace }} scale deployment
+        {{ item.metadata.name }} --replicas={{ item.spec.replicas }}
+      loop: "{{ vpn_consolidation_previous }}"
+      loop_control:
+        label: "{{ item.metadata.namespace }}"
+      delegate_to: socrat-0
+      become: false
+      when: vpn_consolidation_cutover | default(false)
+
+    - name: Wait for restored VPN workloads
+      ansible.builtin.command: >-
+        /usr/local/bin/k3s kubectl -n {{ item.metadata.namespace }} rollout status
+        deployment/{{ item.metadata.name }} --timeout=90s
+      loop: "{{ vpn_consolidation_previous }}"
+      loop_control:
+        label: "{{ item.metadata.namespace }}"
+      delegate_to: socrat-0
+      become: false
+      when:
+        - vpn_consolidation_cutover | default(false)
+        - item.spec.replicas | int > 0
+
+    - name: Report consolidation failure
+      ansible.builtin.fail:
+        msg: VPN consolidation failed. Previous workload settings were restored; inspect the private snapshot and service health.
+
+  always:
+    - name: Remove this migration's maintenance hold
+      ansible.builtin.file:
+        path: /var/lib/homelab-vpn-failover/inhibit
+        state: absent
+      when: vpn_consolidation_inhibit is defined and vpn_consolidation_inhibit is succeeded
+
+    - name: Resume VPN monitoring
+      ansible.builtin.systemd_service:
+        name: homelab-vpn-watchdog.timer
+        state: started
+      when: vpn_consolidation_timer_pause is defined and vpn_consolidation_timer_pause is succeeded
+
+- name: Remove obsolete Helm releases after successful verification
+  ansible.builtin.command: >-
+    /usr/local/bin/helm uninstall {{ item }} --namespace {{ item }}
+    --kubeconfig /etc/rancher/k3s/k3s.yaml --ignore-not-found --wait
+  loop: [x-ui-lab, x-ui-legacy]
+  delegate_to: socrat-0
+  become: false
+
+- name: Remove obsolete namespaces without touching host data
+  ansible.builtin.command: >-
+    /usr/local/bin/k3s kubectl delete namespace {{ item }} --ignore-not-found --wait=true --timeout=90s
+  loop: [x-ui-lab, x-ui-legacy]
+  delegate_to: socrat-0
+  become: false

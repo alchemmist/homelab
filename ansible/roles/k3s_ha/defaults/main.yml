@@ -1,0 +1,17 @@
+---
+k3s_ha_version: v1.36.5+k3s1
+k3s_ha_primary: socrat-0
+k3s_ha_vip: 192.168.0.250
+k3s_ha_nodes:
+  socrat-0:
+    node_ip: 192.168.0.23
+    advertise_ip: 10.250.0.1
+    etcd_only: false
+  socrat-1:
+    node_ip: 192.168.0.24
+    advertise_ip: 10.250.0.3
+    etcd_only: false
+  socrat-2:
+    node_ip: 10.250.0.2
+    advertise_ip: 10.250.0.2
+    etcd_only: true

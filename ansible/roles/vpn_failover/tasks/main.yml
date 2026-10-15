@@ -76,7 +76,7 @@
     argv:
       - /usr/bin/python3
       - "{{ vpn_failover_root }}/prepare_runtime.py"
-      - "{{ (lookup('file', playbook_dir + '/../../charts/x-ui/' + item.chart) | from_yaml).image }}"
+      - "{{ (lookup('file', playbook_dir + '/../../charts/x-ui/values.yaml') | from_yaml).instances[item.instance].image }}"
       - "{{ vpn_failover_root }}/{{ item.name }}"
   loop: "{{ vpn_failover_workloads }}"
   loop_control:
@@ -226,19 +226,21 @@
     - {src: watchdog.service.j2, name: homelab-vpn-watchdog.service}
     - {src: watchdog.timer.j2, name: homelab-vpn-watchdog.timer}
 
-- name: Create the persistent agent fence directory
+- name: Create persistent Kubernetes fence directories
   ansible.builtin.file:
-    path: /etc/systemd/system/k3s-agent.service.d
+    path: "/etc/systemd/system/{{ item }}.d"
     state: directory
     mode: '0755'
+  loop: "{{ (vpn_failover_fenced_units + [vpn_failover_k3s_unit]) | unique }}"
 
-- name: Prevent agent startup while native recovery owns the databases
+- name: Prevent Kubernetes startup while native recovery owns the databases
   ansible.builtin.template:
     src: k3s-fence.conf.j2
-    dest: /etc/systemd/system/k3s-agent.service.d/vpn-failover.conf
+    dest: "/etc/systemd/system/{{ item }}.d/vpn-failover.conf"
     owner: root
     group: root
     mode: '0644'
+  loop: "{{ (vpn_failover_fenced_units + [vpn_failover_k3s_unit]) | unique }}"
 
 - name: Reload unit definitions without restarting Kubernetes
   ansible.builtin.systemd_service:

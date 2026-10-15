@@ -1,0 +1,146 @@
+---
+- name: Validate home ingress node
+  ansible.builtin.assert:
+    that:
+      - inventory_hostname in home_ingress_ha_nodes
+      - ansible_facts.os_family in ['Debian', 'Archlinux']
+
+- name: Install keepalived and probes on Debian
+  ansible.builtin.apt:
+    name: [keepalived, curl, iputils-arping]
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_facts.os_family == 'Debian'
+
+- name: Install keepalived and probes on Arch
+  community.general.pacman:
+    name: [keepalived, curl, iputils]
+    state: present
+  when: ansible_facts.os_family == 'Archlinux'
+
+- name: Verify direct LAN peer connectivity
+  ansible.builtin.command:
+    argv:
+      - ping
+      - -I
+      - "{{ home_ingress_ha_nodes[inventory_hostname].interface }}"
+      - -c
+      - '2'
+      - -W
+      - '2'
+      - "{{ home_ingress_ha_nodes[inventory_hostname].peer }}"
+  changed_when: false
+
+- name: Read existing addresses on the first home node
+  ansible.builtin.command: ip -j address show
+  delegate_to: socrat-0
+  register: home_ingress_ha_addresses_0
+  changed_when: false
+
+- name: Read existing addresses on the second home node
+  ansible.builtin.command: ip -j address show
+  delegate_to: socrat-1
+  register: home_ingress_ha_addresses_1
+  changed_when: false
+
+- name: Record whether the managed VIP is already assigned
+  ansible.builtin.set_fact:
+    home_ingress_ha_vip_present: >-
+      {{ home_ingress_ha_vip in
+         ([home_ingress_ha_addresses_0.stdout | from_json, home_ingress_ha_addresses_1.stdout | from_json] |
+          flatten | map(attribute='addr_info') | flatten | map(attribute='local') | list) }}
+
+- name: Check the new VIP for duplicate ARP ownership
+  ansible.builtin.command:
+    argv:
+      - arping
+      - -D
+      - -I
+      - "{{ home_ingress_ha_nodes[inventory_hostname].interface }}"
+      - -c
+      - '3'
+      - -w
+      - '5'
+      - "{{ home_ingress_ha_vip }}"
+  changed_when: false
+  when: not home_ingress_ha_vip_present
+
+- name: Configure replicated home Traefik
+  ansible.builtin.include_tasks: traefik.yml
+  when: inventory_hostname == 'socrat-0'
+
+- name: Create root-owned health probe directory
+  ansible.builtin.file:
+    path: /usr/local/libexec
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Install home ingress readiness probe
+  ansible.builtin.template:
+    src: check-home-ingress.sh.j2
+    dest: /usr/local/libexec/check-home-ingress
+    owner: root
+    group: root
+    mode: '0700'
+  notify: Restart home ingress keepalived
+
+- name: Install directed neighbor announcement helper
+  ansible.builtin.copy:
+    src: announce_neighbors.py
+    dest: /usr/local/libexec/announce-home-ingress-neighbors
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Configure directed neighbor announcements
+  ansible.builtin.copy:
+    content: >-
+      {{ {'interface': home_ingress_ha_nodes[inventory_hostname].interface,
+          'address': home_ingress_ha_nodes[inventory_hostname].address,
+          'vip': home_ingress_ha_vip,
+          'neighbors': [home_ingress_ha_gateway,
+            {'address': home_ingress_ha_nodes[inventory_hostname].peer,
+             'mac': home_ingress_ha_nodes[inventory_hostname].peer_mac}]} | to_nice_json }}
+    dest: /etc/home-ingress-neighbors.json
+    owner: root
+    group: root
+    mode: '0600'
+
+- name: Verify local API and local ingress readiness
+  ansible.builtin.command: /usr/local/libexec/check-home-ingress
+  changed_when: false
+  register: home_ingress_ha_probe
+  retries: 15
+  delay: 3
+  until: home_ingress_ha_probe.rc == 0
+
+- name: Create keepalived configuration directory
+  ansible.builtin.file:
+    path: /etc/keepalived
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Install validated keepalived configuration with previous configuration backup
+  ansible.builtin.template:
+    src: keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+    owner: root
+    group: root
+    mode: '0600'
+    backup: true
+    validate: /usr/sbin/keepalived --config-test --use-file=%s
+  notify: Restart home ingress keepalived
+
+- name: Activate validated home ingress configuration
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable keepalived at system startup
+  ansible.builtin.systemd_service:
+    name: keepalived
+    enabled: true
+    state: started

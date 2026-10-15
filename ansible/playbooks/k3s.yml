@@ -3,6 +3,12 @@
   hosts: socrat-0
   gather_facts: true
   become: true
+  any_errors_fatal: true
+  pre_tasks:
+    - name: Reject single-server bootstrap for the HA cluster
+      ansible.builtin.assert:
+        that: not (k3s_ha_enabled | default(false) | bool)
+        fail_msg: Use playbooks/k3s-ha.yml and playbooks/home-ingress-ha.yml for the HA cluster.
   vars:
     k3s_server_ip: 192.168.0.23
   tasks:

@@ -8,7 +8,7 @@ PrivateKey = {{ wg_socrat_private_key }}
 [Peer]
 # {{ peer_name }}
 PublicKey = {{ peer.public_key }}
-AllowedIPs = {{ peer.address }}/32
+AllowedIPs = {{ ([peer.address + "/32"] + wg_socrat_extra_allowed_peer_ips.get(inventory_hostname, {}).get(peer_name, [])) | unique | join(", ") }}
 {% set local_peer_endpoints = wg_socrat_peer_endpoints[inventory_hostname] | default(wg_socrat_nodes[inventory_hostname].peer_endpoints | default({})) %}
 {% set endpoint = local_peer_endpoints[peer_name] if peer_name in local_peer_endpoints else peer.endpoint | default('') %}
 {% if endpoint %}Endpoint = {{ endpoint }}

@@ -6,7 +6,8 @@
   vars:
     rancher_hostname: rancher.socrat.alchemmist.xyz
     rancher_email: antropophag@gmail.com
-    rancher_replicas: 1
+    rancher_replicas: 2
+    rancher_chart_version: 2.15.2
     rancher_cluster_display_name: Socrat
   tasks:
     - name: Require rancher_bootstrap_password variable
@@ -66,34 +67,40 @@
             ingress:
               class: traefik
 
-          nodeSelector:
-            kubernetes.io/hostname: socrat-0
+          antiAffinity: required
+          extraNodeSelectorTerms:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - socrat-0
+                - socrat-1
 
     - name: Install or upgrade Rancher
       ansible.builtin.command: >-
         helm upgrade --install rancher rancher-stable/rancher
         --namespace cattle-system
+        --version {{ rancher_chart_version }}
         --kubeconfig /etc/rancher/k3s/k3s.yaml
         --values /tmp/rancher-values.yaml
-        --wait
         --timeout 10m
       register: rancher_helm
       changed_when: "'has been upgraded' in rancher_helm.stdout or 'has been installed' in rancher_helm.stdout"
 
-    - name: Pin Rancher deployments to socrat-0
+    - name: Remove obsolete Rancher pin and allow rolling updates across two nodes
       ansible.builtin.command: >-
-        k3s kubectl -n cattle-system patch deploy {{ item }} --type merge
-        -p '{"spec":{"template":{"spec":{"nodeSelector":{"kubernetes.io/hostname":"socrat-0"}}}}}'
-      loop:
-        - rancher
-        - rancher-webhook
-      register: rancher_pin
-      failed_when: rancher_pin.rc != 0 and 'not found' not in rancher_pin.stderr
-      changed_when: rancher_pin.rc == 0
+        k3s kubectl -n cattle-system patch deployment rancher --type merge
+        -p '{"spec":{"strategy":{"rollingUpdate":{"maxSurge":1,"maxUnavailable":1}},"template":{"spec":{"nodeSelector":null}}}}'
+      register: rancher_selector_cleanup
+      changed_when: "'(no change)' not in rancher_selector_cleanup.stdout"
 
     - name: Wait for Rancher rollout
       ansible.builtin.command: k3s kubectl -n cattle-system rollout status deploy/rancher --timeout=600s
       changed_when: false
+
+    - name: Verify Rancher replica placement
+      ansible.builtin.include_role:
+        name: rancher_placement
+        tasks_from: verify
 
     - name: Set Rancher auxiliary deployment resources
       ansible.builtin.command: >-
@@ -197,3 +204,5 @@
     - name: Print Rancher status
       ansible.builtin.debug:
         var: rancher_status.stdout_lines
+
+- ansible.builtin.import_playbook: k3s-ha-dependencies.yml

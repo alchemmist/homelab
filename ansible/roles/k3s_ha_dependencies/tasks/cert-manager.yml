@@ -1,0 +1,142 @@
+---
+- name: Read the installed cert-manager chart version
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/helm
+      - list
+      - --namespace
+      - cert-manager
+      - --kubeconfig
+      - "{{ k3s_ha_dependencies_kubeconfig }}"
+      - --filter
+      - ^cert-manager$
+      - --output
+      - json
+  register: ha_cert_release
+  changed_when: false
+
+- name: Refuse an implicit cert-manager chart version change
+  ansible.builtin.assert:
+    that:
+      - (ha_cert_release.stdout | from_json | length) == 1
+      - (ha_cert_release.stdout | from_json)[0].chart == 'cert-manager-' ~ k3s_ha_dependencies_cert_manager_chart_version
+    fail_msg: Review the installed cert-manager version before updating the pinned HA chart version.
+
+- name: Read existing cert-manager release values without exposing configuration
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/helm
+      - get
+      - values
+      - cert-manager
+      - --namespace
+      - cert-manager
+      - --kubeconfig
+      - "{{ k3s_ha_dependencies_kubeconfig }}"
+      - --output
+      - json
+  register: ha_cert_values_current
+  changed_when: false
+  no_log: true
+
+- name: Build component-specific cert-manager placement
+  ansible.builtin.set_fact:
+    ha_cert_overrides: "{{ ha_cert_overrides | default({}) | combine({item.key: ha_cert_component} if item.key else ha_cert_component, recursive=true) }}"
+  vars:
+    ha_cert_component:
+      replicaCount: 2
+      strategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxSurge: 1
+          maxUnavailable: 1
+      nodeSelector:
+        kubernetes.io/hostname: null
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values: "{{ k3s_ha_dependencies_nodes }}"
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/component: "{{ item.component }}"
+                  app.kubernetes.io/instance: cert-manager
+                  app.kubernetes.io/name: "{{ item.name }}"
+              topologyKey: kubernetes.io/hostname
+  loop:
+    - key: ""
+      component: controller
+      name: cert-manager
+    - key: cainjector
+      component: cainjector
+      name: cainjector
+    - key: webhook
+      component: webhook
+      name: webhook
+
+- name: Initialize cert-manager placement change detection
+  ansible.builtin.set_fact:
+    ha_cert_values_changed: false
+
+- name: Compare managed cert-manager placement values
+  ansible.builtin.set_fact:
+    ha_cert_values_changed: "{{ ha_cert_values_changed or ha_cert_actual.get('replicaCount') != 2 or (ha_cert_actual.get('affinity', {}) | combine(ha_cert_expected.affinity, recursive=true)) != ha_cert_actual.get('affinity', {}) or (ha_cert_actual.get('strategy', {}) | combine(ha_cert_expected.strategy, recursive=true)) != ha_cert_actual.get('strategy', {}) or 'kubernetes.io/hostname' in (ha_cert_actual.get('nodeSelector', {}) | default({}, true)) }}"
+  vars:
+    ha_cert_saved: "{{ ha_cert_values_current.stdout | from_json | default({}, true) }}"
+    ha_cert_actual: "{{ ha_cert_saved.get(item, {}) if item else ha_cert_saved }}"
+    ha_cert_expected: "{{ ha_cert_overrides.get(item, {}) if item else ha_cert_overrides }}"
+  loop:
+    - ""
+    - cainjector
+    - webhook
+  no_log: true
+
+- name: Persist cert-manager placement with unchanged chart version and release values
+  when: ha_cert_values_changed | bool
+  block:
+    - name: Allocate temporary cert-manager override file
+      ansible.builtin.tempfile:
+        state: file
+        suffix: -cert-manager-ha.yaml
+      register: ha_cert_values_file
+
+    - name: Write only HA overrides
+      ansible.builtin.copy:
+        content: "{{ ha_cert_overrides | to_nice_yaml }}"
+        dest: "{{ ha_cert_values_file.path }}"
+        mode: "0600"
+
+    - name: Upgrade existing cert-manager release with HA values
+      ansible.builtin.command:
+        argv:
+          - /usr/local/bin/helm
+          - upgrade
+          - cert-manager
+          - cert-manager
+          - --repo
+          - https://charts.jetstack.io
+          - --version
+          - "{{ k3s_ha_dependencies_cert_manager_chart_version }}"
+          - --namespace
+          - cert-manager
+          - --kubeconfig
+          - "{{ k3s_ha_dependencies_kubeconfig }}"
+          - --reuse-values
+          - --values
+          - "{{ ha_cert_values_file.path }}"
+          - --skip-crds
+          - --timeout
+          - 10m
+      changed_when: true
+      no_log: true
+  always:
+    - name: Remove temporary cert-manager override file
+      ansible.builtin.file:
+        path: "{{ ha_cert_values_file.path }}"
+        state: absent
+      when: ha_cert_values_file is defined and ha_cert_values_file.path is defined

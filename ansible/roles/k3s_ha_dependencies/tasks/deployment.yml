@@ -1,0 +1,113 @@
+---
+- name: Read current deployment
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - kubectl
+      - --kubeconfig
+      - "{{ k3s_ha_dependencies_kubeconfig }}"
+      - -n
+      - "{{ ha_dependency.namespace }}"
+      - get
+      - deployment
+      - "{{ ha_dependency.name }}"
+      - -o
+      - json
+  register: ha_dependency_current
+  changed_when: false
+
+- name: Build placement using the existing deployment selector
+  ansible.builtin.set_fact:
+    ha_dependency_affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: kubernetes.io/hostname
+                  operator: In
+                  values: "{{ k3s_ha_dependencies_nodes }}"
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector: "{{ (ha_dependency_current.stdout | from_json).spec.selector }}"
+            topologyKey: kubernetes.io/hostname
+
+- name: Persist CoreDNS placement outside the packaged manifest
+  ansible.builtin.include_tasks: coredns.yml
+  when: ha_dependency.name == 'coredns'
+
+- name: Persist Rancher webhook chart placement in its supported configuration
+  ansible.builtin.include_tasks: webhook.yml
+  when: ha_dependency.name == 'rancher-webhook'
+
+- name: Apply minimal essential service placement patch
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - kubectl
+      - --kubeconfig
+      - "{{ k3s_ha_dependencies_kubeconfig }}"
+      - -n
+      - "{{ ha_dependency.namespace }}"
+      - patch
+      - deployment
+      - "{{ ha_dependency.name }}"
+      - --type
+      - merge
+      - -p
+      - "{{ ha_dependency_patch | to_json }}"
+  vars:
+    ha_dependency_patch:
+      spec:
+        replicas: 2
+        strategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxSurge: 1
+            maxUnavailable: 1
+        template:
+          spec:
+            nodeSelector:
+              kubernetes.io/hostname: null
+            affinity: "{{ ha_dependency_affinity }}"
+  register: ha_dependency_patch_result
+  changed_when: "'(no change)' not in ha_dependency_patch_result.stdout"
+
+- name: Wait for essential service rollout
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - kubectl
+      - --kubeconfig
+      - "{{ k3s_ha_dependencies_kubeconfig }}"
+      - -n
+      - "{{ ha_dependency.namespace }}"
+      - rollout
+      - status
+      - "deployment/{{ ha_dependency.name }}"
+      - --timeout=600s
+  changed_when: false
+
+- name: Verify ready replicas on each home node
+  ansible.builtin.command:
+    argv:
+      - python3
+      - -c
+      - |
+        import json
+        import subprocess
+        import sys
+        command = ['/usr/local/bin/k3s', 'kubectl', '--kubeconfig', sys.argv[1], '-n', sys.argv[2]]
+        deployment = json.loads(subprocess.check_output(command + ['get', 'deployment', sys.argv[3], '-o', 'json']))
+        selector = ','.join(key + '=' + value for key, value in deployment['spec']['selector']['matchLabels'].items())
+        pods = json.loads(subprocess.check_output(command + ['get', 'pods', '-l', selector, '-o', 'json']))['items']
+        ready = [pod for pod in pods if not pod['metadata'].get('deletionTimestamp') and any(condition['type'] == 'Ready' and condition['status'] == 'True' for condition in pod.get('status', {}).get('conditions', []))]
+        nodes = sorted(pod['spec']['nodeName'] for pod in ready)
+        expected = sorted(json.loads(sys.argv[4]))
+        assert nodes == expected, (sys.argv[3], nodes, expected)
+        assert deployment['status'].get('updatedReplicas') == 2, deployment['status']
+        print(sys.argv[3] + ': ' + ', '.join(nodes))
+      - "{{ k3s_ha_dependencies_kubeconfig }}"
+      - "{{ ha_dependency.namespace }}"
+      - "{{ ha_dependency.name }}"
+      - "{{ k3s_ha_dependencies_nodes | to_json }}"
+  changed_when: false

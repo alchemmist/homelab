@@ -23,6 +23,7 @@ class Watchdog:
         self.config = config
         self.state = Path(config.get('state_dir', STATE_DIR))
         self.agent = config.get('agent_unit', 'k3s-agent.service')
+        self.fenced_units = list(dict.fromkeys(config.get('fenced_units', ['k3s-agent.service', 'k3s.service']) + [self.agent]))
         self.units = config.get('native_units', NATIVE_UNITS)
         self.timeout = config.get('timeout_seconds', 4)
 
@@ -44,8 +45,19 @@ class Watchdog:
     def command(self, *args):
         return subprocess.run(args, check=True, capture_output=True, text=True, timeout=40).stdout.strip()
 
+    def service_installed(self, unit):
+        state = self.command('systemctl', 'show', unit, '--property=LoadState', '--value')
+        if state == 'not-found':
+            return False
+        if state not in ('loaded', 'masked'):
+            raise RuntimeError('Cannot verify systemd unit: ' + unit + ': ' + state)
+        return True
+
     def service_active(self, unit):
         return self.command('systemctl', 'show', unit, '--property=ActiveState', '--value') not in ('inactive', 'failed')
+
+    def kubernetes_group(self, group):
+        return 'kubepods' in group or any('/' + unit in group for unit in self.fenced_units)
 
     def processes(self):
         result = []
@@ -57,7 +69,7 @@ class Watchdog:
                 status = (entry / 'stat').read_text().rsplit(')', 1)[1].split()[0]
             except FileNotFoundError:
                 continue
-            if status != 'Z' and ('kubepods' in group or '/' + self.agent in group):
+            if status != 'Z' and self.kubernetes_group(group):
                 result.append(int(entry.name))
         return result
 
@@ -71,7 +83,7 @@ class Watchdog:
                 group = Path('/proc', str(pid), 'cgroup').read_text()
             except FileNotFoundError:
                 return
-            if 'kubepods' not in group and '/' + self.agent not in group:
+            if not self.kubernetes_group(group):
                 raise RuntimeError('Process cgroup changed while fencing')
             try:
                 signal.pidfd_send_signal(descriptor, sig)
@@ -81,9 +93,11 @@ class Watchdog:
             os.close(descriptor)
 
     def fence(self):
-        self.command('systemctl', 'stop', self.agent)
-        if self.service_active(self.agent):
-            raise RuntimeError('Kubernetes agent did not stop')
+        installed = [unit for unit in self.fenced_units if self.service_installed(unit)]
+        for unit in installed:
+            self.command('systemctl', 'stop', unit)
+        if any(self.service_active(unit) for unit in installed):
+            raise RuntimeError('Kubernetes service did not stop')
         for sig in (signal.SIGTERM, signal.SIGKILL):
             for pid in self.processes():
                 self.terminate(pid, sig)
@@ -95,7 +109,7 @@ class Watchdog:
         raise RuntimeError('Kubernetes processes remain; refusing native startup')
 
     def guard(self):
-        if not (self.state / 'active').exists() or self.service_active(self.agent) or self.processes():
+        if not (self.state / 'active').exists() or any(self.service_installed(unit) and self.service_active(unit) for unit in self.fenced_units) or self.processes():
             raise RuntimeError('Native startup requires verified Kubernetes fencing')
 
     def occupied(self):

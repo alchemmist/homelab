@@ -186,5 +186,73 @@ class FailoverTests(unittest.TestCase):
         send.assert_not_called()
 
 
+class KubernetesFencingTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.watchdog = MODULE.Watchdog({'state_dir': self.directory.name, 'agent_unit': 'k3s.service'})
+        self.loads = {'k3s-agent.service': 'loaded', 'k3s.service': 'loaded'}
+        self.active = {'k3s-agent.service', 'k3s.service'}
+        self.commands = []
+        self.watchdog.command = self.command
+
+    def command(self, *args):
+        self.commands.append(args)
+        if args[1] == 'show':
+            if args[3] == '--property=LoadState':
+                return self.loads[args[2]]
+            return 'active' if args[2] in self.active else 'inactive'
+        if args[1] == 'stop':
+            self.active.discard(args[2])
+
+    def test_fence_stops_both_installed_units(self):
+        with mock.patch.object(self.watchdog, 'processes', return_value=[]):
+            self.watchdog.fence()
+        self.assertFalse(self.active)
+        self.assertIn(('systemctl', 'stop', 'k3s-agent.service'), self.commands)
+        self.assertIn(('systemctl', 'stop', 'k3s.service'), self.commands)
+
+    def test_missing_agent_is_ignored_but_server_is_stopped(self):
+        self.loads['k3s-agent.service'] = 'not-found'
+        self.active = {'k3s.service'}
+        with mock.patch.object(self.watchdog, 'processes', return_value=[]):
+            self.watchdog.fence()
+        self.assertNotIn(('systemctl', 'stop', 'k3s-agent.service'), self.commands)
+        self.assertFalse(self.active)
+
+    def test_active_server_blocks_native_even_when_agent_is_absent(self):
+        (self.watchdog.state / 'active').touch()
+        self.loads['k3s-agent.service'] = 'not-found'
+        self.active = {'k3s.service'}
+        with mock.patch.object(self.watchdog, 'processes', return_value=[]):
+            with self.assertRaisesRegex(RuntimeError, 'verified Kubernetes fencing'):
+                self.watchdog.guard()
+
+    def test_unknown_load_state_fails_closed(self):
+        self.loads['k3s.service'] = 'error'
+        with self.assertRaisesRegex(RuntimeError, 'Cannot verify systemd unit'):
+            self.watchdog.fence()
+        self.assertFalse(any(args[1] == 'stop' for args in self.commands))
+
+    def test_fence_refuses_service_still_active(self):
+        with mock.patch.object(self.watchdog, 'service_active', return_value=True), mock.patch.object(self.watchdog, 'processes') as processes:
+            with self.assertRaisesRegex(RuntimeError, 'did not stop'):
+                self.watchdog.fence()
+        processes.assert_not_called()
+
+    def test_server_and_agent_cgroups_are_both_fenced(self):
+        for unit in self.watchdog.fenced_units:
+            with self.subTest(unit=unit), mock.patch.object(MODULE.os, 'pidfd_open', return_value=91, create=True), mock.patch.object(MODULE.signal, 'pidfd_send_signal', create=True) as send, mock.patch.object(MODULE.os, 'close'), mock.patch.object(MODULE.Path, 'read_text', return_value='0::/system.slice/' + unit):
+                self.watchdog.terminate(123, MODULE.signal.SIGTERM)
+                send.assert_called_once_with(91, MODULE.signal.SIGTERM)
+
+    def test_failback_starts_only_configured_server(self):
+        (self.watchdog.state / 'active').touch()
+        with mock.patch.object(self.watchdog, 'processes', return_value=[]), mock.patch.object(self.watchdog, 'occupied', return_value=[]), mock.patch.object(self.watchdog, 'clock', return_value=('boot', 300)):
+            self.watchdog.failback()
+        self.assertEqual([args for args in self.commands if args[1] == 'start'], [('systemctl', 'start', 'k3s.service')])
+        self.assertFalse((self.watchdog.state / 'active').exists())
+
+
 if __name__ == '__main__':
     unittest.main()

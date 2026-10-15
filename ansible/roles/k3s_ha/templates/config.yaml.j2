@@ -1,0 +1,26 @@
+node-name: {{ inventory_hostname }}
+node-ip: {{ k3s_ha_nodes[inventory_hostname].node_ip }}
+advertise-address: {{ k3s_ha_nodes[inventory_hostname].advertise_ip }}
+flannel-iface: wg-socrat
+write-kubeconfig-mode: "{{ '0644' if inventory_hostname == k3s_ha_primary else '0600' }}"
+tls-san:
+  - {{ k3s_ha_vip }}
+  - 192.168.0.23
+  - 192.168.0.24
+  - 10.250.0.1
+  - 10.250.0.3
+  - 127.0.0.1
+etcd-snapshot-compress: true
+etcd-snapshot-retention: 5
+{% if inventory_hostname == k3s_ha_primary %}
+cluster-init: true
+{% else %}
+server: https://10.250.0.1:6443
+token-file: /etc/rancher/k3s/ha-server-token
+{% endif %}
+{% if k3s_ha_nodes[inventory_hostname].etcd_only %}
+bind-address: {{ k3s_ha_nodes[inventory_hostname].node_ip }}
+disable-apiserver: true
+disable-controller-manager: true
+disable-scheduler: true
+{% endif %}

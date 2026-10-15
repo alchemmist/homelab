@@ -1,0 +1,7 @@
+---
+rancher_chart_version: 2.15.2
+rancher_replicas: 2
+rancher_placement_nodes:
+  - socrat-0
+  - socrat-1
+rancher_kubeconfig: /etc/rancher/k3s/k3s.yaml

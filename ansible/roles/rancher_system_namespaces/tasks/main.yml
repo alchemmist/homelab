@@ -1,0 +1,31 @@
+---
+- name: Read existing Kubernetes namespaces
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - kubectl
+      - get
+      - namespaces
+      - -o
+      - json
+  register: rancher_system_namespaces_current
+  changed_when: false
+  check_mode: false
+
+- name: Classify infrastructure namespaces as system namespaces in Rancher
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - kubectl
+      - annotate
+      - namespace
+      - "{{ item.metadata.name }}"
+      - management.cattle.io/system-namespace=true
+      - --overwrite
+  loop: "{{ (rancher_system_namespaces_current.stdout | from_json)['items'] }}"
+  loop_control:
+    label: "{{ item.metadata.name }}"
+  when:
+    - item.metadata.name in rancher_system_namespace_names
+    - (item.metadata.annotations | default({})).get('management.cattle.io/system-namespace', '') != 'true'
+  changed_when: true

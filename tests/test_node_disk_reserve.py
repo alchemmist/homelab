@@ -45,5 +45,46 @@ class PauseFolderTests(unittest.TestCase):
         self.assertEqual(self.config.read_bytes(), original)
 
 
+class ServiceSelectionTests(unittest.TestCase):
+    def test_service_policy_controls_apply_and_rollback(self):
+        for service in (None, 'k3s.service'):
+            for fail_restart in (False, True):
+                with self.subTest(service=service, fail_restart=fail_restart), tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    syncthing = root / 'config.xml'
+                    syncthing.write_text('<configuration/>')
+                    kubelet = root / 'kubelet.conf'
+                    kubelet.write_bytes(b'previous')
+                    policy = {
+                        'node': 'socrat-1', 'folder': 'pg-mdb-backups',
+                        'kubelet': {'kind': 'KubeletConfiguration',
+                                    'apiVersion': 'kubelet.config.k8s.io/v1beta1',
+                                    'imageGCLowThresholdPercent': 95,
+                                    'imageGCHighThresholdPercent': 96},
+                    }
+                    if service is not None:
+                        policy['service'] = service
+                    expected = service or 'k3s-agent.service'
+                    effects = ([subprocess.CalledProcessError(1, 'systemctl'),
+                                subprocess.CompletedProcess([], 0)] if fail_restart else None)
+                    with patch.object(MODULE, 'SYNCTHING_CONFIG', syncthing), \
+                         patch.object(MODULE, 'KUBELET_CONFIG', kubelet), \
+                         patch.object(MODULE, 'Path', return_value=root / 'backups'), \
+                         patch.object(MODULE.os, 'geteuid', return_value=0), \
+                         patch.object(MODULE.os, 'statvfs'), \
+                         patch.object(MODULE.socket, 'gethostname', return_value='socrat-1'), \
+                         patch.object(MODULE, 'pause_folder', return_value=False), \
+                         patch.object(MODULE.subprocess, 'run', side_effect=effects) as run:
+                        if fail_restart:
+                            with self.assertRaises(subprocess.CalledProcessError):
+                                MODULE.apply(policy)
+                            self.assertEqual(kubelet.read_bytes(), b'previous')
+                            self.assertEqual(run.call_args_list[1].args[0], ['systemctl', 'restart', expected])
+                        else:
+                            MODULE.apply(policy)
+                            self.assertEqual(run.call_args_list[1].args[0], ['systemctl', 'is-active', '--quiet', expected])
+                        self.assertEqual(run.call_args_list[0].args[0], ['systemctl', 'restart', expected])
+
+
 if __name__ == '__main__':
     unittest.main()

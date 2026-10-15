@@ -25,9 +25,14 @@
     path: /etc/systemd/system/k3s-agent.service
   register: homelab_k3s_agent_unit
 
-- name: Apply network settings to an existing k3s agent
+- name: Inspect whether the node was promoted to a server
+  ansible.builtin.stat:
+    path: /etc/rancher/k3s/server-mode
+  register: homelab_k3s_server_mode
+
+- name: Apply network settings to the active k3s service
   ansible.builtin.systemd_service:
-    name: k3s-agent
+    name: "{{ 'k3s' if homelab_k3s_server_mode.stat.exists else 'k3s-agent' }}"
     state: restarted
     enabled: true
   when:

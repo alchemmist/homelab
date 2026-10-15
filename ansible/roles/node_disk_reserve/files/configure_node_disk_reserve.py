@@ -66,6 +66,7 @@ def apply(policy):
         raise RuntimeError('Root authentication is required')
     if socket.gethostname().split('.')[0] != policy['node']:
         raise RuntimeError('Policy belongs to another node')
+    service = policy.get('service', 'k3s-agent.service')
     config = policy['kubelet']
     if config['kind'] != 'KubeletConfiguration' or config['apiVersion'] != 'kubelet.config.k8s.io/v1beta1':
         raise RuntimeError('Invalid kubelet configuration type')
@@ -85,14 +86,14 @@ def apply(policy):
     if changed:
         atomic_write(KUBELET_CONFIG, content, 0o600)
         try:
-            subprocess.run(['systemctl', 'restart', 'k3s-agent.service'], check=True, timeout=90)
-            subprocess.run(['systemctl', 'is-active', '--quiet', 'k3s-agent.service'], check=True)
+            subprocess.run(['systemctl', 'restart', service], check=True, timeout=90)
+            subprocess.run(['systemctl', 'is-active', '--quiet', service], check=True)
         except (subprocess.SubprocessError, OSError):
             if previous is None:
                 KUBELET_CONFIG.unlink(missing_ok=True)
             else:
                 atomic_write(KUBELET_CONFIG, previous, 0o600)
-            subprocess.run(['systemctl', 'restart', 'k3s-agent.service'], timeout=90)
+            subprocess.run(['systemctl', 'restart', service], timeout=90)
             raise
     disk = os.statvfs('/srv/syncthing')
     return {'node': policy['node'], 'changed': changed or paused_changed, 'folder': policy['folder'],

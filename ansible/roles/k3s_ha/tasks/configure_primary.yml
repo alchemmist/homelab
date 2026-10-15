@@ -1,0 +1,25 @@
+---
+- name: Render the primary HA configuration
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: /etc/rancher/k3s/config.yaml
+    owner: root
+    group: root
+    mode: '0600'
+  register: k3s_ha_primary_config
+
+- name: Create the primary service override directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/k3s.service.d
+    state: directory
+    mode: '0755'
+
+- name: Use managed configuration instead of obsolete command-line overrides
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/k3s.service.d/40-homelab-ha.conf
+    mode: '0644'
+    content: |
+      [Service]
+      ExecStart=
+      ExecStart=/usr/local/bin/k3s server
+  register: k3s_ha_primary_unit

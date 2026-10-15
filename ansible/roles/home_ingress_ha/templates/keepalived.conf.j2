@@ -1,0 +1,37 @@
+global_defs {
+    router_id {{ inventory_hostname | replace('-', '_') }}
+    enable_script_security
+    script_user root
+}
+
+vrrp_script check_home_ingress {
+    script "/usr/local/libexec/check-home-ingress"
+    interval 3
+    timeout 5
+    fall 2
+    rise 2
+    init_fail
+}
+
+vrrp_instance HOME_INGRESS {
+    state BACKUP
+    interface {{ home_ingress_ha_nodes[inventory_hostname].interface }}
+    virtual_router_id {{ home_ingress_ha_router_id }}
+    priority {{ home_ingress_ha_nodes[inventory_hostname].priority }}
+    advert_int 1
+    nopreempt
+    unicast_src_ip {{ home_ingress_ha_nodes[inventory_hostname].address }}
+    unicast_peer {
+        {{ home_ingress_ha_nodes[inventory_hostname].peer }}
+    }
+    check_unicast_src
+    garp_master_delay 1
+    garp_master_repeat 5
+    garp_master_refresh 30
+    virtual_ipaddress {
+        {{ home_ingress_ha_vip }}/{{ home_ingress_ha_prefix }} dev {{ home_ingress_ha_nodes[inventory_hostname].interface }}
+    }
+    track_script {
+        check_home_ingress
+    }
+}

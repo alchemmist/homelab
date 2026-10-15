@@ -1,0 +1,7 @@
+---
+- name: Place essential Kubernetes services on both home nodes
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  roles:
+    - k3s_ha_dependencies
