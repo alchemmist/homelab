@@ -1,0 +1,19 @@
+[Unit]
+Description=Recover stalled WireGuard TLS transport
+After=wireguard-tcp-transport.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/libexec/wireguard-tcp-transport-health.py
+User=root
+RuntimeDirectory=wireguard-tcp-transport-health
+RuntimeDirectoryMode=0700
+RuntimeDirectoryPreserve=yes
+UMask=0077
+TimeoutStartSec=30
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/run/wireguard-tcp-transport-health
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX

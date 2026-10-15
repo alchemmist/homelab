@@ -1,0 +1,24 @@
+services:
+  - name: wireguard-transport
+    addr: '{{ wg_tcp_server_address }}:{{ wg_tcp_port }}'
+    handler:
+      type: relay
+      auth:
+        username: '{{ wg_tcp_username }}'
+        password: {{ wg_tcp_auth.content | b64decode | trim | to_json }}
+      metadata:
+        bind: false
+        nodelay: true
+        readTimeout: 10s
+        udpBufferSize: 65535
+    listener:
+      type: tls
+      tls:
+        certFile: '{{ wg_tcp_directory }}/server.crt'
+        keyFile: '{{ wg_tcp_directory }}/server.key'
+        options:
+          minVersion: VersionTLS12
+    forwarder:
+      nodes:
+        - name: wireguard
+          addr: '127.0.0.1:{{ wg_socrat_port }}'

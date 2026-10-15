@@ -1,0 +1,279 @@
+---
+- name: Validate supported transport hosts and architecture
+  ansible.builtin.assert:
+    that:
+      - inventory_hostname in [wg_tcp_server, wg_tcp_client]
+      - ansible_facts.architecture == 'x86_64'
+      - wg_tcp_version == '3.3.0'
+      - wg_tcp_port | int == 51840
+
+- name: Create private transport directory
+  ansible.builtin.file:
+    path: '{{ wg_tcp_directory }}'
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Install certificate tooling
+  ansible.builtin.package:
+    name: openssl
+    state: present
+  when: inventory_hostname == wg_tcp_server
+
+- name: Download pinned official GOST binary archive
+  ansible.builtin.get_url:
+    url: 'https://github.com/go-gost/gost/releases/download/v{{ wg_tcp_version }}/gost_{{ wg_tcp_version }}_linux_amd64.tar.gz'
+    dest: '{{ wg_tcp_directory }}/gost-{{ wg_tcp_version }}.tar.gz'
+    checksum: sha256:676fb7f78d267b6ae73df719c0c7f2b565dde7147da935cfafbc1e1da558b6d5
+    mode: '0600'
+
+- name: Extract verified GOST binary
+  ansible.builtin.unarchive:
+    src: '{{ wg_tcp_directory }}/gost-{{ wg_tcp_version }}.tar.gz'
+    dest: '{{ wg_tcp_directory }}'
+    remote_src: true
+    include:
+      - gost
+
+- name: Install verified transport binary
+  ansible.builtin.copy:
+    src: '{{ wg_tcp_directory }}/gost'
+    dest: /usr/local/bin/gost
+    remote_src: true
+    owner: root
+    group: root
+    mode: '0755'
+  notify: Restart WireGuard TCP transport
+
+- name: Generate persistent transport authentication secret
+  ansible.builtin.shell:
+    cmd: 'umask 077; openssl rand -hex 32 > {{ wg_tcp_directory }}/password'
+    creates: '{{ wg_tcp_directory }}/password'
+  no_log: true
+  when: inventory_hostname == wg_tcp_server
+
+- name: Generate private TLS certificate and key on the VPS
+  ansible.builtin.command:
+    argv:
+      - openssl
+      - req
+      - -x509
+      - -newkey
+      - rsa:3072
+      - -sha256
+      - -nodes
+      - -days
+      - '3650'
+      - -subj
+      - /CN=wg-transport.socrat.internal
+      - -addext
+      - 'subjectAltName=DNS:wg-transport.socrat.internal,IP:{{ wg_tcp_server_address }}'
+      - -keyout
+      - '{{ wg_tcp_directory }}/server.key'
+      - -out
+      - '{{ wg_tcp_directory }}/server.crt'
+    creates: '{{ wg_tcp_directory }}/server.crt'
+  when: inventory_hostname == wg_tcp_server
+  notify: Restart WireGuard TCP transport
+
+- name: Protect server certificate and key
+  ansible.builtin.file:
+    path: '{{ wg_tcp_directory }}/{{ item }}'
+    owner: root
+    group: root
+    mode: '0600'
+  loop:
+    - server.key
+    - server.crt
+    - password
+  when: inventory_hostname == wg_tcp_server
+
+- name: Read transport password from the VPS
+  ansible.builtin.slurp:
+    src: '{{ wg_tcp_directory }}/password'
+  delegate_to: '{{ wg_tcp_server }}'
+  register: wg_tcp_auth
+  no_log: true
+
+- name: Read public transport certificate from the VPS
+  ansible.builtin.slurp:
+    src: '{{ wg_tcp_directory }}/server.crt'
+  delegate_to: '{{ wg_tcp_server }}'
+  register: wg_tcp_certificate
+  when: inventory_hostname == wg_tcp_client
+
+- name: Install trusted public certificate on the client
+  ansible.builtin.copy:
+    content: '{{ wg_tcp_certificate.content | b64decode }}'
+    dest: '{{ wg_tcp_directory }}/ca.crt'
+    owner: root
+    group: root
+    mode: '0600'
+  when: inventory_hostname == wg_tcp_client
+  notify: Restart WireGuard TCP transport
+
+- name: Render authenticated transport configuration
+  ansible.builtin.template:
+    src: "{{ 'server' if inventory_hostname == wg_tcp_server else 'client' }}.yaml.j2"
+    dest: '{{ wg_tcp_directory }}/config.yaml'
+    owner: root
+    group: root
+    mode: '0600'
+  no_log: true
+  notify: Restart WireGuard TCP transport
+
+- name: Prepare client direct packet guard
+  ansible.builtin.include_tasks: guard.yml
+  when: inventory_hostname == wg_tcp_client
+
+- name: Install transport service
+  ansible.builtin.template:
+    src: service.j2
+    dest: /etc/systemd/system/wireguard-tcp-transport.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart WireGuard TCP transport
+
+- name: Apply transport configuration before switching WireGuard endpoints
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable transport service
+  ansible.builtin.systemd:
+    name: wireguard-tcp-transport.service
+    state: started
+    enabled: true
+    daemon_reload: true
+
+- name: Verify authenticated transport server is listening
+  ansible.builtin.wait_for:
+    host: '{{ wg_tcp_server_address }}'
+    port: '{{ wg_tcp_port }}'
+    connect_timeout: 3
+    timeout: 30
+
+- name: Create helper directory
+  ansible.builtin.file:
+    path: /usr/local/libexec
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Install additive WireGuard endpoint helper
+  ansible.builtin.copy:
+    src: endpoint.py
+    dest: /usr/local/libexec/wireguard-tcp-transport-endpoint.py
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Install transport security verifier
+  ansible.builtin.copy:
+    src: verify_tls.py
+    dest: /usr/local/libexec/wireguard-tcp-transport-verify.py
+    owner: root
+    group: root
+    mode: '0700'
+  when: inventory_hostname == wg_tcp_client
+
+- name: Verify TLS and authentication before redirecting WireGuard
+  ansible.builtin.command:
+    argv:
+      - python3
+      - /usr/local/libexec/wireguard-tcp-transport-verify.py
+      - '{{ wg_tcp_server_address }}'
+      - '{{ wg_tcp_port | string }}'
+      - '{{ wg_tcp_directory }}/ca.crt'
+      - '{{ wg_tcp_username }}'
+  changed_when: false
+  when: inventory_hostname == wg_tcp_client and not ansible_check_mode
+
+- name: Persist and activate only the selected WireGuard peer endpoint
+  ansible.builtin.command:
+    argv:
+      - python3
+      - /usr/local/libexec/wireguard-tcp-transport-endpoint.py
+      - '{{ wg_tcp_interface }}'
+      - '{{ wg_socrat_nodes[wg_tcp_client if inventory_hostname == wg_tcp_server else wg_tcp_server].public_key }}'
+      - "{{ '' if inventory_hostname == wg_tcp_server else '127.0.0.1:' + (wg_tcp_port | string) }}"
+  register: wg_tcp_endpoint
+  changed_when: (wg_tcp_endpoint.stdout | from_json).changed
+  when: not ansible_check_mode
+
+- name: Install bounded client transport recovery
+  ansible.builtin.include_tasks: health.yml
+  when: inventory_hostname == wg_tcp_client
+
+- name: Verify the client can reach the VPS through WireGuard
+  ansible.builtin.command:
+    argv:
+      - ping
+      - -n
+      - -c
+      - '5'
+      - -W
+      - '2'
+      - '{{ wg_socrat_nodes[wg_tcp_server].address }}'
+  register: wg_tcp_ping
+  changed_when: false
+  failed_when: wg_tcp_ping.rc != 0 or ' 0% packet loss' not in wg_tcp_ping.stdout
+  retries: 3
+  delay: 3
+  until: wg_tcp_ping.rc == 0 and ' 0% packet loss' in wg_tcp_ping.stdout
+  when: inventory_hostname == wg_tcp_client and not ansible_check_mode
+
+- name: Create Kubernetes startup dependency directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/k3s.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Order Kubernetes startup after the transport service
+  ansible.builtin.copy:
+    content: |
+      [Unit]
+      Wants=wireguard-tcp-transport.service
+      After=wireguard-tcp-transport.service
+    dest: /etc/systemd/system/k3s.service.d/45-wireguard-tcp-transport.conf
+    owner: root
+    group: root
+    mode: '0644'
+  register: wg_tcp_k3s_dependency
+
+- name: Reload service ordering without restarting Kubernetes
+  ansible.builtin.systemd:
+    daemon_reload: true
+  when: wg_tcp_k3s_dependency.changed
+
+- name: Verify the client peer endpoint remains on the authenticated local transport
+  ansible.builtin.command:
+    argv:
+      - wg
+      - show
+      - '{{ wg_tcp_interface }}'
+      - endpoints
+  register: wg_tcp_verified_endpoints
+  changed_when: false
+  failed_when: >-
+    wg_tcp_verified_endpoints.rc != 0 or
+    (wg_socrat_nodes[wg_tcp_server].public_key + '\t127.0.0.1:' + (wg_tcp_port | string)) not in wg_tcp_verified_endpoints.stdout
+  when: inventory_hostname == wg_tcp_client and not ansible_check_mode
+
+- name: Verify the VPS learned the client's local relay endpoint
+  ansible.builtin.command:
+    argv:
+      - wg
+      - show
+      - '{{ wg_tcp_interface }}'
+      - endpoints
+  delegate_to: '{{ wg_tcp_server }}'
+  register: wg_tcp_verified_server_endpoints
+  changed_when: false
+  failed_when: >-
+    wg_tcp_verified_server_endpoints.rc != 0 or
+    (wg_socrat_nodes[wg_tcp_client].public_key + '\t127.0.0.1:') not in wg_tcp_verified_server_endpoints.stdout
+  when: inventory_hostname == wg_tcp_client and not ansible_check_mode

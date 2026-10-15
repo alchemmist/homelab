@@ -1,0 +1,132 @@
+---
+- name: Read current home Traefik HelmChartConfig
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - kubectl
+      - --kubeconfig
+      - "{{ home_ingress_ha_kubeconfig }}"
+      - -n
+      - kube-system
+      - get
+      - helmchartconfig
+      - traefik
+      - -o
+      - json
+  register: home_ingress_ha_chart_config
+  changed_when: false
+
+- name: Define home Traefik placement values
+  ansible.builtin.set_fact:
+    home_ingress_ha_traefik_values:
+      deployment:
+        replicas: 2
+      nodeSelector: {}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values: [socrat-0, socrat-1]
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: traefik
+                  app.kubernetes.io/instance: traefik-kube-system
+              topologyKey: kubernetes.io/hostname
+      updateStrategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxSurge: 1
+          maxUnavailable: 1
+      service:
+        spec:
+          externalTrafficPolicy: Local
+
+- name: Preserve unrelated HelmChartConfig values
+  ansible.builtin.set_fact:
+    home_ingress_ha_original_config: "{{ home_ingress_ha_chart_config.stdout | from_json }}"
+    home_ingress_ha_merged_values: >-
+      {{ ((home_ingress_ha_chart_config.stdout | from_json).spec.valuesContent | from_yaml) |
+         combine(home_ingress_ha_traefik_values, recursive=true) |
+         combine({'nodeSelector': {}}) }}
+
+- name: Persist replicated Traefik values with resource version guard
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - kubectl
+      - --kubeconfig
+      - "{{ home_ingress_ha_kubeconfig }}"
+      - replace
+      - -f
+      - '-'
+    stdin: >-
+      {{ home_ingress_ha_original_config |
+         combine({'spec': {'valuesContent': home_ingress_ha_merged_values | to_nice_yaml}}, recursive=true) |
+         to_json }}
+  when: >-
+    (home_ingress_ha_original_config.spec.valuesContent | from_yaml) != home_ingress_ha_merged_values
+  changed_when: true
+
+- name: Wait for Helm to reconcile Traefik replicas and affinity
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - kubectl
+      - --kubeconfig
+      - "{{ home_ingress_ha_kubeconfig }}"
+      - -n
+      - kube-system
+      - get
+      - deployment
+      - traefik
+      - -o
+      - json
+  register: home_ingress_ha_traefik_deployment
+  changed_when: false
+  retries: 60
+  delay: 5
+  until:
+    - (home_ingress_ha_traefik_deployment.stdout | from_json).spec.replicas == 2
+    - (home_ingress_ha_traefik_deployment.stdout | from_json).spec.template.spec.affinity is defined
+    - >-
+      ((home_ingress_ha_traefik_deployment.stdout | from_json).spec.template.spec.affinity | default({})) ==
+      home_ingress_ha_merged_values.affinity
+
+- name: Remove historical imperative Traefik node pin
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - kubectl
+      - --kubeconfig
+      - "{{ home_ingress_ha_kubeconfig }}"
+      - -n
+      - kube-system
+      - patch
+      - deployment
+      - traefik
+      - --type=merge
+      - -p
+      - '{"spec":{"template":{"spec":{"nodeSelector":null}}}}'
+  when: >-
+    ((home_ingress_ha_traefik_deployment.stdout | from_json).spec.template.spec.nodeSelector | default({})) | length > 0
+  changed_when: true
+
+- name: Wait for both home Traefik replicas
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - kubectl
+      - --kubeconfig
+      - "{{ home_ingress_ha_kubeconfig }}"
+      - -n
+      - kube-system
+      - rollout
+      - status
+      - deployment/traefik
+      - --timeout=600s
+  changed_when: false

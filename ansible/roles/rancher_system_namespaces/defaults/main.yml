@@ -1,0 +1,4 @@
+---
+rancher_system_namespace_names:
+  - traefik-edge
+  - storage

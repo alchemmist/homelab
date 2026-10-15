@@ -1,13 +1,13 @@
-# VPN workloads after the emergency-runtime cutover
+# VPN workload and retained runtime configurations
 
-Both VPN configurations run on `socrat-2` in Kubernetes. Keep them separate: their databases contain different ports and client sets, including a client present only in the native configuration. Do not replace either database with the other or with the older `/srv/x-ui/db` snapshot.
+The unified chart runs both VPN configurations in one Kubernetes Deployment, Helm release and namespace named `x-ui` on `socrat-2`. Its containers are `primary` and `compatibility`. Keep the configurations separate: their databases contain different ports and client sets, including a client present only in the native configuration. Do not replace either database with the other or with the older `/srv/x-ui/db` snapshot.
 
-| Release / namespace | Application version | Active database directory | Runtime assets |
+| Container | Application version | Active database directory | Runtime assets |
 | --- | --- | --- | --- |
-| `x-ui-lab` | 3.10.0, pinned image digest | `/srv/x-ui-lab/db` | Container image |
-| `x-ui-legacy` | 3.9.0, pinned image digest | `/etc/x-ui` | `/usr/local/x-ui/bin`, mounted at `/app/bin` |
+| `primary` | 3.10.0, pinned image digest | `/srv/x-ui-lab/db` | Container image |
+| `compatibility` | 3.9.0, pinned image digest | `/etc/x-ui` | `/usr/local/x-ui/bin`, mounted at `/app/bin` |
 
-Both deployments use `hostNetwork`, `dnsPolicy: Default`, a single replica, and `Recreate`. The database directories must already exist. Startup checks the panel listener; readiness checks the corresponding Trojan listener.
+The deployment uses `hostNetwork`, `dnsPolicy: Default`, a single replica, and `Recreate`. Each container has separate database and runtime mounts. The database directories must already exist. Each container checks its own panel listener at startup and its Trojan listener for readiness. Consolidation does not merge databases, change images or migrate clients.
 
 ## Preserved endpoints
 
@@ -31,7 +31,7 @@ Legacy listeners:
 
 `traefik-edge` owns public TCP `80`/`443` and UDP `443` on `socrat-2`. Kubernetes Ingress routes preserve the existing hostname, panel fallback, subscription prefixes, and exact Trojan WebSocket path. Public Trojan remains on `vpn.alchemmist.xyz:443`. The former `caddy-edge` Helm release and chart have been removed; host Caddy is not used.
 
-The legacy loopback address is maintained by `vpn-legacy-loopback.service`, ordered before `k3s-agent`. It does not depend on Docker's bridge. The legacy release has no Kubernetes Service because its panel/subscription endpoints intentionally retain their original loopback binding.
+The legacy loopback address is maintained by `vpn-legacy-loopback.service`, ordered before `k3s-agent`. It does not depend on Docker's bridge. The compatibility container has no separate Kubernetes Service because its panel/subscription endpoints intentionally retain their original loopback binding.
 
 ## Deployment
 
@@ -41,9 +41,35 @@ From `ansible/`:
 ansible-playbook playbooks/vpn.yml --ask-become-pass
 ```
 
-This prepares the loopback address on `socrat-2`, verifies that the existing databases are present, deploys both releases through `socrat-0`, and disables the native VPN and idle host Docker services after successful rollout. It refuses to compete with an active native service or emergency container. It does not perform an initial live cutover automatically.
+This prepares the loopback address on `socrat-2`, verifies that the existing databases are present, deploys the unified release through `socrat-0`, and disables the native VPN and idle host Docker services after successful rollout. It refuses to compete with an active native service or emergency container. It does not perform an initial live cutover automatically.
 
-Both releases are also included in `playbooks/apps.yml`; the legacy release uses `charts/x-ui/values-legacy.yaml`. Avoid changing the pinned image versions during a recovery operation.
+The unified release is also included in `playbooks/apps.yml`. Both runtime configurations and pinned images are defined under `instances.primary` and `instances.compatibility` in `charts/x-ui/values.yaml`; native recovery reads the same image definitions. Avoid changing pinned image versions during recovery. Existing installations with `x-ui-lab` or `x-ui-legacy` must use the dedicated migration first; normal deployment refuses to compete with them.
+
+## Consolidating the former releases
+
+From `ansible/`:
+
+```bash
+ansible-playbook playbooks/vpn-consolidate.yml --ask-become-pass
+```
+
+This playbook pauses the watchdog, waits for its running check under the serialization lock, creates a maintenance inhibit marker, and checks the recovery latch again. It creates private SQLite backups and captures configuration and subscriptions before stopping either old workload. It stages the unified Helm release with zero replicas, waits for the old database writers to terminate, and starts the two-container workload.
+
+Verification compares both databases and all subscriptions, checks listeners and TLS routing, and runs an authenticated public VPN tunnel probe before and after migration. The 2026-10-15 migration verified all 31 subscriptions and 155 normalized links unchanged; authenticated public Trojan-over-WebSocket/TLS requests returned HTTPS 200 before and after the switch. The resulting pod has both containers Ready. Backups are stored privately on the VPS at `/var/backups/homelab-vpn/consolidation-PMDzeic1`. Existing randomized Reality `sid` values and mutable traffic counters are handled by the verifier without ignoring client credentials or configured endpoints.
+
+If cutover or verification fails, recovery stops the new database writers before restoring the old deployment replica counts. It does not restore database snapshots over live data. Monitoring resumes when the migration block exits. After successful verification, the playbook removes the obsolete Helm releases and namespaces `x-ui-lab` and `x-ui-legacy`; host data directories and native fallback services remain intact.
+
+The playbook also applies the Rancher infrastructure classification below. Both former namespaces and Helm releases were removed after verification. The watchdog resumed in Kubernetes mode with healthy VPN and zero failures. All 101 repository tests passed, including rendered Helm and migration snapshot tests.
+
+## Rancher infrastructure namespaces
+
+`traefik-edge` is the public VPN ingress controller. `storage` provides shared storage infrastructure. Both remain installed in their existing namespaces and receive the annotation `management.cattle.io/system-namespace=true`, so Rancher excludes them from **Only User Namespaces**. This classification does not move workloads, change project membership or modify RBAC.
+
+To apply the classification separately, run:
+
+```bash
+ansible-playbook playbooks/rancher-namespaces.yml
+```
 
 ## Automatic VPS recovery
 
@@ -56,7 +82,9 @@ The optional [native VPN recovery watchdog](vpn-failover.md) prepares an indepen
 - Host Docker service/socket and standalone containerd: stopped/disabled when no other Docker containers are running.
 - The original service files, container, application data, and runtime assets are retained for rollback.
 
-## Initial cutover and rollback
+## Historical initial cutover and rollback
+
+The following records the original separate-workload cutover. For the unified workload, use [native recovery and explicit failback](vpn-failover.md); stopping its Pod stops both VPN configurations.
 
 Before stopping a working runtime, take consistent SQLite backups using the SQLite backup API, verify `PRAGMA integrity_check`, record the client/configuration tables, and check the current subscription endpoints. Keep these artifacts root-only: databases and subscription responses contain credentials.
 
@@ -71,7 +99,7 @@ Do not run the previous and replacement writers concurrently against the same SQ
 
 ## Verification
 
-Check both pods are Ready, retain their pinned images, and have no restarts. Verify all original TCP/UDP listeners and the public subscription endpoint. Compare the client records, inbound configuration, keys, users, and panel settings with the pre-cutover snapshots, excluding traffic counters.
+Check that the unified Pod is Ready with both containers running, retaining their pinned images and without unexpected restarts. Verify all original TCP/UDP listeners and the public subscription endpoint. Compare the client records, inbound configuration, keys, users, and panel settings with the pre-cutover snapshots, excluding traffic counters.
 
 3x-ui selects a Reality `shortId` from the configured accepted set when generating subscriptions, so raw subscription bytes can differ between two consecutive requests. Validate that the accepted server-side `shortIds` are unchanged; compare generated links after excluding only that randomized field. Do not ignore credential, endpoint, transport, or port differences.
 
@@ -80,6 +108,8 @@ The cutover was checked against 15 primary and 16 legacy subscriptions, unchange
 Node-local CRI logs may be needed for diagnosis: during this work the control-plane proxy to `socrat-2:10250` returned HTTP 502 for `kubectl logs`. Pod status, readiness, direct listeners, and data-plane checks remained available. This is a separate management-connectivity issue.
 
 ## Traefik VPS ingress migration
+
+This section records the 2026-10-14 migration, before workload consolidation. References to two VPN pods describe that historical state.
 
 Applied on 2026-10-14. `charts/traefik-edge` runs a separate host-network Traefik controller on `socrat-2`, with `dnsPolicy: Default`, namespace-scoped application reads and the `traefik-edge` ingress class. The home controller explicitly watches class `traefik`; this setting is persisted in the k3s HelmChartConfig and `ansible/playbooks/k3s.yml`.
 

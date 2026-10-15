@@ -1,0 +1,26 @@
+---
+- name: Install client health probe
+  ansible.builtin.copy:
+    src: health.py
+    dest: /usr/local/libexec/wireguard-tcp-transport-health.py
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Install client health units
+  ansible.builtin.template:
+    src: 'health.{{ item }}.j2'
+    dest: '/etc/systemd/system/wireguard-tcp-transport-health.{{ item }}'
+    owner: root
+    group: root
+    mode: '0644'
+  loop:
+    - service
+    - timer
+
+- name: Enable periodic client transport recovery
+  ansible.builtin.systemd:
+    name: wireguard-tcp-transport-health.timer
+    state: started
+    enabled: true
+    daemon_reload: true

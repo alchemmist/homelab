@@ -24,8 +24,10 @@ spec:
       nodeSelector:
         kubernetes.io/hostname: {{ .Values.nodeName | quote }}
       containers:
-        - name: x-ui
-          image: {{ .Values.image | quote }}
+        {{- range $name, $instance := .Values.instances }}
+        {{- $prefix := ternary "primary" "compat" (eq $name "primary") }}
+        - name: {{ $name }}
+          image: {{ $instance.image | quote }}
           imagePullPolicy: IfNotPresent
           securityContext:
             capabilities:
@@ -33,61 +35,64 @@ spec:
                 - NET_ADMIN
                 - NET_RAW
           env:
-            {{- range $name, $value := .Values.env }}
+            {{- range $name, $value := $instance.env }}
             - name: {{ $name }}
               value: {{ $value | quote }}
             {{- end }}
           ports:
-            - name: panel
-              containerPort: {{ .Values.ports.panel }}
+            - name: {{ $prefix }}-panel
+              containerPort: {{ $instance.ports.panel }}
               protocol: TCP
-            - name: sub
-              containerPort: {{ .Values.ports.sub }}
+            - name: {{ $prefix }}-sub
+              containerPort: {{ $instance.ports.sub }}
               protocol: TCP
-            - name: trojan
-              containerPort: {{ .Values.ports.trojan }}
+            - name: {{ $prefix }}-trojan
+              containerPort: {{ $instance.ports.trojan }}
               protocol: TCP
           startupProbe:
             tcpSocket:
-              host: {{ .Values.probeHost | quote }}
-              port: panel
+              host: {{ $instance.probeHost | quote }}
+              port: {{ $prefix }}-panel
             periodSeconds: 2
             failureThreshold: 45
           readinessProbe:
             tcpSocket:
-              host: {{ .Values.probeHost | quote }}
-              port: trojan
+              host: {{ $instance.probeHost | quote }}
+              port: {{ $prefix }}-trojan
             periodSeconds: 3
             failureThreshold: 3
           volumeMounts:
-            - name: db
+            - name: {{ $name }}-db
               mountPath: /etc/x-ui
-            - name: cert
+            - name: {{ $name }}-cert
               mountPath: /root/cert
-            - name: acme
+            - name: {{ $name }}-acme
               mountPath: /root/.acme.sh
-            {{- if .Values.hostPath.runtime }}
-            - name: runtime
+            {{- if $instance.hostPath.runtime }}
+            - name: {{ $name }}-runtime
               mountPath: /app/bin
             {{- end }}
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
+            {{- toYaml $instance.resources | nindent 12 }}
+        {{- end }}
       volumes:
-        - name: db
+        {{- range $name, $instance := .Values.instances }}
+        - name: {{ $name }}-db
           hostPath:
-            path: {{ .Values.hostPath.db | quote }}
+            path: {{ $instance.hostPath.db | quote }}
             type: Directory
-        - name: cert
+        - name: {{ $name }}-cert
           hostPath:
-            path: {{ .Values.hostPath.cert | quote }}
+            path: {{ $instance.hostPath.cert | quote }}
             type: DirectoryOrCreate
-        - name: acme
+        - name: {{ $name }}-acme
           hostPath:
-            path: {{ .Values.hostPath.acme | quote }}
+            path: {{ $instance.hostPath.acme | quote }}
             type: DirectoryOrCreate
-        {{- if .Values.hostPath.runtime }}
-        - name: runtime
+        {{- if $instance.hostPath.runtime }}
+        - name: {{ $name }}-runtime
           hostPath:
-            path: {{ .Values.hostPath.runtime | quote }}
+            path: {{ $instance.hostPath.runtime | quote }}
             type: Directory
+        {{- end }}
         {{- end }}

@@ -1,0 +1,20 @@
+---
+k3s_ha_dependencies_kubeconfig: /etc/rancher/k3s/k3s.yaml
+k3s_ha_dependencies_nodes:
+  - socrat-0
+  - socrat-1
+k3s_ha_dependencies_deployments:
+  - namespace: kube-system
+    name: coredns
+  - namespace: cattle-system
+    name: rancher-webhook
+  - namespace: cert-manager
+    name: cert-manager
+  - namespace: cert-manager
+    name: cert-manager-cainjector
+  - namespace: cert-manager
+    name: cert-manager-webhook
+k3s_ha_dependencies_manifest_servers:
+  - socrat-0
+  - socrat-1
+k3s_ha_dependencies_cert_manager_chart_version: v1.16.2

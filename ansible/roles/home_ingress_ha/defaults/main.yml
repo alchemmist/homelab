@@ -1,0 +1,22 @@
+---
+home_ingress_ha_vip: 192.168.0.250
+home_ingress_ha_prefix: 32
+home_ingress_ha_router_id: 250
+home_ingress_ha_hostname: rancher.socrat.alchemmist.xyz
+home_ingress_ha_kubeconfig: /etc/rancher/k3s/k3s.yaml
+home_ingress_ha_gateway:
+  address: 192.168.0.1
+  mac: '48:29:e4:83:22:f0'
+home_ingress_ha_nodes:
+  socrat-0:
+    address: 192.168.0.23
+    interface: eno1
+    priority: 150
+    peer: 192.168.0.24
+    peer_mac: '38:d5:7a:e6:01:8b'
+  socrat-1:
+    address: 192.168.0.24
+    interface: wlan0
+    priority: 100
+    peer: 192.168.0.23
+    peer_mac: '10:7c:61:08:33:76'

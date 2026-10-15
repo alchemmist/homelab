@@ -1,2 +1,8 @@
 wg_socrat_admin_clients: {}
 wg_socrat_peer_endpoints: {}
+wg_socrat_extra_allowed_peer_ips:
+  socrat-2:
+    socrat-0:
+      - "{{ hostvars['socrat-0'].homelab_ssh_private_host }}/32"
+    socrat-1:
+      - "{{ hostvars['socrat-1'].homelab_ssh_private_host }}/32"

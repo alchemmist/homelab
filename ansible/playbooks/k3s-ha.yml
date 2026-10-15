@@ -1,0 +1,126 @@
+---
+- name: Validate existing nodes before HA conversion
+  hosts: Socrat
+  any_errors_fatal: true
+  gather_facts: false
+  become: true
+  tasks:
+    - ansible.builtin.import_role:
+        name: k3s_ha
+        tasks_from: preflight
+
+- ansible.builtin.import_playbook: k3s-ha-routes.yml
+
+- ansible.builtin.import_playbook: wireguard-tcp-transport.yml
+
+- name: Convert the primary datastore without recreating the cluster
+  hosts: socrat-0
+  any_errors_fatal: true
+  gather_facts: false
+  become: true
+  tasks:
+    - ansible.builtin.import_role:
+        name: k3s_ha
+        tasks_from: primary
+
+- name: Promote the second home node to control plane
+  hosts: socrat-1
+  any_errors_fatal: true
+  gather_facts: false
+  become: true
+  tasks:
+    - ansible.builtin.import_role:
+        name: k3s_ha
+        tasks_from: member_prepare
+    - ansible.builtin.import_role:
+        name: k3s_ha
+        tasks_from: member_activate
+
+- name: Promote the VPS to an etcd voter while preserving VPN fallback
+  hosts: socrat-2
+  any_errors_fatal: true
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Require Kubernetes mode and no existing maintenance hold
+      ansible.builtin.stat:
+        path: "/var/lib/homelab-vpn-failover/{{ item }}"
+      loop: [active, inhibit]
+      register: k3s_ha_vpn_markers
+
+    - name: Refuse to overlap native recovery or maintenance
+      ansible.builtin.assert:
+        that: not item.stat.exists
+        quiet: true
+      loop: "{{ k3s_ha_vpn_markers.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Promote the VPS under a watchdog maintenance hold
+      block:
+        - name: Pause VPN automatic failover
+          ansible.builtin.systemd_service:
+            name: homelab-vpn-watchdog.timer
+            state: stopped
+          register: k3s_ha_timer_paused
+
+        - name: Wait for the active watchdog check and set its hold
+          ansible.builtin.command: >-
+            flock --exclusive --timeout 240 /var/lib/homelab-vpn-failover/lock
+            touch /var/lib/homelab-vpn-failover/inhibit
+          register: k3s_ha_vpn_hold
+          changed_when: true
+
+        - name: Recheck that fallback did not activate concurrently
+          ansible.builtin.stat:
+            path: /var/lib/homelab-vpn-failover/active
+          register: k3s_ha_vpn_active
+
+        - name: Require inactive fallback
+          ansible.builtin.assert:
+            that: not k3s_ha_vpn_active.stat.exists
+
+        - ansible.builtin.import_role:
+            name: k3s_ha
+            tasks_from: member_prepare
+
+        - name: Adapt the watchdog to the new server service before promotion
+          ansible.builtin.include_role:
+            name: vpn_failover
+          vars:
+            vpn_failover_k3s_unit: k3s.service
+            vpn_failover_arm: false
+            vpn_failover_verify_native: false
+
+        - ansible.builtin.import_role:
+            name: k3s_ha
+            tasks_from: member_activate
+
+        - name: Verify the VPN remained healthy
+          ansible.builtin.command: /usr/bin/python3 /usr/local/sbin/homelab-vpn-failover check
+          changed_when: false
+
+      always:
+        - name: Remove this promotion's watchdog hold
+          ansible.builtin.file:
+            path: /var/lib/homelab-vpn-failover/inhibit
+            state: absent
+          when: k3s_ha_vpn_hold is defined and k3s_ha_vpn_hold is succeeded
+
+        - name: Resume automatic VPN recovery
+          ansible.builtin.systemd_service:
+            name: homelab-vpn-watchdog.timer
+            state: started
+          when: k3s_ha_timer_paused is defined and k3s_ha_timer_paused is succeeded
+
+- name: Verify and snapshot the three-member datastore
+  hosts: socrat-0
+  any_errors_fatal: true
+  gather_facts: false
+  become: true
+  tasks:
+    - ansible.builtin.import_role:
+        name: k3s_ha
+        tasks_from: verify
+
+- ansible.builtin.import_playbook: k3s-ha-dependencies.yml

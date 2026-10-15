@@ -1,0 +1,10 @@
+[Unit]
+Description=Check WireGuard TLS transport reachability
+
+[Timer]
+OnBootSec=60s
+OnUnitInactiveSec=15s
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

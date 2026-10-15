@@ -1,0 +1,47 @@
+---
+- name: Record persistent server mode
+  ansible.builtin.copy:
+    dest: /etc/rancher/k3s/server-mode
+    content: "{{ 'etcd-and-agent' if k3s_ha_nodes[inventory_hostname].etcd_only else 'control-plane-etcd-and-agent' }}\n"
+    owner: root
+    group: root
+    mode: '0600'
+
+- name: Disable and stop the former agent without killing its containers
+  ansible.builtin.systemd_service:
+    name: k3s-agent
+    state: stopped
+    enabled: false
+
+- name: Start the joining server
+  ansible.builtin.systemd_service:
+    name: k3s
+    state: "{{ 'restarted' if k3s_ha_member_configuration.changed or k3s_ha_member_service.changed else 'started' }}"
+    enabled: true
+    no_block: true
+
+- name: Wait for the new service to report readiness
+  ansible.builtin.command: systemctl is-active k3s
+  register: k3s_ha_service_ready
+  changed_when: false
+  retries: 60
+  delay: 5
+  until: k3s_ha_service_ready.rc == 0 and k3s_ha_service_ready.stdout == 'active'
+
+- name: Verify the member registered its etcd role and remained Ready
+  ansible.builtin.shell: |
+    /usr/local/bin/k3s kubectl get node {{ inventory_hostname | quote }} -o json | python3 -c '
+    import json,sys
+    node=json.load(sys.stdin)
+    assert node["metadata"]["labels"].get("node-role.kubernetes.io/etcd") == "true"
+    assert any(c["type"]=="Ready" and c["status"]=="True" for c in node["status"]["conditions"])
+    print(node["metadata"]["name"] + " etcd member Ready")'
+  delegate_to: "{{ k3s_ha_primary }}"
+  vars:
+    ansible_port: "{{ homelab_ssh_port_base | int }}"
+  become: false
+  register: k3s_ha_member_ready
+  changed_when: false
+  retries: 60
+  delay: 5
+  until: k3s_ha_member_ready.rc == 0

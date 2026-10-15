@@ -1,19 +1,23 @@
 ---
 vpn_failover_root: /opt/homelab-vpn-failover
 vpn_failover_state: /var/lib/homelab-vpn-failover
+vpn_failover_k3s_unit: k3s-agent.service
+vpn_failover_fenced_units:
+  - k3s-agent.service
+  - k3s.service
 vpn_failover_interval: 30s
 vpn_failover_failure_threshold: 4
 vpn_failover_boot_grace_seconds: 180
 vpn_failover_workloads:
   - name: primary
-    chart: values.yaml
+    instance: primary
     database: /srv/x-ui-lab/db
     cert: /srv/x-ui-lab/cert
     acme: /srv/x-ui-lab/acme
     runtime: ''
     timezone: Asia/Tehran
   - name: legacy
-    chart: values-legacy.yaml
+    instance: compatibility
     database: /etc/x-ui
     cert: /srv/x-ui/cert
     acme: /srv/x-ui/acme

@@ -1,0 +1,6 @@
+---
+- name: Restart home ingress keepalived
+  ansible.builtin.systemd_service:
+    name: keepalived
+    state: restarted
+    enabled: true

@@ -1,0 +1,27 @@
+---
+- name: Verify ready Rancher replicas on both home nodes
+  ansible.builtin.shell: |
+    python3 - <<'PY'
+    import json
+    import subprocess
+
+    result = subprocess.run(
+        ["/usr/local/bin/k3s", "kubectl", "--kubeconfig", {{ rancher_kubeconfig | to_json }},
+         "-n", "cattle-system", "get", "pods", "-l", "app=rancher", "-o", "json"],
+        check=True, capture_output=True, text=True,
+    )
+    pods = [pod for pod in json.loads(result.stdout)["items"]
+            if not pod["metadata"].get("deletionTimestamp")]
+    expected_nodes = {{ rancher_placement_nodes | to_json }}
+    assert len(pods) == {{ rancher_replicas }}, "Unexpected Rancher replica count"
+    assert sorted(pod["spec"].get("nodeName", "") for pod in pods) == sorted(expected_nodes), "Unexpected Rancher placement"
+    for pod in pods:
+        assert any(condition["type"] == "Ready" and condition["status"] == "True"
+                   for condition in pod.get("status", {}).get("conditions", [])), "Rancher replica is not ready"
+    print("Ready Rancher replicas: " + ", ".join(sorted(expected_nodes)))
+    PY
+  register: rancher_placement_verification
+  changed_when: false
+  retries: 12
+  delay: 5
+  until: rancher_placement_verification.rc == 0

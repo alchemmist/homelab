@@ -1,5 +1,17 @@
 ---
 router_static_mappings:
+  - name: socrat-http
+    interface: WAN2
+    protocol: tcp
+    external_port: 80
+    destination_address: 192.168.0.250
+    destination_port: 80
+  - name: socrat-https
+    interface: WAN2
+    protocol: tcp
+    external_port: 443
+    destination_address: 192.168.0.250
+    destination_port: 443
   - name: wireguard-socrat-0
     interface: WAN2
     protocol: udp

@@ -1,0 +1,7 @@
+---
+- name: Place Rancher replicas on both home nodes
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  roles:
+    - rancher_placement

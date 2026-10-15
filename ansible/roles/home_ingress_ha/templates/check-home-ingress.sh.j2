@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+/usr/bin/python3 /usr/local/libexec/announce-home-ingress-neighbors --config /etc/home-ingress-neighbors.json
+/usr/bin/curl --silent --show-error --fail --noproxy '*' --connect-timeout 1 --max-time 2 \
+    --cacert /var/lib/rancher/k3s/server/tls/server-ca.crt \
+    --cert /var/lib/rancher/k3s/server/tls/client-admin.crt \
+    --key /var/lib/rancher/k3s/server/tls/client-admin.key \
+    https://127.0.0.1:6443/readyz >/dev/null
+/usr/bin/curl --silent --show-error --fail --noproxy '*' --connect-timeout 1 --max-time 2 \
+    --resolve {{ (home_ingress_ha_hostname ~ ':443:' ~ home_ingress_ha_nodes[inventory_hostname].address) | quote }} \
+    {{ ('https://' ~ home_ingress_ha_hostname ~ '/ping') | quote }} >/dev/null

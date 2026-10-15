@@ -1,0 +1,16 @@
+---
+- name: Prepare authenticated WireGuard transport server
+  hosts: socrat-2
+  gather_facts: true
+  become: true
+  any_errors_fatal: true
+  roles:
+    - wireguard_tcp_transport
+
+- name: Activate authenticated WireGuard transport client
+  hosts: socrat-1
+  gather_facts: true
+  become: true
+  any_errors_fatal: true
+  roles:
+    - wireguard_tcp_transport

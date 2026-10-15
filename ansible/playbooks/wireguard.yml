@@ -6,3 +6,5 @@
   ignore_unreachable: true
   roles:
     - wireguard_socrat
+
+- ansible.builtin.import_playbook: wireguard-tcp-transport.yml

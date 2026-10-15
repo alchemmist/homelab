@@ -5,6 +5,10 @@
   gather_facts: false
   become: false
   tasks:
+    - name: Read the managed VPS ingress settings
+      ansible.builtin.set_fact:
+        vpn_edge_settings: "{{ lookup('file', playbook_dir + '/../../charts/traefik-edge/values.yaml') | from_yaml }}"
+
     - name: Inspect the previous edge deployment
       ansible.builtin.command: >-
         k3s kubectl -n caddy-edge get deployment caddy-edge
@@ -42,6 +46,7 @@
         helm upgrade --install traefik-edge {{ homelab_user_home }}/tmp-charts/traefik-edge
         --namespace traefik-edge --create-namespace
         --kubeconfig /etc/rancher/k3s/k3s.yaml
+        --set-string apiEndpoint={{ vpn_edge_settings.apiEndpoint }}
         --wait --timeout 3m
       changed_when: true
 
@@ -50,3 +55,5 @@
         k3s kubectl -n traefik-edge wait --for=condition=Ready
         certificate/traefik-edge-vpn --timeout=180s
       changed_when: false
+
+- ansible.builtin.import_playbook: rancher-namespaces.yml

@@ -75,7 +75,7 @@ Do not pass `-e ansible_port=...` to the SSH server migration playbook: extra va
 4. Add the persistent router forward or relay required by the new node, then rerun `ssh-gateway.yml` and `ssh-client.yml`. In static mode the gateway playbook manages relay sockets but does not create router forwards. Verify the destination host key and test `ssh socrat-N`.
 5. Apply the host baseline with `ansible-playbook playbooks/site.yml --limit socrat-N --ask-become-pass`. A new home node initially on server port `22` should first be migrated through a LAN overlay using `ssh.yml` and `homelab_ssh_bootstrap_port=22`.
 
-`site.yml` configures host settings, shared users, Starship, Syncthing host policy, and workload policy. It does not allocate VPN addresses or automatically join Kubernetes. Update the host aliases in the base role, `wg_socrat_nodes`, and the node IP map in `k3s.yml`, then run the corresponding networking and Kubernetes playbooks. Review storage and application placement for the new node separately.
+`site.yml` configures host settings, shared users, Starship, Syncthing host policy, and workload policy. It does not allocate VPN addresses or automatically join Kubernetes. Update the host aliases in the base role, `wg_socrat_nodes`, and the topology in the `k3s_ha` role, then run the corresponding networking and Kubernetes playbooks. Review storage and application placement for the new node separately.
 
 Removing a node also requires removing its router mapping and any relay socket explicitly; reconciliation never deletes unrelated mappings or infers removals from an unreachable node.
 
@@ -102,6 +102,10 @@ upnpc -l
 In the deployed static mode, expect public TCP mappings `2222`, `2223`, and `2224` in the router configuration, a disabled gateway timer, an active relay socket, and `Linger=yes`. Ansible does not recreate missing static router mappings. See [router desired state](router-static-mappings.md) and the [private administrative access runbook](wireguard-admin-access-plan.md#reapply-the-deployed-configuration). Test public endpoints from an external network as well as from the LAN.
 
 For SSH server persistence, rerun `ssh.yml` without a bootstrap override, check `sudo sshd -T`, and verify the service is enabled (`ssh.service` on Debian, `sshd.service` on Arch). At a suitable maintenance time, reboot the node and verify fresh SSH access.
+
+## Independent laptop-to-VPS transport
+
+The HA topology requires the `wireguard_tcp_transport` services on `socrat-1` and `socrat-2` while their direct WAN UDP path is unreliable. Apply `playbooks/wireguard-tcp-transport.yml` through the canonical networking/HA workflow and verify its client, relay and health timer after reboot. Preserve the private mode-`0600` authentication material and pinned TLS trust configuration; do not copy secrets into inventory or logs. This transport does not depend on `socrat-0`. Deployment and validation status are recorded in [the HA runbook](k3s-ha.md#home-laptop-to-vps-transport).
 
 ## Automatic boot and local desktop
 
@@ -131,7 +135,7 @@ Inventory settings:
 | `homelab_hide_flameshot_tray: true` | Hide only the Flameshot tray icon; enabled on `socrat-0`. |
 | `homelab_wallpaper_path` | Shared wallpaper destination, defaulting to `/usr/local/share/wallpapers/homelab/default.png`. |
 | `homelab_boot_services` | Existing network, SSH, WireGuard, and k3s services to enable and start. |
-| `homelab_boot_k3s_service` | `k3s.service` on the server or `k3s-agent.service` on a worker. |
+| `homelab_boot_k3s_service` | `k3s.service` on all current HA nodes; legacy workers use `k3s-agent.service`. |
 | `homelab_boot_wifi_uuid` | Optional existing Wi-Fi profile to verify for login-independent autoconnect. |
 | `homelab_ignore_lid_on_ac: true` | Ignore laptop lid closure on external power or while docked. |
 
@@ -172,9 +176,9 @@ systemctl is-enabled wg-quick@wg-socrat.service
 loginctl show-user alchemmist --property=Linger
 ```
 
-Check `ssh.service` and `k3s.service` on `socrat-0`, or `sshd.service` and `k3s-agent.service` on `socrat-1`, with both `systemctl is-enabled` and `systemctl is-active`. For the laptop also check `NetworkManager.service`. The effective getty command must contain `--autologin alchemmist`, and user lingering must be `yes`.
+Check `ssh.service` and `k3s.service` on `socrat-0`, or `sshd.service` and `k3s.service` on `socrat-1`, with both `systemctl is-enabled` and `systemctl is-active`. For the laptop also check `NetworkManager.service`. The effective getty command must contain `--autologin alchemmist`, and user lingering must be `yes`.
 
-After agreeing on a maintenance test, reboot one home node at a time. Start with the worker, verify fresh SSH access through the normal alias, local Hyprland startup without a selector, WireGuard connectivity, Kubernetes `Ready`, and absence of `DiskPressure`. Confirm the `socrat-1` backup folder stays paused. Rebooting `socrat-0` interrupts the current control plane, ingress, NFS, and public SSH gateway, so plan that test separately. A reboot test does not verify firmware behavior after loss of mains power; that needs a separate controlled test.
+After agreeing on a maintenance test, reboot one home node at a time. Start with `socrat-1`, verify fresh SSH access through the normal alias, local Hyprland startup without a selector, WireGuard connectivity, Kubernetes `Ready`, and absence of `DiskPressure`. Confirm the `socrat-1` backup folder stays paused. Rebooting `socrat-0` still interrupts NFS and the public SSH relay. The [HA migration](k3s-ha.md) adds a second home API server, a third etcd voter on the VPS, and redundant ingress; verify the router cutover and two remaining healthy voters before planning that test. A reboot test does not verify firmware behavior after loss of mains power; that needs a separate controlled test.
 
 If the graphical session fails, use SSH or log into tty2 with the normal account password. Inspect `journalctl -b -u getty@tty1.service` and the managed launcher/profile. To disable automatic local login, remove `/etc/systemd/system/getty@tty1.service.d/50-homelab-autologin.conf` and run `sudo systemctl daemon-reload`; leave the active getty alone until a planned restart. Set `homelab_desktop_autologin: false` in inventory before rerunning Ansible to avoid reinstalling the drop-in; this flag skips the role and does not remove an existing configuration by itself. Restore individual profile contents into the node-local files from the timestamped backup if necessary; do not reconnect managed paths to personal dotfiles. The isolation manifest records original paths for inspection. Reinstall removed Sway packages only if deliberately reverting to the previous desktop setup.
 
