@@ -4,7 +4,7 @@ The unified chart runs both VPN configurations in one Kubernetes Deployment, Hel
 
 | Container | Application version | Active database directory | Runtime assets |
 | --- | --- | --- | --- |
-| `primary` | 3.10.0, pinned image digest | `/srv/x-ui-lab/db` | Container image |
+| `primary` | 3.10.2, pinned image digest | `/srv/x-ui-lab/db` | Container image |
 | `compatibility` | 3.9.0, pinned image digest | `/etc/x-ui` | `/usr/local/x-ui/bin`, mounted at `/app/bin` |
 
 The deployment uses `hostNetwork`, `dnsPolicy: Default`, a single replica, and `Recreate`. Each container has separate database and runtime mounts. The database directories must already exist. Each container checks its own panel listener at startup and its Trojan listener for readiness. Consolidation does not merge databases, change images or migrate clients.
@@ -130,3 +130,33 @@ ansible-playbook playbooks/vpn-edge.yml
 Validation compared all 15 primary subscriptions (79 normalized links) before and after the switch, ignoring only the existing randomized Reality `sid` field. All 15 JSON subscriptions also matched the direct backend, and the configured panel path returned HTTP 200. A real Xray Trojan-over-WebSocket/TLS client fetched an HTTPS target successfully through both staged Traefik and the public port after cutover. Both 3x-ui pods retained their running processes without restarts. The public HTTP redirect and certificate issuance were verified. A home-network outage or VPS reboot was not part of this test.
 
 The old `/srv/caddy/data` and `/srv/caddy/config` directories remain as recovery data, with no Caddy process using them. To roll back the proxy, recover `charts/caddy-edge` from Git history, stop Traefik and wait for its pod to terminate, then deploy the old Caddy chart against those retained directories. Never run both proxies on the public ports concurrently. Keep 3x-ui pods and their databases running during a proxy rollback.
+
+## Primary application upgrade to 3.10.2
+
+Applied on 2026-10-15 using `playbooks/vpn-upgrade.yml`. The primary image is
+pinned to `ghcr.io/mhsanaei/3x-ui@sha256:6c7e73c5bc4b6d7d70866616f78d6c9866b4904defad3077c1e2b5c1c89c2ec1`
+from the upstream `v3.10.2` release. The compatibility container remains on its
+existing 3.9.0 image and retains its separate database and runtime mounts.
+
+Run from `ansible/` with an inventory that can reach both the VPS and controller:
+
+```bash
+ansible-playbook playbooks/vpn-upgrade.yml --ask-become-pass
+```
+
+The playbook requires normal Kubernetes operation, downloads the new image
+before downtime, validates the chart, and verifies an authenticated public VPN
+request. Under the watchdog lock and maintenance marker, it creates consistent
+private SQLite backups and subscription/configuration fingerprints, prepares a
+separate dormant runtime, and applies the Helm upgrade with atomic rollback.
+It checks configuration and subscriptions before replacing the dormant primary
+runtime, then tests native recovery with isolated networking and database copies.
+The watchdog resumes after maintenance. Failures restore the previous Helm
+revision and recovery runtime; database backups are never restored over live
+writers. A future schema-changing upgrade needs its own database rollback review.
+
+The live application reports 3.10.2, both containers are Ready, the authenticated
+public Trojan TLS/WebSocket probe passed, and native recovery validation passed.
+Backups and the previous dormant runtime are retained on the VPS at
+`/var/backups/homelab-vpn/upgrade-8ocf8AuD`. Chart rendering and VPN verifier/failover
+tests passed (33 tests), along with Helm lint and Ansible syntax validation.

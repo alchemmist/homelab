@@ -51,7 +51,7 @@ class XuiWorkloadTests(unittest.TestCase):
 
     def test_versions_and_probe_endpoints_are_preserved(self):
         expected = {
-            'primary': ('ef90d07ea00cf3b76bcd37e7c5025d73788dc188894c6a741c22776a83c2c556', '127.0.0.1', 18082, 12096, 32087),
+            'primary': ('6c7e73c5bc4b6d7d70866616f78d6c9866b4904defad3077c1e2b5c1c89c2ec1', '127.0.0.1', 18082, 12096, 32087),
             'compatibility': ('93a7a68e3d0a65be1b02d2bfc1f3ca02d0e800516a403e103cea2d7c7090855d', '172.18.0.1', 16582, 2096, 10443),
         }
         names = []
