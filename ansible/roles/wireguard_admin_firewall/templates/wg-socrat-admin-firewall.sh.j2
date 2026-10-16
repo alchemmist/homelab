@@ -6,6 +6,8 @@ input_chain_a={{ wg_socrat_admin_firewall_chain_prefix }}_INPUT_A
 input_chain_b={{ wg_socrat_admin_firewall_chain_prefix }}_INPUT_B
 forward_chain_a={{ wg_socrat_admin_firewall_chain_prefix }}_FORWARD_A
 forward_chain_b={{ wg_socrat_admin_firewall_chain_prefix }}_FORWARD_B
+nat_chain_a={{ wg_socrat_admin_firewall_chain_prefix }}_NAT_A
+nat_chain_b={{ wg_socrat_admin_firewall_chain_prefix }}_NAT_B
 iptables=$(command -v iptables || true)
 
 if [ -z "$iptables" ]; then
@@ -33,7 +35,24 @@ delete_chain() {
     fi
 }
 
+nat_delete_all() {
+    while ipt -t nat -C POSTROUTING -o "$interface" -j "$1" 2>/dev/null; do
+        ipt -t nat -D POSTROUTING -o "$interface" -j "$1"
+    done
+}
+
+nat_delete_chain() {
+    if ipt -t nat -nL "$1" >/dev/null 2>&1; then
+        ipt -t nat -F "$1"
+        ipt -t nat -X "$1"
+    fi
+}
+
 remove_rules() {
+    for chain in "$nat_chain_a" "$nat_chain_b"; do
+        nat_delete_all "$chain"
+        nat_delete_chain "$chain"
+    done
     for chain in "$input_chain_a" "$input_chain_b"; do
         delete_all INPUT -i "$interface" -j "$chain"
         delete_chain "$chain"
@@ -48,6 +67,23 @@ if [ "${1:-apply}" = remove ]; then
     remove_rules
     exit 0
 fi
+
+active_nat_chain=''
+if ipt -t nat -C POSTROUTING -o "$interface" -j "$nat_chain_a" 2>/dev/null; then
+    active_nat_chain=$nat_chain_a
+elif ipt -t nat -C POSTROUTING -o "$interface" -j "$nat_chain_b" 2>/dev/null; then
+    active_nat_chain=$nat_chain_b
+fi
+if [ "$active_nat_chain" = "$nat_chain_a" ]; then
+    new_nat_chain=$nat_chain_b
+else
+    new_nat_chain=$nat_chain_a
+fi
+nat_delete_all "$new_nat_chain"
+if ! ipt -t nat -nL "$new_nat_chain" >/dev/null 2>&1; then
+    ipt -t nat -N "$new_nat_chain"
+fi
+ipt -t nat -F "$new_nat_chain"
 
 active_input_chain=''
 active_forward_chain=''
@@ -84,6 +120,17 @@ fi
 ipt -F "$new_input_chain"
 ipt -F "$new_forward_chain"
 
+{% for rule in wg_socrat_admin_forward_rules %}
+{% set source = wg_socrat_admin_clients[rule.client].address %}
+{% set destination = wg_socrat_nodes[rule.destination].address %}
+{% for port in rule.tcp_ports %}
+ipt -A "$new_forward_chain" -o "$interface" -s {{ source }}/32 -d {{ destination }}/32 -p tcp --dport {{ port }} -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+ipt -A "$new_forward_chain" -o "$interface" -s {{ destination }}/32 -d {{ source }}/32 -p tcp --sport {{ port }} -m conntrack --ctstate ESTABLISHED -j ACCEPT
+ipt -t nat -A "$new_nat_chain" -s {{ source }}/32 -d {{ destination }}/32 -p tcp --dport {{ port }} -j SNAT --to-source {{ wg_socrat_nodes[inventory_hostname].address }}
+{% endfor %}
+{% endfor %}
+ipt -t nat -A "$new_nat_chain" -j RETURN
+
 {% for client in wg_socrat_admin_clients | dict2items | sort(attribute='key') %}
 client_address={{ client.value.address | quote }}
 ipt -A "$new_input_chain" -s "$client_address/32" -p tcp -m conntrack --ctstate NEW,ESTABLISHED -m tcp --dport {{ wg_socrat_admin_firewall_ssh_port }} -j ACCEPT
@@ -105,6 +152,7 @@ ipt -A "$new_forward_chain" -s "$client_address/32" -j REJECT --reject-with icmp
 
 ipt -A "$new_input_chain" -j RETURN
 ipt -A "$new_forward_chain" -j RETURN
+ipt -t nat -I POSTROUTING 1 -o "$interface" -j "$new_nat_chain"
 ipt -I INPUT 1 -i "$interface" -j "$new_input_chain"
 ipt -I FORWARD 1 -i "$interface" -j "$new_forward_chain"
 if [ -n "$active_input_chain" ]; then
@@ -114,4 +162,8 @@ fi
 if [ -n "$active_forward_chain" ]; then
     delete_all FORWARD -i "$interface" -j "$active_forward_chain"
     delete_chain "$active_forward_chain"
+fi
+if [ -n "$active_nat_chain" ]; then
+    nat_delete_all "$active_nat_chain"
+    nat_delete_chain "$active_nat_chain"
 fi

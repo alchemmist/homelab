@@ -4,6 +4,9 @@ listen-address={{ homelab_private_dns_listen_address }}
 bind-dynamic
 except-interface=lo
 no-resolv
+{% for server in homelab_private_dns_upstream_servers %}
+server={{ server }}
+{% endfor %}
 no-hosts
 domain-needed
 bogus-priv

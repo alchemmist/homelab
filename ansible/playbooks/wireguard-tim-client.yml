@@ -1,0 +1,61 @@
+---
+- name: Persist forwarding on the private client gateway
+  tags: tim_gateway
+  hosts: socrat-0
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Preserve IPv4 forwarding across gateway boots
+      ansible.builtin.copy:
+        dest: /etc/sysctl.d/91-homelab-wg-forwarding.conf
+        content: "net.ipv4.ip_forward = 1\n"
+        mode: '0644'
+
+    - name: Inspect gateway forwarding
+      ansible.builtin.command: sysctl -n net.ipv4.ip_forward
+      register: tim_gateway_forwarding
+      changed_when: false
+
+    - name: Enable gateway forwarding when needed
+      ansible.builtin.command: sysctl -w net.ipv4.ip_forward=1
+      when: tim_gateway_forwarding.stdout | trim != '1'
+
+- ansible.builtin.import_playbook: wireguard-admin-peers.yml
+
+- name: Provide complete phone DNS on the private resolvers
+  tags: tim_dns
+  hosts: socrat-0:socrat-1:socrat-2
+  gather_facts: true
+  become: true
+  serial: 1
+  any_errors_fatal: true
+  vars:
+    homelab_private_dns_listen_address: "{{ wg_socrat_nodes[inventory_hostname].address }}"
+  pre_tasks:
+    - name: Install the DNS verification utility
+      ansible.builtin.package:
+        name: "{{ 'bind' if ansible_facts.os_family == 'Archlinux' else 'bind9-dnsutils' }}"
+        state: present
+
+    - name: Initialize the private node records
+      ansible.builtin.set_fact:
+        homelab_private_dns_records: []
+
+    - name: Include every registered node in private DNS
+      ansible.builtin.set_fact:
+        homelab_private_dns_records: "{{ homelab_private_dns_records + [{'name': item.key.split('-')[-1] ~ '.' ~ homelab_ssh_public_host, 'address': item.value.address}] }}"
+      loop: "{{ wg_socrat_nodes | dict2items }}"
+      loop_control:
+        label: "{{ item.key }}"
+  roles:
+    - homelab_private_dns
+  post_tasks:
+    - name: Apply DNS changes before verification
+      ansible.builtin.meta: flush_handlers
+
+    - name: Verify private and public DNS resolution
+      ansible.builtin.command: "dig @{{ homelab_private_dns_listen_address }} {{ item }} A +short +time=3 +tries=1"
+      loop: [0.socrat.alchemmist.xyz, 1.socrat.alchemmist.xyz, 2.socrat.alchemmist.xyz, 3.socrat.alchemmist.xyz, debian.org]
+      register: tim_dns_result
+      changed_when: false
+      failed_when: tim_dns_result.rc != 0 or tim_dns_result.stdout | trim == ''

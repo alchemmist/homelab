@@ -6,6 +6,7 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 ExecStart={{ wg_socrat_admin_firewall_script_path }}
+ExecReload={{ wg_socrat_admin_firewall_script_path }}
 ExecStop={{ wg_socrat_admin_firewall_script_path }} remove
 RemainAfterExit=yes
 

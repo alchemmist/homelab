@@ -1,5 +1,9 @@
 from pathlib import Path
 import unittest
+import shlex
+import subprocess
+
+from jinja2 import Environment
 
 
 ROLE = Path(__file__).resolve().parents[1] / 'ansible/roles/wireguard_admin_firewall'
@@ -57,11 +61,43 @@ class WireGuardAdminFirewallTests(unittest.TestCase):
         self.assertLess(SCRIPT.index('ipt -I INPUT 1'), SCRIPT.index('delete_all INPUT -i "$interface" -j "$active_input_chain"'))
         self.assertLess(SCRIPT.index('ipt -A "$new_input_chain"'), SCRIPT.index('ipt -I INPUT 1'))
 
+    def test_transit_is_scoped_and_nat_is_reversible(self):
+        env = Environment()
+        env.filters['quote'] = shlex.quote
+        env.filters['bool'] = bool
+        env.filters['dict2items'] = lambda value: [dict(key=k, value=v) for k, v in value.items()]
+        script = env.from_string(SCRIPT).render(
+            wg_socrat_admin_firewall_interface='wg-socrat',
+            wg_socrat_admin_firewall_chain_prefix='WG_SOCRAT_ADMIN',
+            wg_socrat_admin_clients={'tim-phone': {'address': '10.250.0.7'}},
+            wg_socrat_nodes={'socrat-0': {'address': '10.250.0.1'}, 'socrat-3': {'address': '10.250.0.5'}},
+            inventory_hostname='socrat-0',
+            wg_socrat_admin_forward_rules=[{'client': 'tim-phone', 'destination': 'socrat-3', 'tcp_ports': [2222]}],
+            wg_socrat_admin_firewall_ssh_port=2222,
+            wg_socrat_admin_firewall_dns_port=53,
+            wireguard_private_web_enabled=False,
+            wireguard_private_http_enabled=False,
+        )
+        subprocess.run(['sh', '-n'], input=script, text=True, check=True)
+        forward = '-s 10.250.0.7/32 -d 10.250.0.5/32 -p tcp --dport 2222'
+        reverse = '-s 10.250.0.5/32 -d 10.250.0.7/32 -p tcp --sport 2222 -m conntrack --ctstate ESTABLISHED'
+        self.assertIn(forward, script)
+        self.assertIn(reverse, script)
+        self.assertIn('-j SNAT --to-source 10.250.0.1', script)
+        self.assertLess(script.index(forward), script.index('REJECT --reject-with icmp-admin-prohibited'))
+        self.assertLess(script.index('ipt -t nat -A "$new_nat_chain"'), script.index('ipt -t nat -I POSTROUTING'))
+        self.assertLess(script.index('ipt -t nat -I POSTROUTING'), script.index('nat_delete_all "$active_nat_chain"'))
+        self.assertNotIn('ipt -t nat -F POSTROUTING', script)
+        self.assertIn('nat_delete_all "$chain"', script)
+        self.assertIn('nat_delete_chain "$chain"', script)
+
     def test_persistent_unit_runs_after_wireguard_and_supports_removal(self):
         self.assertIn('After=network-online.target wg-quick@wg-socrat.service', UNIT)
         self.assertIn('ExecStart={{ wg_socrat_admin_firewall_script_path }}', UNIT)
         self.assertIn('ExecStop={{ wg_socrat_admin_firewall_script_path }} remove', UNIT)
         self.assertIn('RemainAfterExit=yes', UNIT)
+        self.assertIn('ExecReload={{ wg_socrat_admin_firewall_script_path }}', UNIT)
+        self.assertIn('state: reloaded', (ROLE / 'handlers/main.yml').read_text())
         self.assertIn('systemd_service', TASKS)
         self.assertIn('enabled: true', TASKS)
         self.assertIn('systemctl stop wg-socrat-admin-firewall.service', ROLLBACK)

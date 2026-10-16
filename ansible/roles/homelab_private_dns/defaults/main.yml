@@ -16,3 +16,4 @@ homelab_private_dns_unit_name: homelab-private-dns.service
 homelab_private_dns_pid_file: /run/homelab-private-dns/dnsmasq.pid
 homelab_private_dns_wg_service: wg-quick@wg-socrat.service
 homelab_private_dns_config_dir: /etc/homelab-private-dns.d
+homelab_private_dns_upstream_servers: []

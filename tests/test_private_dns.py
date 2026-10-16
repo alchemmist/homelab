@@ -23,7 +23,7 @@ class PrivateDnsRoleTests(unittest.TestCase):
         self.assertIn('homelab_private_dns_config_path: /etc/homelab-private-dns.conf', self.defaults)
         self.assertIn('dest: "/etc/systemd/system/{{ homelab_private_dns_unit_name }}"', self.tasks)
 
-    def test_dnsmasq_is_bound_to_wireguard_address_and_has_no_upstream(self):
+    def test_dnsmasq_is_bound_to_wireguard_address_and_has_explicit_upstreams(self):
         self.assertIn('listen-address={{ homelab_private_dns_listen_address }}', self.config)
         self.assertIn('bind-dynamic', self.config)
         self.assertIn('except-interface=lo', self.config)
@@ -31,7 +31,24 @@ class PrivateDnsRoleTests(unittest.TestCase):
         self.assertIn('no-resolv', self.config)
         self.assertIn('no-hosts', self.config)
         self.assertNotIn('address=/#/', self.config)
-        self.assertNotIn('server=', self.config)
+        self.assertIn('homelab_private_dns_upstream_servers: []', self.defaults)
+        self.assertIn('server={{ server }}', self.config)
+
+    def test_only_configured_upstreams_are_rendered(self):
+        from jinja2 import Template
+        import yaml
+        values = yaml.safe_load(self.defaults)
+        values['homelab_private_dns_records'] = [
+            {'name': '3.socrat.alchemmist.xyz', 'address': '10.250.0.5'}
+        ]
+        template = Template(self.config)
+        self.assertNotIn('server=', template.render(**values))
+        values['homelab_private_dns_upstream_servers'] = ['1.1.1.1', '9.9.9.9']
+        rendered = template.render(**values)
+        self.assertIn('server=1.1.1.1', rendered)
+        self.assertIn('server=9.9.9.9', rendered)
+        self.assertIn('host-record=3.socrat.alchemmist.xyz,10.250.0.5', rendered)
+        self.assertIn('local=/3.socrat.alchemmist.xyz/', rendered)
 
     def test_records_are_rendered_as_explicit_addresses(self):
         self.assertRegex(self.config, r'host-record=\{\{ record\.name \}\},\{\{ record\.address \}\}')
