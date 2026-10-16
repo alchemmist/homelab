@@ -23,6 +23,9 @@ wg_socrat_peer_endpoints:
   socrat-2:
     socrat-1: ''
 wg_socrat_admin_clients:
+  tim-phone:
+    address: 10.250.0.7
+    public_key: 9Xb/IL7jwM1Z5CLMGGPyIou89bW2vOijGyEbZS1OzCQ=
   assistant:
     address: 10.250.0.6
     public_key: RdRir+QQhVg9aSwGNmBcvSKDak7gQyuaYfJx8KDgXB4=
@@ -53,3 +56,5 @@ homelab_users:
     authorized_keys:
       - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILjT3ii4vL1FL9TRws08QCzIZhrHFG69Q5K9Adtm0y1F antropophag@gmail.com"
       - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN1C4WZYz4ma1tgpP4Bzw509lCXlHva6ybdSV79nNyv0 phone"
+
+homelab_private_dns_upstream_servers: [1.1.1.1, 9.9.9.9]

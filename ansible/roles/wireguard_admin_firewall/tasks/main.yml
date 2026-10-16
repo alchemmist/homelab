@@ -15,6 +15,22 @@
   loop_control:
     label: "{{ item.key }}"
 
+- name: Validate administrative forwarding registry
+  ansible.builtin.assert:
+    that:
+      - item.client in wg_socrat_admin_clients
+      - item.destination in wg_socrat_nodes
+      - inventory_hostname in wg_socrat_nodes
+      - item.destination != inventory_hostname
+      - item.tcp_ports is sequence
+      - item.tcp_ports is not string
+      - item.tcp_ports | length > 0
+      - item.tcp_ports | map('int') | min >= 1
+      - item.tcp_ports | map('int') | max <= 65535
+      - item.tcp_ports | select('integer') | list | length == item.tcp_ports | length
+    fail_msg: Administrative forwarding requires registered endpoints and explicit integer TCP ports.
+  loop: "{{ wg_socrat_admin_forward_rules }}"
+
 - name: Install WireGuard administrative firewall script
   ansible.builtin.file:
     path: "{{ wg_socrat_admin_firewall_script_path | dirname }}"
