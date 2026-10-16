@@ -1,0 +1,152 @@
+---
+- name: Protect the maintenance connection independently of SSH
+  ansible.builtin.import_tasks: ethernet_guard.yml
+
+- name: Retain Ethernet under ifupdown and release Wi-Fi to NetworkManager
+  ansible.builtin.copy:
+    dest: /etc/network/interfaces
+    content: |
+      source /etc/network/interfaces.d/*
+      auto lo
+      iface lo inet loopback
+      allow-hotplug {{ homelab_ethernet_interface }}
+      iface {{ homelab_ethernet_interface }} inet dhcp
+    backup: true
+    mode: '0644'
+
+- name: Prepare NetworkManager configuration before package activation
+  ansible.builtin.file:
+    path: /etc/NetworkManager/conf.d
+    state: directory
+    mode: '0755'
+
+- name: Keep the maintenance Ethernet interface under ifupdown
+  ansible.builtin.copy:
+    dest: /etc/NetworkManager/conf.d/10-homelab-ethernet.conf
+    content: |
+      [keyfile]
+      unmanaged-devices=interface-name:{{ homelab_ethernet_interface }}
+    mode: '0644'
+
+- name: Install the wireless manager and distribution firmware
+  ansible.builtin.apt:
+    name: [network-manager, firmware-realtek, wpasupplicant, rfkill, iw, ca-certificates]
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  register: homelab_wireless_packages
+
+- name: Reserve Wi-Fi DHCP for NetworkManager
+  ansible.builtin.lineinfile:
+    path: /etc/dhcpcd.conf
+    line: "denyinterfaces {{ homelab_wifi_interface }}"
+    create: true
+    mode: '0644'
+
+- name: Disable Realtek power saving during wireless operation
+  ansible.builtin.copy:
+    dest: /etc/modprobe.d/homelab-rtl8723ae.conf
+    content: "options rtl8723ae ips=0 fwlps=0 swlps=0 msi=0\n"
+    mode: '0644'
+  register: homelab_realtek_options
+
+- name: Check the active wireless power settings
+  ansible.builtin.command: cat /sys/module/rtl8723ae/parameters/ips /sys/module/rtl8723ae/parameters/fwlps /sys/module/rtl8723ae/parameters/swlps
+  register: homelab_realtek_runtime
+  changed_when: false
+  failed_when: false
+
+- name: Require the stable driver settings without hot-reloading a running driver
+  ansible.builtin.assert:
+    that: homelab_realtek_runtime.stdout_lines == ['N', 'N', 'N']
+    fail_msg: Boot with the managed Realtek settings before attempting Wi-Fi. This role does not hot-reload the driver remotely.
+
+- name: Start NetworkManager
+  ansible.builtin.systemd_service:
+    name: NetworkManager
+    state: started
+    enabled: true
+
+- name: Read the existing private Wi-Fi credentials
+  ansible.builtin.slurp:
+    src: /etc/wifi.conf
+  register: homelab_wifi_credentials
+  no_log: true
+
+- name: Extract the derived WPA key without storing it in inventory
+  ansible.builtin.set_fact:
+    homelab_wifi_psk: "{{ (homelab_wifi_credentials.content | b64decode | regex_findall('(?m)^\\s*psk=([0-9a-fA-F]{64})\\s*$')) | first }}"
+  no_log: true
+
+- name: Create the managed NetworkManager Wi-Fi profile
+  ansible.builtin.copy:
+    dest: /etc/NetworkManager/system-connections/homelab-wifi.nmconnection
+    content: |
+      [connection]
+      id=homelab-wifi
+      type=wifi
+      interface-name={{ homelab_wifi_interface }}
+      autoconnect={{ homelab_wifi_autoconnect | bool | ternary('true', 'false') }}
+      [wifi]
+      mode=infrastructure
+      ssid={{ homelab_wifi_ssid }}
+      powersave=2
+      [wifi-security]
+      key-mgmt=wpa-psk
+      psk={{ homelab_wifi_psk }}
+      [ipv4]
+      method=auto
+      route-metric=600
+      [ipv6]
+      method=auto
+    owner: root
+    group: root
+    mode: '0600'
+  no_log: true
+  register: homelab_nm_wifi_profile
+
+- name: Load the saved connection profile
+  ansible.builtin.command: nmcli connection reload
+  changed_when: false
+
+- name: Reload interface management policy
+  ansible.builtin.command: nmcli general reload conf
+  changed_when: false
+
+- name: Manage the wireless interface
+  ansible.builtin.command: "nmcli device set {{ homelab_wifi_interface }} managed yes"
+  changed_when: false
+
+- name: Enable the Wi-Fi radio
+  ansible.builtin.command: nmcli radio wifi on
+  changed_when: false
+
+- name: Read available wireless networks
+  ansible.builtin.command: "nmcli --wait 20 -f SSID,SIGNAL,FREQ device wifi list ifname {{ homelab_wifi_interface }} --rescan yes"
+  register: homelab_wifi_scan
+  changed_when: false
+
+- name: Show the wireless scan result
+  ansible.builtin.debug:
+    var: homelab_wifi_scan.stdout_lines
+
+- name: Inspect the current wireless connection
+  ansible.builtin.command: "nmcli -g GENERAL.CONNECTION device show {{ homelab_wifi_interface }}"
+  register: homelab_wifi_active
+  changed_when: false
+
+- name: Connect to the managed wireless network
+  ansible.builtin.command: nmcli --wait 45 connection up homelab-wifi
+  changed_when: true
+  when:
+    - homelab_wifi_autoconnect | bool
+    - homelab_wifi_active.stdout | trim != 'homelab-wifi' or homelab_nm_wifi_profile.changed
+
+- name: Verify remote administration still works after wireless setup
+  ansible.builtin.wait_for_connection:
+    timeout: 30
+
+- name: Stop the temporary Ethernet protection after validation
+  ansible.builtin.systemd_service:
+    name: homelab-ethernet-guard.service
+    state: stopped

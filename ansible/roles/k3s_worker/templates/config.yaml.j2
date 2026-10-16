@@ -1,0 +1,14 @@
+server: {{ k3s_worker_server }}
+token-file: /etc/rancher/k3s/worker-token
+node-name: {{ k3s_worker_name }}
+node-ip: {{ k3s_worker_ip }}
+flannel-iface: wg-socrat
+node-label:
+  - svccontroller.k3s.cattle.io/enablelb=false
+  - homelab.io/profile=desktop-worker
+node-taint:
+  - {{ k3s_worker_bootstrap_taint }}
+kubelet-arg:
+  - system-reserved={{ k3s_worker_system_reserved }}
+  - kube-reserved={{ k3s_worker_kube_reserved }}
+  - eviction-hard=memory.available<200Mi,nodefs.available<10%,imagefs.available<15%,nodefs.inodesFree<5%

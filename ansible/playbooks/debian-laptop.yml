@@ -1,0 +1,23 @@
+---
+- name: Bootstrap Ansible on the minimal Debian installation
+  hosts: socrat-3
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Install Python when absent
+      ansible.builtin.raw: |
+        set -eu
+        if ! command -v python3 >/dev/null 2>&1; then
+          apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y python3
+          echo HOMELAB_PYTHON_INSTALLED
+        fi
+      register: homelab_python_bootstrap
+      changed_when: "'HOMELAB_PYTHON_INSTALLED' in homelab_python_bootstrap.stdout"
+      tags: always
+
+- name: Provision the Debian laptop desktop and networking
+  hosts: socrat-3
+  gather_facts: true
+  become: true
+  roles:
+    - debian_laptop

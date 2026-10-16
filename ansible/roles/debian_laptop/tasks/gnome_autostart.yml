@@ -1,0 +1,58 @@
+---
+- name: Automatically log the server account into GNOME
+  community.general.ini_file:
+    path: /etc/gdm3/daemon.conf
+    section: daemon
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+  loop:
+    - {option: AutomaticLoginEnable, value: 'true'}
+    - {option: AutomaticLogin, value: alchemmist}
+
+- name: Create the package cache for the pinned system monitor
+  ansible.builtin.file:
+    path: /var/cache/homelab
+    state: directory
+    mode: '0755'
+
+- name: Download the official bottom package with checksum verification
+  ansible.builtin.get_url:
+    url: https://github.com/ClementTsang/bottom/releases/download/0.14.9/bottom_0.14.9-1_amd64.deb
+    checksum: sha256:e8312526746c1190c3433e6ce0843f64c6e0c501003ee377552745c040dc6d56
+    dest: /var/cache/homelab/bottom_0.14.9-1_amd64.deb
+    mode: '0644'
+
+- name: Install the verified monitor package
+  ansible.builtin.apt:
+    deb: /var/cache/homelab/bottom_0.14.9-1_amd64.deb
+
+- name: Reuse the shared terminal and monitoring configuration
+  ansible.builtin.import_role:
+    name: desktop_terminal
+
+- name: Create the GNOME account autostart directory
+  ansible.builtin.file:
+    path: /home/alchemmist/.config/autostart
+    state: directory
+    owner: alchemmist
+    group: alchemmist
+    mode: '0755'
+
+- name: Start the shared monitor terminal after graphical login
+  ansible.builtin.copy:
+    dest: /home/alchemmist/.config/autostart/homelab-monitor.desktop
+    content: |
+      [Desktop Entry]
+      Type=Application
+      Name=Homelab monitor
+      Exec=/usr/local/bin/homelab-monitor-terminal
+      Terminal=false
+      OnlyShowIn=GNOME;
+      X-GNOME-Autostart-enabled=true
+    owner: alchemmist
+    group: alchemmist
+    mode: '0644'

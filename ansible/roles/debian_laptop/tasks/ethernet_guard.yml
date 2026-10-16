@@ -1,0 +1,33 @@
+---
+- name: Require the dedicated maintenance Ethernet interface
+  ansible.builtin.assert:
+    that:
+      - homelab_ethernet_interface == 'enp2s0'
+      - homelab_ethernet_interface != homelab_wifi_interface
+
+- name: Install the bounded Ethernet recovery guard
+  ansible.builtin.template:
+    src: homelab-ethernet-guard.sh.j2
+    dest: /usr/local/sbin/homelab-ethernet-guard
+    owner: root
+    group: root
+    mode: '0700'
+    validate: /bin/sh -n %s
+
+- name: Inspect the existing maintenance guard
+  ansible.builtin.command: systemctl is-active homelab-ethernet-guard.service
+  register: homelab_ethernet_guard_active
+  changed_when: false
+  failed_when: homelab_ethernet_guard_active.rc not in [0, 3, 4]
+
+- name: Start independent Ethernet protection for at most thirty minutes
+  ansible.builtin.command:
+    argv:
+      - systemd-run
+      - --unit=homelab-ethernet-guard
+      - --collect
+      - --property=RuntimeMaxSec=1800
+      - --property=TimeoutStopSec=5
+      - /usr/local/sbin/homelab-ethernet-guard
+  when: homelab_ethernet_guard_active.stdout | trim != 'active'
+  changed_when: true

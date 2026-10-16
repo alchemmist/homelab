@@ -1,0 +1,134 @@
+---
+- name: Require the dedicated Debian laptop
+  ansible.builtin.assert:
+    that:
+      - inventory_hostname == 'socrat-3'
+      - ansible_facts.distribution == 'Debian'
+      - ansible_facts.distribution_major_version == '13'
+  tags: always
+
+- name: Enforce the stable kernel configuration
+  ansible.builtin.import_tasks: kernel_safety.yml
+  tags: [always, kernel_safety]
+
+- name: Keep the server out of suspend and hibernation
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    masked: true
+  loop: [sleep.target, suspend.target, hibernate.target, hybrid-sleep.target, suspend-then-hibernate.target]
+  tags: [always, kernel_safety]
+
+- name: Configure Wi-Fi
+  ansible.builtin.import_tasks: wifi.yml
+  tags: wifi
+
+- name: Set the node hostname
+  ansible.builtin.hostname:
+    name: "{{ inventory_hostname }}"
+  tags: utilities
+
+- name: Resolve the local hostname without relying on DNS
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.1\.1\s'
+    line: "127.0.1.1 {{ inventory_hostname }}"
+  tags: utilities
+
+- name: Install server administration utilities
+  ansible.builtin.apt:
+    name: [sudo, ca-certificates, curl, wget, git, tmux, htop, neovim, vim-tiny, jq, rsync, zip, unzip, 7zip, xz-utils, bzip2, tar, bash-completion, ripgrep, fd-find, tree, less, man-db, manpages, dnsutils, iproute2, iputils-ping, traceroute, mtr-tiny, netcat-openbsd, tcpdump, ethtool, lsof, strace, pciutils, usbutils, procps, psmisc, sysstat, iotop-c, ncdu, smartmontools, nvme-cli, parted, chrony, wireguard-tools, nfs-common, openssh-server, python3, python3-venv, python3-pip, build-essential, pkg-config]
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  tags: utilities
+
+- name: Grant the administrator sudo group membership
+  ansible.builtin.user:
+    name: alchemmist
+    groups: sudo
+    append: true
+  tags: utilities
+
+- name: Enable SSH and clock synchronization
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop: [ssh, chrony]
+  tags: utilities
+
+- name: Use the local administration timezone
+  community.general.timezone:
+    name: Europe/Moscow
+  tags: utilities
+
+- name: Install the current Debian stable kernel
+  ansible.builtin.apt:
+    name: linux-image-amd64
+    state: latest
+    update_cache: true
+    cache_valid_time: 3600
+  tags: kernel
+
+- name: Install GNOME and its display manager
+  ansible.builtin.apt:
+    name: [gnome-core, gdm3, gnome-terminal, firmware-amd-graphics, fonts-dejavu, fonts-noto-core]
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  tags: gnome
+
+- name: Create the system desktop settings directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop: [/etc/dconf/db/local.d, /etc/dconf/profile]
+  tags: gnome
+
+- name: Prevent automatic GNOME suspend for a server session
+  ansible.builtin.copy:
+    dest: /etc/dconf/db/local.d/00-homelab-power
+    content: |
+      [org/gnome/settings-daemon/plugins/power]
+      sleep-inactive-ac-type='nothing'
+      sleep-inactive-battery-type='nothing'
+    owner: root
+    group: root
+    mode: '0644'
+  tags: gnome
+
+- name: Enable the system dconf profile
+  ansible.builtin.copy:
+    dest: /etc/dconf/profile/user
+    content: |
+      user-db:user
+      system-db:local
+    mode: '0644'
+  tags: gnome
+
+- name: Compile the system desktop settings
+  ansible.builtin.command: dconf update
+  changed_when: false
+  tags: gnome
+
+- name: Configure unattended graphical startup on the new server
+  ansible.builtin.import_tasks: gnome_autostart.yml
+  tags: gnome
+
+- name: Configure the shared wallpaper and fullscreen monitor
+  ansible.builtin.import_tasks: appearance.yml
+  tags: [gnome, appearance]
+
+- name: Use graphical boot
+  ansible.builtin.command: systemctl set-default graphical.target
+  register: homelab_graphical_target
+  changed_when: "'Created symlink' in homelab_graphical_target.stderr"
+  tags: gnome
+
+- name: Enable and start the GNOME login screen
+  ansible.builtin.systemd_service:
+    name: gdm3
+    state: started
+    enabled: true
+  tags: gnome

@@ -1,0 +1,79 @@
+---
+- name: Reuse the shared cluster wallpaper asset
+  ansible.builtin.import_role:
+    name: wallpaper_asset
+
+- name: Create the GNOME system settings directory
+  ansible.builtin.file:
+    path: /etc/dconf/db/local.d
+    state: directory
+    mode: '0755'
+
+- name: Set the shared wallpaper for light, dark, and locked GNOME sessions
+  ansible.builtin.copy:
+    dest: /etc/dconf/db/local.d/01-homelab-wallpaper
+    content: |
+      [org/gnome/desktop/background]
+      picture-uri='file://{{ homelab_wallpaper_path }}'
+      picture-uri-dark='file://{{ homelab_wallpaper_path }}'
+      picture-options='zoom'
+      [org/gnome/desktop/screensaver]
+      picture-uri='file://{{ homelab_wallpaper_path }}'
+      picture-options='zoom'
+    mode: '0644'
+  register: homelab_wallpaper_defaults
+
+- name: Compile the wallpaper defaults
+  ansible.builtin.command: dconf update
+  changed_when: true
+  when: homelab_wallpaper_defaults.changed
+
+- name: Resolve the graphical account UID
+  ansible.builtin.command: "id -u {{ homelab_user }}"
+  register: homelab_desktop_uid
+  changed_when: false
+
+- name: Check whether the graphical account has a running bus
+  ansible.builtin.stat:
+    path: "/run/user/{{ homelab_desktop_uid.stdout }}/bus"
+  register: homelab_desktop_bus
+
+- name: Apply the wallpaper to the current account without restarting GNOME
+  community.general.dconf:
+    key: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+  become: false
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ homelab_desktop_uid.stdout }}"
+    DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/{{ homelab_desktop_uid.stdout }}/bus"
+  loop:
+    - {key: /org/gnome/desktop/background/picture-uri, value: "'file://{{ homelab_wallpaper_path }}'"}
+    - {key: /org/gnome/desktop/background/picture-uri-dark, value: "'file://{{ homelab_wallpaper_path }}'"}
+    - {key: /org/gnome/desktop/background/picture-options, value: "'zoom'"}
+    - {key: /org/gnome/desktop/screensaver/picture-uri, value: "'file://{{ homelab_wallpaper_path }}'"}
+    - {key: /org/gnome/desktop/screensaver/picture-options, value: "'zoom'"}
+  when: homelab_desktop_bus.stat.exists
+
+- name: Start Alacritty fullscreen without window decorations on this GNOME node
+  community.general.ini_file:
+    path: "{{ homelab_user_home }}/.config/alacritty/alacritty.toml"
+    section: window
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: '0644'
+    backup: true
+  loop:
+    - {option: startup_mode, value: '"Fullscreen"'}
+    - {option: decorations, value: '"None"'}
+
+- name: Validate the resulting terminal configuration
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/python3
+      - -c
+      - 'import sys,tomllib; tomllib.load(open(sys.argv[1], "rb"))'
+      - "{{ homelab_user_home }}/.config/alacritty/alacritty.toml"
+  changed_when: false
