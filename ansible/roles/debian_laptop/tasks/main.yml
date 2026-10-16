@@ -49,18 +49,20 @@
     append: true
   tags: utilities
 
-- name: Enable SSH and clock synchronization
+- name: Enable SSH on boot
   ansible.builtin.systemd_service:
-    name: "{{ item }}"
+    name: ssh
     state: started
     enabled: true
-  loop: [ssh, chrony]
   tags: utilities
 
-- name: Use the local administration timezone
-  community.general.timezone:
-    name: Europe/Moscow
-  tags: utilities
+- name: Configure English and Russian UTF-8 locales
+  ansible.builtin.import_tasks: locale.yml
+  tags: [utilities, locales]
+
+- name: Configure Internet clock synchronization
+  ansible.builtin.import_tasks: time.yml
+  tags: [utilities, time]
 
 - name: Install the current Debian stable kernel
   ansible.builtin.apt:

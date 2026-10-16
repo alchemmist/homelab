@@ -1,0 +1,61 @@
+---
+- name: Install locale generation tools
+  ansible.builtin.apt:
+    name: locales
+    state: present
+
+- name: Generate English and Russian UTF-8 locales
+  community.general.locale_gen:
+    name: [en_US.UTF-8, ru_RU.UTF-8]
+    state: present
+
+- name: Set the default system language
+  ansible.builtin.copy:
+    dest: /etc/default/locale
+    content: "LANG=en_US.UTF-8\n"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Validate available UTF-8 locales
+  ansible.builtin.command:
+    argv: [locale, charmap]
+  environment:
+    LC_ALL: "{{ item }}"
+  loop: [C.UTF-8, en_US.UTF-8, ru_RU.UTF-8]
+  register: homelab_locale_validation
+  changed_when: false
+  failed_when: >-
+    homelab_locale_validation.rc != 0 or
+    homelab_locale_validation.stdout != 'UTF-8' or
+    homelab_locale_validation.stderr | length > 0
+  when: not ansible_check_mode
+
+- name: Ensure the SSH configuration directory exists
+  ansible.builtin.file:
+    path: /etc/ssh/sshd_config.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Normalize the SSH character locale for macOS clients
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/20-homelab-locale.conf
+    content: "SetEnv LC_CTYPE=C.UTF-8\n"
+    owner: root
+    group: root
+    mode: '0644'
+    validate: /usr/sbin/sshd -t -f %s
+  register: homelab_ssh_locale_config
+
+- name: Validate the complete SSH configuration
+  ansible.builtin.command: /usr/sbin/sshd -t
+  changed_when: false
+  when: homelab_ssh_locale_config.changed
+
+- name: Reload SSH after updating the session locale
+  ansible.builtin.systemd_service:
+    name: ssh
+    state: reloaded
+  when: homelab_ssh_locale_config.changed
