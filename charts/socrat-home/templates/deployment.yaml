@@ -8,12 +8,19 @@ metadata:
 spec:
   replicas: {{ .Values.replicaCount }}
   strategy:
-    type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 0
   selector:
     matchLabels:
       app: {{ .Release.Name }}
   template:
     metadata:
+      {{- if .Values.homepageIndex.enabled }}
+      annotations:
+        checksum/homepage-index: {{ .Files.Get "files/index.html" | sha256sum }}
+      {{- end }}
       labels:
         app: {{ .Release.Name }}
         app.kubernetes.io/name: {{ .Chart.Name }}
@@ -43,11 +50,24 @@ spec:
             matchLabels:
               app: {{ .Release.Name }}
       {{- end }}
+      {{- if .Values.homepageIndex.enabled }}
+      volumes:
+        - name: homepage-index
+          configMap:
+            name: {{ .Release.Name }}-index
+      {{- end }}
       containers:
         - name: nginx
           image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.service.targetPort }}
+          {{- if .Values.homepageIndex.enabled }}
+          volumeMounts:
+            - name: homepage-index
+              mountPath: /usr/share/nginx/html/index.html
+              subPath: index.html
+              readOnly: true
+          {{- end }}
           resources:
 {{ toYaml .Values.resources | indent 12 }}

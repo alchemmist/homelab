@@ -15,3 +15,5 @@ The bundle sets `createNamespace: false`; do not grant cluster-wide namespace cr
 DNS must point `wiki.alchemmist.xyz` at the public ingress. Existing issuer `letsencrypt-http01` issues `wiki/wiki-tls`. Verify Fleet readiness, both Deployment replicas, TLS, health/version endpoints, unknown-path 404 behavior and the robots header. Test desktop/mobile navigation and Russian search. Five consecutive public version reads do not replace Kubernetes replica readiness checks.
 
 Roll back by reverting the relevant source commit on main and using the same pipeline. A failed build does not advance publication. Atomic Helm updates retain the preceding release on failed readiness. Deleting the Fleet GitRepo can remove its application; do not use deletion as rollback.
+
+The Socrat homepage links to the wiki through its chart-managed index ConfigMap. Configure monitoring with `python3 scripts/configure-wiki-monitor.py --activate --publish`; it requests the Kuma password interactively, reuses the exact-URL monitor, and adds it to the existing Socrat apps group without replacing other monitors. It uses the supported API and does not restart Kuma or edit its database.

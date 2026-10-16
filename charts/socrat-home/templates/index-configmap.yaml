@@ -1,0 +1,9 @@
+{{- if .Values.homepageIndex.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-index
+data:
+  index.html: |
+{{ .Files.Get "files/index.html" | indent 4 }}
+{{- end }}
