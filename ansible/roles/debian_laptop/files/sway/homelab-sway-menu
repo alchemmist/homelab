@@ -1,0 +1,17 @@
+#!/bin/sh
+choice=$(printf '%s\n' 'Браузер' 'Telegram' 'MAX' 'Яндекс Почта' 'Gmail' 'Файлы' 'Видео' 'Мониторинг' 'Терминал' 'Звук' 'Сеть' 'Свёрнутые окна' 'Все приложения' | /usr/bin/wofi --dmenu --insensitive --prompt 'Меню' --width 420 --height 540) || exit 0
+case "$choice" in
+    'Браузер') exec /usr/local/bin/homelab-sway-app browser ;;
+    'Telegram') exec /usr/local/bin/homelab-sway-app telegram ;;
+    'MAX') exec /usr/local/bin/homelab-sway-app max ;;
+    'Яндекс Почта') exec /usr/local/bin/homelab-sway-app yandex-mail ;;
+    'Gmail') exec /usr/local/bin/homelab-sway-app gmail ;;
+    'Файлы') exec /usr/local/bin/homelab-sway-app files ;;
+    'Видео') exec /usr/local/bin/homelab-sway-app video ;;
+    'Мониторинг') exec /usr/local/bin/homelab-sway-app monitor ;;
+    'Терминал') exec /usr/local/bin/homelab-sway-app terminal ;;
+    'Звук') exec /usr/bin/pavucontrol ;;
+    'Сеть') exec /usr/bin/nm-connection-editor ;;
+    'Свёрнутые окна') exec /usr/local/bin/homelab-sway-window-action restore ;;
+    'Все приложения') exec /usr/bin/wofi --show drun --allow-images --insensitive --prompt 'Приложения' ;;
+esac

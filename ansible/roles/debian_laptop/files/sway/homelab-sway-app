@@ -1,0 +1,32 @@
+#!/usr/bin/python3
+import os
+import sys
+import json
+from pathlib import Path
+
+
+CONFIG = Path.home() / ".config/homelab-desktop/apps.json"
+preferences = json.loads(CONFIG.read_text()) if CONFIG.exists() else {}
+
+
+COMMANDS = {
+    "browser": ["/usr/bin/firefox-esr"],
+    "files": ["/usr/bin/thunar"],
+    "mail": ["/usr/bin/firefox-esr", preferences.get("mail_url", "https://mail.yandex.ru/")],
+    "messenger": ["/usr/bin/firefox-esr", preferences.get("messenger_url", "https://web.telegram.org/")],
+    "telegram": ["/usr/bin/firefox-esr", "https://web.telegram.org/"],
+    "max": ["/usr/bin/firefox-esr", "https://web.max.ru/"],
+    "yandex-mail": ["/usr/bin/firefox-esr", "https://mail.yandex.ru/"],
+    "gmail": ["/usr/bin/firefox-esr", "https://mail.google.com/"],
+    "video": ["/usr/bin/firefox-esr", "https://www.youtube.com/"],
+    "monitor": ["/usr/bin/alacritty", "--class", "homelab-monitor", "-e", "/usr/bin/tmux", "new-session", "-A", "-s", "homelab-monitor", "-n", "monitor", "/usr/local/bin/homelab-monitor-shell"],
+    "terminal": ["/usr/bin/alacritty", "-o", 'window.startup_mode="Windowed"', "-o", 'window.decorations="Full"'],
+}
+
+
+if len(sys.argv) != 2 or sys.argv[1] not in COMMANDS:
+    sys.exit("Usage: homelab-sway-app " + "|".join(COMMANDS))
+os.environ["LANG"] = "ru_RU.UTF-8"
+os.environ["LANGUAGE"] = "ru:en"
+command = COMMANDS[sys.argv[1]]
+os.execv(command[0], command)

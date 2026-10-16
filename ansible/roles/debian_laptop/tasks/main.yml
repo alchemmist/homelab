@@ -138,3 +138,8 @@
     state: started
     enabled: true
   tags: gnome
+
+- name: Configure the lightweight family desktop
+  ansible.builtin.import_tasks: sway.yml
+  when: homelab_laptop_desktop == 'sway'
+  tags: sway

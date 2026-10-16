@@ -1,0 +1,102 @@
+#!/usr/bin/python3
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+
+
+def ipc(command):
+    result = subprocess.run(["swaymsg", "-r", command], check=True, capture_output=True, text=True)
+    responses = json.loads(result.stdout)
+    if any(not item.get("success") for item in responses):
+        raise RuntimeError(result.stdout)
+
+
+def tree():
+    return json.loads(subprocess.check_output(["swaymsg", "-r", "-t", "get_tree"], text=True))
+
+
+def windows(node, workspace=None):
+    if node.get("type") == "workspace":
+        workspace = node
+    if node.get("app_id") or node.get("window"):
+        yield node, workspace
+    for child in node.get("nodes", []) + node.get("floating_nodes", []):
+        yield from windows(child, workspace)
+
+
+def apply(node_id, command):
+    ipc(f"[con_id={int(node_id)}] {command}")
+
+
+def restore(items):
+    choices = {f"{index + 1}. {node.get('name') or node.get('app_id') or 'Окно'}": node["id"] for index, (node, workspace) in enumerate(items) if workspace and workspace.get("name") == "__i3_scratch"}
+    if not choices:
+        return
+    result = subprocess.run(["wofi", "--dmenu", "--insensitive", "--prompt", "Открыть свёрнутое окно"], input="\n".join(choices), capture_output=True, text=True)
+    if result.returncode == 0 and result.stdout.strip() in choices:
+        apply(choices[result.stdout.strip()], "scratchpad show")
+
+
+def desktop(items, state_path):
+    state = json.loads(state_path.read_text()) if state_path.exists() else []
+    if state:
+        hidden = {node["id"] for node, workspace in items if workspace and workspace.get("name") == "__i3_scratch"}
+        for node_id in state:
+            if node_id in hidden:
+                apply(node_id, "scratchpad show")
+        state_path.unlink(missing_ok=True)
+        return
+    workspace = next((workspace for node, workspace in items if node.get("focused")), None)
+    if workspace is None:
+        return
+    ids = [node["id"] for node, parent in items if parent and parent["id"] == workspace["id"]]
+    state_path.write_text(json.dumps(ids))
+    for node_id in ids:
+        apply(node_id, "move scratchpad")
+
+
+def maximize(node, workspace, state_path):
+    states = json.loads(state_path.read_text()) if state_path.exists() else {}
+    key = str(node["id"])
+    if key in states:
+        rect = states.pop(key)
+    else:
+        states[key] = node["rect"]
+        rect = workspace["rect"].copy()
+        rect.update(x=rect["x"] + 8, y=rect["y"] + 8, width=rect["width"] - 16, height=rect["height"] - 16)
+    apply(node["id"], f"fullscreen disable, floating enable, resize set {int(rect['width'])} px {int(rect['height'])} px, move absolute position {int(rect['x'])} px {int(rect['y'])} px")
+    state_path.write_text(json.dumps(states))
+
+
+def main():
+    actions = {"close", "minimize", "maximize", "restore", "desktop", "show-desktop", "next", "previous"}
+    if len(sys.argv) != 2 or sys.argv[1] not in actions:
+        sys.exit("Usage: homelab-sway-window-action " + "|".join(sorted(actions)))
+    os.umask(0o077)
+    runtime = Path(os.environ["XDG_RUNTIME_DIR"]) / ("homelab-sway-" + Path(os.environ["SWAYSOCK"]).name)
+    runtime.mkdir(mode=0o700, exist_ok=True)
+    items = list(windows(tree()))
+    action = sys.argv[1]
+    if action == "restore":
+        restore(items)
+        return
+    if action in {"desktop", "show-desktop"}:
+        desktop(items, runtime / "desktop.json")
+        return
+    if action in {"next", "previous"}:
+        ipc("focus " + ("next" if action == "next" else "prev"))
+        return
+    focused = next(((node, workspace) for node, workspace in items if node.get("focused")), None)
+    if not focused:
+        return
+    node, workspace = focused
+    if action == "maximize":
+        maximize(node, workspace, runtime / "maximized.json")
+    else:
+        apply(node["id"], "kill" if action == "close" else "move scratchpad")
+
+
+if __name__ == "__main__":
+    main()

@@ -246,3 +246,9 @@ cell backgrounds as well as the default background. The setting is a host
 inventory override in the shared terminal role and can be reapplied with
 `--tags alacritty`. The running window was updated through Alacritty IPC;
 its tmux pane was retained. Visual confirmation remains with the local user.
+
+The current graphical desktop is now Sway, selected by
+`homelab_laptop_desktop: sway`; GNOME is retained for rollback. See
+[the family desktop setup](socrat-3-sway.md) for applications, controls,
+validation and deployment. The earlier fullscreen monitor-at-login setup is
+superseded by an on-demand monitor shortcut in this desktop.

@@ -1,0 +1,74 @@
+#!/usr/bin/python3
+import subprocess
+
+import gi
+
+gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
+gi.require_version("GtkLayerShell", "0.1")
+from gi.repository import Gdk, Gtk, GtkLayerShell
+
+
+SHORTCUTS = (
+    ("browser", "Браузер", "firefox-esr"),
+    ("files", "Файлы", "folder"),
+    ("yandex-mail", "Яндекс Почта", "internet-mail"),
+    ("gmail", "Gmail", "gmail"),
+    ("telegram", "Telegram", "telegram"),
+    ("max", "MAX", "system-users"),
+    ("video", "Видео", "applications-multimedia"),
+    ("monitor", "Мониторинг", "utilities-system-monitor"),
+)
+
+
+def launch(button, name):
+    subprocess.Popen(["/usr/local/bin/homelab-sway-app", name], start_new_session=True)
+
+
+def activate(app):
+    if app.get_windows():
+        return
+    Gtk.Settings.get_default().set_property("gtk-icon-theme-name", "Papirus")
+    window = Gtk.ApplicationWindow(application=app)
+    window.set_title("Ярлыки рабочего стола")
+    window.set_app_paintable(True)
+    visual = window.get_screen().get_rgba_visual()
+    if visual:
+        window.set_visual(visual)
+    GtkLayerShell.init_for_window(window)
+    GtkLayerShell.set_namespace(window, "homelab-shortcuts")
+    GtkLayerShell.set_layer(window, GtkLayerShell.Layer.BOTTOM)
+    GtkLayerShell.set_anchor(window, GtkLayerShell.Edge.LEFT, True)
+    GtkLayerShell.set_anchor(window, GtkLayerShell.Edge.TOP, True)
+    GtkLayerShell.set_margin(window, GtkLayerShell.Edge.LEFT, 18)
+    GtkLayerShell.set_margin(window, GtkLayerShell.Edge.TOP, 18)
+    GtkLayerShell.set_keyboard_mode(window, GtkLayerShell.KeyboardMode.NONE)
+    GtkLayerShell.set_exclusive_zone(window, 0)
+    provider = Gtk.CssProvider()
+    provider.load_from_data(b"""
+        window { background-color: transparent; }
+        button { background: rgba(20, 26, 36, 0.62); border: 1px solid rgba(255,255,255,0.16); border-radius: 12px; box-shadow: none; color: white; padding: 10px; }
+        button:hover { background: rgba(50, 88, 130, 0.85); }
+        label { font-size: 14px; text-shadow: 0 1px 2px black; }
+    """)
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+    column = Gtk.Grid(column_spacing=10, row_spacing=10)
+    for index, (name, label, icon) in enumerate(SHORTCUTS):
+        button = Gtk.Button()
+        button.set_size_request(120, 86)
+        button.set_tooltip_text(label)
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        image = Gtk.Image.new_from_icon_name(icon, Gtk.IconSize.DIALOG)
+        image.set_pixel_size(36)
+        content.pack_start(image, False, False, 0)
+        content.pack_start(Gtk.Label(label=label), False, False, 0)
+        button.add(content)
+        button.connect("clicked", launch, name)
+        column.attach(button, index // 4, index % 4, 1, 1)
+    window.add(column)
+    window.show_all()
+
+
+app = Gtk.Application(application_id="org.homelab.SwayShortcuts")
+app.connect("activate", activate)
+app.run(None)

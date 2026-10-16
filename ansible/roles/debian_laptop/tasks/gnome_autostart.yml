@@ -13,6 +13,33 @@
     - {option: AutomaticLoginEnable, value: 'true'}
     - {option: AutomaticLogin, value: alchemmist}
 
+- name: Select GNOME only when it is the requested desktop
+  community.general.ini_file:
+    path: /var/lib/AccountsService/users/alchemmist
+    section: User
+    option: "{{ item.key }}"
+    value: "{{ item.value }}"
+    owner: root
+    group: root
+    mode: '0600'
+    backup: true
+  loop:
+    - {key: XSession, value: gnome}
+    - {key: Session, value: gnome}
+    - {key: SessionType, value: wayland}
+  when: homelab_laptop_desktop == 'gnome'
+
+- name: Restore the GNOME user session preference when selected
+  community.general.ini_file:
+    path: "{{ homelab_user_home }}/.dmrc"
+    section: Desktop
+    option: Session
+    value: gnome
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: '0644'
+  when: homelab_laptop_desktop == 'gnome'
+
 - name: Create the package cache for the pinned system monitor
   ansible.builtin.file:
     path: /var/cache/homelab

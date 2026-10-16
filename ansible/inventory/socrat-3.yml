@@ -11,6 +11,7 @@ all:
           ansible_ssh_private_key_file: ~/.ssh/socrat-master
           ansible_become_method: su
           ansible_become_flags: '-l'
+          homelab_laptop_desktop: sway
           homelab_alacritty_transparent_background_colors: true
           homelab_wifi_interface: wlp1s0
           homelab_ethernet_interface: enp2s0

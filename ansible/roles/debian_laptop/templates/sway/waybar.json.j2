@@ -1,0 +1,101 @@
+{
+  "layer": "top",
+  "position": "bottom",
+  "height": 48,
+  "spacing": 3,
+  "modules-left": [
+    "custom/menu",
+    "custom/browser",
+    "custom/files",
+    "custom/restore",
+    "wlr/taskbar"
+  ],
+  "modules-right": [
+    "custom/minimize",
+    "custom/maximize",
+    "custom/close",
+    "custom/desktop",
+    "network",
+    "tray",
+    "sway/language",
+    "pulseaudio",
+    "clock"
+  ],
+  "custom/menu": {
+    "format": "☰ Меню",
+    "tooltip-format": "Приложения и настройки",
+    "on-click": "/usr/local/bin/homelab-sway-menu"
+  },
+  "custom/browser": {
+    "format": "Браузер",
+    "tooltip-format": "Открыть интернет-браузер",
+    "on-click": "/usr/local/bin/homelab-sway-app browser"
+  },
+  "custom/files": {
+    "format": "Файлы",
+    "tooltip-format": "Документы, загрузки и флешки",
+    "on-click": "/usr/local/bin/homelab-sway-app files"
+  },
+  "wlr/taskbar": {
+    "format": "{icon}",
+    "icon-size": 26,
+    "icon-theme": "Papirus",
+    "tooltip-format": "{title}",
+    "on-click": "activate",
+    "on-click-middle": "close"
+  },
+  "custom/minimize": {
+    "format": "−",
+    "tooltip-format": "Свернуть текущее окно; вернуть через кнопку «Окна»",
+    "on-click": "/usr/local/bin/homelab-sway-window-action minimize"
+  },
+  "custom/maximize": {
+    "format": "□",
+    "tooltip-format": "Развернуть или восстановить текущее окно",
+    "on-click": "/usr/local/bin/homelab-sway-window-action maximize"
+  },
+  "custom/close": {
+    "format": "×",
+    "tooltip-format": "Закрыть текущее окно",
+    "on-click": "/usr/local/bin/homelab-sway-window-action close"
+  },
+  "custom/desktop": {
+    "format": "⌂",
+    "tooltip-format": "Показать рабочий стол / вернуть окна",
+    "on-click": "/usr/local/bin/homelab-sway-window-action desktop"
+  },
+  "tray": {
+    "icon-size": 22,
+    "spacing": 8
+  },
+  "sway/language": {
+    "format": "{shortDescription}",
+    "tooltip": true,
+    "on-click": "swaymsg input type:keyboard xkb_switch_layout next"
+  },
+  "pulseaudio": {
+    "format": "Звук {volume}%",
+    "format-muted": "Без звука",
+    "scroll-step": 5,
+    "on-click": "pavucontrol",
+    "on-click-right": "pactl set-sink-mute @DEFAULT_SINK@ toggle",
+    "tooltip-format": "{desc}"
+  },
+  "clock": {
+    "format": "{:%H:%M}",
+    "format-alt": "{:%d.%m.%Y}",
+    "tooltip-format": "<big>{:%d.%m.%Y}</big>\n<tt>{calendar}</tt>"
+  },
+  "custom/restore": {
+    "format": "Окна",
+    "tooltip-format": "Вернуть свёрнутое окно",
+    "on-click": "/usr/local/bin/homelab-sway-window-action restore"
+  },
+  "network": {
+    "format-ethernet": "Сеть",
+    "format-wifi": "Wi-Fi {signalStrength}%",
+    "format-disconnected": "Нет сети",
+    "tooltip-format": "{ifname}: {ipaddr}",
+    "on-click": "nm-connection-editor"
+  }
+}
