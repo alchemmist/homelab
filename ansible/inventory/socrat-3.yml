@@ -1,0 +1,20 @@
+---
+all:
+  children:
+    Socrat:
+      hosts:
+        socrat-3:
+          ansible_host: 192.168.0.110
+          ansible_port: 22
+          ansible_ssh_common_args: -o HostKeyAlias=socrat-3
+          ansible_user: alchemmist
+          ansible_ssh_private_key_file: ~/.ssh/socrat-master
+          ansible_become_method: su
+          ansible_become_flags: '-l'
+          homelab_wifi_interface: wlp1s0
+          homelab_ethernet_interface: enp2s0
+          homelab_wifi_ssid: SweetHome
+          wg_socrat_extra_allowed_peer_ips:
+            socrat-3:
+              socrat-0: [192.168.0.23/32]
+              socrat-1: [192.168.0.24/32]

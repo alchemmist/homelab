@@ -1,0 +1,34 @@
+---
+- name: Keep the known unstable Realtek MSI mode disabled across boots
+  ansible.builtin.copy:
+    dest: /etc/modprobe.d/homelab-rtl8723ae.conf
+    content: "options rtl8723ae ips=0 fwlps=0 swlps=0 msi=0\n"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Inspect the running Realtek MSI mode without reloading the driver
+  ansible.builtin.command: cat /sys/module/rtl8723ae/parameters/msi
+  register: homelab_realtek_msi
+  changed_when: false
+  failed_when: false
+
+- name: Refuse further provisioning while the unstable MSI mode is active
+  ansible.builtin.assert:
+    that: homelab_realtek_msi.rc != 0 or homelab_realtek_msi.stdout | trim == 'N'
+    fail_msg: Realtek MSI mode is active; restore the stable boot before continuing. Do not hot-reload this driver remotely.
+
+- name: Read wireless autoconnect policy when NetworkManager is installed
+  ansible.builtin.command: nmcli -g connection.autoconnect connection show homelab-wifi
+  register: homelab_wifi_autoconnect_state
+  changed_when: false
+  failed_when: false
+  when: not homelab_wifi_autoconnect | bool
+
+- name: Keep the unverified wireless connection out of automatic startup
+  ansible.builtin.command: nmcli connection modify homelab-wifi connection.autoconnect no
+  changed_when: true
+  when:
+    - not homelab_wifi_autoconnect | bool
+    - homelab_wifi_autoconnect_state.rc == 0
+    - homelab_wifi_autoconnect_state.stdout | trim == 'yes'

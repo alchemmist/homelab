@@ -1,0 +1,8 @@
+---
+- name: Join the dedicated home worker to the existing HA cluster
+  hosts: socrat-3
+  gather_facts: true
+  become: true
+  any_errors_fatal: true
+  roles:
+    - k3s_worker

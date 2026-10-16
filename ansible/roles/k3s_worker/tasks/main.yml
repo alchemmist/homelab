@@ -1,0 +1,206 @@
+---
+- name: Restrict worker provisioning to its dedicated Debian host
+  ansible.builtin.assert:
+    that:
+      - inventory_hostname == k3s_worker_name
+      - inventory_hostname not in ['socrat-0', 'socrat-1', 'socrat-2']
+      - ansible_facts.os_family == 'Debian'
+      - ansible_facts.architecture == 'x86_64'
+      - wg_socrat_nodes[inventory_hostname].address == k3s_worker_ip
+
+- name: Inspect existing server datastore
+  ansible.builtin.stat:
+    path: /var/lib/rancher/k3s/server
+  register: k3s_worker_server_directory
+
+- name: Refuse to convert a control-plane node
+  ansible.builtin.assert:
+    that: not k3s_worker_server_directory.stat.exists
+
+- name: Read the live control-plane version
+  ansible.builtin.command: /usr/local/bin/k3s --version
+  delegate_to: "{{ k3s_worker_primary }}"
+  register: k3s_worker_primary_version
+  changed_when: false
+
+- name: Require the worker version to match its control plane
+  ansible.builtin.assert:
+    that: k3s_worker_primary_version.stdout.split()[2] == k3s_worker_version
+
+- name: Inspect the management interface
+  ansible.builtin.command: ip -json address show dev wg-socrat
+  register: k3s_worker_interface
+  changed_when: false
+
+- name: Require the stable management address
+  ansible.builtin.assert:
+    that: >-
+      k3s_worker_ip in ((k3s_worker_interface.stdout | from_json)[0].addr_info | map(attribute='local') | list)
+
+- name: Verify the API is reachable through WireGuard
+  ansible.builtin.wait_for:
+    host: "{{ k3s_worker_server | urlsplit('hostname') }}"
+    port: 6443
+    timeout: 30
+
+- name: Install worker networking and storage utilities
+  ansible.builtin.apt:
+    name: [ca-certificates, curl, iptables, conntrack, socat, nfs-common, open-iscsi]
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Create the NetworkManager configuration directory
+  ansible.builtin.file:
+    path: /etc/NetworkManager/conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Exclude pod network interfaces from NetworkManager
+  ansible.builtin.copy:
+    dest: /etc/NetworkManager/conf.d/90-homelab-k3s.conf
+    content: |
+      [keyfile]
+      unmanaged-devices+=interface-name:cni0;interface-name:flannel.1;interface-name:veth*
+    owner: root
+    group: root
+    mode: '0644'
+  register: k3s_worker_nm_config
+
+- name: Reload NetworkManager configuration without interrupting host connections
+  ansible.builtin.command: nmcli general reload conf
+  when: k3s_worker_nm_config.changed
+  changed_when: true
+
+- name: Inspect active swap
+  ansible.builtin.command: cat /proc/swaps
+  register: k3s_worker_swap
+  changed_when: false
+
+- name: Ensure swap can be disabled without exhausting desktop memory
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/python3
+      - -c
+      - |
+        from pathlib import Path
+        memory = dict(line.split(':', 1) for line in Path('/proc/meminfo').read_text().splitlines())
+        available = int(memory['MemAvailable'].split()[0])
+        used = sum(int(line.split()[3]) for line in Path('/proc/swaps').read_text().splitlines()[1:])
+        if available < used + 262144:
+            raise SystemExit('Insufficient available RAM to disable swap safely; stop desktop applications first')
+  when: k3s_worker_swap.stdout_lines | length > 1
+  changed_when: false
+
+- name: Disable active swap before admitting workloads
+  ansible.builtin.command: swapoff -a
+  when: k3s_worker_swap.stdout_lines | length > 1
+  changed_when: true
+
+- name: Disable persistent swap entries on the worker
+  ansible.builtin.replace:
+    path: /etc/fstab
+    regexp: '^(\s*[^#\s]\S*\s+\S+\s+swap\s+.*)$'
+    replace: '# \1'
+    backup: true
+
+- name: Persist IPv4 forwarding for pod networking
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/90-homelab-worker.conf
+    content: "net.ipv4.ip_forward = 1\n"
+    owner: root
+    group: root
+    mode: '0644'
+  register: k3s_worker_sysctl
+
+- name: Apply worker forwarding configuration
+  ansible.builtin.command: sysctl -p /etc/sysctl.d/90-homelab-worker.conf
+  when: k3s_worker_sysctl.changed
+  changed_when: true
+
+- name: Create the private worker configuration directory
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: Read the existing agent join token
+  ansible.builtin.slurp:
+    src: /var/lib/rancher/k3s/server/agent-token
+  delegate_to: "{{ k3s_worker_primary }}"
+  register: k3s_worker_token
+  no_log: true
+
+- name: Store the root-only worker join token
+  ansible.builtin.copy:
+    dest: /etc/rancher/k3s/worker-token
+    content: "{{ k3s_worker_token.content | b64decode | trim }}\n"
+    owner: root
+    group: root
+    mode: '0600'
+  no_log: true
+  notify: Restart dedicated k3s worker
+
+- name: Download the pinned verified Kubernetes binary
+  ansible.builtin.get_url:
+    url: "https://github.com/k3s-io/k3s/releases/download/{{ k3s_worker_version }}/k3s"
+    checksum: "sha256:https://github.com/k3s-io/k3s/releases/download/{{ k3s_worker_version }}/sha256sum-amd64.txt"
+    dest: /usr/local/bin/k3s
+    owner: root
+    group: root
+    mode: '0755'
+  notify: Restart dedicated k3s worker
+
+- name: Configure the worker with admission protection and desktop reservations
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: /etc/rancher/k3s/config.yaml
+    owner: root
+    group: root
+    mode: '0600'
+  notify: Restart dedicated k3s worker
+
+- name: Install the worker systemd service
+  ansible.builtin.template:
+    src: k3s-agent.service.j2
+    dest: /etc/systemd/system/k3s-agent.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart dedicated k3s worker
+
+- name: Create the management network retry directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/wg-quick@wg-socrat.service.d
+    state: directory
+    mode: '0755'
+
+- name: Retry management network startup if DNS is not ready at boot
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/wg-quick@wg-socrat.service.d/20-homelab-retry.conf
+    content: |
+      [Service]
+      Restart=on-failure
+      RestartSec=5s
+    mode: '0644'
+
+- name: Start the configured worker
+  ansible.builtin.meta: flush_handlers
+
+- name: Keep the worker service enabled
+  ansible.builtin.systemd_service:
+    name: k3s-agent
+    state: started
+    enabled: true
+    daemon_reload: true
+
+- name: Wait for the worker to become Ready without removing admission protection
+  ansible.builtin.command: >-
+    /usr/local/bin/k3s kubectl wait --for=condition=Ready
+    node/{{ k3s_worker_name }} --timeout=240s
+  delegate_to: "{{ k3s_worker_primary }}"
+  changed_when: false

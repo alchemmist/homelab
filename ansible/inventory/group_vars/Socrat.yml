@@ -15,6 +15,9 @@ wg_socrat_port: 51830
 wg_socrat_keepalive: 25
 wireguard_private_web_enabled: true
 wg_socrat_peer_endpoints:
+  socrat-3:
+    socrat-0: socrat.alchemmist.xyz:51830
+    socrat-1: socrat.alchemmist.xyz:51831
   socrat-1:
     socrat-2: 127.0.0.1:51840
   socrat-2:
@@ -35,6 +38,9 @@ wg_socrat_nodes:
     address: 10.250.0.2
     public_key: LJX3181KA1uD95A+TbaFTiH3lZdjMgf1paV/gPMzAEs=
     endpoint: 176.98.185.59:51830
+  socrat-3:
+    address: 10.250.0.5
+    public_key: 9MPu5SMwCwzL+1/Hy4Z9g71uQb42UQ2pCH9jfAoAihs=
 
 homelab_users:
   - name: tim

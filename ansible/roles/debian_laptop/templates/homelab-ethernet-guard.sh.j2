@@ -1,0 +1,25 @@
+#!/bin/sh
+set -u
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+interface='{{ homelab_ethernet_interface }}'
+case "$interface" in
+    enp2s0) ;;
+    *) exit 1 ;;
+esac
+deadline=$(($(date +%s) + 1800))
+while [ "$(date +%s)" -lt "$deadline" ]; do
+    address=$(ip -4 -o address show dev "$interface" scope global 2>/dev/null)
+    if [ -z "$address" ]; then
+        ip link set dev "$interface" up || true
+        carrier=$(cat "/sys/class/net/$interface/carrier" 2>/dev/null || true)
+        if [ "$carrier" = 1 ]; then
+            if command -v dhcpcd >/dev/null 2>&1; then
+                timeout 20 dhcpcd -n "$interface" || true
+            else
+                timeout 20 ifup --force "$interface" || true
+            fi
+        fi
+    fi
+    sleep 5
+done
