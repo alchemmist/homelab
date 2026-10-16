@@ -23,6 +23,9 @@ wg_socrat_peer_endpoints:
   socrat-2:
     socrat-1: ''
 wg_socrat_admin_clients:
+  assistant:
+    address: 10.250.0.6
+    public_key: RdRir+QQhVg9aSwGNmBcvSKDak7gQyuaYfJx8KDgXB4=
   antonmoss-mac:
     address: 10.250.0.4
     public_key: wys2VBbZrDMU+a1w5Gjpu4QlEefD7ZhoJEcCT7mKgyA=
