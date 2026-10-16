@@ -1,6 +1,9 @@
 [Interface]
 Address = {{ wireguard_admin_address }}
 PrivateKey = {{ wireguard_admin_private_key }}
+{% if wireguard_admin_dns_mode == 'system' %}
+DNS = {{ wireguard_admin_dns_servers | join(', ') }}
+{% endif %}
 
 {% for peer in wireguard_admin_peers %}
 [Peer]

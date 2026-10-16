@@ -8,6 +8,30 @@
     - prepare
     - dns
 
+- name: Validate WireGuard client DNS settings
+  ansible.builtin.assert:
+    that:
+      - wireguard_admin_dns_mode in ['split', 'system']
+      - wireguard_admin_dns_servers is sequence
+      - wireguard_admin_dns_servers is not string
+      - wireguard_admin_dns_servers | length > 0
+      - wireguard_admin_dns_domain is match('^(?:[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?\.)+[A-Za-z]{2,}$')
+    fail_msg: Choose split or system DNS, a nonempty server list, and a valid private DNS suffix.
+  tags:
+    - prepare
+    - dns
+
+- name: Validate private DNS server addresses
+  ansible.builtin.assert:
+    that:
+      - item is match('^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])$')
+      - item in (wireguard_admin_peers | map(attribute='address') | list)
+    fail_msg: Each DNS server must be an IPv4 address reachable through a configured peer.
+  loop: "{{ wireguard_admin_dns_servers }}"
+  tags:
+    - prepare
+    - dns
+
 - name: Validate WireGuard admin peer inventory
   ansible.builtin.assert:
     that:
@@ -121,64 +145,21 @@
     owner: root
     group: wheel
     mode: '0755'
+  when: wireguard_admin_dns_mode == 'split'
   tags: dns
 
-- name: Install split DNS resolver for socrat-0
+- name: Install split DNS for the complete Socrat private domain
   become: true
   ansible.builtin.copy:
-    dest: "{{ wireguard_admin_resolver_dir }}/0.socrat.alchemmist.xyz"
-    content: "nameserver 10.250.0.2\nnameserver 10.250.0.3\nnameserver 10.250.0.1\ntimeout {{ wireguard_admin_dns_timeout }}\noptions attempts:{{ wireguard_admin_dns_attempts }}\n"
+    dest: "{{ wireguard_admin_resolver_dir }}/{{ wireguard_admin_dns_domain }}"
+    content: |
+      {% for server in wireguard_admin_dns_servers %}
+      nameserver {{ server }}
+      {% endfor %}
+      timeout {{ wireguard_admin_dns_timeout }}
+      options attempts:{{ wireguard_admin_dns_attempts }}
     owner: root
     group: wheel
     mode: '0644'
-  tags: dns
-
-- name: Install split DNS resolver for socrat-1
-  become: true
-  ansible.builtin.copy:
-    dest: "{{ wireguard_admin_resolver_dir }}/1.socrat.alchemmist.xyz"
-    content: "nameserver 10.250.0.2\nnameserver 10.250.0.3\nnameserver 10.250.0.1\ntimeout {{ wireguard_admin_dns_timeout }}\noptions attempts:{{ wireguard_admin_dns_attempts }}\n"
-    owner: root
-    group: wheel
-    mode: '0644'
-  tags: dns
-
-- name: Install split DNS resolver for socrat-2
-  become: true
-  ansible.builtin.copy:
-    dest: "{{ wireguard_admin_resolver_dir }}/2.socrat.alchemmist.xyz"
-    content: "nameserver 10.250.0.2\nnameserver 10.250.0.3\nnameserver 10.250.0.1\ntimeout {{ wireguard_admin_dns_timeout }}\noptions attempts:{{ wireguard_admin_dns_attempts }}\n"
-    owner: root
-    group: wheel
-    mode: '0644'
-  tags: dns
-
-- name: Install split DNS resolver for local LLM
-  become: true
-  ansible.builtin.copy:
-    dest: "{{ wireguard_admin_resolver_dir }}/llm.socrat.alchemmist.xyz"
-    content: "nameserver 10.250.0.2\nnameserver 10.250.0.3\nnameserver 10.250.0.1\ntimeout {{ wireguard_admin_dns_timeout }}\noptions attempts:{{ wireguard_admin_dns_attempts }}\n"
-    owner: root
-    group: wheel
-    mode: '0644'
-  tags: dns
-
-- name: Install split DNS resolver for LiteLLM
-  become: true
-  ansible.builtin.copy:
-    dest: "{{ wireguard_admin_resolver_dir }}/litellm.socrat.alchemmist.xyz"
-    content: "nameserver 10.250.0.2\nnameserver 10.250.0.3\nnameserver 10.250.0.1\ntimeout {{ wireguard_admin_dns_timeout }}\noptions attempts:{{ wireguard_admin_dns_attempts }}\n"
-    owner: root
-    group: wheel
-    mode: '0644'
-  tags: dns
-
-- name: Install split DNS resolver for Grafana
-  become: true
-  ansible.builtin.copy:
-    dest: "{{ wireguard_admin_resolver_dir }}/grafana.socrat.alchemmist.xyz"
-    content: "nameserver 10.250.0.2\nnameserver 10.250.0.3\nnameserver 10.250.0.1\ntimeout {{ wireguard_admin_dns_timeout }}\noptions attempts:{{ wireguard_admin_dns_attempts }}\n"
-    owner: root
-    group: wheel
-    mode: '0644'
+  when: wireguard_admin_dns_mode == 'split'
   tags: dns
