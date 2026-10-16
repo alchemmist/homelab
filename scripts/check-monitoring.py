@@ -53,10 +53,15 @@ def target_summary(targets):
     return summary
 
 
-def remote_http_status(host, url, resolve_address=None, forwarded_for=None, interface=None):
+def remote_http_status(host, url, resolve_address=None, forwarded_for=None, interface=None,
+                       public_absence=False):
     command = ['curl', '--silent', '--show-error', '--noproxy', '*',
                '--connect-timeout', '10', '--max-time', '30',
-               '--output', '/dev/null', '--write-out', '%{http_code}']
+               '--write-out', '\n%{http_code}']
+    if public_absence:
+        command += ['--insecure']
+    else:
+        command += ['--output', '/dev/null']
     if resolve_address:
         parsed = urllib.parse.urlsplit(url)
         command += ['--resolve', f'{parsed.hostname}:{parsed.port or 443}:{resolve_address}']
@@ -71,7 +76,11 @@ def remote_http_status(host, url, resolve_address=None, forwarded_for=None, inte
     )
     if result.returncode:
         raise RuntimeError('HTTP probe failed: ' + result.stderr[-1000:])
-    return int(result.stdout)
+    body, _, status = result.stdout.rpartition("\n")
+    if public_absence:
+        require(body.strip() == "404 page not found",
+                "public HTTPS returns only the ingress default 404 body")
+    return int(status)
 
 
 def main():
@@ -137,12 +146,27 @@ def main():
     require(remote_http_status(args.ssh_host, url, args.grafana_private_address,
                                interface=args.grafana_private_source) == 200,
             'WireGuard Grafana API works without credentials')
-    require(remote_http_status(args.ssh_host, url, args.grafana_public_address) == 403,
-            'home LAN public Grafana access denied')
+    hostname = urllib.parse.urlsplit(args.grafana_url).hostname
+    ingresses = kubectl(args.ssh_host, 'get', 'ingress', '-A', '-o', 'json')['items']
+    for ingress in ingresses:
+        for rule in ingress.get('spec', {}).get('rules', []):
+            if rule.get('host') != hostname:
+                continue
+            paths = rule.get('http', {}).get('paths', [])
+            labels = ingress['metadata'].get('labels', {})
+            solver = labels.get('acme.cert-manager.io/http01-solver') == 'true'
+            require(solver and bool(paths) and all(
+                path.get('path', '').startswith('/.well-known/acme-challenge/')
+                for path in paths),
+                'no permanent public Grafana Ingress: ' + ingress['metadata']['name'])
+    print('PASS: no permanent public Grafana Ingress exists')
+    require(remote_http_status(args.ssh_host, url, args.grafana_public_address,
+                               public_absence=True) == 404,
+            'home LAN public address has no Grafana route')
     for forwarded_for in [None, '10.250.0.4', '192.168.0.24']:
         require(remote_http_status(args.external_ssh_host, url, args.grafana_public_address,
-                                   forwarded_for=forwarded_for) == 403,
-                'external Grafana access denied' +
+                                   forwarded_for=forwarded_for, public_absence=True) == 404,
+                'external public address has no Grafana route' +
                 (f' with spoofed X-Forwarded-For: {forwarded_for}' if forwarded_for else ''))
     search = kubectl(args.ssh_host, 'get', '--raw',
                      f'/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/search')

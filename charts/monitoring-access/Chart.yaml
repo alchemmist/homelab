@@ -1,5 +1,0 @@
-apiVersion: v2
-name: monitoring-access
-description: Private network access to Socrat Grafana
-type: application
-version: 0.2.0

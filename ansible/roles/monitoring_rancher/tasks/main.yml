@@ -37,81 +37,35 @@
   environment:
     KUBECONFIG: "{{ monitoring_rancher_kubeconfig }}"
 
-- name: Restrict the public Grafana route
-  when: monitoring_rancher_public_ingress_enabled | bool
-  block:
-    - name: Stage protected Grafana access chart
-      ansible.builtin.copy:
-        src: "{{ monitoring_rancher_repo_root }}/charts/monitoring-access/"
-        dest: "{{ monitoring_rancher_workdir }}/monitoring-access/"
-        mode: "0600"
-        directory_mode: "0700"
+- name: Inspect the obsolete public Grafana release
+  ansible.builtin.command:
+    argv: [helm, list, --namespace, "{{ monitoring_rancher_namespace }}", --kubeconfig, "{{ monitoring_rancher_kubeconfig }}", --filter, '^monitoring-access$', --output, json]
+  register: monitoring_public_release
+  changed_when: false
 
-    - name: Install protected Grafana ingress
-      ansible.builtin.command:
-        argv:
-          - helm
-          - upgrade
-          - --install
-          - monitoring-access
-          - "{{ monitoring_rancher_workdir }}/monitoring-access"
-          - --namespace
-          - "{{ monitoring_rancher_namespace }}"
-          - --set-string
-          - "host={{ monitoring_rancher_grafana_host }}"
-          - --wait
-          - --timeout
-          - 5m
-          - --atomic
-      environment:
-        KUBECONFIG: "{{ monitoring_rancher_kubeconfig }}"
+- name: Remove the obsolete public Grafana ingress release
+  ansible.builtin.command:
+    argv: [helm, uninstall, monitoring-access, --namespace, "{{ monitoring_rancher_namespace }}", --kubeconfig, "{{ monitoring_rancher_kubeconfig }}", --wait, --timeout, 2m]
+  when: monitoring_public_release.stdout | from_json | length > 0
+  changed_when: true
 
-    - name: Wait for the trusted Grafana certificate
-      ansible.builtin.command:
-        argv:
-          - kubectl
-          - --kubeconfig
-          - "{{ monitoring_rancher_kubeconfig }}"
-          - -n
-          - "{{ monitoring_rancher_namespace }}"
-          - wait
-          - --for=condition=Ready
-          - certificate/grafana-public-tls
-          - --timeout=300s
-      changed_when: false
+- name: Remove obsolete public Grafana resources
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, "{{ monitoring_rancher_kubeconfig }}", -n, "{{ monitoring_rancher_namespace }}", delete, "{{ item }}", --ignore-not-found]
+  loop:
+    - ingress/grafana-public
+    - middleware/grafana-local-only
+    - middleware/grafana-auth
+    - certificate/grafana-public-tls
+    - secret/grafana-public-tls
+    - secret/grafana-ingress-auth
+  register: monitoring_public_cleanup
+  changed_when: "'deleted' in monitoring_public_cleanup.stdout"
 
-    - name: Verify the public Grafana route is denied
-      ansible.builtin.command:
-        argv:
-          - curl
-          - --silent
-          - --show-error
-          - --noproxy
-          - '*'
-          - --max-time
-          - '10'
-          - --resolve
-          - "{{ monitoring_rancher_grafana_host }}:443:{{ monitoring_rancher_public_address }}"
-          - --output
-          - /dev/null
-          - --write-out
-          - '%{http_code}'
-          - "https://{{ monitoring_rancher_grafana_host }}/api/health"
-      register: monitoring_public_probe
-      failed_when: monitoring_public_probe.rc != 0 or monitoring_public_probe.stdout != '403'
-      changed_when: false
-
-    - name: Remove the obsolete ingress password hash
-      ansible.builtin.command:
-        argv:
-          - kubectl
-          - --kubeconfig
-          - "{{ monitoring_rancher_kubeconfig }}"
-          - -n
-          - "{{ monitoring_rancher_namespace }}"
-          - delete
-          - secret
-          - grafana-ingress-auth
-          - --ignore-not-found
-      register: monitoring_old_ingress_secret
-      changed_when: "'deleted' in monitoring_old_ingress_secret.stdout"
+- name: Remove obsolete public ingress staging files
+  ansible.builtin.file:
+    path: "{{ monitoring_rancher_workdir }}/{{ item }}"
+    state: absent
+  loop:
+    - monitoring-access
+    - grafana_ingress_auth.py
