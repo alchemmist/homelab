@@ -1,0 +1,152 @@
+---
+- name: Install the lightweight desktop and family applications
+  ansible.builtin.apt:
+    name: [sway, swaybg, waybar, wofi, mako-notifier, thunar, gvfs-backends, tumbler, firefox-esr, firefox-esr-l10n-ru, python3-gi, gir1.2-gtk-3.0, gir1.2-gtklayershell-0.1, papirus-icon-theme, fonts-noto-core, pavucontrol, pulseaudio-utils, brightnessctl, network-manager-gnome, xdg-desktop-portal-wlr, xdg-desktop-portal-gtk, grim, slurp, mesa-va-drivers, vainfo, lxpolkit]
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  tags: sway_packages
+
+- name: Reuse the shared desktop wallpaper
+  ansible.builtin.import_role:
+    name: wallpaper_asset
+
+- name: Create the lightweight desktop configuration directories
+  ansible.builtin.file:
+    path: "{{ homelab_user_home }}/.config/{{ item }}"
+    state: directory
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: '0755'
+  loop: [sway, waybar, wofi, gtk-3.0, homelab-desktop]
+
+- name: Deploy the Sway desktop and panel configuration
+  ansible.builtin.template:
+    src: "sway/{{ item.src }}"
+    dest: "{{ homelab_user_home }}/.config/{{ item.dest }}"
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: '0644'
+    backup: true
+  loop:
+    - {src: config.j2, dest: sway/config}
+    - {src: waybar.json.j2, dest: waybar/config}
+    - {src: waybar.css.j2, dest: waybar/style.css}
+    - {src: wofi.css.j2, dest: wofi/style.css}
+    - {src: wofi.conf.j2, dest: wofi/config}
+
+- name: Install mouse-friendly desktop launchers
+  ansible.builtin.copy:
+    src: "sway/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    owner: root
+    group: root
+    mode: '0755'
+  loop: [homelab-sway-app, homelab-sway-menu, homelab-sway-shortcuts, homelab-sway-window-action]
+
+- name: Configure familiar application appearance
+  community.general.ini_file:
+    path: "{{ homelab_user_home }}/.config/gtk-3.0/settings.ini"
+    section: Settings
+    option: "{{ item.key }}"
+    value: "{{ item.value }}"
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: '0644'
+  loop:
+    - {key: gtk-theme-name, value: Adwaita}
+    - {key: gtk-icon-theme-name, value: Papirus}
+    - {key: gtk-font-name, value: 'Noto Sans 11'}
+    - {key: gtk-decoration-layout, value: ':minimize,maximize,close'}
+
+- name: Make Firefox the browser for opened links
+  community.general.ini_file:
+    path: "{{ homelab_user_home }}/.config/mimeapps.list"
+    section: Default Applications
+    option: "{{ item }}"
+    value: firefox-esr.desktop
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: '0644'
+    backup: true
+  loop: [x-scheme-handler/http, x-scheme-handler/https, text/html]
+
+- name: Open ordinary terminal windows without taking over the desktop
+  community.general.ini_file:
+    path: "{{ homelab_user_home }}/.config/alacritty/alacritty.toml"
+    section: window
+    option: "{{ item.key }}"
+    value: "{{ item.value }}"
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: '0644'
+    backup: true
+  loop:
+    - {key: startup_mode, value: '"Windowed"'}
+    - {key: decorations, value: '"Full"'}
+
+- name: Install the explicit Sway session launcher
+  ansible.builtin.copy:
+    dest: /usr/local/bin/homelab-sway-session
+    content: |
+      #!/bin/sh
+      export XDG_CURRENT_DESKTOP=sway
+      export XDG_SESSION_DESKTOP=sway
+      export XDG_SESSION_TYPE=wayland
+      export MOZ_ENABLE_WAYLAND=1
+      export LANG=ru_RU.UTF-8
+      export LANGUAGE=ru:en
+      exec /usr/bin/sway --config "$HOME/.config/sway/config"
+    owner: root
+    group: root
+    mode: '0755'
+    validate: /bin/sh -n %s
+
+- name: Register the lightweight desktop with the existing login manager
+  ansible.builtin.copy:
+    dest: /usr/share/wayland-sessions/homelab-sway.desktop
+    content: |
+      [Desktop Entry]
+      Name=Homelab Sway
+      Comment=Lightweight family desktop
+      Exec=/usr/local/bin/homelab-sway-session
+      TryExec=/usr/bin/sway
+      Type=Application
+      DesktopNames=sway
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Validate Sway configuration before changing the default session
+  ansible.builtin.command: /usr/bin/sway --validate --config {{ homelab_user_home }}/.config/sway/config
+  become: false
+  environment:
+    WLR_BACKENDS: headless
+    WLR_RENDERER: pixman
+    XDG_RUNTIME_DIR: /run/user/1000
+  changed_when: false
+
+- name: Set the account's preferred graphical session
+  community.general.ini_file:
+    path: /var/lib/AccountsService/users/alchemmist
+    section: User
+    option: "{{ item.key }}"
+    value: "{{ item.value }}"
+    owner: root
+    group: root
+    mode: '0600'
+    backup: true
+  loop:
+    - {key: XSession, value: homelab-sway}
+    - {key: Session, value: homelab-sway}
+    - {key: SessionType, value: wayland}
+
+- name: Record the default desktop in the user session file
+  community.general.ini_file:
+    path: "{{ homelab_user_home }}/.dmrc"
+    section: Desktop
+    option: Session
+    value: homelab-sway
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: '0644'

@@ -1,3 +1,4 @@
 ---
 homelab_wifi_autoconnect: false
 homelab_wifi_route_metric: 2000
+homelab_laptop_desktop: gnome

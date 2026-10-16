@@ -1,0 +1,86 @@
+* {
+    font-family: "Noto Sans", sans-serif;
+    font-size: 14px;
+    border: none;
+    border-radius: 0;
+    min-height: 0;
+}
+window#waybar {
+    background: #17212f;
+    color: #f1f5fb;
+    border-top: 1px solid #586779;
+}
+tooltip {
+    background: #263344;
+    color: #ffffff;
+    border: 1px solid #8295ae;
+    border-radius: 6px;
+}
+#custom-menu,
+#custom-browser,
+#custom-files,
+#custom-restore,
+#custom-minimize,
+#custom-maximize,
+#custom-close,
+#custom-desktop,
+#language,
+#network,
+#pulseaudio,
+#clock,
+#tray {
+    padding: 0 10px;
+    margin: 5px 0;
+    border-radius: 6px;
+}
+#custom-menu {
+    background: #2464ac;
+    color: #ffffff;
+    margin-left: 5px;
+    font-weight: bold;
+}
+#custom-minimize,
+#custom-maximize,
+#custom-close,
+#custom-desktop {
+    font-size: 21px;
+    min-width: 24px;
+    padding: 0 5px;
+}
+#custom-menu:hover,
+#custom-browser:hover,
+#custom-files:hover,
+#custom-restore:hover,
+#custom-minimize:hover,
+#custom-maximize:hover,
+#custom-desktop:hover,
+#language:hover,
+#network:hover,
+#pulseaudio:hover,
+#clock:hover {
+    background: #35485f;
+}
+#custom-close:hover {
+    background: #b52b37;
+    color: #ffffff;
+}
+#taskbar button {
+    padding: 0 10px;
+    margin: 5px 2px;
+    border-radius: 6px;
+    color: #f1f5fb;
+}
+#taskbar button.active {
+    background: #35485f;
+    box-shadow: inset 0 -3px #78b9ff;
+}
+#taskbar button:hover {
+    background: #425b77;
+}
+#taskbar button.minimized {
+    opacity: 0.65;
+}
+#clock {
+    font-weight: bold;
+    margin-right: 5px;
+}

@@ -1,0 +1,51 @@
+set $mod Mod4
+font pango:Sans 11
+floating_modifier $mod normal
+focus_follows_mouse no
+mouse_warping none
+workspace_auto_back_and_forth yes
+default_border normal 2
+default_floating_border normal 2
+floating_minimum_size 320 x 200
+floating_maximum_size 0 x 0
+client.focused #3584e4 #3584e4 #ffffff #3584e4 #3584e4
+client.unfocused #586779 #263344 #e5edf7 #586779 #586779
+client.focused_inactive #586779 #263344 #e5edf7 #586779 #586779
+client.urgent #c01c28 #c01c28 #ffffff #c01c28 #c01c28
+output * bg /usr/local/share/wallpapers/homelab/default.png fill
+input type:keyboard {
+    xkb_layout us,ru
+    xkb_options grp:alt_shift_toggle
+}
+input type:touchpad {
+    tap enabled
+    natural_scroll enabled
+    dwt enabled
+}
+for_window [app_id=".*"] floating enable
+for_window [class=".*"] floating enable
+for_window [app_id="Alacritty"] fullscreen disable, border normal 2
+bindsym $mod+Return exec alacritty
+bindsym $mod+d exec /usr/local/bin/homelab-sway-menu
+bindsym $mod+e exec /usr/local/bin/homelab-sway-app files
+bindsym $mod+q kill
+bindsym $mod+f fullscreen toggle
+bindsym $mod+m exec /usr/local/bin/homelab-sway-window-action maximize
+bindsym $mod+Down exec /usr/local/bin/homelab-sway-window-action minimize
+bindsym $mod+Shift+d exec /usr/local/bin/homelab-sway-window-action desktop
+bindsym Mod1+Tab exec /usr/local/bin/homelab-sway-window-action next
+bindsym Mod1+Shift+Tab exec /usr/local/bin/homelab-sway-window-action previous
+bindsym Mod1+F4 kill
+bindsym $mod+Shift+c reload
+bindsym XF86AudioRaiseVolume exec pactl set-sink-volume @DEFAULT_SINK@ +5%
+bindsym XF86AudioLowerVolume exec pactl set-sink-volume @DEFAULT_SINK@ -5%
+bindsym XF86AudioMute exec pactl set-sink-mute @DEFAULT_SINK@ toggle
+bindsym XF86MonBrightnessUp exec brightnessctl set +5%
+bindsym XF86MonBrightnessDown exec brightnessctl set 5%-
+exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY SWAYSOCK XDG_CURRENT_DESKTOP
+exec /usr/local/bin/homelab-sway-shortcuts
+exec mako
+exec lxpolkit
+bar {
+    swaybar_command waybar
+}
