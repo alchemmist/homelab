@@ -1,0 +1,38 @@
+---
+- name: Restrict Syncthing to nodes with a private proxy configuration
+  hosts: socrat-0
+  gather_facts: false
+  any_errors_fatal: true
+  vars:
+    syncthing_placement_chart: "{{ homelab_user_home }}/tmp-charts/syncthing-placement"
+  tasks:
+    - name: Copy the versioned Syncthing chart
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../charts/syncthing/"
+        dest: "{{ syncthing_placement_chart }}/"
+        mode: preserve
+
+    - name: Validate the chart
+      ansible.builtin.command: "helm lint {{ syncthing_placement_chart }}"
+      changed_when: false
+
+    - name: Upgrade placement while retaining the installed values
+      ansible.builtin.command:
+        argv:
+          - helm
+          - upgrade
+          - syncthing
+          - "{{ syncthing_placement_chart }}"
+          - --namespace
+          - syncthing
+          - --reuse-values
+          - --atomic
+          - --wait
+          - --timeout
+          - 5m
+          - --kubeconfig
+          - /etc/rancher/k3s/k3s.yaml
+
+    - name: Wait for all configured Syncthing instances
+      ansible.builtin.command: kubectl -n syncthing rollout status daemonset/syncthing --timeout=300s
+      changed_when: false

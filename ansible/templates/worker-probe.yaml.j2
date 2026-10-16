@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: homelab-worker-check
+{% for node in ['socrat-0', 'socrat-1', 'socrat-2', 'socrat-3'] %}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: probe-{{ node }}
+  namespace: homelab-worker-check
+spec:
+  nodeName: {{ node }}
+  restartPolicy: Never
+  containers:
+    - name: probe
+      image: busybox:1.37.0
+      command: [sh, -ec, 'mkdir -p /tmp/www; echo {{ node }} > /tmp/www/index.html; echo probe-ready; exec httpd -f -p 8080 -h /tmp/www']
+      resources:
+        requests:
+          cpu: 5m
+          memory: 8Mi
+        limits:
+          memory: 32Mi
+      readinessProbe:
+        tcpSocket:
+          port: 8080
+{% if node == 'socrat-3' %}
+      volumeMounts:
+        - name: nfs
+          mountPath: /mnt/nfs
+          readOnly: true
+  volumes:
+    - name: nfs
+      nfs:
+        server: 192.168.0.23
+        path: /srv/k8s-nfs
+        readOnly: true
+{% endif %}
+{% endfor %}

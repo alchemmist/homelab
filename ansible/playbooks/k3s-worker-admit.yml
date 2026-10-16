@@ -1,0 +1,43 @@
+---
+- ansible.builtin.import_playbook: k3s-worker-verify.yml
+
+- name: Admit the verified worker for normal scheduling
+  hosts: socrat-0
+  gather_facts: false
+  any_errors_fatal: true
+  vars:
+    worker_syncthing_terms:
+      - matchFields: [{key: metadata.name, operator: In, values: [socrat-0]}]
+      - matchFields: [{key: metadata.name, operator: In, values: [socrat-1]}]
+      - matchFields: [{key: metadata.name, operator: In, values: [socrat-2]}]
+  tasks:
+    - name: Require all four nodes to be Ready before admission
+      ansible.builtin.command: kubectl wait --for=condition=Ready node/socrat-0 node/socrat-1 node/socrat-2 node/socrat-3 --timeout=60s
+      changed_when: false
+
+    - name: Inspect Syncthing placement
+      ansible.builtin.command: kubectl -n syncthing get daemonset syncthing -o json
+      register: worker_syncthing
+      changed_when: false
+
+    - name: Require explicit Syncthing enrollment before admitting a new node
+      ansible.builtin.assert:
+        that:
+          - >-
+            (worker_syncthing.stdout | from_json).spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms
+            == worker_syncthing_terms
+          - (worker_syncthing.stdout | from_json).status.numberReady == 3
+
+    - name: Read worker taints
+      ansible.builtin.command: kubectl get node socrat-3 -o json
+      register: worker_admission_node
+      changed_when: false
+
+    - name: Remove the bootstrap scheduling restriction
+      ansible.builtin.command: kubectl taint node socrat-3 homelab.io/bootstrap:NoSchedule-
+      when: >-
+        'homelab.io/bootstrap' in ((worker_admission_node.stdout | from_json).spec.taints | default([]) | map(attribute='key') | list)
+
+    - name: Confirm all four nodes are Ready
+      ansible.builtin.command: kubectl wait --for=condition=Ready node/socrat-0 node/socrat-1 node/socrat-2 node/socrat-3 --timeout=60s
+      changed_when: false

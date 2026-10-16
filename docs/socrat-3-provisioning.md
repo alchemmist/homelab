@@ -54,10 +54,10 @@ read the locally supplied `/etc/wifi.conf` to derive its protected system
 connection; credentials stay on the node. The bounded Ethernet guard is a
 maintenance aid, not protection against a kernel lockup or loss of power.
 
-## Planned worker enrollment
+## Worker enrollment
 
 `playbooks/k3s-worker.yml` is a focused agent-only workflow, not an HA-server
-conversion. The planned WireGuard address is `10.250.0.5`; `.4` belongs to the
+conversion. The WireGuard address is `10.250.0.5`; `.4` belongs to the
 Mac. This site's LAN overlaps the older site, so worker routes to remote
 `192.168.0.23/32` and `.24/32` must use the respective WireGuard peers. Peer
 endpoints for the old site use its public hostname and forwarded UDP ports.
@@ -70,7 +70,7 @@ NetworkManager. Enrollment is not complete merely because these files exist.
 
 `wireguard-worker.yml` configures only socrat-3. Existing peers also need to
 accept its public key and management address before it can reach the cluster;
-that existing-node registration has not been applied by this provisioning run.
+that registration is managed by `wireguard-worker-peers.yml`, which adds only the new peer without restarting existing interfaces. It recognizes peers already rendered by the common role and rejects conflicting address ownership.
 
 ## Verified on 2026-10-16
 
@@ -85,3 +85,42 @@ role; its SHA-256 matches the source asset. Light/dark and lock-screen settings
 point to it. The monitor window was reopened after setting fullscreen startup
 and no decorations; the tmux pane and running btm process were preserved.
 Reapplying the `appearance` tag completed with `changed=0` and no failures.
+
+
+## Completed cluster enrollment on 2026-10-16
+
+Socrat-3 joined as an agent-only worker running `v1.36.5+k3s1`, with node IP
+`10.250.0.5` and pod CIDR `10.42.3.0/24`. It needs no public address: outbound
+WireGuard handshakes and keepalives maintain its connections to the existing
+nodes. Ethernet remains unmanaged by NetworkManager; SSH stays available at
+`192.168.0.110`. WireGuard and k3s-agent are enabled at boot.
+
+Apply the enrollment workflows from `ansible/` in this order:
+
+1. `playbooks/wireguard-worker-peers.yml`
+2. `playbooks/wireguard-worker.yml`
+3. `playbooks/k3s-worker.yml`
+4. `playbooks/syncthing-placement.yml`
+5. `playbooks/k3s-worker-admit.yml`
+
+Use both `-i inventory/hosts.yml -i inventory/socrat-3.yml`. Supply per-host
+become credentials through a private inventory or Ansible Vault: old nodes
+use sudo and the new worker uses `su -l`, with different passwords. Do not use
+the old site's direct LAN inventory from the new site: both LANs overlap.
+
+The worker uses `prefer-bundled-bin: true`. During verification Debian's
+iptables 1.8.11 returned exit status 2 while kube-proxy checked a missing
+KUBE-FORWARD chain; service rules were absent and cluster DNS timed out.
+Using K3s's bundled tools restored service routing. This is the supported
+[bundled-binary option](https://docs.k3s.io/known-issues#iptables).
+
+`k3s-worker-verify.yml` creates disposable probes on all four nodes, verifies
+all 16 source/destination pairs, cluster DNS, the API service, log streaming,
+and a read-only NFS mount, then deletes its namespace even on failure. All
+checks passed before admission. The bootstrap taint is a registration-time
+safety gate; removing it from the existing Node permits normal scheduling.
+
+Syncthing's Helm chart now restricts placement to configured private-GUI nodes.
+The existing release was upgraded with retained values; all three instances
+remain ready. Socrat-3 intentionally has no Syncthing pod until its instance is
+configured. Desktop and autologin settings on older nodes were not reapplied.
