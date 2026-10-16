@@ -239,3 +239,10 @@ hostname and local loopback resolution are both `socrat-3`.
 Apply with `--tags shell` on `debian-laptop.yml`, using the supplemental
 socrat-3 inventory. New SSH logins pick up Zsh automatically; an existing
 interactive Bash session can use `exec zsh -l` without reconnecting.
+
+Alacritty on socrat-3 also enables `colors.transparent_background_colors`.
+Together with `window.opacity=0.0`, this applies transparency to application
+cell backgrounds as well as the default background. The setting is a host
+inventory override in the shared terminal role and can be reapplied with
+`--tags alacritty`. The running window was updated through Alacritty IPC;
+its tmux pane was retained. Visual confirmation remains with the local user.

@@ -46,6 +46,17 @@
     mode: '0644'
     backup: true
 
+- name: Apply opacity to application background colors
+  community.general.ini_file:
+    path: "{{ homelab_alacritty_config.stdout }}"
+    section: colors
+    option: transparent_background_colors
+    value: "{{ homelab_alacritty_transparent_background_colors | bool | ternary('true', 'false') }}"
+    owner: "{{ homelab_user }}"
+    group: "{{ homelab_user }}"
+    mode: '0644'
+    backup: true
+
 - name: Disable Alacritty background blur
   community.general.ini_file:
     path: "{{ homelab_alacritty_config.stdout }}"
