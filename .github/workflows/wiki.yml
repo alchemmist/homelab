@@ -48,6 +48,7 @@ jobs:
           done
           curl --fail --silent http://127.0.0.1:18080/version.json | python3 -c 'import json,os,sys; assert json.load(sys.stdin)["source_sha"] == os.environ["GITHUB_SHA"]'
           test "$(curl --silent -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/ansible/)" = 404
+          test "$(curl --silent -o /dev/null -w '%{http_code}' -H 'X-Forwarded-Proto: http' http://127.0.0.1:18080/)" = 308
           curl --fail --silent --head http://127.0.0.1:18080/ | grep -iq '^X-Robots-Tag: noindex, nofollow'
 
   publish:
