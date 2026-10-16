@@ -1,0 +1,43 @@
+---
+- name: Rebuild Rancher UI caches after Kubernetes datastore revision rollback
+  hosts: socrat-0
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Require a healthy Rancher deployment
+      ansible.builtin.command: kubectl -n cattle-system rollout status deployment/rancher --timeout=120s
+      changed_when: false
+
+    - name: Read the Rancher replica inventory
+      ansible.builtin.command: kubectl -n cattle-system get pods -l app=rancher -o json
+      register: rancher_cache_pods
+      changed_when: false
+
+    - name: Require two replicas before serial replacement
+      ansible.builtin.assert:
+        that:
+          - (rancher_cache_pods.stdout | from_json)['items'] | length == 2
+          - >-
+            (rancher_cache_pods.stdout | from_json)['items']
+            | map(attribute='status.containerStatuses') | flatten
+            | selectattr('ready', 'equalto', false) | list | length == 0
+
+    - name: Replace each Rancher replica separately
+      ansible.builtin.include_tasks: ../tasks/rancher-refresh-replica.yml
+      loop: "{{ (rancher_cache_pods.stdout | from_json)['items'] | map(attribute='metadata.name') | list }}"
+      loop_control:
+        loop_var: rancher_cache_pod
+
+    - name: Verify Rancher lists match Kubernetes on every replica and ingress
+      ansible.builtin.command: python3 -
+      args:
+        stdin: "{{ lookup('file', playbook_dir + '/../files/verify_rancher_nodes.py') }}"
+      register: rancher_cache_verification
+      changed_when: false
+      retries: 12
+      delay: 10
+      until: rancher_cache_verification.rc == 0
+
+    - name: Report verified node names
+      ansible.builtin.debug:
+        var: rancher_cache_verification.stdout_lines
