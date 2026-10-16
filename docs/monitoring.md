@@ -42,6 +42,10 @@ Paste it directly into the login form or a password manager. The clipboard conta
 
 ## Socrat Overview
 
+The default home is **Socrat · Cluster**, with the supplied Socrat sculpture, a dark default theme and links to Rancher and the status page. The original `Frame 52.png` is stored unchanged as `deploy/monitoring/branding/socrat-cover.png`. Ansible publishes it in the `socrat-branding` ConfigMap before Grafana starts and mounts a dedicated image directory. The dashboard uses the private HTTPS asset URL; viewing the image inside Rancher also requires socrat-wg connectivity. HTML sanitization remains enabled.
+
+This customizes the dashboard and default home in Grafana OSS. Product-wide logo, favicon and login branding are separate Enterprise white-label features.
+
 The provisioned **Socrat Overview** dashboard (UID `socrat-overview`) shows Ready nodes, running pods, healthy etcd/API targets, CPU and memory use, root filesystem space, recent pod restarts, scheduler backlog and controller queue depth. Counts use live metrics rather than a fixed three-node assumption. Empty restart/queue panels can mean no recent events; inspect scrape health before interpreting missing data. Changes belong in `charts/monitoring-k3s/templates/socrat-dashboard.yaml` because provisioning replaces UI edits.
 
 ## Verification

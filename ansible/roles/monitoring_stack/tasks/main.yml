@@ -77,6 +77,32 @@
     dest: "{{ monitoring_directory }}/values.yaml"
     mode: '0600'
 
+- name: Copy the original Socrat brand image
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../deploy/monitoring/branding/socrat-cover.png"
+    dest: "{{ monitoring_directory }}/socrat-cover.png"
+    mode: '0644'
+
+- name: Publish the private Grafana branding asset
+  ansible.builtin.command:
+    argv:
+      - python3
+      - -c
+      - |
+        import json
+        import subprocess
+        import sys
+        command = [sys.argv[1], 'kubectl', '--kubeconfig', sys.argv[2], '-n', sys.argv[3]]
+        desired = subprocess.check_output(command + ['create', 'configmap', 'socrat-branding', '--from-file=socrat-cover.png=' + sys.argv[4], '--dry-run=client', '-o', 'json'])
+        result = subprocess.run(command + ['apply', '-f', '-'], input=desired, check=True, capture_output=True)
+        print(result.stdout.decode().strip())
+      - "{{ monitoring_k3s_binary }}"
+      - "{{ monitoring_kubeconfig }}"
+      - "{{ monitoring_namespace }}"
+      - "{{ monitoring_directory }}/socrat-cover.png"
+  register: monitoring_branding_asset
+  changed_when: "'unchanged' not in monitoring_branding_asset.stdout"
+
 - name: Install the pinned monitoring stack
   ansible.builtin.command:
     argv:
