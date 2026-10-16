@@ -1,9 +1,18 @@
 # Rollback
 
-Disconnect and remove only the `wg-socrat-admin.conf` profile from the WireGuard macOS app, then remove the generated profile and key files from the configured WireGuard application directory. Remove only the three resolver files managed by this role if split DNS is no longer needed:
+Disconnect the managed WireGuard profile before changing its DNS configuration.
+Restore the previous profile from a private backup if needed; never regenerate
+its keys as part of DNS rollback.
 
-```sh
-sudo rm /etc/resolver/0.socrat.alchemmist.xyz /etc/resolver/1.socrat.alchemmist.xyz /etc/resolver/2.socrat.alchemmist.xyz
-```
+For split DNS, restore the previous `/etc/resolver/socrat.alchemmist.xyz` file
+if one existed. Remove that managed file only when explicitly retiring this
+configuration. Existing per-host resolvers are preserved by deployment and
+must be reviewed separately. Leave unrelated resolver files and
+`/etc/resolv.conf` unchanged.
 
-Leave unrelated files in `/etc/resolver` and `/etc/resolv.conf` unchanged. Remove the Mac peer from each node separately after confirming the profile is disconnected.
+For system DNS, restore the previous profile's DNS field and reimport or edit
+it in the WireGuard application, then reconnect. The generated file alone does
+not update an already imported tunnel.
+
+Removing DNS configuration does not revoke network access. Remove the Mac peer
+from each node separately only when intentionally decommissioning that client.

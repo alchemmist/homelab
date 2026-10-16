@@ -7,6 +7,12 @@ wireguard_admin_private_key_path: "{{ wireguard_admin_config_dir }}/wg-socrat-ad
 wireguard_admin_public_key_path: "{{ wireguard_admin_config_dir }}/wg-socrat-admin.key.pub"
 wireguard_admin_profile_path: "{{ wireguard_admin_config_dir }}/{{ wireguard_admin_profile_name }}"
 wireguard_admin_resolver_dir: /etc/resolver
+wireguard_admin_dns_mode: split
+wireguard_admin_dns_domain: socrat.alchemmist.xyz
+wireguard_admin_dns_servers:
+  - 10.250.0.2
+  - 10.250.0.3
+  - 10.250.0.1
 wireguard_admin_dns_timeout: 6
 wireguard_admin_dns_attempts: 1
 wireguard_admin_peers:

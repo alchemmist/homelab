@@ -169,10 +169,27 @@ with private permissions. Import it through WireGuard's **Import tunnel(s)
 from File** menu and activate it in the app. Opening the file with `open -a`
 does not import it. Never commit this profile or its private key.
 
-Split DNS files are installed at `/etc/resolver/0.socrat.alchemmist.xyz` and the
-corresponding files for nodes 1 and 2. Each lists resolvers 10.250.0.2,
-10.250.0.3, and 10.250.0.1. Ansible maintenance access is available through
-`inventory/direct.yml` alongside `inventory/hosts.yml`.
+The default `wireguard_admin_dns_mode: split` installs one resolver at
+`/etc/resolver/socrat.alchemmist.xyz`, listing 10.250.0.2, 10.250.0.3 and
+10.250.0.1. It covers every subdomain, including future internal services,
+while unrelated DNS stays with the existing network or corporate VPN.
+Existing per-host resolver files are preserved during migration. Ansible
+maintenance access is available through `inventory/direct.yml` alongside
+`inventory/hosts.yml`.
+
+Alternatively, `wireguard_admin_dns_mode: system` writes these DNS servers into
+`DNS=` in the generated WireGuard profile and skips macOS resolver installation.
+Import the updated profile once and reconnect to activate it. This mode sends
+ordinary DNS through Socrat's private resolvers, which forward public queries
+upstream. The Apple client treats this as global DNS, not suffix-only DNS;
+use the default split mode when another VPN must retain its DNS configuration.
+Changing mode does not remove existing resolver files automatically.
+
+WireGuard does not push DNS settings from a server to existing clients. Each
+client needs a one-time profile update or suffix resolver installation; adding
+another service afterward requires only central DNS and gateway configuration.
+DNS selects the private address; HTTPS certificates and private gateway routes
+are configured separately on the servers.
 
 Still pending acceptance: controlled resolver-failure tests, reconnect and
 sleep/wake checks, and persistence checks after node/router restarts. No
