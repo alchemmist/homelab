@@ -48,3 +48,23 @@ socrat-0, targeting 10.250.0.5:22, as with the current administrator's SSH alias
 Registration and firewall deployment were verified on all three entry points.
 A client handshake cannot be verified until the user imports the completed
 profile and activates it; the server does not possess the client private key.
+
+## Tim SSH account
+
+`tim` is provisioned on all four nodes by `playbooks/users.yml`, using the
+`homelab_users` registry. It has no sudo privileges. The original key is
+retained; the additional `phone` Ed25519 key has fingerprint
+`SHA256:AvFh805CQs8+HBJvjHrUWPtAn5mINCaQr7Wuo42jvBQ`.
+
+With the assistant's WireGuard tunnel active and its SSH private key available:
+
+```bash
+ssh -p 2222 tim@10.250.0.1
+ssh -p 2222 tim@10.250.0.3
+ssh -p 2222 tim@10.250.0.2
+ssh -J tim@10.250.0.1:2222 tim@10.250.0.5
+```
+
+The last command reaches socrat-3 through socrat-0 without agent forwarding.
+All four SSH servers accepted the offered public key during verification;
+a completed login requires signing with the private key held by its owner.
