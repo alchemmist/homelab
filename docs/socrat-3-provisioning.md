@@ -227,3 +227,15 @@ route, and a bounded hardware remap found networks but produced an IRQ storm,
 so it was reverted. A separate, unselected test boot image is now prepared;
 see [the recovery candidate](socrat-3-network-recovery.md) for evidence,
 validation, and rollback. No working wireless connection is claimed yet.
+
+## Standard administrator shell
+
+The laptop role imports the existing `base` and `starship` roles and installs
+the Debian `zsh` and `starship` packages before applying the shared prompt.
+`alchemmist` uses `/usr/bin/zsh` as its login shell, matching socrat-0; the
+machine-wide prompt configuration is `/etc/starship/starship.toml`. The
+hostname and local loopback resolution are both `socrat-3`.
+
+Apply with `--tags shell` on `debian-laptop.yml`, using the supplemental
+socrat-3 inventory. New SSH logins pick up Zsh automatically; an existing
+interactive Bash session can use `exec zsh -l` without reconnecting.
