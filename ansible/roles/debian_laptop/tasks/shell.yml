@@ -1,0 +1,14 @@
+---
+- name: Install the standard interactive shell and prompt
+  ansible.builtin.apt:
+    name: [zsh, starship]
+    state: present
+
+- name: Apply the shared homelab prompt configuration
+  ansible.builtin.import_role:
+    name: starship
+
+- name: Use the standard login shell for the administrator
+  ansible.builtin.user:
+    name: "{{ homelab_user }}"
+    shell: /usr/bin/zsh

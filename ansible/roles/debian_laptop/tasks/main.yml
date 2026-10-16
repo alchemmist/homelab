@@ -22,17 +22,21 @@
   ansible.builtin.import_tasks: wifi.yml
   tags: wifi
 
-- name: Set the node hostname
-  ansible.builtin.hostname:
-    name: "{{ inventory_hostname }}"
-  tags: utilities
+- name: Apply the standard node hostname and aliases
+  ansible.builtin.import_role:
+    name: base
+  tags: [utilities, shell]
 
 - name: Resolve the local hostname without relying on DNS
   ansible.builtin.lineinfile:
     path: /etc/hosts
     regexp: '^127\.0\.1\.1\s'
     line: "127.0.1.1 {{ inventory_hostname }}"
-  tags: utilities
+  tags: [utilities, shell]
+
+- name: Configure the standard interactive shell
+  ansible.builtin.import_tasks: shell.yml
+  tags: [utilities, shell]
 
 - name: Install server administration utilities
   ansible.builtin.apt:
