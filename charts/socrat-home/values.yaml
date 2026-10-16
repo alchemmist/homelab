@@ -33,3 +33,6 @@ podAntiAffinity:
 
 imagePullSecrets:
   - ghcr-pull
+
+homepageIndex:
+  enabled: true
