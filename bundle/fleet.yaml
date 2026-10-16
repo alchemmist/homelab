@@ -1,0 +1,6 @@
+namespace: wiki
+createNamespace: false
+helm:
+  releaseName: wiki
+  timeoutSeconds: 300
+  atomic: true
