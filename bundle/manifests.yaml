@@ -68,7 +68,7 @@ spec:
               app.kubernetes.io/instance: wiki
       containers:
         - name: nginx
-          image: "ghcr.io/alchemmist/socrat-wiki@sha256:daff55327a5a2acce5d78ed546982718e462f17b97888a98fcc48e92135cf789"
+          image: "ghcr.io/alchemmist/socrat-wiki@sha256:6f2cc6890df3c354695c5033e721d83741d0c8f0a390a61597ac265c5faa265a"
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
