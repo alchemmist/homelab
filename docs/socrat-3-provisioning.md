@@ -136,3 +136,41 @@ Syncthing's Helm chart now restricts placement to configured private-GUI nodes.
 The existing release was upgraded with retained values; all three instances
 remain ready. Socrat-3 intentionally has no Syncthing pod until its instance is
 configured. Desktop and autologin settings on older nodes were not reapplied.
+
+## Locale and Internet time
+
+The Debian laptop role manages `en_US.UTF-8` and `ru_RU.UTF-8`, with English as
+the default system language. SSH sets `LC_CTYPE=C.UTF-8` in a managed sshd
+drop-in, overriding macOS's forwarded bare `LC_CTYPE=UTF-8`, which glibc does
+not recognize as a locale name. It does not force `LC_ALL`; explicit Russian
+or English locale selection remains available. The full sshd configuration
+is validated before reload. An interactive SSH login with the formerly failing
+client environment now produces UTF-8 output without locale warnings; Russian
+and English day names were both verified.
+
+Chrony uses `2.debian.pool.ntp.org`, starts at boot, and is checked for an
+active network source and synchronization within 100 ms. The timezone is
+`Europe/Moscow`. At verification, the clock correction was below 1 ms.
+Reapply both settings with `--tags locales,time` on `debian-laptop.yml`.
+
+## Wireless diagnosis on 2026-10-16
+
+The onboard RTL8723AE still does not provide a usable Wi-Fi connection.
+With MSI disabled and firmware loaded, scans return no networks. The device
+reports an asserted legacy INTx interrupt, but IRQ 39 (`rtl_pci`) remains at
+zero, with no unhandled interrupt count. rfkill reports no block. This points
+to interrupt delivery, not an SSID/password problem, but does not establish
+whether firmware, BIOS routing, the driver, or hardware is the root cause.
+
+A per-device runtime test disabled PCIe L0s, L1 and clock power management
+through the kernel sysfs interface. Hardware readback confirmed the change;
+scans still found no networks and the interrupt count remained zero. The
+original settings were restored after the test. No experimental power setting
+was persisted, and no driver reload, MSI enablement, or reboot was performed.
+Ethernet SSH and all four Ready nodes were retained. Wireless autoconnect
+remains disabled until a working path is verified. Do not remove Ethernet on
+the assumption that Wi-Fi has been configured successfully.
+
+A separate USB wireless adapter can be tested without reenabling the known
+unstable MSI path. Further onboard-driver or boot-parameter experiments need
+a controlled maintenance window with local recovery available.
