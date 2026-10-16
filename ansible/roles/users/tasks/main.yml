@@ -28,6 +28,8 @@
   ansible.builtin.file:
     path: "/home/{{ item.name }}/.ssh/authorized_keys"
     state: touch
+    access_time: preserve
+    modification_time: preserve
     owner: "{{ item.name }}"
     group: "{{ item.name }}"
     mode: "0600"

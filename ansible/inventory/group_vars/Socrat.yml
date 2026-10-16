@@ -52,3 +52,4 @@ homelab_users:
     groups: []
     authorized_keys:
       - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILjT3ii4vL1FL9TRws08QCzIZhrHFG69Q5K9Adtm0y1F antropophag@gmail.com"
+      - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN1C4WZYz4ma1tgpP4Bzw509lCXlHva6ybdSV79nNyv0 phone"
