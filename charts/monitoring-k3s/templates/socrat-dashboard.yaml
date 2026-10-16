@@ -8,7 +8,7 @@ data:
   socrat-overview.json: |
     {
       "uid": "socrat-overview",
-      "title": "Socrat Overview",
+      "title": "Socrat · Cluster",
       "description": "Live cluster overview. Etcd and API panels count healthy monitored members; a dropped count indicates reduced redundancy. No external notification delivery is configured in this phase.",
       "tags": [
         "Socrat",
@@ -16,7 +16,7 @@ data:
       ],
       "timezone": "browser",
       "schemaVersion": 39,
-      "version": 1,
+      "version": 2,
       "refresh": "30s",
       "time": {
         "from": "now-1h",
@@ -24,6 +24,22 @@ data:
       },
       "editable": false,
       "panels": [
+        {
+          "id": 100,
+          "title": "",
+          "type": "text",
+          "transparent": true,
+          "gridPos": {
+            "x": 0,
+            "y": 0,
+            "w": 24,
+            "h": 4
+          },
+          "options": {
+            "mode": "html",
+            "content": "<div style=\"display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:4px 8px\"><img src=\"https://grafana.socrat.alchemmist.xyz/public/img/socrat/socrat-cover.png\" alt=\"Socrat bronze sculpture\" width=\"142\" height=\"80\" style=\"object-fit:contain;flex-shrink:0\"><div><h1 style=\"margin:0;font-size:32px;font-weight:600;line-height:1.2;color:#d6c6a9\">Socrat</h1><p style=\"margin:6px 0 0;font-size:14px;color:#b9b4a9\">Cluster observability</p></div></div>"
+          }
+        },
         {
           "id": 1,
           "title": "Ready nodes",
@@ -34,7 +50,7 @@ data:
           },
           "gridPos": {
             "x": 0,
-            "y": 0,
+            "y": 4,
             "w": 6,
             "h": 4
           },
@@ -82,7 +98,7 @@ data:
           },
           "gridPos": {
             "x": 6,
-            "y": 0,
+            "y": 4,
             "w": 6,
             "h": 4
           },
@@ -130,7 +146,7 @@ data:
           },
           "gridPos": {
             "x": 12,
-            "y": 0,
+            "y": 4,
             "w": 6,
             "h": 4
           },
@@ -178,7 +194,7 @@ data:
           },
           "gridPos": {
             "x": 18,
-            "y": 0,
+            "y": 4,
             "w": 6,
             "h": 4
           },
@@ -226,7 +242,7 @@ data:
           },
           "gridPos": {
             "x": 0,
-            "y": 4,
+            "y": 8,
             "w": 12,
             "h": 8
           },
@@ -274,7 +290,7 @@ data:
           },
           "gridPos": {
             "x": 12,
-            "y": 4,
+            "y": 8,
             "w": 12,
             "h": 8
           },
@@ -322,7 +338,7 @@ data:
           },
           "gridPos": {
             "x": 0,
-            "y": 12,
+            "y": 16,
             "w": 12,
             "h": 8
           },
@@ -370,7 +386,7 @@ data:
           },
           "gridPos": {
             "x": 12,
-            "y": 12,
+            "y": 16,
             "w": 12,
             "h": 8
           },
@@ -418,7 +434,7 @@ data:
           },
           "gridPos": {
             "x": 0,
-            "y": 20,
+            "y": 24,
             "w": 12,
             "h": 8
           },
@@ -466,7 +482,7 @@ data:
           },
           "gridPos": {
             "x": 12,
-            "y": 20,
+            "y": 24,
             "w": 12,
             "h": 8
           },
@@ -505,5 +521,20 @@ data:
           }
         }
       ],
-      "links": []
+      "links": [
+        {
+          "title": "Rancher",
+          "url": "https://rancher.socrat.alchemmist.xyz",
+          "targetBlank": true,
+          "type": "link",
+          "icon": "external link"
+        },
+        {
+          "title": "Status",
+          "url": "https://status.alchemmist.xyz",
+          "targetBlank": true,
+          "type": "link",
+          "icon": "external link"
+        }
+      ]
     }

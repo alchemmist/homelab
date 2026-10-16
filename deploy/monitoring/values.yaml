@@ -114,6 +114,11 @@ alertmanager:
               storage: 1Gi
 grafana:
   replicas: 1
+  extraConfigmapMounts:
+    - name: socrat-branding
+      configMap: socrat-branding
+      mountPath: /usr/share/grafana/public/img/socrat
+      readOnly: true
   nodeSelector:
     kubernetes.io/hostname: socrat-1
   deploymentStrategy:
@@ -147,7 +152,7 @@ grafana:
       searchNamespace: ALL
   grafana.ini:
     dashboards:
-      default_home_dashboard_path: /tmp/dashboards/rancher-default-home.json
+      default_home_dashboard_path: /tmp/dashboards/socrat-overview.json
     analytics:
       reporting_enabled: false
       check_for_updates: false
@@ -158,6 +163,7 @@ grafana:
       org_role: Viewer
     users:
       allow_sign_up: false
+      default_theme: dark
 prometheusOperator:
   nodeSelector:
     kubernetes.io/hostname: socrat-1
