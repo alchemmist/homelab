@@ -174,3 +174,48 @@ the assumption that Wi-Fi has been configured successfully.
 A separate USB wireless adapter can be tested without reenabling the known
 unstable MSI path. Further onboard-driver or boot-parameter experiments need
 a controlled maintenance window with local recovery available.
+
+## Further onboard Wi-Fi investigation
+
+The running `rtl8723ae` module matches PCI ID `10ec:8723` and the installed
+kernel vermagic. `dpkg -V firmware-realtek` reported no modified package
+files, and the B-revision firmware loaded without error. Replacing the driver
+with an unrelated Realtek module is not supported by this evidence.
+
+Diagnostic ACPI tables were extracted and decompiled with `acpica-tools` in
+`/home/alchemmist/wifi-diagnostics` (private directory). Do not publish the
+complete dump: MSDM can contain a Windows license. BIOS is E16GPAMS.109,
+dated 2013-10-15, on MSI MS-16GP / CR61 3M.
+
+GPP1 (`00:02.3`, upstream of the Wi-Fi adapter) has no `_PRT` in the DSDT or
+four SSDTs. Sibling bridge tables cover GSI28-31,36-39,40-43. The second IOAPIC
+starts at GSI24, so the displayed IO-APIC pin0 is not proof of GSI0: it is
+consistent with fallback routing to GSI24. The missing GPP1 table may omit
+GSI32-35, but the actual chipset routing register must be checked before
+asserting or fixing this.
+
+AMD Family16h BKDG publication 48751, printed p145 Table61, recommends
+Dev2Fn3 external interrupt group2 (pins8-11, GSI32-35 with this MADT).
+Printed p226-228 describe D0F0xF8/FC indexed access, routing index0x12, and
+read-only interrupt status index0x30. No register selector or routing writes
+were made. If the live setting confirms the mismatch, investigate a narrowly
+targeted missing `_PRT` SSDT and controlled IRQ reallocation; do not blindly
+change global ACPI/IRQ flags or repeat MSI1.
+
+The old watchdog trace also needs a more cautious interpretation: its first
+IRQ stack includes Ethernet `alx_mask_msix`, while the interrupted RTL task's
+RIP points to the return-thunk jump following a MMIO read. This does not prove
+that the RTL MMIO read itself hung. IRQ/softirq starvation or PCIe interaction
+remain hypotheses. Preserve Ethernet and avoid reloading alx.
+
+During read-only investigation after installing ACPI diagnostic tools,
+socrat-3 became unreachable over both Ethernet and WireGuard and changed to
+NotReady. No driver, network, or boot configuration changes preceded this
+outage in that investigation. Its physical state and failure cause must be
+established before continuing remote work.
+
+Primary references:
+- https://www.amd.com/content/dam/amd/en/documents/archived-tech-docs/programmer-references/48751_16h_bkdg.pdf
+- https://github.com/torvalds/linux/blob/v6.12/drivers/acpi/pci_irq.c
+- https://github.com/torvalds/linux/blob/v6.12/drivers/net/wireless/realtek/rtlwifi/pci.h
+- https://github.com/torvalds/linux/blob/v6.12/drivers/net/ethernet/atheros/alx/hw.c
