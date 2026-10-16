@@ -2,8 +2,20 @@
 
 The MSI CR61 3M (AMD A4-5000, approximately 3.3 GiB usable RAM) is managed
 through `ansible/inventory/socrat-3.yml`. The maintenance connection is wired
-Ethernet at `192.168.0.110:22`; the account is `alchemmist`. Root escalation uses
+Ethernet at `192.168.0.110:2222`; the account is `alchemmist`. Root escalation uses
 `su -l` during bootstrap. Passwords and the Wi-Fi PSK are not stored in Git.
+
+SSH uses the common `ssh` role and port 2222. For an initial installation
+still listening on port 22, migrate it before the laptop playbook:
+
+```bash
+ansible-playbook playbooks/ssh.yml --limit socrat-3 \
+  -i inventory/hosts.yml -i inventory/socrat-3.yml \
+  -e homelab_ssh_bootstrap_port=22 --ask-become-pass
+```
+
+The role verifies authentication on 2222 before completing the transition.
+Port 22 remains available under the shared recovery-port policy.
 
 From `ansible/`, apply the host setup using:
 

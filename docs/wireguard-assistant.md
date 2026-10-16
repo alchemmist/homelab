@@ -43,7 +43,7 @@ SSH on these entry points uses TCP 2222 and still requires separate SSH
 credentials. The firewall also permits private DNS and the configured private
 HTTPS endpoints. Transit to other networks is denied. Socrat-3 has no public
 WireGuard endpoint; SSH access to it uses an authorized jump-host login on
-socrat-0, targeting 10.250.0.5:22, as with the current administrator's SSH alias.
+socrat-0, targeting 10.250.0.5:2222, as with the current administrator's SSH alias.
 
 Registration and firewall deployment were verified on all three entry points.
 A client handshake cannot be verified until the user imports the completed
@@ -62,7 +62,7 @@ With the assistant's WireGuard tunnel active and its SSH private key available:
 ssh -p 2222 tim@10.250.0.1
 ssh -p 2222 tim@10.250.0.3
 ssh -p 2222 tim@10.250.0.2
-ssh -J tim@10.250.0.1:2222 tim@10.250.0.5
+ssh -J tim@10.250.0.1:2222 -p 2222 tim@10.250.0.5
 ```
 
 The last command reaches socrat-3 through socrat-0 without agent forwarding.
