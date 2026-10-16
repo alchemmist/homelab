@@ -3,6 +3,7 @@ token-file: /etc/rancher/k3s/worker-token
 node-name: {{ k3s_worker_name }}
 node-ip: {{ k3s_worker_ip }}
 flannel-iface: wg-socrat
+prefer-bundled-bin: true
 node-label:
   - svccontroller.k3s.cattle.io/enablelb=false
   - homelab.io/profile=desktop-worker

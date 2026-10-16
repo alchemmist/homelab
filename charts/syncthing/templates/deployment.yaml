@@ -30,6 +30,22 @@ spec:
       nodeSelector:
 {{ toYaml .Values.nodeSelector | indent 8 }}
       {{- end }}
+      {{- if .Values.privateGui.enabled }}
+      {{- if not .Values.privateGui.nodes }}
+      {{- fail "privateGui requires at least one configured node" }}
+      {{- end }}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              {{- range .Values.privateGui.nodes }}
+              - matchFields:
+                  - key: metadata.name
+                    operator: In
+                    values:
+                      - {{ .nodeName | quote }}
+              {{- end }}
+      {{- end }}
       containers:
         - name: syncthing
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"

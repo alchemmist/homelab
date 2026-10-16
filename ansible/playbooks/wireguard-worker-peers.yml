@@ -1,0 +1,89 @@
+---
+- name: Register the new worker without restarting existing management interfaces
+  hosts: socrat-0:socrat-1:socrat-2
+  gather_facts: false
+  become: true
+  serial: 1
+  any_errors_fatal: true
+  tasks:
+    - name: Inspect persisted and active worker address ownership
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/python3
+          - -c
+          - |
+            import ipaddress, json, pathlib, re, subprocess, sys
+            key, cidr, keepalive = sys.argv[1:]
+            target = ipaddress.ip_network(cidr)
+            config = pathlib.Path('/etc/wireguard/wg-socrat.conf').read_text()
+            peers = []
+            for block in re.split(r'(?m)^\s*\[Peer\]\s*$', config)[1:]:
+                fields = {}
+                for line in block.splitlines():
+                    line = line.split('#', 1)[0].strip()
+                    if '=' in line:
+                        name, value = line.split('=', 1)
+                        fields[name.strip()] = value.strip()
+                peers.append(fields)
+            matches = [peer for peer in peers if peer.get('PublicKey') == key]
+            if len(matches) > 1:
+                sys.exit('Duplicate persisted worker peers; repair before applying')
+            for peer in peers:
+                networks = [ipaddress.ip_network(value.strip()) for value in peer.get('AllowedIPs', '').split(',') if value.strip()]
+                if peer.get('PublicKey') == key:
+                    if networks != [target]:
+                        sys.exit('Existing worker AllowedIPs differ from inventory; refusing replacement')
+                elif any(network.version == target.version and network.overlaps(target) for network in networks):
+                    sys.exit('Worker address overlaps another persisted peer')
+            addresses = {}
+            for line in subprocess.check_output(['wg', 'show', 'wg-socrat', 'allowed-ips'], text=True).splitlines():
+                peer_key, values = line.split(None, 1)
+                networks = [ipaddress.ip_network(value) for value in values.replace(',', ' ').split() if value != '(none)']
+                addresses[peer_key] = networks
+                if peer_key != key and any(network.version == target.version and network.overlaps(target) for network in networks):
+                    sys.exit('Worker address overlaps another active peer')
+            intervals = dict(line.split() for line in subprocess.check_output(['wg', 'show', 'wg-socrat', 'persistent-keepalive'], text=True).splitlines())
+            print(json.dumps({'persisted': bool(matches), 'runtime_matches': addresses.get(key) == [target] and intervals.get(key) == keepalive}))
+          - "{{ wg_socrat_nodes['socrat-3'].public_key }}"
+          - "{{ wg_socrat_nodes['socrat-3'].address }}/32"
+          - "{{ wg_socrat_keepalive | string }}"
+      register: worker_peer_state
+      changed_when: false
+      check_mode: false
+
+    - name: Persist the dedicated worker peer
+      ansible.builtin.blockinfile:
+        path: /etc/wireguard/wg-socrat.conf
+        marker: '# {mark} homelab socrat-3 peer'
+        block: |
+          [Peer]
+          PublicKey = {{ wg_socrat_nodes['socrat-3'].public_key }}
+          AllowedIPs = {{ wg_socrat_nodes['socrat-3'].address }}/32
+          PersistentKeepalive = {{ wg_socrat_keepalive }}
+        owner: root
+        group: root
+        mode: '0600'
+        backup: true
+      no_log: true
+      when: not (worker_peer_state.stdout | from_json).persisted
+
+    - name: Add the worker peer without altering existing peers
+      ansible.builtin.command:
+        argv:
+          - wg
+          - set
+          - wg-socrat
+          - peer
+          - "{{ wg_socrat_nodes['socrat-3'].public_key }}"
+          - allowed-ips
+          - "{{ wg_socrat_nodes['socrat-3'].address }}/32"
+          - persistent-keepalive
+          - "{{ wg_socrat_keepalive | string }}"
+      when: not (worker_peer_state.stdout | from_json).runtime_matches
+
+    - name: Verify the active worker address mapping
+      ansible.builtin.command: wg show wg-socrat allowed-ips
+      register: worker_peer_addresses
+      changed_when: false
+      failed_when: (wg_socrat_nodes['socrat-3'].public_key + '\t' + wg_socrat_nodes['socrat-3'].address + '/32') not in worker_peer_addresses.stdout_lines
+      when: not ansible_check_mode
