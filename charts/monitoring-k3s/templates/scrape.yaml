@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: monitoring-etcd-metrics
+  labels:
+    app: monitoring-etcd-metrics
+    jobLabel: kube-etcd
+spec:
+  ports:
+    - name: http-metrics
+      port: {{ .Values.port }}
+      targetPort: {{ .Values.port }}
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: monitoring-etcd-metrics
+subsets:
+  - addresses:
+{{- range $node, $address := .Values.nodes }}
+      - ip: {{ $address | quote }}
+        nodeName: {{ $node }}
+{{- end }}
+    ports:
+      - name: http-metrics
+        protocol: TCP
+        port: {{ .Values.port }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: monitoring-etcd-metrics
+  labels:
+    release: {{ .Values.prometheusRelease }}
+spec:
+  jobLabel: jobLabel
+  selector:
+    matchLabels:
+      app: monitoring-etcd-metrics
+  endpoints:
+    - port: http-metrics
+      interval: 30s
+      scrapeTimeout: 15s
+      authorization:
+        type: Bearer
+        credentials:
+          name: {{ .Values.secretName }}
+          key: token
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_endpoint_node_name]
+          targetLabel: node

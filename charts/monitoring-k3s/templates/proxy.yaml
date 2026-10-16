@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: monitoring-etcd-metrics
+spec:
+  selector:
+    matchLabels:
+      app: monitoring-etcd-metrics
+  template:
+    metadata:
+      labels:
+        app: monitoring-etcd-metrics
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      automountServiceAccountToken: false
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+{{ keys .Values.nodes | sortAlpha | toYaml | indent 22 }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+      containers:
+        - name: proxy
+          image: {{ .Values.image | quote }}
+          command: [/bin/sh, -ec]
+          args:
+            - |
+              case "$NODE_NAME" in
+{{- range $node, $address := .Values.nodes }}
+                {{ $node }}) METRICS_BIND={{ $address }} ;;
+{{- end }}
+                *) exit 1 ;;
+              esac
+              export METRICS_BIND
+              METRICS_TOKEN=$(cat /run/metrics-token/token)
+              export METRICS_TOKEN
+              umask 077
+              envsubst '${METRICS_BIND} ${METRICS_TOKEN}' < /etc/metrics-config/nginx.conf.template > /tmp/nginx.conf
+              unset METRICS_TOKEN
+              exec nginx -c /tmp/nginx.conf -g 'daemon off;'
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+            seccompProfile:
+              type: RuntimeDefault
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 64Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/metrics-config
+              readOnly: true
+            - name: token
+              mountPath: /run/metrics-token
+              readOnly: true
+            - name: temp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: monitoring-etcd-metrics-config
+        - name: token
+          secret:
+            secretName: {{ .Values.secretName }}
+            defaultMode: 0440
+        - name: temp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 8Mi

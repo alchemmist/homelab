@@ -1,0 +1,13 @@
+---
+- name: Deploy persistent cluster metrics and Grafana
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  roles:
+    - role: monitoring_stack
+      tags: [monitoring_base]
+    - role: monitoring_k3s
+      tags: [monitoring_k3s]
+    - role: monitoring_rancher
+      tags: [monitoring_rancher]

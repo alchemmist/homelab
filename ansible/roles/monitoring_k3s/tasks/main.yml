@@ -1,0 +1,48 @@
+---
+- name: Ensure private monitoring staging directory
+  ansible.builtin.file:
+    path: "{{ monitoring_k3s_remote_dir }}"
+    state: directory
+    mode: "0700"
+
+- name: Copy K3s monitoring chart
+  ansible.builtin.copy:
+    src: "{{ monitoring_k3s_chart_source }}/"
+    dest: "{{ monitoring_k3s_remote_dir }}/chart/"
+    mode: "0600"
+    directory_mode: "0700"
+
+- name: Ensure private metrics credential exists
+  ansible.builtin.shell: |
+    set -eu
+    existing_secret=$(k3s kubectl --kubeconfig {{ monitoring_k3s_kubeconfig | quote }} -n {{ monitoring_k3s_namespace | quote }} get secret monitoring-etcd-metrics-token --ignore-not-found -o name)
+    if [ -n "$existing_secret" ]; then
+      exit 0
+    fi
+    python3 - <<'PY' | k3s kubectl --kubeconfig {{ monitoring_k3s_kubeconfig | quote }} create -f -
+    import json
+    import secrets
+    print(json.dumps({"apiVersion": "v1", "kind": "Secret", "metadata": {"name": "monitoring-etcd-metrics-token", "namespace": {{ monitoring_k3s_namespace | to_json }}}, "type": "Opaque", "stringData": {"token": secrets.token_hex(32)}}))
+    PY
+  register: monitoring_k3s_secret
+  changed_when: "'created' in monitoring_k3s_secret.stdout"
+  no_log: true
+
+- name: Install private K3s metrics integration
+  ansible.builtin.command:
+    argv:
+      - helm
+      - upgrade
+      - --install
+      - "{{ monitoring_k3s_release }}"
+      - "{{ monitoring_k3s_remote_dir }}/chart"
+      - --namespace
+      - "{{ monitoring_k3s_namespace }}"
+      - --kubeconfig
+      - "{{ monitoring_k3s_kubeconfig }}"
+      - --set-string
+      - "prometheusRelease={{ monitoring_k3s_prometheus_release }}"
+      - --wait
+      - --timeout
+      - 5m
+  changed_when: true

@@ -1,0 +1,26 @@
+global:
+  cattle:
+    clusterId: local
+    clusterName: Socrat
+commonLabels:
+  release: kube-prometheus-stack
+monitoringProxy:
+  nodeSelector:
+    kubernetes.io/hostname: socrat-1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+dashboardArtifacts:
+  groups:
+    ingressNginx: false
+    logging:
+      fluentd: false
+      fluentbit: false
+    backupRestore: false
+rancherMonitoring:
+  enabled: true
+  prometheusServiceAccount: kube-prometheus-stack-prometheus

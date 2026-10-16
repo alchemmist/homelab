@@ -1,0 +1,116 @@
+---
+- name: Inspect storage node disk and available memory
+  ansible.builtin.command:
+    argv:
+      - python3
+      - -c
+      - |
+        import json
+        import os
+        disk = os.statvfs("/var/lib/rancher/k3s/storage")
+        memory = dict(line.split(":", 1) for line in open("/proc/meminfo"))
+        print(json.dumps({"disk_available": disk.f_bavail * disk.f_frsize, "memory_available": int(memory["MemAvailable"].split()[0]) * 1024}))
+  delegate_to: "{{ monitoring_storage_node }}"
+  register: monitoring_node_capacity
+  changed_when: false
+
+- name: Require storage and memory headroom
+  ansible.builtin.assert:
+    that:
+      - (monitoring_node_capacity.stdout | from_json).disk_available | int >= monitoring_minimum_available_disk_bytes | int
+      - (monitoring_node_capacity.stdout | from_json).memory_available | int >= monitoring_minimum_available_memory_bytes | int
+    fail_msg: Monitoring requires 30 GiB free disk and 3 GiB available RAM on its storage node.
+
+- name: Read monitoring storage node
+  ansible.builtin.command:
+    argv: ["{{ monitoring_k3s_binary }}", kubectl, --kubeconfig, "{{ monitoring_kubeconfig }}", get, node, "{{ monitoring_storage_node }}", -o, json]
+  register: monitoring_node
+  changed_when: false
+
+- name: Require a ready storage node without disk pressure
+  ansible.builtin.assert:
+    that:
+      - (monitoring_node.stdout | from_json).status.conditions | selectattr('type', 'equalto', 'Ready') | map(attribute='status') | first == 'True'
+      - (monitoring_node.stdout | from_json).status.conditions | selectattr('type', 'equalto', 'DiskPressure') | map(attribute='status') | first == 'False'
+
+- name: Verify the explicit local storage class
+  ansible.builtin.command:
+    argv: ["{{ monitoring_k3s_binary }}", kubectl, --kubeconfig, "{{ monitoring_kubeconfig }}", get, storageclass, local-path, -o, json]
+  register: monitoring_storage_class
+  changed_when: false
+
+- name: Require local storage with delayed binding
+  ansible.builtin.assert:
+    that:
+      - (monitoring_storage_class.stdout | from_json).provisioner == 'rancher.io/local-path'
+      - (monitoring_storage_class.stdout | from_json).volumeBindingMode == 'WaitForFirstConsumer'
+
+- name: Create the monitoring deployment directory
+  ansible.builtin.file:
+    path: "{{ monitoring_directory }}"
+    state: directory
+    mode: '0700'
+
+- name: Apply the monitoring namespace
+  ansible.builtin.command:
+    argv: ["{{ monitoring_k3s_binary }}", kubectl, --kubeconfig, "{{ monitoring_kubeconfig }}", apply, -f, '-']
+    stdin: "{{ {'apiVersion': 'v1', 'kind': 'Namespace', 'metadata': {'name': monitoring_namespace, 'annotations': {'management.cattle.io/system-namespace': 'true'}}} | to_json }}"
+  register: monitoring_namespace_apply
+  changed_when: "'unchanged' not in monitoring_namespace_apply.stdout"
+
+- name: Copy the idempotent Grafana credential initializer
+  ansible.builtin.copy:
+    src: ensure_admin_secret.py
+    dest: "{{ monitoring_directory }}/ensure_admin_secret.py"
+    mode: '0600'
+
+- name: Initialize the Grafana administrator secret only when absent
+  ansible.builtin.command:
+    argv: [python3, "{{ monitoring_directory }}/ensure_admin_secret.py", "{{ monitoring_k3s_binary }}", "{{ monitoring_kubeconfig }}", "{{ monitoring_namespace }}", "{{ monitoring_grafana_admin_secret }}"]
+  register: monitoring_admin_secret
+  changed_when: monitoring_admin_secret.stdout == 'created'
+  no_log: true
+
+- name: Copy the versioned monitoring values
+  ansible.builtin.copy:
+    src: "{{ monitoring_values_source }}"
+    dest: "{{ monitoring_directory }}/values.yaml"
+    mode: '0600'
+
+- name: Install the pinned monitoring stack
+  ansible.builtin.command:
+    argv:
+      - "{{ monitoring_helm_binary }}"
+      - upgrade
+      - --install
+      - "{{ monitoring_release }}"
+      - kube-prometheus-stack
+      - --repo
+      - "{{ monitoring_chart_repository }}"
+      - --version
+      - "{{ monitoring_chart_version }}"
+      - --namespace
+      - "{{ monitoring_namespace }}"
+      - --kubeconfig
+      - "{{ monitoring_kubeconfig }}"
+      - --values
+      - "{{ monitoring_directory }}/values.yaml"
+      - --wait
+      - --timeout
+      - 12m
+      - --history-max
+      - '5'
+  register: monitoring_helm_install
+  changed_when: true
+
+- name: Discover monitoring workloads
+  ansible.builtin.command:
+    argv: ["{{ monitoring_k3s_binary }}", kubectl, --kubeconfig, "{{ monitoring_kubeconfig }}", -n, "{{ monitoring_namespace }}", get, 'deployment,statefulset,daemonset', -o, name]
+  register: monitoring_workloads
+  changed_when: false
+
+- name: Wait for every monitoring workload
+  ansible.builtin.command:
+    argv: ["{{ monitoring_k3s_binary }}", kubectl, --kubeconfig, "{{ monitoring_kubeconfig }}", -n, "{{ monitoring_namespace }}", rollout, status, "{{ item }}", --timeout=300s]
+  loop: "{{ monitoring_workloads.stdout_lines }}"
+  changed_when: false

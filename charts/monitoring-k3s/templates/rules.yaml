@@ -1,0 +1,16 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: monitoring-k3s-shared-registry
+  labels:
+    release: {{ .Values.prometheusRelease }}
+spec:
+  groups:
+    - name: socrat.k3s.shared-registry
+      rules:
+        - record: socrat:k3s_scheduler_pending_pods:sum
+          expr: sum by (instance) (scheduler_pending_pods{job="apiserver"})
+        - record: socrat:k3s_workqueue_depth:sum
+          expr: sum by (instance) (workqueue_depth{job="apiserver"})
+        - record: socrat:etcd_members_healthy:sum
+          expr: sum(etcd_server_has_leader{job="kube-etcd"} == 1)
