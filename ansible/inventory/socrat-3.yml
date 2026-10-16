@@ -5,7 +5,7 @@ all:
       hosts:
         socrat-3:
           ansible_host: 192.168.0.110
-          ansible_port: 22
+          ansible_port: 2222
           ansible_ssh_common_args: -o HostKeyAlias=socrat-3
           ansible_user: alchemmist
           ansible_ssh_private_key_file: ~/.ssh/socrat-master
