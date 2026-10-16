@@ -219,3 +219,11 @@ Primary references:
 - https://github.com/torvalds/linux/blob/v6.12/drivers/acpi/pci_irq.c
 - https://github.com/torvalds/linux/blob/v6.12/drivers/net/wireless/realtek/rtlwifi/pci.h
 - https://github.com/torvalds/linux/blob/v6.12/drivers/net/ethernet/atheros/alx/hw.c
+
+
+The subsequent boot journal established an alx TX-cleanup infinite loop even
+with Wi-Fi MSI disabled. Hardware register reads confirmed the missing Wi-Fi
+route, and a bounded hardware remap found networks but produced an IRQ storm,
+so it was reverted. A separate, unselected test boot image is now prepared;
+see [the recovery candidate](socrat-3-network-recovery.md) for evidence,
+validation, and rollback. No working wireless connection is claimed yet.

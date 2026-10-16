@@ -1,0 +1,11 @@
+#!/bin/sh
+exec cat <<'HOMELAB_GRUB'
+menuentry 'Debian - socrat-3 network recovery test' --id homelab-network-test {
+    insmod part_gpt
+    insmod part_msdos
+    insmod ext2
+    search --no-floppy --fs-uuid --set=root {{ homelab_recovery_boot_uuid.stdout | trim }}
+    linux /boot/vmlinuz-6.12.111+deb13-amd64 root=UUID={{ homelab_recovery_boot_uuid.stdout | trim }} ro quiet
+    initrd /boot/initrd.img-6.12.111+deb13-amd64-homelab-network
+}
+HOMELAB_GRUB
