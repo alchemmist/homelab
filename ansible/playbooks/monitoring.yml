@@ -11,3 +11,7 @@
       tags: [monitoring_k3s]
     - role: monitoring_rancher
       tags: [monitoring_rancher]
+    - role: monitoring_wg_access
+      tags: [monitoring_access]
+
+- ansible.builtin.import_playbook: monitoring-private-dns.yml

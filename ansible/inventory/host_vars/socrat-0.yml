@@ -13,6 +13,13 @@ syncthing_private_ui_extra_virtual_hosts:
     upstream: http://litellm.llm.svc.cluster.local:4000
     tlsSecret: litellm-private-tls
     resolver: 10.43.0.10
+  - name: grafana
+    host: grafana.socrat.alchemmist.xyz
+    nodeName: socrat-1
+    upstream: http://kube-prometheus-stack-grafana.cattle-monitoring-system.svc.cluster.local:80
+    tlsSecret: grafana-private-tls
+    resolver: 10.43.0.10
+    clearAuthorization: true
 homelab_desktop_autologin: true
 homelab_desktop_profile: desktop
 homelab_waybar_profile: desktop

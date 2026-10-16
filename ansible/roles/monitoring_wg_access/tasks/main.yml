@@ -1,0 +1,133 @@
+- name: Read installed private gateway values
+  ansible.builtin.command:
+    argv: [helm, get, values, "{{ monitoring_wg_release }}", --namespace, "{{ monitoring_wg_namespace }}", --kubeconfig, "{{ monitoring_wg_kubeconfig }}", --output, json]
+  register: monitoring_wg_current
+  changed_when: false
+  no_log: true
+
+- name: Parse private gateway values
+  ansible.builtin.set_fact:
+    monitoring_wg_values: "{{ monitoring_wg_current.stdout | from_json }}"
+  no_log: true
+
+- name: Require an existing private gateway and authentication secret
+  ansible.builtin.assert:
+    that:
+      - monitoring_wg_values.privateGui.enabled | bool
+      - monitoring_wg_values.hostNetwork | default(true) | bool
+      - monitoring_wg_values.basicAuth.enabled | bool
+      - monitoring_wg_values.basicAuth.existingSecret | length > 0
+      - monitoring_wg_values.privateGui.nodes | selectattr('nodeName', 'equalto', monitoring_wg_node) | list | length == 1
+
+- name: Read existing Syncthing authentication
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, "{{ monitoring_wg_kubeconfig }}", -n, "{{ monitoring_wg_namespace }}", get, secret, "{{ monitoring_wg_values.basicAuth.existingSecret }}", -o, json]
+  register: monitoring_wg_auth_before
+  changed_when: false
+  no_log: true
+
+- name: Discover cluster DNS address
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, "{{ monitoring_wg_kubeconfig }}", -n, kube-system, get, service, kube-dns, -o, 'jsonpath={.spec.clusterIP}']
+  register: monitoring_wg_dns
+  changed_when: false
+
+- name: Require a cluster DNS service address
+  ansible.builtin.assert:
+    that:
+      - monitoring_wg_dns.stdout | length > 0
+      - monitoring_wg_dns.stdout != 'None'
+
+- name: Create a certificate for the private Grafana gateway
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, "{{ monitoring_wg_kubeconfig }}", apply, -f, '-']
+    stdin: "{{ {'apiVersion': 'cert-manager.io/v1', 'kind': 'Certificate', 'metadata': {'name': monitoring_wg_tls_secret, 'namespace': monitoring_wg_namespace}, 'spec': {'secretName': monitoring_wg_tls_secret, 'dnsNames': [monitoring_wg_host], 'issuerRef': {'name': monitoring_wg_cluster_issuer, 'kind': 'ClusterIssuer'}}} | to_nice_yaml }}"
+  register: monitoring_wg_certificate
+  changed_when: "'created' in monitoring_wg_certificate.stdout or 'configured' in monitoring_wg_certificate.stdout"
+
+- name: Wait for the private Grafana certificate
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, "{{ monitoring_wg_kubeconfig }}", -n, "{{ monitoring_wg_namespace }}", wait, '--for=condition=Ready', 'certificate/{{ monitoring_wg_tls_secret }}', --timeout=300s]
+  changed_when: false
+
+- name: Merge Grafana into existing gateway hosts
+  ansible.builtin.set_fact:
+    monitoring_wg_merged_values: "{{ monitoring_wg_values | combine({'privateGui': {'extraVirtualHosts': (monitoring_wg_values.privateGui.extraVirtualHosts | default([]) | rejectattr('name', 'equalto', 'grafana') | list) + [{'name': 'grafana', 'nodeName': monitoring_wg_node, 'host': monitoring_wg_host, 'tlsSecret': monitoring_wg_tls_secret, 'resolver': monitoring_wg_dns.stdout, 'upstream': monitoring_wg_upstream, 'clearAuthorization': true}]}}, recursive=true) }}"
+  no_log: true
+
+- name: Create private deployment directory
+  ansible.builtin.file:
+    path: "{{ monitoring_wg_directory }}"
+    state: directory
+    mode: '0700'
+
+- name: Stage the private gateway chart
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../../../charts/syncthing/"
+    dest: "{{ monitoring_wg_directory }}/chart/"
+    mode: preserve
+
+- name: Save merged gateway values
+  ansible.builtin.copy:
+    dest: "{{ monitoring_wg_directory }}/values.yaml"
+    content: "{{ monitoring_wg_merged_values | to_nice_yaml }}"
+    mode: '0600'
+  no_log: true
+
+- name: Install gateway manifest comparison utility
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../../files/helm_manifest_changed.py"
+    dest: "{{ monitoring_wg_directory }}/check-installed-manifest.py"
+    mode: '0600'
+
+- name: Compare desired and installed gateway manifests
+  ansible.builtin.command:
+    argv: [python3, "{{ monitoring_wg_directory }}/check-installed-manifest.py", --release, "{{ monitoring_wg_release }}", --chart, "{{ monitoring_wg_directory }}/chart", --namespace, "{{ monitoring_wg_namespace }}", --values, "{{ monitoring_wg_directory }}/values.yaml", --kubeconfig, "{{ monitoring_wg_kubeconfig }}"]
+  register: monitoring_wg_manifest
+  changed_when: false
+
+- name: Add the Grafana virtual host while preserving existing gateway values
+  ansible.builtin.command:
+    argv: [helm, upgrade, "{{ monitoring_wg_release }}", "{{ monitoring_wg_directory }}/chart", --namespace, "{{ monitoring_wg_namespace }}", --kubeconfig, "{{ monitoring_wg_kubeconfig }}", --reuse-values, --values, "{{ monitoring_wg_directory }}/values.yaml", --atomic, --wait, --timeout, 5m]
+  when: (monitoring_wg_manifest.stdout | from_json).changed
+  changed_when: true
+
+- name: Read Syncthing authentication after gateway update
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, "{{ monitoring_wg_kubeconfig }}", -n, "{{ monitoring_wg_namespace }}", get, secret, "{{ monitoring_wg_values.basicAuth.existingSecret }}", -o, json]
+  register: monitoring_wg_auth_after
+  changed_when: false
+  no_log: true
+
+- name: Verify existing Syncthing credentials were preserved
+  ansible.builtin.assert:
+    that:
+      - (monitoring_wg_auth_before.stdout | from_json).data == (monitoring_wg_auth_after.stdout | from_json).data
+  no_log: true
+
+- name: Verify private gateway rollout
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, "{{ monitoring_wg_kubeconfig }}", -n, "{{ monitoring_wg_namespace }}", rollout, status, daemonset/syncthing, --timeout=120s]
+  changed_when: false
+
+- name: Verify anonymous Grafana access through WireGuard
+  ansible.builtin.command:
+    argv:
+      - curl
+      - --silent
+      - --show-error
+      - --fail
+      - --noproxy
+      - '*'
+      - --interface
+      - "{{ wg_socrat_nodes[inventory_hostname].address }}"
+      - --resolve
+      - "{{ monitoring_wg_host }}:443:{{ wg_socrat_nodes[monitoring_wg_node].address }}"
+      - --max-time
+      - '15'
+      - "https://{{ monitoring_wg_host }}/api/search"
+  register: monitoring_wg_grafana
+  changed_when: false
+  failed_when: >-
+    monitoring_wg_grafana.rc != 0 or
+    (monitoring_wg_grafana.stdout | from_json | selectattr('uid', 'equalto', 'socrat-overview') | list | length == 0)
