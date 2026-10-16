@@ -3,6 +3,7 @@ homelab_terminal_session: tmp
 homelab_monitor_window_seconds: 600
 homelab_monitor_binary: /usr/bin/btm
 homelab_alacritty_opacity: 0.0
+homelab_alacritty_transparent_background_colors: false
 homelab_alacritty_font_family: FiraCode Nerd Font Propo
 homelab_alacritty_font_url: https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.1/FiraCode.zip
 homelab_alacritty_font_checksum: sha256:239395baf60c89b2eaf4862b6b09db0ef95605cd3e8eef51c00345822a81a665
