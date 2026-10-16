@@ -1,0 +1,204 @@
+defaultRules:
+  rules:
+    etcd: false
+    kubeControllerManager: false
+    kubeProxy: false
+    kubeSchedulerAlerting: false
+    kubeSchedulerRecording: false
+    windows: false
+kubeEtcd:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeProxy:
+  enabled: false
+kubeApiServer:
+  serviceMonitor:
+    relabelings:
+      - action: keep
+        sourceLabels: [__address__]
+        regex: '10\.250\.0\.(1|3):6443'
+kubelet:
+  serviceMonitor:
+    insecureSkipVerify: false
+    metricRelabelings:
+      - action: drop
+        sourceLabels: [instance, __name__]
+        regex: '192\.168\.0\.(23|24):10250;(apiserver|etcd|scheduler|workqueue|kubeproxy)_.*'
+prometheus:
+  prometheusSpec:
+    replicas: 1
+    nodeSelector:
+      kubernetes.io/hostname: socrat-1
+    retention: 7d
+    retentionSize: 6GB
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+    walCompression: true
+    resources:
+      requests:
+        cpu: 200m
+        memory: 1Gi
+      limits:
+        memory: 2Gi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: local-path
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 10Gi
+    serviceMonitorSelector:
+      matchLabels:
+        release: kube-prometheus-stack
+    podMonitorSelector:
+      matchLabels:
+        release: kube-prometheus-stack
+    ruleSelector:
+      matchLabels:
+        release: kube-prometheus-stack
+    probeSelector:
+      matchLabels:
+        release: kube-prometheus-stack
+    scrapeConfigSelector:
+      matchLabels:
+        release: kube-prometheus-stack
+    serviceMonitorNamespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: cattle-monitoring-system
+    podMonitorNamespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: cattle-monitoring-system
+    ruleNamespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: cattle-monitoring-system
+    probeNamespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: cattle-monitoring-system
+    scrapeConfigNamespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: cattle-monitoring-system
+alertmanager:
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      receiver: 'null'
+      group_by: [namespace, alertname]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+      routes: []
+    receivers:
+      - name: 'null'
+  alertmanagerSpec:
+    replicas: 1
+    nodeSelector:
+      kubernetes.io/hostname: socrat-1
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+      limits:
+        memory: 128Mi
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: local-path
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 1Gi
+grafana:
+  replicas: 1
+  nodeSelector:
+    kubernetes.io/hostname: socrat-1
+  deploymentStrategy:
+    type: Recreate
+  admin:
+    existingSecret: socrat-grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+  ingress:
+    enabled: false
+  persistence:
+    enabled: true
+    type: pvc
+    storageClassName: local-path
+    accessModes: [ReadWriteOnce]
+    size: 1Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 384Mi
+  sidecar:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 96Mi
+      limits:
+        memory: 256Mi
+    dashboards:
+      searchNamespace: ALL
+  grafana.ini:
+    dashboards:
+      default_home_dashboard_path: /tmp/dashboards/rancher-default-home.json
+    analytics:
+      reporting_enabled: false
+      check_for_updates: false
+    security:
+      allow_embedding: true
+    auth.anonymous:
+      enabled: true
+      org_role: Viewer
+    users:
+      allow_sign_up: false
+prometheusOperator:
+  nodeSelector:
+    kubernetes.io/hostname: socrat-1
+  resources:
+    requests:
+      cpu: 30m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+  prometheusConfigReloader:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 16Mi
+      limits:
+        memory: 64Mi
+  admissionWebhooks:
+    patch:
+      nodeSelector:
+        kubernetes.io/hostname: socrat-1
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          memory: 64Mi
+kube-state-metrics:
+  nodeSelector:
+    kubernetes.io/hostname: socrat-1
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      memory: 128Mi
+prometheus-node-exporter:
+  service:
+    listenOnAllInterfaces: false
+  resources:
+    requests:
+      cpu: 10m
+      memory: 24Mi
+    limits:
+      memory: 64Mi

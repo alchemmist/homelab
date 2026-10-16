@@ -1,0 +1,5 @@
+apiVersion: v2
+name: monitoring-k3s
+version: 0.1.0
+type: application
+description: Private etcd metrics and shared K3s registry integration

@@ -1,0 +1,7 @@
+---
+monitoring_k3s_namespace: cattle-monitoring-system
+monitoring_k3s_release: monitoring-k3s
+monitoring_k3s_prometheus_release: kube-prometheus-stack
+monitoring_k3s_kubeconfig: /etc/rancher/k3s/k3s.yaml
+monitoring_k3s_chart_source: "{{ playbook_dir }}/../../charts/monitoring-k3s"
+monitoring_k3s_remote_dir: /home/alchemmist/.cache/homelab-monitoring-k3s

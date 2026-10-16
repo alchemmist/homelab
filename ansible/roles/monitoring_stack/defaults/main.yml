@@ -1,0 +1,14 @@
+---
+monitoring_namespace: cattle-monitoring-system
+monitoring_release: kube-prometheus-stack
+monitoring_chart_version: 92.10.0
+monitoring_chart_repository: https://prometheus-community.github.io/helm-charts
+monitoring_kubeconfig: /etc/rancher/k3s/k3s.yaml
+monitoring_helm_binary: /usr/local/bin/helm
+monitoring_k3s_binary: /usr/local/bin/k3s
+monitoring_directory: /home/alchemmist/.cache/homelab-monitoring
+monitoring_values_source: "{{ playbook_dir }}/../../deploy/monitoring/values.yaml"
+monitoring_storage_node: socrat-1
+monitoring_grafana_admin_secret: socrat-grafana-admin
+monitoring_minimum_available_disk_bytes: 32212254720
+monitoring_minimum_available_memory_bytes: 3221225472

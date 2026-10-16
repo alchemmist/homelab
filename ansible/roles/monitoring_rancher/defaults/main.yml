@@ -1,0 +1,11 @@
+---
+monitoring_rancher_namespace: cattle-monitoring-system
+monitoring_rancher_chart_version: 110.0.1+up0.1.4
+monitoring_rancher_chart_sha256: aaf7d4ab13a153f817b993c387e18cca391ebda3382e96f6bbb2e9c0eeb846f8
+monitoring_rancher_workdir: "{{ homelab_user_home | default('/home/alchemmist') }}/.cache/homelab-monitoring-rancher"
+monitoring_rancher_kubeconfig: /etc/rancher/k3s/k3s.yaml
+monitoring_rancher_repo_root: "{{ playbook_dir }}/../.."
+monitoring_rancher_grafana_admin_secret: socrat-grafana-admin
+monitoring_rancher_grafana_auth_secret: grafana-ingress-auth
+monitoring_rancher_grafana_host: grafana.socrat.alchemmist.xyz
+monitoring_rancher_public_ingress_enabled: true
