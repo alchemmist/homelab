@@ -1,0 +1,17 @@
+replicaCount: 2
+image:
+  repository: ghcr.io/alchemmist/socrat-wiki
+  digest: ""
+imagePullSecrets:
+  - name: ghcr-pull
+resources:
+  requests:
+    cpu: 25m
+    memory: 32Mi
+  limits:
+    memory: 128Mi
+ingress:
+  host: wiki.alchemmist.xyz
+  className: traefik
+  clusterIssuer: letsencrypt-http01
+  tlsSecretName: wiki-tls
