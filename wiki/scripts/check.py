@@ -1,0 +1,63 @@
+import json
+import re
+import sys
+from html.parser import HTMLParser
+from pathlib import Path
+from urllib.parse import unquote, urljoin, urlsplit
+
+
+class Page(HTMLParser):
+    def __init__(self, text):
+        super().__init__()
+        self.links = []
+        self.ids = set()
+        self.robots = ""
+        self.feed(text)
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if "id" in attrs:
+            self.ids.add(attrs["id"])
+        if tag == "meta" and attrs.get("name") == "robots":
+            self.robots = attrs.get("content", "")
+        for name in ("href", "src"):
+            if attrs.get(name):
+                self.links.append(attrs[name])
+
+
+root = Path(sys.argv[1]).resolve()
+pages = {p: Page(p.read_text()) for p in root.rglob("*.html")}
+errors = []
+for path, page in pages.items():
+    if not {"noindex", "nofollow"}.issubset(set(page.robots.replace(" ", "").split(","))):
+        errors.append(f"Missing robots policy: {path.relative_to(root)}")
+    page_url = "/" + path.relative_to(root).as_posix().removesuffix("index.html")
+    for link in page.links:
+        url = urlsplit(urljoin(page_url, link))
+        if url.scheme or url.netloc:
+            if url.netloc != "wiki.alchemmist.xyz":
+                continue
+        target = (root / unquote(url.path).lstrip("/")).resolve()
+        if not target.is_relative_to(root):
+            errors.append(f"Link escapes publication: {link}")
+            continue
+        if target.is_dir():
+            target /= "index.html"
+        if not target.exists():
+            errors.append(f"Broken link in {path.relative_to(root)}: {link}")
+        elif url.fragment and target in pages and unquote(url.fragment) not in pages[target].ids:
+            errors.append(f"Missing anchor in {path.relative_to(root)}: {link}")
+for forbidden in ("sitemap.xml", "index.xml", "docs", "ansible", "go.mod", "hugo.toml"):
+    if (root / forbidden).exists():
+        errors.append(f"Unexpected published file: {forbidden}")
+index = json.loads((root / "search-index.json").read_text())
+if not index or not re.search(r"[А-Яа-я]", json.dumps(index, ensure_ascii=False)):
+    errors.append("Search index missing Russian content")
+if not (root / "404.html").exists():
+    errors.append("Missing custom 404")
+version = json.loads((root / "version.json").read_text())
+if not re.fullmatch(r"local|[0-9a-f]{40}", version.get("source_sha", "")):
+    errors.append("Invalid build metadata")
+if errors:
+    raise SystemExit("\n".join(errors))
+print(f"Checked {len(pages)} HTML pages, internal links, Russian search, robots and publication boundaries")

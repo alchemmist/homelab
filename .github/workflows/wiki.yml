@@ -1,0 +1,122 @@
+name: Socrat wiki
+
+on:
+  pull_request:
+    paths: ['wiki/**', 'charts/wiki/**', 'scripts/publish-wiki.sh', '.github/workflows/wiki.yml']
+  push:
+    branches: [main]
+    paths: ['wiki/**', 'charts/wiki/**', 'scripts/publish-wiki.sh', '.github/workflows/wiki.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wiki-${{ github.event_name == 'pull_request' && github.ref || 'publish' }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.12'
+          cache-dependency-path: wiki/go.sum
+      - name: Install pinned Hugo
+        run: |
+          curl --fail --location --retry 3 https://github.com/gohugoio/hugo/releases/download/v0.167.0/hugo_0.167.0_linux-amd64.tar.gz -o "$RUNNER_TEMP/hugo.tar.gz"
+          tar -xzf "$RUNNER_TEMP/hugo.tar.gz" -C "$RUNNER_TEMP" hugo
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - uses: azure/setup-helm@v4.3.0
+        with:
+          version: v3.17.3
+      - name: Check public documentation
+        run: make -C wiki check SOURCE_SHA="$GITHUB_SHA"
+      - name: Check deployment chart
+        run: helm lint charts/wiki --set-string image.digest=sha256:0000000000000000000000000000000000000000000000000000000000000000
+      - name: Build standalone image
+        run: docker build --build-arg SOURCE_SHA="$GITHUB_SHA" -t socrat-wiki:check wiki
+      - name: Check restricted container runtime
+        run: |
+          docker run -d --name wiki-check --user 101:101 --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges -p 127.0.0.1:18080:8080 socrat-wiki:check
+          trap 'docker logs wiki-check; docker rm -f wiki-check' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:18080/healthz; then break; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:18080/version.json | python3 -c 'import json,os,sys; assert json.load(sys.stdin)["source_sha"] == os.environ["GITHUB_SHA"]'
+          test "$(curl --silent -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/ansible/)" = 404
+          curl --fail --silent --head http://127.0.0.1:18080/ | grep -iq '^X-Robots-Tag: noindex, nofollow'
+
+  publish:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: check
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      packages: write
+    outputs:
+      promoted: ${{ steps.promote.outputs.promoted }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        id: image
+        with:
+          context: wiki
+          platforms: linux/amd64
+          push: true
+          tags: ghcr.io/alchemmist/socrat-wiki:${{ github.sha }}
+          build-args: SOURCE_SHA=${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/alchemmist/homelab
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.title=Socrat Wiki
+          cache-from: type=gha,scope=wiki
+          cache-to: type=gha,mode=max,scope=wiki
+      - uses: azure/setup-helm@v4.3.0
+        with:
+          version: v3.17.3
+      - name: Publish Fleet bundle
+        id: promote
+        env:
+          WIKI_IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+        run: bash scripts/publish-wiki.sh
+
+  verify-publication:
+    needs: publish
+    if: needs.publish.outputs.promoted == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Wait for HTTPS publication
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          python3 - <<'PY'
+          import json, os, time, urllib.request, urllib.error
+          deadline = time.monotonic() + 600
+          consecutive = 0
+          while time.monotonic() < deadline:
+              try:
+                  url = 'https://wiki.alchemmist.xyz/version.json?check=' + str(time.time_ns())
+                  with urllib.request.urlopen(url, timeout=15) as response:
+                      actual = json.load(response)['source_sha']
+                  consecutive = consecutive + 1 if actual == os.environ['EXPECTED_SHA'] else 0
+                  if consecutive >= 5:
+                      print('Published source SHA verified over HTTPS:', actual)
+                      break
+              except (OSError, ValueError, KeyError):
+                  consecutive = 0
+              time.sleep(5)
+          else:
+              raise SystemExit('Image and bundle published, but expected site version was not confirmed within ten minutes. Check Fleet, registry access, DNS and certificate readiness.')
+          PY

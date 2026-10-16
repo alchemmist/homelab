@@ -1,0 +1,11 @@
+*
+!Dockerfile
+!go.mod
+!go.sum
+!hugo.toml
+!nginx.conf
+!content/**
+!layouts/**
+!static/**
+!assets/**
+!i18n/**

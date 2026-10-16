@@ -1,0 +1,41 @@
+---
+- name: Bootstrap namespace-scoped Fleet deployment for Socrat Wiki
+  hosts: socrat-0
+  gather_facts: false
+  become: true
+  vars:
+    wiki_repository: https://github.com/alchemmist/homelab.git
+    wiki_branch: wiki-publish
+    wiki_git_secret: ""
+    wiki_registry_secret_namespace: blog
+    wiki_registry_secret_name: ghcr-pull
+  tasks:
+    - name: Copy wiki bootstrap helper
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../files/bootstrap_wiki.py"
+        dest: /tmp/bootstrap_wiki.py
+        owner: root
+        group: root
+        mode: "0700"
+
+    - name: Bootstrap Fleet prerequisites and repository
+      ansible.builtin.command:
+        argv:
+          - python3
+          - /tmp/bootstrap_wiki.py
+          - --repository
+          - "{{ wiki_repository }}"
+          - --branch
+          - "{{ wiki_branch }}"
+          - --git-secret
+          - "{{ wiki_git_secret }}"
+          - --registry-secret-namespace
+          - "{{ wiki_registry_secret_namespace }}"
+          - --registry-secret-name
+          - "{{ wiki_registry_secret_name }}"
+      register: wiki_bootstrap
+      changed_when: "'created' in wiki_bootstrap.stdout or 'configured' in wiki_bootstrap.stdout"
+
+    - name: Show Fleet reconciliation status
+      ansible.builtin.command: k3s kubectl -n fleet-local get gitrepo wiki
+      changed_when: false
