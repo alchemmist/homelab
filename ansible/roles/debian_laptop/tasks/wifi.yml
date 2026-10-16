@@ -96,9 +96,10 @@
       psk={{ homelab_wifi_psk }}
       [ipv4]
       method=auto
-      route-metric=600
+      route-metric={{ homelab_wifi_route_metric }}
       [ipv6]
       method=auto
+      route-metric={{ homelab_wifi_route_metric }}
     owner: root
     group: root
     mode: '0600'

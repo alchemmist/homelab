@@ -1,0 +1,27 @@
+#!/bin/sh
+set -eu
+
+case "${1:-}" in
+    prereqs) exit 0 ;;
+esac
+
+. /usr/share/initramfs-tools/hook-functions
+
+[ "$(cat /sys/class/dmi/id/board_name)" = "MS-16GP" ]
+[ "$(cat /sys/bus/pci/devices/0000:01:00.0/vendor)" = "0x10ec" ]
+[ "$(cat /sys/bus/pci/devices/0000:01:00.0/device)" = "0x8723" ]
+grep -qx 'CONFIG_ACPI_TABLE_UPGRADE=y' "/boot/config-${version}"
+
+aml=/usr/local/lib/homelab/acpi/ssdt-socrat3-wifi.aml
+[ -s "$aml" ]
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+trap 'exit 1' HUP INT TERM
+mkdir -p "$work/kernel/firmware/acpi"
+install -m 0644 "$aml" "$work/kernel/firmware/acpi/ssdt-socrat3-wifi.aml"
+(
+    cd "$work"
+    printf '%s\n' kernel kernel/firmware kernel/firmware/acpi kernel/firmware/acpi/ssdt-socrat3-wifi.aml |
+        cpio --quiet --create --format=newc --owner=0:0 > "$work/acpi.cpio"
+)
+prepend_earlyinitramfs "$work/acpi.cpio"

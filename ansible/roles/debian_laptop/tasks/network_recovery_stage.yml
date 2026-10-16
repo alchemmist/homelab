@@ -1,0 +1,218 @@
+---
+- name: Require the reviewed socrat-3 hardware and kernel
+  ansible.builtin.assert:
+    that:
+      - inventory_hostname == 'socrat-3'
+      - ansible_facts.distribution == 'Debian'
+      - ansible_facts.distribution_major_version == '13'
+      - ansible_facts.kernel == '6.12.111+deb13-amd64'
+      - ansible_facts.board_name == 'MS-16GP'
+
+- name: Inspect kernel lockdown before preparing unsigned test components
+  ansible.builtin.command: cat /sys/kernel/security/lockdown
+  register: homelab_recovery_lockdown
+  changed_when: false
+  failed_when: false
+
+- name: Require ACPI overrides to be permitted by the running security policy
+  ansible.builtin.assert:
+    that:
+      - homelab_recovery_lockdown.rc == 0
+      - "'[none]' in homelab_recovery_lockdown.stdout"
+
+- name: Define the isolated staging paths
+  ansible.builtin.set_fact:
+    homelab_recovery_root: /usr/local/src/homelab-network-recovery/6.12.111+deb13-amd64
+    homelab_recovery_image: /boot/initrd.img-6.12.111+deb13-amd64-homelab-network
+
+- name: Install tools and the matching Debian source
+  ansible.builtin.apt:
+    name:
+      - acpica-tools
+      - build-essential
+      - patch
+      - linux-headers-6.12.111+deb13-amd64
+      - linux-source-6.12=6.12.111-1
+    state: present
+
+- name: Record the original initramfs checksum
+  ansible.builtin.stat:
+    path: /boot/initrd.img-6.12.111+deb13-amd64
+    checksum_algorithm: sha256
+  register: homelab_recovery_original_before
+
+- name: Require the original initramfs
+  ansible.builtin.assert:
+    that: homelab_recovery_original_before.stat.isreg | default(false)
+
+- name: Create isolated staging directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - "{{ homelab_recovery_root }}/alx"
+    - "{{ homelab_recovery_root }}/initramfs-tools"
+    - /usr/local/lib/homelab/acpi
+
+- name: Stage the reviewed driver patch
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../roles/debian_laptop/files/alx-guard.patch"
+    dest: "{{ homelab_recovery_root }}/alx-guard.patch"
+    mode: '0644'
+  register: homelab_recovery_patch
+
+- name: Inspect the staged source marker
+  ansible.builtin.stat:
+    path: "{{ homelab_recovery_root }}/alx/.homelab-patched"
+  register: homelab_recovery_source_marker
+
+- name: Extract and patch the isolated driver source
+  ansible.builtin.shell: |
+    set -eu
+    tar -xJf /usr/src/linux-source-6.12.tar.xz --strip-components=6 -C '{{ homelab_recovery_root }}/alx' linux-source-6.12/drivers/net/ethernet/atheros/alx
+    patch --dry-run --batch --forward -p6 -d '{{ homelab_recovery_root }}/alx' < '{{ homelab_recovery_root }}/alx-guard.patch'
+    patch --batch --forward -p6 -d '{{ homelab_recovery_root }}/alx' < '{{ homelab_recovery_root }}/alx-guard.patch'
+    touch '{{ homelab_recovery_root }}/alx/.homelab-patched'
+  when: homelab_recovery_patch.changed or not homelab_recovery_source_marker.stat.exists
+  changed_when: true
+
+- name: Build only the candidate Ethernet module
+  ansible.builtin.command:
+    argv:
+      - make
+      - -C
+      - /lib/modules/6.12.111+deb13-amd64/build
+      - "M={{ homelab_recovery_root }}/alx"
+      - CONFIG_ALX=m
+      - modules
+  changed_when: true
+
+- name: Stage the Wi-Fi interrupt routing table
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../roles/debian_laptop/files/ssdt-socrat3-wifi.dsl"
+    dest: /usr/local/lib/homelab/acpi/ssdt-socrat3-wifi.dsl
+    mode: '0644'
+
+- name: Compile the candidate ACPI table
+  ansible.builtin.command:
+    argv:
+      - iasl
+      - -p
+      - /usr/local/lib/homelab/acpi/ssdt-socrat3-wifi
+      - /usr/local/lib/homelab/acpi/ssdt-socrat3-wifi.dsl
+  changed_when: true
+
+- name: Copy the normal initramfs configuration into staging
+  ansible.builtin.command:
+    argv:
+      - cp
+      - -a
+      - /etc/initramfs-tools/.
+      - "{{ homelab_recovery_root }}/initramfs-tools/"
+  changed_when: true
+
+- name: Add the ACPI hook only to the staged configuration
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../roles/debian_laptop/templates/socrat3-wifi-initramfs-hook.j2"
+    dest: "{{ homelab_recovery_root }}/initramfs-tools/hooks/homelab-socrat3-wifi"
+    mode: '0755'
+
+- name: Add the Ethernet module only to the candidate image
+  ansible.builtin.copy:
+    dest: "{{ homelab_recovery_root }}/initramfs-tools/hooks/zz-homelab-alx"
+    mode: '0755'
+    content: |
+      #!/bin/sh
+      set -eu
+      case "${1:-}" in
+          prereqs) exit 0 ;;
+      esac
+      . /usr/share/initramfs-tools/hook-functions
+      [ "$version" = "6.12.111+deb13-amd64" ]
+      manual_add_modules alx
+      module_dir="$DESTDIR/lib/modules/$version/kernel/drivers/net/ethernet/atheros/alx"
+      mkdir -p "$module_dir"
+      rm -f "$module_dir/alx.ko" "$module_dir/alx.ko.xz" "$module_dir/alx.ko.zst" "$module_dir/alx.ko.gz"
+      install -m 0644 '{{ homelab_recovery_root }}/alx/alx.ko' "$module_dir/alx.ko"
+
+- name: Build the isolated candidate initramfs
+  ansible.builtin.command:
+    argv:
+      - mkinitramfs
+      - -d
+      - "{{ homelab_recovery_root }}/initramfs-tools"
+      - -o
+      - "{{ homelab_recovery_image }}"
+      - 6.12.111+deb13-amd64
+  changed_when: true
+
+- name: Inspect the candidate archive
+  ansible.builtin.command:
+    argv:
+      - lsinitramfs
+      - "{{ homelab_recovery_image }}"
+  register: homelab_recovery_contents
+  changed_when: false
+
+- name: Require both candidate components
+  ansible.builtin.assert:
+    that:
+      - "'kernel/firmware/acpi/ssdt-socrat3-wifi.aml' in homelab_recovery_contents.stdout"
+      - "'kernel/drivers/net/ethernet/atheros/alx/alx.ko' in homelab_recovery_contents.stdout"
+
+- name: Check that the normal initramfs was preserved
+  ansible.builtin.stat:
+    path: /boot/initrd.img-6.12.111+deb13-amd64
+    checksum_algorithm: sha256
+  register: homelab_recovery_original_after
+
+- name: Verify the normal boot image is unchanged
+  ansible.builtin.assert:
+    that:
+      - homelab_recovery_original_before.stat.checksum == homelab_recovery_original_after.stat.checksum
+
+- name: Read the boot filesystem identity for the optional test entry
+  ansible.builtin.command: grub-probe --target=fs_uuid /boot
+  register: homelab_recovery_boot_uuid
+  changed_when: false
+
+- name: Inspect the boot layout
+  ansible.builtin.command: findmnt -n -o TARGET -T /boot
+  register: homelab_recovery_boot_mount
+  changed_when: false
+
+- name: Read the existing default boot policy
+  ansible.builtin.slurp:
+    src: /etc/default/grub
+  register: homelab_recovery_grub_defaults
+
+- name: Require the reviewed boot layout and unchanged default
+  ansible.builtin.assert:
+    that:
+      - homelab_recovery_boot_mount.stdout | trim == '/'
+      - homelab_recovery_boot_uuid.stdout | trim is match('^[0-9a-f-]{36}$')
+      - "'GRUB_DEFAULT=0' in (homelab_recovery_grub_defaults.content | b64decode).splitlines()"
+      - "'GRUB_CMDLINE_LINUX_DEFAULT=\"quiet\"' in (homelab_recovery_grub_defaults.content | b64decode).splitlines()"
+      - "'GRUB_CMDLINE_LINUX=\"\"' in (homelab_recovery_grub_defaults.content | b64decode).splitlines()"
+
+- name: Add an optional boot entry without selecting it
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../roles/debian_laptop/templates/network-recovery-grub.j2"
+    dest: /etc/grub.d/42_homelab_network_recovery
+    owner: root
+    group: root
+    mode: '0755'
+    validate: /bin/sh -n %s
+  register: homelab_recovery_boot_entry
+
+- name: Refresh the boot menu with the existing default retained
+  ansible.builtin.command: update-grub
+  when: homelab_recovery_boot_entry.changed
+  changed_when: true
+
+- name: Validate the generated boot menu
+  ansible.builtin.command: grub-script-check /boot/grub/grub.cfg
+  changed_when: false

@@ -1,0 +1,8 @@
+---
+- name: Stage an isolated network recovery initramfs for socrat-3
+  hosts: socrat-3
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Stage the candidate without changing the running system or boot default
+      ansible.builtin.import_tasks: ../roles/debian_laptop/tasks/network_recovery_stage.yml
