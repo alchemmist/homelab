@@ -37,32 +37,9 @@
   environment:
     KUBECONFIG: "{{ monitoring_rancher_kubeconfig }}"
 
-- name: Configure protected external Grafana access
+- name: Restrict the public Grafana route
   when: monitoring_rancher_public_ingress_enabled | bool
   block:
-    - name: Install ingress credentials reconciler
-      ansible.builtin.copy:
-        src: grafana_ingress_auth.py
-        dest: "{{ monitoring_rancher_workdir }}/grafana_ingress_auth.py"
-        mode: "0700"
-
-    - name: Derive ingress password hash from existing Grafana administrator secret
-      ansible.builtin.command:
-        argv:
-          - python3
-          - "{{ monitoring_rancher_workdir }}/grafana_ingress_auth.py"
-          - --namespace
-          - "{{ monitoring_rancher_namespace }}"
-          - --admin-secret
-          - "{{ monitoring_rancher_grafana_admin_secret }}"
-          - --auth-secret
-          - "{{ monitoring_rancher_grafana_auth_secret }}"
-      environment:
-        KUBECONFIG: "{{ monitoring_rancher_kubeconfig }}"
-      register: monitoring_rancher_auth_result
-      changed_when: monitoring_rancher_auth_result.stdout == 'changed'
-      no_log: true
-
     - name: Stage protected Grafana access chart
       ansible.builtin.copy:
         src: "{{ monitoring_rancher_repo_root }}/charts/monitoring-access/"
@@ -82,8 +59,6 @@
           - "{{ monitoring_rancher_namespace }}"
           - --set-string
           - "host={{ monitoring_rancher_grafana_host }}"
-          - --set-string
-          - "authSecret={{ monitoring_rancher_grafana_auth_secret }}"
           - --wait
           - --timeout
           - 5m
@@ -105,10 +80,38 @@
           - --timeout=300s
       changed_when: false
 
-    - name: Verify public Grafana requires authentication
-      ansible.builtin.uri:
-        url: "https://{{ monitoring_rancher_grafana_host }}/api/health"
-        status_code: 401
-        validate_certs: true
-        use_proxy: false
+    - name: Verify the public Grafana route is denied
+      ansible.builtin.command:
+        argv:
+          - curl
+          - --silent
+          - --show-error
+          - --noproxy
+          - '*'
+          - --max-time
+          - '10'
+          - --resolve
+          - "{{ monitoring_rancher_grafana_host }}:443:{{ monitoring_rancher_public_address }}"
+          - --output
+          - /dev/null
+          - --write-out
+          - '%{http_code}'
+          - "https://{{ monitoring_rancher_grafana_host }}/api/health"
+      register: monitoring_public_probe
+      failed_when: monitoring_public_probe.rc != 0 or monitoring_public_probe.stdout != '403'
       changed_when: false
+
+    - name: Remove the obsolete ingress password hash
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - --kubeconfig
+          - "{{ monitoring_rancher_kubeconfig }}"
+          - -n
+          - "{{ monitoring_rancher_namespace }}"
+          - delete
+          - secret
+          - grafana-ingress-auth
+          - --ignore-not-found
+      register: monitoring_old_ingress_secret
+      changed_when: "'deleted' in monitoring_old_ingress_secret.stdout"

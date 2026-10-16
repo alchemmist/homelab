@@ -172,3 +172,13 @@
     group: wheel
     mode: '0644'
   tags: dns
+
+- name: Install split DNS resolver for Grafana
+  become: true
+  ansible.builtin.copy:
+    dest: "{{ wireguard_admin_resolver_dir }}/grafana.socrat.alchemmist.xyz"
+    content: "nameserver 10.250.0.2\nnameserver 10.250.0.3\nnameserver 10.250.0.1\ntimeout {{ wireguard_admin_dns_timeout }}\noptions attempts:{{ wireguard_admin_dns_attempts }}\n"
+    owner: root
+    group: wheel
+    mode: '0644'
+  tags: dns

@@ -1,12 +1,9 @@
 import argparse
-import base64
 import json
 import shlex
 import subprocess
 import time
-import urllib.error
 import urllib.parse
-import urllib.request
 from pathlib import Path
 
 
@@ -56,23 +53,35 @@ def target_summary(targets):
     return summary
 
 
-def public_status(url, credentials=None):
-    headers = {}
-    if credentials:
-        headers['Authorization'] = 'Basic ' + base64.b64encode(credentials.encode()).decode()
-    request = urllib.request.Request(url, headers=headers)
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-    try:
-        with opener.open(request, timeout=30) as response:
-            return response.status
-    except urllib.error.HTTPError as error:
-        return error.code
+def remote_http_status(host, url, resolve_address=None, forwarded_for=None, interface=None):
+    command = ['curl', '--silent', '--show-error', '--noproxy', '*',
+               '--connect-timeout', '10', '--max-time', '30',
+               '--output', '/dev/null', '--write-out', '%{http_code}']
+    if resolve_address:
+        parsed = urllib.parse.urlsplit(url)
+        command += ['--resolve', f'{parsed.hostname}:{parsed.port or 443}:{resolve_address}']
+    if interface:
+        command += ['--interface', interface]
+    if forwarded_for:
+        command += ['--header', f'X-Forwarded-For: {forwarded_for}']
+    command.append(url)
+    result = subprocess.run(
+        ['ssh', '-o', 'BatchMode=yes', host, shlex.join(command)],
+        capture_output=True, text=True, timeout=45,
+    )
+    if result.returncode:
+        raise RuntimeError('HTTP probe failed: ' + result.stderr[-1000:])
+    return int(result.stdout)
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--ssh-host', default='socrat-0')
     parser.add_argument('--grafana-url', default='https://grafana.socrat.alchemmist.xyz')
+    parser.add_argument('--external-ssh-host', default='socrat-2-direct')
+    parser.add_argument('--grafana-private-address', default='10.250.0.3')
+    parser.add_argument('--grafana-private-source', default='10.250.0.1')
+    parser.add_argument('--grafana-public-address', default='109.173.40.247')
     parser.add_argument('--snapshot', type=Path)
     parser.add_argument('--compare', type=Path)
     parser.add_argument('--wait-seconds', type=int, default=120)
@@ -125,10 +134,20 @@ def main():
     dashboard = kubectl(args.ssh_host, 'get', '--raw', f'/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/dashboards/uid/socrat-overview')
     require(dashboard.get('dashboard', {}).get('uid') == 'socrat-overview', 'Socrat Overview dashboard provisioned in Grafana')
     url = args.grafana_url.rstrip('/') + '/api/search'
-    require(public_status(url) == 401, 'public Grafana denies anonymous access')
-    secret = kubectl(args.ssh_host, '-n', NAMESPACE, 'get', 'secret', 'socrat-grafana-admin', '-o', 'json')['data']
-    credentials = ':'.join(base64.b64decode(secret[key]).decode() for key in ['admin-user', 'admin-password'])
-    require(public_status(url, credentials) == 200, 'authenticated public Grafana API works')
+    require(remote_http_status(args.ssh_host, url, args.grafana_private_address,
+                               interface=args.grafana_private_source) == 200,
+            'WireGuard Grafana API works without credentials')
+    require(remote_http_status(args.ssh_host, url, args.grafana_public_address) == 403,
+            'home LAN public Grafana access denied')
+    for forwarded_for in [None, '10.250.0.4', '192.168.0.24']:
+        require(remote_http_status(args.external_ssh_host, url, args.grafana_public_address,
+                                   forwarded_for=forwarded_for) == 403,
+                'external Grafana access denied' +
+                (f' with spoofed X-Forwarded-For: {forwarded_for}' if forwarded_for else ''))
+    search = kubectl(args.ssh_host, 'get', '--raw',
+                     f'/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/search')
+    require(isinstance(search, list) and any(item.get('uid') == 'socrat-overview' for item in search),
+            'internal anonymous Grafana Viewer can find Socrat Overview')
     timestamp = int(time.time()) - 60
     snapshot = {
         'timestamp': timestamp,

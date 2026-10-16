@@ -1,0 +1,35 @@
+---
+- name: Publish Grafana in the private WireGuard DNS
+  hosts: socrat-0:socrat-1:socrat-2
+  gather_facts: false
+  become: true
+  serial: 1
+  any_errors_fatal: true
+  tags: [monitoring_dns]
+  tasks:
+    - name: Create the private DNS snippets directory
+      ansible.builtin.file:
+        path: /etc/homelab-private-dns.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Add only the Grafana private DNS record
+      ansible.builtin.copy:
+        content: "host-record=grafana.socrat.alchemmist.xyz,{{ wg_socrat_nodes['socrat-1'].address }}\nlocal=/grafana.socrat.alchemmist.xyz/\n"
+        dest: /etc/homelab-private-dns.d/monitoring.conf
+        owner: root
+        group: root
+        mode: '0644'
+      register: monitoring_dns_record
+
+    - name: Validate private DNS configuration before restart
+      ansible.builtin.command: dnsmasq --test --conf-file=/etc/homelab-private-dns.conf
+      changed_when: false
+
+    - name: Activate the private Grafana DNS record
+      ansible.builtin.systemd_service:
+        name: homelab-private-dns.service
+        state: restarted
+      when: monitoring_dns_record.changed

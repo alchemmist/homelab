@@ -24,9 +24,13 @@ Standard collectors cover node CPU, memory, filesystem and network use, pod stat
 
 The API collector uses the two control-plane WireGuard addresses and excludes the duplicate legacy socrat-0 LAN endpoint. Home-node kubelet scrapes drop duplicated control-plane metric families while retaining kubelet metrics; cAdvisor and probe collectors remain intact. Kubelet serving certificates are verified against the cluster CA. Exporters listen on private node addresses, and the etcd proxy listens only on WireGuard port 9238 with bearer authentication.
 
-Grafana is available at [grafana.socrat.alchemmist.xyz](https://grafana.socrat.alchemmist.xyz/d/socrat-overview). The username is `admin`; the ingress password and Grafana administrator password use the same generated Secret. Rancher uses the local-cluster monitoring proxy without requiring an additional monitoring stack.
+Grafana is available at [grafana.socrat.alchemmist.xyz](https://grafana.socrat.alchemmist.xyz/d/socrat-overview) only through the `socrat-wg` WireGuard network. Viewing dashboards requires no login. Home LAN membership alone does not grant access. Public HTTPS returns HTTP 403, including requests with forged WireGuard or LAN `X-Forwarded-For` headers.
 
-Grafana's internal anonymous Viewer access supports Rancher's authenticated service proxy and embedded dashboards. The public ingress must separately require authentication. The `socrat-grafana-admin` Secret contains `admin-user` and `admin-password`; secrets must not be placed in Git or printed by verification commands. Do not expose the internal anonymous Grafana Service directly through another ingress or NodePort.
+Private DNS resolves the Grafana hostname to `10.250.0.3`. The private HTTPS gateway on socrat-1 forwards WireGuard traffic to Grafana; the public ingress remains blocked. Clients need both the WireGuard connection and private DNS resolution. The checker bypasses DNS explicitly while preserving the hostname and validating TLS, so its private probe verifies the gateway separately from client DNS configuration.
+
+`monitoring-private-dns.yml` publishes the record on all three existing private DNS servers. The macOS `wireguard_admin_client` role installs `/etc/resolver/grafana.socrat.alchemmist.xyz` pointing to `10.250.0.2`, `10.250.0.3` and `10.250.0.1`. Installing that client-side file requires macOS administrator access. Connect the existing `socrat-wg` tunnel before opening Grafana; the public DNS answer intentionally remains unusable for dashboard access.
+
+Grafana's anonymous Viewer access supports private viewing and Rancher's authenticated service proxy and embedded dashboards. Administrative operations still require Grafana's `admin` account. The `socrat-grafana-admin` Secret contains `admin-user` and `admin-password`; secrets must not be placed in Git or printed by verification commands. Do not expose the anonymous Grafana Service through an unrestricted ingress or NodePort, and do not trust arbitrary forwarded headers as proof of WireGuard access.
 
 To copy the Grafana password into the macOS clipboard without printing it or writing a plaintext password file:
 
@@ -48,9 +52,9 @@ Run from the repository with working SSH access to socrat-0:
 python3 scripts/check-monitoring.py
 ```
 
-The checker uses Kubernetes Service proxy requests over SSH, without a public Prometheus endpoint or a local port-forward. It verifies every active scrape target, exporter/kubelet coverage against the current node list, etcd leadership, representative metrics, local persistent volume placement, memory requests/limits and anonymous/authenticated public Grafana access. Admin credentials remain in process memory.
+The checker uses Kubernetes Service proxy requests over SSH, without a public Prometheus endpoint or a local port-forward. It verifies every active scrape target, exporter/kubelet coverage against the current node list, etcd leadership, representative metrics, local persistent volume placement, memory requests/limits and anonymous WireGuard Grafana access, internal Viewer access, and HTTP 403 from an external VPS both with and without forged WireGuard and LAN forwarding headers. It does not retrieve administrator credentials.
 
-The Grafana URL and SSH alias can be overridden using `--grafana-url` and `--ssh-host`. A failed check exits nonzero and reports its failing condition. The checker waits up to 120 seconds for discovered targets to become healthy; override this with `--wait-seconds`. Real failures still fail the check at the deadline. Immediately after deployment, allow at least two scrape intervals before expecting every series.
+The Grafana URL and SSH aliases can be overridden using `--grafana-url`, `--ssh-host` and `--external-ssh-host`. Defaults are `socrat-0` for the WireGuard and LAN probes and `socrat-2-direct` for the external probe. Address overrides are `--grafana-private-address` (default `10.250.0.3`), `--grafana-private-source` (default `10.250.0.1`) and `--grafana-public-address` (default `109.173.40.247`). The private probe binds to the WireGuard source interface; public probes explicitly use the public address so private DNS cannot accidentally turn them into private-access tests. A failed check exits nonzero and reports its failing condition. The checker waits up to 120 seconds for discovered targets to become healthy; override this with `--wait-seconds`. Real failures still fail the check at the deadline. Immediately after deployment, allow at least two scrape intervals before expecting every series.
 
 For a controlled persistence test, first save a baseline outside the repository:
 
@@ -71,10 +75,10 @@ The comparison verifies unchanged PVC identities and queries the same historical
 Deploy from `ansible/`:
 
 ```sh
-ansible-playbook playbooks/monitoring.yml
+ansible-playbook playbooks/monitoring.yml --ask-become-pass
 ```
 
-The playbook uses the existing Kubernetes administration access on socrat-0 and requires no sudo password. Role tags `monitoring_base`, `monitoring_k3s` and `monitoring_rancher` allow scoped updates after the initial full installation.
+Kubernetes deployment uses the existing administration access on socrat-0. The private DNS play uses sudo on the DNS nodes. Tags `monitoring_base`, `monitoring_k3s`, `monitoring_rancher`, `monitoring_access` and `monitoring_dns` allow scoped updates. The private gateway role preserves existing Syncthing Helm values and authentication, adding only the Grafana virtual host and its certificate.
 
 Keep Helm values and provisioned dashboards in the repository. Apply changes through the Ansible monitoring playbook. Before a chart upgrade, inspect release notes and CRD requirements, capture current Helm values and Kubernetes workload/PVC metadata, and preserve the Grafana database and credentials. Never uninstall or delete persistent claims as a troubleshooting shortcut: the current storage class uses the Delete reclaim policy.
 
@@ -82,8 +86,14 @@ When disk usage grows, first inspect Prometheus series cardinality and retention
 
 ## Verified deployment on 2026-10-16
 
-All four nodes and all 30 scrape targets passed the verification script, including three etcd members and both API servers. The Socrat Overview dashboard was loaded by Grafana. Public HTTPS rejected anonymous requests with 401 and accepted the generated credentials; etcd metrics rejected unauthenticated requests and accepted the private token on all three nodes.
+All four nodes and all 30 scrape targets passed the verification script, including three etcd members and both API servers. The Socrat Overview dashboard was loaded by Grafana. At initial installation, public HTTPS used Basic authentication; it was subsequently replaced with WireGuard-only anonymous viewing. The current access checks are described above; etcd metrics rejected unauthenticated requests and accepted the private token on all three nodes.
 
 Prometheus and Grafana pods were restarted independently. The same historical Prometheus samples and all three PVC identities survived. A temporary annotation written to Grafana's database also survived its restart and was removed after verification. The 87 pre-existing namespace, PVC, Deployment and StatefulSet identities were unchanged.
 
 Measured monitoring pod memory was approximately 1.5 GiB across the cluster, with about 37 GiB disk space remaining on socrat-1. These are post-install observations, not forecasts. Rancher proxy health and generated embedding paths were checked through the Kubernetes service proxy; an authenticated Rancher browser session was not available for visual verification.
+
+## WireGuard-only access verification
+
+After removing the ingress password layer, the private gateway returned 200 without credentials from the socrat-wg network. It also ignored stale Basic credentials sent by a browser. Requests to the public address returned 403 from both the home network and the VPS, including forged WireGuard and LAN forwarding headers. All three private DNS servers returned `10.250.0.3` for the Grafana hostname. The full monitoring checker remained green, and Syncthing device identities, folder paths and pause states matched the pre-change snapshot.
+
+Client setup is separate from server verification: install the macOS resolver and enable socrat-wg before opening the page. Ordinary home LAN access does not substitute for the WireGuard connection.
