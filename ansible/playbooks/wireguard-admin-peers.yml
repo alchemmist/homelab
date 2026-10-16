@@ -1,0 +1,28 @@
+---
+- name: Register administrative clients on the existing public entry points
+  hosts: socrat-0:socrat-1:socrat-2
+  gather_facts: true
+  become: true
+  serial: 1
+  any_errors_fatal: true
+  tasks:
+    - name: Configure the established administrative access policy
+      ansible.builtin.include_role:
+        name: wireguard_admin_firewall
+
+    - name: Apply access restrictions before registering peers
+      ansible.builtin.meta: flush_handlers
+
+    - name: Register clients with the shared WireGuard role
+      ansible.builtin.include_role:
+        name: wireguard_socrat
+
+    - name: Verify administrative peers and assigned addresses
+      ansible.builtin.command: wg show wg-socrat allowed-ips
+      register: wireguard_admin_peer_addresses
+      changed_when: false
+      failed_when: >-
+        (item.value.public_key + '\t' + item.value.address + '/32') not in wireguard_admin_peer_addresses.stdout_lines
+      loop: "{{ wg_socrat_admin_clients | dict2items }}"
+      loop_control:
+        label: "{{ item.key }}"

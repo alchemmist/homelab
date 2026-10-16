@@ -34,6 +34,7 @@ class WireGuardTemplateTests(unittest.TestCase):
             'wg_socrat_nodes': nodes or self.nodes,
             'wg_socrat_admin_clients': clients or {},
             'wg_socrat_peer_endpoints': peer_endpoints or {},
+            'wg_socrat_extra_allowed_peer_ips': {},
             'wg_socrat_port': 51830,
             'wg_socrat_keepalive': 25,
             'wg_socrat_private_key': 'private',
