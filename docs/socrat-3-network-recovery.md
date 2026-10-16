@@ -92,3 +92,42 @@ or overwrite the normal initramfs to make this experiment persistent.
 `ALX_SOURCE` and compiles a C harness. The old implementation times out for
 indices256 and65535; the patched Debian source passes those and valid wrap,
 empty, and budget cases. This test does not validate the complete hardware.
+
+## Published reports reviewed on 2026-10-17
+
+The live inventory still reports MSI CR61 3M / MS-16GP, BIOS E16GPAMS.109
+(2013-10-15), Realtek RTL8723AE PCI10ec:8723 / AzureWave1a3b:2114,
+Debian13.7 and kernel6.12.111+deb13-amd64. The running driver is rtl8723ae;
+firmware-realtek is20250410-2. rfkill reports neither software nor hardware
+blocking. No driver or firmware configuration was changed for this review.
+
+- Debian bug785327 reported an MSI machine whose RTL8723AE was detected but
+  returned no scan results on Debian8/kernel3.16. The maintainer moved the
+  issue from firmware-realtek to the kernel package and requested diagnostics.
+  The reviewed messages contain no confirmed repair for Debian13:
+  https://mail-archive.com/debian-bugs-dist%40lists.debian.org/msg1322208.html
+- Kernel bug216672 reports the exact CR61 3M/MS-16GP family, RTL8723AE, and
+  soft lockups on kernels5.19/6.0.6, with BIOS E16GPAMS.10A (2013-11-25).
+  The developer could not explain the reported instruction-level stall and
+  requested a known-good kernel comparison. The accessible thread has no
+  verified fix; the current Bugzilla status could not be checked because
+  of its access challenge. It must not be equated with our alx TX-loop bug:
+  https://lkml.indiana.edu/hypermail/linux/kernel/2211.1/06266.html
+  https://lkml.indiana.edu/hypermail/linux/kernel/2211.1/08217.html
+- Linux6.12 source explicitly binds PCI10ec:8723 and selects rtl8723fw_B.bin
+  for B-cut hardware. The MODULE_FIRMWARE metadata naming rtl8723efw.bin
+  does not establish that the wrong runtime firmware is being loaded:
+  https://raw.githubusercontent.com/torvalds/linux/v6.12/drivers/net/wireless/realtek/rtlwifi/rtl8723ae/sw.c
+  https://packages.debian.org/trixie/all/firmware-realtek/filelist
+
+The installed driver also has an independent aspm parameter, currently1.
+Our runtime per-link ASPM-disable experiment did not restore scanning, but
+it is not identical to initializing the driver with aspm=0 from boot. That
+would be a separate controlled diagnostic, not a proven fix from these
+reports. Old advice to install an out-of-tree rtlwifi driver or repeat old
+IRQ patches is not justified merely by matching the card name.
+
+The absence of a user-visible Wi-Fi option in BIOS setup does not rule out
+firmware-supplied ACPI routing defects. Our GSI mismatch measurements remain
+relevant, while a successful test of the proposed table correction is still
+required before calling it the complete fix. No BIOS flashing is proposed.
