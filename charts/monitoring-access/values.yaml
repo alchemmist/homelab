@@ -1,7 +1,0 @@
-host: grafana.socrat.alchemmist.xyz
-clusterIssuer: letsencrypt-http01
-tlsSecret: grafana-public-tls
-allowedNetworks:
-  - 127.0.0.1/32
-serviceName: kube-prometheus-stack-grafana
-servicePort: 80
