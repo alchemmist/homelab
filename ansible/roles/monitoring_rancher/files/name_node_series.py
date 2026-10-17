@@ -23,6 +23,38 @@ RANCHER_DASHBOARD_UIDS = {
 }
 NODE_NAMES = 'max by (instance, nodename) (node_uname_info{job="node-exporter"})'
 
+NODE_DASHBOARD_UIDS = {'rancher-node-1', 'rancher-node-detail-1'}
+EXPORTER_QUERY = (
+    'query_result(label_replace(node_uname_info{job="node-exporter"}, '
+    '"node_ip", "$1", "instance", "(.+):[0-9]+") and on (node_ip) '
+    'label_replace(label_replace(vector(1), "node_ip", "$instance", "", ""), '
+    '"node_ip", "$1", "node_ip", "(.+):[0-9]+"))'
+)
+
+
+def resolve_node_exporter(dashboard):
+    variables = dashboard.setdefault('templating', {}).setdefault('list', [])
+    variables[:] = [v for v in variables if v.get('name') != 'exporter_instance']
+    variables.append({
+        'name': 'exporter_instance',
+        'label': 'Exporter instance',
+        'type': 'query',
+        'hide': 2,
+        'datasource': {'type': 'prometheus', 'uid': '${datasource}'},
+        'query': {'query': EXPORTER_QUERY, 'refId': 'nodeExporterInstance'},
+        'definition': EXPORTER_QUERY,
+        'regex': '/(?:^|[,{ ])instance="([^"]+)"/',
+        'refresh': 1,
+        'sort': 1,
+        'multi': False,
+        'includeAll': False,
+        'options': [],
+    })
+    for panel in panels(dashboard):
+        for target in panel.get('targets', []):
+            if 'expr' in target:
+                target['expr'] = target['expr'].replace('$instance', '$exporter_instance')
+
 
 def panels(dashboard):
     for panel in dashboard.get('panels', []):
@@ -49,6 +81,9 @@ def main():
                 found.add(uid)
                 title = dashboard['title'].removeprefix('Rancher / ').removeprefix('[Rancher] ')
                 dashboard['title'] = '[Rancher] ' + title
+                manifest['data'][name] = json.dumps(dashboard, ensure_ascii=False, separators=(',', ':'))
+            if uid in NODE_DASHBOARD_UIDS:
+                resolve_node_exporter(dashboard)
                 manifest['data'][name] = json.dumps(dashboard, ensure_ascii=False, separators=(',', ':'))
             if uid != DASHBOARD_UID:
                 continue
