@@ -1,42 +1,37 @@
-# Private wiki editor network
+# Wiki access and optional WireGuard routing
 
-The public hostname remains `wiki.alchemmist.xyz`. Public Traefik serves only the static wiki. Administrative WireGuard clients resolve the same hostname to `10.250.0.1` or `10.250.0.3`. The existing WireGuard-only nginx gateway serves the static site and forwards `/api/editor/` to `wiki-editor.wiki.svc.cluster.local:8080`.
+The target runtime serves public reading and locally authenticated editing on `wiki.alchemmist.xyz`. Users can sign in at `/login` from the internet or the administrative WireGuard network. Authorization comes from reader/editor/administrator accounts, not network membership. OIDC is not configured.
 
-The private virtual host checks the socket peer against `10.250.0.0/24`, not user-supplied forwarding headers. It replaces `X-Socrat-WG-Peer` and `X-Forwarded-For` with that socket address. Every administrative WireGuard peer can edit; this is not individual user authentication. The editor must reject direct requests without the trusted gateway path. Its service must remain internal with network policy appropriate to host-network gateway source IPs.
+The migration is staged, not deployed by these files. The current installation retains its legacy WG-only editing behavior until cutover. See [the migration runbook](wiki-runtime-migration.md) before changing routes or activating the paused Fleet bundle.
 
-Deploy server access with `ansible/playbooks/wiki-editor-access.yml`. It preserves existing gateway values, adds the certificate in the gateway namespace and installs an exact-host DNS override on administrative resolvers. It does not publish an editor Ingress or NodePort.
+## Gateway cutover
+
+`ansible/playbooks/wiki-editor-access.yml` manages the existing private gateway and exact-host DNS overrides. The role switch `wiki_editor_runtime_enabled` defaults to `false`, preserving legacy routing during preparation. After accepting the new application, set it to `true` for the coordinated cutover. Both private wiki virtual hosts then forward to `http://wiki-runtime-wiki.wiki.svc.cluster.local:8080`, the same runtime used by public ingress.
+
+The switch removes the separate editor upstream and legacy wiki authorization-header injection. It removes the editor secret mount when no other virtual host needs it. The private gateway still restricts socket peers to the administrative subnet; that network restriction does not grant application permissions. Preserve unrelated virtual hosts, existing gateway values and the private TLS certificate. Review the complete rendered gateway release before applying it.
+
+The new runtime is declared by `deploy/fleet/wiki-runtime.yaml` and `deploy/wiki-runtime`. Keep one writer on its new PVC. Public ingress and private routing must switch together after account login works; do not leave a private route pointing at the old writer. Bootstrap users in the new application, not through the old editor bootstrap playbook or shared gateway credentials.
 
 ## macOS
 
 `ansible/playbooks/wiki-editor-client.yml` installs a root-owned launch daemon. Every ten seconds it checks that a private DNS server is reached over an `utun` interface and actually returns the private wiki address. Only then does it install `/etc/resolver/wiki.alchemmist.xyz`. When the private route or resolver disappears, it removes its own override and flushes the OS DNS cache, restoring public resolution. It refuses to overwrite an unmanaged existing resolver. Existing `socrat.alchemmist.xyz` resolution is unchanged.
 
-Browser DNS caches, already-open connections, and browser-specific encrypted DNS may delay route changes. Reload the page after connecting or disconnecting WireGuard; browser encrypted DNS must respect the system resolver for this hostname. Expect up to ten seconds before the OS resolver changes. An inaccessible gateway causes the capability probe to fail closed; no editing is granted by frontend visibility alone.
+Browser DNS caches, already-open connections, and browser-specific encrypted DNS may delay route changes. Reload after connecting or disconnecting WireGuard; browser encrypted DNS must respect the system resolver for this hostname. Expect up to ten seconds before the OS resolver changes. After migration, disconnecting WG changes the route, not the user's application permissions: authenticated editing remains available through public ingress.
 
 To remove the client integration, unload `system/xyz.alchemmist.wiki-resolver`, remove its launch daemon and executable, then remove the exact-host resolver only if `/var/db/socrat-wiki-resolver-owned` exists. Remove that ownership marker and flush the DNS cache.
 
 ## Other clients
 
-Configure split DNS for the **exact hostname** `wiki.alchemmist.xyz` on the administrative WireGuard link, using `10.250.0.1` or `10.250.0.3` as DNS servers. Remove the routing domain when that link disconnects. On Linux with systemd-resolved, a per-link `~wiki.alchemmist.xyz` route-only domain is suitable. Do not redirect the entire `alchemmist.xyz` zone and do not leave a permanent hosts-file entry: both change unrelated/public behavior. Clients without private split DNS keep the public read-only site even while connected to WireGuard.
+Configure split DNS for the **exact hostname** `wiki.alchemmist.xyz` on the administrative WireGuard link, using `10.250.0.1` or `10.250.0.3` as DNS servers. Remove the routing domain when that link disconnects. On Linux with systemd-resolved, a per-link `~wiki.alchemmist.xyz` route-only domain is suitable. Do not redirect the entire `alchemmist.xyz` zone or leave a permanent hosts-file entry. Clients without split DNS use the public ingress and the same account permissions.
 
-## Acceptance checks
+## Acceptance checks after cutover
 
-- Public IP with the wiki Host header: static content works, editor endpoints are unavailable, including with spoofed `X-Forwarded-For` and `X-Socrat-WG-Peer`.
-- Private gateway via an administrative WireGuard peer: static content and editor capability work under the same HTTPS origin.
+- Public HTTPS serves anonymous reading and `/login`; an authenticated editor can publish without WG.
+- Anonymous or reader requests cannot mutate content, including requests carrying spoofed `X-Socrat-WG-Peer`, `X-Socrat-Editor-Key` or forwarding headers.
+- Private HTTPS reaches the same runtime and enforces the same account permissions.
 - Requests outside the administrative subnet cannot use the private virtual host.
-- Save requests are protected against cross-site requests by the editor backend; WG network reachability is not a CSRF defense.
-- WG disconnect removes the managed resolver and restores public read-only resolution; reconnect restores editor discovery.
-- Existing private virtual hosts and Syncthing access remain functional after gateway rollout.
+- Backend CSRF protection applies on both routes; WG reachability does not replace it.
+- WG disconnect removes the managed resolver and restores public resolution; reconnect restores the private route.
+- Existing private virtual hosts and Syncthing remain functional.
 
-## Bootstrap and publication
-
-First run `ansible/playbooks/wiki-editor.yml` to create stable secrets and the separate Fleet GitRepo. Register its printed public key as a write-enabled deploy key for homelab. Private keys and gateway tokens stay in Kubernetes Secrets. Then run the access playbook and the macOS client playbook. The backend has its own image, workflow and `wiki-editor-publish` branch. Backend and wiki template or frontend changes rebuild that image; content-only changes do not restart the editor. Accepted edits are served immediately from persistent live state; background Git synchronization and later image rollouts preserve this state.
-
-On this cluster host-network gateway traffic may use Flannel source addresses `10.42.2.0` and `10.42.1.0`; ingress policy permits only the gateway nodes and their narrow host addresses. The additional shared gateway secret is checked by the backend before accepting peer identity. Lifecycle tests in `tests/test_wiki_editor_resolver.py` exercise private routing, disconnect/public fallback and unmanaged-file preservation without changing live networking.
-
-## Sidebar structure editing
-
-Authorized readers receive a live tree from `GET /api/editor/tree`. Its revision is the Git tree hash of `wiki/content`, so unrelated repository changes do not invalidate a structural operation. Folder creation uses `POST /api/editor/folders` with parent, title, slug and revision. Moves use `POST /api/editor/move` with source, target_parent, optional before-sibling and revision. Each operation is one commit; conflicting content changes return 409 instead of overwriting them.
-
-Sidebar order is persisted through front matter weights. Folder moves include descendants; page bundles include their local assets. Moves retain old page URLs as aliases and rewrite supported Hugo relref links, including fragments. Custom URL/slug moves, cycles, symlinks, path traversal and destination collisions are rejected. Folder indices remain navigation containers, not public pages.
-
-Unsaved article changes block sidebar writes. Drag-and-drop has a menu alternative for keyboard and touch users. New page links are held inactive until the current session confirms publication; moved links keep their previous published address during that wait. Publication still uses the existing static-site pipeline.
+`tests/test_wiki_editor_resolver.py` exercises private routing, disconnect/public fallback and unmanaged-file preservation without changing live networking. For rollback, follow the migration runbook: switching the gateway flag back is safe only after considering content accepted by the new runtime.

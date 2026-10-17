@@ -1,41 +1,39 @@
----
-- name: Bootstrap namespace-scoped Fleet deployment for Socrat Wiki
+- name: Bootstrap the shared wiki runtime Fleet deployment
   hosts: socrat-0
   gather_facts: false
   become: true
   vars:
-    wiki_repository: https://github.com/alchemmist/homelab.git
-    wiki_branch: wiki-publish
-    wiki_git_secret: ""
-    wiki_registry_secret_namespace: blog
-    wiki_registry_secret_name: ghcr-pull
+    wiki_runtime_skip_legacy_git: false
   tasks:
-    - name: Copy wiki bootstrap helper
+    - name: Copy runtime bootstrap helper
       ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../files/bootstrap_wiki.py"
-        dest: /tmp/bootstrap_wiki.py
+        src: "{{ playbook_dir }}/../../scripts/bootstrap-wiki-runtime.py"
+        dest: /tmp/bootstrap-wiki-runtime.py
         owner: root
         group: root
-        mode: "0700"
+        mode: '0700'
 
-    - name: Bootstrap Fleet prerequisites and repository
+    - name: Bootstrap isolated runtime prerequisites
       ansible.builtin.command:
-        argv:
-          - python3
-          - /tmp/bootstrap_wiki.py
-          - --repository
-          - "{{ wiki_repository }}"
-          - --branch
-          - "{{ wiki_branch }}"
-          - --git-secret
-          - "{{ wiki_git_secret }}"
-          - --registry-secret-namespace
-          - "{{ wiki_registry_secret_namespace }}"
-          - --registry-secret-name
-          - "{{ wiki_registry_secret_name }}"
-      register: wiki_bootstrap
-      changed_when: "'created' in wiki_bootstrap.stdout or 'configured' in wiki_bootstrap.stdout"
+        argv: "{{ ['python3', '/tmp/bootstrap-wiki-runtime.py'] + (['--skip-legacy-git'] if wiki_runtime_skip_legacy_git | bool else []) }}"
+      register: wiki_runtime_bootstrap
+      changed_when: "'created' in wiki_runtime_bootstrap.stdout"
 
-    - name: Show Fleet reconciliation status
-      ansible.builtin.command: k3s kubectl -n fleet-local get gitrepo wiki
+    - name: Copy runtime Fleet repository manifest
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../deploy/fleet/wiki-runtime.yaml"
+        dest: /tmp/wiki-runtime-fleet.yaml
+        owner: root
+        group: root
+        mode: '0600'
+
+    - name: Register runtime Fleet repository
+      ansible.builtin.command:
+        argv: [k3s, kubectl, apply, -f, /tmp/wiki-runtime-fleet.yaml]
+      register: wiki_runtime_fleet
+      changed_when: "'created' in wiki_runtime_fleet.stdout or 'configured' in wiki_runtime_fleet.stdout"
+
+    - name: Show runtime Fleet reconciliation status
+      ansible.builtin.command:
+        argv: [k3s, kubectl, -n, fleet-local, get, gitrepo, wiki-runtime]
       changed_when: false
