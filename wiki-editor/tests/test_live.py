@@ -482,3 +482,43 @@ class LiveTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers['content-type'], 'font/woff2')
         self.assertEqual(response.headers['cache-control'], 'no-store')
+
+    def test_folder_rename_preserves_content_and_publishes_atomically(self):
+        created = self.batch([{'slug': 'child', 'title': 'Child', 'body': 'Child body'}], [
+            {'type': 'folder', 'slug': 'group', 'title': 'Group'},
+            {'type': 'move', 'source': 'child.md', 'target_parent': 'group'},
+        ])
+        self.assertEqual(created.status_code, 200, created.text)
+        folder = self.client.get('/api/editor/pages?path=group/_index.md').json()
+        pending = len(self.live.pending())
+        response = self.batch([dict(folder, body='Folder body')], [{'type': 'rename', 'source': 'group', 'title': ' Новое название '}])
+        self.assertEqual(response.status_code, 200, response.text)
+        saved = response.json()['pages'][0]
+        self.assertEqual(saved['title'], 'Новое название')
+        self.assertEqual(saved['body'], 'Folder body')
+        self.assertEqual(saved['path'], 'group/_index.md')
+        self.assertEqual(saved['url'], self.api.ORIGIN + '/group/')
+        self.assertEqual(self.client.get('/api/editor/pages?path=group/child.md').json()['body'], 'Child body')
+        self.assertEqual(len(self.live.pending()), pending + 1)
+
+    def test_create_move_rename_folder_in_one_batch(self):
+        response = self.batch([], [
+            {'type': 'folder', 'slug': 'group', 'title': 'Group'},
+            {'type': 'folder', 'slug': 'parent', 'title': 'Parent'},
+            {'type': 'rename', 'source': 'group', 'title': 'First'},
+            {'type': 'move', 'source': 'group', 'target_parent': 'parent'},
+            {'type': 'rename', 'source': 'parent/group', 'title': 'Final'},
+        ])
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(self.client.get('/api/editor/pages?path=parent/group/_index.md').json()['title'], 'Final')
+        self.assertEqual(len(self.live.pending()), 1)
+
+    def test_invalid_folder_rename_rolls_back_page_edits(self):
+        self.assertEqual(self.batch([{'slug': 'note', 'title': 'Note', 'body': 'Text'}], [{'type': 'folder', 'slug': 'group', 'title': 'Group'}]).status_code, 200)
+        for source, title in [('note.md', 'Name'), ('', 'Name'), ('group', ''), ('group', 'a\nb'), ('group', 'a' * 201), ('../group', 'Name')]:
+            before = self.page()
+            pending = len(self.live.pending())
+            response = self.batch([dict(before, body='Must not persist')], [{'type': 'rename', 'source': source, 'title': title}])
+            self.assertIn(response.status_code, (400, 422), response.text)
+            self.assertEqual(self.page(), before)
+            self.assertEqual(len(self.live.pending()), pending)

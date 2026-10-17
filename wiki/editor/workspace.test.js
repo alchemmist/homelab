@@ -218,3 +218,43 @@ test('a new page cannot reuse the URL of a folder staged for deletion',()=>{
   assert.deepEqual(workspace.drafts(),[]);
   assert.deepEqual(workspace.operations(),[{type:'delete',source:'start'}]);
 });
+
+test('folder rename preserves draft body and persists through moves reload and deletion',()=>{
+  const disk=storage(),workspace=createWorkspace(disk);
+  workspace.start();workspace.seedTree({revision:'r',nodes:[{id:'a',kind:'folder',title:'A',url:'/a/',children:[]}]});
+  workspace.put({path:'a/_index.md',title:'A',body:'Keep',revision:'r'});
+  workspace.stage({type:'rename',source:'a',title:' Renamed '});
+  assert.equal(workspace.get('a/_index.md').title,'Renamed');
+  assert.equal(workspace.get('a/_index.md').body,'Keep');
+  workspace.stage({type:'folder',parent:'',slug:'parent',title:'Parent'});
+  workspace.stage({type:'move',source:'a',target_parent:'parent',before:null});
+  workspace.stage({type:'rename',source:'parent/a',title:'Moved'});
+  const restored=createWorkspace(disk);
+  assert.equal(restored.tree().nodes[0].children[0].title,'Moved');
+  assert.equal(restored.tree().nodes[0].children[0].page_path,'parent/a/_index.md');
+  assert.equal(restored.get('parent/a/_index.md').title,'Moved');
+  restored.stage({type:'delete',source:'parent/a'});
+  assert.equal(restored.tree().nodes[0].children.length,0);
+});
+
+test('rename rejects invalid titles and page targets and skips unchanged names',()=>{
+  const workspace=createWorkspace(storage());
+  workspace.seedTree({revision:'r',nodes:[{id:'a',kind:'folder',title:'A',children:[]},{id:'p.md',kind:'page',title:'Page'}]});
+  for(const title of ['', ' ', 'x\ny', 'x'.repeat(201), null]) assert.throws(()=>workspace.stage({type:'rename',source:'a',title}));
+  assert.throws(()=>workspace.stage({type:'rename',source:'p.md',title:'P'}));
+  workspace.stage({type:'rename',source:'a',title:' A '});
+  assert.deepEqual(workspace.operations(),[]);
+  workspace.stage({type:'folder',parent:'a',slug:'new',title:'New'});
+  workspace.stage({type:'rename',source:'a/new',title:'Fresh'});
+  assert.equal(workspace.tree().nodes[0].children[0].title,'Fresh');
+});
+
+test('editing a renamed folder heading after moving it updates the final rename operation',()=>{
+  const workspace=createWorkspace(storage());workspace.start();
+  workspace.seedTree({revision:'r',nodes:[{id:'a',kind:'folder',title:'A',children:[]},{id:'parent',kind:'folder',title:'Parent',children:[]}]});
+  workspace.stage({type:'rename',source:'a',title:'Renamed'});
+  workspace.stage({type:'move',source:'a',target_parent:'parent',before:null});
+  workspace.put({path:'a/_index.md',title:'Latest heading',body:'Body',revision:'r'});
+  assert.deepEqual(workspace.operations()[0],{type:'rename',source:'a',title:'Latest heading'});
+  assert.equal(workspace.tree().nodes[0].children[0].title,'Latest heading');
+});

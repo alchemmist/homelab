@@ -63,12 +63,14 @@ assert status == 200, (status, body)
 operations = [
     {'type': 'folder', 'parent': '', 'slug': folder, 'title': 'Runtime smoke'},
     {'type': 'move', 'source': slug + '.md', 'target_parent': folder, 'before': None},
+    {'type': 'rename', 'source': folder, 'title': 'Renamed runtime folder'},
 ]
 status, _, body = request('/api/editor/batch', {'pages': pages, 'operations': operations, 'tree_revision': json.loads(body)['revision']}, headers)
 assert status == 200, (status, body)
 created_path = folder + '/' + slug + '.md'
 created_url = '/site/' + folder + '/' + slug + '/'
 assert json.loads(body)['pages'][1]['path'] == created_path
+assert next(node for node in json.loads(body)['nodes'] if node['id'] == folder)['title'] == 'Renamed runtime folder'
 for index, (path, url) in enumerate((('_index.md', '/site/'), (created_path, created_url))):
     marker = 'Live runtime smoke marker ' + str(index)
     status, _, html = request(url)
@@ -84,4 +86,4 @@ assert status == 200, (status, body)
 assert request(created_url)[0] == 404
 assert request('/api/editor/pages?path=' + created_path, headers=headers)[0] == 404
 assert 'Live runtime smoke marker 0' in request('/site/')[2]
-print('Real Hugo runtime: private API, atomic edit/move/delete publication and immediate HTML reload passed')
+print('Real Hugo runtime: private API, atomic edit/move/rename/delete publication and immediate HTML reload passed')

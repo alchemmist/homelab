@@ -468,6 +468,25 @@ def move_node(data: dict):
     return publish_structure(data, operation)
 
 
+def rename_folder(data):
+    title, unused = fields(dict(data, body=''))
+    if len(title) > 200 or '\r' in title:
+        raise HTTPException(422, 'Folder title must contain at most 200 characters on one line')
+    source = data.get('source')
+    def operation():
+        checked_path(source, section=True)
+        node = flatten_nodes(tree_nodes()).get(source)
+        if not node or node['kind'] != 'folder':
+            raise HTTPException(422, 'Choose an existing folder')
+        path = source + '/_index.md'
+        target = checked_path(path)
+        metadata, body = parse(target.read_text(encoding='utf-8'))
+        metadata['title'] = title
+        write_markdown(target, metadata, body)
+        return {'path': path, 'url': document_url(path, metadata)}
+    return publish_structure(data, operation)
+
+
 def unlink_deleted_references(source, target):
     from urllib.parse import unquote, urljoin, urlsplit
     documents = {}
@@ -714,8 +733,8 @@ def batch(data: dict):
     operations = data.get('operations', [])
     if not isinstance(pages, list) or len(pages) > 100 or any(not isinstance(page, dict) for page in pages):
         raise HTTPException(422, 'Provide at most 100 pages')
-    if not isinstance(operations, list) or len(operations) > 100 or any(not isinstance(item, dict) or item.get('type') not in ('folder', 'move', 'delete') for item in operations):
-        raise HTTPException(422, 'Provide at most 100 folder, move or delete operations')
+    if not isinstance(operations, list) or len(operations) > 100 or any(not isinstance(item, dict) or item.get('type') not in ('folder', 'move', 'delete', 'rename') for item in operations):
+        raise HTTPException(422, 'Provide at most 100 folder, move, delete or rename operations')
     if not pages and not operations:
         raise HTTPException(422, 'Provide pages or structure operations')
     if operations and (not isinstance(data.get('tree_revision'), str) or not re.fullmatch(r'[a-f0-9]{40}', data['tree_revision'])):
@@ -760,6 +779,8 @@ def batch(data: dict):
             payload = dict(item, revision=content_revision())
             if item['type'] == 'folder':
                 create_folder(payload)
+            elif item['type'] == 'rename':
+                rename_folder(payload)
             elif item['type'] == 'delete':
                 delete_node(payload)
                 source = item['source']

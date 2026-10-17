@@ -1,8 +1,8 @@
-export async function initializeTree({api, workspace, begin = () => true, dirty, structureDirty = dirty, openPage, currentPath, moved, removed = async () => {}, changed = async () => {}, message, publication}) {
+export async function initializeTree({api, workspace, begin = () => true, dirty, structureDirty = dirty, openPage, currentPath, moved, renamed = async () => {}, removed = async () => {}, changed = async () => {}, message, publication}) {
   const nav = document.querySelector('.page-tree');
   if (!nav) return;
   const pendingLinks = new Map();
-  let confirmation;
+  let confirmation, renaming, renameSaving;
   const clearConfirmation = () => { if (confirmation) { confirmation.reset(); confirmation = null; } };
   let tree, loading, treeGeneration = 0, pending = false, dragging = '', expanded = new Set(), chooser, pointer, drop, expandTimer, expandId, scrollFrame;
   const error = text => message(text, true);
@@ -50,7 +50,7 @@ export async function initializeTree({api, workspace, begin = () => true, dirty,
       let result;
       if (workspace) {
         if (!begin()) return;
-        workspace.stage({type:endpoint === "/move" ? "move" : endpoint === "/delete" ? "delete" : "folder",...payload});
+        workspace.stage({type:endpoint === "/move" ? "move" : endpoint === "/delete" ? "delete" : endpoint === "/rename" ? "rename" : "folder",...payload});
         result = workspace.tree();
       } else result = await api(endpoint, {...payload, revision});
       const oldNodes = flatten(tree.nodes);
@@ -75,6 +75,38 @@ export async function initializeTree({api, workspace, begin = () => true, dirty,
     clearConfirmation();
     const result = await mutate('/delete', {source:node.id});
     if (result) { await removed(node); await changed(); }
+  }
+  function renameFolder(node, row) {
+    if (!workspace?.active() || pending) return;
+    clearConfirmation(); renaming?.cancel();
+    const toggle = row.querySelector('.tree-toggle');
+    const input = document.createElement('input');
+    input.className = 'wiki-tree-rename-input'; input.value = node.title; input.maxLength = 200;
+    input.setAttribute('aria-label', 'Название папки ' + node.title);
+    const cancel = () => { if (renaming?.input !== input) return; renaming = null; input.replaceWith(toggle); };
+    const save = () => {
+      if (renaming?.input !== input) return renameSaving || Promise.resolve(true);
+      if (!workspace.active()) { cancel(); return Promise.resolve(true); }
+      const title = input.value.trim();
+      if (!title || title.length > 200 || /[\r\n]/.test(input.value)) { error('Укажите название папки: от 1 до 200 символов без переноса строки.'); input.focus(); return Promise.resolve(false); }
+      if (title === node.title) { cancel(); return Promise.resolve(true); }
+      cancel();
+      renameSaving = (async () => {
+        const result = await mutate('/rename', {source:node.id,title});
+        if (result) { await renamed(node.id,title); await changed(); }
+        return !!result;
+      })().finally(() => { renameSaving = null; });
+      return renameSaving;
+    };
+    renaming = {input,cancel,save};
+    toggle.replaceWith(input); input.focus(); input.select();
+    input.addEventListener('pointerdown', event => event.stopPropagation());
+    input.addEventListener('click', event => event.stopPropagation());
+    input.addEventListener('keydown', event => {
+      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); cancel(); row.querySelector('.wiki-tree-rename')?.focus(); }
+      else if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); save(); }
+    });
+    input.addEventListener('blur', save);
   }
   function createFolder(anchor) {
     if (!guard()) return;
@@ -199,10 +231,10 @@ export async function initializeTree({api, workspace, begin = () => true, dirty,
       const li=document.createElement('li');li.className='nav-item'+(node.kind==='folder'?' nav-section':'');li.dataset.nodeId=node.id;
       const row=document.createElement('div');row.className='nav-row wiki-tree-row';row.draggable=false;
       row.addEventListener('pointerdown', event => {
-        if (event.target.closest('.wiki-tree-delete') || event.button !== 0 || pending || !canDrag()) return;
+        if (event.target.closest('.wiki-tree-delete, .wiki-tree-rename, .wiki-tree-rename-input') || event.button !== 0 || pending || !canDrag()) return;
         pointer = {id: event.pointerId, node, row, startX: event.clientX, startY: event.clientY, x: event.clientX, y: event.clientY};
       });
-      row.addEventListener('dragstart',event=>{if(event.target.closest('.wiki-tree-delete') || !canDrag() || !guard()){event.preventDefault();return;} dragging=node.id;nav.classList.add('wiki-tree-dragging');event.dataTransfer.setData('text/plain',node.id);event.dataTransfer.effectAllowed='move';});
+      row.addEventListener('dragstart',event=>{if(event.target.closest('.wiki-tree-delete, .wiki-tree-rename, .wiki-tree-rename-input') || !canDrag() || !guard()){event.preventDefault();return;} dragging=node.id;nav.classList.add('wiki-tree-dragging');event.dataTransfer.setData('text/plain',node.id);event.dataTransfer.effectAllowed='move';});
       row.addEventListener('dragend',finishDrag);
       if(node.kind==='folder') {
         const toggle=button('', 'Раскрыть '+node.title,()=>{expanded.has(node.id)?expanded.delete(node.id):expanded.add(node.id);render();});
@@ -218,6 +250,15 @@ export async function initializeTree({api, workspace, begin = () => true, dirty,
         link.addEventListener('click',event=>{if(node.draft_path){event.preventDefault();openPage({draftPath:node.draft_path});return;}if(!link.hasAttribute('href')){event.preventDefault();return;}if(dirty()){event.preventDefault();error('Сначала опубликуйте или отмените правки заметки.');}});row.append(link);
       }
       if (workspace?.active()) {
+        if (node.kind === 'folder') {
+          const rename = iconButton('Переименовать папку ' + node.title, ['M16 3a2.1 2.1 0 0 1 3 3L8 17l-4 1 1-4Z','m14 5 3 3'], event => {
+            event.preventDefault(); event.stopPropagation(); renameFolder(node, row);
+          });
+          rename.className = 'wiki-tree-rename'; rename.draggable = false;
+          rename.addEventListener('pointerdown', event => event.stopPropagation());
+          rename.addEventListener('dragstart', event => { event.preventDefault(); event.stopPropagation(); });
+          row.append(rename);
+        }
         const trash = ['M3 6h18','M9 6V4h6v2','M5 6l1 14h12l1-14','M10 10v6','M14 10v6'];
         const warning = ['M12 4 2 21h20L12 4Z','M12 10v4','M12 17h.01'];
         const label = 'Удалить ' + (node.kind === 'folder' ? 'папку ' : 'заметку ') + node.title;
@@ -249,6 +290,7 @@ export async function initializeTree({api, workspace, begin = () => true, dirty,
     }return ul;
   }
   function render() {
+    renaming?.cancel();
     clearConfirmation();
     if (!tree) return;
     nav.querySelector('.nav-root')?.remove();
@@ -265,5 +307,5 @@ export async function initializeTree({api, workspace, begin = () => true, dirty,
   }
   mountToolbar();
   const ready = loadTree().then(() => { for(const node of flatten(tree.nodes))if(node.kind==='folder' && currentPath().startsWith(node.id+'/'))expanded.add(node.id);render(); }).catch(e => error(e.message));
-  return {refresh, render:()=>{ if (workspace) tree = workspace.tree() || tree; render(); }, reset:()=>{finishDrag();tree=undefined;return refresh();}, revision:()=>tree?.revision, ensureRevision, ready};
+  return {refresh, finishRename:async()=>renaming ? renaming.save() : renameSaving || true, render:()=>{ if (workspace) tree = workspace.tree() || tree; render(); }, reset:()=>{finishDrag();tree=undefined;return refresh();}, revision:()=>tree?.revision, ensureRevision, ready};
 }
