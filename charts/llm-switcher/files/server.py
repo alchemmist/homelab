@@ -20,10 +20,21 @@ KUBE = 'https://kubernetes.default.svc'
 DEPLOYMENT = '/apis/apps/v1/namespaces/llm/deployments/vllm'
 TOKEN = Path('/var/run/secrets/kubernetes.io/serviceaccount/token')
 CA = '/var/run/secrets/kubernetes.io/serviceaccount/ca.crt'
+MAX_REQUEST_BYTES = 64 * 1024 * 1024
+MAX_RESERVED_BYTES = 64 * 1024 * 1024
+MAX_HANDLERS = 32
+BODY_READ_TIMEOUT = 60
+BODY_CHUNK_BYTES = 64 * 1024
 
 
 def error(message, status):
     return web.json_response({'error': {'message': message, 'type': 'gateway_error', 'code': status}}, status=status)
+
+
+async def body_chunks(raw):
+    view = memoryview(raw)
+    for offset in range(0, len(view), BODY_CHUNK_BYTES):
+        yield view[offset:offset + BODY_CHUNK_BYTES]
 
 
 def model_args(profile):
@@ -100,6 +111,8 @@ class Gateway:
     def __init__(self):
         self.scheduler = ModelScheduler()
         self.queued = 0
+        self.reserved_bytes = 0
+        self.receiving = 0
         self.active = None
         self.session = None
         self.kube_ssl = ssl.create_default_context(cafile=CA)
@@ -148,49 +161,75 @@ class Gateway:
             return error('Invalid API key', 401)
         if request.path == '/status' and request.method == 'GET':
             counts = {name: sum(t['model'] == name for t in self.scheduler.waiting) for name in PROFILES}
-            return web.json_response({'loaded_model': self.active, 'running': self.scheduler.busy, 'waiting': counts})
+            return web.json_response({'loaded_model': self.active, 'running': self.scheduler.busy, 'waiting': counts, 'reserved_bytes': self.reserved_bytes, 'receiving': self.receiving, 'in_flight': self.queued})
         if request.path == '/v1/models' and request.method == 'GET':
             return web.json_response({'object': 'list', 'data': [{'id': name, 'object': 'model', 'created': 0, 'owned_by': 'socrat', 'max_model_len': p['contextWindow']} for name, p in PROFILES.items()]})
         if request.path not in ['/v1/chat/completions', '/v1/completions', '/v1/responses'] or request.method != 'POST':
             return error('Unsupported endpoint', 404)
-        try:
-            body = await request.json()
-        except (ValueError, UnicodeError):
-            return error('Invalid JSON', 400)
-        if not isinstance(body, dict) or not isinstance(body.get('model'), str) or body['model'] not in PROFILES:
-            return error('Unknown model', 404)
-        if body.get('background'):
-            return error('Background responses are not supported by the model switcher', 400)
-        if self.queued >= 32:
-            return error('Model queue is full; retry later', 429)
+        if request.headers.get('Content-Encoding', 'identity').strip().lower() != 'identity':
+            return error('Compressed request bodies are not supported', 415)
+        reserved = request.content_length if request.content_length is not None else MAX_REQUEST_BYTES
+        if reserved > MAX_REQUEST_BYTES:
+            return error('Request body exceeds the 64 MiB limit', 413)
+        if self.queued >= MAX_HANDLERS or self.reserved_bytes + reserved > MAX_RESERVED_BYTES:
+            return error('Model queue or request body budget is full; retry later', 429)
         self.queued += 1
+        self.reserved_bytes += reserved
+        try:
+            self.receiving += 1
+            raw = bytearray()
+            try:
+                async with asyncio.timeout(BODY_READ_TIMEOUT):
+                    async for chunk in request.content.iter_chunked(BODY_CHUNK_BYTES):
+                        if len(raw) + len(chunk) > reserved:
+                            return error('Request body exceeds its reserved size', 413)
+                        raw.extend(chunk)
+                body = json.loads(raw)
+            except TimeoutError:
+                return error('Request body read timed out', 408)
+            except (ValueError, UnicodeError):
+                return error('Invalid JSON', 400)
+            except (ClientError, OSError):
+                return error('Request body could not be read', 400)
+            finally:
+                self.receiving -= 1
+            if not isinstance(body, dict) or not isinstance(body.get('model'), str) or body['model'] not in PROFILES:
+                return error('Unknown model', 404)
+            if body.get('background'):
+                return error('Background responses are not supported by the model switcher', 400)
+            model = body['model']
+            del body
+            return await self.forward(request, raw, model)
+        finally:
+            self.queued -= 1
+            self.reserved_bytes -= reserved
+
+    async def forward(self, request, raw, model):
         response = None
         request_id = str(uuid.uuid4())
-        LOG.info('queued request=%s model=%s in_flight=%s', request_id, body['model'], self.queued)
+        LOG.info('queued request=%s model=%s in_flight=%s', request_id, model, self.queued)
         try:
-            async with self.scheduler.slot(body['model']) as waited:
+            async with self.scheduler.slot(model) as waited:
                 async with asyncio.timeout(1800):
-                    LOG.info('admitted request=%s model=%s waited=%.1fs', request_id, body['model'], waited)
-                    await self.ensure_model(body['model'])
+                    LOG.info('admitted request=%s model=%s waited=%.1fs', request_id, model, waited)
+                    await self.ensure_model(model)
                     self.scheduler.loaded()
-                    async with self.session.post(BACKEND + request.path, json=body, headers={'Authorization': 'Bearer ' + KEY}, timeout=ClientTimeout(total=None, sock_connect=10, sock_read=1800)) as upstream:
+                    async with self.session.post(BACKEND + request.path, data=body_chunks(raw), headers={'Authorization': 'Bearer ' + KEY, 'Content-Type': 'application/json', 'Content-Length': str(len(raw))}, timeout=ClientTimeout(total=None, sock_connect=10, sock_read=1800)) as upstream:
                         response = web.StreamResponse(status=upstream.status, headers={'Content-Type': upstream.headers.get('Content-Type', 'application/json'), 'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
                         await response.prepare(request)
                         async for chunk in upstream.content.iter_any():
                             await response.write(chunk)
                         await response.write_eof()
-                        LOG.info('finished request=%s model=%s status=%s', request_id, body['model'], upstream.status)
+                        LOG.info('finished request=%s model=%s status=%s', request_id, model, upstream.status)
                         return response
         except asyncio.CancelledError:
             raise
         except Exception as exc:
-            LOG.error('request=%s model=%s failed=%s', request_id, body['model'], type(exc).__name__)
+            LOG.error('request=%s model=%s failed=%s', request_id, model, type(exc).__name__)
             if response is not None and response.prepared:
                 response.force_close()
                 return response
             return error('Model startup or inference failed; retry later', 503)
-        finally:
-            self.queued -= 1
 
     async def start(self, app):
         self.session = ClientSession()
@@ -202,7 +241,7 @@ class Gateway:
 def main():
     logging.basicConfig(level=logging.INFO)
     gateway = Gateway()
-    app = web.Application(client_max_size=4 * 1024 * 1024)
+    app = web.Application(client_max_size=MAX_REQUEST_BYTES, handler_args={'auto_decompress': False})
     app.router.add_route('*', '/{path:.*}', gateway.handle)
     app.on_startup.append(gateway.start)
     app.on_cleanup.append(gateway.stop)

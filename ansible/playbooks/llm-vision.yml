@@ -22,7 +22,7 @@
             import json,os,urllib.request;
             r=urllib.request.Request('http://127.0.0.1:8000/status',headers={'Authorization':'Bearer '+os.environ['BACKEND_API_KEY']});
             d=json.load(urllib.request.urlopen(r));
-            assert not d['running'] and not any(d['waiting'].values()), 'Inference is busy; retry after current requests finish'
+            assert not d['running'] and not any(d['waiting'].values()) and not d.get('in_flight', 0), 'Inference is busy; retry after current requests finish'
       changed_when: false
 
     - name: Copy the matching backend and gateway profiles

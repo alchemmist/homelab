@@ -1,3 +1,4 @@
+import argparse
 import base64
 import io
 import json
@@ -15,20 +16,30 @@ BASE_URL = os.environ.get("LLM_BASE_URL", "http://127.0.0.1:8000/v1").rstrip("/"
 API_KEY = os.environ.get("LLM_API_KEY", "")
 MODEL = os.environ.get("LLM_MODEL", "qwen3.8-27b")
 TIMEOUT = 300
+CODE_WORDS = ("APPLE", "RIVER", "CLOUD", "HOUSE", "CHAIR", "TRAIN", "PLANT", "LEMON", "MANGO", "TIGER", "ZEBRA", "PANDA", "MUSIC", "ROBOT", "WATER", "STONE", "LIGHT", "BREAD", "BEACH", "GREEN")
 
 
-def make_image(code):
-    image = Image.new("RGB", (768, 256), "white")
+def make_code():
+    return secrets.choice(CODE_WORDS)
+
+
+def make_image(code, large=False):
+    if large:
+        image = Image.frombytes("RGB", (1280, 1024), os.urandom(1280 * 1024 * 3))
+    else:
+        image = Image.new("RGB", (768, 256), "white")
     draw = ImageDraw.Draw(image)
-    font = ImageFont.load_default(size=64)
-    draw.text((384, 128), code, fill="black", font=font, anchor="mm")
+    if large:
+        draw.rectangle((320, 432, 960, 592), fill="white")
+    font = ImageFont.load_default(size=96)
+    draw.text((image.width // 2, image.height // 2), code, fill="black", font=font, anchor="mm")
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
     encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
     return {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{encoded}"}}
 
 
-def complete(name, messages, expected):
+def complete(name, messages, expected, minimum_request_bytes=0):
     started = time.monotonic()
     payload = {
         "model": MODEL,
@@ -37,9 +48,13 @@ def complete(name, messages, expected):
         "temperature": 0,
         "chat_template_kwargs": {"enable_thinking": False},
     }
+    encoded_payload = json.dumps(payload).encode()
+    if len(encoded_payload) <= minimum_request_bytes:
+        raise ValueError(f"{name}: request must exceed {minimum_request_bytes} bytes, got {len(encoded_payload)}")
+    print(f"REQUEST {name}: {len(encoded_payload)} bytes", flush=True)
     headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
     request = urllib.request.Request(
-        f"{BASE_URL}/chat/completions", data=json.dumps(payload).encode(), headers=headers
+        f"{BASE_URL}/chat/completions", data=encoded_payload, headers=headers
     )
     with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
         result = json.load(response)
@@ -58,13 +73,16 @@ def complete(name, messages, expected):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--large", action="store_true", help="Also test nine images in a request exceeding 4 MiB")
+    args = parser.parse_args()
     if not API_KEY:
         raise ValueError("LLM_API_KEY must be set")
-    codes = [secrets.token_hex(3).upper() for _ in range(2)]
+    codes = [make_code() for _ in range(2)]
     while codes[0] == codes[1]:
-        codes[1] = secrets.token_hex(3).upper()
+        codes[1] = make_code()
     messages = [{"role": "user", "content": [
-        {"type": "text", "text": "Read the six-character code in this image. Return only the code."},
+        {"type": "text", "text": "Read the word printed in this image. Return only that word."},
         make_image(codes[0]),
     ]}]
     answer = complete("single image OCR", messages, codes[:1])
@@ -82,6 +100,21 @@ def main():
         ]},
     ])
     complete("two-image tool result continuation", messages, codes)
+    if args.large:
+        large_messages = []
+        history_codes = []
+        while len(history_codes) < 9:
+            code = make_code()
+            if code not in history_codes:
+                history_codes.append(code)
+        for index, code in enumerate(history_codes):
+            large_messages.append({"role": "user", "content": [
+                {"type": "text", "text": "Read only the code in this latest image. Return only the code."},
+                make_image(code, large=index == 0),
+            ]})
+            if index < len(history_codes) - 1:
+                large_messages.append({"role": "assistant", "content": code})
+        complete("nine-image history over 4 MiB", large_messages, history_codes[-1:], minimum_request_bytes=4 * 1024 * 1024)
 
 
 if __name__ == "__main__":
