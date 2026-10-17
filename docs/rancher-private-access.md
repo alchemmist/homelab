@@ -94,3 +94,11 @@ helper measures intrinsic grid height, header offset and footer space, then
 updates only the matching metrics wrapper. It follows iframe loads, tab changes
 and responsive layout changes using observers. Cross-origin frames are ignored;
 no credentials, requests or dashboard data are read by this helper.
+
+The helper also changes the initial range from Rancher's hardcoded `5m` to `1h`
+for each newly mounted metrics view. It updates the component's reactive range,
+so the Range control, iframe and Grafana link remain consistent. Subsequent user
+choices and Summary/Detail switches are preserved. This compatibility hook uses
+the Vue runtime tree in Rancher 2.15 and must be checked after upgrades. Static
+helper updates are served from the ConfigMap without restarting gateway pods;
+NGINX configuration changes still trigger a rollout.
