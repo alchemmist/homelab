@@ -149,6 +149,19 @@ def main():
     embedded = [item for item in dashboards if item.get('folderTitle') == 'Rancher']
     require(len(embedded) == 13 and all(item['title'].startswith('[Rancher] ') for item in embedded), 'Embedded Rancher dashboards are grouped and prefixed')
     require(all(not item.get('folderUid') or item.get('folderTitle') in ['Rancher', 'Диагностика Kubernetes'] for item in dashboards), 'Other templates are grouped under Kubernetes diagnostics')
+    for uid in ['rancher-node-1', 'rancher-node-detail-1']:
+        node_dashboard = kubectl(args.ssh_host, 'get', '--raw', f'/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/dashboards/uid/{uid}')['dashboard']
+        resolver = next(v for v in node_dashboard['templating']['list'] if v['name'] == 'exporter_instance')
+        expression = resolver['definition'].removeprefix('query_result(')[:-1]
+        cpu = next(t['expr'] for p in node_dashboard['panels'] if p.get('title') == 'CPU Utilization' for t in p['targets'])
+        for node in nodes:
+            name = node['metadata']['name']
+            address = next(a['address'] for a in node['status']['addresses'] if a['type'] == 'InternalIP')
+            resolved = query(args.ssh_host, expression.replace('$instance', address + ':9796'))
+            require(len(resolved) == 1 and resolved[0]['metric'].get('nodename') == name, f'{uid} resolves Rancher instance for {name}')
+            actual = resolved[0]['metric']['instance']
+            require(bool(query(args.ssh_host, cpu.replace('$exporter_instance', actual).replace('$__rate_interval', '2m'))), f'{uid} CPU query returns data for {name}')
+
     url = args.grafana_url.rstrip('/') + '/api/search'
     require(remote_http_status(args.ssh_host, url, args.grafana_private_address,
                                interface=args.grafana_private_source) == 200,
