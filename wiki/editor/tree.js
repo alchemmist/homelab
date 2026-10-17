@@ -2,7 +2,7 @@ export async function initializeTree({api, dirty, openPage, currentPath, moved, 
   const nav = document.querySelector('.page-tree');
   if (!nav) return;
   const pendingLinks = new Map();
-  let tree, loading, treeGeneration = 0, pending = false, dragging = '', expanded = new Set(), chooser;
+  let tree, loading, treeGeneration = 0, pending = false, dragging = '', expanded = new Set(), chooser, pointer, drop, expandTimer, expandId, scrollFrame;
   const error = text => message(text, true);
   const button = (text, label, action) => {
     const el = document.createElement('button'); el.type = 'button'; el.textContent = text; el.setAttribute('aria-label', label); el.title = label; el.addEventListener('click', action); return el;
@@ -40,7 +40,7 @@ export async function initializeTree({api, dirty, openPage, currentPath, moved, 
   };
   async function mutate(endpoint, payload) {
     if (!guard()) return;
-    pending = true;
+    pending = true; nav.setAttribute('aria-busy', 'true');
     try {
       if (loading) await loading;
       const revision = await ensureRevision();
@@ -55,7 +55,7 @@ export async function initializeTree({api, dirty, openPage, currentPath, moved, 
     } catch (e) {
       if (e.status === 409) { await refresh(); error('Структура уже изменилась. Обновили список; повторите действие.'); }
       else error(e.message);
-    } finally { pending = false; }
+    } finally { pending = false; nav.removeAttribute('aria-busy'); }
   }
   async function move(source, target_parent, before = null) {
     if (source === target_parent || target_parent.startsWith(source + '/') || source === before) return;
@@ -81,28 +81,112 @@ export async function initializeTree({api, dirty, openPage, currentPath, moved, 
     for (const d of paths) { const path = document.createElementNS('http://www.w3.org/2000/svg','path'); path.setAttribute('d',d); svg.append(path); }
     el.append(svg); return el;
   }
-  function clearDrop() { nav.querySelectorAll('[data-drop]').forEach(el=>delete el.dataset.drop); }
-  function dropTarget(row,node,siblings) {
-    const position = event => {
-      const rect=row.getBoundingClientRect(), ratio=(event.clientY-rect.top)/rect.height;
-      return node.kind==='folder' && ratio>.25 && ratio<.75 ? 'inside' : ratio<.5 ? 'before' : 'after';
-    };
-    row.addEventListener('dragover',event=>{ if(!dragging || dragging===node.id || node.id.startsWith(dragging+'/'))return; event.preventDefault();clearDrop();row.dataset.drop=position(event); });
-    row.addEventListener('drop',event=>{
-      event.preventDefault();event.stopPropagation();const where=position(event);clearDrop();
-      if(!dragging)return;
-      const source=dragging;dragging='';nav.classList.remove('wiki-tree-dragging');
-      if(where==='inside') { expanded.add(node.id); move(source,node.id); }
-      else move(source,parentOf(node.id),where==='before' ? node.id : siblings[siblings.indexOf(node)+1]?.id || null);
+  const dragHint = document.createElement('div');
+  dragHint.className = 'wiki-tree-drag-hint'; dragHint.hidden = true; dragHint.setAttribute('role', 'status'); nav.append(dragHint);
+  function clearDrop() {
+    nav.querySelectorAll('[data-drop]').forEach(el => delete el.dataset.drop);
+    drop = null; dragHint.hidden = true;
+  }
+  function finishDrag() {
+    clearTimeout(expandTimer); expandId = ''; cancelAnimationFrame(scrollFrame);
+    dragging = ''; pointer = null; nav.classList.remove('wiki-tree-dragging');
+    nav.querySelectorAll('.wiki-tree-source').forEach(el => el.classList.remove('wiki-tree-source'));
+    clearDrop();
+  }
+  function targetAt(row, node, siblings, event) {
+    if (!dragging || dragging === node.id || node.id.startsWith(dragging + '/')) return;
+    const rect = row.getBoundingClientRect(), offset = event.clientY - rect.top;
+    const edge = Math.min(10, rect.height / 3);
+    const where = node.kind === 'folder' && offset > edge && offset < rect.height - edge ? 'inside' : offset < rect.height / 2 ? 'before' : 'after';
+    const remaining = siblings.filter(item => item.id !== dragging);
+    return {row, node, where, parent: where === 'inside' ? node.id : parentOf(node.id), before: where === 'inside' ? null : where === 'before' ? node.id : remaining[remaining.indexOf(node) + 1]?.id || null};
+  }
+  function showDrop(target, event) {
+    clearDrop();
+    if (!target) { clearTimeout(expandTimer); expandId = ''; return; }
+    drop = target;
+    const marker = target.where === 'after' && target.node?.kind === 'folder' ? target.row.parentElement : target.row;
+    marker.dataset.drop = target.where;
+    dragHint.textContent = target.node ? `${target.where === 'inside' ? 'В папку' : target.where === 'before' ? 'Перед' : 'После'} «${target.node.title}»` : 'В корень';
+    dragHint.hidden = false; dragHint.style.left = `${event.clientX + 14}px`; dragHint.style.top = `${event.clientY + 16}px`;
+    const nextExpand = target.where === 'inside' && target.node?.kind === 'folder' && !expanded.has(target.node.id) ? target.node.id : '';
+    if (nextExpand !== expandId) {
+      clearTimeout(expandTimer); expandId = nextExpand;
+      if (nextExpand) expandTimer = setTimeout(() => {
+        expanded.add(nextExpand);
+        const children = target.row.parentElement.querySelector(':scope > ul');
+        if (children) children.hidden = false;
+        target.row.querySelector('[aria-expanded]')?.setAttribute('aria-expanded', 'true');
+      }, 650);
+    }
+  }
+  function executeDrop() {
+    const source = dragging, target = drop;
+    finishDrag();
+    if (source && target) {
+      if (target.where === 'inside' && target.node) expanded.add(target.node.id);
+      move(source, target.parent, target.before);
+    }
+  }
+  function dropTarget(row, node, siblings) {
+    row.wikiDropTarget = event => targetAt(row, node, siblings, event);
+    row.addEventListener('dragover', event => {
+      const target = row.wikiDropTarget(event);
+      if (!target) return;
+      event.preventDefault(); event.stopPropagation(); showDrop(target, event);
+    });
+    row.addEventListener('drop', event => {
+      event.preventDefault(); event.stopPropagation(); showDrop(row.wikiDropTarget(event), event); executeDrop();
     });
   }
+  function updatePointer(event) {
+    const hit = document.elementFromPoint(event.clientX, event.clientY);
+    const row = hit?.closest('.wiki-tree-row');
+    const root = hit?.closest('.wiki-tree-root');
+    showDrop(row && nav.contains(row) ? row.wikiDropTarget(event) : root && nav.contains(root) ? {row: root, where: 'inside', parent: '', before: null} : null, event);
+  }
+  function scrollDuringDrag() {
+    if (!pointer || !dragging) return;
+    const container = nav, bounds = container.getBoundingClientRect();
+    const speed = pointer.y < bounds.top + 40 ? -10 : pointer.y > bounds.bottom - 40 ? 10 : 0;
+    if (speed) { container.scrollTop += speed; updatePointer({clientX: pointer.x, clientY: pointer.y}); }
+    scrollFrame = requestAnimationFrame(scrollDuringDrag);
+  }
+  nav.addEventListener('pointermove', event => {
+    if (!pointer || event.pointerId !== pointer.id) return;
+    pointer.x = event.clientX; pointer.y = event.clientY;
+    if (!dragging) {
+      if (Math.hypot(event.clientX - pointer.startX, event.clientY - pointer.startY) < 5) return;
+      if (!guard()) { finishDrag(); return; }
+      dragging = pointer.node.id; nav.classList.add('wiki-tree-dragging'); pointer.row.classList.add('wiki-tree-source');
+      nav.setPointerCapture?.(event.pointerId); scrollFrame = requestAnimationFrame(scrollDuringDrag);
+    }
+    event.preventDefault(); updatePointer(event);
+  });
+  nav.addEventListener('pointerup', event => {
+    if (!pointer || event.pointerId !== pointer.id) return;
+    if (dragging) {
+      event.preventDefault();
+      const suppress = event => { event.preventDefault(); event.stopPropagation(); };
+      nav.addEventListener('click', suppress, {capture: true, once: true});
+      setTimeout(() => nav.removeEventListener('click', suppress, true), 0);
+      executeDrop();
+    } else pointer = null;
+  });
+  nav.addEventListener('pointercancel', event => { if (pointer?.id === event.pointerId) finishDrag(); });
+  nav.addEventListener('lostpointercapture', () => { if (pointer) finishDrag(); });
+  document.addEventListener('keydown', event => { if (event.key === 'Escape' && pointer) finishDrag(); });
   function list(nodes, depth=0) {
     const ul=document.createElement('ul');ul.className='nav-level'+(!depth?' nav-root':'');
     for(const node of nodes) {
       const li=document.createElement('li');li.className='nav-item'+(node.kind==='folder'?' nav-section':'');li.dataset.nodeId=node.id;
-      const row=document.createElement('div');row.className='nav-row wiki-tree-row';row.draggable=true;
+      const row=document.createElement('div');row.className='nav-row wiki-tree-row';row.draggable=false;
+      row.addEventListener('pointerdown', event => {
+        if (event.button !== 0 || pending) return;
+        pointer = {id: event.pointerId, node, row, startX: event.clientX, startY: event.clientY, x: event.clientX, y: event.clientY};
+      });
       row.addEventListener('dragstart',event=>{if(!guard()){event.preventDefault();return;} dragging=node.id;nav.classList.add('wiki-tree-dragging');event.dataTransfer.setData('text/plain',node.id);event.dataTransfer.effectAllowed='move';});
-      row.addEventListener('dragend',()=>{dragging='';nav.classList.remove('wiki-tree-dragging');clearDrop();});
+      row.addEventListener('dragend',finishDrag);
       if(node.kind==='folder') {
         const toggle=button('', 'Раскрыть '+node.title,()=>{expanded.has(node.id)?expanded.delete(node.id):expanded.add(node.id);render();});
         toggle.className='tree-toggle wiki-tree-folder'; toggle.setAttribute('aria-expanded',String(expanded.has(node.id)));
@@ -132,7 +216,7 @@ export async function initializeTree({api, dirty, openPage, currentPath, moved, 
       iconButton('Новая папка',['M20 20H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5l2 2h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2Z','M12 10v6','M9 13h6'],()=>createFolder(root))
     );
     root.addEventListener('dragover',event=>{if(dragging){event.preventDefault();clearDrop();root.dataset.drop='inside';}});
-    root.addEventListener('drop',event=>{event.preventDefault();const source=dragging;dragging='';nav.classList.remove('wiki-tree-dragging');clearDrop();if(source)move(source,'');});nav.prepend(root);
+    root.addEventListener('drop',event=>{event.preventDefault();showDrop({row:root,where:'inside',parent:'',before:null},event);executeDrop();});nav.prepend(root);
   }
   mountToolbar();
   const ready = loadTree().then(() => { for(const node of flatten(tree.nodes))if(node.kind==='folder' && currentPath().startsWith(node.id+'/'))expanded.add(node.id);render(); }).catch(e => error(e.message));

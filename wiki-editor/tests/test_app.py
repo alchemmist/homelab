@@ -78,8 +78,31 @@ class EditorTest(unittest.TestCase):
         self.assertEqual(self.client.post('/api/editor/pages', json=data, headers=self.headers).status_code, 409)
         preview = self.client.post('/api/editor/preview', json=data, headers=self.headers).json()
         self.assertNotIn('<script>', preview['html'])
-        self.assertIn('<h1>Hello</h1>', preview['html'])
+        self.assertIn('<h1 id="hello">Hello</h1>', preview['html'])
         self.assertTrue(preview['approximate'])
+
+    def test_preview_resolves_relative_root_and_fragment_references(self):
+        editor.sync()
+        content = editor.WORK / 'wiki/content'
+        (content / 'start').mkdir()
+        (content / 'start/other.md').write_text('---\ntitle: Other\n---\nOther')
+        body = "[Relative]({{< relref 'other.md#hello' >}})\n\n[Root]({{< relref \"/_index.md#root\" >}})\n\n[Self]({{< relref \"#own\" >}})"
+        response = self.client.post('/api/editor/preview', json={'title': 'Test', 'path': 'start/test.md', 'body': body}, headers=self.headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        html = response.json()['html']
+        self.assertIn('href="' + editor.ORIGIN + '/start/other/#hello"', html)
+        self.assertIn('href="' + editor.ORIGIN + '/#root"', html)
+        self.assertIn('href="#own"', html)
+
+    def test_preview_heading_anchors_and_unsafe_content(self):
+        body = '## Привет **мир**!\n\n## Привет **мир**!\n\n<script>alert(1)</script>\n\n[Bad](javascript:alert(1))'
+        response = self.client.post('/api/editor/preview', json={'title': 'Test', 'body': body}, headers=self.headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        html = response.json()['html']
+        self.assertIn('id="привет-мир"', html)
+        self.assertIn('id="привет-мир-1"', html)
+        self.assertNotIn('<script>', html)
+        self.assertNotIn('href="javascript:', html)
 
     def test_unrelated_push_race_retries(self):
         page = self.client.get('/api/editor/pages', params={'path': '_index.md'}).json()
