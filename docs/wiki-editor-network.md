@@ -1,12 +1,12 @@
 # Wiki access and optional WireGuard routing
 
-The target runtime serves public reading and locally authenticated editing on `wiki.alchemmist.xyz`. Users can sign in at `/login` from the internet or the administrative WireGuard network. Authorization comes from reader/editor/administrator accounts, not network membership. OIDC is not configured.
+The runtime serves public reading and locally authenticated editing on `wiki.alchemmist.xyz`. Users can sign in at `/login` from the internet or the administrative WireGuard network. Authorization comes from reader/editor/administrator accounts, not network membership. OIDC is not configured.
 
-The migration is staged, not deployed by these files. The current installation retains its legacy WG-only editing behavior until cutover. See [the migration runbook](wiki-runtime-migration.md) before changing routes or activating the paused Fleet bundle.
+Production public ingress and both private virtual hosts have switched to the shared runtime. Local administrator login/logout over HTTPS was verified through public `109.173.40.247` and private `10.250.0.1` addresses. See [the migration runbook](wiki-runtime-migration.md) for data preservation and rollback.
 
 ## Gateway cutover
 
-`ansible/playbooks/wiki-editor-access.yml` manages the existing private gateway and exact-host DNS overrides. The role switch `wiki_editor_runtime_enabled` defaults to `false`, preserving legacy routing during preparation. After accepting the new application, set it to `true` for the coordinated cutover. Both private wiki virtual hosts then forward to `http://wiki-runtime-wiki.wiki.svc.cluster.local:8080`, the same runtime used by public ingress.
+`ansible/playbooks/wiki-editor-access.yml` manages the existing private gateway and exact-host DNS overrides. The role switch `wiki_editor_runtime_enabled` defaults to `true`. Both private wiki virtual hosts forward to `http://wiki-runtime-wiki.wiki.svc.cluster.local:8080`, the same runtime used by public ingress.
 
 The switch removes the separate editor upstream and legacy wiki authorization-header injection. It removes the editor secret mount when no other virtual host needs it. The private gateway still restricts socket peers to the administrative subnet; that network restriction does not grant application permissions. Preserve unrelated virtual hosts, existing gateway values and the private TLS certificate. Review the complete rendered gateway release before applying it.
 
@@ -16,7 +16,7 @@ The new runtime is declared by `deploy/fleet/wiki-runtime.yaml` and `deploy/wiki
 
 `ansible/playbooks/wiki-editor-client.yml` installs a root-owned launch daemon. Every ten seconds it checks that a private DNS server is reached over an `utun` interface and actually returns the private wiki address. Only then does it install `/etc/resolver/wiki.alchemmist.xyz`. When the private route or resolver disappears, it removes its own override and flushes the OS DNS cache, restoring public resolution. It refuses to overwrite an unmanaged existing resolver. Existing `socrat.alchemmist.xyz` resolution is unchanged.
 
-Browser DNS caches, already-open connections, and browser-specific encrypted DNS may delay route changes. Reload after connecting or disconnecting WireGuard; browser encrypted DNS must respect the system resolver for this hostname. Expect up to ten seconds before the OS resolver changes. After migration, disconnecting WG changes the route, not the user's application permissions: authenticated editing remains available through public ingress.
+Browser DNS caches, already-open connections, and browser-specific encrypted DNS may delay route changes. Reload after connecting or disconnecting WireGuard; browser encrypted DNS must respect the system resolver for this hostname. Expect up to ten seconds before the OS resolver changes. Disconnecting WG changes the route, not the user's application permissions: authenticated editing remains available through public ingress.
 
 To remove the client integration, unload `system/xyz.alchemmist.wiki-resolver`, remove its launch daemon and executable, then remove the exact-host resolver only if `/var/db/socrat-wiki-resolver-owned` exists. Remove that ownership marker and flush the DNS cache.
 
