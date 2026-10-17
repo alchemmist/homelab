@@ -2,9 +2,9 @@ name: Socrat wiki editor
 on:
   push:
     branches: [main]
-    paths: ['wiki/**', 'wiki-editor/**', 'charts/wiki-editor/**', 'scripts/publish-wiki.sh', 'scripts/check-wiki-live.py', '.github/workflows/wiki-editor.yml', 'tests/test_wiki_editor_resolver.py', 'ansible/roles/wiki_editor_client/**']
+    paths: ['wiki/**', '!wiki/content/**', 'wiki-editor/**', 'charts/wiki-editor/**', 'scripts/publish-wiki.sh', 'scripts/check-wiki-live.py', '.github/workflows/wiki-editor.yml', 'tests/test_wiki_editor_resolver.py', 'ansible/roles/wiki_editor_client/**']
   pull_request:
-    paths: ['wiki/**', 'wiki-editor/**', 'charts/wiki-editor/**', 'scripts/publish-wiki.sh', 'scripts/check-wiki-live.py', '.github/workflows/wiki-editor.yml', 'tests/test_wiki_editor_resolver.py', 'ansible/roles/wiki_editor_client/**']
+    paths: ['wiki/**', '!wiki/content/**', 'wiki-editor/**', 'charts/wiki-editor/**', 'scripts/publish-wiki.sh', 'scripts/check-wiki-live.py', '.github/workflows/wiki-editor.yml', 'tests/test_wiki_editor_resolver.py', 'ansible/roles/wiki_editor_client/**']
   workflow_dispatch:
 permissions:
   contents: read

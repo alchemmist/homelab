@@ -15,7 +15,7 @@ case "$target" in
   *) exit 2 ;;
 esac
 source_paths=("$source_dir")
-if [[ "$target" == wiki-editor ]]; then source_paths+=(wiki); fi
+if [[ "$target" == wiki-editor ]]; then source_paths+=(wiki ':!wiki/content'); fi
 publish_branch="$target-publish"
 chart_dir="charts/$target"
 git fetch origin main
