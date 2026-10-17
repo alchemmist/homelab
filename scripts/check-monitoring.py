@@ -143,9 +143,10 @@ def main():
     dashboard = kubectl(args.ssh_host, 'get', '--raw', f'/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/dashboards/uid/socrat-overview')
     require(dashboard.get('dashboard', {}).get('title') == 'Overview', 'Overview dashboard provisioned in Grafana')
     health = next(panel for panel in dashboard['dashboard']['panels'] if panel['id'] == 5)
-    require(health['type'] == 'alertlist' and health['options']['datasource'] == 'Prometheus'
-            and health['options']['showInstances'] and health['options']['stateFilter']['pending']
-            and health['options']['stateFilter']['firing'], 'Cluster health uses native Prometheus alert instances')
+    require(health['type'] == 'stat' and 'ALERTS{' in health['targets'][0]['expr']
+            and 'KubePodNotReady' in health['targets'][0]['expr']
+            and health['options']['colorMode'] == 'background_solid',
+            'Cluster health shows alert counts in colored cards')
     rules = kubectl(args.ssh_host, 'get', '--raw', f'/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/prometheus/prometheus/api/v1/rules')
     require(rules.get('status') == 'success', 'Grafana can read Prometheus alert rules')
     alert_rules = {rule['name']: rule for group in rules['data']['groups'] for rule in group['rules'] if rule.get('type') == 'alerting'}

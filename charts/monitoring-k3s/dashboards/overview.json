@@ -29,34 +29,283 @@
       "panels": []
     },
     {
-      "id": 5,
-      "title": "Active alerts",
-      "type": "alertlist",
+      "id": 3,
+      "title": "Critical alerts",
+      "type": "stat",
       "gridPos": {
         "x": 0,
         "y": 1,
-        "w": 24,
-        "h": 10
+        "w": 6,
+        "h": 4
       },
-      "description": "Live Prometheus alert instances, independent of the dashboard time range. Pending means a rule is waiting for its confirmation period; Firing means that period has elapsed. Expand an instance to see its labels, description and Rancher link when available. KubePodNotReady excludes Job-owned and scheduling-gated pods and fires after 15 minutes. Watchdog and InfoInhibitor are operational helper alerts and are hidden. An empty list means no matching active alerts, not a check of notification delivery.",
-      "options": {
-        "datasource": "Prometheus",
-        "viewMode": "list",
-        "groupMode": "default",
-        "showInstances": true,
-        "dashboardAlerts": false,
-        "showInactiveAlerts": false,
-        "alertInstanceLabelFilter": "{alertname!=\"Watchdog\",alertname!=\"InfoInhibitor\"}",
-        "stateFilter": {
-          "firing": true,
-          "pending": true,
-          "recovering": true,
-          "normal": false,
-          "noData": false,
-          "error": false
+      "description": "Firing critical alert instances at the end of the selected period. Click to see the affected resources. Zero means no matching alert instances, provided alert evaluation is working.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(ALERTS{alertstate=\"firing\",severity=\"critical\",alertname!~\"Watchdog|InfoInhibitor\"}) or (0 * max(up{job=\"kube-prometheus-stack-prometheus\"} == 1))",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "#26783D"
+              },
+              {
+                "value": 1,
+                "color": "#B42332"
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "View details",
+              "url": "/d/socrat-overview/overview?${__url_time_range}&viewPanel=panel-17&var-alert_state=firing&var-alert_severity=critical",
+              "targetBlank": false
+            }
+          ],
+          "noValue": "No telemetry"
         },
-        "maxItems": 50,
-        "sortOrder": 3
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 44
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Warnings",
+      "type": "stat",
+      "gridPos": {
+        "x": 6,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "description": "Firing warning alert instances at the end of the selected period. Click for details. Watchdog and InfoInhibitor are excluded.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(ALERTS{alertstate=\"firing\",severity=\"warning\",alertname!~\"Watchdog|InfoInhibitor\"}) or (0 * max(up{job=\"kube-prometheus-stack-prometheus\"} == 1))",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "#26783D"
+              },
+              {
+                "value": 1,
+                "color": "#A85D08"
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "View details",
+              "url": "/d/socrat-overview/overview?${__url_time_range}&viewPanel=panel-17&var-alert_state=firing&var-alert_severity=warning",
+              "targetBlank": false
+            }
+          ],
+          "noValue": "No telemetry"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 44
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Pending alerts",
+      "type": "stat",
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "description": "Alert instances waiting for their confirmation period at the end of the selected period. Click to inspect them before they become Firing. Watchdog and InfoInhibitor are excluded.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(ALERTS{alertstate=\"pending\",alertname!~\"Watchdog|InfoInhibitor\"}) or (0 * max(up{job=\"kube-prometheus-stack-prometheus\"} == 1))",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "#26783D"
+              },
+              {
+                "value": 1,
+                "color": "#B88A00"
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "View details",
+              "url": "/d/socrat-overview/overview?${__url_time_range}&viewPanel=panel-17&var-alert_state=pending&var-alert_severity=.*",
+              "targetBlank": false
+            }
+          ],
+          "noValue": "No telemetry"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 44
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Unready pods",
+      "type": "stat",
+      "gridPos": {
+        "x": 18,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "description": "Distinct pods with a Pending or Firing KubePodNotReady alert at the end of the selected period. Click the count, then a pod name to open that exact pod in Rancher. This rule excludes Job-owned and scheduling-gated pods. It becomes Firing after 15 minutes. Zero means no matching pod alerts, provided alert evaluation is working.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(max by(namespace,pod)(ALERTS{alertname=\"KubePodNotReady\",alertstate=~\"pending|firing\"})) or (0 * max(up{job=\"kube-prometheus-stack-prometheus\"} == 1))",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "#26783D"
+              },
+              {
+                "value": 1,
+                "color": "#A85D08"
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "View details",
+              "url": "/d/socrat-overview/overview?${__url_time_range}&viewPanel=panel-18",
+              "targetBlank": false
+            }
+          ],
+          "noValue": "No telemetry"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 44
+        }
       }
     },
     {
@@ -66,7 +315,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 11,
+        "y": 5,
         "w": 24,
         "h": 1
       },
@@ -78,7 +327,7 @@
       "type": "stat",
       "gridPos": {
         "x": 0,
-        "y": 12,
+        "y": 6,
         "w": 6,
         "h": 4
       },
@@ -140,7 +389,7 @@
       "type": "stat",
       "gridPos": {
         "x": 6,
-        "y": 12,
+        "y": 6,
         "w": 6,
         "h": 4
       },
@@ -202,7 +451,7 @@
       "type": "stat",
       "gridPos": {
         "x": 12,
-        "y": 12,
+        "y": 6,
         "w": 6,
         "h": 4
       },
@@ -264,7 +513,7 @@
       "type": "stat",
       "gridPos": {
         "x": 18,
-        "y": 12,
+        "y": 6,
         "w": 6,
         "h": 4
       },
@@ -327,7 +576,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 16,
+        "y": 10,
         "w": 24,
         "h": 1
       },
@@ -339,7 +588,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 17,
+        "y": 11,
         "w": 8,
         "h": 8
       },
@@ -397,7 +646,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 8,
-        "y": 17,
+        "y": 11,
         "w": 8,
         "h": 8
       },
@@ -455,7 +704,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 16,
-        "y": 17,
+        "y": 11,
         "w": 8,
         "h": 8
       },
@@ -514,7 +763,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 25,
+        "y": 19,
         "w": 24,
         "h": 1
       },
@@ -522,15 +771,15 @@
     },
     {
       "id": 18,
-      "title": "Unready pods",
+      "title": "Unready pod alerts",
       "type": "table",
       "gridPos": {
         "x": 0,
-        "y": 26,
-        "w": 24,
+        "y": 20,
+        "w": 12,
         "h": 8
       },
-      "description": "Active pods that are not Ready at the end of the selected time range; completed jobs are excluded. An empty table means no matching pods if Kubernetes state metrics are available. Click a pod name to open its current status, events and logs in Rancher.",
+      "description": "Pods with Pending or Firing KubePodNotReady alerts at the end of the selected period. Click a pod name to open its current details in Rancher. An empty table means no matching pod alerts; Job-owned and scheduling-gated pods are excluded by the rule.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -538,7 +787,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(kube_pod_status_ready{condition=\"true\"} == 0) and on(namespace,pod) (kube_pod_status_phase{phase=~\"Pending|Running|Unknown\"} == 1)",
+          "expr": "max by(namespace,pod,alertstate)(ALERTS{alertname=\"KubePodNotReady\",alertstate=~\"pending|firing\"})",
           "legendFormat": "",
           "instant": true,
           "format": "table"
@@ -583,15 +832,102 @@
           "options": {
             "includeByName": {
               "namespace": true,
-              "pod": true
+              "pod": true,
+              "alertstate": true
             },
             "indexByName": {
               "namespace": 0,
-              "pod": 1
+              "pod": 1,
+              "alertstate": 2
             },
             "renameByName": {
               "namespace": "Namespace",
-              "pod": "Pod"
+              "pod": "Pod",
+              "alertstate": "State"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "title": "Alert details",
+      "type": "table",
+      "gridPos": {
+        "x": 12,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      },
+      "description": "Alert instances matching the state and severity selected by the Cluster health card, at the end of the selected period. Labels provide rule context; some rules carry the exporter pod rather than the affected workload. Use the Unready pods card for direct links to specific unready pods. Watchdog and InfoInhibitor are excluded. Click an alert name to find its rule and full explanation in Grafana Alerting.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "ALERTS{alertstate=~\"${alert_state:raw}\",severity=~\"${alert_severity:raw}\",alertname!~\"Watchdog|InfoInhibitor\"}",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Alert"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open alert in Grafana",
+                    "url": "https://grafana.socrat.alchemmist.xyz/alerting/list?search=${__value.raw}",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "includeByName": {
+              "alertname": true,
+              "severity": true,
+              "alertstate": true,
+              "namespace": true,
+              "pod": true,
+              "node": true
+            },
+            "indexByName": {
+              "alertname": 0,
+              "severity": 1,
+              "alertstate": 2,
+              "namespace": 3,
+              "pod": 4,
+              "node": 5
+            },
+            "renameByName": {
+              "alertname": "Alert",
+              "severity": "Severity",
+              "alertstate": "State",
+              "namespace": "Namespace",
+              "pod": "Pod",
+              "node": "Node"
             }
           }
         }
@@ -604,7 +940,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 34,
+        "y": 28,
         "w": 24,
         "h": 1
       },
@@ -616,7 +952,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 35,
+        "y": 29,
         "w": 8,
         "h": 7
       },
@@ -678,7 +1014,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 8,
-        "y": 35,
+        "y": 29,
         "w": 8,
         "h": 7
       },
@@ -740,7 +1076,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 16,
-        "y": 35,
+        "y": 29,
         "w": 8,
         "h": 7
       },
@@ -796,7 +1132,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 42,
+        "y": 36,
         "w": 24,
         "h": 1
       },
@@ -808,7 +1144,7 @@
       "type": "table",
       "gridPos": {
         "x": 0,
-        "y": 43,
+        "y": 37,
         "w": 12,
         "h": 8
       },
@@ -872,7 +1208,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 12,
-        "y": 43,
+        "y": 37,
         "w": 12,
         "h": 8
       },
@@ -950,5 +1286,31 @@
       "type": "link",
       "keepTime": true
     }
-  ]
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "alert_state",
+        "type": "textbox",
+        "hide": 2,
+        "query": "pending|firing",
+        "current": {
+          "text": "pending|firing",
+          "value": "pending|firing"
+        },
+        "options": []
+      },
+      {
+        "name": "alert_severity",
+        "type": "textbox",
+        "hide": 2,
+        "query": ".*",
+        "current": {
+          "text": ".*",
+          "value": ".*"
+        },
+        "options": []
+      }
+    ]
+  }
 }
