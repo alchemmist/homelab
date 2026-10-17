@@ -1,6 +1,6 @@
 # Migrating Socrat Wiki to the shared runtime
 
-The production routing and data migration to `hugo-docs` v0.2.0 completed on 2026-10-18. The final volume copy was performed with both old and new writers stopped. The new runtime serves public ingress and both WG virtual hosts; the old PVC is retained. A local administrator exists, and HTTPS login/logout was verified through `109.173.40.247` and `10.250.0.1`. The procedures below document the rehearsal, cutover and recovery process. Legacy bundle retirement remains a separate cleanup step. No OIDC is required or configured. Public reading remains available; local accounts replace the WireGuard-only editing bypass.
+The production routing and data migration to `hugo-docs` v0.2.2 completed on 2026-10-18. The final volume copy was performed with both old and new writers stopped. The new runtime serves public ingress and both WG virtual hosts; the old PVC is retained. A local administrator exists, and HTTPS login/logout was verified through `109.173.40.247` and `10.250.0.1`. The procedures below document the rehearsal, cutover and recovery process. The legacy wiki and wiki-editor bundles and deployments have been removed; the old data claim remains retained. No OIDC is required or configured. Public reading remains available; local accounts replace the WireGuard-only editing bypass.
 
 ## Data and ownership
 
@@ -66,7 +66,7 @@ Tests use disposable local repositories and cover history/outbox/account/upload 
 
 ## Declarative deployment
 
-`deploy/wiki-runtime/fleet.yaml` and `values.yaml` define the active bundle. Its GitRepo declaration is `deploy/fleet/wiki-runtime.yaml`. The chart `0.2.0` and image `ghcr.io/alchemmist/hugo-docs-wiki:0.2.0` are public; the image is pinned to `sha256:fe86f6679d33380bfaecb92f8b6ded2b4d33c1947968a7cb2e9a1a74e526b6b4`. No registry credentials are required. The declarations include background Git synchronization and the runtime-owned public ingress; check Fleet reconciliation when assessing their rollout.
+`deploy/wiki-runtime/fleet.yaml` and `values.yaml` define the active bundle. Its GitRepo declaration is `deploy/fleet/wiki-runtime.yaml`. The chart `0.2.2` and image `ghcr.io/alchemmist/hugo-docs-wiki:0.2.2` are public; the image is pinned to `sha256:80b5c52800290a036d0e2b6de91e9fdddb50d03def5ffb2677f13291de3baaf4`. No registry credentials are required. The declarations include background Git synchronization and the runtime-owned public ingress; check Fleet reconciliation when assessing their rollout.
 
 Deployment invariants and checks:
 
@@ -75,7 +75,8 @@ Deployment invariants and checks:
 - The installed Fleet v0.16.2 supports the OCI `helm.repo` field. The public chart is pulled anonymously; keep registry credentials used by the legacy images untouched. [Fleet chart-source reference](https://fleet.rancher.io/reference/ref-fleet-yaml#_chart_source).
 - Accept the isolated application and administrator login before changing `paused`, enabling ingress or attaching the bundle to a GitRepo. Do not enable a duplicate ingress for the production hostname while the old route remains active.
 - For cutover, configure Git repository `git@github.com:alchemmist/homelab.git`, branch `main`, and a new combined SSH Secret containing `id_ed25519` and `known_hosts`. The old installation uses separate secret/configmap mounts, so its secret cannot be referenced unchanged. Stop its sync worker first.
-- Retain existing TLS secret `wiki-tls`, configure the private WG route to the same service, and then retire the legacy authorization bypass and old bundles according to the runbook.
+- Retain existing TLS secret `wiki-tls`, configure the private WG route to the same service, and then retire the legacy authorization bypass and old bundles according to the runbook. Verify the Certificate is owned by the new ingress and remains Ready after the old ingress is removed; the TLS Secret alone does not establish future renewal.
+- Keep the chart-provided static files mounted with individual `subPath` entries. Hugo skips projected ConfigMap directories that are symlinks; chart 0.2.2 includes the tested mount layout.
 
 
 ### Private gateway cutover
