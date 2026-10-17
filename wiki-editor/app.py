@@ -126,6 +126,8 @@ def save(data, create=False):
     title, body = fields(data)
     with LOCK:
         sync()
+        if create and data.get('tree_revision') and data['tree_revision'] != content_revision():
+            raise HTTPException(409, 'Wiki structure or content changed; reload before saving')
         if create:
             section, slug = data.get('section', ''), data.get('slug', '')
             parent = checked_path(section, section=True)
@@ -145,7 +147,12 @@ def save(data, create=False):
             if create:
                 if target.exists():
                     raise HTTPException(409, 'A page with this slug already exists')
-                metadata = {}
+                if data.get('tree_revision') and data['tree_revision'] != content_revision():
+                    raise HTTPException(409, 'Wiki structure or content changed; reload before saving')
+                assert_available_url(page_url(path))
+                siblings = tree_nodes(section)
+                renumber(siblings)
+                metadata = {'weight': (len(siblings) + 1) * 10}
             else:
                 existing = read_page(path)
                 if not hmac.compare_digest(existing['revision'], data['revision']):
@@ -157,7 +164,7 @@ def save(data, create=False):
             out = io.StringIO()
             yaml.dump(metadata, out)
             target.write_text('---\n' + out.getvalue() + '---\n\n' + body, encoding='utf-8')
-            git('add', '--', PREFIX + '/' + path)
+            git('add', '--', PREFIX if create else PREFIX + '/' + path)
             if not git('diff', '--cached', '--name-only'):
                 return {'commit': git('rev-parse', 'HEAD'), 'path': path, 'url': page_url(path), 'revision': git('hash-object', '--', str(target))}
             base_commit = git('rev-parse', 'HEAD')
@@ -180,6 +187,275 @@ def save(data, create=False):
                 if remote_commit == base_commit:
                     raise RuntimeError('Repository push unavailable') from error
         raise HTTPException(409, 'Concurrent repository update; retry saving')
+
+
+def write_markdown(target, metadata, body):
+    yaml = YAML()
+    yaml.preserve_quotes = True
+    out = io.StringIO()
+    yaml.dump(metadata, out)
+    target.write_text('---\n' + out.getvalue() + '---\n\n' + body, encoding='utf-8')
+
+
+def content_revision():
+    return git('rev-parse', 'HEAD:' + PREFIX)
+
+
+def node_metadata(node):
+    path = node['id']
+    if node['kind'] == 'folder':
+        path += '/_index.md'
+    elif not path.endswith('.md'):
+        path += '/index.md'
+    return checked_path(path)
+
+
+def document_url(path, metadata):
+    custom = metadata.get('url')
+    if custom:
+        if not isinstance(custom, str) or not custom.startswith('/') or custom.startswith('//'):
+            raise HTTPException(422, 'Unsupported page URL')
+        return ORIGIN + custom
+    if metadata.get('slug'):
+        parent = str(Path(path).parent)
+        if Path(path).name == 'index.md':
+            parent = str(Path(parent).parent)
+        return ORIGIN + '/' + '/'.join(filter(None, [parent if parent != '.' else '', str(metadata['slug'])])) + '/'
+    return page_url(path)
+
+
+def tree_nodes(parent=''):
+    directory = checked_path(parent, section=True)
+    result = []
+    for item in directory.iterdir():
+        if item.name.startswith('.'):
+            raise HTTPException(422, 'Hidden content paths are not supported')
+        if item.is_symlink():
+            raise HTTPException(422, 'Symbolic links are not supported')
+        relative = item.relative_to(WORK / PREFIX).as_posix()
+        if item.is_dir():
+            checked_path(relative, section=True)
+            if (item / '_index.md').is_file():
+                source, kind = item / '_index.md', 'folder'
+                children = tree_nodes(relative)
+            elif (item / 'index.md').is_file():
+                source, kind, children = item / 'index.md', 'page', []
+                for asset in item.rglob('*'):
+                    if asset.name.startswith('.'):
+                        raise HTTPException(422, 'Hidden content paths are not supported')
+                    if asset.is_symlink():
+                        raise HTTPException(422, 'Symbolic links are not supported')
+            else:
+                raise HTTPException(422, 'Folders must contain _index.md or index.md')
+        elif item.suffix == '.md' and item.name not in ('_index.md', 'index.md'):
+            source, kind, children = item, 'page', []
+        else:
+            continue
+        checked_path(source.relative_to(WORK / PREFIX).as_posix())
+        metadata, body = parse(source.read_text(encoding='utf-8'))
+        try:
+            weight = int(metadata.get('weight', 0))
+        except (ValueError, TypeError):
+            raise HTTPException(422, 'Page weight must be an integer')
+        result.append({'id': relative, 'path': relative, 'page_path': source.relative_to(WORK / PREFIX).as_posix(), 'kind': kind, 'title': str(metadata.get('title', item.stem)), 'weight': weight,
+                       'url': document_url(source.relative_to(WORK / PREFIX).as_posix(), metadata), 'children': children})
+    return sorted(result, key=lambda node: (node['weight'] == 0, node['weight'], node['title'].casefold(), node['id']))
+
+
+def tree_result():
+    return {'revision': content_revision(), 'nodes': tree_nodes()}
+
+
+def flatten_nodes(nodes):
+    return {node['id']: node for root in nodes for node in [root, *flatten_nodes(root['children']).values()]}
+
+
+def section_parent(value):
+    parent = checked_path(value, section=True)
+    if not parent.is_dir() or not (parent / '_index.md').is_file():
+        raise HTTPException(422, 'Choose an existing folder')
+    checked_path('/'.join(filter(None, [value, '_index.md'])))
+    return parent
+
+
+def assert_available_url(url):
+    wanted = url.rstrip('/')
+    for node in flatten_nodes(tree_nodes()).values():
+        metadata, body = parse(node_metadata(node).read_text(encoding='utf-8'))
+        aliases = metadata.get('aliases', [])
+        if not isinstance(aliases, list):
+            raise HTTPException(422, 'Page aliases must be a list')
+        urls = [node['url'], *[ORIGIN + alias for alias in aliases if isinstance(alias, str)]]
+        if any(existing.rstrip('/') == wanted for existing in urls):
+            raise HTTPException(409, 'This URL belongs to another page or redirect')
+
+
+def renumber(nodes):
+    for index, node in enumerate(nodes, 1):
+        target = node_metadata(node)
+        metadata, body = parse(target.read_text(encoding='utf-8'))
+        if metadata.get('weight') != index * 10:
+            metadata['weight'] = index * 10
+            write_markdown(target, metadata, body)
+
+
+def publish_structure(data, operation):
+    revision = data.get('revision')
+    if not isinstance(revision, str) or not re.fullmatch(r'[a-f0-9]{40}', revision):
+        raise HTTPException(422, 'Content tree revision is required')
+    with LOCK:
+        sync()
+        for attempt in range(3):
+            if not hmac.compare_digest(content_revision(), revision):
+                raise HTTPException(409, 'Wiki structure or content changed; reload before saving')
+            try:
+                extra = operation()
+                git('add', '--', PREFIX)
+                base = git('rev-parse', 'HEAD')
+                if not git('diff', '--cached', '--name-only'):
+                    return dict(tree_result(), commit=base, **extra)
+                git('-c', 'user.name=Socrat Wiki', '-c', 'user.email=wiki@alchemmist.xyz', 'commit', '-m', 'update wiki structure')
+                commit = git('rev-parse', 'HEAD')
+                result = dict(tree_result(), commit=commit, **extra)
+                try:
+                    git('push', 'origin', 'HEAD:refs/heads/' + BRANCH)
+                    return result
+                except RuntimeError as error:
+                    sync()
+                    remote = git('rev-parse', 'HEAD')
+                    try:
+                        git('merge-base', '--is-ancestor', commit, remote)
+                        return dict(tree_result(), commit=commit, **extra)
+                    except RuntimeError:
+                        if remote == base:
+                            raise RuntimeError('Repository push unavailable') from error
+            except Exception:
+                git('reset', '--hard', 'HEAD')
+                git('clean', '-fd', '--', PREFIX)
+                raise
+        raise HTTPException(409, 'Concurrent repository update; retry saving')
+
+
+@app.get('/api/editor/tree')
+def get_tree():
+    with LOCK:
+        sync()
+        return tree_result()
+
+
+@app.post('/api/editor/folders')
+def create_folder(data: dict):
+    title, unused = fields(dict(data, body=''))
+    slug, parent_id = data.get('slug'), data.get('parent', '')
+    if not isinstance(slug, str) or not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*', slug) or slug == 'index':
+        raise HTTPException(422, 'Slug must use lowercase letters, digits and hyphens')
+    def operation():
+        parent = section_parent(parent_id)
+        siblings = tree_nodes(parent_id)
+        destination = parent / slug
+        if destination.exists() or (parent / (slug + '.md')).exists():
+            raise HTTPException(409, 'This name is already used')
+        assert_available_url(page_url(destination.relative_to(WORK / PREFIX).as_posix() + '/_index.md'))
+        destination.mkdir()
+        write_markdown(destination / '_index.md', {'title': title, 'weight': (len(siblings) + 1) * 10}, '')
+        renumber(siblings)
+        path = destination.relative_to(WORK / PREFIX).as_posix()
+        return {'path': path + '/_index.md', 'url': page_url(path + '/_index.md')}
+    return publish_structure(data, operation)
+
+
+def rewrite_references(documents, moved):
+    import posixpath
+    lookup = {}
+    for path in documents:
+        variants = [path, path.removesuffix('.md')]
+        if Path(path).name in ('_index.md', 'index.md'):
+            variants.append(str(Path(path).parent))
+        for variant in variants:
+            lookup[variant.strip('/')] = path
+    expression = re.compile(r'({{[<%]\s*relref\s+["\'])([^"\']+)(["\']\s*[>%]}})')
+    for old_path, (metadata, body) in documents.items():
+        new_path = moved.get(old_path, old_path)
+        old_url, new_url = document_url(old_path, metadata), document_url(new_path, metadata)
+        if old_url != new_url:
+            aliases = metadata.get('aliases', [])
+            if not isinstance(aliases, list) or any(not isinstance(alias, str) for alias in aliases):
+                raise HTTPException(422, 'Page aliases must be a list')
+            aliases = [alias for alias in aliases if alias != new_url.removeprefix(ORIGIN)]
+            previous = old_url.removeprefix(ORIGIN)
+            if previous not in aliases:
+                aliases.append(previous)
+            metadata['aliases'] = aliases
+        def replace(match):
+            reference, separator, fragment = match[2].partition('#')
+            relative = posixpath.normpath(posixpath.join(str(Path(old_path).parent), reference)).strip('/')
+            candidates = [reference.strip('/')] if reference.startswith('/') else [relative, reference.strip('/')]
+            resolved = next((lookup[candidate] for candidate in candidates if candidate in lookup), None)
+            if resolved is None or (resolved not in moved and old_path not in moved):
+                return match[0]
+            return match[1] + '/' + moved.get(resolved, resolved) + (separator + fragment if separator else '') + match[3]
+        rewritten = expression.sub(replace, body)
+        if new_path != old_path or rewritten != body:
+            write_markdown(checked_path(new_path), metadata, rewritten)
+
+
+@app.post('/api/editor/move')
+def move_node(data: dict):
+    source, parent_id, before = data.get('source'), data.get('target_parent', ''), data.get('before')
+    def operation():
+        source_path = checked_path(source, section=True)
+        if not source or Path(source).name in ('_index.md', 'index.md'):
+            raise HTTPException(422, 'The root and section index cannot be moved')
+        nodes = flatten_nodes(tree_nodes())
+        if source not in nodes:
+            raise HTTPException(404, 'Source not found')
+        node = nodes[source]
+        parent = section_parent(parent_id)
+        if parent_id == source or parent_id.startswith(source + '/'):
+            raise HTTPException(422, 'A folder cannot be moved into itself')
+        old_parent = str(Path(source).parent)
+        old_parent = '' if old_parent == '.' else old_parent
+        siblings = [item for item in tree_nodes(parent_id) if item['id'] != source]
+        if before is not None and before not in [item['id'] for item in siblings]:
+            raise HTTPException(422, 'Insertion target must be a sibling')
+        destination = parent / source_path.name
+        destination_id = destination.relative_to(WORK / PREFIX).as_posix()
+        if destination != source_path:
+            collision = parent / (source_path.stem if source_path.suffix == '.md' else source_path.name + '.md')
+            if destination.exists() or collision.exists():
+                raise HTTPException(409, 'A page or folder with this name already exists')
+            documents = {}
+            for path in (WORK / PREFIX).rglob('*.md'):
+                relative = path.relative_to(WORK / PREFIX).as_posix()
+                checked_path(relative)
+                documents[relative] = parse(path.read_text(encoding='utf-8'))
+            moved = {path: destination_id + path[len(source):] for path in documents if path == source or path.startswith(source + '/')}
+            occupied = {}
+            for path, (metadata, body) in documents.items():
+                aliases = metadata.get('aliases', [])
+                if not isinstance(aliases, list) or any(not isinstance(alias, str) or not alias.startswith('/') or alias.startswith('//') or '..' in alias.split('/') for alias in aliases):
+                    raise HTTPException(422, 'Aliases must be absolute site paths')
+                if path in moved and (metadata.get('slug') or metadata.get('url')):
+                    raise HTTPException(422, 'Moving pages with custom slug or URL is not supported')
+                for url in [document_url(path, metadata), *[ORIGIN + alias for alias in aliases]]:
+                    occupied.setdefault(url.rstrip('/'), set()).add(path)
+            for old_path, new_path in moved.items():
+                metadata, body = documents[old_path]
+                owners = occupied.get(document_url(new_path, metadata).rstrip('/'), set())
+                if owners - {old_path}:
+                    raise HTTPException(409, 'Destination URL belongs to another page or redirect')
+            source_path.rename(destination)
+            rewrite_references(documents, moved)
+            renumber(tree_nodes(old_parent))
+        node = dict(node, id=destination_id)
+        index = next((index for index, item in enumerate(siblings) if item['id'] == before), len(siblings))
+        siblings.insert(index, node)
+        renumber(siblings)
+        target = node_metadata(node)
+        metadata, unused = parse(target.read_text(encoding='utf-8'))
+        path = target.relative_to(WORK / PREFIX).as_posix()
+        return {'path': path, 'url': document_url(path, metadata)}
+    return publish_structure(data, operation)
 
 
 @app.middleware('http')
