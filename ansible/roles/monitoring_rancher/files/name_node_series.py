@@ -33,11 +33,11 @@ EXPORTER_QUERY = (
 
 CPU_TEMPERATURE_PANEL_ID = 1001
 CPU_TEMPERATURE_BASE = (
-    '(node_hwmon_temp_celsius{job="node-exporter",instance="$exporter_instance"} '
+    '(avg by (instance, chip, sensor) (node_hwmon_temp_celsius{job="node-exporter",instance="$exporter_instance"}) '
     '* on (instance, chip) group_left (chip_name) '
-    'node_hwmon_chip_names{job="node-exporter",chip_name=~"coretemp|k10temp|zenpower"})'
+    'max by (instance, chip, chip_name) (node_hwmon_chip_names{job="node-exporter",chip_name=~"coretemp|k10temp|zenpower"}))'
 )
-CPU_SENSOR_LABELS = 'node_hwmon_sensor_label{job="node-exporter"}'
+CPU_SENSOR_LABELS = 'max by (instance, chip, sensor, label) (node_hwmon_sensor_label{job="node-exporter"})'
 CPU_TEMPERATURE_QUERY = (
     '(' + CPU_TEMPERATURE_BASE + ' * on (instance, chip, sensor) group_left (label) '
     + CPU_SENSOR_LABELS + ') or label_replace(('
@@ -61,7 +61,7 @@ def add_cpu_temperature(dashboard):
         'gridPos': position,
         'datasource': {'type': 'prometheus', 'uid': '${datasource}'},
         'targets': [{'refId': 'A', 'expr': CPU_TEMPERATURE_QUERY,
-                     'legendFormat': '{{chip_name}} · {{label}}', 'range': True}],
+                     'legendFormat': '{{chip_name}} · {{label}} · {{chip}}/{{sensor}}', 'range': True}],
         'fieldConfig': {'defaults': {
             'unit': 'celsius', 'decimals': 1,
             'color': {'mode': 'palette-classic'},
@@ -97,6 +97,8 @@ def resolve_node_exporter(dashboard):
         for target in panel.get('targets', []):
             if 'expr' in target:
                 target['expr'] = target['expr'].replace('$instance', '$exporter_instance')
+                if dashboard['uid'] == 'rancher-node-detail-1' and panel.get('id') == 4:
+                    target['expr'] = 'avg(' + target['expr'].strip() + ')'
 
 
 def panels(dashboard):

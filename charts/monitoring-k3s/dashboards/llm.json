@@ -320,7 +320,7 @@
       "targets": [
         {
           "refId": "D",
-          "expr": "socrat_gpu_collection_success * on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < bool 60)",
+          "expr": "max by (instance) (socrat_gpu_collection_success * on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < bool 60))",
           "legendFormat": "GPU",
           "instant": true,
           "format": "time_series"
@@ -545,7 +545,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(socrat_gpu_temperature_celsius and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60)",
+          "expr": "avg by (instance, uuid, name, index) ((socrat_gpu_temperature_celsius and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60))",
           "legendFormat": "{{name}} · GPU {{index}}",
           "instant": false,
           "format": "time_series"
@@ -602,14 +602,14 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(socrat_gpu_utilization_ratio and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60)",
+          "expr": "avg by (instance, uuid, name, index) ((socrat_gpu_utilization_ratio and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60))",
           "legendFormat": "GPU {{index}} · compute",
           "instant": false,
           "format": "time_series"
         },
         {
           "refId": "B",
-          "expr": "(socrat_gpu_memory_utilization_ratio and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60)",
+          "expr": "avg by (instance, uuid, name, index) ((socrat_gpu_memory_utilization_ratio and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60))",
           "legendFormat": "GPU {{index}} · memory controller",
           "instant": false,
           "format": "time_series"
@@ -668,14 +668,14 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(socrat_gpu_memory_used_bytes and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60)",
+          "expr": "avg by (instance, uuid, name, index) ((socrat_gpu_memory_used_bytes and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60))",
           "legendFormat": "GPU {{index}} · used",
           "instant": false,
           "format": "time_series"
         },
         {
           "refId": "B",
-          "expr": "(socrat_gpu_memory_total_bytes and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60)",
+          "expr": "avg by (instance, uuid, name, index) ((socrat_gpu_memory_total_bytes and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60))",
           "legendFormat": "GPU {{index}} · total",
           "instant": false,
           "format": "time_series"
@@ -733,7 +733,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(socrat_gpu_memory_used_bytes / socrat_gpu_memory_total_bytes and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60)",
+          "expr": "avg by (instance, uuid, name, index) ((socrat_gpu_memory_used_bytes / socrat_gpu_memory_total_bytes and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60))",
           "legendFormat": "GPU {{index}}",
           "instant": false,
           "format": "time_series"
@@ -792,14 +792,14 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(socrat_gpu_power_watts and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60)",
+          "expr": "avg by (instance, uuid, name, index) ((socrat_gpu_power_watts and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60))",
           "legendFormat": "GPU {{index}} · power draw",
           "instant": false,
           "format": "time_series"
         },
         {
           "refId": "B",
-          "expr": "(socrat_gpu_power_limit_watts and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60)",
+          "expr": "avg by (instance, uuid, name, index) ((socrat_gpu_power_limit_watts and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60))",
           "legendFormat": "GPU {{index}} · limit",
           "instant": false,
           "format": "time_series"
@@ -856,7 +856,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(socrat_gpu_fan_speed_ratio and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60)",
+          "expr": "avg by (instance, uuid, name, index) ((socrat_gpu_fan_speed_ratio and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60))",
           "legendFormat": "GPU {{index}}",
           "instant": false,
           "format": "time_series"
@@ -915,14 +915,14 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(socrat_gpu_clock_graphics_hertz and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60)",
+          "expr": "avg by (instance, uuid, name, index) ((socrat_gpu_clock_graphics_hertz and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60))",
           "legendFormat": "GPU {{index}} · core",
           "instant": false,
           "format": "time_series"
         },
         {
           "refId": "B",
-          "expr": "(socrat_gpu_clock_memory_hertz and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60)",
+          "expr": "avg by (instance, uuid, name, index) ((socrat_gpu_clock_memory_hertz and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60))",
           "legendFormat": "GPU {{index}} · memory",
           "instant": false,
           "format": "time_series"
@@ -979,7 +979,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(socrat_gpu_performance_state and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60)",
+          "expr": "avg by (instance, uuid, name, index) ((socrat_gpu_performance_state and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60))",
           "legendFormat": "GPU {{index}} · P-state",
           "instant": false,
           "format": "time_series"
@@ -1036,7 +1036,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(socrat_gpu_throttle_active and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60)",
+          "expr": "max by (instance, uuid, name, index, reason) ((socrat_gpu_throttle_active and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60))",
           "legendFormat": "GPU {{index}} · {{reason}}",
           "instant": false,
           "format": "time_series"
@@ -1093,7 +1093,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "time() - socrat_gpu_collection_timestamp_seconds",
+          "expr": "max by (instance) (time() - socrat_gpu_collection_timestamp_seconds)",
           "legendFormat": "GPU",
           "instant": false,
           "format": "time_series"

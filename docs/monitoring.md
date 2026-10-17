@@ -52,6 +52,8 @@ The `monitoring_rancher` Helm post-renderer normalizes titles and groups Rancher
 
 The **LLM** dashboard adds GPU temperature/utilization, vLLM and LiteLLM request metrics, and the separate switcher queue. Collection and rollout details are in [LLM monitoring](monitoring-llm.md).
 
+Node and GPU graphs aggregate away exporter pod identity so a node-exporter rollout does not create duplicate legend entries over historical time ranges. Node gauges retain the node name; disk and network graphs also retain the device, GPU graphs retain GPU identity, and CPU temperature graphs retain chip and sensor identity. Gauges are averaged rather than summed across exporter identities. The base monitoring Helm post-renderer applies the same normalization to the five bundled Node Exporter dashboards, including their recording-rule queries. This changes dashboard queries only; stored metrics and scrape labels remain intact.
+
 ## Verification
 
 Run from the repository with working SSH access to socrat-0:

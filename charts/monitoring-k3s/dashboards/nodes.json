@@ -98,7 +98,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(time() - node_boot_time_seconds{job=\"node-exporter\"}) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"})",
+          "expr": "avg by (nodename) ((time() - node_boot_time_seconds{job=\"node-exporter\"}) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"}))",
           "legendFormat": "{{nodename}}",
           "range": false,
           "instant": true
@@ -146,7 +146,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(count by(instance) (node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"})) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"})",
+          "expr": "avg by (nodename) ((count by(instance) (node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"})) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"}))",
           "legendFormat": "{{nodename}}",
           "range": false,
           "instant": true
@@ -194,7 +194,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(node_memory_MemTotal_bytes{job=\"node-exporter\"}) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"})",
+          "expr": "avg by (nodename) ((node_memory_MemTotal_bytes{job=\"node-exporter\"}) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"}))",
           "legendFormat": "{{nodename}}",
           "range": false,
           "instant": true
@@ -255,7 +255,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"}[$__rate_interval])))) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"})",
+          "expr": "avg by (nodename) ((100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"}[$__rate_interval])))) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"}))",
           "legendFormat": "{{nodename}}",
           "range": true,
           "instant": false
@@ -311,7 +311,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(node_load5{job=\"node-exporter\"} / on(instance) count by(instance) (node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"})) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"})",
+          "expr": "avg by (nodename) ((node_load5{job=\"node-exporter\"} / on(instance) count by(instance) (node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"})) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"}))",
           "legendFormat": "{{nodename}}",
           "range": true,
           "instant": false
@@ -366,21 +366,21 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(node_load1{job=\"node-exporter\"}) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"})",
+          "expr": "avg by (nodename) ((node_load1{job=\"node-exporter\"}) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"}))",
           "legendFormat": "{{nodename}} · 1 min",
           "range": true,
           "instant": false
         },
         {
           "refId": "B",
-          "expr": "(node_load5{job=\"node-exporter\"}) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"})",
+          "expr": "avg by (nodename) ((node_load5{job=\"node-exporter\"}) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"}))",
           "legendFormat": "{{nodename}} · 5 min",
           "range": true,
           "instant": false
         },
         {
           "refId": "C",
-          "expr": "(node_load15{job=\"node-exporter\"}) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"})",
+          "expr": "avg by (nodename) ((node_load15{job=\"node-exporter\"}) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"}))",
           "legendFormat": "{{nodename}} · 15 min",
           "range": true,
           "instant": false
@@ -448,7 +448,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(100 * (1 - node_memory_MemAvailable_bytes{job=\"node-exporter\"} / node_memory_MemTotal_bytes{job=\"node-exporter\"})) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"})",
+          "expr": "avg by (nodename) ((100 * (1 - node_memory_MemAvailable_bytes{job=\"node-exporter\"} / node_memory_MemTotal_bytes{job=\"node-exporter\"})) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"}))",
           "legendFormat": "{{nodename}}",
           "range": true,
           "instant": false
@@ -504,7 +504,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(node_memory_MemAvailable_bytes{job=\"node-exporter\"}) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"})",
+          "expr": "avg by (nodename) ((node_memory_MemAvailable_bytes{job=\"node-exporter\"}) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"}))",
           "legendFormat": "{{nodename}}",
           "range": true,
           "instant": false
@@ -559,7 +559,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(node_memory_SwapTotal_bytes{job=\"node-exporter\"} - node_memory_SwapFree_bytes{job=\"node-exporter\"}) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"})",
+          "expr": "avg by (nodename) ((node_memory_SwapTotal_bytes{job=\"node-exporter\"} - node_memory_SwapFree_bytes{job=\"node-exporter\"}) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"}))",
           "legendFormat": "{{nodename}}",
           "range": true,
           "instant": false
@@ -627,7 +627,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(100 * (1 - node_filesystem_avail_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype!~\"tmpfs|overlay|squashfs\"} / node_filesystem_size_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype!~\"tmpfs|overlay|squashfs\"})) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"})",
+          "expr": "avg by (nodename) ((100 * (1 - node_filesystem_avail_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype!~\"tmpfs|overlay|squashfs\"} / node_filesystem_size_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype!~\"tmpfs|overlay|squashfs\"})) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"}))",
           "legendFormat": "{{nodename}}",
           "range": true,
           "instant": false
@@ -683,7 +683,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(node_filesystem_avail_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype!~\"tmpfs|overlay|squashfs\"}) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"})",
+          "expr": "avg by (nodename) ((node_filesystem_avail_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype!~\"tmpfs|overlay|squashfs\"}) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"}))",
           "legendFormat": "{{nodename}}",
           "range": true,
           "instant": false
@@ -738,14 +738,14 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(rate(node_disk_read_bytes_total{job=\"node-exporter\",device!~\"loop.*|ram.*|sr.*\"}[$__rate_interval])) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"})",
+          "expr": "avg by (nodename, device) ((rate(node_disk_read_bytes_total{job=\"node-exporter\",device!~\"loop.*|ram.*|sr.*\"}[$__rate_interval])) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"}))",
           "legendFormat": "{{nodename}} · {{device}} · read",
           "range": true,
           "instant": false
         },
         {
           "refId": "B",
-          "expr": "(rate(node_disk_written_bytes_total{job=\"node-exporter\",device!~\"loop.*|ram.*|sr.*\"}[$__rate_interval])) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"})",
+          "expr": "avg by (nodename, device) ((rate(node_disk_written_bytes_total{job=\"node-exporter\",device!~\"loop.*|ram.*|sr.*\"}[$__rate_interval])) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"}))",
           "legendFormat": "{{nodename}} · {{device}} · write",
           "range": true,
           "instant": false
@@ -813,7 +813,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(rate(node_network_receive_bytes_total{job=\"node-exporter\",device!~\"lo|veth.*|cali.*|cni.*|flannel.*|docker.*|br-.*\"}[$__rate_interval])) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"})",
+          "expr": "avg by (nodename, device) ((rate(node_network_receive_bytes_total{job=\"node-exporter\",device!~\"lo|veth.*|cali.*|cni.*|flannel.*|docker.*|br-.*\"}[$__rate_interval])) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"}))",
           "legendFormat": "{{nodename}} · {{device}}",
           "range": true,
           "instant": false
@@ -868,7 +868,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(rate(node_network_transmit_bytes_total{job=\"node-exporter\",device!~\"lo|veth.*|cali.*|cni.*|flannel.*|docker.*|br-.*\"}[$__rate_interval])) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"})",
+          "expr": "avg by (nodename, device) ((rate(node_network_transmit_bytes_total{job=\"node-exporter\",device!~\"lo|veth.*|cali.*|cni.*|flannel.*|docker.*|br-.*\"}[$__rate_interval])) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"}))",
           "legendFormat": "{{nodename}} · {{device}}",
           "range": true,
           "instant": false
@@ -923,14 +923,14 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(rate(node_network_receive_errs_total{job=\"node-exporter\",device!~\"lo|veth.*|cali.*|cni.*|flannel.*|docker.*|br-.*\"}[$__rate_interval])) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"})",
+          "expr": "avg by (nodename, device) ((rate(node_network_receive_errs_total{job=\"node-exporter\",device!~\"lo|veth.*|cali.*|cni.*|flannel.*|docker.*|br-.*\"}[$__rate_interval])) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"}))",
           "legendFormat": "{{nodename}} · {{device}} · receive",
           "range": true,
           "instant": false
         },
         {
           "refId": "B",
-          "expr": "(rate(node_network_transmit_errs_total{job=\"node-exporter\",device!~\"lo|veth.*|cali.*|cni.*|flannel.*|docker.*|br-.*\"}[$__rate_interval])) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"})",
+          "expr": "avg by (nodename, device) ((rate(node_network_transmit_errs_total{job=\"node-exporter\",device!~\"lo|veth.*|cali.*|cni.*|flannel.*|docker.*|br-.*\"}[$__rate_interval])) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"}))",
           "legendFormat": "{{nodename}} · {{device}} · transmit",
           "range": true,
           "instant": false

@@ -543,7 +543,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(100 * (1 - avg by(instance)(rate(node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"}[$__rate_interval])))) * on(instance) group_left(nodename) node_uname_info{job=\"node-exporter\"}",
+          "expr": "avg by (nodename) ((100 * (1 - avg by(instance)(rate(node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"}[$__rate_interval])))) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\"}))",
           "legendFormat": "{{nodename}}",
           "instant": false,
           "format": "time_series"
@@ -601,7 +601,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "avg by (nodename) ((100 * (1 - node_memory_MemAvailable_bytes{job=\"node-exporter\"} / node_memory_MemTotal_bytes{job=\"node-exporter\"})) * on(instance) group_left(nodename) node_uname_info{job=\"node-exporter\"})",
+          "expr": "avg by (nodename) ((100 * (1 - node_memory_MemAvailable_bytes{job=\"node-exporter\"} / node_memory_MemTotal_bytes{job=\"node-exporter\"})) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\"}))",
           "legendFormat": "{{nodename}}",
           "instant": false,
           "format": "time_series"
@@ -659,7 +659,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(100 * (1 - node_filesystem_avail_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype!~\"tmpfs|overlay\"} / node_filesystem_size_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype!~\"tmpfs|overlay\"})) * on(instance) group_left(nodename) node_uname_info{job=\"node-exporter\"}",
+          "expr": "avg by (nodename) ((100 * (1 - node_filesystem_avail_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype!~\"tmpfs|overlay\"} / node_filesystem_size_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype!~\"tmpfs|overlay\"})) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\"}))",
           "legendFormat": "{{nodename}}",
           "instant": false,
           "format": "time_series"
