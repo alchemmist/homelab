@@ -80,7 +80,7 @@ def main():
             if uid in RANCHER_DASHBOARD_UIDS:
                 found.add(uid)
                 title = dashboard['title'].removeprefix('Rancher / ').removeprefix('[Rancher] ')
-                dashboard['title'] = '[Rancher] ' + title
+                dashboard['title'] = title
                 manifest['data'][name] = json.dumps(dashboard, ensure_ascii=False, separators=(',', ':'))
             if uid in NODE_DASHBOARD_UIDS:
                 resolve_node_exporter(dashboard)
