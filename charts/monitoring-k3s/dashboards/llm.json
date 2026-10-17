@@ -695,7 +695,8 @@
             "fillOpacity": 10,
             "showPoints": "never",
             "spanNulls": false
-          }
+          },
+          "min": 0
         },
         "overrides": []
       },
