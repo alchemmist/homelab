@@ -132,8 +132,8 @@
       esac
       . /usr/share/initramfs-tools/hook-functions
       [ "$version" = "6.12.111+deb13-amd64" ]
-      manual_add_modules alx
-      module_dir="$DESTDIR/lib/modules/$version/kernel/drivers/net/ethernet/atheros/alx"
+      force_load alx
+      module_dir="$DESTDIR/lib/modules/$version/updates/homelab"
       mkdir -p "$module_dir"
       rm -f "$module_dir/alx.ko" "$module_dir/alx.ko.xz" "$module_dir/alx.ko.zst" "$module_dir/alx.ko.gz"
       install -m 0644 '{{ homelab_recovery_root }}/alx/alx.ko' "$module_dir/alx.ko"
@@ -161,7 +161,23 @@
   ansible.builtin.assert:
     that:
       - "'kernel/firmware/acpi/ssdt-socrat3-wifi.aml' in homelab_recovery_contents.stdout"
-      - "'kernel/drivers/net/ethernet/atheros/alx/alx.ko' in homelab_recovery_contents.stdout"
+      - "'updates/homelab/alx.ko' in homelab_recovery_contents.stdout"
+
+- name: Verify candidate module resolution and forced loading
+  ansible.builtin.shell: |
+    set -eu
+    work=$(mktemp -d)
+    trap 'rm -rf "$work"' EXIT
+    unmkinitramfs '{{ homelab_recovery_image }}' "$work"
+    grep -qx alx "$work/main/conf/modules"
+    cmp '{{ homelab_recovery_root }}/alx/alx.ko' "$work/main/usr/lib/modules/6.12.111+deb13-amd64/updates/homelab/alx.ko"
+    modprobe -d "$work/main" -S 6.12.111+deb13-amd64 --show-depends alx > "$work/resolution"
+    cat "$work/resolution"
+    grep -E '/updates/homelab/alx[.]ko[[:space:]]*$' "$work/resolution"
+    if grep -E '/kernel/drivers/net/ethernet/atheros/alx/alx[.]ko' "$work/resolution"; then
+        exit 1
+    fi
+  changed_when: false
 
 - name: Check that the normal initramfs was preserved
   ansible.builtin.stat:

@@ -1,0 +1,96 @@
+---
+- name: Install the validated guarded wireless configuration
+  hosts: socrat-3
+  gather_facts: true
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - name: Install the protected Ethernet module
+      ansible.builtin.import_tasks: ../roles/debian_laptop/tasks/network_recovery_install.yml
+
+    - name: Configure guarded wireless startup
+      ansible.builtin.import_tasks: ../roles/debian_laptop/tasks/wifi_guard.yml
+
+    - name: Persist the validated wireless driver options
+      ansible.builtin.copy:
+        dest: /etc/modprobe.d/homelab-rtl8723ae.conf
+        content: "options rtl8723ae ips=0 fwlps=0 swlps=0 msi=1\n"
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Enable wireless reconnection after the guarded driver starts
+      ansible.builtin.command: nmcli connection modify homelab-wifi connection.autoconnect yes
+
+    - name: Retain the enabled wireless radio across reboot
+      ansible.builtin.command: nmcli radio wifi on
+
+    - name: Protect every installed bootable kernel
+      ansible.builtin.import_tasks: ../roles/debian_laptop/tasks/network_recovery_kernels.yml
+      vars:
+        homelab_alx_force_rebuild: "{{ homelab_alx_dkms_source.changed | default(false) or homelab_alx_dkms_config.changed | default(false) }}"
+
+- name: Reboot into the ordinary Debian entry and verify protected networking
+  hosts: socrat-3
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - name: Require external power before reboot
+      ansible.builtin.shell: cat /sys/class/power_supply/*/online
+      register: network_install_power
+      changed_when: false
+      failed_when: "'1' not in network_install_power.stdout_lines"
+
+    - name: Evacuate ordinary workloads before reboot
+      ansible.builtin.command: kubectl drain socrat-3 --ignore-daemonsets --timeout=120s
+      delegate_to: socrat-0
+      become: false
+
+    - name: Wait for the replicated homepage to recover elsewhere
+      ansible.builtin.command: kubectl -n socrat-home rollout status deployment/socrat-home --timeout=120s
+      delegate_to: socrat-0
+      become: false
+      changed_when: false
+
+    - name: Require no pending one-time boot override
+      ansible.builtin.command: grub-editenv list
+      register: network_install_boot
+      changed_when: false
+      failed_when: network_install_boot.stdout_lines | select('match', '^next_entry=.+$') | list | length > 0
+
+    - name: Reboot into the normal managed configuration
+      ansible.builtin.reboot:
+        reboot_timeout: 300
+        connect_timeout: 8
+        post_reboot_delay: 15
+
+    - name: Verify the loaded protected module
+      ansible.builtin.command: /usr/local/sbin/homelab-load-guarded-wifi --check
+      changed_when: false
+
+    - name: Verify automatic wireless startup
+      ansible.builtin.shell: |
+        set -eu
+        systemctl is-active homelab-guarded-wifi.service
+        test "$(cat /sys/module/rtl8723ae/parameters/msi)" = Y
+        test "$(nmcli -g GENERAL.CONNECTION device show wlp1s0)" = homelab-wifi
+        ping -I wlp1s0 -c 5 -W 2 192.168.0.1
+      register: network_install_wifi
+      until: network_install_wifi.rc == 0
+      retries: 6
+      delay: 5
+      changed_when: false
+
+- ansible.builtin.import_playbook: k3s-worker-verify.yml
+
+- name: Return the verified worker to ordinary scheduling
+  hosts: socrat-0
+  gather_facts: false
+  tasks:
+    - name: Require the worker to be Ready
+      ansible.builtin.command: kubectl wait --for=condition=Ready node/socrat-3 --timeout=60s
+      changed_when: false
+
+    - name: Restore scheduling on the verified worker
+      ansible.builtin.command: kubectl uncordon socrat-3
