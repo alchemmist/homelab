@@ -13,7 +13,7 @@ args:
   - --dtype
   - bfloat16
   - --max-model-len
-  - "131072"
+  - "114688"
   - --max-num-seqs
   - "1"
   - --max-num-batched-tokens
@@ -21,7 +21,12 @@ args:
   - --gpu-memory-utilization
   - "0.95"
   - --enforce-eager
-  - --language-model-only
+  - --limit-mm-per-prompt
+  - '{"image":{"count":8,"width":1024,"height":1024},"video":0}'
+  - --mm-processor-kwargs
+  - '{"images_kwargs":{"size":{"longest_edge":1048576,"shortest_edge":65536}}}'
+  - --mm-processor-cache-gb
+  - "0.25"
   - --kv-cache-dtype
   - fp8
   - --enable-auto-tool-choice

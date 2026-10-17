@@ -1,0 +1,151 @@
+---
+- name: Apply the validated multimodal inference profile
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  tasks:
+    - name: Require the inference gateway to be idle before restarting
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - -n
+          - llm
+          - exec
+          - deployment/llm-switcher
+          - --
+          - python3
+          - -c
+          - >-
+            import json,os,urllib.request;
+            r=urllib.request.Request('http://127.0.0.1:8000/status',headers={'Authorization':'Bearer '+os.environ['BACKEND_API_KEY']});
+            d=json.load(urllib.request.urlopen(r));
+            assert not d['running'] and not any(d['waiting'].values()), 'Inference is busy; retry after current requests finish'
+      changed_when: false
+
+    - name: Copy the matching backend and gateway profiles
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../charts/{{ item }}/"
+        dest: "{{ homelab_user_home }}/tmp-charts/{{ item }}/"
+        mode: preserve
+      loop: [vllm, llm-switcher]
+
+    - name: Validate both charts
+      ansible.builtin.command: "helm lint {{ homelab_user_home }}/tmp-charts/{{ item }}"
+      loop: [vllm, llm-switcher]
+      changed_when: false
+
+    - name: Record the deployed inference release revisions
+      ansible.builtin.command:
+        argv: [helm, list, --namespace, llm, --filter, '^(vllm|llm-switcher)$', --output, json]
+      register: vision_releases
+      changed_when: false
+
+    - name: Require both inference releases to be deployed
+      ansible.builtin.assert:
+        that:
+          - vision_releases.stdout | from_json | length == 2
+          - vision_releases.stdout | from_json | map(attribute='status') | unique | list == ['deployed']
+
+    - name: Preserve inference rollback revisions
+      ansible.builtin.set_fact:
+        vision_previous_revisions: "{{ dict((vision_releases.stdout | from_json | map(attribute='name')) | zip(vision_releases.stdout | from_json | map(attribute='revision'))) }}"
+
+    - name: Replace the inference profile with rollback on failure
+      block:
+        - name: Pause the idle gateway while the inference engine is replaced
+          ansible.builtin.command: kubectl -n llm scale deployment/llm-switcher --replicas=0
+
+        - name: Wait for the old gateway profile to stop
+          ansible.builtin.command: kubectl -n llm wait --for=delete pod -l app=llm-switcher --timeout=120s
+          changed_when: false
+
+        - name: Deploy the multimodal backend
+          ansible.builtin.command: >-
+            helm upgrade vllm {{ homelab_user_home }}/tmp-charts/vllm --namespace llm
+            --values {{ homelab_user_home }}/tmp-charts/vllm/values.yaml
+            --wait --timeout 15m
+
+        - name: Resume the gateway with the same model profile
+          ansible.builtin.command: >-
+            helm upgrade llm-switcher {{ homelab_user_home }}/tmp-charts/llm-switcher --namespace llm
+            --values {{ homelab_user_home }}/tmp-charts/llm-switcher/values.yaml
+            --wait --timeout 3m
+
+      rescue:
+        - name: Roll back the inference engine
+          ansible.builtin.command:
+            argv:
+              - helm
+              - rollback
+              - vllm
+              - "{{ vision_previous_revisions['vllm'] | string }}"
+              - --namespace
+              - llm
+              - --wait
+              - --timeout
+              - 15m
+          register: vision_backend_rollback
+          failed_when: false
+
+        - name: Roll back the inference gateway
+          ansible.builtin.command:
+            argv:
+              - helm
+              - rollback
+              - llm-switcher
+              - "{{ vision_previous_revisions['llm-switcher'] | string }}"
+              - --namespace
+              - llm
+              - --wait
+              - --timeout
+              - 3m
+          register: vision_gateway_rollback
+          failed_when: false
+
+        - name: Restore the gateway replica even if Helm rollback failed
+          ansible.builtin.command: kubectl -n llm scale deployment/llm-switcher --replicas=1
+          register: vision_gateway_restore
+          failed_when: false
+
+        - name: Check the restored gateway rollout
+          ansible.builtin.command: kubectl -n llm rollout status deployment/llm-switcher --timeout=3m
+          register: vision_gateway_ready
+          changed_when: false
+          failed_when: false
+
+        - name: Report the failed upgrade and recovery outcome
+          ansible.builtin.fail:
+            msg: >-
+              Vision upgrade failed at {{ ansible_failed_task.name }}.
+              Recovery exit codes: backend rollback={{ vision_backend_rollback.rc }},
+              gateway rollback={{ vision_gateway_rollback.rc }},
+              gateway scale={{ vision_gateway_restore.rc }},
+              gateway rollout={{ vision_gateway_ready.rc }}.
+              Inspect any nonzero recovery result before retrying.
+
+    - name: Update the advertised context while preserving live LiteLLM settings
+      ansible.builtin.shell: |
+        python3 - <<'PY'
+        import json, os, subprocess
+        from pathlib import Path
+        data = json.loads(subprocess.check_output(['helm', 'get', 'values', 'litellm', '-n', 'llm', '-o', 'json']))
+        profile = json.loads({{ (lookup('file', playbook_dir + '/../../charts/llm-switcher/files/profiles.json') | from_json)['qwen3.8-27b'] | to_json | to_json }})
+        entries = [entry for entry in data['proxy_config']['model_list'] if entry['model_name'] == profile['servedModelName']]
+        assert len(entries) == 1
+        entries[0]['model_info']['max_input_tokens'] = profile['contextWindow']
+        path = Path('{{ homelab_user_home }}/tmp-charts/litellm-vision-values.json')
+        os.umask(0o077)
+        path.write_text(json.dumps(data))
+        path.chmod(0o600)
+        PY
+      tags: metadata
+
+    - name: Apply the corrected model context metadata
+      ansible.builtin.command: >-
+        helm upgrade litellm oci://ghcr.io/berriai/litellm-helm --version 1.105.1
+        --namespace llm --values {{ homelab_user_home }}/tmp-charts/litellm-vision-values.json
+        --wait --timeout 10m
+      tags: metadata

@@ -1,0 +1,136 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: llm-switcher
+  namespace: {{ .Release.Namespace }}
+data:
+  server.py: |
+{{ .Files.Get "files/server.py" | indent 4 }}
+  profiles.json: |
+{{ .Files.Get "files/profiles.json" | indent 4 }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: llm-switcher
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: llm-switcher
+rules:
+  - apiGroups: [apps]
+    resources: [deployments]
+    resourceNames: [vllm]
+    verbs: [get, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: llm-switcher
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: llm-switcher
+subjects:
+  - kind: ServiceAccount
+    name: llm-switcher
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: llm-switcher
+spec:
+  selector:
+    app: llm-switcher
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-switcher
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: llm-switcher
+  template:
+    metadata:
+      labels:
+        app: llm-switcher
+      annotations:
+        checksum/server: {{ .Files.Get "files/server.py" | sha256sum }}
+        checksum/profiles: {{ .Files.Get "files/profiles.json" | sha256sum }}
+    spec:
+      serviceAccountName: llm-switcher
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.nodeName }}
+      terminationGracePeriodSeconds: 1830
+      containers:
+        - name: gateway
+          image: {{ .Values.image | quote }}
+          command: [python3, /config/server.py]
+          env:
+            - name: BACKEND_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: vllm-api
+                  key: api-key
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          ports:
+            - containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: '1'
+              memory: 512Mi
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: llm-switcher
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: llm-switcher-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app: llm-switcher
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: litellm
+              app.kubernetes.io/name: litellm
+      ports:
+        - protocol: TCP
+          port: 8000
