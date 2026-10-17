@@ -29,7 +29,7 @@ Configure split DNS for the **exact hostname** `wiki.alchemmist.xyz` on the admi
 
 ## Bootstrap and publication
 
-First run `ansible/playbooks/wiki-editor.yml` to create stable secrets and the separate Fleet GitRepo. Register its printed public key as a write-enabled deploy key for homelab. Private keys and gateway tokens stay in Kubernetes Secrets. Then run the access playbook and the macOS client playbook. The backend has its own image, workflow and `wiki-editor-publish` branch, so ordinary Markdown edits rebuild the public site without restarting the editor.
+First run `ansible/playbooks/wiki-editor.yml` to create stable secrets and the separate Fleet GitRepo. Register its printed public key as a write-enabled deploy key for homelab. Private keys and gateway tokens stay in Kubernetes Secrets. Then run the access playbook and the macOS client playbook. The backend has its own image, workflow and `wiki-editor-publish` branch. Both backend and wiki source changes rebuild that image. Accepted edits are served immediately from persistent live state; background Git synchronization and later image rollouts preserve this state.
 
 On this cluster host-network gateway traffic may use Flannel source addresses `10.42.2.0` and `10.42.1.0`; ingress policy permits only the gateway nodes and their narrow host addresses. The additional shared gateway secret is checked by the backend before accepting peer identity. Lifecycle tests in `tests/test_wiki_editor_resolver.py` exercise private routing, disconnect/public fallback and unmanaged-file preservation without changing live networking.
 

@@ -43,7 +43,7 @@ def main():
         resource("Namespace", "wiki"),
         resource("ServiceAccount", "wiki-deployer", agent_namespace),
         resource("Role", "wiki-deployer", "wiki", "rbac.authorization.k8s.io/v1", rules=[
-            {"apiGroups": [""], "resources": ["secrets", "configmaps", "services"], "verbs": ["get", "list", "watch", "create", "update", "patch", "delete"]},
+            {"apiGroups": [""], "resources": ["secrets", "configmaps", "services", "persistentvolumeclaims"], "verbs": ["get", "list", "watch", "create", "update", "patch", "delete"]},
             {"apiGroups": [""], "resources": ["pods", "events"], "verbs": ["get", "list", "watch"]},
             {"apiGroups": ["apps"], "resources": ["deployments", "replicasets"], "verbs": ["get", "list", "watch", "create", "update", "patch", "delete"]},
             {"apiGroups": ["networking.k8s.io"], "resources": ["ingresses", "networkpolicies"], "verbs": ["get", "list", "watch", "create", "update", "patch", "delete"]},

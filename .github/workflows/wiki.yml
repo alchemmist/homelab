@@ -45,14 +45,17 @@ jobs:
         run: docker build --build-arg SOURCE_SHA="$GITHUB_SHA" -t socrat-wiki:check wiki
       - name: Check restricted container runtime
         run: |
-          docker run -d --name wiki-check --user 101:101 --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges -p 127.0.0.1:18080:8080 socrat-wiki:check
-          trap 'docker logs wiki-check; docker rm -f wiki-check' EXIT
+          docker network create wiki-check
+          docker run -d --user 0 --name wiki-upstream --network wiki-check --network-alias wiki-editor.wiki.svc.cluster.local --entrypoint sh socrat-wiki:check -c 'mkdir -p /tmp/upstream/site; cp -r /usr/share/nginx/html/. /tmp/upstream/site/; printf "events {} http { server { listen 8080; root /tmp/upstream; } }" > /tmp/upstream.conf; nginx -c /tmp/upstream.conf -g "daemon off;"'
+          docker run -d --network wiki-check --name wiki-check --user 101:101 --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges -p 127.0.0.1:18080:8080 socrat-wiki:check
+          trap 'docker logs wiki-check; docker rm -f wiki-check wiki-upstream; docker network rm wiki-check' EXIT
           for attempt in $(seq 1 30); do
             if curl --fail --silent http://127.0.0.1:18080/healthz; then break; fi
             sleep 1
           done
-          curl --fail --silent http://127.0.0.1:18080/version.json | python3 -c 'import json,os,sys; assert json.load(sys.stdin)["source_sha"] == os.environ["GITHUB_SHA"]'
+          curl --fail --silent http://127.0.0.1:18080/deployment-version.json | python3 -c 'import json,os,sys; assert json.load(sys.stdin)["source_sha"] == os.environ["GITHUB_SHA"]'
           test "$(curl --silent -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/ansible/)" = 404
+          test "$(curl --silent -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/api/editor/session)" = 404
           test "$(curl --silent -o /dev/null -w '%{http_code}' -H 'X-Forwarded-Proto: http' http://127.0.0.1:18080/)" = 308
           curl --fail --silent --head http://127.0.0.1:18080/ | grep -iq '^X-Robots-Tag: noindex, nofollow'
 
@@ -113,7 +116,7 @@ jobs:
           consecutive = 0
           while time.monotonic() < deadline:
               try:
-                  url = 'https://wiki.alchemmist.xyz/version.json?check=' + str(time.time_ns())
+                  url = 'https://wiki.alchemmist.xyz/deployment-version.json?check=' + str(time.time_ns())
                   with urllib.request.urlopen(url, timeout=15) as response:
                       actual = json.load(response)['source_sha']
                   consecutive = consecutive + 1 if actual == os.environ['EXPECTED_SHA'] else 0

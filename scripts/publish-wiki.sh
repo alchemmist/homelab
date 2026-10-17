@@ -14,10 +14,12 @@ case "$target" in
   wiki-editor) source_dir=wiki-editor; workflow=.github/workflows/wiki-editor.yml ;;
   *) exit 2 ;;
 esac
+source_paths=("$source_dir")
+if [[ "$target" == wiki-editor ]]; then source_paths+=(wiki); fi
 publish_branch="$target-publish"
 chart_dir="charts/$target"
 git fetch origin main
-if ! git diff --quiet "$GITHUB_SHA" origin/main -- "$source_dir" "$chart_dir" scripts/publish-wiki.sh "$workflow"; then
+if ! git diff --quiet "$GITHUB_SHA" origin/main -- "${source_paths[@]}" "$chart_dir" scripts/publish-wiki.sh "$workflow"; then
   echo 'A newer wiki change exists on main; skipping stale publication.'
   echo 'promoted=false' >> "$GITHUB_OUTPUT"
   exit 0
@@ -54,7 +56,7 @@ if ! git -C "$publish_dir" diff --cached --quiet; then
 fi
 
 git fetch origin main
-if ! git diff --quiet "$GITHUB_SHA" origin/main -- "$source_dir" "$chart_dir" scripts/publish-wiki.sh "$workflow"; then
+if ! git diff --quiet "$GITHUB_SHA" origin/main -- "${source_paths[@]}" "$chart_dir" scripts/publish-wiki.sh "$workflow"; then
   echo 'A newer wiki change arrived during bundle preparation; skipping stale publication.'
   echo 'promoted=false' >> "$GITHUB_OUTPUT"
   exit 0

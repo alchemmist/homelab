@@ -1,0 +1,17 @@
+**
+!wiki-editor/
+!wiki-editor/Dockerfile
+!wiki-editor/requirements.txt
+!wiki-editor/*.py
+!wiki/
+!wiki/package.json
+!wiki/package-lock.json
+!wiki/go.mod
+!wiki/go.sum
+!wiki/hugo.toml
+!wiki/editor/**
+!wiki/content/**
+!wiki/layouts/**
+!wiki/static/**
+!wiki/assets/**
+wiki/assets/wiki-editor.js
