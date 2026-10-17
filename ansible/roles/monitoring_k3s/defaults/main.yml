@@ -1,4 +1,5 @@
 ---
+monitoring_k3s_wait: true
 monitoring_k3s_namespace: cattle-monitoring-system
 monitoring_k3s_release: monitoring-k3s
 monitoring_k3s_prometheus_release: kube-prometheus-stack

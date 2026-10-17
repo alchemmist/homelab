@@ -1,5 +1,7 @@
 # Socrat-3 provisioning
 
+Since 2026-10-18 this machine also runs the K3s control plane and an etcd voter. Its existing workload runtime, resource reservations and desktop configuration were retained. Use [the current HA workflow](k3s-ha.md) for server-role maintenance; the worker bootstrap below describes its original enrollment and must not be used to demote the running server.
+
 The MSI CR61 3M (AMD A4-5000, approximately 3.3 GiB usable RAM) is managed
 through `ansible/inventory/socrat-3.yml`. The maintenance connection is wired
 Ethernet at `192.168.0.110:2222`; the account is `alchemmist`. Root escalation uses

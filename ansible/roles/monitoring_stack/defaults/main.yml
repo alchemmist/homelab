@@ -12,3 +12,4 @@ monitoring_storage_node: socrat-1
 monitoring_grafana_admin_secret: socrat-grafana-admin
 monitoring_minimum_available_disk_bytes: 32212254720
 monitoring_minimum_available_memory_bytes: 3221225472
+monitoring_wait_for_daemonsets: true

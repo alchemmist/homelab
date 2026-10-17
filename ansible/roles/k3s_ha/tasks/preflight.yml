@@ -1,4 +1,16 @@
 ---
+- name: Inspect whether the external-quorum topology replaced this bootstrap workflow
+  ansible.builtin.stat:
+    path: /var/lib/homelab-k3s-rebalance/complete
+  delegate_to: "{{ k3s_ha_primary }}"
+  become_method: sudo
+  register: k3s_ha_rebalanced
+
+- name: Refuse to restore the obsolete home-majority configuration
+  ansible.builtin.assert:
+    that: not k3s_ha_rebalanced.stat.exists
+    fail_msg: Use playbooks/k3s-role-rebalance.yml for the external-quorum topology; k3s-ha.yml is the original bootstrap workflow.
+
 - name: Check the installed k3s version
   ansible.builtin.command: /usr/local/bin/k3s --version
   register: k3s_ha_installed_version

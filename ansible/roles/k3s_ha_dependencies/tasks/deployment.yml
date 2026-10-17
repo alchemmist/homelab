@@ -87,7 +87,7 @@
       - --timeout=600s
   changed_when: false
 
-- name: Verify ready replicas on each home node
+- name: Verify ready replicas on the home and external nodes
   ansible.builtin.command:
     argv:
       - python3
