@@ -23,6 +23,10 @@ spec:
             cidr: 10.42.2.1/32
         - ipBlock:
             cidr: 10.42.1.1/32
+        - ipBlock:
+            cidr: 10.42.2.0/32
+        - ipBlock:
+            cidr: 10.42.1.0/32
       ports:
         - port: 8080
           protocol: TCP
@@ -68,7 +72,7 @@ spec:
         - name: ghcr-pull
       containers:
         - name: editor
-          image: "ghcr.io/alchemmist/socrat-wiki-editor@sha256:54864d968211ee06c0e74f999bbe809a094fae39ca5e02e83c20a517c223ebc6"
+          image: "ghcr.io/alchemmist/socrat-wiki-editor@sha256:9c164dd907e1ddf1d2edeee5db42bcbc063eb567adaf9d9d5819b298ff4204eb"
           ports:
             - name: http
               containerPort: 8080
