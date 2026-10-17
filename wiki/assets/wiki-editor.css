@@ -24,7 +24,8 @@
 .wiki-tree-row { position: relative; min-height: 32px; gap: 3px; }
 .wiki-tree-row > a { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .wiki-tree-row:hover .wiki-tree-controls, .wiki-tree-row:focus-within .wiki-tree-controls { opacity: 1; }
-.wiki-tree-root { display: flex; justify-content: flex-end; min-height: 28px; }
+.sidebar:has(.wiki-tree-root) .search-trigger { margin-bottom: 8px; }
+.wiki-tree-root { display: flex; justify-content: flex-end; gap: 2px; min-height: 28px; }
 .wiki-tree-create { display: flex; flex-wrap: wrap; gap: 5px; padding: 8px 4px; font: 12px var(--ui); }
 .wiki-tree-create input, .wiki-tree-create select { width: 100%; min-width: 0; padding: 6px; border: 1px solid var(--rule); background: #fff; font: inherit; }
 .wiki-tree-create button { border: 1px solid var(--rule); background: #fff; padding: 5px 7px; color: var(--ink); cursor: pointer; font: inherit; }
@@ -36,8 +37,8 @@
 .wiki-tree-row a[aria-disabled="true"] { opacity: .6; cursor: grab; }
 .wiki-editor-actions [data-editor-open] { width: 28px; height: 28px; padding: 6px; opacity: .45; background: transparent; }
 .wiki-editor-actions [data-editor-open]:hover, .wiki-editor-actions [data-editor-open]:focus-visible { opacity: 1; }
-.wiki-tree-root { gap: 4px; }
-.wiki-tree-root > button { width: 28px; height: 28px; padding: 5px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.wiki-tree-root > button { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.wiki-tree-root > button svg { width: 16px; height: 16px; }
 .wiki-tree-root > button:hover, .wiki-tree-root > button:focus-visible { color: var(--ink); }
 .wiki-tree-row, .wiki-tree-row > a, .wiki-tree-row > .tree-toggle { cursor: grab; }
 .wiki-tree-row:active, .wiki-tree-row:active > a, .wiki-tree-row:active > .tree-toggle, .wiki-tree-dragging .wiki-tree-row, .wiki-tree-dragging .wiki-tree-row > * { cursor: grabbing !important; }
