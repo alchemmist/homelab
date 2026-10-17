@@ -143,7 +143,7 @@
         "w": 6,
         "h": 4
       },
-      "description": "Number of active pods that are not Ready at the end of the selected time range. Includes Pending, Running and Unknown phases; completed jobs are excluded. Zero means no matching unready pods were found, provided Kubernetes metrics are being collected.",
+      "description": "Number of active pods that are not Ready at the end of the selected time range. Includes Pending, Running and Unknown phases; completed jobs are excluded. Zero means no matching unready pods were found, provided Kubernetes metrics are being collected. Click the count to open the pod list, then click a pod name to open its Rancher details.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -176,7 +176,14 @@
                 "color": "red"
               }
             ]
-          }
+          },
+          "links": [
+            {
+              "title": "Show unready pods",
+              "url": "/d/socrat-overview/overview?${__url_time_range}&viewPanel=panel-18",
+              "targetBlank": false
+            }
+          ]
         },
         "overrides": []
       },
@@ -783,7 +790,7 @@
         "w": 12,
         "h": 8
       },
-      "description": "Active pods that are not Ready at the end of the selected time range; completed jobs are excluded. An empty table means no matching pods if Kubernetes state metrics are available.",
+      "description": "Active pods that are not Ready at the end of the selected time range; completed jobs are excluded. An empty table means no matching pods if Kubernetes state metrics are available. Click a pod name to open its current status, events and logs in Rancher.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -805,7 +812,26 @@
           },
           "noValue": "No data"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pod"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open pod in Rancher",
+                    "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/${__data.fields.Namespace}/${__value.raw}",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "showHeader": true,
