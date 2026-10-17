@@ -141,14 +141,14 @@ def main():
             resources = container.get('resources', {})
             require(bool(resources.get('requests', {}).get('memory')) and bool(resources.get('limits', {}).get('memory')), pod['metadata']['name'] + '/' + container['name'] + ' has memory request and limit')
     dashboard = kubectl(args.ssh_host, 'get', '--raw', f'/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/dashboards/uid/socrat-overview')
-    require(dashboard.get('dashboard', {}).get('title') == 'Обзор', 'Overview dashboard provisioned in Grafana')
+    require(dashboard.get('dashboard', {}).get('title') == 'Overview', 'Overview dashboard provisioned in Grafana')
     catalog = kubectl(args.ssh_host, 'get', '--raw', f'/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/search?limit=1000')
     dashboards = [item for item in catalog if item.get('type') == 'dash-db']
     primary = {item['uid']: item['title'] for item in dashboards if not item.get('folderUid')}
-    require(primary == {'socrat-overview': 'Обзор', 'socrat-nodes': 'Ноды', 'socrat-services': 'Сервисы', 'socrat-llm': 'LLM'}, 'Only the four primary dashboards appear at the root')
+    require(primary == {'socrat-overview': 'Overview', 'socrat-nodes': 'Nodes', 'socrat-services': 'Services', 'socrat-llm': 'LLM'}, 'Only the four primary dashboards appear at the root')
     embedded = [item for item in dashboards if item.get('folderTitle') == 'Rancher']
     require(len(embedded) == 13 and all(not item['title'].startswith(('[Rancher] ', 'Rancher / ')) for item in embedded), 'Embedded Rancher dashboards are grouped without title prefixes')
-    require(all(not item.get('folderUid') or item.get('folderTitle') in ['Rancher', 'Диагностика Kubernetes'] for item in dashboards), 'Other templates are grouped under Kubernetes diagnostics')
+    require(all(not item.get('folderUid') or item.get('folderTitle') in ['Rancher', 'Kubernetes Diagnostics'] for item in dashboards), 'Other templates are grouped under Kubernetes diagnostics')
     for uid in ['rancher-node-1', 'rancher-node-detail-1']:
         node_dashboard = kubectl(args.ssh_host, 'get', '--raw', f'/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/dashboards/uid/{uid}')['dashboard']
         resolver = next(v for v in node_dashboard['templating']['list'] if v['name'] == 'exporter_instance')

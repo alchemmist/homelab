@@ -1,9 +1,9 @@
 {
   "uid": "socrat-nodes",
-  "title": "Ноды",
-  "description": "Ресурсы socrat-0/1/2/3: CPU, нагрузка, память, диски и сеть. Все данные поступают из node-exporter.",
+  "title": "Nodes",
+  "description": "Resources across socrat-0/1/2/3: CPU, load, memory, disks, and network. All metrics come from node-exporter.",
   "tags": [
-    "Основное"
+    "Primary"
   ],
   "timezone": "browser",
   "schemaVersion": 39,
@@ -16,13 +16,13 @@
   "editable": false,
   "links": [
     {
-      "title": "Обзор",
+      "title": "Overview",
       "url": "/d/socrat-overview",
       "type": "link",
       "keepTime": true
     },
     {
-      "title": "Сервисы",
+      "title": "Services",
       "url": "/d/socrat-services",
       "type": "link",
       "keepTime": true
@@ -38,7 +38,7 @@
     "list": [
       {
         "name": "node",
-        "label": "Нода",
+        "label": "Node",
         "type": "query",
         "datasource": {
           "type": "prometheus",
@@ -56,7 +56,7 @@
         "allValue": ".*",
         "current": {
           "text": [
-            "Все"
+            "All"
           ],
           "value": [
             "$__all"
@@ -69,7 +69,7 @@
   "panels": [
     {
       "id": 1,
-      "title": "Состояние нод",
+      "title": "Node status",
       "type": "row",
       "collapsed": false,
       "gridPos": {
@@ -82,7 +82,7 @@
     },
     {
       "id": 2,
-      "title": "Время с загрузки",
+      "title": "Uptime",
       "description": "",
       "type": "stat",
       "datasource": {
@@ -130,7 +130,7 @@
     },
     {
       "id": 3,
-      "title": "Логические ядра",
+      "title": "Logical CPU cores",
       "description": "",
       "type": "stat",
       "datasource": {
@@ -178,7 +178,7 @@
     },
     {
       "id": 4,
-      "title": "Физическая память",
+      "title": "Physical memory",
       "description": "",
       "type": "stat",
       "datasource": {
@@ -226,7 +226,7 @@
     },
     {
       "id": 5,
-      "title": "Процессор и очередь задач",
+      "title": "CPU and task load",
       "type": "row",
       "collapsed": false,
       "gridPos": {
@@ -239,8 +239,8 @@
     },
     {
       "id": 6,
-      "title": "Загрузка CPU",
-      "description": "Доля времени CPU вне idle, усреднённая по логическим ядрам; включает ожидание ввода-вывода.",
+      "title": "CPU utilization",
+      "description": "Non-idle CPU time averaged across logical cores, including I/O wait.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -295,8 +295,8 @@
     },
     {
       "id": 7,
-      "title": "Load Average на ядро",
-      "description": "Load Average за 5 минут, поделённый на число логических ядер. Значение 1 означает одну выполняющуюся или ожидающую задачу на ядро. Ожидание диска тоже увеличивает Load Average; это не процент CPU.",
+      "title": "Load average per core",
+      "description": "Five-minute load average divided by logical CPU cores. A value of 1 means one running or waiting task per core. Disk I/O wait also contributes to load average; this is not CPU utilization.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -350,8 +350,8 @@
     },
     {
       "id": 8,
-      "title": "Load Average · 1 / 5 / 15 минут",
-      "description": "Среднее количество выполняющихся или готовых к выполнению задач и задач в непрерываемом ожидании, в том числе дискового ввода-вывода. Сравнивайте с числом логических ядер.",
+      "title": "Load average · 1 / 5 / 15 minutes",
+      "description": "Average number of running or runnable tasks and tasks in uninterruptible sleep, including disk I/O wait. Compare with the number of logical CPU cores.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -367,21 +367,21 @@
         {
           "refId": "A",
           "expr": "(node_load1{job=\"node-exporter\"}) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"})",
-          "legendFormat": "{{nodename}} · 1 мин",
+          "legendFormat": "{{nodename}} · 1 min",
           "range": true,
           "instant": false
         },
         {
           "refId": "B",
           "expr": "(node_load5{job=\"node-exporter\"}) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"})",
-          "legendFormat": "{{nodename}} · 5 мин",
+          "legendFormat": "{{nodename}} · 5 min",
           "range": true,
           "instant": false
         },
         {
           "refId": "C",
           "expr": "(node_load15{job=\"node-exporter\"}) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"})",
-          "legendFormat": "{{nodename}} · 15 мин",
+          "legendFormat": "{{nodename}} · 15 min",
           "range": true,
           "instant": false
         }
@@ -419,7 +419,7 @@
     },
     {
       "id": 9,
-      "title": "Память",
+      "title": "Memory",
       "type": "row",
       "collapsed": false,
       "gridPos": {
@@ -432,8 +432,8 @@
     },
     {
       "id": 10,
-      "title": "Использование памяти",
-      "description": "Занято = MemTotal − MemAvailable. Учитывает память, которую ядро может освободить из кэша.",
+      "title": "Memory utilization",
+      "description": "Used memory = MemTotal − MemAvailable, accounting for cache memory the kernel can reclaim.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -488,8 +488,8 @@
     },
     {
       "id": 11,
-      "title": "Доступная память",
-      "description": "Оценка памяти, доступной новым приложениям без использования swap.",
+      "title": "Available memory",
+      "description": "Estimated memory available to new applications without swapping.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -543,8 +543,8 @@
     },
     {
       "id": 12,
-      "title": "Используемый swap",
-      "description": "Используемое пространство подкачки. Ноль также возможен, если swap отключён.",
+      "title": "Swap used",
+      "description": "Swap space in use. Zero can also mean swap is disabled.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -598,7 +598,7 @@
     },
     {
       "id": 13,
-      "title": "Диски",
+      "title": "Disks",
       "type": "row",
       "collapsed": false,
       "gridPos": {
@@ -611,8 +611,8 @@
     },
     {
       "id": 14,
-      "title": "Корневой раздел · занято",
-      "description": "Доля корневого раздела, недоступная обычным процессам: учитывает занятое и зарезервированное файловой системой место.",
+      "title": "Root filesystem · used",
+      "description": "Share of the root filesystem unavailable to ordinary processes, including used space and filesystem reservations.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -667,8 +667,8 @@
     },
     {
       "id": 15,
-      "title": "Корневой раздел · доступно",
-      "description": "Свободное место на корневом разделе, доступное обычным процессам.",
+      "title": "Root filesystem · available",
+      "description": "Free space on the root filesystem available to ordinary processes.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -722,8 +722,8 @@
     },
     {
       "id": 16,
-      "title": "Дисковый ввод-вывод",
-      "description": "Скорость по устройствам, без суммирования физических и логических дисков. Loop, RAM и оптические устройства исключены.",
+      "title": "Disk I/O",
+      "description": "Throughput per device without adding physical and logical disks together. Loop, RAM, and optical devices are excluded.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -739,14 +739,14 @@
         {
           "refId": "A",
           "expr": "(rate(node_disk_read_bytes_total{job=\"node-exporter\",device!~\"loop.*|ram.*|sr.*\"}[$__rate_interval])) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"})",
-          "legendFormat": "{{nodename}} · {{device}} · чтение",
+          "legendFormat": "{{nodename}} · {{device}} · read",
           "range": true,
           "instant": false
         },
         {
           "refId": "B",
           "expr": "(rate(node_disk_written_bytes_total{job=\"node-exporter\",device!~\"loop.*|ram.*|sr.*\"}[$__rate_interval])) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"})",
-          "legendFormat": "{{nodename}} · {{device}} · запись",
+          "legendFormat": "{{nodename}} · {{device}} · write",
           "range": true,
           "instant": false
         }
@@ -784,7 +784,7 @@
     },
     {
       "id": 17,
-      "title": "Сеть",
+      "title": "Network",
       "type": "row",
       "collapsed": false,
       "gridPos": {
@@ -797,8 +797,8 @@
     },
     {
       "id": 18,
-      "title": "Входящий трафик",
-      "description": "По интерфейсам, включая WireGuard. Контейнерные и loopback-интерфейсы исключены. Трафик туннеля и физического интерфейса не суммируется.",
+      "title": "Inbound traffic",
+      "description": "Per interface, including WireGuard. Container and loopback interfaces are excluded. Tunnel and physical interface traffic are not added together.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -852,8 +852,8 @@
     },
     {
       "id": 19,
-      "title": "Исходящий трафик",
-      "description": "По интерфейсам, включая WireGuard. Контейнерные и loopback-интерфейсы исключены.",
+      "title": "Outbound traffic",
+      "description": "Per interface, including WireGuard. Container and loopback interfaces are excluded.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -907,8 +907,8 @@
     },
     {
       "id": 20,
-      "title": "Ошибки сетевых интерфейсов",
-      "description": "Ошибки приёма и передачи в секунду. Не измеряет потери пакетов между нодами или доступность интернета.",
+      "title": "Network interface errors",
+      "description": "Receive and transmit errors per second. This does not measure packet loss between nodes or internet availability.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -924,14 +924,14 @@
         {
           "refId": "A",
           "expr": "(rate(node_network_receive_errs_total{job=\"node-exporter\",device!~\"lo|veth.*|cali.*|cni.*|flannel.*|docker.*|br-.*\"}[$__rate_interval])) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"})",
-          "legendFormat": "{{nodename}} · {{device}} · приём",
+          "legendFormat": "{{nodename}} · {{device}} · receive",
           "range": true,
           "instant": false
         },
         {
           "refId": "B",
           "expr": "(rate(node_network_transmit_errs_total{job=\"node-exporter\",device!~\"lo|veth.*|cali.*|cni.*|flannel.*|docker.*|br-.*\"}[$__rate_interval])) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=~\"$node\"})",
-          "legendFormat": "{{nodename}} · {{device}} · передача",
+          "legendFormat": "{{nodename}} · {{device}} · transmit",
           "range": true,
           "instant": false
         }
@@ -969,7 +969,7 @@
     },
     {
       "id": 21,
-      "title": "Температура",
+      "title": "Temperature",
       "type": "row",
       "collapsed": false,
       "gridPos": {
@@ -982,8 +982,8 @@
     },
     {
       "id": 22,
-      "title": "Максимальная температура датчиков",
-      "description": "Максимум по аппаратным датчикам каждой ноды, включая CPU и накопители. На VPS socrat-2 датчики недоступны, поэтому её линии здесь нет.",
+      "title": "Maximum sensor temperature",
+      "description": "Maximum hardware sensor temperature per node, including CPU and storage devices. The socrat-2 VPS exposes no sensors and therefore has no series here.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",

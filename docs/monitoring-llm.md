@@ -1,6 +1,6 @@
 # LLM monitoring
 
-The **LLM** dashboard (`socrat-llm`) is a primary dashboard with 42 panels for
+The **LLM** dashboard (`socrat-llm`) is a primary dashboard with detailed views for
 LiteLLM, the model switcher, vLLM, NVIDIA GPU telemetry and container resources.
 It is available only through the existing private Grafana gateway.
 
