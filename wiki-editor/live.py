@@ -238,6 +238,13 @@ class LiveWiki:
                 target = self.safe_remote_path(path)
                 if after is None:
                     target.unlink(missing_ok=True)
+                    parent = target.parent
+                    while parent != self.remote / self.api.PREFIX:
+                        try:
+                            parent.rmdir()
+                        except OSError:
+                            break
+                        parent = parent.parent
                 else:
                     target.parent.mkdir(parents=True, exist_ok=True)
                     target.write_bytes(after)

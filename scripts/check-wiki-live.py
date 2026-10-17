@@ -73,4 +73,11 @@ for index, (path, url) in enumerate((('_index.md', '/site/'), ('runtime-smoke/ed
     assert status == 200 and marker in json.loads(source)['body'], (status, path)
 assert request('/api/editor/pages?path=_index.md')[0] == 403
 assert request('/site/')[1].get('Cache-Control') == 'no-store'
-print('Real Hugo runtime: private API, atomic text/folder/move publication and immediate HTML reload passed')
+status, _, body = request('/api/editor/tree', headers=headers)
+assert status == 200, (status, body)
+status, _, body = request('/api/editor/batch', {'pages': [], 'operations': [{'type': 'delete', 'source': 'runtime-smoke'}], 'tree_revision': json.loads(body)['revision']}, headers)
+assert status == 200, (status, body)
+assert request('/site/runtime-smoke/edit-wiki/')[0] == 404
+assert request('/api/editor/pages?path=runtime-smoke/edit-wiki.md', headers=headers)[0] == 404
+assert 'Live runtime smoke marker 0' in request('/site/')[2]
+print('Real Hugo runtime: private API, atomic edit/move/delete publication and immediate HTML reload passed')

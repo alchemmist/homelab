@@ -7,6 +7,7 @@ import posixpath
 from pathlib import Path
 import re
 import secrets
+import shutil
 import subprocess
 import threading
 import time
@@ -467,6 +468,87 @@ def move_node(data: dict):
     return publish_structure(data, operation)
 
 
+def unlink_deleted_references(source, target):
+    from urllib.parse import unquote, urljoin, urlsplit
+    documents = {}
+    lookup = {}
+    deleted_urls = set()
+    for path in (WORK / PREFIX).rglob('*.md'):
+        relative = path.relative_to(WORK / PREFIX).as_posix()
+        checked_path(relative)
+        metadata, body = parse(path.read_text(encoding='utf-8'))
+        documents[relative] = (metadata, body)
+        variants = [relative, relative.removesuffix('.md')]
+        if path.name in ('_index.md', 'index.md'):
+            variants.append(str(Path(relative).parent))
+        for variant in variants:
+            lookup[variant.strip('/')] = relative
+        if relative == source or relative.startswith(source + '/'):
+            deleted_urls.add(urlsplit(document_url(relative, metadata)).path.rstrip('/'))
+            deleted_urls.update(alias.rstrip('/') for alias in metadata.get('aliases', []) if isinstance(alias, str))
+    if target.is_dir():
+        for asset in target.rglob('*'):
+            if asset.is_file() and asset.suffix != '.md':
+                deleted_urls.add('/' + asset.relative_to(WORK / PREFIX).as_posix())
+    shortcode = re.compile(r"{{[<%]\s*relref\s+[\"']([^\"']+)[\"']\s*[>%]}}")
+    link = re.compile(r'!?\[([^]\n]*)\]\(\s*(' + shortcode.pattern + r'|[^)\n]+)\s*\)')
+    code = re.compile(r'(?ms)^(`{3,}|~{3,})[^\n]*\n.*?^\1[^\n]*(?:\n|$)|(`+)[^`]*?\2')
+    def is_deleted(path):
+        return path == source or path.startswith(source + '/')
+    for relative, (metadata, body) in documents.items():
+        if is_deleted(relative):
+            continue
+        protected = [match.span() for match in code.finditer(body)]
+        def referenced(match):
+            reference = match[1].split('#', 1)[0]
+            candidate = posixpath.normpath(posixpath.join(str(Path(relative).parent), reference)).strip('/')
+            choices = [reference.strip('/')] if reference.startswith('/') else [candidate, reference.strip('/')]
+            resolved = relative if not reference else next((lookup[value] for value in choices if value in lookup), None)
+            return resolved is not None and is_deleted(resolved)
+        def replace(match):
+            if any(start <= match.start() < end for start, end in protected):
+                return match[0]
+            destination = match[2].strip()
+            ref = shortcode.fullmatch(destination)
+            if ref:
+                return match[1] if referenced(ref) else match[0]
+            destination = re.sub(r'\s+[\"\'][^\n]*[\"\']$', '', destination).strip('<>')
+            resolved = urlsplit(urljoin(document_url(relative, metadata), destination))
+            if resolved.netloc == urlsplit(ORIGIN).netloc and unquote(resolved.path).rstrip('/') in deleted_urls:
+                return match[1]
+            return match[0]
+        rewritten = link.sub(replace, body)
+        if any(referenced(match) for match in shortcode.finditer(rewritten)):
+            raise HTTPException(422, 'Cannot delete: unsupported reference in ' + relative + '; remove its link first')
+        if rewritten != body:
+            write_markdown(checked_path(relative), metadata, rewritten)
+
+
+def delete_node(data):
+    source = data.get('source')
+    def operation():
+        target = checked_path(source, section=True)
+        if not source or Path(source).name in ('_index.md', 'index.md'):
+            raise HTTPException(422, 'The root and section index cannot be deleted')
+        if source not in flatten_nodes(tree_nodes()):
+            raise HTTPException(404, 'Source not found')
+        if target.is_dir():
+            for path in target.rglob('*'):
+                if path.is_symlink() or not path.resolve().is_relative_to(target.resolve()):
+                    raise HTTPException(400, 'Symbolic links are not supported')
+                if any(part.startswith('.') for part in path.relative_to(target).parts):
+                    raise HTTPException(422, 'Hidden content paths are not supported')
+            unlink_deleted_references(source, target)
+            shutil.rmtree(target)
+        else:
+            unlink_deleted_references(source, target)
+            target.unlink()
+        parent = str(Path(source).parent)
+        renumber(tree_nodes('' if parent == '.' else parent))
+        return {'path': source, 'deleted': True}
+    return publish_structure(data, operation)
+
+
 @app.middleware('http')
 async def security(request: Request, call_next):
     if LIVE_MODE and request.method in ('GET', 'HEAD') and (request.url.path.startswith('/site/') or request.url.path == '/healthz'):
@@ -632,8 +714,8 @@ def batch(data: dict):
     operations = data.get('operations', [])
     if not isinstance(pages, list) or len(pages) > 100 or any(not isinstance(page, dict) for page in pages):
         raise HTTPException(422, 'Provide at most 100 pages')
-    if not isinstance(operations, list) or len(operations) > 100 or any(not isinstance(item, dict) or item.get('type') not in ('folder', 'move') for item in operations):
-        raise HTTPException(422, 'Provide at most 100 folder or move operations')
+    if not isinstance(operations, list) or len(operations) > 100 or any(not isinstance(item, dict) or item.get('type') not in ('folder', 'move', 'delete') for item in operations):
+        raise HTTPException(422, 'Provide at most 100 folder, move or delete operations')
     if not pages and not operations:
         raise HTTPException(422, 'Provide pages or structure operations')
     if operations and (not isinstance(data.get('tree_revision'), str) or not re.fullmatch(r'[a-f0-9]{40}', data['tree_revision'])):
@@ -678,15 +760,26 @@ def batch(data: dict):
             payload = dict(item, revision=content_revision())
             if item['type'] == 'folder':
                 create_folder(payload)
+            elif item['type'] == 'delete':
+                delete_node(payload)
+                source = item['source']
+                for result in results:
+                    if result['path'] == source or result['path'].startswith(source + '/'):
+                        result['deleted'] = True
             else:
                 move_node(payload)
                 source = item['source']
                 destination = '/'.join(filter(None, [item.get('target_parent', ''), Path(source).name]))
                 for result in results:
                     path = result['path']
-                    if path == source or path.startswith(source + '/'):
+                    if not result.get('deleted') and (path == source or path.startswith(source + '/')):
                         result['path'] = destination + path[len(source):]
         for result in results:
+            if result.get('deleted'):
+                deleted = {key: result[key] for key in ('original_path', 'path', 'deleted')}
+                result.clear()
+                result.update(deleted)
+                continue
             path = result['path']
             metadata, unused = parse(checked_path(path).read_text(encoding='utf-8'))
             result.update(read_page(path), url=document_url(path, metadata), commit=git('rev-parse', 'HEAD'))

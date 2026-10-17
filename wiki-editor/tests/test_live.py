@@ -362,3 +362,111 @@ class LiveTest(unittest.TestCase):
         self.assertEqual(self.page(), before)
         self.assertEqual(self.client.get('/api/editor/tree').json()['nodes'], [])
         self.assertFalse(self.live.pending())
+
+    def test_batch_delete_recursive_after_edit_and_move(self):
+        result = self.batch([{'slug': 'note', 'title': 'Note', 'body': 'Old'}], [
+            {'type': 'folder', 'slug': 'folder', 'title': 'Folder'},
+            {'type': 'move', 'source': 'note.md', 'target_parent': 'folder'},
+        ])
+        self.assertEqual(result.status_code, 200, result.text)
+        asset = self.api.WORK / 'wiki/content/folder/asset.png'
+        asset.write_bytes(b'asset')
+        self.api.raw_git('add', '.')
+        self.api.raw_git('-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', 'asset')
+        self.make_remote()
+        self.live.synchronize()
+        note = self.client.get('/api/editor/pages?path=folder/note.md').json()
+        with patch.object(self.live, 'build', wraps=self.live.build) as build:
+            result = self.batch([dict(note, body='Edited')], [
+                {'type': 'move', 'source': 'folder', 'target_parent': ''},
+                {'type': 'delete', 'source': 'folder'},
+            ])
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertEqual(build.call_count, 1)
+        self.assertEqual(result.json()['pages'], [{'original_path': 'folder/note.md', 'path': 'folder/note.md', 'deleted': True}])
+        self.assertFalse(asset.parent.exists())
+        self.assertEqual(result.json()['nodes'], [])
+        self.assertEqual(len(self.live.pending()), 1)
+        self.live.synchronize()
+        self.assertFalse((self.live.remote / 'wiki/content/folder').exists())
+        self.assertFalse(self.live.pending())
+
+    def test_create_edit_move_delete_one_batch(self):
+        result = self.batch([{'slug': 'note', 'title': 'Note', 'body': 'New'}], [
+            {'type': 'folder', 'slug': 'folder', 'title': 'Folder'},
+            {'type': 'move', 'source': 'note.md', 'target_parent': 'folder'},
+            {'type': 'delete', 'source': 'folder/note.md'},
+        ])
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertEqual(result.json()['pages'], [{'original_path': 'note.md', 'path': 'folder/note.md', 'deleted': True}])
+        self.assertEqual(result.json()['nodes'][0]['children'], [])
+
+    def test_invalid_delete_rolls_back_entire_batch(self):
+        for source in ('', '_index.md', '../wiki', '/tmp', 'missing', 'folder/_index.md'):
+            with self.subTest(source=source):
+                before = self.page()
+                result = self.batch([dict(before, body='Unaccepted')], [
+                    {'type': 'folder', 'slug': 'folder', 'title': 'Folder'},
+                    {'type': 'delete', 'source': source},
+                ])
+                self.assertIn(result.status_code, (400, 404, 422), result.text)
+                self.assertEqual(self.page(), before)
+                self.assertEqual(self.client.get('/api/editor/tree').json()['nodes'], [])
+                self.assertFalse(self.live.pending())
+
+    def test_delete_stale_tree_preserves_page(self):
+        self.assertEqual(self.batch([{'slug': 'note', 'title': 'Note', 'body': 'Keep'}], []).status_code, 200)
+        result = self.batch([], [{'type': 'delete', 'source': 'note.md'}], revision='0' * 40)
+        self.assertEqual(result.status_code, 409)
+        self.assertEqual(self.client.get('/api/editor/pages?path=note.md').json()['body'], 'Keep')
+
+    def test_delete_rejects_nested_asset_symlink(self):
+        self.assertEqual(self.batch([], [{'type': 'folder', 'slug': 'folder', 'title': 'Folder'}]).status_code, 200)
+        target = self.api.WORK / 'wiki/content/folder'
+        (target / 'asset').symlink_to(self.root / 'outside')
+        revision = self.api.content_revision()
+        result = self.batch([], [{'type': 'delete', 'source': 'folder'}], revision=revision)
+        self.assertIn(result.status_code, (400, 422), result.text)
+        self.assertTrue(target.exists())
+
+    def test_delete_unlinks_references_but_preserves_labels_and_code(self):
+        self.assertEqual(self.batch([{'slug': 'note', 'title': 'Note', 'body': 'Gone'}], []).status_code, 200)
+        body = '[Ref]({{< relref "note.md#part" >}}) [Plain](/note/) [Absolute](' + self.api.ORIGIN + '/note/) ` [Code](/note/) `\n\n```md\n[Fenced](/note/)\n```\n'
+        result = self.batch([dict(self.page(), body=body)], [{'type': 'delete', 'source': 'note.md'}])
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertEqual(self.page()['body'], 'Ref Plain Absolute ` [Code](/note/) `\n\n```md\n[Fenced](/note/)\n```\n')
+
+    def test_delete_unsupported_reference_rolls_back(self):
+        self.assertEqual(self.batch([{'slug': 'note', 'title': 'Note', 'body': 'Keep'}], []).status_code, 200)
+        before = self.page()
+        result = self.batch([dict(before, body='{{< relref "note.md" >}}')], [{'type': 'delete', 'source': 'note.md'}])
+        self.assertEqual(result.status_code, 422, result.text)
+        self.assertIn('unsupported reference in _index.md', result.json()['detail'])
+        self.assertEqual(self.page(), before)
+        self.assertEqual(self.client.get('/api/editor/pages?path=note.md').status_code, 200)
+
+    def test_delete_folder_unlinks_alias_relative_and_asset_links(self):
+        self.assertEqual(self.batch([{'slug': 'note', 'title': 'Note', 'body': 'Gone'}, {'slug': 'other', 'title': 'Other', 'body': 'Keep'}], [
+            {'type': 'folder', 'slug': 'folder', 'title': 'Folder'},
+            {'type': 'move', 'source': 'note.md', 'target_parent': 'folder'},
+        ]).status_code, 200)
+        asset = self.api.WORK / 'wiki/content/folder/image.png'
+        asset.write_bytes(b'image')
+        self.api.raw_git('add', '.')
+        self.api.raw_git('-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', 'asset')
+        other = self.client.get('/api/editor/pages?path=other.md').json()
+        result = self.batch([dict(other, body='[Alias](/note/) [Relative](../folder/note/) ![Picture](/folder/image.png) [Keep](https://example.com/folder/note/)')], [{'type': 'delete', 'source': 'folder'}])
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertEqual(self.client.get('/api/editor/pages?path=other.md').json()['body'], 'Alias Relative Picture [Keep](https://example.com/folder/note/)')
+
+    def test_delete_folder_with_spaced_unicode_asset_name(self):
+        self.assertEqual(self.batch([], [{'type': 'folder', 'slug': 'folder', 'title': 'Folder'}]).status_code, 200)
+        asset = self.api.WORK / 'wiki/content/folder/my image.png'
+        asset.write_bytes(b'image')
+        (asset.parent / 'картинка.png').write_bytes(b'image')
+        self.api.raw_git('add', '.')
+        self.api.raw_git('-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', 'assets')
+        result = self.batch([dict(self.page(), body='![Picture](/folder/my%20image.png)')], [{'type': 'delete', 'source': 'folder'}])
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertEqual(self.page()['body'], 'Picture')
+        self.assertFalse(asset.parent.exists())

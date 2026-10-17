@@ -24,7 +24,7 @@ function initialize() {
   const draftCount = () => {
     const drafts = workspace.drafts(); const count = drafts.length + workspace.operations().length; save.textContent = count ? `Опубликовать ${count}` : 'Опубликовать';
     draftsNav.replaceChildren();
-    for (const draft of drafts.filter(item=>item.creating && item.path!==path)) {
+    for (const draft of drafts.filter(item=>item.creating && item.path!==path && !workspace.isDeleted(item.path))) {
       const button = document.createElement('button'); button.type='button'; button.textContent=draft.title || 'Новая заметка';
       button.addEventListener('click',async()=>{if(busy || !stop(false))return;path=draft.path;await open(false);}); draftsNav.append(button);
     }
@@ -45,7 +45,7 @@ function initialize() {
   const dirty = () => editor && (creating || heading.textContent !== baselineTitle || JSON.stringify(editor.getJSON()) !== JSON.stringify(originalJSON));
   const setBusy = value => { busy = value; save.disabled = value; root.querySelector('[data-editor-cancel]').disabled = value; editor?.setEditable(!value, false); heading.contentEditable = editor && !value ? 'true' : 'false'; };
   const stash = () => {
-    if (!editor) return true;
+    if (!editor || workspace.isDeleted(path)) return true;
     try {
     if (dirty()) workspace.put({path, revision, title:heading.textContent, body:sourceBody(original,originalJSON,editor.getJSON(),editor.getMarkdown(),refs), creating, slug:fields?.querySelector('input')?.value || '', baseline:{title:baselineTitle,body:original,revision}});
     else workspace.remove(path);
@@ -70,6 +70,7 @@ function initialize() {
     heading.removeAttribute('aria-label');
     editbar.hidden = true; actions.hidden = false;
     document.body.classList.remove('wiki-editing');
+    structure?.render();
     message('');
     root.querySelector('[data-editor-open]')?.focus();
     return true;
@@ -104,6 +105,7 @@ function initialize() {
   }
   async function open(isNew, seed) {
     if (busy || editor) return;
+    if (workspace.isDeleted(path)) { location.assign('/'); return; }
     busy = true; generation++; publicationState.reset(); message('');
     try {
       creating = isNew;
@@ -137,7 +139,7 @@ function initialize() {
         fields.append(slugLabel); heading.parentElement.after(fields);
       }
       actions.hidden = true; editbar.hidden = false; document.body.classList.add('wiki-editing');
-      message(''); draftCount(); heading.focus();
+      message(''); draftCount(); structure?.render(); heading.focus();
     } catch (error) { message(error.message,true); }
     finally { busy = false; }
   }
@@ -182,11 +184,11 @@ function initialize() {
     try {
       const payload = {pages:batchPages(submitted),operations:workspace.operations()};
       if ((payload.operations.length || submitted.some(draft => draft.creating)) && structure) payload.tree_revision = await structure.ensureRevision();
-      const finalPath = workspace.virtualPath(path);
+      const finalPath = workspace.virtualPath(path), currentDeleted = workspace.isDeleted(path);
       const result = await api('/batch',payload);
       workspace.acknowledge(submitted,payload.operations);
       const index = submitted.findIndex(draft => draft.path === path);
-      if (index >= 0 && editor) {
+      if (index >= 0 && editor && !result.pages[index]?.deleted) {
         const saved = submitted[index], published = result.pages[index];
         path = published.path; revision = published.revision; original = saved.body; originalJSON = editor.getJSON(); baselineTitle = saved.title; creating = false;
         fields?.remove(); fields = null;
@@ -200,7 +202,7 @@ function initialize() {
       if (payload.operations.length) {
         const flatten = nodes => nodes.flatMap(node=>[node,...flatten(node.children || [])]);
         const current = flatten(result.nodes || []).find(node=>(node.page_path || node.id)===finalPath);
-        location.assign(current?.url || (finalPath === '_index.md' ? '/' : location.pathname)); return;
+        location.assign(currentDeleted ? '/' : current?.url || (finalPath === '_index.md' ? '/' : location.pathname)); return;
       }
     } catch(error) { message(error.message,true); }
     finally { setBusy(false); }
@@ -227,7 +229,7 @@ function initialize() {
     }, dirty:()=>busy, currentPath:()=>workspace.virtualPath(path), message, changed:async()=>{draftCount();if(fields?.querySelector('input'))fields.querySelector('input').disabled=workspace.slugLocked(path);structure?.render();}, openPage:async seed=>{
       if(editor && !stop(false))return;
       if(seed.draftPath){path=seed.draftPath;await open(false);}else await open(true,seed);
-    }, moved:()=>{draftCount();}, publication:commit=>publication(commit)}).then(value=>{structure=value;}).catch(error=>message(error.message,true));
+    }, removed:async()=>{ if (workspace.isDeleted(path)) { generation++; editor?.destroy(); editor=null; toolbar?.remove(); fields?.remove(); linkForm?.remove(); heading.removeAttribute('contenteditable'); location.assign('/'); } }, moved:()=>{draftCount();}, publication:commit=>publication(commit)}).then(value=>{structure=value;}).catch(error=>message(error.message,true));
     const mobile=document.querySelector('.mobile-actions');const media=matchMedia('(max-width: 900px)');
     const position=()=>{if(media.matches&&mobile)mobile.prepend(actions);else root.prepend(actions);};media.addEventListener('change',position);position();
   }).catch(()=>{});
