@@ -1,6 +1,6 @@
 ---
 title: "Подключение Pi и других агентов"
-weight: 30
+weight: 20
 ---
 
 Для Pi нужен отдельный [ключ LiteLLM]({{< relref "ai/api.md" >}}). Учётная запись Open WebUI для API не используется.
