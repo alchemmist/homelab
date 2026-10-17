@@ -89,7 +89,6 @@ class LiveWiki:
             self.fsync_tree(self.api.WORK / '.git')
             self.fsync_directory(self.api.WORK)
             self.fsync_directory(self.api.WORK.parent)
-            self.fsync_tree(destination)
             self.fsync_directory(destination.parent)
             link = self.root / 'next'
             link.unlink(missing_ok=True)

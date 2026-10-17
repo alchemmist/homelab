@@ -222,3 +222,23 @@ class LiveTest(unittest.TestCase):
             return subprocess.CompletedProcess(args, 0, '', '')
         with patch('live.subprocess.run', side_effect=render):
             self.real_build(self.live, destination)
+
+    def test_restart_rebuilds_missing_generated_files_from_durable_content(self):
+        response = self.update('Durably accepted')
+        self.assertEqual(response.status_code, 200, response.text)
+        publication = response.json()['commit']
+        rendered = self.live.current / 'public'
+        (rendered / 'index.html').write_text('Truncated')
+        (rendered / 'version.json').unlink()
+        self.live.started = False
+        self.live.initialize()
+        self.assertIn('Durably accepted', self.client.get('/site/').text)
+        self.assertEqual(self.page()['body'], 'Durably accepted')
+        self.assertEqual(self.client.get('/site/version.json').json()['source_sha'], publication)
+        self.assertEqual(len(self.live.pending()), 1)
+        self.assertEqual(self.live.pending()[0][1]['commit'], publication)
+        shutil.rmtree(self.live.current / 'public')
+        self.live.started = False
+        self.live.initialize()
+        self.assertIn('Durably accepted', self.client.get('/site/').text)
+        self.assertEqual(len(self.live.pending()), 1)
