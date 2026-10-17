@@ -1,4 +1,4 @@
-export async function initializeTree({api, dirty, openPage, currentPath, moved, changed = async () => {}, message, publication}) {
+export async function initializeTree({api, dirty, structureDirty = dirty, openPage, currentPath, moved, changed = async () => {}, message, publication}) {
   const nav = document.querySelector('.page-tree');
   if (!nav) return;
   const pendingLinks = new Map();
@@ -9,9 +9,9 @@ export async function initializeTree({api, dirty, openPage, currentPath, moved, 
   };
   const flatten = nodes => nodes.flatMap(node => [node, ...flatten(node.children || [])]);
   const parentOf = id => id.includes('/') ? id.slice(0, id.lastIndexOf('/')) : '';
-  const guard = () => {
+  const guard = (structure = true) => {
     if (pending) return false;
-    if (dirty()) { error('Сначала опубликуйте или отмените правки заметки.'); return false; }
+    if (dirty() || structure && structureDirty()) { error('Опубликуйте или отмените правки wiki перед изменением структуры.'); return false; }
     message(''); return true;
   };
   function loadTree() {
@@ -212,7 +212,7 @@ export async function initializeTree({api, dirty, openPage, currentPath, moved, 
   function mountToolbar() {
     const root=document.createElement('div');root.className='wiki-tree-root';
     root.append(
-      iconButton('Новая заметка',['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z','M14 2v6h6','M12 12v6','M9 15h6'],async()=>{if(guard()){chooser?.remove();await openPage({parent:'',title:'Новая заметка',slug:''});}}),
+      iconButton('Новая заметка',['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z','M14 2v6h6','M12 12v6','M9 15h6'],async()=>{if(guard(false)){chooser?.remove();await openPage({parent:'',title:'Новая заметка',slug:''});}}),
       iconButton('Новая папка',['M20 20H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5l2 2h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2Z','M12 10v6','M9 13h6'],()=>createFolder(root))
     );
     root.addEventListener('dragover',event=>{if(dragging){event.preventDefault();clearDrop();root.dataset.drop='inside';}});

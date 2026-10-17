@@ -7,11 +7,11 @@ globalThis.requestAnimationFrame = callback => setTimeout(callback, 16);
 globalThis.cancelAnimationFrame = clearTimeout;
 
 const fixture = () => ({revision:'r1',nodes:[{id:'ai',title:'AI',kind:'folder',url:'/ai/',children:[{id:'ai/chat.md',title:'Chat',kind:'page',url:'/ai/chat/'}]}]});
-async function setup(isDirty=false) {
+async function setup(isDirty=false, structureDirty=isDirty) {
   const dom=new JSDOM('<nav class="page-tree"><a class="overview">Обзор</a><ul class="nav-root"><li>Static</li></ul></nav>',{url:'https://wiki.example/'});
   globalThis.document=dom.window.document;globalThis.Option=dom.window.Option;
   const calls=[],messages=[],moves=[],events=[];let seed;const data=fixture();let resolvePublication;
-  const controller=await initializeTree({api:async (endpoint,payload)=>{calls.push({endpoint,data:payload});return {...data,commit:'c1'};},dirty:()=>isDirty,currentPath:()=> 'ai/chat.md',openPage:async value=>{seed=value;},moved:(source,target)=>{moves.push({source,target});events.push('moved');},changed:async()=>events.push('changed'),message:text=>messages.push(text),publication:()=>new Promise(resolve=>{resolvePublication=resolve;})});
+  const controller=await initializeTree({api:async (endpoint,payload)=>{calls.push({endpoint,data:payload});return {...data,commit:'c1'};},dirty:()=>isDirty,structureDirty:()=>structureDirty,currentPath:()=> 'ai/chat.md',openPage:async value=>{seed=value;},moved:(source,target)=>{moves.push({source,target});events.push('moved');},changed:async()=>events.push('changed'),message:text=>messages.push(text),publication:()=>new Promise(resolve=>{resolvePublication=resolve;})});
   await controller.ready;
   return {dom,calls,messages,moves,events,data,controller,publish:()=>resolvePublication(true),getSeed:()=>seed};
 }
@@ -43,7 +43,7 @@ test('folder creation carries tree revision and always targets root',async()=>{
 test('dirty article blocks new notes, folders and dragging',async()=>{
   const state=await setup(true);click('Новая папка');click('Новая заметка');
   drag(state,'ai/chat.md',document.querySelector('.wiki-tree-root'));await tick();
-  assert.equal(state.getSeed(),undefined);assert.equal(state.calls.length,1);assert.equal(document.querySelector('.wiki-tree-create'),null);assert.match(state.messages.at(-1),/опубликуйте/);
+  assert.equal(state.getSeed(),undefined);assert.equal(state.calls.length,1);assert.equal(document.querySelector('.wiki-tree-create'),null);assert.match(state.messages.at(-1),/опубликуйте/i);
 });
 test('drag to root moves note with revision and updates article path',async()=>{
   const state=await setup();drag(state,'ai/chat.md',document.querySelector('.wiki-tree-root'));await tick();
@@ -158,4 +158,15 @@ test('hover opens a closed folder without replacing the active drag nodes',async
   assert.equal(children.hidden,false);assert.equal(document.querySelector('[data-node-id="help"] > .nav-row'),target);
   pointerEvent(state,'pointercancel',source,20,116);
   assert.equal(state.calls.filter(c=>c.endpoint==='/move').length,0);
+});
+
+test('workspace drafts block structural mutations but allow adding another draft and navigation',async()=>{
+  const state=await setup(false,true);click('Новая папка');
+  assert.equal(document.querySelector('.wiki-tree-create'),null);
+  click('Новая заметка');await tick();assert.equal(state.getSeed().title,'Новая заметка');
+  const event=new state.dom.window.MouseEvent('click',{bubbles:true,cancelable:true});
+  document.querySelector('[data-node-id="ai/chat.md"] a').dispatchEvent(event);
+  assert.equal(event.defaultPrevented,false);
+  drag(state,'ai/chat.md',document.querySelector('.wiki-tree-root'));await tick();
+  assert.equal(state.calls.length,1);assert.match(state.messages.at(-1),/структуры/);
 });

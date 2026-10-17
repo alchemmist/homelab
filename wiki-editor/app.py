@@ -27,6 +27,8 @@ SESSIONS = {}
 SESSION_LOCK = threading.Lock()
 MAX_BODY = 262144
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+LIVE_MODE = os.getenv('LIVE_MODE', '').lower() in ('1', 'true', 'yes')
+LIVE = None
 
 
 @app.exception_handler(RuntimeError)
@@ -50,7 +52,13 @@ def git(*args, cwd=None):
     return result.stdout.strip()
 
 
+raw_git = git
+
+
 def sync():
+    if LIVE_MODE:
+        LIVE.initialize()
+        return
     if not (WORK / '.git').exists():
         WORK.parent.mkdir(parents=True, exist_ok=True)
         git('clone', '--branch', BRANCH, '--single-branch', '--', REPO, str(WORK), cwd=WORK.parent)
@@ -461,6 +469,8 @@ def move_node(data: dict):
 
 @app.middleware('http')
 async def security(request: Request, call_next):
+    if LIVE_MODE and request.method in ('GET', 'HEAD') and (request.url.path.startswith('/site/') or request.url.path == '/healthz'):
+        return await call_next(request)
     if not GATEWAY_TOKEN or not hmac.compare_digest(GATEWAY_TOKEN, request.headers.get('x-socrat-editor-key', '')):
         return Response(status_code=403)
     try:
@@ -586,6 +596,14 @@ def preview(data: dict):
 
 @app.get('/api/editor/publications/{commit}')
 def publication(commit: str):
+    if LIVE_MODE:
+        if not re.fullmatch(r'[a-f0-9]{40}', commit):
+            raise HTTPException(400, 'Invalid publication')
+        path = LIVE.root / 'snapshots' / commit / 'state.json'
+        if not path.is_file():
+            raise HTTPException(404, 'Publication not found')
+        state = json.loads(path.read_text())
+        return {'status': 'published', 'url': ORIGIN + '/', 'git_status': 'pending' if state['pending'] else 'synced', 'git_error': state.get('error')}
     if not re.fullmatch(r'[a-f0-9]{40}', commit):
         raise HTTPException(400, 'Invalid commit')
     try:
@@ -606,3 +624,64 @@ def publication(commit: str):
     except Exception:
         status = 'pending'
     return {'status': status, 'url': ORIGIN + '/'}
+
+
+@app.post('/api/editor/batch')
+def batch(data: dict):
+    pages = data.get('pages')
+    if not isinstance(pages, list) or not pages or len(pages) > 100 or any(not isinstance(page, dict) for page in pages):
+        raise HTTPException(422, 'Provide between 1 and 100 pages')
+    if not LIVE_MODE:
+        raise HTTPException(503, 'Workspace publication requires live mode')
+    def operation():
+        if data.get('tree_revision') and data['tree_revision'] != content_revision():
+            raise HTTPException(409, 'Wiki structure or content changed')
+        results = []
+        paths = set()
+        for page in pages:
+            path = page.get('path') or '/'.join(filter(None, [page.get('section', ''), str(page.get('slug', '')) + '.md']))
+            if path in paths:
+                raise HTTPException(422, 'Duplicate page in workspace')
+            paths.add(path)
+            results.append(save(page, create='path' not in page))
+        results = [dict(result, revision=read_page(result['path'])['revision']) for result in results]
+        return {'pages': results, 'url': ORIGIN + '/'}
+    return LIVE.transaction(operation)()
+
+
+@app.get('/api/editor/sync')
+def sync_status():
+    if not LIVE_MODE:
+        return {'mode': 'git'}
+    with LOCK:
+        pending = LIVE.pending()
+        path = LIVE.root / 'sync.json'
+        state = json.loads(path.read_text()) if path.exists() else {}
+        return {'mode': 'live', 'pending': len(pending), 'error': next((item['error'] for path, item in pending if item.get('error')), state.get('error')), 'last_attempt': state.get('time')}
+
+
+@app.api_route('/site/{path:path}', methods=['GET', 'HEAD'])
+def live_site(path: str):
+    if not LIVE_MODE:
+        raise HTTPException(404)
+    return LIVE.file(path)
+
+
+@app.get('/healthz')
+def health():
+    if not LIVE_MODE or not LIVE or not LIVE.started:
+        raise HTTPException(503)
+    return {'ready': True}
+
+
+if LIVE_MODE:
+    import sys
+    from live import LiveWiki
+    LIVE = LiveWiki(sys.modules[__name__])
+    save = LIVE.transaction(save)
+    publish_structure = LIVE.transaction(publish_structure)
+    def git(*args, cwd=None):
+        if args and args[0] == 'push':
+            return ''
+        return raw_git(*args, cwd=cwd)
+    app.add_event_handler('startup', LIVE.start)

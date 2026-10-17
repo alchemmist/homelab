@@ -50,3 +50,7 @@
 .wiki-tree-drag-hint[hidden] { display: none; }
 
 .page-tree[aria-busy="true"] .wiki-tree-row, .page-tree[aria-busy="true"] .wiki-tree-row > * { cursor: progress; }
+
+.wiki-workspace-drafts { display: inline-flex; gap: .25rem; align-items: center; max-width: 35vw; overflow-x: auto; }
+.wiki-workspace-drafts:empty { display: none; }
+.wiki-workspace-drafts button { white-space: nowrap; max-width: 12rem; overflow: hidden; text-overflow: ellipsis; }
