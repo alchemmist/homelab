@@ -49,32 +49,24 @@ export async function initializeTree({api, dirty, openPage, currentPath, moved, 
     const result = await mutate('/move', {source, target_parent, before});
     if (result) { moved(source, target_parent ? target_parent + '/' + source.split('/').pop() : source.split('/').pop()); render(); await changed(); }
   }
-  function create(parent, anchor) {
+  function createFolder(anchor) {
     if (!guard()) return;
     chooser?.remove(); chooser = document.createElement('div'); chooser.className = 'wiki-tree-create';
-    const select = document.createElement('select'); select.setAttribute('aria-label','Тип нового элемента'); select.append(new Option('Заметка','page'), new Option('Папка','folder'));
-    const title = document.createElement('input'); title.placeholder = 'Название'; title.setAttribute('aria-label','Название нового элемента'); title.maxLength = 200;
-    const slug = document.createElement('input'); slug.placeholder = 'adres-latinicey'; slug.setAttribute('aria-label','Адрес нового элемента');
-    const submit = button('Создать','Создать элемент', async () => {
+    const title = document.createElement('input'); title.placeholder = 'Название папки'; title.setAttribute('aria-label','Название новой папки'); title.maxLength = 200;
+    const slug = document.createElement('input'); slug.placeholder = 'adres-latinicey'; slug.setAttribute('aria-label','Адрес новой папки');
+    const submit = button('Создать','Создать папку', async () => {
       if (!title.value.trim() || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug.value)) { error('Укажите название и адрес: латинские буквы, цифры, дефисы.'); return; }
-      if (select.value === 'page') { const values={parent,title:title.value.trim(),slug:slug.value,treeRevision:tree.revision}; chooser.remove(); await openPage(values); }
-      else { expanded.add(parent); const result=await mutate('/folders',{parent,title:title.value.trim(),slug:slug.value}); if(result)await changed(); }
+      const result = await mutate('/folders',{parent:'',title:title.value.trim(),slug:slug.value});
+      if (result) await changed();
     });
-    chooser.append(select,title,slug,submit,button('×','Отменить создание',()=>chooser.remove())); anchor.after(chooser); title.focus();
+    chooser.append(title,slug,submit,button('×','Отменить создание',()=>chooser.remove())); anchor.after(chooser); title.focus();
   }
-  function moveMenu(node, anchor) {
-    if (!guard()) return;
-    chooser?.remove(); chooser=document.createElement('div'); chooser.className='wiki-tree-create';
-    const target=document.createElement('select'); target.setAttribute('aria-label','Папка назначения'); target.append(new Option('Корень',''));
-    for(const folder of flatten(tree.nodes).filter(n=>n.kind==='folder' && n.id!==node.id && !n.id.startsWith(node.id+'/'))) target.append(new Option(folder.title+' / '+folder.id,folder.id));
-    target.value=parentOf(node.id);
-    chooser.append(target,button('Переместить','Переместить в папку',()=>move(node.id,target.value)),button('↑','Переместить выше',()=>{
-      const siblings=parentOf(node.id) ? flatten(tree.nodes).find(n=>n.id===parentOf(node.id)).children : tree.nodes;
-      const index=siblings.findIndex(n=>n.id===node.id); if(index>0) move(node.id,parentOf(node.id),siblings[index-1].id);
-    }),button('↓','Переместить ниже',()=>{
-      const siblings=parentOf(node.id) ? flatten(tree.nodes).find(n=>n.id===parentOf(node.id)).children : tree.nodes;
-      const index=siblings.findIndex(n=>n.id===node.id); if(index<siblings.length-1) move(node.id,parentOf(node.id),siblings[index+2]?.id || null);
-    }),button('×','Закрыть перемещение',()=>chooser.remove())); anchor.after(chooser); target.focus();
+  function iconButton(label, paths, action) {
+    const el = button('', label, action);
+    const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+    for (const [key,value] of Object.entries({width:'18',height:'18',viewBox:'0 0 24 24',fill:'none',stroke:'currentColor','stroke-width':'1.5','stroke-linecap':'round','stroke-linejoin':'round','aria-hidden':'true'})) svg.setAttribute(key,value);
+    for (const d of paths) { const path = document.createElementNS('http://www.w3.org/2000/svg','path'); path.setAttribute('d',d); svg.append(path); }
+    el.append(svg); return el;
   }
   function clearDrop() { nav.querySelectorAll('[data-drop]').forEach(el=>delete el.dataset.drop); }
   function dropTarget(row,node,siblings) {
@@ -86,7 +78,7 @@ export async function initializeTree({api, dirty, openPage, currentPath, moved, 
     row.addEventListener('drop',event=>{
       event.preventDefault();event.stopPropagation();const where=position(event);clearDrop();
       if(!dragging)return;
-      const source=dragging;dragging='';
+      const source=dragging;dragging='';nav.classList.remove('wiki-tree-dragging');
       if(where==='inside') { expanded.add(node.id); move(source,node.id); }
       else move(source,parentOf(node.id),where==='before' ? node.id : siblings[siblings.indexOf(node)+1]?.id || null);
     });
@@ -96,8 +88,8 @@ export async function initializeTree({api, dirty, openPage, currentPath, moved, 
     for(const node of nodes) {
       const li=document.createElement('li');li.className='nav-item'+(node.kind==='folder'?' nav-section':'');li.dataset.nodeId=node.id;
       const row=document.createElement('div');row.className='nav-row wiki-tree-row';row.draggable=true;
-      row.addEventListener('dragstart',event=>{if(!guard()){event.preventDefault();return;} dragging=node.id;event.dataTransfer.setData('text/plain',node.id);event.dataTransfer.effectAllowed='move';});
-      row.addEventListener('dragend',()=>{dragging='';clearDrop();});
+      row.addEventListener('dragstart',event=>{if(!guard()){event.preventDefault();return;} dragging=node.id;nav.classList.add('wiki-tree-dragging');event.dataTransfer.setData('text/plain',node.id);event.dataTransfer.effectAllowed='move';});
+      row.addEventListener('dragend',()=>{dragging='';nav.classList.remove('wiki-tree-dragging');clearDrop();});
       if(node.kind==='folder') {
         const toggle=button('', 'Раскрыть '+node.title,()=>{expanded.has(node.id)?expanded.delete(node.id):expanded.add(node.id);render();});
         toggle.className='tree-toggle wiki-tree-folder'; toggle.setAttribute('aria-expanded',String(expanded.has(node.id)));
@@ -106,22 +98,24 @@ export async function initializeTree({api, dirty, openPage, currentPath, moved, 
         const chevron=document.createElementNS('http://www.w3.org/2000/svg','path');chevron.setAttribute('d','m9 5 7 7-7 7');svg.append(chevron);
         const label=document.createElement('span');label.textContent=node.title;toggle.append(svg,label);row.append(toggle);
       } else {
-        const link=document.createElement('a');link.href=pendingLinks.get(node.id) || node.url;link.textContent=node.title;
+        const link=document.createElement('a');link.draggable=false;link.href=pendingLinks.get(node.id) || node.url;link.textContent=node.title;
         if((node.page_path || node.id)===currentPath())link.setAttribute('aria-current','page');
         if(pendingLinks.has(node.id) && !pendingLinks.get(node.id)) {link.removeAttribute('href');link.setAttribute('aria-disabled','true');link.title='Ожидает публикации';}
         link.addEventListener('click',event=>{if(!link.hasAttribute('href')){event.preventDefault();return;}if(dirty()){event.preventDefault();error('Сначала опубликуйте или отмените правки заметки.');}});row.append(link);
       }
-      const controls=document.createElement('span');controls.className='wiki-tree-controls';
-      if(node.kind==='folder')controls.append(button('+','Добавить в '+node.title,()=>create(node.id,row)));
-      controls.append(button('⋮','Переместить '+node.title,()=>moveMenu(node,row)));row.append(controls);li.append(row);dropTarget(row,node,nodes);
+      li.append(row);dropTarget(row,node,nodes);
       if(node.children?.length){const children=list(node.children,depth+1);children.hidden=!expanded.has(node.id);li.append(children);}ul.append(li);
     }return ul;
   }
   function render() {
     nav.querySelector('.nav-root')?.remove();nav.querySelector('.wiki-tree-root')?.remove();chooser?.remove();
-    const root=document.createElement('div');root.className='wiki-tree-root';root.append(button('+','Добавить в корень',()=>create('',root)));
+    const root=document.createElement('div');root.className='wiki-tree-root';
+    root.append(
+      iconButton('Новая заметка',['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z','M14 2v6h6','M12 12v6','M9 15h6'],async()=>{if(guard()){chooser?.remove();await openPage({parent:'',title:'Новая заметка',slug:''});}}),
+      iconButton('Новая папка',['M20 20H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5l2 2h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2Z','M12 10v6','M9 13h6'],()=>createFolder(root))
+    );
     root.addEventListener('dragover',event=>{if(dragging){event.preventDefault();clearDrop();root.dataset.drop='inside';}});
-    root.addEventListener('drop',event=>{event.preventDefault();const source=dragging;dragging='';clearDrop();if(source)move(source,'');});nav.append(root,list(tree.nodes));
+    root.addEventListener('drop',event=>{event.preventDefault();const source=dragging;dragging='';nav.classList.remove('wiki-tree-dragging');clearDrop();if(source)move(source,'');});nav.append(root,list(tree.nodes));
   }
   tree=await api('/tree'); for(const node of flatten(tree.nodes))if(node.kind==='folder' && currentPath().startsWith(node.id+'/'))expanded.add(node.id);render();
   return {refresh, revision:()=>tree.revision};

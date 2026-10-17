@@ -78,7 +78,6 @@ function initialize() {
       creating = isNew;
       const page = creating ? {title:seed?.title || 'Новая заметка',body:'',revision:''} : await api('/pages?path=' + encodeURIComponent(path));
       const prepared = prepareMarkdown(page.body);
-      const catalog = creating ? await api('/catalog') : null;
       original = page.body; refs = prepared.refs; revision = page.revision;
       article.replaceChildren(); article.classList.add('wiki-rich-editor');
       editor = new Editor({element: article, extensions: extensions(), content: prepared.prepared, contentType:'markdown', editorProps:{
@@ -91,13 +90,9 @@ function initialize() {
       addToolbar();
       if (creating) {
         fields = document.createElement('div'); fields.className = 'wiki-new-fields';
-        const sectionLabel = document.createElement('label'); sectionLabel.textContent = 'Раздел';
-        const section = document.createElement('select'); section.name = 'section'; for (const item of catalog.sections) section.append(new Option(item.title,item.path));
-        const current = seed?.parent ?? (path.includes('/') ? path.slice(0,path.lastIndexOf('/')) : ''); if ([...section.options].some(option => option.value === current)) section.value = current;
-        sectionLabel.append(section);
         const slugLabel = document.createElement('label'); slugLabel.textContent = 'Адрес: латинские буквы, цифры, дефисы';
         const slug = document.createElement('input'); slug.name = 'slug'; slug.placeholder = 'new-note'; slug.value = seed?.slug || ''; slugLabel.append(slug);
-        fields.append(sectionLabel,slugLabel); heading.parentElement.after(fields);
+        fields.append(slugLabel); heading.parentElement.after(fields);
       }
       actions.hidden = true; editbar.hidden = false; document.body.classList.add('wiki-editing');
       message(''); heading.focus();
@@ -133,7 +128,7 @@ function initialize() {
     if (!title || title.length>200) { message('Укажите заголовок длиной до 200 символов.',true); heading.focus(); return; }
     const body = sourceBody(original,originalJSON,editor.getJSON(),editor.getMarkdown(),refs);
     const payload = {title,body};
-    if (creating) { payload.tree_revision=structure?.revision(); payload.section=fields.querySelector('select').value; payload.slug=fields.querySelector('input').value.trim(); if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(payload.slug)) { message('В адресе используйте латинские буквы, цифры и дефисы.',true); return; } }
+    if (creating) { payload.tree_revision=structure?.revision(); payload.section=''; payload.slug=fields.querySelector('input').value.trim(); if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(payload.slug)) { message('В адресе используйте латинские буквы, цифры и дефисы.',true); return; } }
     else Object.assign(payload,{path,revision});
     setBusy(true); message('');
     try {
@@ -147,7 +142,6 @@ function initialize() {
   heading.addEventListener('keydown', event => { if (editor && event.key==='Enter') {event.preventDefault();editor.commands.focus('start');} });
   heading.addEventListener('paste', event => { if (!editor) return; event.preventDefault(); document.execCommand('insertText',false,event.clipboardData.getData('text/plain').replace(/\s*\n\s*/g,' ')); });
   root.querySelector('[data-editor-open]').addEventListener('click',()=>open(false));
-  root.querySelector('[data-editor-new]').addEventListener('click',()=>open(true));
   root.querySelector('[data-editor-cancel]').addEventListener('click',stop);
   window.addEventListener('beforeunload',event=>{if(dirty()){event.preventDefault();event.returnValue='';}});
   api('/session').then(session=>{
