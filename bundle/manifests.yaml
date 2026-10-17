@@ -72,7 +72,7 @@ spec:
         - name: ghcr-pull
       containers:
         - name: editor
-          image: "ghcr.io/alchemmist/socrat-wiki-editor@sha256:d8685cfa36100f02f93594c96bef41d2bc8f44fb64ef462e8415d792871c90db"
+          image: "ghcr.io/alchemmist/socrat-wiki-editor@sha256:daf4ab626b26516ae3cf69833d9b5d337c328640fb911312080d9c929d1d6f71"
           ports:
             - name: http
               containerPort: 8080
