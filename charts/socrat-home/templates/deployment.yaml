@@ -19,7 +19,7 @@ spec:
     metadata:
       {{- if .Values.homepageIndex.enabled }}
       annotations:
-        checksum/homepage-index: {{ .Files.Get "files/index.html" | sha256sum }}
+        checksum/homepage-index: {{ printf "%s:%s" (.Files.Get "files/index.html" | sha256sum) (.Files.Get "files/wallpaper.webp" | sha256sum) | sha256sum }}
       {{- end }}
       labels:
         app: {{ .Release.Name }}
@@ -67,6 +67,10 @@ spec:
             - name: homepage-index
               mountPath: /usr/share/nginx/html/index.html
               subPath: index.html
+              readOnly: true
+            - name: homepage-index
+              mountPath: /usr/share/nginx/html/wallpaper.webp
+              subPath: wallpaper.webp
               readOnly: true
           {{- end }}
           resources:
