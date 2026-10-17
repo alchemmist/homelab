@@ -65,15 +65,10 @@ class LiveWiki:
         return self.api.raw_git('-c', 'user.name=Socrat Wiki', '-c', 'user.email=wiki@alchemmist.xyz', 'commit', '-m', message)
 
     def build(self, destination):
-        site = destination / 'source'
-        excluded = {'content', 'public', 'resources', '.git', 'node_modules'}
-        shutil.copytree(self.template, site, ignore=lambda directory, names: excluded.intersection(names) if Path(directory) == self.template else [])
-        shutil.copytree(self.api.WORK / self.api.PREFIX, site / 'content')
-        env = dict(os.environ, HUGO_MODULE_PROXY='off', GOPROXY='off', HUGO_CACHEDIR=str(self.root / 'hugo-cache'))
-        result = subprocess.run([os.getenv('HUGO_BINARY', 'hugo'), '--source', str(site), '--destination', str(destination / 'public'), '--baseURL', self.api.ORIGIN + '/', '--noBuildLock'], env=env, capture_output=True, text=True, timeout=60)
+        env = dict(os.environ, HUGO_MODULE_PROXY='off', GOPROXY='off', HUGO_CACHEDIR=str(self.root / 'hugo-cache'), HUGO_RESOURCEDIR=str(self.root / 'hugo-resources'))
+        result = subprocess.run([os.getenv('HUGO_BINARY', 'hugo'), '--source', str(self.template), '--contentDir', str(self.api.WORK / self.api.PREFIX), '--destination', str(destination / 'public'), '--baseURL', self.api.ORIGIN + '/', '--noBuildLock'], env=env, capture_output=True, text=True, timeout=60)
         if result.returncode:
             raise HTTPException(422, 'Wiki cannot be published: ' + result.stderr[-1500:])
-        shutil.rmtree(site)
 
     def publish(self, base, commit, pending=True):
         destination = self.root / 'snapshots' / commit
@@ -191,7 +186,7 @@ class LiveWiki:
             valid = False
         if not valid:
             raise HTTPException(404)
-        return FileResponse(target, headers={'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'})
+        return FileResponse(target, media_type='font/woff2' if target.suffix == '.woff2' else None, headers={'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'})
 
     def pending(self):
         states = []

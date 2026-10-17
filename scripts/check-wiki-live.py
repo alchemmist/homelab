@@ -5,6 +5,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 
 
 parser = argparse.ArgumentParser()
@@ -49,23 +50,26 @@ headers.update({
     'Origin': 'https://wiki.alchemmist.xyz',
     'Content-Type': 'application/json',
 })
-pages = []
-for index, path in enumerate(('_index.md', 'start/edit-wiki.md')):
-    status, _, body = request('/api/editor/pages?path=' + urllib.parse.quote(path), headers=headers)
-    assert status == 200, (status, body)
-    page = json.loads(body)
-    page['body'] += '\n\nLive runtime smoke marker ' + str(index) + '\n'
-    pages.append(page)
+status, _, body = request('/api/editor/pages?path=_index.md', headers=headers)
+assert status == 200, (status, body)
+page = json.loads(body)
+page['body'] += '\n\nLive runtime smoke marker 0\n'
+suffix = uuid.uuid4().hex
+folder = 'runtime-smoke-' + suffix
+slug = 'runtime-note-' + suffix
+pages = [page, {'section': '', 'slug': slug, 'title': 'Runtime smoke', 'body': 'Live runtime smoke marker 1'}]
 status, _, body = request('/api/editor/tree', headers=headers)
 assert status == 200, (status, body)
 operations = [
-    {'type': 'folder', 'parent': '', 'slug': 'runtime-smoke', 'title': 'Runtime smoke'},
-    {'type': 'move', 'source': 'start/edit-wiki.md', 'target_parent': 'runtime-smoke', 'before': None},
+    {'type': 'folder', 'parent': '', 'slug': folder, 'title': 'Runtime smoke'},
+    {'type': 'move', 'source': slug + '.md', 'target_parent': folder, 'before': None},
 ]
 status, _, body = request('/api/editor/batch', {'pages': pages, 'operations': operations, 'tree_revision': json.loads(body)['revision']}, headers)
 assert status == 200, (status, body)
-assert json.loads(body)['pages'][1]['path'] == 'runtime-smoke/edit-wiki.md'
-for index, (path, url) in enumerate((('_index.md', '/site/'), ('runtime-smoke/edit-wiki.md', '/site/runtime-smoke/edit-wiki/'))):
+created_path = folder + '/' + slug + '.md'
+created_url = '/site/' + folder + '/' + slug + '/'
+assert json.loads(body)['pages'][1]['path'] == created_path
+for index, (path, url) in enumerate((('_index.md', '/site/'), (created_path, created_url))):
     marker = 'Live runtime smoke marker ' + str(index)
     status, _, html = request(url)
     assert status == 200 and marker in html, (status, url)
@@ -75,9 +79,9 @@ assert request('/api/editor/pages?path=_index.md')[0] == 403
 assert request('/site/')[1].get('Cache-Control') == 'no-store'
 status, _, body = request('/api/editor/tree', headers=headers)
 assert status == 200, (status, body)
-status, _, body = request('/api/editor/batch', {'pages': [], 'operations': [{'type': 'delete', 'source': 'runtime-smoke'}], 'tree_revision': json.loads(body)['revision']}, headers)
+status, _, body = request('/api/editor/batch', {'pages': [], 'operations': [{'type': 'delete', 'source': folder}], 'tree_revision': json.loads(body)['revision']}, headers)
 assert status == 200, (status, body)
-assert request('/site/runtime-smoke/edit-wiki/')[0] == 404
-assert request('/api/editor/pages?path=runtime-smoke/edit-wiki.md', headers=headers)[0] == 404
+assert request(created_url)[0] == 404
+assert request('/api/editor/pages?path=' + created_path, headers=headers)[0] == 404
 assert 'Live runtime smoke marker 0' in request('/site/')[2]
 print('Real Hugo runtime: private API, atomic edit/move/delete publication and immediate HTML reload passed')
