@@ -29,7 +29,7 @@ function initialize() {
     return result;
   };
   const dirty = () => editor && (creating || heading.textContent !== baselineTitle || JSON.stringify(editor.getJSON()) !== JSON.stringify(originalJSON));
-  const setBusy = value => { busy = value; save.disabled = value; root.querySelector('[data-editor-cancel]').disabled = value; editor?.setEditable(!value); heading.contentEditable = editor && !value ? 'true' : 'false'; };
+  const setBusy = value => { busy = value; save.disabled = value; root.querySelector('[data-editor-cancel]').disabled = value; editor?.setEditable(!value, false); heading.contentEditable = editor && !value ? 'true' : 'false'; };
   const stop = () => {
     if (busy || dirty() && !confirm('Отменить несохранённые изменения?')) return;
     generation++;
