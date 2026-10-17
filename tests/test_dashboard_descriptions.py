@@ -10,6 +10,17 @@ SPEC.loader.exec_module(DESCRIPTIONS)
 
 
 class DashboardDescriptionsTest(unittest.TestCase):
+    def test_pending_readiness_description_uses_the_actual_confirmation_period(self):
+        rule = {'alert': 'KubePodNotReady', 'expr': 'example > 0', 'for': '5m',
+                'annotations': {'description': 'Already unready for 15 minutes.', 'rancher_url': 'https://example.test/pod'}}
+        resource = {'kind': 'PrometheusRule', 'spec': {'groups': [{'rules': [rule]}]}}
+        DESCRIPTIONS.apply_alert_descriptions(resource)
+        self.assertIn('becomes Firing after 5m', rule['annotations']['description'])
+        self.assertNotIn('15 minutes', rule['annotations']['description'])
+        self.assertEqual(rule['annotations']['rancher_url'], 'https://example.test/pod')
+        self.assertEqual(rule['expr'], 'example > 0')
+        self.assertEqual(rule['for'], '5m')
+
     def test_nested_panels_get_descriptions_without_changing_queries(self):
         target = {'expr': 'up{job="example"}'}
         dashboard = {'uid': 'example', 'panels': [

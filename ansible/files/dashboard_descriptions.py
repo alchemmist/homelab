@@ -9,6 +9,22 @@ PANEL_UNITS = {
     '6be0s85Mk': {4: 's'},
     'vkQ0UHxik': {22: 'short'},
 }
+READINESS_SUBJECTS = {
+    'KubePodNotReady': 'Pod {{ $labels.namespace }}/{{ $labels.pod }}',
+    'KubeNodeNotReady': 'Node {{ $labels.node }}',
+}
+
+
+def apply_alert_descriptions(resource):
+    if not isinstance(resource, dict) or resource.get('kind') != 'PrometheusRule':
+        return
+    for group in resource.get('spec', {}).get('groups', []):
+        for rule in group.get('rules', []):
+            subject = READINESS_SUBJECTS.get(rule.get('alert'))
+            if subject:
+                annotations = rule.setdefault('annotations', {})
+                annotations['summary'] = subject.split()[0] + ' is not ready.'
+                annotations['description'] = subject + ' is not Ready. The alert becomes Firing after ' + str(rule.get('for', '0s')) + ' in this state.'
 
 
 @lru_cache(maxsize=1)
