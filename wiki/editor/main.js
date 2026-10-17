@@ -1,4 +1,6 @@
 import { initializeTree } from './tree.js';
+import { createPublishedView } from './published-view.js';
+import { createPublicationState } from './publication-state.js';
 import { Editor } from '@tiptap/core';
 import { extensions, prepareMarkdown, sourceBody } from './markdown.js';
 
@@ -13,8 +15,9 @@ function initialize() {
   const editbar = root.querySelector('.wiki-editbar');
   const actions = root.querySelector('.wiki-editor-actions');
   const save = root.querySelector('[data-editor-save]');
-  const originalHTML = article.innerHTML;
-  const originalTitle = heading.textContent;
+  const publicationState = createPublicationState(save);
+  const publications = new Map();
+  const view = createPublishedView({article, heading, bodyHash: root.dataset.bodyHash});
   let csrf = '', revision = '', path = root.dataset.path, original = '', originalJSON, refs;
   let structure;
   let editor, toolbar, fields, linkForm, baselineTitle, creating = false, busy = false, generation = 0;
@@ -32,9 +35,9 @@ function initialize() {
     generation++;
     editor?.destroy(); editor = null;
     toolbar?.remove(); fields?.remove(); linkForm?.remove();
-    article.innerHTML = originalHTML;
+    view.restore();
     article.classList.remove('wiki-rich-editor');
-    heading.textContent = originalTitle;
+
     heading.removeAttribute('contenteditable');
     heading.removeAttribute('role');
     heading.removeAttribute('aria-label');
@@ -73,14 +76,15 @@ function initialize() {
   }
   async function open(isNew, seed) {
     if (busy || editor) return;
-    busy = true; message('');
+    busy = true; generation++; publicationState.reset(); message('');
     try {
       creating = isNew;
       const page = creating ? {title:seed?.title || 'Новая заметка',body:'',revision:''} : await api('/pages?path=' + encodeURIComponent(path));
       const prepared = prepareMarkdown(page.body);
+      if (!creating) await view.hydratePage({api, path, page, canApply:()=>true, apply:false});
       original = page.body; refs = prepared.refs; revision = page.revision;
       article.replaceChildren(); article.classList.add('wiki-rich-editor');
-      editor = new Editor({element: article, extensions: extensions(), content: prepared.prepared, contentType:'markdown', editorProps:{
+      editor = new Editor({onUpdate:()=>publicationState.reset(), element: article, extensions: extensions(), content: prepared.prepared, contentType:'markdown', editorProps:{
         attributes:{'aria-label':'Текст заметки',role:'textbox','aria-multiline':'true'},
         handlePaste(view, event) { event.preventDefault(); const text = event.clipboardData?.getData('text/plain') || ''; view.dispatch(view.state.tr.insertText(text)); return true; },
         handleDrop() { return true; }
@@ -109,17 +113,22 @@ function initialize() {
       revision=page.revision;
     } catch(error) {message(error.message,true);}
   }
-  async function publication(commit, token) {
-    for (let attempt=0; attempt<120 && (token===undefined || generation===token); attempt++) {
-      await new Promise(resolve => setTimeout(resolve,5000));
-      if (token!==undefined && generation!==token) return;
-      try {
-        const result = await api('/publications/' + encodeURIComponent(commit));
-        if (token!==undefined && generation!==token) return;
-        if (result.status === 'failed') { message('Изменения сохранены, но публикация не прошла. Обратитесь к администратору.',true); return; }
-        if (result.status === 'published') return true;
-      } catch {}
-    }
+  function publication(commit) {
+    if (publications.has(commit)) return publications.get(commit);
+    const pending = (async () => {
+      for (let attempt=0; attempt<120; attempt++) {
+        await new Promise(resolve => setTimeout(resolve,5000));
+        try {
+          const result = await api('/publications/' + encodeURIComponent(commit));
+          if (result.status === 'failed') { message('Изменения сохранены, но публикация не прошла. Обратитесь к администратору.',true); return false; }
+          if (result.status === 'published') return true;
+        } catch {}
+      }
+      message('Изменения сохранены. Публикация ещё не подтверждена спустя 10 минут. Обратитесь к администратору.',true);
+      return false;
+    })();
+    publications.set(commit, pending);
+    return pending;
   }
 
   save.addEventListener('click', async () => {
@@ -136,10 +145,25 @@ function initialize() {
       const wasCreating=creating;
       const result = await api('/pages',payload,creating ? 'POST':'PUT');
       path=result.path; revision=result.revision; original=body; originalJSON=editor.getJSON(); baselineTitle=title; creating=false; fields?.remove(); fields=null;
-      message(''); structure?.refresh({pendingPage:wasCreating ? result.path : undefined,commit:result.commit}).catch(()=>{}); publication(result.commit,++generation);
+      const fallback = document.createElement('template'); fallback.innerHTML = editor.getHTML();
+      for (const link of fallback.content.querySelectorAll('a[href]')) {
+        const ref = refs.get(link.getAttribute('href'));
+        if (ref) {
+          const [target, fragment] = ref.target.split('#');
+          const base = target.startsWith('/') ? target : '/' + path.split('/').slice(0,-1).concat(target).join('/');
+          link.setAttribute('href', target ? base.replace(/(?:_index|index)?\.md$/, '').replace(/\/$/, '') + '/' + (fragment ? '#' + fragment : '') : '#' + fragment);
+        }
+      }
+      view.capture(title, fallback.innerHTML);
+      try {
+        const preview = await api('/preview', {title, body, path});
+        view.capture(title, preview.html);
+      } catch {}
+      message(''); structure?.refresh({pendingPage:wasCreating ? result.path : undefined,commit:result.commit}).catch(()=>{}); publication(result.commit).then(publicationState.pending());
     } catch(error) { message(error.message,true); }
     finally { setBusy(false); }
   });
+  heading.addEventListener('input',()=>{if(editor)publicationState.reset();});
   heading.addEventListener('keydown', event => { if (editor && event.key==='Enter') {event.preventDefault();editor.commands.focus('start');} });
   heading.addEventListener('paste', event => { if (!editor) return; event.preventDefault(); document.execCommand('insertText',false,event.clipboardData.getData('text/plain').replace(/\s*\n\s*/g,' ')); });
   root.querySelector('[data-editor-open]').addEventListener('click',()=>open(false));
@@ -148,6 +172,8 @@ function initialize() {
   api('/session').then(session=>{
     if(!session.writable || !session.csrf_token)return;
     csrf=session.csrf_token;root.hidden=false;
+    const hydrationGeneration = generation;
+    view.hydrate({api, path, canApply:()=>!busy && !editor && generation===hydrationGeneration}).catch(error=>message(error.message,true));
     initializeTree({api, dirty:()=>busy || dirty(), currentPath:()=>path, message, changed:refreshArticleRevision, openPage:async seed=>{if(editor)stop();await open(true,seed);}, moved:(source,target)=>{if(path===source || path.startsWith(source+'/')){path=target+path.slice(source.length);root.dataset.path=path;}}, publication:commit=>publication(commit)}).then(value=>{structure=value;}).catch(error=>message(error.message,true));
     const mobile=document.querySelector('.mobile-actions');const media=matchMedia('(max-width: 900px)');
     const position=()=>{if(media.matches&&mobile)mobile.prepend(actions);else root.prepend(actions);};media.addEventListener('change',position);position();

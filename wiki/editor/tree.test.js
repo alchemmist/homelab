@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import { initializeTree } from './tree.js';
 
+globalThis.requestAnimationFrame = callback => setTimeout(callback, 16);
+globalThis.cancelAnimationFrame = clearTimeout;
+
 const fixture = () => ({revision:'r1',nodes:[{id:'ai',title:'AI',kind:'folder',url:'/ai/',children:[{id:'ai/chat.md',title:'Chat',kind:'page',url:'/ai/chat/'}]}]});
 async function setup(isDirty=false) {
   const dom=new JSDOM('<nav class="page-tree"><a class="overview">Обзор</a><ul class="nav-root"><li>Static</li></ul></nav>',{url:'https://wiki.example/'});
@@ -96,4 +99,63 @@ test('failed initial tree loading keeps controls and retries on demand',async()=
   const controller=await initializeTree({api:async()=>{if(++count===1)throw new Error('Offline');return fixture();},dirty:()=>false,currentPath:()=>'',openPage:()=>{},moved:()=>{},message:()=>{},publication:async()=>true});
   await controller.ready;assert.equal(document.querySelector('.wiki-tree-root').children.length,2);assert.match(document.querySelector('.nav-root').textContent,/Static/);
   assert.equal(await controller.ensureRevision(),'r1');assert.equal(count,2);
+});
+
+function pointerEvent(state, type, target, x, y) {
+  const event = new state.dom.window.MouseEvent(type, {bubbles:true, cancelable:true, clientX:x, clientY:y, button:0});
+  Object.defineProperty(event, 'pointerId', {value:1}); target.dispatchEvent(event); return event;
+}
+test('pointer dragging starts from folder button and moves the folder beside another folder', async()=>{
+  const state=await setup();state.data.nodes.push({id:'help',kind:'folder',title:'Help',children:[]});await state.controller.refresh();
+  const source=document.querySelector('[data-node-id="ai"] button'),target=document.querySelector('[data-node-id="help"] > .nav-row');
+  target.getBoundingClientRect=()=>({top:100,height:32});document.elementFromPoint=()=>target.querySelector('span');
+  pointerEvent(state,'pointerdown',source,10,10);pointerEvent(state,'pointermove',source,30,130);
+  assert.equal(document.querySelector('[data-node-id="help"]').dataset.drop,'after');
+  assert.match(document.querySelector('.wiki-tree-drag-hint').textContent,/После/);
+  pointerEvent(state,'pointerup',source,30,130);await tick();
+  assert.deepEqual(state.calls.at(-1),{endpoint:'/move',data:{source:'ai',target_parent:'',before:null,revision:'r1'}});
+});
+test('pointer dragging from note text places it inside a folder and can be cancelled',async()=>{
+  const state=await setup();state.data.nodes.push({id:'help',kind:'folder',title:'Help',children:[]});await state.controller.refresh();
+  const source=document.querySelector('[data-node-id="ai/chat.md"] a'),target=document.querySelector('[data-node-id="help"] > .nav-row');
+  target.getBoundingClientRect=()=>({top:100,height:32});document.elementFromPoint=()=>target;
+  pointerEvent(state,'pointerdown',source,10,10);pointerEvent(state,'pointermove',source,20,116);
+  assert.equal(target.dataset.drop,'inside');pointerEvent(state,'pointercancel',source,20,116);
+  assert.equal(document.querySelector('[data-drop]'),null);assert.equal(state.calls.filter(c=>c.endpoint==='/move').length,0);
+  pointerEvent(state,'pointerdown',source,10,10);pointerEvent(state,'pointermove',source,20,116);pointerEvent(state,'pointerup',source,20,116);await tick();
+  assert.deepEqual(state.calls.at(-1),{endpoint:'/move',data:{source:'ai/chat.md',target_parent:'help',before:null,revision:'r1'}});
+});
+test('pointer move under threshold remains a click and cyclic folder drops are rejected',async()=>{
+  const state=await setup();const source=document.querySelector('[data-node-id="ai"] button'),target=document.querySelector('[data-node-id="ai/chat.md"] > .nav-row');
+  document.elementFromPoint=()=>target;target.getBoundingClientRect=()=>({top:100,height:32});
+  pointerEvent(state,'pointerdown',source,10,10);pointerEvent(state,'pointermove',source,11,12);pointerEvent(state,'pointerup',source,11,12);
+  assert.equal(document.querySelector('.wiki-tree-dragging'),null);
+  pointerEvent(state,'pointerdown',source,10,10);pointerEvent(state,'pointermove',source,20,116);pointerEvent(state,'pointerup',source,20,116);await tick();
+  assert.equal(state.calls.filter(c=>c.endpoint==='/move').length,0);
+});
+
+test('reorders pages both ways within a folder and moves nested folders beside root folders',async()=>{
+  for (const [source,targetId,y,parent,before] of [
+    ['ai/last.md','ai/chat.md',101,'ai','ai/chat.md'],
+    ['ai/chat.md','ai/last.md',130,'ai','ai/nested'],
+    ['ai/nested','help',101,'','help'],
+  ]) {
+    const state=await setup();state.data.nodes[0].children.push({id:'ai/last.md',kind:'page',title:'Last',url:'/ai/last/'},{id:'ai/nested',kind:'folder',title:'Nested',children:[]});state.data.nodes.push({id:'help',kind:'folder',title:'Help',children:[]});await state.controller.refresh();
+    const origin=document.querySelector(`[data-node-id="${source}"] > .nav-row`),target=document.querySelector(`[data-node-id="${targetId}"] > .nav-row`);
+    target.getBoundingClientRect=()=>({top:100,height:32});document.elementFromPoint=()=>target;
+    pointerEvent(state,'pointerdown',origin,10,10);pointerEvent(state,'pointermove',origin,20,y);pointerEvent(state,'pointerup',origin,20,y);await tick();
+    assert.deepEqual(state.calls.at(-1),{endpoint:'/move',data:{source,target_parent:parent,before,revision:'r1'}});
+  }
+});
+
+test('hover opens a closed folder without replacing the active drag nodes',async()=>{
+  const state=await setup();state.data.nodes.push({id:'help',kind:'folder',title:'Help',children:[{id:'help/guide.md',kind:'page',title:'Guide',url:'/help/guide/'}]});await state.controller.refresh();
+  const source=document.querySelector('[data-node-id="ai/chat.md"] a'),target=document.querySelector('[data-node-id="help"] > .nav-row');
+  target.getBoundingClientRect=()=>({top:100,height:32});document.elementFromPoint=()=>target;
+  const children=target.parentElement.querySelector(':scope > ul');assert.equal(children.hidden,true);
+  pointerEvent(state,'pointerdown',source,10,10);pointerEvent(state,'pointermove',source,20,116);
+  await new Promise(resolve=>setTimeout(resolve,700));
+  assert.equal(children.hidden,false);assert.equal(document.querySelector('[data-node-id="help"] > .nav-row'),target);
+  pointerEvent(state,'pointercancel',source,20,116);
+  assert.equal(state.calls.filter(c=>c.endpoint==='/move').length,0);
 });

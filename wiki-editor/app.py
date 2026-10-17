@@ -3,6 +3,7 @@ import io
 import ipaddress
 import json
 import os
+import posixpath
 from pathlib import Path
 import re
 import secrets
@@ -541,14 +542,46 @@ def create_page(data: dict):
 @app.post('/api/editor/preview')
 def preview(data: dict):
     title, body = fields(data)
-    if data.get('path'):
-        checked_path(data['path'])
+    current = data.get('path')
+    if current:
+        checked_path(current)
     def relref(match):
-        path = match.group(1).lstrip('/')
-        checked_path(path)
-        return page_url(path)
-    body = re.sub(r'{{[<%]\s*relref\s+"([^"]+)"\s*[>%]}}', relref, body)
-    return {'html': MarkdownIt('commonmark', {'html': False}).enable('table').render(body), 'approximate': True}
+        reference, separator, fragment = match[1].partition('#')
+        if not reference:
+            return '#' + fragment
+        relative = posixpath.normpath(posixpath.join(str(Path(current).parent) if current else '', reference))
+        candidates = [reference.lstrip('/')] if reference.startswith('/') else [relative, reference]
+        for candidate in candidates:
+            variants = [candidate] if candidate.endswith('.md') else [candidate + '.md', candidate.rstrip('/') + '/_index.md', candidate.rstrip('/') + '/index.md']
+            for variant in variants:
+                try:
+                    target = checked_path(variant)
+                except HTTPException:
+                    continue
+                if target.is_file():
+                    metadata, unused = parse(target.read_text(encoding='utf-8'))
+                    return document_url(variant, metadata) + (separator + fragment if separator else '')
+        raise HTTPException(422, 'Referenced page not found')
+    with LOCK:
+        body = re.sub(r"{{[<%]\s*relref\s+[\"']([^\"']+)[\"']\s*[>%]}}", relref, body)
+    renderer = MarkdownIt('commonmark', {'html': False}).enable('table')
+    tokens = renderer.parse(body)
+    identifiers = set()
+    for index, token in enumerate(tokens):
+        if token.type != 'heading_open':
+            continue
+        children = tokens[index + 1].children or []
+        text = ''.join(child.content for child in children if child.type in ('text', 'code_inline', 'image'))
+        base = ''.join(character for character in text.lower() if character.isalnum() or character in '-_ ' or character.isspace())
+        base = re.sub(r'\s', '-', base.strip())
+        identifier = base
+        suffix = 1
+        while identifier in identifiers:
+            identifier = base + '-' + str(suffix)
+            suffix += 1
+        identifiers.add(identifier)
+        token.attrSet('id', identifier)
+    return {'html': renderer.renderer.render(tokens, renderer.options, {}), 'approximate': True}
 
 
 @app.get('/api/editor/publications/{commit}')

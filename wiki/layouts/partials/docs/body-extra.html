@@ -1,5 +1,6 @@
+{{ $bodyHash := crypto.SHA256 (strings.TrimLeft "\n" .RawContent) }}
 {{ with .File }}
-<div id="wiki-editor" data-path="{{ .Path }}" hidden>
+<div id="wiki-editor" data-path="{{ .Path }}" data-body-hash="{{ $bodyHash }}" hidden>
   <div class="wiki-editor-actions">
     <button class="icon-button" type="button" data-editor-open aria-label="Редактировать заметку" title="Редактировать заметку"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m15 5 4 4M4 20l4-1L20 7a2.8 2.8 0 0 0-4-4L4 15Z"/></svg></button>
   </div>
