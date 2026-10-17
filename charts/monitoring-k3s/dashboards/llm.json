@@ -1391,9 +1391,9 @@
     },
     {
       "id": 25,
-      "title": "Prefix cache hit ratio",
-      "type": "timeseries",
-      "description": "Proportion of reused tokens. The ratio is undefined without cache queries.",
+      "title": "Prefix cache hit ratio · selected period",
+      "type": "stat",
+      "description": "Proportion of reused tokens. The ratio is undefined without cache queries. Calculated over the entire selected dashboard time range.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1407,44 +1407,55 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by(model_name) (rate(vllm:prefix_cache_hits_total{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval])) / sum by(model_name) (rate(vllm:prefix_cache_queries_total{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval]))",
+          "expr": "sum by(model_name) (rate(vllm:prefix_cache_hits_total{job=\"vllm\",model_name=~\"${model:regex}\"}[$__range])) / sum by(model_name) (rate(vllm:prefix_cache_queries_total{job=\"vllm\",model_name=~\"${model:regex}\"}[$__range]))",
           "legendFormat": "{{model_name}}",
-          "instant": false,
-          "format": "time_series"
+          "instant": true,
+          "format": "time_series",
+          "range": false
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
+          "decimals": 2,
+          "noValue": "No observations",
           "color": {
-            "mode": "palette-classic"
+            "mode": "fixed",
+            "fixedColor": "text"
           },
-          "noValue": "No data",
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "No observations"
+                }
+              }
+            }
+          ],
           "min": 0,
-          "max": 1,
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "fillOpacity": 10,
-            "showPoints": "never",
-            "spanNulls": false
-          }
+          "max": 1
         },
         "overrides": []
       },
       "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
+        "reduceOptions": {
+          "values": false,
           "calcs": [
-            "lastNotNull",
-            "max"
-          ]
+            "lastNotNull"
+          ],
+          "fields": ""
         },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "text": {
+          "titleSize": 14,
+          "valueSize": 36
         }
       }
     },
@@ -1596,9 +1607,9 @@
     },
     {
       "id": 29,
-      "title": "End-to-end request latency",
-      "type": "timeseries",
-      "description": "Percentiles over the rate interval. Latency is undefined when there are no requests in the interval.",
+      "title": "End-to-end request latency · selected period",
+      "type": "stat",
+      "description": "p50 (median) and p95 of end-to-end request latency observed during the selected dashboard time range. Recomputed when the time range changes or the dashboard refreshes. No observations means no latency estimate; it is not zero.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1612,57 +1623,69 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.5, sum by(le,model_name) (rate(vllm:e2e_request_latency_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le,model_name) (rate(vllm:e2e_request_latency_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__range])))",
           "legendFormat": "{{model_name}} · p50",
-          "instant": false,
-          "format": "time_series"
+          "instant": true,
+          "format": "time_series",
+          "range": false
         },
         {
           "refId": "B",
-          "expr": "histogram_quantile(0.95, sum by(le,model_name) (rate(vllm:e2e_request_latency_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le,model_name) (rate(vllm:e2e_request_latency_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__range])))",
           "legendFormat": "{{model_name}} · p95",
-          "instant": false,
-          "format": "time_series"
+          "instant": true,
+          "format": "time_series",
+          "range": false
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "s",
+          "decimals": 2,
+          "noValue": "No observations",
           "color": {
-            "mode": "palette-classic"
+            "mode": "fixed",
+            "fixedColor": "text"
           },
-          "noValue": "No data",
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "fillOpacity": 10,
-            "showPoints": "never",
-            "spanNulls": false
-          }
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "No observations"
+                }
+              }
+            }
+          ]
         },
         "overrides": []
       },
       "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
+        "reduceOptions": {
+          "values": false,
           "calcs": [
-            "lastNotNull",
-            "max"
-          ]
+            "lastNotNull"
+          ],
+          "fields": ""
         },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "text": {
+          "titleSize": 14,
+          "valueSize": 36
         }
       }
     },
     {
       "id": 30,
-      "title": "Inter-token latency",
-      "type": "timeseries",
-      "description": "Percentiles over the rate interval. Latency is undefined when there are no requests in the interval.",
+      "title": "Inter-token latency · selected period",
+      "type": "stat",
+      "description": "p50 (median) and p95 of inter-token latency observed during the selected dashboard time range. Recomputed when the time range changes or the dashboard refreshes. No observations means no latency estimate; it is not zero.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1676,57 +1699,69 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.5, sum by(le,model_name) (rate(vllm:inter_token_latency_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le,model_name) (rate(vllm:inter_token_latency_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__range])))",
           "legendFormat": "{{model_name}} · p50",
-          "instant": false,
-          "format": "time_series"
+          "instant": true,
+          "format": "time_series",
+          "range": false
         },
         {
           "refId": "B",
-          "expr": "histogram_quantile(0.95, sum by(le,model_name) (rate(vllm:inter_token_latency_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le,model_name) (rate(vllm:inter_token_latency_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__range])))",
           "legendFormat": "{{model_name}} · p95",
-          "instant": false,
-          "format": "time_series"
+          "instant": true,
+          "format": "time_series",
+          "range": false
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "s",
+          "decimals": 2,
+          "noValue": "No observations",
           "color": {
-            "mode": "palette-classic"
+            "mode": "fixed",
+            "fixedColor": "text"
           },
-          "noValue": "No data",
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "fillOpacity": 10,
-            "showPoints": "never",
-            "spanNulls": false
-          }
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "No observations"
+                }
+              }
+            }
+          ]
         },
         "overrides": []
       },
       "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
+        "reduceOptions": {
+          "values": false,
           "calcs": [
-            "lastNotNull",
-            "max"
-          ]
+            "lastNotNull"
+          ],
+          "fields": ""
         },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "text": {
+          "titleSize": 14,
+          "valueSize": 36
         }
       }
     },
     {
       "id": 31,
-      "title": "vLLM queue wait",
-      "type": "timeseries",
-      "description": "Percentiles over the rate interval. Latency is undefined when there are no requests in the interval.",
+      "title": "vLLM queue wait · selected period",
+      "type": "stat",
+      "description": "p50 (median) and p95 of vllm queue wait observed during the selected dashboard time range. Recomputed when the time range changes or the dashboard refreshes. No observations means no latency estimate; it is not zero.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1740,57 +1775,69 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.5, sum by(le,model_name) (rate(vllm:request_queue_time_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le,model_name) (rate(vllm:request_queue_time_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__range])))",
           "legendFormat": "{{model_name}} · p50",
-          "instant": false,
-          "format": "time_series"
+          "instant": true,
+          "format": "time_series",
+          "range": false
         },
         {
           "refId": "B",
-          "expr": "histogram_quantile(0.95, sum by(le,model_name) (rate(vllm:request_queue_time_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le,model_name) (rate(vllm:request_queue_time_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__range])))",
           "legendFormat": "{{model_name}} · p95",
-          "instant": false,
-          "format": "time_series"
+          "instant": true,
+          "format": "time_series",
+          "range": false
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "s",
+          "decimals": 2,
+          "noValue": "No observations",
           "color": {
-            "mode": "palette-classic"
+            "mode": "fixed",
+            "fixedColor": "text"
           },
-          "noValue": "No data",
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "fillOpacity": 10,
-            "showPoints": "never",
-            "spanNulls": false
-          }
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "No observations"
+                }
+              }
+            }
+          ]
         },
         "overrides": []
       },
       "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
+        "reduceOptions": {
+          "values": false,
           "calcs": [
-            "lastNotNull",
-            "max"
-          ]
+            "lastNotNull"
+          ],
+          "fields": ""
         },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "text": {
+          "titleSize": 14,
+          "valueSize": 36
         }
       }
     },
     {
       "id": 32,
-      "title": "Input processing",
-      "type": "timeseries",
-      "description": "Percentiles over the rate interval. Latency is undefined when there are no requests in the interval.",
+      "title": "Input processing · selected period",
+      "type": "stat",
+      "description": "p50 (median) and p95 of input processing observed during the selected dashboard time range. Recomputed when the time range changes or the dashboard refreshes. No observations means no latency estimate; it is not zero.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1804,57 +1851,69 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.5, sum by(le,model_name) (rate(vllm:request_prefill_time_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le,model_name) (rate(vllm:request_prefill_time_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__range])))",
           "legendFormat": "{{model_name}} · p50",
-          "instant": false,
-          "format": "time_series"
+          "instant": true,
+          "format": "time_series",
+          "range": false
         },
         {
           "refId": "B",
-          "expr": "histogram_quantile(0.95, sum by(le,model_name) (rate(vllm:request_prefill_time_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le,model_name) (rate(vllm:request_prefill_time_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__range])))",
           "legendFormat": "{{model_name}} · p95",
-          "instant": false,
-          "format": "time_series"
+          "instant": true,
+          "format": "time_series",
+          "range": false
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "s",
+          "decimals": 2,
+          "noValue": "No observations",
           "color": {
-            "mode": "palette-classic"
+            "mode": "fixed",
+            "fixedColor": "text"
           },
-          "noValue": "No data",
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "fillOpacity": 10,
-            "showPoints": "never",
-            "spanNulls": false
-          }
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "No observations"
+                }
+              }
+            }
+          ]
         },
         "overrides": []
       },
       "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
+        "reduceOptions": {
+          "values": false,
           "calcs": [
-            "lastNotNull",
-            "max"
-          ]
+            "lastNotNull"
+          ],
+          "fields": ""
         },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "text": {
+          "titleSize": 14,
+          "valueSize": 36
         }
       }
     },
     {
       "id": 33,
-      "title": "Response generation",
-      "type": "timeseries",
-      "description": "Percentiles over the rate interval. Latency is undefined when there are no requests in the interval.",
+      "title": "Response generation · selected period",
+      "type": "stat",
+      "description": "p50 (median) and p95 of response generation observed during the selected dashboard time range. Recomputed when the time range changes or the dashboard refreshes. No observations means no latency estimate; it is not zero.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1868,49 +1927,61 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.5, sum by(le,model_name) (rate(vllm:request_decode_time_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le,model_name) (rate(vllm:request_decode_time_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__range])))",
           "legendFormat": "{{model_name}} · p50",
-          "instant": false,
-          "format": "time_series"
+          "instant": true,
+          "format": "time_series",
+          "range": false
         },
         {
           "refId": "B",
-          "expr": "histogram_quantile(0.95, sum by(le,model_name) (rate(vllm:request_decode_time_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le,model_name) (rate(vllm:request_decode_time_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__range])))",
           "legendFormat": "{{model_name}} · p95",
-          "instant": false,
-          "format": "time_series"
+          "instant": true,
+          "format": "time_series",
+          "range": false
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "s",
+          "decimals": 2,
+          "noValue": "No observations",
           "color": {
-            "mode": "palette-classic"
+            "mode": "fixed",
+            "fixedColor": "text"
           },
-          "noValue": "No data",
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "fillOpacity": 10,
-            "showPoints": "never",
-            "spanNulls": false
-          }
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "No observations"
+                }
+              }
+            }
+          ]
         },
         "overrides": []
       },
       "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
+        "reduceOptions": {
+          "values": false,
           "calcs": [
-            "lastNotNull",
-            "max"
-          ]
+            "lastNotNull"
+          ],
+          "fields": ""
         },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "text": {
+          "titleSize": 14,
+          "valueSize": 36
         }
       }
     },
@@ -2133,9 +2204,9 @@
     },
     {
       "id": 37,
-      "title": "LiteLLM error ratio",
-      "type": "timeseries",
-      "description": "The ratio is undefined without requests. Missing error series are treated as zero only for models with a known request series and a positive request rate.",
+      "title": "LiteLLM error ratio · selected period",
+      "type": "stat",
+      "description": "The ratio is undefined without requests. Missing error series are treated as zero only for models with a known request series and a positive request rate. Calculated over the entire selected dashboard time range.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -2149,44 +2220,55 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(sum by(requested_model) (rate(litellm_proxy_failed_requests_metric_total{job=\"litellm\"}[$__rate_interval])) or on(requested_model) (0 * sum by(requested_model) (rate(litellm_proxy_total_requests_metric_total{job=\"litellm\"}[$__rate_interval])))) / (sum by(requested_model) (rate(litellm_proxy_total_requests_metric_total{job=\"litellm\"}[$__rate_interval])) > 0)",
+          "expr": "(sum by(requested_model) (rate(litellm_proxy_failed_requests_metric_total{job=\"litellm\"}[$__range])) or on(requested_model) (0 * sum by(requested_model) (rate(litellm_proxy_total_requests_metric_total{job=\"litellm\"}[$__range])))) / (sum by(requested_model) (rate(litellm_proxy_total_requests_metric_total{job=\"litellm\"}[$__range])) > 0)",
           "legendFormat": "{{requested_model}}",
-          "instant": false,
-          "format": "time_series"
+          "instant": true,
+          "format": "time_series",
+          "range": false
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
+          "decimals": 2,
+          "noValue": "No observations",
           "color": {
-            "mode": "palette-classic"
+            "mode": "fixed",
+            "fixedColor": "text"
           },
-          "noValue": "No data",
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "No observations"
+                }
+              }
+            }
+          ],
           "min": 0,
-          "max": 1,
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "fillOpacity": 10,
-            "showPoints": "never",
-            "spanNulls": false
-          }
+          "max": 1
         },
         "overrides": []
       },
       "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
+        "reduceOptions": {
+          "values": false,
           "calcs": [
-            "lastNotNull",
-            "max"
-          ]
+            "lastNotNull"
+          ],
+          "fields": ""
         },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "text": {
+          "titleSize": 14,
+          "valueSize": 36
         }
       }
     },
@@ -2269,9 +2351,9 @@
     },
     {
       "id": 40,
-      "title": "LiteLLM total latency",
-      "type": "timeseries",
-      "description": "Percentiles over the rate interval. No data is available without requests.",
+      "title": "LiteLLM total latency · selected period",
+      "type": "stat",
+      "description": "p50 (median) and p95 of litellm total latency observed during the selected dashboard time range. Recomputed when the time range changes or the dashboard refreshes. No observations means no latency estimate; it is not zero.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -2285,57 +2367,69 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.5, sum by(le,requested_model) (rate(litellm_request_total_latency_metric_bucket{job=\"litellm\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le,requested_model) (rate(litellm_request_total_latency_metric_bucket{job=\"litellm\"}[$__range])))",
           "legendFormat": "{{requested_model}} · p50",
-          "instant": false,
-          "format": "time_series"
+          "instant": true,
+          "format": "time_series",
+          "range": false
         },
         {
           "refId": "B",
-          "expr": "histogram_quantile(0.95, sum by(le,requested_model) (rate(litellm_request_total_latency_metric_bucket{job=\"litellm\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le,requested_model) (rate(litellm_request_total_latency_metric_bucket{job=\"litellm\"}[$__range])))",
           "legendFormat": "{{requested_model}} · p95",
-          "instant": false,
-          "format": "time_series"
+          "instant": true,
+          "format": "time_series",
+          "range": false
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "s",
+          "decimals": 2,
+          "noValue": "No observations",
           "color": {
-            "mode": "palette-classic"
+            "mode": "fixed",
+            "fixedColor": "text"
           },
-          "noValue": "No data",
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "fillOpacity": 10,
-            "showPoints": "never",
-            "spanNulls": false
-          }
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "No observations"
+                }
+              }
+            }
+          ]
         },
         "overrides": []
       },
       "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
+        "reduceOptions": {
+          "values": false,
           "calcs": [
-            "lastNotNull",
-            "max"
-          ]
+            "lastNotNull"
+          ],
+          "fields": ""
         },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "text": {
+          "titleSize": 14,
+          "valueSize": 36
         }
       }
     },
     {
       "id": 41,
-      "title": "Model API latency",
-      "type": "timeseries",
-      "description": "Percentiles over the rate interval. No data is available without requests.",
+      "title": "Model API latency · selected period",
+      "type": "stat",
+      "description": "p50 (median) and p95 of model api latency observed during the selected dashboard time range. Recomputed when the time range changes or the dashboard refreshes. No observations means no latency estimate; it is not zero.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -2349,57 +2443,69 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.5, sum by(le,requested_model) (rate(litellm_llm_api_latency_metric_bucket{job=\"litellm\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le,requested_model) (rate(litellm_llm_api_latency_metric_bucket{job=\"litellm\"}[$__range])))",
           "legendFormat": "{{requested_model}} · p50",
-          "instant": false,
-          "format": "time_series"
+          "instant": true,
+          "format": "time_series",
+          "range": false
         },
         {
           "refId": "B",
-          "expr": "histogram_quantile(0.95, sum by(le,requested_model) (rate(litellm_llm_api_latency_metric_bucket{job=\"litellm\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le,requested_model) (rate(litellm_llm_api_latency_metric_bucket{job=\"litellm\"}[$__range])))",
           "legendFormat": "{{requested_model}} · p95",
-          "instant": false,
-          "format": "time_series"
+          "instant": true,
+          "format": "time_series",
+          "range": false
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "s",
+          "decimals": 2,
+          "noValue": "No observations",
           "color": {
-            "mode": "palette-classic"
+            "mode": "fixed",
+            "fixedColor": "text"
           },
-          "noValue": "No data",
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "fillOpacity": 10,
-            "showPoints": "never",
-            "spanNulls": false
-          }
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "No observations"
+                }
+              }
+            }
+          ]
         },
         "overrides": []
       },
       "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
+        "reduceOptions": {
+          "values": false,
           "calcs": [
-            "lastNotNull",
-            "max"
-          ]
+            "lastNotNull"
+          ],
+          "fields": ""
         },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "text": {
+          "titleSize": 14,
+          "valueSize": 36
         }
       }
     },
     {
       "id": 42,
-      "title": "LiteLLM time to first token",
-      "type": "timeseries",
-      "description": "Percentiles over the rate interval. No data is available without requests.",
+      "title": "LiteLLM time to first token · selected period",
+      "type": "stat",
+      "description": "p50 (median) and p95 of litellm time to first token observed during the selected dashboard time range. Recomputed when the time range changes or the dashboard refreshes. No observations means no latency estimate; it is not zero.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -2413,57 +2519,69 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.5, sum by(le,requested_model) (rate(litellm_llm_api_time_to_first_token_metric_bucket{job=\"litellm\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le,requested_model) (rate(litellm_llm_api_time_to_first_token_metric_bucket{job=\"litellm\"}[$__range])))",
           "legendFormat": "{{requested_model}} · p50",
-          "instant": false,
-          "format": "time_series"
+          "instant": true,
+          "format": "time_series",
+          "range": false
         },
         {
           "refId": "B",
-          "expr": "histogram_quantile(0.95, sum by(le,requested_model) (rate(litellm_llm_api_time_to_first_token_metric_bucket{job=\"litellm\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le,requested_model) (rate(litellm_llm_api_time_to_first_token_metric_bucket{job=\"litellm\"}[$__range])))",
           "legendFormat": "{{requested_model}} · p95",
-          "instant": false,
-          "format": "time_series"
+          "instant": true,
+          "format": "time_series",
+          "range": false
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "s",
+          "decimals": 2,
+          "noValue": "No observations",
           "color": {
-            "mode": "palette-classic"
+            "mode": "fixed",
+            "fixedColor": "text"
           },
-          "noValue": "No data",
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "fillOpacity": 10,
-            "showPoints": "never",
-            "spanNulls": false
-          }
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "No observations"
+                }
+              }
+            }
+          ]
         },
         "overrides": []
       },
       "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
+        "reduceOptions": {
+          "values": false,
           "calcs": [
-            "lastNotNull",
-            "max"
-          ]
+            "lastNotNull"
+          ],
+          "fields": ""
         },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "text": {
+          "titleSize": 14,
+          "valueSize": 36
         }
       }
     },
     {
       "id": 43,
-      "title": "Time before model invocation",
-      "type": "timeseries",
-      "description": "Percentiles over the rate interval. No data is available without requests. Includes authentication and ASGI processing before model invocation; this measures elapsed time, not the number of queued requests.",
+      "title": "Time before model invocation · selected period",
+      "type": "stat",
+      "description": "p50 (median) and p95 of time before model invocation observed during the selected dashboard time range. Recomputed when the time range changes or the dashboard refreshes. No observations means no latency estimate; it is not zero.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -2477,49 +2595,61 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.5, sum by(le,requested_model) (rate(litellm_request_queue_time_seconds_bucket{job=\"litellm\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le,requested_model) (rate(litellm_request_queue_time_seconds_bucket{job=\"litellm\"}[$__range])))",
           "legendFormat": "{{requested_model}} · p50",
-          "instant": false,
-          "format": "time_series"
+          "instant": true,
+          "format": "time_series",
+          "range": false
         },
         {
           "refId": "B",
-          "expr": "histogram_quantile(0.95, sum by(le,requested_model) (rate(litellm_request_queue_time_seconds_bucket{job=\"litellm\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le,requested_model) (rate(litellm_request_queue_time_seconds_bucket{job=\"litellm\"}[$__range])))",
           "legendFormat": "{{requested_model}} · p95",
-          "instant": false,
-          "format": "time_series"
+          "instant": true,
+          "format": "time_series",
+          "range": false
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "s",
+          "decimals": 2,
+          "noValue": "No observations",
           "color": {
-            "mode": "palette-classic"
+            "mode": "fixed",
+            "fixedColor": "text"
           },
-          "noValue": "No data",
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "fillOpacity": 10,
-            "showPoints": "never",
-            "spanNulls": false
-          }
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "No observations"
+                }
+              }
+            }
+          ]
         },
         "overrides": []
       },
       "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
+        "reduceOptions": {
+          "values": false,
           "calcs": [
-            "lastNotNull",
-            "max"
-          ]
+            "lastNotNull"
+          ],
+          "fields": ""
         },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "text": {
+          "titleSize": 14,
+          "valueSize": 36
         }
       }
     },

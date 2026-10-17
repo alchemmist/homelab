@@ -56,9 +56,11 @@ Latency panels may have no recent observations when inference is idle.
 - **GPU memory-controller activity** and **allocated VRAM** are distinct metrics.
 - vLLM `request_success_total` has finish reasons including `error` and `abort`;
   the dashboard preserves these distinctions.
-- Latency percentiles and cache hit ratios can be absent when there are no
-  relevant observations in the selected rate window. Counters start with
-  collection; prior requests are not backfilled.
+- All latency percentiles, prefix cache hit ratio and LiteLLM error ratio are
+  summary values over the selected dashboard time range. They show
+  `No observations` when undefined, rather than fragmented time-series graphs.
+  Load, queues, throughput and GPU metrics retain their time-series views.
+  Counters start with collection; prior requests are not backfilled.
 - Missing error counter series are treated as zero only when matching total
   request series exist. Missing telemetry does not become a healthy zero.
 
