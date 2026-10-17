@@ -31,6 +31,49 @@ EXPORTER_QUERY = (
     '"node_ip", "$1", "node_ip", "(.+):[0-9]+"))'
 )
 
+CPU_TEMPERATURE_PANEL_ID = 1001
+CPU_TEMPERATURE_BASE = (
+    '(node_hwmon_temp_celsius{job="node-exporter",instance="$exporter_instance"} '
+    '* on (instance, chip) group_left (chip_name) '
+    'node_hwmon_chip_names{job="node-exporter",chip_name=~"coretemp|k10temp|zenpower"})'
+)
+CPU_SENSOR_LABELS = 'node_hwmon_sensor_label{job="node-exporter"}'
+CPU_TEMPERATURE_QUERY = (
+    '(' + CPU_TEMPERATURE_BASE + ' * on (instance, chip, sensor) group_left (label) '
+    + CPU_SENSOR_LABELS + ') or label_replace(('
+    + CPU_TEMPERATURE_BASE + ' unless on (instance, chip, sensor) '
+    + CPU_SENSOR_LABELS + '), "label", "$1", "sensor", "(.+)")'
+)
+
+
+def add_cpu_temperature(dashboard):
+    existing = next((p for p in dashboard['panels'] if p['id'] == CPU_TEMPERATURE_PANEL_ID), None)
+    position = existing['gridPos'] if existing else {
+        'x': 0, 'y': max(p['gridPos']['y'] + p['gridPos']['h'] for p in dashboard['panels']),
+        'w': 24, 'h': 10,
+    }
+    dashboard['panels'] = [p for p in dashboard['panels'] if p['id'] != CPU_TEMPERATURE_PANEL_ID]
+    dashboard['panels'].append({
+        'id': CPU_TEMPERATURE_PANEL_ID,
+        'title': 'Температура CPU',
+        'description': 'Отдельные ядра (Core) и общий датчик процессора (Package / Tctl), если они доступны. На AMD могут быть доступны только общие датчики CPU. На VPS датчики обычно не передаются. Отсутствие данных не означает 0 °C. Датчики GPU и дисков исключены.',
+        'type': 'timeseries',
+        'gridPos': position,
+        'datasource': {'type': 'prometheus', 'uid': '${datasource}'},
+        'targets': [{'refId': 'A', 'expr': CPU_TEMPERATURE_QUERY,
+                     'legendFormat': '{{chip_name}} · {{label}}', 'range': True}],
+        'fieldConfig': {'defaults': {
+            'unit': 'celsius', 'decimals': 1,
+            'color': {'mode': 'palette-classic'},
+            'custom': {'drawStyle': 'line', 'lineWidth': 1, 'fillOpacity': 0,
+                       'showPoints': 'never', 'spanNulls': False},
+        }, 'overrides': []},
+        'options': {
+            'legend': {'displayMode': 'table', 'placement': 'right', 'calcs': ['lastNotNull', 'max']},
+            'tooltip': {'mode': 'multi', 'sort': 'desc'},
+        },
+    })
+
 
 def resolve_node_exporter(dashboard):
     variables = dashboard.setdefault('templating', {}).setdefault('list', [])
@@ -84,6 +127,7 @@ def main():
                 manifest['data'][name] = json.dumps(dashboard, ensure_ascii=False, separators=(',', ':'))
             if uid in NODE_DASHBOARD_UIDS:
                 resolve_node_exporter(dashboard)
+                add_cpu_temperature(dashboard)
                 manifest['data'][name] = json.dumps(dashboard, ensure_ascii=False, separators=(',', ':'))
             if uid != DASHBOARD_UID:
                 continue
