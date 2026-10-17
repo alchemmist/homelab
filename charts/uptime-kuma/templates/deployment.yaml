@@ -14,7 +14,9 @@ spec:
       labels: { app: uptime-kuma }
     spec:
       hostNetwork: true
-      dnsPolicy: Default
+      dnsPolicy: None
+      dnsConfig:
+        {{- toYaml (.Values.dnsConfig | default (dict "nameservers" (list "10.250.0.2" "10.250.0.1" "10.250.0.3") "options" (list (dict "name" "ndots" "value" "1") (dict "name" "timeout" "value" "2") (dict "name" "attempts" "value" "2")))) | nindent 8 }}
       nodeSelector:
         kubernetes.io/hostname: {{ .Values.nodeName | quote }}
       containers:

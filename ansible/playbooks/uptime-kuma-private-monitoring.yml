@@ -1,0 +1,9 @@
+---
+- name: Monitor private Rancher from Uptime Kuma
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  environment:
+    K3S_CONFIG_FILE: /dev/null
+  roles:
+    - uptime_kuma_private_monitoring
