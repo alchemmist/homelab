@@ -7,7 +7,8 @@ function initialize() {
   const heading = document.getElementById('page-title');
   const article = document.querySelector('.document .hc-content');
   if (!heading || !article) return;
-  const status = root.querySelector('[role="status"]');
+  const status = root.querySelector('[role="alert"]');
+  heading.after(status);
   const editbar = root.querySelector('.wiki-editbar');
   const actions = root.querySelector('.wiki-editor-actions');
   const save = root.querySelector('[data-editor-save]');
@@ -15,7 +16,7 @@ function initialize() {
   const originalTitle = heading.textContent;
   let csrf = '', revision = '', path = root.dataset.path, original = '', originalJSON, refs;
   let editor, toolbar, fields, linkForm, baselineTitle, creating = false, busy = false, generation = 0;
-  const message = (text, error = false) => { status.textContent = text; status.dataset.error = String(error); };
+  const message = (text, error = false) => { status.textContent = error ? text : ''; status.hidden = !error; };
   const api = async (endpoint, data, method = 'POST') => {
     const response = await fetch('/api/editor' + endpoint, {method: data === undefined ? 'GET' : method, credentials: 'same-origin', cache: 'no-store', headers: data === undefined ? {} : {'Content-Type': 'application/json', 'X-CSRF-Token': csrf}, body: data === undefined ? undefined : JSON.stringify(data)});
     const result = await response.json().catch(() => ({}));
@@ -70,7 +71,7 @@ function initialize() {
   }
   async function open(isNew) {
     if (busy || editor) return;
-    busy = true; message('Загрузка…');
+    busy = true; message('');
     try {
       path = root.dataset.path; creating = isNew;
       const page = creating ? {title:'Новая заметка',body:'',revision:''} : await api('/pages?path=' + encodeURIComponent(path));
@@ -101,7 +102,7 @@ function initialize() {
     } catch (error) { message(error.message,true); }
     finally { busy = false; }
   }
-  async function publication(commit, token, url) {
+  async function publication(commit, token) {
     for (let attempt=0; attempt<120 && generation===token; attempt++) {
       await new Promise(resolve => setTimeout(resolve,5000));
       if (generation!==token) return;
@@ -109,13 +110,11 @@ function initialize() {
         const result = await api('/publications/' + encodeURIComponent(commit));
         if (generation!==token) return;
         if (result.status === 'failed') { message('Изменения сохранены, но публикация не прошла. Обратитесь к администратору.',true); return; }
-        if (result.status === 'published') {
-          message('Заметка опубликована. '); const link = document.createElement('a'); link.textContent = 'Открыть страницу'; const target = new URL(url || result.url,location.origin); if (target.origin===location.origin) link.href=target.href; status.append(link); return;
-        }
-      } catch { message('Правки сохранены. Проверка публикации временно недоступна.'); }
+        if (result.status === 'published') return;
+      } catch {}
     }
-    if (generation===token) message('Правки сохранены. Публикация ещё не подтверждена; проверьте страницу позже.');
   }
+
   save.addEventListener('click', async () => {
     if (busy || !editor) return;
     const title = heading.textContent.trim();
@@ -124,11 +123,11 @@ function initialize() {
     const payload = {title,body};
     if (creating) { payload.section=fields.querySelector('select').value; payload.slug=fields.querySelector('input').value.trim(); if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(payload.slug)) { message('В адресе используйте латинские буквы, цифры и дефисы.',true); return; } }
     else Object.assign(payload,{path,revision});
-    setBusy(true); message('Сохранение…');
+    setBusy(true); message('');
     try {
       const result = await api('/pages',payload,creating ? 'POST':'PUT');
       path=result.path; revision=result.revision; original=body; originalJSON=editor.getJSON(); baselineTitle=title; creating=false; fields?.remove(); fields=null;
-      message('Правки сохранены. Публикация выполняется…'); publication(result.commit,++generation,result.url);
+      message(''); publication(result.commit,++generation);
     } catch(error) { message(error.message,true); }
     finally { setBusy(false); }
   });
