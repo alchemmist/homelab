@@ -24,6 +24,7 @@ RANCHER_DASHBOARD_UIDS = {
 NODE_NAMES = 'max by (instance, nodename) (node_uname_info{job="node-exporter"})'
 
 NODE_DASHBOARD_UIDS = {'rancher-node-1', 'rancher-node-detail-1'}
+NODE_SELECTOR_QUERY = 'query_result(' + NODE_NAMES + ')'
 EXPORTER_QUERY = (
     'query_result(label_replace(node_uname_info{job="node-exporter"}, '
     '"node_ip", "$1", "instance", "(.+):[0-9]+") and on (node_ip) '
@@ -77,6 +78,16 @@ def add_cpu_temperature(dashboard):
 
 def resolve_node_exporter(dashboard):
     variables = dashboard.setdefault('templating', {}).setdefault('list', [])
+    instance = next(variable for variable in variables if variable.get('name') == 'instance')
+    instance.update({
+        'label': 'Node',
+        'datasource': {'type': 'prometheus', 'uid': '${datasource}'},
+        'query': {'query': NODE_SELECTOR_QUERY, 'refId': 'nodeNames'},
+        'definition': NODE_SELECTOR_QUERY,
+        'regex': '/instance="(?<value>[^"]+)".*nodename="(?<text>[^"]+)"/',
+        'sort': 1,
+        'options': [],
+    })
     variables[:] = [v for v in variables if v.get('name') != 'exporter_instance']
     variables.append({
         'name': 'exporter_instance',
