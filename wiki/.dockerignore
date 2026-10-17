@@ -9,3 +9,7 @@
 !static/**
 !assets/**
 !i18n/**
+
+!package.json
+!package-lock.json
+!editor/**

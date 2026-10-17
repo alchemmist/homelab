@@ -1,0 +1,11 @@
+wiki_editor_host: wiki.alchemmist.xyz
+wiki_editor_gateway_nodes: [socrat-0, socrat-1]
+wiki_editor_gateway_namespace: syncthing
+wiki_editor_gateway_release: syncthing
+wiki_editor_tls_secret: wiki-editor-private-tls
+wiki_editor_cluster_issuer: letsencrypt-http01
+wiki_editor_kubeconfig: /etc/rancher/k3s/k3s.yaml
+wiki_editor_directory: /home/alchemmist/.cache/homelab-wiki-editor-access
+wiki_editor_upstream: http://wiki-editor.wiki.svc.cluster.local:8080
+wiki_editor_static_upstream: http://wiki.wiki.svc.cluster.local:80
+wiki_editor_gateway_auth_secret: wiki-editor-gateway

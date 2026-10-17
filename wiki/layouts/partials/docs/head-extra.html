@@ -1,1 +1,5 @@
 <link rel="icon" href="{{ "images/socrat.svg" | relURL }}" type="image/svg+xml">
+{{ $editorStyle := resources.Get "wiki-editor.css" | minify | fingerprint }}
+<link rel="stylesheet" href="{{ $editorStyle.RelPermalink }}" integrity="{{ $editorStyle.Data.Integrity }}">
+{{ $editorScript := resources.Get "wiki-editor.js" | minify | fingerprint }}
+<script src="{{ $editorScript.RelPermalink }}" integrity="{{ $editorScript.Data.Integrity }}" defer></script>

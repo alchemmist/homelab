@@ -24,6 +24,7 @@ privateGui:
     tag: 1.27-alpine
     pullPolicy: IfNotPresent
   extraVirtualHosts: []
+  editorAuthSecret: ""
   tlsSecret: syncthing-private-ui-tls
   certificate:
     enabled: true

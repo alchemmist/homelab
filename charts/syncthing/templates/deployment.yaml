@@ -101,7 +101,7 @@ spec:
               nginx -g 'daemon off;' &
               nginx_pid=$!
               while kill -0 "$nginx_pid" 2>/dev/null; do
-                next_fingerprint=$(sha256sum /etc/nginx/tls/tls.crt /etc/nginx/tls/tls.key{{ range .Values.privateGui.extraVirtualHosts }} /etc/nginx/extra-tls/{{ .name }}/tls.crt /etc/nginx/extra-tls/{{ .name }}/tls.key{{ end }})
+                next_fingerprint=$(sha256sum{{ if .Values.privateGui.editorAuthSecret }} /etc/wiki-editor-secret/headers.conf{{ end }} /etc/nginx/tls/tls.crt /etc/nginx/tls/tls.key{{ range .Values.privateGui.extraVirtualHosts }} /etc/nginx/extra-tls/{{ .name }}/tls.crt /etc/nginx/extra-tls/{{ .name }}/tls.key{{ end }})
                 if [ -n "$tls_fingerprint" ] && [ "$next_fingerprint" != "$tls_fingerprint" ]; then
                   nginx -s reload
                 fi
@@ -136,6 +136,11 @@ spec:
                 - wget -qO- http://127.0.0.1:{{ .Values.privateGui.healthPort }}/healthz
             periodSeconds: 30
           volumeMounts:
+            {{- if .Values.privateGui.editorAuthSecret }}
+            - name: wiki-editor-secret
+              mountPath: /etc/wiki-editor-secret
+              readOnly: true
+            {{- end }}
             - name: private-nginx-config
               mountPath: /etc/nginx/nodes
               readOnly: true
@@ -157,6 +162,14 @@ spec:
             path: {{ .Values.hostPath | quote }}
             type: DirectoryOrCreate
         {{- if .Values.privateGui.enabled }}
+        {{- if .Values.privateGui.editorAuthSecret }}
+        - name: wiki-editor-secret
+          secret:
+            secretName: {{ .Values.privateGui.editorAuthSecret | quote }}
+            items:
+              - key: headers.conf
+                path: headers.conf
+        {{- end }}
         - name: private-nginx-config
           configMap:
             name: {{ .Chart.Name }}-private-nginx

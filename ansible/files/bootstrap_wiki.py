@@ -25,6 +25,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--repository", required=True)
     parser.add_argument("--branch", default="wiki-publish")
+    parser.add_argument("--gitrepo-name", default="wiki")
     parser.add_argument("--git-secret", default="")
     parser.add_argument("--registry-secret-namespace", default="blog")
     parser.add_argument("--registry-secret-name", default="ghcr-pull")
@@ -65,7 +66,7 @@ def main():
     }
     if args.git_secret:
         spec["clientSecretName"] = args.git_secret
-    resources.append(resource("GitRepo", "wiki", "fleet-local", "fleet.cattle.io/v1alpha1", spec=spec))
+    resources.append(resource("GitRepo", args.gitrepo_name, "fleet-local", "fleet.cattle.io/v1alpha1", spec=spec))
     for item in resources:
         print(kubectl("apply", "-f", "-", payload=item).strip())
 
