@@ -1,6 +1,6 @@
 ---
 title: "API и ключи LiteLLM"
-weight: 10
+weight: 20
 ---
 
 Базовый адрес OpenAI-совместимого API: `https://llm.alchemmist.xyz/v1`. Модель: `qwen3.8-27b`.
