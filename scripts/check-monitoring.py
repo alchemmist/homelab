@@ -142,6 +142,22 @@ def main():
             require(bool(resources.get('requests', {}).get('memory')) and bool(resources.get('limits', {}).get('memory')), pod['metadata']['name'] + '/' + container['name'] + ' has memory request and limit')
     dashboard = kubectl(args.ssh_host, 'get', '--raw', f'/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/dashboards/uid/socrat-overview')
     require(dashboard.get('dashboard', {}).get('title') == 'Overview', 'Overview dashboard provisioned in Grafana')
+    health = next(panel for panel in dashboard['dashboard']['panels'] if panel['id'] == 5)
+    require(health['type'] == 'alertlist' and health['options']['datasource'] == 'Prometheus'
+            and health['options']['showInstances'] and health['options']['stateFilter']['pending']
+            and health['options']['stateFilter']['firing'], 'Cluster health uses native Prometheus alert instances')
+    rules = kubectl(args.ssh_host, 'get', '--raw', f'/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/prometheus/prometheus/api/v1/rules')
+    require(rules.get('status') == 'success', 'Grafana can read Prometheus alert rules')
+    alert_rules = {rule['name']: rule for group in rules['data']['groups'] for rule in group['rules'] if rule.get('type') == 'alerting'}
+    for name, resource in [('KubePodNotReady', 'pod'), ('KubePodCrashLooping', 'pod'),
+                           ('KubeNodeNotReady', 'node'), ('KubeNodeUnreachable', 'node')]:
+        url = alert_rules[name].get('annotations', {}).get('rancher_url', '')
+        suffix = '{{ $labels.namespace }}/{{ $labels.pod }}' if resource == 'pod' else '{{ $labels.node }}'
+        require(url == f'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/{resource}/' + suffix,
+                f'{name} links to its Rancher resource')
+    for name in ['KubePodNotReady', 'KubeNodeNotReady']:
+        require('becomes Firing after' in alert_rules[name]['annotations']['description'],
+                f'{name} description is accurate during Pending')
     catalog = kubectl(args.ssh_host, 'get', '--raw', f'/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/search?limit=1000')
     dashboards = [item for item in catalog if item.get('type') == 'dash-db']
     primary = {item['uid']: item['title'] for item in dashboards if not item.get('folderUid')}

@@ -29,233 +29,34 @@
       "panels": []
     },
     {
-      "id": 3,
-      "title": "Ready nodes",
-      "type": "stat",
+      "id": 5,
+      "title": "Active alerts",
+      "type": "alertlist",
       "gridPos": {
         "x": 0,
         "y": 1,
-        "w": 6,
-        "h": 4
+        "w": 24,
+        "h": 10
       },
-      "description": "Number of Kubernetes nodes currently reporting Ready, at the end of the selected time range. Compare this with the expected node count on the Nodes dashboard. Readiness does not guarantee that every application on a node is healthy.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum(kube_node_status_condition{condition=\"Ready\",status=\"true\"})",
-          "legendFormat": "",
-          "instant": true,
-          "format": "time_series"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "noValue": "No data"
-        },
-        "overrides": []
-      },
+      "description": "Live Prometheus alert instances, independent of the dashboard time range. Pending means a rule is waiting for its confirmation period; Firing means that period has elapsed. Expand an instance to see its labels, description and Rancher link when available. KubePodNotReady excludes Job-owned and scheduling-gated pods and fires after 15 minutes. Watchdog and InfoInhibitor are operational helper alerts and are hidden. An empty list means no matching active alerts, not a check of notification delivery.",
       "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "values": false
+        "datasource": "Prometheus",
+        "viewMode": "list",
+        "groupMode": "default",
+        "showInstances": true,
+        "dashboardAlerts": false,
+        "showInactiveAlerts": false,
+        "alertInstanceLabelFilter": "{alertname!=\"Watchdog\",alertname!=\"InfoInhibitor\"}",
+        "stateFilter": {
+          "firing": true,
+          "pending": true,
+          "recovering": true,
+          "normal": false,
+          "noData": false,
+          "error": false
         },
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "auto"
-      }
-    },
-    {
-      "id": 4,
-      "title": "Firing alerts",
-      "type": "stat",
-      "gridPos": {
-        "x": 6,
-        "y": 1,
-        "w": 6,
-        "h": 4
-      },
-      "description": "Number of firing alert instances at the end of the selected time range, excluding the Watchdog heartbeat. Zero means this query found no firing alerts; it does not confirm that monitoring or notification delivery is working.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "count(ALERTS{alertstate=\"firing\",alertname!=\"Watchdog\"}) or vector(0)",
-          "legendFormat": "",
-          "instant": true,
-          "format": "time_series"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "color": {
-            "mode": "thresholds"
-          },
-          "noValue": "No data",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "value": null,
-                "color": "green"
-              },
-              {
-                "value": 1,
-                "color": "red"
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "values": false
-        },
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "auto"
-      }
-    },
-    {
-      "id": 5,
-      "title": "Unready pods",
-      "type": "stat",
-      "gridPos": {
-        "x": 12,
-        "y": 1,
-        "w": 6,
-        "h": 4
-      },
-      "description": "Number of active pods that are not Ready at the end of the selected time range. Includes Pending, Running and Unknown phases; completed jobs are excluded. Zero means no matching unready pods were found, provided Kubernetes metrics are being collected. Click the count to open the pod list, then click a pod name to open its Rancher details.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum((kube_pod_status_ready{condition=\"true\"} == bool 0) and on(namespace,pod) (kube_pod_status_phase{phase=~\"Pending|Running|Unknown\"} == 1)) or vector(0)",
-          "legendFormat": "",
-          "instant": true,
-          "format": "time_series"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "color": {
-            "mode": "thresholds"
-          },
-          "noValue": "No data",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "value": null,
-                "color": "green"
-              },
-              {
-                "value": 1,
-                "color": "red"
-              }
-            ]
-          },
-          "links": [
-            {
-              "title": "Show unready pods",
-              "url": "/d/socrat-overview/overview?${__url_time_range}&viewPanel=panel-18",
-              "targetBlank": false
-            }
-          ]
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "values": false
-        },
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "auto"
-      }
-    },
-    {
-      "id": 6,
-      "title": "Unavailable scrape targets",
-      "type": "stat",
-      "gridPos": {
-        "x": 18,
-        "y": 1,
-        "w": 6,
-        "h": 4
-      },
-      "description": "Number of Prometheus targets whose latest scrape failed. Zero means no recorded scrape failures, not a successful external application check; targets missing from discovery are not counted.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "count(up == 0) or vector(0)",
-          "legendFormat": "",
-          "instant": true,
-          "format": "time_series"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "color": {
-            "mode": "thresholds"
-          },
-          "noValue": "No data",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "value": null,
-                "color": "green"
-              },
-              {
-                "value": 1,
-                "color": "red"
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "values": false
-        },
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "auto"
+        "maxItems": 50,
+        "sortOrder": 3
       }
     },
     {
@@ -265,7 +66,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 5,
+        "y": 11,
         "w": 24,
         "h": 1
       },
@@ -277,7 +78,7 @@
       "type": "stat",
       "gridPos": {
         "x": 0,
-        "y": 6,
+        "y": 12,
         "w": 6,
         "h": 4
       },
@@ -339,7 +140,7 @@
       "type": "stat",
       "gridPos": {
         "x": 6,
-        "y": 6,
+        "y": 12,
         "w": 6,
         "h": 4
       },
@@ -401,7 +202,7 @@
       "type": "stat",
       "gridPos": {
         "x": 12,
-        "y": 6,
+        "y": 12,
         "w": 6,
         "h": 4
       },
@@ -463,7 +264,7 @@
       "type": "stat",
       "gridPos": {
         "x": 18,
-        "y": 6,
+        "y": 12,
         "w": 6,
         "h": 4
       },
@@ -526,7 +327,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 10,
+        "y": 16,
         "w": 24,
         "h": 1
       },
@@ -538,7 +339,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 11,
+        "y": 17,
         "w": 8,
         "h": 8
       },
@@ -596,7 +397,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 8,
-        "y": 11,
+        "y": 17,
         "w": 8,
         "h": 8
       },
@@ -654,7 +455,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 16,
-        "y": 11,
+        "y": 17,
         "w": 8,
         "h": 8
       },
@@ -713,81 +514,20 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 19,
+        "y": 25,
         "w": 24,
         "h": 1
       },
       "panels": []
     },
     {
-      "id": 17,
-      "title": "Firing alerts",
-      "type": "table",
-      "gridPos": {
-        "x": 0,
-        "y": 20,
-        "w": 12,
-        "h": 8
-      },
-      "description": "Firing alert instances grouped by alert name, severity and namespace at the end of the selected time range. The Watchdog heartbeat is excluded. An empty table means no matching alerts if alert evaluation is working.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "count by(alertname,severity,namespace)(ALERTS{alertstate=\"firing\",alertname!=\"Watchdog\"})",
-          "legendFormat": "",
-          "instant": true,
-          "format": "table"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "noValue": "No data"
-        },
-        "overrides": []
-      },
-      "options": {
-        "showHeader": true,
-        "cellHeight": "sm"
-      },
-      "transformations": [
-        {
-          "id": "organize",
-          "options": {
-            "includeByName": {
-              "alertname": true,
-              "severity": true,
-              "namespace": true
-            },
-            "indexByName": {
-              "alertname": 0,
-              "severity": 1,
-              "namespace": 2
-            },
-            "renameByName": {
-              "alertname": "Alert",
-              "severity": "Severity",
-              "namespace": "Namespace"
-            }
-          }
-        }
-      ]
-    },
-    {
       "id": 18,
       "title": "Unready pods",
       "type": "table",
       "gridPos": {
-        "x": 12,
-        "y": 20,
-        "w": 12,
+        "x": 0,
+        "y": 26,
+        "w": 24,
         "h": 8
       },
       "description": "Active pods that are not Ready at the end of the selected time range; completed jobs are excluded. An empty table means no matching pods if Kubernetes state metrics are available. Click a pod name to open its current status, events and logs in Rancher.",
@@ -864,7 +604,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 28,
+        "y": 34,
         "w": 24,
         "h": 1
       },
@@ -876,7 +616,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 29,
+        "y": 35,
         "w": 8,
         "h": 7
       },
@@ -938,7 +678,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 8,
-        "y": 29,
+        "y": 35,
         "w": 8,
         "h": 7
       },
@@ -1000,7 +740,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 16,
-        "y": 29,
+        "y": 35,
         "w": 8,
         "h": 7
       },
@@ -1056,7 +796,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 36,
+        "y": 42,
         "w": 24,
         "h": 1
       },
@@ -1068,7 +808,7 @@
       "type": "table",
       "gridPos": {
         "x": 0,
-        "y": 37,
+        "y": 43,
         "w": 12,
         "h": 8
       },
@@ -1132,7 +872,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 12,
-        "y": 37,
+        "y": 43,
         "w": 12,
         "h": 8
       },

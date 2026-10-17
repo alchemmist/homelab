@@ -4,7 +4,7 @@ import sys
 
 import yaml
 
-from dashboard_descriptions import apply_descriptions
+from dashboard_descriptions import apply_alert_descriptions, apply_descriptions
 
 
 DASHBOARD_UIDS = {
@@ -28,6 +28,7 @@ def rewrite_panels(panels):
 
 def render(resources):
     for resource in resources:
+        apply_alert_descriptions(resource)
         if not isinstance(resource, dict) or resource.get("kind") != "ConfigMap":
             continue
         for key, value in resource.get("data", {}).items():
