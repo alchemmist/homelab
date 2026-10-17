@@ -19,7 +19,7 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name }}
       {{- if .Values.privateGui.enabled }}
       annotations:
-        checksum/private-nginx: {{ include (print $.Template.BasePath "/private-nginx.yaml") . | sha256sum | quote }}
+        checksum/private-nginx: {{ omit (get (include (print $.Template.BasePath "/private-nginx.yaml") . | fromYaml) "data") "rancher-layout.js" | toYaml | sha256sum | quote }}
       {{- end }}
     spec:
       {{- if .Values.hostNetwork }}

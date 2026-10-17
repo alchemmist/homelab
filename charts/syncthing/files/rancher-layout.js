@@ -3,9 +3,35 @@
   window.__socratGrafanaAutosize = true;
 
   const frames = new Map();
+  const initializedRanges = new WeakSet();
   const selector = '.dashboard-metrics .grafana-graph iframe';
   const dashboardPath = '/services/http:rancher-monitoring-grafana:80/proxy/d/';
   let pending = false;
+
+  function initializeRanges() {
+    const pending = new Set([...document.querySelectorAll('.dashboard-metrics')]
+      .filter(element => !initializedRanges.has(element)));
+    if (!pending.size) return;
+    const stack = [document.getElementById('app')?._vnode];
+    const seen = new Set();
+    while (stack.length && pending.size) {
+      const vnode = stack.pop();
+      if (!vnode || typeof vnode !== 'object' || seen.has(vnode)) continue;
+      seen.add(vnode);
+      const component = vnode.component;
+      const element = component?.subTree?.el;
+      const options = component?.data?.graphOptions;
+      if (pending.has(element) && typeof options?.range === 'string'
+          && typeof options.refreshRate === 'string') {
+        initializedRanges.add(element);
+        pending.delete(element);
+        if (options.range === '5m') options.range = '1h';
+      }
+      if (component?.subTree) stack.push(component.subTree);
+      if (Array.isArray(vnode.children)) stack.push(...vnode.children);
+      if (vnode.ssContent) stack.push(vnode.ssContent);
+    }
+  }
 
   function matches(frame) {
     try {
@@ -81,6 +107,7 @@
 
   function update() {
     pending = false;
+    initializeRanges();
     const current = new Set([...document.querySelectorAll(selector)].filter(matches));
     for (const [frame, state] of frames) {
       if (current.has(frame)) continue;
