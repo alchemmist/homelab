@@ -45,3 +45,113 @@ test('failed persistence never acknowledges unsaved in-memory updates', () => {
   assert.throws(()=>workspace.discard(),/quota/);
   assert.equal(workspace.active(),true);
 });
+const tree = () => ({revision:'tree1',nodes:[
+  {id:'start',path:'start',page_path:'start/_index.md',kind:'folder',title:'Start',url:'/start/',children:[{id:'start/a.md',path:'start/a.md',page_path:'start/a.md',kind:'page',title:'A',url:'/start/a/'}]},
+  {id:'help',path:'help',page_path:'help/_index.md',kind:'folder',title:'Help',url:'/help/',children:[]}
+]});
+test('combined workspace persists nested folder moves, order, and original draft identity', () => {
+  const disk = storage(), workspace = createWorkspace(disk);
+  workspace.start(); workspace.seedTree(tree()); workspace.put(page);
+  workspace.stage({type:'folder',parent:'help',slug:'nested',title:'Nested'});
+  workspace.stage({type:'move',source:'start',target_parent:'help/nested',before:null});
+  workspace.stage({type:'move',source:'help/nested/start/a.md',target_parent:'help',before:'help/nested'});
+  const restored = createWorkspace(disk);
+  assert.equal(restored.operations().length,3);
+  assert.equal(restored.originPath('help/a.md'),'start/a.md');
+  assert.equal(restored.virtualPath('start/a.md'),'help/a.md');
+  assert.equal(restored.get('help/a.md').body,'Body');
+  restored.put({...page,path:'help/a.md',body:'Changed'});
+  assert.equal(restored.drafts()[0].path,'start/a.md');
+  assert.deepEqual(restored.tree().nodes[0].children.map(node=>node.id),['help/a.md','help/nested']);
+  assert.equal(restored.hasChanges(),true);
+  assert.equal(batchPages(restored.drafts())[0].path,'start/a.md');
+});
+test('failed structure validation leaves the persisted workspace unchanged', () => {
+  const workspace = createWorkspace(storage()); workspace.seedTree(tree());
+  const before = workspace.tree();
+  for (const operation of [
+    {type:'move',source:'start',target_parent:'start',before:null},
+    {type:'move',source:'start/a.md',target_parent:'missing',before:null},
+    {type:'move',source:'start/a.md',target_parent:'help',before:'missing'},
+    {type:'folder',parent:'',slug:'help',title:'Duplicate'}
+  ]) assert.throws(()=>workspace.stage(operation));
+  assert.deepEqual(workspace.tree(),before);
+  assert.deepEqual(workspace.operations(),[]);
+});
+test('new root pages can move beside folders and publish at original creation path', () => {
+  const workspace = createWorkspace(storage());
+  workspace.put({path:'draft:new',creating:true,slug:'new',title:'New',body:'Text'});
+  workspace.seedTree(tree());
+  workspace.stage({type:'move',source:'new.md',target_parent:'start',before:'start/a.md'});
+  assert.equal(workspace.originPath('start/new.md'),'draft:new');
+  assert.equal(workspace.virtualPath('draft:new'),'start/new.md');
+  assert.deepEqual(batchPages(workspace.drafts()),[{section:'',slug:'new',title:'New',body:'Text'}]);
+  assert.throws(()=>workspace.put({...workspace.get('draft:new'),slug:'renamed'}));
+  assert.equal(workspace.get('draft:new').slug,'new');
+  workspace.acknowledge(workspace.drafts(),workspace.operations());
+  assert.equal(workspace.hasChanges(),false);
+  assert.equal(workspace.tree(),undefined);
+});
+test('same-parent reorder uses sibling insertion position', () => {
+  const workspace = createWorkspace(storage()); workspace.seedTree(tree());
+  workspace.stage({type:'move',source:'help',target_parent:'',before:'start'});
+  assert.deepEqual(workspace.tree().nodes.map(node=>node.id),['help','start']);
+  assert.deepEqual(workspace.tree().nodes.map(node=>node.weight),[10,20]);
+});
+test('fresh server trees replace a clean baseline but cannot erase staged changes', () => {
+  const workspace = createWorkspace(storage()); workspace.seedTree(tree());
+  workspace.seedTree({...tree(),revision:'tree2'});
+  assert.equal(workspace.tree().revision,'tree2');
+  workspace.put(page);
+  workspace.seedTree({...tree(),revision:'tree3'});
+  assert.equal(workspace.tree().revision,'tree2');
+  workspace.remove(page.path);
+  workspace.stage({type:'move',source:'help',target_parent:'',before:'start'});
+  workspace.seedTree({...tree(),revision:'tree4'});
+  assert.equal(workspace.tree().revision,'tree2');
+  assert.equal(workspace.tree().nodes[0].id,'help');
+});
+
+test('reused virtual path never steals an existing page original identity',()=>{
+  const workspace=createWorkspace(storage());
+  workspace.seedTree({revision:'tree',nodes:[{id:'a.md',kind:'page',title:'Original',url:'/a/'},{id:'folder',kind:'folder',title:'Folder',children:[]}]});
+  workspace.put({path:'a.md',title:'Original edited',body:'Original text',revision:'a1'});
+  workspace.stage({type:'move',source:'a.md',target_parent:'folder',before:null});
+  assert.throws(()=>workspace.put({path:'draft:new',creating:true,slug:'a',title:'New',body:'Different text'}),/Этот адрес уже принадлежит другой заметке/);
+  assert.equal(workspace.get('a.md').body,'Original text');
+  assert.equal(workspace.get('draft:new'),undefined);
+  workspace.put({path:'a.md',title:'Original edited again',body:'Second edit',revision:'a1'});
+  assert.equal(batchPages(workspace.drafts())[0].path,'a.md');
+  assert.equal(workspace.virtualPath('a.md'),'folder/a.md');
+});
+
+test('new page slug remains editable after unrelated operations and locks after its own move',()=>{
+  const workspace=createWorkspace(storage());workspace.seedTree(tree());
+  workspace.stage({type:'folder',parent:'',slug:'new-folder',title:'New folder'});
+  for(const slug of ['a','ab','abc'])workspace.put({path:'draft:new',creating:true,slug,title:'New',body:'Text'});
+  assert.equal(workspace.slugLocked('draft:new'),false);
+  workspace.stage({type:'move',source:'abc.md',target_parent:'new-folder',before:null});
+  assert.equal(workspace.slugLocked('draft:new'),true);
+  assert.throws(()=>workspace.put({path:'draft:new',creating:true,slug:'abcd',title:'New',body:'Text'}),/Нельзя изменить адрес/);
+  workspace.stage({type:'move',source:'new-folder',target_parent:'',before:'start'});
+  for(const slug of ['x','xy','xyz'])workspace.put({path:'draft:another',creating:true,slug,title:'Another',body:'Text'});
+  assert.equal(workspace.slugLocked('draft:another'),false);
+});
+
+test('new page used as insertion anchor locks its slug',()=>{
+  const workspace=createWorkspace(storage());workspace.seedTree(tree());
+  workspace.put({path:'draft:anchor',creating:true,slug:'anchor',title:'Anchor',body:'Text'});
+  workspace.stage({type:'move',source:'start',target_parent:'',before:'anchor.md'});
+  assert.equal(workspace.slugLocked('draft:anchor'),true);
+});
+
+test('moving pages and folders rejects their shared URL collision without changing drafts',()=>{
+  for(const [source,occupied] of [['a.md','a'],['a','a.md']]){
+    const workspace=createWorkspace(storage());
+    workspace.seedTree({revision:'r1',nodes:[{id:source,kind:source.endsWith('.md')?'page':'folder',title:'Source',children:[]},{id:'target',kind:'folder',title:'Target',children:[{id:'target/'+occupied,kind:occupied.endsWith('.md')?'page':'folder',title:'Occupied',children:[]}]}]});
+    const previous=workspace.tree();
+    assert.throws(()=>workspace.stage({type:'move',source,target_parent:'target',before:null}),/Этот адрес уже занят/);
+    assert.deepEqual(workspace.tree(),previous);
+    assert.deepEqual(workspace.operations(),[]);
+  }
+});

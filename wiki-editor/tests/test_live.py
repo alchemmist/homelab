@@ -242,3 +242,123 @@ class LiveTest(unittest.TestCase):
         self.live.initialize()
         self.assertIn('Durably accepted', self.client.get('/site/').text)
         self.assertEqual(len(self.live.pending()), 1)
+
+    def batch(self, pages, operations, revision=None):
+        revision = revision or self.client.get('/api/editor/tree').json()['revision']
+        return self.client.post('/api/editor/batch', json={'pages': pages, 'operations': operations, 'tree_revision': revision}, headers=self.headers)
+
+    def test_batch_edits_moves_and_references_publish_once(self):
+        page = {'slug': 'note', 'title': 'Note', 'body': 'Original'}
+        self.assertEqual(self.batch([page], []).status_code, 200)
+        self.make_remote()
+        self.live.synchronize()
+        edited = self.client.get('/api/editor/pages?path=note.md').json()
+        edited['body'] = 'Edited {{< relref "#section" >}}'
+        home = dict(self.page(), body='See {{< relref "note.md#section" >}}')
+        with patch.object(self.live, 'build', wraps=self.live.build) as build:
+            result = self.batch([edited, home], [
+                {'type': 'folder', 'parent': '', 'slug': 'folder', 'title': 'Folder'},
+                {'type': 'move', 'source': 'note.md', 'target_parent': 'folder'},
+            ])
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertEqual(build.call_count, 1)
+        self.assertEqual(len(self.live.pending()), 1)
+        saved = result.json()['pages'][0]
+        self.assertEqual(saved['original_path'], 'note.md')
+        self.assertEqual(saved['path'], 'folder/note.md')
+        self.assertEqual(saved['url'], self.api.ORIGIN + '/folder/note/')
+        moved = self.client.get('/api/editor/pages?path=folder/note.md').json()
+        self.assertEqual(saved['revision'], moved['revision'])
+        self.assertEqual(saved['body'], moved['body'])
+        self.assertEqual(saved['title'], moved['title'])
+        self.assertIn('Edited', moved['body'])
+        self.assertIn('/folder/note.md#section', moved['body'])
+        self.assertIn('/folder/note.md#section', self.page()['body'])
+        self.assertEqual(self.client.get('/api/editor/pages?path=note.md').status_code, 404)
+        self.live.synchronize()
+        self.assertFalse((self.live.remote / 'wiki/content/note.md').exists())
+        self.assertIn('Edited', (self.live.remote / 'wiki/content/folder/note.md').read_text())
+
+    def test_batch_new_page_nested_folders_and_order(self):
+        result = self.batch([{'slug': 'note', 'title': 'Note', 'body': 'New'}], [
+            {'type': 'folder', 'parent': '', 'slug': 'first', 'title': 'First'},
+            {'type': 'folder', 'parent': '', 'slug': 'second', 'title': 'Second'},
+            {'type': 'move', 'source': 'note.md', 'target_parent': 'first'},
+            {'type': 'move', 'source': 'first', 'target_parent': 'second'},
+            {'type': 'folder', 'parent': '', 'slug': 'third', 'title': 'Third'},
+            {'type': 'move', 'source': 'third', 'target_parent': '', 'before': 'second'},
+        ])
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertEqual(result.json()['pages'][0]['path'], 'second/first/note.md')
+        self.assertEqual([node['id'] for node in result.json()['nodes']], ['third', 'second'])
+        self.assertEqual(len(self.live.pending()), 1)
+        self.assertEqual(result.json()['revision'], self.client.get('/api/editor/tree').json()['revision'])
+
+    def test_structure_only_batch_and_missing_revision(self):
+        operation = {'type': 'folder', 'parent': '', 'slug': 'folder', 'title': 'Folder'}
+        rejected = self.client.post('/api/editor/batch', json={'pages': [], 'operations': [operation]}, headers=self.headers)
+        self.assertEqual(rejected.status_code, 422)
+        accepted = self.batch([], [operation])
+        self.assertEqual(accepted.status_code, 200, accepted.text)
+        self.assertEqual(accepted.json()['pages'], [])
+        self.assertEqual(len(self.live.pending()), 1)
+
+    def test_combined_batch_invalid_move_rolls_back_content_and_folders(self):
+        before = self.page()
+        tree = self.client.get('/api/editor/tree').json()
+        result = self.batch([dict(before, body='Must roll back')], [
+            {'type': 'folder', 'parent': '', 'slug': 'folder', 'title': 'Folder'},
+            {'type': 'move', 'source': 'folder', 'target_parent': 'folder'},
+        ])
+        self.assertEqual(result.status_code, 422, result.text)
+        self.assertEqual(self.page(), before)
+        self.assertEqual(self.client.get('/api/editor/tree').json(), tree)
+        self.assertFalse(self.live.pending())
+        self.assertNotIn('Must roll back', self.client.get('/site/').text)
+
+    def test_batch_base_conflict_changes_nothing(self):
+        before = self.page()
+        result = self.batch([dict(before, body='Lost')], [
+            {'type': 'folder', 'parent': '', 'slug': 'folder', 'title': 'Folder'},
+        ], revision='0' * 40)
+        self.assertEqual(result.status_code, 409)
+        self.assertEqual(self.page(), before)
+        self.assertFalse(self.live.pending())
+
+    def test_batch_new_page_before_existing_edit_does_not_self_conflict(self):
+        self.assertEqual(self.batch([{'slug': 'old', 'title': 'Old', 'body': 'Old'}], []).status_code, 200)
+        target = self.api.WORK / 'wiki/content/old.md'
+        metadata, body = self.api.parse(target.read_text())
+        metadata['weight'] = 99
+        self.api.write_markdown(target, metadata, body)
+        self.api.raw_git('add', '.')
+        self.api.raw_git('-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', 'different weight')
+        old = self.client.get('/api/editor/pages?path=old.md').json()
+        result = self.batch([{'slug': 'new', 'title': 'New', 'body': 'New'}, dict(old, body='Edited')], [])
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertEqual(self.client.get('/api/editor/pages?path=old.md').json()['body'], 'Edited')
+
+    def test_edited_folder_index_tracks_ancestor_move(self):
+        result = self.batch([], [
+            {'type': 'folder', 'parent': '', 'slug': 'source', 'title': 'Source'},
+            {'type': 'folder', 'parent': '', 'slug': 'target', 'title': 'Target'},
+        ])
+        self.assertEqual(result.status_code, 200, result.text)
+        page = self.client.get('/api/editor/pages?path=source/_index.md').json()
+        result = self.batch([dict(page, title='Changed title', body='Folder content')], [
+            {'type': 'move', 'source': 'source', 'target_parent': 'target'},
+        ])
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertEqual(result.json()['pages'][0]['path'], 'target/source/_index.md')
+        self.assertEqual(result.json()['nodes'][0]['children'][0]['title'], 'Changed title')
+        self.assertEqual(self.client.get('/api/editor/pages?path=target/source/_index.md').json()['body'], 'Folder content')
+
+    def test_batch_stale_page_prevents_all_operations(self):
+        before = self.page()
+        result = self.batch([dict(before, revision='0' * 40)], [
+            {'type': 'folder', 'parent': '', 'slug': 'folder', 'title': 'Folder'},
+        ])
+        self.assertEqual(result.status_code, 409, result.text)
+        self.assertEqual(self.page(), before)
+        self.assertEqual(self.client.get('/api/editor/tree').json()['nodes'], [])
+        self.assertFalse(self.live.pending())

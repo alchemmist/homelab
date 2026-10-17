@@ -1,4 +1,4 @@
-export async function initializeTree({api, dirty, structureDirty = dirty, openPage, currentPath, moved, changed = async () => {}, message, publication}) {
+export async function initializeTree({api, workspace, begin = () => true, dirty, structureDirty = dirty, openPage, currentPath, moved, changed = async () => {}, message, publication}) {
   const nav = document.querySelector('.page-tree');
   if (!nav) return;
   const pendingLinks = new Map();
@@ -11,13 +11,13 @@ export async function initializeTree({api, dirty, structureDirty = dirty, openPa
   const parentOf = id => id.includes('/') ? id.slice(0, id.lastIndexOf('/')) : '';
   const guard = (structure = true) => {
     if (pending) return false;
-    if (dirty() || structure && structureDirty()) { error('Опубликуйте или отмените правки wiki перед изменением структуры.'); return false; }
+    if (dirty() || !workspace && structure && structureDirty()) { error('Опубликуйте или отмените правки wiki перед изменением структуры.'); return false; }
     message(''); return true;
   };
   function loadTree() {
     if (!loading) {
       const generation = treeGeneration;
-      loading = api('/tree').then(value => { if (generation === treeGeneration) tree = value; return tree; }).finally(() => { loading = null; });
+      loading = api('/tree').then(value => { if (generation === treeGeneration) { if (workspace) { workspace.seedTree(value); tree = workspace.tree(); } else tree = value; } return tree; }).finally(() => { loading = null; });
     }
     return loading;
   }
@@ -44,16 +44,21 @@ export async function initializeTree({api, dirty, structureDirty = dirty, openPa
     try {
       if (loading) await loading;
       const revision = await ensureRevision();
-      const result = await api(endpoint, {...payload, revision});
+      let result;
+      if (workspace) {
+        if (!begin()) return;
+        workspace.stage({type:endpoint === "/move" ? "move" : "folder",...payload});
+        result = workspace.tree();
+      } else result = await api(endpoint, {...payload, revision});
       const oldNodes = flatten(tree.nodes);
       if (endpoint === '/move') {
         const target = payload.target_parent ? payload.target_parent + '/' + payload.source.split('/').pop() : payload.source.split('/').pop();
         for (const node of oldNodes.filter(n => n.kind === 'page' && (n.id === payload.source || n.id.startsWith(payload.source + '/')))) pendingLinks.set(target + node.id.slice(payload.source.length), pendingLinks.has(node.id) ? pendingLinks.get(node.id) : node.url);
       }
-      treeGeneration++; tree = result; chooser?.remove(); render(); watchPublication(result.commit);
+      treeGeneration++; tree = result; chooser?.remove(); render(); if (!workspace) watchPublication(result.commit);
       return result;
     } catch (e) {
-      if (e.status === 409) { await refresh(); error('Структура уже изменилась. Обновили список; повторите действие.'); }
+      if (e.status === 409 && !workspace) { await refresh(); error('Структура уже изменилась. Обновили список; повторите действие.'); }
       else error(e.message);
     } finally { pending = false; nav.removeAttribute('aria-busy'); }
   }
@@ -195,10 +200,10 @@ export async function initializeTree({api, dirty, structureDirty = dirty, openPa
         const chevron=document.createElementNS('http://www.w3.org/2000/svg','path');chevron.setAttribute('d','m9 5 7 7-7 7');svg.append(chevron);
         const label=document.createElement('span');label.textContent=node.title;toggle.append(svg,label);row.append(toggle);
       } else {
-        const link=document.createElement('a');link.draggable=false;link.href=pendingLinks.get(node.id) || node.url;link.textContent=node.title;
+        const link=document.createElement('a');link.draggable=false;link.href=node.origin_url || pendingLinks.get(node.id) || node.url;link.textContent=node.title;
         if((node.page_path || node.id)===currentPath())link.setAttribute('aria-current','page');
         if(pendingLinks.has(node.id) && !pendingLinks.get(node.id)) {link.removeAttribute('href');link.setAttribute('aria-disabled','true');link.title='Ожидает публикации';}
-        link.addEventListener('click',event=>{if(!link.hasAttribute('href')){event.preventDefault();return;}if(dirty()){event.preventDefault();error('Сначала опубликуйте или отмените правки заметки.');}});row.append(link);
+        link.addEventListener('click',event=>{if(node.draft_path){event.preventDefault();openPage({draftPath:node.draft_path});return;}if(!link.hasAttribute('href')){event.preventDefault();return;}if(dirty()){event.preventDefault();error('Сначала опубликуйте или отмените правки заметки.');}});row.append(link);
       }
       li.append(row);dropTarget(row,node,nodes);
       if(node.children?.length){const children=list(node.children,depth+1);children.hidden=!expanded.has(node.id);li.append(children);}ul.append(li);
@@ -220,5 +225,5 @@ export async function initializeTree({api, dirty, structureDirty = dirty, openPa
   }
   mountToolbar();
   const ready = loadTree().then(() => { for(const node of flatten(tree.nodes))if(node.kind==='folder' && currentPath().startsWith(node.id+'/'))expanded.add(node.id);render(); }).catch(e => error(e.message));
-  return {refresh, revision:()=>tree?.revision, ensureRevision, ready};
+  return {refresh, render:()=>{ if (workspace) tree = workspace.tree() || tree; render(); }, reset:()=>{tree=undefined;return refresh();}, revision:()=>tree?.revision, ensureRevision, ready};
 }

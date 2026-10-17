@@ -628,24 +628,69 @@ def publication(commit: str):
 
 @app.post('/api/editor/batch')
 def batch(data: dict):
-    pages = data.get('pages')
-    if not isinstance(pages, list) or not pages or len(pages) > 100 or any(not isinstance(page, dict) for page in pages):
-        raise HTTPException(422, 'Provide between 1 and 100 pages')
+    pages = data.get('pages', [])
+    operations = data.get('operations', [])
+    if not isinstance(pages, list) or len(pages) > 100 or any(not isinstance(page, dict) for page in pages):
+        raise HTTPException(422, 'Provide at most 100 pages')
+    if not isinstance(operations, list) or len(operations) > 100 or any(not isinstance(item, dict) or item.get('type') not in ('folder', 'move') for item in operations):
+        raise HTTPException(422, 'Provide at most 100 folder or move operations')
+    if not pages and not operations:
+        raise HTTPException(422, 'Provide pages or structure operations')
+    if operations and (not isinstance(data.get('tree_revision'), str) or not re.fullmatch(r'[a-f0-9]{40}', data['tree_revision'])):
+        raise HTTPException(422, 'Content tree revision is required')
     if not LIVE_MODE:
         raise HTTPException(503, 'Workspace publication requires live mode')
     def operation():
-        if data.get('tree_revision') and data['tree_revision'] != content_revision():
+        base_revision = content_revision()
+        if data.get('tree_revision') and data['tree_revision'] != base_revision:
             raise HTTPException(409, 'Wiki structure or content changed')
         results = []
         paths = set()
         for page in pages:
-            path = page.get('path') or '/'.join(filter(None, [page.get('section', ''), str(page.get('slug', '')) + '.md']))
+            if 'path' in page:
+                path = page['path']
+            else:
+                section, slug = page.get('section', ''), page.get('slug')
+                checked_path(section, section=True)
+                if not isinstance(slug, str) or not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*', slug):
+                    raise HTTPException(422, 'Slug must use lowercase letters, digits and hyphens')
+                path = '/'.join(filter(None, [section, slug + '.md']))
+            checked_path(path)
             if path in paths:
                 raise HTTPException(422, 'Duplicate page in workspace')
             paths.add(path)
-            results.append(save(page, create='path' not in page))
-        results = [dict(result, revision=read_page(result['path'])['revision']) for result in results]
-        return {'pages': results, 'url': ORIGIN + '/'}
+            fields(page)
+            if 'path' in page:
+                revision = page.get('revision')
+                if not isinstance(revision, str):
+                    raise HTTPException(422, 'Base revision is required')
+                if not hmac.compare_digest(read_page(path)['revision'], revision):
+                    raise HTTPException(409, 'Page changed since it was opened; reload before saving')
+            if page.get('tree_revision') and page['tree_revision'] != base_revision:
+                raise HTTPException(409, 'Wiki structure or content changed')
+        for page in pages:
+            payload = {key: value for key, value in page.items() if key != 'tree_revision'}
+            if 'path' in page:
+                payload['revision'] = read_page(page['path'])['revision']
+            result = save(payload, create='path' not in page)
+            results.append(dict(result, original_path=result['path']))
+        for item in operations:
+            payload = dict(item, revision=content_revision())
+            if item['type'] == 'folder':
+                create_folder(payload)
+            else:
+                move_node(payload)
+                source = item['source']
+                destination = '/'.join(filter(None, [item.get('target_parent', ''), Path(source).name]))
+                for result in results:
+                    path = result['path']
+                    if path == source or path.startswith(source + '/'):
+                        result['path'] = destination + path[len(source):]
+        for result in results:
+            path = result['path']
+            metadata, unused = parse(checked_path(path).read_text(encoding='utf-8'))
+            result.update(read_page(path), url=document_url(path, metadata), commit=git('rev-parse', 'HEAD'))
+        return dict(tree_result(), pages=results, url=ORIGIN + '/')
     return LIVE.transaction(operation)()
 
 

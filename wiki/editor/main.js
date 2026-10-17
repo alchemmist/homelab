@@ -22,7 +22,7 @@ function initialize() {
   const pageCache = new Map();
   const draftsNav = document.createElement('span'); draftsNav.className = 'wiki-workspace-drafts'; save.before(draftsNav);
   const draftCount = () => {
-    const drafts = workspace.drafts(); save.textContent = drafts.length ? `Опубликовать ${drafts.length}` : 'Опубликовать';
+    const drafts = workspace.drafts(); const count = drafts.length + workspace.operations().length; save.textContent = count ? `Опубликовать ${count}` : 'Опубликовать';
     draftsNav.replaceChildren();
     for (const draft of drafts.filter(item=>item.creating && item.path!==path)) {
       const button = document.createElement('button'); button.type='button'; button.textContent=draft.title || 'Новая заметка';
@@ -39,7 +39,7 @@ function initialize() {
   const api = async (endpoint, data, method = 'POST') => {
     const response = await fetch('/api/editor' + endpoint, {method: data === undefined ? 'GET' : method, credentials: 'same-origin', cache: 'no-store', headers: data === undefined ? {} : {'Content-Type': 'application/json', 'X-CSRF-Token': csrf}, body: data === undefined ? undefined : JSON.stringify(data)});
     const result = await response.json().catch(() => ({}));
-    if (!response.ok) { const error = new Error(response.status === 409 ? 'Заметка уже изменена. Ваши правки остаются на странице. Скопируйте текст перед загрузкой актуальной версии.' : response.status === 401 || response.status === 403 ? 'Нет доступа. Проверьте Socrat WireGuard. Ваш текст остаётся на странице.' : result.error || result.detail || 'Не удалось выполнить запрос. Проверьте соединение и повторите попытку.'); error.status=response.status; throw error; }
+    if (!response.ok) { const error = new Error(response.status === 409 ? 'Wiki уже изменилась. Все ваши правки текста и структуры сохранены в черновике; публикация не применена.' : response.status === 401 || response.status === 403 ? 'Нет доступа. Проверьте Socrat WireGuard. Ваш текст остаётся на странице.' : result.error || result.detail || 'Не удалось выполнить запрос. Проверьте соединение и повторите попытку.'); error.status=response.status; throw error; }
     return result;
   };
   const dirty = () => editor && (creating || heading.textContent !== baselineTitle || JSON.stringify(editor.getJSON()) !== JSON.stringify(originalJSON));
@@ -50,15 +50,15 @@ function initialize() {
     if (dirty()) workspace.put({path, revision, title:heading.textContent, body:sourceBody(original,originalJSON,editor.getJSON(),editor.getMarkdown(),refs), creating, slug:fields?.querySelector('input')?.value || '', baseline:{title:baselineTitle,body:original,revision}});
     else workspace.remove(path);
       stashFailed = false;
-    } catch { stashFailed = true; message('Не удалось сохранить черновик в браузере. Не закрывайте страницу до публикации.',true); }
-    draftCount();
+    } catch (error) { stashFailed = true; message(error.message || 'Не удалось сохранить черновик в браузере. Не закрывайте страницу до публикации.',true); }
+    draftCount(); structure?.render();
     return !stashFailed;
   };
   const stop = (discard = true) => {
     if (busy) return;
     if (!stash() && !discard) return false;
-    if (discard && (dirty() || workspace.drafts().length) && !confirm('Отменить все неопубликованные изменения wiki?')) return;
-    if (discard) { try { workspace.discard(); stashFailed=false; } catch { message('Не удалось очистить черновики браузера. Повторите отмену.',true); return false; } }
+    if (discard && (dirty() || workspace.hasChanges()) && !confirm('Отменить все неопубликованные изменения wiki?')) return;
+    if (discard) { try { workspace.discard(); structure?.reset().catch(error=>message(error.message,true)); stashFailed=false; } catch { message('Не удалось очистить черновики браузера. Повторите отмену.',true); return false; } }
     generation++;
     editor?.destroy(); editor = null;
     toolbar?.remove(); fields?.remove(); linkForm?.remove();
@@ -112,6 +112,12 @@ function initialize() {
       const draft = workspace.get(path);
       const page = draft?.baseline || (creating ? {title:seed?.title || 'Новая заметка',body:'',revision:''} : await loadPage(path));
       creating = draft?.creating || creating;
+      if (!creating) {
+        const snapshotPath = path;
+        view.hydrate({api:(endpoint,payload)=>payload === undefined ? loadPage(snapshotPath) : api(endpoint,payload),path:snapshotPath,apply:false,canApply:()=>path===snapshotPath}).then(()=>{
+          if (path===snapshotPath && !editor && !busy && !workspace.active()) view.restore();
+        }).catch(()=>{});
+      }
       const prepared = prepareMarkdown(page.body);
       original = page.body; refs = prepared.refs; revision = page.revision;
       article.replaceChildren(); article.classList.add('wiki-rich-editor');
@@ -127,7 +133,7 @@ function initialize() {
       if (creating) {
         fields = document.createElement('div'); fields.className = 'wiki-new-fields';
         const slugLabel = document.createElement('label'); slugLabel.textContent = 'Адрес: латинские буквы, цифры, дефисы';
-        const slug = document.createElement('input'); slug.name = 'slug'; slug.placeholder = 'new-note'; slug.value = draft?.slug || seed?.slug || ''; slug.addEventListener('input',stash); slugLabel.append(slug);
+        const slug = document.createElement('input'); slug.name = 'slug'; slug.placeholder = 'new-note'; slug.value = draft?.slug || seed?.slug || ''; slug.disabled=workspace.slugLocked(path); slug.addEventListener('input',stash); slugLabel.append(slug);
         fields.append(slugLabel); heading.parentElement.after(fields);
       }
       actions.hidden = true; editbar.hidden = false; document.body.classList.add('wiki-editing');
@@ -164,22 +170,23 @@ function initialize() {
   }
 
   save.addEventListener('click', async () => {
-    if (busy || !editor) return;
+    if (busy) return;
     if (!stash()) return;
     const submitted = workspace.drafts();
-    if (!submitted.length) return;
+    if (!submitted.length && !workspace.operations().length) return;
     for (const draft of submitted) {
       if (!draft.title.trim() || draft.title.length > 200) { message('Укажите заголовки длиной до 200 символов.',true); return; }
       if (draft.creating && !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(draft.slug)) { message('В адресе новой заметки используйте латинские буквы, цифры и дефисы.',true); return; }
     }
     setBusy(true); message('');
     try {
-      const payload = {pages:batchPages(submitted)};
-      if (submitted.some(draft => draft.creating) && structure) payload.tree_revision = await structure.ensureRevision();
+      const payload = {pages:batchPages(submitted),operations:workspace.operations()};
+      if ((payload.operations.length || submitted.some(draft => draft.creating)) && structure) payload.tree_revision = await structure.ensureRevision();
+      const finalPath = workspace.virtualPath(path);
       const result = await api('/batch',payload);
-      workspace.acknowledge(submitted);
+      workspace.acknowledge(submitted,payload.operations);
       const index = submitted.findIndex(draft => draft.path === path);
-      if (index >= 0) {
+      if (index >= 0 && editor) {
         const saved = submitted[index], published = result.pages[index];
         path = published.path; revision = published.revision; original = saved.body; originalJSON = editor.getJSON(); baselineTitle = saved.title; creating = false;
         fields?.remove(); fields = null;
@@ -188,8 +195,13 @@ function initialize() {
         view.capture(baselineTitle,resolvePreviewLinks(editor.getHTML(),refs,path));
         if (published.url) history.replaceState(null,'',published.url);
       }
+      if (payload.operations.length) {
+        const flatten = nodes => nodes.flatMap(node=>[node,...flatten(node.children || [])]);
+        const current = flatten(result.nodes || []).find(node=>(node.page_path || node.id)===finalPath);
+        location.assign(current?.url || (finalPath === '_index.md' ? '/' : location.pathname)); return;
+      }
       draftCount();
-      structure?.refresh().catch(error=>message(error.message,true));
+      structure?.reset().catch(error=>message(error.message,true));
     } catch(error) { message(error.message,true); }
     finally { setBusy(false); }
   });
@@ -209,7 +221,13 @@ function initialize() {
       const hydrationGeneration = generation;
       return view.hydratePage({api,path,page,canApply:()=>!busy && !editor && generation===hydrationGeneration});
     }).catch(error=>message(error.message,true));
-    initializeTree({api, dirty:()=>busy, structureDirty:()=>stashFailed || workspace.drafts().length > 0, currentPath:()=>path, message, changed:refreshArticleRevision, openPage:async seed=>{if(editor && !stop(false))return;await open(true,seed);}, moved:(source,target)=>{stash();workspace.move(source,target);if(path===source || path.startsWith(source+'/')){path=target+path.slice(source.length);root.dataset.path=path;}pageCache.clear();}, publication:commit=>publication(commit)}).then(value=>{structure=value;}).catch(error=>message(error.message,true));
+    initializeTree({api, workspace, begin:()=>{
+      if (!stash()) return false;
+      workspace.start(); actions.hidden=true; editbar.hidden=false; document.body.classList.add('wiki-editing'); return true;
+    }, dirty:()=>busy, currentPath:()=>workspace.virtualPath(path), message, changed:async()=>{draftCount();if(fields?.querySelector('input'))fields.querySelector('input').disabled=workspace.slugLocked(path);structure?.render();}, openPage:async seed=>{
+      if(editor && !stop(false))return;
+      if(seed.draftPath){path=seed.draftPath;await open(false);}else await open(true,seed);
+    }, moved:()=>{draftCount();}, publication:commit=>publication(commit)}).then(value=>{structure=value;}).catch(error=>message(error.message,true));
     const mobile=document.querySelector('.mobile-actions');const media=matchMedia('(max-width: 900px)');
     const position=()=>{if(media.matches&&mobile)mobile.prepend(actions);else root.prepend(actions);};media.addEventListener('change',position);position();
   }).catch(()=>{});

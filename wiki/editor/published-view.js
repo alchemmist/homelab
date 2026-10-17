@@ -23,10 +23,10 @@ export function createPublishedView({article, heading, bodyHash}) {
     bodyHash = hash;
     if (apply) restore();
   };
-  const hydrate = async ({api, path, canApply}) => {
+  const hydrate = async ({api, path, canApply, apply = true}) => {
     const started = version;
     const page = await api('/pages?path=' + encodeURIComponent(path));
-    await hydratePage({api, path, page, canApply, started});
+    await hydratePage({api, path, page, canApply, apply, started});
   };
   return {capture, restore, hydrate, hydratePage};
 }
