@@ -74,7 +74,7 @@
           "links": [
             {
               "title": "View details",
-              "url": "/d/socrat-overview/overview?${__url_time_range}&viewPanel=panel-17&var-alert_state=firing&var-alert_severity=critical",
+              "url": "/d/socrat-overview/overview?${__url_time_range}&viewPanel=panel-17&var-alert_state=firing&var-alert_severity=critical&var-alert_name=.*",
               "targetBlank": false
             }
           ],
@@ -144,7 +144,7 @@
           "links": [
             {
               "title": "View details",
-              "url": "/d/socrat-overview/overview?${__url_time_range}&viewPanel=panel-17&var-alert_state=firing&var-alert_severity=warning",
+              "url": "/d/socrat-overview/overview?${__url_time_range}&viewPanel=panel-17&var-alert_state=firing&var-alert_severity=warning&var-alert_name=.*",
               "targetBlank": false
             }
           ],
@@ -214,7 +214,7 @@
           "links": [
             {
               "title": "View details",
-              "url": "/d/socrat-overview/overview?${__url_time_range}&viewPanel=panel-17&var-alert_state=pending&var-alert_severity=.*",
+              "url": "/d/socrat-overview/overview?${__url_time_range}&viewPanel=panel-17&var-alert_state=pending&var-alert_severity=.*&var-alert_name=.*",
               "targetBlank": false
             }
           ],
@@ -284,7 +284,7 @@
           "links": [
             {
               "title": "View details",
-              "url": "/d/socrat-overview/overview?${__url_time_range}&viewPanel=panel-18",
+              "url": "/d/socrat-overview/overview?${__url_time_range}&viewPanel=panel-17&var-alert_name=KubePodNotReady&var-alert_state=pending%7Cfiring&var-alert_severity=.*",
               "targetBlank": false
             }
           ],
@@ -770,16 +770,16 @@
       "panels": []
     },
     {
-      "id": 18,
-      "title": "Unready pod alerts",
+      "id": 17,
+      "title": "Alert details",
       "type": "table",
       "gridPos": {
         "x": 0,
         "y": 20,
-        "w": 12,
+        "w": 24,
         "h": 8
       },
-      "description": "Pods with Pending or Firing KubePodNotReady alerts at the end of the selected period. Click a pod name to open its current details in Rancher. An empty table means no matching pod alerts; Job-owned and scheduling-gated pods are excluded by the rule.",
+      "description": "Alert instances matching the Cluster health card filters at the end of the selected period. Click an alert name to open its rule in Grafana. For KubePodNotReady, namespace and pod identify the affected pod and its name links directly to Rancher. Other alert types omit pod links to avoid linking to an exporter instead of the affected workload. Watchdog and InfoInhibitor are excluded.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -787,21 +787,34 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "max by(namespace,pod,alertstate)(ALERTS{alertname=\"KubePodNotReady\",alertstate=~\"pending|firing\"})",
-          "legendFormat": "",
+          "expr": "label_replace(ALERTS{alertstate=~\"${alert_state:raw}\",severity=~\"${alert_severity:raw}\",alertname=~\"${alert_name:raw}\",alertname!~\"Watchdog|InfoInhibitor\",alertname=\"KubePodNotReady\"}, \"affected_pod\", \"$1\", \"pod\", \"(.+)\") or ALERTS{alertstate=~\"${alert_state:raw}\",severity=~\"${alert_severity:raw}\",alertname=~\"${alert_name:raw}\",alertname!~\"Watchdog|InfoInhibitor\",alertname!=\"KubePodNotReady\"}",
           "instant": true,
           "format": "table"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "noValue": "No data"
+          "unit": "short"
         },
         "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Alert"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open alert in Grafana",
+                    "url": "https://grafana.socrat.alchemmist.xyz/alerting/list?search=${__value.raw}",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          },
           {
             "matcher": {
               "id": "byName",
@@ -831,103 +844,28 @@
           "id": "organize",
           "options": {
             "includeByName": {
-              "namespace": true,
-              "pod": true,
-              "alertstate": true
-            },
-            "indexByName": {
-              "namespace": 0,
-              "pod": 1,
-              "alertstate": 2
-            },
-            "renameByName": {
-              "namespace": "Namespace",
-              "pod": "Pod",
-              "alertstate": "State"
-            }
-          }
-        }
-      ]
-    },
-    {
-      "id": 17,
-      "title": "Alert details",
-      "type": "table",
-      "gridPos": {
-        "x": 12,
-        "y": 20,
-        "w": 12,
-        "h": 8
-      },
-      "description": "Alert instances matching the state and severity selected by the Cluster health card, at the end of the selected period. Labels provide rule context; some rules carry the exporter pod rather than the affected workload. Use the Unready pods card for direct links to specific unready pods. Watchdog and InfoInhibitor are excluded. Click an alert name to find its rule and full explanation in Grafana Alerting.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "ALERTS{alertstate=~\"${alert_state:raw}\",severity=~\"${alert_severity:raw}\",alertname!~\"Watchdog|InfoInhibitor\"}",
-          "instant": true,
-          "format": "table"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Alert"
-            },
-            "properties": [
-              {
-                "id": "links",
-                "value": [
-                  {
-                    "title": "Open alert in Grafana",
-                    "url": "https://grafana.socrat.alchemmist.xyz/alerting/list?search=${__value.raw}",
-                    "targetBlank": true
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      },
-      "options": {
-        "showHeader": true,
-        "cellHeight": "sm"
-      },
-      "transformations": [
-        {
-          "id": "organize",
-          "options": {
-            "includeByName": {
               "alertname": true,
               "severity": true,
               "alertstate": true,
               "namespace": true,
-              "pod": true,
-              "node": true
+              "node": true,
+              "affected_pod": true
             },
             "indexByName": {
               "alertname": 0,
               "severity": 1,
               "alertstate": 2,
               "namespace": 3,
-              "pod": 4,
-              "node": 5
+              "node": 5,
+              "affected_pod": 4
             },
             "renameByName": {
               "alertname": "Alert",
               "severity": "Severity",
               "alertstate": "State",
               "namespace": "Namespace",
-              "pod": "Pod",
-              "node": "Node"
+              "node": "Node",
+              "affected_pod": "Pod"
             }
           }
         }
@@ -1302,6 +1240,17 @@
       },
       {
         "name": "alert_severity",
+        "type": "textbox",
+        "hide": 2,
+        "query": ".*",
+        "current": {
+          "text": ".*",
+          "value": ".*"
+        },
+        "options": []
+      },
+      {
+        "name": "alert_name",
         "type": "textbox",
         "hide": 2,
         "query": ".*",
