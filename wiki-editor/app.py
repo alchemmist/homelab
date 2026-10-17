@@ -390,7 +390,7 @@ def rewrite_references(documents, moved):
             reference, separator, fragment = match[2].partition('#')
             relative = posixpath.normpath(posixpath.join(str(Path(old_path).parent), reference)).strip('/')
             candidates = [reference.strip('/')] if reference.startswith('/') else [relative, reference.strip('/')]
-            resolved = next((lookup[candidate] for candidate in candidates if candidate in lookup), None)
+            resolved = old_path if not reference else next((lookup[candidate] for candidate in candidates if candidate in lookup), None)
             if resolved is None or (resolved not in moved and old_path not in moved):
                 return match[0]
             return match[1] + '/' + moved.get(resolved, resolved) + (separator + fragment if separator else '') + match[3]
