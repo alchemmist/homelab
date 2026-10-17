@@ -1,0 +1,29 @@
+---
+- name: Route chat attachments into the selected terminal filesystem
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  tasks:
+    - name: Copy the terminal upload configuration helper
+      ansible.builtin.copy:
+        src: ../files/configure_terminal_uploads.py
+        dest: '{{ homelab_user_home }}/tmp-charts/configure-terminal-uploads.py'
+        mode: '0600'
+    - name: Locate the running Open WebUI pod
+      ansible.builtin.command: kubectl -n llm get pod -l app=open-webui -o jsonpath={.items[0].metadata.name}
+      register: terminal_upload_pod
+      changed_when: false
+    - name: Copy the helper into Open WebUI
+      ansible.builtin.command: >-
+        kubectl -n llm cp {{ homelab_user_home }}/tmp-charts/configure-terminal-uploads.py
+        {{ terminal_upload_pod.stdout }}:/tmp/configure-terminal-uploads.py
+      changed_when: false
+    - name: Persist filesystem uploads and verify the client configuration
+      ansible.builtin.command: >-
+        kubectl -n llm exec {{ terminal_upload_pod.stdout }} -- env PYTHONPATH=/app/backend
+        python /tmp/configure-terminal-uploads.py
+      register: terminal_upload_config
+      changed_when: (terminal_upload_config.stdout | from_json).changed

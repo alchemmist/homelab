@@ -1,0 +1,35 @@
+---
+- name: Deploy the internal Open Terminal workspace on socrat-1
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  tasks:
+    - name: Verify the target node is ready
+      ansible.builtin.command: kubectl wait --for=condition=Ready node/socrat-1 --timeout=30s
+      changed_when: false
+    - name: Copy the secret initializer
+      ansible.builtin.copy:
+        src: ../files/ensure_terminal_secret.py
+        dest: /tmp/ensure-terminal-secret.py
+        mode: '0600'
+    - name: Ensure the persistent terminal key
+      ansible.builtin.command: python3 /tmp/ensure-terminal-secret.py
+      register: terminal_secret
+      changed_when: "'created' in terminal_secret.stdout"
+      no_log: true
+    - name: Copy the terminal chart
+      ansible.builtin.copy:
+        src: ../../charts/open-terminal/
+        dest: '{{ homelab_user_home }}/tmp-charts/open-terminal/'
+        mode: preserve
+    - name: Validate the terminal chart
+      ansible.builtin.command: helm lint {{ homelab_user_home }}/tmp-charts/open-terminal
+      changed_when: false
+    - name: Deploy Open Terminal
+      ansible.builtin.command: >-
+        helm upgrade --install open-terminal {{ homelab_user_home }}/tmp-charts/open-terminal
+        -n llm -f {{ homelab_user_home }}/tmp-charts/open-terminal/values.yaml
+        --wait --timeout 20m
+      changed_when: true
