@@ -16,6 +16,8 @@ metadata:
     app.kubernetes.io/name: {{ .Chart.Name }}
     app.kubernetes.io/instance: {{ .Release.Name }}
 data:
+  rancher-layout.js: |
+{{ .Files.Get "files/rancher-layout.js" | indent 4 }}
   {{ range $node := .Values.privateGui.nodes }}
   {{ .nodeName }}.conf: |
     events {}
@@ -71,6 +73,13 @@ data:
         {{- end }}
         deny all;
         resolver {{ .resolver }} valid=30s ipv6=off;
+        {{- if .autoSizeGrafana }}
+        location = /_socrat/rancher-layout.js {
+          alias /etc/nginx/nodes/rancher-layout.js;
+          default_type application/javascript;
+          add_header Cache-Control "no-cache" always;
+        }
+        {{- end }}
         {{- if .editorUpstream }}
         {{- if not $.Values.privateGui.editorAuthSecret }}
         {{- fail "editorUpstream requires privateGui.editorAuthSecret" }}
@@ -100,10 +109,17 @@ data:
           {{- if .clearAuthorization }}
           proxy_set_header Authorization "";
           {{- end }}
-          {{- if .responseStyle }}
+          {{- if or .responseStyle .autoSizeGrafana }}
           proxy_set_header Accept-Encoding $private_html_accept_encoding;
           sub_filter_once on;
-          sub_filter '</head>' {{ printf "<style id=\"socrat-layout-fix\">%s</style></head>" .responseStyle | quote }};
+          {{- $layout := "" }}
+          {{- if .responseStyle }}
+          {{- $layout = printf "<style id=\"socrat-layout-fix\">%s</style>" .responseStyle }}
+          {{- end }}
+          {{- if .autoSizeGrafana }}
+          {{- $layout = printf "%s<script defer src=\"/_socrat/rancher-layout.js\"></script>" $layout }}
+          {{- end }}
+          sub_filter '</head>' {{ printf "%s</head>" $layout | quote }};
           {{- end }}
           proxy_set_header X-Real-IP $remote_addr;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

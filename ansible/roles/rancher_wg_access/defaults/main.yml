@@ -8,3 +8,4 @@ rancher_wg_tls_secret: rancher-private-tls
 rancher_wg_cluster_issuer: letsencrypt-http01
 rancher_wg_upstream: http://rancher.cattle-system.svc.cluster.local:80
 rancher_wg_response_style: ''
+rancher_wg_autosize_grafana: true
