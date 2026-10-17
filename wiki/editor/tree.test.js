@@ -5,10 +5,11 @@ import { initializeTree } from './tree.js';
 
 const fixture = () => ({revision:'r1',nodes:[{id:'ai',title:'AI',kind:'folder',url:'/ai/',children:[{id:'ai/chat.md',title:'Chat',kind:'page',url:'/ai/chat/'}]}]});
 async function setup(isDirty=false) {
-  const dom=new JSDOM('<nav class="page-tree"><ul class="nav-root"><li>Static</li></ul></nav>',{url:'https://wiki.example/'});
+  const dom=new JSDOM('<nav class="page-tree"><a class="overview">Обзор</a><ul class="nav-root"><li>Static</li></ul></nav>',{url:'https://wiki.example/'});
   globalThis.document=dom.window.document;globalThis.Option=dom.window.Option;
   const calls=[],messages=[],moves=[],events=[];let seed;const data=fixture();let resolvePublication;
   const controller=await initializeTree({api:async (endpoint,payload)=>{calls.push({endpoint,data:payload});return {...data,commit:'c1'};},dirty:()=>isDirty,currentPath:()=> 'ai/chat.md',openPage:async value=>{seed=value;},moved:(source,target)=>{moves.push({source,target});events.push('moved');},changed:async()=>events.push('changed'),message:text=>messages.push(text),publication:()=>new Promise(resolve=>{resolvePublication=resolve;})});
+  await controller.ready;
   return {dom,calls,messages,moves,events,data,controller,publish:()=>resolvePublication(true),getSeed:()=>seed};
 }
 const click = label => document.querySelector(`[aria-label="${label}"]`).click();
@@ -62,4 +63,37 @@ test('folder title only expands and never links to a nonexistent section page',a
 test('new page remains unlinked until its publication completes',async()=>{
   const state=await setup();state.data.nodes[0].children.push({id:'ai/new.md',kind:'page',title:'New',url:'/ai/new/'});await state.controller.refresh({pendingPage:'ai/new.md',commit:'c2'});
   assert.equal(document.querySelector('[data-node-id="ai/new.md"] a').hasAttribute('href'),false);state.publish();await tick();assert.equal(document.querySelector('[data-node-id="ai/new.md"] a').getAttribute('href'),'/ai/new/');
+});
+
+test('creation controls appear above overview before a slow tree request completes',async()=>{
+  const dom=new JSDOM('<nav class="page-tree"><a class="overview">Обзор</a><ul class="nav-root"><li>Static</li></ul></nav>',{url:'https://wiki.example/'});
+  globalThis.document=dom.window.document;globalThis.Option=dom.window.Option;
+  let release,seed;const response=new Promise(resolve=>{release=resolve;});
+  const controller=await initializeTree({api:()=>response,dirty:()=>false,currentPath:()=>'',openPage:async value=>{seed=value;},moved:()=>{},message:()=>{},publication:async()=>true});
+  assert.equal(document.querySelector('.page-tree').firstElementChild.className,'wiki-tree-root');
+  assert.match(document.querySelector('.nav-root').textContent,/Static/);
+  click('Новая заметка');await tick();assert.equal(seed.parent,'');
+  click('Новая папка');const title=document.querySelector('[aria-label="Название новой папки"]');title.value='Keep this';title.focus();
+  release(fixture());await controller.ready;
+  assert.equal(document.querySelector('[aria-label="Название новой папки"]'),title);
+  assert.equal(title.value,'Keep this');assert.equal(document.activeElement,title);
+});
+
+test('folder submission waits for the initial revision and does not duplicate the tree fetch',async()=>{
+  const dom=new JSDOM('<nav class="page-tree"><a>Обзор</a><ul class="nav-root"></ul></nav>',{url:'https://wiki.example/'});
+  globalThis.document=dom.window.document;globalThis.Option=dom.window.Option;
+  let release;const response=new Promise(resolve=>{release=resolve;});const calls=[];
+  const controller=await initializeTree({api:async(endpoint,payload)=>{calls.push({endpoint,payload});return endpoint==='/tree'?response:{...fixture(),commit:'c1'};},dirty:()=>false,currentPath:()=>'',openPage:()=>{},moved:()=>{},message:()=>{},publication:async()=>true});
+  click('Новая папка');document.querySelector('[aria-label="Название новой папки"]').value='Folder';document.querySelector('[aria-label="Адрес новой папки"]').value='folder';click('Создать папку');await tick();
+  assert.equal(calls.length,1);
+  release(fixture());await controller.ready;await tick();
+  assert.equal(calls.length,2);assert.equal(calls[1].payload.revision,'r1');
+});
+
+test('failed initial tree loading keeps controls and retries on demand',async()=>{
+  const dom=new JSDOM('<nav class="page-tree"><a>Обзор</a><ul class="nav-root"><li>Static</li></ul></nav>',{url:'https://wiki.example/'});
+  globalThis.document=dom.window.document;globalThis.Option=dom.window.Option;let count=0;
+  const controller=await initializeTree({api:async()=>{if(++count===1)throw new Error('Offline');return fixture();},dirty:()=>false,currentPath:()=>'',openPage:()=>{},moved:()=>{},message:()=>{},publication:async()=>true});
+  await controller.ready;assert.equal(document.querySelector('.wiki-tree-root').children.length,2);assert.match(document.querySelector('.nav-root').textContent,/Static/);
+  assert.equal(await controller.ensureRevision(),'r1');assert.equal(count,2);
 });

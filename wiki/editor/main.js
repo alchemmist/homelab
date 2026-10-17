@@ -128,10 +128,11 @@ function initialize() {
     if (!title || title.length>200) { message('Укажите заголовок длиной до 200 символов.',true); heading.focus(); return; }
     const body = sourceBody(original,originalJSON,editor.getJSON(),editor.getMarkdown(),refs);
     const payload = {title,body};
-    if (creating) { payload.tree_revision=structure?.revision(); payload.section=''; payload.slug=fields.querySelector('input').value.trim(); if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(payload.slug)) { message('В адресе используйте латинские буквы, цифры и дефисы.',true); return; } }
+    if (creating) { payload.section=''; payload.slug=fields.querySelector('input').value.trim(); if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(payload.slug)) { message('В адресе используйте латинские буквы, цифры и дефисы.',true); return; } }
     else Object.assign(payload,{path,revision});
     setBusy(true); message('');
     try {
+      if (creating && structure) payload.tree_revision=await structure.ensureRevision();
       const wasCreating=creating;
       const result = await api('/pages',payload,creating ? 'POST':'PUT');
       path=result.path; revision=result.revision; original=body; originalJSON=editor.getJSON(); baselineTitle=title; creating=false; fields?.remove(); fields=null;

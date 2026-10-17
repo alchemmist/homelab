@@ -2,7 +2,7 @@ export async function initializeTree({api, dirty, openPage, currentPath, moved, 
   const nav = document.querySelector('.page-tree');
   if (!nav) return;
   const pendingLinks = new Map();
-  let tree, pending = false, dragging = '', expanded = new Set(), chooser;
+  let tree, loading, treeGeneration = 0, pending = false, dragging = '', expanded = new Set(), chooser;
   const error = text => message(text, true);
   const button = (text, label, action) => {
     const el = document.createElement('button'); el.type = 'button'; el.textContent = text; el.setAttribute('aria-label', label); el.title = label; el.addEventListener('click', action); return el;
@@ -14,6 +14,17 @@ export async function initializeTree({api, dirty, openPage, currentPath, moved, 
     if (dirty()) { error('Сначала опубликуйте или отмените правки заметки.'); return false; }
     message(''); return true;
   };
+  function loadTree() {
+    if (!loading) {
+      const generation = treeGeneration;
+      loading = api('/tree').then(value => { if (generation === treeGeneration) tree = value; return tree; }).finally(() => { loading = null; });
+    }
+    return loading;
+  }
+  async function ensureRevision() {
+    if (!tree) await loadTree();
+    return tree.revision;
+  }
   function watchPublication(commit) {
     const snapshot = new Map(pendingLinks);
     publication(commit).then(published => {
@@ -24,20 +35,22 @@ export async function initializeTree({api, dirty, openPage, currentPath, moved, 
   }
   const refresh = async ({pendingPage, commit} = {}) => {
     if (pendingPage) pendingLinks.set(pendingPage, null);
-    tree = await api('/tree'); render();
+    await loadTree(); render();
     if (commit) watchPublication(commit);
   };
   async function mutate(endpoint, payload) {
     if (!guard()) return;
     pending = true;
     try {
-      const result = await api(endpoint, {...payload, revision: tree.revision});
+      if (loading) await loading;
+      const revision = await ensureRevision();
+      const result = await api(endpoint, {...payload, revision});
       const oldNodes = flatten(tree.nodes);
       if (endpoint === '/move') {
         const target = payload.target_parent ? payload.target_parent + '/' + payload.source.split('/').pop() : payload.source.split('/').pop();
         for (const node of oldNodes.filter(n => n.kind === 'page' && (n.id === payload.source || n.id.startsWith(payload.source + '/')))) pendingLinks.set(target + node.id.slice(payload.source.length), pendingLinks.has(node.id) ? pendingLinks.get(node.id) : node.url);
       }
-      tree = result; render(); watchPublication(result.commit);
+      treeGeneration++; tree = result; chooser?.remove(); render(); watchPublication(result.commit);
       return result;
     } catch (e) {
       if (e.status === 409) { await refresh(); error('Структура уже изменилась. Обновили список; повторите действие.'); }
@@ -108,15 +121,20 @@ export async function initializeTree({api, dirty, openPage, currentPath, moved, 
     }return ul;
   }
   function render() {
-    nav.querySelector('.nav-root')?.remove();nav.querySelector('.wiki-tree-root')?.remove();chooser?.remove();
+    if (!tree) return;
+    nav.querySelector('.nav-root')?.remove();
+    nav.append(list(tree.nodes));
+  }
+  function mountToolbar() {
     const root=document.createElement('div');root.className='wiki-tree-root';
     root.append(
       iconButton('Новая заметка',['M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z','M14 2v6h6','M12 12v6','M9 15h6'],async()=>{if(guard()){chooser?.remove();await openPage({parent:'',title:'Новая заметка',slug:''});}}),
       iconButton('Новая папка',['M20 20H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5l2 2h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2Z','M12 10v6','M9 13h6'],()=>createFolder(root))
     );
     root.addEventListener('dragover',event=>{if(dragging){event.preventDefault();clearDrop();root.dataset.drop='inside';}});
-    root.addEventListener('drop',event=>{event.preventDefault();const source=dragging;dragging='';nav.classList.remove('wiki-tree-dragging');clearDrop();if(source)move(source,'');});nav.append(root,list(tree.nodes));
+    root.addEventListener('drop',event=>{event.preventDefault();const source=dragging;dragging='';nav.classList.remove('wiki-tree-dragging');clearDrop();if(source)move(source,'');});nav.prepend(root);
   }
-  tree=await api('/tree'); for(const node of flatten(tree.nodes))if(node.kind==='folder' && currentPath().startsWith(node.id+'/'))expanded.add(node.id);render();
-  return {refresh, revision:()=>tree.revision};
+  mountToolbar();
+  const ready = loadTree().then(() => { for(const node of flatten(tree.nodes))if(node.kind==='folder' && currentPath().startsWith(node.id+'/'))expanded.add(node.id);render(); }).catch(e => error(e.message));
+  return {refresh, revision:()=>tree?.revision, ensureRevision, ready};
 }
