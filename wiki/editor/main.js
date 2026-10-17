@@ -173,7 +173,7 @@ function initialize() {
     if (busy) return;
     if (!stash()) return;
     const submitted = workspace.drafts();
-    if (!submitted.length && !workspace.operations().length) return;
+    if (!submitted.length && !workspace.operations().length) { stop(); return; }
     for (const draft of submitted) {
       if (!draft.title.trim() || draft.title.length > 200) { message('Укажите заголовки длиной до 200 символов.',true); return; }
       if (draft.creating && !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(draft.slug)) { message('В адресе новой заметки используйте латинские буквы, цифры и дефисы.',true); return; }
@@ -195,13 +195,13 @@ function initialize() {
         view.capture(baselineTitle,resolvePreviewLinks(editor.getHTML(),refs,path));
         if (published.url) history.replaceState(null,'',published.url);
       }
+      setBusy(false);
+      if (!stop()) return;
       if (payload.operations.length) {
         const flatten = nodes => nodes.flatMap(node=>[node,...flatten(node.children || [])]);
         const current = flatten(result.nodes || []).find(node=>(node.page_path || node.id)===finalPath);
         location.assign(current?.url || (finalPath === '_index.md' ? '/' : location.pathname)); return;
       }
-      draftCount();
-      structure?.reset().catch(error=>message(error.message,true));
     } catch(error) { message(error.message,true); }
     finally { setBusy(false); }
   });
