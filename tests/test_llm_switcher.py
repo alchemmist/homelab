@@ -44,10 +44,21 @@ class Upstream:
     status = 200
     headers = {'Content-Type': 'text/event-stream'}
 
-    def __init__(self, model, gate):
-        self.content = Stream(model, gate)
+    def __init__(self, data, gate, bodies, headers):
+        self.data = data
+        self.gate = gate
+        self.bodies = bodies
+        self.headers_sent = headers
 
     async def __aenter__(self):
+        raw = bytearray()
+        async for chunk in self.data:
+            raw.extend(chunk)
+        if int(self.headers_sent['Content-Length']) != len(raw):
+            raise AssertionError('Content-Length does not match forwarded body')
+        body = json.loads(raw)
+        self.bodies.append(body)
+        self.content = Stream(body['model'], self.gate)
         return self
 
     async def __aexit__(self, *args):
@@ -57,9 +68,10 @@ class Upstream:
 class Session:
     def __init__(self, gate):
         self.gate = gate
+        self.bodies = []
 
-    def post(self, url, json, **kwargs):
-        return Upstream(json['model'], self.gate)
+    def post(self, url, data, **kwargs):
+        return Upstream(data, self.gate, self.bodies, kwargs['headers'])
 
 
 class GatewayTests(unittest.IsolatedAsyncioTestCase):
@@ -77,9 +89,9 @@ class GatewayTests(unittest.IsolatedAsyncioTestCase):
             self.calls.append(name)
 
         self.gateway.ensure_model = ensure
-        app = web.Application()
+        app = web.Application(client_max_size=switcher.MAX_REQUEST_BYTES, handler_args={'auto_decompress': False})
         app.router.add_route('*', '/{path:.*}', self.gateway.handle)
-        self.client = TestClient(TestServer(app))
+        self.client = TestClient(TestServer(app, handler_cancellation=True))
         await self.client.start_server()
         self.headers = {'Authorization': 'Bearer test-key'}
 
@@ -121,6 +133,153 @@ class GatewayTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status, 503)
         self.assertEqual(self.gateway.queued, 0)
         self.assertFalse(self.gateway.scheduler.busy)
+        self.assertEqual(self.gateway.reserved_bytes, 0)
+
+    async def wait_for_idle(self):
+        async with asyncio.timeout(2):
+            while self.gateway.queued:
+                await asyncio.sleep(0.01)
+        self.assertEqual(self.gateway.reserved_bytes, 0)
+
+    async def test_image_request_larger_than_old_four_mib_limit_reaches_upstream(self):
+        body = {'model': 'test-model', 'messages': [{'role': 'user', 'content': [
+            {'type': 'image_url', 'image_url': {'url': 'data:image/png;base64,' + 'A' * (5 * 1024 * 1024)}}
+        ]}]}
+        response = await self.client.post('/v1/chat/completions', headers=self.headers, json=body)
+        self.assertEqual(response.status, 200)
+        self.assertIn('[DONE]', await response.text())
+        self.assertEqual(self.gateway.session.bodies, [body])
+        await self.wait_for_idle()
+
+    async def test_oversized_and_compressed_requests_are_rejected_without_startup(self):
+        with patch.object(switcher, 'MAX_REQUEST_BYTES', 64):
+            response = await self.client.post('/v1/chat/completions', headers=self.headers, data=b'x' * 65)
+            self.assertEqual(response.status, 413)
+        response = await self.client.post('/v1/chat/completions', headers={**self.headers, 'Content-Encoding': 'gzip'}, data=b'compressed')
+        self.assertEqual(response.status, 415)
+        self.assertEqual(self.calls, [])
+        await self.wait_for_idle()
+
+    async def test_invalid_json_releases_admission(self):
+        response = await self.client.post('/v1/chat/completions', headers=self.headers, data=b'{')
+        self.assertEqual(response.status, 400)
+        self.assertEqual(self.calls, [])
+        await self.wait_for_idle()
+
+    async def test_stream_holds_aggregate_budget_until_finished(self):
+        body = json.dumps({'model': 'qwen3.8-27b'}).encode()
+        with patch.object(switcher, 'MAX_RESERVED_BYTES', len(body)):
+            first = await self.client.post('/v1/chat/completions', headers=self.headers, data=body)
+            self.assertEqual(first.status, 200)
+            self.assertEqual(self.gateway.reserved_bytes, len(body))
+            second = await self.client.post('/v1/chat/completions', headers=self.headers, data=body)
+            self.assertEqual(second.status, 429)
+            self.gate.set()
+            await first.read()
+            await self.wait_for_idle()
+            third = await self.client.post('/v1/chat/completions', headers=self.headers, data=body)
+            self.assertEqual(third.status, 200)
+            await third.read()
+        await self.wait_for_idle()
+
+    async def test_chunked_request_reserves_maximum_until_stream_finishes(self):
+        async def chunks():
+            yield b'{"model":'
+            yield b'"qwen3.8-27b"}'
+        with patch.object(switcher, 'MAX_REQUEST_BYTES', 128), patch.object(switcher, 'MAX_RESERVED_BYTES', 128):
+            first = await self.client.post('/v1/chat/completions', headers=self.headers, data=chunks())
+            self.assertEqual(first.status, 200)
+            self.assertEqual(self.gateway.reserved_bytes, 128)
+            second = await self.client.post('/v1/chat/completions', headers=self.headers, json={'model': 'test-model'})
+            self.assertEqual(second.status, 429)
+            self.gate.set()
+            await first.read()
+        await self.wait_for_idle()
+
+    async def test_chunked_oversize_releases_reservation(self):
+        async def chunks():
+            yield b'x' * 33
+            yield b'x' * 32
+        with patch.object(switcher, 'MAX_REQUEST_BYTES', 64):
+            response = await self.client.post('/v1/chat/completions', headers=self.headers, data=chunks())
+            self.assertEqual(response.status, 413)
+        self.assertEqual(self.calls, [])
+        await self.wait_for_idle()
+
+    async def test_disconnect_releases_stream_reservation_and_gpu_slot(self):
+        response = await self.client.post('/v1/chat/completions', headers=self.headers, json={'model': 'qwen3.8-27b'})
+        self.assertEqual(response.status, 200)
+        self.assertGreater(self.gateway.reserved_bytes, 0)
+        response.close()
+        await self.wait_for_idle()
+        self.assertFalse(self.gateway.scheduler.busy)
+
+    async def test_disconnected_upload_releases_admission(self):
+        entered = asyncio.Event()
+        release = asyncio.Event()
+
+        async def slow_body():
+            yield b'{'
+            entered.set()
+            await release.wait()
+            yield b'}'
+
+        upload = asyncio.create_task(self.client.post('/v1/chat/completions', headers=self.headers, data=slow_body()))
+        await entered.wait()
+        async with asyncio.timeout(2):
+            while self.gateway.queued != 1:
+                await asyncio.sleep(0.01)
+        upload.cancel()
+        with self.assertRaises(asyncio.CancelledError):
+            await upload
+        await self.wait_for_idle()
+        self.assertEqual(self.calls, [])
+
+    async def test_upload_timeout_releases_admission(self):
+        release = asyncio.Event()
+
+        async def slow_body():
+            yield b'{'
+            await release.wait()
+            yield b'}'
+
+        try:
+            with patch.object(switcher, 'BODY_READ_TIMEOUT', 0.03):
+                async with asyncio.timeout(2):
+                    response = await self.client.post('/v1/chat/completions', headers=self.headers, data=slow_body())
+                self.assertEqual(response.status, 408)
+                await response.read()
+            await self.wait_for_idle()
+            self.assertEqual(self.calls, [])
+        finally:
+            release.set()
+
+    async def test_handler_limit_rejects_before_reading_body(self):
+        entered = asyncio.Event()
+        release = asyncio.Event()
+
+        async def slow_body():
+            yield b'{'
+            entered.set()
+            await release.wait()
+            yield b'"model":"test-model"}'
+
+        with patch.object(switcher, 'MAX_HANDLERS', 1), patch.object(switcher, 'MAX_RESERVED_BYTES', 2 * switcher.MAX_REQUEST_BYTES):
+            first = asyncio.create_task(self.client.post('/v1/chat/completions', headers=self.headers, data=slow_body()))
+            await entered.wait()
+            async with asyncio.timeout(2):
+                while self.gateway.queued != 1:
+                    await asyncio.sleep(0.01)
+            try:
+                second = await self.client.post('/v1/chat/completions', headers=self.headers, json={'model': 'test-model'})
+                self.assertEqual(second.status, 429)
+                self.assertEqual(self.calls, [])
+            finally:
+                release.set()
+            response = await first
+            self.assertEqual(response.status, 200)
+            await response.read()
+        await self.wait_for_idle()
 
 
 class SchedulerTests(unittest.IsolatedAsyncioTestCase):

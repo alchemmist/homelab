@@ -16,7 +16,7 @@
       "0.95",
       "--enforce-eager",
       "--limit-mm-per-prompt",
-      "{\"image\":{\"count\":8,\"width\":1024,\"height\":1024},\"video\":0}",
+      "{\"image\":{\"count\":64,\"width\":1024,\"height\":1024},\"video\":0}",
       "--mm-processor-kwargs",
       "{\"images_kwargs\":{\"size\":{\"longest_edge\":1048576,\"shortest_edge\":65536}}}",
       "--mm-processor-cache-gb",
