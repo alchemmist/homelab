@@ -260,3 +260,63 @@ test('delete button does not start dragging toggle a folder or retain confirmati
   state.workspace.discard();state.controller.render();
   assert.equal(document.querySelector('[role="tooltip"]'),null);assert.equal(document.querySelector('.wiki-tree-delete'),null);
 });
+
+test('folder rename is editing-only and stages a title without changing paths or toggling',async()=>{
+  const state=await deleteSetup(false);
+  assert.equal(document.querySelector('.wiki-tree-rename'),null);
+  state.workspace.start();state.controller.render();
+  assert.equal(document.querySelectorAll('.wiki-tree-rename').length,1);
+  click('Удалить папку AI');click('Переименовать папку AI');
+  assert.equal(document.querySelector('[role="tooltip"]'),null);
+  const input=document.querySelector('.wiki-tree-rename-input');
+  assert.equal(document.activeElement,input);
+  pointerEvent(state,'pointerdown',input,10,10);pointerEvent(state,'pointermove',input,30,30);
+  assert.equal(document.querySelector('.wiki-tree-dragging'),null);
+  input.value='  Models  ';
+  input.dispatchEvent(new state.dom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
+  await tick();
+  assert.deepEqual(state.workspace.operations(),[{type:'rename',source:'ai',title:'Models'}]);
+  assert.equal(state.workspace.tree().nodes[0].id,'ai');
+  assert.ok(document.querySelector('[aria-label="Переименовать папку Models"]'));
+  assert.equal(state.calls.length,1);
+});
+
+test('rename escape and edit-mode exit cancel while blur saves once and unchanged names do nothing',async()=>{
+  const state=await deleteSetup();
+  click('Переименовать папку AI');
+  let input=document.querySelector('.wiki-tree-rename-input');input.value='Cancel';
+  input.dispatchEvent(new state.dom.window.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+  assert.deepEqual(state.workspace.operations(),[]);
+  click('Переименовать папку AI');
+  input=document.querySelector('.wiki-tree-rename-input');
+  input.dispatchEvent(new state.dom.window.FocusEvent('blur'));
+  await tick();assert.deepEqual(state.workspace.operations(),[]);
+  click('Переименовать папку AI');
+  input=document.querySelector('.wiki-tree-rename-input');input.value='Models';
+  input.dispatchEvent(new state.dom.window.FocusEvent('blur'));
+  input.dispatchEvent(new state.dom.window.FocusEvent('blur'));
+  await tick();assert.equal(state.workspace.operations().length,1);
+  click('Переименовать папку Models');
+  document.querySelector('.wiki-tree-rename-input').value='Discarded';
+  state.workspace.discard();state.controller.render();
+  assert.equal(document.querySelector('.wiki-tree-rename-input'),null);
+  assert.deepEqual(state.workspace.operations(),[]);
+});
+
+test('publication flush validates focused rename and waits for a single staged operation',async()=>{
+  const state=await deleteSetup();
+  click('Переименовать папку AI');
+  const input=document.querySelector('.wiki-tree-rename-input');
+  input.value=' ';
+  assert.equal(await state.controller.finishRename(),false);
+  assert.equal(document.activeElement,input);
+  assert.deepEqual(state.workspace.operations(),[]);
+  input.value='Published name';
+  input.dispatchEvent(new state.dom.window.FocusEvent('blur'));
+  assert.equal(await state.controller.finishRename(),true);
+  assert.equal(await state.controller.finishRename(),true);
+  assert.deepEqual(state.workspace.operations(),[{type:'rename',source:'ai',title:'Published name'}]);
+  click('Переименовать папку Published name');
+  assert.equal(await state.controller.finishRename(),true);
+  assert.equal(state.workspace.operations().length,1);
+});

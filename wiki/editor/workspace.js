@@ -92,6 +92,16 @@ export function createWorkspace(storage, key = 'socrat-wiki-workspace-v1') {
             node.url = url(node.page_path);
           }
           siblings.splice(op.before ? siblings.findIndex(node => node.id === op.before) : siblings.length, 0, source);
+        } else if (op.type === 'rename') {
+          const source = all.find(node => node.id === op.source && node.kind === 'folder');
+          if (!source) throw new Error('Папка не найдена.');
+          if (typeof op.title !== 'string' || /[\r\n]/.test(op.title) || !op.title.trim() || op.title.trim().length > 200) throw new Error('Укажите название папки: от 1 до 200 символов без переноса строки.');
+          op.title = op.title.trim();
+          if (source.title === op.title) return;
+          source.title = op.title;
+          source.rename_index = next.operations.length;
+          const draft = next.drafts.find(item => item.path === (source.origin_path || source.page_path));
+          if (draft) draft.title = op.title;
         } else if (op.type === 'delete') {
           const source = all.find(node => node.id === op.source);
           if (!source) throw new Error('Страница или папка не найдена.');
@@ -122,7 +132,10 @@ export function createWorkspace(storage, key = 'socrat-wiki-workspace-v1') {
         else next.drafts[index] = value;
         injectDraft(next, value);
         const node = flatten(next.tree?.nodes || []).find(item => item.origin_path === value.path || item.draft_path === value.path);
-        if (node) node.title = value.title;
+        if (node) {
+          node.title = value.title;
+          if (node.kind === 'folder' && next.operations[node.rename_index]?.type === 'rename') next.operations[node.rename_index].title = value.title;
+        }
       });
     },
     remove(path) { commit({...state,drafts:state.drafts.filter(item => item.path !== originPath(path))}); },

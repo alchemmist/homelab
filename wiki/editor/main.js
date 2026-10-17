@@ -175,6 +175,8 @@ function initialize() {
 
   save.addEventListener('click', async () => {
     if (busy) return;
+    if (structure && !await structure.finishRename()) return;
+    if (busy) return;
     setBusy(true); message('');
     try {
       await new Promise(resolve => { const fallback = setTimeout(resolve, 100); requestAnimationFrame(() => { clearTimeout(fallback); setTimeout(resolve, 0); }); });
@@ -232,7 +234,7 @@ function initialize() {
     }, dirty:()=>busy, currentPath:()=>workspace.virtualPath(path), message, changed:async()=>{draftCount();if(fields?.querySelector('input'))fields.querySelector('input').disabled=workspace.slugLocked(path);structure?.render();}, openPage:async seed=>{
       if(editor && !stop(false))return;
       if(seed.draftPath){path=seed.draftPath;await open(false);}else await open(true,seed);
-    }, removed:async()=>{ if (workspace.isDeleted(path)) { generation++; editor?.destroy(); editor=null; toolbar?.remove(); fields?.remove(); linkForm?.remove(); heading.removeAttribute('contenteditable'); location.assign('/'); } }, moved:()=>{draftCount();}, publication:commit=>publication(commit)}).then(value=>{structure=value;}).catch(error=>message(error.message,true));
+    }, renamed:(source,title)=>{ if (workspace.originPath(source + '/_index.md') === path) { heading.textContent=title; if(editor)stash(); } }, removed:async()=>{ if (workspace.isDeleted(path)) { generation++; editor?.destroy(); editor=null; toolbar?.remove(); fields?.remove(); linkForm?.remove(); heading.removeAttribute('contenteditable'); location.assign('/'); } }, moved:()=>{draftCount();}, publication:commit=>publication(commit)}).then(value=>{structure=value;}).catch(error=>message(error.message,true));
     const mobile=document.querySelector('.mobile-actions');const media=matchMedia('(max-width: 900px)');
     const position=()=>{if(media.matches&&mobile)mobile.prepend(actions);else root.prepend(actions);};media.addEventListener('change',position);position();
   }).catch(()=>{});
