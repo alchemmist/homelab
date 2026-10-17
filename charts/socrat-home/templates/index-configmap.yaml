@@ -6,6 +6,8 @@ metadata:
 data:
   index.html: |
 {{ .Files.Get "files/index.html" | indent 4 }}
+  favicon.svg: |
+{{ .Files.Get "files/favicon.svg" | indent 4 }}
 binaryData:
   wallpaper.webp: {{ .Files.Get "files/wallpaper.webp" | b64enc | quote }}
 {{- end }}
