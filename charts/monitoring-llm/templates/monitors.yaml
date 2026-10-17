@@ -1,0 +1,30 @@
+{{- range $monitor := list (dict "name" "vllm" "labels" (dict "app" "vllm") "port" "http") (dict "name" "litellm" "labels" (dict "app.kubernetes.io/instance" "litellm" "app.kubernetes.io/name" "litellm") "port" "http") (dict "name" "llm-switcher" "labels" (dict "app" "monitoring-llm-status") "port" "metrics") }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: monitoring-{{ $monitor.name }}
+  labels:
+    release: {{ $.Values.prometheusRelease }}
+spec:
+  selector:
+    matchLabels:
+{{ $monitor.labels | toYaml | indent 6 }}
+  podMetricsEndpoints:
+    - port: {{ $monitor.port }}
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 15s
+      {{- if eq $monitor.name "litellm" }}
+      authorization:
+        type: Bearer
+        credentials:
+          name: {{ $.Values.metricsSecret }}
+          key: api-key
+      {{- end }}
+      relabelings:
+        - targetLabel: job
+          replacement: {{ $monitor.name }}
+        - sourceLabels: [__meta_kubernetes_pod_node_name]
+          targetLabel: node
+{{- end }}

@@ -26,6 +26,12 @@
       "url": "/d/socrat-services",
       "type": "link",
       "keepTime": true
+    },
+    {
+      "title": "LLM",
+      "url": "/d/socrat-llm",
+      "type": "link",
+      "keepTime": true
     }
   ],
   "templating": {

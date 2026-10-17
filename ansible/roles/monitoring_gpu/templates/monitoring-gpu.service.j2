@@ -1,0 +1,14 @@
+[Unit]
+Description=Collect NVIDIA GPU metrics for node exporter
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/sbin/collect-gpu-metrics --binary {{ monitoring_gpu_binary }} --output {{ monitoring_gpu_textfile_directory }}/nvidia.prom
+TimeoutStartSec=25
+Nice=10
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths={{ monitoring_gpu_textfile_directory }}
+UMask=0022

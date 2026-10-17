@@ -6,7 +6,11 @@ image:
   tag: '1.105.1'
   pullPolicy: IfNotPresent
 strategy:
-  type: Recreate
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 0
+    maxSurge: 1
+terminationGracePeriodSeconds: 7260
 nodeSelector:
   kubernetes.io/hostname: socrat-0
 serviceAccount:
@@ -73,6 +77,8 @@ proxy_config:
     disable_env_credential_login: true
     master_key: os.environ/LITELLM_MASTER_KEY
   litellm_settings:
+    callbacks: [prometheus]
+    require_auth_for_metrics_endpoint: true
     request_timeout: 600
     num_retries: 0
 

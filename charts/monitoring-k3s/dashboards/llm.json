@@ -1,0 +1,2692 @@
+{
+  "uid": "socrat-llm",
+  "title": "LLM",
+  "description": "GPU, очередь переключателя моделей, vLLM и LiteLLM. Фильтр модели относится к vLLM. Метрики задержек появляются после запросов; отсутствие данных не заменяется нулём.",
+  "tags": [
+    "Основные"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-3h",
+    "to": "now"
+  },
+  "editable": false,
+  "links": [
+    {
+      "title": "Обзор",
+      "url": "/d/socrat-overview",
+      "type": "link",
+      "includeVars": false,
+      "keepTime": true
+    },
+    {
+      "title": "Ноды",
+      "url": "/d/socrat-nodes",
+      "type": "link",
+      "includeVars": false,
+      "keepTime": true
+    },
+    {
+      "title": "Сервисы",
+      "url": "/d/socrat-services",
+      "type": "link",
+      "includeVars": false,
+      "keepTime": true
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "model",
+        "label": "Модель vLLM",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(vllm:num_requests_running{job=\"vllm\"},model_name)",
+        "query": {
+          "query": "label_values(vllm:num_requests_running{job=\"vllm\"},model_name)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Доступность мониторинга",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 2,
+      "title": "Метрики vLLM",
+      "type": "stat",
+      "description": "1 — Prometheus получает метрики; 0 — scrape неуспешен. Это не проверка генерации ответа.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "up{job=\"vllm\"}",
+          "legendFormat": "vllm",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Недоступны",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "Доступны",
+                  "color": "green"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 3,
+      "title": "Метрики LiteLLM",
+      "type": "stat",
+      "description": "1 — Prometheus получает метрики; 0 — scrape неуспешен. Это не проверка генерации ответа.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "up{job=\"litellm\"}",
+          "legendFormat": "litellm",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Недоступны",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "Доступны",
+                  "color": "green"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 4,
+      "title": "Метрики очереди моделей",
+      "type": "stat",
+      "description": "1 — Prometheus получает метрики и адаптер успешно прочитал состояние переключателя; 0 — ошибка сбора. Это не проверка генерации ответа.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "up{job=\"llm-switcher\"} * on(job,instance) llm_switcher_scrape_success{job=\"llm-switcher\"}",
+          "legendFormat": "llm-switcher",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Недоступны",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "Доступны",
+                  "color": "green"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 5,
+      "title": "Сбор GPU",
+      "type": "stat",
+      "description": "Только успешный сбор GPU не старше 60 секунд. Отсутствующие датчики не заменяются нулём.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "socrat_gpu_collection_success * on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < bool 60)",
+          "legendFormat": "GPU",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Недоступны",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "Доступны",
+                  "color": "green"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 6,
+      "type": "row",
+      "title": "Переключатель моделей · очередь и активная модель",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 7,
+      "title": "Выполняющиеся и ожидающие запросы",
+      "type": "timeseries",
+      "description": "Очередь llm-switcher перед vLLM. Занятость включает запуск модели, поэтому не равна числу генерирующих запросов vLLM.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "llm_switcher_requests_running{job=\"llm-switcher\"}",
+          "legendFormat": "В работе / загрузка модели",
+          "instant": false,
+          "format": "time_series"
+        },
+        {
+          "refId": "B",
+          "expr": "llm_switcher_requests_waiting{job=\"llm-switcher\"}",
+          "legendFormat": "Ожидают · {{model}}",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "title": "Последняя подтверждённая загруженная модель",
+      "type": "timeseries",
+      "description": "1 — последняя подтверждённая модель переключателя; не проверка готовности vLLM.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 6,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "llm_switcher_loaded_model{job=\"llm-switcher\"}",
+          "legendFormat": "{{model}}",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "type": "row",
+      "title": "GPU · температура, загрузка и видеопамять",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 10,
+      "title": "Температура GPU",
+      "type": "timeseries",
+      "description": "Только успешный сбор GPU не старше 60 секунд. Отсутствующие датчики не заменяются нулём.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 15,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(socrat_gpu_temperature_celsius and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60)",
+          "legendFormat": "{{name}} · GPU {{index}}",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "title": "Загрузка GPU и контроллера памяти",
+      "type": "timeseries",
+      "description": "Только успешный сбор GPU не старше 60 секунд. Отсутствующие датчики не заменяются нулём.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 15,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(socrat_gpu_utilization_ratio and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60)",
+          "legendFormat": "GPU {{index}} · вычисления",
+          "instant": false,
+          "format": "time_series"
+        },
+        {
+          "refId": "B",
+          "expr": "(socrat_gpu_memory_utilization_ratio and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60)",
+          "legendFormat": "GPU {{index}} · контроллер памяти",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "min": 0,
+          "max": 1,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 12,
+      "title": "Видеопамять · занято и всего",
+      "type": "timeseries",
+      "description": "Только успешный сбор GPU не старше 60 секунд. Отсутствующие датчики не заменяются нулём.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(socrat_gpu_memory_used_bytes and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60)",
+          "legendFormat": "GPU {{index}} · занято",
+          "instant": false,
+          "format": "time_series"
+        },
+        {
+          "refId": "B",
+          "expr": "(socrat_gpu_memory_total_bytes and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60)",
+          "legendFormat": "GPU {{index}} · всего",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 13,
+      "title": "Видеопамять · доля занятой",
+      "type": "timeseries",
+      "description": "Только успешный сбор GPU не старше 60 секунд. Отсутствующие датчики не заменяются нулём.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 23,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(socrat_gpu_memory_used_bytes / socrat_gpu_memory_total_bytes and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60)",
+          "legendFormat": "GPU {{index}}",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "min": 0,
+          "max": 1,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 14,
+      "title": "Потребление и лимит мощности",
+      "type": "timeseries",
+      "description": "Только успешный сбор GPU не старше 60 секунд. Отсутствующие датчики не заменяются нулём.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 31,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(socrat_gpu_power_watts and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60)",
+          "legendFormat": "GPU {{index}} · потребление",
+          "instant": false,
+          "format": "time_series"
+        },
+        {
+          "refId": "B",
+          "expr": "(socrat_gpu_power_limit_watts and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60)",
+          "legendFormat": "GPU {{index}} · лимит",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 15,
+      "title": "Скорость вентиляторов",
+      "type": "timeseries",
+      "description": "Только успешный сбор GPU не старше 60 секунд. Отсутствующие датчики не заменяются нулём.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 31,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(socrat_gpu_fan_speed_ratio and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60)",
+          "legendFormat": "GPU {{index}}",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "min": 0,
+          "max": 1,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 16,
+      "title": "Частоты GPU и памяти",
+      "type": "timeseries",
+      "description": "Только успешный сбор GPU не старше 60 секунд. Отсутствующие датчики не заменяются нулём.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 39,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(socrat_gpu_clock_graphics_hertz and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60)",
+          "legendFormat": "GPU {{index}} · ядро",
+          "instant": false,
+          "format": "time_series"
+        },
+        {
+          "refId": "B",
+          "expr": "(socrat_gpu_clock_memory_hertz and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60)",
+          "legendFormat": "GPU {{index}} · память",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "hertz",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 17,
+      "title": "Режим производительности GPU",
+      "type": "timeseries",
+      "description": "P0 — максимальная производительность; более высокие значения соответствуют более экономным режимам. Только успешный сбор GPU не старше 60 секунд. Отсутствующие датчики не заменяются нулём.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 39,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(socrat_gpu_performance_state and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60)",
+          "legendFormat": "GPU {{index}} · P-state",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 18,
+      "title": "Причины ограничения частоты",
+      "type": "timeseries",
+      "description": "1 — причина активна. Idle может быть нормальным состоянием простоя. Только успешный сбор GPU не старше 60 секунд. Отсутствующие датчики не заменяются нулём.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 47,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(socrat_gpu_throttle_active and on(instance) (socrat_gpu_collection_success == 1)) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60)",
+          "legendFormat": "GPU {{index}} · {{reason}}",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 19,
+      "title": "Давность сбора GPU",
+      "type": "timeseries",
+      "description": "Возраст последнего сбора. Остальные графики GPU скрывают данные при ошибке сбора или возрасте больше 60 секунд.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 47,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "time() - socrat_gpu_collection_timestamp_seconds",
+          "legendFormat": "GPU",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 20,
+      "type": "row",
+      "title": "vLLM · запросы, токены и KV-кеш",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 55,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 21,
+      "title": "Запросы vLLM · выполняются и ожидают",
+      "type": "timeseries",
+      "description": "Внутренняя очередь vLLM, отдельно от очереди переключателя.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 56,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "vllm:num_requests_running{job=\"vllm\",model_name=~\"${model:regex}\"}",
+          "legendFormat": "{{model_name}} · выполняются",
+          "instant": false,
+          "format": "time_series"
+        },
+        {
+          "refId": "B",
+          "expr": "vllm:num_requests_waiting{job=\"vllm\",model_name=~\"${model:regex}\"}",
+          "legendFormat": "{{model_name}} · ожидают",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 22,
+      "title": "Занятость KV-кеша",
+      "type": "timeseries",
+      "description": "Доля KV-кеша vLLM. Это не общая занятость видеопамяти.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 56,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "vllm:kv_cache_usage_perc{job=\"vllm\",model_name=~\"${model:regex}\"}",
+          "legendFormat": "{{model_name}}",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "min": 0,
+          "max": 1,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 23,
+      "title": "Скорость обработки токенов",
+      "type": "timeseries",
+      "description": "Токены в секунду, усреднение за интервал rate.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 64,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(model_name) (rate(vllm:prompt_tokens_total{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval]))",
+          "legendFormat": "{{model_name}} · вход",
+          "instant": false,
+          "format": "time_series"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by(model_name) (rate(vllm:generation_tokens_total{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval]))",
+          "legendFormat": "{{model_name}} · выход",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: токенов/с",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 24,
+      "title": "Завершение запросов по причинам",
+      "type": "timeseries",
+      "description": "Название метрики request_success_total включает abort и error; причины показаны отдельно.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 64,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(model_name,finished_reason) (rate(vllm:request_success_total{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval]))",
+          "legendFormat": "{{model_name}} · {{finished_reason}}",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 25,
+      "title": "Попадания в prefix-кеш",
+      "type": "timeseries",
+      "description": "Доля повторно использованных токенов. Без обращений к кешу отношение не определено.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 72,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(model_name) (rate(vllm:prefix_cache_hits_total{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval])) / sum by(model_name) (rate(vllm:prefix_cache_queries_total{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval]))",
+          "legendFormat": "{{model_name}}",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "min": 0,
+          "max": 1,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 26,
+      "title": "Вытеснения запросов из KV-кеша",
+      "type": "timeseries",
+      "description": "Вытеснения в секунду при нехватке KV-кеша.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 72,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(model_name) (rate(vllm:num_preemptions_total{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval]))",
+          "legendFormat": "{{model_name}}",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 27,
+      "type": "row",
+      "title": "vLLM · задержки p50 / p95",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 80,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 28,
+      "title": "Время до первого токена",
+      "type": "timeseries",
+      "description": "Перцентили за интервал rate. Без запросов в интервале задержка не определена.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 81,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.5, sum by(le,model_name) (rate(vllm:time_to_first_token_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval])))",
+          "legendFormat": "{{model_name}} · p50",
+          "instant": false,
+          "format": "time_series"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum by(le,model_name) (rate(vllm:time_to_first_token_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval])))",
+          "legendFormat": "{{model_name}} · p95",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 29,
+      "title": "Полное время запроса",
+      "type": "timeseries",
+      "description": "Перцентили за интервал rate. Без запросов в интервале задержка не определена.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 81,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.5, sum by(le,model_name) (rate(vllm:e2e_request_latency_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval])))",
+          "legendFormat": "{{model_name}} · p50",
+          "instant": false,
+          "format": "time_series"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum by(le,model_name) (rate(vllm:e2e_request_latency_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval])))",
+          "legendFormat": "{{model_name}} · p95",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 30,
+      "title": "Интервал между токенами",
+      "type": "timeseries",
+      "description": "Перцентили за интервал rate. Без запросов в интервале задержка не определена.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 89,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.5, sum by(le,model_name) (rate(vllm:inter_token_latency_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval])))",
+          "legendFormat": "{{model_name}} · p50",
+          "instant": false,
+          "format": "time_series"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum by(le,model_name) (rate(vllm:inter_token_latency_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval])))",
+          "legendFormat": "{{model_name}} · p95",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 31,
+      "title": "Ожидание в очереди vLLM",
+      "type": "timeseries",
+      "description": "Перцентили за интервал rate. Без запросов в интервале задержка не определена.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 89,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.5, sum by(le,model_name) (rate(vllm:request_queue_time_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval])))",
+          "legendFormat": "{{model_name}} · p50",
+          "instant": false,
+          "format": "time_series"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum by(le,model_name) (rate(vllm:request_queue_time_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval])))",
+          "legendFormat": "{{model_name}} · p95",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 32,
+      "title": "Обработка входного контекста",
+      "type": "timeseries",
+      "description": "Перцентили за интервал rate. Без запросов в интервале задержка не определена.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 97,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.5, sum by(le,model_name) (rate(vllm:request_prefill_time_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval])))",
+          "legendFormat": "{{model_name}} · p50",
+          "instant": false,
+          "format": "time_series"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum by(le,model_name) (rate(vllm:request_prefill_time_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval])))",
+          "legendFormat": "{{model_name}} · p95",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 33,
+      "title": "Генерация ответа",
+      "type": "timeseries",
+      "description": "Перцентили за интервал rate. Без запросов в интервале задержка не определена.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 97,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.5, sum by(le,model_name) (rate(vllm:request_decode_time_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval])))",
+          "legendFormat": "{{model_name}} · p50",
+          "instant": false,
+          "format": "time_series"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum by(le,model_name) (rate(vllm:request_decode_time_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval])))",
+          "legendFormat": "{{model_name}} · p95",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 34,
+      "type": "row",
+      "title": "LiteLLM · запросы, ошибки и токены",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 105,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 49,
+      "title": "Запросы LiteLLM за период",
+      "type": "stat",
+      "gridPos": {
+        "x": 0,
+        "y": 106,
+        "w": 12,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Прирост счётчика за выбранный период. История доступна с момента включения сбора; Prometheus оценивает прирост по интервалам опроса.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(litellm_proxy_total_requests_metric_total{job=\"litellm\"}[$__range]))",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 50,
+      "title": "Ошибки LiteLLM за период",
+      "type": "stat",
+      "gridPos": {
+        "x": 12,
+        "y": 106,
+        "w": 12,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Прирост счётчика за выбранный период. История доступна с момента включения сбора; Prometheus оценивает прирост по интервалам опроса.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(litellm_proxy_failed_requests_metric_total{job=\"litellm\"}[$__range])) or (0 * sum(increase(litellm_proxy_total_requests_metric_total{job=\"litellm\"}[$__range])))",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "Нет данных",
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      }
+    },
+    {
+      "id": 35,
+      "title": "Запросы через LiteLLM",
+      "type": "timeseries",
+      "description": "Запросы в секунду по данным callback LiteLLM.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 110,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(requested_model) (rate(litellm_proxy_total_requests_metric_total{job=\"litellm\"}[$__rate_interval]))",
+          "legendFormat": "{{requested_model}}",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 36,
+      "title": "Ошибки LiteLLM",
+      "type": "timeseries",
+      "description": "Ошибки запросов по данным callback LiteLLM; серия появляется после соответствующего события.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 110,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum by(requested_model) (rate(litellm_proxy_failed_requests_metric_total{job=\"litellm\"}[$__rate_interval])) or on(requested_model) (0 * sum by(requested_model) (rate(litellm_proxy_total_requests_metric_total{job=\"litellm\"}[$__rate_interval]))))",
+          "legendFormat": "{{requested_model}}",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 37,
+      "title": "Доля ошибок LiteLLM",
+      "type": "timeseries",
+      "description": "Без запросов отношение не определено. Отсутствующая серия ошибок не заменяется искусственным нулём.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 118,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum by(requested_model) (rate(litellm_proxy_failed_requests_metric_total{job=\"litellm\"}[$__rate_interval])) or on(requested_model) (0 * sum by(requested_model) (rate(litellm_proxy_total_requests_metric_total{job=\"litellm\"}[$__rate_interval])))) / (sum by(requested_model) (rate(litellm_proxy_total_requests_metric_total{job=\"litellm\"}[$__rate_interval])) > 0)",
+          "legendFormat": "{{requested_model}}",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "min": 0,
+          "max": 1,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 38,
+      "title": "Токены через LiteLLM",
+      "type": "timeseries",
+      "description": "Токены в секунду по данным callback LiteLLM.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 118,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(requested_model) (rate(litellm_input_tokens_metric_total{job=\"litellm\"}[$__rate_interval]))",
+          "legendFormat": "{{requested_model}} · вход",
+          "instant": false,
+          "format": "time_series"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by(requested_model) (rate(litellm_output_tokens_metric_total{job=\"litellm\"}[$__rate_interval]))",
+          "legendFormat": "{{requested_model}} · выход",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: токенов/с",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 39,
+      "type": "row",
+      "title": "LiteLLM · задержки p50 / p95",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 126,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 40,
+      "title": "Полная задержка LiteLLM",
+      "type": "timeseries",
+      "description": "Перцентили за интервал rate. Без запросов данные отсутствуют. ",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 127,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.5, sum by(le,requested_model) (rate(litellm_request_total_latency_metric_bucket{job=\"litellm\"}[$__rate_interval])))",
+          "legendFormat": "{{requested_model}} · p50",
+          "instant": false,
+          "format": "time_series"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum by(le,requested_model) (rate(litellm_request_total_latency_metric_bucket{job=\"litellm\"}[$__rate_interval])))",
+          "legendFormat": "{{requested_model}} · p95",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 41,
+      "title": "Задержка обращения к модели",
+      "type": "timeseries",
+      "description": "Перцентили за интервал rate. Без запросов данные отсутствуют. ",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 127,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.5, sum by(le,requested_model) (rate(litellm_llm_api_latency_metric_bucket{job=\"litellm\"}[$__rate_interval])))",
+          "legendFormat": "{{requested_model}} · p50",
+          "instant": false,
+          "format": "time_series"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum by(le,requested_model) (rate(litellm_llm_api_latency_metric_bucket{job=\"litellm\"}[$__rate_interval])))",
+          "legendFormat": "{{requested_model}} · p95",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 42,
+      "title": "Время до первого токена через LiteLLM",
+      "type": "timeseries",
+      "description": "Перцентили за интервал rate. Без запросов данные отсутствуют. ",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 135,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.5, sum by(le,requested_model) (rate(litellm_llm_api_time_to_first_token_metric_bucket{job=\"litellm\"}[$__rate_interval])))",
+          "legendFormat": "{{requested_model}} · p50",
+          "instant": false,
+          "format": "time_series"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum by(le,requested_model) (rate(litellm_llm_api_time_to_first_token_metric_bucket{job=\"litellm\"}[$__rate_interval])))",
+          "legendFormat": "{{requested_model}} · p95",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 43,
+      "title": "Время до вызова модели",
+      "type": "timeseries",
+      "description": "Перцентили за интервал rate. Без запросов данные отсутствуют. Включает аутентификацию и обработку ASGI до вызова модели; это длительность, а не число запросов в очереди.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 135,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.5, sum by(le,requested_model) (rate(litellm_request_queue_time_seconds_bucket{job=\"litellm\"}[$__rate_interval])))",
+          "legendFormat": "{{requested_model}} · p50",
+          "instant": false,
+          "format": "time_series"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum by(le,requested_model) (rate(litellm_request_queue_time_seconds_bucket{job=\"litellm\"}[$__rate_interval])))",
+          "legendFormat": "{{requested_model}} · p95",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 44,
+      "type": "row",
+      "title": "Контейнеры LLM · ресурсы и рестарты",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 143,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 45,
+      "title": "CPU контейнеров",
+      "type": "timeseries",
+      "description": "Использованные логические ядра CPU.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 144,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(pod,container) (rate(container_cpu_usage_seconds_total{namespace=\"llm\",container=~\"vllm|litellm|gateway\",image!=\"\"}[$__rate_interval]))",
+          "legendFormat": "{{pod}} · {{container}}",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "cores",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 46,
+      "title": "Оперативная память контейнеров",
+      "type": "timeseries",
+      "description": "Working set RAM, отдельно от видеопамяти GPU.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 144,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(pod,container) (container_memory_working_set_bytes{namespace=\"llm\",container=~\"vllm|litellm|gateway\",image!=\"\"})",
+          "legendFormat": "{{pod}} · {{container}}",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 47,
+      "title": "Рестарты за час",
+      "type": "timeseries",
+      "description": "Перезапуски контейнеров за скользящий час.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 152,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by(pod,container) (increase(kube_pod_container_status_restarts_total{namespace=\"llm\",container=~\"vllm|litellm|gateway\"}[1h]))",
+          "legendFormat": "{{pod}} · {{container}}",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 48,
+      "title": "Готовность контейнеров",
+      "type": "timeseries",
+      "description": "1 — readiness-проверка контейнера успешна.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 152,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "kube_pod_container_status_ready{namespace=\"llm\",container=~\"vllm|litellm|gateway\"}",
+          "legendFormat": "{{pod}} · {{container}}",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "Нет данных",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    }
+  ]
+}

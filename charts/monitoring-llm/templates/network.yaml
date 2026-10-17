@@ -1,0 +1,41 @@
+{{- range $target := list (dict "name" "vllm-monitoring" "app" "vllm" "port" 8000) (dict "name" "monitoring-llm-status" "app" "monitoring-llm-status" "port" 9108) }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $target.name }}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ $target.app }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ $.Values.prometheusNamespace }}
+          podSelector:
+            matchLabels:
+              prometheus: {{ $.Values.prometheusRelease }}-prometheus
+      ports:
+        - protocol: TCP
+          port: {{ $target.port }}
+{{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: llm-switcher-monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app: llm-switcher
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: monitoring-llm-status
+      ports:
+        - protocol: TCP
+          port: 8000

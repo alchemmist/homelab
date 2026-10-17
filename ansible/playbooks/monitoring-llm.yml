@@ -1,0 +1,33 @@
+---
+- name: Collect GPU metrics without reserving the inference GPU
+  hosts: Socrat
+  gather_facts: false
+  become: true
+  tags: [monitoring_gpu]
+  roles:
+    - monitoring_gpu
+
+- name: Enable authenticated LiteLLM monitoring
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  tags: [monitoring_llm_gateway]
+  roles:
+    - monitoring_llm_gateway
+
+- name: Deploy private LLM scrape configuration and queue collector
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  tags: [monitoring_llm_scrape]
+  tasks:
+    - name: Stage the LLM monitoring chart
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/../../charts/monitoring-llm/'
+        dest: /home/alchemmist/.cache/homelab-monitoring/llm-chart/
+        mode: preserve
+
+    - name: Install LLM monitoring without changing inference deployments
+      ansible.builtin.command:
+        argv: [helm, upgrade, --install, monitoring-llm, /home/alchemmist/.cache/homelab-monitoring/llm-chart, --namespace, llm, --kubeconfig, /etc/rancher/k3s/k3s.yaml, --atomic, --wait, --timeout, 5m]
+      changed_when: true

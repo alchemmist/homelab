@@ -1,0 +1,5 @@
+---
+monitoring_gpu_enabled: "{{ inventory_hostname == 'socrat-0' }}"
+monitoring_gpu_textfile_directory: /var/lib/node_exporter/textfile_collector
+monitoring_gpu_interval: 15s
+monitoring_gpu_binary: /usr/bin/nvidia-smi

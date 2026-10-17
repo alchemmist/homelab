@@ -1,0 +1,8 @@
+---
+monitoring_llm_gateway_namespace: llm
+monitoring_llm_gateway_release: litellm
+monitoring_llm_gateway_chart_version: 1.105.1
+monitoring_llm_gateway_kubeconfig: /etc/rancher/k3s/k3s.yaml
+monitoring_llm_gateway_workdir: /home/alchemmist/.cache/homelab-monitoring/llm-gateway
+monitoring_llm_gateway_idle_timeout: 300
+monitoring_llm_gateway_metrics_secret: litellm-monitoring
