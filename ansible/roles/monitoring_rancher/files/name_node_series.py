@@ -4,6 +4,8 @@ import sys
 
 import yaml
 
+from dashboard_descriptions import apply_descriptions
+
 
 DASHBOARD_UID = 'rancher-cluster-nodes-1'
 RANCHER_DASHBOARD_UIDS = {
@@ -143,6 +145,8 @@ def main():
                 add_cpu_temperature(dashboard)
                 manifest['data'][name] = json.dumps(dashboard, ensure_ascii=False, separators=(',', ':'))
             if uid != DASHBOARD_UID:
+                apply_descriptions(dashboard)
+                manifest['data'][name] = json.dumps(dashboard, ensure_ascii=False, separators=(',', ':'))
                 continue
             for panel in panels(dashboard):
                 for target in panel.get('targets', []):
@@ -155,6 +159,7 @@ def main():
                     matcher = override.get('matcher', {})
                     if matcher.get('id') == 'byName' and isinstance(matcher.get('options'), str):
                         matcher['options'] = matcher['options'].replace('{{instance}}', '{{nodename}}')
+            apply_descriptions(dashboard)
             manifest['data'][name] = json.dumps(dashboard, ensure_ascii=False, separators=(',', ':'))
         if dashboard_uids:
             embedded = dashboard_uids & RANCHER_DASHBOARD_UIDS

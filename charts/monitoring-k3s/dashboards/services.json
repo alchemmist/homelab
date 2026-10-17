@@ -71,7 +71,7 @@
         "w": 6,
         "h": 4
       },
-      "description": "",
+      "description": "Number of selected Deployments and StatefulSets with replica metrics at the end of the selected time range. This counts workloads, including those scaled to zero, rather than network Services or externally reachable applications.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -130,7 +130,7 @@
         "w": 6,
         "h": 4
       },
-      "description": "",
+      "description": "Total available Deployment replicas and ready StatefulSet replicas for the selected workloads at the end of the selected time range. This is Kubernetes readiness, not an external application health check.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -189,7 +189,7 @@
         "w": 6,
         "h": 4
       },
-      "description": "",
+      "description": "Total positive shortfall between desired and available or ready replicas for the selected workloads at the end of the selected time range. Zero means no measured shortfall; absent workload metrics cannot establish health.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -261,7 +261,7 @@
         "w": 6,
         "h": 4
       },
-      "description": "",
+      "description": "Estimated container restarts across the selected workloads during the hour ending at the selected range end. The window remains one hour even when the dashboard range changes. Zero means no observed counter increase; missing data is not zero.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -346,7 +346,7 @@
         "w": 24,
         "h": 9
       },
-      "description": "Available replicas for Deployments; ready replicas for StatefulSets. Zero desired replicas means the service is intentionally stopped.",
+      "description": "Current available replicas for Deployments and ready replicas for StatefulSets, alongside their desired counts, at the selected range end. A shortfall means the workload has not reached its target. Zero desired replicas means it is configured to be scaled down.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -434,7 +434,7 @@
         "w": 12,
         "h": 8
       },
-      "description": "",
+      "description": "Available Deployment replicas or ready StatefulSet replicas for each selected workload over time. A decrease may indicate a rollout, scaling or a readiness problem; compare with desired replica counts.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -493,7 +493,7 @@
         "w": 12,
         "h": 8
       },
-      "description": "",
+      "description": "Estimated container restarts by workload during the preceding hour at every plotted point. This rolling window is always one hour. Zero means no observed restarts; an absent series means the required metrics are unavailable.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -565,7 +565,7 @@
         "w": 12,
         "h": 9
       },
-      "description": "Total CPU usage across all containers and replicas of each service, in CPU cores.",
+      "description": "CPU usage summed across all containers and replicas of each selected workload, in logical CPU cores and averaged over the automatic rate interval. A value of 1 is one fully used logical core; this is actual usage, not a resource request.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -624,7 +624,7 @@
         "w": 12,
         "h": 9
       },
-      "description": "Memory working set across all containers and replicas of each service.",
+      "description": "Memory working set summed across containers and replicas of each selected workload, in byte-based units. This estimates memory actively in use and excludes some reclaimable cache; it is not GPU memory or a configured memory limit.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -683,7 +683,7 @@
         "w": 12,
         "h": 8
       },
-      "description": "Kubernetes uses resource requests to schedule pods; these are not actual usage. Services without requests have no series in this chart.",
+      "description": "Configured CPU requests summed across containers and replicas of each selected workload, in logical CPU cores. Kubernetes uses requests for scheduling; they are not actual usage or limits. Workloads without reported requests have no series.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -742,7 +742,7 @@
         "w": 12,
         "h": 8
       },
-      "description": "Kubernetes uses resource requests to schedule pods; these are not actual usage. Services without requests have no series in this chart.",
+      "description": "Configured memory requests summed across containers and replicas of each selected workload, in byte-based units. Kubernetes uses requests for scheduling; they are not actual usage or limits. Workloads without reported requests have no series.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -814,7 +814,7 @@
         "w": 12,
         "h": 9
       },
-      "description": "Active pods that are not Ready. An empty table while metrics are present above means there are no such pods.",
+      "description": "Active pods in the selected workloads that are not Ready at the selected range end. Includes Pending, Running and Unknown phases. An empty table means no matching pods if the workload and pod metrics are available.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -888,7 +888,7 @@
         "w": 12,
         "h": 9
       },
-      "description": "The estimated increase over one hour may be fractional due to extrapolation between scrapes.",
+      "description": "Containers in the selected workloads with a positive restart count during the hour ending at the selected range end. Counts may be fractional because Prometheus estimates between scrape samples. An empty table means no detected restarts if source metrics are available.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -962,7 +962,7 @@
         "w": 24,
         "h": 8
       },
-      "description": "Reasons containers are waiting, such as CrashLoopBackOff or ImagePullBackOff. An empty table while metrics are present above means no containers are waiting.",
+      "description": "Containers in the selected workloads that are waiting to start, with the reported reason, such as CrashLoopBackOff or ImagePullBackOff. Shows the state at the selected range end. An empty table means no matching waiting containers if source metrics are available.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
