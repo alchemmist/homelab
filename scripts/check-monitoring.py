@@ -141,7 +141,14 @@ def main():
             resources = container.get('resources', {})
             require(bool(resources.get('requests', {}).get('memory')) and bool(resources.get('limits', {}).get('memory')), pod['metadata']['name'] + '/' + container['name'] + ' has memory request and limit')
     dashboard = kubectl(args.ssh_host, 'get', '--raw', f'/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/dashboards/uid/socrat-overview')
-    require(dashboard.get('dashboard', {}).get('uid') == 'socrat-overview', 'Socrat Overview dashboard provisioned in Grafana')
+    require(dashboard.get('dashboard', {}).get('title') == 'Обзор', 'Overview dashboard provisioned in Grafana')
+    catalog = kubectl(args.ssh_host, 'get', '--raw', f'/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/search?limit=1000')
+    dashboards = [item for item in catalog if item.get('type') == 'dash-db']
+    primary = {item['uid']: item['title'] for item in dashboards if not item.get('folderUid')}
+    require(primary == {'socrat-overview': 'Обзор', 'socrat-nodes': 'Ноды', 'socrat-services': 'Сервисы'}, 'Only the three primary dashboards appear at the root')
+    embedded = [item for item in dashboards if item.get('folderTitle') == 'Rancher']
+    require(len(embedded) == 13 and all(item['title'].startswith('[Rancher] ') for item in embedded), 'Embedded Rancher dashboards are grouped and prefixed')
+    require(all(not item.get('folderUid') or item.get('folderTitle') in ['Rancher', 'Диагностика Kubernetes'] for item in dashboards), 'Other templates are grouped under Kubernetes diagnostics')
     url = args.grafana_url.rstrip('/') + '/api/search'
     require(remote_http_status(args.ssh_host, url, args.grafana_private_address,
                                interface=args.grafana_private_source) == 200,
@@ -171,7 +178,7 @@ def main():
     search = kubectl(args.ssh_host, 'get', '--raw',
                      f'/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/search')
     require(isinstance(search, list) and any(item.get('uid') == 'socrat-overview' for item in search),
-            'internal anonymous Grafana Viewer can find Socrat Overview')
+            'internal anonymous Grafana Viewer can find Overview')
     timestamp = int(time.time()) - 60
     snapshot = {
         'timestamp': timestamp,
