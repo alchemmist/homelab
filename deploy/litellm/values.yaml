@@ -66,20 +66,23 @@ proxy_config:
     - model_name: qwen3.8-27b
       litellm_params:
         model: openai/qwen3.8-27b
-        api_base: http://vllm.llm.svc.cluster.local:8000/v1
+        timeout: 7200
+        stream_timeout: 7200
+        api_base: http://llm-switcher.llm.svc.cluster.local:8000/v1
         api_key: os.environ/VLLM_API_KEY
       model_info:
-        max_input_tokens: 131072
+        max_input_tokens: 114688
         max_output_tokens: 16384
         input_cost_per_token: 0
         output_cost_per_token: 0
   general_settings:
+    cancel_on_disconnect: true
     disable_env_credential_login: true
     master_key: os.environ/LITELLM_MASTER_KEY
   litellm_settings:
     callbacks: [prometheus]
     require_auth_for_metrics_endpoint: true
-    request_timeout: 600
+    request_timeout: 7200
     num_retries: 0
 
 ingress:

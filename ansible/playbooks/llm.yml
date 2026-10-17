@@ -81,6 +81,7 @@
       ansible.builtin.command: >-
         helm upgrade --install vllm {{ homelab_user_home }}/tmp-charts/vllm
         --namespace llm --kubeconfig /etc/rancher/k3s/k3s.yaml
+        --values {{ homelab_user_home }}/tmp-charts/vllm/values.yaml
         --wait --timeout 45m
       changed_when: true
 

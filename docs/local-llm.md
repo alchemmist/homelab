@@ -1,3 +1,7 @@
+## Current model selection (2026-10-16)
+
+Qwen3.8-27B INT4 is the only installed model. LiteLLM routes through the internal serialized gateway to one vLLM engine, with vision, 112K context and a 95% GPU-memory target. See [model serving](model-switching.md). Earlier configuration snapshots below are retained as history.
+
 ## Public gateway migration (2026-10-15)
 
 Current target URLs: Open WebUI `https://chat.alchemmist.xyz`, LiteLLM `https://llm.alchemmist.xyz`. Public DNS and trusted TLS were verified on 2026-10-15. Earlier private URLs below describe the initial deployment.
@@ -8,11 +12,11 @@ Open WebUI uses only `http://litellm.llm.svc.cluster.local:4000/v1` with the ded
 
 # Local inference on socrat-0
 
-## Current state: Qwen3.8-27B with 128K context
+## Current state: Qwen3.8-27B with vision and 112K context
 
 On 2026-10-15 the user authorized restarting inference with monitoring and continuing the vLLM/API setup if the reboot did not recur. The Ansible playbook completed successfully, Helm reports a deployed release, and vLLM is running with one replica. Open WebUI was subsequently deployed as described below; LiteLLM remains deferred.
 
-The current model is RedHatAI/Qwen3.8-27B-INT4, served as qwen3.8-27b, with a 131072-token context, FP8 KV cache and one active request. The service accepts text only. Open WebUI uses max_tokens=16384, leaving up to 114688 tokens for input when the full output allowance is reserved. Input, generated reasoning and the final answer share the context budget.
+The current model is RedHatAI/Qwen3.8-27B-INT4, served as qwen3.8-27b, with a 114688-token context, FP8 KV cache and one active request. It accepts text and up to eight images per request, including history. Images are resized to at most 1048576 pixels. Open WebUI uses max_tokens=16384, leaving up to 98304 tokens for input when the full output allowance is reserved. Text, image tokens, generated reasoning and the final answer share the context budget. See [vision configuration](llm-vision.md).
 
 The initial successful retry disabled Kubernetes service-link environment injection, used the standard CUDA 13 vLLM image, and retained the Qwen3-8B BF16 model, 8K context, 85% GPU-memory target and two-sequence limit. The subsequent 95% configuration is described below. NVIDIA device plugin is v0.20.1. The host kernel and NVIDIA driver were not changed.
 
@@ -98,9 +102,9 @@ The NVIDIA device plugin runs only on socrat-0 in kube-system. vLLM runs in the 
 - Model: RedHatAI/Qwen3.8-27B-INT4, compressed-tensors INT4 weights with BF16 activations.
 - Model and tokenizer revision: 91bd022d5b49442a868bc35008f6c21e1860edfa.
 - API model name: qwen3.8-27b.
-- Context limit: 131072 tokens, including input and output. Open WebUI output allowance: max_tokens=16384.
+- Context limit: 114688 tokens, including input, images and output. Open WebUI output allowance: max_tokens=16384.
 - Maximum active sequences: one. Additional requests can queue.
-- Text-only mode: language-model-only skips the vision encoder; image and video input are unavailable.
+- Vision enabled: up to eight images per request, resized to at most 1048576 pixels each. Video is disabled. The former language-model-only flag was removed.
 - KV cache: FP8. With kv-cache-dtype=auto, this checkpoint’s quantization configuration selects FP8 during attention-layer initialization.
 - GPU memory target: 95%, as requested after the initial 85% validation. This is not hardware isolation from Hyprland.
 - Eager execution for initial bring-up; CUDA graphs can be evaluated later.

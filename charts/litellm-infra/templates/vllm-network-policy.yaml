@@ -13,6 +13,9 @@ spec:
             matchLabels:
               app.kubernetes.io/instance: litellm
               app.kubernetes.io/name: litellm
+        - podSelector:
+            matchLabels:
+              app: llm-switcher
       ports:
         - protocol: TCP
           port: 8000
