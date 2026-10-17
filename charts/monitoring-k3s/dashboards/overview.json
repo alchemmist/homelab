@@ -7,7 +7,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 3,
+  "version": 4,
   "refresh": "30s",
   "time": {
     "from": "now-3h",
@@ -16,45 +16,13 @@
   "editable": false,
   "panels": [
     {
-      "id": 1,
-      "title": "",
-      "type": "text",
-      "gridPos": {
-        "x": 0,
-        "y": 0,
-        "w": 24,
-        "h": 3
-      },
-      "description": "",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "noValue": "Нет данных"
-        },
-        "overrides": []
-      },
-      "options": {
-        "mode": "html",
-        "content": "<div style=\"display:flex;align-items:center;gap:18px\"><img src=\"https://grafana.socrat.alchemmist.xyz/public/img/socrat/socrat-cover.png\" width=\"106\" height=\"60\" alt=\"\" style=\"object-fit:contain\"><div><h1 style=\"margin:0;color:#d6c6a9;font-size:28px\">Обзор</h1><p style=\"margin:4px 0 0\">Кластер и ключевые сервисы.</p></div></div>"
-      },
-      "transparent": true
-    },
-    {
       "id": 2,
       "type": "row",
       "title": "Состояние кластера",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 3,
+        "y": 0,
         "w": 24,
         "h": 1
       },
@@ -66,7 +34,7 @@
       "type": "stat",
       "gridPos": {
         "x": 0,
-        "y": 4,
+        "y": 1,
         "w": 6,
         "h": 4
       },
@@ -112,7 +80,7 @@
       "type": "stat",
       "gridPos": {
         "x": 6,
-        "y": 4,
+        "y": 1,
         "w": 6,
         "h": 4
       },
@@ -171,7 +139,7 @@
       "type": "stat",
       "gridPos": {
         "x": 12,
-        "y": 4,
+        "y": 1,
         "w": 6,
         "h": 4
       },
@@ -230,7 +198,7 @@
       "type": "stat",
       "gridPos": {
         "x": 18,
-        "y": 4,
+        "y": 1,
         "w": 6,
         "h": 4
       },
@@ -290,7 +258,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 8,
+        "y": 5,
         "w": 24,
         "h": 1
       },
@@ -302,7 +270,7 @@
       "type": "stat",
       "gridPos": {
         "x": 0,
-        "y": 9,
+        "y": 6,
         "w": 6,
         "h": 4
       },
@@ -364,7 +332,7 @@
       "type": "stat",
       "gridPos": {
         "x": 6,
-        "y": 9,
+        "y": 6,
         "w": 6,
         "h": 4
       },
@@ -426,7 +394,7 @@
       "type": "stat",
       "gridPos": {
         "x": 12,
-        "y": 9,
+        "y": 6,
         "w": 6,
         "h": 4
       },
@@ -488,7 +456,7 @@
       "type": "stat",
       "gridPos": {
         "x": 18,
-        "y": 9,
+        "y": 6,
         "w": 6,
         "h": 4
       },
@@ -551,7 +519,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 13,
+        "y": 10,
         "w": 24,
         "h": 1
       },
@@ -563,7 +531,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 14,
+        "y": 11,
         "w": 8,
         "h": 8
       },
@@ -621,7 +589,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 8,
-        "y": 14,
+        "y": 11,
         "w": 8,
         "h": 8
       },
@@ -679,7 +647,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 16,
-        "y": 14,
+        "y": 11,
         "w": 8,
         "h": 8
       },
@@ -738,7 +706,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 22,
+        "y": 19,
         "w": 24,
         "h": 1
       },
@@ -750,7 +718,7 @@
       "type": "table",
       "gridPos": {
         "x": 0,
-        "y": 23,
+        "y": 20,
         "w": 12,
         "h": 8
       },
@@ -811,7 +779,7 @@
       "type": "table",
       "gridPos": {
         "x": 12,
-        "y": 23,
+        "y": 20,
         "w": 12,
         "h": 8
       },
@@ -870,7 +838,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 31,
+        "y": 28,
         "w": 24,
         "h": 1
       },
@@ -882,7 +850,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 32,
+        "y": 29,
         "w": 8,
         "h": 7
       },
@@ -944,7 +912,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 8,
-        "y": 32,
+        "y": 29,
         "w": 8,
         "h": 7
       },
@@ -1006,7 +974,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 16,
-        "y": 32,
+        "y": 29,
         "w": 8,
         "h": 7
       },
@@ -1062,7 +1030,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 39,
+        "y": 36,
         "w": 24,
         "h": 1
       },
@@ -1074,7 +1042,7 @@
       "type": "table",
       "gridPos": {
         "x": 0,
-        "y": 40,
+        "y": 37,
         "w": 12,
         "h": 8
       },
@@ -1138,7 +1106,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 12,
-        "y": 40,
+        "y": 37,
         "w": 12,
         "h": 8
       },
