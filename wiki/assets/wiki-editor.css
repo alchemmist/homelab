@@ -21,3 +21,20 @@
 .wiki-link-form[hidden], .wiki-editor-actions[hidden] { display: none !important; }
 .wiki-editor-error { margin: 8px 0 16px; color: #a11b1b; font: 12px/1.6 var(--ui); }
 .wiki-editor-error[hidden] { display: none !important; }
+.wiki-tree-row { position: relative; min-height: 32px; gap: 3px; }
+.wiki-tree-row > a { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.wiki-tree-controls { display: flex; margin-left: auto; opacity: 0; }
+.wiki-tree-row:hover .wiki-tree-controls, .wiki-tree-row:focus-within .wiki-tree-controls { opacity: 1; }
+.wiki-tree-controls button, .wiki-tree-toggle, .wiki-tree-root button { border: 0; background: none; color: var(--muted); cursor: pointer; font: 16px var(--ui); padding: 3px 6px; }
+.wiki-tree-controls button:hover, .wiki-tree-root button:hover { color: var(--blue); background: #eef2f6; }
+.wiki-tree-root { display: flex; justify-content: flex-end; min-height: 28px; }
+.wiki-tree-create { display: flex; flex-wrap: wrap; gap: 5px; padding: 8px 4px; font: 12px var(--ui); }
+.wiki-tree-create input, .wiki-tree-create select { width: 100%; min-width: 0; padding: 6px; border: 1px solid var(--rule); background: #fff; font: inherit; }
+.wiki-tree-create button { border: 1px solid var(--rule); background: #fff; padding: 5px 7px; color: var(--ink); cursor: pointer; font: inherit; }
+.wiki-tree-row[data-drop="before"] { box-shadow: 0 -2px var(--blue); }
+.wiki-tree-row[data-drop="after"] { box-shadow: 0 2px var(--blue); }
+[data-drop="inside"] { background: #e8f0ff; }
+.page-tree .nav-level[hidden] { display: none; }
+@media (hover: none) { .wiki-tree-controls { opacity: 1; } }
+.wiki-tree-folder { flex: 1; min-width: 0; }
+.wiki-tree-row a[aria-disabled="true"] { opacity: .6; cursor: default; }

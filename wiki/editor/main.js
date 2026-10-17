@@ -1,3 +1,4 @@
+import { initializeTree } from './tree.js';
 import { Editor } from '@tiptap/core';
 import { extensions, prepareMarkdown, sourceBody } from './markdown.js';
 
@@ -15,12 +16,13 @@ function initialize() {
   const originalHTML = article.innerHTML;
   const originalTitle = heading.textContent;
   let csrf = '', revision = '', path = root.dataset.path, original = '', originalJSON, refs;
+  let structure;
   let editor, toolbar, fields, linkForm, baselineTitle, creating = false, busy = false, generation = 0;
   const message = (text, error = false) => { status.textContent = error ? text : ''; status.hidden = !error; };
   const api = async (endpoint, data, method = 'POST') => {
     const response = await fetch('/api/editor' + endpoint, {method: data === undefined ? 'GET' : method, credentials: 'same-origin', cache: 'no-store', headers: data === undefined ? {} : {'Content-Type': 'application/json', 'X-CSRF-Token': csrf}, body: data === undefined ? undefined : JSON.stringify(data)});
     const result = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(response.status === 409 ? 'Заметка уже изменена. Ваши правки остаются на странице. Скопируйте текст перед загрузкой актуальной версии.' : response.status === 401 || response.status === 403 ? 'Нет доступа. Проверьте Socrat WireGuard. Ваш текст остаётся на странице.' : result.error || result.detail || 'Не удалось выполнить запрос. Проверьте соединение и повторите попытку.');
+    if (!response.ok) { const error = new Error(response.status === 409 ? 'Заметка уже изменена. Ваши правки остаются на странице. Скопируйте текст перед загрузкой актуальной версии.' : response.status === 401 || response.status === 403 ? 'Нет доступа. Проверьте Socrat WireGuard. Ваш текст остаётся на странице.' : result.error || result.detail || 'Не удалось выполнить запрос. Проверьте соединение и повторите попытку.'); error.status=response.status; throw error; }
     return result;
   };
   const dirty = () => editor && (creating || heading.textContent !== baselineTitle || JSON.stringify(editor.getJSON()) !== JSON.stringify(originalJSON));
@@ -69,12 +71,12 @@ function initialize() {
     linkForm.append(input, apply, remove); toolbar.after(linkForm);
     linkForm.addEventListener('submit', event => { event.preventDefault(); const href = input.value.trim(); if (!/^(https?:\/\/|mailto:|\/(?!\/)|#)/i.test(href)) { message('Укажите https://, mailto:, якорь или путь от корня сайта.', true); return; } editor.chain().focus().extendMarkRange('link').setLink({href}).run(); linkForm.hidden = true; });
   }
-  async function open(isNew) {
+  async function open(isNew, seed) {
     if (busy || editor) return;
     busy = true; message('');
     try {
-      path = root.dataset.path; creating = isNew;
-      const page = creating ? {title:'Новая заметка',body:'',revision:''} : await api('/pages?path=' + encodeURIComponent(path));
+      creating = isNew;
+      const page = creating ? {title:seed?.title || 'Новая заметка',body:'',revision:''} : await api('/pages?path=' + encodeURIComponent(path));
       const prepared = prepareMarkdown(page.body);
       const catalog = creating ? await api('/catalog') : null;
       original = page.body; refs = prepared.refs; revision = page.revision;
@@ -91,10 +93,10 @@ function initialize() {
         fields = document.createElement('div'); fields.className = 'wiki-new-fields';
         const sectionLabel = document.createElement('label'); sectionLabel.textContent = 'Раздел';
         const section = document.createElement('select'); section.name = 'section'; for (const item of catalog.sections) section.append(new Option(item.title,item.path));
-        const current = path.includes('/') ? path.slice(0,path.lastIndexOf('/')) : ''; if ([...section.options].some(option => option.value === current)) section.value = current;
+        const current = seed?.parent ?? (path.includes('/') ? path.slice(0,path.lastIndexOf('/')) : ''); if ([...section.options].some(option => option.value === current)) section.value = current;
         sectionLabel.append(section);
         const slugLabel = document.createElement('label'); slugLabel.textContent = 'Адрес: латинские буквы, цифры, дефисы';
-        const slug = document.createElement('input'); slug.name = 'slug'; slug.placeholder = 'new-note'; slugLabel.append(slug);
+        const slug = document.createElement('input'); slug.name = 'slug'; slug.placeholder = 'new-note'; slug.value = seed?.slug || ''; slugLabel.append(slug);
         fields.append(sectionLabel,slugLabel); heading.parentElement.after(fields);
       }
       actions.hidden = true; editbar.hidden = false; document.body.classList.add('wiki-editing');
@@ -102,15 +104,25 @@ function initialize() {
     } catch (error) { message(error.message,true); }
     finally { busy = false; }
   }
+  async function refreshArticleRevision() {
+    if (!editor || dirty()) return;
+    const activeEditor=editor, activePath=path, activeJSON=JSON.stringify(editor.getJSON()), activeTitle=heading.textContent;
+    try {
+      const page=await api('/pages?path='+encodeURIComponent(activePath));
+      if(editor!==activeEditor || path!==activePath || heading.textContent!==activeTitle || JSON.stringify(editor.getJSON())!==activeJSON || dirty())return;
+      if(page.body!==original || page.title!==baselineTitle){message('Содержимое заметки изменилось. Обновите страницу перед редактированием.',true);return;}
+      revision=page.revision;
+    } catch(error) {message(error.message,true);}
+  }
   async function publication(commit, token) {
-    for (let attempt=0; attempt<120 && generation===token; attempt++) {
+    for (let attempt=0; attempt<120 && (token===undefined || generation===token); attempt++) {
       await new Promise(resolve => setTimeout(resolve,5000));
-      if (generation!==token) return;
+      if (token!==undefined && generation!==token) return;
       try {
         const result = await api('/publications/' + encodeURIComponent(commit));
-        if (generation!==token) return;
+        if (token!==undefined && generation!==token) return;
         if (result.status === 'failed') { message('Изменения сохранены, но публикация не прошла. Обратитесь к администратору.',true); return; }
-        if (result.status === 'published') return;
+        if (result.status === 'published') return true;
       } catch {}
     }
   }
@@ -121,13 +133,14 @@ function initialize() {
     if (!title || title.length>200) { message('Укажите заголовок длиной до 200 символов.',true); heading.focus(); return; }
     const body = sourceBody(original,originalJSON,editor.getJSON(),editor.getMarkdown(),refs);
     const payload = {title,body};
-    if (creating) { payload.section=fields.querySelector('select').value; payload.slug=fields.querySelector('input').value.trim(); if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(payload.slug)) { message('В адресе используйте латинские буквы, цифры и дефисы.',true); return; } }
+    if (creating) { payload.tree_revision=structure?.revision(); payload.section=fields.querySelector('select').value; payload.slug=fields.querySelector('input').value.trim(); if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(payload.slug)) { message('В адресе используйте латинские буквы, цифры и дефисы.',true); return; } }
     else Object.assign(payload,{path,revision});
     setBusy(true); message('');
     try {
+      const wasCreating=creating;
       const result = await api('/pages',payload,creating ? 'POST':'PUT');
       path=result.path; revision=result.revision; original=body; originalJSON=editor.getJSON(); baselineTitle=title; creating=false; fields?.remove(); fields=null;
-      message(''); publication(result.commit,++generation);
+      message(''); structure?.refresh({pendingPage:wasCreating ? result.path : undefined,commit:result.commit}).catch(()=>{}); publication(result.commit,++generation);
     } catch(error) { message(error.message,true); }
     finally { setBusy(false); }
   });
@@ -140,6 +153,7 @@ function initialize() {
   api('/session').then(session=>{
     if(!session.writable || !session.csrf_token)return;
     csrf=session.csrf_token;root.hidden=false;
+    initializeTree({api, dirty:()=>busy || dirty(), currentPath:()=>path, message, changed:refreshArticleRevision, openPage:async seed=>{if(editor)stop();await open(true,seed);}, moved:(source,target)=>{if(path===source || path.startsWith(source+'/')){path=target+path.slice(source.length);root.dataset.path=path;}}, publication:commit=>publication(commit)}).then(value=>{structure=value;}).catch(error=>message(error.message,true));
     const mobile=document.querySelector('.mobile-actions');const media=matchMedia('(max-width: 900px)');
     const position=()=>{if(media.matches&&mobile)mobile.prepend(actions);else root.prepend(actions);};media.addEventListener('change',position);position();
   }).catch(()=>{});
