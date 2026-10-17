@@ -1,11 +1,11 @@
 {
   "uid": "socrat-services",
-  "title": "Сервисы",
+  "title": "Services",
   "schemaVersion": 39,
   "version": 2,
   "editable": false,
   "tags": [
-    "Основные"
+    "Primary"
   ],
   "timezone": "browser",
   "refresh": "30s",
@@ -15,13 +15,13 @@
   },
   "links": [
     {
-      "title": "Обзор",
+      "title": "Overview",
       "url": "/d/socrat-overview",
       "type": "link",
       "keepTime": true
     },
     {
-      "title": "Ноды",
+      "title": "Nodes",
       "url": "/d/socrat-nodes",
       "type": "link",
       "keepTime": true
@@ -37,7 +37,7 @@
     "list": [
       {
         "name": "service",
-        "label": "Сервис",
+        "label": "Service",
         "type": "query",
         "datasource": {
           "type": "prometheus",
@@ -54,7 +54,7 @@
         "includeAll": true,
         "allValue": ".*",
         "current": {
-          "text": "Все",
+          "text": "All",
           "value": "$__all"
         }
       }
@@ -63,7 +63,7 @@
   "panels": [
     {
       "id": 2,
-      "title": "Сервисов с метриками",
+      "title": "Services reporting metrics",
       "type": "stat",
       "gridPos": {
         "x": 0,
@@ -122,7 +122,7 @@
     },
     {
       "id": 3,
-      "title": "Готовых реплик",
+      "title": "Ready replicas",
       "type": "stat",
       "gridPos": {
         "x": 6,
@@ -181,7 +181,7 @@
     },
     {
       "id": 4,
-      "title": "Недостающих реплик",
+      "title": "Missing replicas",
       "type": "stat",
       "gridPos": {
         "x": 12,
@@ -253,7 +253,7 @@
     },
     {
       "id": 5,
-      "title": "Рестартов за 1 час",
+      "title": "Restarts in 1 hour",
       "type": "stat",
       "gridPos": {
         "x": 18,
@@ -325,7 +325,7 @@
     },
     {
       "id": 100,
-      "title": "Готовность и рестарты",
+      "title": "Readiness and restarts",
       "type": "row",
       "collapsed": false,
       "panels": [],
@@ -338,7 +338,7 @@
     },
     {
       "id": 6,
-      "title": "Реплики: готово / требуется",
+      "title": "Replicas: ready / desired",
       "type": "table",
       "gridPos": {
         "x": 0,
@@ -346,7 +346,7 @@
         "w": 24,
         "h": 9
       },
-      "description": "Available для Deployment, Ready для StatefulSet. Ноль требуемых реплик означает намеренно остановленный сервис.",
+      "description": "Available replicas for Deployments; ready replicas for StatefulSets. Zero desired replicas means the service is intentionally stopped.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -382,7 +382,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "legendFormat": "Готово",
+          "legendFormat": "Ready",
           "format": "table",
           "instant": true,
           "range": false
@@ -394,7 +394,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "legendFormat": "Требуется",
+          "legendFormat": "Desired",
           "format": "table",
           "instant": true,
           "range": false
@@ -416,9 +416,9 @@
             },
             "renameByName": {
               "namespace": "Namespace",
-              "workload": "Сервис",
-              "Value #A": "Готово",
-              "Value #B": "Требуется"
+              "workload": "Service",
+              "Value #A": "Ready",
+              "Value #B": "Desired"
             }
           }
         }
@@ -426,7 +426,7 @@
     },
     {
       "id": 7,
-      "title": "Готовые реплики по сервисам",
+      "title": "Ready replicas by service",
       "type": "timeseries",
       "gridPos": {
         "x": 0,
@@ -485,7 +485,7 @@
     },
     {
       "id": 8,
-      "title": "Рестарты за последний час",
+      "title": "Restarts in the last hour",
       "type": "timeseries",
       "gridPos": {
         "x": 12,
@@ -544,7 +544,7 @@
     },
     {
       "id": 101,
-      "title": "Потребление ресурсов",
+      "title": "Resource usage",
       "type": "row",
       "collapsed": false,
       "panels": [],
@@ -557,7 +557,7 @@
     },
     {
       "id": 9,
-      "title": "CPU по сервисам",
+      "title": "CPU usage by service",
       "type": "timeseries",
       "gridPos": {
         "x": 0,
@@ -565,7 +565,7 @@
         "w": 12,
         "h": 9
       },
-      "description": "Сумма потребления всех контейнеров и реплик сервиса в ядрах CPU.",
+      "description": "Total CPU usage across all containers and replicas of each service, in CPU cores.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -616,7 +616,7 @@
     },
     {
       "id": 10,
-      "title": "Память по сервисам",
+      "title": "Memory usage by service",
       "type": "timeseries",
       "gridPos": {
         "x": 12,
@@ -624,7 +624,7 @@
         "w": 12,
         "h": 9
       },
-      "description": "Working set всех контейнеров и реплик сервиса.",
+      "description": "Memory working set across all containers and replicas of each service.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -675,7 +675,7 @@
     },
     {
       "id": 11,
-      "title": "Запрошенный CPU",
+      "title": "CPU requests",
       "type": "timeseries",
       "gridPos": {
         "x": 0,
@@ -683,7 +683,7 @@
         "w": 12,
         "h": 8
       },
-      "description": "Requests используются планировщиком Kubernetes для размещения подов; это не фактическое потребление. Сервисы без requests не имеют серии на этом графике.",
+      "description": "Kubernetes uses resource requests to schedule pods; these are not actual usage. Services without requests have no series in this chart.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -734,7 +734,7 @@
     },
     {
       "id": 12,
-      "title": "Запрошенная память",
+      "title": "Memory requests",
       "type": "timeseries",
       "gridPos": {
         "x": 12,
@@ -742,7 +742,7 @@
         "w": 12,
         "h": 8
       },
-      "description": "Requests используются планировщиком Kubernetes для размещения подов; это не фактическое потребление. Сервисы без requests не имеют серии на этом графике.",
+      "description": "Kubernetes uses resource requests to schedule pods; these are not actual usage. Services without requests have no series in this chart.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -793,7 +793,7 @@
     },
     {
       "id": 102,
-      "title": "Диагностика",
+      "title": "Diagnostics",
       "type": "row",
       "collapsed": false,
       "panels": [],
@@ -806,7 +806,7 @@
     },
     {
       "id": 13,
-      "title": "Неготовые поды",
+      "title": "Pods not ready",
       "type": "table",
       "gridPos": {
         "x": 0,
@@ -814,7 +814,7 @@
         "w": 12,
         "h": 9
       },
-      "description": "Показаны активные поды без Ready. Пустая таблица при наличии метрик выше означает отсутствие таких подов.",
+      "description": "Active pods that are not Ready. An empty table while metrics are present above means there are no such pods.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -868,11 +868,11 @@
             },
             "renameByName": {
               "namespace": "Namespace",
-              "workload": "Сервис",
-              "pod": "Под",
-              "container": "Контейнер",
-              "node": "Нода",
-              "Value": "Значение"
+              "workload": "Service",
+              "pod": "Pod",
+              "container": "Container",
+              "node": "Node",
+              "Value": "Value"
             }
           }
         }
@@ -880,7 +880,7 @@
     },
     {
       "id": 14,
-      "title": "Контейнеры с рестартами за 1 час",
+      "title": "Containers restarted in 1 hour",
       "type": "table",
       "gridPos": {
         "x": 12,
@@ -888,7 +888,7 @@
         "w": 12,
         "h": 9
       },
-      "description": "Оценка increase за час может быть дробной из-за экстраполяции между scrape.",
+      "description": "The estimated increase over one hour may be fractional due to extrapolation between scrapes.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -942,11 +942,11 @@
             },
             "renameByName": {
               "namespace": "Namespace",
-              "workload": "Сервис",
-              "pod": "Под",
-              "container": "Контейнер",
-              "node": "Нода",
-              "Value": "Значение"
+              "workload": "Service",
+              "pod": "Pod",
+              "container": "Container",
+              "node": "Node",
+              "Value": "Value"
             }
           }
         }
@@ -954,7 +954,7 @@
     },
     {
       "id": 15,
-      "title": "Ожидание запуска контейнеров",
+      "title": "Containers waiting to start",
       "type": "table",
       "gridPos": {
         "x": 0,
@@ -962,7 +962,7 @@
         "w": 24,
         "h": 8
       },
-      "description": "Причины ожидания: например CrashLoopBackOff или ImagePullBackOff. Пустая таблица при наличии метрик выше — ожидающих контейнеров нет.",
+      "description": "Reasons containers are waiting, such as CrashLoopBackOff or ImagePullBackOff. An empty table while metrics are present above means no containers are waiting.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1016,11 +1016,11 @@
             },
             "renameByName": {
               "namespace": "Namespace",
-              "workload": "Сервис",
-              "pod": "Под",
-              "container": "Контейнер",
-              "node": "Нода",
-              "Value": "Значение"
+              "workload": "Service",
+              "pod": "Pod",
+              "container": "Container",
+              "node": "Node",
+              "Value": "Value"
             }
           }
         }

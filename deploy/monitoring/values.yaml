@@ -116,6 +116,8 @@ alertmanager:
               storage: 1Gi
 grafana:
   replicas: 1
+  podAnnotations:
+    homelab.alchemmist.xyz/dashboard-language: en
   extraConfigmapMounts:
     - name: socrat-branding
       configMap: socrat-branding
@@ -154,7 +156,7 @@ grafana:
       searchNamespace: ALL
       folderAnnotation: grafana_folder
       annotations:
-        grafana_folder: /tmp/dashboards/Диагностика Kubernetes
+        grafana_folder: /tmp/dashboards/Kubernetes Diagnostics
       provider:
         foldersFromFilesStructure: true
   grafana.ini:

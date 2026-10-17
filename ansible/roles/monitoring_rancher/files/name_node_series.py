@@ -55,8 +55,8 @@ def add_cpu_temperature(dashboard):
     dashboard['panels'] = [p for p in dashboard['panels'] if p['id'] != CPU_TEMPERATURE_PANEL_ID]
     dashboard['panels'].append({
         'id': CPU_TEMPERATURE_PANEL_ID,
-        'title': 'Температура CPU',
-        'description': 'Отдельные ядра (Core) и общий датчик процессора (Package / Tctl), если они доступны. На AMD могут быть доступны только общие датчики CPU. На VPS датчики обычно не передаются. Отсутствие данных не означает 0 °C. Датчики GPU и дисков исключены.',
+        'title': 'CPU temperature',
+        'description': 'Individual core and package/control temperatures where hardware exposes them. AMD systems may provide only shared CPU sensors. VPS hosts usually expose no sensors. Missing data does not mean 0 °C. GPU and disk sensors are excluded.',
         'type': 'timeseries',
         'gridPos': position,
         'datasource': {'type': 'prometheus', 'uid': '${datasource}'},
@@ -147,7 +147,7 @@ def main():
             embedded = dashboard_uids & RANCHER_DASHBOARD_UIDS
             if embedded and embedded != dashboard_uids:
                 raise RuntimeError('Embedded and diagnostic dashboards share a ConfigMap')
-            folder = 'Rancher' if embedded else 'Диагностика Kubernetes'
+            folder = 'Rancher' if embedded else 'Kubernetes Diagnostics'
             metadata = manifest.setdefault('metadata', {})
             metadata['annotations'] = metadata.get('annotations') or {}
             metadata['annotations']['grafana_folder'] = '/tmp/dashboards/' + folder
