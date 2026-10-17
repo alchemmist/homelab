@@ -1,0 +1,6 @@
+---
+kuma_private_namespace: uptime-kuma
+kuma_private_deployment: uptime-kuma
+kuma_private_kubeconfig: /etc/rancher/k3s/k3s.yaml
+kuma_private_workdir: /var/lib/homelab-kuma-private
+kuma_private_dns: "{{ (lookup('file', playbook_dir + '/../../charts/uptime-kuma/values.yaml') | from_yaml).dnsConfig }}"

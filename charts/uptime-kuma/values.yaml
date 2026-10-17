@@ -4,6 +4,12 @@ hostPath: /srv/uptime-kuma
 host: status.alchemmist.xyz
 tlsSecret: uptime-kuma-tls
 clusterIssuer: letsencrypt-http01
+dnsConfig:
+  nameservers: [10.250.0.2, 10.250.0.1, 10.250.0.3]
+  options:
+    - {name: ndots, value: '1'}
+    - {name: timeout, value: '2'}
+    - {name: attempts, value: '2'}
 resources:
   requests:
     cpu: 50m
