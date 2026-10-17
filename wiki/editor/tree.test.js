@@ -193,3 +193,22 @@ test('workspace stages folder and move with edited text without API writes',asyn
   assert.equal(document.querySelector('[data-node-id="folder"]'),null);
   assert.equal(calls.every(call=>call.payload===undefined),true);
 });
+
+test('reading mode blocks pointer and native dragging before and after editing',async()=>{
+  const {createWorkspace}=await import('./workspace.js');
+  const data=new Map(),workspace=createWorkspace({getItem:key=>data.get(key),setItem:(key,value)=>data.set(key,value)});
+  const dom=new JSDOM('<nav class="page-tree"><ul class="nav-root"></ul></nav>',{url:'https://wiki.example/'});
+  globalThis.document=dom.window.document;
+  const controller=await initializeTree({api:async()=>fixture(),workspace,dirty:()=>false,currentPath:()=> 'ai/chat.md',openPage:()=>{},moved:()=>{},message:()=>{},publication:async()=>true});
+  await controller.ready;
+  const gesture=()=>{
+    const source=document.querySelector('[data-node-id="ai/chat.md"] a'),target=document.querySelector('.wiki-tree-root');
+    document.elementFromPoint=()=>target;
+    pointerEvent({dom},'pointerdown',source,10,100);pointerEvent({dom},'pointermove',source,30,10);pointerEvent({dom},'pointerup',source,30,10);
+  };
+  gesture();drag({dom},'ai/chat.md',document.querySelector('.wiki-tree-root'));await tick();
+  assert.equal(workspace.active(),false);assert.deepEqual(workspace.operations(),[]);assert.equal(document.querySelector('.wiki-tree-dragging'),null);
+  workspace.start();gesture();await tick();assert.equal(workspace.operations().length,1);
+  workspace.discard();await controller.reset();gesture();await tick();
+  assert.deepEqual(workspace.operations(),[]);assert.equal(workspace.active(),false);
+});

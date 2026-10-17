@@ -9,6 +9,7 @@ export async function initializeTree({api, workspace, begin = () => true, dirty,
   };
   const flatten = nodes => nodes.flatMap(node => [node, ...flatten(node.children || [])]);
   const parentOf = id => id.includes('/') ? id.slice(0, id.lastIndexOf('/')) : '';
+  const canDrag = () => !workspace || workspace.active();
   const guard = (structure = true) => {
     if (pending) return false;
     if (dirty() || !workspace && structure && structureDirty()) { error('Опубликуйте или отмените правки wiki перед изменением структуры.'); return false; }
@@ -128,7 +129,7 @@ export async function initializeTree({api, workspace, begin = () => true, dirty,
   function executeDrop() {
     const source = dragging, target = drop;
     finishDrag();
-    if (source && target) {
+    if (canDrag() && source && target) {
       if (target.where === 'inside' && target.node) expanded.add(target.node.id);
       move(source, target.parent, target.before);
     }
@@ -159,6 +160,7 @@ export async function initializeTree({api, workspace, begin = () => true, dirty,
   }
   nav.addEventListener('pointermove', event => {
     if (!pointer || event.pointerId !== pointer.id) return;
+    if (!canDrag()) { finishDrag(); return; }
     pointer.x = event.clientX; pointer.y = event.clientY;
     if (!dragging) {
       if (Math.hypot(event.clientX - pointer.startX, event.clientY - pointer.startY) < 5) return;
@@ -187,10 +189,10 @@ export async function initializeTree({api, workspace, begin = () => true, dirty,
       const li=document.createElement('li');li.className='nav-item'+(node.kind==='folder'?' nav-section':'');li.dataset.nodeId=node.id;
       const row=document.createElement('div');row.className='nav-row wiki-tree-row';row.draggable=false;
       row.addEventListener('pointerdown', event => {
-        if (event.button !== 0 || pending) return;
+        if (event.button !== 0 || pending || !canDrag()) return;
         pointer = {id: event.pointerId, node, row, startX: event.clientX, startY: event.clientY, x: event.clientX, y: event.clientY};
       });
-      row.addEventListener('dragstart',event=>{if(!guard()){event.preventDefault();return;} dragging=node.id;nav.classList.add('wiki-tree-dragging');event.dataTransfer.setData('text/plain',node.id);event.dataTransfer.effectAllowed='move';});
+      row.addEventListener('dragstart',event=>{if(!canDrag() || !guard()){event.preventDefault();return;} dragging=node.id;nav.classList.add('wiki-tree-dragging');event.dataTransfer.setData('text/plain',node.id);event.dataTransfer.effectAllowed='move';});
       row.addEventListener('dragend',finishDrag);
       if(node.kind==='folder') {
         const toggle=button('', 'Раскрыть '+node.title,()=>{expanded.has(node.id)?expanded.delete(node.id):expanded.add(node.id);render();});
@@ -225,5 +227,5 @@ export async function initializeTree({api, workspace, begin = () => true, dirty,
   }
   mountToolbar();
   const ready = loadTree().then(() => { for(const node of flatten(tree.nodes))if(node.kind==='folder' && currentPath().startsWith(node.id+'/'))expanded.add(node.id);render(); }).catch(e => error(e.message));
-  return {refresh, render:()=>{ if (workspace) tree = workspace.tree() || tree; render(); }, reset:()=>{tree=undefined;return refresh();}, revision:()=>tree?.revision, ensureRevision, ready};
+  return {refresh, render:()=>{ if (workspace) tree = workspace.tree() || tree; render(); }, reset:()=>{finishDrag();tree=undefined;return refresh();}, revision:()=>tree?.revision, ensureRevision, ready};
 }

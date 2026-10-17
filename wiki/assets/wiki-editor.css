@@ -34,16 +34,16 @@
 [data-drop="inside"] { background: #e8f0ff; }
 .page-tree .nav-level[hidden] { display: none; }
 .wiki-tree-folder { flex: 1; min-width: 0; }
-.wiki-tree-row a[aria-disabled="true"] { opacity: .6; cursor: grab; }
+.wiki-tree-row a[aria-disabled="true"] { opacity: .6; cursor: default; }
 .wiki-editor-actions [data-editor-open] { width: 28px; height: 28px; padding: 6px; opacity: .45; background: transparent; }
 .wiki-editor-actions [data-editor-open]:hover, .wiki-editor-actions [data-editor-open]:focus-visible { opacity: 1; }
 .wiki-tree-root > button { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
 .wiki-tree-root > button svg { width: 16px; height: 16px; }
 .wiki-tree-root > button:hover, .wiki-tree-root > button:focus-visible { color: var(--ink); }
-.wiki-tree-row, .wiki-tree-row > a, .wiki-tree-row > .tree-toggle { cursor: grab; }
-.wiki-tree-row:active, .wiki-tree-row:active > a, .wiki-tree-row:active > .tree-toggle, .wiki-tree-dragging .wiki-tree-row, .wiki-tree-dragging .wiki-tree-row > * { cursor: grabbing !important; }
+body.wiki-editing .wiki-tree-row, body.wiki-editing .wiki-tree-row > a, body.wiki-editing .wiki-tree-row > .tree-toggle { cursor: grab; }
+body.wiki-editing .wiki-tree-row:active, body.wiki-editing .wiki-tree-row:active > a, body.wiki-editing .wiki-tree-row:active > .tree-toggle, body.wiki-editing .wiki-tree-dragging .wiki-tree-row, body.wiki-editing .wiki-tree-dragging .wiki-tree-row > * { cursor: grabbing !important; }
 
-.wiki-tree-row { touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+body.wiki-editing .wiki-tree-row { touch-action: pan-y; user-select: none; -webkit-user-select: none; }
 .wiki-tree-dragging .wiki-tree-row { touch-action: none; }
 .wiki-tree-source { opacity: .4; }
 .wiki-tree-drag-hint { position: fixed; z-index: 100; pointer-events: none; max-width: 230px; padding: 5px 8px; border: 1px solid var(--rule); border-radius: 3px; background: var(--paper, #fff); color: var(--ink); font: 11px/1.5 var(--ui); box-shadow: 0 3px 8px #00000012; }
