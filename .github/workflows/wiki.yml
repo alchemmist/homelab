@@ -58,6 +58,27 @@ jobs:
           test "$(curl --silent -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/api/editor/session)" = 404
           test "$(curl --silent -o /dev/null -w '%{http_code}' -H 'X-Forwarded-Proto: http' http://127.0.0.1:18080/)" = 308
           curl --fail --silent --head http://127.0.0.1:18080/ | grep -iq '^X-Robots-Tag: noindex, nofollow'
+          python3 - <<'PYTEST'
+          from html.parser import HTMLParser
+          from urllib.request import urlopen
+          class Assets(HTMLParser):
+              def handle_starttag(self, tag, attrs):
+                  attrs = dict(attrs)
+                  if tag == 'link' and attrs.get('rel') in ('preload', 'stylesheet'):
+                      paths.append(attrs['href'])
+          base = 'http://127.0.0.1:18080'
+          paths = []
+          with urlopen(base + '/') as response:
+              assert response.headers['Cache-Control'] == 'no-store'
+              Assets().feed(response.read().decode())
+          assert len([path for path in paths if '.woff2?' in path]) == 2
+          for path in paths:
+              with urlopen(base + path) as response:
+                  assert response.headers['Cache-Control'] == 'public, max-age=31536000, immutable', path
+          for path in ('/version.json', '/search-index.json', '/404.html'):
+              with urlopen(base + path) as response:
+                  assert response.headers['Cache-Control'] == 'no-store', path
+          PYTEST
 
   publish:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'

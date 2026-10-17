@@ -22,7 +22,7 @@ function initialize() {
   const pageCache = new Map();
   const draftsNav = document.createElement('span'); draftsNav.className = 'wiki-workspace-drafts'; save.before(draftsNav);
   const draftCount = () => {
-    const drafts = workspace.drafts(); const count = drafts.length + workspace.operations().length; save.textContent = count ? `Опубликовать ${count}` : 'Опубликовать';
+    const drafts = workspace.drafts(); const count = drafts.length + workspace.operations().length; save.textContent = busy ? 'Публикуется…' : count ? `Опубликовать ${count}` : 'Опубликовать';
     draftsNav.replaceChildren();
     for (const draft of drafts.filter(item=>item.creating && item.path!==path && !workspace.isDeleted(item.path))) {
       const button = document.createElement('button'); button.type='button'; button.textContent=draft.title || 'Новая заметка';
@@ -43,15 +43,17 @@ function initialize() {
     return result;
   };
   const dirty = () => editor && (creating || heading.textContent !== baselineTitle || JSON.stringify(editor.getJSON()) !== JSON.stringify(originalJSON));
-  const setBusy = value => { busy = value; save.disabled = value; root.querySelector('[data-editor-cancel]').disabled = value; editor?.setEditable(!value, false); heading.contentEditable = editor && !value ? 'true' : 'false'; };
+  const setBusy = value => { busy = value; editbar.setAttribute('aria-busy', String(value)); draftCount(); save.disabled = value; root.querySelector('[data-editor-cancel]').disabled = value; editor?.setEditable(!value, false); heading.contentEditable = editor && !value ? 'true' : 'false'; };
   const stash = () => {
     if (!editor || workspace.isDeleted(path)) return true;
+    const previous = workspace.get(path);
+    const sidebarChanged = (previous?.title ?? baselineTitle) !== heading.textContent || creating && previous?.slug !== (fields?.querySelector('input')?.value || '');
     try {
     if (dirty()) workspace.put({path, revision, title:heading.textContent, body:sourceBody(original,originalJSON,editor.getJSON(),editor.getMarkdown(),refs), creating, slug:fields?.querySelector('input')?.value || '', baseline:{title:baselineTitle,body:original,revision}});
     else workspace.remove(path);
       stashFailed = false;
     } catch (error) { stashFailed = true; message(error.message || 'Не удалось сохранить черновик в браузере. Не закрывайте страницу до публикации.',true); }
-    draftCount(); structure?.render();
+    draftCount(); if (sidebarChanged) structure?.render();
     return !stashFailed;
   };
   const stop = (discard = true) => {
@@ -173,15 +175,16 @@ function initialize() {
 
   save.addEventListener('click', async () => {
     if (busy) return;
-    if (!stash()) return;
-    const submitted = workspace.drafts();
-    if (!submitted.length && !workspace.operations().length) { stop(); return; }
-    for (const draft of submitted) {
-      if (!draft.title.trim() || draft.title.length > 200) { message('Укажите заголовки длиной до 200 символов.',true); return; }
-      if (draft.creating && !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(draft.slug)) { message('В адресе новой заметки используйте латинские буквы, цифры и дефисы.',true); return; }
-    }
     setBusy(true); message('');
     try {
+      await new Promise(resolve => { const fallback = setTimeout(resolve, 100); requestAnimationFrame(() => { clearTimeout(fallback); setTimeout(resolve, 0); }); });
+      if (!stash()) return;
+      const submitted = workspace.drafts();
+      if (!submitted.length && !workspace.operations().length) { setBusy(false); stop(); return; }
+      for (const draft of submitted) {
+        if (!draft.title.trim() || draft.title.length > 200) { message('Укажите заголовки длиной до 200 символов.',true); return; }
+        if (draft.creating && !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(draft.slug)) { message('В адресе новой заметки используйте латинские буквы, цифры и дефисы.',true); return; }
+      }
       const payload = {pages:batchPages(submitted),operations:workspace.operations()};
       if ((payload.operations.length || submitted.some(draft => draft.creating)) && structure) payload.tree_revision = await structure.ensureRevision();
       const finalPath = workspace.virtualPath(path), currentDeleted = workspace.isDeleted(path);

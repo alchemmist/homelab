@@ -217,7 +217,11 @@ class LiveTest(unittest.TestCase):
         def render(args, **kwargs):
             source = Path(args[args.index('--source') + 1])
             self.assertEqual((source / '_vendor/theme/layouts/partials/content/head.html').read_text(), 'Theme partial')
-            self.assertTrue((source / 'content/_index.md').is_file())
+            self.assertEqual(source, self.template)
+            self.assertEqual(Path(args[args.index('--contentDir') + 1]), self.api.WORK / self.api.PREFIX)
+            self.assertEqual(kwargs['env']['HUGO_RESOURCEDIR'], str(self.live.root / 'hugo-resources'))
+            self.assertEqual(kwargs['env']['HUGO_MODULE_PROXY'], 'off')
+            self.assertEqual(kwargs['env']['GOPROXY'], 'off')
             (destination / 'public').mkdir()
             return subprocess.CompletedProcess(args, 0, '', '')
         with patch('live.subprocess.run', side_effect=render):
@@ -470,3 +474,11 @@ class LiveTest(unittest.TestCase):
         self.assertEqual(result.status_code, 200, result.text)
         self.assertEqual(self.page()['body'], 'Picture')
         self.assertFalse(asset.parent.exists())
+
+    def test_live_fonts_use_font_mime_type(self):
+        font = self.live.current / 'public' / 'test.woff2'
+        font.write_bytes(b'font')
+        response = self.client.get('/site/test.woff2')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers['content-type'], 'font/woff2')
+        self.assertEqual(response.headers['cache-control'], 'no-store')
