@@ -1177,6 +1177,12 @@
       "type": "link",
       "includeVars": false,
       "keepTime": true
+    },
+    {
+      "title": "LLM",
+      "url": "/d/socrat-llm",
+      "type": "link",
+      "keepTime": true
     }
   ]
 }

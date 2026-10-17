@@ -1,4 +1,4 @@
-{{- range $name := list "overview" "nodes" "services" }}
+{{- range $name := list "overview" "nodes" "services" "llm" }}
 ---
 apiVersion: v1
 kind: ConfigMap

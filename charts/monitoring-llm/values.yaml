@@ -1,0 +1,5 @@
+prometheusRelease: kube-prometheus-stack
+prometheusNamespace: cattle-monitoring-system
+metricsSecret: litellm-monitoring
+statusImage: ghcr.io/open-webui/open-webui:v0.12.2-slim@sha256:34db70a8e8f305dc996c4b459db0949b715400a489ca8a2d1a2a31ae5ddc67bb
+nodeName: socrat-0

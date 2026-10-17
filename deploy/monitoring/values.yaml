@@ -70,8 +70,10 @@ prometheus:
       matchLabels:
         kubernetes.io/metadata.name: cattle-monitoring-system
     podMonitorNamespaceSelector:
-      matchLabels:
-        kubernetes.io/metadata.name: cattle-monitoring-system
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values: [cattle-monitoring-system, llm]
     ruleNamespaceSelector:
       matchLabels:
         kubernetes.io/metadata.name: cattle-monitoring-system
@@ -205,6 +207,8 @@ kube-state-metrics:
     limits:
       memory: 128Mi
 prometheus-node-exporter:
+  extraArgs:
+    - --collector.textfile.directory=/host/root/var/lib/node_exporter/textfile_collector
   service:
     listenOnAllInterfaces: false
   resources:

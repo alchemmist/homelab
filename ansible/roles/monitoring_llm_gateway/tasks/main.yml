@@ -1,0 +1,33 @@
+---
+- name: Create private gateway monitoring staging directory
+  ansible.builtin.file:
+    path: "{{ monitoring_llm_gateway_workdir }}"
+    state: directory
+    mode: "0700"
+
+- name: Install gateway monitoring reconciler
+  ansible.builtin.copy:
+    src: configure_gateway.py
+    dest: "{{ monitoring_llm_gateway_workdir }}/configure_gateway.py"
+    mode: "0700"
+
+- name: Enable authenticated gateway metrics while preserving current configuration
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ monitoring_llm_gateway_workdir }}/configure_gateway.py"
+      - --namespace
+      - "{{ monitoring_llm_gateway_namespace }}"
+      - --release
+      - "{{ monitoring_llm_gateway_release }}"
+      - --chart-version
+      - "{{ monitoring_llm_gateway_chart_version }}"
+      - --kubeconfig
+      - "{{ monitoring_llm_gateway_kubeconfig }}"
+      - --idle-timeout
+      - "{{ monitoring_llm_gateway_idle_timeout | string }}"
+      - --secret
+      - "{{ monitoring_llm_gateway_metrics_secret }}"
+  register: monitoring_llm_gateway_result
+  changed_when: "'changed=true' in monitoring_llm_gateway_result.stdout"
+  no_log: true
