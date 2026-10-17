@@ -48,6 +48,8 @@ This customizes the dashboard and default home in Grafana OSS. Product-wide logo
 
 The provisioned **Socrat Overview** dashboard (UID `socrat-overview`) shows Ready nodes, running pods, healthy etcd/API targets, CPU and memory use, root filesystem space, recent pod restarts, scheduler backlog and controller queue depth. Counts use live metrics rather than a fixed three-node assumption. Empty restart/queue panels can mean no recent events; inspect scrape health before interpreting missing data. Changes belong in `charts/monitoring-k3s/templates/socrat-dashboard.yaml` because provisioning replaces UI edits.
 
+The embedded Rancher **Cluster Nodes** dashboard (UID `rancher-cluster-nodes-1`) labels its series with node names instead of exporter IP addresses. The `monitoring_rancher` Helm post-renderer joins the original queries with `node_uname_info{job="node-exporter"}` on `instance` and uses `nodename` in legends. It preserves metric values and existing Prometheus labels/history. Apply this chart through `playbooks/monitoring.yml --tags monitoring_rancher` so upgrades keep the customization; the renderer requires Python PyYAML on socrat-0.
+
 ## Verification
 
 Run from the repository with working SSH access to socrat-0:
