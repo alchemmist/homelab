@@ -69,7 +69,7 @@
       "title": "",
       "type": "stat",
       "transparent": true,
-      "description": "Telemetry collection status, not inference availability. GPU samples must be less than 60 seconds old.",
+      "description": "Whether Prometheus successfully scraped vLLM at the selected range end. Up means the metrics endpoint responded; it does not confirm that inference requests can complete.",
       "gridPos": {
         "x": 0,
         "y": 0,
@@ -148,7 +148,7 @@
       "title": "",
       "type": "stat",
       "transparent": true,
-      "description": "Telemetry collection status, not inference availability. GPU samples must be less than 60 seconds old.",
+      "description": "Whether Prometheus successfully scraped LiteLLM at the selected range end. Up means the metrics endpoint responded; it does not confirm that upstream models or client requests are working.",
       "gridPos": {
         "x": 6,
         "y": 0,
@@ -227,7 +227,7 @@
       "title": "",
       "type": "stat",
       "transparent": true,
-      "description": "Telemetry collection status, not inference availability. GPU samples must be less than 60 seconds old.",
+      "description": "Whether Prometheus scraped the queue exporter and that exporter successfully read the model switcher status at the selected range end. Up confirms collection of queue status, not successful inference.",
       "gridPos": {
         "x": 12,
         "y": 0,
@@ -306,7 +306,7 @@
       "title": "",
       "type": "stat",
       "transparent": true,
-      "description": "Telemetry collection status, not inference availability. GPU samples must be less than 60 seconds old.",
+      "description": "Whether GPU collection succeeded and its latest sample is less than 60 seconds old at the selected range end. Down means collection failed or became stale; it does not alone establish a GPU hardware failure.",
       "gridPos": {
         "x": 18,
         "y": 0,
@@ -397,7 +397,7 @@
       "id": 7,
       "title": "Running and waiting requests",
       "type": "timeseries",
-      "description": "The llm-switcher queue upstream of vLLM. Running requests include model startup, so this count differs from the number of requests generating tokens in vLLM.",
+      "description": "Number of requests running or waiting in the model switcher, upstream of vLLM. Running includes model startup, so it can differ from requests executing inside vLLM. A growing waiting count means requests are accumulating before reaching the model engine.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -461,7 +461,7 @@
       "id": 8,
       "title": "Last confirmed loaded model",
       "type": "timeseries",
-      "description": "1 identifies the last model confirmed as loaded by the switcher. This does not check vLLM readiness.",
+      "description": "A value of 1 identifies the last model the switcher confirmed as loaded. This records model selection over time; it does not continuously verify vLLM readiness or show how many requests are running.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -531,7 +531,7 @@
       "id": 10,
       "title": "GPU temperature",
       "type": "timeseries",
-      "description": "Only successful GPU collection samples less than 60 seconds old are shown. Missing sensor data is not replaced with zero.",
+      "description": "GPU temperature in degrees Celsius, as reported by the driver. Rising temperature shows increased thermal load. Only successful samples less than 60 seconds old are shown; unavailable or stale readings are omitted, not replaced with zero.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -588,7 +588,7 @@
       "id": 11,
       "title": "GPU and memory controller utilization",
       "type": "timeseries",
-      "description": "Only successful GPU collection samples less than 60 seconds old are shown. Missing sensor data is not replaced with zero.",
+      "description": "GPU execution and memory-controller activity as percentages of the driver sampling interval. Memory-controller utilization measures activity, not the fraction of VRAM occupied. Only successful GPU samples less than 60 seconds old are shown.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -654,7 +654,7 @@
       "id": 12,
       "title": "GPU memory · Used and total",
       "type": "timeseries",
-      "description": "Only successful GPU collection samples less than 60 seconds old are shown. Missing sensor data is not replaced with zero.",
+      "description": "GPU memory currently allocated and total GPU memory, in byte-based units. A small gap means little unallocated VRAM remains, though some allocation may be reserved caches. Only successful samples less than 60 seconds old are shown.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -719,7 +719,7 @@
       "id": 13,
       "title": "GPU memory utilization",
       "type": "timeseries",
-      "description": "Only successful GPU collection samples less than 60 seconds old are shown. Missing sensor data is not replaced with zero.",
+      "description": "Allocated GPU memory as a percentage of total VRAM. This measures capacity use, not GPU computation or memory-controller activity. Only successful samples less than 60 seconds old are shown.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -778,7 +778,7 @@
       "id": 14,
       "title": "Power draw and limit",
       "type": "timeseries",
-      "description": "Only successful GPU collection samples less than 60 seconds old are shown. Missing sensor data is not replaced with zero.",
+      "description": "GPU power draw and configured power limit, in watts. Draw near the limit can constrain clock speed under load; check throttling reasons alongside it. Only successful samples less than 60 seconds old are shown.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -842,7 +842,7 @@
       "id": 15,
       "title": "Fan speed",
       "type": "timeseries",
-      "description": "Only successful GPU collection samples less than 60 seconds old are shown. Missing sensor data is not replaced with zero.",
+      "description": "GPU fan speed as a percentage of the driver-reported maximum. It is not a temperature or RPM reading; fans may stop at idle. Unsupported readings are omitted, and only successful samples less than 60 seconds old are shown.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -901,7 +901,7 @@
       "id": 16,
       "title": "GPU and memory clock speeds",
       "type": "timeseries",
-      "description": "Only successful GPU collection samples less than 60 seconds old are shown. Missing sensor data is not replaced with zero.",
+      "description": "GPU graphics and memory clock frequencies, shown in frequency units. Clocks vary with workload and power management, so lower clocks at idle are expected. Only successful samples less than 60 seconds old are shown.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -965,7 +965,7 @@
       "id": 17,
       "title": "GPU performance state",
       "type": "timeseries",
-      "description": "P0 indicates maximum performance; higher values indicate more power-efficient states. Only successful GPU collection samples less than 60 seconds old are shown. Missing sensor data is not replaced with zero.",
+      "description": "Driver-reported GPU performance state: P0 is the highest-performance state, and higher numbers generally represent lower-performance power-saving states. Idle changes are expected. Only successful samples less than 60 seconds old are shown.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1022,7 +1022,7 @@
       "id": 18,
       "title": "Clock throttling reasons",
       "type": "timeseries",
-      "description": "1 means the reason is active. Idle may be a normal state when the GPU has no work. Only successful GPU collection samples less than 60 seconds old are shown. Missing sensor data is not replaced with zero.",
+      "description": "Driver-reported reasons for limiting GPU clocks: 1 means a reason is active, 0 means inactive. Idle is normal when there is no work; power or thermal reasons need workload context. Only successful samples less than 60 seconds old are shown.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1079,7 +1079,7 @@
       "id": 19,
       "title": "GPU collection age",
       "type": "timeseries",
-      "description": "Time since the last collection. Other GPU charts hide data when collection fails or data is older than 60 seconds.",
+      "description": "Seconds since the timestamp reported by the GPU collector. Other GPU panels hide readings when collection fails or this age reaches 60 seconds. Age alone does not prove success; check the GPU collection status as well.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1149,7 +1149,7 @@
       "id": 21,
       "title": "vLLM requests · Running and waiting",
       "type": "timeseries",
-      "description": "The internal vLLM queue, separate from the model switcher queue.",
+      "description": "Number of requests executing or waiting inside vLLM for each selected model. This is separate from the upstream switcher queue. Persistent waiting with running requests can indicate that demand exceeds the engine capacity.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1213,7 +1213,7 @@
       "id": 22,
       "title": "KV cache utilization",
       "type": "timeseries",
-      "description": "vLLM KV cache utilization. This is separate from total GPU memory utilization.",
+      "description": "Percentage of the vLLM key/value cache currently occupied for each selected model. This cache stores attention state used during generation; it is only part of total GPU memory. Higher values mean less cache capacity remains.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1272,7 +1272,7 @@
       "id": 23,
       "title": "Token throughput",
       "type": "timeseries",
-      "description": "Tokens per second averaged over the rate interval.",
+      "description": "Input prompt and generated output tokens per second for each selected model, averaged over the automatic rate interval. This is aggregate engine throughput, not the speed of an individual response.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1336,7 +1336,7 @@
       "id": 24,
       "title": "Request completions by reason",
       "type": "timeseries",
-      "description": "The request_success_total metric also includes abort and error outcomes; each completion reason is shown separately.",
+      "description": "Requests finishing per second in vLLM, grouped by selected model and completion reason, averaged over the automatic rate interval. The source counter includes abort and error outcomes as well as normal completions; the metric name does not imply all requests succeeded.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1393,7 +1393,7 @@
       "id": 25,
       "title": "Prefix cache hit ratio · selected period",
       "type": "stat",
-      "description": "Proportion of reused tokens. The ratio is undefined without cache queries. Calculated over the entire selected dashboard time range.",
+      "description": "Percentage of queried prefix-cache tokens served from the cache during the entire selected time range, by selected model. Higher values mean more previously processed prompt content was reused. Without cache queries, the ratio is undefined and no estimate is shown.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1463,7 +1463,7 @@
       "id": 26,
       "title": "KV cache request preemptions",
       "type": "timeseries",
-      "description": "Preemptions per second due to insufficient KV cache capacity.",
+      "description": "vLLM request preemptions per second, averaged over the automatic rate interval. Preemption pauses work when cache capacity is needed elsewhere and can increase latency; it is not itself a failed request.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1533,7 +1533,7 @@
       "id": 28,
       "title": "Time to first token · selected period",
       "type": "stat",
-      "description": "p50 (median) and p95 of first-token latency observed during the selected dashboard time range. Recomputed when the time range changes or the dashboard refreshes. No requests means no latency estimate; it is not zero.",
+      "description": "Time from a request entering vLLM until its first output token, in seconds. Shows estimated p50 (median) and p95 (95% of observations at or below this value) for each selected model over the entire selected time range. Higher values mean longer waits. No observations means no latency estimate, not zero.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1609,7 +1609,7 @@
       "id": 29,
       "title": "End-to-end request latency · selected period",
       "type": "stat",
-      "description": "p50 (median) and p95 of end-to-end request latency observed during the selected dashboard time range. Recomputed when the time range changes or the dashboard refreshes. No observations means no latency estimate; it is not zero.",
+      "description": "Time for a full request to complete inside vLLM, in seconds. Shows estimated p50 (median) and p95 (95% of observations at or below this value) for each selected model over the entire selected time range. Higher values mean longer waits. No observations means no latency estimate, not zero.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1685,7 +1685,7 @@
       "id": 30,
       "title": "Inter-token latency · selected period",
       "type": "stat",
-      "description": "p50 (median) and p95 of inter-token latency observed during the selected dashboard time range. Recomputed when the time range changes or the dashboard refreshes. No observations means no latency estimate; it is not zero.",
+      "description": "Time between generated output tokens inside vLLM, in seconds. Shows estimated p50 (median) and p95 (95% of observations at or below this value) for each selected model over the entire selected time range. Higher values mean longer waits. No observations means no latency estimate, not zero.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1761,7 +1761,7 @@
       "id": 31,
       "title": "vLLM queue wait · selected period",
       "type": "stat",
-      "description": "p50 (median) and p95 of vllm queue wait observed during the selected dashboard time range. Recomputed when the time range changes or the dashboard refreshes. No observations means no latency estimate; it is not zero.",
+      "description": "Time a request waits in the internal vLLM queue before execution, excluding the upstream switcher queue, in seconds. Shows estimated p50 (median) and p95 (95% of observations at or below this value) for each selected model over the entire selected time range. Higher values mean longer waits. No observations means no latency estimate, not zero.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1837,7 +1837,7 @@
       "id": 32,
       "title": "Input processing · selected period",
       "type": "stat",
-      "description": "p50 (median) and p95 of input processing observed during the selected dashboard time range. Recomputed when the time range changes or the dashboard refreshes. No observations means no latency estimate; it is not zero.",
+      "description": "Time vLLM spends processing the input prompt before generating the response, in seconds. Shows estimated p50 (median) and p95 (95% of observations at or below this value) for each selected model over the entire selected time range. Higher values mean longer waits. No observations means no latency estimate, not zero.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1913,7 +1913,7 @@
       "id": 33,
       "title": "Response generation · selected period",
       "type": "stat",
-      "description": "p50 (median) and p95 of response generation observed during the selected dashboard time range. Recomputed when the time range changes or the dashboard refreshes. No observations means no latency estimate; it is not zero.",
+      "description": "Time vLLM spends generating the response after input processing, in seconds. Shows estimated p50 (median) and p95 (95% of observations at or below this value) for each selected model over the entire selected time range. Higher values mean longer waits. No observations means no latency estimate, not zero.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -2012,7 +2012,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Counter increase over the selected range. History starts when collection was enabled; Prometheus estimates the increase from scrape samples.",
+      "description": "Estimated number of requests recorded by LiteLLM callbacks during the selected time range. History begins when collection was enabled, and estimates may be fractional because Prometheus extrapolates between samples. The model selector above filters vLLM panels only.",
       "targets": [
         {
           "refId": "A",
@@ -2057,7 +2057,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Counter increase over the selected range. History starts when collection was enabled; Prometheus estimates the increase from scrape samples.",
+      "description": "Estimated number of failed requests recorded by LiteLLM callbacks during the selected time range. Zero is supplied only when a request counter is available; no data does not establish zero errors. Estimates may be fractional. The model selector filters vLLM panels only.",
       "targets": [
         {
           "refId": "A",
@@ -2092,7 +2092,7 @@
       "id": 35,
       "title": "LiteLLM requests",
       "type": "timeseries",
-      "description": "Requests per second reported by LiteLLM callbacks.",
+      "description": "Requests per second recorded by LiteLLM callbacks, grouped by requested model and averaged over the automatic rate interval. This is gateway traffic, which can differ from vLLM engine traffic. The model selector filters vLLM panels only.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -2149,7 +2149,7 @@
       "id": 36,
       "title": "LiteLLM errors",
       "type": "timeseries",
-      "description": "Request errors reported by LiteLLM callbacks; a series appears after the corresponding event.",
+      "description": "Failed requests per second recorded by LiteLLM callbacks, grouped by requested model and averaged over the automatic rate interval. A missing error counter becomes zero only for a model with a known request counter. The model selector filters vLLM panels only.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -2206,7 +2206,7 @@
       "id": 37,
       "title": "LiteLLM error ratio · selected period",
       "type": "stat",
-      "description": "The ratio is undefined without requests. Missing error series are treated as zero only for models with a known request series and a positive request rate. Calculated over the entire selected dashboard time range.",
+      "description": "Failed LiteLLM requests as a percentage of recorded requests during the entire selected time range, by requested model. No requests means the ratio is undefined, not zero. Missing error counters count as zero only where request data exists. The model selector filters vLLM panels only.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -2276,7 +2276,7 @@
       "id": 38,
       "title": "LiteLLM token throughput",
       "type": "timeseries",
-      "description": "Tokens per second reported by LiteLLM callbacks.",
+      "description": "Input and output tokens per second recorded by LiteLLM callbacks, grouped by requested model and averaged over the automatic rate interval. These are aggregate totals, not per-request generation speed. The model selector filters vLLM panels only.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -2353,7 +2353,7 @@
       "id": 40,
       "title": "LiteLLM total latency · selected period",
       "type": "stat",
-      "description": "p50 (median) and p95 of litellm total latency observed during the selected dashboard time range. Recomputed when the time range changes or the dashboard refreshes. No observations means no latency estimate; it is not zero.",
+      "description": "Total request duration measured by LiteLLM, including gateway processing, in seconds. Shows estimated p50 (median) and p95 (95% of observations at or below this value) for each requested model over the entire selected time range. Higher values mean longer waits. No observations means no latency estimate, not zero. The model selector filters vLLM panels only.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -2429,7 +2429,7 @@
       "id": 41,
       "title": "Model API latency · selected period",
       "type": "stat",
-      "description": "p50 (median) and p95 of model api latency observed during the selected dashboard time range. Recomputed when the time range changes or the dashboard refreshes. No observations means no latency estimate; it is not zero.",
+      "description": "Duration of the upstream model API call measured by LiteLLM, in seconds. Shows estimated p50 (median) and p95 (95% of observations at or below this value) for each requested model over the entire selected time range. Higher values mean longer waits. No observations means no latency estimate, not zero. The model selector filters vLLM panels only.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -2505,7 +2505,7 @@
       "id": 42,
       "title": "LiteLLM time to first token · selected period",
       "type": "stat",
-      "description": "p50 (median) and p95 of litellm time to first token observed during the selected dashboard time range. Recomputed when the time range changes or the dashboard refreshes. No observations means no latency estimate; it is not zero.",
+      "description": "Time to the first output token measured by LiteLLM for the upstream model API call, in seconds. Shows estimated p50 (median) and p95 (95% of observations at or below this value) for each requested model over the entire selected time range. Higher values mean longer waits. No observations means no latency estimate, not zero. The model selector filters vLLM panels only.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -2581,7 +2581,7 @@
       "id": 43,
       "title": "Time before model invocation · selected period",
       "type": "stat",
-      "description": "p50 (median) and p95 of time before model invocation observed during the selected dashboard time range. Recomputed when the time range changes or the dashboard refreshes. No observations means no latency estimate; it is not zero.",
+      "description": "Time measured by LiteLLM before it invokes the upstream model, rather than time in the vLLM engine queue, in seconds. Shows estimated p50 (median) and p95 (95% of observations at or below this value) for each requested model over the entire selected time range. Higher values mean longer waits. No observations means no latency estimate, not zero. The model selector filters vLLM panels only.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -2670,7 +2670,7 @@
       "id": 45,
       "title": "Container CPU",
       "type": "timeseries",
-      "description": "Logical CPU cores in use.",
+      "description": "CPU usage per LLM pod and container, in logical CPU cores averaged over the automatic rate interval. A value of 1 is one fully used logical core. GPU execution is not included.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -2727,7 +2727,7 @@
       "id": 46,
       "title": "Container memory",
       "type": "timeseries",
-      "description": "Working set RAM, separate from GPU memory.",
+      "description": "RAM working set per LLM pod and container, in byte-based units. This estimates memory actively in use and excludes some reclaimable cache. GPU memory is shown separately; this is not a configured memory limit.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -2784,7 +2784,7 @@
       "id": 47,
       "title": "Restarts per hour",
       "type": "timeseries",
-      "description": "Container restarts over a rolling one-hour window.",
+      "description": "Estimated restarts per LLM pod and container during the preceding hour at every plotted point. The window is always one hour. A flat line at zero means no observed restarts; overlapping zero lines can look empty. Missing data means no usable counter samples, not zero restarts.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -2841,7 +2841,7 @@
       "id": 48,
       "title": "Container readiness",
       "type": "timeseries",
-      "description": "1 means the container readiness check passed.",
+      "description": "Kubernetes container readiness over time: 1 means Ready, 0 means not Ready. A missing series means no readiness metric is available, not that the container is healthy. Readiness does not verify the full client-to-model request path.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"

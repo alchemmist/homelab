@@ -24,6 +24,19 @@
     dest: "{{ monitoring_rancher_workdir }}/name_node_series.py"
     mode: "0700"
 
+- name: Install the dashboard description helper
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../files/dashboard_descriptions.py"
+    dest: "{{ monitoring_rancher_workdir }}/dashboard_descriptions.py"
+    mode: '0600'
+
+- name: Install the versioned dashboard descriptions
+  ansible.builtin.copy:
+    src: "{{ monitoring_rancher_repo_root }}/deploy/monitoring/dashboard-descriptions/"
+    dest: "{{ monitoring_rancher_workdir }}/dashboard-descriptions/"
+    mode: '0600'
+    directory_mode: '0700'
+
 - name: Verify the dashboard renderer YAML dependency
   ansible.builtin.command: python3 -c 'import yaml'
   changed_when: false

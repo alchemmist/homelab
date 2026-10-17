@@ -38,7 +38,7 @@
         "w": 6,
         "h": 4
       },
-      "description": "Number of ready nodes. Compare with the cluster inventory on the Nodes dashboard.",
+      "description": "Number of Kubernetes nodes currently reporting Ready, at the end of the selected time range. Compare this with the expected node count on the Nodes dashboard. Readiness does not guarantee that every application on a node is healthy.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -84,7 +84,7 @@
         "w": 6,
         "h": 4
       },
-      "description": "Excludes Watchdog. Notification delivery is not configured yet.",
+      "description": "Number of firing alert instances at the end of the selected time range, excluding the Watchdog heartbeat. Zero means this query found no firing alerts; it does not confirm that monitoring or notification delivery is working.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -143,7 +143,7 @@
         "w": 6,
         "h": 4
       },
-      "description": "",
+      "description": "Number of active pods that are not Ready at the end of the selected time range. Includes Pending, Running and Unknown phases; completed jobs are excluded. Zero means no matching unready pods were found, provided Kubernetes metrics are being collected.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -202,7 +202,7 @@
         "w": 6,
         "h": 4
       },
-      "description": "Prometheus scrape health, not an external application availability check.",
+      "description": "Number of Prometheus targets whose latest scrape failed. Zero means no recorded scrape failures, not a successful external application check; targets missing from discovery are not counted.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -274,7 +274,7 @@
         "w": 6,
         "h": 4
       },
-      "description": "Available replicas as a percentage of desired replicas. Pod readiness does not verify VPN connectivity or external HTTP availability.",
+      "description": "Available VPN Deployment replicas as a percentage of desired replicas at the selected range end. 100% means the configured replica target is available; a target of zero displays 0%. This does not verify external access or VPN connectivity.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -336,7 +336,7 @@
         "w": 6,
         "h": 4
       },
-      "description": "Available replicas as a percentage of desired replicas. Pod readiness does not verify VPN connectivity or external HTTP availability.",
+      "description": "Available Rancher Deployment replicas as a percentage of desired replicas at the selected range end. 100% means the configured replica target is available; a target of zero displays 0%. This does not verify external access or successful user requests.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -398,7 +398,7 @@
         "w": 6,
         "h": 4
       },
-      "description": "Available replicas as a percentage of desired replicas. Pod readiness does not verify VPN connectivity or external HTTP availability.",
+      "description": "Available Grafana Deployment replicas as a percentage of desired replicas at the selected range end. 100% means the configured replica target is available; a target of zero displays 0%. This does not verify external access or successful user requests.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -460,7 +460,7 @@
         "w": 6,
         "h": 4
       },
-      "description": "Available replicas as a percentage of desired replicas. Pod readiness does not verify VPN connectivity or external HTTP availability.",
+      "description": "Available Status Page Deployment replicas as a percentage of desired replicas at the selected range end. 100% means the configured replica target is available; a target of zero displays 0%. This does not verify external access or successful user requests.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -535,7 +535,7 @@
         "w": 8,
         "h": 8
       },
-      "description": "",
+      "description": "Non-idle CPU time as a percentage of all logical CPU capacity on each node, averaged over the automatic rate interval. Includes I/O wait. Near 100% means little idle CPU time remains; it does not distinguish computation from waiting for I/O.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -593,7 +593,7 @@
         "w": 8,
         "h": 8
       },
-      "description": "",
+      "description": "Percentage of RAM not available for new applications on each node: total memory minus the kernel estimate of available memory. Reclaimable cache is accounted for. A rising value means less RAM headroom.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -651,7 +651,7 @@
         "w": 8,
         "h": 8
       },
-      "description": "",
+      "description": "Percentage of the root filesystem unavailable to ordinary processes on each node, including used space and filesystem reservations. Near 100% means little writable space remains; other mount points are not included.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -722,7 +722,7 @@
         "w": 12,
         "h": 8
       },
-      "description": "An empty table means no firing alerts other than the Watchdog heartbeat.",
+      "description": "Firing alert instances grouped by alert name, severity and namespace at the end of the selected time range. The Watchdog heartbeat is excluded. An empty table means no matching alerts if alert evaluation is working.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -783,7 +783,7 @@
         "w": 12,
         "h": 8
       },
-      "description": "Completed jobs are excluded. An empty table means all active pods are ready.",
+      "description": "Active pods that are not Ready at the end of the selected time range; completed jobs are excluded. An empty table means no matching pods if Kubernetes state metrics are available.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -854,7 +854,7 @@
         "w": 8,
         "h": 7
       },
-      "description": "A lower number of members with a leader indicates reduced etcd redundancy.",
+      "description": "Number of scraped etcd members reporting that they have a leader, compared with the number of discovered etcd scrape targets. A gap may indicate a leader or collection problem. The target count is not an independent inventory of all expected members.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -916,7 +916,7 @@
         "w": 8,
         "h": 7
       },
-      "description": "",
+      "description": "Number of Kubernetes API targets successfully scraped at each time, compared with all discovered API targets. A gap means failed scrapes. This checks the metrics endpoint, not every API operation or external access path.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -978,7 +978,7 @@
         "w": 8,
         "h": 7
       },
-      "description": "",
+      "description": "Number of pods in each Kubernetes phase over time. Running does not necessarily mean Ready; Pending means a pod has not yet started running. Completed successful pods are excluded.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1046,7 +1046,7 @@
         "w": 12,
         "h": 8
       },
-      "description": "An empty table means no restarts in the last hour. This window is always one hour.",
+      "description": "Up to ten containers with the largest estimated restart count during the hour ending at the selected range end. This is always a one-hour window. Counts may be fractional because Prometheus estimates between samples. An empty table means no detected restarts if source metrics are available.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1110,7 +1110,7 @@
         "w": 12,
         "h": 8
       },
-      "description": "",
+      "description": "Kubernetes API requests per second, grouped by HTTP response code and averaged over the automatic rate interval. 4xx responses are client-side errors; 5xx responses are server-side errors. Missing samples are not evidence of zero traffic.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"

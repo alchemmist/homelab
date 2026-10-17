@@ -109,6 +109,19 @@
     dest: "{{ monitoring_directory }}/stable_node_series.py"
     mode: '0700'
 
+- name: Install the dashboard description helper
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../files/dashboard_descriptions.py"
+    dest: "{{ monitoring_directory }}/dashboard_descriptions.py"
+    mode: '0600'
+
+- name: Install the versioned dashboard descriptions
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../deploy/monitoring/dashboard-descriptions/"
+    dest: "{{ monitoring_directory }}/dashboard-descriptions/"
+    mode: '0600'
+    directory_mode: '0700'
+
 - name: Verify the dashboard renderer YAML dependency
   ansible.builtin.command: python3 -c 'import yaml'
   changed_when: false

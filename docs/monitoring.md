@@ -54,15 +54,20 @@ The **LLM** dashboard adds GPU temperature/utilization, vLLM and LiteLLM request
 
 Node and GPU graphs aggregate away exporter pod identity so a node-exporter rollout does not create duplicate legend entries over historical time ranges. Node gauges retain the node name; disk and network graphs also retain the device, GPU graphs retain GPU identity, and CPU temperature graphs retain chip and sensor identity. Gauges are averaged rather than summed across exporter identities. The base monitoring Helm post-renderer applies the same normalization to the five bundled Node Exporter dashboards, including their recording-rule queries. This changes dashboard queries only; stored metrics and scrape labels remain intact.
 
+Every data panel has an English description available from the information icon beside its title. Descriptions explain the measurement, units, time window and relevant missing-data behavior. The four primary dashboards store descriptions in their JSON sources. Template dashboards use the versioned catalog in `deploy/monitoring/dashboard-descriptions/`, applied by both Helm post-renderers through `ansible/files/dashboard_descriptions.py`. Rendering fails if a new template panel has no catalog entry, so chart upgrades cannot silently introduce undocumented panels. Row headings and static text panels are excluded. Known display-unit corrections for Grafana latency, CoreDNS cache entries and Node Exporter network drops/disk I/O saturation are applied with the descriptions; metric queries remain unchanged.
+
 ## Verification
 
 Run from the repository with working SSH access to socrat-0:
 
 ```sh
 python3 scripts/check-monitoring.py
+python3 scripts/check-dashboard-descriptions.py
 ```
 
 The checker uses Kubernetes Service proxy requests over SSH, without a public Prometheus endpoint or a local port-forward. It verifies every active scrape target, exporter/kubelet coverage against the current node list, etcd leadership, representative metrics, local persistent volume placement, memory requests/limits and anonymous WireGuard Grafana access, internal Viewer access, absence of a permanent Grafana Ingress, and the ingress default HTTP 404 body from an external VPS both with and without forged WireGuard and LAN forwarding headers. It does not retrieve administrator credentials.
+
+The description checker reads every provisioned dashboard and requires complete panel coverage and exact agreement with the repository descriptions.
 
 The Grafana URL and SSH aliases can be overridden using `--grafana-url`, `--ssh-host` and `--external-ssh-host`. Defaults are `socrat-0` for the WireGuard and LAN probes and `socrat-2-direct` for the external probe. Address overrides are `--grafana-private-address` (default `10.250.0.3`), `--grafana-private-source` (default `10.250.0.1`) and `--grafana-public-address` (default `109.173.40.247`). The private probe binds to the WireGuard source interface; public probes explicitly use the public address so private DNS cannot accidentally turn them into private-access tests. TLS verification is strict for private Grafana access. Only the negative public probes allow the ingress default certificate, since that endpoint no longer has a Grafana hostname certificate; they require the default 404 body and do not accept Grafana content. Temporary cert-manager HTTP-01 challenge paths are allowed during private certificate renewal, but no application route is allowed. A failed check exits nonzero and reports its failing condition. The checker waits up to 120 seconds for discovered targets to become healthy; override this with `--wait-seconds`. Real failures still fail the check at the deadline. Immediately after deployment, allow at least two scrape intervals before expecting every series.
 

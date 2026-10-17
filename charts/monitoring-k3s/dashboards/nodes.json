@@ -83,7 +83,7 @@
     {
       "id": 2,
       "title": "Uptime",
-      "description": "",
+      "description": "Time since each selected node last booted, evaluated at the end of the selected time range. A drop indicates a reboot or a change in the reported boot time; this is host uptime, not container uptime.",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
@@ -131,7 +131,7 @@
     {
       "id": 3,
       "title": "Logical CPU cores",
-      "description": "",
+      "description": "Number of logical CPU cores exposed to the operating system on each selected node at the end of the selected time range. Includes hardware threads and virtual CPUs; this is capacity, not current utilization.",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
@@ -179,7 +179,7 @@
     {
       "id": 4,
       "title": "Physical memory",
-      "description": "",
+      "description": "Total RAM reported by the operating system on each selected node at the end of the selected time range. Displayed in byte-based units; this is total memory, not free memory or GPU memory.",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
@@ -240,7 +240,7 @@
     {
       "id": 6,
       "title": "CPU utilization",
-      "description": "Non-idle CPU time averaged across logical cores, including I/O wait.",
+      "description": "Non-idle CPU time as a percentage of all logical CPU capacity, averaged over the automatic rate interval. Includes I/O wait. Near 100% means little idle CPU time remains; it does not distinguish computation from waiting for I/O.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -296,7 +296,7 @@
     {
       "id": 7,
       "title": "Load average per core",
-      "description": "Five-minute load average divided by logical CPU cores. A value of 1 means one running or waiting task per core. Disk I/O wait also contributes to load average; this is not CPU utilization.",
+      "description": "Five-minute load average divided by the number of logical CPU cores. A value of 1 means an average of one runnable or uninterruptibly waiting task per core. Sustained values above 1 can indicate contention, but disk I/O waits also contribute; this is not CPU utilization.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -351,7 +351,7 @@
     {
       "id": 8,
       "title": "Load average · 1 / 5 / 15 minutes",
-      "description": "Average number of running or runnable tasks and tasks in uninterruptible sleep, including disk I/O wait. Compare with the number of logical CPU cores.",
+      "description": "Average number of runnable tasks and tasks in uninterruptible sleep, including disk I/O wait, over 1, 5 and 15 minutes. Compare with logical CPU core count to assess demand. These fixed averaging windows do not change with the dashboard time range.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -433,7 +433,7 @@
     {
       "id": 10,
       "title": "Memory utilization",
-      "description": "Used memory = MemTotal − MemAvailable, accounting for cache memory the kernel can reclaim.",
+      "description": "Percentage of RAM not available for new applications: total memory minus the kernel estimate of available memory. Reclaimable cache is accounted for. A rising percentage means less memory headroom.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -489,7 +489,7 @@
     {
       "id": 11,
       "title": "Available memory",
-      "description": "Estimated memory available to new applications without swapping.",
+      "description": "RAM the kernel estimates can be used by new applications without swapping, including reclaimable cache, in byte-based units. A falling value means less memory headroom.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -544,7 +544,7 @@
     {
       "id": 12,
       "title": "Swap used",
-      "description": "Swap space in use. Zero can also mean swap is disabled.",
+      "description": "Swap space currently used, in byte-based units. Zero may mean swap is unused or disabled. This measures stored pages, not the rate at which pages are being swapped.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -612,7 +612,7 @@
     {
       "id": 14,
       "title": "Root filesystem · used",
-      "description": "Share of the root filesystem unavailable to ordinary processes, including used space and filesystem reservations.",
+      "description": "Percentage of the root filesystem unavailable to ordinary processes, including used space and filesystem reservations. Near 100% means little writable space remains; other mount points are not included.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -668,7 +668,7 @@
     {
       "id": 15,
       "title": "Root filesystem · available",
-      "description": "Free space on the root filesystem available to ordinary processes.",
+      "description": "Free root-filesystem space available to ordinary processes, in byte-based units. Filesystem reservations are excluded. A falling value means less room for application data, images and logs on this filesystem.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -723,7 +723,7 @@
     {
       "id": 16,
       "title": "Disk I/O",
-      "description": "Throughput per device without adding physical and logical disks together. Loop, RAM, and optical devices are excluded.",
+      "description": "Read and write throughput per disk device, in bytes per second averaged over the automatic rate interval. Physical and logical devices are shown separately and should not be added together. Loop, RAM and optical devices are excluded.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -798,7 +798,7 @@
     {
       "id": 18,
       "title": "Inbound traffic",
-      "description": "Per interface, including WireGuard. Container and loopback interfaces are excluded. Tunnel and physical interface traffic are not added together.",
+      "description": "Received traffic per network interface, in bytes per second averaged over the automatic rate interval. Includes WireGuard; container and loopback interfaces are excluded. Tunnel traffic may also cross a physical interface, so adding both can double-count it.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -853,7 +853,7 @@
     {
       "id": 19,
       "title": "Outbound traffic",
-      "description": "Per interface, including WireGuard. Container and loopback interfaces are excluded.",
+      "description": "Transmitted traffic per network interface, in bytes per second averaged over the automatic rate interval. Includes WireGuard; container and loopback interfaces are excluded. Tunnel traffic may also cross a physical interface, so adding both can double-count it.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -908,7 +908,7 @@
     {
       "id": 20,
       "title": "Network interface errors",
-      "description": "Receive and transmit errors per second. This does not measure packet loss between nodes or internet availability.",
+      "description": "Receive and transmit errors per second on each network interface, averaged over the automatic rate interval. Nonzero values warrant checking that interface. This does not directly measure end-to-end packet loss or internet availability.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -983,7 +983,7 @@
     {
       "id": 22,
       "title": "Maximum sensor temperature",
-      "description": "Maximum hardware sensor temperature per node, including CPU and storage devices. The socrat-2 VPS exposes no sensors and therefore has no series here.",
+      "description": "Highest reported hardware sensor temperature on each node, in degrees Celsius. Includes CPU and storage sensors, so the hottest device can change over time. The socrat-2 VPS exposes no sensors and has no series; missing data does not mean a temperature of zero.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",

@@ -4,6 +4,8 @@ import sys
 
 import yaml
 
+from dashboard_descriptions import apply_descriptions
+
 
 DASHBOARD_UIDS = {
     "7e0a61e486f727d763fb1d86fdd629c2",
@@ -35,8 +37,10 @@ def render(resources):
                 dashboard = json.loads(value)
             except (TypeError, json.JSONDecodeError):
                 continue
-            if isinstance(dashboard, dict) and dashboard.get("uid") in DASHBOARD_UIDS:
-                rewrite_panels(dashboard.get("panels", []))
+            if isinstance(dashboard, dict) and dashboard.get("uid") and 'panels' in dashboard:
+                if dashboard['uid'] in DASHBOARD_UIDS:
+                    rewrite_panels(dashboard.get("panels", []))
+                apply_descriptions(dashboard)
                 resource["data"][key] = json.dumps(dashboard, separators=(",", ":"))
     return resources
 
