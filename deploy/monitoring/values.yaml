@@ -150,6 +150,11 @@ grafana:
         memory: 256Mi
     dashboards:
       searchNamespace: ALL
+      folderAnnotation: grafana_folder
+      annotations:
+        grafana_folder: /tmp/dashboards/Диагностика Kubernetes
+      provider:
+        foldersFromFilesStructure: true
   grafana.ini:
     dashboards:
       default_home_dashboard_path: /tmp/dashboards/socrat-overview.json
