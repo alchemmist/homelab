@@ -23,6 +23,10 @@ data:
       access_log /dev/stdout;
       error_log /dev/stderr warn;
       {{- if $.Values.privateGui.extraVirtualHosts }}
+      map $http_accept $private_html_accept_encoding {
+        default $http_accept_encoding;
+        ~*text/html "";
+      }
       map $http_upgrade $connection_upgrade {
         default upgrade;
         '' close;
@@ -95,6 +99,11 @@ data:
           proxy_set_header Host $host;
           {{- if .clearAuthorization }}
           proxy_set_header Authorization "";
+          {{- end }}
+          {{- if .responseStyle }}
+          proxy_set_header Accept-Encoding $private_html_accept_encoding;
+          sub_filter_once on;
+          sub_filter '</head>' {{ printf "<style id=\"socrat-layout-fix\">%s</style></head>" .responseStyle | quote }};
           {{- end }}
           proxy_set_header X-Real-IP $remote_addr;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

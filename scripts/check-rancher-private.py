@@ -73,6 +73,8 @@ try:
     for address in ADDRESSES:
         status, body = request(address, '/ping')
         require(status == 200 and body.strip() == b'pong', 'Trusted private HTTPS ping through ' + address)
+        status, body = request(address, '/dashboard/')
+        require(status == 200 and b'id="socrat-layout-fix"' in body and b'overflow-wrap: anywhere' in body, 'Scoped Rancher layout stylesheet through ' + address)
         authenticated = False
         for token in tokens:
             credential = token['metadata']['name'] + ':' + token['token']
