@@ -1,18 +1,25 @@
 # Socrat control plane and home ingress HA
 
-## Verified migration state
+## Current voting and control-plane topology
 
-All nodes run `v1.36.5+k3s1`. The original SQLite datastore was converted to embedded etcd without recreating application resources.
+All four nodes run `v1.36.5+k3s1`. On 2026-10-18, socrat-3 was promoted without deleting its agent runtime, and socrat-1 retained its API/controller/scheduler services while relinquishing its etcd vote.
 
 | Node | Kubernetes services | etcd role |
 | --- | --- | --- |
 | `socrat-0` | API server, scheduler, controller manager, agent | Voter |
-| `socrat-1` | API server, scheduler, controller manager, agent | Voter |
-| `socrat-2` | etcd-only server with workload agent; API, scheduler and controller manager disabled | Voter |
+| `socrat-1` | API server, scheduler, controller manager, agent | None; dedicated control plane |
+| `socrat-2` | etcd-only server with workload agent | Voter |
+| `socrat-3` | API server, scheduler, controller manager, agent | Voter |
 
-All three voters were verified healthy and an etcd snapshot was saved. Quorum requires two of three voters. Either home node can provide the API with the other home node unavailable, provided the VPS voter is healthy. The VPS alone cannot provide a control plane after both home nodes fail.
+Quorum is two of three voters: socrat-0, socrat-2 and socrat-3. The two external nodes can maintain quorum after both home nodes fail, provided their direct WireGuard path and disks are healthy. Socrat-3 supplies an external API at `https://10.250.0.5:6443`. CoreDNS, Rancher webhook and each cert-manager component have one replica on socrat-0 and one on socrat-3. Rancher UI, public ingress and application storage have separate placement and availability constraints; this is not a claim that every application survives loss of the home site.
 
-WireGuard remains the management and flannel network. Direct `/32` routes from the VPS to both home node LAN addresses keep etcd peer addresses reachable without routing through the other home node. Preserve these routes and direct peers while retaining this membership.
+The migration supports socrat-2 being temporarily unavailable: first add socrat-3 as a learner, wait for its promotion, then remove socrat-1 while its original etcd process still runs. Four voters need three votes, so stopping socrat-1 before removing its membership would lose quorum when socrat-2 is down. The helper verifies known names, peer URLs, member IDs and healthy online endpoints; it transfers leadership to socrat-0 before removing socrat-1 if necessary. Only afterward is socrat-1 restarted with `disable-etcd: true`. The final check is read-only. While socrat-2 is unavailable, both socrat-0 and socrat-3 are required and there is no spare vote.
+
+Before and after snapshots plus the server token are retained privately on socrat-3 under `/var/lib/homelab-k3s-rebalance/`; original configuration/service archives remain on each modified node. Snapshot restoration is disaster recovery, not a routine rollback, because it discards later cluster changes. Once socrat-1 is removed, do not restore its old etcd configuration as an automatic rollback. Preserve the archived database and inspect committed membership first.
+
+WireGuard remains the management and flannel network. Socrat-3 uses a direct peer endpoint `176.98.185.59:51830` for socrat-2 and has public egress distinct from the home connection. Its `/32` routes to the home LAN node addresses remain necessary for socrat-0's etcd peer URL. Administrative SSH to socrat-3 currently uses a jump through socrat-0; that administrative path is not the data path between the external voters. Joined embedded-etcd servers can restart using their existing datastore without the original bootstrap server; fresh joins or restores with an empty datastore still require a reachable join endpoint.
+
+The following transport and home-ingress sections describe the existing home-node HA setup and its earlier tests. A physical whole-home power-off test was not performed during the role rebalance.
 
 ### Home laptop to VPS transport
 
@@ -88,12 +95,13 @@ After restarting `socrat-0`, all three nodes were `Ready` and all three etcd vot
 Run from `ansible/` with the appropriate reachable inventory overlay:
 
 ```bash
-ansible-playbook playbooks/k3s-ha.yml --ask-become-pass
+ansible-playbook -i inventory/hosts.yml -i inventory/socrat-3.yml playbooks/k3s-role-rebalance.yml --ask-become-pass
+ansible-playbook -i inventory/hosts.yml -i inventory/socrat-3.yml playbooks/k3s-ha-dependencies.yml --ask-become-pass
 ansible-playbook playbooks/home-ingress-ha.yml --ask-become-pass
 ansible-playbook playbooks/rancher-placement.yml --ask-become-pass
 ```
 
-`k3s-ha.yml` is the canonical existing-cluster playbook. It validates nodes, applies routes, converts the first server, promotes the second home node, then promotes the VPS under a VPN watchdog maintenance hold. `k3s.yml` refuses the legacy topology while `k3s_ha_enabled` is true. Do not use a legacy worker installer to repair a promoted server.
+`k3s-role-rebalance.yml` is the current role-reconciliation playbook. `k3s-ha.yml` is the original bootstrap migration and refuses to run once the external-quorum completion marker exists, preventing an accidental return to home-majority etcd. `k3s.yml` refuses the legacy topology while `k3s_ha_enabled` is true. Do not use a legacy worker installer to repair a promoted server.
 
 All current nodes use `k3s.service`. The VPS watchdog fences both server and legacy agent units during native recovery and starts the configured primary server unit on manual failback. The `socrat-1` disk reserve policy targets the server service. Its MDB backup folder remains paused; over 40 GiB free was verified before migration after removing only seven redundant archives on that node.
 

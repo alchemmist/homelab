@@ -1,0 +1,348 @@
+---
+- name: Prepare the online nodes for external etcd quorum
+  hosts: socrat-0:socrat-1:socrat-3
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - name: Require the pinned K3s version and sufficient local capacity
+      ansible.builtin.shell: |
+        python3 - <<'PY'
+        import os, subprocess
+        assert 'v1.36.5+k3s1' in subprocess.check_output(['/usr/local/bin/k3s', '--version'], text=True)
+        disk = os.statvfs('/var/lib/rancher/k3s')
+        assert disk.f_bavail * disk.f_frsize > 5 * 2**30, 'Less than 5 GiB free'
+        memory = dict(line.split(':', 1) for line in open('/proc/meminfo'))
+        assert int(memory['MemAvailable'].split()[0]) > 768 * 1024, 'Insufficient available memory'
+        print('Version and capacity verified')
+        PY
+      changed_when: false
+
+    - name: Inspect the YAML dependency
+      ansible.builtin.command: python3 -c 'import yaml'
+      register: rebalance_yaml
+      failed_when: false
+      changed_when: false
+
+    - name: Install the YAML dependency when missing
+      ansible.builtin.package:
+        name: "{{ 'python-yaml' if inventory_hostname == 'socrat-1' else 'python3-yaml' }}"
+        state: present
+      when: rebalance_yaml.rc != 0
+
+    - name: Create the private migration directory
+      ansible.builtin.file:
+        path: /var/lib/homelab-k3s-rebalance
+        state: directory
+        mode: '0700'
+
+    - name: Install migration helpers
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../roles/k3s_role_rebalance/files/{{ item }}"
+        dest: "/var/lib/homelab-k3s-rebalance/{{ item }}"
+        mode: '0700'
+      loop: [configure_role.py, etcd_members.py]
+
+    - name: Preserve the original service and configuration files
+      ansible.builtin.shell: |
+        set -eu
+        if [ ! -f /var/lib/homelab-k3s-rebalance/before.tar ]; then
+          umask 077
+          tar -C / -cf /var/lib/homelab-k3s-rebalance/before.tar etc/rancher/k3s etc/systemd/system
+          echo created
+        fi
+      register: rebalance_files_backup
+      changed_when: "'created' in rebalance_files_backup.stdout"
+
+- name: Snapshot the current quorum before promotion
+  hosts: socrat-0
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  environment:
+    K3S_CONFIG_FILE: /dev/null
+  tasks:
+    - name: Inspect current voting membership
+      ansible.builtin.command: python3 /var/lib/homelab-k3s-rebalance/etcd_members.py inspect
+      register: rebalance_before
+      changed_when: false
+
+    - name: Require a recognized healthy starting quorum
+      ansible.builtin.assert:
+        that:
+          - (rebalance_before.stdout | from_json).members.keys() | list | sort in [['socrat-0', 'socrat-1', 'socrat-2'], ['socrat-0', 'socrat-1', 'socrat-2', 'socrat-3'], ['socrat-0', 'socrat-2', 'socrat-3']]
+          - (rebalance_before.stdout | from_json).endpoints['socrat-0'].healthy
+          - (rebalance_before.stdout | from_json).endpoints['socrat-1' if 'socrat-1' in (rebalance_before.stdout | from_json).members else 'socrat-3'].healthy
+
+    - name: Save a pre-migration datastore snapshot
+      ansible.builtin.command: k3s etcd-snapshot save --name external-quorum-before
+      changed_when: true
+      when: "'socrat-1' in (rebalance_before.stdout | from_json).members"
+
+    - name: Locate the latest migration snapshot
+      ansible.builtin.shell: |
+        python3 - <<'PY'
+        from pathlib import Path
+        candidates = list(Path('/var/lib/rancher/k3s/server/db/snapshots').glob('*external*quorum*before*'))
+        assert candidates, 'Migration snapshot missing'
+        print(max(candidates, key=lambda path: path.stat().st_mtime))
+        PY
+      register: rebalance_snapshot
+      changed_when: false
+
+    - name: Create a private controller transfer directory
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: homelab-k3s-rebalance-
+      delegate_to: localhost
+      become: false
+      register: rebalance_transfer
+
+    - name: Retrieve the snapshot for off-site storage
+      ansible.builtin.fetch:
+        src: "{{ rebalance_snapshot.stdout }}"
+        dest: "{{ rebalance_transfer.path }}/snapshot"
+        flat: true
+
+    - name: Read the server join token privately
+      ansible.builtin.slurp:
+        src: /var/lib/rancher/k3s/server/token
+      register: rebalance_server_token
+      no_log: true
+
+- name: Promote socrat-3 without removing its worker runtime
+  hosts: socrat-3
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - name: Copy the snapshot to the external node
+      ansible.builtin.copy:
+        src: "{{ hostvars['socrat-0'].rebalance_transfer.path }}/snapshot"
+        dest: /var/lib/homelab-k3s-rebalance/before.snapshot
+        mode: '0600'
+
+    - name: Install and preserve the server token
+      ansible.builtin.copy:
+        content: "{{ hostvars['socrat-0'].rebalance_server_token.content | b64decode }}"
+        dest: "{{ item }}"
+        mode: '0600'
+      loop:
+        - /etc/rancher/k3s/ha-server-token
+        - /var/lib/homelab-k3s-rebalance/server-token
+      no_log: true
+
+    - name: Merge server settings while preserving worker configuration
+      ansible.builtin.command:
+        argv: [python3, /var/lib/homelab-k3s-rebalance/configure_role.py, --config, /etc/rancher/k3s/config.yaml, --role, server, --node-name, socrat-3, --node-ip, 10.250.0.5, --advertise-ip, 10.250.0.5, --server, 'https://10.250.0.1:6443', --token-file, /etc/rancher/k3s/ha-server-token]
+      register: rebalance_server_config
+      changed_when: (rebalance_server_config.stdout | from_json).changed
+
+    - name: Install the K3s server service
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../roles/k3s_ha/templates/k3s.service.j2"
+        dest: /etc/systemd/system/k3s.service
+        mode: '0644'
+      register: rebalance_server_unit
+
+    - name: Create the former agent guard directory
+      ansible.builtin.file:
+        path: /etc/systemd/system/k3s-agent.service.d
+        state: directory
+        mode: '0755'
+
+    - name: Prevent an accidental concurrent agent startup
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/k3s-agent.service.d/40-homelab-server-mode.conf
+        mode: '0644'
+        content: |
+          [Unit]
+          ConditionPathExists=!/etc/rancher/k3s/server-mode
+
+    - name: Record server mode
+      ansible.builtin.copy:
+        dest: /etc/rancher/k3s/server-mode
+        content: "control-plane-etcd-and-agent\n"
+        mode: '0600'
+
+    - name: Prepare the packaged manifest directory
+      ansible.builtin.file:
+        path: /var/lib/rancher/k3s/server/manifests
+        state: directory
+        mode: '0755'
+
+    - name: Preserve the existing managed CoreDNS deployment during server startup
+      ansible.builtin.copy:
+        dest: /var/lib/rancher/k3s/server/manifests/coredns.yaml.skip
+        content: ''
+        mode: '0644'
+
+    - name: Stop the agent process while retaining its containers
+      ansible.builtin.systemd_service:
+        name: k3s-agent
+        state: stopped
+        enabled: false
+
+    - name: Start the new server
+      ansible.builtin.systemd_service:
+        name: k3s
+        state: "{{ 'restarted' if rebalance_server_config.changed or rebalance_server_unit.changed else 'started' }}"
+        daemon_reload: true
+        enabled: true
+        no_block: true
+
+    - name: Wait for the external Kubernetes API
+      ansible.builtin.command: k3s kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml get --raw=/readyz
+      environment:
+        K3S_CONFIG_FILE: /dev/null
+      register: rebalance_external_api
+      until: rebalance_external_api.rc == 0 and rebalance_external_api.stdout == 'ok'
+      retries: 90
+      delay: 5
+      changed_when: false
+
+- name: Confirm the synchronized external voter before removing any vote
+  hosts: socrat-0
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - name: Wait for socrat-3 to become a healthy voting member
+      ansible.builtin.command: python3 /var/lib/homelab-k3s-rebalance/etcd_members.py inspect
+      register: rebalance_promoted
+      until:
+        - rebalance_promoted.rc == 0
+        - "'socrat-3' in (rebalance_promoted.stdout | from_json).members"
+        - not (rebalance_promoted.stdout | from_json).members['socrat-3'].learner
+        - (rebalance_promoted.stdout | from_json).endpoints['socrat-3'].healthy
+        - (rebalance_promoted.stdout | from_json).endpoints['socrat-0'].healthy
+      retries: 60
+      delay: 5
+      changed_when: false
+
+- name: Convert socrat-1 to control plane without an etcd vote
+  hosts: socrat-1
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - name: Ensure the retained server token is available
+      ansible.builtin.copy:
+        content: "{{ hostvars['socrat-0'].rebalance_server_token.content | b64decode }}"
+        dest: /etc/rancher/k3s/ha-server-token
+        mode: '0600'
+      no_log: true
+
+    - name: Stage the dedicated control-plane configuration immediately before vote removal
+      ansible.builtin.command:
+        argv: [python3, /var/lib/homelab-k3s-rebalance/configure_role.py, --config, /etc/rancher/k3s/config.yaml, --role, control-plane, --node-name, socrat-1, --node-ip, 192.168.0.24, --advertise-ip, 10.250.0.3, --server, 'https://10.250.0.1:6443', --token-file, /etc/rancher/k3s/ha-server-token]
+      register: rebalance_cp_config
+      changed_when: (rebalance_cp_config.stdout | from_json).changed
+
+    - name: Remove the old vote while its original process still contributes to quorum
+      block:
+        - name: Transfer leadership if needed and commit removal of socrat-1
+          ansible.builtin.command: python3 /var/lib/homelab-k3s-rebalance/etcd_members.py remove-socrat-1
+          delegate_to: socrat-0
+          become_method: sudo
+          register: rebalance_remove
+          changed_when: (rebalance_remove.stdout | from_json).changed
+      rescue:
+        - name: Inspect committed membership before choosing recovery
+          ansible.builtin.command: python3 /var/lib/homelab-k3s-rebalance/etcd_members.py inspect
+          delegate_to: socrat-0
+          become_method: sudo
+          register: rebalance_failed_members
+          changed_when: false
+          failed_when: false
+
+        - name: Restore the previous config only when the old member is confirmed present
+          ansible.builtin.copy:
+            src: "/etc/rancher/k3s/{{ (rebalance_cp_config.stdout | from_json).backup }}"
+            dest: /etc/rancher/k3s/config.yaml
+            remote_src: true
+            mode: '0600'
+          when:
+            - (rebalance_cp_config.stdout | from_json).backup is not none
+            - rebalance_failed_members.rc == 0
+            - "'socrat-1' in (rebalance_failed_members.stdout | from_json).members"
+
+        - name: Stop on an ambiguous removal instead of continuing with fewer votes
+          ansible.builtin.fail:
+            msg: Etcd removal did not complete verification. Inspect membership and the preserved configuration before continuing.
+
+    - name: Record dedicated control-plane mode
+      ansible.builtin.copy:
+        dest: /etc/rancher/k3s/server-mode
+        content: "control-plane-and-agent\n"
+        mode: '0600'
+
+    - name: Restart socrat-1 only after its vote has been removed
+      ansible.builtin.systemd_service:
+        name: k3s
+        state: "{{ 'restarted' if rebalance_cp_config.changed or rebalance_remove.changed else 'started' }}"
+        enabled: true
+        no_block: true
+
+    - name: Verify the retained Kubernetes API on socrat-1
+      ansible.builtin.command: k3s kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml get --raw=/readyz
+      environment:
+        K3S_CONFIG_FILE: /dev/null
+      register: rebalance_home_api
+      until: rebalance_home_api.rc == 0 and rebalance_home_api.stdout == 'ok'
+      retries: 90
+      delay: 5
+      changed_when: false
+
+- name: Verify and snapshot the final voting topology
+  hosts: socrat-0
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  environment:
+    K3S_CONFIG_FILE: /dev/null
+  tasks:
+    - name: Require exactly socrat-0, socrat-2 and socrat-3 as voters
+      ansible.builtin.command: python3 /var/lib/homelab-k3s-rebalance/etcd_members.py verify-final
+      register: rebalance_final
+      changed_when: false
+      failed_when: (rebalance_final.stdout | from_json).changed
+
+    - name: Require all currently available nodes to be Ready
+      ansible.builtin.command: k3s kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml wait --for=condition=Ready node/socrat-0 node/socrat-1 node/socrat-3 --timeout=180s
+      changed_when: false
+
+    - name: Save the verified external-quorum snapshot
+      ansible.builtin.command: k3s etcd-snapshot save --name external-quorum-verified
+      changed_when: true
+
+    - name: Locate the verified snapshot
+      ansible.builtin.shell: |
+        python3 - <<'PY'
+        from pathlib import Path
+        candidates = list(Path('/var/lib/rancher/k3s/server/db/snapshots').glob('external-quorum-verified-*'))
+        assert candidates
+        print(max(candidates, key=lambda path: path.stat().st_mtime))
+        PY
+      register: rebalance_verified_snapshot
+      changed_when: false
+
+    - name: Retrieve the verified snapshot privately
+      ansible.builtin.fetch:
+        src: "{{ rebalance_verified_snapshot.stdout }}"
+        dest: "{{ rebalance_transfer.path }}/verified.snapshot"
+        flat: true
+
+    - name: Preserve the verified snapshot outside the home site
+      ansible.builtin.copy:
+        src: "{{ rebalance_transfer.path }}/verified.snapshot"
+        dest: /var/lib/homelab-k3s-rebalance/verified.snapshot
+        mode: '0600'
+      delegate_to: socrat-3
+      become_method: su
+
+    - name: Mark the new topology as authoritative
+      ansible.builtin.copy:
+        dest: /var/lib/homelab-k3s-rebalance/complete
+        content: "etcd=socrat-0,socrat-2,socrat-3\ncontrol-plane=socrat-0,socrat-1,socrat-3\n"
+        mode: '0600'

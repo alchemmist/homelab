@@ -146,7 +146,7 @@
       - "{{ monitoring_directory }}/values.yaml"
       - --post-renderer
       - "{{ monitoring_directory }}/stable_node_series.py"
-      - --wait
+      - "{{ '--wait' if monitoring_wait_for_daemonsets | bool else '--wait=false' }}"
       - --timeout
       - 12m
       - --history-max
@@ -164,4 +164,5 @@
   ansible.builtin.command:
     argv: ["{{ monitoring_k3s_binary }}", kubectl, --kubeconfig, "{{ monitoring_kubeconfig }}", -n, "{{ monitoring_namespace }}", rollout, status, "{{ item }}", --timeout=300s]
   loop: "{{ monitoring_workloads.stdout_lines }}"
+  when: monitoring_wait_for_daemonsets | bool or not item.startswith('daemonset.apps/')
   changed_when: false

@@ -1,5 +1,5 @@
 ---
-- name: Place essential Kubernetes services on both home nodes
+- name: Place essential Kubernetes services across home and external nodes
   hosts: socrat-0
   gather_facts: false
   become: false

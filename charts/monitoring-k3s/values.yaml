@@ -4,5 +4,5 @@ prometheusRelease: kube-prometheus-stack
 port: 9238
 nodes:
   socrat-0: 10.250.0.1
-  socrat-1: 10.250.0.3
   socrat-2: 10.250.0.2
+  socrat-3: 10.250.0.5

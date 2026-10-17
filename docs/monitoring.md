@@ -97,6 +97,8 @@ ansible-playbook playbooks/monitoring.yml --ask-become-pass
 
 Kubernetes deployment uses the existing administration access on socrat-0. The private DNS play uses sudo on the DNS nodes. Tags `monitoring_base`, `monitoring_k3s`, `monitoring_rancher`, `monitoring_access` and `monitoring_dns` allow scoped updates. The private gateway role preserves existing Syncthing Helm values and authentication, adding only the Grafana virtual host and its certificate.
 
+After the external-quorum rebalance, etcd metrics are collected from socrat-0/2/3 and API metrics from socrat-0/1/3. During a known node outage, `-e '{"monitoring_wait_for_daemonsets":false,"monitoring_k3s_wait":false}'` allows configuration updates without waiting for DaemonSet pods on that unavailable node. Deployment and StatefulSet rollout checks remain enabled. Verify the online targets separately; these options do not make missing targets healthy, and the full monitoring checker still requires all nodes to recover.
+
 Keep Helm values and provisioned dashboards in the repository. Apply changes through the Ansible monitoring playbook. Before a chart upgrade, inspect release notes and CRD requirements, capture current Helm values and Kubernetes workload/PVC metadata, and preserve the Grafana database and credentials. Never uninstall or delete persistent claims as a troubleshooting shortcut: the current storage class uses the Delete reclaim policy.
 
 When disk usage grows, first inspect Prometheus series cardinality and retention, container image usage, and other workloads on socrat-1. Reducing retention is preferable to deleting unrelated data. The initial deployment does not authorize additional backup deletion.

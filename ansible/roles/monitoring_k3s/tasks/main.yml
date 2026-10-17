@@ -42,7 +42,7 @@
       - "{{ monitoring_k3s_kubeconfig }}"
       - --set-string
       - "prometheusRelease={{ monitoring_k3s_prometheus_release }}"
-      - --wait
+      - "{{ '--wait' if monitoring_k3s_wait | bool else '--wait=false' }}"
       - --timeout
       - 5m
   changed_when: true
