@@ -1,5 +1,5 @@
 ---
 title: Справка по wiki
-weight: 20
+weight: 10
 ---
 
