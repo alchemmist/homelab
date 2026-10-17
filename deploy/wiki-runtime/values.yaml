@@ -11,9 +11,9 @@ persistence:
   storageClass: local-path
 bootstrapSecret: wiki-runtime-bootstrap
 git:
-  repository: ""
+  repository: git@github.com:alchemmist/homelab.git
   branch: main
-  sshSecret: ""
+  sshSecret: wiki-runtime-git
 config:
   git:
     author: Socrat Wiki
@@ -39,7 +39,7 @@ siteConfig: |
   [params.docs.editor]
   enabled = true
 ingress:
-  enabled: false
+  enabled: true
   className: traefik
   host: wiki.alchemmist.xyz
   annotations:
