@@ -9,5 +9,5 @@ wiki_editor_directory: /home/alchemmist/.cache/homelab-wiki-editor-access
 wiki_editor_upstream: http://wiki-editor.wiki.svc.cluster.local:8080
 wiki_editor_static_upstream: http://wiki.wiki.svc.cluster.local:80
 wiki_editor_gateway_auth_secret: wiki-editor-gateway
-wiki_editor_runtime_enabled: false
+wiki_editor_runtime_enabled: true
 wiki_editor_runtime_upstream: http://wiki-runtime-wiki.wiki.svc.cluster.local:8080
