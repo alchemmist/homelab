@@ -1,0 +1,18 @@
+apiVersion: fleet.cattle.io/v1alpha1
+kind: GitRepo
+metadata:
+  name: wiki-runtime
+  namespace: fleet-local
+spec:
+  repo: https://github.com/alchemmist/homelab.git
+  branch: main
+  paths:
+    - deploy/wiki-runtime
+  serviceAccount: wiki-deployer
+  targetNamespace: wiki
+  pollingInterval: 1m
+  targets:
+    - name: local
+      clusterSelector:
+        matchLabels:
+          name: local
