@@ -1,5 +1,9 @@
 defaultRules:
   additionalRuleAnnotations:
+    KubeMemoryOvercommit:
+      rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer'
+    KubeCPUOvercommit:
+      rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer'
     KubePodNotReady:
       rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/{{ $labels.namespace }}/{{ $labels.pod }}'
     KubePodCrashLooping:
