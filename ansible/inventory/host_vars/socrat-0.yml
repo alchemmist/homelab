@@ -1,6 +1,9 @@
 ---
 wireguard_private_web_pod_cidrs: [10.42.0.0/16]
 wireguard_private_http_enabled: true
+rancher_wg_response_style: >-
+  .dashboard.outlet .tabbed-container:has(#cluster-events) { min-width: 0; width: 100%; }
+  .dashboard.outlet #cluster-events table.sortable-table td { overflow-wrap: anywhere; }
 syncthing_private_ui_extra_virtual_hosts:
   - name: open-webui
     host: llm.socrat.alchemmist.xyz
@@ -22,6 +25,7 @@ syncthing_private_ui_extra_virtual_hosts:
     resolver: 10.43.0.10
     clearAuthorization: true
   - name: rancher-0
+    responseStyle: "{{ rancher_wg_response_style }}"
     allowedCIDRs: [10.250.0.0/24, 10.42.0.0/16]
     host: rancher.socrat.alchemmist.xyz
     nodeName: socrat-0
@@ -29,6 +33,7 @@ syncthing_private_ui_extra_virtual_hosts:
     tlsSecret: rancher-private-tls
     resolver: 10.43.0.10
   - name: rancher-1
+    responseStyle: "{{ rancher_wg_response_style }}"
     allowedCIDRs: [10.250.0.0/24, 10.42.0.0/16]
     host: rancher.socrat.alchemmist.xyz
     nodeName: socrat-1

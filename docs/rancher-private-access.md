@@ -64,3 +64,25 @@ separate change at the DNS provider and consideration of HTTP01 renewal.
 The public home ingress VIP continues serving other services and ACME challenges.
 Its health probe checks the local Kubernetes API and the local Traefik default
 404 response, independently of Rancher.
+
+## Cluster dashboard layout
+
+Rancher 2.15's Events tab uses `min-width: fit-content`; long event names and
+image digests can expand the entire cluster dashboard beyond the viewport.
+The private gateway injects a narrowly scoped stylesheet that lets the Events
+container shrink and wraps long table-cell content. It does not hide horizontal
+overflow or truncate event messages, and it does not affect other Rancher tables.
+
+The CSS is defined by `rancher_wg_response_style` in socrat-0 inventory variables
+and applied to both Rancher gateways. HTML requests disable upstream compression
+so NGINX can insert the stylesheet; other requests preserve content negotiation.
+To reconcile the gateway without rerunning DNS or ingress migration:
+
+```sh
+cd ansible
+ansible-playbook playbooks/rancher-ui.yml
+```
+
+The upstream rule is in
+[Rancher 2.15 Tabbed/index.vue](https://github.com/rancher/dashboard/blob/release-2.15/shell/components/Tabbed/index.vue).
+Review this compatibility override after upgrading Rancher.

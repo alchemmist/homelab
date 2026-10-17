@@ -1,0 +1,8 @@
+---
+- name: Reconcile private Rancher UI gateway configuration
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  roles:
+    - rancher_wg_access
