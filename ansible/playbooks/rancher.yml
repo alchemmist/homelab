@@ -59,6 +59,7 @@
               memory: 3Gi
 
           ingress:
+            enabled: false
             tls:
               source: letsEncrypt
 
@@ -206,3 +207,5 @@
         var: rancher_status.stdout_lines
 
 - ansible.builtin.import_playbook: k3s-ha-dependencies.yml
+
+- ansible.builtin.import_playbook: rancher-private-access.yml

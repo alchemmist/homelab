@@ -186,6 +186,8 @@
         content: |
           crds:
             enabled: true
+          extraArgs:
+            - --acme-http01-solver-nameservers=1.1.1.1:53,9.9.9.9:53
           resources:
             requests:
               cpu: 50m

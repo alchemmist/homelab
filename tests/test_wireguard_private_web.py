@@ -6,6 +6,8 @@ import subprocess
 import tempfile
 import unittest
 
+from jinja2 import Environment, StrictUndefined
+
 
 ROLE = Path(__file__).resolve().parents[1] / 'ansible/roles/wireguard_private_web'
 TASKS = (ROLE / 'tasks/main.yml').read_text()
@@ -62,6 +64,7 @@ if sys.argv[1] == 'list':
     print('table ip homelab_private_web { }')
     sys.exit(0)
 if '-c' in sys.argv:
+    (p.parent / 'validated.nft').write_text(Path(sys.argv[-1]).read_text())
     sys.exit(0)
 s['apply_calls'] += 1
 if s['apply_calls'] > 1:
@@ -70,18 +73,22 @@ p.write_text(json.dumps(s))
 sys.exit(1 if s['apply_calls'] == 1 else 0)
 ''')
             binary.chmod(0o755)
-            bindings = {
-                '{{ wireguard_private_web_binary_by_os_family[ansible_os_family] | quote }}': binary,
-                '{{ wireguard_private_web_table | quote }}': 'homelab_private_web',
-                '{{ wireguard_private_web_interface | quote }}': 'wg-socrat',
-                '{{ wg_socrat_nodes[inventory_hostname].address | quote }}': '10.250.0.1',
-                '{{ wireguard_private_web_public_port | quote }}': '443',
-                '{{ wireguard_private_web_proxy_port | quote }}': '18443',
-                '{{ wireguard_private_web_backup_path | quote }}': directory / 'backup.nft',
-            }
-            rendered = SCRIPT
-            for expression, value in bindings.items():
-                rendered = rendered.replace(expression, shlex.quote(str(value)))
+            environment = Environment(undefined=StrictUndefined)
+            environment.filters['bool'] = bool
+            environment.filters['quote'] = lambda value: shlex.quote(str(value))
+            rendered = environment.from_string(SCRIPT).render(
+                wireguard_private_web_binary_by_os_family={'Debian': str(binary)},
+                ansible_os_family='Debian',
+                wireguard_private_web_table='homelab_private_web',
+                wireguard_private_web_interface='wg-socrat',
+                wg_socrat_nodes={'socrat-0': {'address': '10.250.0.1'}},
+                inventory_hostname='socrat-0',
+                wireguard_private_web_public_port=443,
+                wireguard_private_web_proxy_port=18443,
+                wireguard_private_web_backup_path=str(directory / 'backup.nft'),
+                wireguard_private_http_enabled=False,
+                wireguard_private_web_pod_cidrs=['10.42.0.0/16'],
+            )
             result = subprocess.run(
                 ['/bin/sh', '-c', rendered], capture_output=True, text=True,
                 env={**os.environ, 'PRIVATE_WEB_TEST_STATE': str(state)},
@@ -89,6 +96,9 @@ sys.exit(1 if s['apply_calls'] == 1 else 0)
             self.assertNotEqual(result.returncode, 0)
             self.assertEqual(json.loads(state.read_text()), {'apply_calls': 1, 'rules': ['original']})
             self.assertTrue((directory / 'backup.nft').exists())
+            rules = (directory / 'validated.nft').read_text()
+            self.assertIn('prerouting iifname cni0 ip saddr 10.42.0.0/16 ip daddr 10.250.0.1 tcp dport 443 dnat to 10.250.0.1:18443', rules)
+            self.assertNotIn('192.168.', rules)
 
 
 if __name__ == '__main__':
