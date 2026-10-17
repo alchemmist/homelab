@@ -158,6 +158,9 @@ def main():
     for name in ['KubePodNotReady', 'KubeNodeNotReady']:
         require('becomes Firing after' in alert_rules[name]['annotations']['description'],
                 f'{name} description is accurate during Pending')
+    for name in ['KubeMemoryOvercommit', 'KubeCPUOvercommit']:
+        require(alert_rules[name]['annotations'].get('rancher_url') == 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer',
+                f'{name} links to the Rancher cluster')
     catalog = kubectl(args.ssh_host, 'get', '--raw', f'/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/search?limit=1000')
     dashboards = [item for item in catalog if item.get('type') == 'dash-db']
     primary = {item['uid']: item['title'] for item in dashboards if not item.get('folderUid')}
