@@ -5,10 +5,10 @@
 .wiki-editbar [data-editor-save] { background: var(--blue); color: #fff; border-color: var(--blue); }
 .wiki-editbar button:disabled { opacity: .55; cursor: wait; }
 .wiki-rich-editor .tiptap { min-height: 160px; outline: none; }
-.wiki-rich-editor .tiptap:focus-visible, #page-title[contenteditable]:focus-visible { outline: 1px dashed var(--rule); outline-offset: 8px; }
+.wiki-rich-editor .tiptap:focus-visible, #page-title[contenteditable]:focus-visible { outline: none; }
 #page-title[contenteditable] { caret-color: var(--blue); }
 .wiki-rich-editor .tiptap p.is-editor-empty:first-child::before { content: 'Начните писать…'; float: left; color: var(--muted); pointer-events: none; height: 0; }
-.wiki-formatbar { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 0; margin-bottom: 22px; font: 11px var(--ui); border-bottom: 1px solid var(--rule); }
+.wiki-formatbar { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 0; margin-bottom: 22px; font: 11px var(--ui); }
 .wiki-formatbar button:hover { background: #f1f1f1; }
 .wiki-new-fields { display: flex; gap: 16px; margin-bottom: 24px; font: 12px var(--ui); }
 .wiki-new-fields label { display: flex; flex-direction: column; gap: 7px; flex: 1; min-width: 0; }
