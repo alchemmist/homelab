@@ -42,9 +42,7 @@ Paste it directly into the login form or a password manager. The clipboard conta
 
 ## Socrat Overview
 
-The default home is **Обзор**, with the supplied Socrat sculpture, a dark default theme and navigation to **Ноды** and **Сервисы**. These are the only three dashboards at the root; generated templates are grouped into **Rancher** and **Диагностика Kubernetes** folders. The original `Frame 52.png` is stored unchanged as `deploy/monitoring/branding/socrat-cover.png`. Ansible publishes it in the `socrat-branding` ConfigMap before Grafana starts and mounts a dedicated image directory. The dashboard uses the private HTTPS asset URL; viewing the image inside Rancher also requires socrat-wg connectivity. HTML sanitization remains enabled.
-
-This customizes the dashboard and default home in Grafana OSS. Product-wide logo, favicon and login branding are separate Enterprise white-label features.
+The default home is **Обзор**, with a dark default theme and navigation to **Ноды** and **Сервисы**. These are the only three dashboards at the root; generated templates are grouped into **Rancher** and **Диагностика Kubernetes** folders. Introductory logo/title/description panels are omitted so metrics appear immediately. The supplied brand asset remains versioned in `deploy/monitoring/branding/socrat-cover.png` but is not displayed on these dashboards.
 
 The three primary dashboards are versioned as JSON in `charts/monitoring-k3s/dashboards/` and published by the chart. **Обзор** (UID `socrat-overview`, retained for existing links) summarizes readiness, key services, per-node resources, active alerts, control-plane redundancy and restarts. **Ноды** (`socrat-nodes`) compares CPU, load, memory, swap, filesystems, disk I/O, interfaces, temperature and uptime, with a node selector. Temperatures are available only where sensors exist. **Сервисы** (`socrat-services`) combines replica readiness, resources and troubleshooting for application workloads, with a service selector. Kubernetes readiness does not imply end-to-end VPN/HTTP availability; external probes and notification delivery are not yet configured.
 
