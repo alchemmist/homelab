@@ -12,10 +12,21 @@ class Page(HTMLParser):
         self.links = []
         self.ids = set()
         self.robots = ""
+        self.editor_path = None
+        self.editor_hidden = False
+        self.editor_dialog = False
+        self.textarea = False
         self.feed(text)
 
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
+        if attrs.get("id") == "wiki-editor":
+            self.editor_path = attrs.get("data-path")
+            self.editor_hidden = "hidden" in attrs
+        if tag == "dialog" and attrs.get("id") == "wiki-editor-dialog":
+            self.editor_dialog = True
+        if tag == "textarea":
+            self.textarea = True
         if "id" in attrs:
             self.ids.add(attrs["id"])
         if tag == "meta" and attrs.get("name") == "robots":
@@ -31,6 +42,11 @@ errors = []
 for path, page in pages.items():
     if not {"noindex", "nofollow"}.issubset(set(page.robots.replace(" ", "").split(","))):
         errors.append(f"Missing robots policy: {path.relative_to(root)}")
+    if path.name != "404.html":
+        if not page.editor_path or not page.editor_hidden or page.editor_dialog or page.textarea:
+            errors.append(f"Missing protected editor mapping: {path.relative_to(root)}")
+        elif not (root.parent / "content" / page.editor_path).is_file():
+            errors.append(f"Editor source does not exist: {page.editor_path}")
     page_url = "/" + path.relative_to(root).as_posix().removesuffix("index.html")
     for link in page.links:
         url = urlsplit(urljoin(page_url, link))

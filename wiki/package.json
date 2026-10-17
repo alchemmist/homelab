@@ -1,0 +1,19 @@
+{
+  "name": "socrat-wiki-editor",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild editor/main.js --bundle --minify --format=iife --target=es2022 --outfile=assets/wiki-editor.js",
+    "test": "node --test editor/roundtrip.test.js"
+  },
+  "dependencies": {
+    "@tiptap/core": "3.32.0",
+    "@tiptap/extension-table": "3.32.0",
+    "@tiptap/markdown": "3.32.0",
+    "@tiptap/starter-kit": "3.32.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "jsdom": "26.1.0"
+  }
+}

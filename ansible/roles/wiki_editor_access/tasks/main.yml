@@ -1,0 +1,89 @@
+- name: Read private gateway values
+  ansible.builtin.command:
+    argv: [helm, get, values, "{{ wiki_editor_gateway_release }}", -n, "{{ wiki_editor_gateway_namespace }}", --kubeconfig, "{{ wiki_editor_kubeconfig }}", -o, json]
+  register: wiki_editor_gateway
+  changed_when: false
+  no_log: true
+
+- name: Parse gateway values
+  ansible.builtin.set_fact:
+    wiki_editor_gateway_values: "{{ wiki_editor_gateway.stdout | from_json }}"
+  no_log: true
+
+- name: Validate private gateway
+  ansible.builtin.assert:
+    that:
+      - wiki_editor_gateway_values.privateGui.enabled | bool
+      - wiki_editor_gateway_values.hostNetwork | bool
+      - wiki_editor_gateway_nodes | difference(wiki_editor_gateway_values.privateGui.nodes | map(attribute='nodeName') | list) | length == 0
+
+- name: Require gateway authentication secret
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, "{{ wiki_editor_kubeconfig }}", -n, "{{ wiki_editor_gateway_namespace }}", get, secret, "{{ wiki_editor_gateway_auth_secret }}", -o, name]
+  changed_when: false
+
+- name: Discover DNS service
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, "{{ wiki_editor_kubeconfig }}", -n, kube-system, get, service, kube-dns, -o, 'jsonpath={.spec.clusterIP}']
+  register: wiki_editor_cluster_dns
+  changed_when: false
+
+- name: Issue private gateway certificate
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, "{{ wiki_editor_kubeconfig }}", apply, -f, '-']
+    stdin: "{{ {'apiVersion': 'cert-manager.io/v1', 'kind': 'Certificate', 'metadata': {'name': wiki_editor_tls_secret, 'namespace': wiki_editor_gateway_namespace}, 'spec': {'secretName': wiki_editor_tls_secret, 'dnsNames': [wiki_editor_host], 'issuerRef': {'name': wiki_editor_cluster_issuer, 'kind': 'ClusterIssuer'}}} | to_nice_yaml }}"
+  register: wiki_editor_cert
+  changed_when: "'created' in wiki_editor_cert.stdout or 'configured' in wiki_editor_cert.stdout"
+
+- name: Wait for certificate
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, "{{ wiki_editor_kubeconfig }}", -n, "{{ wiki_editor_gateway_namespace }}", wait, '--for=condition=Ready', 'certificate/{{ wiki_editor_tls_secret }}', --timeout=300s]
+  changed_when: false
+
+- name: Preserve other private virtual hosts
+  ansible.builtin.set_fact:
+    wiki_editor_gateway_hosts: "{{ wiki_editor_gateway_values.privateGui.extraVirtualHosts | default([]) | rejectattr('host', 'equalto', wiki_editor_host) | list }}"
+  no_log: true
+
+- name: Add private wiki virtual hosts
+  ansible.builtin.set_fact:
+    wiki_editor_gateway_hosts: "{{ wiki_editor_gateway_hosts + [{'name': 'wiki-' ~ item, 'nodeName': item, 'host': wiki_editor_host, 'tlsSecret': wiki_editor_tls_secret, 'resolver': wiki_editor_cluster_dns.stdout, 'upstream': wiki_editor_static_upstream, 'editorUpstream': wiki_editor_upstream, 'allowedCIDRs': ['10.250.0.0/24']}] }}"
+  loop: "{{ wiki_editor_gateway_nodes }}"
+  no_log: true
+
+- name: Create deployment directory
+  ansible.builtin.file:
+    path: "{{ wiki_editor_directory }}"
+    state: directory
+    mode: '0700'
+
+- name: Stage gateway chart
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../../../charts/syncthing/"
+    dest: "{{ wiki_editor_directory }}/chart/"
+    mode: preserve
+
+- name: Render merged values
+  ansible.builtin.copy:
+    dest: "{{ wiki_editor_directory }}/values.yaml"
+    content: "{{ wiki_editor_gateway_values | combine({'privateGui': {'extraVirtualHosts': wiki_editor_gateway_hosts, 'editorAuthSecret': wiki_editor_gateway_auth_secret}}, recursive=true) | to_nice_yaml }}"
+    mode: '0600'
+  no_log: true
+
+- name: Stage manifest comparison
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../../files/helm_manifest_changed.py"
+    dest: "{{ wiki_editor_directory }}/compare.py"
+    mode: '0600'
+
+- name: Compare gateway manifest
+  ansible.builtin.command:
+    argv: [python3, "{{ wiki_editor_directory }}/compare.py", --release, "{{ wiki_editor_gateway_release }}", --chart, "{{ wiki_editor_directory }}/chart", --namespace, "{{ wiki_editor_gateway_namespace }}", --values, "{{ wiki_editor_directory }}/values.yaml", --kubeconfig, "{{ wiki_editor_kubeconfig }}"]
+  register: wiki_editor_manifest
+  changed_when: false
+
+- name: Upgrade private gateway
+  ansible.builtin.command:
+    argv: [helm, upgrade, "{{ wiki_editor_gateway_release }}", "{{ wiki_editor_directory }}/chart", -n, "{{ wiki_editor_gateway_namespace }}", --kubeconfig, "{{ wiki_editor_kubeconfig }}", --reuse-values, -f, "{{ wiki_editor_directory }}/values.yaml", --atomic, --wait, --timeout, 5m]
+  when: (wiki_editor_manifest.stdout | from_json).changed
+  changed_when: true

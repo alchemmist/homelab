@@ -1,0 +1,30 @@
+- name: Bootstrap private wiki editor
+  hosts: socrat-0
+  gather_facts: false
+  become: true
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  tasks:
+    - name: Copy editor secrets initializer
+      ansible.builtin.copy:
+        src: ../files/ensure_wiki_editor_secrets.py
+        dest: /tmp/ensure_wiki_editor_secrets.py
+        mode: '0700'
+    - name: Ensure editor credentials without rotation
+      ansible.builtin.command: python3 /tmp/ensure_wiki_editor_secrets.py
+      register: editor_secrets
+      changed_when: "'created' in editor_secrets.stdout or 'configured' in editor_secrets.stdout"
+    - name: Show dedicated repository public key
+      ansible.builtin.debug:
+        msg: "{{ editor_secrets.stdout_lines | select('match', 'Repository deploy public key:') | list }}"
+    - name: Copy Fleet bootstrap
+      ansible.builtin.copy:
+        src: ../files/bootstrap_wiki.py
+        dest: /tmp/bootstrap_wiki.py
+        mode: '0700'
+    - name: Register editor deployment with Fleet
+      ansible.builtin.command: >-
+        python3 /tmp/bootstrap_wiki.py --repository https://github.com/alchemmist/homelab.git
+        --branch wiki-editor-publish --gitrepo-name wiki-editor
+      register: editor_fleet
+      changed_when: "'created' in editor_fleet.stdout or 'configured' in editor_fleet.stdout"

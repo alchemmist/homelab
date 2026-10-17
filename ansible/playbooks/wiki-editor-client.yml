@@ -1,0 +1,7 @@
+- name: Enable conditional private wiki DNS on macOS
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  become: true
+  roles:
+    - wiki_editor_client

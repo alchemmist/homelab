@@ -1,0 +1,27 @@
+- name: Add private wiki gateway
+  hosts: socrat-0
+  gather_facts: false
+  become: true
+  roles:
+    - wiki_editor_access
+
+- name: Add private wiki DNS on administrative resolvers
+  hosts: Socrat
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Add exact-host override
+      ansible.builtin.copy:
+        dest: /etc/homelab-private-dns.d/wiki-editor.conf
+        content: |
+          host-record=wiki.alchemmist.xyz,10.250.0.1,10.250.0.3
+          local=/wiki.alchemmist.xyz/
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Reload private DNS
+  handlers:
+    - name: Reload private DNS
+      ansible.builtin.systemd:
+        name: homelab-private-dns.service
+        state: restarted
