@@ -1,0 +1,88 @@
+---
+- name: Boot the approved isolated network recovery candidate once
+  hosts: socrat-3
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - name: Require external power for the trial
+      ansible.builtin.shell: cat /sys/class/power_supply/*/online
+      register: network_trial_power
+      changed_when: false
+      failed_when: "'1' not in network_trial_power.stdout_lines"
+
+    - name: Validate the boot menu
+      ansible.builtin.command: grub-script-check /boot/grub/grub.cfg
+      changed_when: false
+
+    - name: Require the isolated candidate boot entry
+      ansible.builtin.command: grep -F homelab-network-test /boot/grub/grub.cfg
+      changed_when: false
+
+    - name: Require the candidate ACPI table in the trial image
+      ansible.builtin.shell: lsinitramfs /boot/initrd.img-6.12.111+deb13-amd64-homelab-network | grep -F kernel/firmware/acpi/ssdt-socrat3-wifi.aml
+      changed_when: false
+
+    - name: Inspect an existing one-time boot selection
+      ansible.builtin.command: grub-editenv list
+      register: network_trial_boot_selection
+      changed_when: false
+
+    - name: Refuse to overwrite an unrelated boot selection
+      ansible.builtin.assert:
+        that: network_trial_boot_selection.stdout_lines | select('match', '^next_entry=.+$') | list | length == 0
+
+    - name: Evacuate ordinary workloads before the trial
+      ansible.builtin.command: kubectl drain socrat-3 --ignore-daemonsets --timeout=120s
+      delegate_to: socrat-0
+      become: false
+
+    - name: Wait for the replicated homepage to recover elsewhere
+      ansible.builtin.command: kubectl -n socrat-home rollout status deployment/socrat-home --timeout=120s
+      delegate_to: socrat-0
+      become: false
+      changed_when: false
+
+    - name: Select the candidate for one boot only
+      ansible.builtin.command: grub-reboot homelab-network-test
+
+    - name: Verify the one-time boot selection
+      ansible.builtin.command: grub-editenv list
+      register: network_trial_selected
+      changed_when: false
+      failed_when: "'next_entry=homelab-network-test' not in network_trial_selected.stdout_lines"
+
+    - name: Reboot and wait for SSH over WireGuard to return
+      ansible.builtin.reboot:
+        reboot_timeout: 300
+        connect_timeout: 8
+        post_reboot_delay: 15
+        test_command: /usr/bin/true
+
+    - name: Verify that the one-time selection was consumed
+      ansible.builtin.command: grub-editenv list
+      register: network_trial_boot_after
+      changed_when: false
+      failed_when: network_trial_boot_after.stdout_lines | select('match', '^next_entry=.+$') | list | length > 0
+
+    - name: Verify the loaded Ethernet driver matches the candidate
+      ansible.builtin.shell: |
+        set -eu
+        work=$(mktemp -d)
+        trap 'rm -rf "$work"' EXIT
+        objcopy --dump-section .note.gnu.build-id="$work/build-id" /usr/local/src/homelab-network-recovery/6.12.111+deb13-amd64/alx/alx.ko "$work/alx.ko"
+        test -s "$work/build-id"
+        cmp "$work/build-id" /sys/module/alx/notes/.note.gnu.build-id
+      changed_when: false
+
+    - name: Read the test boot's kernel evidence
+      ansible.builtin.shell: |
+        journalctl -k -b --no-pager | grep -E 'HMLAB|S3WIFI|alx.*out-of-tree|ACPI.*SSDT'
+        cat /sys/module/alx/taint
+        test ! -d /sys/module/rtl8723ae
+      register: network_trial_evidence
+      changed_when: false
+
+    - name: Report boot evidence
+      ansible.builtin.debug:
+        var: network_trial_evidence.stdout_lines

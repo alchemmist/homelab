@@ -1,0 +1,126 @@
+---
+- name: Discover installed bootable kernel images
+  ansible.builtin.find:
+    paths: /boot
+    patterns: '^vmlinuz-[0-9]+[.][0-9]+[.][0-9]+[+]deb13-amd64$'
+    use_regex: true
+    file_type: file
+    recurse: false
+  register: homelab_alx_boot_images
+
+- name: Collect installed kernel versions
+  ansible.builtin.set_fact:
+    homelab_alx_boot_kernels: "{{ homelab_alx_boot_images.files | map(attribute='path') | map('basename') | map('regex_replace', '^vmlinuz-', '') | sort | list }}"
+
+- name: Require the reviewed host and at least one installed kernel
+  ansible.builtin.assert:
+    that:
+      - inventory_hostname == 'socrat-3'
+      - homelab_alx_boot_kernels | length > 0
+      - ansible_facts.kernel in homelab_alx_boot_kernels
+
+- name: Preserve each existing normal initramfs once
+  ansible.builtin.copy:
+    src: "/boot/initrd.img-{{ item }}"
+    dest: "/boot/initrd.img-{{ item }}-before-homelab-alx"
+    remote_src: true
+    force: false
+    mode: '0600'
+  loop: "{{ homelab_alx_boot_kernels }}"
+
+- name: Install matching headers for every bootable kernel
+  ansible.builtin.apt:
+    name: "{{ homelab_alx_boot_kernels | map('regex_replace', '^', 'linux-headers-') | list }}"
+    state: present
+
+- name: Inspect DKMS installation for every bootable kernel
+  ansible.builtin.command:
+    argv:
+      - dkms
+      - status
+      - -m
+      - homelab-alx
+      - -v
+      - 6.12.111-1
+      - -k
+      - "{{ item }}"
+  loop: "{{ homelab_alx_boot_kernels }}"
+  register: homelab_alx_boot_status
+  changed_when: false
+  failed_when: homelab_alx_boot_status.rc not in [0, 1]
+
+- name: Build the protected module for kernels that need it
+  ansible.builtin.command:
+    argv:
+      - dkms
+      - build
+      - -m
+      - homelab-alx
+      - -v
+      - 6.12.111-1
+      - -k
+      - "{{ item.item }}"
+      - --force
+  loop: "{{ homelab_alx_boot_status.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when: >-
+    homelab_alx_force_rebuild | default(false) | bool or not (item.stdout is search(': installed(?:\\s|$)'))
+  changed_when: true
+
+- name: Install the protected module for kernels that need it
+  ansible.builtin.command:
+    argv:
+      - dkms
+      - install
+      - -m
+      - homelab-alx
+      - -v
+      - 6.12.111-1
+      - -k
+      - "{{ item.item }}"
+      - --force
+  loop: "{{ homelab_alx_boot_status.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when: >-
+    homelab_alx_force_rebuild | default(false) | bool or not (item.stdout is search(': installed(?:\\s|$)'))
+  changed_when: true
+
+- name: Ensure the protected Ethernet module loads from initramfs
+  ansible.builtin.lineinfile:
+    path: /etc/initramfs-tools/modules
+    line: alx
+    create: true
+    mode: '0644'
+
+- name: Rebuild every bootable kernel initramfs with the guard
+  ansible.builtin.command:
+    argv:
+      - update-initramfs
+      - -u
+      - -k
+      - "{{ item }}"
+  loop: "{{ homelab_alx_boot_kernels }}"
+  changed_when: true
+
+- name: Verify protected module resolution and wireless blacklist in every boot image
+  ansible.builtin.shell: |
+    set -eu
+    work=$(mktemp -d)
+    trap 'rm -rf "$work"' EXIT
+    unmkinitramfs '/boot/initrd.img-{{ item }}' "$work"
+    root="$work/main"
+    if [ ! -d "$root" ]; then
+        root="$work"
+    fi
+    grep -Eq '^alx[[:space:]]*$' "$root/conf/modules"
+    grep -Eq '^blacklist[[:space:]]+rtl8723ae[[:space:]]*$' "$root/etc/modprobe.d/homelab-wifi-guard.conf"
+    modprobe -d "$root" -S '{{ item }}' --show-depends alx > "$work/resolution"
+    cat "$work/resolution"
+    grep -E '/updates/dkms/alx[.]ko([.](xz|zst|gz))?[[:space:]]*$' "$work/resolution"
+    if grep -E '/kernel/drivers/net/ethernet/atheros/alx/alx[.]ko' "$work/resolution"; then
+        exit 1
+    fi
+  loop: "{{ homelab_alx_boot_kernels }}"
+  changed_when: false

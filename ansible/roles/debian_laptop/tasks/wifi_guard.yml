@@ -1,0 +1,41 @@
+---
+- name: Install the protected wireless loader
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../roles/debian_laptop/files/load_guarded_wifi.py"
+    dest: /usr/local/sbin/homelab-load-guarded-wifi
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Prevent unguarded automatic loading of the wireless driver
+  ansible.builtin.copy:
+    dest: /etc/modprobe.d/homelab-wifi-guard.conf
+    content: "blacklist rtl8723ae\n"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Install guarded wireless startup independently of Ethernet
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/homelab-guarded-wifi.service
+    content: |
+      [Unit]
+      Description=Load Wi-Fi only with the protected Ethernet driver
+      After=systemd-modules-load.service
+      Before=NetworkManager.service
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/sbin/homelab-load-guarded-wifi
+      RemainAfterExit=yes
+      TimeoutStartSec=30
+      [Install]
+      WantedBy=multi-user.target
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Enable guarded startup for the next boot
+  ansible.builtin.systemd_service:
+    name: homelab-guarded-wifi.service
+    daemon_reload: true
+    enabled: true

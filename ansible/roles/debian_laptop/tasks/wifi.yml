@@ -46,7 +46,7 @@
 - name: Disable Realtek power saving during wireless operation
   ansible.builtin.copy:
     dest: /etc/modprobe.d/homelab-rtl8723ae.conf
-    content: "options rtl8723ae ips=0 fwlps=0 swlps=0 msi=0\n"
+    content: "options rtl8723ae ips=0 fwlps=0 swlps=0 msi={{ homelab_wifi_msi | bool | ternary('1', '0') }}\n"
     mode: '0644'
   register: homelab_realtek_options
 

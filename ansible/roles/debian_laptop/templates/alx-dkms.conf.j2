@@ -1,0 +1,7 @@
+PACKAGE_NAME="homelab-alx"
+PACKAGE_VERSION="6.12.111-1"
+BUILT_MODULE_NAME[0]="alx"
+DEST_MODULE_LOCATION[0]="/updates/dkms"
+AUTOINSTALL="yes"
+MAKE[0]="make -C /lib/modules/${kernelver}/build M=${dkms_tree}/${PACKAGE_NAME}/${PACKAGE_VERSION}/build CONFIG_ALX=m modules"
+CLEAN="make -C /lib/modules/${kernelver}/build M=${dkms_tree}/${PACKAGE_NAME}/${PACKAGE_VERSION}/build clean"

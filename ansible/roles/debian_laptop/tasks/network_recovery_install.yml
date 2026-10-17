@@ -1,0 +1,119 @@
+---
+- name: Require the validated socrat-3 installation target
+  ansible.builtin.assert:
+    that:
+      - inventory_hostname == 'socrat-3'
+      - ansible_facts.distribution == 'Debian'
+      - ansible_facts.distribution_major_version == '13'
+      - ansible_facts.board_name == 'MS-16GP'
+
+- name: Verify the running Ethernet module is the validated candidate
+  ansible.builtin.shell: |
+    set -eu
+    if [ -x /usr/local/sbin/homelab-load-guarded-wifi ] && /usr/local/sbin/homelab-load-guarded-wifi --check; then exit 0; fi
+    work=$(mktemp -d)
+    trap 'rm -rf "$work"' EXIT
+    objcopy --dump-section .note.gnu.build-id="$work/build-id" /usr/local/src/homelab-network-recovery/6.12.111+deb13-amd64/alx/alx.ko "$work/alx.ko"
+    test -s "$work/build-id"
+    cmp "$work/build-id" /sys/module/alx/notes/.note.gnu.build-id
+  changed_when: false
+
+- name: Preserve the original normal boot image before DKMS installation
+  ansible.builtin.copy:
+    src: /boot/initrd.img-6.12.111+deb13-amd64
+    dest: /boot/initrd.img-6.12.111+deb13-amd64-before-homelab-alx
+    remote_src: true
+    force: false
+    mode: '0600'
+
+- name: Install DKMS and automatic matching header updates
+  ansible.builtin.apt:
+    name:
+      - dkms
+      - linux-headers-amd64
+      - linux-headers-6.12.111+deb13-amd64
+    state: present
+
+- name: Create the versioned DKMS source directory
+  ansible.builtin.file:
+    path: /usr/src/homelab-alx-6.12.111-1
+    state: directory
+    mode: '0755'
+
+- name: Copy only the validated driver source into DKMS
+  ansible.builtin.copy:
+    src: "/usr/local/src/homelab-network-recovery/6.12.111+deb13-amd64/alx/{{ item }}"
+    dest: "/usr/src/homelab-alx-6.12.111-1/{{ item }}"
+    remote_src: true
+    mode: '0644'
+  loop:
+    - Makefile
+    - main.c
+    - ethtool.c
+    - hw.c
+    - alx.h
+    - hw.h
+    - reg.h
+  register: homelab_alx_dkms_source
+
+- name: Configure DKMS automatic rebuilds
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../roles/debian_laptop/templates/alx-dkms.conf.j2"
+    dest: /usr/src/homelab-alx-6.12.111-1/dkms.conf
+    mode: '0644'
+  register: homelab_alx_dkms_config
+
+- name: Inspect the installed DKMS module
+  ansible.builtin.command: dkms status -m homelab-alx -v 6.12.111-1 -k 6.12.111+deb13-amd64
+  register: homelab_alx_dkms_status
+  changed_when: false
+  failed_when: homelab_alx_dkms_status.rc not in [0, 1]
+
+- name: Rebuild DKMS when the reviewed source changes
+  ansible.builtin.command: dkms build -m homelab-alx -v 6.12.111-1 -k 6.12.111+deb13-amd64 --force
+  when: homelab_alx_dkms_source.changed or homelab_alx_dkms_config.changed or 'installed' not in homelab_alx_dkms_status.stdout
+  changed_when: true
+
+- name: Install the validated driver for the running kernel
+  ansible.builtin.command: dkms install -m homelab-alx -v 6.12.111-1 -k 6.12.111+deb13-amd64 --force
+  when: homelab_alx_dkms_source.changed or homelab_alx_dkms_config.changed or 'installed' not in homelab_alx_dkms_status.stdout
+  register: homelab_alx_dkms_install
+  changed_when: true
+
+- name: Verify normal module resolution chooses the DKMS module
+  ansible.builtin.command: modinfo -n alx
+  register: homelab_alx_dkms_path
+  changed_when: false
+  failed_when: "'/updates/dkms/alx.ko' not in homelab_alx_dkms_path.stdout"
+
+- name: Include the protected Ethernet driver in the normal initramfs
+  ansible.builtin.lineinfile:
+    path: /etc/initramfs-tools/modules
+    line: alx
+    create: true
+    mode: '0644'
+  register: homelab_alx_initramfs_module
+
+- name: Rebuild the normal initramfs with the installed driver
+  ansible.builtin.command: update-initramfs -u -k 6.12.111+deb13-amd64
+  when: homelab_alx_dkms_install.changed or homelab_alx_initramfs_module.changed
+  changed_when: true
+
+- name: Verify the normal boot image resolves the protected Ethernet driver
+  ansible.builtin.shell: |
+    set -eu
+    work=$(mktemp -d)
+    trap 'rm -rf "$work"' EXIT
+    unmkinitramfs /boot/initrd.img-6.12.111+deb13-amd64 "$work"
+    root="$work/main"
+    if [ ! -d "$root" ]; then
+        root="$work"
+    fi
+    grep -Eq '^alx[[:space:]]*$' "$root/conf/modules"
+    modprobe -d "$root" -S 6.12.111+deb13-amd64 --show-depends alx > "$work/resolution"
+    cat "$work/resolution"
+    grep -E '/updates/dkms/alx[.]ko([.](xz|zst|gz))?[[:space:]]*$' "$work/resolution"
+    if grep -E '/kernel/drivers/net/ethernet/atheros/alx/alx[.]ko' "$work/resolution"; then
+        exit 1
+    fi
+  changed_when: false

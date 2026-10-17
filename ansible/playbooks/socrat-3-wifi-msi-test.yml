@@ -1,0 +1,57 @@
+---
+- name: Test wireless MSI with automatic rollback and Ethernet retained
+  hosts: socrat-3
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - name: Require the protected Ethernet module and unloaded Wi-Fi driver
+      ansible.builtin.shell: |
+        set -eu
+        test ! -d /sys/module/rtl8723ae
+        test "$(cat /sys/class/net/enp2s0/carrier)" = 1
+        work=$(mktemp -d)
+        trap 'rm -rf "$work"' EXIT
+        objcopy --dump-section .note.gnu.build-id="$work/build-id" /usr/local/src/homelab-network-recovery/6.12.111+deb13-amd64/alx/alx.ko "$work/alx.ko"
+        test -s "$work/build-id"
+        cmp "$work/build-id" /sys/module/alx/notes/.note.gnu.build-id
+      changed_when: false
+
+    - name: Arm local rollback independently of SSH
+      ansible.builtin.command:
+        argv:
+          - systemd-run
+          - --unit=homelab-wifi-trial-rollback
+          - --on-active=300
+          - /bin/sh
+          - -c
+          - nmcli radio wifi off; modprobe -r rtl8723ae
+
+    - name: Load the wireless driver with MSI for this boot only
+      ansible.builtin.command: modprobe rtl8723ae msi=1 ips=0 fwlps=0 swlps=0
+
+    - name: Verify the runtime MSI setting
+      ansible.builtin.command: cat /sys/module/rtl8723ae/parameters/msi
+      register: wifi_trial_msi
+      changed_when: false
+      failed_when: wifi_trial_msi.stdout | trim != 'Y'
+
+    - name: Enable the wireless radio
+      ansible.builtin.command: nmcli radio wifi on
+
+    - name: Connect the existing private wireless profile
+      ansible.builtin.command: nmcli --wait 40 connection up homelab-wifi
+
+    - name: Read wireless connectivity without displaying credentials
+      ansible.builtin.shell: |
+        ip -br address show dev wlp1s0
+        ip route show default
+        iw dev wlp1s0 link
+        grep rtl_pci /proc/interrupts
+        ping -I wlp1s0 -c 5 -W 2 192.168.0.1
+      register: wifi_trial_result
+      changed_when: false
+
+    - name: Report the bounded trial result
+      ansible.builtin.debug:
+        var: wifi_trial_result.stdout_lines
