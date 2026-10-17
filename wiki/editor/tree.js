@@ -1,7 +1,9 @@
-export async function initializeTree({api, workspace, begin = () => true, dirty, structureDirty = dirty, openPage, currentPath, moved, changed = async () => {}, message, publication}) {
+export async function initializeTree({api, workspace, begin = () => true, dirty, structureDirty = dirty, openPage, currentPath, moved, removed = async () => {}, changed = async () => {}, message, publication}) {
   const nav = document.querySelector('.page-tree');
   if (!nav) return;
   const pendingLinks = new Map();
+  let confirmation;
+  const clearConfirmation = () => { if (confirmation) { confirmation.reset(); confirmation = null; } };
   let tree, loading, treeGeneration = 0, pending = false, dragging = '', expanded = new Set(), chooser, pointer, drop, expandTimer, expandId, scrollFrame;
   const error = text => message(text, true);
   const button = (text, label, action) => {
@@ -48,7 +50,7 @@ export async function initializeTree({api, workspace, begin = () => true, dirty,
       let result;
       if (workspace) {
         if (!begin()) return;
-        workspace.stage({type:endpoint === "/move" ? "move" : "folder",...payload});
+        workspace.stage({type:endpoint === "/move" ? "move" : endpoint === "/delete" ? "delete" : "folder",...payload});
         result = workspace.tree();
       } else result = await api(endpoint, {...payload, revision});
       const oldNodes = flatten(tree.nodes);
@@ -67,6 +69,12 @@ export async function initializeTree({api, workspace, begin = () => true, dirty,
     if (source === target_parent || target_parent.startsWith(source + '/') || source === before) return;
     const result = await mutate('/move', {source, target_parent, before});
     if (result) { moved(source, target_parent ? target_parent + '/' + source.split('/').pop() : source.split('/').pop()); render(); await changed(); }
+  }
+  async function removeNode(node) {
+    if (!workspace?.active()) return;
+    clearConfirmation();
+    const result = await mutate('/delete', {source:node.id});
+    if (result) { await removed(node); await changed(); }
   }
   function createFolder(anchor) {
     if (!guard()) return;
@@ -87,6 +95,8 @@ export async function initializeTree({api, workspace, begin = () => true, dirty,
     for (const d of paths) { const path = document.createElementNS('http://www.w3.org/2000/svg','path'); path.setAttribute('d',d); svg.append(path); }
     el.append(svg); return el;
   }
+  nav.addEventListener('scroll', clearConfirmation);
+  document.defaultView?.addEventListener('resize', clearConfirmation);
   const dragHint = document.createElement('div');
   dragHint.className = 'wiki-tree-drag-hint'; dragHint.hidden = true; dragHint.setAttribute('role', 'status'); nav.append(dragHint);
   function clearDrop() {
@@ -182,17 +192,17 @@ export async function initializeTree({api, workspace, begin = () => true, dirty,
   });
   nav.addEventListener('pointercancel', event => { if (pointer?.id === event.pointerId) finishDrag(); });
   nav.addEventListener('lostpointercapture', () => { if (pointer) finishDrag(); });
-  document.addEventListener('keydown', event => { if (event.key === 'Escape' && pointer) finishDrag(); });
+  document.addEventListener('keydown', event => { if (event.key === 'Escape') { clearConfirmation(); if (pointer) finishDrag(); } });
   function list(nodes, depth=0) {
     const ul=document.createElement('ul');ul.className='nav-level'+(!depth?' nav-root':'');
     for(const node of nodes) {
       const li=document.createElement('li');li.className='nav-item'+(node.kind==='folder'?' nav-section':'');li.dataset.nodeId=node.id;
       const row=document.createElement('div');row.className='nav-row wiki-tree-row';row.draggable=false;
       row.addEventListener('pointerdown', event => {
-        if (event.button !== 0 || pending || !canDrag()) return;
+        if (event.target.closest('.wiki-tree-delete') || event.button !== 0 || pending || !canDrag()) return;
         pointer = {id: event.pointerId, node, row, startX: event.clientX, startY: event.clientY, x: event.clientX, y: event.clientY};
       });
-      row.addEventListener('dragstart',event=>{if(!canDrag() || !guard()){event.preventDefault();return;} dragging=node.id;nav.classList.add('wiki-tree-dragging');event.dataTransfer.setData('text/plain',node.id);event.dataTransfer.effectAllowed='move';});
+      row.addEventListener('dragstart',event=>{if(event.target.closest('.wiki-tree-delete') || !canDrag() || !guard()){event.preventDefault();return;} dragging=node.id;nav.classList.add('wiki-tree-dragging');event.dataTransfer.setData('text/plain',node.id);event.dataTransfer.effectAllowed='move';});
       row.addEventListener('dragend',finishDrag);
       if(node.kind==='folder') {
         const toggle=button('', 'Раскрыть '+node.title,()=>{expanded.has(node.id)?expanded.delete(node.id):expanded.add(node.id);render();});
@@ -207,11 +217,39 @@ export async function initializeTree({api, workspace, begin = () => true, dirty,
         if(pendingLinks.has(node.id) && !pendingLinks.get(node.id)) {link.removeAttribute('href');link.setAttribute('aria-disabled','true');link.title='Ожидает публикации';}
         link.addEventListener('click',event=>{if(node.draft_path){event.preventDefault();openPage({draftPath:node.draft_path});return;}if(!link.hasAttribute('href')){event.preventDefault();return;}if(dirty()){event.preventDefault();error('Сначала опубликуйте или отмените правки заметки.');}});row.append(link);
       }
+      if (workspace?.active()) {
+        const trash = ['M3 6h18','M9 6V4h6v2','M5 6l1 14h12l1-14','M10 10v6','M14 10v6'];
+        const warning = ['M12 4 2 21h20L12 4Z','M12 10v4','M12 17h.01'];
+        const label = 'Удалить ' + (node.kind === 'folder' ? 'папку ' : 'заметку ') + node.title;
+        const remove = iconButton(label, trash, async event => {
+          event.preventDefault(); event.stopPropagation();
+          if (pending || !workspace.active()) return;
+          if (node.kind !== 'folder' || confirmation?.node === node.id) { await removeNode(node); return; }
+          clearConfirmation();
+          const tooltip = document.createElement('span'); tooltip.className = 'wiki-tree-delete-tooltip'; tooltip.id = 'wiki-delete-confirmation'; tooltip.setAttribute('role','tooltip');
+          tooltip.textContent = 'Папка и все заметки внутри будут удалены. Нажмите ещё раз для подтверждения.';
+          remove.replaceChildren(iconButton('', warning, () => {}).firstChild);
+          remove.classList.add('is-confirming'); remove.setAttribute('aria-label','Подтвердить удаление папки ' + node.title); remove.setAttribute('aria-describedby',tooltip.id); remove.title = ''; document.body.append(tooltip);
+          const bounds = remove.getBoundingClientRect(), width = Math.min(250, document.defaultView.innerWidth - 24);
+          tooltip.style.width = width + 'px';
+          tooltip.style.left = Math.max(12, Math.min(bounds.right - width, document.defaultView.innerWidth - width - 12)) + 'px';
+          tooltip.style.top = Math.max(12, Math.min(bounds.bottom + 6, document.defaultView.innerHeight - tooltip.getBoundingClientRect().height - 12)) + 'px';
+          confirmation = {node:node.id, reset:()=>{tooltip.remove();remove.replaceChildren(iconButton('',trash,()=>{}).firstChild);remove.classList.remove('is-confirming');remove.setAttribute('aria-label',label);remove.removeAttribute('aria-describedby');remove.title=label;}};
+        });
+        remove.className = 'wiki-tree-delete'; remove.draggable = false;
+        remove.addEventListener('pointerdown',event=>event.stopPropagation());
+        remove.addEventListener('dragstart',event=>{event.preventDefault();event.stopPropagation();});
+        row.addEventListener('pointerleave',()=>{if(confirmation?.node===node.id)clearConfirmation();});
+        row.addEventListener('focusout',event=>{if(!row.contains(event.relatedTarget) && confirmation?.node===node.id)clearConfirmation();});
+        row.addEventListener('pointerenter',()=>{if(confirmation && confirmation.node!==node.id)clearConfirmation();});
+        row.append(remove);
+      }
       li.append(row);dropTarget(row,node,nodes);
       if(node.children?.length){const children=list(node.children,depth+1);children.hidden=!expanded.has(node.id);li.append(children);}ul.append(li);
     }return ul;
   }
   function render() {
+    clearConfirmation();
     if (!tree) return;
     nav.querySelector('.nav-root')?.remove();
     nav.append(list(tree.nodes));

@@ -212,3 +212,51 @@ test('reading mode blocks pointer and native dragging before and after editing',
   workspace.discard();await controller.reset();gesture();await tick();
   assert.deepEqual(workspace.operations(),[]);assert.equal(workspace.active(),false);
 });
+
+async function deleteSetup(active=true) {
+  const {createWorkspace}=await import('./workspace.js');
+  const data=new Map(),workspace=createWorkspace({getItem:key=>data.get(key),setItem:(key,value)=>data.set(key,value)});
+  if(active)workspace.start();
+  const dom=new JSDOM('<nav class="page-tree"><ul class="nav-root"></ul></nav>',{url:'https://wiki.example/'});
+  globalThis.document=dom.window.document;
+  const calls=[],removed=[];
+  const controller=await initializeTree({api:async(endpoint,payload)=>{calls.push({endpoint,payload});return fixture();},workspace,dirty:()=>false,currentPath:()=> 'ai/chat.md',openPage:()=>{},moved:()=>{},removed:node=>removed.push(node.id),message:()=>{},publication:async()=>true});
+  await controller.ready;
+  return {dom,workspace,controller,calls,removed};
+}
+test('delete controls exist only in editing mode and page deletion stays staged until publication',async()=>{
+  const state=await deleteSetup(false);
+  assert.equal(document.querySelector('.wiki-tree-delete'),null);
+  state.workspace.start();state.controller.render();
+  click('Удалить заметку Chat');await tick();
+  assert.equal(document.querySelector('[data-node-id="ai/chat.md"]'),null);
+  assert.deepEqual(state.workspace.operations(),[{type:'delete',source:'ai/chat.md'}]);
+  assert.deepEqual(state.removed,['ai/chat.md']);assert.equal(state.calls.length,1);
+  state.workspace.discard();await state.controller.reset();
+  assert.ok(document.querySelector('[data-node-id="ai/chat.md"]'));
+  assert.equal(document.querySelector('.wiki-tree-delete'),null);
+});
+test('folder deletion requires a second click and confirmation resets on leave escape focus and another row',async()=>{
+  const state=await deleteSetup();
+  const row=document.querySelector('[data-node-id="ai"] > .nav-row');
+  const arm=()=>{click('Удалить папку AI');assert.match(document.querySelector('[role="tooltip"]').textContent,/все заметки/);assert.deepEqual(state.workspace.operations(),[]);};
+  arm();assert.equal(document.querySelector('[role="tooltip"]').parentElement,document.body);document.querySelector('.page-tree').dispatchEvent(new state.dom.window.Event('scroll'));assert.equal(document.querySelector('[role="tooltip"]'),null);
+  arm();state.dom.window.dispatchEvent(new state.dom.window.Event('resize'));assert.equal(document.querySelector('[role="tooltip"]'),null);
+  arm();row.dispatchEvent(new state.dom.window.Event('pointerleave'));assert.equal(document.querySelector('[role="tooltip"]'),null);
+  arm();document.dispatchEvent(new state.dom.window.KeyboardEvent('keydown',{key:'Escape'}));assert.equal(document.querySelector('[role="tooltip"]'),null);
+  arm();row.dispatchEvent(new state.dom.window.FocusEvent('focusout',{relatedTarget:document.body}));assert.equal(document.querySelector('[role="tooltip"]'),null);
+  arm();document.querySelector('[data-node-id="ai/chat.md"] > .nav-row').dispatchEvent(new state.dom.window.Event('pointerenter'));assert.equal(document.querySelector('[role="tooltip"]'),null);
+  arm();click('Подтвердить удаление папки AI');await tick();
+  assert.equal(document.querySelector('[data-node-id="ai"]'),null);
+  assert.deepEqual(state.workspace.operations(),[{type:'delete',source:'ai'}]);assert.equal(state.calls.length,1);
+});
+test('delete button does not start dragging toggle a folder or retain confirmation after leaving edit mode',async()=>{
+  const state=await deleteSetup(),button=document.querySelector('[aria-label="Удалить папку AI"]');
+  const children=document.querySelector('[data-node-id="ai"] > ul'),wasHidden=children.hidden;
+  pointerEvent(state,'pointerdown',button,10,10);pointerEvent(state,'pointermove',button,30,30);pointerEvent(state,'pointerup',button,30,30);
+  assert.equal(document.querySelector('.wiki-tree-dragging'),null);
+  const event=new state.dom.window.Event('dragstart',{bubbles:true,cancelable:true});button.dispatchEvent(event);assert.equal(event.defaultPrevented,true);
+  button.click();assert.equal(children.hidden,wasHidden);
+  state.workspace.discard();state.controller.render();
+  assert.equal(document.querySelector('[role="tooltip"]'),null);assert.equal(document.querySelector('.wiki-tree-delete'),null);
+});

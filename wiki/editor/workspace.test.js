@@ -155,3 +155,66 @@ test('moving pages and folders rejects their shared URL collision without changi
     assert.deepEqual(workspace.operations(),[]);
   }
 });
+
+test('recursive deletion preserves submitted edits and removes moved subtree across reload', () => {
+  const disk = storage(), workspace = createWorkspace(disk);
+  workspace.start(); workspace.seedTree(tree()); workspace.put(page);
+  workspace.stage({type:'move',source:'start',target_parent:'help',before:null});
+  workspace.stage({type:'delete',source:'help/start'});
+  const restored = createWorkspace(disk);
+  assert.deepEqual(restored.tree().nodes.map(node=>node.id),['help']);
+  assert.deepEqual(restored.tree().nodes[0].children,[]);
+  assert.equal(restored.isDeleted('start/a.md'),true);
+  assert.equal(restored.isDeleted('help/start/a.md'),true);
+  assert.equal(restored.isDeleted('start/_index.md'),true);
+  assert.equal(restored.isDeleted('help/_index.md'),false);
+  assert.deepEqual(batchPages(restored.drafts()),[page]);
+  assert.deepEqual(restored.operations(),[
+    {type:'move',source:'start',target_parent:'help',before:null},
+    {type:'delete',source:'help/start'}
+  ]);
+  restored.put({...page,body:'Late autosave'});
+  assert.deepEqual(restored.drafts(),[page]);
+  restored.discard();
+  assert.equal(restored.isDeleted(page.path),false);
+  assert.equal(restored.hasChanges(),false);
+  assert.deepEqual(restored.seedTree(tree()).nodes.map(node=>node.id),['start','help']);
+});
+
+test('new page creation survives deletion for pages-first operation replay without reinjection', () => {
+  const disk = storage(), workspace = createWorkspace(disk);
+  const draft = {path:'draft:new',creating:true,slug:'new',title:'New',body:'Text'};
+  workspace.seedTree(tree()); workspace.put(draft);
+  workspace.stage({type:'folder',parent:'',slug:'created',title:'Created'});
+  workspace.stage({type:'move',source:'new.md',target_parent:'created',before:null});
+  workspace.stage({type:'delete',source:'created'});
+  const restored = createWorkspace(disk);
+  restored.put({...draft,body:'Late autosave'});
+  assert.equal(restored.isDeleted('draft:new'),true);
+  assert.deepEqual(restored.drafts(),[draft]);
+  assert.deepEqual(batchPages(restored.drafts()),[{section:'',slug:'new',title:'New',body:'Text'}]);
+  assert.deepEqual(restored.operations().map(op=>op.type),['folder','move','delete']);
+  assert.deepEqual(restored.seedTree(tree()).nodes.map(node=>node.id),['start','help']);
+  restored.acknowledge(restored.drafts(),restored.operations());
+  assert.equal(restored.hasChanges(),false);
+  assert.equal(restored.isDeleted('draft:new'),false);
+});
+
+test('delete validation and failed persistence preserve the complete workspace', () => {
+  const disk = storage(), workspace = createWorkspace(disk);
+  workspace.seedTree(tree());
+  assert.throws(()=>workspace.stage({type:'delete',source:'missing'}),/не найдена/);
+  disk.setItem=()=>{throw new Error('quota');};
+  assert.throws(()=>workspace.stage({type:'delete',source:'start'}),/quota/);
+  assert.equal(workspace.isDeleted('start/a.md'),false);
+  assert.deepEqual(workspace.operations(),[]);
+  assert.equal(workspace.tree().nodes[0].id,'start');
+});
+
+test('a new page cannot reuse the URL of a folder staged for deletion',()=>{
+  const workspace=createWorkspace(storage());workspace.seedTree(tree());
+  workspace.stage({type:'delete',source:'start'});
+  assert.throws(()=>workspace.put({path:'draft:new',creating:true,slug:'start',title:'New',body:''}),/адрес удалён/);
+  assert.deepEqual(workspace.drafts(),[]);
+  assert.deepEqual(workspace.operations(),[{type:'delete',source:'start'}]);
+});
