@@ -147,7 +147,7 @@ def main():
     primary = {item['uid']: item['title'] for item in dashboards if not item.get('folderUid')}
     require(primary == {'socrat-overview': 'Обзор', 'socrat-nodes': 'Ноды', 'socrat-services': 'Сервисы'}, 'Only the three primary dashboards appear at the root')
     embedded = [item for item in dashboards if item.get('folderTitle') == 'Rancher']
-    require(len(embedded) == 13 and all(item['title'].startswith('[Rancher] ') for item in embedded), 'Embedded Rancher dashboards are grouped and prefixed')
+    require(len(embedded) == 13 and all(not item['title'].startswith(('[Rancher] ', 'Rancher / ')) for item in embedded), 'Embedded Rancher dashboards are grouped without title prefixes')
     require(all(not item.get('folderUid') or item.get('folderTitle') in ['Rancher', 'Диагностика Kubernetes'] for item in dashboards), 'Other templates are grouped under Kubernetes diagnostics')
     for uid in ['rancher-node-1', 'rancher-node-detail-1']:
         node_dashboard = kubectl(args.ssh_host, 'get', '--raw', f'/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/dashboards/uid/{uid}')['dashboard']
