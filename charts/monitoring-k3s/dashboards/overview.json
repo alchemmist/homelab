@@ -601,7 +601,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(100 * (1 - node_memory_MemAvailable_bytes{job=\"node-exporter\"} / node_memory_MemTotal_bytes{job=\"node-exporter\"})) * on(instance) group_left(nodename) node_uname_info{job=\"node-exporter\"}",
+          "expr": "avg by (nodename) ((100 * (1 - node_memory_MemAvailable_bytes{job=\"node-exporter\"} / node_memory_MemTotal_bytes{job=\"node-exporter\"})) * on(instance) group_left(nodename) node_uname_info{job=\"node-exporter\"})",
           "legendFormat": "{{nodename}}",
           "instant": false,
           "format": "time_series"
