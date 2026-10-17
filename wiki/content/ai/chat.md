@@ -1,8 +1,8 @@
 ---
 title: "Чат с моделью"
-weight: 80
+weight: 10
 aliases:
-- /ai/chat/
+- /chat/
 ---
 
 Адрес: [chat.alchemmist.xyz](https://chat.alchemmist.xyz).
