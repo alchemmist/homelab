@@ -57,7 +57,7 @@
 
 - name: Add a Rancher gateway on each control plane
   ansible.builtin.set_fact:
-    rancher_wg_hosts: "{{ rancher_wg_hosts + [{'name': item | replace('socrat-', 'rancher-'), 'nodeName': item, 'host': rancher_wg_host, 'tlsSecret': rancher_wg_tls_secret, 'resolver': rancher_wg_dns.stdout, 'upstream': rancher_wg_upstream, 'responseStyle': rancher_wg_response_style, 'allowedCIDRs': ['10.250.0.0/24', '10.42.0.0/16']}] }}"
+    rancher_wg_hosts: "{{ rancher_wg_hosts + [{'name': item | replace('socrat-', 'rancher-'), 'nodeName': item, 'host': rancher_wg_host, 'tlsSecret': rancher_wg_tls_secret, 'resolver': rancher_wg_dns.stdout, 'upstream': rancher_wg_upstream, 'responseStyle': rancher_wg_response_style, 'autoSizeGrafana': rancher_wg_autosize_grafana, 'allowedCIDRs': ['10.250.0.0/24', '10.42.0.0/16']}] }}"
   loop: "{{ rancher_wg_nodes }}"
   no_log: true
 

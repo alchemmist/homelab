@@ -75,6 +75,9 @@ try:
         require(status == 200 and body.strip() == b'pong', 'Trusted private HTTPS ping through ' + address)
         status, body = request(address, '/dashboard/')
         require(status == 200 and b'id="socrat-layout-fix"' in body and b'overflow-wrap: anywhere' in body, 'Scoped Rancher layout stylesheet through ' + address)
+        require(b'/_socrat/rancher-layout.js' in body, 'Grafana frame sizing helper included through ' + address)
+        status, body = request(address, '/_socrat/rancher-layout.js')
+        require(status == 200 and b'ResizeObserver' in body and b'grid.style.height' in body, 'Grafana frame sizing helper served through ' + address)
         authenticated = False
         for token in tokens:
             credential = token['metadata']['name'] + ':' + token['token']

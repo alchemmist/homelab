@@ -26,6 +26,7 @@ syncthing_private_ui_extra_virtual_hosts:
     clearAuthorization: true
   - name: rancher-0
     responseStyle: "{{ rancher_wg_response_style }}"
+    autoSizeGrafana: true
     allowedCIDRs: [10.250.0.0/24, 10.42.0.0/16]
     host: rancher.socrat.alchemmist.xyz
     nodeName: socrat-0
@@ -34,6 +35,7 @@ syncthing_private_ui_extra_virtual_hosts:
     resolver: 10.43.0.10
   - name: rancher-1
     responseStyle: "{{ rancher_wg_response_style }}"
+    autoSizeGrafana: true
     allowedCIDRs: [10.250.0.0/24, 10.42.0.0/16]
     host: rancher.socrat.alchemmist.xyz
     nodeName: socrat-1

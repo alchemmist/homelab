@@ -86,3 +86,11 @@ ansible-playbook playbooks/rancher-ui.yml
 The upstream rule is in
 [Rancher 2.15 Tabbed/index.vue](https://github.com/rancher/dashboard/blob/release-2.15/shell/components/Tabbed/index.vue).
 Review this compatibility override after upgrading Rancher.
+
+The same gateway serves `/_socrat/rancher-layout.js` to size embedded Grafana
+dashboards by their rendered grid. Rancher 2.15 hardcodes a 600px frame for pod
+and workload metrics, which can hide axes beneath Grafana's kiosk footer. The
+helper measures intrinsic grid height, header offset and footer space, then
+updates only the matching metrics wrapper. It follows iframe loads, tab changes
+and responsive layout changes using observers. Cross-origin frames are ignored;
+no credentials, requests or dashboard data are read by this helper.
