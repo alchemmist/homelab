@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: open-terminal-data
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: {{ .Values.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.storage }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: open-terminal
+spec:
+  type: ClusterIP
+  selector:
+    app: open-terminal
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: open-terminal
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: open-terminal
+  template:
+    metadata:
+      labels:
+        app: open-terminal
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.nodeName }}
+      containers:
+        - name: open-terminal
+          image: {{ .Values.image | quote }}
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: OPEN_TERMINAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secretName }}
+                  key: api-key
+            - name: OPEN_TERMINAL_MAX_SESSIONS
+              value: '4'
+          ports:
+            - name: http
+              containerPort: 8000
+          startupProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 5
+            failureThreshold: 120
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 30
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /home/user
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: open-terminal-data
