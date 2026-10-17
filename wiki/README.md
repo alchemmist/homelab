@@ -1,30 +1,19 @@
-# Socrat Wiki
+# Socrat Wiki content
 
-Public Russian documentation for Socrat at <https://wiki.alchemmist.xyz/>. The site uses `github.com/alchemmist/hugo-docs` v0.1.0 and its pinned `hugo-content` dependency. The established theme supplies typography, folder navigation and local search; the Socrat icon comes from `deploy/litellm/branding/socrat-icon-v1.png` and is resized for the web.
+Public Russian documentation for Socrat at <https://wiki.alchemmist.xyz/>. This directory contains instance content and branding. The Hugo theme, browser editor, runtime backend, container, chart and their tests live in [hugo-docs](https://github.com/alchemmist/hugo-docs). Hugo still renders the site.
 
-## Local workflow
+## Content
 
-Install Hugo 0.167.0, Go 1.23 or newer, and Node.js 22 or newer with npm, then run:
+Notes belong in `content/`. Folder `_index.md` files contain navigation title and weight; the root `_index.md` is the home page. Prefer Hugo `relref` links to notes. Keep page URLs and aliases stable when reorganizing content. Do not publish private operational documentation, credentials or personal configuration. `noindex` is not access control.
 
-```sh
-make -C wiki check
-make -C wiki dev
-```
+The accepted runtime data volume is authoritative during operation. Git synchronization can lag publication. Do not edit the runtime's managed working tree concurrently with its writer. Use the visual editor or the upstream documented import/Git synchronization workflow for content updates.
 
-Open <http://localhost:1321/>. Production builds exclude drafts. `make check` validates rendered internal links and anchors, Russian search content, robots metadata, the 404 page, build metadata and publication boundaries.
+## Runtime and development
 
-Notes belong in `content/`. Folder `_index.md` files contain navigation title and weight only; the root `_index.md` is the home page. Prefer Hugo `relref` links to notes. Do not copy private infrastructure documentation, credentials or personal configuration into the public site. `noindex` is not access control.
+Use the upstream hugo-docs starter and its documented Makefile targets for local development, static previews, runtime launches and checks. This directory no longer ships a separate npm application, Dockerfile or Makefile. Runtime documentation is maintained in the upstream repository; Socrat deployment values live in `deploy/wiki-runtime/values.yaml` at the homelab root.
 
-## Container
+The migration target is one upstream runtime, one Fleet bundle and one new persistent volume. `deploy/fleet/wiki-runtime.yaml` declares the GitRepo. The bundle is paused; ingress and Git sync remain disabled until release acceptance and coordinated migration. These files do not imply production has already switched.
 
-```sh
-make -C wiki image SOURCE_SHA=local
-```
+After cutover, public reading remains available and local accounts sign in at `/login` to edit. Reader, editor and administrator roles apply across the wiki. OIDC is not used. WG routing is optional and does not bypass account authorization. The editor stages changes across pages and publishes content and tree operations atomically; remote Git and CI are outside the immediate publication path.
 
-The only Docker build context is `wiki/`; `.dockerignore` allowlists site inputs. The runtime is static nginx on port 8080 as UID/GID 101, supports a read-only root filesystem with writable `/tmp`, and needs no volume containing user data. `/healthz` is the readiness endpoint. `/version.json` reports `source_sha` (a full commit SHA in CI, `local` for local builds). The full nginx configuration emits `X-Robots-Tag: noindex, nofollow` on successful and error responses.
-
-Runtime theme assets and the search index are hosted locally; readers do not need a third-party search service. No sitemap or RSS feed is generated.
-
-## Private inline editor
-
-The page itself becomes editable when the private gateway authorizes an administrative WireGuard peer. Tiptap stores Markdown in the same Git repository; it does not replace Hugo or the publication workflow. Frontend tests verify existing content roundtrips, including Hugo relref links. Unsupported special syntax is refused before editing so it cannot be silently lost. See `docs/wiki-editor-network.md` at the repository root for split-DNS and gateway setup, and `wiki-editor/README.md` for the backend contract.
+See [deployment operations](../docs/wiki.md), [network setup](../docs/wiki-editor-network.md) and [the migration runbook](../docs/wiki-runtime-migration.md). Back up the entire runtime volume, not just GitHub. The canonical generic backup tool is upstream `scripts/wiki-data.py`; the homelab migration helper remains `scripts/migrate-wiki-runtime.py`.

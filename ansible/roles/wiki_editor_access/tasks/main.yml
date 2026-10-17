@@ -21,6 +21,7 @@
   ansible.builtin.command:
     argv: [kubectl, --kubeconfig, "{{ wiki_editor_kubeconfig }}", -n, "{{ wiki_editor_gateway_namespace }}", get, secret, "{{ wiki_editor_gateway_auth_secret }}", -o, name]
   changed_when: false
+  when: not (wiki_editor_runtime_enabled | bool)
 
 - name: Discover DNS service
   ansible.builtin.command:
@@ -47,7 +48,7 @@
 
 - name: Add private wiki virtual hosts
   ansible.builtin.set_fact:
-    wiki_editor_gateway_hosts: "{{ wiki_editor_gateway_hosts + [{'name': 'wiki-' ~ item, 'nodeName': item, 'host': wiki_editor_host, 'tlsSecret': wiki_editor_tls_secret, 'resolver': wiki_editor_cluster_dns.stdout, 'upstream': wiki_editor_static_upstream, 'editorUpstream': wiki_editor_upstream, 'allowedCIDRs': ['10.250.0.0/24']}] }}"
+    wiki_editor_gateway_hosts: "{{ wiki_editor_gateway_hosts + [{'name': 'wiki-' ~ item, 'nodeName': item, 'host': wiki_editor_host, 'tlsSecret': wiki_editor_tls_secret, 'resolver': wiki_editor_cluster_dns.stdout, 'upstream': (wiki_editor_runtime_upstream if wiki_editor_runtime_enabled | bool else wiki_editor_static_upstream), 'allowedCIDRs': ['10.250.0.0/24']} | combine({} if wiki_editor_runtime_enabled | bool else {'editorUpstream': wiki_editor_upstream})] }}"
   loop: "{{ wiki_editor_gateway_nodes }}"
   no_log: true
 
@@ -66,7 +67,7 @@
 - name: Render merged values
   ansible.builtin.copy:
     dest: "{{ wiki_editor_directory }}/values.yaml"
-    content: "{{ wiki_editor_gateway_values | combine({'privateGui': {'extraVirtualHosts': wiki_editor_gateway_hosts, 'editorAuthSecret': wiki_editor_gateway_auth_secret}}, recursive=true) | to_nice_yaml }}"
+    content: "{{ wiki_editor_gateway_values | combine({'privateGui': {'extraVirtualHosts': wiki_editor_gateway_hosts, 'editorAuthSecret': (wiki_editor_gateway_auth_secret if (wiki_editor_gateway_hosts | selectattr('editorUpstream', 'defined') | list | length > 0) else '')}}, recursive=true) | to_nice_yaml }}"
     mode: '0600'
   no_log: true
 
