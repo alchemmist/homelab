@@ -103,6 +103,16 @@
   register: monitoring_branding_asset
   changed_when: "'unchanged' not in monitoring_branding_asset.stdout"
 
+- name: Install the stable node series dashboard renderer
+  ansible.builtin.copy:
+    src: stable_node_series.py
+    dest: "{{ monitoring_directory }}/stable_node_series.py"
+    mode: '0700'
+
+- name: Verify the dashboard renderer YAML dependency
+  ansible.builtin.command: python3 -c 'import yaml'
+  changed_when: false
+
 - name: Install the pinned monitoring stack
   ansible.builtin.command:
     argv:
@@ -121,6 +131,8 @@
       - "{{ monitoring_kubeconfig }}"
       - --values
       - "{{ monitoring_directory }}/values.yaml"
+      - --post-renderer
+      - "{{ monitoring_directory }}/stable_node_series.py"
       - --wait
       - --timeout
       - 12m
