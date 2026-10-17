@@ -1,6 +1,6 @@
 # Migrating Socrat Wiki to the shared runtime
 
-This runbook prepares a migration; it does not authorize an immediate production cutover. Release and accept the shared `hugo-docs` runtime before changing the live installation. No OIDC is required or configured. Public reading remains available; local accounts replace the WireGuard-only editing bypass.
+The production routing and data migration to `hugo-docs` v0.2.0 completed on 2026-10-18. The final volume copy was performed with both old and new writers stopped. The new runtime serves public ingress and both WG virtual hosts; the old PVC is retained. A local administrator exists, and HTTPS login/logout was verified through `109.173.40.247` and `10.250.0.1`. The procedures below document the rehearsal, cutover and recovery process. Legacy bundle retirement remains a separate cleanup step. No OIDC is required or configured. Public reading remains available; local accounts replace the WireGuard-only editing bypass.
 
 ## Data and ownership
 
@@ -64,11 +64,11 @@ python3 -m unittest discover -s tests -p test_wiki_runtime_migration.py -v
 
 Tests use disposable local repositories and cover history/outbox/account/upload preservation, corruption detection, refusing overwrite, rejected escaping links, dirty content and missing Git objects. They never contact or modify the cluster.
 
-## Staged declarative deployment
+## Declarative deployment
 
-`deploy/wiki-runtime/fleet.yaml` and `values.yaml` prepare one future bundle. The staged GitRepo declaration is `deploy/fleet/wiki-runtime.yaml`; the bundle remains paused until acceptance and cutover. Ingress and remote Git sync are disabled. The chart `0.2.0` and upstream image `ghcr.io/alchemmist/hugo-docs-wiki:0.2.0` have been released and verified accessible through anonymous registry pulls. No registry credential is required by the new bundle.
+`deploy/wiki-runtime/fleet.yaml` and `values.yaml` define the active bundle. Its GitRepo declaration is `deploy/fleet/wiki-runtime.yaml`. The chart `0.2.0` and image `ghcr.io/alchemmist/hugo-docs-wiki:0.2.0` are public; the image is pinned to `sha256:fe86f6679d33380bfaecb92f8b6ded2b4d33c1947968a7cb2e9a1a74e526b6b4`. No registry credentials are required. The declarations include background Git synchronization and the runtime-owned public ingress; check Fleet reconciliation when assessing their rollout.
 
-Before activation:
+Deployment invariants and checks:
 
 - Publish and accept the shared chart/runtime and pin its immutable image digest in values. `staticFiles` carries an exact copy of `wiki/static/images/socrat.svg`; `siteConfig` carries the Russian site configuration. A custom image is not required. Do not reuse the old editor image or copy the legacy `wiki/assets/wiki-editor.js`, `wiki/assets/wiki-editor.css`, or editor layout overrides: they shadow the new theme editor. Retain the packaged vendored module tree.
 - Create and restore the **new** `wiki-runtime-data` claim and `wiki-runtime-bootstrap` Secret (`token` key) in namespace `wiki`. Check volume ownership for UID/GID 1000. The skeleton never claims `wiki-editor-data`.
@@ -82,8 +82,8 @@ Before activation:
 
 The existing Ansible role `wiki_editor_access` manages the `syncthing` Helm release in namespace `syncthing`, which runs the private nginx entry points on `socrat-0` and `socrat-1`. Its wiki vhosts use `wiki-editor-private-tls` in that namespace. The certificate and WireGuard allowlist remain unchanged.
 
-The role now has a staged switch, `wiki_editor_runtime_enabled`, which defaults to `false` so routine reapplication preserves the current installation. At the accepted cutover, set it to `true` and apply the role through its existing playbook. This changes both wiki vhosts to one upstream, `http://wiki-runtime-wiki.wiki.svc.cluster.local:8080`, removes their separate `editorUpstream`, and removes the `editorAuthSecret` mount when no other vhost requires it. Consequently nginx no longer injects the legacy editor secret or WG peer headers for wiki API requests. The runtime still performs all account authorization.
+The role switch `wiki_editor_runtime_enabled` defaults to `true`, matching the completed cutover. It routes both wiki vhosts to one upstream, `http://wiki-runtime-wiki.wiki.svc.cluster.local:8080`, removes their separate `editorUpstream`, and removes the `editorAuthSecret` mount when no other vhost requires it. Consequently nginx no longer injects the legacy editor secret or WG peer headers for wiki API requests. The runtime still performs all account authorization.
 
-Before applying, confirm the new service is healthy, the shared image is accepted, the old writer has stopped, and public routes are ready to switch. Render/review the entire Syncthing gateway release because it also serves other applications. Preserve all unrelated virtual hosts and keep the old secret objects until rollback is no longer needed. No gateway playbook has been run as part of preparing these files.
+Before applying, confirm the new service is healthy, the shared image is accepted, the old writer has stopped, and public routes are ready to switch. Render/review the entire Syncthing gateway release because it also serves other applications. Preserve all unrelated virtual hosts and keep the old secret objects until rollback is no longer needed. Both production wiki virtual hosts have been switched; future gateway changes must preserve other applications.
 
 Rollback before new writes uses `wiki_editor_runtime_enabled=false` and the retained old deployment; rollback after accepted writes first requires the data reconciliation described above.
