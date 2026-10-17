@@ -1,7 +1,7 @@
 ---
 title: Справка по wiki
-weight: 40
+weight: 20
 aliases:
-- /help/wiki/
+- /start/wiki/
 ---
 
