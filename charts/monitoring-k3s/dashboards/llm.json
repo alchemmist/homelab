@@ -1520,9 +1520,9 @@
     },
     {
       "id": 28,
-      "title": "Time to first token",
-      "type": "timeseries",
-      "description": "Percentiles over the rate interval. Latency is undefined when there are no requests in the interval.",
+      "title": "Time to first token · selected period",
+      "type": "stat",
+      "description": "p50 (median) and p95 of first-token latency observed during the selected dashboard time range. Recomputed when the time range changes or the dashboard refreshes. No requests means no latency estimate; it is not zero.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1536,49 +1536,61 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "histogram_quantile(0.5, sum by(le,model_name) (rate(vllm:time_to_first_token_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by(le,model_name) (rate(vllm:time_to_first_token_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__range])))",
           "legendFormat": "{{model_name}} · p50",
-          "instant": false,
-          "format": "time_series"
+          "instant": true,
+          "format": "time_series",
+          "range": false
         },
         {
           "refId": "B",
-          "expr": "histogram_quantile(0.95, sum by(le,model_name) (rate(vllm:time_to_first_token_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by(le,model_name) (rate(vllm:time_to_first_token_seconds_bucket{job=\"vllm\",model_name=~\"${model:regex}\"}[$__range])))",
           "legendFormat": "{{model_name}} · p95",
-          "instant": false,
-          "format": "time_series"
+          "instant": true,
+          "format": "time_series",
+          "range": false
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "s",
+          "decimals": 2,
+          "noValue": "No observations",
           "color": {
-            "mode": "palette-classic"
+            "mode": "fixed",
+            "fixedColor": "text"
           },
-          "noValue": "No data",
-          "custom": {
-            "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "fillOpacity": 10,
-            "showPoints": "never",
-            "spanNulls": false
-          }
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "No observations"
+                }
+              }
+            }
+          ]
         },
         "overrides": []
       },
       "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
+        "reduceOptions": {
+          "values": false,
           "calcs": [
-            "lastNotNull",
-            "max"
-          ]
+            "lastNotNull"
+          ],
+          "fields": ""
         },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "text": {
+          "titleSize": 14,
+          "valueSize": 36
         }
       }
     },
