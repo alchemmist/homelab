@@ -97,7 +97,7 @@ function initialize() {
         fields.append(sectionLabel,slugLabel); heading.parentElement.after(fields);
       }
       actions.hidden = true; editbar.hidden = false; document.body.classList.add('wiki-editing');
-      message('Правьте заголовок и текст прямо на странице.'); heading.focus();
+      message(''); heading.focus();
     } catch (error) { message(error.message,true); }
     finally { busy = false; }
   }
