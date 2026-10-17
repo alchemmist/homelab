@@ -170,3 +170,26 @@ test('workspace drafts block structural mutations but allow adding another draft
   drag(state,'ai/chat.md',document.querySelector('.wiki-tree-root'));await tick();
   assert.equal(state.calls.length,1);assert.match(state.messages.at(-1),/структуры/);
 });
+
+test('workspace stages folder and move with edited text without API writes',async()=>{
+  const {createWorkspace,batchPages}=await import('./workspace.js');
+  const data=new Map(),workspace=createWorkspace({getItem:key=>data.get(key),setItem:(key,value)=>data.set(key,value)});
+  workspace.start();workspace.put({path:'ai/chat.md',title:'Edited',body:'New text',revision:'page1'});
+  const dom=new JSDOM('<nav class="page-tree"><a>Обзор</a><ul class="nav-root"></ul></nav>',{url:'https://wiki.example/'});
+  globalThis.document=dom.window.document;
+  const calls=[];
+  const controller=await initializeTree({api:async(endpoint,payload)=>{calls.push({endpoint,payload});return fixture();},workspace,dirty:()=>false,structureDirty:()=>true,begin:()=>true,currentPath:()=>workspace.virtualPath('ai/chat.md'),openPage:async()=>{},moved:()=>{},message:()=>{},publication:async()=>true});
+  await controller.ready;
+  click('Новая папка');
+  document.querySelector('[aria-label="Название новой папки"]').value='Folder';document.querySelector('[aria-label="Адрес новой папки"]').value='folder';click('Создать папку');await tick();
+  const target=document.querySelector('[data-node-id="folder"] > .nav-row');
+  target.getBoundingClientRect=()=>({top:0,height:40});
+  drag({dom},'ai/chat.md',target,20);await tick();
+  assert.equal(calls.length,1);
+  assert.deepEqual(workspace.operations(),[{type:'folder',parent:'',title:'Folder',slug:'folder'},{type:'move',source:'ai/chat.md',target_parent:'folder',before:null}]);
+  assert.equal(document.querySelector('[data-node-id="folder/chat.md"] a').pathname,'/ai/chat/');
+  assert.equal(batchPages(workspace.drafts())[0].path,'ai/chat.md');
+  workspace.discard();await controller.reset();
+  assert.equal(document.querySelector('[data-node-id="folder"]'),null);
+  assert.equal(calls.every(call=>call.payload===undefined),true);
+});

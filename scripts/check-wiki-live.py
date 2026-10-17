@@ -56,9 +56,16 @@ for index, path in enumerate(('_index.md', 'start/edit-wiki.md')):
     page = json.loads(body)
     page['body'] += '\n\nLive runtime smoke marker ' + str(index) + '\n'
     pages.append(page)
-status, _, body = request('/api/editor/batch', {'pages': pages}, headers)
+status, _, body = request('/api/editor/tree', headers=headers)
 assert status == 200, (status, body)
-for index, (path, url) in enumerate((('_index.md', '/site/'), ('start/edit-wiki.md', '/site/start/edit-wiki/'))):
+operations = [
+    {'type': 'folder', 'parent': '', 'slug': 'runtime-smoke', 'title': 'Runtime smoke'},
+    {'type': 'move', 'source': 'start/edit-wiki.md', 'target_parent': 'runtime-smoke', 'before': None},
+]
+status, _, body = request('/api/editor/batch', {'pages': pages, 'operations': operations, 'tree_revision': json.loads(body)['revision']}, headers)
+assert status == 200, (status, body)
+assert json.loads(body)['pages'][1]['path'] == 'runtime-smoke/edit-wiki.md'
+for index, (path, url) in enumerate((('_index.md', '/site/'), ('runtime-smoke/edit-wiki.md', '/site/runtime-smoke/edit-wiki/'))):
     marker = 'Live runtime smoke marker ' + str(index)
     status, _, html = request(url)
     assert status == 200 and marker in html, (status, url)
@@ -66,4 +73,4 @@ for index, (path, url) in enumerate((('_index.md', '/site/'), ('start/edit-wiki.
     assert status == 200 and marker in json.loads(source)['body'], (status, path)
 assert request('/api/editor/pages?path=_index.md')[0] == 403
 assert request('/site/')[1].get('Cache-Control') == 'no-store'
-print('Real Hugo runtime: readiness, private API, atomic two-page publication and immediate HTML reload passed')
+print('Real Hugo runtime: private API, atomic text/folder/move publication and immediate HTML reload passed')

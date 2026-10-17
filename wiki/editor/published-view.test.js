@@ -46,3 +46,9 @@ test('opening before background hydration finishes updates the cancel snapshot f
   assert.equal(article.innerHTML,'<p>Old</p>');
   article.innerHTML='Editor draft';view.restore();assert.equal(article.innerHTML,'<p>Latest</p>');
 });
+test('snapshot-only hydration begun before a save cannot restore the older source',async()=>{
+  const {view,article}=setup();let resolvePage;
+  const pending=view.hydrate({path:'help.md',apply:false,canApply:()=>true,api:()=>new Promise(resolve=>{resolvePage=resolve;})});
+  view.capture('Newest','Newest body');resolvePage(page);await pending;
+  article.innerHTML='Editing';view.restore();assert.equal(article.innerHTML,'Newest body');
+});
