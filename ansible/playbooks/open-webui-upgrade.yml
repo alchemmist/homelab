@@ -1,0 +1,150 @@
+---
+- name: Back up and upgrade the existing Open WebUI release
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  vars:
+    webui_chart: "{{ homelab_user_home }}/tmp-charts/open-webui-upgrade"
+    webui_image: "{{ (lookup('file', playbook_dir + '/../../charts/open-webui/values.yaml') | from_yaml).image }}"
+    webui_version: "{{ (lookup('file', playbook_dir + '/../../charts/open-webui/Chart.yaml') | from_yaml).appVersion }}"
+  tasks:
+    - name: Inspect the existing deployment
+      ansible.builtin.command: kubectl -n llm get deployment open-webui -o json
+      register: webui_deployment
+      changed_when: false
+
+    - name: Require the existing healthy single-replica deployment
+      ansible.builtin.assert:
+        that:
+          - (webui_deployment.stdout | from_json).spec.replicas == 1
+          - (webui_deployment.stdout | from_json).status.readyReplicas | default(0) == 1
+          - (webui_deployment.stdout | from_json).spec.template.spec.nodeSelector['kubernetes.io/hostname'] == inventory_hostname
+
+    - name: Find the persistent volume
+      ansible.builtin.command: kubectl -n llm get pvc open-webui-data -o jsonpath={.spec.volumeName}
+      register: webui_volume_name
+      changed_when: false
+
+    - name: Inspect the local data volume
+      ansible.builtin.command: "kubectl get pv {{ webui_volume_name.stdout }} -o json"
+      register: webui_volume
+      changed_when: false
+
+    - name: Require the known local-path data layout
+      ansible.builtin.assert:
+        that:
+          - (webui_volume.stdout | from_json).spec.local.path is match('^/var/lib/rancher/k3s/storage/pvc-[a-z0-9-]+_llm_open-webui-data$')
+
+    - name: Copy the desired chart
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../charts/open-webui/"
+        dest: "{{ webui_chart }}/"
+        mode: preserve
+
+    - name: Validate the desired chart
+      ansible.builtin.command: "helm lint {{ webui_chart }}"
+      changed_when: false
+
+    - name: Pull the pinned image before stopping the application
+      ansible.builtin.command: "k3s crictl pull {{ webui_image }}"
+      become: true
+      changed_when: false
+
+    - name: Create the private backup directory
+      ansible.builtin.file:
+        path: /var/backups/homelab-open-webui
+        state: directory
+        owner: root
+        group: root
+        mode: '0700'
+      become: true
+
+    - name: Allocate an upgrade backup
+      ansible.builtin.command: mktemp -d /var/backups/homelab-open-webui/upgrade-XXXXXXXX
+      become: true
+      register: webui_backup
+      changed_when: true
+
+    - name: Record the current Helm revision
+      ansible.builtin.command: helm list -n llm --filter ^open-webui$ -o json
+      register: webui_release
+      changed_when: false
+
+    - name: Require an existing deployed release
+      ansible.builtin.assert:
+        that:
+          - webui_release.stdout | from_json | length == 1
+          - (webui_release.stdout | from_json)[0].status == 'deployed'
+
+    - name: Save rollback metadata
+      ansible.builtin.copy:
+        content: "{{ webui_release.stdout }}\n"
+        dest: "{{ webui_backup.stdout }}/release.json"
+        owner: root
+        group: root
+        mode: '0600'
+      become: true
+
+    - name: Take a consistent backup while the application is stopped
+      block:
+        - name: Stop the single application replica
+          ansible.builtin.command: kubectl -n llm scale deployment/open-webui --replicas=0
+
+        - name: Wait for all application processes to exit
+          ansible.builtin.command: kubectl -n llm wait --for=delete pod -l app=open-webui --timeout=120s
+          changed_when: false
+
+        - name: Archive the complete application data
+          ansible.builtin.command:
+            argv:
+              - tar
+              - -czpf
+              - "{{ webui_backup.stdout }}/data.tar.gz"
+              - -C
+              - "{{ (webui_volume.stdout | from_json).spec.local.path }}"
+              - .
+          become: true
+
+        - name: Verify the backup archive
+          ansible.builtin.shell: "tar -tzf '{{ webui_backup.stdout }}/data.tar.gz' >/dev/null"
+          become: true
+          changed_when: false
+      rescue:
+        - name: Restore the original application after a failed backup
+          ansible.builtin.command: kubectl -n llm scale deployment/open-webui --replicas=1
+
+        - name: Wait for the original application to recover
+          ansible.builtin.command: kubectl -n llm rollout status deployment/open-webui --timeout=180s
+          changed_when: false
+
+        - name: Stop the upgrade after a failed backup
+          ansible.builtin.fail:
+            msg: "Backup failed; the original application was restarted. Inspect {{ webui_backup.stdout }}."
+
+    - name: Upgrade the chart without changing application credentials or model defaults
+      ansible.builtin.command: >-
+        helm upgrade open-webui {{ webui_chart }} --namespace llm
+        --values {{ webui_chart }}/values.yaml --wait --timeout 15m
+
+    - name: Verify the running application version
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - -n
+          - llm
+          - exec
+          - deployment/open-webui
+          - --
+          - python
+          - -c
+          - "import json,urllib.request; print(json.load(urllib.request.urlopen('http://127.0.0.1:8080/api/version'))['version'])"
+      register: webui_running_version
+      changed_when: false
+      failed_when: webui_running_version.stdout | trim != webui_version
+
+    - name: Report the upgrade and backup location
+      ansible.builtin.debug:
+        msg: "Open WebUI {{ webui_version }} is ready; backup: {{ webui_backup.stdout }} on {{ inventory_hostname }}."
