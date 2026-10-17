@@ -77,7 +77,7 @@ export async function initializeTree({api, workspace, begin = () => true, dirty,
     if (result) { await removed(node); await changed(); }
   }
   function renameFolder(node, row) {
-    if (!workspace?.active() || pending) return;
+    if (!workspace?.active() || pending || dirty()) return;
     clearConfirmation(); renaming?.cancel();
     const toggle = row.querySelector('.tree-toggle');
     const input = document.createElement('input');
