@@ -67,6 +67,16 @@ class StructureTest(unittest.TestCase):
         response = self.client.post('/api/editor/folders', headers=self.headers, json={'parent': '', 'slug': 'start', 'title': 'Duplicate', 'revision': self.tree()['revision']})
         self.assertEqual(response.status_code, 409)
 
+    def test_anchor_only_relref_stays_on_the_moved_page(self):
+        self.seed_structure()
+        page = self.seed / 'wiki/content/ai/chat.md'
+        page.write_text('---\ntitle: Chat\n---\n\n[Self]({{< relref "#hello" >}})\n\n## Hello\n')
+        run(self.seed, 'add', '.')
+        run(self.seed, 'commit', '-m', 'anchor')
+        run(self.seed, 'push', 'origin', 'main')
+        self.assertEqual(self.move('ai/chat.md', 'start').status_code, 200)
+        self.assertIn('relref "/start/chat.md#hello"', (editor.WORK / 'wiki/content/start/chat.md').read_text())
+
     def test_leaf_bundle_moves_assets_and_rejects_symlinks(self):
         self.seed_structure()
         bundle = self.seed / 'wiki/content/ai/demo'

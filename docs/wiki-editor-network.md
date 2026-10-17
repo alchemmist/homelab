@@ -32,3 +32,11 @@ Configure split DNS for the **exact hostname** `wiki.alchemmist.xyz` on the admi
 First run `ansible/playbooks/wiki-editor.yml` to create stable secrets and the separate Fleet GitRepo. Register its printed public key as a write-enabled deploy key for homelab. Private keys and gateway tokens stay in Kubernetes Secrets. Then run the access playbook and the macOS client playbook. The backend has its own image, workflow and `wiki-editor-publish` branch, so ordinary Markdown edits rebuild the public site without restarting the editor.
 
 On this cluster host-network gateway traffic may use Flannel source addresses `10.42.2.0` and `10.42.1.0`; ingress policy permits only the gateway nodes and their narrow host addresses. The additional shared gateway secret is checked by the backend before accepting peer identity. Lifecycle tests in `tests/test_wiki_editor_resolver.py` exercise private routing, disconnect/public fallback and unmanaged-file preservation without changing live networking.
+
+## Sidebar structure editing
+
+Authorized readers receive a live tree from `GET /api/editor/tree`. Its revision is the Git tree hash of `wiki/content`, so unrelated repository changes do not invalidate a structural operation. Folder creation uses `POST /api/editor/folders` with parent, title, slug and revision. Moves use `POST /api/editor/move` with source, target_parent, optional before-sibling and revision. Each operation is one commit; conflicting content changes return 409 instead of overwriting them.
+
+Sidebar order is persisted through front matter weights. Folder moves include descendants; page bundles include their local assets. Moves retain old page URLs as aliases and rewrite supported Hugo relref links, including fragments. Custom URL/slug moves, cycles, symlinks, path traversal and destination collisions are rejected. Folder indices remain navigation containers, not public pages.
+
+Unsaved article changes block sidebar writes. Drag-and-drop has a menu alternative for keyboard and touch users. New page links are held inactive until the current session confirms publication; moved links keep their previous published address during that wait. Publication still uses the existing static-site pipeline.
