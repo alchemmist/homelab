@@ -62,7 +62,9 @@ data:
         ssl_certificate /etc/nginx/extra-tls/{{ .name }}/tls.crt;
         ssl_certificate_key /etc/nginx/extra-tls/{{ .name }}/tls.key;
         ssl_protocols TLSv1.2 TLSv1.3;
-        allow 10.250.0.0/24;
+        {{- range (.allowedCIDRs | default (list "10.250.0.0/24")) }}
+        allow {{ . }};
+        {{- end }}
         deny all;
         resolver {{ .resolver }} valid=30s ipv6=off;
         location / {

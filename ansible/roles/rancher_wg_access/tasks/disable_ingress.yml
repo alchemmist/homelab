@@ -1,0 +1,72 @@
+- name: Discover Rancher pods before removing the public route
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, "{{ rancher_wg_kubeconfig }}", -n, cattle-system, get, pods, -l, app=rancher, -o, json]
+  register: rancher_wg_pods
+  changed_when: false
+
+- name: Verify Rancher self-access through private DNS from every replica
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, "{{ rancher_wg_kubeconfig }}", -n, cattle-system, exec, "{{ item.metadata.name }}", --, curl, --cacert, /etc/ssl/ca-bundle.pem, --silent, --show-error, --fail, --noproxy, '*', --max-time, '10', --write-out, '\n%{remote_ip}', "https://{{ rancher_wg_host }}/ping"]
+  loop: "{{ (rancher_wg_pods.stdout | from_json)['items'] }}"
+  loop_control:
+    label: "{{ item.metadata.name }}"
+  register: rancher_wg_self_ping
+  changed_when: false
+  retries: 30
+  delay: 5
+  until:
+    - rancher_wg_self_ping.rc == 0
+    - rancher_wg_self_ping.stdout_lines | first == 'pong'
+    - rancher_wg_self_ping.stdout_lines | last in rancher_wg_nodes | map('extract', wg_socrat_nodes, 'address') | list
+
+- name: Read the installed Rancher release metadata
+  ansible.builtin.command:
+    argv: [helm, list, --namespace, cattle-system, --kubeconfig, "{{ rancher_wg_kubeconfig }}", --filter, '^rancher$', --output, json]
+  register: rancher_wg_release_metadata
+  changed_when: false
+
+- name: Require exactly one deployed Rancher release
+  ansible.builtin.assert:
+    that:
+      - rancher_wg_release_metadata.stdout | from_json | length == 1
+      - (rancher_wg_release_metadata.stdout | from_json)[0].status == 'deployed'
+
+- name: Read the installed Rancher values
+  ansible.builtin.command:
+    argv: [helm, get, values, rancher, --namespace, cattle-system, --kubeconfig, "{{ rancher_wg_kubeconfig }}", --output, json]
+  register: rancher_wg_rancher_values
+  changed_when: false
+  no_log: true
+
+- name: Disable the public Rancher ingress without changing the installed version
+  ansible.builtin.command:
+    argv:
+      - helm
+      - upgrade
+      - rancher
+      - rancher
+      - --repo
+      - https://releases.rancher.com/server-charts/stable
+      - --version
+      - "{{ (rancher_wg_release_metadata.stdout | from_json)[0].chart | regex_replace('^rancher-', '') }}"
+      - --namespace
+      - cattle-system
+      - --kubeconfig
+      - "{{ rancher_wg_kubeconfig }}"
+      - --reuse-values
+      - --set
+      - ingress.enabled=false
+      - --atomic
+      - --wait
+      - --timeout
+      - 10m
+  when: ((rancher_wg_rancher_values.stdout | from_json).ingress | default({})).enabled | default(true) | bool
+  changed_when: true
+  no_log: true
+
+- name: Verify public Rancher ingress is absent
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, "{{ rancher_wg_kubeconfig }}", -n, cattle-system, get, ingress, rancher, --ignore-not-found, -o, name]
+  register: rancher_wg_ingress
+  changed_when: false
+  failed_when: rancher_wg_ingress.stdout | trim | length > 0

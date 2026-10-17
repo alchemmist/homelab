@@ -2,7 +2,6 @@
 home_ingress_ha_vip: 192.168.0.250
 home_ingress_ha_prefix: 32
 home_ingress_ha_router_id: 250
-home_ingress_ha_hostname: rancher.socrat.alchemmist.xyz
 home_ingress_ha_kubeconfig: /etc/rancher/k3s/k3s.yaml
 home_ingress_ha_gateway:
   address: 192.168.0.1

@@ -1,4 +1,5 @@
 ---
+wireguard_private_web_pod_cidrs: [10.42.0.0/16]
 wireguard_private_http_enabled: true
 syncthing_private_ui_extra_virtual_hosts:
   - name: open-webui
@@ -20,6 +21,20 @@ syncthing_private_ui_extra_virtual_hosts:
     tlsSecret: grafana-private-tls
     resolver: 10.43.0.10
     clearAuthorization: true
+  - name: rancher-0
+    allowedCIDRs: [10.250.0.0/24, 10.42.0.0/16]
+    host: rancher.socrat.alchemmist.xyz
+    nodeName: socrat-0
+    upstream: http://rancher.cattle-system.svc.cluster.local:80
+    tlsSecret: rancher-private-tls
+    resolver: 10.43.0.10
+  - name: rancher-1
+    allowedCIDRs: [10.250.0.0/24, 10.42.0.0/16]
+    host: rancher.socrat.alchemmist.xyz
+    nodeName: socrat-1
+    upstream: http://rancher.cattle-system.svc.cluster.local:80
+    tlsSecret: rancher-private-tls
+    resolver: 10.43.0.10
 homelab_desktop_autologin: true
 homelab_desktop_profile: desktop
 homelab_waybar_profile: desktop

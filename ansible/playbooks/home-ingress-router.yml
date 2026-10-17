@@ -8,6 +8,7 @@
     router_expected_old: 192.168.0.23
     router_destination: 192.168.0.250
     router_address: 192.168.0.1
+    router_public_address: 109.173.40.247
     router_helper_directory: "{{ homelab_user_home }}/.cache/homelab-router"
   tasks:
     - name: Require a private controller-side credentials file
@@ -15,14 +16,15 @@
         that: router_credentials_file is defined
         fail_msg: Pass router_credentials_file pointing to private JSON with username and password; never commit it.
 
-    - name: Verify HTTPS through the new ingress address before changing NAT
+    - name: Verify Traefik through the new ingress address before changing NAT
       ansible.builtin.command: >-
-        curl --silent --show-error --fail --max-time 10
-        --resolve rancher.socrat.alchemmist.xyz:443:{{ router_destination }}
-        https://rancher.socrat.alchemmist.xyz/ping
+        curl --silent --show-error --noproxy '*' --max-time 10
+        --output /dev/null --write-out '%{http_code}'
+        --resolve ingress-health.invalid:80:{{ router_destination }}
+        http://ingress-health.invalid/
       register: router_vip_probe
       changed_when: false
-      failed_when: router_vip_probe.rc != 0 or router_vip_probe.stdout != 'pong'
+      failed_when: router_vip_probe.rc != 0 or router_vip_probe.stdout != '404'
 
     - name: Create private router administration storage
       ansible.builtin.file:
@@ -95,10 +97,14 @@
           no_log: true
           changed_when: true
 
-    - name: Verify the public hostname after the router update
-      ansible.builtin.command: curl --silent --show-error --fail --max-time 10 https://rancher.socrat.alchemmist.xyz/ping
+    - name: Verify public Traefik after the router update
+      ansible.builtin.command: >-
+        curl --silent --show-error --noproxy '*' --max-time 10
+        --output /dev/null --write-out '%{http_code}'
+        --resolve ingress-health.invalid:80:{{ router_public_address }}
+        http://ingress-health.invalid/
       register: router_public_probe
       changed_when: false
       retries: 6
       delay: 3
-      until: router_public_probe.rc == 0 and router_public_probe.stdout == 'pong'
+      until: router_public_probe.rc == 0 and router_public_probe.stdout == '404'

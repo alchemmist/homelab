@@ -1,0 +1,103 @@
+- name: Read the installed certificate controller release
+  ansible.builtin.command:
+    argv: [helm, list, --namespace, cert-manager, --kubeconfig, "{{ rancher_wg_kubeconfig }}", --filter, '^cert-manager$', --output, json]
+  register: rancher_wg_cert_release
+  changed_when: false
+
+- name: Require an installed certificate controller
+  ansible.builtin.assert:
+    that:
+      - rancher_wg_cert_release.stdout | from_json | length == 1
+      - (rancher_wg_cert_release.stdout | from_json)[0].chart is match('^cert-manager-v?[0-9]')
+
+- name: Read existing certificate controller settings
+  ansible.builtin.command:
+    argv: [helm, get, values, cert-manager, --namespace, cert-manager, --kubeconfig, "{{ rancher_wg_kubeconfig }}", --output, json]
+  register: rancher_wg_cert_values
+  changed_when: false
+  no_log: true
+
+- name: Preserve certificate controller arguments with public ACME resolvers
+  ansible.builtin.set_fact:
+    rancher_wg_cert_args: "{{ (rancher_wg_cert_values.stdout | from_json | default({}, true)).get('extraArgs', []) | reject('match', '^--acme-http01-solver-nameservers(?:=|$)') | list + ['--acme-http01-solver-nameservers=1.1.1.1:53,9.9.9.9:53'] }}"
+  no_log: true
+
+- name: Persist public ACME self-check DNS before enabling private cluster DNS
+  when: rancher_wg_cert_args != (rancher_wg_cert_values.stdout | from_json | default({}, true)).get('extraArgs', [])
+  block:
+    - name: Allocate certificate controller override file
+      ansible.builtin.tempfile:
+        state: file
+        suffix: -rancher-acme-dns.yaml
+      register: rancher_wg_cert_file
+
+    - name: Render certificate controller DNS override
+      ansible.builtin.copy:
+        dest: "{{ rancher_wg_cert_file.path }}"
+        content: "{{ {'extraArgs': rancher_wg_cert_args} | to_nice_yaml }}"
+        mode: '0600'
+      no_log: true
+
+    - name: Update certificate controller without changing chart version or other settings
+      ansible.builtin.command:
+        argv:
+          - helm
+          - upgrade
+          - cert-manager
+          - cert-manager
+          - --repo
+          - https://charts.jetstack.io
+          - --version
+          - "{{ (rancher_wg_cert_release.stdout | from_json)[0].chart | regex_replace('^cert-manager-', '') }}"
+          - --namespace
+          - cert-manager
+          - --kubeconfig
+          - "{{ rancher_wg_kubeconfig }}"
+          - --reuse-values
+          - --values
+          - "{{ rancher_wg_cert_file.path }}"
+          - --skip-crds
+          - --timeout
+          - 10m
+      changed_when: true
+      no_log: true
+  always:
+    - name: Remove certificate controller override file
+      ansible.builtin.file:
+        path: "{{ rancher_wg_cert_file.path }}"
+        state: absent
+      when: rancher_wg_cert_file is defined and rancher_wg_cert_file.path is defined
+
+- name: Wait for certificate controller rollout before changing cluster DNS
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, "{{ rancher_wg_kubeconfig }}", -n, cert-manager, rollout, status, deployment/cert-manager, --timeout=300s]
+  changed_when: false
+
+- name: Render private Rancher cluster DNS zone
+  ansible.builtin.set_fact:
+    rancher_wg_cluster_dns_zone: |
+      {{ rancher_wg_host }}:53 {
+          errors
+          hosts {
+      {% for node in rancher_wg_nodes %}
+              {{ wg_socrat_nodes[node].address }} {{ rancher_wg_host }}
+      {% endfor %}
+              ttl 30
+              no_reverse
+          }
+          cache 30
+          loadbalance
+      }
+
+- name: Ensure a CoreDNS custom configuration exists without replacing its data
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, "{{ rancher_wg_kubeconfig }}", apply, --server-side, '--field-manager=rancher-private-dns', -f, '-']
+    stdin: "{{ {'apiVersion': 'v1', 'kind': 'ConfigMap', 'metadata': {'name': 'coredns-custom', 'namespace': 'kube-system'}} | to_nice_yaml }}"
+  register: rancher_wg_dns_configmap
+  changed_when: "'created' in rancher_wg_dns_configmap.stdout"
+
+- name: Merge the Rancher DNS zone while preserving other private services
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, "{{ rancher_wg_kubeconfig }}", -n, kube-system, patch, configmap, coredns-custom, --type, merge, -p, "{{ {'data': {'rancher-private.server': rancher_wg_cluster_dns_zone}} | to_json }}"]
+  register: rancher_wg_dns_patch
+  changed_when: "'(no change)' not in rancher_wg_dns_patch.stdout"

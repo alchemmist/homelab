@@ -1,0 +1,9 @@
+rancher_wg_namespace: syncthing
+rancher_wg_release: syncthing
+rancher_wg_kubeconfig: /etc/rancher/k3s/k3s.yaml
+rancher_wg_directory: /home/alchemmist/.cache/homelab-rancher-wg
+rancher_wg_host: rancher.socrat.alchemmist.xyz
+rancher_wg_nodes: [socrat-0, socrat-1]
+rancher_wg_tls_secret: rancher-private-tls
+rancher_wg_cluster_issuer: letsencrypt-http01
+rancher_wg_upstream: http://rancher.cattle-system.svc.cluster.local:80

@@ -1,0 +1,143 @@
+- name: Read installed private gateway values
+  ansible.builtin.command:
+    argv: [helm, get, values, "{{ rancher_wg_release }}", --namespace, "{{ rancher_wg_namespace }}", --kubeconfig, "{{ rancher_wg_kubeconfig }}", --output, json]
+  register: rancher_wg_current
+  changed_when: false
+  no_log: true
+
+- name: Parse private gateway values
+  ansible.builtin.set_fact:
+    rancher_wg_values: "{{ rancher_wg_current.stdout | from_json }}"
+  no_log: true
+
+- name: Require an existing private gateway and authentication secret
+  ansible.builtin.assert:
+    that:
+      - rancher_wg_values.privateGui.enabled | bool
+      - rancher_wg_values.hostNetwork | default(true) | bool
+      - rancher_wg_values.basicAuth.enabled | bool
+      - rancher_wg_values.basicAuth.existingSecret | length > 0
+      - rancher_wg_nodes | difference(rancher_wg_values.privateGui.nodes | map(attribute='nodeName') | list) | length == 0
+
+- name: Read existing Syncthing authentication
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, "{{ rancher_wg_kubeconfig }}", -n, "{{ rancher_wg_namespace }}", get, secret, "{{ rancher_wg_values.basicAuth.existingSecret }}", -o, json]
+  register: rancher_wg_auth_before
+  changed_when: false
+  no_log: true
+
+- name: Discover cluster DNS address
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, "{{ rancher_wg_kubeconfig }}", -n, kube-system, get, service, kube-dns, -o, 'jsonpath={.spec.clusterIP}']
+  register: rancher_wg_dns
+  changed_when: false
+
+- name: Require a cluster DNS service address
+  ansible.builtin.assert:
+    that:
+      - rancher_wg_dns.stdout | length > 0
+      - rancher_wg_dns.stdout != 'None'
+
+- name: Create a certificate for the private Rancher gateway
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, "{{ rancher_wg_kubeconfig }}", apply, -f, '-']
+    stdin: "{{ {'apiVersion': 'cert-manager.io/v1', 'kind': 'Certificate', 'metadata': {'name': rancher_wg_tls_secret, 'namespace': rancher_wg_namespace}, 'spec': {'secretName': rancher_wg_tls_secret, 'dnsNames': [rancher_wg_host], 'issuerRef': {'name': rancher_wg_cluster_issuer, 'kind': 'ClusterIssuer'}}} | to_nice_yaml }}"
+  register: rancher_wg_certificate
+  changed_when: "'created' in rancher_wg_certificate.stdout or 'configured' in rancher_wg_certificate.stdout"
+
+- name: Wait for the private Rancher certificate
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, "{{ rancher_wg_kubeconfig }}", -n, "{{ rancher_wg_namespace }}", wait, '--for=condition=Ready', 'certificate/{{ rancher_wg_tls_secret }}', --timeout=300s]
+  changed_when: false
+
+- name: Initialize Rancher gateway hosts
+  ansible.builtin.set_fact:
+    rancher_wg_hosts: "{{ rancher_wg_values.privateGui.extraVirtualHosts | default([]) | rejectattr('host', 'equalto', rancher_wg_host) | list }}"
+  no_log: true
+
+- name: Add a Rancher gateway on each control plane
+  ansible.builtin.set_fact:
+    rancher_wg_hosts: "{{ rancher_wg_hosts + [{'name': item | replace('socrat-', 'rancher-'), 'nodeName': item, 'host': rancher_wg_host, 'tlsSecret': rancher_wg_tls_secret, 'resolver': rancher_wg_dns.stdout, 'upstream': rancher_wg_upstream, 'allowedCIDRs': ['10.250.0.0/24', '10.42.0.0/16']}] }}"
+  loop: "{{ rancher_wg_nodes }}"
+  no_log: true
+
+- name: Merge Rancher into existing gateway hosts
+  ansible.builtin.set_fact:
+    rancher_wg_merged_values: "{{ rancher_wg_values | combine({'privateGui': {'extraVirtualHosts': rancher_wg_hosts}}, recursive=true) }}"
+  no_log: true
+
+- name: Create private deployment directory
+  ansible.builtin.file:
+    path: "{{ rancher_wg_directory }}"
+    state: directory
+    mode: '0700'
+
+- name: Stage the private gateway chart
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../../../charts/syncthing/"
+    dest: "{{ rancher_wg_directory }}/chart/"
+    mode: preserve
+
+- name: Save merged gateway values
+  ansible.builtin.copy:
+    dest: "{{ rancher_wg_directory }}/values.yaml"
+    content: "{{ rancher_wg_merged_values | to_nice_yaml }}"
+    mode: '0600'
+  no_log: true
+
+- name: Install gateway manifest comparison utility
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../../files/helm_manifest_changed.py"
+    dest: "{{ rancher_wg_directory }}/check-installed-manifest.py"
+    mode: '0600'
+
+- name: Compare desired and installed gateway manifests
+  ansible.builtin.command:
+    argv: [python3, "{{ rancher_wg_directory }}/check-installed-manifest.py", --release, "{{ rancher_wg_release }}", --chart, "{{ rancher_wg_directory }}/chart", --namespace, "{{ rancher_wg_namespace }}", --values, "{{ rancher_wg_directory }}/values.yaml", --kubeconfig, "{{ rancher_wg_kubeconfig }}"]
+  register: rancher_wg_manifest
+  changed_when: false
+
+- name: Add the Rancher virtual host while preserving existing gateway values
+  ansible.builtin.command:
+    argv: [helm, upgrade, "{{ rancher_wg_release }}", "{{ rancher_wg_directory }}/chart", --namespace, "{{ rancher_wg_namespace }}", --kubeconfig, "{{ rancher_wg_kubeconfig }}", --reuse-values, --values, "{{ rancher_wg_directory }}/values.yaml", --atomic, --wait, --timeout, 5m]
+  when: (rancher_wg_manifest.stdout | from_json).changed
+  changed_when: true
+
+- name: Read Syncthing authentication after gateway update
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, "{{ rancher_wg_kubeconfig }}", -n, "{{ rancher_wg_namespace }}", get, secret, "{{ rancher_wg_values.basicAuth.existingSecret }}", -o, json]
+  register: rancher_wg_auth_after
+  changed_when: false
+  no_log: true
+
+- name: Verify existing Syncthing credentials were preserved
+  ansible.builtin.assert:
+    that:
+      - (rancher_wg_auth_before.stdout | from_json).data == (rancher_wg_auth_after.stdout | from_json).data
+  no_log: true
+
+- name: Verify private gateway rollout
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, "{{ rancher_wg_kubeconfig }}", -n, "{{ rancher_wg_namespace }}", rollout, status, daemonset/syncthing, --timeout=120s]
+  changed_when: false
+
+- name: Verify Rancher HTTPS through both WireGuard gateways
+  ansible.builtin.command:
+    argv:
+      - curl
+      - --silent
+      - --show-error
+      - --fail
+      - --noproxy
+      - '*'
+      - --interface
+      - "{{ wg_socrat_nodes[inventory_hostname].address }}"
+      - --resolve
+      - "{{ rancher_wg_host }}:443:{{ wg_socrat_nodes[item].address }}"
+      - --max-time
+      - '15'
+      - "https://{{ rancher_wg_host }}/ping"
+  loop: "{{ rancher_wg_nodes }}"
+  register: rancher_wg_ping
+  changed_when: false
+  failed_when: rancher_wg_ping.rc != 0 or rancher_wg_ping.stdout | trim != 'pong'

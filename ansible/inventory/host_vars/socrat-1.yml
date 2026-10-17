@@ -1,4 +1,5 @@
 ---
+wireguard_private_web_pod_cidrs: [10.42.0.0/16]
 homelab_desktop_autologin: true
 homelab_desktop_login_file: .zshrc
 homelab_desktop_remove_sway: true

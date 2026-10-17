@@ -1,0 +1,93 @@
+- name: Prepare redundant private Rancher HTTPS gateways
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  roles:
+    - role: rancher_wg_access
+
+- name: Enable private HTTPS access from cluster pods
+  hosts: socrat-0:socrat-1
+  gather_facts: true
+  become: true
+  any_errors_fatal: true
+  roles:
+    - role: wireguard_private_web
+
+- name: Configure private Rancher DNS inside the cluster
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  tasks:
+    - name: Publish the internal Rancher cluster DNS route
+      ansible.builtin.include_role:
+        name: rancher_wg_access
+        tasks_from: cluster_dns
+
+- name: Publish Rancher in private WireGuard DNS
+  hosts: socrat-0:socrat-1:socrat-2
+  gather_facts: false
+  become: true
+  serial: 1
+  any_errors_fatal: true
+  tasks:
+    - name: Create the private DNS snippets directory
+      ansible.builtin.file:
+        path: /etc/homelab-private-dns.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Publish both private Rancher addresses
+      ansible.builtin.copy:
+        content: "host-record=rancher.socrat.alchemmist.xyz,{{ wg_socrat_nodes['socrat-0'].address }}\nhost-record=rancher.socrat.alchemmist.xyz,{{ wg_socrat_nodes['socrat-1'].address }}\nlocal=/rancher.socrat.alchemmist.xyz/\n"
+        dest: /etc/homelab-private-dns.d/rancher.conf
+        owner: root
+        group: root
+        mode: '0644'
+      register: rancher_private_dns
+
+    - name: Validate private DNS configuration
+      ansible.builtin.command: dnsmasq --test --conf-file=/etc/homelab-private-dns.conf
+      changed_when: false
+
+    - name: Activate private Rancher DNS
+      ansible.builtin.systemd_service:
+        name: homelab-private-dns.service
+        state: restarted
+      when: rancher_private_dns.changed
+
+- name: Decouple public ingress failover from the private Rancher endpoint
+  hosts: socrat-0:socrat-1
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - name: Load home ingress probe defaults
+      ansible.builtin.include_vars:
+        file: ../roles/home_ingress_ha/defaults/main.yml
+
+    - name: Install the independent public ingress health probe
+      ansible.builtin.template:
+        src: ../roles/home_ingress_ha/templates/check-home-ingress.sh.j2
+        dest: /usr/local/libexec/check-home-ingress
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Verify the public ingress health probe
+      ansible.builtin.command: /usr/local/libexec/check-home-ingress
+      changed_when: false
+
+- name: Remove the public Rancher application route
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  tasks:
+    - name: Disable the Rancher public ingress
+      ansible.builtin.include_role:
+        name: rancher_wg_access
+        tasks_from: disable_ingress

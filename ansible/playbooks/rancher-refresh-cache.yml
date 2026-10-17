@@ -28,7 +28,7 @@
       loop_control:
         loop_var: rancher_cache_pod
 
-    - name: Verify Rancher lists match Kubernetes on every replica and ingress
+    - name: Verify Rancher lists match Kubernetes on every replica and private gateway
       ansible.builtin.command: python3 -
       args:
         stdin: "{{ lookup('file', playbook_dir + '/../files/verify_rancher_nodes.py') }}"
