@@ -11,6 +11,9 @@ spec:
   policyTypes: [Ingress]
   ingress:
     - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: wiki
         - ipBlock:
             cidr: 192.168.0.23/32
         - ipBlock:
@@ -30,6 +33,20 @@ spec:
       ports:
         - port: 8080
           protocol: TCP
+---
+# Source: wiki-editor/templates/workload.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wiki-editor-data
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 5Gi
 ---
 # Source: wiki-editor/templates/workload.yaml
 apiVersion: v1
@@ -72,7 +89,7 @@ spec:
         - name: ghcr-pull
       containers:
         - name: editor
-          image: "ghcr.io/alchemmist/socrat-wiki-editor@sha256:daf4ab626b26516ae3cf69833d9b5d337c328640fb911312080d9c929d1d6f71"
+          image: "ghcr.io/alchemmist/socrat-wiki-editor@sha256:74e47d3b440016a6026778ca9df0451fee9c67b9b5bc8d38bcf9bd6f88c8b969"
           ports:
             - name: http
               containerPort: 8080
@@ -82,6 +99,12 @@ spec:
             capabilities:
               drop: [ALL]
           env:
+            - name: LIVE_MODE
+              value: "true"
+            - name: LIVE_TEMPLATE_DIR
+              value: /opt/wiki
+            - name: LIVE_STATE_DIR
+              value: /data/live
             - name: GIT_REPOSITORY
               value: git@github.com:alchemmist/homelab.git
             - name: PUBLIC_ORIGIN
@@ -97,8 +120,15 @@ spec:
                 secretKeyRef:
                   name: wiki-editor-auth
                   key: gateway-token
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+            failureThreshold: 120
           readinessProbe:
-            tcpSocket:
+            httpGet:
+              path: /healthz
               port: http
             periodSeconds: 5
           livenessProbe:
@@ -107,11 +137,11 @@ spec:
             periodSeconds: 15
           resources:
             requests:
-              cpu: 50m
-              memory: 128Mi
+              cpu: 100m
+              memory: 256Mi
             limits:
-              cpu: '1'
-              memory: 512Mi
+              cpu: '2'
+              memory: 1Gi
           volumeMounts:
             - name: work
               mountPath: /data
@@ -125,11 +155,11 @@ spec:
               readOnly: true
       volumes:
         - name: work
-          emptyDir:
-            sizeLimit: 1Gi
+          persistentVolumeClaim:
+            claimName: wiki-editor-data
         - name: tmp
           emptyDir:
-            sizeLimit: 64Mi
+            sizeLimit: 256Mi
         - name: git-key
           secret:
             secretName: wiki-editor-git
