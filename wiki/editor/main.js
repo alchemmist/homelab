@@ -110,7 +110,7 @@ function initialize() {
         if (generation!==token) return;
         if (result.status === 'failed') { message('Изменения сохранены, но публикация не прошла. Обратитесь к администратору.',true); return; }
         if (result.status === 'published') {
-          message('Заметка опубликована. '); const link = document.createElement('a'); link.textContent = 'Открыть страницу'; const target = new URL(result.url || url,location.origin); if (target.origin===location.origin) link.href=target.href; status.append(link); return;
+          message('Заметка опубликована. '); const link = document.createElement('a'); link.textContent = 'Открыть страницу'; const target = new URL(url || result.url,location.origin); if (target.origin===location.origin) link.href=target.href; status.append(link); return;
         }
       } catch { message('Правки сохранены. Проверка публикации временно недоступна.'); }
     }
