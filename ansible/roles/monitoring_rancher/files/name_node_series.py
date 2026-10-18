@@ -9,7 +9,6 @@ from dashboard_descriptions import apply_descriptions
 
 DASHBOARD_UID = 'rancher-cluster-nodes-1'
 RANCHER_DASHBOARD_UIDS = {
-    'rancher-home-1',
     'rancher-cluster-1',
     'rancher-cluster-nodes-1',
     'rancher-etcd-1',
@@ -23,6 +22,7 @@ RANCHER_DASHBOARD_UIDS = {
     'rancher-workload-1',
     'rancher-workload-pods-1',
 }
+EXCLUDED_DASHBOARD_UIDS = {'rancher-home-1'}
 NODE_NAMES = 'max by (instance, nodename) (node_uname_info{job="node-exporter"})'
 
 NODE_DASHBOARD_UIDS = {'rancher-node-1', 'rancher-node-detail-1'}
@@ -123,16 +123,23 @@ def panels(dashboard):
 def main():
     manifests = list(yaml.safe_load_all(sys.stdin))
     found = set()
+    retained = []
     for manifest in manifests:
         if not manifest or manifest.get('kind') != 'ConfigMap':
+            retained.append(manifest)
             continue
         dashboard_uids = set()
-        for name, content in manifest.get('data', {}).items():
+        removed_dashboard = False
+        for name, content in list(manifest.get('data', {}).items()):
             if not name.endswith('.json'):
                 continue
             dashboard = json.loads(content)
             uid = dashboard.get('uid')
             if not uid:
+                continue
+            if uid in EXCLUDED_DASHBOARD_UIDS:
+                del manifest['data'][name]
+                removed_dashboard = True
                 continue
             dashboard_uids.add(uid)
             if uid in RANCHER_DASHBOARD_UIDS:
@@ -169,9 +176,12 @@ def main():
             metadata = manifest.setdefault('metadata', {})
             metadata['annotations'] = metadata.get('annotations') or {}
             metadata['annotations']['grafana_folder'] = '/tmp/dashboards/' + folder
+        if removed_dashboard and not manifest.get('data') and not manifest.get('binaryData'):
+            continue
+        retained.append(manifest)
     if found != RANCHER_DASHBOARD_UIDS:
         raise RuntimeError('The pinned chart is missing Rancher dashboards: ' + ', '.join(sorted(RANCHER_DASHBOARD_UIDS - found)))
-    yaml.safe_dump_all(manifests, sys.stdout, sort_keys=False)
+    yaml.safe_dump_all(retained, sys.stdout, sort_keys=False)
 
 
 if __name__ == '__main__':
