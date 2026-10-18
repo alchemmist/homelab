@@ -125,3 +125,5 @@
     - wireguard_private_web
 
 - import_playbook: open-webui-compaction.yml
+
+- import_playbook: open-webui-sampling.yml

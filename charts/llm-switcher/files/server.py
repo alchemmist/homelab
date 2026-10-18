@@ -296,6 +296,8 @@ class Gateway:
                         stage = 'context_preparation'
                         raw, context_info = await self.prepare_context(raw, model)
                     stage = 'inference'
+                    sampling = {key: value for key, value in json.loads(raw).items() if key in ('temperature', 'top_p', 'top_k', 'min_p', 'presence_penalty', 'frequency_penalty', 'repetition_penalty', 'max_tokens', 'max_completion_tokens') and isinstance(value, (int, float)) and not isinstance(value, bool)}
+                    LOG.info('sampling request=%s model=%s values=%s', request_id, model, json.dumps(sampling, sort_keys=True))
                     for attempt in range(3):
                         async with self.session.post(BACKEND + request.path, data=body_chunks(raw), headers={'Authorization': 'Bearer ' + KEY, 'Content-Type': 'application/json', 'Content-Length': str(len(raw))}, timeout=ClientTimeout(total=None, sock_connect=10, sock_read=1800)) as upstream:
                             rejected = None
