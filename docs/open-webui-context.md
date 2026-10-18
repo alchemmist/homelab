@@ -1,21 +1,27 @@
-# Open WebUI context compaction
+# Exact context budgeting for Qwen chats
 
-Open WebUI v0.12.3 has native context compaction, including between native tool-call rounds. It is disabled by default. The homelab configuration enables it at 75,000 tokens, caps model-specific thresholds at the same value, and retains 40 percent of recent messages at valid turn/tool boundaries. This leaves headroom below Qwen's 114,688-token context for its 16,384-token output allowance and new tool results. The threshold is not an exact request-size guarantee: token estimates and large individual tool results can still exceed the budget.
+The inference gateway checks every `/v1/chat/completions` request after Open WebUI and LiteLLM have assembled the messages, tool definitions and images. It asks the running vLLM `/tokenize` endpoint for the actual chat-template token count. The pinned Qwen renderer counts expanded image tokens and tool definitions; documents, reasoning settings and template options are forwarded consistently.
 
-Apply the persisted settings without restarting WebUI or inference:
+Compaction starts above 95,000 input tokens, or earlier if the requested output allowance requires it. Its target is at most 90,000 input tokens, leaving room for the normal 16,384-token answer within the 114,688-token model window. Short chats are not padded or compacted. Whole tool-call/result groups are retained where possible; a large boundary result is shortened to retain as much useful recent context as fits. The first user goal and latest request are carried into the checkpoint.
+
+Older history is summarized directly by vLLM while the gateway owns the inference slot, avoiding a recursive call through the scheduler. Summary requests are independently token-counted and bounded. A small in-memory LRU caches repeated summaries. On summary failure, deterministic pruning continues automatically. Older images, large tool output and historical text can be omitted; extreme inputs can require dropping tool definitions or shortening instructions. These are lossy transformations of the active request, not edits to saved chats or terminal files. Published artifacts remain unchanged.
+
+The final request is counted again before inference. Context-related backend rejections are intercepted before response streaming and retried with smaller budgets. A tokenizer/backend outage can still produce an infrastructure error; oversized verified payloads are never knowingly dispatched. Other APIs (`/v1/responses` and `/v1/completions`) retain their existing behavior and are outside this chat-budget contract. The existing 64 MiB HTTP body limit is separate from the token budget.
+
+Open WebUI's native percentage-based compaction is disabled to avoid a second, more aggressive reduction to 40 percent of messages. Full saved history remains in WebUI, while only the outgoing inference payload is compacted. The gateway exposes `X-Context-Input-Tokens` and `X-Context-Compacted` response headers and a `context_compactions` counter in its authenticated status endpoint. The process does not ask users for confirmation.
+
+Deploy the gateway, wait for readiness, and then configure WebUI:
 
 ```sh
 cd ansible
-ansible-playbook playbooks/open-webui-compaction.yml
+ansible-playbook playbooks/llm-context-budget.yml
 ```
 
-The normal `open-webui.yml` deployment also imports this playbook. The helper merges the live chat configuration through the administrative API, preserves unrelated tool settings, and verifies readback. It requires one administrator without an MFA requirement. With MFA, use the authenticated administration interface. Repeated application reports no changes.
+The playbook waits for current gateway work to finish before rolling out; it does not restart vLLM or change model arguments. `open-webui-compaction.yml` applies only the WebUI side. The local administrative helper preserves unrelated chat settings and requires a single administrator without MFA; with MFA, use the authenticated administration interface.
 
-The compaction prompt requests a factual continuation checkpoint with goals, constraints, verified results, artifact paths, failures and pending work. It explicitly distinguishes summarizing a transcript from continuing its task. The configured compaction model, or the conversation model when none is selected, generates the checkpoint.
+Validation covers exact recount, output reserve, tool pairs, oversized individual results, summary failures, retention near the target, images, retry before streaming, history immutability and request admission cleanup. Live vLLM checks counted a 120,012-token input despite its 114,688-token window and counted a 512px image as part of the prompt.
 
-Compaction does not delete saved conversation history or terminal files. It stores a `contextSummary` checkpoint that replaces earlier messages only in the model's active context. Keep a private backup before recovering a previously overflowing chat and inspect the generated checkpoint before resuming.
-
-In v0.12.3, manual branch compaction formats saved assistant prose but can omit native tool calls/results stored in `output`. Preserve relevant verified paths and tool state explicitly when recovering such a chat. Automatic compaction within the tool loop receives expanded tool messages. A successful compaction HTTP response alone is not evidence that its summary preserves enough information.
+On 2026-10-18, a live request with 198,085 input tokens and a 16,384-token output allowance was compacted to exactly 90,000 input tokens. vLLM confirmed `prompt_tokens: 90000` and returned the requested `CONTEXT_BUDGET_OK` marker. The same request through WebUI's configured LiteLLM endpoint also succeeded with 90,000 prompt tokens. The saved conversation history was not involved in this synthetic test.
 
 References:
 - https://docs.openwebui.com/troubleshooting/context-window/

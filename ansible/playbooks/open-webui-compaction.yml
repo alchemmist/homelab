@@ -1,5 +1,5 @@
 ---
-- name: Enable automatic context compaction for long chats
+- name: Use gateway context budgeting instead of percentage-based WebUI compaction
   hosts: socrat-0
   gather_facts: false
   become: false

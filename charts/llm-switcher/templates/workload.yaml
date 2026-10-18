@@ -6,6 +6,8 @@ metadata:
 data:
   server.py: |
 {{ .Files.Get "files/server.py" | indent 4 }}
+  context_budget.py: |
+{{ .Files.Get "files/context_budget.py" | indent 4 }}
   profiles.json: |
 {{ .Files.Get "files/profiles.json" | indent 4 }}
 ---
@@ -66,6 +68,7 @@ spec:
         app: llm-switcher
       annotations:
         checksum/server: {{ .Files.Get "files/server.py" | sha256sum }}
+        checksum/context-budget: {{ .Files.Get "files/context_budget.py" | sha256sum }}
         checksum/profiles: {{ .Files.Get "files/profiles.json" | sha256sum }}
     spec:
       serviceAccountName: llm-switcher
