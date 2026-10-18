@@ -1,4 +1,7 @@
 defaultRules:
+  disabled:
+    KubeNodeNotReady: true
+    KubeNodePressure: true
   additionalRuleAnnotations:
     KubeMemoryOvercommit:
       rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer'
