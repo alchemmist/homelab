@@ -26,4 +26,6 @@ The managed terminal instructions recommend roughly 8,000 characters or 150 line
 
 These measures reduce the risk of repetitive generation and truncated tool arguments. They do not implement a streaming repetition detector or guarantee that all long tasks will complete. Changing thinking mode requires revisiting the sampling profile.
 
+Validation on 2026-10-18: a real WebUI request reached the gateway after LiteLLM with all six intended sampler values. The model generated a 25,805-byte HTML table through an 808-character shell command; all 600 number/square pairs were checked. A second configuration run reported zero changes and preserved model ownership, permissions and system instructions.
+
 Reference: https://huggingface.co/Qwen/Qwen3.8-27B#best-practices
