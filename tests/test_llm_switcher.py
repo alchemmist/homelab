@@ -2,6 +2,7 @@ import asyncio
 import importlib.util
 import json
 import os
+import sys
 from pathlib import Path
 import unittest
 from unittest.mock import patch
@@ -12,6 +13,7 @@ from aiohttp.test_utils import TestClient, TestServer
 ROOT = Path(os.environ.get('SWITCHER_ROOT', Path(__file__).resolve().parents[1]))
 PROFILE_PATH = ROOT / 'charts/llm-switcher/files/profiles.json'
 SOURCE_PATH = ROOT / 'charts/llm-switcher/files/server.py'
+sys.path.insert(0, str(SOURCE_PATH.parent))
 PROFILES_TEXT = PROFILE_PATH.read_text()
 READ_TEXT = Path.read_text
 
@@ -89,6 +91,9 @@ class GatewayTests(unittest.IsolatedAsyncioTestCase):
             self.calls.append(name)
 
         self.gateway.ensure_model = ensure
+        async def unchanged_context(raw, model, **kwargs):
+            return raw, {}
+        self.gateway.prepare_context = unchanged_context
         app = web.Application(client_max_size=switcher.MAX_REQUEST_BYTES, handler_args={'auto_decompress': False})
         app.router.add_route('*', '/{path:.*}', self.gateway.handle)
         self.client = TestClient(TestServer(app, handler_cancellation=True))

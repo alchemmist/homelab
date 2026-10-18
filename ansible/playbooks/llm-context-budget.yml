@@ -1,0 +1,47 @@
+---
+- name: Deploy exact context budgeting at the inference gateway
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  tasks:
+    - name: Copy the model gateway chart
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/../../charts/llm-switcher/'
+        dest: '{{ homelab_user_home }}/tmp-charts/llm-switcher/'
+        mode: preserve
+    - name: Validate the model gateway chart
+      ansible.builtin.command: helm lint {{ homelab_user_home }}/tmp-charts/llm-switcher
+      changed_when: false
+    - name: Wait for current gateway work to finish before rollout
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - -n
+          - llm
+          - exec
+          - deployment/llm-switcher
+          - --
+          - python3
+          - -c
+          - |
+            import json, os, urllib.request
+            request = urllib.request.Request('http://127.0.0.1:8000/status', headers={'Authorization': 'Bearer ' + os.environ['BACKEND_API_KEY']})
+            with urllib.request.urlopen(request, timeout=5) as response:
+                status = json.load(response)
+            print(json.dumps({'idle': not status['running'] and status['in_flight'] == 0}))
+      register: context_gateway_idle
+      changed_when: false
+      until: (context_gateway_idle.stdout | from_json).idle
+      retries: 120
+      delay: 5
+    - name: Upgrade the gateway with graceful request draining
+      ansible.builtin.command: >-
+        helm upgrade --install llm-switcher {{ homelab_user_home }}/tmp-charts/llm-switcher
+        -n llm -f {{ homelab_user_home }}/tmp-charts/llm-switcher/values.yaml
+        --atomic --wait --timeout 35m
+      changed_when: true
+
+- import_playbook: open-webui-compaction.yml
