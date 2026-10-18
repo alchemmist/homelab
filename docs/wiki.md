@@ -14,7 +14,7 @@ The declared architecture uses one Fleet bundle consuming the upstream chart and
 
 The release name is `wiki-runtime` in namespace `wiki`; its service is `wiki-runtime-wiki.wiki.svc.cluster.local:8080`. The runtime uses a single writer and the new `wiki-runtime-data` PVC. Never attach both old and new writers to the same volume. Keep the old `wiki-editor-data` PVC intact throughout migration and the rollback window. Preserve `contentPrefix: wiki/content` so existing history and queued changes retain their paths.
 
-`deploy/wiki-runtime/values.yaml` carries the Russian Hugo configuration and Socrat logo through `siteConfig` and `staticFiles`. The blog’s CourierCyr fonts are instance-owned `staticBinaryFiles`, configured under `params.content.typography`; the shared upstream image does not contain these font binaries. Bootstrap and Git SSH credentials belong in Kubernetes Secrets. The upstream image and chart are public and require no registry credentials. The bootstrap secret creates the first local administrator; it is not a permanent shared login. Configure remote Git only after the old synchronization worker has stopped and its pending state has been inspected.
+`deploy/wiki-runtime/values.yaml` carries the English interface configuration and Socrat logo through `siteConfig` and `staticFiles`. The blog’s CourierCyr fonts are instance-owned `staticBinaryFiles`, configured under `params.content.typography`; the shared upstream image does not contain these font binaries. Bootstrap and Git SSH credentials belong in Kubernetes Secrets. The upstream image and chart are public and require no registry credentials. The bootstrap secret creates the first local administrator; it is not a permanent shared login. Configure remote Git only after the old synchronization worker has stopped and its pending state has been inspected.
 
 ## Bootstrap and recovery
 
@@ -24,7 +24,7 @@ For a clean installation without legacy Git credentials, the playbook supports `
 
 ## Access and publication
 
-Anonymous users can read the public wiki. Local accounts authorize editing from either the internet or WireGuard. Reader, editor and administrator roles apply across the wiki. There is no OIDC and no trusted-WG-header bypass. The backend checks permissions and CSRF on requests; hiding controls is not authorization. Login is available at `/login`. Account settings and administrator user management are full pages at `/admin`; existing accounts and passwords persist across upgrades.
+Anonymous users can read the public wiki. Local accounts authorize editing from either the internet or WireGuard. Reader, editor and administrator roles apply across the wiki. There is no OIDC and no trusted-WG-header bypass. The backend checks permissions and CSRF on requests; hiding controls is not authorization. The interface uses English; the Markdown content remains Russian. Login is available at `/login`. Account settings and administrator user management are full pages at `/admin`; existing accounts and passwords persist across upgrades.
 
 The browser stages content and structural changes together across pages. Publication validates revisions, applies the complete patch, renders with Hugo and atomically exposes the accepted result. A conflict or failed build must preserve the browser draft and leave the previous publication available. Git synchronization happens afterward; interactive publication does not wait for GitHub Actions or Fleet.
 

@@ -22,8 +22,8 @@ siteConfig: |
   _merge = 'deep'
   baseURL = 'https://wiki.alchemmist.xyz/'
   title = 'Socrat Wiki'
-  defaultContentLanguage = 'ru'
-  locale = 'ru-RU'
+  defaultContentLanguage = 'en'
+  locale = 'en-US'
   disableKinds = ['taxonomy', 'term', 'RSS', 'sitemap']
   enableRobotsTXT = true
 
