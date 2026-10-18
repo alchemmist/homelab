@@ -1,0 +1,94 @@
+---
+- name: Read Rancher node metadata through the administrator account
+  ansible.builtin.command:
+    argv: "{{ homelab_welcome_kubectl + ['get', 'node', inventory_hostname, '-o', 'json', '--request-timeout=10s'] }}"
+  delegate_to: "{{ homelab_welcome_metadata_host }}"
+  become: false
+  changed_when: false
+  check_mode: false
+  register: welcome_node_result
+  when: homelab_welcome_enabled
+
+- name: Prepare public node metadata
+  ansible.builtin.set_fact:
+    welcome_node: "{{ welcome_node_result.stdout | from_json }}"
+  when: homelab_welcome_enabled
+
+- name: Create SSH welcome directory
+  ansible.builtin.file:
+    path: /etc/homelab-welcome
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Install welcome renderer
+  ansible.builtin.copy:
+    src: welcome.py
+    dest: /etc/homelab-welcome/welcome.py
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Install portrait animation module
+  ansible.builtin.copy:
+    src: portrait_animation.py
+    dest: /etc/homelab-welcome/portrait_animation.py
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Install sampled patina colors
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../../../assets/socrates-patina.json"
+    dest: /etc/homelab-welcome/patina.json
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Install portrait samples
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../../../assets/socrates-braille.json"
+    dest: /etc/homelab-welcome/portraits.json
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Install public welcome configuration
+  ansible.builtin.template:
+    src: config.json.j2
+    dest: /etc/homelab-welcome/config.json
+    owner: root
+    group: root
+    mode: '0644'
+  when: homelab_welcome_enabled
+
+- name: Install guarded SSH welcome hook
+  ansible.builtin.template:
+    src: welcome.sh.j2
+    dest: /etc/profile.d/homelab-welcome.sh
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Find installed global interactive shell configuration
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop: [/etc/bash.bashrc, /etc/bashrc, /etc/zsh/zshrc, /etc/zshrc]
+  register: welcome_shell_configs
+
+- name: Enable SSH welcome for bash and zsh
+  ansible.builtin.blockinfile:
+    path: "{{ item.item }}"
+    marker: '# {mark} HOMELAB SSH WELCOME'
+    block: '. /etc/profile.d/homelab-welcome.sh'
+  loop: "{{ welcome_shell_configs.results }}"
+  when: item.stat.exists
+
+- name: Suppress the distribution MOTD in SSH sessions
+  ansible.builtin.lineinfile:
+    path: /etc/pam.d/sshd
+    regexp: '^\s*session\s+optional\s+pam_motd\.so(?:\s.*)?$'
+    state: absent
+    backup: true
+  when: homelab_welcome_enabled
