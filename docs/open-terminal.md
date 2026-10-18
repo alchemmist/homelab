@@ -18,6 +18,8 @@ Alternatively use Settings > Admin > Integrations > Open Terminal: add the inter
 
 ## Chat attachments
 
+The deployment maintains a block in `/home/user/AGENTS.md` instructing the model to use a fresh conversation directory with `work/` and `outputs/`, and deliver final files with `display_file(path=..., inline=true)`. Open WebUI reads these instructions on every message with the terminal selected. Apply only these instructions without restarting services using `ansible-playbook playbooks/open-terminal-instructions.yml`. Other existing instructions are preserved. This is a model instruction, not enforced filesystem isolation. Published outputs must remain at their original paths for existing chat cards to work; no automatic deletion is configured.
+
 The connection uses `config.chat_uploads: filesystem`. Select Socrat Terminal before attaching a file in a normal chat. Open WebUI uploads images and other attachments to the terminal's current directory and includes the file path in the message. The model can use `read_file` to inspect an image, `run_command` to process it with Python, and `display_file` to return the generated file. Uploading an image alone does not automatically include its pixels in the model context in this mode.
 
 For an existing connection, apply the setting without restarting either service:

@@ -1,0 +1,45 @@
+---
+- name: Maintain workspace and inline delivery instructions
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  tasks:
+    - name: Update the managed instructions without restarting the terminal
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - -n
+          - llm
+          - exec
+          - -i
+          - deployment/open-terminal
+          - --
+          - python
+          - -c
+          - |
+            import json
+            import sys
+            from pathlib import Path
+
+            path = Path('/home/user/AGENTS.md')
+            begin = '<!-- homelab-workspace-delivery:start -->'
+            end = '<!-- homelab-workspace-delivery:end -->'
+            block = begin + '\n' + sys.stdin.read().strip() + '\n' + end
+            before = path.read_text() if path.exists() else ''
+            if begin in before or end in before:
+                if before.count(begin) != 1 or before.count(end) != 1 or before.index(begin) > before.index(end):
+                    raise RuntimeError('Invalid managed instruction markers')
+                after = before[:before.index(begin)] + block + before[before.index(end) + len(end):]
+            else:
+                after = before + ('\n\n' if before else '') + block + '\n'
+            if after != before:
+                path.write_text(after)
+            if path.read_text() != after:
+                raise RuntimeError('Instruction readback failed')
+            print(json.dumps({'changed': after != before, 'path': str(path)}))
+        stdin: "{{ lookup('file', playbook_dir + '/../files/open-terminal-AGENTS.md') }}"
+      register: terminal_instructions
+      changed_when: (terminal_instructions.stdout | from_json).changed
