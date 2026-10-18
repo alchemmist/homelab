@@ -202,6 +202,80 @@ class ContextBudgetTests(unittest.IsolatedAsyncioTestCase):
         self.assertLessEqual(await count_tokens(result), 90000)
         self.assertIn(body['messages'][-1], result['messages'])
 
+    async def test_old_images_are_evicted_before_important_text_without_summary(self):
+        old_image = {'type': 'image_url', 'image_url': {'url': 'data:image/png;base64,' + 'A' * 70000}}
+        fresh_image = {'type': 'image_url', 'image_url': {'url': 'data:image/png;base64,' + 'B' * 10000}}
+        body = self.body([
+            {'role': 'user', 'content': [{'type': 'text', 'text': 'Original requirements remain important'}, old_image]},
+            {'role': 'assistant', 'content': 'IMPORTANT_DECISIONS: ' + 'x' * 20000},
+            {'role': 'user', 'content': [{'type': 'text', 'text': 'Use this latest reference'}, fresh_image]},
+        ])
+        before = copy.deepcopy(body)
+
+        summary_calls = []
+
+        async def forbidden_summary(*args):
+            summary_calls.append(args)
+            self.fail('Evicting old images alone fits the target; text must not be summarized')
+
+        result, info = await MODULE.compact_chat(body, 114688, count_tokens, forbidden_summary)
+        self.assertLessEqual(await count_tokens(result), 90000)
+        self.assertEqual(body, before)
+        self.assertEqual(result['messages'][1], body['messages'][1])
+        self.assertEqual(result['messages'][-1], body['messages'][-1])
+        self.assertIn(body['messages'][0]['content'][0], result['messages'][0]['content'])
+        self.assertNotIn(old_image, result['messages'][0]['content'])
+        self.assertTrue(info['compacted'])
+        self.assertFalse(info['summary_used'])
+        self.assertEqual(summary_calls, [])
+
+    async def test_old_tool_image_eviction_preserves_pairs_and_latest_user_image_batch(self):
+        old_image = {'type': 'image_url', 'image_url': {'url': 'data:image/png;base64,' + 'A' * 100000}}
+        fresh_images = [
+            {'type': 'image_url', 'image_url': {'url': 'data:image/png;base64,' + 'B' * 1000}},
+            {'type': 'image_url', 'image_url': {'url': 'data:image/png;base64,' + 'C' * 1000}},
+        ]
+        body = self.body([
+            {'role': 'user', 'content': 'Compare the generated sea with my references'},
+            {'role': 'assistant', 'content': None, 'tool_calls': [{'id': 'old-shot', 'type': 'function', 'function': {'name': 'screenshot', 'arguments': '{}'}}]},
+            {'role': 'tool', 'tool_call_id': 'old-shot', 'content': [{'type': 'text', 'text': 'Screenshot saved at /home/user/old.png'}, old_image]},
+            {'role': 'user', 'content': [{'type': 'text', 'text': 'These are the current references'}, *fresh_images]},
+        ])
+        before = copy.deepcopy(body)
+
+        summary_calls = []
+
+        async def forbidden_summary(*args):
+            summary_calls.append(args)
+            self.fail('Old image removal suffices; no text summarization is needed')
+
+        result, _ = await MODULE.compact_chat(body, 114688, count_tokens, forbidden_summary)
+        self.assertLessEqual(await count_tokens(result), 90000)
+        self.assertEqual(body, before)
+        self.assert_tool_pairs(result['messages'])
+        self.assertEqual(result['messages'][-1], body['messages'][-1])
+        self.assertEqual(result['messages'][1], body['messages'][1])
+        tool_reply = next(message for message in result['messages'] if message['role'] == 'tool')
+        self.assertIn(body['messages'][2]['content'][0], tool_reply['content'])
+        self.assertNotIn(old_image, tool_reply['content'])
+        self.assertEqual(summary_calls, [])
+
+    async def test_images_below_threshold_are_not_evicted(self):
+        body = self.body([
+            {'role': 'user', 'content': [{'type': 'image_url', 'image_url': {'url': 'data:image/png;base64,' + 'A' * 1000}}]},
+            {'role': 'assistant', 'content': 'First reference inspected'},
+            {'role': 'user', 'content': [{'type': 'text', 'text': 'Second reference'}, {'type': 'image_url', 'image_url': {'url': 'data:image/png;base64,' + 'B' * 1000}}]},
+        ])
+        before = copy.deepcopy(body)
+
+        async def forbidden_summary(*args):
+            self.fail('Below-threshold requests should remain unchanged')
+
+        result, info = await MODULE.compact_chat(body, 114688, count_tokens, forbidden_summary)
+        self.assertEqual(result, before)
+        self.assertEqual(body, before)
+        self.assertFalse(info['compacted'])
+
     async def test_force_compacts_even_below_trigger(self):
         body = self.body([{'role': 'user', 'content': 'x' * 92000}])
         result, info = await MODULE.compact_chat(body, 114688, count_tokens, summarize, force=True)

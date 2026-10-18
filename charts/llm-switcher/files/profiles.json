@@ -20,7 +20,7 @@
       "--mm-processor-kwargs",
       "{\"images_kwargs\":{\"size\":{\"longest_edge\":1048576,\"shortest_edge\":65536}}}",
       "--mm-processor-cache-gb",
-      "0.25",
+      "0",
       "--kv-cache-dtype",
       "fp8",
       "--enable-auto-tool-choice",

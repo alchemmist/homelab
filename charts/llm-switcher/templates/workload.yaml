@@ -1,3 +1,6 @@
+{{- $current := lookup "v1" "ConfigMap" .Release.Namespace "llm-switcher" -}}
+{{- $profiles := .Files.Get "files/profiles.json" | fromJson -}}
+{{- $sameSingleProfile := and (eq (len $profiles) 1) $current (eq (get $current.data "profiles.json" | fromJson | toJson) ($profiles | toJson)) -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -58,7 +61,14 @@ metadata:
 spec:
   replicas: 1
   strategy:
+    {{- if $sameSingleProfile }}
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    {{- else }}
     type: Recreate
+    {{- end }}
   selector:
     matchLabels:
       app: llm-switcher

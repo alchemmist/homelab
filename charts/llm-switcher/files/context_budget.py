@@ -17,6 +17,38 @@ def text_content(content):
     return ''
 
 
+def discard_historical_images(messages):
+    def has_images(message):
+        return isinstance(message.get('content'), list) and any(isinstance(part, dict) and part.get('type') in ('image_url', 'input_image') for part in message['content'])
+
+    visual_indices = [index for index, message in enumerate(messages) if has_images(message)]
+    if not visual_indices:
+        return 0
+    latest = visual_indices[-1]
+    protected = {latest}
+    user_indices = [index for index, message in enumerate(messages) if message.get('role') == 'user' and text_content(message.get('content')).strip()]
+    if user_indices:
+        protected.add(user_indices[-1])
+    if not text_content(messages[latest].get('content')).strip():
+        for index in range(latest - 1, -1, -1):
+            message = messages[index]
+            if message.get('role') == 'assistant' and message.get('tool_calls'):
+                protected.update(range(index, latest + 1))
+                break
+            if message.get('role') == 'tool' or (has_images(message) and not text_content(message.get('content')).strip()):
+                continue
+            break
+    removed = 0
+    for index in visual_indices:
+        if index in protected:
+            continue
+        for part_index, part in enumerate(messages[index]['content']):
+            if isinstance(part, dict) and part.get('type') in ('image_url', 'input_image'):
+                messages[index]['content'][part_index] = {'type': 'text', 'text': '[Earlier image omitted from active context; the original remains in chat history.]'}
+                removed += 1
+    return removed
+
+
 def history_groups(messages):
     groups = []
     for message in messages:
@@ -107,6 +139,13 @@ async def compact_chat(body, context_window, count, summarize, force=False):
         working['max_completion_tokens'] = reserve
     elif body.get('max_tokens'):
         working['max_tokens'] = reserve
+    removed_images = discard_historical_images(working.get('messages', []))
+    info['removed_images'] = removed_images
+    if removed_images:
+        image_trimmed_tokens = await count(working)
+        if image_trimmed_tokens <= target:
+            info.update(compacted=True, input_tokens=image_trimmed_tokens, removed_groups=0)
+            return working, info
     fixed = [message for message in working.get('messages', []) if message.get('role') in ('system', 'developer')]
     groups = history_groups([message for message in working.get('messages', []) if message.get('role') not in ('system', 'developer')])
     user_messages = [message for message in working.get('messages', []) if message.get('role') == 'user']
