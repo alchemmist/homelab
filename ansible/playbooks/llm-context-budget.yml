@@ -15,7 +15,11 @@
     - name: Validate the model gateway chart
       ansible.builtin.command: helm lint {{ homelab_user_home }}/tmp-charts/llm-switcher
       changed_when: false
-    - name: Wait for current gateway work to finish before rollout
+    - name: Read the deployed model profile before choosing rollout behavior
+      ansible.builtin.command: kubectl -n llm get configmap llm-switcher -o json
+      register: context_gateway_config
+      changed_when: false
+    - name: Require idle inference only when model profiles change or multiple models are configured
       ansible.builtin.command:
         argv:
           - kubectl
@@ -37,6 +41,10 @@
       until: (context_gateway_idle.stdout | from_json).idle
       retries: 120
       delay: 5
+      when: >-
+        ((context_gateway_config.stdout | from_json).data['profiles.json'] | from_json)
+        != (lookup('file', playbook_dir + '/../../charts/llm-switcher/files/profiles.json') | from_json)
+        or (lookup('file', playbook_dir + '/../../charts/llm-switcher/files/profiles.json') | from_json | length) != 1
     - name: Upgrade the gateway with graceful request draining
       ansible.builtin.command: >-
         helm upgrade --install llm-switcher {{ homelab_user_home }}/tmp-charts/llm-switcher

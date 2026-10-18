@@ -134,6 +134,7 @@ class Gateway:
         payload['chat_template_kwargs'] = kwargs
         async with self.session.post(BACKEND + '/tokenize', json=payload, headers={'Authorization': 'Bearer ' + KEY}, timeout=ClientTimeout(total=120)) as response:
             if response.status != 200:
+                LOG.error('backend_tokenization_failed model=%s status=%s', body.get('model'), response.status)
                 raise RuntimeError('Backend tokenization failed: ' + str(response.status))
             result = await response.json()
         return int(result['count'])
@@ -188,7 +189,7 @@ class Gateway:
             info['omitted_images'] = omitted_images
         if info.get('compacted'):
             self.compactions += 1
-            LOG.info('compacted model=%s input_tokens=%s target=%s summary=%s', model, final_tokens, info['target_tokens'], info['summary_used'])
+            LOG.info('compacted model=%s input_tokens=%s target=%s summary=%s images_removed=%s', model, final_tokens, info['target_tokens'], info['summary_used'], info.get('removed_images', 0) + omitted_images)
         return bytearray(json.dumps(result).encode()), info
 
     async def kube(self, method, data=None):
@@ -280,17 +281,21 @@ class Gateway:
 
     async def forward(self, request, raw, model):
         response = None
+        stage = 'queue'
         request_id = str(uuid.uuid4())
         LOG.info('queued request=%s model=%s in_flight=%s', request_id, model, self.queued)
         try:
             async with self.scheduler.slot(model) as waited:
                 async with asyncio.timeout(1800):
                     LOG.info('admitted request=%s model=%s waited=%.1fs', request_id, model, waited)
+                    stage = 'model_readiness'
                     await self.ensure_model(model)
                     self.scheduler.loaded()
                     context_info = {}
                     if request.path == '/v1/chat/completions':
+                        stage = 'context_preparation'
                         raw, context_info = await self.prepare_context(raw, model)
+                    stage = 'inference'
                     for attempt in range(3):
                         async with self.session.post(BACKEND + request.path, data=body_chunks(raw), headers={'Authorization': 'Bearer ' + KEY, 'Content-Type': 'application/json', 'Content-Length': str(len(raw))}, timeout=ClientTimeout(total=None, sock_connect=10, sock_read=1800)) as upstream:
                             rejected = None
@@ -320,7 +325,7 @@ class Gateway:
         except asyncio.CancelledError:
             raise
         except Exception as exc:
-            LOG.error('request=%s model=%s failed=%s', request_id, model, type(exc).__name__)
+            LOG.error('request=%s model=%s stage=%s failed=%s', request_id, model, stage, type(exc).__name__)
             if response is not None and response.prepared:
                 response.force_close()
                 return response
