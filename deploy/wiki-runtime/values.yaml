@@ -1,7 +1,7 @@
 image:
   repository: ghcr.io/alchemmist/hugo-docs-wiki
-  tag: "0.2.9"
-  digest: "sha256:c9a93b1bd6cb849ec39f4945eec3f46180cd3bd4eb5f264a7652129f2c8a304a"
+  tag: "0.3.0"
+  digest: "sha256:9834a0da59418cb43a96cce803ff02a6595b22914a82ada847981e30e1400ba4"
 publicURL: https://wiki.alchemmist.xyz
 visibility: public
 contentPrefix: wiki/content
@@ -15,6 +15,8 @@ git:
   branch: main
   sshSecret: wiki-runtime-git
 config:
+  mcp:
+    enabled: true
   git:
     author: Socrat Wiki
     email: wiki@alchemmist.xyz
