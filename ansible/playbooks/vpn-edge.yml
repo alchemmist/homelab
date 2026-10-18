@@ -1,5 +1,5 @@
 ---
-- name: Deploy VPS ingress for the existing VPN
+- name: Deploy VPS ingress for public cluster services
   hosts: socrat-0
   any_errors_fatal: true
   gather_facts: false
@@ -29,11 +29,11 @@
       register: vpn_home_ingress
       changed_when: false
 
-    - name: Require independent home and VPS ingress classes
+    - name: Require the shared public ingress class
       ansible.builtin.assert:
         that:
           - "'--providers.kubernetesingress.ingressclass=traefik' in vpn_home_ingress.stdout | lower"
-        fail_msg: Apply the Traefik class isolation in playbooks/k3s.yml before deploying VPS ingress.
+        fail_msg: Configure the home controller to watch the shared traefik class before deploying VPS ingress.
 
     - name: Copy the VPS ingress chart
       ansible.builtin.copy:
@@ -46,6 +46,7 @@
         helm upgrade --install traefik-edge {{ homelab_user_home }}/tmp-charts/traefik-edge
         --namespace traefik-edge --create-namespace
         --kubeconfig /etc/rancher/k3s/k3s.yaml
+        --reset-values
         --set-string apiEndpoint={{ vpn_edge_settings.apiEndpoint }}
         --wait --timeout 3m
       changed_when: true

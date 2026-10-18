@@ -26,14 +26,17 @@ spec:
             - --providers.kubernetesingress=true
             - --providers.kubernetesingress.endpoint={{ .Values.apiEndpoint }}
             - --providers.kubernetesingress.ingressclass={{ .Values.ingressClass }}
-            - --providers.kubernetesingress.namespaces={{ .Release.Namespace }}
+            - --providers.kubernetesingress.namespaces={{ join "," (.Values.watchNamespaces | default (list .Release.Namespace)) }}
+{{- if .Values.publishIngressStatus }}
             - --providers.kubernetesingress.ingressendpoint.ip={{ .Values.publicIP }}
+{{- end }}
             - --entrypoints.web.address={{ .Values.listenHost }}:{{ .Values.httpPort }}/tcp
             - --entrypoints.web.http.redirections.entrypoint.to=websecure
             - --entrypoints.web.http.redirections.entrypoint.scheme=https
             - --entrypoints.web.http.redirections.entrypoint.permanent=true
             - --entrypoints.web.http.redirections.entrypoint.priority=1
             - --entrypoints.websecure.address={{ .Values.listenHost }}:{{ .Values.httpsPort }}/tcp
+            - --entrypoints.websecure.http.tls=true
             - --entrypoints.websecure.http3=true
             - --entrypoints.websecure.http3.advertisedport={{ .Values.httpsPort }}
             - --entrypoints.websecure.transport.respondingtimeouts.readtimeout=0s

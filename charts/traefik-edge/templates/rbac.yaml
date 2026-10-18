@@ -2,11 +2,13 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: {{ .Release.Name }}
+{{- range $namespace := (.Values.watchNamespaces | default (list .Release.Namespace)) }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: {{ .Release.Name }}
+  name: {{ $.Release.Name }}
+  namespace: {{ $namespace }}
 rules:
   - apiGroups: [""]
     resources: [services, endpoints, secrets]
@@ -17,22 +19,26 @@ rules:
   - apiGroups: [networking.k8s.io]
     resources: [ingresses]
     verbs: [get, list, watch]
+{{- if $.Values.publishIngressStatus }}
   - apiGroups: [networking.k8s.io]
     resources: [ingresses/status]
     verbs: [update]
+{{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: {{ .Release.Name }}
+  name: {{ $.Release.Name }}
+  namespace: {{ $namespace }}
 subjects:
   - kind: ServiceAccount
-    name: {{ .Release.Name }}
-    namespace: {{ .Release.Namespace }}
+    name: {{ $.Release.Name }}
+    namespace: {{ $.Release.Namespace }}
 roleRef:
   kind: Role
-  name: {{ .Release.Name }}
+  name: {{ $.Release.Name }}
   apiGroup: rbac.authorization.k8s.io
+{{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
