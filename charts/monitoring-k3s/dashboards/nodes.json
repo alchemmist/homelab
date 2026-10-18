@@ -155,7 +155,7 @@
               "targetBlank": true
             }
           ],
-          "displayName": "Ready"
+          "displayName": "Status"
         },
         "overrides": []
       },
