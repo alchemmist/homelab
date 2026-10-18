@@ -1,0 +1,7 @@
+---
+- name: Configure private node SSH aliases for all users
+  hosts: Socrat
+  gather_facts: false
+  become: true
+  roles:
+    - node_ssh_client

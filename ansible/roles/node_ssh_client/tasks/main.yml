@@ -1,0 +1,85 @@
+---
+- name: Gather platform facts for the SSH client
+  ansible.builtin.setup:
+    gather_subset: ['!all', '!min', os_family]
+
+- name: Validate the internal node alias registry
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - homelab_node_ssh_hosts is mapping
+      - homelab_node_ssh_hosts | length > 0
+      - ansible_facts.os_family in ['Debian', 'Archlinux']
+
+- name: Validate each private SSH endpoint
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - item.key is match('^socrat-[0-9]+$')
+      - item.value.address is match('^(10\.[0-9]+\.[0-9]+\.[0-9]+|192\.168\.[0-9]+\.[0-9]+|172\.(1[6-9]|2[0-9]|3[01])\.[0-9]+\.[0-9]+)$')
+      - item.value.address.split('.') | map('int') | select('lt', 256) | list | length == 4
+      - node_port | string is match('^[0-9]+$')
+      - node_port | int > 0
+      - node_port | int < 65536
+  vars:
+    node_port: "{{ item.value.ssh_port | default(hostvars.get(item.key, {}).get('homelab_ssh_port', homelab_node_ssh_port)) }}"
+  loop: "{{ homelab_node_ssh_hosts | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+
+- name: Install the system SSH client
+  ansible.builtin.package:
+    name: "{{ 'openssh' if ansible_facts.os_family == 'Archlinux' else 'openssh-client' }}"
+    state: present
+
+- name: Create system SSH client configuration directory
+  ansible.builtin.file:
+    path: /etc/ssh/ssh_config.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Generate private aliases for every local user
+  ansible.builtin.template:
+    src: nodes.conf.j2
+    dest: /etc/ssh/ssh_config.d/10-homelab-nodes.conf
+    owner: root
+    group: root
+    mode: '0644'
+    validate: '/usr/bin/ssh -G -F %s socrat-0'
+
+- name: Load private aliases before system host defaults
+  ansible.builtin.blockinfile:
+    path: /etc/ssh/ssh_config
+    insertbefore: BOF
+    marker: '# {mark} HOMELAB NODE SSH ALIASES'
+    block: Include /etc/ssh/ssh_config.d/10-homelab-nodes.conf
+    owner: root
+    group: root
+    mode: '0644'
+    backup: true
+    validate: '/usr/bin/ssh -G -F %s socrat-0'
+
+- name: Resolve installed node aliases
+  ansible.builtin.command:
+    argv: [/usr/bin/ssh, -G, -F, /etc/ssh/ssh_config, "{{ item.key }}"]
+  changed_when: false
+  loop: "{{ homelab_node_ssh_hosts | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  register: node_ssh_resolved
+  when: not ansible_check_mode
+
+- name: Verify private addresses and SSH ports
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - "('hostname ' ~ item.item.value.address) in item.stdout_lines"
+      - "('port ' ~ (node_port | string)) in item.stdout_lines"
+  vars:
+    node_port: "{{ item.item.value.ssh_port | default(hostvars.get(item.item.key, {}).get('homelab_ssh_port', homelab_node_ssh_port)) }}"
+  loop: "{{ node_ssh_resolved.results }}"
+  loop_control:
+    label: "{{ item.item.key }}"
+  when: not ansible_check_mode

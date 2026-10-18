@@ -1,0 +1,7 @@
+{% for node, settings in homelab_node_ssh_hosts | dictsort %}
+Host {{ node }}
+    HostName {{ settings.address }}
+    Port {{ settings.ssh_port | default(hostvars.get(node, {}).get('homelab_ssh_port', homelab_node_ssh_port)) }}
+
+{% endfor %}
+Host *
