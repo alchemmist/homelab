@@ -14,3 +14,55 @@ spec:
           expr: sum by (instance) (workqueue_depth{job="apiserver"})
         - record: socrat:etcd_members_healthy:sum
           expr: sum(etcd_server_has_leader{job="kube-etcd"} == 1)
+    - name: socrat.nodes.health
+      rules:
+        - record: socrat:node_exporter_last_success_timestamp_seconds
+          expr: |
+            max by (node) (
+              label_replace(timestamp(node_uname_info{job="node-exporter"}), "node", "$1", "nodename", "(.+)")
+            )
+        - alert: KubeNodeNotReady
+          expr: max by (node) (kube_node_status_condition{job="kube-state-metrics",condition="Ready",status="true"}) == 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: Node is not ready.
+            description: 'Node {{ "{{ $labels.node }}" }} is not Ready, including when it is cordoned. The alert becomes Firing after 15m in this state.'
+            rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ "{{ $labels.node }}" }}'
+        - alert: KubeNodePressure
+          expr: max by (node, condition) (kube_node_status_condition{job="kube-state-metrics",condition=~"MemoryPressure|DiskPressure|PIDPressure",status="true"}) == 1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: Node resource pressure is active.
+            description: 'Node {{ "{{ $labels.node }}" }} reports {{ "{{ $labels.condition }}" }}. The condition indicates pressure on memory, disk space or inodes, or process IDs and can lead to pod eviction. The alert becomes Firing after 5m.'
+            rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ "{{ $labels.node }}" }}'
+        - alert: SocratNodeSchedulingDisabled
+          expr: max by (node) (kube_node_spec_unschedulable{job="kube-state-metrics"}) == 1
+          for: 15m
+          labels:
+            severity: info
+          annotations:
+            summary: Node scheduling is disabled.
+            description: 'Node {{ "{{ $labels.node }}" }} is cordoned and does not accept ordinary new pods. Existing pods can keep running. This may be intentional maintenance; the alert becomes Firing after 15m.'
+            rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ "{{ $labels.node }}" }}'
+        - alert: SocratNodeMetricsStale
+          expr: |
+            (
+              (time() - last_over_time(socrat:node_exporter_last_success_timestamp_seconds[24h]) > 120)
+              and on (node) max by (node) (kube_node_info{job="kube-state-metrics"})
+            )
+            or
+            (
+              max by (node) (kube_node_info{job="kube-state-metrics"})
+              unless on (node) last_over_time(socrat:node_exporter_last_success_timestamp_seconds[24h])
+            )
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: Node exporter telemetry is stale or missing.
+            description: 'Node {{ "{{ $labels.node }}" }} has no successful node-exporter sample in the last 2m, or no recorded sample in the last 24h. The alert becomes Firing after 1m. Check the exporter, its scrape target and network reachability; this does not by itself prove that the node is down.'
+            rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ "{{ $labels.node }}" }}'

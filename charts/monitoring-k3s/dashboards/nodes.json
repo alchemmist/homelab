@@ -63,13 +63,632 @@
   },
   "panels": [
     {
+      "id": 200,
+      "type": "row",
+      "title": "Node alerts",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 201,
+      "type": "stat",
+      "title": "Ready",
+      "description": "Ready=false or unknown for 15 minutes, including cordoned nodes. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Open the node to inspect it in Rancher.",
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 8,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "((max(2 * ALERTS{alertname=\"KubeNodeNotReady\",node=\"$node\",alertstate=\"firing\"} or ALERTS{alertname=\"KubeNodeNotReady\",node=\"$node\",alertstate=\"pending\"})) or (0 * max(kube_node_status_condition{job=\"kube-state-metrics\",node=\"$node\",condition=\"Ready\",status=\"true\"}))) and on() ((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.nodes.health\"}) < 90))",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No telemetry",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Ready",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Pending",
+                  "color": "#A85D08"
+                },
+                "2": {
+                  "text": "Not ready",
+                  "color": "#B42332"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open node in Rancher",
+              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
+              "targetBlank": true
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 32
+        }
+      }
+    },
+    {
+      "id": 202,
+      "type": "stat",
+      "title": "Memory pressure",
+      "description": "MemoryPressure reported by Kubernetes for 5 minutes. This is not simply high RAM utilization. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Open the node to inspect it in Rancher.",
+      "gridPos": {
+        "x": 8,
+        "y": 1,
+        "w": 8,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "((max(2 * ALERTS{alertname=\"KubeNodePressure\",node=\"$node\",condition=\"MemoryPressure\",alertstate=\"firing\"} or ALERTS{alertname=\"KubeNodePressure\",node=\"$node\",condition=\"MemoryPressure\",alertstate=\"pending\"})) or (0 * max(kube_node_status_condition{job=\"kube-state-metrics\",node=\"$node\",condition=\"MemoryPressure\",status=\"true\"}))) and on() ((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.nodes.health\"}) < 90))",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No telemetry",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Clear",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Pending",
+                  "color": "#A85D08"
+                },
+                "2": {
+                  "text": "Pressure",
+                  "color": "#B42332"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open node in Rancher",
+              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
+              "targetBlank": true
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 32
+        }
+      }
+    },
+    {
+      "id": 203,
+      "type": "stat",
+      "title": "Disk pressure",
+      "description": "DiskPressure reported by Kubernetes for 5 minutes, including pressure on free space or inodes. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Open the node to inspect it in Rancher.",
+      "gridPos": {
+        "x": 16,
+        "y": 1,
+        "w": 8,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "((max(2 * ALERTS{alertname=\"KubeNodePressure\",node=\"$node\",condition=\"DiskPressure\",alertstate=\"firing\"} or ALERTS{alertname=\"KubeNodePressure\",node=\"$node\",condition=\"DiskPressure\",alertstate=\"pending\"})) or (0 * max(kube_node_status_condition{job=\"kube-state-metrics\",node=\"$node\",condition=\"DiskPressure\",status=\"true\"}))) and on() ((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.nodes.health\"}) < 90))",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No telemetry",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Clear",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Pending",
+                  "color": "#A85D08"
+                },
+                "2": {
+                  "text": "Pressure",
+                  "color": "#B42332"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open node in Rancher",
+              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
+              "targetBlank": true
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 32
+        }
+      }
+    },
+    {
+      "id": 204,
+      "type": "stat",
+      "title": "PID pressure",
+      "description": "PIDPressure reported by Kubernetes for 5 minutes. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Open the node to inspect it in Rancher.",
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 8,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "((max(2 * ALERTS{alertname=\"KubeNodePressure\",node=\"$node\",condition=\"PIDPressure\",alertstate=\"firing\"} or ALERTS{alertname=\"KubeNodePressure\",node=\"$node\",condition=\"PIDPressure\",alertstate=\"pending\"})) or (0 * max(kube_node_status_condition{job=\"kube-state-metrics\",node=\"$node\",condition=\"PIDPressure\",status=\"true\"}))) and on() ((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.nodes.health\"}) < 90))",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No telemetry",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Clear",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Pending",
+                  "color": "#A85D08"
+                },
+                "2": {
+                  "text": "Pressure",
+                  "color": "#B42332"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open node in Rancher",
+              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
+              "targetBlank": true
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 32
+        }
+      }
+    },
+    {
+      "id": 205,
+      "type": "stat",
+      "title": "Scheduling",
+      "description": "Scheduling disabled (cordoned) for 15 minutes. This informational alert can indicate intentional maintenance; existing pods keep running. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Open the node to inspect it in Rancher.",
+      "gridPos": {
+        "x": 8,
+        "y": 5,
+        "w": 8,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "((max(2 * ALERTS{alertname=\"SocratNodeSchedulingDisabled\",node=\"$node\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratNodeSchedulingDisabled\",node=\"$node\",alertstate=\"pending\"})) or (0 * max(kube_node_spec_unschedulable{job=\"kube-state-metrics\",node=\"$node\"}))) and on() ((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.nodes.health\"}) < 90))",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No telemetry",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Enabled",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Pending",
+                  "color": "#A85D08"
+                },
+                "2": {
+                  "text": "Cordoned",
+                  "color": "#3274D9"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open node in Rancher",
+              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
+              "targetBlank": true
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 32
+        }
+      }
+    },
+    {
+      "id": 206,
+      "type": "stat",
+      "title": "Metrics freshness",
+      "description": "No successful node-exporter sample for more than 2 minutes, or no recorded sample within 24 hours; alert waits 1 additional minute before firing. This does not prove the node is down. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Open the node to inspect it in Rancher.",
+      "gridPos": {
+        "x": 16,
+        "y": 5,
+        "w": 8,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "((max(2 * ALERTS{alertname=\"SocratNodeMetricsStale\",node=\"$node\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratNodeMetricsStale\",node=\"$node\",alertstate=\"pending\"})) or (0 * max(kube_node_info{job=\"kube-state-metrics\",node=\"$node\"}))) and on() ((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.nodes.health\"}) < 90))",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No telemetry",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Fresh",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Pending",
+                  "color": "#A85D08"
+                },
+                "2": {
+                  "text": "Stale",
+                  "color": "#B42332"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open node in Rancher",
+              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
+              "targetBlank": true
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "value",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 32
+        }
+      }
+    },
+    {
       "id": 1,
-      "title": "Node status",
+      "title": "Node capacity and uptime",
       "type": "row",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 0,
+        "y": 9,
         "w": 24,
         "h": 1
       },
@@ -86,7 +705,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 1,
+        "y": 10,
         "w": 8,
         "h": 4
       },
@@ -134,7 +753,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 1,
+        "y": 10,
         "w": 8,
         "h": 4
       },
@@ -182,7 +801,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 1,
+        "y": 10,
         "w": 8,
         "h": 4
       },
@@ -220,13 +839,766 @@
       }
     },
     {
+      "id": 100,
+      "title": "Kubernetes workload",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 101,
+      "title": "Running pods",
+      "description": "Pods assigned to the selected node in the Running phase at the end of the selected period. Running does not guarantee that all containers are ready.",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 15,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum((max by(namespace,pod) (kube_pod_status_phase{phase=\"Running\"})) * on(namespace,pod) group_left(node) max by(namespace,pod,node) (kube_pod_info{node=\"$node\"}))",
+          "legendFormat": "Running",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "No telemetry"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 102,
+      "title": "Unready pods",
+      "description": "Assigned, non-completed pods whose Ready condition is not true, including Pending pods. Evaluated at the end of the selected period; completed Jobs are excluded.",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 15,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(((max by(namespace,pod) (kube_pod_status_ready{condition=\"true\"}) == bool 0) and on(namespace,pod) (max by(namespace,pod) (kube_pod_status_phase{phase=~\"Running|Pending|Unknown\"}) == 1)) * on(namespace,pod) group_left(node) max by(namespace,pod,node) (kube_pod_info{node=\"$node\"}))",
+          "legendFormat": "Unready",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "No telemetry"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 103,
+      "title": "Container restarts · selected period",
+      "description": "Estimated restarts over the selected period for containers in pods currently assigned to this node. Counter increases are extrapolated and may be fractional. Deleted pods and init containers are not included.",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 15,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum((sum by(namespace,pod) (max by(namespace,pod,container) (increase(kube_pod_container_status_restarts_total[$__range])))) * on(namespace,pod) group_left(node) max by(namespace,pod,node) (kube_pod_info{node=\"$node\"}))",
+          "legendFormat": "Restarts",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "No telemetry"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "auto",
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 104,
+      "title": "Top pods · CPU cores",
+      "description": "Ten pods using the most CPU on the selected node at the end of the selected period. CPU seconds per second equal CPU cores; averaged over the automatic rate interval. Click a pod to open it in Rancher. Duplicate scrape series are removed before summing containers.",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 19,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(10, (sum by(namespace,pod,node) (max by(namespace,pod,node,container) (rate(container_cpu_usage_seconds_total{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\",node=\"$node\",container!=\"\",container!=\"POD\"}[$__rate_interval])))) and on(namespace,pod) (max by(namespace,pod) (kube_pod_status_phase{phase=~\"Running|Pending|Unknown\"}) == 1))",
+          "legendFormat": "",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "cores",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "No telemetry"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pod"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open pod in Rancher",
+                    "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/${__data.fields.Namespace}/${__value.raw}",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "CPU cores",
+            "desc": true
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "node": true
+            },
+            "renameByName": {
+              "namespace": "Namespace",
+              "pod": "Pod",
+              "Value": "CPU cores"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 105,
+      "title": "Top pods · Memory",
+      "description": "Ten pods with the largest container memory working set on the selected node at the end of the selected period. Working set includes non-reclaimable cache and differs from process RSS. Click a pod to open it in Rancher.",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 19,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(10, (sum by(namespace,pod,node) (max by(namespace,pod,node,container) (container_memory_working_set_bytes{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\",node=\"$node\",container!=\"\",container!=\"POD\"}))) and on(namespace,pod) (max by(namespace,pod) (kube_pod_status_phase{phase=~\"Running|Pending|Unknown\"}) == 1))",
+          "legendFormat": "",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "No telemetry"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pod"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open pod in Rancher",
+                    "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/${__data.fields.Namespace}/${__value.raw}",
+                    "targetBlank": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "Memory",
+            "desc": true
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "node": true
+            },
+            "renameByName": {
+              "namespace": "Namespace",
+              "pod": "Pod",
+              "Value": "Memory"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 110,
+      "title": "Resource reservations",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 27,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 111,
+      "title": "CPU · usage, requests and limits",
+      "description": "Container CPU usage in cores compared with declared requests, limits and node allocatable capacity. Requests and limits sum regular containers in active assigned pods; init-container maxima and pod overhead are excluded, so this is not the exact scheduler reservation. Requests reserve scheduling capacity, not physical usage. Containers without limits add no declared limit; the limits line is not an overall usage cap. Host processes are excluded from container usage.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum((sum by(namespace,pod,node) (max by(namespace,pod,node,container) (rate(container_cpu_usage_seconds_total{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\",node=\"$node\",container!=\"\",container!=\"POD\"}[$__rate_interval])))) and on(namespace,pod) (max by(namespace,pod) (kube_pod_status_phase{phase=~\"Running|Pending|Unknown\"}) == 1))",
+          "legendFormat": "Container usage",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "B",
+          "expr": "sum((max by(namespace,pod,container,node) (kube_pod_container_resource_requests{node=\"$node\",resource=\"cpu\"})) and on(namespace,pod) (max by(namespace,pod) (kube_pod_status_phase{phase=~\"Running|Pending|Unknown\"}) == 1)) or (0 * max(kube_node_status_allocatable{node=\"$node\",resource=\"cpu\"}))",
+          "legendFormat": "Container requests",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "C",
+          "expr": "sum((max by(namespace,pod,container,node) (kube_pod_container_resource_limits{node=\"$node\",resource=\"cpu\"})) and on(namespace,pod) (max by(namespace,pod) (kube_pod_status_phase{phase=~\"Running|Pending|Unknown\"}) == 1)) or (0 * max(kube_node_status_allocatable{node=\"$node\",resource=\"cpu\"}))",
+          "legendFormat": "Declared container limits",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "D",
+          "expr": "max(kube_node_status_allocatable{node=\"$node\",resource=\"cpu\"})",
+          "legendFormat": "Allocatable",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "cores",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 7,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisBorderShow": false
+          },
+          "noValue": "No telemetry"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 112,
+      "title": "Memory · usage, requests and limits",
+      "description": "Container memory working set in bytes compared with declared requests, limits and node allocatable capacity. Requests and limits sum regular containers in active assigned pods; init-container maxima and pod overhead are excluded, so this is not the exact scheduler reservation. Requests reserve scheduling capacity, not physical usage. Containers without limits add no declared limit; the limits line is not an overall usage cap. Host processes are excluded from container usage.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 28,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum((sum by(namespace,pod,node) (max by(namespace,pod,node,container) (container_memory_working_set_bytes{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\",node=\"$node\",container!=\"\",container!=\"POD\"}))) and on(namespace,pod) (max by(namespace,pod) (kube_pod_status_phase{phase=~\"Running|Pending|Unknown\"}) == 1))",
+          "legendFormat": "Container usage",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "B",
+          "expr": "sum((max by(namespace,pod,container,node) (kube_pod_container_resource_requests{node=\"$node\",resource=\"memory\"})) and on(namespace,pod) (max by(namespace,pod) (kube_pod_status_phase{phase=~\"Running|Pending|Unknown\"}) == 1)) or (0 * max(kube_node_status_allocatable{node=\"$node\",resource=\"memory\"}))",
+          "legendFormat": "Container requests",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "C",
+          "expr": "sum((max by(namespace,pod,container,node) (kube_pod_container_resource_limits{node=\"$node\",resource=\"memory\"})) and on(namespace,pod) (max by(namespace,pod) (kube_pod_status_phase{phase=~\"Running|Pending|Unknown\"}) == 1)) or (0 * max(kube_node_status_allocatable{node=\"$node\",resource=\"memory\"}))",
+          "legendFormat": "Declared container limits",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "D",
+          "expr": "max(kube_node_status_allocatable{node=\"$node\",resource=\"memory\"})",
+          "legendFormat": "Allocatable",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 7,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisBorderShow": false
+          },
+          "noValue": "No telemetry"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 120,
+      "title": "Bottlenecks",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 35,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 121,
+      "title": "CPU wait and steal",
+      "description": "Percentage of logical CPU time spent waiting for I/O or stolen by the hypervisor, averaged over the automatic rate interval. I/O wait can indicate storage contention; steal indicates a virtual machine waiting for host CPU. These are fractions of total CPU capacity, not task latency.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 36,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg by(nodename) ((100 * avg by(instance) (rate(node_cpu_seconds_total{job=\"node-exporter\",mode=\"iowait\"}[$__rate_interval]))) * on(instance) group_left(nodename) max by(instance,nodename) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"}))",
+          "legendFormat": "iowait",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "B",
+          "expr": "avg by(nodename) ((100 * avg by(instance) (rate(node_cpu_seconds_total{job=\"node-exporter\",mode=\"steal\"}[$__rate_interval]))) * on(instance) group_left(nodename) max by(instance,nodename) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"}))",
+          "legendFormat": "steal",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 7,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisBorderShow": false
+          },
+          "noValue": "No telemetry",
+          "max": 100
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 122,
+      "title": "CPU pressure",
+      "description": "Percentage of wall time during which at least one runnable task waited for CPU (Linux PSI some), averaged over the automatic rate interval. Measures contention, not CPU utilization. Unsupported or missing pressure metrics remain missing.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 36,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg by(nodename) ((100 * rate(node_pressure_cpu_waiting_seconds_total{job=\"node-exporter\"}[$__rate_interval])) * on(instance) group_left(nodename) max by(instance,nodename) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"}))",
+          "legendFormat": "Waiting",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 7,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisBorderShow": false
+          },
+          "noValue": "No telemetry",
+          "max": 100
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 123,
+      "title": "Memory pressure",
+      "description": "Linux PSI as a percentage of wall time over the automatic rate interval. Waiting means at least one task was stalled; fully stalled means all non-idle tasks were stalled on memory reclaim. Sustained pressure indicates lost execution time. Missing metrics are not replaced with zero.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 43,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg by(nodename) ((100 * rate(node_pressure_memory_waiting_seconds_total{job=\"node-exporter\"}[$__rate_interval])) * on(instance) group_left(nodename) max by(instance,nodename) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"}))",
+          "legendFormat": "Waiting",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "B",
+          "expr": "avg by(nodename) ((100 * rate(node_pressure_memory_stalled_seconds_total{job=\"node-exporter\"}[$__rate_interval])) * on(instance) group_left(nodename) max by(instance,nodename) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"}))",
+          "legendFormat": "Fully stalled",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 7,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisBorderShow": false
+          },
+          "noValue": "No telemetry",
+          "max": 100
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 124,
+      "title": "I/O pressure",
+      "description": "Linux PSI as a percentage of wall time over the automatic rate interval. Waiting means at least one task was stalled; fully stalled means all non-idle tasks were stalled on I/O. Sustained pressure indicates lost execution time. Missing metrics are not replaced with zero.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 43,
+        "w": 12,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg by(nodename) ((100 * rate(node_pressure_io_waiting_seconds_total{job=\"node-exporter\"}[$__rate_interval])) * on(instance) group_left(nodename) max by(instance,nodename) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"}))",
+          "legendFormat": "Waiting",
+          "range": true,
+          "instant": false
+        },
+        {
+          "refId": "B",
+          "expr": "avg by(nodename) ((100 * rate(node_pressure_io_stalled_seconds_total{job=\"node-exporter\"}[$__rate_interval])) * on(instance) group_left(nodename) max by(instance,nodename) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"}))",
+          "legendFormat": "Fully stalled",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 7,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisBorderShow": false
+          },
+          "noValue": "No telemetry",
+          "max": 100
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
       "id": 5,
       "title": "CPU and task load",
       "type": "row",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 5,
+        "y": 50,
         "w": 24,
         "h": 1
       },
@@ -243,7 +1615,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 6,
+        "y": 51,
         "w": 8,
         "h": 7
       },
@@ -299,7 +1671,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 6,
+        "y": 51,
         "w": 8,
         "h": 7
       },
@@ -354,7 +1726,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 6,
+        "y": 51,
         "w": 8,
         "h": 7
       },
@@ -419,7 +1791,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 13,
+        "y": 58,
         "w": 24,
         "h": 1
       },
@@ -436,7 +1808,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 14,
+        "y": 59,
         "w": 8,
         "h": 7
       },
@@ -492,7 +1864,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 14,
+        "y": 59,
         "w": 8,
         "h": 7
       },
@@ -547,7 +1919,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 14,
+        "y": 59,
         "w": 8,
         "h": 7
       },
@@ -598,7 +1970,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 21,
+        "y": 66,
         "w": 24,
         "h": 1
       },
@@ -615,7 +1987,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 22,
+        "y": 67,
         "w": 8,
         "h": 7
       },
@@ -671,7 +2043,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 22,
+        "y": 67,
         "w": 8,
         "h": 7
       },
@@ -726,7 +2098,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 22,
+        "y": 67,
         "w": 8,
         "h": 7
       },
@@ -784,7 +2156,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 29,
+        "y": 74,
         "w": 24,
         "h": 1
       },
@@ -801,7 +2173,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 30,
+        "y": 75,
         "w": 8,
         "h": 7
       },
@@ -856,7 +2228,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 30,
+        "y": 75,
         "w": 8,
         "h": 7
       },
@@ -911,7 +2283,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 30,
+        "y": 75,
         "w": 8,
         "h": 7
       },
@@ -969,7 +2341,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 37,
+        "y": 82,
         "w": 24,
         "h": 1
       },
@@ -986,7 +2358,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 38,
+        "y": 83,
         "w": 24,
         "h": 6
       },

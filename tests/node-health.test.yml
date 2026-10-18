@@ -1,0 +1,216 @@
+rule_files:
+- node-health.rules.yml
+evaluation_interval: 1m
+tests:
+- name: not ready remains visible while cordoned
+  interval: 1m
+  input_series:
+  - &id001
+    series: kube_node_info{job="kube-state-metrics",node="test-node"}
+    values: 1x30
+  - &id002
+    series: node_uname_info{job="node-exporter",nodename="test-node"}
+    values: 1x30
+  - &id003
+    series: kube_node_spec_unschedulable{job="kube-state-metrics",node="test-node"}
+    values: 1x30
+  - series: kube_node_status_condition{job="kube-state-metrics",node="test-node",condition="Ready",status="true"}
+    values: '0x30'
+  alert_rule_test:
+  - eval_time: 14m
+    alertname: KubeNodeNotReady
+    exp_alerts: []
+  - eval_time: 15m
+    alertname: KubeNodeNotReady
+    exp_alerts:
+    - exp_labels:
+        node: test-node
+        severity: warning
+      exp_annotations:
+        summary: Node is not ready.
+        description: Node test-node is not Ready, including when it is cordoned. The
+          alert becomes Firing after 15m in this state.
+        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/test-node
+- name: MemoryPressure remains visible while cordoned
+  interval: 1m
+  input_series:
+  - *id001
+  - *id002
+  - *id003
+  - series: kube_node_status_condition{job="kube-state-metrics",node="test-node",condition="MemoryPressure",status="true"}
+    values: 1x30
+  alert_rule_test:
+  - eval_time: 4m
+    alertname: KubeNodePressure
+    exp_alerts: []
+  - eval_time: 5m
+    alertname: KubeNodePressure
+    exp_alerts:
+    - exp_labels:
+        node: test-node
+        severity: warning
+        condition: MemoryPressure
+      exp_annotations:
+        summary: Node resource pressure is active.
+        description: Node test-node reports MemoryPressure. The condition indicates
+          pressure on memory, disk space or inodes, or process IDs and can lead to
+          pod eviction. The alert becomes Firing after 5m.
+        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/test-node
+- name: DiskPressure remains visible while cordoned
+  interval: 1m
+  input_series:
+  - *id001
+  - *id002
+  - *id003
+  - series: kube_node_status_condition{job="kube-state-metrics",node="test-node",condition="DiskPressure",status="true"}
+    values: 1x30
+  alert_rule_test:
+  - eval_time: 4m
+    alertname: KubeNodePressure
+    exp_alerts: []
+  - eval_time: 5m
+    alertname: KubeNodePressure
+    exp_alerts:
+    - exp_labels:
+        node: test-node
+        severity: warning
+        condition: DiskPressure
+      exp_annotations:
+        summary: Node resource pressure is active.
+        description: Node test-node reports DiskPressure. The condition indicates
+          pressure on memory, disk space or inodes, or process IDs and can lead to
+          pod eviction. The alert becomes Firing after 5m.
+        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/test-node
+- name: PIDPressure remains visible while cordoned
+  interval: 1m
+  input_series:
+  - *id001
+  - *id002
+  - *id003
+  - series: kube_node_status_condition{job="kube-state-metrics",node="test-node",condition="PIDPressure",status="true"}
+    values: 1x30
+  alert_rule_test:
+  - eval_time: 4m
+    alertname: KubeNodePressure
+    exp_alerts: []
+  - eval_time: 5m
+    alertname: KubeNodePressure
+    exp_alerts:
+    - exp_labels:
+        node: test-node
+        severity: warning
+        condition: PIDPressure
+      exp_annotations:
+        summary: Node resource pressure is active.
+        description: Node test-node reports PIDPressure. The condition indicates pressure
+          on memory, disk space or inodes, or process IDs and can lead to pod eviction.
+          The alert becomes Firing after 5m.
+        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/test-node
+- name: cordon becomes informational after fifteen minutes
+  interval: 1m
+  input_series:
+  - *id001
+  - *id002
+  - *id003
+  alert_rule_test:
+  - eval_time: 14m
+    alertname: SocratNodeSchedulingDisabled
+    exp_alerts: []
+  - eval_time: 15m
+    alertname: SocratNodeSchedulingDisabled
+    exp_alerts:
+    - exp_labels:
+        node: test-node
+        severity: info
+      exp_annotations:
+        summary: Node scheduling is disabled.
+        description: Node test-node is cordoned and does not accept ordinary new pods.
+          Existing pods can keep running. This may be intentional maintenance; the
+          alert becomes Firing after 15m.
+        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/test-node
+- name: telemetry ages from last successful sample
+  interval: 1m
+  input_series:
+  - *id001
+  - series: node_uname_info{job="node-exporter",nodename="test-node"}
+    values: 1 stale _x30
+  alert_rule_test:
+  - eval_time: 2m
+    alertname: SocratNodeMetricsStale
+    exp_alerts: []
+  - eval_time: 3m
+    alertname: SocratNodeMetricsStale
+    exp_alerts: []
+  - eval_time: 4m
+    alertname: SocratNodeMetricsStale
+    exp_alerts:
+    - exp_labels:
+        node: test-node
+        severity: warning
+      exp_annotations:
+        summary: Node exporter telemetry is stale or missing.
+        description: Node test-node has no successful node-exporter sample in the
+          last 2m, or no recorded sample in the last 24h. The alert becomes Firing
+          after 1m. Check the exporter, its scrape target and network reachability;
+          this does not by itself prove that the node is down.
+        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/test-node
+- name: node never collected by exporter
+  interval: 1m
+  input_series:
+  - *id001
+  alert_rule_test:
+  - eval_time: 0m
+    alertname: SocratNodeMetricsStale
+    exp_alerts: []
+  - eval_time: 1m
+    alertname: SocratNodeMetricsStale
+    exp_alerts:
+    - exp_labels:
+        node: test-node
+        severity: warning
+      exp_annotations:
+        summary: Node exporter telemetry is stale or missing.
+        description: Node test-node has no successful node-exporter sample in the
+          last 2m, or no recorded sample in the last 24h. The alert becomes Firing
+          after 1m. Check the exporter, its scrape target and network reachability;
+          this does not by itself prove that the node is down.
+        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/test-node
+- name: healthy node has no health alerts
+  interval: 1m
+  input_series:
+  - *id001
+  - *id002
+  - series: kube_node_spec_unschedulable{job="kube-state-metrics",node="test-node"}
+    values: '0x30'
+  - series: kube_node_status_condition{job="kube-state-metrics",node="test-node",condition="Ready",status="true"}
+    values: 1x30
+  - series: kube_node_status_condition{job="kube-state-metrics",node="test-node",condition="MemoryPressure",status="true"}
+    values: '0x30'
+  - series: kube_node_status_condition{job="kube-state-metrics",node="test-node",condition="DiskPressure",status="true"}
+    values: '0x30'
+  - series: kube_node_status_condition{job="kube-state-metrics",node="test-node",condition="PIDPressure",status="true"}
+    values: '0x30'
+  alert_rule_test:
+  - eval_time: 20m
+    alertname: KubeNodeNotReady
+    exp_alerts: []
+  - eval_time: 20m
+    alertname: KubeNodePressure
+    exp_alerts: []
+  - eval_time: 20m
+    alertname: SocratNodeSchedulingDisabled
+    exp_alerts: []
+  - eval_time: 20m
+    alertname: SocratNodeMetricsStale
+    exp_alerts: []
+- name: removed node does not leave stale telemetry alert
+  interval: 1m
+  input_series:
+  - series: kube_node_info{job="kube-state-metrics",node="test-node"}
+    values: 1 stale _x30
+  - series: node_uname_info{job="node-exporter",nodename="test-node"}
+    values: 1 stale _x30
+  alert_rule_test:
+  - eval_time: 10m
+    alertname: SocratNodeMetricsStale
+    exp_alerts: []
