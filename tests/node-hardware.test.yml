@@ -1,0 +1,258 @@
+rule_files:
+- node-hardware.rules.yml
+evaluation_interval: 1m
+tests:
+- name: temperature uses cpu critical limit and deduplicates exporter metadata
+  interval: 1m
+  input_series:
+  - &id002
+    series: node_uname_info{job="node-exporter",instance="host:9100",nodename="test-node",pod="exporter-a"}
+    values: 1x40
+  - series: node_uname_info{job="node-exporter",instance="host:9100",nodename="test-node",pod="exporter-b"}
+    values: 1x40
+  - &id001
+    series: node_hwmon_chip_names{job="node-exporter",instance="host:9100",chip="cpu",chip_name="coretemp"}
+    values: 1x40
+  - series: node_hwmon_temp_celsius{job="node-exporter",instance="host:9100",chip="cpu",sensor="temp1"}
+    values: 85x40
+  - series: node_hwmon_temp_crit_celsius{job="node-exporter",instance="host:9100",chip="cpu",sensor="temp1"}
+    values: 94x40
+  alert_rule_test:
+  - eval_time: 4m
+    alertname: SocratNodeCPUTemperatureHigh
+    exp_alerts: []
+  - eval_time: 5m
+    alertname: SocratNodeCPUTemperatureHigh
+    exp_alerts:
+    - exp_labels:
+        node: test-node
+        severity: warning
+      exp_annotations:
+        summary: CPU temperature is approaching its limit.
+        description: Node test-node has less than 10 C of CPU temperature headroom for 5m. Headroom uses the CPU sensor critical
+          threshold; socrat-1 uses the Ryzen 7 7840HS 100 C limit. Check cooling and sustained load.
+        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/test-node
+- name: ryzen socrat1 fallback is model specific
+  interval: 1m
+  input_series:
+  - series: node_uname_info{job="node-exporter",instance="host:9100",nodename="socrat-1"}
+    values: 1x40
+  - *id001
+  - series: node_hwmon_temp_celsius{job="node-exporter",instance="host:9100",chip="cpu",sensor="temp1"}
+    values: 91x40
+  alert_rule_test:
+  - eval_time: 5m
+    alertname: SocratNodeCPUTemperatureHigh
+    exp_alerts:
+    - exp_labels:
+        node: socrat-1
+        severity: warning
+      exp_annotations:
+        summary: CPU temperature is approaching its limit.
+        description: Node socrat-1 has less than 10 C of CPU temperature headroom for 5m. Headroom uses the CPU sensor critical
+          threshold; socrat-1 uses the Ryzen 7 7840HS 100 C limit. Check cooling and sustained load.
+        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/socrat-1
+- name: unknown cpu limit does not invent threshold
+  interval: 1m
+  input_series:
+  - *id002
+  - *id001
+  - series: node_hwmon_temp_celsius{job="node-exporter",instance="host:9100",chip="cpu",sensor="temp1"}
+    values: 99x40
+  alert_rule_test:
+  - eval_time: 20m
+    alertname: SocratNodeCPUTemperatureHigh
+    exp_alerts: []
+- name: hot nvme does not trigger cpu temperature
+  interval: 1m
+  input_series:
+  - *id002
+  - series: node_hwmon_chip_names{job="node-exporter",instance="host:9100",chip="nvme",chip_name="nvme"}
+    values: 1x40
+  - series: node_hwmon_temp_celsius{job="node-exporter",instance="host:9100",chip="nvme",sensor="temp1"}
+    values: 90x40
+  - series: node_hwmon_temp_crit_celsius{job="node-exporter",instance="host:9100",chip="nvme",sensor="temp1"}
+    values: 94x40
+  alert_rule_test:
+  - eval_time: 20m
+    alertname: SocratNodeCPUTemperatureHigh
+    exp_alerts: []
+- name: old throttle totals do not alert
+  interval: 1m
+  input_series:
+  - *id002
+  - series: node_cpu_core_throttles_total{job="node-exporter",instance="host:9100",core="0"}
+    values: 100x40
+  alert_rule_test:
+  - eval_time: 20m
+    alertname: SocratNodeThermalThrottling
+    exp_alerts: []
+- name: new throttle events sustain alert and then recover
+  interval: 1m
+  input_series:
+  - *id002
+  - series: node_cpu_core_throttles_total{job="node-exporter",instance="host:9100",core="0"}
+    values: 0+1x6 6x30
+  alert_rule_test:
+  - eval_time: 2m
+    alertname: SocratNodeThermalThrottling
+    exp_alerts: []
+  - &id003
+    eval_time: 3m
+    alertname: SocratNodeThermalThrottling
+    exp_alerts:
+    - exp_labels:
+        node: test-node
+        severity: warning
+      exp_annotations:
+        summary: CPU thermal throttling has been detected.
+        description: Node test-node has reported hardware CPU thermal throttle events in the trailing 5m for 2m. These are
+          hardware events, not container CPU-limit throttling or a percentage of lost performance.
+        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/test-node
+  - eval_time: 15m
+    alertname: SocratNodeThermalThrottling
+    exp_alerts: []
+- name: cpu psi waits for sustained stall
+  interval: 1m
+  input_series:
+  - *id002
+  - series: node_pressure_cpu_waiting_seconds_total{job="node-exporter",instance="host:9100"}
+    values: 0+18x40
+  alert_rule_test:
+  - eval_time: 10m
+    alertname: SocratNodeResourceContention
+    exp_alerts: []
+  - eval_time: 20m
+    alertname: SocratNodeResourceContention
+    exp_alerts:
+    - exp_labels:
+        node: test-node
+        severity: warning
+        resource: cpu
+      exp_annotations:
+        summary: Tasks are persistently waiting for a node resource.
+        description: 'Node test-node has sustained cpu PSI some pressure for 10m: above 25% for CPU or 10% for memory or I/O,
+          averaged over 5m. This measures time with at least one stalled task, not resource utilization or Kubernetes eviction
+          pressure.'
+        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/test-node
+- name: memory psi waits for sustained stall
+  interval: 1m
+  input_series:
+  - *id002
+  - series: node_pressure_memory_waiting_seconds_total{job="node-exporter",instance="host:9100"}
+    values: 0+9x40
+  alert_rule_test:
+  - eval_time: 10m
+    alertname: SocratNodeResourceContention
+    exp_alerts: []
+  - eval_time: 20m
+    alertname: SocratNodeResourceContention
+    exp_alerts:
+    - exp_labels:
+        node: test-node
+        severity: warning
+        resource: memory
+      exp_annotations:
+        summary: Tasks are persistently waiting for a node resource.
+        description: 'Node test-node has sustained memory PSI some pressure for 10m: above 25% for CPU or 10% for memory or
+          I/O, averaged over 5m. This measures time with at least one stalled task, not resource utilization or Kubernetes
+          eviction pressure.'
+        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/test-node
+- name: io psi waits for sustained stall
+  interval: 1m
+  input_series:
+  - *id002
+  - series: node_pressure_io_waiting_seconds_total{job="node-exporter",instance="host:9100"}
+    values: 0+9x40
+  alert_rule_test:
+  - eval_time: 10m
+    alertname: SocratNodeResourceContention
+    exp_alerts: []
+  - eval_time: 20m
+    alertname: SocratNodeResourceContention
+    exp_alerts:
+    - exp_labels:
+        node: test-node
+        severity: warning
+        resource: io
+      exp_annotations:
+        summary: Tasks are persistently waiting for a node resource.
+        description: 'Node test-node has sustained io PSI some pressure for 10m: above 25% for CPU or 10% for memory or I/O,
+          averaged over 5m. This measures time with at least one stalled task, not resource utilization or Kubernetes eviction
+          pressure.'
+        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/test-node
+- name: steal averages cpus and waits fifteen minutes
+  interval: 1m
+  input_series:
+  - *id002
+  - series: node_cpu_seconds_total{job="node-exporter",instance="host:9100",cpu="0",mode="steal"}
+    values: 0+18x40
+  - series: node_cpu_seconds_total{job="node-exporter",instance="host:9100",cpu="1",mode="steal"}
+    values: 0+0x40
+  alert_rule_test:
+  - eval_time: 15m
+    alertname: SocratNodeCPUStealHigh
+    exp_alerts: []
+  - eval_time: 20m
+    alertname: SocratNodeCPUStealHigh
+    exp_alerts:
+    - exp_labels:
+        node: test-node
+        severity: warning
+      exp_annotations:
+        summary: Hypervisor CPU steal time is high.
+        description: Node test-node spends more than 10% of CPU time waiting for the hypervisor, averaged across CPUs over
+          5m, for 15m. Check contention on the virtualization host; this is distinct from application CPU usage.
+        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/test-node
+- name: missing hardware metrics produces no invented alerts
+  interval: 1m
+  input_series:
+  - *id002
+  alert_rule_test:
+  - eval_time: 20m
+    alertname: SocratNodeCPUTemperatureHigh
+    exp_alerts: []
+  - eval_time: 20m
+    alertname: SocratNodeThermalThrottling
+    exp_alerts: []
+  - eval_time: 20m
+    alertname: SocratNodeResourceContention
+    exp_alerts: []
+  - eval_time: 20m
+    alertname: SocratNodeCPUStealHigh
+    exp_alerts: []
+- name: reported critical threshold takes precedence over model fallback
+  interval: 1m
+  input_series:
+  - series: node_uname_info{job="node-exporter",instance="host:9100",nodename="socrat-1",pod="exporter-a"}
+    values: 1x40
+  - series: node_uname_info{job="node-exporter",instance="host:9100",nodename="socrat-1",pod="exporter-b"}
+    values: 1x40
+  - series: node_hwmon_chip_names{job="node-exporter",instance="host:9100",chip="cpu",chip_name="coretemp"}
+    values: 1x40
+  - series: node_hwmon_temp_celsius{job="node-exporter",instance="host:9100",chip="cpu",sensor="temp1"}
+    values: 85x40
+  - series: node_hwmon_temp_crit_celsius{job="node-exporter",instance="host:9100",chip="cpu",sensor="temp1"}
+    values: 90x40
+  alert_rule_test:
+  - eval_time: 5m
+    alertname: SocratNodeCPUTemperatureHigh
+    exp_alerts:
+    - exp_labels:
+        node: socrat-1
+        severity: warning
+      exp_annotations:
+        summary: CPU temperature is approaching its limit.
+        description: Node socrat-1 has less than 10 C of CPU temperature headroom for 5m. Headroom uses the CPU sensor critical
+          threshold; socrat-1 uses the Ryzen 7 7840HS 100 C limit. Check cooling and sustained load.
+        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/socrat-1
+- name: package throttle is detected while core counter remains unchanged
+  interval: 1m
+  input_series:
+  - *id002
+  - series: node_cpu_core_throttles_total{job="node-exporter",instance="host:9100",core="0",package="0"}
+    values: 100x40
+  - series: node_cpu_package_throttles_total{job="node-exporter",instance="host:9100",package="0"}
+    values: 0+1x40
+  alert_rule_test:
+  - *id003

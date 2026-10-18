@@ -120,10 +120,26 @@ Client setup is separate from server verification: install the macOS resolver an
 
 ## Selected-node diagnostics
 
-Nodes shows one selected node by name. Its Node alerts section uses six colored tiles backed by Prometheus alerts: Ready, MemoryPressure, DiskPressure, PIDPressure, scheduling disabled and node-exporter freshness. Normal is green, Pending amber, Firing red; a firing cordon alert is blue because maintenance may be intentional. Each tile links to the exact Rancher node. A missing Kubernetes-state scrape or stale rule evaluation shows No telemetry instead of a healthy zero.
+Nodes shows one selected node by name. Its Node alerts section uses compact colored tiles backed by Prometheus alerts. The original six cover Ready, MemoryPressure, DiskPressure, PIDPressure, scheduling disabled and node-exporter freshness. Normal is green, Pending amber, Firing red; a firing cordon alert is blue because maintenance may be intentional. Each tile links to the exact Rancher node. A missing Kubernetes-state scrape or stale rule evaluation shows No telemetry instead of a healthy zero.
 
 KubeNodeNotReady (15m) and KubeNodePressure (5m) are owned by monitoring-k3s and disabled in the base chart to avoid duplicate rules. Both still evaluate cordoned nodes. SocratNodeSchedulingDisabled fires at info severity after 15m. SocratNodeMetricsStale detects samples older than 2m or no recorded sample in 24h, with a further 1m pending period. Its timestamp recording survives exporter target removal; deleted Kubernetes nodes are excluded. These rules populate the existing alerting stack; this change does not add notification delivery.
 
 Kubernetes workload panels show Running and Unready pods, selected-period container restarts, and the top CPU/memory pods with direct Rancher links. Resource reservations compare container usage, declared regular-container requests and limits, and Kubernetes allocatable capacity. Effective scheduler requests (including init-container maxima and overhead) are not currently exported, so the panels explicitly label the available container-level totals. Bottleneck panels show CPU iowait/steal and Linux PSI for CPU, memory and I/O. PSI is time spent stalled, not resource utilization; absent PSI measurements are not replaced with zero.
 
 Promtool synthetic cases in tests/node-health.test.yml exercise the alert thresholds without changing node state or interrupting connectivity. Replace its rule_files placeholder with the rendered socrat.nodes.health rule file when running promtool test rules.
+
+
+### Hardware and performance alerts
+
+The node alert strip also shows CPU temperature, hardware thermal throttling, CPU/memory/I/O PSI, CPU steal, disk space, inodes and container CPU throttling. These panels remain filtered by the selected node. Hardware-capability absence is gray N/A only while the source collector and rule group are healthy; a previously observed metric disappearing is No telemetry. VPS hosts normally expose neither CPU temperatures nor thermal throttle counters. Container CFS counters are also absent on nodes without corresponding measured workloads.
+
+New rules live only in socrat.nodes.hardware:
+
+- SocratNodeCPUTemperatureHigh: less than 10 °C headroom for 5m. Use the hardware CPU critical temperature when present. Only socrat-1 has a model-specific fallback: its verified Ryzen 7 7840HS limit is 100 °C ([AMD specification](https://www.amd.com/en/support/downloads/drivers.html/processors/ryzen/ryzen-7000-series/amd-ryzen-7-7840hs.html)). Revisit this fallback before replacing that CPU. GPU/NVMe sensors are excluded.
+- SocratNodeThermalThrottling: any core or package thermal event in a rolling 5m window, sustained for 2m. The event counter is not a percentage of lost performance.
+- SocratNodeResourceContention: Linux PSI some over5m exceeds25% for CPU or10% for memory/I/O, sustained10m. Resource labels distinguish the three instances. PSI measures task stalls; existing utilization, load-average, disk-queue and Kubernetes eviction-pressure alerts remain distinct.
+- SocratNodeCPUStealHigh: CPU steal exceeds10% averaged across CPUs over5m, sustained15m.
+
+No new disk-space, inode or container-quota rules are created. Their cards reuse NodeFilesystemSpaceFillingUp/NodeFilesystemAlmostOutOfSpace, NodeFilesystemFilesFillingUp/NodeFilesystemAlmostOutOfFiles, and CPUThrottlingHigh. Filesystem instances are matched to the selected node by exporter instance; container-throttling instances by kubelet_node_name, retaining the worst state across all affected containers. Rule groups are checked for freshness before a healthy state is displayed. CPUThrottlingHigh remains informational and displays blue when firing.
+
+Synthetic tests in tests/node-hardware.test.yml cover thresholds, pending durations, recovery, absent sensors, exporter duplication, CPU-sensor filtering, critical-limit precedence and package-only thermal events. They run offline in a disposable Promtool pod without changing real node conditions.

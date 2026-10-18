@@ -66,3 +66,76 @@ spec:
             summary: Node exporter telemetry is stale or missing.
             description: 'Node {{ "{{ $labels.node }}" }} has no successful node-exporter sample in the last 2m, or no recorded sample in the last 24h. The alert becomes Firing after 1m. Check the exporter, its scrape target and network reachability; this does not by itself prove that the node is down.'
             rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ "{{ $labels.node }}" }}'
+    - name: socrat.nodes.hardware
+      rules:
+        - record: socrat:node_cpu_temperature_headroom_celsius
+          expr: |-
+            min by (node) (
+              ((max by (instance, chip, sensor) (node_hwmon_temp_crit_celsius{job="node-exporter"} > 0) * on (instance, chip) group_left () max by (instance, chip) (node_hwmon_chip_names{job="node-exporter",chip_name=~"coretemp|k10temp|zenpower"})) - on (instance, chip, sensor) (max by (instance, chip, sensor) (node_hwmon_temp_celsius{job="node-exporter"}) * on (instance, chip) group_left () max by (instance, chip) (node_hwmon_chip_names{job="node-exporter",chip_name=~"coretemp|k10temp|zenpower"})))
+              * on (instance) group_left (node) max by (instance, node) (label_replace(node_uname_info{job="node-exporter"}, "node", "$1", "nodename", "(.+)"))
+            )
+            or
+            (
+              100 - max by (node) ((max by (instance, chip, sensor) (node_hwmon_temp_celsius{job="node-exporter"}) * on (instance, chip) group_left () max by (instance, chip) (node_hwmon_chip_names{job="node-exporter",chip_name=~"coretemp|k10temp|zenpower"})) * on (instance) group_left (node) max by (instance, node) (label_replace(node_uname_info{job="node-exporter"}, "node", "$1", "nodename", "(.+)")))
+              and on (node) max by (node) (label_replace(node_uname_info{job="node-exporter",nodename="socrat-1"}, "node", "$1", "nodename", "(.+)"))
+            )
+        - record: socrat:node_thermal_throttles:increase5m
+          expr: |-
+            max by (node) (
+              max by (instance) (increase(node_cpu_core_throttles_total{job="node-exporter"}[5m])
+              or increase(node_cpu_package_throttles_total{job="node-exporter"}[5m]))
+              * on (instance) group_left (node) max by (instance, node) (label_replace(node_uname_info{job="node-exporter"}, "node", "$1", "nodename", "(.+)"))
+            )
+        - record: socrat:node_pressure_waiting:ratio5m
+          expr: |-
+            label_replace(max by (node) (rate(node_pressure_cpu_waiting_seconds_total{job="node-exporter"}[5m]) * on (instance) group_left (node) max by (instance, node) (label_replace(node_uname_info{job="node-exporter"}, "node", "$1", "nodename", "(.+)"))), "resource", "cpu", "node", ".+")
+            or
+            label_replace(max by (node) (rate(node_pressure_memory_waiting_seconds_total{job="node-exporter"}[5m]) * on (instance) group_left (node) max by (instance, node) (label_replace(node_uname_info{job="node-exporter"}, "node", "$1", "nodename", "(.+)"))), "resource", "memory", "node", ".+")
+            or
+            label_replace(max by (node) (rate(node_pressure_io_waiting_seconds_total{job="node-exporter"}[5m]) * on (instance) group_left (node) max by (instance, node) (label_replace(node_uname_info{job="node-exporter"}, "node", "$1", "nodename", "(.+)"))), "resource", "io", "node", ".+")
+        - record: socrat:node_cpu_steal:ratio5m
+          expr: avg by (node) (max by (instance, cpu) (rate(node_cpu_seconds_total{job="node-exporter",mode="steal"}[5m])) * on
+            (instance) group_left (node) max by (instance, node) (label_replace(node_uname_info{job="node-exporter"}, "node",
+            "$1", "nodename", "(.+)")))
+        - alert: SocratNodeCPUTemperatureHigh
+          expr: socrat:node_cpu_temperature_headroom_celsius < 10
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: CPU temperature is approaching its limit.
+            description: Node {{ "{{ $labels.node }}" }} has less than 10 C of CPU temperature headroom for 5m. Headroom uses the CPU
+              sensor critical threshold; socrat-1 uses the Ryzen 7 7840HS 100 C limit. Check cooling and sustained load.
+            rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ "{{ $labels.node }}" }}
+        - alert: SocratNodeThermalThrottling
+          expr: socrat:node_thermal_throttles:increase5m > 0
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: CPU thermal throttling has been detected.
+            description: Node {{ "{{ $labels.node }}" }} has reported hardware CPU thermal throttle events in the trailing 5m for 2m.
+              These are hardware events, not container CPU-limit throttling or a percentage of lost performance.
+            rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ "{{ $labels.node }}" }}
+        - alert: SocratNodeResourceContention
+          expr: socrat:node_pressure_waiting:ratio5m{resource="cpu"} > 0.25 or socrat:node_pressure_waiting:ratio5m{resource=~"memory|io"}
+            > 0.10
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: Tasks are persistently waiting for a node resource.
+            description: 'Node {{ "{{ $labels.node }}" }} has sustained {{ "{{ $labels.resource }}" }} PSI some pressure for 10m: above 25% for
+              CPU or 10% for memory or I/O, averaged over 5m. This measures time with at least one stalled task, not resource
+              utilization or Kubernetes eviction pressure.'
+            rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ "{{ $labels.node }}" }}
+        - alert: SocratNodeCPUStealHigh
+          expr: socrat:node_cpu_steal:ratio5m > 0.10
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: Hypervisor CPU steal time is high.
+            description: Node {{ "{{ $labels.node }}" }} spends more than 10% of CPU time waiting for the hypervisor, averaged across
+              CPUs over 5m, for 15m. Check contention on the virtualization host; this is distinct from application CPU usage.
+            rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ "{{ $labels.node }}" }}
