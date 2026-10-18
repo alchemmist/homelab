@@ -1,6 +1,6 @@
 ---
 title: "Помощь"
-weight: 70
+weight: 60
 ---
 
 
