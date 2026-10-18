@@ -1,7 +1,7 @@
 image:
   repository: ghcr.io/alchemmist/hugo-docs-wiki
-  tag: "0.2.8"
-  digest: "sha256:4b04dcde377860e995917113a4b89f8e1a656af12da8af48a5276dac355da9f2"
+  tag: "0.2.9"
+  digest: "sha256:c9a93b1bd6cb849ec39f4945eec3f46180cd3bd4eb5f264a7652129f2c8a304a"
 publicURL: https://wiki.alchemmist.xyz
 visibility: public
 contentPrefix: wiki/content
