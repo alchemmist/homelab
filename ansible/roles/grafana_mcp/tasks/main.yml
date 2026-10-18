@@ -1,0 +1,91 @@
+- name: Create private staging directory
+  ansible.builtin.file:
+    path: "{{ grafana_mcp_directory }}"
+    state: directory
+    mode: '0700'
+
+- name: Stage credential bootstrap
+  ansible.builtin.copy:
+    src: bootstrap_credentials.py
+    dest: "{{ grafana_mcp_directory }}/bootstrap_credentials.py"
+    mode: '0600'
+
+- name: Ensure dedicated Grafana and MCP credentials
+  ansible.builtin.command:
+    argv: [python3, "{{ grafana_mcp_directory }}/bootstrap_credentials.py"]
+    stdin: "{{ {'admin_user': grafana_mcp_admin_user, 'admin_password': grafana_mcp_admin_password} | to_json }}"
+  register: grafana_mcp_credentials
+  changed_when: (grafana_mcp_credentials.stdout | from_json).changed
+  no_log: true
+
+- name: Stage Grafana MCP chart
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../../../charts/grafana-mcp/"
+    dest: "{{ grafana_mcp_directory }}/chart/"
+    mode: preserve
+
+- name: Read credential revision for safe token rotation
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, "{{ grafana_mcp_kubeconfig }}", -n, "{{ grafana_mcp_namespace }}", get, secret, "{{ grafana_mcp_secret }}", -o, 'jsonpath={.metadata.resourceVersion}']
+  register: grafana_mcp_credentials_revision
+  changed_when: false
+
+- name: Deploy Grafana MCP
+  ansible.builtin.command:
+    argv: [helm, upgrade, --install, grafana-mcp, "{{ grafana_mcp_directory }}/chart", --namespace, "{{ grafana_mcp_namespace }}", --kubeconfig, "{{ grafana_mcp_kubeconfig }}", --set-string, 'credentialsRevision={{ grafana_mcp_credentials_revision.stdout }}', --wait, --atomic, --timeout, 5m]
+  changed_when: true
+
+- name: Request private gateway certificate
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, "{{ grafana_mcp_kubeconfig }}", apply, -f, '-']
+    stdin: "{{ {'apiVersion': 'cert-manager.io/v1', 'kind': 'Certificate', 'metadata': {'name': grafana_mcp_tls_secret, 'namespace': 'syncthing'}, 'spec': {'secretName': grafana_mcp_tls_secret, 'dnsNames': [grafana_mcp_host], 'issuerRef': {'name': 'letsencrypt-http01', 'kind': 'ClusterIssuer'}}} | to_nice_yaml }}"
+  register: grafana_mcp_certificate
+  changed_when: "'created' in grafana_mcp_certificate.stdout or 'configured' in grafana_mcp_certificate.stdout"
+
+- name: Wait for private gateway certificate
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, "{{ grafana_mcp_kubeconfig }}", -n, syncthing, wait, '--for=condition=Ready', 'certificate/{{ grafana_mcp_tls_secret }}', --timeout=300s]
+  changed_when: false
+
+- name: Read existing private gateway values
+  ansible.builtin.command:
+    argv: [helm, get, values, syncthing, --namespace, syncthing, --kubeconfig, "{{ grafana_mcp_kubeconfig }}", --output, json]
+  register: grafana_mcp_gateway
+  changed_when: false
+  no_log: true
+
+- name: Merge MCP virtual host while preserving existing hosts
+  ansible.builtin.set_fact:
+    grafana_mcp_gateway_values: "{{ (grafana_mcp_gateway.stdout | from_json) | combine({'privateGui': {'extraVirtualHosts': ((grafana_mcp_gateway.stdout | from_json).privateGui.extraVirtualHosts | rejectattr('name', 'equalto', 'grafana-mcp') | list) + [{'name': 'grafana-mcp', 'host': grafana_mcp_host, 'nodeName': grafana_mcp_node, 'upstream': 'http://grafana-mcp.cattle-monitoring-system.svc.cluster.local:8000', 'tlsSecret': grafana_mcp_tls_secret, 'resolver': '10.43.0.10', 'clearAuthorization': false}]}}, recursive=true) }}"
+  no_log: true
+
+- name: Stage private gateway chart
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../../../charts/syncthing/"
+    dest: "{{ grafana_mcp_directory }}/gateway-chart/"
+    mode: preserve
+
+- name: Stage merged private gateway values
+  ansible.builtin.copy:
+    content: "{{ grafana_mcp_gateway_values | to_nice_yaml }}"
+    dest: "{{ grafana_mcp_directory }}/gateway-values.yaml"
+    mode: '0600'
+  no_log: true
+
+- name: Install manifest comparison helper
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../../files/helm_manifest_changed.py"
+    dest: "{{ grafana_mcp_directory }}/helm_manifest_changed.py"
+    mode: '0600'
+
+- name: Compare private gateway manifests
+  ansible.builtin.command:
+    argv: [python3, "{{ grafana_mcp_directory }}/helm_manifest_changed.py", --release, syncthing, --chart, "{{ grafana_mcp_directory }}/gateway-chart", --namespace, syncthing, --values, "{{ grafana_mcp_directory }}/gateway-values.yaml", --kubeconfig, "{{ grafana_mcp_kubeconfig }}"]
+  register: grafana_mcp_gateway_diff
+  changed_when: false
+
+- name: Publish the authenticated MCP endpoint inside WireGuard
+  ansible.builtin.command:
+    argv: [helm, upgrade, syncthing, "{{ grafana_mcp_directory }}/gateway-chart", --namespace, syncthing, --kubeconfig, "{{ grafana_mcp_kubeconfig }}", --reuse-values, --values, "{{ grafana_mcp_directory }}/gateway-values.yaml", --atomic, --wait, --timeout, 5m]
+  when: (grafana_mcp_gateway_diff.stdout | from_json).changed
+  changed_when: true

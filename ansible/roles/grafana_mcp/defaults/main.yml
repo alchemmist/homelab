@@ -1,0 +1,9 @@
+grafana_mcp_namespace: cattle-monitoring-system
+grafana_mcp_host: grafana-mcp.socrat.alchemmist.xyz
+grafana_mcp_node: socrat-1
+grafana_mcp_secret: grafana-mcp-credentials
+grafana_mcp_admin_user: admin
+grafana_mcp_admin_password: ''
+grafana_mcp_directory: /home/alchemmist/.cache/homelab-grafana-mcp
+grafana_mcp_kubeconfig: /etc/rancher/k3s/k3s.yaml
+grafana_mcp_tls_secret: grafana-mcp-private-tls
