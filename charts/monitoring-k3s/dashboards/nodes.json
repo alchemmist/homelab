@@ -1355,7 +1355,7 @@
       "gridPos": {
         "x": 0,
         "y": 5,
-        "w": 8,
+        "w": 4,
         "h": 2
       },
       "datasource": {
@@ -1461,9 +1461,9 @@
       "title": "",
       "description": "Reuses existing inode exhaustion alerts, including forecast exhaustion and low free inode counts. It does not create another inode rule. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
       "gridPos": {
-        "x": 8,
+        "x": 4,
         "y": 5,
-        "w": 8,
+        "w": 4,
         "h": 2
       },
       "datasource": {
@@ -1569,9 +1569,9 @@
       "title": "",
       "description": "Reuses CPUThrottlingHigh: more than 25% of CFS periods are throttled over 5m, sustained for 15m. It is an informational container CPU-limit alert, not hardware thermal throttling. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
       "gridPos": {
-        "x": 16,
+        "x": 8,
         "y": 5,
-        "w": 8,
+        "w": 4,
         "h": 2
       },
       "datasource": {
@@ -1672,13 +1672,1701 @@
       }
     },
     {
+      "id": 216,
+      "type": "stat",
+      "title": "",
+      "description": "Unreachable node taint or a failed kubelet scrape. Existing alerts remain visible even when kubelet telemetry disappears. Existing rules: KubeNodeUnreachable, KubeletInstanceUnreachable. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details. Clear also requires a fresh successful kubelet scrape, so a disappeared target cannot become a false healthy result.",
+      "gridPos": {
+        "x": 12,
+        "y": 5,
+        "w": 4,
+        "h": 2
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(((max((max(2 * ALERTS{alertname=~\"KubeNodeUnreachable\",alertstate=\"firing\",node=\"$node\"} or ALERTS{alertname=~\"KubeNodeUnreachable\",alertstate=\"pending\",node=\"$node\"})) or (max(2 * (ALERTS{alertname=~\"KubeletInstanceUnreachable\",alertstate=\"firing\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h]))) or (ALERTS{alertname=~\"KubeletInstanceUnreachable\",alertstate=\"pending\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h]))))))) and on() ((time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;kubernetes-system-kubelet\"}) < 90))) or ((((vector(0) and on() ((count(kube_node_info{job=\"kube-state-metrics\",node=\"$node\"}) > 0))) or (vector(-1) unless on() ((count(last_over_time(kube_node_info{job=\"kube-state-metrics\",node=\"$node\"}[24h])) > 0)))) and on() (((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90)) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;kubernetes-system-kubelet\"}) < 90))) and on() ((max(up{job=\"kubelet\",metrics_path=\"/metrics\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h]))) == 1) and on() (time() - max(timestamp(up{job=\"kubelet\",metrics_path=\"/metrics\"}) and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h]))) < 90)))) or vector(-2)",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No telemetry",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "N/A",
+                  "color": "#555555"
+                },
+                "0": {
+                  "text": "Clear",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Pending",
+                  "color": "#A85D08"
+                },
+                "2": {
+                  "text": "Firing",
+                  "color": "#B42332"
+                },
+                "-2": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open node in Rancher",
+              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
+              "targetBlank": true
+            }
+          ],
+          "displayName": "Reachability"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 16,
+          "titleSize": 12
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 217,
+      "type": "stat",
+      "title": "",
+      "description": "Repeated Ready transitions on a schedulable node. Existing rules: KubeNodeReadinessFlapping. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
+      "gridPos": {
+        "x": 16,
+        "y": 5,
+        "w": 4,
+        "h": 2
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(((max((max(2 * ALERTS{alertname=~\"KubeNodeReadinessFlapping\",alertstate=\"firing\",node=\"$node\"} or ALERTS{alertname=~\"KubeNodeReadinessFlapping\",alertstate=\"pending\",node=\"$node\"})))) and on() ((time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;kubernetes-system-kubelet\"}) < 90))) or (((vector(0) and on() ((count(kube_node_status_condition{job=\"kube-state-metrics\",node=\"$node\",condition=\"Ready\",status=\"true\"}) > 0) and on() (count(kube_node_spec_unschedulable{job=\"kube-state-metrics\",node=\"$node\"}) > 0))) or (vector(-1) unless on() ((count(last_over_time(kube_node_status_condition{job=\"kube-state-metrics\",node=\"$node\",condition=\"Ready\",status=\"true\"}[24h])) > 0) and on() (count(last_over_time(kube_node_spec_unschedulable{job=\"kube-state-metrics\",node=\"$node\"}[24h])) > 0)))) and on() (((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90)) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;kubernetes-system-kubelet\"}) < 90)))) or vector(-2)",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No telemetry",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "N/A",
+                  "color": "#555555"
+                },
+                "0": {
+                  "text": "Clear",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Pending",
+                  "color": "#A85D08"
+                },
+                "2": {
+                  "text": "Firing",
+                  "color": "#B42332"
+                },
+                "-2": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open node in Rancher",
+              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
+              "targetBlank": true
+            }
+          ],
+          "displayName": "Readiness changes"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 16,
+          "titleSize": 12
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 218,
+      "type": "stat",
+      "title": "",
+      "description": "Pod count approaching the node pod-capacity limit. Existing rules: KubeletTooManyPods. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details. Firing is blue because the existing rule has informational severity.",
+      "gridPos": {
+        "x": 20,
+        "y": 5,
+        "w": 4,
+        "h": 2
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(((max((max(2 * ALERTS{alertname=~\"KubeletTooManyPods\",alertstate=\"firing\",node=\"$node\"} or ALERTS{alertname=~\"KubeletTooManyPods\",alertstate=\"pending\",node=\"$node\"})))) and on() ((time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;kubernetes-system-kubelet\"}) < 90))) or (((vector(0) and on() ((count((kubelet_running_pods{job=\"kubelet\",metrics_path=\"/metrics\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h])))) > 0) and on() (count(kube_node_status_capacity{job=\"kube-state-metrics\",node=\"$node\",resource=\"pods\"}) > 0))) or (vector(-1) unless on() ((count((last_over_time(kubelet_running_pods{job=\"kubelet\",metrics_path=\"/metrics\"}[24h]) and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h])))) > 0) and on() (count(last_over_time(kube_node_status_capacity{job=\"kube-state-metrics\",node=\"$node\",resource=\"pods\"}[24h])) > 0)))) and on() (((max(up{job=\"kubelet\",metrics_path=\"/metrics\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h]))) == 1) and on() (time() - max(timestamp(up{job=\"kubelet\",metrics_path=\"/metrics\"}) and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h]))) < 90)) and on() ((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90)) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;kubernetes-system-kubelet\"}) < 90)))) or vector(-2)",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No telemetry",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "N/A",
+                  "color": "#555555"
+                },
+                "0": {
+                  "text": "Clear",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Pending",
+                  "color": "#A85D08"
+                },
+                "2": {
+                  "text": "Firing",
+                  "color": "#3274D9"
+                },
+                "-2": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#3274D9",
+                "value": 2
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open node in Rancher",
+              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
+              "targetBlank": true
+            }
+          ],
+          "displayName": "Pod capacity"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 16,
+          "titleSize": 12
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 219,
+      "type": "stat",
+      "title": "",
+      "description": "Kubelet pod evictions caused by resource pressure. The eviction counter may not be exposed before the first event. Existing rules: KubeNodeEviction. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details. Firing is blue because the existing rule has informational severity.",
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 4,
+        "h": 2
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(((max((max(2 * ALERTS{alertname=~\"KubeNodeEviction\",alertstate=\"firing\",node=\"$node\"} or ALERTS{alertname=~\"KubeNodeEviction\",alertstate=\"pending\",node=\"$node\"})))) and on() ((time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;kubernetes-system-kubelet\"}) < 90))) or (((vector(0) and on() ((count((kubelet_evictions{job=\"kubelet\",metrics_path=\"/metrics\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h])))) > 0))) or (vector(-1) unless on() ((count((last_over_time(kubelet_evictions{job=\"kubelet\",metrics_path=\"/metrics\"}[24h]) and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h])))) > 0)))) and on() (((max(up{job=\"kubelet\",metrics_path=\"/metrics\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h]))) == 1) and on() (time() - max(timestamp(up{job=\"kubelet\",metrics_path=\"/metrics\"}) and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h]))) < 90)) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;kubernetes-system-kubelet\"}) < 90)))) or vector(-2)",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No telemetry",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "N/A",
+                  "color": "#555555"
+                },
+                "0": {
+                  "text": "Clear",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Pending",
+                  "color": "#A85D08"
+                },
+                "2": {
+                  "text": "Firing",
+                  "color": "#3274D9"
+                },
+                "-2": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#3274D9",
+                "value": 2
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open node in Rancher",
+              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
+              "targetBlank": true
+            }
+          ],
+          "displayName": "Evictions"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 16,
+          "titleSize": 12
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 220,
+      "type": "stat",
+      "title": "",
+      "description": "Slow pod lifecycle relisting or pod-worker operations, using the existing PLEG and startup-latency alerts. Existing rules: KubeletPlegDurationHigh, KubeletPodStartUpLatencyHigh. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
+      "gridPos": {
+        "x": 4,
+        "y": 7,
+        "w": 4,
+        "h": 2
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(((max((max(2 * ALERTS{alertname=~\"KubeletPlegDurationHigh|KubeletPodStartUpLatencyHigh\",alertstate=\"firing\",node=\"$node\"} or ALERTS{alertname=~\"KubeletPlegDurationHigh|KubeletPodStartUpLatencyHigh\",alertstate=\"pending\",node=\"$node\"})))) and on() ((time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;kubernetes-system-kubelet\"}) < 90))) or (((vector(0) and on() ((count((kubelet_pleg_relist_duration_seconds_bucket{job=\"kubelet\",metrics_path=\"/metrics\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h])))) > 0) and on() (count((kubelet_pod_worker_duration_seconds_bucket{job=\"kubelet\",metrics_path=\"/metrics\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h])))) > 0))) or (vector(-1) unless on() ((count((last_over_time(kubelet_pleg_relist_duration_seconds_bucket{job=\"kubelet\",metrics_path=\"/metrics\"}[24h]) and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h])))) > 0) and on() (count((last_over_time(kubelet_pod_worker_duration_seconds_bucket{job=\"kubelet\",metrics_path=\"/metrics\"}[24h]) and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h])))) > 0)))) and on() (((max(up{job=\"kubelet\",metrics_path=\"/metrics\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h]))) == 1) and on() (time() - max(timestamp(up{job=\"kubelet\",metrics_path=\"/metrics\"}) and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h]))) < 90)) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;kubernetes-system-kubelet\"}) < 90)))) or vector(-2)",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No telemetry",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "N/A",
+                  "color": "#555555"
+                },
+                "0": {
+                  "text": "Clear",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Pending",
+                  "color": "#A85D08"
+                },
+                "2": {
+                  "text": "Firing",
+                  "color": "#B42332"
+                },
+                "-2": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open node in Rancher",
+              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
+              "targetBlank": true
+            }
+          ],
+          "displayName": "Kubelet latency"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 16,
+          "titleSize": 12
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 221,
+      "type": "stat",
+      "title": "",
+      "description": "Client or serving certificates near expiration, or certificate-renewal failures. N/A indicates that not all certificate-manager metrics are exposed by this kubelet. Existing rules: KubeletClientCertificateExpiration, KubeletServerCertificateExpiration, KubeletClientCertificateRenewalErrors, KubeletServerCertificateRenewalErrors. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
+      "gridPos": {
+        "x": 8,
+        "y": 7,
+        "w": 4,
+        "h": 2
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(((max((max(2 * (ALERTS{alertname=~\"KubeletClientCertificateExpiration|KubeletServerCertificateExpiration|KubeletClientCertificateRenewalErrors|KubeletServerCertificateRenewalErrors\",alertstate=\"firing\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h]))) or (ALERTS{alertname=~\"KubeletClientCertificateExpiration|KubeletServerCertificateExpiration|KubeletClientCertificateRenewalErrors|KubeletServerCertificateRenewalErrors\",alertstate=\"pending\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h]))))))) and on() ((time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;kubernetes-system-kubelet\"}) < 90))) or (((vector(0) and on() ((count((kubelet_certificate_manager_client_ttl_seconds{job=\"kubelet\",metrics_path=\"/metrics\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h])))) > 0) and on() (count((kubelet_certificate_manager_server_ttl_seconds{job=\"kubelet\",metrics_path=\"/metrics\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h])))) > 0) and on() (count((kubelet_certificate_manager_client_expiration_renew_errors{job=\"kubelet\",metrics_path=\"/metrics\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h])))) > 0) and on() (count((kubelet_server_expiration_renew_errors{job=\"kubelet\",metrics_path=\"/metrics\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h])))) > 0))) or (vector(-1) unless on() ((count((last_over_time(kubelet_certificate_manager_client_ttl_seconds{job=\"kubelet\",metrics_path=\"/metrics\"}[24h]) and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h])))) > 0) and on() (count((last_over_time(kubelet_certificate_manager_server_ttl_seconds{job=\"kubelet\",metrics_path=\"/metrics\"}[24h]) and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h])))) > 0) and on() (count((last_over_time(kubelet_certificate_manager_client_expiration_renew_errors{job=\"kubelet\",metrics_path=\"/metrics\"}[24h]) and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h])))) > 0) and on() (count((last_over_time(kubelet_server_expiration_renew_errors{job=\"kubelet\",metrics_path=\"/metrics\"}[24h]) and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h])))) > 0)))) and on() (((max(up{job=\"kubelet\",metrics_path=\"/metrics\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h]))) == 1) and on() (time() - max(timestamp(up{job=\"kubelet\",metrics_path=\"/metrics\"}) and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h]))) < 90)) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;kubernetes-system-kubelet\"}) < 90)))) or vector(-2)",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No telemetry",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "N/A",
+                  "color": "#555555"
+                },
+                "0": {
+                  "text": "Clear",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Pending",
+                  "color": "#A85D08"
+                },
+                "2": {
+                  "text": "Firing",
+                  "color": "#B42332"
+                },
+                "-2": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open node in Rancher",
+              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
+              "targetBlank": true
+            }
+          ],
+          "displayName": "Kubelet certificates"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 16,
+          "titleSize": 12
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 222,
+      "type": "stat",
+      "title": "",
+      "description": "Sustained CPU utilization or a large load-average queue per CPU. Distinct from thermal throttling and PSI. Existing rules: NodeCPUHighUsage, NodeSystemSaturation. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details. Blue Firing is informational CPU usage; red Firing is warning-level system saturation.",
+      "gridPos": {
+        "x": 12,
+        "y": 7,
+        "w": 4,
+        "h": 2
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(((max(3 * (ALERTS{alertname=~\"NodeCPUHighUsage|NodeSystemSaturation\",severity!=\"info\",alertstate=\"firing\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) or 2 * (ALERTS{alertname=~\"NodeCPUHighUsage|NodeSystemSaturation\",severity=\"info\",alertstate=\"firing\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) or 1 * (ALERTS{alertname=~\"NodeCPUHighUsage|NodeSystemSaturation\",alertstate=\"pending\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))))) and on() ((time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;node-exporter\"}) < 90))) or (((vector(0) and on() ((count((node_cpu_seconds_total{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((node_load1{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0))) or (vector(-1) unless on() ((count((last_over_time(node_cpu_seconds_total{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((last_over_time(node_load1{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0)))) and on() (((max(up{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) == 1) and on() (time() - max(last_over_time(socrat:node_exporter_last_success_timestamp_seconds{node=\"$node\"}[24h])) < 90)) and on() (vector(1) unless on() (min(node_scrape_collector_success{job=\"node-exporter\",collector=\"cpu\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) == 0)) and on() (vector(1) unless on() (min(node_scrape_collector_success{job=\"node-exporter\",collector=\"loadavg\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) == 0)) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;node-exporter\"}) < 90)))) or vector(-2)",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No telemetry",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "N/A",
+                  "color": "#555555"
+                },
+                "0": {
+                  "text": "Clear",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Pending",
+                  "color": "#A85D08"
+                },
+                "2": {
+                  "text": "Firing",
+                  "color": "#3274D9"
+                },
+                "3": {
+                  "text": "Firing",
+                  "color": "#B42332"
+                },
+                "-2": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#3274D9",
+                "value": 2
+              },
+              {
+                "color": "#B42332",
+                "value": 3
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open node in Rancher",
+              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
+              "targetBlank": true
+            }
+          ],
+          "displayName": "CPU load"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 16,
+          "titleSize": 12
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 223,
+      "type": "stat",
+      "title": "",
+      "description": "High memory utilization or frequent major page faults. Distinct from the Kubernetes MemoryPressure condition. Existing rules: NodeMemoryMajorPagesFaults, NodeMemoryHighUtilization. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
+      "gridPos": {
+        "x": 16,
+        "y": 7,
+        "w": 4,
+        "h": 2
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(((max((max(2 * (ALERTS{alertname=~\"NodeMemoryMajorPagesFaults|NodeMemoryHighUtilization\",alertstate=\"firing\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) or (ALERTS{alertname=~\"NodeMemoryMajorPagesFaults|NodeMemoryHighUtilization\",alertstate=\"pending\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))))))) and on() ((time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;node-exporter\"}) < 90))) or (((vector(0) and on() ((count((node_vmstat_pgmajfault{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((node_memory_MemAvailable_bytes{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((node_memory_MemTotal_bytes{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0))) or (vector(-1) unless on() ((count((last_over_time(node_vmstat_pgmajfault{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((last_over_time(node_memory_MemAvailable_bytes{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((last_over_time(node_memory_MemTotal_bytes{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0)))) and on() (((max(up{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) == 1) and on() (time() - max(last_over_time(socrat:node_exporter_last_success_timestamp_seconds{node=\"$node\"}[24h])) < 90)) and on() (vector(1) unless on() (min(node_scrape_collector_success{job=\"node-exporter\",collector=\"vmstat\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) == 0)) and on() (vector(1) unless on() (min(node_scrape_collector_success{job=\"node-exporter\",collector=\"meminfo\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) == 0)) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;node-exporter\"}) < 90)))) or vector(-2)",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No telemetry",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "N/A",
+                  "color": "#555555"
+                },
+                "0": {
+                  "text": "Clear",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Pending",
+                  "color": "#A85D08"
+                },
+                "2": {
+                  "text": "Firing",
+                  "color": "#B42332"
+                },
+                "-2": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open node in Rancher",
+              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
+              "targetBlank": true
+            }
+          ],
+          "displayName": "Memory load"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 16,
+          "titleSize": 12
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 224,
+      "type": "stat",
+      "title": "",
+      "description": "Sustained disk I/O queue saturation on block devices monitored by the existing rule. Existing rules: NodeDiskIOSaturation. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
+      "gridPos": {
+        "x": 20,
+        "y": 7,
+        "w": 4,
+        "h": 2
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(((max((max(2 * (ALERTS{alertname=~\"NodeDiskIOSaturation\",alertstate=\"firing\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) or (ALERTS{alertname=~\"NodeDiskIOSaturation\",alertstate=\"pending\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))))))) and on() ((time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;node-exporter\"}) < 90))) or (((vector(0) and on() ((count((node_disk_io_time_weighted_seconds_total{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0))) or (vector(-1) unless on() ((count((last_over_time(node_disk_io_time_weighted_seconds_total{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0)))) and on() (((max(up{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) == 1) and on() (time() - max(last_over_time(socrat:node_exporter_last_success_timestamp_seconds{node=\"$node\"}[24h])) < 90)) and on() (vector(1) unless on() (min(node_scrape_collector_success{job=\"node-exporter\",collector=\"diskstats\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) == 0)) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;node-exporter\"}) < 90)))) or vector(-2)",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No telemetry",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "N/A",
+                  "color": "#555555"
+                },
+                "0": {
+                  "text": "Clear",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Pending",
+                  "color": "#A85D08"
+                },
+                "2": {
+                  "text": "Firing",
+                  "color": "#B42332"
+                },
+                "-2": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open node in Rancher",
+              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
+              "targetBlank": true
+            }
+          ],
+          "displayName": "Disk I/O"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 16,
+          "titleSize": 12
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 225,
+      "type": "stat",
+      "title": "",
+      "description": "Receive/transmit errors, interface flapping or conntrack table exhaustion. Existing rules: NodeNetworkReceiveErrs, NodeNetworkTransmitErrs, NodeNetworkInterfaceFlapping, NodeHighNumberConntrackEntriesUsed. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
+      "gridPos": {
+        "x": 0,
+        "y": 9,
+        "w": 4,
+        "h": 2
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(((max((max(2 * (ALERTS{alertname=~\"NodeNetworkReceiveErrs|NodeNetworkTransmitErrs|NodeNetworkInterfaceFlapping|NodeHighNumberConntrackEntriesUsed\",alertstate=\"firing\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) or (ALERTS{alertname=~\"NodeNetworkReceiveErrs|NodeNetworkTransmitErrs|NodeNetworkInterfaceFlapping|NodeHighNumberConntrackEntriesUsed\",alertstate=\"pending\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))))))) and on() ((time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;node-exporter\"}) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;node-network\"}) < 90))) or (((vector(0) and on() ((count((node_network_receive_errs_total{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((node_network_receive_packets_total{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((node_network_transmit_errs_total{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((node_network_transmit_packets_total{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((node_network_up{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((node_nf_conntrack_entries{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((node_nf_conntrack_entries_limit{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0))) or (vector(-1) unless on() ((count((last_over_time(node_network_receive_errs_total{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((last_over_time(node_network_receive_packets_total{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((last_over_time(node_network_transmit_errs_total{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((last_over_time(node_network_transmit_packets_total{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((last_over_time(node_network_up{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((last_over_time(node_nf_conntrack_entries{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((last_over_time(node_nf_conntrack_entries_limit{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0)))) and on() (((max(up{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) == 1) and on() (time() - max(last_over_time(socrat:node_exporter_last_success_timestamp_seconds{node=\"$node\"}[24h])) < 90)) and on() (vector(1) unless on() (min(node_scrape_collector_success{job=\"node-exporter\",collector=\"netdev\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) == 0)) and on() (vector(1) unless on() (min(node_scrape_collector_success{job=\"node-exporter\",collector=\"netclass\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) == 0)) and on() (vector(1) unless on() (min(node_scrape_collector_success{job=\"node-exporter\",collector=\"conntrack\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) == 0)) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;node-exporter\"}) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;node-network\"}) < 90)))) or vector(-2)",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No telemetry",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "N/A",
+                  "color": "#555555"
+                },
+                "0": {
+                  "text": "Clear",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Pending",
+                  "color": "#A85D08"
+                },
+                "2": {
+                  "text": "Firing",
+                  "color": "#B42332"
+                },
+                "-2": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open node in Rancher",
+              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
+              "targetBlank": true
+            }
+          ],
+          "displayName": "Network"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 16,
+          "titleSize": 12
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 226,
+      "type": "stat",
+      "title": "",
+      "description": "Clock offset that is not recovering or an unsynchronized system clock. Existing rules: NodeClockSkewDetected, NodeClockNotSynchronising. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
+      "gridPos": {
+        "x": 4,
+        "y": 9,
+        "w": 4,
+        "h": 2
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(((max((max(2 * (ALERTS{alertname=~\"NodeClockSkewDetected|NodeClockNotSynchronising\",alertstate=\"firing\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) or (ALERTS{alertname=~\"NodeClockSkewDetected|NodeClockNotSynchronising\",alertstate=\"pending\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))))))) and on() ((time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;node-exporter\"}) < 90))) or (((vector(0) and on() ((count((node_timex_offset_seconds{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((node_timex_sync_status{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((node_timex_maxerror_seconds{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0))) or (vector(-1) unless on() ((count((last_over_time(node_timex_offset_seconds{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((last_over_time(node_timex_sync_status{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((last_over_time(node_timex_maxerror_seconds{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0)))) and on() (((max(up{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) == 1) and on() (time() - max(last_over_time(socrat:node_exporter_last_success_timestamp_seconds{node=\"$node\"}[24h])) < 90)) and on() (vector(1) unless on() (min(node_scrape_collector_success{job=\"node-exporter\",collector=\"timex\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) == 0)) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;node-exporter\"}) < 90)))) or vector(-2)",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No telemetry",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "N/A",
+                  "color": "#555555"
+                },
+                "0": {
+                  "text": "Clear",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Pending",
+                  "color": "#A85D08"
+                },
+                "2": {
+                  "text": "Firing",
+                  "color": "#B42332"
+                },
+                "-2": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open node in Rancher",
+              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
+              "targetBlank": true
+            }
+          ],
+          "displayName": "Clock"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 16,
+          "titleSize": 12
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 227,
+      "type": "stat",
+      "title": "",
+      "description": "System file-descriptor usage near the configured limit; includes both existing warning and critical thresholds. Existing rules: NodeFileDescriptorLimit. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
+      "gridPos": {
+        "x": 8,
+        "y": 9,
+        "w": 4,
+        "h": 2
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(((max((max(2 * (ALERTS{alertname=~\"NodeFileDescriptorLimit\",alertstate=\"firing\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) or (ALERTS{alertname=~\"NodeFileDescriptorLimit\",alertstate=\"pending\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))))))) and on() ((time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;node-exporter\"}) < 90))) or (((vector(0) and on() ((count((node_filefd_allocated{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((node_filefd_maximum{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0))) or (vector(-1) unless on() ((count((last_over_time(node_filefd_allocated{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((last_over_time(node_filefd_maximum{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0)))) and on() (((max(up{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) == 1) and on() (time() - max(last_over_time(socrat:node_exporter_last_success_timestamp_seconds{node=\"$node\"}[24h])) < 90)) and on() (vector(1) unless on() (min(node_scrape_collector_success{job=\"node-exporter\",collector=\"filefd\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) == 0)) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;node-exporter\"}) < 90)))) or vector(-2)",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No telemetry",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "N/A",
+                  "color": "#555555"
+                },
+                "0": {
+                  "text": "Clear",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Pending",
+                  "color": "#A85D08"
+                },
+                "2": {
+                  "text": "Firing",
+                  "color": "#B42332"
+                },
+                "-2": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open node in Rancher",
+              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
+              "targetBlank": true
+            }
+          ],
+          "displayName": "File descriptors"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 16,
+          "titleSize": 12
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 228,
+      "type": "stat",
+      "title": "",
+      "description": "Node-exporter could not read or parse a textfile metric file. Existing rules: NodeTextFileCollectorScrapeError. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
+      "gridPos": {
+        "x": 12,
+        "y": 9,
+        "w": 4,
+        "h": 2
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(((max((max(2 * (ALERTS{alertname=~\"NodeTextFileCollectorScrapeError\",alertstate=\"firing\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) or (ALERTS{alertname=~\"NodeTextFileCollectorScrapeError\",alertstate=\"pending\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))))))) and on() ((time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;node-exporter\"}) < 90))) or (((vector(0) and on() ((count((node_textfile_scrape_error{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0))) or (vector(-1) unless on() ((count((last_over_time(node_textfile_scrape_error{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0)))) and on() (((max(up{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) == 1) and on() (time() - max(last_over_time(socrat:node_exporter_last_success_timestamp_seconds{node=\"$node\"}[24h])) < 90)) and on() (vector(1) unless on() (min(node_scrape_collector_success{job=\"node-exporter\",collector=\"textfile\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) == 0)) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;node-exporter\"}) < 90)))) or vector(-2)",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No telemetry",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "N/A",
+                  "color": "#555555"
+                },
+                "0": {
+                  "text": "Clear",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Pending",
+                  "color": "#A85D08"
+                },
+                "2": {
+                  "text": "Firing",
+                  "color": "#B42332"
+                },
+                "-2": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open node in Rancher",
+              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
+              "targetBlank": true
+            }
+          ],
+          "displayName": "Textfile collector"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 16,
+          "titleSize": 12
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 229,
+      "type": "stat",
+      "title": "",
+      "description": "Degraded Linux software RAID, failed RAID disks or missing active bonding members. N/A means complete coverage is unavailable, commonly because these devices do not exist. Existing rules: NodeRAIDDegraded, NodeRAIDDiskFailure, NodeBondingDegraded. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
+      "gridPos": {
+        "x": 16,
+        "y": 9,
+        "w": 4,
+        "h": 2
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(((max((max(2 * (ALERTS{alertname=~\"NodeRAIDDegraded|NodeRAIDDiskFailure|NodeBondingDegraded\",alertstate=\"firing\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) or (ALERTS{alertname=~\"NodeRAIDDegraded|NodeRAIDDiskFailure|NodeBondingDegraded\",alertstate=\"pending\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))))))) and on() ((time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;node-exporter\"}) < 90))) or (((vector(0) and on() ((count((node_md_disks_required{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((node_md_disks{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((node_bonding_slaves{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((node_bonding_active{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0))) or (vector(-1) unless on() ((count((last_over_time(node_md_disks_required{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((last_over_time(node_md_disks{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((last_over_time(node_bonding_slaves{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((last_over_time(node_bonding_active{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0)))) and on() (((max(up{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) == 1) and on() (time() - max(last_over_time(socrat:node_exporter_last_success_timestamp_seconds{node=\"$node\"}[24h])) < 90)) and on() (vector(1) unless on() (min(node_scrape_collector_success{job=\"node-exporter\",collector=\"mdadm\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) == 0)) and on() (vector(1) unless on() (min(node_scrape_collector_success{job=\"node-exporter\",collector=\"bonding\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) == 0)) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;node-exporter\"}) < 90)))) or vector(-2)",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No telemetry",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "N/A",
+                  "color": "#555555"
+                },
+                "0": {
+                  "text": "Clear",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Pending",
+                  "color": "#A85D08"
+                },
+                "2": {
+                  "text": "Firing",
+                  "color": "#B42332"
+                },
+                "-2": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open node in Rancher",
+              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
+              "targetBlank": true
+            }
+          ],
+          "displayName": "RAID / bonding"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 16,
+          "titleSize": 12
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 230,
+      "type": "stat",
+      "title": "",
+      "description": "Failed systemd units or repeated service restarts. N/A when the optional systemd collector or restart metrics are not enabled. Existing rules: NodeSystemdServiceFailed, NodeSystemdServiceCrashlooping. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
+      "gridPos": {
+        "x": 20,
+        "y": 9,
+        "w": 4,
+        "h": 2
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(((max((max(2 * (ALERTS{alertname=~\"NodeSystemdServiceFailed|NodeSystemdServiceCrashlooping\",alertstate=\"firing\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) or (ALERTS{alertname=~\"NodeSystemdServiceFailed|NodeSystemdServiceCrashlooping\",alertstate=\"pending\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))))))) and on() ((time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;node-exporter\"}) < 90))) or (((vector(0) and on() ((count((node_systemd_unit_state{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((node_systemd_service_restart_total{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0))) or (vector(-1) unless on() ((count((last_over_time(node_systemd_unit_state{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((last_over_time(node_systemd_service_restart_total{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0)))) and on() (((max(up{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) == 1) and on() (time() - max(last_over_time(socrat:node_exporter_last_success_timestamp_seconds{node=\"$node\"}[24h])) < 90)) and on() (vector(1) unless on() (min(node_scrape_collector_success{job=\"node-exporter\",collector=\"systemd\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) == 0)) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;node-exporter\"}) < 90)))) or vector(-2)",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No telemetry",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "N/A",
+                  "color": "#555555"
+                },
+                "0": {
+                  "text": "Clear",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Pending",
+                  "color": "#A85D08"
+                },
+                "2": {
+                  "text": "Firing",
+                  "color": "#B42332"
+                },
+                "-2": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open node in Rancher",
+              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
+              "targetBlank": true
+            }
+          ],
+          "displayName": "Systemd"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 16,
+          "titleSize": 12
+        },
+        "wideLayout": true
+      }
+    },
+    {
       "id": 1,
       "title": "Node capacity and uptime",
       "type": "row",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 7,
+        "y": 11,
         "w": 24,
         "h": 1
       },
@@ -1695,7 +3383,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 8,
+        "y": 12,
         "w": 8,
         "h": 4
       },
@@ -1743,7 +3431,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 8,
+        "y": 12,
         "w": 8,
         "h": 4
       },
@@ -1791,7 +3479,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 8,
+        "y": 12,
         "w": 8,
         "h": 4
       },
@@ -1835,7 +3523,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 12,
+        "y": 16,
         "w": 24,
         "h": 1
       },
@@ -1852,7 +3540,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 13,
+        "y": 17,
         "w": 8,
         "h": 4
       },
@@ -1901,7 +3589,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 13,
+        "y": 17,
         "w": 8,
         "h": 4
       },
@@ -1950,7 +3638,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 13,
+        "y": 17,
         "w": 8,
         "h": 4
       },
@@ -1999,7 +3687,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 17,
+        "y": 21,
         "w": 12,
         "h": 8
       },
@@ -2081,7 +3769,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 17,
+        "y": 21,
         "w": 12,
         "h": 8
       },
@@ -2159,7 +3847,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 25,
+        "y": 29,
         "w": 24,
         "h": 1
       },
@@ -2176,7 +3864,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 26,
+        "y": 30,
         "w": 12,
         "h": 7
       },
@@ -2253,7 +3941,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 26,
+        "y": 30,
         "w": 12,
         "h": 7
       },
@@ -2326,7 +4014,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 33,
+        "y": 37,
         "w": 24,
         "h": 1
       },
@@ -2343,7 +4031,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 34,
+        "y": 38,
         "w": 12,
         "h": 7
       },
@@ -2407,7 +4095,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 34,
+        "y": 38,
         "w": 12,
         "h": 7
       },
@@ -2464,7 +4152,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 41,
+        "y": 45,
         "w": 12,
         "h": 7
       },
@@ -2528,7 +4216,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 41,
+        "y": 45,
         "w": 12,
         "h": 7
       },
@@ -2588,7 +4276,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 48,
+        "y": 52,
         "w": 24,
         "h": 1
       },
@@ -2605,7 +4293,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 49,
+        "y": 53,
         "w": 8,
         "h": 7
       },
@@ -2661,7 +4349,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 49,
+        "y": 53,
         "w": 8,
         "h": 7
       },
@@ -2716,7 +4404,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 49,
+        "y": 53,
         "w": 8,
         "h": 7
       },
@@ -2781,7 +4469,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 56,
+        "y": 60,
         "w": 24,
         "h": 1
       },
@@ -2798,7 +4486,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 57,
+        "y": 61,
         "w": 8,
         "h": 7
       },
@@ -2854,7 +4542,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 57,
+        "y": 61,
         "w": 8,
         "h": 7
       },
@@ -2909,7 +4597,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 57,
+        "y": 61,
         "w": 8,
         "h": 7
       },
@@ -2960,7 +4648,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 64,
+        "y": 68,
         "w": 24,
         "h": 1
       },
@@ -2977,7 +4665,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 65,
+        "y": 69,
         "w": 8,
         "h": 7
       },
@@ -3033,7 +4721,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 65,
+        "y": 69,
         "w": 8,
         "h": 7
       },
@@ -3088,7 +4776,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 65,
+        "y": 69,
         "w": 8,
         "h": 7
       },
@@ -3146,7 +4834,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 72,
+        "y": 76,
         "w": 24,
         "h": 1
       },
@@ -3163,7 +4851,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 73,
+        "y": 77,
         "w": 8,
         "h": 7
       },
@@ -3218,7 +4906,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 73,
+        "y": 77,
         "w": 8,
         "h": 7
       },
@@ -3273,7 +4961,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 73,
+        "y": 77,
         "w": 8,
         "h": 7
       },
@@ -3331,7 +5019,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 80,
+        "y": 84,
         "w": 24,
         "h": 1
       },
@@ -3348,7 +5036,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 81,
+        "y": 85,
         "w": 24,
         "h": 6
       },

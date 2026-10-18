@@ -143,3 +143,12 @@ New rules live only in socrat.nodes.hardware:
 No new disk-space, inode or container-quota rules are created. Their cards reuse NodeFilesystemSpaceFillingUp/NodeFilesystemAlmostOutOfSpace, NodeFilesystemFilesFillingUp/NodeFilesystemAlmostOutOfFiles, and CPUThrottlingHigh. Filesystem instances are matched to the selected node by exporter instance; container-throttling instances by kubelet_node_name, retaining the worst state across all affected containers. Rule groups are checked for freshness before a healthy state is displayed. CPUThrottlingHigh remains informational and displays blue when firing.
 
 Synthetic tests in tests/node-hardware.test.yml cover thresholds, pending durations, recovery, absent sensors, exporter duplication, CPU-sensor filtering, critical-limit precedence and package-only thermal events. They run offline in a disposable Promtool pod without changing real node conditions.
+
+
+### Node alert coverage
+
+Nodes now covers all 41 distinct per-node alert names currently installed from the node-exporter, node-network, kubernetes-system-kubelet and Socrat node rule groups, plus the container-level CPUThrottlingHigh rule. Thirty compact tiles group related conditions; adding a tile does not create another Prometheus alert rule.
+
+The additional groups cover node/kubelet reachability, readiness flapping, pod capacity, evictions, kubelet latency and certificates, CPU/memory load, disk I/O, network errors/interface flapping/conntrack, clock synchronization, file descriptors, textfile collector, RAID/bonding and systemd. Their descriptions enumerate the original rule names. Per-node alert groups exclude KubeletDown (all kubelets missing), TargetDown (service-level aggregation), and operator-level lookup errors because those are not individual-node conditions.
+
+The new groups retain exporter and kubelet instance-to-node mappings for 24h. Active alerts are evaluated before the healthy-source fallback so losing a scrape does not hide an unreachable-node alert. Mixed CPU-load groups preserve informational firing in blue and warning firing in red. A group shows Clear only when its supporting metrics and sources are present; partial unsupported coverage is N/A, and failed collectors or previously present metrics disappearing are No telemetry. RAID/bonding collectors currently report collection failure, so their group is No telemetry rather than a fabricated healthy or unsupported status. Kubelet certificate and eviction counters can be absent in K3s; systemd collection is optional.
