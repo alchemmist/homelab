@@ -123,3 +123,5 @@
   roles:
     - wireguard_admin_firewall
     - wireguard_private_web
+
+- import_playbook: open-webui-compaction.yml
