@@ -78,13 +78,13 @@
     {
       "id": 201,
       "type": "stat",
-      "title": "Ready",
+      "title": "",
       "description": "Ready=false or unknown for 15 minutes, including cordoned nodes. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Open the node to inspect it in Rancher.",
       "gridPos": {
         "x": 0,
         "y": 1,
         "w": 4,
-        "h": 3
+        "h": 2
       },
       "datasource": {
         "type": "prometheus",
@@ -154,7 +154,8 @@
               "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
               "targetBlank": true
             }
-          ]
+          ],
+          "displayName": "Ready"
         },
         "overrides": []
       },
@@ -166,26 +167,28 @@
           ],
           "fields": ""
         },
-        "orientation": "auto",
-        "textMode": "value",
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 22
-        }
+          "valueSize": 16,
+          "titleSize": 12
+        },
+        "wideLayout": true
       }
     },
     {
       "id": 202,
       "type": "stat",
-      "title": "Memory pressure",
+      "title": "",
       "description": "MemoryPressure reported by Kubernetes for 5 minutes. This is not simply high RAM utilization. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Open the node to inspect it in Rancher.",
       "gridPos": {
         "x": 4,
         "y": 1,
         "w": 4,
-        "h": 3
+        "h": 2
       },
       "datasource": {
         "type": "prometheus",
@@ -255,7 +258,8 @@
               "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
               "targetBlank": true
             }
-          ]
+          ],
+          "displayName": "Memory pressure"
         },
         "overrides": []
       },
@@ -267,26 +271,28 @@
           ],
           "fields": ""
         },
-        "orientation": "auto",
-        "textMode": "value",
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 22
-        }
+          "valueSize": 16,
+          "titleSize": 12
+        },
+        "wideLayout": true
       }
     },
     {
       "id": 203,
       "type": "stat",
-      "title": "Disk pressure",
+      "title": "",
       "description": "DiskPressure reported by Kubernetes for 5 minutes, including pressure on free space or inodes. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Open the node to inspect it in Rancher.",
       "gridPos": {
         "x": 8,
         "y": 1,
         "w": 4,
-        "h": 3
+        "h": 2
       },
       "datasource": {
         "type": "prometheus",
@@ -356,7 +362,8 @@
               "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
               "targetBlank": true
             }
-          ]
+          ],
+          "displayName": "Disk pressure"
         },
         "overrides": []
       },
@@ -368,26 +375,28 @@
           ],
           "fields": ""
         },
-        "orientation": "auto",
-        "textMode": "value",
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 22
-        }
+          "valueSize": 16,
+          "titleSize": 12
+        },
+        "wideLayout": true
       }
     },
     {
       "id": 204,
       "type": "stat",
-      "title": "PID pressure",
+      "title": "",
       "description": "PIDPressure reported by Kubernetes for 5 minutes. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Open the node to inspect it in Rancher.",
       "gridPos": {
         "x": 12,
         "y": 1,
         "w": 4,
-        "h": 3
+        "h": 2
       },
       "datasource": {
         "type": "prometheus",
@@ -457,7 +466,8 @@
               "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
               "targetBlank": true
             }
-          ]
+          ],
+          "displayName": "PID pressure"
         },
         "overrides": []
       },
@@ -469,26 +479,28 @@
           ],
           "fields": ""
         },
-        "orientation": "auto",
-        "textMode": "value",
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 22
-        }
+          "valueSize": 16,
+          "titleSize": 12
+        },
+        "wideLayout": true
       }
     },
     {
       "id": 205,
       "type": "stat",
-      "title": "Scheduling",
+      "title": "",
       "description": "Scheduling disabled (cordoned) for 15 minutes. This informational alert can indicate intentional maintenance; existing pods keep running. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Open the node to inspect it in Rancher.",
       "gridPos": {
         "x": 16,
         "y": 1,
         "w": 4,
-        "h": 3
+        "h": 2
       },
       "datasource": {
         "type": "prometheus",
@@ -558,7 +570,8 @@
               "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
               "targetBlank": true
             }
-          ]
+          ],
+          "displayName": "Scheduling"
         },
         "overrides": []
       },
@@ -570,26 +583,28 @@
           ],
           "fields": ""
         },
-        "orientation": "auto",
-        "textMode": "value",
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 22
-        }
+          "valueSize": 16,
+          "titleSize": 12
+        },
+        "wideLayout": true
       }
     },
     {
       "id": 206,
       "type": "stat",
-      "title": "Metrics freshness",
+      "title": "",
       "description": "No successful node-exporter sample for more than 2 minutes, or no recorded sample within 24 hours; alert waits 1 additional minute before firing. This does not prove the node is down. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Open the node to inspect it in Rancher.",
       "gridPos": {
         "x": 20,
         "y": 1,
         "w": 4,
-        "h": 3
+        "h": 2
       },
       "datasource": {
         "type": "prometheus",
@@ -659,7 +674,8 @@
               "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
               "targetBlank": true
             }
-          ]
+          ],
+          "displayName": "Metrics freshness"
         },
         "overrides": []
       },
@@ -671,14 +687,16 @@
           ],
           "fields": ""
         },
-        "orientation": "auto",
-        "textMode": "value",
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 22
-        }
+          "valueSize": 16,
+          "titleSize": 12
+        },
+        "wideLayout": true
       }
     },
     {
@@ -688,7 +706,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 4,
+        "y": 3,
         "w": 24,
         "h": 1
       },
@@ -705,7 +723,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 5,
+        "y": 4,
         "w": 8,
         "h": 4
       },
@@ -753,7 +771,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 5,
+        "y": 4,
         "w": 8,
         "h": 4
       },
@@ -801,7 +819,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 5,
+        "y": 4,
         "w": 8,
         "h": 4
       },
@@ -845,7 +863,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 9,
+        "y": 8,
         "w": 24,
         "h": 1
       },
@@ -862,7 +880,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 10,
+        "y": 9,
         "w": 8,
         "h": 4
       },
@@ -911,7 +929,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 10,
+        "y": 9,
         "w": 8,
         "h": 4
       },
@@ -960,7 +978,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 10,
+        "y": 9,
         "w": 8,
         "h": 4
       },
@@ -1009,7 +1027,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 14,
+        "y": 13,
         "w": 12,
         "h": 8
       },
@@ -1091,7 +1109,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 14,
+        "y": 13,
         "w": 12,
         "h": 8
       },
@@ -1169,7 +1187,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 22,
+        "y": 21,
         "w": 24,
         "h": 1
       },
@@ -1186,7 +1204,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 23,
+        "y": 22,
         "w": 12,
         "h": 7
       },
@@ -1263,7 +1281,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 23,
+        "y": 22,
         "w": 12,
         "h": 7
       },
@@ -1336,7 +1354,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 30,
+        "y": 29,
         "w": 24,
         "h": 1
       },
@@ -1353,7 +1371,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 31,
+        "y": 30,
         "w": 12,
         "h": 7
       },
@@ -1417,7 +1435,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 31,
+        "y": 30,
         "w": 12,
         "h": 7
       },
@@ -1474,7 +1492,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 38,
+        "y": 37,
         "w": 12,
         "h": 7
       },
@@ -1538,7 +1556,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 38,
+        "y": 37,
         "w": 12,
         "h": 7
       },
@@ -1598,7 +1616,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 45,
+        "y": 44,
         "w": 24,
         "h": 1
       },
@@ -1615,7 +1633,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 46,
+        "y": 45,
         "w": 8,
         "h": 7
       },
@@ -1671,7 +1689,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 46,
+        "y": 45,
         "w": 8,
         "h": 7
       },
@@ -1726,7 +1744,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 46,
+        "y": 45,
         "w": 8,
         "h": 7
       },
@@ -1791,7 +1809,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 53,
+        "y": 52,
         "w": 24,
         "h": 1
       },
@@ -1808,7 +1826,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 54,
+        "y": 53,
         "w": 8,
         "h": 7
       },
@@ -1864,7 +1882,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 54,
+        "y": 53,
         "w": 8,
         "h": 7
       },
@@ -1919,7 +1937,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 54,
+        "y": 53,
         "w": 8,
         "h": 7
       },
@@ -1970,7 +1988,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 61,
+        "y": 60,
         "w": 24,
         "h": 1
       },
@@ -1987,7 +2005,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 62,
+        "y": 61,
         "w": 8,
         "h": 7
       },
@@ -2043,7 +2061,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 62,
+        "y": 61,
         "w": 8,
         "h": 7
       },
@@ -2098,7 +2116,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 62,
+        "y": 61,
         "w": 8,
         "h": 7
       },
@@ -2156,7 +2174,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 69,
+        "y": 68,
         "w": 24,
         "h": 1
       },
@@ -2173,7 +2191,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 70,
+        "y": 69,
         "w": 8,
         "h": 7
       },
@@ -2228,7 +2246,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 70,
+        "y": 69,
         "w": 8,
         "h": 7
       },
@@ -2283,7 +2301,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 70,
+        "y": 69,
         "w": 8,
         "h": 7
       },
@@ -2341,7 +2359,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 77,
+        "y": 76,
         "w": 24,
         "h": 1
       },
@@ -2358,7 +2376,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 78,
+        "y": 77,
         "w": 24,
         "h": 6
       },
