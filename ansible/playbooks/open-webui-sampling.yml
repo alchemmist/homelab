@@ -1,0 +1,29 @@
+---
+- name: Apply the Qwen non-thinking sampling profile
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  tasks:
+    - name: Copy the sampling configuration helper
+      ansible.builtin.copy:
+        src: ../files/configure_webui_sampling.py
+        dest: '{{ homelab_user_home }}/tmp-charts/configure-webui-sampling.py'
+        mode: '0600'
+    - name: Locate the running Open WebUI pod
+      ansible.builtin.command: kubectl -n llm get pod -l app=open-webui -o jsonpath={.items[0].metadata.name}
+      register: webui_sampling_pod
+      changed_when: false
+    - name: Copy the helper into Open WebUI
+      ansible.builtin.command: >-
+        kubectl -n llm cp {{ homelab_user_home }}/tmp-charts/configure-webui-sampling.py
+        {{ webui_sampling_pod.stdout }}:/tmp/configure-webui-sampling.py
+      changed_when: false
+    - name: Preserve model settings while applying the sampling profile
+      ansible.builtin.command: >-
+        kubectl -n llm exec {{ webui_sampling_pod.stdout }} -- env PYTHONPATH=/app/backend
+        python /tmp/configure-webui-sampling.py
+      register: webui_sampling_config
+      changed_when: (webui_sampling_config.stdout | from_json).changed
