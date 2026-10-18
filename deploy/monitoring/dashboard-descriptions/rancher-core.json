@@ -1,20 +1,4 @@
 {
-  "rancher-home-1": {
-    "1": "Grafana welcome panel with introductory navigation. This panel does not display a metric.",
-    "6": "Cluster CPU busy percentage, averaged across reported CPU cores using the latest two samples available within five minutes. 100% means all reported CPU time is non-idle.",
-    "4": "Percentage of reported physical RAM that is unavailable for new work across the cluster: total minus available memory, divided by total. This is host memory pressure, not Kubernetes memory requests.",
-    "7": "Used filesystem capacity as a percentage of the reported total, excluding tmpfs. This legacy summary groups Linux disks by device name, so identical device names on different nodes can be collapsed; use Nodes for capacity decisions.",
-    "11": "Busy CPU time expressed as equivalent CPU cores, summed across the cluster using the latest samples within five minutes. A value of 2 means roughly two fully busy cores, not 2%.",
-    "12": "Total CPU cores Kubernetes reports as allocatable to pods across all nodes. This excludes capacity reserved for the operating system and Kubernetes components.",
-    "9": "Physical RAM currently unavailable for new work across all reported nodes, in bytes: total minus available memory. Includes host processes and is not limited to pod memory.",
-    "10": "Total memory Kubernetes reports as allocatable to pods across the cluster, in bytes. This differs from installed physical RAM because node reservations are excluded.",
-    "13": "Used filesystem space in bytes, excluding tmpfs. The legacy Linux query groups by device name rather than by node and device, so disks with identical names on multiple nodes may be collapsed. Use the Nodes dashboard for capacity decisions.",
-    "14": "Reported filesystem capacity in bytes, excluding tmpfs. The legacy Linux query groups by device name rather than by node and device, so this value may undercount disks across multiple hosts.",
-    "2051": "CPU busy percentage for the cluster average and each reported node. Non-idle CPU time includes user, kernel and other non-idle modes; 100% means all cores in the corresponding scope are busy. Rates use the rolling interval chosen by Grafana for the selected time range; they are not totals over that range.",
-    "2052": "Percentage of physical RAM unavailable for new work, shown for the cluster and each node. Calculated from total minus available memory; it is not the percentage of Kubernetes memory limits.",
-    "2053": "Legacy disk-capacity summary for the cluster and individual nodes, excluding tmpfs. The current upstream per-node expression and cross-node device grouping do not reliably report used-space percentages; use Nodes for capacity decisions.",
-    "3": "Links to available dashboards. Select a dashboard to open its detailed metrics; this list does not measure cluster health."
-  },
   "rancher-cluster-1": {
     "2": "CPU busy percentage for all reported nodes, calculated as one minus idle CPU time and averaged across cores. 100% means all measured CPU time is non-idle. Rates use the rolling interval chosen by Grafana for the selected time range; they are not totals over that range.",
     "3": "Linux load averages over 1, 5 and 15 minutes for all reported nodes: tasks running, ready to run, or waiting uninterruptibly, often for disk I/O. These are task counts, not percentages. Compare load with the number of CPU cores; sustained load above that count suggests contention. Windows series show average processor queue length over the same windows.",

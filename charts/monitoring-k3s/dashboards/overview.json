@@ -570,13 +570,386 @@
       }
     },
     {
+      "id": 26,
+      "title": "Cluster resource capacity",
+      "type": "row",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 10,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Non-idle logical CPU cores and total logical cores observed by node-exporter. CPU usage is averaged over the rate interval; capacity is host CPU capacity, not Kubernetes allocatable CPU. Duplicate exporter identities are averaged per node and CPU. Missing measurements are not replaced with zero. Offline nodes can remain visible until their last series becomes stale.",
+      "id": 27,
+      "title": "CPU utilization",
+      "type": "gauge",
+      "gridPos": {
+        "x": 0,
+        "y": 11,
+        "w": 8,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * (sum(1 - avg by(instance,cpu)(rate(node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"}[$__rate_interval])))) / (count(avg by(instance,cpu)(node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"})))",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      }
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Host memory in use, calculated as total minus MemAvailable, and total physical memory. Reclaimable cache remains available. This is actual host usage, not pod requests or Kubernetes allocatable memory. Duplicate exporter identities are averaged per node. Missing measurements are not replaced with zero. Offline nodes can remain visible until their last series becomes stale.",
+      "id": 28,
+      "title": "Memory utilization",
+      "type": "gauge",
+      "gridPos": {
+        "x": 8,
+        "y": 11,
+        "w": 8,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * ((sum(avg by(instance)(node_memory_MemTotal_bytes{job=\"node-exporter\"})) - sum(avg by(instance)(node_memory_MemAvailable_bytes{job=\"node-exporter\"})))) / (sum(avg by(instance)(node_memory_MemTotal_bytes{job=\"node-exporter\"})))",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      }
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Used and total capacity of ext2/3/4, XFS, Btrfs and ZFS filesystems reported by node-exporter. Each device is counted once per node, even if mounted several times. Used is size minus free, so reserved free blocks are not counted as used. Remote, temporary and overlay filesystems are excluded. Totals describe filesystems, not raw disk capacity or replicated application data. Missing measurements are not replaced with zero. Offline nodes can remain visible until their last series becomes stale.",
+      "id": 29,
+      "title": "Local filesystems utilization",
+      "type": "gauge",
+      "gridPos": {
+        "x": 16,
+        "y": 11,
+        "w": 8,
+        "h": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * ((sum(max by(instance,device)(node_filesystem_size_bytes{job=\"node-exporter\",fstype=~\"ext[234]|xfs|btrfs|zfs\"})) - sum(max by(instance,device)(node_filesystem_free_bytes{job=\"node-exporter\",fstype=~\"ext[234]|xfs|btrfs|zfs\"})))) / (sum(max by(instance,device)(node_filesystem_size_bytes{job=\"node-exporter\",fstype=~\"ext[234]|xfs|btrfs|zfs\"})))",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      }
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Non-idle logical CPU cores and total logical cores observed by node-exporter. CPU usage is averaged over the rate interval; capacity is host CPU capacity, not Kubernetes allocatable CPU. Duplicate exporter identities are averaged per node and CPU. Missing measurements are not replaced with zero. Offline nodes can remain visible until their last series becomes stale.",
+      "id": 30,
+      "title": "CPU · used and total",
+      "type": "stat",
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(1 - avg by(instance,cpu)(rate(node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"}[$__rate_interval])))",
+          "instant": true,
+          "format": "time_series",
+          "legendFormat": "Used"
+        },
+        {
+          "refId": "B",
+          "expr": "count(avg by(instance,cpu)(node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"}))",
+          "instant": true,
+          "format": "time_series",
+          "legendFormat": "Total"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "noValue": "No telemetry"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Host memory in use, calculated as total minus MemAvailable, and total physical memory. Reclaimable cache remains available. This is actual host usage, not pod requests or Kubernetes allocatable memory. Duplicate exporter identities are averaged per node. Missing measurements are not replaced with zero. Offline nodes can remain visible until their last series becomes stale.",
+      "id": 31,
+      "title": "Memory · used and total",
+      "type": "stat",
+      "gridPos": {
+        "x": 8,
+        "y": 16,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum(avg by(instance)(node_memory_MemTotal_bytes{job=\"node-exporter\"})) - sum(avg by(instance)(node_memory_MemAvailable_bytes{job=\"node-exporter\"})))",
+          "instant": true,
+          "format": "time_series",
+          "legendFormat": "Used"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(avg by(instance)(node_memory_MemTotal_bytes{job=\"node-exporter\"}))",
+          "instant": true,
+          "format": "time_series",
+          "legendFormat": "Total"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "decimals": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "noValue": "No telemetry"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Used and total capacity of ext2/3/4, XFS, Btrfs and ZFS filesystems reported by node-exporter. Each device is counted once per node, even if mounted several times. Used is size minus free, so reserved free blocks are not counted as used. Remote, temporary and overlay filesystems are excluded. Totals describe filesystems, not raw disk capacity or replicated application data. Missing measurements are not replaced with zero. Offline nodes can remain visible until their last series becomes stale.",
+      "id": 32,
+      "title": "Local filesystems · used and total",
+      "type": "stat",
+      "gridPos": {
+        "x": 16,
+        "y": 16,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum(max by(instance,device)(node_filesystem_size_bytes{job=\"node-exporter\",fstype=~\"ext[234]|xfs|btrfs|zfs\"})) - sum(max by(instance,device)(node_filesystem_free_bytes{job=\"node-exporter\",fstype=~\"ext[234]|xfs|btrfs|zfs\"})))",
+          "instant": true,
+          "format": "time_series",
+          "legendFormat": "Used"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(max by(instance,device)(node_filesystem_size_bytes{job=\"node-exporter\",fstype=~\"ext[234]|xfs|btrfs|zfs\"}))",
+          "instant": true,
+          "format": "time_series",
+          "legendFormat": "Total"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "decimals": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "noValue": "No telemetry"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center"
+      }
+    },
+    {
       "id": 12,
       "type": "row",
       "title": "Node resources",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 10,
+        "y": 20,
         "w": 24,
         "h": 1
       },
@@ -588,11 +961,11 @@
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 11,
+        "y": 21,
         "w": 8,
         "h": 8
       },
-      "description": "Non-idle CPU time as a percentage of all logical CPU capacity on each node, averaged over the automatic rate interval. Includes I/O wait. Near 100% means little idle CPU time remains; it does not distinguish computation from waiting for I/O.",
+      "description": "Non-idle CPU time as a percentage of all logical CPU capacity on each node, averaged over the automatic rate interval. Includes I/O wait. Near 100% means little idle CPU time remains; it does not distinguish computation from waiting for I/O. Cluster is weighted by logical CPU count or total physical memory rather than giving equally weighted nodes.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -604,6 +977,13 @@
           "legendFormat": "{{nodename}}",
           "instant": false,
           "format": "time_series"
+        },
+        {
+          "refId": "B",
+          "expr": "100 * (sum(1 - avg by(instance,cpu)(rate(node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"}[$__rate_interval])))) / (count(avg by(instance,cpu)(node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"})))",
+          "instant": false,
+          "format": "time_series",
+          "legendFormat": "Cluster"
         }
       ],
       "fieldConfig": {
@@ -646,11 +1026,11 @@
       "type": "timeseries",
       "gridPos": {
         "x": 8,
-        "y": 11,
+        "y": 21,
         "w": 8,
         "h": 8
       },
-      "description": "Percentage of RAM not available for new applications on each node: total memory minus the kernel estimate of available memory. Reclaimable cache is accounted for. A rising value means less RAM headroom.",
+      "description": "Percentage of RAM not available for new applications on each node: total memory minus the kernel estimate of available memory. Reclaimable cache is accounted for. A rising value means less RAM headroom. Cluster is weighted by logical CPU count or total physical memory rather than giving equally weighted nodes.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -662,6 +1042,13 @@
           "legendFormat": "{{nodename}}",
           "instant": false,
           "format": "time_series"
+        },
+        {
+          "refId": "B",
+          "expr": "100 * ((sum(avg by(instance)(node_memory_MemTotal_bytes{job=\"node-exporter\"})) - sum(avg by(instance)(node_memory_MemAvailable_bytes{job=\"node-exporter\"})))) / (sum(avg by(instance)(node_memory_MemTotal_bytes{job=\"node-exporter\"})))",
+          "instant": false,
+          "format": "time_series",
+          "legendFormat": "Cluster"
         }
       ],
       "fieldConfig": {
@@ -704,7 +1091,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 16,
-        "y": 11,
+        "y": 21,
         "w": 8,
         "h": 8
       },
@@ -763,7 +1150,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 19,
+        "y": 29,
         "w": 24,
         "h": 1
       },
@@ -775,7 +1162,7 @@
       "type": "table",
       "gridPos": {
         "x": 0,
-        "y": 20,
+        "y": 30,
         "w": 24,
         "h": 8
       },
@@ -878,7 +1265,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 28,
+        "y": 38,
         "w": 24,
         "h": 1
       },
@@ -890,7 +1277,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 29,
+        "y": 39,
         "w": 8,
         "h": 7
       },
@@ -952,7 +1339,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 8,
-        "y": 29,
+        "y": 39,
         "w": 8,
         "h": 7
       },
@@ -1014,7 +1401,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 16,
-        "y": 29,
+        "y": 39,
         "w": 8,
         "h": 7
       },
@@ -1070,7 +1457,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 36,
+        "y": 46,
         "w": 24,
         "h": 1
       },
@@ -1082,7 +1469,7 @@
       "type": "table",
       "gridPos": {
         "x": 0,
-        "y": 37,
+        "y": 47,
         "w": 12,
         "h": 8
       },
@@ -1146,7 +1533,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 12,
-        "y": 37,
+        "y": 47,
         "w": 12,
         "h": 8
       },
