@@ -136,3 +136,7 @@
   environment:
     STARSHIP_CONFIG: /etc/starship/starship.toml
   changed_when: false
+
+- name: Configure the shared SSH welcome screen
+  ansible.builtin.import_role:
+    name: ssh_welcome
