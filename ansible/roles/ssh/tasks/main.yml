@@ -212,3 +212,7 @@
     timeout: 30
   become: false
   when: not ansible_check_mode
+
+- name: Configure private SSH aliases between cluster nodes
+  ansible.builtin.import_role:
+    name: node_ssh_client
