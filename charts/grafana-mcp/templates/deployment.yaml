@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Chart.Name }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      annotations:
+        homelab.alchemmist.xyz/credentials-revision: {{ .Values.credentialsRevision | quote }}
+      labels:
+        app.kubernetes.io/name: {{ .Chart.Name }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      nodeSelector:
+{{ toYaml .Values.nodeSelector | indent 8 }}
+      containers:
+        - name: grafana-mcp
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}@{{ .Values.image.digest }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /app/mcp-grafana
+          args:
+            - --transport=streamable-http
+            - --address=0.0.0.0:8000
+            - --endpoint-path=/mcp
+            - --healthz-address=0.0.0.0:8080
+            - --disable-write
+            - --enabled-tools=search,datasource,prometheus,alerting,dashboard,folder,navigation
+            - --allow-grafana-url-override=false
+            - --allow-cross-origin-redirects=false
+            - --usage-stats=disabled
+            - {{ printf "--allowed-hosts=%s,%s:443,%s:%v,%s.%s:%v,%s.%s.svc:%v,%s.%s.svc.cluster.local:%v" .Values.publicHost .Values.publicHost .Release.Name .Values.service.port .Release.Name .Release.Namespace .Values.service.port .Release.Name .Release.Namespace .Values.service.port .Release.Name .Release.Namespace .Values.service.port | quote }}
+          env:
+            - name: GRAFANA_URL
+              value: {{ .Values.grafanaUrl | quote }}
+            - name: GRAFANA_SERVICE_ACCOUNT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.credentialsSecret }}
+                  key: grafana-token
+            - name: MCP_GRAFANA_SERVER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.credentialsSecret }}
+                  key: client-token
+          ports:
+            - name: http
+              containerPort: 8000
+            - name: health
+              containerPort: 8080
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            periodSeconds: 20
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+{{ toYaml .Values.resources | indent 12 }}

@@ -1,0 +1,33 @@
+- name: Deploy private read-only Grafana MCP
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  roles:
+    - grafana_mcp
+
+- name: Publish Grafana MCP in WireGuard DNS
+  hosts: socrat-0:socrat-1:socrat-2
+  gather_facts: false
+  become: true
+  serial: 1
+  any_errors_fatal: true
+  tasks:
+    - name: Add the private Grafana MCP record
+      ansible.builtin.copy:
+        content: "host-record=grafana-mcp.socrat.alchemmist.xyz,{{ wg_socrat_nodes['socrat-1'].address }}\nlocal=/grafana-mcp.socrat.alchemmist.xyz/\n"
+        dest: /etc/homelab-private-dns.d/grafana-mcp.conf
+        owner: root
+        group: root
+        mode: '0644'
+      register: grafana_mcp_dns
+
+    - name: Validate private DNS configuration
+      ansible.builtin.command: dnsmasq --test --conf-file=/etc/homelab-private-dns.conf
+      changed_when: false
+
+    - name: Activate private Grafana MCP DNS
+      ansible.builtin.systemd_service:
+        name: homelab-private-dns.service
+        state: restarted
+      when: grafana_mcp_dns.changed
