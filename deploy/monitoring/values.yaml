@@ -158,9 +158,11 @@ grafana:
   resources:
     requests:
       cpu: 50m
-      memory: 256Mi
+      memory: 512Mi
     limits:
-      memory: 768Mi
+      memory: 1536Mi
+  env:
+    GOMEMLIMIT: 1GiB
   sidecar:
     resources:
       requests:
