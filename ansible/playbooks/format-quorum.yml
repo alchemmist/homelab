@@ -1,0 +1,40 @@
+---
+- name: Prepare shared storage access on the application node
+  hosts: socrat-1
+  gather_facts: false
+  become: true
+  tags: [format_quorum_storage]
+  tasks:
+    - name: Install the NFS client
+      community.general.pacman:
+        name: nfs-utils
+        state: present
+
+- name: Deploy format-quorum on its designated node
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  tasks:
+    - name: Stage the format-quorum Helm chart
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../charts/format-quorum/"
+        dest: /home/alchemmist/.cache/homelab-format-quorum/chart/
+        mode: preserve
+
+    - name: Deploy the single format-quorum replica
+      ansible.builtin.command:
+        argv:
+          - helm
+          - upgrade
+          - --install
+          - format-quorum
+          - /home/alchemmist/.cache/homelab-format-quorum/chart
+          - --namespace
+          - format-quorum
+          - --kubeconfig
+          - /etc/rancher/k3s/k3s.yaml
+          - --wait
+          - --atomic
+          - --timeout
+          - 5m
+      changed_when: true
