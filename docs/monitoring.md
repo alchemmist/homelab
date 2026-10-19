@@ -120,7 +120,7 @@ Client setup is separate from server verification: install the macOS resolver an
 
 ## Selected-node diagnostics
 
-Nodes shows one selected node by name. Its Node alerts section uses compact colored tiles backed by Prometheus alerts. The original six cover Ready, MemoryPressure, DiskPressure, PIDPressure, scheduling disabled and node-exporter freshness. Normal is green, Pending amber, Firing red; a firing cordon alert is blue because maintenance may be intentional. Each tile links to the exact Rancher node. A missing Kubernetes-state scrape or stale rule evaluation shows No telemetry instead of a healthy zero.
+Nodes shows one selected node by name. Its Node alerts section uses compact colored tiles backed by Prometheus alerts. The original six cover Ready, MemoryPressure, DiskPressure, PIDPressure, scheduling disabled and node-exporter freshness. Normal is green, Pending amber, Firing red; a firing cordon alert is blue because maintenance may be intentional. Tiles link to Grafana alert rules; the header separately links to the selected Rancher node. A missing Kubernetes-state scrape or stale rule evaluation shows No telemetry instead of a healthy zero.
 
 KubeNodeNotReady (15m) and KubeNodePressure (5m) are owned by monitoring-k3s and disabled in the base chart to avoid duplicate rules. Both still evaluate cordoned nodes. SocratNodeSchedulingDisabled fires at info severity after 15m. SocratNodeMetricsStale detects samples older than 2m or no recorded sample in 24h, with a further 1m pending period. Its timestamp recording survives exporter target removal; deleted Kubernetes nodes are excluded. These rules populate the existing alerting stack; this change does not add notification delivery.
 
@@ -167,6 +167,15 @@ The socrat.containers.health group applies across namespaces, including Grafana 
 
 SocratContainerRestartsFrequent checks at least3 estimated restarts over30m for1m, including regular and init containers. It does not require continuous NotReady or CrashLoopBackOff. Both rules deduplicate kube-state-metrics replicas and retain namespace, pod, container, pod UID and node; pod-UID joins prevent attribution to a replacement pod with the same name. Each alert has a direct Rancher pod URL.
 
-Overview's alert table exposes affected-pod links for these two rules alongside KubePodNotReady. Nodes adds compact OOM and Restarts cards. Clicking a card opens the corresponding Overview alert details filtered to the selected node; global Overview health cards reset that optional node filter. No notification receiver is configured by this change.
+Overview's alert table exposes affected-pod links for these two rules alongside KubePodNotReady. Nodes adds compact OOM and Restarts cards. These tiles now open their native Grafana alert rules. Overview retains the optional node filter for direct detail links, and global Overview health cards reset it. No notification receiver is configured by this change.
 
 Ten synthetic cases in tests/container-health.test.yml cover first-observed/recovered OOM, stale and non-OOM terminations, future timestamps, restart bursts despite Ready, low counts, counter resets, init-container restarts and duplicate scrapes. The OOM expression was also checked against historical Grafana metrics from2026-10-19 before the memory fix.
+
+
+## Node alert navigation
+
+The Nodes header has an Open node in Rancher dashboard link that interpolates the selected node. Alert tiles instead link to native Grafana rule-detail pages. A tile with multiple rules offers each rule separately, including severity when warning and critical variants share a name. Direct rule pages show the rule and its instances; they are not restricted to a single node instance.
+
+Native datasource-managed rule identifiers include the rule file UID, group, name and a definition fingerprint. The monitoring_k3s role therefore installs rules first, waits for the live Prometheus definitions to match the Kubernetes definitions, and generates nodeAlertLinks Helm values before publishing the final dashboard. Expressions are canonicalized through Prometheus format_query. Link generation follows the pinned Grafana13.2.4 identifier format and checks current feature toggles; verify compatibility when upgrading Grafana. Reapply monitoring_k3s after changing alert definitions, including rules from monitoring_base. Source JSON retains name-search fallback links for standalone chart rendering; the managed deployment replaces these with direct links.
+
+The resolver refuses missing or stale rule definitions rather than emitting an outdated link. Tests cover native fingerprint fixtures, query normalization, severity variants and convergence after rule/UID changes. Rule expressions and evaluation behavior are unchanged by this navigation feature.

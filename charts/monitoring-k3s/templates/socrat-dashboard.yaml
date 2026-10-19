@@ -1,4 +1,15 @@
 {{- range $name := list "overview" "nodes" "services" "llm" }}
+{{- $content := $.Files.Get (printf "dashboards/%s.json" $name) }}
+{{- if and (eq $name "nodes") $.Values.nodeAlertLinks }}
+{{- $dashboard := fromJson $content }}
+{{- range $panel := $dashboard.panels }}
+{{- $links := index $.Values.nodeAlertLinks (printf "%v" $panel.id) }}
+{{- if $links }}
+{{- $_ := set $panel.fieldConfig.defaults "links" $links }}
+{{- end }}
+{{- end }}
+{{- $content = toPrettyJson $dashboard }}
+{{- end }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -10,5 +21,5 @@ metadata:
     grafana_folder: /tmp/dashboards
 data:
   socrat-{{ $name }}.json: |
-{{ $.Files.Get (printf "dashboards/%s.json" $name) | indent 4 }}
+{{ $content | indent 4 }}
 {{- end }}

@@ -46,3 +46,41 @@
       - --timeout
       - 5m
   changed_when: true
+
+- name: Stage native Grafana alert link resolver
+  ansible.builtin.copy:
+    src: resolve_alert_links.py
+    dest: "{{ monitoring_k3s_remote_dir }}/resolve_alert_links.py"
+    mode: '0600'
+
+- name: Resolve rule detail links after Prometheus loads the rules
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ monitoring_k3s_remote_dir }}/resolve_alert_links.py"
+      - --dashboard
+      - "{{ monitoring_k3s_remote_dir }}/chart/dashboards/nodes.json"
+      - --output
+      - "{{ monitoring_k3s_remote_dir }}/node-alert-links.json"
+      - --timeout
+      - '180'
+  changed_when: false
+
+- name: Publish native alert detail links on the Nodes dashboard
+  ansible.builtin.command:
+    argv:
+      - helm
+      - upgrade
+      - "{{ monitoring_k3s_release }}"
+      - "{{ monitoring_k3s_remote_dir }}/chart"
+      - --namespace
+      - "{{ monitoring_k3s_namespace }}"
+      - --kubeconfig
+      - "{{ monitoring_k3s_kubeconfig }}"
+      - --reuse-values
+      - --values
+      - "{{ monitoring_k3s_remote_dir }}/node-alert-links.json"
+      - "{{ '--wait' if monitoring_k3s_wait | bool else '--wait=false' }}"
+      - --timeout
+      - 5m
+  changed_when: true

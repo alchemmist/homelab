@@ -16,6 +16,12 @@
   "editable": false,
   "links": [
     {
+      "title": "Open node in Rancher",
+      "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
+      "type": "link",
+      "targetBlank": true
+    },
+    {
       "title": "Overview",
       "url": "/d/socrat-overview",
       "type": "link",
@@ -79,7 +85,7 @@
       "id": 201,
       "type": "stat",
       "title": "",
-      "description": "Ready=false or unknown for 15 minutes, including cordoned nodes. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Open the node to inspect it in Rancher.",
+      "description": "Ready=false or unknown for 15 minutes, including cordoned nodes. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 0,
         "y": 1,
@@ -150,9 +156,9 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "KubeNodeNotReady",
+              "url": "/alerting/list?search=KubeNodeNotReady",
+              "targetBlank": false
             }
           ],
           "displayName": "Status"
@@ -183,7 +189,7 @@
       "id": 216,
       "type": "stat",
       "title": "",
-      "description": "Unreachable node taint or a failed kubelet scrape. Existing alerts remain visible even when kubelet telemetry disappears. Existing rules: KubeNodeUnreachable, KubeletInstanceUnreachable. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details. Clear also requires a fresh successful kubelet scrape, so a disappeared target cannot become a false healthy result.",
+      "description": "Unreachable node taint or a failed kubelet scrape. Existing alerts remain visible even when kubelet telemetry disappears. Existing rules: KubeNodeUnreachable, KubeletInstanceUnreachable. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h.  Clear also requires a fresh successful kubelet scrape, so a disappeared target cannot become a false healthy result. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 6,
         "y": 1,
@@ -262,9 +268,14 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "KubeNodeUnreachable",
+              "url": "/alerting/list?search=KubeNodeUnreachable",
+              "targetBlank": false
+            },
+            {
+              "title": "KubeletInstanceUnreachable",
+              "url": "/alerting/list?search=KubeletInstanceUnreachable",
+              "targetBlank": false
             }
           ],
           "displayName": "Reachability"
@@ -295,7 +306,7 @@
       "id": 202,
       "type": "stat",
       "title": "",
-      "description": "MemoryPressure reported by Kubernetes for 5 minutes. This is not simply high RAM utilization. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Open the node to inspect it in Rancher.",
+      "description": "MemoryPressure reported by Kubernetes for 5 minutes. This is not simply high RAM utilization. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 12,
         "y": 1,
@@ -366,9 +377,9 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "KubeNodePressure",
+              "url": "/alerting/list?search=KubeNodePressure",
+              "targetBlank": false
             }
           ],
           "displayName": "Memory pressure"
@@ -399,7 +410,7 @@
       "id": 203,
       "type": "stat",
       "title": "",
-      "description": "DiskPressure reported by Kubernetes for 5 minutes, including pressure on free space or inodes. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Open the node to inspect it in Rancher.",
+      "description": "DiskPressure reported by Kubernetes for 5 minutes, including pressure on free space or inodes. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 18,
         "y": 1,
@@ -470,9 +481,9 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "KubeNodePressure",
+              "url": "/alerting/list?search=KubeNodePressure",
+              "targetBlank": false
             }
           ],
           "displayName": "Disk pressure"
@@ -503,7 +514,7 @@
       "id": 204,
       "type": "stat",
       "title": "",
-      "description": "PIDPressure reported by Kubernetes for 5 minutes. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Open the node to inspect it in Rancher.",
+      "description": "PIDPressure reported by Kubernetes for 5 minutes. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 0,
         "y": 3,
@@ -574,9 +585,9 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "KubeNodePressure",
+              "url": "/alerting/list?search=KubeNodePressure",
+              "targetBlank": false
             }
           ],
           "displayName": "PID pressure"
@@ -607,7 +618,7 @@
       "id": 206,
       "type": "stat",
       "title": "",
-      "description": "No successful node-exporter sample for more than 2 minutes, or no recorded sample within 24 hours; alert waits 1 additional minute before firing. This does not prove the node is down. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Open the node to inspect it in Rancher.",
+      "description": "No successful node-exporter sample for more than 2 minutes, or no recorded sample within 24 hours; alert waits 1 additional minute before firing. This does not prove the node is down. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 6,
         "y": 3,
@@ -678,9 +689,9 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "SocratNodeMetricsStale",
+              "url": "/alerting/list?search=SocratNodeMetricsStale",
+              "targetBlank": false
             }
           ],
           "displayName": "Metrics freshness"
@@ -711,7 +722,7 @@
       "id": 207,
       "type": "stat",
       "title": "",
-      "description": "CPU temperature is within 10 °C of the critical limit for 5m. Hardware critical limits take precedence; socrat-1 uses the validated Ryzen 7 7840HS 100 °C limit only when hardware does not expose one. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
+      "description": "CPU temperature is within 10 °C of the critical limit for 5m. Hardware critical limits take precedence; socrat-1 uses the validated Ryzen 7 7840HS 100 °C limit only when hardware does not expose one. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 12,
         "y": 3,
@@ -786,9 +797,9 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "SocratNodeCPUTemperatureHigh",
+              "url": "/alerting/list?search=SocratNodeCPUTemperatureHigh",
+              "targetBlank": false
             }
           ],
           "displayName": "CPU temp"
@@ -819,7 +830,7 @@
       "id": 208,
       "type": "stat",
       "title": "",
-      "description": "New core or package thermal throttle events occurred in a rolling 5m window, sustained for 2m. This is hardware thermal throttling, not container CPU quota throttling. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
+      "description": "New core or package thermal throttle events occurred in a rolling 5m window, sustained for 2m. This is hardware thermal throttling, not container CPU quota throttling. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 18,
         "y": 3,
@@ -894,9 +905,9 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "SocratNodeThermalThrottling",
+              "url": "/alerting/list?search=SocratNodeThermalThrottling",
+              "targetBlank": false
             }
           ],
           "displayName": "Thermal"
@@ -927,7 +938,7 @@
       "id": 205,
       "type": "stat",
       "title": "",
-      "description": "Scheduling disabled (cordoned) for 15 minutes. This informational alert can indicate intentional maintenance; existing pods keep running. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Open the node to inspect it in Rancher.",
+      "description": "Scheduling disabled (cordoned) for 15 minutes. This informational alert can indicate intentional maintenance; existing pods keep running. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 0,
         "y": 5,
@@ -998,9 +1009,9 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "SocratNodeSchedulingDisabled",
+              "url": "/alerting/list?search=SocratNodeSchedulingDisabled",
+              "targetBlank": false
             }
           ],
           "displayName": "Scheduling"
@@ -1031,7 +1042,7 @@
       "id": 209,
       "type": "stat",
       "title": "",
-      "description": "Tasks wait for CPU for more than 25% of wall time over 5m, sustained for 10m. This PSI condition is distinct from CPU utilization and load average. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
+      "description": "Tasks wait for CPU for more than 25% of wall time over 5m, sustained for 10m. This PSI condition is distinct from CPU utilization and load average. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 4,
         "y": 5,
@@ -1106,9 +1117,9 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "SocratNodeResourceContention",
+              "url": "/alerting/list?search=SocratNodeResourceContention",
+              "targetBlank": false
             }
           ],
           "displayName": "CPU PSI"
@@ -1139,7 +1150,7 @@
       "id": 210,
       "type": "stat",
       "title": "",
-      "description": "Tasks stall on memory for more than 10% of wall time over 5m, sustained for 10m. This measures Linux PSI, not Kubernetes MemoryPressure. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
+      "description": "Tasks stall on memory for more than 10% of wall time over 5m, sustained for 10m. This measures Linux PSI, not Kubernetes MemoryPressure. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 8,
         "y": 5,
@@ -1214,9 +1225,9 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "SocratNodeResourceContention",
+              "url": "/alerting/list?search=SocratNodeResourceContention",
+              "targetBlank": false
             }
           ],
           "displayName": "Memory PSI"
@@ -1247,7 +1258,7 @@
       "id": 211,
       "type": "stat",
       "title": "",
-      "description": "Tasks stall on I/O for more than 10% of wall time over 5m, sustained for 10m. This measures task stalls, not disk space or disk queue length. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
+      "description": "Tasks stall on I/O for more than 10% of wall time over 5m, sustained for 10m. This measures task stalls, not disk space or disk queue length. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 12,
         "y": 5,
@@ -1322,9 +1333,9 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "SocratNodeResourceContention",
+              "url": "/alerting/list?search=SocratNodeResourceContention",
+              "targetBlank": false
             }
           ],
           "displayName": "I/O PSI"
@@ -1355,7 +1366,7 @@
       "id": 212,
       "type": "stat",
       "title": "",
-      "description": "Hypervisor CPU steal averages more than 10% over 5m, sustained for 15m. Physical hosts normally report zero. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
+      "description": "Hypervisor CPU steal averages more than 10% over 5m, sustained for 15m. Physical hosts normally report zero. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 16,
         "y": 5,
@@ -1430,9 +1441,9 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "SocratNodeCPUStealHigh",
+              "url": "/alerting/list?search=SocratNodeCPUStealHigh",
+              "targetBlank": false
             }
           ],
           "displayName": "CPU steal"
@@ -1463,7 +1474,7 @@
       "id": 213,
       "type": "stat",
       "title": "",
-      "description": "Reuses existing filesystem-space alerts, including forecast exhaustion and low free space. It does not create another disk-space rule. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
+      "description": "Reuses existing filesystem-space alerts, including forecast exhaustion and low free space. It does not create another disk-space rule. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 20,
         "y": 5,
@@ -1538,9 +1549,14 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "NodeFilesystemAlmostOutOfSpace",
+              "url": "/alerting/list?search=NodeFilesystemAlmostOutOfSpace",
+              "targetBlank": false
+            },
+            {
+              "title": "NodeFilesystemSpaceFillingUp",
+              "url": "/alerting/list?search=NodeFilesystemSpaceFillingUp",
+              "targetBlank": false
             }
           ],
           "displayName": "Disk space"
@@ -1571,7 +1587,7 @@
       "id": 214,
       "type": "stat",
       "title": "",
-      "description": "Reuses existing inode exhaustion alerts, including forecast exhaustion and low free inode counts. It does not create another inode rule. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
+      "description": "Reuses existing inode exhaustion alerts, including forecast exhaustion and low free inode counts. It does not create another inode rule. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 0,
         "y": 6,
@@ -1646,9 +1662,14 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "NodeFilesystemAlmostOutOfFiles",
+              "url": "/alerting/list?search=NodeFilesystemAlmostOutOfFiles",
+              "targetBlank": false
+            },
+            {
+              "title": "NodeFilesystemFilesFillingUp",
+              "url": "/alerting/list?search=NodeFilesystemFilesFillingUp",
+              "targetBlank": false
             }
           ],
           "displayName": "Inodes"
@@ -1679,7 +1700,7 @@
       "id": 215,
       "type": "stat",
       "title": "",
-      "description": "Reuses CPUThrottlingHigh: more than 25% of CFS periods are throttled over 5m, sustained for 15m. It is an informational container CPU-limit alert, not hardware thermal throttling. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
+      "description": "Reuses CPUThrottlingHigh: more than 25% of CFS periods are throttled over 5m, sustained for 15m. It is an informational container CPU-limit alert, not hardware thermal throttling. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 4,
         "y": 6,
@@ -1754,9 +1775,9 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "CPUThrottlingHigh",
+              "url": "/alerting/list?search=CPUThrottlingHigh",
+              "targetBlank": false
             }
           ],
           "displayName": "Pod throttling"
@@ -1787,7 +1808,7 @@
       "id": 217,
       "type": "stat",
       "title": "",
-      "description": "Repeated Ready transitions on a schedulable node. Existing rules: KubeNodeReadinessFlapping. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
+      "description": "Repeated Ready transitions on a schedulable node. Existing rules: KubeNodeReadinessFlapping. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 8,
         "y": 6,
@@ -1866,9 +1887,9 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "KubeNodeReadinessFlapping",
+              "url": "/alerting/list?search=KubeNodeReadinessFlapping",
+              "targetBlank": false
             }
           ],
           "displayName": "Ready flaps"
@@ -1899,7 +1920,7 @@
       "id": 218,
       "type": "stat",
       "title": "",
-      "description": "Pod count approaching the node pod-capacity limit. Existing rules: KubeletTooManyPods. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details. Firing is blue because the existing rule has informational severity.",
+      "description": "Pod count approaching the node pod-capacity limit. Existing rules: KubeletTooManyPods. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h.  Firing is blue because the existing rule has informational severity. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 12,
         "y": 6,
@@ -1978,9 +1999,9 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "KubeletTooManyPods",
+              "url": "/alerting/list?search=KubeletTooManyPods",
+              "targetBlank": false
             }
           ],
           "displayName": "Pod capacity"
@@ -2011,7 +2032,7 @@
       "id": 219,
       "type": "stat",
       "title": "",
-      "description": "Kubelet pod evictions caused by resource pressure. The eviction counter may not be exposed before the first event. Existing rules: KubeNodeEviction. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details. Firing is blue because the existing rule has informational severity.",
+      "description": "Kubelet pod evictions caused by resource pressure. The eviction counter may not be exposed before the first event. Existing rules: KubeNodeEviction. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h.  Firing is blue because the existing rule has informational severity. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 16,
         "y": 6,
@@ -2090,9 +2111,9 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "KubeNodeEviction",
+              "url": "/alerting/list?search=KubeNodeEviction",
+              "targetBlank": false
             }
           ],
           "displayName": "Evictions"
@@ -2123,7 +2144,7 @@
       "id": 220,
       "type": "stat",
       "title": "",
-      "description": "Slow pod lifecycle relisting or pod-worker operations, using the existing PLEG and startup-latency alerts. Existing rules: KubeletPlegDurationHigh, KubeletPodStartUpLatencyHigh. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
+      "description": "Slow pod lifecycle relisting or pod-worker operations, using the existing PLEG and startup-latency alerts. Existing rules: KubeletPlegDurationHigh, KubeletPodStartUpLatencyHigh. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 20,
         "y": 6,
@@ -2202,9 +2223,14 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "KubeletPlegDurationHigh",
+              "url": "/alerting/list?search=KubeletPlegDurationHigh",
+              "targetBlank": false
+            },
+            {
+              "title": "KubeletPodStartUpLatencyHigh",
+              "url": "/alerting/list?search=KubeletPodStartUpLatencyHigh",
+              "targetBlank": false
             }
           ],
           "displayName": "Kubelet latency"
@@ -2235,7 +2261,7 @@
       "id": 221,
       "type": "stat",
       "title": "",
-      "description": "Client or serving certificates near expiration, or certificate-renewal failures. N/A indicates that not all certificate-manager metrics are exposed by this kubelet. Existing rules: KubeletClientCertificateExpiration, KubeletServerCertificateExpiration, KubeletClientCertificateRenewalErrors, KubeletServerCertificateRenewalErrors. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
+      "description": "Client or serving certificates near expiration, or certificate-renewal failures. N/A indicates that not all certificate-manager metrics are exposed by this kubelet. Existing rules: KubeletClientCertificateExpiration, KubeletServerCertificateExpiration, KubeletClientCertificateRenewalErrors, KubeletServerCertificateRenewalErrors. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 0,
         "y": 7,
@@ -2314,9 +2340,24 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "KubeletClientCertificateExpiration",
+              "url": "/alerting/list?search=KubeletClientCertificateExpiration",
+              "targetBlank": false
+            },
+            {
+              "title": "KubeletClientCertificateRenewalErrors",
+              "url": "/alerting/list?search=KubeletClientCertificateRenewalErrors",
+              "targetBlank": false
+            },
+            {
+              "title": "KubeletServerCertificateExpiration",
+              "url": "/alerting/list?search=KubeletServerCertificateExpiration",
+              "targetBlank": false
+            },
+            {
+              "title": "KubeletServerCertificateRenewalErrors",
+              "url": "/alerting/list?search=KubeletServerCertificateRenewalErrors",
+              "targetBlank": false
             }
           ],
           "displayName": "Certificates"
@@ -2347,7 +2388,7 @@
       "id": 222,
       "type": "stat",
       "title": "",
-      "description": "Sustained CPU utilization or a large load-average queue per CPU. Distinct from thermal throttling and PSI. Existing rules: NodeCPUHighUsage, NodeSystemSaturation. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details. Blue Firing is informational CPU usage; red Firing is warning-level system saturation.",
+      "description": "Sustained CPU utilization or a large load-average queue per CPU. Distinct from thermal throttling and PSI. Existing rules: NodeCPUHighUsage, NodeSystemSaturation. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h.  Blue Firing is informational CPU usage; red Firing is warning-level system saturation. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 4,
         "y": 7,
@@ -2434,9 +2475,14 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "NodeCPUHighUsage",
+              "url": "/alerting/list?search=NodeCPUHighUsage",
+              "targetBlank": false
+            },
+            {
+              "title": "NodeSystemSaturation",
+              "url": "/alerting/list?search=NodeSystemSaturation",
+              "targetBlank": false
             }
           ],
           "displayName": "CPU load"
@@ -2467,7 +2513,7 @@
       "id": 223,
       "type": "stat",
       "title": "",
-      "description": "High memory utilization or frequent major page faults. Distinct from the Kubernetes MemoryPressure condition. Existing rules: NodeMemoryMajorPagesFaults, NodeMemoryHighUtilization. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
+      "description": "High memory utilization or frequent major page faults. Distinct from the Kubernetes MemoryPressure condition. Existing rules: NodeMemoryMajorPagesFaults, NodeMemoryHighUtilization. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 8,
         "y": 7,
@@ -2546,9 +2592,14 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "NodeMemoryHighUtilization",
+              "url": "/alerting/list?search=NodeMemoryHighUtilization",
+              "targetBlank": false
+            },
+            {
+              "title": "NodeMemoryMajorPagesFaults",
+              "url": "/alerting/list?search=NodeMemoryMajorPagesFaults",
+              "targetBlank": false
             }
           ],
           "displayName": "Memory load"
@@ -2579,7 +2630,7 @@
       "id": 224,
       "type": "stat",
       "title": "",
-      "description": "Sustained disk I/O queue saturation on block devices monitored by the existing rule. Existing rules: NodeDiskIOSaturation. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
+      "description": "Sustained disk I/O queue saturation on block devices monitored by the existing rule. Existing rules: NodeDiskIOSaturation. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 12,
         "y": 7,
@@ -2658,9 +2709,9 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "NodeDiskIOSaturation",
+              "url": "/alerting/list?search=NodeDiskIOSaturation",
+              "targetBlank": false
             }
           ],
           "displayName": "Disk I/O"
@@ -2691,7 +2742,7 @@
       "id": 225,
       "type": "stat",
       "title": "",
-      "description": "Receive/transmit errors, interface flapping or conntrack table exhaustion. Existing rules: NodeNetworkReceiveErrs, NodeNetworkTransmitErrs, NodeNetworkInterfaceFlapping, NodeHighNumberConntrackEntriesUsed. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
+      "description": "Receive/transmit errors, interface flapping or conntrack table exhaustion. Existing rules: NodeNetworkReceiveErrs, NodeNetworkTransmitErrs, NodeNetworkInterfaceFlapping, NodeHighNumberConntrackEntriesUsed. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 16,
         "y": 7,
@@ -2770,9 +2821,24 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "NodeHighNumberConntrackEntriesUsed",
+              "url": "/alerting/list?search=NodeHighNumberConntrackEntriesUsed",
+              "targetBlank": false
+            },
+            {
+              "title": "NodeNetworkInterfaceFlapping",
+              "url": "/alerting/list?search=NodeNetworkInterfaceFlapping",
+              "targetBlank": false
+            },
+            {
+              "title": "NodeNetworkReceiveErrs",
+              "url": "/alerting/list?search=NodeNetworkReceiveErrs",
+              "targetBlank": false
+            },
+            {
+              "title": "NodeNetworkTransmitErrs",
+              "url": "/alerting/list?search=NodeNetworkTransmitErrs",
+              "targetBlank": false
             }
           ],
           "displayName": "Network"
@@ -2803,7 +2869,7 @@
       "id": 226,
       "type": "stat",
       "title": "",
-      "description": "Clock offset that is not recovering or an unsynchronized system clock. Existing rules: NodeClockSkewDetected, NodeClockNotSynchronising. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
+      "description": "Clock offset that is not recovering or an unsynchronized system clock. Existing rules: NodeClockSkewDetected, NodeClockNotSynchronising. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 20,
         "y": 7,
@@ -2882,9 +2948,14 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "NodeClockNotSynchronising",
+              "url": "/alerting/list?search=NodeClockNotSynchronising",
+              "targetBlank": false
+            },
+            {
+              "title": "NodeClockSkewDetected",
+              "url": "/alerting/list?search=NodeClockSkewDetected",
+              "targetBlank": false
             }
           ],
           "displayName": "Clock"
@@ -2915,7 +2986,7 @@
       "id": 227,
       "type": "stat",
       "title": "",
-      "description": "System file-descriptor usage near the configured limit; includes both existing warning and critical thresholds. Existing rules: NodeFileDescriptorLimit. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
+      "description": "System file-descriptor usage near the configured limit; includes both existing warning and critical thresholds. Existing rules: NodeFileDescriptorLimit. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 0,
         "y": 8,
@@ -2994,9 +3065,9 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "NodeFileDescriptorLimit",
+              "url": "/alerting/list?search=NodeFileDescriptorLimit",
+              "targetBlank": false
             }
           ],
           "displayName": "Open files"
@@ -3027,7 +3098,7 @@
       "id": 228,
       "type": "stat",
       "title": "",
-      "description": "Node-exporter could not read or parse a textfile metric file. Existing rules: NodeTextFileCollectorScrapeError. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
+      "description": "Node-exporter could not read or parse a textfile metric file. Existing rules: NodeTextFileCollectorScrapeError. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 4,
         "y": 8,
@@ -3106,9 +3177,9 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "NodeTextFileCollectorScrapeError",
+              "url": "/alerting/list?search=NodeTextFileCollectorScrapeError",
+              "targetBlank": false
             }
           ],
           "displayName": "Textfile"
@@ -3139,7 +3210,7 @@
       "id": 229,
       "type": "stat",
       "title": "",
-      "description": "Degraded Linux software RAID, failed RAID disks or missing active bonding members. N/A means complete coverage is unavailable, commonly because these devices do not exist. Existing rules: NodeRAIDDegraded, NodeRAIDDiskFailure, NodeBondingDegraded. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
+      "description": "Degraded Linux software RAID, failed RAID disks or missing active bonding members. N/A means complete coverage is unavailable, commonly because these devices do not exist. Existing rules: NodeRAIDDegraded, NodeRAIDDiskFailure, NodeBondingDegraded. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 8,
         "y": 8,
@@ -3218,9 +3289,19 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "NodeBondingDegraded",
+              "url": "/alerting/list?search=NodeBondingDegraded",
+              "targetBlank": false
+            },
+            {
+              "title": "NodeRAIDDegraded",
+              "url": "/alerting/list?search=NodeRAIDDegraded",
+              "targetBlank": false
+            },
+            {
+              "title": "NodeRAIDDiskFailure",
+              "url": "/alerting/list?search=NodeRAIDDiskFailure",
+              "targetBlank": false
             }
           ],
           "displayName": "RAID / bonding"
@@ -3251,7 +3332,7 @@
       "id": 230,
       "type": "stat",
       "title": "",
-      "description": "Failed systemd units or repeated service restarts. N/A when the optional systemd collector or restart metrics are not enabled. Existing rules: NodeSystemdServiceFailed, NodeSystemdServiceCrashlooping. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
+      "description": "Failed systemd units or repeated service restarts. N/A when the optional systemd collector or restart metrics are not enabled. Existing rules: NodeSystemdServiceFailed, NodeSystemdServiceCrashlooping. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 12,
         "y": 8,
@@ -3330,9 +3411,14 @@
           },
           "links": [
             {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
+              "title": "NodeSystemdServiceCrashlooping",
+              "url": "/alerting/list?search=NodeSystemdServiceCrashlooping",
+              "targetBlank": false
+            },
+            {
+              "title": "NodeSystemdServiceFailed",
+              "url": "/alerting/list?search=NodeSystemdServiceFailed",
+              "targetBlank": false
             }
           ],
           "displayName": "Systemd"
@@ -3363,7 +3449,7 @@
       "id": 231,
       "type": "stat",
       "title": "",
-      "description": "A regular container on this node was OOMKilled within the last 10m. Pending for 30s; does not require the pod to stay unready. Shows the worst alert state across containers of the selected node. Click to list matching alerts in Overview, then click the affected pod to open it in Rancher. No telemetry is not a healthy zero.",
+      "description": "A regular container on this node was OOMKilled within the last 10m. Pending for 30s; does not require the pod to stay unready. Shows the worst alert state across containers of the selected node.  No telemetry is not a healthy zero. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 16,
         "y": 8,
@@ -3438,8 +3524,8 @@
           },
           "links": [
             {
-              "title": "Show affected pods",
-              "url": "/d/socrat-overview/overview?${__url_time_range}&var-alert_name=SocratContainerOOMKilled&var-alert_state=pending%7Cfiring&var-alert_severity=.*&viewPanel=panel-17&var-alert_node=${node:percentencode}",
+              "title": "SocratContainerOOMKilled",
+              "url": "/alerting/list?search=SocratContainerOOMKilled",
               "targetBlank": false
             }
           ],
@@ -3471,7 +3557,7 @@
       "id": 232,
       "type": "stat",
       "title": "",
-      "description": "A regular or init container on this node has at least 3 estimated restarts over 30m. Pending for 1m; Ready periods do not reset this alert. Shows the worst alert state across containers of the selected node. Click to list matching alerts in Overview, then click the affected pod to open it in Rancher. No telemetry is not a healthy zero.",
+      "description": "A regular or init container on this node has at least 3 estimated restarts over 30m. Pending for 1m; Ready periods do not reset this alert. Shows the worst alert state across containers of the selected node.  No telemetry is not a healthy zero. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
         "x": 20,
         "y": 8,
@@ -3546,8 +3632,8 @@
           },
           "links": [
             {
-              "title": "Show affected pods",
-              "url": "/d/socrat-overview/overview?${__url_time_range}&var-alert_name=SocratContainerRestartsFrequent&var-alert_state=pending%7Cfiring&var-alert_severity=.*&viewPanel=panel-17&var-alert_node=${node:percentencode}",
+              "title": "SocratContainerRestartsFrequent",
+              "url": "/alerting/list?search=SocratContainerRestartsFrequent",
               "targetBlank": false
             }
           ],
