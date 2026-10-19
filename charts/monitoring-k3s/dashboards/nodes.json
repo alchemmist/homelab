@@ -84,7 +84,7 @@
         "x": 0,
         "y": 1,
         "w": 6,
-        "h": 3
+        "h": 2
       },
       "datasource": {
         "type": "prometheus",
@@ -168,12 +168,11 @@
           "fields": ""
         },
         "orientation": "vertical",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 24,
           "titleSize": 13
         },
         "wideLayout": false
@@ -188,7 +187,7 @@
         "x": 6,
         "y": 1,
         "w": 6,
-        "h": 3
+        "h": 2
       },
       "datasource": {
         "type": "prometheus",
@@ -280,12 +279,11 @@
           "fields": ""
         },
         "orientation": "vertical",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 24,
           "titleSize": 13
         },
         "wideLayout": false
@@ -300,7 +298,7 @@
         "x": 12,
         "y": 1,
         "w": 6,
-        "h": 3
+        "h": 2
       },
       "datasource": {
         "type": "prometheus",
@@ -384,12 +382,11 @@
           "fields": ""
         },
         "orientation": "vertical",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 24,
           "titleSize": 13
         },
         "wideLayout": false
@@ -404,7 +401,7 @@
         "x": 18,
         "y": 1,
         "w": 6,
-        "h": 3
+        "h": 2
       },
       "datasource": {
         "type": "prometheus",
@@ -488,12 +485,11 @@
           "fields": ""
         },
         "orientation": "vertical",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 24,
           "titleSize": 13
         },
         "wideLayout": false
@@ -506,9 +502,9 @@
       "description": "PIDPressure reported by Kubernetes for 5 minutes. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Open the node to inspect it in Rancher.",
       "gridPos": {
         "x": 0,
-        "y": 4,
+        "y": 3,
         "w": 6,
-        "h": 3
+        "h": 2
       },
       "datasource": {
         "type": "prometheus",
@@ -592,12 +588,11 @@
           "fields": ""
         },
         "orientation": "vertical",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 24,
           "titleSize": 13
         },
         "wideLayout": false
@@ -610,9 +605,9 @@
       "description": "No successful node-exporter sample for more than 2 minutes, or no recorded sample within 24 hours; alert waits 1 additional minute before firing. This does not prove the node is down. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Open the node to inspect it in Rancher.",
       "gridPos": {
         "x": 6,
-        "y": 4,
+        "y": 3,
         "w": 6,
-        "h": 3
+        "h": 2
       },
       "datasource": {
         "type": "prometheus",
@@ -696,12 +691,11 @@
           "fields": ""
         },
         "orientation": "vertical",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 24,
           "titleSize": 13
         },
         "wideLayout": false
@@ -714,9 +708,9 @@
       "description": "CPU temperature is within 10 °C of the critical limit for 5m. Hardware critical limits take precedence; socrat-1 uses the validated Ryzen 7 7840HS 100 °C limit only when hardware does not expose one. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
       "gridPos": {
         "x": 12,
-        "y": 4,
+        "y": 3,
         "w": 6,
-        "h": 3
+        "h": 2
       },
       "datasource": {
         "type": "prometheus",
@@ -804,12 +798,11 @@
           "fields": ""
         },
         "orientation": "vertical",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 24,
           "titleSize": 13
         },
         "wideLayout": false
@@ -822,9 +815,9 @@
       "description": "New core or package thermal throttle events occurred in a rolling 5m window, sustained for 2m. This is hardware thermal throttling, not container CPU quota throttling. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
       "gridPos": {
         "x": 18,
-        "y": 4,
+        "y": 3,
         "w": 6,
-        "h": 3
+        "h": 2
       },
       "datasource": {
         "type": "prometheus",
@@ -912,12 +905,11 @@
           "fields": ""
         },
         "orientation": "vertical",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 24,
           "titleSize": 13
         },
         "wideLayout": false
@@ -930,7 +922,7 @@
       "description": "Scheduling disabled (cordoned) for 15 minutes. This informational alert can indicate intentional maintenance; existing pods keep running. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Open the node to inspect it in Rancher.",
       "gridPos": {
         "x": 0,
-        "y": 7,
+        "y": 5,
         "w": 4,
         "h": 1
       },
@@ -1016,12 +1008,11 @@
           "fields": ""
         },
         "orientation": "horizontal",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 12,
           "titleSize": 11
         },
         "wideLayout": true
@@ -1034,7 +1025,7 @@
       "description": "Tasks wait for CPU for more than 25% of wall time over 5m, sustained for 10m. This PSI condition is distinct from CPU utilization and load average. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
       "gridPos": {
         "x": 4,
-        "y": 7,
+        "y": 5,
         "w": 4,
         "h": 1
       },
@@ -1124,12 +1115,11 @@
           "fields": ""
         },
         "orientation": "horizontal",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 12,
           "titleSize": 11
         },
         "wideLayout": true
@@ -1142,7 +1132,7 @@
       "description": "Tasks stall on memory for more than 10% of wall time over 5m, sustained for 10m. This measures Linux PSI, not Kubernetes MemoryPressure. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
       "gridPos": {
         "x": 8,
-        "y": 7,
+        "y": 5,
         "w": 4,
         "h": 1
       },
@@ -1232,12 +1222,11 @@
           "fields": ""
         },
         "orientation": "horizontal",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 12,
           "titleSize": 11
         },
         "wideLayout": true
@@ -1250,7 +1239,7 @@
       "description": "Tasks stall on I/O for more than 10% of wall time over 5m, sustained for 10m. This measures task stalls, not disk space or disk queue length. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
       "gridPos": {
         "x": 12,
-        "y": 7,
+        "y": 5,
         "w": 4,
         "h": 1
       },
@@ -1340,12 +1329,11 @@
           "fields": ""
         },
         "orientation": "horizontal",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 12,
           "titleSize": 11
         },
         "wideLayout": true
@@ -1358,7 +1346,7 @@
       "description": "Hypervisor CPU steal averages more than 10% over 5m, sustained for 15m. Physical hosts normally report zero. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
       "gridPos": {
         "x": 16,
-        "y": 7,
+        "y": 5,
         "w": 4,
         "h": 1
       },
@@ -1448,12 +1436,11 @@
           "fields": ""
         },
         "orientation": "horizontal",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 12,
           "titleSize": 11
         },
         "wideLayout": true
@@ -1466,7 +1453,7 @@
       "description": "Reuses existing filesystem-space alerts, including forecast exhaustion and low free space. It does not create another disk-space rule. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
       "gridPos": {
         "x": 20,
-        "y": 7,
+        "y": 5,
         "w": 4,
         "h": 1
       },
@@ -1556,12 +1543,11 @@
           "fields": ""
         },
         "orientation": "horizontal",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 12,
           "titleSize": 11
         },
         "wideLayout": true
@@ -1574,7 +1560,7 @@
       "description": "Reuses existing inode exhaustion alerts, including forecast exhaustion and low free inode counts. It does not create another inode rule. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
       "gridPos": {
         "x": 0,
-        "y": 8,
+        "y": 6,
         "w": 4,
         "h": 1
       },
@@ -1664,12 +1650,11 @@
           "fields": ""
         },
         "orientation": "horizontal",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 12,
           "titleSize": 11
         },
         "wideLayout": true
@@ -1682,7 +1667,7 @@
       "description": "Reuses CPUThrottlingHigh: more than 25% of CFS periods are throttled over 5m, sustained for 15m. It is an informational container CPU-limit alert, not hardware thermal throttling. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
       "gridPos": {
         "x": 4,
-        "y": 8,
+        "y": 6,
         "w": 4,
         "h": 1
       },
@@ -1772,12 +1757,11 @@
           "fields": ""
         },
         "orientation": "horizontal",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 12,
           "titleSize": 11
         },
         "wideLayout": true
@@ -1790,7 +1774,7 @@
       "description": "Repeated Ready transitions on a schedulable node. Existing rules: KubeNodeReadinessFlapping. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
       "gridPos": {
         "x": 8,
-        "y": 8,
+        "y": 6,
         "w": 4,
         "h": 1
       },
@@ -1884,12 +1868,11 @@
           "fields": ""
         },
         "orientation": "horizontal",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 12,
           "titleSize": 11
         },
         "wideLayout": true
@@ -1902,7 +1885,7 @@
       "description": "Pod count approaching the node pod-capacity limit. Existing rules: KubeletTooManyPods. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details. Firing is blue because the existing rule has informational severity.",
       "gridPos": {
         "x": 12,
-        "y": 8,
+        "y": 6,
         "w": 4,
         "h": 1
       },
@@ -1996,12 +1979,11 @@
           "fields": ""
         },
         "orientation": "horizontal",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 12,
           "titleSize": 11
         },
         "wideLayout": true
@@ -2014,7 +1996,7 @@
       "description": "Kubelet pod evictions caused by resource pressure. The eviction counter may not be exposed before the first event. Existing rules: KubeNodeEviction. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details. Firing is blue because the existing rule has informational severity.",
       "gridPos": {
         "x": 16,
-        "y": 8,
+        "y": 6,
         "w": 4,
         "h": 1
       },
@@ -2108,12 +2090,11 @@
           "fields": ""
         },
         "orientation": "horizontal",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 12,
           "titleSize": 11
         },
         "wideLayout": true
@@ -2126,7 +2107,7 @@
       "description": "Slow pod lifecycle relisting or pod-worker operations, using the existing PLEG and startup-latency alerts. Existing rules: KubeletPlegDurationHigh, KubeletPodStartUpLatencyHigh. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
       "gridPos": {
         "x": 20,
-        "y": 8,
+        "y": 6,
         "w": 4,
         "h": 1
       },
@@ -2220,12 +2201,11 @@
           "fields": ""
         },
         "orientation": "horizontal",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 12,
           "titleSize": 11
         },
         "wideLayout": true
@@ -2238,7 +2218,7 @@
       "description": "Client or serving certificates near expiration, or certificate-renewal failures. N/A indicates that not all certificate-manager metrics are exposed by this kubelet. Existing rules: KubeletClientCertificateExpiration, KubeletServerCertificateExpiration, KubeletClientCertificateRenewalErrors, KubeletServerCertificateRenewalErrors. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
       "gridPos": {
         "x": 0,
-        "y": 9,
+        "y": 7,
         "w": 4,
         "h": 1
       },
@@ -2332,12 +2312,11 @@
           "fields": ""
         },
         "orientation": "horizontal",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 12,
           "titleSize": 11
         },
         "wideLayout": true
@@ -2350,7 +2329,7 @@
       "description": "Sustained CPU utilization or a large load-average queue per CPU. Distinct from thermal throttling and PSI. Existing rules: NodeCPUHighUsage, NodeSystemSaturation. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details. Blue Firing is informational CPU usage; red Firing is warning-level system saturation.",
       "gridPos": {
         "x": 4,
-        "y": 9,
+        "y": 7,
         "w": 4,
         "h": 1
       },
@@ -2452,12 +2431,11 @@
           "fields": ""
         },
         "orientation": "horizontal",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 12,
           "titleSize": 11
         },
         "wideLayout": true
@@ -2470,7 +2448,7 @@
       "description": "High memory utilization or frequent major page faults. Distinct from the Kubernetes MemoryPressure condition. Existing rules: NodeMemoryMajorPagesFaults, NodeMemoryHighUtilization. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
       "gridPos": {
         "x": 8,
-        "y": 9,
+        "y": 7,
         "w": 4,
         "h": 1
       },
@@ -2564,12 +2542,11 @@
           "fields": ""
         },
         "orientation": "horizontal",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 12,
           "titleSize": 11
         },
         "wideLayout": true
@@ -2582,7 +2559,7 @@
       "description": "Sustained disk I/O queue saturation on block devices monitored by the existing rule. Existing rules: NodeDiskIOSaturation. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
       "gridPos": {
         "x": 12,
-        "y": 9,
+        "y": 7,
         "w": 4,
         "h": 1
       },
@@ -2676,12 +2653,11 @@
           "fields": ""
         },
         "orientation": "horizontal",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 12,
           "titleSize": 11
         },
         "wideLayout": true
@@ -2694,7 +2670,7 @@
       "description": "Receive/transmit errors, interface flapping or conntrack table exhaustion. Existing rules: NodeNetworkReceiveErrs, NodeNetworkTransmitErrs, NodeNetworkInterfaceFlapping, NodeHighNumberConntrackEntriesUsed. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
       "gridPos": {
         "x": 16,
-        "y": 9,
+        "y": 7,
         "w": 4,
         "h": 1
       },
@@ -2788,12 +2764,11 @@
           "fields": ""
         },
         "orientation": "horizontal",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 12,
           "titleSize": 11
         },
         "wideLayout": true
@@ -2806,7 +2781,7 @@
       "description": "Clock offset that is not recovering or an unsynchronized system clock. Existing rules: NodeClockSkewDetected, NodeClockNotSynchronising. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
       "gridPos": {
         "x": 20,
-        "y": 9,
+        "y": 7,
         "w": 4,
         "h": 1
       },
@@ -2900,12 +2875,11 @@
           "fields": ""
         },
         "orientation": "horizontal",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 12,
           "titleSize": 11
         },
         "wideLayout": true
@@ -2918,7 +2892,7 @@
       "description": "System file-descriptor usage near the configured limit; includes both existing warning and critical thresholds. Existing rules: NodeFileDescriptorLimit. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
       "gridPos": {
         "x": 0,
-        "y": 10,
+        "y": 8,
         "w": 4,
         "h": 1
       },
@@ -3012,12 +2986,11 @@
           "fields": ""
         },
         "orientation": "horizontal",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 12,
           "titleSize": 11
         },
         "wideLayout": true
@@ -3030,7 +3003,7 @@
       "description": "Node-exporter could not read or parse a textfile metric file. Existing rules: NodeTextFileCollectorScrapeError. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
       "gridPos": {
         "x": 4,
-        "y": 10,
+        "y": 8,
         "w": 4,
         "h": 1
       },
@@ -3124,12 +3097,11 @@
           "fields": ""
         },
         "orientation": "horizontal",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 12,
           "titleSize": 11
         },
         "wideLayout": true
@@ -3142,7 +3114,7 @@
       "description": "Degraded Linux software RAID, failed RAID disks or missing active bonding members. N/A means complete coverage is unavailable, commonly because these devices do not exist. Existing rules: NodeRAIDDegraded, NodeRAIDDiskFailure, NodeBondingDegraded. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
       "gridPos": {
         "x": 8,
-        "y": 10,
+        "y": 8,
         "w": 4,
         "h": 1
       },
@@ -3236,12 +3208,11 @@
           "fields": ""
         },
         "orientation": "horizontal",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 12,
           "titleSize": 11
         },
         "wideLayout": true
@@ -3254,7 +3225,7 @@
       "description": "Failed systemd units or repeated service restarts. N/A when the optional systemd collector or restart metrics are not enabled. Existing rules: NodeSystemdServiceFailed, NodeSystemdServiceCrashlooping. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
       "gridPos": {
         "x": 12,
-        "y": 10,
+        "y": 8,
         "w": 4,
         "h": 1
       },
@@ -3348,12 +3319,11 @@
           "fields": ""
         },
         "orientation": "horizontal",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 12,
           "titleSize": 11
         },
         "wideLayout": true
@@ -3366,7 +3336,7 @@
       "description": "A regular container on this node was OOMKilled within the last 10m. Pending for 30s; does not require the pod to stay unready. Shows the worst alert state across containers of the selected node. Click to list matching alerts in Overview, then click the affected pod to open it in Rancher. No telemetry is not a healthy zero.",
       "gridPos": {
         "x": 16,
-        "y": 10,
+        "y": 8,
         "w": 4,
         "h": 1
       },
@@ -3456,12 +3426,11 @@
           "fields": ""
         },
         "orientation": "horizontal",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 12,
           "titleSize": 11
         },
         "wideLayout": true
@@ -3474,7 +3443,7 @@
       "description": "A regular or init container on this node has at least 3 estimated restarts over 30m. Pending for 1m; Ready periods do not reset this alert. Shows the worst alert state across containers of the selected node. Click to list matching alerts in Overview, then click the affected pod to open it in Rancher. No telemetry is not a healthy zero.",
       "gridPos": {
         "x": 20,
-        "y": 10,
+        "y": 8,
         "w": 4,
         "h": 1
       },
@@ -3564,12 +3533,11 @@
           "fields": ""
         },
         "orientation": "horizontal",
-        "textMode": "value_and_name",
+        "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 12,
           "titleSize": 11
         },
         "wideLayout": true
@@ -3582,7 +3550,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 11,
+        "y": 9,
         "w": 24,
         "h": 1
       },
@@ -3599,7 +3567,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 12,
+        "y": 10,
         "w": 8,
         "h": 4
       },
@@ -3647,7 +3615,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 12,
+        "y": 10,
         "w": 8,
         "h": 4
       },
@@ -3695,7 +3663,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 12,
+        "y": 10,
         "w": 8,
         "h": 4
       },
@@ -3739,7 +3707,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 16,
+        "y": 14,
         "w": 24,
         "h": 1
       },
@@ -3756,7 +3724,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 17,
+        "y": 15,
         "w": 8,
         "h": 4
       },
@@ -3805,7 +3773,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 17,
+        "y": 15,
         "w": 8,
         "h": 4
       },
@@ -3854,7 +3822,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 17,
+        "y": 15,
         "w": 8,
         "h": 4
       },
@@ -3903,7 +3871,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 21,
+        "y": 19,
         "w": 12,
         "h": 8
       },
@@ -3985,7 +3953,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 21,
+        "y": 19,
         "w": 12,
         "h": 8
       },
@@ -4063,7 +4031,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 29,
+        "y": 27,
         "w": 24,
         "h": 1
       },
@@ -4080,7 +4048,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 30,
+        "y": 28,
         "w": 12,
         "h": 7
       },
@@ -4157,7 +4125,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 30,
+        "y": 28,
         "w": 12,
         "h": 7
       },
@@ -4230,7 +4198,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 37,
+        "y": 35,
         "w": 24,
         "h": 1
       },
@@ -4247,7 +4215,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 38,
+        "y": 36,
         "w": 12,
         "h": 7
       },
@@ -4311,7 +4279,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 38,
+        "y": 36,
         "w": 12,
         "h": 7
       },
@@ -4368,7 +4336,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 45,
+        "y": 43,
         "w": 12,
         "h": 7
       },
@@ -4432,7 +4400,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 45,
+        "y": 43,
         "w": 12,
         "h": 7
       },
@@ -4492,7 +4460,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 52,
+        "y": 50,
         "w": 24,
         "h": 1
       },
@@ -4509,7 +4477,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 53,
+        "y": 51,
         "w": 8,
         "h": 7
       },
@@ -4565,7 +4533,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 53,
+        "y": 51,
         "w": 8,
         "h": 7
       },
@@ -4620,7 +4588,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 53,
+        "y": 51,
         "w": 8,
         "h": 7
       },
@@ -4685,7 +4653,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 60,
+        "y": 58,
         "w": 24,
         "h": 1
       },
@@ -4702,7 +4670,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 61,
+        "y": 59,
         "w": 8,
         "h": 7
       },
@@ -4758,7 +4726,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 61,
+        "y": 59,
         "w": 8,
         "h": 7
       },
@@ -4813,7 +4781,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 61,
+        "y": 59,
         "w": 8,
         "h": 7
       },
@@ -4864,7 +4832,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 68,
+        "y": 66,
         "w": 24,
         "h": 1
       },
@@ -4881,7 +4849,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 69,
+        "y": 67,
         "w": 8,
         "h": 7
       },
@@ -4937,7 +4905,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 69,
+        "y": 67,
         "w": 8,
         "h": 7
       },
@@ -4992,7 +4960,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 69,
+        "y": 67,
         "w": 8,
         "h": 7
       },
@@ -5050,7 +5018,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 76,
+        "y": 74,
         "w": 24,
         "h": 1
       },
@@ -5067,7 +5035,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 77,
+        "y": 75,
         "w": 8,
         "h": 7
       },
@@ -5122,7 +5090,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 77,
+        "y": 75,
         "w": 8,
         "h": 7
       },
@@ -5177,7 +5145,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 77,
+        "y": 75,
         "w": 8,
         "h": 7
       },
@@ -5235,7 +5203,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 84,
+        "y": 82,
         "w": 24,
         "h": 1
       },
@@ -5252,7 +5220,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 85,
+        "y": 83,
         "w": 24,
         "h": 6
       },
