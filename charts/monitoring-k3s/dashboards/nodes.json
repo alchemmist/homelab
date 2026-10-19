@@ -16,7 +16,7 @@
   "editable": false,
   "links": [
     {
-      "title": "Open node in Rancher",
+      "title": "Rancher",
       "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
       "type": "link",
       "targetBlank": true
