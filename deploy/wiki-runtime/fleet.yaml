@@ -4,6 +4,6 @@ paused: false
 helm:
   releaseName: wiki-runtime
   repo: oci://ghcr.io/alchemmist/charts/wiki
-  version: 0.4.0
+  version: 0.4.1
   valuesFiles:
     - values.yaml
