@@ -83,8 +83,8 @@
       "gridPos": {
         "x": 0,
         "y": 1,
-        "w": 4,
-        "h": 2
+        "w": 6,
+        "h": 3
       },
       "datasource": {
         "type": "prometheus",
@@ -167,16 +167,128 @@
           ],
           "fields": ""
         },
-        "orientation": "horizontal",
+        "orientation": "vertical",
         "textMode": "value_and_name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 16,
-          "titleSize": 12
+          "valueSize": 24,
+          "titleSize": 13
         },
-        "wideLayout": true
+        "wideLayout": false
+      }
+    },
+    {
+      "id": 216,
+      "type": "stat",
+      "title": "",
+      "description": "Unreachable node taint or a failed kubelet scrape. Existing alerts remain visible even when kubelet telemetry disappears. Existing rules: KubeNodeUnreachable, KubeletInstanceUnreachable. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details. Clear also requires a fresh successful kubelet scrape, so a disappeared target cannot become a false healthy result.",
+      "gridPos": {
+        "x": 6,
+        "y": 1,
+        "w": 6,
+        "h": 3
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(((max((max(2 * ALERTS{alertname=~\"KubeNodeUnreachable\",alertstate=\"firing\",node=\"$node\"} or ALERTS{alertname=~\"KubeNodeUnreachable\",alertstate=\"pending\",node=\"$node\"})) or (max(2 * (ALERTS{alertname=~\"KubeletInstanceUnreachable\",alertstate=\"firing\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h]))) or (ALERTS{alertname=~\"KubeletInstanceUnreachable\",alertstate=\"pending\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h]))))))) and on() ((time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;kubernetes-system-kubelet\"}) < 90))) or ((((vector(0) and on() ((count(kube_node_info{job=\"kube-state-metrics\",node=\"$node\"}) > 0))) or (vector(-1) unless on() ((count(last_over_time(kube_node_info{job=\"kube-state-metrics\",node=\"$node\"}[24h])) > 0)))) and on() (((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90)) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;kubernetes-system-kubelet\"}) < 90))) and on() ((max(up{job=\"kubelet\",metrics_path=\"/metrics\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h]))) == 1) and on() (time() - max(timestamp(up{job=\"kubelet\",metrics_path=\"/metrics\"}) and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h]))) < 90)))) or vector(-2)",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No telemetry",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "N/A",
+                  "color": "#555555"
+                },
+                "0": {
+                  "text": "Clear",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Pending",
+                  "color": "#A85D08"
+                },
+                "2": {
+                  "text": "Firing",
+                  "color": "#B42332"
+                },
+                "-2": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open node in Rancher",
+              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
+              "targetBlank": true
+            }
+          ],
+          "displayName": "Reachability"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "vertical",
+        "textMode": "value_and_name",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 24,
+          "titleSize": 13
+        },
+        "wideLayout": false
       }
     },
     {
@@ -185,10 +297,10 @@
       "title": "",
       "description": "MemoryPressure reported by Kubernetes for 5 minutes. This is not simply high RAM utilization. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Open the node to inspect it in Rancher.",
       "gridPos": {
-        "x": 4,
+        "x": 12,
         "y": 1,
-        "w": 4,
-        "h": 2
+        "w": 6,
+        "h": 3
       },
       "datasource": {
         "type": "prometheus",
@@ -271,16 +383,16 @@
           ],
           "fields": ""
         },
-        "orientation": "horizontal",
+        "orientation": "vertical",
         "textMode": "value_and_name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 16,
-          "titleSize": 12
+          "valueSize": 24,
+          "titleSize": 13
         },
-        "wideLayout": true
+        "wideLayout": false
       }
     },
     {
@@ -289,10 +401,10 @@
       "title": "",
       "description": "DiskPressure reported by Kubernetes for 5 minutes, including pressure on free space or inodes. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Open the node to inspect it in Rancher.",
       "gridPos": {
-        "x": 8,
+        "x": 18,
         "y": 1,
-        "w": 4,
-        "h": 2
+        "w": 6,
+        "h": 3
       },
       "datasource": {
         "type": "prometheus",
@@ -375,16 +487,16 @@
           ],
           "fields": ""
         },
-        "orientation": "horizontal",
+        "orientation": "vertical",
         "textMode": "value_and_name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 16,
-          "titleSize": 12
+          "valueSize": 24,
+          "titleSize": 13
         },
-        "wideLayout": true
+        "wideLayout": false
       }
     },
     {
@@ -393,10 +505,10 @@
       "title": "",
       "description": "PIDPressure reported by Kubernetes for 5 minutes. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Open the node to inspect it in Rancher.",
       "gridPos": {
-        "x": 12,
-        "y": 1,
-        "w": 4,
-        "h": 2
+        "x": 0,
+        "y": 4,
+        "w": 6,
+        "h": 3
       },
       "datasource": {
         "type": "prometheus",
@@ -479,16 +591,336 @@
           ],
           "fields": ""
         },
-        "orientation": "horizontal",
+        "orientation": "vertical",
         "textMode": "value_and_name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 16,
-          "titleSize": 12
+          "valueSize": 24,
+          "titleSize": 13
         },
-        "wideLayout": true
+        "wideLayout": false
+      }
+    },
+    {
+      "id": 206,
+      "type": "stat",
+      "title": "",
+      "description": "No successful node-exporter sample for more than 2 minutes, or no recorded sample within 24 hours; alert waits 1 additional minute before firing. This does not prove the node is down. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Open the node to inspect it in Rancher.",
+      "gridPos": {
+        "x": 6,
+        "y": 4,
+        "w": 6,
+        "h": 3
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "((max(2 * ALERTS{alertname=\"SocratNodeMetricsStale\",node=\"$node\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratNodeMetricsStale\",node=\"$node\",alertstate=\"pending\"})) or (0 * max(kube_node_info{job=\"kube-state-metrics\",node=\"$node\"}))) and on() ((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.nodes.health\"}) < 90))",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No telemetry",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Fresh",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Pending",
+                  "color": "#A85D08"
+                },
+                "2": {
+                  "text": "Stale",
+                  "color": "#B42332"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open node in Rancher",
+              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
+              "targetBlank": true
+            }
+          ],
+          "displayName": "Metrics freshness"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "vertical",
+        "textMode": "value_and_name",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 24,
+          "titleSize": 13
+        },
+        "wideLayout": false
+      }
+    },
+    {
+      "id": 207,
+      "type": "stat",
+      "title": "",
+      "description": "CPU temperature is within 10 °C of the critical limit for 5m. Hardware critical limits take precedence; socrat-1 uses the validated Ryzen 7 7840HS 100 °C limit only when hardware does not expose one. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
+      "gridPos": {
+        "x": 12,
+        "y": 4,
+        "w": 6,
+        "h": 3
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "((max(2 * (ALERTS{alertname=\"SocratNodeCPUTemperatureHigh\",node=\"$node\",alertstate=\"firing\"}) or (ALERTS{alertname=\"SocratNodeCPUTemperatureHigh\",node=\"$node\",alertstate=\"pending\"}))) or (0 * max(socrat:node_cpu_temperature_headroom_celsius{node=\"$node\"})) or (vector(-1) unless on() count(last_over_time(socrat:node_cpu_temperature_headroom_celsius{node=\"$node\"}[24h])))) and on() ((max(up{job=\"node-exporter\"} and on(instance) max by(instance) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"})) == 1) and on() (time() - max(last_over_time(socrat:node_exporter_last_success_timestamp_seconds{node=\"$node\"}[24h])) < 90) and on() (max(node_scrape_collector_success{job=\"node-exporter\",collector=\"hwmon\"} and on(instance) max by(instance) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"})) == 1) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.nodes.hardware\"}) < 90))",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No telemetry",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "N/A",
+                  "color": "#555555"
+                },
+                "0": {
+                  "text": "Clear",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Pending",
+                  "color": "#A85D08"
+                },
+                "2": {
+                  "text": "Firing",
+                  "color": "#B42332"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open node in Rancher",
+              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
+              "targetBlank": true
+            }
+          ],
+          "displayName": "CPU temp"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "vertical",
+        "textMode": "value_and_name",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 24,
+          "titleSize": 13
+        },
+        "wideLayout": false
+      }
+    },
+    {
+      "id": 208,
+      "type": "stat",
+      "title": "",
+      "description": "New core or package thermal throttle events occurred in a rolling 5m window, sustained for 2m. This is hardware thermal throttling, not container CPU quota throttling. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
+      "gridPos": {
+        "x": 18,
+        "y": 4,
+        "w": 6,
+        "h": 3
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "((max(2 * (ALERTS{alertname=\"SocratNodeThermalThrottling\",node=\"$node\",alertstate=\"firing\"}) or (ALERTS{alertname=\"SocratNodeThermalThrottling\",node=\"$node\",alertstate=\"pending\"}))) or (0 * max(socrat:node_thermal_throttles:increase5m{node=\"$node\"})) or (vector(-1) unless on() count(last_over_time(socrat:node_thermal_throttles:increase5m{node=\"$node\"}[24h])))) and on() ((max(up{job=\"node-exporter\"} and on(instance) max by(instance) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"})) == 1) and on() (time() - max(last_over_time(socrat:node_exporter_last_success_timestamp_seconds{node=\"$node\"}[24h])) < 90) and on() (max(node_scrape_collector_success{job=\"node-exporter\",collector=\"cpu\"} and on(instance) max by(instance) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"})) == 1) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.nodes.hardware\"}) < 90))",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No telemetry",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-1": {
+                  "text": "N/A",
+                  "color": "#555555"
+                },
+                "0": {
+                  "text": "Clear",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Pending",
+                  "color": "#A85D08"
+                },
+                "2": {
+                  "text": "Firing",
+                  "color": "#B42332"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Open node in Rancher",
+              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
+              "targetBlank": true
+            }
+          ],
+          "displayName": "Thermal"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "vertical",
+        "textMode": "value_and_name",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 24,
+          "titleSize": 13
+        },
+        "wideLayout": false
       }
     },
     {
@@ -497,10 +929,10 @@
       "title": "",
       "description": "Scheduling disabled (cordoned) for 15 minutes. This informational alert can indicate intentional maintenance; existing pods keep running. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Open the node to inspect it in Rancher.",
       "gridPos": {
-        "x": 16,
-        "y": 1,
+        "x": 0,
+        "y": 7,
         "w": 4,
-        "h": 2
+        "h": 1
       },
       "datasource": {
         "type": "prometheus",
@@ -589,328 +1021,8 @@
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 16,
-          "titleSize": 12
-        },
-        "wideLayout": true
-      }
-    },
-    {
-      "id": 206,
-      "type": "stat",
-      "title": "",
-      "description": "No successful node-exporter sample for more than 2 minutes, or no recorded sample within 24 hours; alert waits 1 additional minute before firing. This does not prove the node is down. Color represents alert state at the end of the selected period: green is normal, amber is pending. No telemetry means Kubernetes state or rule-evaluation data is unavailable. Open the node to inspect it in Rancher.",
-      "gridPos": {
-        "x": 20,
-        "y": 1,
-        "w": 4,
-        "h": 2
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "((max(2 * ALERTS{alertname=\"SocratNodeMetricsStale\",node=\"$node\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratNodeMetricsStale\",node=\"$node\",alertstate=\"pending\"})) or (0 * max(kube_node_info{job=\"kube-state-metrics\",node=\"$node\"}))) and on() ((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.nodes.health\"}) < 90))",
-          "instant": true,
-          "format": "time_series"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "noValue": "No telemetry",
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "0": {
-                  "text": "Fresh",
-                  "color": "#26783D"
-                },
-                "1": {
-                  "text": "Pending",
-                  "color": "#A85D08"
-                },
-                "2": {
-                  "text": "Stale",
-                  "color": "#B42332"
-                }
-              }
-            },
-            {
-              "type": "special",
-              "options": {
-                "match": "null",
-                "result": {
-                  "text": "No telemetry",
-                  "color": "#555555"
-                }
-              }
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": null
-              },
-              {
-                "color": "#A85D08",
-                "value": 1
-              },
-              {
-                "color": "#B42332",
-                "value": 2
-              }
-            ]
-          },
-          "links": [
-            {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
-            }
-          ],
-          "displayName": "Metrics freshness"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "values": false,
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": ""
-        },
-        "orientation": "horizontal",
-        "textMode": "value_and_name",
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "text": {
-          "valueSize": 16,
-          "titleSize": 12
-        },
-        "wideLayout": true
-      }
-    },
-    {
-      "id": 207,
-      "type": "stat",
-      "title": "",
-      "description": "CPU temperature is within 10 °C of the critical limit for 5m. Hardware critical limits take precedence; socrat-1 uses the validated Ryzen 7 7840HS 100 °C limit only when hardware does not expose one. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
-      "gridPos": {
-        "x": 0,
-        "y": 3,
-        "w": 4,
-        "h": 2
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "((max(2 * (ALERTS{alertname=\"SocratNodeCPUTemperatureHigh\",node=\"$node\",alertstate=\"firing\"}) or (ALERTS{alertname=\"SocratNodeCPUTemperatureHigh\",node=\"$node\",alertstate=\"pending\"}))) or (0 * max(socrat:node_cpu_temperature_headroom_celsius{node=\"$node\"})) or (vector(-1) unless on() count(last_over_time(socrat:node_cpu_temperature_headroom_celsius{node=\"$node\"}[24h])))) and on() ((max(up{job=\"node-exporter\"} and on(instance) max by(instance) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"})) == 1) and on() (time() - max(last_over_time(socrat:node_exporter_last_success_timestamp_seconds{node=\"$node\"}[24h])) < 90) and on() (max(node_scrape_collector_success{job=\"node-exporter\",collector=\"hwmon\"} and on(instance) max by(instance) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"})) == 1) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.nodes.hardware\"}) < 90))",
-          "instant": true,
-          "format": "time_series"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "noValue": "No telemetry",
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "-1": {
-                  "text": "N/A",
-                  "color": "#555555"
-                },
-                "0": {
-                  "text": "Clear",
-                  "color": "#26783D"
-                },
-                "1": {
-                  "text": "Pending",
-                  "color": "#A85D08"
-                },
-                "2": {
-                  "text": "Firing",
-                  "color": "#B42332"
-                }
-              }
-            },
-            {
-              "type": "special",
-              "options": {
-                "match": "null",
-                "result": {
-                  "text": "No telemetry",
-                  "color": "#555555"
-                }
-              }
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": null
-              },
-              {
-                "color": "#A85D08",
-                "value": 1
-              },
-              {
-                "color": "#B42332",
-                "value": 2
-              }
-            ]
-          },
-          "links": [
-            {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
-            }
-          ],
-          "displayName": "CPU temp"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "values": false,
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": ""
-        },
-        "orientation": "horizontal",
-        "textMode": "value_and_name",
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "text": {
-          "valueSize": 16,
-          "titleSize": 12
-        },
-        "wideLayout": true
-      }
-    },
-    {
-      "id": 208,
-      "type": "stat",
-      "title": "",
-      "description": "New core or package thermal throttle events occurred in a rolling 5m window, sustained for 2m. This is hardware thermal throttling, not container CPU quota throttling. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
-      "gridPos": {
-        "x": 4,
-        "y": 3,
-        "w": 4,
-        "h": 2
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "((max(2 * (ALERTS{alertname=\"SocratNodeThermalThrottling\",node=\"$node\",alertstate=\"firing\"}) or (ALERTS{alertname=\"SocratNodeThermalThrottling\",node=\"$node\",alertstate=\"pending\"}))) or (0 * max(socrat:node_thermal_throttles:increase5m{node=\"$node\"})) or (vector(-1) unless on() count(last_over_time(socrat:node_thermal_throttles:increase5m{node=\"$node\"}[24h])))) and on() ((max(up{job=\"node-exporter\"} and on(instance) max by(instance) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"})) == 1) and on() (time() - max(last_over_time(socrat:node_exporter_last_success_timestamp_seconds{node=\"$node\"}[24h])) < 90) and on() (max(node_scrape_collector_success{job=\"node-exporter\",collector=\"cpu\"} and on(instance) max by(instance) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"})) == 1) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.nodes.hardware\"}) < 90))",
-          "instant": true,
-          "format": "time_series"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "noValue": "No telemetry",
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "-1": {
-                  "text": "N/A",
-                  "color": "#555555"
-                },
-                "0": {
-                  "text": "Clear",
-                  "color": "#26783D"
-                },
-                "1": {
-                  "text": "Pending",
-                  "color": "#A85D08"
-                },
-                "2": {
-                  "text": "Firing",
-                  "color": "#B42332"
-                }
-              }
-            },
-            {
-              "type": "special",
-              "options": {
-                "match": "null",
-                "result": {
-                  "text": "No telemetry",
-                  "color": "#555555"
-                }
-              }
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": null
-              },
-              {
-                "color": "#A85D08",
-                "value": 1
-              },
-              {
-                "color": "#B42332",
-                "value": 2
-              }
-            ]
-          },
-          "links": [
-            {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
-            }
-          ],
-          "displayName": "Thermal"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "values": false,
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": ""
-        },
-        "orientation": "horizontal",
-        "textMode": "value_and_name",
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "text": {
-          "valueSize": 16,
-          "titleSize": 12
+          "valueSize": 12,
+          "titleSize": 11
         },
         "wideLayout": true
       }
@@ -921,10 +1033,10 @@
       "title": "",
       "description": "Tasks wait for CPU for more than 25% of wall time over 5m, sustained for 10m. This PSI condition is distinct from CPU utilization and load average. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
       "gridPos": {
-        "x": 8,
-        "y": 3,
+        "x": 4,
+        "y": 7,
         "w": 4,
-        "h": 2
+        "h": 1
       },
       "datasource": {
         "type": "prometheus",
@@ -1017,8 +1129,8 @@
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 16,
-          "titleSize": 12
+          "valueSize": 12,
+          "titleSize": 11
         },
         "wideLayout": true
       }
@@ -1029,10 +1141,10 @@
       "title": "",
       "description": "Tasks stall on memory for more than 10% of wall time over 5m, sustained for 10m. This measures Linux PSI, not Kubernetes MemoryPressure. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
       "gridPos": {
-        "x": 12,
-        "y": 3,
+        "x": 8,
+        "y": 7,
         "w": 4,
-        "h": 2
+        "h": 1
       },
       "datasource": {
         "type": "prometheus",
@@ -1125,8 +1237,8 @@
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 16,
-          "titleSize": 12
+          "valueSize": 12,
+          "titleSize": 11
         },
         "wideLayout": true
       }
@@ -1137,10 +1249,10 @@
       "title": "",
       "description": "Tasks stall on I/O for more than 10% of wall time over 5m, sustained for 10m. This measures task stalls, not disk space or disk queue length. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
       "gridPos": {
-        "x": 16,
-        "y": 3,
+        "x": 12,
+        "y": 7,
         "w": 4,
-        "h": 2
+        "h": 1
       },
       "datasource": {
         "type": "prometheus",
@@ -1233,8 +1345,8 @@
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 16,
-          "titleSize": 12
+          "valueSize": 12,
+          "titleSize": 11
         },
         "wideLayout": true
       }
@@ -1245,10 +1357,10 @@
       "title": "",
       "description": "Hypervisor CPU steal averages more than 10% over 5m, sustained for 15m. Physical hosts normally report zero. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
       "gridPos": {
-        "x": 20,
-        "y": 3,
+        "x": 16,
+        "y": 7,
         "w": 4,
-        "h": 2
+        "h": 1
       },
       "datasource": {
         "type": "prometheus",
@@ -1341,8 +1453,8 @@
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 16,
-          "titleSize": 12
+          "valueSize": 12,
+          "titleSize": 11
         },
         "wideLayout": true
       }
@@ -1353,10 +1465,10 @@
       "title": "",
       "description": "Reuses existing filesystem-space alerts, including forecast exhaustion and low free space. It does not create another disk-space rule. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
       "gridPos": {
-        "x": 0,
-        "y": 5,
+        "x": 20,
+        "y": 7,
         "w": 4,
-        "h": 2
+        "h": 1
       },
       "datasource": {
         "type": "prometheus",
@@ -1449,8 +1561,8 @@
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 16,
-          "titleSize": 12
+          "valueSize": 12,
+          "titleSize": 11
         },
         "wideLayout": true
       }
@@ -1461,10 +1573,10 @@
       "title": "",
       "description": "Reuses existing inode exhaustion alerts, including forecast exhaustion and low free inode counts. It does not create another inode rule. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
       "gridPos": {
-        "x": 4,
-        "y": 5,
+        "x": 0,
+        "y": 8,
         "w": 4,
-        "h": 2
+        "h": 1
       },
       "datasource": {
         "type": "prometheus",
@@ -1557,8 +1669,8 @@
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 16,
-          "titleSize": 12
+          "valueSize": 12,
+          "titleSize": 11
         },
         "wideLayout": true
       }
@@ -1569,10 +1681,10 @@
       "title": "",
       "description": "Reuses CPUThrottlingHigh: more than 25% of CFS periods are throttled over 5m, sustained for 15m. It is an informational container CPU-limit alert, not hardware thermal throttling. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Opens this node in Rancher.",
       "gridPos": {
-        "x": 8,
-        "y": 5,
+        "x": 4,
+        "y": 8,
         "w": 4,
-        "h": 2
+        "h": 1
       },
       "datasource": {
         "type": "prometheus",
@@ -1665,120 +1777,8 @@
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 16,
-          "titleSize": 12
-        },
-        "wideLayout": true
-      }
-    },
-    {
-      "id": 216,
-      "type": "stat",
-      "title": "",
-      "description": "Unreachable node taint or a failed kubelet scrape. Existing alerts remain visible even when kubelet telemetry disappears. Existing rules: KubeNodeUnreachable, KubeletInstanceUnreachable. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details. Clear also requires a fresh successful kubelet scrape, so a disappeared target cannot become a false healthy result.",
-      "gridPos": {
-        "x": 12,
-        "y": 5,
-        "w": 4,
-        "h": 2
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "(((max((max(2 * ALERTS{alertname=~\"KubeNodeUnreachable\",alertstate=\"firing\",node=\"$node\"} or ALERTS{alertname=~\"KubeNodeUnreachable\",alertstate=\"pending\",node=\"$node\"})) or (max(2 * (ALERTS{alertname=~\"KubeletInstanceUnreachable\",alertstate=\"firing\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h]))) or (ALERTS{alertname=~\"KubeletInstanceUnreachable\",alertstate=\"pending\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h]))))))) and on() ((time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;kubernetes-system-kubelet\"}) < 90))) or ((((vector(0) and on() ((count(kube_node_info{job=\"kube-state-metrics\",node=\"$node\"}) > 0))) or (vector(-1) unless on() ((count(last_over_time(kube_node_info{job=\"kube-state-metrics\",node=\"$node\"}[24h])) > 0)))) and on() (((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90)) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;kubernetes-system-kubelet\"}) < 90))) and on() ((max(up{job=\"kubelet\",metrics_path=\"/metrics\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h]))) == 1) and on() (time() - max(timestamp(up{job=\"kubelet\",metrics_path=\"/metrics\"}) and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h]))) < 90)))) or vector(-2)",
-          "instant": true,
-          "format": "time_series"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "noValue": "No telemetry",
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "-1": {
-                  "text": "N/A",
-                  "color": "#555555"
-                },
-                "0": {
-                  "text": "Clear",
-                  "color": "#26783D"
-                },
-                "1": {
-                  "text": "Pending",
-                  "color": "#A85D08"
-                },
-                "2": {
-                  "text": "Firing",
-                  "color": "#B42332"
-                },
-                "-2": {
-                  "text": "No telemetry",
-                  "color": "#555555"
-                }
-              }
-            },
-            {
-              "type": "special",
-              "options": {
-                "match": "null",
-                "result": {
-                  "text": "No telemetry",
-                  "color": "#555555"
-                }
-              }
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": null
-              },
-              {
-                "color": "#A85D08",
-                "value": 1
-              },
-              {
-                "color": "#B42332",
-                "value": 2
-              }
-            ]
-          },
-          "links": [
-            {
-              "title": "Open node in Rancher",
-              "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-              "targetBlank": true
-            }
-          ],
-          "displayName": "Reachability"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "values": false,
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": ""
-        },
-        "orientation": "horizontal",
-        "textMode": "value_and_name",
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "text": {
-          "valueSize": 16,
-          "titleSize": 12
+          "valueSize": 12,
+          "titleSize": 11
         },
         "wideLayout": true
       }
@@ -1789,10 +1789,10 @@
       "title": "",
       "description": "Repeated Ready transitions on a schedulable node. Existing rules: KubeNodeReadinessFlapping. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
       "gridPos": {
-        "x": 16,
-        "y": 5,
+        "x": 8,
+        "y": 8,
         "w": 4,
-        "h": 2
+        "h": 1
       },
       "datasource": {
         "type": "prometheus",
@@ -1871,7 +1871,7 @@
               "targetBlank": true
             }
           ],
-          "displayName": "Readiness changes"
+          "displayName": "Ready flaps"
         },
         "overrides": []
       },
@@ -1889,8 +1889,8 @@
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 16,
-          "titleSize": 12
+          "valueSize": 12,
+          "titleSize": 11
         },
         "wideLayout": true
       }
@@ -1901,10 +1901,10 @@
       "title": "",
       "description": "Pod count approaching the node pod-capacity limit. Existing rules: KubeletTooManyPods. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details. Firing is blue because the existing rule has informational severity.",
       "gridPos": {
-        "x": 20,
-        "y": 5,
+        "x": 12,
+        "y": 8,
         "w": 4,
-        "h": 2
+        "h": 1
       },
       "datasource": {
         "type": "prometheus",
@@ -2001,8 +2001,8 @@
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 16,
-          "titleSize": 12
+          "valueSize": 12,
+          "titleSize": 11
         },
         "wideLayout": true
       }
@@ -2013,10 +2013,10 @@
       "title": "",
       "description": "Kubelet pod evictions caused by resource pressure. The eviction counter may not be exposed before the first event. Existing rules: KubeNodeEviction. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details. Firing is blue because the existing rule has informational severity.",
       "gridPos": {
-        "x": 0,
-        "y": 7,
+        "x": 16,
+        "y": 8,
         "w": 4,
-        "h": 2
+        "h": 1
       },
       "datasource": {
         "type": "prometheus",
@@ -2113,8 +2113,8 @@
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 16,
-          "titleSize": 12
+          "valueSize": 12,
+          "titleSize": 11
         },
         "wideLayout": true
       }
@@ -2125,10 +2125,10 @@
       "title": "",
       "description": "Slow pod lifecycle relisting or pod-worker operations, using the existing PLEG and startup-latency alerts. Existing rules: KubeletPlegDurationHigh, KubeletPodStartUpLatencyHigh. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
       "gridPos": {
-        "x": 4,
-        "y": 7,
+        "x": 20,
+        "y": 8,
         "w": 4,
-        "h": 2
+        "h": 1
       },
       "datasource": {
         "type": "prometheus",
@@ -2225,8 +2225,8 @@
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 16,
-          "titleSize": 12
+          "valueSize": 12,
+          "titleSize": 11
         },
         "wideLayout": true
       }
@@ -2237,10 +2237,10 @@
       "title": "",
       "description": "Client or serving certificates near expiration, or certificate-renewal failures. N/A indicates that not all certificate-manager metrics are exposed by this kubelet. Existing rules: KubeletClientCertificateExpiration, KubeletServerCertificateExpiration, KubeletClientCertificateRenewalErrors, KubeletServerCertificateRenewalErrors. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
       "gridPos": {
-        "x": 8,
-        "y": 7,
+        "x": 0,
+        "y": 9,
         "w": 4,
-        "h": 2
+        "h": 1
       },
       "datasource": {
         "type": "prometheus",
@@ -2319,7 +2319,7 @@
               "targetBlank": true
             }
           ],
-          "displayName": "Kubelet certificates"
+          "displayName": "Certificates"
         },
         "overrides": []
       },
@@ -2337,8 +2337,8 @@
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 16,
-          "titleSize": 12
+          "valueSize": 12,
+          "titleSize": 11
         },
         "wideLayout": true
       }
@@ -2349,10 +2349,10 @@
       "title": "",
       "description": "Sustained CPU utilization or a large load-average queue per CPU. Distinct from thermal throttling and PSI. Existing rules: NodeCPUHighUsage, NodeSystemSaturation. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details. Blue Firing is informational CPU usage; red Firing is warning-level system saturation.",
       "gridPos": {
-        "x": 12,
-        "y": 7,
+        "x": 4,
+        "y": 9,
         "w": 4,
-        "h": 2
+        "h": 1
       },
       "datasource": {
         "type": "prometheus",
@@ -2457,8 +2457,8 @@
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 16,
-          "titleSize": 12
+          "valueSize": 12,
+          "titleSize": 11
         },
         "wideLayout": true
       }
@@ -2469,10 +2469,10 @@
       "title": "",
       "description": "High memory utilization or frequent major page faults. Distinct from the Kubernetes MemoryPressure condition. Existing rules: NodeMemoryMajorPagesFaults, NodeMemoryHighUtilization. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
       "gridPos": {
-        "x": 16,
-        "y": 7,
+        "x": 8,
+        "y": 9,
         "w": 4,
-        "h": 2
+        "h": 1
       },
       "datasource": {
         "type": "prometheus",
@@ -2569,8 +2569,8 @@
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 16,
-          "titleSize": 12
+          "valueSize": 12,
+          "titleSize": 11
         },
         "wideLayout": true
       }
@@ -2581,10 +2581,10 @@
       "title": "",
       "description": "Sustained disk I/O queue saturation on block devices monitored by the existing rule. Existing rules: NodeDiskIOSaturation. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
       "gridPos": {
-        "x": 20,
-        "y": 7,
+        "x": 12,
+        "y": 9,
         "w": 4,
-        "h": 2
+        "h": 1
       },
       "datasource": {
         "type": "prometheus",
@@ -2681,8 +2681,8 @@
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 16,
-          "titleSize": 12
+          "valueSize": 12,
+          "titleSize": 11
         },
         "wideLayout": true
       }
@@ -2693,10 +2693,10 @@
       "title": "",
       "description": "Receive/transmit errors, interface flapping or conntrack table exhaustion. Existing rules: NodeNetworkReceiveErrs, NodeNetworkTransmitErrs, NodeNetworkInterfaceFlapping, NodeHighNumberConntrackEntriesUsed. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
       "gridPos": {
-        "x": 0,
+        "x": 16,
         "y": 9,
         "w": 4,
-        "h": 2
+        "h": 1
       },
       "datasource": {
         "type": "prometheus",
@@ -2793,8 +2793,8 @@
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 16,
-          "titleSize": 12
+          "valueSize": 12,
+          "titleSize": 11
         },
         "wideLayout": true
       }
@@ -2805,10 +2805,10 @@
       "title": "",
       "description": "Clock offset that is not recovering or an unsynchronized system clock. Existing rules: NodeClockSkewDetected, NodeClockNotSynchronising. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
       "gridPos": {
-        "x": 4,
+        "x": 20,
         "y": 9,
         "w": 4,
-        "h": 2
+        "h": 1
       },
       "datasource": {
         "type": "prometheus",
@@ -2905,8 +2905,8 @@
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 16,
-          "titleSize": 12
+          "valueSize": 12,
+          "titleSize": 11
         },
         "wideLayout": true
       }
@@ -2917,10 +2917,10 @@
       "title": "",
       "description": "System file-descriptor usage near the configured limit; includes both existing warning and critical thresholds. Existing rules: NodeFileDescriptorLimit. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
       "gridPos": {
-        "x": 8,
-        "y": 9,
-        "w": 4,
-        "h": 2
+        "x": 0,
+        "y": 10,
+        "w": 6,
+        "h": 1
       },
       "datasource": {
         "type": "prometheus",
@@ -2999,7 +2999,7 @@
               "targetBlank": true
             }
           ],
-          "displayName": "File descriptors"
+          "displayName": "Open files"
         },
         "overrides": []
       },
@@ -3017,8 +3017,8 @@
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 16,
-          "titleSize": 12
+          "valueSize": 12,
+          "titleSize": 11
         },
         "wideLayout": true
       }
@@ -3029,10 +3029,10 @@
       "title": "",
       "description": "Node-exporter could not read or parse a textfile metric file. Existing rules: NodeTextFileCollectorScrapeError. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
       "gridPos": {
-        "x": 12,
-        "y": 9,
-        "w": 4,
-        "h": 2
+        "x": 6,
+        "y": 10,
+        "w": 6,
+        "h": 1
       },
       "datasource": {
         "type": "prometheus",
@@ -3111,7 +3111,7 @@
               "targetBlank": true
             }
           ],
-          "displayName": "Textfile collector"
+          "displayName": "Textfile"
         },
         "overrides": []
       },
@@ -3129,8 +3129,8 @@
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 16,
-          "titleSize": 12
+          "valueSize": 12,
+          "titleSize": 11
         },
         "wideLayout": true
       }
@@ -3141,10 +3141,10 @@
       "title": "",
       "description": "Degraded Linux software RAID, failed RAID disks or missing active bonding members. N/A means complete coverage is unavailable, commonly because these devices do not exist. Existing rules: NodeRAIDDegraded, NodeRAIDDiskFailure, NodeBondingDegraded. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
       "gridPos": {
-        "x": 16,
-        "y": 9,
-        "w": 4,
-        "h": 2
+        "x": 12,
+        "y": 10,
+        "w": 6,
+        "h": 1
       },
       "datasource": {
         "type": "prometheus",
@@ -3241,8 +3241,8 @@
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 16,
-          "titleSize": 12
+          "valueSize": 12,
+          "titleSize": 11
         },
         "wideLayout": true
       }
@@ -3253,10 +3253,10 @@
       "title": "",
       "description": "Failed systemd units or repeated service restarts. N/A when the optional systemd collector or restart metrics are not enabled. Existing rules: NodeSystemdServiceFailed, NodeSystemdServiceCrashlooping. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
       "gridPos": {
-        "x": 20,
-        "y": 9,
-        "w": 4,
-        "h": 2
+        "x": 18,
+        "y": 10,
+        "w": 6,
+        "h": 1
       },
       "datasource": {
         "type": "prometheus",
@@ -3353,8 +3353,8 @@
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "valueSize": 16,
-          "titleSize": 12
+          "valueSize": 12,
+          "titleSize": 11
         },
         "wideLayout": true
       }
