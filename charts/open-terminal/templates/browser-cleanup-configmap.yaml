@@ -1,0 +1,11 @@
+{{- if .Values.browserCleanup.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: open-terminal-browser-cleanup
+data:
+  browser_watchdog.py: |
+{{ .Files.Get "files/browser_watchdog.py" | indent 4 }}
+  browser_test_runner.py: |
+{{ .Files.Get "files/browser_test_runner.py" | indent 4 }}
+{{- end }}

@@ -82,7 +82,7 @@ traffic model, certificate renewal, monitoring, provisioning and recovery.
 
 ## Local LLM inference
 
-`ansible/playbooks/llm.yml` deploys the NVIDIA device plugin and a single vLLM instance on the RTX 3090 in `socrat-0`. The current model is RedHatAI/Qwen3.8-27B-INT4, served as `qwen3.8-27b`, with a 131072-token context, FP8 KV cache, text-only input and one active request. Open WebUI uses `max_tokens=16384` for output. The public API at `https://llm.alchemmist.xyz/v1` is served by LiteLLM and requires a virtual key; vLLM remains internal. Open WebUI at `https://chat.alchemmist.xyz` requires login and uses its own LiteLLM key. Model weights persist on a local-path PVC.
+`ansible/playbooks/llm.yml` deploys the NVIDIA device plugin and one vLLM engine on the RTX 3090 in `socrat-0`. Qwen3.8-27B INT4 is the only installed model (128K context). The internal gateway serializes requests. The authenticated public API is `https://llm.alchemmist.xyz/v1`; Open WebUI at `https://chat.alchemmist.xyz` uses its own LiteLLM key. See [model serving](docs/model-switching.md) for profiles, limits and validation.
 
 Inference is running. The earlier Qwen3-8B deployment passed API, concurrency, and pod-recreation checks. An earlier kernel panic did not recur in the controlled retry; its underlying kernel/driver/hardware cause remains unresolved. See the runbook for evidence and the limits of this validation.
 
@@ -211,3 +211,5 @@ TLS:        cert-manager / letsencrypt-http01
 Do not commit passwords or private keys. Use SSH keys and, later, `ansible-vault` for real secrets.
 
 LiteLLM API gateway: [deployment and access](docs/litellm.md).
+
+Open Terminal workspace on socrat-1: [deployment and connection](docs/open-terminal.md).

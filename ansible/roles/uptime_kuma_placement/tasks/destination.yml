@@ -1,0 +1,59 @@
+- name: Install the stopped destination data
+  delegate_to: "{{ uptime_kuma_destination }}"
+  become: true
+  block:
+    - name: Allocate destination staging on the data filesystem
+      ansible.builtin.tempfile:
+        state: directory
+        path: "{{ uptime_kuma_directory | dirname }}"
+        prefix: .uptime-kuma-migration-
+      register: kuma_destination_transfer
+
+    - name: Copy the private archive to the destination
+      ansible.builtin.copy:
+        src: "{{ kuma_local_transfer.path }}/data.tar"
+        dest: "{{ kuma_destination_transfer.path }}/data.tar"
+        owner: root
+        group: root
+        mode: '0600'
+
+    - name: Calculate the received archive digest
+      ansible.builtin.stat:
+        path: "{{ kuma_destination_transfer.path }}/data.tar"
+        checksum_algorithm: sha256
+      register: kuma_destination_archive
+
+    - name: Require an identical archive
+      ansible.builtin.assert:
+        that: kuma_destination_archive.stat.checksum == kuma_source_archive.stat.checksum
+
+    - name: Create the extraction directory
+      ansible.builtin.file:
+        path: "{{ kuma_destination_transfer.path }}/data"
+        state: directory
+        mode: '0700'
+
+    - name: Extract the complete data directory
+      ansible.builtin.command:
+        argv: [tar, --acls, --xattrs, --numeric-owner, -xpf, "{{ kuma_destination_transfer.path }}/data.tar", -C, "{{ kuma_destination_transfer.path }}/data"]
+      changed_when: true
+
+    - name: Verify the staged database
+      ansible.builtin.script: "{{ role_path }}/files/verify_database.py {{ kuma_destination_transfer.path }}/data/kuma.db"
+      args:
+        executable: python3
+      register: kuma_destination_snapshot
+      changed_when: false
+
+    - name: Require matching database records
+      ansible.builtin.assert:
+        that: (kuma_source_snapshot.stdout | from_json) == (kuma_destination_snapshot.stdout | from_json)
+
+    - name: Preserve any previous destination and activate the staged directory
+      ansible.builtin.shell: |
+        set -eu
+        if [ -e {{ uptime_kuma_directory | quote }} ]; then
+          mv -- {{ uptime_kuma_directory | quote }} {{ (kuma_destination_transfer.path ~ '/previous') | quote }}
+        fi
+        mv -- {{ (kuma_destination_transfer.path ~ '/data') | quote }} {{ uptime_kuma_directory | quote }}
+      changed_when: true

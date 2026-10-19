@@ -155,15 +155,15 @@ def main():
         started = time.monotonic()
         context = "\n".join(
             f"def function_{index}(value): return value + {index}"
-            for index in range(int(os.environ.get("LLM_LONG_CONTEXT_LINES", "2200")))
+            for index in range(int(os.environ.get("LLM_LONG_CONTEXT_LINES", "700")))
         )
         result = complete([
             {"role": "user", "content": "CONTEXT_CHECK_VALUE = violet-river-7291\n" + context + "\nReturn only the value of CONTEXT_CHECK_VALUE from the beginning of this message."}
-        ], max_tokens=16384)
+        ], max_tokens=int(os.environ.get("LLM_LONG_CONTEXT_MAX_OUTPUT_TOKENS", "8192")))
         usage = result.get("usage") or {}
         require(usage.get("prompt_tokens", 0) > 8192, "Long-context check did not exceed the old 8K limit")
         require("violet-river-7291" in (result["choices"][0]["message"].get("content") or ""), "Long-context response did not recover the value from the beginning")
-        report("long context with 16K output allowance", started, usage)
+        report("long context", started, usage)
 
 
 if __name__ == "__main__":

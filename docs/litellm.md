@@ -1,14 +1,14 @@
 # LiteLLM gateway
 
-The official `oci://ghcr.io/berriai/litellm-helm` chart is pinned to 1.105.1. A single CPU-only proxy on socrat-0 forwards `qwen3.8-27b` to the existing vLLM service. Open WebUI connects through a dedicated `open-webui` virtual key restricted to `qwen3.8-27b`. The credential is stored in Secret `llm/open-webui-litellm`. A NetworkPolicy permits vLLM ingress only from LiteLLM pods; node traffic remains governed by Kubernetes host networking semantics.
+The official `oci://ghcr.io/berriai/litellm-helm` chart is pinned to 1.105.1. A single CPU-only proxy on socrat-0 forwards `qwen3.8-27b` through the internal `llm-switcher` service to one vLLM engine. See [model switching](model-switching.md). Open WebUI connects through a dedicated `open-webui` virtual key restricted to Qwen. The credential is stored in Secret `llm/open-webui-litellm`. A NetworkPolicy permits vLLM ingress only from LiteLLM pods; node traffic remains governed by Kubernetes host networking semantics.
 
 - Admin UI: https://llm.alchemmist.xyz/ui/
 - OpenAI API base: https://llm.alchemmist.xyz/v1
 - Internal API base: http://litellm.llm.svc.cluster.local:4000/v1
-- Model: `qwen3.8-27b`
+- Models: `qwen3.8-27b`
 - Access: public HTTPS; UI requires a database account, API requires a key. Public DNS and trusted TLS were verified on 2026-10-15.
 
-The sole regular account is `anton.ingrish@gmail.com`, with role `proxy_admin` (full administrative access). Passwords are stored in the database and can be changed through the UI. `disable_env_credential_login: true` disables the shared environment/master-key UI login; `UI_USERNAME` and `UI_PASSWORD` are absent. The master key remains an administrative API credential. Create client keys in Virtual Keys, restrict them to `qwen3.8-27b`, and set RPM/TPM limits as needed. Do not distribute the master key. Model costs are zero for local inference, so monetary budgets do not limit GPU usage.
+The sole regular account is `anton.ingrish@gmail.com`, with role `proxy_admin` (full administrative access). Passwords are stored in the database and can be changed through the UI. `disable_env_credential_login: true` disables the shared environment/master-key UI login; `UI_USERNAME` and `UI_PASSWORD` are absent. The master key remains an administrative API credential. Create client keys in Virtual Keys, choose their allowed models, and set RPM/TPM limits as needed. Do not distribute the master key. Model costs are zero for local inference, so monetary budgets do not limit GPU usage.
 
 PostgreSQL 18.6 uses a retained 10Gi local-path PVC on socrat-0. This is a single-node database, not HA; local-path capacity is nominal. No backup schedule is configured yet. Redis is disabled for this single-replica deployment; revisit coordination before scaling replicas. Database credentials, master key and salt are generated once and retained in Kubernetes Secrets. Preserve the salt with the database when backing up or restoring.
 
@@ -24,3 +24,11 @@ The second playbook waits for the certificate, updates the existing WireGuard HT
 Validation on 2026-10-15: migration completed, both pods Ready, unauthenticated models request rejected with 401, temporary restricted virtual key generated, model listing and real completion passed, temporary key revoked, HTTPS redirect and browser admin login passed, public route returned 404. The vLLM pod was not restarted. `scripts/check-litellm.py` repeats the API check from a controller with kubectl access without printing credentials.
 
 Upstream reference: https://docs.litellm.ai/docs/proxy/deploy
+
+The local Qwen deployment uses 7200-second request and streaming timeouts to accommodate long single-GPU requests and queueing. vLLM still has one active sequence; queue saturation can still exceed that deadline.
+
+## Socrat branding
+
+The admin dashboard uses the supplied Socrat portrait with a vector wordmark in light/dark variants and the supplied circular image as the favicon. Assets are versioned under `deploy/litellm/branding/` and served over HTTPS at `/branding/` by a small nginx deployment in the infrastructure chart, backed by a dedicated PVC. No external image host is required. Original raster images remain unchanged.
+
+`ansible/files/configure_litellm_branding.py` verifies public image URLs, enables database-backed management through `/config/update`, and persists the three theme URLs through `/update/ui_theme_settings`, with readback. The LiteLLM playbook uploads assets and applies settings. Theme updates require no restart of LiteLLM or vLLM. Use a new asset filename when replacing an image to avoid stale browser caches.

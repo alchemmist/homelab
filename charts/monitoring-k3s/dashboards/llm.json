@@ -1531,7 +1531,7 @@
     },
     {
       "id": 28,
-      "title": "Time to first token · selected period",
+      "title": "Time to first token",
       "type": "stat",
       "description": "Time from a request entering vLLM until its first output token, in seconds. Shows estimated p50 (median) and p95 (95% of observations at or below this value) for each selected model over the entire selected time range. Higher values mean longer waits. No observations means no latency estimate, not zero.",
       "datasource": {
@@ -1541,8 +1541,8 @@
       "gridPos": {
         "x": 0,
         "y": 77,
-        "w": 12,
-        "h": 8
+        "w": 8,
+        "h": 3
       },
       "targets": [
         {
@@ -1597,17 +1597,17 @@
         "textMode": "value_and_name",
         "colorMode": "none",
         "graphMode": "none",
-        "justifyMode": "center",
+        "justifyMode": "start",
         "wideLayout": true,
         "text": {
-          "titleSize": 14,
-          "valueSize": 36
+          "titleSize": 11,
+          "valueSize": 18
         }
       }
     },
     {
       "id": 29,
-      "title": "End-to-end request latency · selected period",
+      "title": "End-to-end request latency",
       "type": "stat",
       "description": "Time for a full request to complete inside vLLM, in seconds. Shows estimated p50 (median) and p95 (95% of observations at or below this value) for each selected model over the entire selected time range. Higher values mean longer waits. No observations means no latency estimate, not zero.",
       "datasource": {
@@ -1615,10 +1615,10 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 12,
+        "x": 8,
         "y": 77,
-        "w": 12,
-        "h": 8
+        "w": 8,
+        "h": 3
       },
       "targets": [
         {
@@ -1673,17 +1673,17 @@
         "textMode": "value_and_name",
         "colorMode": "none",
         "graphMode": "none",
-        "justifyMode": "center",
+        "justifyMode": "start",
         "wideLayout": true,
         "text": {
-          "titleSize": 14,
-          "valueSize": 36
+          "titleSize": 11,
+          "valueSize": 18
         }
       }
     },
     {
       "id": 30,
-      "title": "Inter-token latency · selected period",
+      "title": "Inter-token latency",
       "type": "stat",
       "description": "Time between generated output tokens inside vLLM, in seconds. Shows estimated p50 (median) and p95 (95% of observations at or below this value) for each selected model over the entire selected time range. Higher values mean longer waits. No observations means no latency estimate, not zero.",
       "datasource": {
@@ -1691,10 +1691,10 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 0,
-        "y": 85,
-        "w": 12,
-        "h": 8
+        "x": 16,
+        "y": 77,
+        "w": 8,
+        "h": 3
       },
       "targets": [
         {
@@ -1749,17 +1749,17 @@
         "textMode": "value_and_name",
         "colorMode": "none",
         "graphMode": "none",
-        "justifyMode": "center",
+        "justifyMode": "start",
         "wideLayout": true,
         "text": {
-          "titleSize": 14,
-          "valueSize": 36
+          "titleSize": 11,
+          "valueSize": 18
         }
       }
     },
     {
       "id": 31,
-      "title": "vLLM queue wait · selected period",
+      "title": "Queue wait",
       "type": "stat",
       "description": "Time a request waits in the internal vLLM queue before execution, excluding the upstream switcher queue, in seconds. Shows estimated p50 (median) and p95 (95% of observations at or below this value) for each selected model over the entire selected time range. Higher values mean longer waits. No observations means no latency estimate, not zero.",
       "datasource": {
@@ -1767,10 +1767,10 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 12,
-        "y": 85,
-        "w": 12,
-        "h": 8
+        "x": 0,
+        "y": 80,
+        "w": 8,
+        "h": 3
       },
       "targets": [
         {
@@ -1825,17 +1825,17 @@
         "textMode": "value_and_name",
         "colorMode": "none",
         "graphMode": "none",
-        "justifyMode": "center",
+        "justifyMode": "start",
         "wideLayout": true,
         "text": {
-          "titleSize": 14,
-          "valueSize": 36
+          "titleSize": 11,
+          "valueSize": 18
         }
       }
     },
     {
       "id": 32,
-      "title": "Input processing · selected period",
+      "title": "Input processing",
       "type": "stat",
       "description": "Time vLLM spends processing the input prompt before generating the response, in seconds. Shows estimated p50 (median) and p95 (95% of observations at or below this value) for each selected model over the entire selected time range. Higher values mean longer waits. No observations means no latency estimate, not zero.",
       "datasource": {
@@ -1843,10 +1843,10 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 0,
-        "y": 93,
-        "w": 12,
-        "h": 8
+        "x": 8,
+        "y": 80,
+        "w": 8,
+        "h": 3
       },
       "targets": [
         {
@@ -1901,17 +1901,17 @@
         "textMode": "value_and_name",
         "colorMode": "none",
         "graphMode": "none",
-        "justifyMode": "center",
+        "justifyMode": "start",
         "wideLayout": true,
         "text": {
-          "titleSize": 14,
-          "valueSize": 36
+          "titleSize": 11,
+          "valueSize": 18
         }
       }
     },
     {
       "id": 33,
-      "title": "Response generation · selected period",
+      "title": "Response generation",
       "type": "stat",
       "description": "Time vLLM spends generating the response after input processing, in seconds. Shows estimated p50 (median) and p95 (95% of observations at or below this value) for each selected model over the entire selected time range. Higher values mean longer waits. No observations means no latency estimate, not zero.",
       "datasource": {
@@ -1919,10 +1919,10 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 12,
-        "y": 93,
-        "w": 12,
-        "h": 8
+        "x": 16,
+        "y": 80,
+        "w": 8,
+        "h": 3
       },
       "targets": [
         {
@@ -1977,11 +1977,11 @@
         "textMode": "value_and_name",
         "colorMode": "none",
         "graphMode": "none",
-        "justifyMode": "center",
+        "justifyMode": "start",
         "wideLayout": true,
         "text": {
-          "titleSize": 14,
-          "valueSize": 36
+          "titleSize": 11,
+          "valueSize": 18
         }
       }
     },
@@ -1992,7 +1992,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 101,
+        "y": 83,
         "w": 24,
         "h": 1
       },
@@ -2004,7 +2004,7 @@
       "type": "stat",
       "gridPos": {
         "x": 0,
-        "y": 102,
+        "y": 84,
         "w": 12,
         "h": 4
       },
@@ -2049,7 +2049,7 @@
       "type": "stat",
       "gridPos": {
         "x": 12,
-        "y": 102,
+        "y": 84,
         "w": 12,
         "h": 4
       },
@@ -2099,7 +2099,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 106,
+        "y": 88,
         "w": 12,
         "h": 8
       },
@@ -2156,7 +2156,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 106,
+        "y": 88,
         "w": 12,
         "h": 8
       },
@@ -2213,7 +2213,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 114,
+        "y": 96,
         "w": 12,
         "h": 8
       },
@@ -2283,7 +2283,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 114,
+        "y": 96,
         "w": 12,
         "h": 8
       },
@@ -2343,7 +2343,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 122,
+        "y": 104,
         "w": 24,
         "h": 1
       },
@@ -2351,7 +2351,7 @@
     },
     {
       "id": 40,
-      "title": "LiteLLM total latency · selected period",
+      "title": "Total request latency",
       "type": "stat",
       "description": "Total request duration measured by LiteLLM, including gateway processing, in seconds. Shows estimated p50 (median) and p95 (95% of observations at or below this value) for each requested model over the entire selected time range. Higher values mean longer waits. No observations means no latency estimate, not zero. The model selector filters vLLM panels only.",
       "datasource": {
@@ -2360,9 +2360,9 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 123,
-        "w": 12,
-        "h": 8
+        "y": 105,
+        "w": 6,
+        "h": 3
       },
       "targets": [
         {
@@ -2417,17 +2417,17 @@
         "textMode": "value_and_name",
         "colorMode": "none",
         "graphMode": "none",
-        "justifyMode": "center",
+        "justifyMode": "start",
         "wideLayout": true,
         "text": {
-          "titleSize": 14,
-          "valueSize": 36
+          "titleSize": 11,
+          "valueSize": 18
         }
       }
     },
     {
       "id": 41,
-      "title": "Model API latency · selected period",
+      "title": "Model API latency",
       "type": "stat",
       "description": "Duration of the upstream model API call measured by LiteLLM, in seconds. Shows estimated p50 (median) and p95 (95% of observations at or below this value) for each requested model over the entire selected time range. Higher values mean longer waits. No observations means no latency estimate, not zero. The model selector filters vLLM panels only.",
       "datasource": {
@@ -2435,10 +2435,10 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 12,
-        "y": 123,
-        "w": 12,
-        "h": 8
+        "x": 6,
+        "y": 105,
+        "w": 6,
+        "h": 3
       },
       "targets": [
         {
@@ -2493,17 +2493,17 @@
         "textMode": "value_and_name",
         "colorMode": "none",
         "graphMode": "none",
-        "justifyMode": "center",
+        "justifyMode": "start",
         "wideLayout": true,
         "text": {
-          "titleSize": 14,
-          "valueSize": 36
+          "titleSize": 11,
+          "valueSize": 18
         }
       }
     },
     {
       "id": 42,
-      "title": "LiteLLM time to first token · selected period",
+      "title": "Time to first token",
       "type": "stat",
       "description": "Time to the first output token measured by LiteLLM for the upstream model API call, in seconds. Shows estimated p50 (median) and p95 (95% of observations at or below this value) for each requested model over the entire selected time range. Higher values mean longer waits. No observations means no latency estimate, not zero. The model selector filters vLLM panels only.",
       "datasource": {
@@ -2511,10 +2511,10 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 0,
-        "y": 131,
-        "w": 12,
-        "h": 8
+        "x": 12,
+        "y": 105,
+        "w": 6,
+        "h": 3
       },
       "targets": [
         {
@@ -2569,17 +2569,17 @@
         "textMode": "value_and_name",
         "colorMode": "none",
         "graphMode": "none",
-        "justifyMode": "center",
+        "justifyMode": "start",
         "wideLayout": true,
         "text": {
-          "titleSize": 14,
-          "valueSize": 36
+          "titleSize": 11,
+          "valueSize": 18
         }
       }
     },
     {
       "id": 43,
-      "title": "Time before model invocation · selected period",
+      "title": "Before model call",
       "type": "stat",
       "description": "Time measured by LiteLLM before it invokes the upstream model, rather than time in the vLLM engine queue, in seconds. Shows estimated p50 (median) and p95 (95% of observations at or below this value) for each requested model over the entire selected time range. Higher values mean longer waits. No observations means no latency estimate, not zero. The model selector filters vLLM panels only.",
       "datasource": {
@@ -2587,10 +2587,10 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 12,
-        "y": 131,
-        "w": 12,
-        "h": 8
+        "x": 18,
+        "y": 105,
+        "w": 6,
+        "h": 3
       },
       "targets": [
         {
@@ -2645,11 +2645,11 @@
         "textMode": "value_and_name",
         "colorMode": "none",
         "graphMode": "none",
-        "justifyMode": "center",
+        "justifyMode": "start",
         "wideLayout": true,
         "text": {
-          "titleSize": 14,
-          "valueSize": 36
+          "titleSize": 11,
+          "valueSize": 18
         }
       }
     },
@@ -2660,7 +2660,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 139,
+        "y": 108,
         "w": 24,
         "h": 1
       },
@@ -2677,7 +2677,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 140,
+        "y": 109,
         "w": 12,
         "h": 8
       },
@@ -2734,7 +2734,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 140,
+        "y": 109,
         "w": 12,
         "h": 8
       },
@@ -2791,7 +2791,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 148,
+        "y": 117,
         "w": 12,
         "h": 8
       },
@@ -2848,7 +2848,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 148,
+        "y": 117,
         "w": 12,
         "h": 8
       },

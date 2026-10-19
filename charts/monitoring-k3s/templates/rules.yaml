@@ -139,6 +139,17 @@ spec:
             description: Node {{ "{{ $labels.node }}" }} spends more than 10% of CPU time waiting for the hypervisor, averaged across
               CPUs over 5m, for 15m. Check contention on the virtualization host; this is distinct from application CPU usage.
             rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ "{{ $labels.node }}" }}
+    - name: socrat.nodes.certificates
+      rules:
+        - alert: SocratNodeCertificateExpiration
+          expr: min by (node) (k3s_certificate_expiration_seconds{job="kubelet",metrics_path="/metrics",node!=""}) < 2592000
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: A K3s node certificate expires within 30 days.
+            description: 'Node {{ "{{ $labels.node }}" }} has a K3s-managed certificate with less than 30 days remaining for 15m. This includes client, serving and CA certificates exposed by K3s. Check certificate renewal and the affected certificate subject before restarting or rotating anything.'
+            rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ "{{ $labels.node }}" }}
     - name: socrat.containers.health
       rules:
         - alert: SocratContainerOOMKilled

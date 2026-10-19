@@ -59,5 +59,28 @@
     - name: Ensure a dedicated Open WebUI key
       ansible.builtin.command: python3 /tmp/ensure-webui-litellm-key.py
       register: webui_key_result
-      changed_when: "'created' in webui_key_result.stdout"
+      changed_when: "'created' in webui_key_result.stdout or 'updated' in webui_key_result.stdout"
       no_log: true
+    - name: Copy branding assets
+      ansible.builtin.copy:
+        src: ../../deploy/litellm/branding/
+        dest: '{{ homelab_user_home }}/tmp-charts/branding/'
+        mode: '0644'
+    - name: Find branding pod
+      ansible.builtin.command: kubectl -n llm get pods -l app=litellm-branding -o jsonpath={.items[0].metadata.name}
+      register: branding_pod
+      changed_when: false
+    - name: Upload branding assets to persistent storage
+      ansible.builtin.command: >-
+        kubectl -n llm cp {{ homelab_user_home }}/tmp-charts/branding/.
+        {{ branding_pod.stdout }}:/usr/share/nginx/html/branding/
+      changed_when: true
+    - name: Copy branding settings helper
+      ansible.builtin.copy:
+        src: ../files/configure_litellm_branding.py
+        dest: /tmp/configure-litellm-branding.py
+        mode: '0600'
+    - name: Configure LiteLLM branding
+      ansible.builtin.command: python3 /tmp/configure-litellm-branding.py
+      register: branding_result
+      changed_when: "'updated branding' in branding_result.stdout"

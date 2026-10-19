@@ -1,8 +1,0 @@
-[Unit]
-Description=Pause MDB backup sync when free space reaches 15 GiB
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/python3 %h/.local/libexec/syncthing-backup-disk-guard.py --key-file %h/.config/syncthing-backup-disk-guard/api-key
-TimeoutStartSec=25
-UMask=0077

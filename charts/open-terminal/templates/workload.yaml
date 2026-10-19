@@ -37,9 +37,16 @@ spec:
       app: open-terminal
   template:
     metadata:
+      {{- if .Values.browserCleanup.enabled }}
+      annotations:
+        checksum/browser-cleanup: {{ include (print $.Template.BasePath "/browser-cleanup-configmap.yaml") . | sha256sum }}
+      {{- end }}
       labels:
         app: open-terminal
     spec:
+      {{- if .Values.browserCleanup.enabled }}
+      shareProcessNamespace: true
+      {{- end }}
       automountServiceAccountToken: false
       enableServiceLinks: false
       nodeSelector:
@@ -49,6 +56,8 @@ spec:
           image: {{ .Values.image | quote }}
           imagePullPolicy: IfNotPresent
           env:
+            - name: OPEN_TERMINAL_PACKAGES
+              value: {{ join " " (.Values.systemPackages | default list) | quote }}
             - name: OPEN_TERMINAL_API_KEY
               valueFrom:
                 secretKeyRef:
@@ -77,7 +86,48 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /home/user
+            {{- if .Values.browserCleanup.enabled }}
+            - name: browser-cleanup
+              mountPath: /usr/local/bin/homelab-browser-test
+              subPath: browser_test_runner.py
+              readOnly: true
+            {{- end }}
+        {{- if .Values.browserCleanup.enabled }}
+        - name: browser-cleanup
+          image: {{ .Values.image | quote }}
+          command: [python, /guard/browser_watchdog.py]
+          env:
+            - name: BROWSER_MAX_AGE_SECONDS
+              value: {{ .Values.browserCleanup.maxAgeSeconds | quote }}
+            - name: BROWSER_POLL_SECONDS
+              value: {{ .Values.browserCleanup.pollSeconds | quote }}
+            - name: BROWSER_GRACE_SECONDS
+              value: {{ .Values.browserCleanup.graceSeconds | quote }}
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 5m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          volumeMounts:
+            - name: browser-cleanup
+              mountPath: /guard
+              readOnly: true
+        {{- end }}
       volumes:
+        {{- if .Values.browserCleanup.enabled }}
+        - name: browser-cleanup
+          configMap:
+            name: open-terminal-browser-cleanup
+            defaultMode: 0555
+        {{- end }}
         - name: data
           persistentVolumeClaim:
             claimName: open-terminal-data
