@@ -11,6 +11,10 @@ spec:
       app: open-webui
   template:
     metadata:
+      {{- if .Values.toolGuard.enabled }}
+      annotations:
+        checksum/tool-guard: {{ include (print $.Template.BasePath "/tool-guard-configmap.yaml") . | sha256sum }}
+      {{- end }}
       labels:
         app: open-webui
     spec:
@@ -18,6 +22,19 @@ spec:
       enableServiceLinks: false
       nodeSelector:
         kubernetes.io/hostname: {{ .Values.nodeName | quote }}
+      {{- if .Values.toolGuard.enabled }}
+      initContainers:
+        - name: prepare-tool-guard
+          image: {{ .Values.image | quote }}
+          command: [python, /guard/patch_tool_guard.py]
+          args: [/app/backend/open_webui/utils/middleware.py, /patched/middleware.py]
+          volumeMounts:
+            - name: tool-guard
+              mountPath: /guard
+              readOnly: true
+            - name: patched-middleware
+              mountPath: /patched
+      {{- end }}
       containers:
         - name: open-webui
           image: {{ .Values.image | quote }}
@@ -79,9 +96,26 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 5
           volumeMounts:
+            {{- if .Values.toolGuard.enabled }}
+            - name: patched-middleware
+              mountPath: /app/backend/open_webui/utils/middleware.py
+              subPath: middleware.py
+              readOnly: true
+            - name: tool-guard
+              mountPath: /app/backend/open_webui/utils/homelab_tool_guard.py
+              subPath: tool_guard.py
+              readOnly: true
+            {{- end }}
             - name: data
               mountPath: /app/backend/data
       volumes:
+        {{- if .Values.toolGuard.enabled }}
+        - name: tool-guard
+          configMap:
+            name: open-webui-tool-guard
+        - name: patched-middleware
+          emptyDir: {}
+        {{- end }}
         - name: data
           persistentVolumeClaim:
             claimName: open-webui-data
