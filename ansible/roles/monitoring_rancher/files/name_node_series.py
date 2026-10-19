@@ -22,7 +22,6 @@ RANCHER_DASHBOARD_UIDS = {
     'rancher-workload-1',
     'rancher-workload-pods-1',
 }
-EXCLUDED_DASHBOARD_UIDS = {'rancher-home-1'}
 NODE_NAMES = 'max by (instance, nodename) (node_uname_info{job="node-exporter"})'
 
 NODE_DASHBOARD_UIDS = {'rancher-node-1', 'rancher-node-detail-1'}
@@ -133,11 +132,16 @@ def main():
         for name, content in list(manifest.get('data', {}).items()):
             if not name.endswith('.json'):
                 continue
-            dashboard = json.loads(content)
+            try:
+                dashboard = json.loads(content)
+            except (TypeError, ValueError):
+                continue
+            if not isinstance(dashboard, dict) or not isinstance(dashboard.get('panels'), list):
+                continue
             uid = dashboard.get('uid')
             if not uid:
                 continue
-            if uid in EXCLUDED_DASHBOARD_UIDS:
+            if uid not in RANCHER_DASHBOARD_UIDS:
                 del manifest['data'][name]
                 removed_dashboard = True
                 continue
@@ -169,13 +173,9 @@ def main():
             apply_descriptions(dashboard)
             manifest['data'][name] = json.dumps(dashboard, ensure_ascii=False, separators=(',', ':'))
         if dashboard_uids:
-            embedded = dashboard_uids & RANCHER_DASHBOARD_UIDS
-            if embedded and embedded != dashboard_uids:
-                raise RuntimeError('Embedded and diagnostic dashboards share a ConfigMap')
-            folder = 'Rancher' if embedded else 'Kubernetes Diagnostics'
             metadata = manifest.setdefault('metadata', {})
             metadata['annotations'] = metadata.get('annotations') or {}
-            metadata['annotations']['grafana_folder'] = '/tmp/dashboards/' + folder
+            metadata['annotations']['grafana_folder'] = '/tmp/dashboards/Rancher'
         if removed_dashboard and not manifest.get('data') and not manifest.get('binaryData'):
             continue
         retained.append(manifest)

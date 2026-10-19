@@ -36,12 +36,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--ssh-host', default='socrat-0')
     args = parser.parse_args()
-    expected = {}
-    for path in sorted((ROOT / 'deploy/monitoring/dashboard-descriptions').glob('*.json')):
-        entries = json.loads(path.read_text())
-        if expected.keys() & entries.keys():
-            raise RuntimeError('Duplicate dashboard UID in description catalog')
-        expected.update(entries)
+    catalog = ROOT / 'deploy/monitoring/dashboard-descriptions/rancher-core.json'
+    expected = json.loads(catalog.read_text())
     for path in sorted((ROOT / 'charts/monitoring-k3s/dashboards').glob('*.json')):
         dashboard = json.loads(path.read_text())
         expected[dashboard['uid']] = panel_descriptions(dashboard)
