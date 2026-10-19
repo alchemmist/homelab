@@ -13,8 +13,6 @@ Socrat — это домашний распределенный кластер �
 
  `@alchemmist`
 
-` ```python `
-
-`print("Hello")`
-
-` ``` `
+```python
+print("Hello")
+```
