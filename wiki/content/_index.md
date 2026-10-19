@@ -9,6 +9,6 @@ Socrat — это домашний распределенный кластер �
 
 Кластер админит alchemmist. Для получения доступов и по любым другим вопросам обращайтесь к нему:
 
-mail: `anton.ingrish@gmail.com`
+ `anton.ingrish@gmail.com`
 
-tg: `@alchemmist`
+ `@alchemmist`
