@@ -6,3 +6,4 @@ nodes:
   socrat-0: 10.250.0.1
   socrat-2: 10.250.0.2
   socrat-3: 10.250.0.5
+nodeAlertLinks: {}
