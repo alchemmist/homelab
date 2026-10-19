@@ -1,0 +1,39 @@
+---
+- name: Deploy terminal validation and repeated failure protection
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  vars:
+    webui_guard_chart: '{{ homelab_user_home }}/tmp-charts/open-webui-tool-guard'
+  tasks:
+    - name: Copy the managed WebUI chart
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/../../charts/open-webui/'
+        dest: '{{ webui_guard_chart }}/'
+        mode: preserve
+
+    - name: Validate the managed chart
+      ansible.builtin.command: helm lint {{ webui_guard_chart }}
+      changed_when: false
+
+    - name: Apply protection while preserving existing release settings
+      ansible.builtin.command: >-
+        helm upgrade open-webui {{ webui_guard_chart }} --namespace llm
+        --reuse-values --set toolGuard.enabled=true --atomic --wait --timeout 10m
+
+    - name: Verify the running guard
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - -n
+          - llm
+          - exec
+          - deployment/open-webui
+          - --
+          - python
+          - -c
+          - "from pathlib import Path; import open_webui.utils.homelab_tool_guard; s = Path('/app/backend/open_webui/utils/middleware.py').read_text(); assert 'homelab_tool_guard' in s; print('tool guard installed')"
+      changed_when: false

@@ -1,0 +1,11 @@
+{{- if .Values.toolGuard.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: open-webui-tool-guard
+data:
+  tool_guard.py: |
+{{ .Files.Get "files/tool_guard.py" | indent 4 }}
+  patch_tool_guard.py: |
+{{ .Files.Get "files/patch_tool_guard.py" | indent 4 }}
+{{- end }}
