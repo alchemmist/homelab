@@ -1,0 +1,155 @@
+- name: Read current Kuma placement
+  ansible.builtin.command: /usr/local/bin/kubectl -n {{ uptime_kuma_namespace }} get deployment {{ uptime_kuma_release }} -o json
+  register: kuma_deployment
+  changed_when: false
+
+- name: Validate the current singleton deployment
+  ansible.builtin.assert:
+    that:
+      - (kuma_deployment.stdout | from_json).spec.replicas == 1
+      - (kuma_deployment.stdout | from_json).spec.template.spec.nodeSelector['kubernetes.io/hostname'] in [uptime_kuma_source, uptime_kuma_destination]
+      - uptime_kuma_source != uptime_kuma_destination
+
+- name: Prepare the Kuma chart
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../../../charts/uptime-kuma/"
+    dest: /tmp/homelab-uptime-kuma-chart/
+    mode: preserve
+
+- name: Move the data when the deployment is still on the source
+  when: (kuma_deployment.stdout | from_json).spec.template.spec.nodeSelector['kubernetes.io/hostname'] == uptime_kuma_source
+  block:
+    - name: Check the source database
+      ansible.builtin.stat:
+        path: "{{ uptime_kuma_directory }}/kuma.db"
+      delegate_to: "{{ uptime_kuma_source }}"
+      become: true
+      register: kuma_source_database
+
+    - name: Require an existing source database
+      ansible.builtin.assert:
+        that:
+          - kuma_source_database.stat.isreg | default(false)
+          - kuma_source_database.stat.size > 0
+
+    - name: Require a free destination listener
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: 3001
+        state: stopped
+        timeout: 3
+      delegate_to: "{{ uptime_kuma_destination }}"
+
+    - name: Cache the pinned Kuma image before stopping the source
+      ansible.builtin.command:
+        argv:
+          - /usr/local/bin/k3s
+          - crictl
+          - pull
+          - "{{ (lookup('file', role_path + '/../../../charts/uptime-kuma/values.yaml') | from_yaml).image }}"
+      delegate_to: "{{ uptime_kuma_destination }}"
+      become: true
+      changed_when: false
+
+    - name: Create a private local transfer directory
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: homelab-kuma-
+      delegate_to: localhost
+      register: kuma_local_transfer
+
+    - name: Transfer the stopped data with rollback protection
+      block:
+        - name: Stop the source writer
+          ansible.builtin.command: /usr/local/bin/kubectl -n {{ uptime_kuma_namespace }} scale deployment {{ uptime_kuma_release }} --replicas=0
+          changed_when: true
+
+        - name: Wait for the source pod to terminate
+          ansible.builtin.command: /usr/local/bin/kubectl -n {{ uptime_kuma_namespace }} wait --for=delete pod -l app=uptime-kuma --timeout=120s
+          changed_when: false
+
+        - name: Archive and inspect the stopped source
+          ansible.builtin.include_tasks: source.yml
+
+        - name: Install and verify the destination data
+          ansible.builtin.include_tasks: destination.yml
+
+        - name: Activate the destination singleton
+          ansible.builtin.include_tasks: deploy.yml
+
+      rescue:
+        - name: Stop all Kuma writers before rollback
+          ansible.builtin.command: /usr/local/bin/kubectl -n {{ uptime_kuma_namespace }} scale deployment {{ uptime_kuma_release }} --replicas=0
+          changed_when: true
+
+        - name: Wait for destination pods to stop
+          ansible.builtin.command: /usr/local/bin/kubectl -n {{ uptime_kuma_namespace }} wait --for=delete pod -l app=uptime-kuma --timeout=120s
+          changed_when: false
+
+        - name: Restore the preserved source placement
+          ansible.builtin.command:
+            argv:
+              - /usr/local/bin/kubectl
+              - -n
+              - "{{ uptime_kuma_namespace }}"
+              - patch
+              - deployment
+              - "{{ uptime_kuma_release }}"
+              - --type=merge
+              - -p
+              - "{{ {'spec': {'replicas': 1, 'template': {'spec': {'nodeSelector': {'kubernetes.io/hostname': uptime_kuma_source}}}}} | to_json }}"
+          changed_when: true
+
+        - name: Verify source recovery
+          ansible.builtin.command: /usr/local/bin/kubectl -n {{ uptime_kuma_namespace }} rollout status deployment {{ uptime_kuma_release }} --timeout=180s
+          changed_when: false
+
+        - name: Reconcile Helm with the recovered source placement
+          ansible.builtin.command:
+            argv:
+              - /usr/local/bin/helm
+              - upgrade
+              - "{{ uptime_kuma_release }}"
+              - /tmp/homelab-uptime-kuma-chart
+              - --namespace
+              - "{{ uptime_kuma_namespace }}"
+              - --reset-values
+              - --set-string
+              - "nodeName={{ uptime_kuma_source }}"
+              - --set-string
+              - "hostPath={{ uptime_kuma_directory }}"
+              - --wait
+              - --timeout
+              - 5m
+          changed_when: true
+
+        - name: Report the failed migration
+          ansible.builtin.fail:
+            msg: "Kuma migration failed; the preserved source was restored. {{ ansible_failed_result.msg | default('Inspect the failed task above.') }}"
+
+      always:
+        - name: Remove the private local transfer
+          ansible.builtin.file:
+            path: "{{ kuma_local_transfer.path }}"
+            state: absent
+          delegate_to: localhost
+
+        - name: Remove the source transfer archive
+          ansible.builtin.file:
+            path: "{{ kuma_source_transfer.path }}"
+            state: absent
+          delegate_to: "{{ uptime_kuma_source }}"
+          become: true
+          when: kuma_source_transfer.path is defined
+
+        - name: Remove the destination transfer archive
+          ansible.builtin.file:
+            path: "{{ kuma_destination_transfer.path }}/data.tar"
+            state: absent
+          delegate_to: "{{ uptime_kuma_destination }}"
+          become: true
+          when: kuma_destination_transfer.path is defined
+
+- name: Reconcile an already migrated singleton
+  ansible.builtin.include_tasks: deploy.yml
+  when: (kuma_deployment.stdout | from_json).spec.template.spec.nodeSelector['kubernetes.io/hostname'] == uptime_kuma_destination

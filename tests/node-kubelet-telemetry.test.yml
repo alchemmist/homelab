@@ -1,0 +1,256 @@
+rule_files:
+- node-certificates.rules.yml
+evaluation_interval: 30s
+tests:
+- name: no eviction counter is clear with healthy fresh source
+  interval: 30s
+  input_series:
+  - series: up{job="kubelet",metrics_path="/metrics",node="socrat-1"}
+    values: 1x40
+  - series: prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group="/rules/file;kubernetes-system-kubelet"}
+    values: 0+30x40
+  promql_expr_test:
+  - expr: (max(2 * ALERTS{alertname="KubeNodeEviction",alertstate="firing",node="socrat-1"}
+      or ALERTS{alertname="KubeNodeEviction",alertstate="pending",node="socrat-1"}))
+      or (vector(0) and on() ((max(up{job="kubelet",metrics_path="/metrics",node="socrat-1"})
+      == 1) and on() (time() - max(timestamp(up{job="kubelet",metrics_path="/metrics",node="socrat-1"}))
+      < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~".*;kubernetes-system-kubelet"})
+      < 90))) or vector(-2)
+    eval_time: 2m
+    exp_samples:
+    - labels: '{}'
+      value: 0
+- name: failed eviction scrape is unknown not clear
+  interval: 30s
+  input_series:
+  - series: up{job="kubelet",metrics_path="/metrics",node="socrat-1"}
+    values: '0x40'
+  - series: prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group="/rules/file;kubernetes-system-kubelet"}
+    values: 0+30x40
+  promql_expr_test:
+  - expr: (max(2 * ALERTS{alertname="KubeNodeEviction",alertstate="firing",node="socrat-1"}
+      or ALERTS{alertname="KubeNodeEviction",alertstate="pending",node="socrat-1"}))
+      or (vector(0) and on() ((max(up{job="kubelet",metrics_path="/metrics",node="socrat-1"})
+      == 1) and on() (time() - max(timestamp(up{job="kubelet",metrics_path="/metrics",node="socrat-1"}))
+      < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~".*;kubernetes-system-kubelet"})
+      < 90))) or vector(-2)
+    eval_time: 2m
+    exp_samples:
+    - labels: '{}'
+      value: -2
+- name: stale eviction rule evaluation is unknown
+  interval: 30s
+  input_series:
+  - series: up{job="kubelet",metrics_path="/metrics",node="socrat-1"}
+    values: 1x40
+  - series: prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group="/rules/file;kubernetes-system-kubelet"}
+    values: '0x40'
+  promql_expr_test:
+  - expr: (max(2 * ALERTS{alertname="KubeNodeEviction",alertstate="firing",node="socrat-1"}
+      or ALERTS{alertname="KubeNodeEviction",alertstate="pending",node="socrat-1"}))
+      or (vector(0) and on() ((max(up{job="kubelet",metrics_path="/metrics",node="socrat-1"})
+      == 1) and on() (time() - max(timestamp(up{job="kubelet",metrics_path="/metrics",node="socrat-1"}))
+      < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~".*;kubernetes-system-kubelet"})
+      < 90))) or vector(-2)
+    eval_time: 2m
+    exp_samples:
+    - labels: '{}'
+      value: -2
+- name: active eviction remains visible despite failed scrape
+  interval: 30s
+  input_series:
+  - series: up{job="kubelet",metrics_path="/metrics",node="socrat-1"}
+    values: '0x40'
+  - series: ALERTS{alertname="KubeNodeEviction",alertstate="firing",node="socrat-1"}
+    values: 1x40
+  promql_expr_test:
+  - expr: (max(2 * ALERTS{alertname="KubeNodeEviction",alertstate="firing",node="socrat-1"}
+      or ALERTS{alertname="KubeNodeEviction",alertstate="pending",node="socrat-1"}))
+      or (vector(0) and on() ((max(up{job="kubelet",metrics_path="/metrics",node="socrat-1"})
+      == 1) and on() (time() - max(timestamp(up{job="kubelet",metrics_path="/metrics",node="socrat-1"}))
+      < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~".*;kubernetes-system-kubelet"})
+      < 90))) or vector(-2)
+    eval_time: 2m
+    exp_samples:
+    - labels: '{}'
+      value: 2
+- name: other node eviction does not affect selected node
+  interval: 30s
+  input_series:
+  - series: up{job="kubelet",metrics_path="/metrics",node="socrat-1"}
+    values: 1x40
+  - series: prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group="/rules/file;kubernetes-system-kubelet"}
+    values: 0+30x40
+  - series: ALERTS{alertname="KubeNodeEviction",alertstate="firing",node="socrat-2"}
+    values: 1x40
+  promql_expr_test:
+  - expr: (max(2 * ALERTS{alertname="KubeNodeEviction",alertstate="firing",node="socrat-1"}
+      or ALERTS{alertname="KubeNodeEviction",alertstate="pending",node="socrat-1"}))
+      or (vector(0) and on() ((max(up{job="kubelet",metrics_path="/metrics",node="socrat-1"})
+      == 1) and on() (time() - max(timestamp(up{job="kubelet",metrics_path="/metrics",node="socrat-1"}))
+      < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~".*;kubernetes-system-kubelet"})
+      < 90))) or vector(-2)
+    eval_time: 2m
+    exp_samples:
+    - labels: '{}'
+      value: 0
+- name: missing certificate metric cannot be green
+  interval: 30s
+  input_series:
+  - series: up{job="kubelet",metrics_path="/metrics",node="socrat-1"}
+    values: 1x40
+  - series: prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group="/rules/file;socrat.nodes.certificates"}
+    values: 0+30x40
+  promql_expr_test:
+  - expr: (max(2 * ALERTS{alertname="SocratNodeCertificateExpiration",alertstate="firing",node="socrat-1"}
+      or ALERTS{alertname="SocratNodeCertificateExpiration",alertstate="pending",node="socrat-1"}))
+      or (vector(0) and on() ((max(up{job="kubelet",metrics_path="/metrics",node="socrat-1"})
+      == 1) and on() (time() - max(timestamp(up{job="kubelet",metrics_path="/metrics",node="socrat-1"}))
+      < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~".*;socrat.nodes.certificates"})
+      < 90) and on() (count(k3s_certificate_expiration_seconds{job="kubelet",metrics_path="/metrics",node="socrat-1"})
+      > 0) and on() (time() - min(timestamp(k3s_certificate_expiration_seconds{job="kubelet",metrics_path="/metrics",node="socrat-1"}))
+      < 90))) or vector(-2)
+    eval_time: 2m
+    exp_samples:
+    - labels: '{}'
+      value: -2
+- name: healthy real certificate metric is clear
+  interval: 30s
+  input_series:
+  - series: up{job="kubelet",metrics_path="/metrics",node="socrat-1"}
+    values: 1x40
+  - series: prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group="/rules/file;socrat.nodes.certificates"}
+    values: 0+30x40
+  - series: k3s_certificate_expiration_seconds{job="kubelet",metrics_path="/metrics",node="socrat-1",subject="CN=client",usages="ClientAuth"}
+    values: 31100000x40
+  promql_expr_test:
+  - expr: (max(2 * ALERTS{alertname="SocratNodeCertificateExpiration",alertstate="firing",node="socrat-1"}
+      or ALERTS{alertname="SocratNodeCertificateExpiration",alertstate="pending",node="socrat-1"}))
+      or (vector(0) and on() ((max(up{job="kubelet",metrics_path="/metrics",node="socrat-1"})
+      == 1) and on() (time() - max(timestamp(up{job="kubelet",metrics_path="/metrics",node="socrat-1"}))
+      < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~".*;socrat.nodes.certificates"})
+      < 90) and on() (count(k3s_certificate_expiration_seconds{job="kubelet",metrics_path="/metrics",node="socrat-1"})
+      > 0) and on() (time() - min(timestamp(k3s_certificate_expiration_seconds{job="kubelet",metrics_path="/metrics",node="socrat-1"}))
+      < 90))) or vector(-2)
+    eval_time: 2m
+    exp_samples:
+    - labels: '{}'
+      value: 0
+- name: certificate nearing expiry is pending until fifteen minutes
+  interval: 30s
+  input_series:
+  - series: k3s_certificate_expiration_seconds{job="kubelet",metrics_path="/metrics",node="socrat-1",subject="CN=client",usages="ClientAuth"}
+    values: 2500000x40
+  promql_expr_test:
+  - expr: count(ALERTS{alertname="SocratNodeCertificateExpiration",alertstate="firing"})
+    eval_time: 14m30s
+    exp_samples: []
+- name: certificate nearing expiry fires after fifteen minutes
+  interval: 30s
+  input_series:
+  - series: k3s_certificate_expiration_seconds{job="kubelet",metrics_path="/metrics",node="socrat-1",subject="CN=client",usages="ClientAuth"}
+    values: 2500000x40
+  promql_expr_test:
+  - expr: count(ALERTS{alertname="SocratNodeCertificateExpiration",alertstate="firing",node="socrat-1"})
+    eval_time: 15m
+    exp_samples:
+    - labels: '{}'
+      value: 1
+- name: healthy certificate does not alert
+  interval: 30s
+  input_series:
+  - series: k3s_certificate_expiration_seconds{job="kubelet",metrics_path="/metrics",node="socrat-1",subject="CN=client",usages="ClientAuth"}
+    values: 31100000x40
+  promql_expr_test:
+  - expr: count(ALERTS{alertname="SocratNodeCertificateExpiration"})
+    eval_time: 15m
+    exp_samples: []
+- name: missing certificate does not create false expiration
+  interval: 30s
+  input_series: []
+  promql_expr_test:
+  - expr: count(ALERTS{alertname="SocratNodeCertificateExpiration"})
+    eval_time: 15m
+    exp_samples: []
+- name: amd healthy temperature without thermal counters is clear
+  interval: 30s
+  input_series:
+  - series: socrat:node_cpu_temperature_headroom_celsius{node="socrat-1"}
+    values: 25x10
+  - series: up{job="node-exporter",instance="host:9100"}
+    values: 1x10
+  - series: node_uname_info{job="node-exporter",instance="host:9100",nodename="socrat-1"}
+    values: 1x10
+  - series: socrat:node_exporter_last_success_timestamp_seconds{node="socrat-1"}
+    values: 0+30x10
+  - series: node_scrape_collector_success{job="node-exporter",instance="host:9100",collector="hwmon"}
+    values: 1x10
+  - series: prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group="/rules/file;socrat.nodes.hardware"}
+    values: 0+30x10
+  promql_expr_test:
+  - expr: (max(2 * ALERTS{alertname=~"SocratNodeCPUTemperatureHigh|SocratNodeThermalThrottling",node="socrat-1",alertstate="firing"}
+      or ALERTS{alertname=~"SocratNodeCPUTemperatureHigh|SocratNodeThermalThrottling",node="socrat-1",alertstate="pending"}))
+      or (((0 * max(socrat:node_cpu_temperature_headroom_celsius{node="socrat-1"}))
+      or (vector(-1) unless on() count(last_over_time(socrat:node_cpu_temperature_headroom_celsius{node="socrat-1"}[24h]))))
+      and on() ((max(up{job="node-exporter"} and on(instance) max by(instance) (last_over_time(node_uname_info{job="node-exporter",nodename="socrat-1"}[24h])))
+      == 1) and on() (time() - max(last_over_time(socrat:node_exporter_last_success_timestamp_seconds{node="socrat-1"}[24h]))
+      < 90) and on() (max(node_scrape_collector_success{job="node-exporter",collector="hwmon"}
+      and on(instance) max by(instance) (last_over_time(node_uname_info{job="node-exporter",nodename="socrat-1"}[24h])))
+      == 1) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~".*;socrat.nodes.hardware"})
+      < 90))) or vector(-2)
+    eval_time: 2m
+    exp_samples:
+    - labels: '{}'
+      value: 0
+- name: intel thermal firing remains visible when exporter is down
+  interval: 30s
+  input_series:
+  - series: up{job="node-exporter",instance="host:9100"}
+    values: '0x10'
+  - series: ALERTS{alertname="SocratNodeThermalThrottling",alertstate="firing",node="socrat-1"}
+    values: 1x10
+  promql_expr_test:
+  - expr: (max(2 * ALERTS{alertname=~"SocratNodeCPUTemperatureHigh|SocratNodeThermalThrottling",node="socrat-1",alertstate="firing"}
+      or ALERTS{alertname=~"SocratNodeCPUTemperatureHigh|SocratNodeThermalThrottling",node="socrat-1",alertstate="pending"}))
+      or (((0 * max(socrat:node_cpu_temperature_headroom_celsius{node="socrat-1"}))
+      or (vector(-1) unless on() count(last_over_time(socrat:node_cpu_temperature_headroom_celsius{node="socrat-1"}[24h]))))
+      and on() ((max(up{job="node-exporter"} and on(instance) max by(instance) (last_over_time(node_uname_info{job="node-exporter",nodename="socrat-1"}[24h])))
+      == 1) and on() (time() - max(last_over_time(socrat:node_exporter_last_success_timestamp_seconds{node="socrat-1"}[24h]))
+      < 90) and on() (max(node_scrape_collector_success{job="node-exporter",collector="hwmon"}
+      and on(instance) max by(instance) (last_over_time(node_uname_info{job="node-exporter",nodename="socrat-1"}[24h])))
+      == 1) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~".*;socrat.nodes.hardware"})
+      < 90))) or vector(-2)
+    eval_time: 2m
+    exp_samples:
+    - labels: '{}'
+      value: 2
+- name: stale hardware rule evaluation is unknown
+  interval: 30s
+  input_series:
+  - series: socrat:node_cpu_temperature_headroom_celsius{node="socrat-1"}
+    values: 25x10
+  - series: up{job="node-exporter",instance="host:9100"}
+    values: 1x10
+  - series: node_uname_info{job="node-exporter",instance="host:9100",nodename="socrat-1"}
+    values: 1x10
+  - series: socrat:node_exporter_last_success_timestamp_seconds{node="socrat-1"}
+    values: 0+30x10
+  - series: node_scrape_collector_success{job="node-exporter",instance="host:9100",collector="hwmon"}
+    values: 1x10
+  - series: prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group="/rules/file;socrat.nodes.hardware"}
+    values: '0x10'
+  promql_expr_test:
+  - expr: (max(2 * ALERTS{alertname=~"SocratNodeCPUTemperatureHigh|SocratNodeThermalThrottling",node="socrat-1",alertstate="firing"}
+      or ALERTS{alertname=~"SocratNodeCPUTemperatureHigh|SocratNodeThermalThrottling",node="socrat-1",alertstate="pending"}))
+      or (((0 * max(socrat:node_cpu_temperature_headroom_celsius{node="socrat-1"}))
+      or (vector(-1) unless on() count(last_over_time(socrat:node_cpu_temperature_headroom_celsius{node="socrat-1"}[24h]))))
+      and on() ((max(up{job="node-exporter"} and on(instance) max by(instance) (last_over_time(node_uname_info{job="node-exporter",nodename="socrat-1"}[24h])))
+      == 1) and on() (time() - max(last_over_time(socrat:node_exporter_last_success_timestamp_seconds{node="socrat-1"}[24h]))
+      < 90) and on() (max(node_scrape_collector_success{job="node-exporter",collector="hwmon"}
+      and on(instance) max by(instance) (last_over_time(node_uname_info{job="node-exporter",nodename="socrat-1"}[24h])))
+      == 1) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~".*;socrat.nodes.hardware"})
+      < 90))) or vector(-2)
+    eval_time: 2m
+    exp_samples:
+    - labels: '{}'
+      value: -2

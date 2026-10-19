@@ -724,7 +724,7 @@
       "id": 207,
       "type": "stat",
       "title": "",
-      "description": "CPU temperature is within 10 °C of the critical limit for 5m. Hardware critical limits take precedence; socrat-1 uses the validated Ryzen 7 7840HS 100 °C limit only when hardware does not expose one. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
+      "description": "CPU temperature within 10 °C of its critical limit for 5m, or hardware thermal throttle events sustained for 2m where supported. The AMD socrat-1 provides temperature but no thermal event counter; the Intel socrat-0 provides both. These are separate checks: temperature alone does not prove hardware throttling. Hardware critical temperature limits take precedence; socrat-1 falls back to its validated 100 °C limit. N/A means temperature telemetry is unsupported. No telemetry means its source or rule evaluation is unavailable. Active alerts take precedence. Click to choose the temperature or hardware-throttling alert in Grafana.",
       "gridPos": {
         "x": 12,
         "y": 3,
@@ -738,7 +738,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "((max(2 * (ALERTS{alertname=\"SocratNodeCPUTemperatureHigh\",node=\"$node\",alertstate=\"firing\"}) or (ALERTS{alertname=\"SocratNodeCPUTemperatureHigh\",node=\"$node\",alertstate=\"pending\"}))) or (0 * max(socrat:node_cpu_temperature_headroom_celsius{node=\"$node\"})) or (vector(-1) unless on() count(last_over_time(socrat:node_cpu_temperature_headroom_celsius{node=\"$node\"}[24h])))) and on() ((max(up{job=\"node-exporter\"} and on(instance) max by(instance) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"})) == 1) and on() (time() - max(last_over_time(socrat:node_exporter_last_success_timestamp_seconds{node=\"$node\"}[24h])) < 90) and on() (max(node_scrape_collector_success{job=\"node-exporter\",collector=\"hwmon\"} and on(instance) max by(instance) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"})) == 1) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.nodes.hardware\"}) < 90))",
+          "expr": "(max(2 * ALERTS{alertname=~\"SocratNodeCPUTemperatureHigh|SocratNodeThermalThrottling\",node=\"$node\",alertstate=\"firing\"} or ALERTS{alertname=~\"SocratNodeCPUTemperatureHigh|SocratNodeThermalThrottling\",node=\"$node\",alertstate=\"pending\"})) or (((0 * max(socrat:node_cpu_temperature_headroom_celsius{node=\"$node\"})) or (vector(-1) unless on() count(last_over_time(socrat:node_cpu_temperature_headroom_celsius{node=\"$node\"}[24h])))) and on() ((max(up{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) == 1) and on() (time() - max(last_over_time(socrat:node_exporter_last_success_timestamp_seconds{node=\"$node\"}[24h])) < 90) and on() (max(node_scrape_collector_success{job=\"node-exporter\",collector=\"hwmon\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) == 1) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.nodes.hardware\"}) < 90))) or vector(-2)",
           "instant": true,
           "format": "time_series"
         }
@@ -766,6 +766,10 @@
                 "2": {
                   "text": "Firing",
                   "color": "#B42332"
+                },
+                "-2": {
+                  "text": "No telemetry",
+                  "color": "#555555"
                 }
               }
             },
@@ -802,117 +806,14 @@
               "title": "SocratNodeCPUTemperatureHigh",
               "url": "/alerting/list?search=SocratNodeCPUTemperatureHigh",
               "targetBlank": false
-            }
-          ],
-          "displayName": "CPU temp"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "values": false,
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": ""
-        },
-        "orientation": "vertical",
-        "textMode": "name",
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "text": {
-          "titleSize": 13,
-          "valueSize": 18
-        },
-        "wideLayout": false
-      }
-    },
-    {
-      "id": 208,
-      "type": "stat",
-      "title": "",
-      "description": "New core or package thermal throttle events occurred in a rolling 5m window, sustained for 2m. This is hardware thermal throttling, not container CPU quota throttling. The tile shows the worst Pending/Firing instance on the selected node. N/A means no supported measurements were seen in the last 24h while the source is healthy; No telemetry means data or rule evaluation is unavailable. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
-      "gridPos": {
-        "x": 18,
-        "y": 3,
-        "w": 6,
-        "h": 2
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "((max(2 * (ALERTS{alertname=\"SocratNodeThermalThrottling\",node=\"$node\",alertstate=\"firing\"}) or (ALERTS{alertname=\"SocratNodeThermalThrottling\",node=\"$node\",alertstate=\"pending\"}))) or (0 * max(socrat:node_thermal_throttles:increase5m{node=\"$node\"})) or (vector(-1) unless on() count(last_over_time(socrat:node_thermal_throttles:increase5m{node=\"$node\"}[24h])))) and on() ((max(up{job=\"node-exporter\"} and on(instance) max by(instance) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"})) == 1) and on() (time() - max(last_over_time(socrat:node_exporter_last_success_timestamp_seconds{node=\"$node\"}[24h])) < 90) and on() (max(node_scrape_collector_success{job=\"node-exporter\",collector=\"cpu\"} and on(instance) max by(instance) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"})) == 1) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.nodes.hardware\"}) < 90))",
-          "instant": true,
-          "format": "time_series"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "noValue": "No telemetry",
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "-1": {
-                  "text": "N/A",
-                  "color": "#555555"
-                },
-                "0": {
-                  "text": "Clear",
-                  "color": "#26783D"
-                },
-                "1": {
-                  "text": "Pending",
-                  "color": "#A85D08"
-                },
-                "2": {
-                  "text": "Firing",
-                  "color": "#B42332"
-                }
-              }
             },
-            {
-              "type": "special",
-              "options": {
-                "match": "null",
-                "result": {
-                  "text": "No telemetry",
-                  "color": "#555555"
-                }
-              }
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": null
-              },
-              {
-                "color": "#A85D08",
-                "value": 1
-              },
-              {
-                "color": "#B42332",
-                "value": 2
-              }
-            ]
-          },
-          "links": [
             {
               "title": "SocratNodeThermalThrottling",
               "url": "/alerting/list?search=SocratNodeThermalThrottling",
               "targetBlank": false
             }
           ],
-          "displayName": "Thermal"
+          "displayName": "CPU thermal"
         },
         "overrides": []
       },
@@ -2034,7 +1935,7 @@
       "id": 219,
       "type": "stat",
       "title": "",
-      "description": "Kubelet pod evictions caused by resource pressure. The eviction counter may not be exposed before the first event. Existing rules: KubeNodeEviction. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h.  Firing is blue because the existing rule has informational severity. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
+      "description": "Pod evictions reported by the kubelet. KubeNodeEviction is informational: Firing is blue. The counter is created only after the first eviction, so no counter with a fresh healthy kubelet scrape and rule evaluation means no observed eviction alert, not missing telemetry. An active alert remains visible if its source subsequently fails. No telemetry means stale or failed kubelet scraping or rule evaluation. Click to inspect the alert in Grafana.",
       "gridPos": {
         "x": 16,
         "y": 6,
@@ -2048,7 +1949,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(((max((max(2 * ALERTS{alertname=~\"KubeNodeEviction\",alertstate=\"firing\",node=\"$node\"} or ALERTS{alertname=~\"KubeNodeEviction\",alertstate=\"pending\",node=\"$node\"})))) and on() ((time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;kubernetes-system-kubelet\"}) < 90))) or (((vector(0) and on() ((count((kubelet_evictions{job=\"kubelet\",metrics_path=\"/metrics\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h])))) > 0))) or (vector(-1) unless on() ((count((last_over_time(kubelet_evictions{job=\"kubelet\",metrics_path=\"/metrics\"}[24h]) and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h])))) > 0)))) and on() (((max(up{job=\"kubelet\",metrics_path=\"/metrics\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h]))) == 1) and on() (time() - max(timestamp(up{job=\"kubelet\",metrics_path=\"/metrics\"}) and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h]))) < 90)) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;kubernetes-system-kubelet\"}) < 90)))) or vector(-2)",
+          "expr": "(max(2 * ALERTS{alertname=\"KubeNodeEviction\",alertstate=\"firing\",node=\"$node\"} or ALERTS{alertname=\"KubeNodeEviction\",alertstate=\"pending\",node=\"$node\"})) or (vector(0) and on() ((max(up{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}) == 1) and on() (time() - max(timestamp(up{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;kubernetes-system-kubelet\"}) < 90))) or vector(-2)",
           "instant": true,
           "format": "time_series"
         }
@@ -2263,7 +2164,7 @@
       "id": 221,
       "type": "stat",
       "title": "",
-      "description": "Client or serving certificates near expiration, or certificate-renewal failures. N/A indicates that not all certificate-manager metrics are exposed by this kubelet. Existing rules: KubeletClientCertificateExpiration, KubeletServerCertificateExpiration, KubeletClientCertificateRenewalErrors, KubeletServerCertificateRenewalErrors. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
+      "description": "Remaining lifetime of K3s-managed certificates on this node. SocratNodeCertificateExpiration fires when the shortest remaining lifetime stays below 30 days for 15 minutes. K3s supplies remaining seconds directly, not a Unix expiration timestamp. Includes all certificate subjects exported by K3s; client and serving certificates are managed by K3s rather than the upstream kubelet certificate manager. Clear requires fresh certificate metrics, healthy kubelet scraping and fresh rule evaluation. An active alert remains visible when its source fails; otherwise missing telemetry is gray. Click to inspect the alert in Grafana.",
       "gridPos": {
         "x": 0,
         "y": 7,
@@ -2277,7 +2178,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(((max((max(2 * (ALERTS{alertname=~\"KubeletClientCertificateExpiration|KubeletServerCertificateExpiration|KubeletClientCertificateRenewalErrors|KubeletServerCertificateRenewalErrors\",alertstate=\"firing\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h]))) or (ALERTS{alertname=~\"KubeletClientCertificateExpiration|KubeletServerCertificateExpiration|KubeletClientCertificateRenewalErrors|KubeletServerCertificateRenewalErrors\",alertstate=\"pending\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h]))))))) and on() ((time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;kubernetes-system-kubelet\"}) < 90))) or (((vector(0) and on() ((count((kubelet_certificate_manager_client_ttl_seconds{job=\"kubelet\",metrics_path=\"/metrics\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h])))) > 0) and on() (count((kubelet_certificate_manager_server_ttl_seconds{job=\"kubelet\",metrics_path=\"/metrics\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h])))) > 0) and on() (count((kubelet_certificate_manager_client_expiration_renew_errors{job=\"kubelet\",metrics_path=\"/metrics\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h])))) > 0) and on() (count((kubelet_server_expiration_renew_errors{job=\"kubelet\",metrics_path=\"/metrics\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h])))) > 0))) or (vector(-1) unless on() ((count((last_over_time(kubelet_certificate_manager_client_ttl_seconds{job=\"kubelet\",metrics_path=\"/metrics\"}[24h]) and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h])))) > 0) and on() (count((last_over_time(kubelet_certificate_manager_server_ttl_seconds{job=\"kubelet\",metrics_path=\"/metrics\"}[24h]) and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h])))) > 0) and on() (count((last_over_time(kubelet_certificate_manager_client_expiration_renew_errors{job=\"kubelet\",metrics_path=\"/metrics\"}[24h]) and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h])))) > 0) and on() (count((last_over_time(kubelet_server_expiration_renew_errors{job=\"kubelet\",metrics_path=\"/metrics\"}[24h]) and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h])))) > 0)))) and on() (((max(up{job=\"kubelet\",metrics_path=\"/metrics\"} and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h]))) == 1) and on() (time() - max(timestamp(up{job=\"kubelet\",metrics_path=\"/metrics\"}) and on(instance) max by(instance) (last_over_time(kubelet_node_name{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}[24h]))) < 90)) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;kubernetes-system-kubelet\"}) < 90)))) or vector(-2)",
+          "expr": "(max(2 * ALERTS{alertname=\"SocratNodeCertificateExpiration\",alertstate=\"firing\",node=\"$node\"} or ALERTS{alertname=\"SocratNodeCertificateExpiration\",alertstate=\"pending\",node=\"$node\"})) or (vector(0) and on() ((max(up{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}) == 1) and on() (time() - max(timestamp(up{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.nodes.certificates\"}) < 90) and on() (count(k3s_certificate_expiration_seconds{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"}) > 0) and on() (time() - min(timestamp(k3s_certificate_expiration_seconds{job=\"kubelet\",metrics_path=\"/metrics\",node=\"$node\"})) < 90))) or vector(-2)",
           "instant": true,
           "format": "time_series"
         }
@@ -2342,23 +2243,8 @@
           },
           "links": [
             {
-              "title": "KubeletClientCertificateExpiration",
-              "url": "/alerting/list?search=KubeletClientCertificateExpiration",
-              "targetBlank": false
-            },
-            {
-              "title": "KubeletClientCertificateRenewalErrors",
-              "url": "/alerting/list?search=KubeletClientCertificateRenewalErrors",
-              "targetBlank": false
-            },
-            {
-              "title": "KubeletServerCertificateExpiration",
-              "url": "/alerting/list?search=KubeletServerCertificateExpiration",
-              "targetBlank": false
-            },
-            {
-              "title": "KubeletServerCertificateRenewalErrors",
-              "url": "/alerting/list?search=KubeletServerCertificateRenewalErrors",
+              "title": "SocratNodeCertificateExpiration",
+              "url": "/alerting/list?search=SocratNodeCertificateExpiration",
               "targetBlank": false
             }
           ],
@@ -2992,7 +2878,7 @@
       "gridPos": {
         "x": 0,
         "y": 8,
-        "w": 4,
+        "w": 6,
         "h": 1
       },
       "datasource": {
@@ -3102,9 +2988,9 @@
       "title": "",
       "description": "Node-exporter could not read or parse a textfile metric file. Existing rules: NodeTextFileCollectorScrapeError. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
-        "x": 4,
+        "x": 6,
         "y": 8,
-        "w": 4,
+        "w": 6,
         "h": 1
       },
       "datasource": {
@@ -3209,128 +3095,6 @@
       }
     },
     {
-      "id": 229,
-      "type": "stat",
-      "title": "",
-      "description": "Degraded Linux software RAID, failed RAID disks or missing active bonding members. N/A means complete coverage is unavailable, commonly because these devices do not exist. Existing rules: NodeRAIDDegraded, NodeRAIDDiskFailure, NodeBondingDegraded. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
-      "gridPos": {
-        "x": 8,
-        "y": 8,
-        "w": 4,
-        "h": 1
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "(((max((max(2 * (ALERTS{alertname=~\"NodeRAIDDegraded|NodeRAIDDiskFailure|NodeBondingDegraded\",alertstate=\"firing\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) or (ALERTS{alertname=~\"NodeRAIDDegraded|NodeRAIDDiskFailure|NodeBondingDegraded\",alertstate=\"pending\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))))))) and on() ((time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;node-exporter\"}) < 90))) or (((vector(0) and on() ((count((node_md_disks_required{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((node_md_disks{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((node_bonding_slaves{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((node_bonding_active{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0))) or (vector(-1) unless on() ((count((last_over_time(node_md_disks_required{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((last_over_time(node_md_disks{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((last_over_time(node_bonding_slaves{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0) and on() (count((last_over_time(node_bonding_active{job=\"node-exporter\"}[24h]) and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h])))) > 0)))) and on() (((max(up{job=\"node-exporter\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) == 1) and on() (time() - max(last_over_time(socrat:node_exporter_last_success_timestamp_seconds{node=\"$node\"}[24h])) < 90)) and on() (vector(1) unless on() (min(node_scrape_collector_success{job=\"node-exporter\",collector=\"mdadm\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) == 0)) and on() (vector(1) unless on() (min(node_scrape_collector_success{job=\"node-exporter\",collector=\"bonding\"} and on(instance) max by(instance) (last_over_time(node_uname_info{job=\"node-exporter\",nodename=\"$node\"}[24h]))) == 0)) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;node-exporter\"}) < 90)))) or vector(-2)",
-          "instant": true,
-          "format": "time_series"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "noValue": "No telemetry",
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "-1": {
-                  "text": "N/A",
-                  "color": "#555555"
-                },
-                "0": {
-                  "text": "Clear",
-                  "color": "#26783D"
-                },
-                "1": {
-                  "text": "Pending",
-                  "color": "#A85D08"
-                },
-                "2": {
-                  "text": "Firing",
-                  "color": "#B42332"
-                },
-                "-2": {
-                  "text": "No telemetry",
-                  "color": "#555555"
-                }
-              }
-            },
-            {
-              "type": "special",
-              "options": {
-                "match": "null",
-                "result": {
-                  "text": "No telemetry",
-                  "color": "#555555"
-                }
-              }
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": null
-              },
-              {
-                "color": "#A85D08",
-                "value": 1
-              },
-              {
-                "color": "#B42332",
-                "value": 2
-              }
-            ]
-          },
-          "links": [
-            {
-              "title": "NodeBondingDegraded",
-              "url": "/alerting/list?search=NodeBondingDegraded",
-              "targetBlank": false
-            },
-            {
-              "title": "NodeRAIDDegraded",
-              "url": "/alerting/list?search=NodeRAIDDegraded",
-              "targetBlank": false
-            },
-            {
-              "title": "NodeRAIDDiskFailure",
-              "url": "/alerting/list?search=NodeRAIDDiskFailure",
-              "targetBlank": false
-            }
-          ],
-          "displayName": "RAID / bonding"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "values": false,
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": ""
-        },
-        "orientation": "horizontal",
-        "textMode": "name",
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "text": {
-          "titleSize": 11,
-          "valueSize": 12
-        },
-        "wideLayout": true
-      }
-    },
-    {
       "id": 230,
       "type": "stat",
       "title": "",
@@ -3338,7 +3102,7 @@
       "gridPos": {
         "x": 12,
         "y": 8,
-        "w": 4,
+        "w": 6,
         "h": 1
       },
       "datasource": {
@@ -3453,10 +3217,10 @@
       "title": "",
       "description": "A regular container on this node was OOMKilled within the last 10m. Pending for 30s; does not require the pod to stay unready. Shows the worst alert state across containers of the selected node.  No telemetry is not a healthy zero. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
-        "x": 16,
-        "y": 8,
-        "w": 4,
-        "h": 1
+        "x": 18,
+        "y": 3,
+        "w": 6,
+        "h": 2
       },
       "datasource": {
         "type": "prometheus",
@@ -3543,16 +3307,16 @@
           ],
           "fields": ""
         },
-        "orientation": "horizontal",
+        "orientation": "vertical",
         "textMode": "name",
         "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
         "text": {
-          "titleSize": 11,
-          "valueSize": 12
+          "titleSize": 13,
+          "valueSize": 18
         },
-        "wideLayout": true
+        "wideLayout": false
       }
     },
     {
@@ -3561,9 +3325,9 @@
       "title": "",
       "description": "A regular or init container on this node has at least 3 estimated restarts over 30m. Pending for 1m; Ready periods do not reset this alert. Shows the worst alert state across containers of the selected node.  No telemetry is not a healthy zero. Click to inspect the alert rule in Grafana; grouped tiles offer individual rule links. The dashboard header opens the selected node in Rancher.",
       "gridPos": {
-        "x": 20,
+        "x": 18,
         "y": 8,
-        "w": 4,
+        "w": 6,
         "h": 1
       },
       "datasource": {
@@ -4660,7 +4424,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "avg by (nodename) ((node_load5{job=\"node-exporter\"} / on(instance) count by(instance) (node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"})) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"}))",
+          "expr": "avg by (nodename) ((avg by(instance) (node_load5{job=\"node-exporter\"}) / on(instance) count by(instance) (max by(instance,cpu) (node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"}))) * on(instance) group_left(nodename) max by(instance,nodename) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"}))",
           "legendFormat": "{{nodename}}",
           "range": true,
           "instant": false

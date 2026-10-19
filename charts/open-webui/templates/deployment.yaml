@@ -43,6 +43,8 @@ spec:
             - name: http
               containerPort: 8080
           env:
+            - name: CHAT_RESPONSE_MAX_TOOL_CALL_ITERATIONS
+              value: {{ .Values.maxToolCallIterations | quote }}
             - name: WEBUI_AUTH
               value: "True"
             - name: WEBUI_AUTH_COOKIE_SECURE

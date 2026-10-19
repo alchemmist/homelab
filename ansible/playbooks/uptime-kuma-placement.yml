@@ -1,0 +1,8 @@
+- name: Move the existing Uptime Kuma data and workload
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  roles:
+    - uptime_kuma_placement

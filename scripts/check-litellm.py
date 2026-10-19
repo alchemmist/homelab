@@ -1,5 +1,6 @@
 import base64
 import json
+import os
 import subprocess
 import urllib.error
 import urllib.request
@@ -8,6 +9,8 @@ import urllib.request
 def kubectl(*args):
     return subprocess.check_output(['kubectl', '-n', 'llm', *args], text=True)
 
+
+MODEL = os.environ.get('LLM_MODEL', 'qwen3.8-27b')
 
 secret = json.loads(kubectl('get', 'secret', 'litellm-env', '-o', 'json'))
 master = base64.b64decode(secret['data']['LITELLM_MASTER_KEY']).decode()
@@ -31,13 +34,15 @@ try:
 except urllib.error.HTTPError as exc:
     assert exc.code == 401, exc.code
 print('unauthenticated API: 401')
-result = request('/key/generate', master, {'models': ['qwen3.8-27b'], 'key_alias': 'deployment-verification', 'duration': '10m', 'rpm_limit': 5})
+result = request('/key/generate', master, {'models': [MODEL], 'key_alias': 'deployment-verification', 'duration': '10m', 'rpm_limit': 5})
 key = result['key']
 try:
     models = request('/v1/models', key)
-    assert any(m['id'] == 'qwen3.8-27b' for m in models['data'])
-    result = request('/v1/chat/completions', key, {'model': 'qwen3.8-27b', 'messages': [{'role': 'user', 'content': 'Reply only with the number: 2+2'}], 'max_tokens': 16})
-    print('virtual key inference:', result['choices'][0]['message']['content'])
+    assert any(m['id'] == MODEL for m in models['data'])
+    result = request('/v1/chat/completions', key, {'model': MODEL, 'messages': [{'role': 'user', 'content': 'What is 2 + 2? Reply with the answer only.'}], 'max_tokens': 64, 'temperature': 0, 'chat_template_kwargs': {'enable_thinking': False}})
+    content = result['choices'][0]['message']['content']
+    assert content.strip() == '4', 'Unexpected arithmetic response'
+    print('virtual key inference:', content)
 finally:
     request('/key/delete', master, {'keys': [key]})
 print('temporary key revoked')

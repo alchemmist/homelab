@@ -1,0 +1,46 @@
+- name: Require the destination database before deployment
+  ansible.builtin.stat:
+    path: "{{ uptime_kuma_directory }}/kuma.db"
+  delegate_to: "{{ uptime_kuma_destination }}"
+  become: true
+  vars:
+    ansible_port: "{{ homelab_ssh_port_base | int + (uptime_kuma_destination.split('-')[-1] | int) }}"
+  register: kuma_destination_database
+
+- name: Refuse an empty deployment
+  ansible.builtin.assert:
+    that:
+      - kuma_destination_database.stat.isreg | default(false)
+      - kuma_destination_database.stat.size > 0
+
+- name: Deploy Kuma on the destination
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/helm
+      - upgrade
+      - "{{ uptime_kuma_release }}"
+      - /tmp/homelab-uptime-kuma-chart
+      - --namespace
+      - "{{ uptime_kuma_namespace }}"
+      - --reset-values
+      - --set-string
+      - "nodeName={{ uptime_kuma_destination }}"
+      - --set-string
+      - "hostPath={{ uptime_kuma_directory }}"
+      - --atomic
+      - --wait
+      - --timeout
+      - 5m
+  changed_when: true
+
+- name: Read the resulting Kuma pod
+  ansible.builtin.command: /usr/local/bin/kubectl -n {{ uptime_kuma_namespace }} get pods -l app=uptime-kuma -o json
+  register: kuma_result_pods
+  changed_when: false
+
+- name: Verify one ready destination pod
+  ansible.builtin.assert:
+    that:
+      - (kuma_result_pods.stdout | from_json)['items'] | length == 1
+      - (kuma_result_pods.stdout | from_json)['items'][0].spec.nodeName == uptime_kuma_destination
+      - (kuma_result_pods.stdout | from_json)['items'][0].status.conditions | selectattr('type', 'equalto', 'Ready') | map(attribute='status') | list == ['True']

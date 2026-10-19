@@ -1,0 +1,30 @@
+---
+- name: Deploy managed browser test cleanup
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  vars:
+    terminal_cleanup_chart: '{{ homelab_user_home }}/tmp-charts/open-terminal-browser-cleanup'
+  tasks:
+    - name: Copy the managed terminal chart
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/../../charts/open-terminal/'
+        dest: '{{ terminal_cleanup_chart }}/'
+        mode: preserve
+
+    - name: Validate the terminal chart
+      ansible.builtin.command: helm lint {{ terminal_cleanup_chart }}
+      changed_when: false
+
+    - name: Deploy cleanup while preserving existing terminal settings
+      ansible.builtin.command: >-
+        helm upgrade open-terminal {{ terminal_cleanup_chart }} -n llm --reuse-values
+        --set-json 'systemPackages={{ (lookup("file", playbook_dir + "/../../charts/open-terminal/values.yaml") | from_yaml).systemPackages | to_json }}'
+        --set browserCleanup.enabled=true --set browserCleanup.maxAgeSeconds=900
+        --set browserCleanup.pollSeconds=15 --set browserCleanup.graceSeconds=5
+        --atomic --wait --timeout 10m
+
+- import_playbook: open-terminal-instructions.yml

@@ -1,4 +1,5 @@
 import argparse
+import getpass
 import json
 import subprocess
 import sys
@@ -72,14 +73,20 @@ def configure(args):
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
     config = request_json(opener, base_url, "/api/config")
     features = config.get("features") if isinstance(config, dict) else None
-    if not isinstance(features, dict) or features.get("auth") is not False:
-        result["skipped"] = True
-        return result
+    if not isinstance(features, dict):
+        raise ConfigurationError("Open WebUI returned invalid authentication configuration")
+    if features.get("auth") is not False:
+        if not args.admin_email:
+            result["skipped"] = True
+            return result
+        credentials = {"email": args.admin_email, "password": getpass.getpass("Open WebUI password: ")}
+    else:
+        credentials = {"email": "admin@localhost", "password": "admin"}
     session = request_json(
         opener,
         base_url,
         "/api/v1/auths/signin",
-        payload={"email": "admin@localhost", "password": "admin"},
+        payload=credentials,
     )
     token = session.get("token") if isinstance(session, dict) else None
     if not isinstance(token, str) or not token:
@@ -90,6 +97,20 @@ def configure(args):
         isinstance(model, dict) and model.get("id") == args.model for model in available
     ):
         raise ConfigurationError("Requested model is absent from the refreshed Open WebUI model list")
+    if args.share_with_users:
+        records = request_json(opener, base_url, "/api/v1/models/all", token)
+        if not any(model.get("id") == args.model for model in records):
+            request_json(opener, base_url, "/api/v1/models/create", token, {
+                "id": args.model, "name": args.display_name or args.model,
+                "base_model_id": None,
+                "meta": {
+                    "capabilities": {"code_interpreter": False, "terminal": True, "builtin_tools": True},
+                    "builtinTools": {name: False for name in ["skills", "tasks", "notes", "automations", "calendar", "channels", "notifications", "knowledge", "chats", "memory", "subagents"]},
+                },
+                "params": {},
+                "access_grants": [{"principal_type": "user", "principal_id": "*", "permission": "read"}],
+            })
+            result["changed"] = True
     defaults = request_json(opener, base_url, "/api/v1/configs/models", token)
     if not isinstance(defaults, dict):
         raise ConfigurationError("Open WebUI returned invalid model defaults")
@@ -118,6 +139,9 @@ def main():
     parser.add_argument("--model", required=True)
     parser.add_argument("--max-output-tokens", type=int, default=16384)
     parser.add_argument("--namespace", default="llm")
+    parser.add_argument("--admin-email")
+    parser.add_argument("--display-name")
+    parser.add_argument("--share-with-users", action="store_true")
     args = parser.parse_args()
     if args.max_output_tokens <= 0:
         parser.error("--max-output-tokens must be positive")

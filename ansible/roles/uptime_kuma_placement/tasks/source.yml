@@ -1,0 +1,34 @@
+- name: Prepare the stopped source archive
+  delegate_to: "{{ uptime_kuma_source }}"
+  become: true
+  block:
+    - name: Verify the stopped source database
+      ansible.builtin.script: "{{ role_path }}/files/verify_database.py {{ uptime_kuma_directory }}/kuma.db"
+      args:
+        executable: python3
+      register: kuma_source_snapshot
+      changed_when: false
+
+    - name: Allocate a private source archive
+      ansible.builtin.tempfile:
+        state: file
+        prefix: homelab-kuma-
+        suffix: .tar
+      register: kuma_source_transfer
+
+    - name: Archive the complete data directory
+      ansible.builtin.command:
+        argv: [tar, --acls, --xattrs, -cpf, "{{ kuma_source_transfer.path }}", -C, "{{ uptime_kuma_directory }}", .]
+      changed_when: true
+
+    - name: Calculate the source archive digest
+      ansible.builtin.stat:
+        path: "{{ kuma_source_transfer.path }}"
+        checksum_algorithm: sha256
+      register: kuma_source_archive
+
+    - name: Fetch the private archive
+      ansible.builtin.fetch:
+        src: "{{ kuma_source_transfer.path }}"
+        dest: "{{ kuma_local_transfer.path }}/data.tar"
+        flat: true

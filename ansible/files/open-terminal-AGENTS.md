@@ -19,3 +19,11 @@ After malformed or incomplete tool-call JSON, do not repeat the same large call.
 Use the exact tool schema. For `replace_file_content`, each item in `replacements` has `target` and `replacement`, for example: `{"path":"/absolute/path/file.txt","replacements":[{"target":"old text","replacement":"new text"}]}`. Do not use `old_text` or `new_text`.
 
 A validation error means the operation was not executed. Correct the arguments before retrying; never repeat the identical invalid call. After any failed edit, inspect the current file and get a successful edit result before rendering or testing the proposed change. A screenshot of an unchanged file is not evidence that the proposed change failed. If the same approach repeatedly fails, identify the error and change approach rather than producing more screenshots.
+
+# Browser test lifecycle
+
+Run browser test scripts with `homelab-browser-test --timeout 180 -- node test.js` (or `python test.py`). The wrapper imposes a real execution deadline and cleans up its child processes, including browsers, on success, error or timeout. Increase `--timeout` deliberately for a known longer test. Do not use this test wrapper for intentionally persistent servers.
+
+Always close the browser in `finally`, including when assertions, selectors, navigation or screenshots fail. Set navigation and action timeouts. For Node.js, report caught errors and set `process.exitCode = 1`; never swallow a failed test as success. Browser page globals such as `document` belong inside `page.evaluate`, not the Node.js controller. Avoid piping a test through `head`, which can hide its exit status and leave the test running.
+
+Wait for the test process to finish and check its exit code before declaring success. Headless Playwright browsers launched directly are independently stopped after 15 minutes by the managed cleanup service; this is a fallback, not the normal test timeout. Preserve screenshots and logs in the conversation workspace for diagnosis.

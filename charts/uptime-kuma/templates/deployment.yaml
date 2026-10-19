@@ -23,6 +23,17 @@ spec:
         - name: uptime-kuma
           image: {{ .Values.image | quote }}
           imagePullPolicy: IfNotPresent
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 5
+            failureThreshold: 36
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 5
           ports:
             - name: http
               containerPort: 3001
@@ -36,4 +47,4 @@ spec:
         - name: data
           hostPath:
             path: {{ .Values.hostPath | quote }}
-            type: DirectoryOrCreate
+            type: Directory

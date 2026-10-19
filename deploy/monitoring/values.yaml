@@ -2,6 +2,13 @@ defaultRules:
   disabled:
     KubeNodeNotReady: true
     KubeNodePressure: true
+    NodeRAIDDegraded: true
+    NodeRAIDDiskFailure: true
+    NodeBondingDegraded: true
+    KubeletClientCertificateExpiration: true
+    KubeletServerCertificateExpiration: true
+    KubeletClientCertificateRenewalErrors: true
+    KubeletServerCertificateRenewalErrors: true
   additionalRuleAnnotations:
     KubeMemoryOvercommit:
       rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer'
@@ -226,8 +233,12 @@ kube-state-metrics:
     limits:
       memory: 128Mi
 prometheus-node-exporter:
+  env:
+    DBUS_SYSTEM_BUS_ADDRESS: unix:path=/host/root/run/dbus/system_bus_socket
   extraArgs:
     - --collector.textfile.directory=/host/root/var/lib/node_exporter/textfile_collector
+    - --collector.systemd
+    - --collector.systemd.enable-restarts-metrics
   service:
     listenOnAllInterfaces: false
   resources:

@@ -3,6 +3,18 @@ nodeName: socrat-1
 secretName: open-terminal-api
 storageClass: local-path
 storage: 10Gi
+systemPackages:
+  - libatk1.0-0t64
+  - libatk-bridge2.0-0t64
+  - libcups2t64
+  - libxcomposite1
+  - libxdamage1
+  - libatspi2.0-0t64
+browserCleanup:
+  enabled: true
+  maxAgeSeconds: 900
+  pollSeconds: 15
+  graceSeconds: 5
 resources:
   requests:
     cpu: 250m
