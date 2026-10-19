@@ -19,10 +19,10 @@ with patch.dict(sys.modules, {'dashboard_descriptions': DESCRIPTIONS}):
     SPEC.loader.exec_module(RENDERER)
 
 
-class RancherHomeRemovalTest(unittest.TestCase):
-    def render(self, resources):
+class RancherDashboardFilteringTest(unittest.TestCase):
+    def render(self, resources, allowed=()):
         output = io.StringIO()
-        with patch.object(RENDERER, 'RANCHER_DASHBOARD_UIDS', set()), \
+        with patch.object(RENDERER, 'RANCHER_DASHBOARD_UIDS', set(allowed)), \
                 patch.object(RENDERER, 'apply_descriptions') as describe, \
                 patch.object(sys, 'stdin', io.StringIO(yaml.safe_dump_all(resources))), \
                 patch.object(sys, 'stdout', output):
@@ -31,7 +31,7 @@ class RancherHomeRemovalTest(unittest.TestCase):
 
     def home(self):
         return {'kind': 'ConfigMap', 'metadata': {'name': 'home'}, 'data': {
-            'home.json': json.dumps({'uid': 'rancher-home-1', 'title': 'Home'}),
+            'home.json': json.dumps({'uid': 'rancher-home-1', 'title': 'Home', 'panels': []}),
         }}
 
     def test_drops_home_only_configmap_without_loading_its_descriptions(self):
@@ -41,16 +41,38 @@ class RancherHomeRemovalTest(unittest.TestCase):
         describe.assert_not_called()
         self.assertNotIn('rancher-home-1', RENDERER.RANCHER_DASHBOARD_UIDS)
 
-    def test_preserves_other_dashboard_in_shared_configmap(self):
+    def test_drops_all_unselected_dashboards_without_loading_descriptions(self):
         resource = self.home()
-        dashboard = {'uid': 'diagnostic', 'title': 'Diagnostic', 'panels': []}
-        resource['data']['diagnostic.json'] = json.dumps(dashboard)
+        resource['data']['diagnostic.json'] = json.dumps({
+            'uid': 'diagnostic', 'title': 'Diagnostic', 'panels': [],
+        })
         rendered, describe = self.render([resource])
+        self.assertEqual(rendered, [])
+        describe.assert_not_called()
+
+    def test_preserves_embedded_dashboard_in_shared_configmap(self):
+        resource = self.home()
+        dashboard = {'uid': 'rancher-pod-1', 'title': 'Rancher / Pod', 'panels': []}
+        resource['data']['pod.json'] = json.dumps(dashboard)
+        rendered, describe = self.render([resource], allowed={'rancher-pod-1'})
+        dashboard['title'] = 'Pod'
         self.assertEqual(len(rendered), 1)
-        self.assertEqual(set(rendered[0]['data']), {'diagnostic.json'})
-        self.assertEqual(json.loads(rendered[0]['data']['diagnostic.json']), dashboard)
-        self.assertEqual(rendered[0]['metadata']['annotations']['grafana_folder'], '/tmp/dashboards/Kubernetes Diagnostics')
+        self.assertEqual(set(rendered[0]['data']), {'pod.json'})
+        self.assertEqual(json.loads(rendered[0]['data']['pod.json']), dashboard)
+        self.assertEqual(rendered[0]['metadata']['annotations']['grafana_folder'], '/tmp/dashboards/Rancher')
         describe.assert_called_once_with(dashboard)
+
+    def test_preserves_non_dashboard_json(self):
+        data = {
+            'settings.json': json.dumps({'uid': 'settings', 'enabled': True}),
+            'list.json': '[1, 2]',
+            'template.json': '{{ value }}',
+        }
+        resource = self.home()
+        resource['data'].update(data)
+        rendered, describe = self.render([resource])
+        self.assertEqual(rendered[0]['data'], data)
+        describe.assert_not_called()
 
     def test_preserves_unrelated_data_and_binary_data(self):
         for field, data in [('data', {'settings.txt': 'keep'}), ('binaryData', {'payload': 'a2VlcA=='})]:

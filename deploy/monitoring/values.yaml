@@ -131,6 +131,7 @@ alertmanager:
             requests:
               storage: 1Gi
 grafana:
+  defaultDashboardsEnabled: false
   replicas: 1
   podAnnotations:
     homelab.alchemmist.xyz/dashboard-language: en
@@ -173,8 +174,6 @@ grafana:
     dashboards:
       searchNamespace: ALL
       folderAnnotation: grafana_folder
-      annotations:
-        grafana_folder: /tmp/dashboards/Kubernetes Diagnostics
       provider:
         foldersFromFilesStructure: true
   grafana.ini:
