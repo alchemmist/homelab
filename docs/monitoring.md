@@ -159,3 +159,14 @@ The new groups retain exporter and kubelet instance-to-node mappings for 24h. Ac
 On 2026-10-19 Grafana repeatedly hit its 768 MiB container memory limit (about 67 restarts over 12 hours). Kubernetes recorded OOMKilled; socrat-1 still had 6–7 GiB available. The chart-generated GOMEMLIMIT of 691 MiB left too little room for non-Go memory, other processes and transient overshoot. Main-process RSS reached about692 MiB while container RSS approached750–758 MiB.
 
 Grafana now requests512 MiB, has a1536 MiB hard limit, and explicitly sets GOMEMLIMIT=1GiB. The latter is a soft Go runtime memory budget, not an RSS cap; the remaining container headroom covers other memory. Apply through monitoring_base. Existing PVCs, Grafana database, credentials and dashboards are preserved. Watch container restarts, OOM terminations, RSS/working set and Go-managed memory after changing the limit. This corrects demonstrated memory headroom pressure; it does not by itself prove the absence of a memory leak.
+
+
+## Container OOM and restart alerts
+
+The socrat.containers.health group applies across namespaces, including Grafana itself. SocratContainerOOMKilled checks a regular container's last termination reason OOMKilled and its timestamp within the previous10m, with a30s pending period. A stale retained OOM reason does not keep the alert firing forever, and future timestamps are excluded. This is sampled Kubernetes state: a later termination can overwrite the recorded reason, so it is not a complete event log.
+
+SocratContainerRestartsFrequent checks at least3 estimated restarts over30m for1m, including regular and init containers. It does not require continuous NotReady or CrashLoopBackOff. Both rules deduplicate kube-state-metrics replicas and retain namespace, pod, container, pod UID and node; pod-UID joins prevent attribution to a replacement pod with the same name. Each alert has a direct Rancher pod URL.
+
+Overview's alert table exposes affected-pod links for these two rules alongside KubePodNotReady. Nodes adds compact OOM and Restarts cards. Clicking a card opens the corresponding Overview alert details filtered to the selected node; global Overview health cards reset that optional node filter. No notification receiver is configured by this change.
+
+Ten synthetic cases in tests/container-health.test.yml cover first-observed/recovered OOM, stale and non-OOM terminations, future timestamps, restart bursts despite Ready, low counts, counter resets, init-container restarts and duplicate scrapes. The OOM expression was also checked against historical Grafana metrics from2026-10-19 before the memory fix.

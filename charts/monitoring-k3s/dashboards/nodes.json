@@ -2919,7 +2919,7 @@
       "gridPos": {
         "x": 0,
         "y": 10,
-        "w": 6,
+        "w": 4,
         "h": 1
       },
       "datasource": {
@@ -3029,9 +3029,9 @@
       "title": "",
       "description": "Node-exporter could not read or parse a textfile metric file. Existing rules: NodeTextFileCollectorScrapeError. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
       "gridPos": {
-        "x": 6,
+        "x": 4,
         "y": 10,
-        "w": 6,
+        "w": 4,
         "h": 1
       },
       "datasource": {
@@ -3141,9 +3141,9 @@
       "title": "",
       "description": "Degraded Linux software RAID, failed RAID disks or missing active bonding members. N/A means complete coverage is unavailable, commonly because these devices do not exist. Existing rules: NodeRAIDDegraded, NodeRAIDDiskFailure, NodeBondingDegraded. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
       "gridPos": {
-        "x": 12,
+        "x": 8,
         "y": 10,
-        "w": 6,
+        "w": 4,
         "h": 1
       },
       "datasource": {
@@ -3253,9 +3253,9 @@
       "title": "",
       "description": "Failed systemd units or repeated service restarts. N/A when the optional systemd collector or restart metrics are not enabled. Existing rules: NodeSystemdServiceFailed, NodeSystemdServiceCrashlooping. Shows the worst Pending/Firing alert for the selected node; no new alert rules are created. Clear requires all supporting metrics and fresh healthy sources. N/A means one or more supporting metrics were absent throughout the last 24h while the source is healthy; No telemetry means a previously available metric, scrape or rule evaluation is missing. Active alerts take precedence over missing telemetry. Instance-to-node mappings are retained for 24h. Open the node in Rancher for details.",
       "gridPos": {
-        "x": 18,
+        "x": 12,
         "y": 10,
-        "w": 6,
+        "w": 4,
         "h": 1
       },
       "datasource": {
@@ -3336,6 +3336,222 @@
             }
           ],
           "displayName": "Systemd"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 12,
+          "titleSize": 11
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 231,
+      "type": "stat",
+      "title": "",
+      "description": "A regular container on this node was OOMKilled within the last 10m. Pending for 30s; does not require the pod to stay unready. Shows the worst alert state across containers of the selected node. Click to list matching alerts in Overview, then click the affected pod to open it in Rancher. No telemetry is not a healthy zero.",
+      "gridPos": {
+        "x": 16,
+        "y": 10,
+        "w": 4,
+        "h": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "((max(2 * ALERTS{alertname=\"SocratContainerOOMKilled\",node=\"$node\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratContainerOOMKilled\",node=\"$node\",alertstate=\"pending\"})) or ((0 * max(kube_node_info{job=\"kube-state-metrics\",node=\"$node\"})) and on() (max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90))) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.containers.health\"}) < 90) or vector(-2)",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No telemetry",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-2": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                },
+                "0": {
+                  "text": "Clear",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Pending",
+                  "color": "#A85D08"
+                },
+                "2": {
+                  "text": "Firing",
+                  "color": "#B42332"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Show affected pods",
+              "url": "/d/socrat-overview/overview?${__url_time_range}&var-alert_name=SocratContainerOOMKilled&var-alert_state=pending%7Cfiring&var-alert_severity=.*&viewPanel=panel-17&var-alert_node=${node:percentencode}",
+              "targetBlank": false
+            }
+          ],
+          "displayName": "OOM"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 12,
+          "titleSize": 11
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 232,
+      "type": "stat",
+      "title": "",
+      "description": "A regular or init container on this node has at least 3 estimated restarts over 30m. Pending for 1m; Ready periods do not reset this alert. Shows the worst alert state across containers of the selected node. Click to list matching alerts in Overview, then click the affected pod to open it in Rancher. No telemetry is not a healthy zero.",
+      "gridPos": {
+        "x": 20,
+        "y": 10,
+        "w": 4,
+        "h": 1
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "((max(2 * ALERTS{alertname=\"SocratContainerRestartsFrequent\",node=\"$node\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratContainerRestartsFrequent\",node=\"$node\",alertstate=\"pending\"})) or ((0 * max(kube_node_info{job=\"kube-state-metrics\",node=\"$node\"})) and on() (max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90))) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.containers.health\"}) < 90) or vector(-2)",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No telemetry",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-2": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                },
+                "0": {
+                  "text": "Clear",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Pending",
+                  "color": "#A85D08"
+                },
+                "2": {
+                  "text": "Firing",
+                  "color": "#B42332"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "links": [
+            {
+              "title": "Show affected pods",
+              "url": "/d/socrat-overview/overview?${__url_time_range}&var-alert_name=SocratContainerRestartsFrequent&var-alert_state=pending%7Cfiring&var-alert_severity=.*&viewPanel=panel-17&var-alert_node=${node:percentencode}",
+              "targetBlank": false
+            }
+          ],
+          "displayName": "Restarts"
         },
         "overrides": []
       },

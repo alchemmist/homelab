@@ -1,0 +1,140 @@
+rule_files:
+- container-health.rules.yml
+evaluation_interval: 30s
+tests:
+- name: fresh first observed oom fires after thirty seconds
+  interval: 30s
+  input_series:
+  - &id001
+    series: kube_pod_info{job="kube-state-metrics",namespace="monitoring",pod="grafana-test",uid="pod-1",node="socrat-1"}
+    values: 1x80
+  - series: kube_pod_container_status_last_terminated_reason{job="kube-state-metrics",namespace="monitoring",pod="grafana-test",container="grafana",uid="pod-1",reason="OOMKilled"}
+    values: 1x80
+  - series: kube_pod_container_status_last_terminated_timestamp{job="kube-state-metrics",namespace="monitoring",pod="grafana-test",container="grafana",uid="pod-1"}
+    values: 60x80
+  promql_expr_test:
+  - expr: ALERTS{alertname="SocratContainerOOMKilled",alertstate="firing"}
+    eval_time: 1m
+    exp_samples: []
+  - expr: ALERTS{alertname="SocratContainerOOMKilled",alertstate="firing"}
+    eval_time: 1m30s
+    exp_samples:
+    - labels: '{__name__="ALERTS",alertname="SocratContainerOOMKilled",alertstate="firing",container="grafana",namespace="monitoring",node="socrat-1",pod="grafana-test",severity="warning",uid="pod-1"}'
+      value: 1
+  - expr: ALERTS{alertname="SocratContainerOOMKilled",alertstate="firing"}
+    eval_time: 11m30s
+    exp_samples: []
+- name: old oom does not remain firing
+  interval: 30s
+  input_series:
+  - *id001
+  - series: kube_pod_container_status_last_terminated_reason{job="kube-state-metrics",namespace="monitoring",pod="grafana-test",container="grafana",uid="pod-1",reason="OOMKilled"}
+    values: 1x80
+  - series: kube_pod_container_status_last_terminated_timestamp{job="kube-state-metrics",namespace="monitoring",pod="grafana-test",container="grafana",uid="pod-1"}
+    values: '0x80'
+  promql_expr_test:
+  - expr: ALERTS{alertname="SocratContainerOOMKilled",alertstate="firing"}
+    eval_time: 11m
+    exp_samples: []
+- name: non oom termination does not fire
+  interval: 30s
+  input_series:
+  - *id001
+  - series: kube_pod_container_status_last_terminated_reason{job="kube-state-metrics",namespace="monitoring",pod="grafana-test",container="grafana",uid="pod-1",reason="Error"}
+    values: 1x80
+  - series: kube_pod_container_status_last_terminated_timestamp{job="kube-state-metrics",namespace="monitoring",pod="grafana-test",container="grafana",uid="pod-1"}
+    values: 60x80
+  promql_expr_test:
+  - expr: ALERTS{alertname="SocratContainerOOMKilled",alertstate="firing"}
+    eval_time: 1m30s
+    exp_samples: []
+- name: future timestamp is not treated as recent oom
+  interval: 30s
+  input_series:
+  - *id001
+  - series: kube_pod_container_status_last_terminated_reason{job="kube-state-metrics",namespace="monitoring",pod="grafana-test",container="grafana",uid="pod-1",reason="OOMKilled"}
+    values: 1x80
+  - series: kube_pod_container_status_last_terminated_timestamp{job="kube-state-metrics",namespace="monitoring",pod="grafana-test",container="grafana",uid="pod-1"}
+    values: 3600x80
+  promql_expr_test:
+  - expr: ALERTS{alertname="SocratContainerOOMKilled",alertstate="firing"}
+    eval_time: 1m30s
+    exp_samples: []
+- name: repeated ready recovery does not suppress restart alert
+  interval: 30s
+  input_series:
+  - *id001
+  - series: kube_pod_container_status_restarts_total{job="kube-state-metrics",namespace="monitoring",pod="grafana-test",container="grafana",uid="pod-1"}
+    values: 0 1 2 3 4 4x75
+  - series: kube_pod_status_ready{job="kube-state-metrics",namespace="monitoring",pod="grafana-test",uid="pod-1",condition="true"}
+    values: 1x80
+  promql_expr_test:
+  - expr: ALERTS{alertname="SocratContainerRestartsFrequent",alertstate="firing"}
+    eval_time: 3m
+    exp_samples:
+    - labels: '{__name__="ALERTS",alertname="SocratContainerRestartsFrequent",alertstate="firing",container="grafana",namespace="monitoring",node="socrat-1",pod="grafana-test",severity="warning",uid="pod-1"}'
+      value: 1
+- name: below restart threshold does not fire
+  interval: 30s
+  input_series:
+  - *id001
+  - series: kube_pod_container_status_restarts_total{job="kube-state-metrics",namespace="monitoring",pod="grafana-test",container="grafana",uid="pod-1"}
+    values: 0 0 0 1 1x76
+  promql_expr_test:
+  - expr: ALERTS{alertname="SocratContainerRestartsFrequent",alertstate="firing"}
+    eval_time: 5m
+    exp_samples: []
+- name: counter reset alone does not fire
+  interval: 30s
+  input_series:
+  - *id001
+  - series: kube_pod_container_status_restarts_total{job="kube-state-metrics",namespace="monitoring",pod="grafana-test",container="grafana",uid="pod-1"}
+    values: 100 0 0x78
+  promql_expr_test:
+  - expr: ALERTS{alertname="SocratContainerRestartsFrequent",alertstate="firing"}
+    eval_time: 5m
+    exp_samples: []
+- name: init container restarts are covered
+  interval: 30s
+  input_series:
+  - *id001
+  - series: kube_pod_init_container_status_restarts_total{job="kube-state-metrics",namespace="monitoring",pod="grafana-test",container="grafana",uid="pod-1"}
+    values: 0 1 2 3 4 4x75
+  promql_expr_test:
+  - expr: ALERTS{alertname="SocratContainerRestartsFrequent",alertstate="firing"}
+    eval_time: 3m
+    exp_samples:
+    - labels: '{__name__="ALERTS",alertname="SocratContainerRestartsFrequent",alertstate="firing",container="grafana",namespace="monitoring",node="socrat-1",pod="grafana-test",severity="warning",uid="pod-1"}'
+      value: 1
+- name: duplicate state metrics do not duplicate oom alert
+  interval: 30s
+  input_series:
+  - *id001
+  - series: kube_pod_container_status_last_terminated_reason{job="kube-state-metrics",namespace="monitoring",pod="grafana-test",container="grafana",uid="pod-1",reason="OOMKilled"}
+    values: 1x80
+  - series: kube_pod_container_status_last_terminated_timestamp{job="kube-state-metrics",namespace="monitoring",pod="grafana-test",container="grafana",uid="pod-1"}
+    values: 60x80
+  - series: kube_pod_container_status_last_terminated_reason{job="kube-state-metrics",namespace="monitoring",pod="grafana-test",container="grafana",uid="pod-1",reason="OOMKilled",instance="other"}
+    values: 1x80
+  - series: kube_pod_container_status_last_terminated_timestamp{job="kube-state-metrics",namespace="monitoring",pod="grafana-test",container="grafana",uid="pod-1",instance="other"}
+    values: 60x80
+  - series: kube_pod_info{job="kube-state-metrics",namespace="monitoring",pod="grafana-test",uid="pod-1",node="socrat-1",instance="other"}
+    values: 1x80
+  promql_expr_test:
+  - expr: ALERTS{alertname="SocratContainerOOMKilled",alertstate="firing"}
+    eval_time: 1m30s
+    exp_samples:
+    - labels: '{__name__="ALERTS",alertname="SocratContainerOOMKilled",alertstate="firing",container="grafana",namespace="monitoring",node="socrat-1",pod="grafana-test",severity="warning",uid="pod-1"}'
+      value: 1
+- name: duplicate state metrics do not inflate restart count
+  interval: 30s
+  input_series:
+  - *id001
+  - series: kube_pod_container_status_restarts_total{job="kube-state-metrics",namespace="monitoring",pod="grafana-test",container="grafana",uid="pod-1"}
+    values: 0 0 1 1x77
+  - series: kube_pod_container_status_restarts_total{job="kube-state-metrics",namespace="monitoring",pod="grafana-test",container="grafana",uid="pod-1",instance="other"}
+    values: 0 0 1 1x77
+  promql_expr_test:
+  - expr: ALERTS{alertname="SocratContainerRestartsFrequent",alertstate="firing"}
+    eval_time: 3m
+    exp_samples: []

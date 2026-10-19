@@ -74,7 +74,7 @@
           "links": [
             {
               "title": "View details",
-              "url": "/d/socrat-overview/overview?${__url_time_range}&viewPanel=panel-17&var-alert_state=firing&var-alert_severity=critical&var-alert_name=.*",
+              "url": "/d/socrat-overview/overview?${__url_time_range}&viewPanel=panel-17&var-alert_state=firing&var-alert_severity=critical&var-alert_name=.*&var-alert_node=.*",
               "targetBlank": false
             }
           ],
@@ -144,7 +144,7 @@
           "links": [
             {
               "title": "View details",
-              "url": "/d/socrat-overview/overview?${__url_time_range}&viewPanel=panel-17&var-alert_state=firing&var-alert_severity=warning&var-alert_name=.*",
+              "url": "/d/socrat-overview/overview?${__url_time_range}&viewPanel=panel-17&var-alert_state=firing&var-alert_severity=warning&var-alert_name=.*&var-alert_node=.*",
               "targetBlank": false
             }
           ],
@@ -214,7 +214,7 @@
           "links": [
             {
               "title": "View details",
-              "url": "/d/socrat-overview/overview?${__url_time_range}&viewPanel=panel-17&var-alert_state=pending&var-alert_severity=.*&var-alert_name=.*",
+              "url": "/d/socrat-overview/overview?${__url_time_range}&viewPanel=panel-17&var-alert_state=pending&var-alert_severity=.*&var-alert_name=.*&var-alert_node=.*",
               "targetBlank": false
             }
           ],
@@ -284,7 +284,7 @@
           "links": [
             {
               "title": "View details",
-              "url": "/d/socrat-overview/overview?${__url_time_range}&viewPanel=panel-17&var-alert_name=KubePodNotReady&var-alert_state=pending%7Cfiring&var-alert_severity=.*",
+              "url": "/d/socrat-overview/overview?${__url_time_range}&viewPanel=panel-17&var-alert_name=KubePodNotReady&var-alert_state=pending%7Cfiring&var-alert_severity=.*&var-alert_node=.*",
               "targetBlank": false
             }
           ],
@@ -1166,7 +1166,7 @@
         "w": 24,
         "h": 8
       },
-      "description": "Alert instances matching the Cluster health card filters at the end of the selected period. Click an alert name to open its rule in Grafana. For KubePodNotReady, namespace and pod identify the affected pod and its name links directly to Rancher. Other alert types omit pod links to avoid linking to an exporter instead of the affected workload. Watchdog and InfoInhibitor are excluded.",
+      "description": "Alert instances matching the Cluster health filters at the end of the selected period. Click an alert name to open its rule. Readiness, recent OOM and frequent-restart alerts identify the affected namespace and pod; click the Pod field to open that exact pod in Rancher. Other alert types omit pod links to avoid pointing to exporter pods. Watchdog and InfoInhibitor are excluded.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1174,7 +1174,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "label_replace(ALERTS{alertstate=~\"${alert_state:raw}\",severity=~\"${alert_severity:raw}\",alertname=~\"${alert_name:raw}\",alertname!~\"Watchdog|InfoInhibitor\",alertname=\"KubePodNotReady\"}, \"affected_pod\", \"$1\", \"pod\", \"(.+)\") or ALERTS{alertstate=~\"${alert_state:raw}\",severity=~\"${alert_severity:raw}\",alertname=~\"${alert_name:raw}\",alertname!~\"Watchdog|InfoInhibitor\",alertname!=\"KubePodNotReady\"}",
+          "expr": "label_replace(ALERTS{node=~\"${alert_node:raw}\",alertstate=~\"${alert_state:raw}\",severity=~\"${alert_severity:raw}\",alertname=~\"${alert_name:raw}\",alertname!~\"Watchdog|InfoInhibitor\",alertname=~\"KubePodNotReady|SocratContainerOOMKilled|SocratContainerRestartsFrequent\"}, \"affected_pod\", \"$1\", \"pod\", \"(.+)\") or ALERTS{node=~\"${alert_node:raw}\",alertstate=~\"${alert_state:raw}\",severity=~\"${alert_severity:raw}\",alertname=~\"${alert_name:raw}\",alertname!~\"Watchdog|InfoInhibitor\",alertname!~\"KubePodNotReady|SocratContainerOOMKilled|SocratContainerRestartsFrequent\"}",
           "instant": true,
           "format": "table"
         }
@@ -1646,6 +1646,18 @@
           "value": ".*"
         },
         "options": []
+      },
+      {
+        "name": "alert_node",
+        "type": "textbox",
+        "hide": 2,
+        "query": ".*",
+        "current": {
+          "text": ".*",
+          "value": ".*"
+        },
+        "options": [],
+        "label": "Alert node"
       }
     ]
   }
