@@ -16,12 +16,6 @@
   "editable": false,
   "links": [
     {
-      "title": "Rancher",
-      "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
-      "type": "link",
-      "targetBlank": true
-    },
-    {
       "title": "Overview",
       "url": "/d/socrat-overview",
       "type": "link",
@@ -38,6 +32,14 @@
       "url": "/d/socrat-llm",
       "type": "link",
       "keepTime": true
+    },
+    {
+      "title": "Rancher",
+      "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/${node:percentencode}",
+      "type": "link",
+      "targetBlank": true,
+      "icon": "external link",
+      "tooltip": "Open the selected node in Rancher (outside Grafana)"
     }
   ],
   "templating": {
