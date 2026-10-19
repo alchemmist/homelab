@@ -139,3 +139,43 @@ spec:
             description: Node {{ "{{ $labels.node }}" }} spends more than 10% of CPU time waiting for the hypervisor, averaged across
               CPUs over 5m, for 15m. Check contention on the virtualization host; this is distinct from application CPU usage.
             rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ "{{ $labels.node }}" }}
+    - name: socrat.containers.health
+      rules:
+        - alert: SocratContainerOOMKilled
+          expr: |
+            (
+              max by (namespace, pod, container, uid) (kube_pod_container_status_last_terminated_reason{job="kube-state-metrics",reason="OOMKilled"}) == 1
+              and on (namespace, pod, container, uid)
+              (
+                time() - max by (namespace, pod, container, uid) (kube_pod_container_status_last_terminated_timestamp{job="kube-state-metrics"}) >= 0
+                and
+                time() - max by (namespace, pod, container, uid) (kube_pod_container_status_last_terminated_timestamp{job="kube-state-metrics"}) <= 600
+              )
+            )
+            * on (namespace, pod, uid) group_left (node)
+            max by (namespace, pod, uid, node) (kube_pod_info{job="kube-state-metrics"})
+          for: 30s
+          labels:
+            severity: warning
+          annotations:
+            summary: Container was recently killed because it ran out of memory.
+            description: 'Container {{ "{{ $labels.container }}" }} in pod {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }} on node {{ "{{ $labels.node }}" }} has a last termination marked OOMKilled within the trailing 10m. The alert becomes Firing after 30s even if the pod has recovered to Ready. Check memory usage and the container memory limit. This rule covers regular containers; later terminations can replace the recorded reason.'
+            rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/{{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }}'
+        - alert: SocratContainerRestartsFrequent
+          expr: |
+            (
+              max by (namespace, pod, container, uid) (
+                increase(kube_pod_container_status_restarts_total{job="kube-state-metrics"}[30m])
+                or
+                increase(kube_pod_init_container_status_restarts_total{job="kube-state-metrics"}[30m])
+              ) >= 3
+            )
+            * on (namespace, pod, uid) group_left (node)
+            max by (namespace, pod, uid, node) (kube_pod_info{job="kube-state-metrics"})
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: Container is restarting frequently.
+            description: 'Container {{ "{{ $labels.container }}" }} in pod {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }} on node {{ "{{ $labels.node }}" }} has an estimated increase of at least 3 restarts in the trailing 30m for 1m. This includes regular and init containers and does not require continuous unready or CrashLoopBackOff states. Check termination reasons and previous container logs; Prometheus increase extrapolates between samples.'
+            rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/{{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }}'
