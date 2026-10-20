@@ -1,0 +1,137 @@
+{{- $probes := .Values.serviceProbes | default dict }}
+{{- if $probes.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: monitoring-service-probes
+data:
+  blackbox.yml: |
+    modules:
+      http_2xx:
+        prober: http
+        timeout: 8s
+        http:
+          preferred_ip_protocol: ip4
+          follow_redirects: true
+      tcp_connect:
+        prober: tcp
+        timeout: 8s
+        tcp:
+          preferred_ip_protocol: ip4
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: monitoring-service-probes
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: monitoring-service-probes
+  template:
+    metadata:
+      annotations:
+        checksum/probes: {{ .Values.serviceProbes | toJson | sha256sum }}
+      labels:
+        app: monitoring-service-probes
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: socrat-1
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: blackbox-exporter
+          image: {{ $probes.image | default "quay.io/prometheus/blackbox-exporter:v0.29.0" | quote }}
+          args:
+            - --config.file=/etc/blackbox/blackbox.yml
+            - --web.listen-address=:9115
+          ports:
+            - name: http-metrics
+              containerPort: 9115
+          readinessProbe:
+            httpGet:
+              path: /-/healthy
+              port: http-metrics
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: http-metrics
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/blackbox
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: monitoring-service-probes
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: monitoring-service-probes
+  labels:
+    app: monitoring-service-probes
+spec:
+  selector:
+    app: monitoring-service-probes
+  ports:
+    - name: http-metrics
+      port: 9115
+      targetPort: http-metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: monitoring-service-probes
+  labels:
+    release: {{ .Values.prometheusRelease }}
+spec:
+  selector:
+    matchLabels:
+      app: monitoring-service-probes
+  endpoints:
+    - port: http-metrics
+      interval: 30s
+      scrapeTimeout: 10s
+      relabelings:
+        - targetLabel: job
+          replacement: service-probes-exporter
+{{- range $probes.targets }}
+    - port: http-metrics
+      path: /probe
+      interval: 30s
+      scrapeTimeout: 10s
+      params:
+        target: [{{ required "service probe target url is required" .url | quote }}]
+        module: [{{ .module | default "http_2xx" | quote }}]
+      relabelings:
+        - targetLabel: job
+          replacement: service-probes
+        - targetLabel: service_id
+          replacement: {{ required "service probe target id is required" .id | quote }}
+        - targetLabel: service_group
+          replacement: {{ .group | default .id | quote }}
+{{- if .node }}
+        - targetLabel: node
+          replacement: {{ .node | quote }}
+{{- end }}
+        - sourceLabels: [__param_target]
+          targetLabel: instance
+{{- end }}
+{{- end }}

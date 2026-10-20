@@ -1,9 +1,15 @@
 {{- range $name := list "overview" "nodes" "services" "llm" }}
 {{- $content := $.Files.Get (printf "dashboards/%s.json" $name) }}
-{{- if and (eq $name "nodes") $.Values.nodeAlertLinks }}
+{{- $alertLinks := dict }}
+{{- if eq $name "nodes" }}
+{{- $alertLinks = $.Values.nodeAlertLinks | default dict }}
+{{- else if eq $name "overview" }}
+{{- $alertLinks = $.Values.overviewAlertLinks | default dict }}
+{{- end }}
+{{- if $alertLinks }}
 {{- $dashboard := fromJson $content }}
 {{- range $panel := $dashboard.panels }}
-{{- $links := index $.Values.nodeAlertLinks (printf "%v" $panel.id) }}
+{{- $links := index $alertLinks (printf "%v" $panel.id) }}
 {{- if $links }}
 {{- $_ := set $panel.fieldConfig.defaults "links" $links }}
 {{- end }}

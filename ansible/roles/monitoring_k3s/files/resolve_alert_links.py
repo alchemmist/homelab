@@ -58,20 +58,22 @@ def panels(dashboard):
         yield from panels(panel)
 
 
-def panel_rules(panel):
+def panel_rules(panel, name_prefix=""):
     result = set()
     for target in panel.get('targets', []):
         for selector in re.findall(r'\bALERTS\s*\{([^}]*)\}', target.get('expr', '')):
-            match = re.search(r'\balertname\s*=~?\s*"([^"\\]*)"', selector)
+            match = re.search(r'\balertname\s*(=~?)\s*"([^"\\]*)"', selector)
             if match:
-                names = match.group(1).split('|')
+                names = match.group(2).split('|')
                 if not all(re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', name) for name in names):
-                    raise ValueError('Unsupported alert name selector: ' + match.group(1))
-                result.update(names)
+                    if match.group(1) == '=~':
+                        continue
+                    raise ValueError('Unsupported alert name selector: ' + match.group(2))
+                result.update(name for name in names if name.startswith(name_prefix))
     return result
 
 
-def resolve(dashboard, response, settings):
+def resolve(dashboard, response, settings, values_key="nodeAlertLinks", name_prefix=""):
     groups = response['data']['groups']
     primary = settings.get('featureToggles', {}).get('alertingPrometheusRulesPrimary', False)
     available = {}
@@ -81,7 +83,7 @@ def resolve(dashboard, response, settings):
                 available.setdefault(rule['name'], []).append((group, rule))
     result = {}
     for panel in panels(dashboard):
-        names = panel_rules(panel)
+        names = panel_rules(panel, name_prefix)
         if not names:
             continue
         missing = names - available.keys()
@@ -95,11 +97,11 @@ def resolve(dashboard, response, settings):
         result[str(panel['id'])] = sorted(links, key=lambda link: (link['title'], link['url']))
     if not result:
         raise ValueError('Dashboard has no alert panels')
-    return {'nodeAlertLinks': result}
+    return {values_key: result}
 
 
-def expected_rules(dashboard, resources, formatter):
-    names = set().union(*(panel_rules(panel) for panel in panels(dashboard)))
+def expected_rules(dashboard, resources, formatter, name_prefix=""):
+    names = set().union(*(panel_rules(panel, name_prefix) for panel in panels(dashboard)))
     expected = []
     cache = {}
     for resource in resources['items']:
@@ -150,6 +152,8 @@ def main():
     parser.add_argument('--dashboard', required=True)
     parser.add_argument('--output', required=True)
     parser.add_argument('--timeout', type=float, default=120)
+    parser.add_argument('--values-key', default='nodeAlertLinks')
+    parser.add_argument('--alert-name-prefix', default='')
     args = parser.parse_args()
     dashboard = json.loads(Path(args.dashboard).read_text())
     deadline = time.monotonic() + args.timeout
@@ -157,10 +161,10 @@ def main():
     while True:
         try:
             if expected is None:
-                expected = expected_rules(dashboard, fetch(RULE_RESOURCES_PATH), lambda expression: fetch(FORMAT_QUERY_PATH + '?' + urlencode({'query': expression}))['data'])
+                expected = expected_rules(dashboard, fetch(RULE_RESOURCES_PATH), lambda expression: fetch(FORMAT_QUERY_PATH + '?' + urlencode({'query': expression}))['data'], args.alert_name_prefix)
             response = fetch(PROMETHEUS_PATH)
             require_convergence(response, expected)
-            result = resolve(dashboard, response, fetch(GRAFANA_PATH))
+            result = resolve(dashboard, response, fetch(GRAFANA_PATH), args.values_key, args.alert_name_prefix)
             break
         except (ValueError, subprocess.SubprocessError) as error:
             if time.monotonic() >= deadline:
@@ -175,7 +179,7 @@ def main():
     finally:
         if os.path.exists(temporary):
             os.unlink(temporary)
-    print('Resolved alert links for ' + str(len(result['nodeAlertLinks'])) + ' panels')
+    print('Resolved alert links for ' + str(len(result[args.values_key])) + ' panels')
 
 
 if __name__ == '__main__':

@@ -1391,7 +1391,7 @@
     },
     {
       "id": 25,
-      "title": "Prefix cache hit ratio · selected period",
+      "title": "Prefix cache hit ratio",
       "type": "stat",
       "description": "Percentage of queried prefix-cache tokens served from the cache during the entire selected time range, by selected model. Higher values mean more previously processed prompt content was reused. Without cache queries, the ratio is undefined and no estimate is shown.",
       "datasource": {
@@ -1401,8 +1401,8 @@
       "gridPos": {
         "x": 0,
         "y": 68,
-        "w": 12,
-        "h": 8
+        "w": 6,
+        "h": 3
       },
       "targets": [
         {
@@ -1451,11 +1451,11 @@
         "textMode": "value_and_name",
         "colorMode": "none",
         "graphMode": "none",
-        "justifyMode": "center",
+        "justifyMode": "start",
         "wideLayout": true,
         "text": {
-          "titleSize": 14,
-          "valueSize": 36
+          "titleSize": 11,
+          "valueSize": 18
         }
       }
     },
@@ -1469,10 +1469,10 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 12,
+        "x": 6,
         "y": 68,
-        "w": 12,
-        "h": 8
+        "w": 18,
+        "h": 5
       },
       "targets": [
         {
@@ -1523,7 +1523,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 76,
+        "y": 73,
         "w": 24,
         "h": 1
       },
@@ -1540,7 +1540,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 77,
+        "y": 74,
         "w": 8,
         "h": 3
       },
@@ -1616,7 +1616,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 77,
+        "y": 74,
         "w": 8,
         "h": 3
       },
@@ -1692,7 +1692,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 77,
+        "y": 74,
         "w": 8,
         "h": 3
       },
@@ -1768,7 +1768,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 80,
+        "y": 77,
         "w": 8,
         "h": 3
       },
@@ -1844,7 +1844,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 80,
+        "y": 77,
         "w": 8,
         "h": 3
       },
@@ -1920,7 +1920,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 80,
+        "y": 77,
         "w": 8,
         "h": 3
       },
@@ -1992,7 +1992,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 83,
+        "y": 80,
         "w": 24,
         "h": 1
       },
@@ -2004,9 +2004,9 @@
       "type": "stat",
       "gridPos": {
         "x": 0,
-        "y": 84,
-        "w": 12,
-        "h": 4
+        "y": 81,
+        "w": 8,
+        "h": 3
       },
       "datasource": {
         "type": "prometheus",
@@ -2040,7 +2040,14 @@
           "values": false
         },
         "colorMode": "value",
-        "graphMode": "none"
+        "graphMode": "none",
+        "text": {
+          "titleSize": 11,
+          "valueSize": 18
+        },
+        "orientation": "horizontal",
+        "wideLayout": true,
+        "justifyMode": "start"
       }
     },
     {
@@ -2048,10 +2055,10 @@
       "title": "LiteLLM errors over selected range",
       "type": "stat",
       "gridPos": {
-        "x": 12,
-        "y": 84,
-        "w": 12,
-        "h": 4
+        "x": 8,
+        "y": 81,
+        "w": 8,
+        "h": 3
       },
       "datasource": {
         "type": "prometheus",
@@ -2085,7 +2092,14 @@
           "values": false
         },
         "colorMode": "value",
-        "graphMode": "none"
+        "graphMode": "none",
+        "text": {
+          "titleSize": 11,
+          "valueSize": 18
+        },
+        "orientation": "horizontal",
+        "wideLayout": true,
+        "justifyMode": "start"
       }
     },
     {
@@ -2099,7 +2113,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 88,
+        "y": 84,
         "w": 12,
         "h": 8
       },
@@ -2156,7 +2170,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 88,
+        "y": 84,
         "w": 12,
         "h": 8
       },
@@ -2212,10 +2226,10 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 0,
-        "y": 96,
-        "w": 12,
-        "h": 8
+        "x": 16,
+        "y": 81,
+        "w": 8,
+        "h": 3
       },
       "targets": [
         {
@@ -2264,11 +2278,11 @@
         "textMode": "value_and_name",
         "colorMode": "none",
         "graphMode": "none",
-        "justifyMode": "center",
+        "justifyMode": "start",
         "wideLayout": true,
         "text": {
-          "titleSize": 14,
-          "valueSize": 36
+          "titleSize": 11,
+          "valueSize": 18
         }
       }
     },
@@ -2282,10 +2296,10 @@
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 12,
-        "y": 96,
-        "w": 12,
-        "h": 8
+        "x": 0,
+        "y": 92,
+        "w": 24,
+        "h": 6
       },
       "targets": [
         {
@@ -2343,7 +2357,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 104,
+        "y": 98,
         "w": 24,
         "h": 1
       },
@@ -2360,7 +2374,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 105,
+        "y": 99,
         "w": 6,
         "h": 3
       },
@@ -2436,7 +2450,7 @@
       },
       "gridPos": {
         "x": 6,
-        "y": 105,
+        "y": 99,
         "w": 6,
         "h": 3
       },
@@ -2512,7 +2526,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 105,
+        "y": 99,
         "w": 6,
         "h": 3
       },
@@ -2588,7 +2602,7 @@
       },
       "gridPos": {
         "x": 18,
-        "y": 105,
+        "y": 99,
         "w": 6,
         "h": 3
       },
@@ -2660,7 +2674,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 108,
+        "y": 102,
         "w": 24,
         "h": 1
       },
@@ -2677,7 +2691,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 109,
+        "y": 103,
         "w": 12,
         "h": 8
       },
@@ -2734,7 +2748,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 109,
+        "y": 103,
         "w": 12,
         "h": 8
       },
@@ -2791,7 +2805,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 117,
+        "y": 111,
         "w": 12,
         "h": 8
       },
@@ -2848,7 +2862,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 117,
+        "y": 111,
         "w": 12,
         "h": 8
       },

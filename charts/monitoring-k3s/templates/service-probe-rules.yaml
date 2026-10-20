@@ -1,0 +1,41 @@
+{{- if .Values.serviceProbes.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: monitoring-service-availability
+  labels:
+    release: {{ .Values.prometheusRelease }}
+spec:
+  groups:
+    - name: socrat.services.availability
+      rules:
+{{- range .Values.serviceProbes.targets }}
+{{- if ne (.group | default "") "syncthing" }}
+        - alert: {{ .alertName }}
+          expr: probe_success{job="service-probes",service_id="{{ .id }}"} == 0
+          for: 2m
+          labels:
+            severity: warning
+            service_id: {{ .id | quote }}
+          annotations:
+            summary: {{ printf "%s health check is failing." .title | quote }}
+            description: {{ printf "%s has failed its %s check for 2 minutes. Target: %s. This is an in-cluster service check; TCP checks confirm a listening port, not a complete authenticated application transaction. Inspect probe_success and probe_duration_seconds for this service_id." .title .module .url | quote }}
+{{- end }}
+{{- end }}
+        - alert: SocratServiceSyncthingUnavailable
+          expr: probe_success{job="service-probes",service_group="syncthing"} == 0
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: A Syncthing instance is unavailable.
+            description: 'Syncthing on {{ "{{ $labels.node }}" }} has failed its HTTP health check for 2 minutes. Target: {{ "{{ $labels.instance }}" }}. Each node is a separate alert instance; inspect the node label to identify the failed instance.'
+        - alert: SocratServiceProbeCollectorUnavailable
+          expr: up{job=~"service-probes|service-probes-exporter"} == 0 or absent(up{job="service-probes-exporter"})
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: Service availability checks cannot be collected.
+            description: Prometheus cannot collect the blackbox exporter or one of its probe targets for 2 minutes. Service tiles without fresh successful collection show No telemetry rather than a healthy result.
+{{- end }}
