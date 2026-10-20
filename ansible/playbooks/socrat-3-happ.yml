@@ -1,0 +1,84 @@
+---
+- name: Install Happ on socrat-3
+  hosts: socrat-3
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Create the package cache
+      ansible.builtin.file:
+        path: /home/alchemmist/.cache/homelab-happ
+        state: directory
+        owner: alchemmist
+        group: alchemmist
+        mode: '0700'
+
+    - name: Download the pinned official Happ package
+      ansible.builtin.get_url:
+        url: https://github.com/Happ-proxy/happ-desktop/releases/download/4.5.6/Happ.linux.x64.deb
+        dest: /home/alchemmist/.cache/homelab-happ/Happ-4.5.6.deb
+        checksum: sha256:a156bfafc96a34536967c255c506ef3f1b2c27c57a5252eaf4dbd14573cfea6a
+        mode: '0644'
+
+    - name: Install the graphical runtime and desktop clipboard tools
+      tags: happ_runtime
+      ansible.builtin.apt:
+        name: [libopengl0, wl-clipboard, wtype]
+        state: present
+
+    - name: Install Happ and its packaged dependencies
+      ansible.builtin.apt:
+        deb: /home/alchemmist/.cache/homelab-happ/Happ-4.5.6.deb
+
+    - name: Create the proxy-only daemon override directory
+      tags: happ_safety
+      ansible.builtin.file:
+        path: /etc/systemd/system/happd.service.d
+        state: directory
+        mode: '0755'
+
+    - name: Prevent the desktop VPN from changing cluster network routes
+      tags: happ_safety
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/happd.service.d/20-homelab-proxy-only.conf
+        mode: '0644'
+        content: |
+          [Service]
+          CapabilityBoundingSet=~CAP_NET_ADMIN CAP_NET_RAW
+          NoNewPrivileges=true
+      notify: Restart Happ daemon
+
+    - name: Install the desktop application launcher
+      ansible.builtin.copy:
+        src: ../roles/debian_laptop/files/sway/homelab-sway-app
+        dest: /usr/local/bin/homelab-sway-app
+        mode: '0755'
+
+    - name: Install the desktop shortcut panel with Happ
+      ansible.builtin.copy:
+        src: ../roles/debian_laptop/files/sway/homelab-sway-shortcuts
+        dest: /usr/local/bin/homelab-sway-shortcuts
+        mode: '0755'
+
+    - name: Create the desktop directory
+      ansible.builtin.file:
+        path: /home/alchemmist/Desktop
+        state: directory
+        owner: alchemmist
+        group: alchemmist
+        mode: '0755'
+
+    - name: Place the Happ launcher on the desktop
+      ansible.builtin.copy:
+        src: /usr/share/applications/Happ.desktop
+        dest: /home/alchemmist/Desktop/Happ.desktop
+        remote_src: true
+        owner: alchemmist
+        group: alchemmist
+        mode: '0755'
+
+  handlers:
+    - name: Restart Happ daemon
+      ansible.builtin.systemd_service:
+        name: happd
+        daemon_reload: true
+        state: restarted

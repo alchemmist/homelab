@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import subprocess
+from pathlib import Path
 
 import gi
 
@@ -19,6 +20,10 @@ SHORTCUTS = (
     ("video", "Видео", "applications-multimedia"),
     ("monitor", "Мониторинг", "utilities-system-monitor"),
 )
+
+
+if Path("/usr/bin/happ").exists():
+    SHORTCUTS += (("happ", "Happ", "happ"),)
 
 
 def launch(button, name):

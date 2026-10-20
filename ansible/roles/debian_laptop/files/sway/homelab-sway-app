@@ -10,6 +10,7 @@ preferences = json.loads(CONFIG.read_text()) if CONFIG.exists() else {}
 
 
 COMMANDS = {
+    "happ": ["/usr/bin/happ"],
     "browser": ["/usr/bin/firefox-esr"],
     "files": ["/usr/bin/thunar"],
     "mail": ["/usr/bin/firefox-esr", preferences.get("mail_url", "https://mail.yandex.ru/")],

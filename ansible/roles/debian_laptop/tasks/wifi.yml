@@ -143,6 +143,9 @@
     - homelab_wifi_autoconnect | bool
     - homelab_wifi_active.stdout | trim != 'homelab-wifi' or homelab_nm_wifi_profile.changed
 
+- name: Share DNS ownership between Ethernet and Wi-Fi
+  ansible.builtin.import_tasks: wifi_dns.yml
+
 - name: Verify remote administration still works after wireless setup
   ansible.builtin.wait_for_connection:
     timeout: 30
