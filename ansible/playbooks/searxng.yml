@@ -1,0 +1,46 @@
+---
+- name: Deploy the private SearXNG search service
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  tasks:
+    - name: Verify the search node is ready
+      ansible.builtin.command: kubectl wait --for=condition=Ready node/socrat-1 --timeout=30s
+      changed_when: false
+    - name: Ensure the search namespace and persistent secret
+      ansible.builtin.command:
+        argv:
+          - python3
+          - -c
+          - |
+            import json
+            import secrets
+            import subprocess
+            def kubectl(*args, **kwargs):
+                return subprocess.run(['kubectl', *args], check=True, capture_output=True, text=True, **kwargs)
+            if not kubectl('get', 'namespace', 'llm', '--ignore-not-found', '-o', 'name').stdout.strip():
+                kubectl('create', 'namespace', 'llm')
+            if not kubectl('-n', 'llm', 'get', 'secret', 'searxng-secret', '--ignore-not-found', '-o', 'name').stdout.strip():
+                manifest = {'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': 'searxng-secret', 'namespace': 'llm'}, 'type': 'Opaque', 'stringData': {'secret-key': secrets.token_hex(32)}}
+                kubectl('create', '-f', '-', input=json.dumps(manifest))
+                print('created')
+            else:
+                print('unchanged')
+      register: searxng_secret
+      changed_when: "'created' in searxng_secret.stdout"
+      no_log: true
+    - name: Copy the search chart
+      ansible.builtin.copy:
+        src: ../../charts/searxng/
+        dest: '{{ homelab_user_home }}/tmp-charts/searxng/'
+        mode: preserve
+    - name: Validate the search chart
+      ansible.builtin.command: helm lint {{ homelab_user_home }}/tmp-charts/searxng
+      changed_when: false
+    - name: Deploy SearXNG
+      ansible.builtin.command: >-
+        helm upgrade --install searxng {{ homelab_user_home }}/tmp-charts/searxng
+        -n llm --wait --timeout 10m
+      changed_when: true
