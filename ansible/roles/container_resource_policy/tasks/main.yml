@@ -1,0 +1,153 @@
+---
+- name: Verify native admission policy API support
+  ansible.builtin.command:
+    argv: [kubectl, get, --raw, /apis/admissionregistration.k8s.io/v1]
+  register: container_resource_policy_api
+  changed_when: false
+
+- name: Require native mutating admission policies
+  ansible.builtin.assert:
+    that:
+      - "'mutatingadmissionpolicies' in ((container_resource_policy_api.stdout | from_json).resources | map(attribute='name') | list)"
+
+- name: Create resource policy staging directory
+  ansible.builtin.file:
+    path: "{{ container_resource_policy_directory }}"
+    state: directory
+    mode: '0700'
+
+- name: Render resource policy and binding
+  ansible.builtin.template:
+    src: "{{ item }}.yaml.j2"
+    dest: "{{ container_resource_policy_directory }}/{{ item }}.yaml"
+    mode: '0600'
+  loop: [resource-policy, resource-policy-binding]
+
+- name: Stage resource policy validation and reconciliation
+  ansible.builtin.copy:
+    src: "{{ item }}.py"
+    dest: "{{ container_resource_policy_directory }}/{{ item }}.py"
+    mode: '0600'
+  loop: [check_policy, check_profiles, reconcile_pods]
+
+- name: Stage authoritative workload profiles
+  ansible.builtin.copy:
+    content: "{{ container_resource_policy_profiles | to_nice_json }}"
+    dest: "{{ container_resource_policy_directory }}/profiles.json"
+    mode: '0600'
+
+- name: Validate profile quantities and owner matching before policy activation
+  ansible.builtin.command:
+    argv: [python3, "{{ container_resource_policy_directory }}/check_profiles.py", --profiles, "{{ container_resource_policy_directory }}/profiles.json", --validate-only]
+  changed_when: false
+
+- name: Server-side preflight policy and binding before activation
+  ansible.builtin.command:
+    argv: [kubectl, apply, --dry-run=server, --server-side, --field-manager=socrat-resource-policy, -f, "{{ container_resource_policy_directory }}/{{ item }}.yaml"]
+  loop: [resource-policy, resource-policy-binding]
+  changed_when: false
+
+- name: Read current admission configuration for rollback
+  ansible.builtin.command:
+    argv: [kubectl, get, "{{ item }}", "{{ container_resource_policy_name }}", --ignore-not-found, -o, json]
+  loop: [mutatingadmissionpolicy, mutatingadmissionpolicybinding]
+  register: container_resource_policy_backups
+  changed_when: false
+
+- name: Preserve an independent rollback snapshot for this run
+  ansible.builtin.tempfile:
+    state: directory
+    path: "{{ container_resource_policy_directory }}"
+    prefix: admission-backup-
+  register: container_resource_policy_backup
+
+- name: Show rollback snapshot location
+  ansible.builtin.debug:
+    var: container_resource_policy_backup.path
+
+- name: Save restorable admission configuration
+  ansible.builtin.copy:
+    content: >-
+      {{ (resource | dict2items | rejectattr('key', 'equalto', 'status') | items2dict)
+         | combine({'metadata': resource.metadata | dict2items
+           | rejectattr('key', 'in', ['resourceVersion', 'generation', 'creationTimestamp', 'managedFields', 'uid'])
+           | items2dict}) | to_nice_json }}
+    dest: "{{ container_resource_policy_backup.path }}/previous-{{ item.item }}.json"
+    mode: '0600'
+  vars:
+    resource: "{{ item.stdout | from_json }}"
+  loop: "{{ container_resource_policy_backups.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when: item.stdout | trim | length > 0
+
+- name: Activate and behaviorally verify admission configuration
+  block:
+    - name: Apply native container resource policy
+      ansible.builtin.command:
+        argv: [kubectl, apply, --server-side, --field-manager=socrat-resource-policy, -f, "{{ container_resource_policy_directory }}/resource-policy.yaml"]
+      changed_when: true
+
+    - name: Bind resource policy across namespaces
+      ansible.builtin.command:
+        argv: [kubectl, apply, --server-side, --field-manager=socrat-resource-policy, -f, "{{ container_resource_policy_directory }}/resource-policy-binding.yaml"]
+      changed_when: true
+
+    - name: Verify resource defaulting without creating workload pods
+      ansible.builtin.command:
+        argv: [python3, "{{ container_resource_policy_directory }}/check_policy.py", --namespace, default]
+      register: container_resource_policy_check
+      changed_when: false
+
+    - name: Verify each profile through admission without creating workload pods
+      ansible.builtin.command:
+        argv: [python3, "{{ container_resource_policy_directory }}/check_profiles.py", --profiles, "{{ container_resource_policy_directory }}/profiles.json"]
+      register: container_resource_profile_check
+      changed_when: false
+  rescue:
+    - name: Restore previous admission configuration after validation failure
+      ansible.builtin.command:
+        argv: [kubectl, apply, --server-side, --field-manager=socrat-resource-policy, -f, "{{ container_resource_policy_backup.path }}/previous-{{ item.item }}.json"]
+      loop: "{{ container_resource_policy_backups.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+      when: item.stdout | trim | length > 0
+      changed_when: true
+
+    - name: Remove admission objects that did not exist before this run
+      ansible.builtin.command:
+        argv: [kubectl, delete, "{{ item.item }}", "{{ container_resource_policy_name }}", --ignore-not-found]
+      loop: "{{ container_resource_policy_backups.results | reverse | list }}"
+      loop_control:
+        label: "{{ item.item }}"
+      when: item.stdout | trim | length == 0
+      changed_when: true
+
+    - name: Stop before evictions after failed admission validation
+      ansible.builtin.fail:
+        msg: "Admission validation failed; previous admission configuration restored. {{ ansible_failed_result.stderr | default(ansible_failed_result.msg | default('See failed validation output')) }}"
+
+- name: Build reconciliation arguments
+  ansible.builtin.set_fact:
+    container_resource_policy_reconcile_argv: [python3, -u, "{{ container_resource_policy_directory }}/reconcile_pods.py", --apply, --kubeconfig, /etc/rancher/k3s/k3s.yaml, --profiles, "{{ container_resource_policy_directory }}/profiles.json"]
+
+- name: Add explicitly deferred nodes
+  ansible.builtin.set_fact:
+    container_resource_policy_reconcile_argv: "{{ container_resource_policy_reconcile_argv + ['--exclude-node', item] }}"
+  loop: "{{ container_resource_policy_exclude_nodes }}"
+
+- name: Reconcile existing pods when explicitly enabled
+  ansible.builtin.command:
+    argv: "{{ container_resource_policy_reconcile_argv }}"
+  when: container_resource_policy_reconcile | bool
+  changed_when: true
+
+- name: Audit current container resources
+  ansible.builtin.command:
+    argv: [python3, "{{ container_resource_policy_directory }}/reconcile_pods.py", --kubeconfig, /etc/rancher/k3s/k3s.yaml, --profiles, "{{ container_resource_policy_directory }}/profiles.json"]
+  changed_when: false
+  register: container_resource_policy_audit
+
+- name: Show resource coverage
+  ansible.builtin.debug:
+    var: container_resource_policy_audit.stdout_lines

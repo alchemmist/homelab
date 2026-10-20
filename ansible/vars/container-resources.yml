@@ -1,0 +1,855 @@
+container_resource_policy_profiles:
+- namespace: blog
+  ownerKind: ReplicaSet
+  ownerPattern: ^blog-[a-z0-9]+$
+  containers:
+    blog:
+      requests:
+        cpu: 20m
+        memory: 32Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 256Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: cats
+  ownerKind: ReplicaSet
+  ownerPattern: ^cats-[a-z0-9]+$
+  containers:
+    cats:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 128Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: cattle-capi-system
+  ownerKind: ReplicaSet
+  ownerPattern: ^capi\-controller\-manager-[a-z0-9]+$
+  containers:
+    manager:
+      requests:
+        cpu: 25m
+        memory: 96Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: cattle-fleet-local-system
+  ownerKind: ReplicaSet
+  ownerPattern: ^fleet\-agent-[a-z0-9]+$
+  containers:
+    fleet-agent:
+      requests:
+        cpu: 25m
+        memory: 384Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 768Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: cattle-fleet-system
+  ownerKind: ReplicaSet
+  ownerPattern: ^fleet\-controller-[a-z0-9]+$
+  containers:
+    fleet-controller:
+      requests:
+        cpu: 25m
+        memory: 160Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+    fleet-cleanup:
+      requests:
+        cpu: 25m
+        memory: 128Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+    fleet-agentmanagement:
+      requests:
+        cpu: 25m
+        memory: 128Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: cattle-fleet-system
+  ownerKind: ReplicaSet
+  ownerPattern: ^gitjob-[a-z0-9]+$
+  containers:
+    gitjob:
+      requests:
+        cpu: 25m
+        memory: 128Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: cattle-fleet-system
+  ownerKind: ReplicaSet
+  ownerPattern: ^helmops-[a-z0-9]+$
+  containers:
+    helmops:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: cattle-monitoring-system
+  ownerKind: ReplicaSet
+  ownerPattern: ^grafana\-mcp-[a-z0-9]+$
+  containers:
+    grafana-mcp:
+      requests:
+        cpu: 25m
+        memory: 96Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 256Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: cattle-monitoring-system
+  ownerKind: ReplicaSet
+  ownerPattern: ^kube\-prometheus\-stack\-grafana-[a-z0-9]+$
+  containers:
+    grafana-sc-dashboard:
+      requests:
+        cpu: 25m
+        memory: 96Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 256Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+    grafana-sc-datasources:
+      requests:
+        cpu: 25m
+        memory: 96Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 256Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+    grafana:
+      requests:
+        cpu: 50m
+        memory: 1536Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 2048Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+    init-chown-data:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+        ephemeral-storage: 16Mi
+      limits:
+        memory: 128Mi
+        ephemeral-storage: 256Mi
+      removeCpuLimit: true
+- namespace: cattle-monitoring-system
+  ownerKind: ReplicaSet
+  ownerPattern: ^kube\-prometheus\-stack\-kube\-state\-metrics-[a-z0-9]+$
+  containers:
+    kube-state-metrics:
+      requests:
+        cpu: 20m
+        memory: 96Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 192Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: cattle-monitoring-system
+  ownerKind: ReplicaSet
+  ownerPattern: ^kube\-prometheus\-stack\-operator-[a-z0-9]+$
+  containers:
+    kube-prometheus-stack:
+      requests:
+        cpu: 30m
+        memory: 96Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 256Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: cattle-monitoring-system
+  ownerKind: ReplicaSet
+  ownerPattern: ^monitoring\-service\-probes-[a-z0-9]+$
+  containers:
+    blackbox-exporter:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 128Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: cattle-monitoring-system
+  ownerKind: ReplicaSet
+  ownerPattern: ^rancher\-monitoring\-dashboards\-monitoring\-proxy-[a-z0-9]+$
+  containers:
+    nginx:
+      requests:
+        cpu: 50m
+        memory: 32Mi
+        ephemeral-storage: 16Mi
+      limits:
+        memory: 256Mi
+        ephemeral-storage: 256Mi
+      removeCpuLimit: true
+- namespace: cattle-system
+  ownerKind: ReplicaSet
+  ownerPattern: ^rancher-[a-z0-9]+$
+  containers:
+    rancher:
+      requests:
+        cpu: 250m
+        memory: 2560Mi
+        ephemeral-storage: 2560Mi
+      limits:
+        memory: 4096Mi
+        ephemeral-storage: 4Gi
+      removeCpuLimit: true
+- namespace: cattle-system
+  ownerKind: ReplicaSet
+  ownerPattern: ^rancher\-webhook-[a-z0-9]+$
+  containers:
+    rancher-webhook:
+      requests:
+        cpu: 20m
+        memory: 192Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 384Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: cattle-system
+  ownerKind: ReplicaSet
+  ownerPattern: ^system\-upgrade\-controller-[a-z0-9]+$
+  containers:
+    system-upgrade-controller:
+      requests:
+        cpu: 25m
+        memory: 96Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 256Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: cattle-turtles-system
+  ownerKind: ReplicaSet
+  ownerPattern: ^rancher\-turtles\-controller\-manager-[a-z0-9]+$
+  containers:
+    manager:
+      requests:
+        cpu: 25m
+        memory: 160Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 600Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: cert-manager
+  ownerKind: ReplicaSet
+  ownerPattern: ^cert\-manager-[a-z0-9]+$
+  containers:
+    cert-manager-controller:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: cert-manager
+  ownerKind: ReplicaSet
+  ownerPattern: ^cert\-manager\-cainjector-[a-z0-9]+$
+  containers:
+    cert-manager-cainjector:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: cert-manager
+  ownerKind: ReplicaSet
+  ownerPattern: ^cert\-manager\-webhook-[a-z0-9]+$
+  containers:
+    cert-manager-webhook:
+      requests:
+        cpu: 20m
+        memory: 64Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 256Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: format-quorum
+  ownerKind: ReplicaSet
+  ownerPattern: ^format\-quorum-[a-z0-9]+$
+  containers:
+    format-quorum:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 1024Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: img-proxy
+  ownerKind: ReplicaSet
+  ownerPattern: ^img\-proxy-[a-z0-9]+$
+  containers:
+    nginx:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+        ephemeral-storage: 16Mi
+      limits:
+        memory: 128Mi
+        ephemeral-storage: 256Mi
+      removeCpuLimit: true
+- namespace: kube-system
+  ownerKind: ReplicaSet
+  ownerPattern: ^coredns-[a-z0-9]+$
+  containers:
+    coredns:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 256Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: kube-system
+  ownerKind: ReplicaSet
+  ownerPattern: ^local\-path\-provisioner-[a-z0-9]+$
+  containers:
+    local-path-provisioner:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: kube-system
+  ownerKind: ReplicaSet
+  ownerPattern: ^metrics\-server-[a-z0-9]+$
+  containers:
+    metrics-server:
+      requests:
+        cpu: 100m
+        memory: 96Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: kube-system
+  ownerKind: ReplicaSet
+  ownerPattern: ^traefik-[a-z0-9]+$
+  containers:
+    traefik:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: llm
+  ownerKind: ReplicaSet
+  ownerPattern: ^litellm-[a-z0-9]+$
+  containers:
+    litellm:
+      requests:
+        cpu: 250m
+        memory: 1536Mi
+        ephemeral-storage: 128Mi
+      limits:
+        memory: 4096Mi
+        ephemeral-storage: 2Gi
+      removeCpuLimit: true
+- namespace: llm
+  ownerKind: ReplicaSet
+  ownerPattern: ^litellm\-branding-[a-z0-9]+$
+  containers:
+    nginx:
+      requests:
+        cpu: 10m
+        memory: 16Mi
+        ephemeral-storage: 16Mi
+      limits:
+        memory: 64Mi
+        ephemeral-storage: 256Mi
+      removeCpuLimit: true
+- namespace: llm
+  ownerKind: ReplicaSet
+  ownerPattern: ^litellm\-postgres-[a-z0-9]+$
+  containers:
+    postgres:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 1024Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: llm
+  ownerKind: ReplicaSet
+  ownerPattern: ^llm\-switcher-[a-z0-9]+$
+  containers:
+    gateway:
+      requests:
+        cpu: 100m
+        memory: 160Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: llm
+  ownerKind: ReplicaSet
+  ownerPattern: ^monitoring\-llm\-status-[a-z0-9]+$
+  containers:
+    collector:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 96Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: llm
+  ownerKind: ReplicaSet
+  ownerPattern: ^open\-terminal-[a-z0-9]+$
+  containers:
+    open-terminal:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+        ephemeral-storage: 256Mi
+      limits:
+        memory: 4096Mi
+        ephemeral-storage: 5Gi
+        cpu: '6'
+    browser-cleanup:
+      requests:
+        cpu: 5m
+        memory: 16Mi
+        ephemeral-storage: 16Mi
+      limits:
+        memory: 128Mi
+        ephemeral-storage: 256Mi
+        cpu: 100m
+- namespace: llm
+  ownerKind: ReplicaSet
+  ownerPattern: ^open\-webui-[a-z0-9]+$
+  containers:
+    open-webui:
+      requests:
+        cpu: 250m
+        memory: 768Mi
+        ephemeral-storage: 128Mi
+      limits:
+        memory: 2048Mi
+        ephemeral-storage: 2Gi
+      removeCpuLimit: true
+    prepare-tool-guard:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+        ephemeral-storage: 16Mi
+      limits:
+        memory: 128Mi
+        ephemeral-storage: 256Mi
+      removeCpuLimit: true
+- namespace: llm
+  ownerKind: ReplicaSet
+  ownerPattern: ^open\-webui\-gateway-[a-z0-9]+$
+  containers:
+    nginx:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+        ephemeral-storage: 16Mi
+      limits:
+        memory: 128Mi
+        ephemeral-storage: 256Mi
+      removeCpuLimit: true
+- namespace: llm
+  ownerKind: ReplicaSet
+  ownerPattern: ^searxng-[a-z0-9]+$
+  containers:
+    searxng:
+      requests:
+        cpu: 100m
+        memory: 384Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 768Mi
+        ephemeral-storage: 512Mi
+        cpu: '1'
+- namespace: llm
+  ownerKind: ReplicaSet
+  ownerPattern: ^vllm-[a-z0-9]+$
+  containers:
+    vllm:
+      requests:
+        cpu: '2'
+        memory: 12288Mi
+        ephemeral-storage: 512Mi
+      limits:
+        memory: 24576Mi
+        ephemeral-storage: 4Gi
+        cpu: '8'
+- namespace: lms
+  ownerKind: ReplicaSet
+  ownerPattern: ^lms-[a-z0-9]+$
+  containers:
+    lms:
+      requests:
+        cpu: 50m
+        memory: 96Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: monori
+  ownerKind: ReplicaSet
+  ownerPattern: ^monori-[a-z0-9]+$
+  containers:
+    front:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: monori
+  ownerKind: ReplicaSet
+  ownerPattern: ^monori\-back-[a-z0-9]+$
+  containers:
+    back:
+      requests:
+        cpu: 10m
+        memory: 128Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: monori
+  ownerKind: ReplicaSet
+  ownerPattern: ^monori\-sync-[a-z0-9]+$
+  containers:
+    sync:
+      requests:
+        cpu: 10m
+        memory: 96Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: remark42
+  ownerKind: ReplicaSet
+  ownerPattern: ^remark42-[a-z0-9]+$
+  containers:
+    remark42:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: socrat-home
+  ownerKind: ReplicaSet
+  ownerPattern: ^socrat\-home-[a-z0-9]+$
+  containers:
+    nginx:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+        ephemeral-storage: 16Mi
+      limits:
+        memory: 128Mi
+        ephemeral-storage: 256Mi
+      removeCpuLimit: true
+- namespace: storage
+  ownerKind: ReplicaSet
+  ownerPattern: ^nfs\-subdir\-external\-provisioner-[a-z0-9]+$
+  containers:
+    nfs-subdir-external-provisioner:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: traefik-edge
+  ownerKind: ReplicaSet
+  ownerPattern: ^traefik\-edge-[a-z0-9]+$
+  containers:
+    traefik:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 192Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: umami
+  ownerKind: ReplicaSet
+  ownerPattern: ^umami-[a-z0-9]+$
+  containers:
+    umami:
+      requests:
+        cpu: 10m
+        memory: 384Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 768Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: umami
+  ownerKind: ReplicaSet
+  ownerPattern: ^umami\-db-[a-z0-9]+$
+  containers:
+    postgres:
+      requests:
+        cpu: 10m
+        memory: 256Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 1024Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: uptime-kuma
+  ownerKind: ReplicaSet
+  ownerPattern: ^uptime\-kuma-[a-z0-9]+$
+  containers:
+    uptime-kuma:
+      requests:
+        cpu: 50m
+        memory: 256Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: wiki
+  ownerKind: ReplicaSet
+  ownerPattern: ^wiki\-runtime\-wiki-[a-z0-9]+$
+  containers:
+    wiki:
+      requests:
+        cpu: 100m
+        memory: 192Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 1024Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: x-ui
+  ownerKind: ReplicaSet
+  ownerPattern: ^x\-ui-[a-z0-9]+$
+  containers:
+    compatibility:
+      requests:
+        cpu: 50m
+        memory: 384Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+    primary:
+      requests:
+        cpu: 100m
+        memory: 448Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 768Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: cattle-monitoring-system
+  ownerKind: StatefulSet
+  ownerPattern: ^alertmanager\-kube\-prometheus\-stack\-alertmanager$
+  containers:
+    alertmanager:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 128Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+    config-reloader:
+      requests:
+        cpu: 25m
+        memory: 48Mi
+        ephemeral-storage: 16Mi
+      limits:
+        memory: 128Mi
+        ephemeral-storage: 256Mi
+      removeCpuLimit: true
+    init-config-reloader:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+        ephemeral-storage: 16Mi
+      limits:
+        memory: 128Mi
+        ephemeral-storage: 256Mi
+      removeCpuLimit: true
+- namespace: cattle-monitoring-system
+  ownerKind: StatefulSet
+  ownerPattern: ^prometheus\-kube\-prometheus\-stack\-prometheus$
+  containers:
+    prometheus:
+      requests:
+        cpu: 200m
+        memory: 2048Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 3072Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+    config-reloader:
+      requests:
+        cpu: 25m
+        memory: 48Mi
+        ephemeral-storage: 16Mi
+      limits:
+        memory: 128Mi
+        ephemeral-storage: 256Mi
+      removeCpuLimit: true
+    init-config-reloader:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+        ephemeral-storage: 16Mi
+      limits:
+        memory: 128Mi
+        ephemeral-storage: 256Mi
+      removeCpuLimit: true
+- namespace: cattle-monitoring-system
+  ownerKind: DaemonSet
+  ownerPattern: ^kube\-prometheus\-stack\-prometheus\-node\-exporter$
+  containers:
+    node-exporter:
+      requests:
+        cpu: 25m
+        memory: 48Mi
+        ephemeral-storage: 16Mi
+      limits:
+        memory: 96Mi
+        ephemeral-storage: 256Mi
+      removeCpuLimit: true
+- namespace: cattle-monitoring-system
+  ownerKind: DaemonSet
+  ownerPattern: ^monitoring\-etcd\-metrics$
+  containers:
+    proxy:
+      requests:
+        cpu: 25m
+        memory: 16Mi
+        ephemeral-storage: 16Mi
+      limits:
+        memory: 64Mi
+        ephemeral-storage: 256Mi
+      removeCpuLimit: true
+- namespace: kube-system
+  ownerKind: DaemonSet
+  ownerPattern: ^nvidia\-device\-plugin$
+  containers:
+    nvidia-device-plugin:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 256Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+- namespace: kube-system
+  ownerKind: DaemonSet
+  ownerPattern: ^svclb-traefik-[a-z0-9]+$
+  containers:
+    lb-tcp-80:
+      requests:
+        cpu: 10m
+        memory: 8Mi
+        ephemeral-storage: 16Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 256Mi
+      removeCpuLimit: true
+    lb-tcp-443:
+      requests:
+        cpu: 10m
+        memory: 8Mi
+        ephemeral-storage: 16Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 256Mi
+      removeCpuLimit: true
+- namespace: syncthing
+  ownerKind: DaemonSet
+  ownerPattern: ^syncthing$
+  containers:
+    syncthing:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 1Gi
+      removeCpuLimit: true
+    private-gui:
+      requests:
+        cpu: 10m
+        memory: 16Mi
+        ephemeral-storage: 16Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 256Mi
+      removeCpuLimit: true

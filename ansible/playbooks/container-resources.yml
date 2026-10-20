@@ -1,0 +1,12 @@
+---
+- name: Apply measured container resource budgets across the cluster
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  vars_files:
+    - ../vars/container-resources.yml
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+    K3S_CONFIG_FILE: /dev/null
+  roles:
+    - container_resource_policy
