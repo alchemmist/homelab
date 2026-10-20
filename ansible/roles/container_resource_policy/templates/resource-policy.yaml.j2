@@ -1,0 +1,97 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingAdmissionPolicy
+metadata:
+  name: {{ container_resource_policy_name }}
+spec:
+  failurePolicy: Fail
+  reinvocationPolicy: IfNeeded
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ['']
+        apiVersions: [v1]
+        operations: [CREATE]
+        resources: [pods]
+        scope: Namespaced
+  variables:
+    - name: profiles
+      expression: >-
+        [
+{% for profile in container_resource_policy_profiles %}
+          {
+            "namespace": dyn({{ profile.namespace | to_json }}),
+            "ownerKind": dyn({{ profile.ownerKind | to_json }}),
+            "ownerPattern": dyn({{ profile.ownerPattern | to_json }}),
+            "containers": dyn({
+{% for container_name, resources in profile.containers.items() %}
+              {{ container_name | to_json }}: {
+{% for key, value in resources.items() %}
+                {{ key | to_json }}: dyn({{ value | to_json }}){{ ',' if not loop.last else '' }}
+{% endfor %}
+              }{{ ',' if not loop.last else '' }}
+{% endfor %}
+            })
+          }{{ ',' if not loop.last else '' }}
+{% endfor %}
+        ]
+    - name: matchingProfiles
+      expression: >-
+        variables.profiles.filter(p,
+          p.namespace == object.metadata.namespace &&
+          has(object.metadata.ownerReferences) &&
+          object.metadata.ownerReferences.exists(o,
+            has(o.controller) && o.controller &&
+            o.kind == p.ownerKind && o.name.matches(p.ownerPattern)
+          )
+        )
+    - name: profileContainers
+      expression: >-
+        variables.matchingProfiles.size() == 1 ? variables.matchingProfiles[0].containers : {}
+  mutations:
+    - patchType: JSONPatch
+      jsonPatch:
+        expression: >-
+          object.spec.containers.filter(c,
+            has(c.resources) && has(c.resources.limits) && "cpu" in c.resources.limits &&
+            (quantity(c.resources.limits["cpu"]).compareTo(quantity("0")) == 0 ||
+              (c.name in variables.profileContainers &&
+                "removeCpuLimit" in variables.profileContainers[c.name] && variables.profileContainers[c.name]["removeCpuLimit"]))
+          ).map(c, JSONPatch{
+            op: "remove",
+            path: "/spec/containers/" + string(object.spec.containers.indexOf(c)) + "/resources/limits/cpu"
+          }) +
+          (has(object.spec.initContainers) ? object.spec.initContainers.filter(c,
+            has(c.resources) && has(c.resources.limits) && "cpu" in c.resources.limits &&
+            (quantity(c.resources.limits["cpu"]).compareTo(quantity("0")) == 0 ||
+              (c.name in variables.profileContainers &&
+                "removeCpuLimit" in variables.profileContainers[c.name] && variables.profileContainers[c.name]["removeCpuLimit"]))
+          ).map(c, JSONPatch{
+            op: "remove",
+            path: "/spec/initContainers/" + string(object.spec.initContainers.indexOf(c)) + "/resources/limits/cpu"
+          }) : [])
+    - patchType: ApplyConfiguration
+      applyConfiguration:
+        expression: >-
+          Object{
+            spec: Object.spec{
+{% for kind in ['containers', 'initContainers'] %}
+              {{ kind }}: {% if kind == 'initContainers' %}has(object.spec.initContainers) ? {% endif %}object.spec.{{ kind }}.map(c,
+                Object.spec.{{ kind }}{
+                  name: c.name,
+                  resources: Object.spec.{{ kind }}.resources{
+                    limits: {
+                      ?"cpu": c.name in variables.profileContainers && "limits" in variables.profileContainers[c.name] && "cpu" in variables.profileContainers[c.name]["limits"] ? optional.of(variables.profileContainers[c.name]["limits"]["cpu"]) : optional.none(),
+{% for resource in ['memory', 'ephemeral-storage'] %}
+                      "{{ resource }}": c.name in variables.profileContainers && "limits" in variables.profileContainers[c.name] && "{{ resource }}" in variables.profileContainers[c.name]["limits"] ? variables.profileContainers[c.name]["limits"]["{{ resource }}"] : has(c.resources) && has(c.resources.limits) && "{{ resource }}" in c.resources.limits && quantity(c.resources.limits["{{ resource }}"]).compareTo(quantity("0")) > 0 ? c.resources.limits["{{ resource }}"] : (has(c.resources) && has(c.resources.requests) && "{{ resource }}" in c.resources.requests && quantity(c.resources.requests["{{ resource }}"]).compareTo(quantity("{{ container_resource_policy_default_limits[resource] }}")) > 0 ? c.resources.requests["{{ resource }}"] : "{{ container_resource_policy_default_limits[resource] }}"){{ ',' if not loop.last else '' }}
+{% endfor %}
+                    },
+                    requests: {
+{% for resource in ['cpu', 'memory', 'ephemeral-storage'] %}
+                      "{{ resource }}": c.name in variables.profileContainers && "requests" in variables.profileContainers[c.name] && "{{ resource }}" in variables.profileContainers[c.name]["requests"] ? variables.profileContainers[c.name]["requests"]["{{ resource }}"] : has(c.resources) && has(c.resources.requests) && "{{ resource }}" in c.resources.requests && quantity(c.resources.requests["{{ resource }}"]).compareTo(quantity("0")) > 0 ? c.resources.requests["{{ resource }}"] : (has(c.resources) && has(c.resources.limits) && "{{ resource }}" in c.resources.limits && quantity(c.resources.limits["{{ resource }}"]).compareTo(quantity("0")) > 0 && quantity(c.resources.limits["{{ resource }}"]).compareTo(quantity("{{ container_resource_policy_default_requests[resource] }}")) < 0 ? c.resources.limits["{{ resource }}"] : "{{ container_resource_policy_default_requests[resource] }}"){{ ',' if not loop.last else '' }}
+{% endfor %}
+                    }
+                  }
+                }
+              ){% if kind == 'initContainers' %} : []{% endif %}{{ ',' if not loop.last else '' }}
+{% endfor %}
+            }
+          }

@@ -1,0 +1,12 @@
+container_resource_policy_name: socrat-container-resource-defaults
+container_resource_policy_default_limits:
+  memory: 1Gi
+  ephemeral-storage: 4Gi
+container_resource_policy_default_requests:
+  cpu: 10m
+  memory: 32Mi
+  ephemeral-storage: 16Mi
+container_resource_policy_directory: /home/alchemmist/.cache/homelab-resource-policy
+container_resource_policy_reconcile: false
+container_resource_policy_exclude_nodes: []
+container_resource_policy_profiles: []
