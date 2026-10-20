@@ -1,0 +1,63 @@
+---
+- name: Check whether the current resolver has DNS servers
+  ansible.builtin.command: grep -Eq '^nameserver[[:space:]]+' /etc/resolv.conf
+  register: homelab_dns_present
+  changed_when: false
+  failed_when: homelab_dns_present.rc not in [0, 1]
+
+- name: Require DNS information from the active connection before recovery
+  ansible.builtin.command: grep -Eq '^nameserver[[:space:]]+' /run/NetworkManager/resolv.conf
+  changed_when: false
+  when: homelab_dns_present.rc == 1
+
+- name: Recover DNS from the active NetworkManager connection before package installation
+  ansible.builtin.copy:
+    src: /run/NetworkManager/resolv.conf
+    dest: /etc/resolv.conf
+    remote_src: true
+    backup: true
+    mode: '0644'
+  when: homelab_dns_present.rc == 1
+
+- name: Install the shared resolver manager for wired and wireless DHCP
+  ansible.builtin.apt:
+    name: resolvconf
+    state: present
+
+- name: Configure NetworkManager to publish DNS through the shared resolver
+  ansible.builtin.copy:
+    dest: /etc/NetworkManager/conf.d/20-homelab-dns.conf
+    content: |
+      [main]
+      dns=default
+      rc-manager=resolvconf
+    mode: '0644'
+
+- name: Enable shared resolver updates
+  ansible.builtin.systemd_service:
+    name: resolvconf
+    enabled: true
+    state: started
+
+- name: Use the combined resolver output
+  ansible.builtin.file:
+    src: /run/resolvconf/resolv.conf
+    dest: /etc/resolv.conf
+    state: link
+    force: true
+
+- name: Reload DNS management without reconnecting network interfaces
+  ansible.builtin.command: nmcli general reload conf
+  changed_when: false
+
+- name: Republish active connection DNS without reconnecting
+  ansible.builtin.command: nmcli general reload dns-full
+  changed_when: false
+
+- name: Verify the combined resolver has DNS servers
+  ansible.builtin.command: grep -Eq '^nameserver[[:space:]]+' /etc/resolv.conf
+  changed_when: false
+
+- name: Verify public DNS resolution
+  ansible.builtin.command: timeout 10 getent ahostsv4 github.com
+  changed_when: false

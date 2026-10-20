@@ -1,0 +1,13 @@
+---
+- name: Install an alternative desktop browser on socrat-3
+  hosts: socrat-3
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Install Falkon without changing the default browser
+      ansible.builtin.apt:
+        name: falkon
+        state: present
+        install_recommends: false
+        update_cache: true
+        cache_valid_time: 3600
