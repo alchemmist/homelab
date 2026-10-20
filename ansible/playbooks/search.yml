@@ -1,0 +1,4 @@
+---
+- import_playbook: searxng.yml
+- import_playbook: searxng-private-access.yml
+- import_playbook: open-webui-search.yml

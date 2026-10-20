@@ -5,6 +5,12 @@ rancher_wg_response_style: >-
   .dashboard.outlet .tabbed-container:has(#cluster-events) { min-width: 0; width: 100%; }
   .dashboard.outlet #cluster-events table.sortable-table td { overflow-wrap: anywhere; }
 syncthing_private_ui_extra_virtual_hosts:
+  - name: searxng
+    host: search.socrat.alchemmist.xyz
+    nodeName: socrat-0
+    upstream: http://searxng.llm.svc.cluster.local:8080
+    tlsSecret: searxng-private-tls
+    resolver: 10.43.0.10
   - name: open-webui
     host: llm.socrat.alchemmist.xyz
     nodeName: socrat-0

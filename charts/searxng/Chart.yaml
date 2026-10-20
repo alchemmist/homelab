@@ -1,0 +1,4 @@
+apiVersion: v2
+name: searxng
+version: 0.1.0
+appVersion: '2026.10.19-d47cb96bf'

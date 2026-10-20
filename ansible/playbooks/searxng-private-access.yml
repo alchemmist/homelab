@@ -1,0 +1,109 @@
+---
+- name: Publish private SearXNG HTTPS gateway
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  tags: [searxng_gateway]
+  vars:
+    searxng_private_directory: "{{ homelab_user_home }}/tmp-charts/searxng-private"
+    searxng_private_kubeconfig: /etc/rancher/k3s/k3s.yaml
+    searxng_private_tls_secret: searxng-private-tls
+    searxng_private_host: search.socrat.alchemmist.xyz
+    searxng_private_node: socrat-0
+  tasks:
+    - name: Create private staging directory
+      ansible.builtin.file:
+        path: "{{ searxng_private_directory }}"
+        state: directory
+        mode: '0700'
+
+    - name: Request private gateway certificate
+      ansible.builtin.command:
+        argv: [kubectl, --kubeconfig, "{{ searxng_private_kubeconfig }}", apply, -f, '-']
+        stdin: "{{ {'apiVersion': 'cert-manager.io/v1', 'kind': 'Certificate', 'metadata': {'name': searxng_private_tls_secret, 'namespace': 'syncthing'}, 'spec': {'secretName': searxng_private_tls_secret, 'dnsNames': [searxng_private_host], 'issuerRef': {'name': 'letsencrypt-http01', 'kind': 'ClusterIssuer'}}} | to_nice_yaml }}"
+      register: searxng_private_certificate
+      changed_when: "'created' in searxng_private_certificate.stdout or 'configured' in searxng_private_certificate.stdout"
+
+    - name: Wait for private gateway certificate
+      ansible.builtin.command:
+        argv: [kubectl, --kubeconfig, "{{ searxng_private_kubeconfig }}", -n, syncthing, wait, '--for=condition=Ready', 'certificate/{{ searxng_private_tls_secret }}', --timeout=300s]
+      changed_when: false
+
+    - name: Read existing private gateway values
+      ansible.builtin.command:
+        argv: [helm, get, values, syncthing, --namespace, syncthing, --kubeconfig, "{{ searxng_private_kubeconfig }}", --output, json]
+      register: searxng_private_gateway
+      changed_when: false
+      no_log: true
+
+    - name: Merge search virtual host while preserving existing hosts
+      ansible.builtin.set_fact:
+        searxng_private_gateway_values: "{{ (searxng_private_gateway.stdout | from_json) | combine({'privateGui': {'extraVirtualHosts': ((searxng_private_gateway.stdout | from_json).privateGui.extraVirtualHosts | default([]) | rejectattr('name', 'equalto', 'searxng') | list) + [{'name': 'searxng', 'host': searxng_private_host, 'nodeName': searxng_private_node, 'upstream': 'http://searxng.llm.svc.cluster.local:8080', 'tlsSecret': searxng_private_tls_secret, 'resolver': '10.43.0.10', 'clearAuthorization': false}]}}, recursive=true) }}"
+      no_log: true
+
+    - name: Stage private gateway chart
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../charts/syncthing/"
+        dest: "{{ searxng_private_directory }}/gateway-chart/"
+        mode: preserve
+
+    - name: Stage merged private gateway values
+      ansible.builtin.copy:
+        content: "{{ searxng_private_gateway_values | to_nice_yaml }}"
+        dest: "{{ searxng_private_directory }}/gateway-values.yaml"
+        mode: '0600'
+      no_log: true
+
+    - name: Install manifest comparison helper
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../files/helm_manifest_changed.py"
+        dest: "{{ searxng_private_directory }}/helm_manifest_changed.py"
+        mode: '0600'
+
+    - name: Compare private gateway manifests
+      ansible.builtin.command:
+        argv: [python3, "{{ searxng_private_directory }}/helm_manifest_changed.py", --release, syncthing, --chart, "{{ searxng_private_directory }}/gateway-chart", --namespace, syncthing, --values, "{{ searxng_private_directory }}/gateway-values.yaml", --kubeconfig, "{{ searxng_private_kubeconfig }}"]
+      register: searxng_private_gateway_diff
+      changed_when: false
+
+    - name: Publish the search endpoint inside WireGuard
+      ansible.builtin.command:
+        argv: [helm, upgrade, syncthing, "{{ searxng_private_directory }}/gateway-chart", --namespace, syncthing, --kubeconfig, "{{ searxng_private_kubeconfig }}", --reuse-values, --values, "{{ searxng_private_directory }}/gateway-values.yaml", --atomic, --wait, --timeout, 5m]
+      when: (searxng_private_gateway_diff.stdout | from_json).changed
+      changed_when: true
+
+- name: Publish SearXNG in the private WireGuard DNS
+  hosts: socrat-0:socrat-1:socrat-2
+  gather_facts: false
+  become: true
+  serial: 1
+  any_errors_fatal: true
+  tags: [searxng_dns]
+  tasks:
+    - name: Create the private DNS snippets directory
+      ansible.builtin.file:
+        path: /etc/homelab-private-dns.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Add only the SearXNG private DNS record
+      ansible.builtin.copy:
+        content: "host-record=search.socrat.alchemmist.xyz,{{ wg_socrat_nodes['socrat-0'].address }}\nlocal=/search.socrat.alchemmist.xyz/\n"
+        dest: /etc/homelab-private-dns.d/searxng.conf
+        owner: root
+        group: root
+        mode: '0644'
+      register: searxng_dns_record
+
+    - name: Validate private DNS configuration before restart
+      ansible.builtin.command: dnsmasq --test --conf-file=/etc/homelab-private-dns.conf
+      changed_when: false
+
+    - name: Activate the private SearXNG DNS record
+      ansible.builtin.systemd_service:
+        name: homelab-private-dns.service
+        state: restarted
+      when: searxng_dns_record.changed

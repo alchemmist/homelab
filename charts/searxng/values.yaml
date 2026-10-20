@@ -1,0 +1,15 @@
+image: docker.io/searxng/searxng@sha256:d81e14a4328ba7a57f297dff0472be629d30bf29580406c0d5b3bdab563c9bed
+nodeName: socrat-1
+secretName: searxng-secret
+baseUrl: https://search.socrat.alchemmist.xyz/
+engines:
+  - bing
+  - brave
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: '1'
+    memory: 768Mi
+    ephemeral-storage: 512Mi
