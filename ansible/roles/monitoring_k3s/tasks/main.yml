@@ -66,7 +66,24 @@
       - '180'
   changed_when: false
 
-- name: Publish native alert detail links on the Nodes dashboard
+- name: Resolve service rule detail links after Prometheus loads the rules
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ monitoring_k3s_remote_dir }}/resolve_alert_links.py"
+      - --dashboard
+      - "{{ monitoring_k3s_remote_dir }}/chart/dashboards/overview.json"
+      - --output
+      - "{{ monitoring_k3s_remote_dir }}/overview-alert-links.json"
+      - --values-key
+      - overviewAlertLinks
+      - --alert-name-prefix
+      - SocratService
+      - --timeout
+      - '180'
+  changed_when: false
+
+- name: Publish native alert detail links on the Nodes and Overview dashboards
   ansible.builtin.command:
     argv:
       - helm
@@ -80,6 +97,8 @@
       - --reuse-values
       - --values
       - "{{ monitoring_k3s_remote_dir }}/node-alert-links.json"
+      - --values
+      - "{{ monitoring_k3s_remote_dir }}/overview-alert-links.json"
       - "{{ '--wait' if monitoring_k3s_wait | bool else '--wait=false' }}"
       - --timeout
       - 5m

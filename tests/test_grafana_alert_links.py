@@ -86,6 +86,30 @@ class AlertLinksTest(unittest.TestCase):
         self.assertEqual(expected[0][0], 'ns-resource-uid.yaml')
         self.assertEqual(expected[0][2]['query'], 'up > 0')
 
+    def test_overview_service_links_preserve_other_panel_navigation(self):
+        service = dict(RULE, name='SocratServiceBlogUnavailable')
+        dashboard = {'panels': [
+            {'id': 5, 'targets': [{'expr': 'ALERTS{alertname="SocratNodeResourceContention"}'}]},
+            {'id': 17, 'targets': [{'expr': 'ALERTS{alertname=~"$alert_name"}'}]},
+            {'id': 301, 'targets': [{'expr': 'ALERTS{alertname="SocratServiceBlogUnavailable",service_id="blog"}'}]},
+        ]}
+        response = {'data': {'groups': [{'name': 'services', 'file': '/rules/services.yaml', 'rules': [service]}]}}
+        result = LINKS.resolve(dashboard, response, {}, 'overviewAlertLinks', 'SocratService')
+        self.assertEqual(set(result), {'overviewAlertLinks'})
+        self.assertEqual(set(result['overviewAlertLinks']), {'301'})
+        self.assertIn('SocratServiceBlogUnavailable', result['overviewAlertLinks']['301'][0]['url'])
+
+    def test_generic_alert_regex_is_not_a_literal_rule_name(self):
+        panel = {'targets': [{'expr': 'ALERTS{alertname=~".*"} or ALERTS{alertname=~"SocratService.*"}'}]}
+        self.assertEqual(LINKS.panel_rules(panel), set())
+
+    def test_expected_rules_apply_same_service_filter(self):
+        service = {'alert': 'SocratServiceBlogUnavailable', 'expr': 'up == 0'}
+        resources = {'items': [{'metadata': {'name': 'resource', 'namespace': 'ns', 'uid': 'uid'}, 'spec': {'groups': [{'name': 'group', 'rules': [service]}]}}]}
+        dashboard = {'panels': [{'id': 301, 'targets': [{'expr': 'ALERTS{alertname="SocratServiceBlogUnavailable"} or ALERTS{alertname="Other"}'}]}]}
+        expected = LINKS.expected_rules(dashboard, resources, lambda expression: expression, 'SocratService')
+        self.assertEqual([rule['name'] for _, _, rule in expected], ['SocratServiceBlogUnavailable'])
+
     def test_query_normalization(self):
         self.assertEqual(LINKS.query_fingerprint('(up{foo="bar",} > 0) # comment'), LINKS.query_fingerprint('up{foo="bar"}>0'))
 

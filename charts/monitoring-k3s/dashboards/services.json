@@ -69,7 +69,7 @@
         "x": 0,
         "y": 0,
         "w": 6,
-        "h": 4
+        "h": 2
       },
       "description": "Number of selected Deployments and StatefulSets with replica metrics at the end of the selected time range. This counts workloads, including those scaled to zero, rather than network Services or externally reachable applications.",
       "datasource": {
@@ -103,7 +103,13 @@
         "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "auto",
-        "textMode": "auto"
+        "textMode": "auto",
+        "text": {
+          "titleSize": 11,
+          "valueSize": 18
+        },
+        "orientation": "horizontal",
+        "wideLayout": true
       },
       "targets": [
         {
@@ -128,7 +134,7 @@
         "x": 6,
         "y": 0,
         "w": 6,
-        "h": 4
+        "h": 2
       },
       "description": "Total available Deployment replicas and ready StatefulSet replicas for the selected workloads at the end of the selected time range. This is Kubernetes readiness, not an external application health check.",
       "datasource": {
@@ -162,7 +168,13 @@
         "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "auto",
-        "textMode": "auto"
+        "textMode": "auto",
+        "text": {
+          "titleSize": 11,
+          "valueSize": 18
+        },
+        "orientation": "horizontal",
+        "wideLayout": true
       },
       "targets": [
         {
@@ -187,7 +199,7 @@
         "x": 12,
         "y": 0,
         "w": 6,
-        "h": 4
+        "h": 2
       },
       "description": "Total positive shortfall between desired and available or ready replicas for the selected workloads at the end of the selected time range. Zero means no measured shortfall; absent workload metrics cannot establish health.",
       "datasource": {
@@ -234,7 +246,13 @@
         "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "auto",
-        "textMode": "auto"
+        "textMode": "auto",
+        "text": {
+          "titleSize": 11,
+          "valueSize": 18
+        },
+        "orientation": "horizontal",
+        "wideLayout": true
       },
       "targets": [
         {
@@ -259,7 +277,7 @@
         "x": 18,
         "y": 0,
         "w": 6,
-        "h": 4
+        "h": 2
       },
       "description": "Estimated container restarts across the selected workloads during the hour ending at the selected range end. The window remains one hour even when the dashboard range changes. Zero means no observed counter increase; missing data is not zero.",
       "datasource": {
@@ -306,7 +324,13 @@
         "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "auto",
-        "textMode": "auto"
+        "textMode": "auto",
+        "text": {
+          "titleSize": 11,
+          "valueSize": 18
+        },
+        "orientation": "horizontal",
+        "wideLayout": true
       },
       "targets": [
         {
@@ -331,7 +355,7 @@
       "panels": [],
       "gridPos": {
         "x": 0,
-        "y": 4,
+        "y": 2,
         "w": 24,
         "h": 1
       }
@@ -342,7 +366,7 @@
       "type": "table",
       "gridPos": {
         "x": 0,
-        "y": 5,
+        "y": 3,
         "w": 24,
         "h": 9
       },
@@ -430,7 +454,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 14,
+        "y": 12,
         "w": 12,
         "h": 8
       },
@@ -489,7 +513,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 12,
-        "y": 14,
+        "y": 12,
         "w": 12,
         "h": 8
       },
@@ -550,7 +574,7 @@
       "panels": [],
       "gridPos": {
         "x": 0,
-        "y": 22,
+        "y": 20,
         "w": 24,
         "h": 1
       }
@@ -561,7 +585,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 23,
+        "y": 21,
         "w": 12,
         "h": 9
       },
@@ -620,7 +644,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 12,
-        "y": 23,
+        "y": 21,
         "w": 12,
         "h": 9
       },
@@ -679,7 +703,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 32,
+        "y": 30,
         "w": 12,
         "h": 8
       },
@@ -738,7 +762,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 12,
-        "y": 32,
+        "y": 30,
         "w": 12,
         "h": 8
       },
@@ -799,7 +823,7 @@
       "panels": [],
       "gridPos": {
         "x": 0,
-        "y": 40,
+        "y": 38,
         "w": 24,
         "h": 1
       }
@@ -810,7 +834,7 @@
       "type": "table",
       "gridPos": {
         "x": 0,
-        "y": 41,
+        "y": 39,
         "w": 12,
         "h": 9
       },
@@ -884,7 +908,7 @@
       "type": "table",
       "gridPos": {
         "x": 12,
-        "y": 41,
+        "y": 39,
         "w": 12,
         "h": 9
       },
@@ -958,7 +982,7 @@
       "type": "table",
       "gridPos": {
         "x": 0,
-        "y": 50,
+        "y": 48,
         "w": 24,
         "h": 8
       },

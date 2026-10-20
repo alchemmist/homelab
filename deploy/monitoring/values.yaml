@@ -184,6 +184,11 @@ grafana:
       provider:
         foldersFromFilesStructure: true
   grafana.ini:
+    server:
+      domain: grafana.socrat.alchemmist.xyz
+      root_url: https://grafana.socrat.alchemmist.xyz/
+      enforce_domain: false
+      serve_from_sub_path: false
     dashboards:
       default_home_dashboard_path: /tmp/dashboards/socrat-overview.json
     analytics:
