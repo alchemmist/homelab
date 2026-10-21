@@ -1,0 +1,6 @@
+apiVersion: v2
+name: thanos
+version: 0.1.0
+appVersion: "v0.42.4"
+type: application
+description: Age cascade for Socrat metrics

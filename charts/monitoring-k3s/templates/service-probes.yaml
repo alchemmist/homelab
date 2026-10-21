@@ -9,13 +9,13 @@ data:
     modules:
       http_2xx:
         prober: http
-        timeout: 8s
+        timeout: 3s
         http:
           preferred_ip_protocol: ip4
           follow_redirects: true
       tcp_connect:
         prober: tcp
-        timeout: 8s
+        timeout: 3s
         tcp:
           preferred_ip_protocol: ip4
 ---
@@ -107,16 +107,16 @@ spec:
       app: monitoring-service-probes
   endpoints:
     - port: http-metrics
-      interval: 30s
-      scrapeTimeout: 10s
+      interval: 5s
+      scrapeTimeout: 4s
       relabelings:
         - targetLabel: job
           replacement: service-probes-exporter
 {{- range $probes.targets }}
     - port: http-metrics
       path: /probe
-      interval: 30s
-      scrapeTimeout: 10s
+      interval: 5s
+      scrapeTimeout: 4s
       params:
         target: [{{ required "service probe target url is required" .url | quote }}]
         module: [{{ .module | default "http_2xx" | quote }}]

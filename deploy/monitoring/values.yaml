@@ -54,18 +54,19 @@ prometheus:
   prometheusSpec:
     replicas: 1
     nodeSelector:
-      kubernetes.io/hostname: socrat-1
-    retention: 7d
-    retentionSize: 6GB
-    scrapeInterval: 30s
+      kubernetes.io/hostname: socrat-0
+    retention: 12h
+    scrapeInterval: 5s
+    scrapeTimeout: 4s
     evaluationInterval: 30s
+    disableCompaction: true
     walCompression: true
     resources:
       requests:
-        cpu: 200m
-        memory: 1Gi
+        cpu: 500m
+        memory: 4Gi
       limits:
-        memory: 2Gi
+        memory: 8Gi
     storageSpec:
       volumeClaimTemplate:
         spec:
@@ -74,6 +75,26 @@ prometheus:
           resources:
             requests:
               storage: 10Gi
+    volumes:
+      - name: thanos-data
+        hostPath:
+          path: /var/lib/socrat-thanos
+          type: Directory
+    thanos:
+      image: quay.io/thanos/thanos:v0.42.4
+      resources:
+        requests:
+          cpu: 50m
+          memory: 256Mi
+        limits:
+          memory: 1Gi
+      volumeMounts:
+        - name: thanos-data
+          mountPath: /var/lib/socrat-thanos
+      objectStorageConfig:
+        existingSecret:
+          name: thanos-objstore-raw
+          key: objstore.yml
     serviceMonitorSelector:
       matchLabels:
         release: kube-prometheus-stack
@@ -106,6 +127,10 @@ prometheus:
     scrapeConfigNamespaceSelector:
       matchLabels:
         kubernetes.io/metadata.name: cattle-monitoring-system
+  thanosService:
+    enabled: true
+  thanosServiceMonitor:
+    enabled: true
 alertmanager:
   config:
     global:
@@ -178,6 +203,8 @@ grafana:
         memory: 96Mi
       limits:
         memory: 256Mi
+    datasources:
+      url: http://thanos-query.cattle-monitoring-system.svc.cluster.local:9090
     dashboards:
       searchNamespace: ALL
       folderAnnotation: grafana_folder

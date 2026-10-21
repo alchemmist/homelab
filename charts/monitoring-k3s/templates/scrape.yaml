@@ -39,8 +39,8 @@ spec:
       app: monitoring-etcd-metrics
   endpoints:
     - port: http-metrics
-      interval: 30s
-      scrapeTimeout: 15s
+      interval: 5s
+      scrapeTimeout: 4s
       authorization:
         type: Bearer
         credentials:

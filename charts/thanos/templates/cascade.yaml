@@ -1,0 +1,144 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: thanos-cascade
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: thanos-cascade
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["thanos-compactor"]
+    verbs: ["get"]
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale"]
+    resourceNames: ["thanos-compactor"]
+    verbs: ["get", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: thanos-cascade
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: thanos-cascade
+subjects:
+  - kind: ServiceAccount
+    name: thanos-cascade
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: thanos-cascade
+  labels:
+    app: thanos-cascade
+spec:
+  schedule: "30 * * * *"
+  timeZone: Europe/Moscow
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 7200
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 3600
+      template:
+        metadata:
+          labels:
+            app: thanos-cascade
+        spec:
+          serviceAccountName: thanos-cascade
+          restartPolicy: Never
+          nodeSelector:
+            kubernetes.io/hostname: socrat-0
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 2000
+            fsGroup: 2000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: cascade
+              image: {{ .Values.images.cascade }}
+              imagePullPolicy: IfNotPresent
+              command: ["python3", "/scripts/cascade.py", "run"]
+              env:
+                - name: THANOS_BIN
+                  value: /usr/local/bin/thanos
+                - name: NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+                - name: COMPACTOR_NAME
+                  value: thanos-compactor
+                - name: OBJSTORE_RAW
+                  value: /etc/thanos/raw/objstore.yml
+                - name: OBJSTORE_FIVE
+                  value: /etc/thanos/five/objstore.yml
+                - name: OBJSTORE_HOUR
+                  value: /etc/thanos/hour/objstore.yml
+                - name: PROMETHEUS_URL
+                  value: {{ .Values.prometheusURL | quote }}
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                  ephemeral-storage: 64Mi
+                limits:
+                  memory: 512Mi
+                  ephemeral-storage: 1Gi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+              volumeMounts:
+                - name: script
+                  mountPath: /scripts
+                  readOnly: true
+                - name: raw
+                  mountPath: /etc/thanos/raw
+                  readOnly: true
+                - name: five
+                  mountPath: /etc/thanos/five
+                  readOnly: true
+                - name: hour
+                  mountPath: /etc/thanos/hour
+                  readOnly: true
+                - name: thanos
+                  mountPath: /usr/local/bin/thanos
+                  readOnly: true
+                - name: tmp
+                  mountPath: /tmp
+                - name: rawdata
+                  mountPath: /var/lib/socrat-thanos
+          volumes:
+            - name: script
+              configMap:
+                name: thanos-cascade
+                defaultMode: 0555
+            - name: raw
+              secret:
+                secretName: {{ .Values.objstoreSecretRaw }}
+            - name: five
+              secret:
+                secretName: {{ .Values.objstoreSecretFive }}
+            - name: hour
+              secret:
+                secretName: {{ .Values.objstoreSecretHour }}
+            - name: thanos
+              hostPath:
+                path: /usr/local/bin/thanos
+                type: File
+            - name: tmp
+              emptyDir: {}
+            - name: rawdata
+              hostPath:
+                path: /var/lib/socrat-thanos
+                type: Directory

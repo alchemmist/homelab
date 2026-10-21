@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: thanos-objstore-raw
+  labels:
+    app.kubernetes.io/part-of: thanos
+data:
+  objstore.yml: |
+    type: FILESYSTEM
+    config:
+      directory: {{ .Values.rawDirectory }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: thanos-cascade
+  labels:
+    app.kubernetes.io/part-of: thanos
+data:
+  cascade.py: |
+{{ .Files.Get "files/cascade.py" | indent 4 }}

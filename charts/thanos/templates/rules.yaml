@@ -1,0 +1,102 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: thanos-cascade
+  labels:
+    release: kube-prometheus-stack
+    app.kubernetes.io/part-of: thanos
+spec:
+  groups:
+    - name: socrat.thanos
+      rules:
+        - alert: ThanosCascadeStale
+          expr: |
+            (
+              kube_cronjob_status_last_successful_time{cronjob="thanos-cascade",namespace="cattle-monitoring-system"} > 0
+              and
+              time() - kube_cronjob_status_last_successful_time{cronjob="thanos-cascade",namespace="cattle-monitoring-system"} > 10800
+            )
+            or
+            (
+              kube_cronjob_created{cronjob="thanos-cascade",namespace="cattle-monitoring-system"} > 0
+              and
+              time() - kube_cronjob_created{cronjob="thanos-cascade",namespace="cattle-monitoring-system"} > 10800
+              and
+              kube_cronjob_status_last_successful_time{cronjob="thanos-cascade",namespace="cattle-monitoring-system"} == 0
+            )
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: Metric block shipping has not succeeded for three hours.
+            description: The thanos-cascade CronJob in cattle-monitoring-system has had no successful run for 3h. Finished 5-minute and hourly blocks stay on socrat-0 until the next successful run. The alert becomes Firing after 10m.
+            rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/cronjob/cattle-monitoring-system/thanos-cascade'
+        - alert: ThanosCompactorHalted
+          expr: thanos_compact_halted == 1
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: A Thanos compactor has halted.
+            description: A Thanos compactor reports thanos_compact_halted. Downsampling or deletion on that bucket stops until the compactor is repaired. The alert becomes Firing after 10m.
+            rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/cattle-monitoring-system/{{ "{{ $labels.pod }}" }}'
+        - alert: ThanosCompactorScaledDown
+          expr: kube_deployment_spec_replicas{deployment="thanos-compactor",namespace="cattle-monitoring-system"} == 0
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: The raw-data compactor has stayed scaled to zero.
+            description: thanos-compactor has had zero replicas for 30m. The shipping job scales it down only while it runs. A crashed job can leave downsampling stopped. The alert becomes Firing after 30m.
+            rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/deployment/cattle-monitoring-system/thanos-compactor'
+        - alert: ThanosSidecarDown
+          expr: absent(up{container="thanos-sidecar"} == 1)
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: The Prometheus Thanos sidecar is down.
+            description: No thanos-sidecar target is up. Fresh samples and block upload from socrat-0 stop until the sidecar returns. The alert becomes Firing after 10m.
+            rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/statefulset/cattle-monitoring-system/prometheus-kube-prometheus-stack-prometheus'
+        - alert: ThanosRawDiskLow
+          expr: |
+            max(
+              node_filesystem_avail_bytes{job="node-exporter",mountpoint="/",fstype=~"ext4|xfs"}
+              * on(instance) group_left(nodename)
+              node_uname_info{job="node-exporter",nodename="socrat-0"}
+            ) < 80 * 1024 * 1024 * 1024
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: socrat-0 has less than 80 GiB free.
+            description: The filesystem on socrat-0 has been under 80 GiB free for 15m. This is a warning. Raw blocks are not deleted because the disk is low.
+            rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/socrat-0'
+        - alert: ThanosFiveDiskLow
+          expr: |
+            max(
+              node_filesystem_avail_bytes{job="node-exporter",mountpoint="/",fstype=~"ext4|xfs"}
+              * on(instance) group_left(nodename)
+              node_uname_info{job="node-exporter",nodename="socrat-1"}
+            ) < 50 * 1024 * 1024 * 1024
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: socrat-1 has less than 50 GiB free.
+            description: The filesystem on socrat-1 has been under 50 GiB free for 15m. The shipping job starts removing the oldest 5-minute blocks that already have an hourly copy when free space falls under 40 GiB. This alert does not delete data by itself.
+            rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/socrat-1'
+        - alert: ThanosScrapeNodeMemoryLow
+          expr: |
+            max(
+              node_memory_MemAvailable_bytes{job="node-exporter"}
+              * on(instance) group_left(nodename)
+              node_uname_info{job="node-exporter",nodename="socrat-0"}
+            ) < 3 * 1024 * 1024 * 1024
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: socrat-0 has less than 3 GiB of available memory.
+            description: socrat-0 MemAvailable has stayed under 3 GiB for 15m after the five-second scrape moved there. Check Prometheus and vLLM before leaving the new scrape interval in place.
+            rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/socrat-0'

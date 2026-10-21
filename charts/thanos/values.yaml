@@ -1,0 +1,296 @@
+images:
+  thanos: quay.io/thanos/thanos:v0.42.4
+  minio: quay.io/minio/minio:RELEASE.2025-10-15T17-29-55Z
+  minioClient: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+  cascade: python:3.12-slim
+rawDirectory: /var/lib/socrat-thanos
+workHostPath: /var/lib/socrat-thanos-work
+minioHostPath: /var/lib/socrat-thanos-minio
+objstoreSecretRaw: thanos-objstore-raw
+objstoreSecretFive: thanos-objstore-5m
+objstoreSecretHour: thanos-objstore-1h
+minioSecretFive: thanos-minio-5m-credentials
+minioSecretHour: thanos-minio-1h-credentials
+sidecarService: kube-prometheus-stack-thanos-discovery.cattle-monitoring-system.svc.cluster.local:10901
+prometheusURL: http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090
+components:
+  thanos-query:
+    node: socrat-1
+    servicePort: 9090
+    args:
+      - query
+      - --query.auto-downsampling
+      - --query.timeout=2m
+      - --http-address=0.0.0.0:10902
+      - --grpc-address=0.0.0.0:10901
+      - --endpoint=kube-prometheus-stack-thanos-discovery.cattle-monitoring-system.svc.cluster.local:10901
+      - --endpoint=thanos-store.cattle-monitoring-system.svc.cluster.local:10901
+      - --endpoint=thanos-store-5m.cattle-monitoring-system.svc.cluster.local:10901
+      - --endpoint=thanos-store-1h.cattle-monitoring-system.svc.cluster.local:10901
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 2Gi
+        ephemeral-storage: 1Gi
+    volumeMounts:
+      - name: tmp
+        mountPath: /tmp
+    volumes:
+      - name: tmp
+        emptyDir: {}
+  thanos-store:
+    node: socrat-0
+    args:
+      - store
+      - --objstore.config-file=/etc/thanos/objstore.yml
+      - --data-dir=/var/thanos/store
+      - --max-time=-12h
+      - --consistency-delay=30m
+      - --ignore-deletion-marks-delay=1h
+      - --http-address=0.0.0.0:10902
+      - --grpc-address=0.0.0.0:10901
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 2Gi
+        ephemeral-storage: 1Gi
+    volumeMounts:
+      - name: objstore
+        mountPath: /etc/thanos
+        readOnly: true
+      - name: data
+        mountPath: /var/thanos/store
+      - name: raw
+        mountPath: /var/lib/socrat-thanos
+      - name: tmp
+        mountPath: /tmp
+    volumes:
+      - name: objstore
+        configMap:
+          name: thanos-objstore-raw
+      - name: data
+        emptyDir: {}
+      - name: raw
+        hostPath:
+          path: /var/lib/socrat-thanos
+          type: Directory
+      - name: tmp
+        emptyDir: {}
+  thanos-store-5m:
+    node: socrat-1
+    args:
+      - store
+      - --objstore.config-file=/etc/thanos/objstore.yml
+      - --data-dir=/var/thanos/store
+      - --consistency-delay=30m
+      - --ignore-deletion-marks-delay=1h
+      - --http-address=0.0.0.0:10902
+      - --grpc-address=0.0.0.0:10901
+    resources:
+      requests:
+        cpu: 50m
+        memory: 256Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 1Gi
+        ephemeral-storage: 1Gi
+    volumeMounts:
+      - name: objstore
+        mountPath: /etc/thanos
+        readOnly: true
+      - name: data
+        mountPath: /var/thanos/store
+      - name: tmp
+        mountPath: /tmp
+    volumes:
+      - name: objstore
+        secret:
+          secretName: thanos-objstore-5m
+      - name: data
+        emptyDir: {}
+      - name: tmp
+        emptyDir: {}
+  thanos-store-1h:
+    node: socrat-3
+    args:
+      - store
+      - --objstore.config-file=/etc/thanos/objstore.yml
+      - --data-dir=/var/thanos/store
+      - --consistency-delay=30m
+      - --ignore-deletion-marks-delay=1h
+      - --http-address=0.0.0.0:10902
+      - --grpc-address=0.0.0.0:10901
+    resources:
+      requests:
+        cpu: 25m
+        memory: 128Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 384Mi
+        ephemeral-storage: 1Gi
+    volumeMounts:
+      - name: objstore
+        mountPath: /etc/thanos
+        readOnly: true
+      - name: data
+        mountPath: /var/thanos/store
+      - name: tmp
+        mountPath: /tmp
+    volumes:
+      - name: objstore
+        secret:
+          secretName: thanos-objstore-1h
+      - name: data
+        emptyDir: {}
+      - name: tmp
+        emptyDir: {}
+  thanos-compactor:
+    node: socrat-0
+    args:
+      - compact
+      - --objstore.config-file=/etc/thanos/objstore.yml
+      - --data-dir=/var/thanos/work
+      - --retention.resolution-raw=0d
+      - --retention.resolution-5m=0d
+      - --retention.resolution-1h=0d
+      - --delete-delay=1h
+      - --consistency-delay=30m
+      - --wait
+      - --http-address=0.0.0.0:10902
+    resources:
+      requests:
+        cpu: 100m
+        memory: 1Gi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 3Gi
+        ephemeral-storage: 1Gi
+    volumeMounts:
+      - name: objstore
+        mountPath: /etc/thanos
+        readOnly: true
+      - name: raw
+        mountPath: /var/lib/socrat-thanos
+      - name: work
+        mountPath: /var/thanos/work
+      - name: tmp
+        mountPath: /tmp
+    volumes:
+      - name: objstore
+        configMap:
+          name: thanos-objstore-raw
+      - name: raw
+        hostPath:
+          path: /var/lib/socrat-thanos
+          type: Directory
+      - name: work
+        hostPath:
+          path: /var/lib/socrat-thanos-work
+          type: Directory
+      - name: tmp
+        emptyDir: {}
+  thanos-compactor-5m:
+    node: socrat-1
+    args:
+      - compact
+      - --objstore.config-file=/etc/thanos/objstore.yml
+      - --data-dir=/var/thanos/work
+      - --downsampling.disable
+      - --retention.resolution-raw=0d
+      - --retention.resolution-5m=0d
+      - --retention.resolution-1h=0d
+      - --delete-delay=1h
+      - --consistency-delay=30m
+      - --wait
+      - --http-address=0.0.0.0:10902
+    resources:
+      requests:
+        cpu: 25m
+        memory: 128Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 1Gi
+    volumeMounts:
+      - name: objstore
+        mountPath: /etc/thanos
+        readOnly: true
+      - name: work
+        mountPath: /var/thanos/work
+      - name: tmp
+        mountPath: /tmp
+    volumes:
+      - name: objstore
+        secret:
+          secretName: thanos-objstore-5m
+      - name: work
+        emptyDir: {}
+      - name: tmp
+        emptyDir: {}
+  thanos-compactor-1h:
+    node: socrat-3
+    args:
+      - compact
+      - --objstore.config-file=/etc/thanos/objstore.yml
+      - --data-dir=/var/thanos/work
+      - --downsampling.disable
+      - --retention.resolution-raw=0d
+      - --retention.resolution-5m=0d
+      - --retention.resolution-1h=17520h
+      - --delete-delay=1h
+      - --consistency-delay=30m
+      - --wait
+      - --http-address=0.0.0.0:10902
+    resources:
+      requests:
+        cpu: 25m
+        memory: 128Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 384Mi
+        ephemeral-storage: 1Gi
+    volumeMounts:
+      - name: objstore
+        mountPath: /etc/thanos
+        readOnly: true
+      - name: work
+        mountPath: /var/thanos/work
+      - name: tmp
+        mountPath: /tmp
+    volumes:
+      - name: objstore
+        secret:
+          secretName: thanos-objstore-1h
+      - name: work
+        emptyDir: {}
+      - name: tmp
+        emptyDir: {}
+minio:
+  thanos-minio-5m:
+    node: socrat-1
+    secret: thanos-minio-5m-credentials
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 1Gi
+  thanos-minio-1h:
+    node: socrat-3
+    secret: thanos-minio-1h-credentials
+    resources:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 256Mi
+        ephemeral-storage: 1Gi

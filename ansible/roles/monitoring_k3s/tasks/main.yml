@@ -28,6 +28,24 @@
   changed_when: "'created' in monitoring_k3s_secret.stdout"
   no_log: true
 
+- name: Copy the Prometheus scrape guard
+  ansible.builtin.copy:
+    src: prometheus_scrape_guard.py
+    dest: "{{ monitoring_k3s_remote_dir }}/prometheus_scrape_guard.py"
+    mode: "0600"
+
+- name: Read the Prometheus custom resource
+  ansible.builtin.command:
+    argv: ["{{ monitoring_k3s_binary | default('/usr/local/bin/k3s') }}", kubectl, --kubeconfig, "{{ monitoring_k3s_kubeconfig }}", -n, "{{ monitoring_k3s_namespace }}", get, prometheus, -o, json]
+  register: monitoring_k3s_prometheus
+  changed_when: false
+
+- name: Refuse five-second probes until Prometheus can take them
+  ansible.builtin.command:
+    argv: [python3, "{{ monitoring_k3s_remote_dir }}/prometheus_scrape_guard.py"]
+    stdin: "{{ monitoring_k3s_prometheus.stdout }}"
+  changed_when: false
+
 - name: Install private K3s metrics integration
   ansible.builtin.command:
     argv:
