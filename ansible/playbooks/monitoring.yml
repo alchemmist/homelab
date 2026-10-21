@@ -5,6 +5,8 @@
   become: false
   any_errors_fatal: true
   roles:
+    - role: monitoring_thanos
+      tags: [monitoring_thanos, monitoring_base]
     - role: monitoring_stack
       tags: [monitoring_base]
     - role: monitoring_k3s

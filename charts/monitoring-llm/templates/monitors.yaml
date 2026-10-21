@@ -13,8 +13,8 @@ spec:
   podMetricsEndpoints:
     - port: {{ $monitor.port }}
       path: /metrics
-      interval: 30s
-      scrapeTimeout: 15s
+      interval: 5s
+      scrapeTimeout: 4s
       {{- if eq $monitor.name "litellm" }}
       authorization:
         type: Bearer

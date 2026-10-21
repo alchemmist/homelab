@@ -1,0 +1,153 @@
+---
+- name: Read the Prometheus node requested by the monitoring values
+  ansible.builtin.set_fact:
+    monitoring_prometheus_desired_node: "{{ (lookup('file', playbook_dir + '/../../deploy/monitoring/values.yaml') | from_yaml).prometheus.prometheusSpec.nodeSelector['kubernetes.io/hostname'] }}"
+
+- name: Create the Thanos staging directory
+  ansible.builtin.file:
+    path: "{{ monitoring_thanos_directory }}"
+    state: directory
+    mode: "0700"
+
+- name: Copy the Prometheus relocate helper
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../roles/monitoring_stack/files/prometheus_relocate.py"
+    dest: "{{ monitoring_thanos_directory }}/prometheus_relocate.py"
+    mode: "0700"
+
+- name: Read Prometheus pods before installing Thanos
+  ansible.builtin.command:
+    argv: ["{{ monitoring_thanos_k3s_binary }}", kubectl, --kubeconfig, "{{ monitoring_thanos_kubeconfig }}", -n, "{{ monitoring_thanos_namespace }}", get, pods, -l, app.kubernetes.io/name=prometheus, -o, json]
+  register: monitoring_thanos_prometheus_pods
+  changed_when: false
+  failed_when: false
+
+- name: Read persistent volumes before installing Thanos
+  ansible.builtin.command:
+    argv: ["{{ monitoring_thanos_k3s_binary }}", kubectl, --kubeconfig, "{{ monitoring_thanos_kubeconfig }}", get, pv, -o, json]
+  register: monitoring_thanos_persistent_volumes
+  changed_when: false
+
+- name: Decide whether Prometheus can leave socrat-1
+  ansible.builtin.command:
+    argv: [python3, "{{ monitoring_thanos_directory }}/prometheus_relocate.py"]
+    stdin: "{{ {'desired': monitoring_prometheus_desired_node, 'relocate': monitoring_prometheus_relocate | default(false) | bool, 'pods': ((monitoring_thanos_prometheus_pods.stdout | from_json).items if monitoring_thanos_prometheus_pods.rc == 0 else []), 'volumes': (monitoring_thanos_persistent_volumes.stdout | from_json).items} | to_json }}"
+  register: monitoring_thanos_prometheus_decision
+  changed_when: false
+
+- name: Refuse to install the cascade while Prometheus data is still on socrat-1
+  ansible.builtin.fail:
+    msg: Rerun with -e monitoring_prometheus_relocate=true. That deletes only the Prometheus TSDB PVC and the current 30-second history. Grafana and Alertmanager volumes stay on socrat-1.
+  when: (monitoring_thanos_prometheus_decision.stdout | from_json).action == 'refuse'
+
+- name: Measure cascade node capacity
+  ansible.builtin.command:
+    argv:
+      - python3
+      - -c
+      - |
+        import json, os
+        disk = os.statvfs("/")
+        memory = dict(line.split(":", 1) for line in open("/proc/meminfo"))
+        print(json.dumps({"disk_available": disk.f_bavail * disk.f_frsize, "memory_available": int(memory["MemAvailable"].split()[0]) * 1024}))
+  delegate_to: "{{ item.name }}"
+  loop: "{{ monitoring_thanos_nodes }}"
+  register: monitoring_thanos_capacity
+  changed_when: false
+
+- name: Require disk and memory headroom for the metric cascade
+  ansible.builtin.assert:
+    that:
+      - (item.stdout | from_json).disk_available | int >= item.item.disk_bytes | int
+      - item.item.memory_bytes | int == 0 or (item.stdout | from_json).memory_available | int >= item.item.memory_bytes | int
+    fail_msg: "Thanos needs 80 GiB and 6 GiB available RAM on socrat-0, 40 GiB on socrat-1, and 20 GiB on socrat-3."
+  loop: "{{ monitoring_thanos_capacity.results }}"
+
+- name: Create the Thanos raw directories on socrat-0
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "1000"
+    group: "2000"
+    mode: "0775"
+  loop:
+    - /var/lib/socrat-thanos
+    - /var/lib/socrat-thanos-work
+  become: true
+
+- name: Create the single-disk MinIO directories
+  ansible.builtin.file:
+    path: /var/lib/socrat-thanos-minio
+    state: directory
+    owner: "1000"
+    group: "1000"
+    mode: "0775"
+  delegate_to: "{{ item }}"
+  loop:
+    - socrat-1
+    - socrat-3
+  become: true
+
+- name: Download the pinned Thanos archive
+  ansible.builtin.get_url:
+    url: "https://github.com/thanos-io/thanos/releases/download/{{ monitoring_thanos_version }}/thanos-{{ monitoring_thanos_version }}.linux-amd64.tar.gz"
+    dest: "{{ monitoring_thanos_directory }}/thanos.tar.gz"
+    checksum: "sha256:{{ monitoring_thanos_archive_sha256 }}"
+    mode: "0644"
+
+- name: Extract the Thanos binary
+  ansible.builtin.unarchive:
+    src: "{{ monitoring_thanos_directory }}/thanos.tar.gz"
+    dest: "{{ monitoring_thanos_directory }}"
+    remote_src: true
+    creates: "{{ monitoring_thanos_directory }}/thanos-{{ monitoring_thanos_version }}.linux-amd64/thanos"
+
+- name: Install the Thanos binary on socrat-0
+  ansible.builtin.copy:
+    src: "{{ monitoring_thanos_directory }}/thanos-{{ monitoring_thanos_version }}.linux-amd64/thanos"
+    dest: /usr/local/bin/thanos
+    mode: "0755"
+    remote_src: true
+  become: true
+
+- name: Copy the object-store secret helper
+  ansible.builtin.copy:
+    src: ensure_objstore_secrets.py
+    dest: "{{ monitoring_thanos_directory }}/ensure_objstore_secrets.py"
+    mode: "0700"
+
+- name: Ensure Thanos object-store secrets exist
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ monitoring_thanos_directory }}/ensure_objstore_secrets.py"
+      - "{{ monitoring_thanos_k3s_binary }}"
+      - "{{ monitoring_thanos_kubeconfig }}"
+      - "{{ monitoring_thanos_namespace }}"
+  register: monitoring_thanos_secrets
+  changed_when: monitoring_thanos_secrets.stdout == 'created'
+  no_log: true
+
+- name: Stage the Thanos chart
+  ansible.builtin.copy:
+    src: "{{ monitoring_thanos_chart_source }}/"
+    dest: "{{ monitoring_thanos_directory }}/chart/"
+    mode: "0600"
+    directory_mode: "0700"
+
+- name: Install Thanos
+  ansible.builtin.command:
+    argv:
+      - "{{ monitoring_thanos_helm_binary }}"
+      - upgrade
+      - --install
+      - "{{ monitoring_thanos_release }}"
+      - "{{ monitoring_thanos_directory }}/chart"
+      - --namespace
+      - "{{ monitoring_thanos_namespace }}"
+      - --kubeconfig
+      - "{{ monitoring_thanos_kubeconfig }}"
+      - --wait
+      - --timeout
+      - 10m
+  changed_when: true

@@ -126,6 +126,68 @@
   ansible.builtin.command: python3 -c 'import yaml'
   changed_when: false
 
+- name: Copy the Prometheus relocate helper
+  ansible.builtin.copy:
+    src: prometheus_relocate.py
+    dest: "{{ monitoring_directory }}/prometheus_relocate.py"
+    mode: '0700'
+
+- name: Read the Prometheus node requested by the values
+  ansible.builtin.set_fact:
+    monitoring_prometheus_desired_node: "{{ (lookup('file', monitoring_values_source) | from_yaml).prometheus.prometheusSpec.nodeSelector['kubernetes.io/hostname'] }}"
+
+- name: Read Prometheus pods
+  ansible.builtin.command:
+    argv: ["{{ monitoring_k3s_binary }}", kubectl, --kubeconfig, "{{ monitoring_kubeconfig }}", -n, "{{ monitoring_namespace }}", get, pods, -l, app.kubernetes.io/name=prometheus, -o, json]
+  register: monitoring_prometheus_pods
+  changed_when: false
+  failed_when: false
+
+- name: Read persistent volumes
+  ansible.builtin.command:
+    argv: ["{{ monitoring_k3s_binary }}", kubectl, --kubeconfig, "{{ monitoring_kubeconfig }}", get, pv, -o, json]
+  register: monitoring_persistent_volumes
+  changed_when: false
+
+- name: Decide whether the Prometheus volume can move
+  ansible.builtin.command:
+    argv: [python3, "{{ monitoring_directory }}/prometheus_relocate.py"]
+    stdin: "{{ {'desired': monitoring_prometheus_desired_node, 'relocate': monitoring_prometheus_relocate | bool, 'pods': ((monitoring_prometheus_pods.stdout | from_json).items if monitoring_prometheus_pods.rc == 0 else []), 'volumes': (monitoring_persistent_volumes.stdout | from_json).items} | to_json }}"
+  register: monitoring_prometheus_decision
+  changed_when: false
+
+- name: Remember the Prometheus volume decision
+  ansible.builtin.set_fact:
+    monitoring_prometheus_action: "{{ (monitoring_prometheus_decision.stdout | from_json).action }}"
+    monitoring_prometheus_claim: "{{ (monitoring_prometheus_decision.stdout | from_json).claim | default('', true) }}"
+
+- name: Refuse to retarget Prometheus while its volume is still on socrat-1
+  ansible.builtin.fail:
+    msg: Rerun with -e monitoring_prometheus_relocate=true. That deletes only the Prometheus TSDB PVC and the current 30-second history. Grafana and Alertmanager volumes stay on socrat-1.
+  when: monitoring_prometheus_action == 'refuse'
+
+- name: Require the Thanos raw bucket before deleting the Prometheus volume
+  ansible.builtin.command:
+    argv: ["{{ monitoring_k3s_binary }}", kubectl, --kubeconfig, "{{ monitoring_kubeconfig }}", -n, "{{ monitoring_namespace }}", get, "{{ item }}"]
+  loop:
+    - secret/thanos-objstore-raw
+    - deployment/thanos-query
+  when: monitoring_prometheus_action == 'relocate'
+  changed_when: false
+
+- name: Require the raw Thanos directory before deleting the Prometheus volume
+  ansible.builtin.stat:
+    path: /var/lib/socrat-thanos
+  register: monitoring_thanos_raw_directory
+  when: monitoring_prometheus_action == 'relocate'
+
+- name: Stop if the raw Thanos directory is missing
+  ansible.builtin.assert:
+    that:
+      - monitoring_thanos_raw_directory.stat.isdir | default(false)
+    fail_msg: /var/lib/socrat-thanos must exist on socrat-0 before the Prometheus volume is deleted.
+  when: monitoring_prometheus_action == 'relocate'
+
 - name: Install the pinned monitoring stack
   ansible.builtin.command:
     argv:
@@ -146,12 +208,30 @@
       - "{{ monitoring_directory }}/values.yaml"
       - --post-renderer
       - "{{ monitoring_directory }}/stable_node_series.py"
-      - "{{ '--wait' if monitoring_wait_for_daemonsets | bool else '--wait=false' }}"
+      - "{{ '--wait=false' if monitoring_prometheus_action == 'relocate' else ('--wait' if monitoring_wait_for_daemonsets | bool else '--wait=false') }}"
       - --timeout
       - 12m
       - --history-max
       - '5'
   register: monitoring_helm_install
+  changed_when: true
+
+- name: Delete the Prometheus pod that is still attached to socrat-1
+  ansible.builtin.command:
+    argv: ["{{ monitoring_k3s_binary }}", kubectl, --kubeconfig, "{{ monitoring_kubeconfig }}", -n, "{{ monitoring_namespace }}", delete, pod, prometheus-kube-prometheus-stack-prometheus-0, --ignore-not-found, --wait=true, --timeout=180s]
+  when: monitoring_prometheus_action == 'relocate'
+  changed_when: true
+
+- name: Delete only the Prometheus TSDB claim bound to socrat-1
+  ansible.builtin.command:
+    argv: ["{{ monitoring_k3s_binary }}", kubectl, --kubeconfig, "{{ monitoring_kubeconfig }}", -n, "{{ monitoring_namespace }}", delete, pvc, "{{ monitoring_prometheus_claim }}", --wait=true, --timeout=180s]
+  when: monitoring_prometheus_action == 'relocate' and monitoring_prometheus_claim | length > 0
+  changed_when: true
+
+- name: Recreate Prometheus so the new claim binds on socrat-0
+  ansible.builtin.command:
+    argv: ["{{ monitoring_k3s_binary }}", kubectl, --kubeconfig, "{{ monitoring_kubeconfig }}", -n, "{{ monitoring_namespace }}", delete, pod, prometheus-kube-prometheus-stack-prometheus-0, --ignore-not-found, --wait=true, --timeout=180s]
+  when: monitoring_prometheus_action == 'relocate'
   changed_when: true
 
 - name: Discover monitoring workloads

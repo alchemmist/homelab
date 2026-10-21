@@ -131,7 +131,8 @@ def main():
         require(pvc['status']['phase'] == 'Bound' and pvc['spec']['storageClassName'] == 'local-path', name + ' bound to local-path')
         volume = volumes[pvc['spec']['volumeName']]
         terms = volume['spec'].get('nodeAffinity', {}).get('required', {}).get('nodeSelectorTerms', [])
-        require(bool(terms) and all(any(e['key'] == 'kubernetes.io/hostname' and e['operator'] == 'In' and e['values'] == ['socrat-1'] for e in term.get('matchExpressions', [])) for term in terms), name + ' pinned to socrat-1')
+        expected = 'socrat-0' if name.startswith('prometheus-') else 'socrat-1'
+        require(bool(terms) and all(any(e['key'] == 'kubernetes.io/hostname' and e['operator'] == 'In' and e['values'] == [expected] for e in term.get('matchExpressions', [])) for term in terms), name + ' pinned to ' + expected)
     pods = kubectl(args.ssh_host, '-n', NAMESPACE, 'get', 'pods', '-o', 'json')['items']
     for pod in pods:
         if pod['status'].get('phase') in ['Succeeded', 'Failed']:

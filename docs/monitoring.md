@@ -2,7 +2,7 @@
 
 The first phase installs `kube-prometheus-stack` in `cattle-monitoring-system`: Prometheus, Grafana, Alertmanager, kube-state-metrics and node-exporter. It collects metrics from every current cluster node, including socrat-3. Loki, Alloy, Telegram delivery and telephone alerts are separate phases.
 
-Prometheus, Grafana, Alertmanager and their supporting controllers run on socrat-1. Node-exporter runs on every node. Rancher integration and the private Grafana gateway share this stack; they do not create another Prometheus installation.
+Prometheus runs on socrat-0 and scrapes every 5 seconds. Grafana, Alertmanager and their supporting controllers stay on socrat-1. Node-exporter runs on every node. Dashboards keep the datasource uid `prometheus`, and that datasource reads Thanos Query. Alerts are still evaluated by the local Prometheus. Rancher integration and the private Grafana gateway share this stack; they do not create a second Prometheus.
 
 ## Container resource budgets
 
@@ -14,17 +14,22 @@ Existing Pods change only through an explicitly enabled serial reconciliation (`
 
 ## Storage and availability
 
-All three persistent workloads explicitly select `local-path`, because this cluster also has an NFS storage class. Their volumes remain on socrat-1 and do not depend on the NFS server on socrat-0.
+Grafana and Alertmanager stay on socrat-1 and explicitly select `local-path`, because this cluster also has an NFS storage class. Prometheus runs on socrat-0. Its local TSDB is a 12-hour scratch copy. The long archive is Thanos. socrat-2 is not part of the cascade.
 
-| Workload | PVC request | Retention |
+| Workload | Where | What is kept |
 | --- | --- | --- |
-| Prometheus | 10 GiB | 7 days or 6 GB of retained blocks, whichever is reached first |
-| Grafana | 1 GiB | Persistent database and settings |
-| Alertmanager | 1 GiB | Persistent silences and notification state |
+| Prometheus | socrat-0, 10 GiB local-path PVC | 12 hours of 5-second samples, no size quota, compaction disabled |
+| Thanos raw | socrat-0, `/var/lib/socrat-thanos` | 5 days of raw blocks, plus the 5-minute blocks still needed to build the hour |
+| Thanos 5-minute shelf | socrat-1, one-disk MinIO | 5-minute blocks for 30 days |
+| Thanos hourly shelf | socrat-3, one-disk MinIO | hourly blocks for 730 days |
+| Grafana | socrat-1, 1 GiB | Persistent database and settings |
+| Alertmanager | socrat-1, 1 GiB | Persistent silences and notification state |
 
-Local-path PVC sizes do not enforce filesystem quotas. Prometheus's block retention limit also needs headroom for its WAL, head and temporary compaction files. Keep at least 20 GiB free on socrat-1 and inspect actual usage before increasing retention. Initial installation requires at least 30 GiB available. The initial resource audit found about 39 GiB free and 9.4 GiB available RAM; those are measurements, not permanent capacity guarantees.
+Local-path PVC sizes do not enforce filesystem quotas. At about 150 thousand series the steady cascade is about 22 GiB on socrat-0, about 7 GiB of 5-minute blocks on socrat-1, and about 29 GiB of hourly blocks on socrat-3 after two years. Those are estimates, not quotas. Low disk raises a warning. Raw and 5-minute blocks are removed only after the next coarser copy has been checked. Hourly blocks older than 730 days are deleted on socrat-3.
 
-This is a single-instance monitoring stack. If socrat-1 fails, metrics collection, dashboards and in-cluster alert evaluation become unavailable until that node and its storage return. This phase does not provide independent external monitoring or protection against losing the whole cluster. Alertmanager's initial receiver discards notifications intentionally; delivery is not configured yet.
+The Grafana datasource uid `prometheus` points at Thanos Query on socrat-1. Dashboard JSON is not rewritten. Alerts are evaluated by Prometheus on socrat-0 and sent to Alertmanager on socrat-1. If socrat-0 is down, fresh samples and alert evaluation stop with it; Grafana stays up. If socrat-3 is offline, graphs lose only hourly blocks that have already moved there. Alertmanager's receiver discards notifications intentionally; delivery is not configured yet.
+
+Moving Prometheus off socrat-1 deletes its current TSDB and does not copy the old 30-second history into Thanos. Run `ansible-playbook playbooks/monitoring.yml -e monitoring_prometheus_relocate=true` from `ansible/`. Without that flag the stack role refuses the upgrade while the Prometheus volume is still on socrat-1. Grafana and Alertmanager claims are not deleted.
 
 ## Metrics and access
 
@@ -68,7 +73,7 @@ Every data panel has an English description available from the information icon 
 
 ## Service availability tiles
 
-Overview replaces the key-service readiness percentages with 31 compact service-name tiles covering 33 endpoints. The catalog is `serviceProbes.targets` in `charts/monitoring-k3s/values.yaml`. A dedicated blackbox exporter on socrat-1 probes each target every 30 seconds with an 8-second timeout. HTTP probes check application health/readiness endpoints or a safe application response. TCP probes cover the VPN listener, 3xUI panel, image proxy, PostgreSQL services and NFS; they do not verify authentication or an end-to-end transaction. Syncthing has one tile and one rule with separate alert instances for its three nodes; the tile becomes unhealthy if any instance fails and requires all three fresh results to show green. Grafana MCP exposes an internal health-only Service; a narrow NetworkPolicy allows the probe pod to reach the private LLM services.
+Overview replaces the key-service readiness percentages with 31 compact service-name tiles covering 33 endpoints. The catalog is `serviceProbes.targets` in `charts/monitoring-k3s/values.yaml`. A dedicated blackbox exporter on socrat-1 probes each target every 5 seconds with a 3-second timeout. HTTP probes check application health/readiness endpoints or a safe application response. TCP probes cover the VPN listener, 3xUI panel, image proxy, PostgreSQL services and NFS; they do not verify authentication or an end-to-end transaction. Syncthing has one tile and one rule with separate alert instances for its three nodes; the tile becomes unhealthy if any instance fails and requires all three fresh results to show green. Grafana MCP exposes an internal health-only Service; a narrow NetworkPolicy allows the probe pod to reach the private LLM services.
 
 Each tile has its own `SocratService...Unavailable` Prometheus rule, Pending during failed checks and Firing after 2 minutes. Green requires a successful probe, fresh successful collection and fresh rule evaluation; missing telemetry is gray, never a synthetic success. The separate collector-unavailable rule warns about failed monitoring. Only the service name appears on the tile. Ansible resolves native Grafana rule links after Prometheus loads the rules. All targets are checked from inside the cluster: these tiles do not establish that public DNS, external ingress, VPN tunneling or the monitoring node itself will survive a site outage.
 
@@ -109,13 +114,13 @@ Deploy from `ansible/`:
 ansible-playbook playbooks/monitoring.yml --ask-become-pass
 ```
 
-Kubernetes deployment uses the existing administration access on socrat-0. The private DNS play uses sudo on the DNS nodes. Tags `monitoring_base`, `monitoring_k3s`, `monitoring_rancher`, `monitoring_access` and `monitoring_dns` allow scoped updates. The private gateway role preserves existing Syncthing Helm values and authentication, adding only the Grafana virtual host and its certificate.
+Kubernetes deployment uses the existing administration access on socrat-0. The private DNS play uses sudo on the DNS nodes. Tags `monitoring_thanos`, `monitoring_base`, `monitoring_k3s`, `monitoring_rancher`, `monitoring_access` and `monitoring_dns` allow scoped updates. `monitoring_base` also installs Thanos. Retargeting Prometheus from socrat-1 to socrat-0 additionally requires `-e monitoring_prometheus_relocate=true`. The private gateway role preserves existing Syncthing Helm values and authentication, adding only the Grafana virtual host and its certificate.
 
 After the external-quorum rebalance, etcd metrics are collected from socrat-0/2/3 and API metrics from socrat-0/1/3. During a known node outage, `-e '{"monitoring_wait_for_daemonsets":false,"monitoring_k3s_wait":false}'` allows configuration updates without waiting for DaemonSet pods on that unavailable node. Deployment and StatefulSet rollout checks remain enabled. Verify the online targets separately; these options do not make missing targets healthy, and the full monitoring checker still requires all nodes to recover.
 
-Keep Helm values and provisioned dashboards in the repository. Apply changes through the Ansible monitoring playbook. Before a chart upgrade, inspect release notes and CRD requirements, capture current Helm values and Kubernetes workload/PVC metadata, and preserve the Grafana database and credentials. Never uninstall or delete persistent claims as a troubleshooting shortcut: the current storage class uses the Delete reclaim policy.
+Keep Helm values and provisioned dashboards in the repository. Apply changes through the Ansible monitoring playbook. Before a chart upgrade, inspect release notes and CRD requirements, capture current Helm values and Kubernetes workload/PVC metadata, and preserve the Grafana database and credentials. Never uninstall or delete persistent claims as a troubleshooting shortcut: the current storage class uses the Delete reclaim policy. The relocate flag is the exception, and it deletes only the Prometheus TSDB claim while that claim is still bound to socrat-1.
 
-When disk usage grows, first inspect Prometheus series cardinality and retention, container image usage, and other workloads on socrat-1. Reducing retention is preferable to deleting unrelated data. The initial deployment does not authorize additional backup deletion.
+When disk usage grows, first inspect series cardinality and which Thanos resolution is using the space. A warning for low disk does not delete blocks. The shipping job removes 5-minute blocks on socrat-1 only after their hourly copy is on socrat-3, and only when they are older than 30 days or free space there falls below about 40 GiB.
 
 ## Verified deployment on 2026-10-16
 
