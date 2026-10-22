@@ -34,13 +34,15 @@ cd ansible
 ansible-playbook playbooks/tv-admin.yml --ask-become-pass
 ```
 
-The playbook prepares ADB and a dedicated SSH key, checks the authorized TV model, and enables restoration of the last input. It also points Fully Kiosk Browser at the living-room dashboard. It does not bypass TV authorization, install Fully, or install the public key on a new television automatically.
+The playbook prepares ADB and a dedicated SSH key, checks the authorized TV model, and enables restoration of the last input. It points Fully Kiosk Browser at the living-room dashboard without starting it on boot, keeps tvQuickActions and the HDMI helper alive across reboot, and sets WireGuard as the always-on VPN with lockdown off. It does not bypass TV authorization, install Fully, tvQuickActions, WireGuard, or the HDMI helper, and it does not install the public key on a new television automatically.
 
 ## Fully Kiosk
 
-Fully Kiosk Browser (`de.ozerov.fully`) is the living-room browser. `tv-admin.yml` writes its start URL and clears `injectJsCode`, then imports that pair through `/sdcard/fully-once-settings.json`. Fully reads the file on the next start and deletes it. The playbook allows `NO_ISOLATED_STORAGE` and `LEGACY_STORAGE` so that import can see shared storage, and it restarts Fully only when the settings file changes. Force another import with `-e homelab_tv_fully_reapply=true`.
+Fully Kiosk Browser (`de.ozerov.fully`) is the living-room browser. `tv-admin.yml` writes its start URL and clears `injectJsCode`, then imports those values through `/sdcard/fully-once-settings.json`. Fully reads the file on the next start and deletes it. The playbook allows `NO_ISOLATED_STORAGE` and `LEGACY_STORAGE` so that import can see shared storage, and it restarts Fully only when the settings file changes. Force another import with `-e homelab_tv_fully_reapply=true`.
 
 The start URL is `https://grafana.socrat.alchemmist.xyz/d/socrat-traffic-light?kiosk=1&hideLogo=1`. `kiosk=1` hides Grafana navigation. `hideLogo=1` hides the kiosk footer. Leave `injectJsCode` empty: Fully treats injected JavaScript as a Plus feature and paints a “PLUS Features Activated” watermark.
+
+The same import sets `launchOnBoot`, `kioskMode`, `disableHome`, and `disableHomeButton` to false. Fully therefore does not cover the picture after power-on, and the Home button still opens the normal television launcher. Grafana's own `kiosk=1` is only the page chrome.
 
 The 5px screen inset is not a Fully setting. The private Grafana gateway injects `charts/syncthing/files/traffic-light-inset.js` only for `/d/socrat-traffic-light`. That script is enabled by `trafficLightInset: true` on the grafana virtual host and is applied by `playbooks/syncthing-private-ui.yml`. `monitoring_wg_access` keeps the same flag when it rewrites the grafana host.
 
@@ -62,4 +64,10 @@ To revert only source restoration:
 adb -s 192.168.0.19:5555 shell settings put global set_auto_play 0
 ```
 
-Cold-power-cycle and TV reboot validation remain pending. The TV itself was not rebooted. User-selected sleep/power timeout settings were preserved. No rooting, launcher replacement, or custom startup application was needed.
+## What comes back after power is restored
+
+Power-on shows the last television input. Fully does not start on boot, so an app that was open before the outage does not cover that input. While HDMI 1 stays the selected source, the server picture is what comes up. Home still opens `com.google.android.tvlauncher`. The colored remote buttons are handled by tvQuickActions (`dev.vodik7.tvquickactions.free`); its accessibility service is `KeyAccessibilityService`. Those button mappings live in the application's private data and are not rewritten by the playbook. The playbook only keeps the service enabled and stops `com.xiaomi.android.tvsetup.partnercustomizer` from claiming the same keys.
+
+WireGuard on this television is the userspace VPN, tunnel `xiaomi-tv`, split so the homelab network uses the tunnel and ordinary traffic stays on Wi-Fi. Its boot receiver does not restore that userspace tunnel. `tv-admin.yml` sets WireGuard as the always-on VPN and leaves lockdown off, so the tunnel comes back after a cold boot without sending YouTube or Kinopoisk through it. Fully, tvQuickActions, WireGuard, and the HDMI helper are also kept on the standby whitelist.
+
+The user verified a real power cycle: the server picture on HDMI 1 comes up, the colored buttons still switch between Grafana and HDMI, and Home still opens the normal launcher. Network ADB is only `service.adb.tcp.port=5555`; `persist.adb.tcp.port` cannot be set without root, so a reboot can drop the debugging connection until it is approved again.
