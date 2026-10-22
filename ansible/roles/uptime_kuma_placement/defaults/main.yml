@@ -1,5 +1,5 @@
 uptime_kuma_source: socrat-2
-uptime_kuma_destination: socrat-1
+uptime_kuma_destination: socrat-3
 uptime_kuma_directory: /srv/uptime-kuma
 uptime_kuma_namespace: uptime-kuma
 uptime_kuma_release: uptime-kuma

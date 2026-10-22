@@ -1,4 +1,4 @@
-# One Syncthing pod per Socrat Kubernetes node. Each pod stores its own
+# One Syncthing pod on each enrolled node. Each pod stores its own
 # Syncthing identity/config/database under hostPath on that node.
 mode: daemonset
 
@@ -39,9 +39,6 @@ privateGui:
     - nodeName: socrat-1
       host: 1.socrat.alchemmist.xyz
       wgIP: 10.250.0.3
-    - nodeName: socrat-2
-      host: 2.socrat.alchemmist.xyz
-      wgIP: 10.250.0.2
 
 resources:
   requests:
@@ -79,7 +76,3 @@ gui:
       host: sync-1.alchemmist.xyz
       tlsSecret: syncthing-sync-1-tls
       endpointIP: 10.250.0.3
-    - name: sync-2
-      host: sync-2.alchemmist.xyz
-      tlsSecret: syncthing-sync-2-tls
-      endpointIP: 10.250.0.2

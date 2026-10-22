@@ -8,12 +8,18 @@
   ansible.builtin.set_fact:
     syncthing_private_ui_nodes: []
 
-- name: Derive private Syncthing endpoints from the WireGuard registry
+- name: Require every enrolled Syncthing node to have a WireGuard address
+  ansible.builtin.assert:
+    that:
+      - syncthing_private_ui_enrolled_nodes | length > 0
+      - syncthing_private_ui_enrolled_nodes | difference(wg_socrat_nodes.keys() | list) | length == 0
+
+- name: Derive private Syncthing endpoints from the enrolled nodes
   ansible.builtin.set_fact:
-    syncthing_private_ui_nodes: "{{ syncthing_private_ui_nodes + [{'nodeName': item.key, 'host': item.key.split('-')[-1] ~ '.' ~ homelab_ssh_public_host, 'wgIP': item.value.address}] }}"
-  loop: "{{ wg_socrat_nodes | dict2items | sort(attribute='key') }}"
+    syncthing_private_ui_nodes: "{{ syncthing_private_ui_nodes + [{'nodeName': item, 'host': item.split('-')[-1] ~ '.' ~ homelab_ssh_public_host, 'wgIP': wg_socrat_nodes[item].address}] }}"
+  loop: "{{ syncthing_private_ui_enrolled_nodes }}"
   loop_control:
-    label: "{{ item.key }}"
+    label: "{{ item }}"
 
 - name: Copy the Syncthing chart to the controller
   ansible.builtin.copy:

@@ -9,12 +9,13 @@ Public cluster HTTP services have two entrance addresses: home `109.173.40.247` 
 | `fq.alchemmist.xyz`, `img.alchemmist.xyz` | socrat-0 |
 | `llm.alchemmist.xyz`, `chat.alchemmist.xyz` | socrat-0; model and database dependencies also at home |
 | `lms.alchemmist.xyz`, `monori.alchemmist.xyz`, `umami.alchemmist.xyz` | socrat-0 |
-| `remark42.alchemmist.xyz`, `status.alchemmist.xyz` | socrat-2 |
+| `remark42.alchemmist.xyz` | socrat-2 |
+| `status.alchemmist.xyz` | socrat-3 |
 | `socrat.alchemmist.xyz` | socrat-1 and socrat-3 |
 | `wiki.socrat.alchemmist.xyz` | socrat-3 |
 | `vpn.alchemmist.xyz` | socrat-2 |
 
-Placement is the observed baseline on 2026-10-18, not a scheduling guarantee. Most applications still have a single site or persistent-volume dependency. Two entrance addresses do not replicate application state or make every service survive the loss of its backend site. In particular, Kuma and VPN still depend on socrat-2, and local GPU inference depends on socrat-0.
+Placement is the observed baseline on 2026-10-18, not a scheduling guarantee. Most applications still have a single site or persistent-volume dependency. Two entrance addresses do not replicate application state or make every service survive the loss of its backend site. In particular, VPN still depends on socrat-2, Uptime Kuma runs on socrat-3, and local GPU inference depends on socrat-0.
 
 Both Traefik controllers consume the shared `traefik` ingress class. The VPS controller watches an explicit list of public application namespaces. They use the same ingress resources, service endpoints and TLS Secrets. The VPN ingress also uses the shared class so its HTTPS routes work through either entrance. Connections from home to the VPN backend still require the VPS. Non-HTTP VPN ports are not covered by this HTTP ingress setup.
 

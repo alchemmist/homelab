@@ -3,8 +3,6 @@
     path: "{{ uptime_kuma_directory }}/kuma.db"
   delegate_to: "{{ uptime_kuma_destination }}"
   become: true
-  vars:
-    ansible_port: "{{ homelab_ssh_port_base | int + (uptime_kuma_destination.split('-')[-1] | int) }}"
   register: kuma_destination_database
 
 - name: Refuse an empty deployment
