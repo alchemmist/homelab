@@ -86,7 +86,7 @@ def main():
     settings = {
         'username': args.username,
         'password': getpass.getpass('Uptime Kuma password: '),
-        'url': 'https://wiki.alchemmist.xyz/',
+        'url': 'https://wiki.socrat.alchemmist.xyz/',
         'activate': args.activate,
         'publish': args.publish,
     }

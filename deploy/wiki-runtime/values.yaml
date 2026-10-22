@@ -2,7 +2,7 @@ image:
   repository: ghcr.io/alchemmist/hugo-docs-wiki
   tag: "0.4.1"
   digest: "sha256:56b24ca70f7ebcb5c3d4844c0e5ec5b779416f74f891be5b24807f65e8878b7e"
-publicURL: https://wiki.alchemmist.xyz
+publicURL: https://wiki.socrat.alchemmist.xyz
 visibility: public
 contentPrefix: wiki/content
 persistence:
@@ -22,7 +22,7 @@ config:
     email: wiki@alchemmist.xyz
 siteConfig: |
   _merge = 'deep'
-  baseURL = 'https://wiki.alchemmist.xyz/'
+  baseURL = 'https://wiki.socrat.alchemmist.xyz/'
   title = 'Socrat Wiki'
   defaultContentLanguage = 'en'
   locale = 'en-US'
@@ -50,12 +50,12 @@ siteConfig: |
 ingress:
   enabled: true
   className: traefik
-  host: wiki.alchemmist.xyz
+  host: wiki.socrat.alchemmist.xyz
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-http01
   tls:
     - hosts:
-        - wiki.alchemmist.xyz
+        - wiki.socrat.alchemmist.xyz
       secretName: wiki-tls
 resources:
   requests:

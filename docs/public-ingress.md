@@ -11,7 +11,7 @@ Public cluster HTTP services have two entrance addresses: home `109.173.40.247` 
 | `lms.alchemmist.xyz`, `monori.alchemmist.xyz`, `umami.alchemmist.xyz` | socrat-0 |
 | `remark42.alchemmist.xyz`, `status.alchemmist.xyz` | socrat-2 |
 | `socrat.alchemmist.xyz` | socrat-1 and socrat-3 |
-| `wiki.alchemmist.xyz` | socrat-3 |
+| `wiki.socrat.alchemmist.xyz` | socrat-3 |
 | `vpn.alchemmist.xyz` | socrat-2 |
 
 Placement is the observed baseline on 2026-10-18, not a scheduling guarantee. Most applications still have a single site or persistent-volume dependency. Two entrance addresses do not replicate application state or make every service survive the loss of its backend site. In particular, Kuma and VPN still depend on socrat-2, and local GPU inference depends on socrat-0.

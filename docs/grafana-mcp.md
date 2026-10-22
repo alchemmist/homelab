@@ -1,6 +1,6 @@
 # Grafana MCP
 
-User connection instructions live in `wiki/content/observability/grafana-mcp.md` and are published at <https://wiki.alchemmist.xyz/observability/grafana-mcp/>.
+User connection instructions live in `wiki/content/observability/grafana-mcp.md` and are published at <https://wiki.socrat.alchemmist.xyz/observability/grafana-mcp/>.
 
 The private Streamable HTTP endpoint is `https://grafana-mcp.socrat.alchemmist.xyz/mcp`. Clients need the administrative `socrat-wg` network and its split DNS. Authentication uses a dedicated bearer token stored in `cattle-monitoring-system/grafana-mcp-credentials`, key `client-token`. Never publish the token or reuse the Grafana administrator password as an MCP credential.
 

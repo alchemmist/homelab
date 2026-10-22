@@ -4,7 +4,7 @@
 
 - name: Read existing exact-host resolver
   ansible.builtin.stat:
-    path: /etc/resolver/wiki.alchemmist.xyz
+    path: /etc/resolver/wiki.socrat.alchemmist.xyz
   register: wiki_editor_resolver
 
 - name: Read resolver ownership marker

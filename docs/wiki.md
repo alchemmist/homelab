@@ -1,6 +1,6 @@
 # Socrat Wiki deployment
 
-Public documentation lives in `wiki/content/` and is served at <https://wiki.alchemmist.xyz/>. Operational documentation in `docs/` is not site content. Socrat configuration requests no indexing; `noindex` is not access control. Never publish credentials, user records or recovery material.
+Public documentation lives in `wiki/content/` and is served at <https://wiki.socrat.alchemmist.xyz/>. Operational documentation in `docs/` is not site content. Socrat configuration requests no indexing; `noindex` is not access control. Never publish credentials, user records or recovery material.
 
 ## Architecture and deployment status
 
@@ -46,6 +46,6 @@ Check HTTPS, public reading, authenticated editing, unknown-path responses, Russ
 
 ## Agent access
 
-MCP is enabled with `config.mcp.enabled: true` at `https://wiki.alchemmist.xyz/mcp`. Each user creates a personal access token in `/admin`; browser sessions and bootstrap credentials are not MCP credentials. Use a read-only token for readers and a write-scoped token for editing. Effective permissions also follow the account role, and revocation takes effect on the next request. Do not store tokens in Git or shared agent configuration. See the [upstream MCP guide](https://github.com/alchemmist/hugo-docs/blob/v0.4.1/docs/mcp.md).
+MCP is enabled with `config.mcp.enabled: true` at `https://wiki.socrat.alchemmist.xyz/mcp`. Each user creates a personal access token in `/admin`; browser sessions and bootstrap credentials are not MCP credentials. Use a read-only token for readers and a write-scoped token for editing. Effective permissions also follow the account role, and revocation takes effect on the next request. Do not store tokens in Git or shared agent configuration. See the [upstream MCP guide](https://github.com/alchemmist/hugo-docs/blob/v0.4.1/docs/mcp.md).
 
 Authenticated users can choose Light or Dark under `/admin` → Account → Theme. This preference belongs to their account and persists across sessions; anonymous readers always receive the light theme. No shared deployment setting changes individual preferences.
