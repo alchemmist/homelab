@@ -171,13 +171,6 @@ serviceProbes:
     alertName: SocratServiceSyncthingUnavailable
     group: syncthing
     node: socrat-1
-  - id: syncthing-2
-    title: Syncthing 2
-    url: http://10.250.0.2:18444/healthz
-    module: http_2xx
-    alertName: SocratServiceSyncthingUnavailable
-    group: syncthing
-    node: socrat-2
   - id: nfs
     title: NFS storage
     url: 192.168.0.23:2049

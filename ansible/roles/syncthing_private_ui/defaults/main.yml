@@ -9,3 +9,6 @@ syncthing_private_ui_port: "{{ wireguard_private_web_proxy_port | default(18443)
 syncthing_private_ui_health_port: 18444
 syncthing_private_ui_kubeconfig: /etc/rancher/k3s/k3s.yaml
 syncthing_private_ui_extra_virtual_hosts: []
+syncthing_private_ui_enrolled_nodes:
+  - socrat-0
+  - socrat-1

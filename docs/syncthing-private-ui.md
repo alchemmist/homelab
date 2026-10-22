@@ -1,7 +1,6 @@
 # Private Syncthing interfaces
 
-Each Socrat node runs one independent Syncthing device in the Helm DaemonSet.
-Its identity, database and folders remain under `/srv/syncthing` on that node.
+Socrat-0 and socrat-1 each run one independent Syncthing device in the Helm DaemonSet. Each device keeps its identity, database and folders under `/srv/syncthing` on that node. Socrat-2 no longer runs a pod; its previous directory stays on disk.
 
 Connect the Mac's `wg-socrat-admin` profile, then open:
 
@@ -9,13 +8,12 @@ Connect the Mac's `wg-socrat-admin` profile, then open:
 | --- | --- |
 | socrat-0 | `https://0.socrat.alchemmist.xyz/sync/` |
 | socrat-1 | `https://1.socrat.alchemmist.xyz/sync/` |
-| socrat-2 | `https://2.socrat.alchemmist.xyz/sync/` |
 
 The existing BasicAuth username and password are retained. The nginx sidecar
 mounts the existing `syncthing-basic-auth` Secret; no password or password hash
 is stored in this repository. `/sync` redirects to `/sync/`, and paths outside
 `/sync/` return 404. Syncthing's GUI/API listens only on `127.0.0.1:8384`.
-Public `sync-0`, `sync-1`, and `sync-2` ingresses are removed.
+Public `sync-0` and `sync-1` ingresses are removed.
 
 ## Traffic and TLS
 

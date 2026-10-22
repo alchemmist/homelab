@@ -5550,10 +5550,6 @@ tests:
     values: 1x20
   - series: up{job="service-probes",service_id="syncthing-1",service_group="syncthing",node="socrat-1"}
     values: 1x20
-  - series: probe_success{job="service-probes",service_id="syncthing-2",service_group="syncthing",node="socrat-2"}
-    values: 1x20
-  - series: up{job="service-probes",service_id="syncthing-2",service_group="syncthing",node="socrat-2"}
-    values: 1x20
   promql_expr_test:
   - expr: count(ALERTS{alertname="SocratServiceSyncthingUnavailable",alertstate="firing"})
     eval_time: 3m
@@ -5561,11 +5557,11 @@ tests:
   - expr: (max(2 * ALERTS{alertname="SocratServiceSyncthingUnavailable",alertstate="firing"}
       or ALERTS{alertname="SocratServiceSyncthingUnavailable",alertstate="pending"}))
       or ((1 - min(probe_success{job="service-probes",service_group="syncthing"}))
-      and on() ((count(up{job="service-probes",service_group="syncthing"}) == 3) and
+      and on() ((count(up{job="service-probes",service_group="syncthing"}) == 2) and
       on() (min(up{job="service-probes",service_group="syncthing"}) == 1) and on()
       (time() - min(timestamp(up{job="service-probes",service_group="syncthing"}))
       < 90) and on() (count(probe_success{job="service-probes",service_group="syncthing"})
-      == 3) and on() (time() - min(timestamp(probe_success{job="service-probes",service_group="syncthing"}))
+      == 2) and on() (time() - min(timestamp(probe_success{job="service-probes",service_group="syncthing"}))
       < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~".*;socrat.services.availability"})
       < 90))) or vector(-2)
     eval_time: 3m
@@ -5587,10 +5583,6 @@ tests:
     values: 0x5 1x14
   - series: up{job="service-probes",service_id="syncthing-1",service_group="syncthing",node="socrat-1"}
     values: 1x20
-  - series: probe_success{job="service-probes",service_id="syncthing-2",service_group="syncthing",node="socrat-2"}
-    values: 1x20
-  - series: up{job="service-probes",service_id="syncthing-2",service_group="syncthing",node="socrat-2"}
-    values: 1x20
   promql_expr_test:
   - expr: count(ALERTS{alertname="SocratServiceSyncthingUnavailable",alertstate="pending"})
     eval_time: 1m30s
@@ -5600,11 +5592,11 @@ tests:
   - expr: (max(2 * ALERTS{alertname="SocratServiceSyncthingUnavailable",alertstate="firing"}
       or ALERTS{alertname="SocratServiceSyncthingUnavailable",alertstate="pending"}))
       or ((1 - min(probe_success{job="service-probes",service_group="syncthing"}))
-      and on() ((count(up{job="service-probes",service_group="syncthing"}) == 3) and
+      and on() ((count(up{job="service-probes",service_group="syncthing"}) == 2) and
       on() (min(up{job="service-probes",service_group="syncthing"}) == 1) and on()
       (time() - min(timestamp(up{job="service-probes",service_group="syncthing"}))
       < 90) and on() (count(probe_success{job="service-probes",service_group="syncthing"})
-      == 3) and on() (time() - min(timestamp(probe_success{job="service-probes",service_group="syncthing"}))
+      == 2) and on() (time() - min(timestamp(probe_success{job="service-probes",service_group="syncthing"}))
       < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~".*;socrat.services.availability"})
       < 90))) or vector(-2)
     eval_time: 1m30s
@@ -5619,11 +5611,11 @@ tests:
   - expr: (max(2 * ALERTS{alertname="SocratServiceSyncthingUnavailable",alertstate="firing"}
       or ALERTS{alertname="SocratServiceSyncthingUnavailable",alertstate="pending"}))
       or ((1 - min(probe_success{job="service-probes",service_group="syncthing"}))
-      and on() ((count(up{job="service-probes",service_group="syncthing"}) == 3) and
+      and on() ((count(up{job="service-probes",service_group="syncthing"}) == 2) and
       on() (min(up{job="service-probes",service_group="syncthing"}) == 1) and on()
       (time() - min(timestamp(up{job="service-probes",service_group="syncthing"}))
       < 90) and on() (count(probe_success{job="service-probes",service_group="syncthing"})
-      == 3) and on() (time() - min(timestamp(probe_success{job="service-probes",service_group="syncthing"}))
+      == 2) and on() (time() - min(timestamp(probe_success{job="service-probes",service_group="syncthing"}))
       < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~".*;socrat.services.availability"})
       < 90))) or vector(-2)
     eval_time: 2m
@@ -5636,11 +5628,11 @@ tests:
   - expr: (max(2 * ALERTS{alertname="SocratServiceSyncthingUnavailable",alertstate="firing"}
       or ALERTS{alertname="SocratServiceSyncthingUnavailable",alertstate="pending"}))
       or ((1 - min(probe_success{job="service-probes",service_group="syncthing"}))
-      and on() ((count(up{job="service-probes",service_group="syncthing"}) == 3) and
+      and on() ((count(up{job="service-probes",service_group="syncthing"}) == 2) and
       on() (min(up{job="service-probes",service_group="syncthing"}) == 1) and on()
       (time() - min(timestamp(up{job="service-probes",service_group="syncthing"}))
       < 90) and on() (count(probe_success{job="service-probes",service_group="syncthing"})
-      == 3) and on() (time() - min(timestamp(probe_success{job="service-probes",service_group="syncthing"}))
+      == 2) and on() (time() - min(timestamp(probe_success{job="service-probes",service_group="syncthing"}))
       < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~".*;socrat.services.availability"})
       < 90))) or vector(-2)
     eval_time: 3m
@@ -5659,12 +5651,8 @@ tests:
   - series: up{job="service-probes",service_id="syncthing-0",service_group="syncthing",node="socrat-0"}
     values: 1x20
   - series: probe_success{job="service-probes",service_id="syncthing-1",service_group="syncthing",node="socrat-1"}
-    values: 1x20
-  - series: up{job="service-probes",service_id="syncthing-1",service_group="syncthing",node="socrat-1"}
-    values: 1x20
-  - series: probe_success{job="service-probes",service_id="syncthing-2",service_group="syncthing",node="socrat-2"}
     values: '0x20'
-  - series: up{job="service-probes",service_id="syncthing-2",service_group="syncthing",node="socrat-2"}
+  - series: up{job="service-probes",service_id="syncthing-1",service_group="syncthing",node="socrat-1"}
     values: 1x20
   promql_expr_test:
   - expr: count(ALERTS{alertname="SocratServiceSyncthingUnavailable",alertstate="firing"})
@@ -5677,7 +5665,7 @@ tests:
     exp_samples:
     - labels: '{}'
       value: 1
-  - expr: count(ALERTS{alertname="SocratServiceSyncthingUnavailable",alertstate="firing",node="socrat-2",service_id="syncthing-2"})
+  - expr: count(ALERTS{alertname="SocratServiceSyncthingUnavailable",alertstate="firing",node="socrat-1",service_id="syncthing-1"})
     eval_time: 3m
     exp_samples:
     - labels: '{}'
@@ -5685,11 +5673,11 @@ tests:
   - expr: (max(2 * ALERTS{alertname="SocratServiceSyncthingUnavailable",alertstate="firing"}
       or ALERTS{alertname="SocratServiceSyncthingUnavailable",alertstate="pending"}))
       or ((1 - min(probe_success{job="service-probes",service_group="syncthing"}))
-      and on() ((count(up{job="service-probes",service_group="syncthing"}) == 3) and
+      and on() ((count(up{job="service-probes",service_group="syncthing"}) == 2) and
       on() (min(up{job="service-probes",service_group="syncthing"}) == 1) and on()
       (time() - min(timestamp(up{job="service-probes",service_group="syncthing"}))
       < 90) and on() (count(probe_success{job="service-probes",service_group="syncthing"})
-      == 3) and on() (time() - min(timestamp(probe_success{job="service-probes",service_group="syncthing"}))
+      == 2) and on() (time() - min(timestamp(probe_success{job="service-probes",service_group="syncthing"}))
       < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~".*;socrat.services.availability"})
       < 90))) or vector(-2)
     eval_time: 3m
@@ -5707,19 +5695,15 @@ tests:
     values: 1x20
   - series: up{job="service-probes",service_id="syncthing-0",service_group="syncthing",node="socrat-0"}
     values: 1x20
-  - series: probe_success{job="service-probes",service_id="syncthing-1",service_group="syncthing",node="socrat-1"}
-    values: 1x20
-  - series: up{job="service-probes",service_id="syncthing-1",service_group="syncthing",node="socrat-1"}
-    values: 1x20
   promql_expr_test:
   - expr: (max(2 * ALERTS{alertname="SocratServiceSyncthingUnavailable",alertstate="firing"}
       or ALERTS{alertname="SocratServiceSyncthingUnavailable",alertstate="pending"}))
       or ((1 - min(probe_success{job="service-probes",service_group="syncthing"}))
-      and on() ((count(up{job="service-probes",service_group="syncthing"}) == 3) and
+      and on() ((count(up{job="service-probes",service_group="syncthing"}) == 2) and
       on() (min(up{job="service-probes",service_group="syncthing"}) == 1) and on()
       (time() - min(timestamp(up{job="service-probes",service_group="syncthing"}))
       < 90) and on() (count(probe_success{job="service-probes",service_group="syncthing"})
-      == 3) and on() (time() - min(timestamp(probe_success{job="service-probes",service_group="syncthing"}))
+      == 2) and on() (time() - min(timestamp(probe_success{job="service-probes",service_group="syncthing"}))
       < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~".*;socrat.services.availability"})
       < 90))) or vector(-2)
     eval_time: 3m
@@ -5741,19 +5725,15 @@ tests:
     values: 1 _x20
   - series: up{job="service-probes",service_id="syncthing-1",service_group="syncthing",node="socrat-1"}
     values: 1 _x20
-  - series: probe_success{job="service-probes",service_id="syncthing-2",service_group="syncthing",node="socrat-2"}
-    values: 1x20
-  - series: up{job="service-probes",service_id="syncthing-2",service_group="syncthing",node="socrat-2"}
-    values: 1x20
   promql_expr_test:
   - expr: (max(2 * ALERTS{alertname="SocratServiceSyncthingUnavailable",alertstate="firing"}
       or ALERTS{alertname="SocratServiceSyncthingUnavailable",alertstate="pending"}))
       or ((1 - min(probe_success{job="service-probes",service_group="syncthing"}))
-      and on() ((count(up{job="service-probes",service_group="syncthing"}) == 3) and
+      and on() ((count(up{job="service-probes",service_group="syncthing"}) == 2) and
       on() (min(up{job="service-probes",service_group="syncthing"}) == 1) and on()
       (time() - min(timestamp(up{job="service-probes",service_group="syncthing"}))
       < 90) and on() (count(probe_success{job="service-probes",service_group="syncthing"})
-      == 3) and on() (time() - min(timestamp(probe_success{job="service-probes",service_group="syncthing"}))
+      == 2) and on() (time() - min(timestamp(probe_success{job="service-probes",service_group="syncthing"}))
       < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~".*;socrat.services.availability"})
       < 90))) or vector(-2)
     eval_time: 3m
@@ -5779,11 +5759,11 @@ tests:
   - expr: (max(2 * ALERTS{alertname="SocratServiceSyncthingUnavailable",alertstate="firing"}
       or ALERTS{alertname="SocratServiceSyncthingUnavailable",alertstate="pending"}))
       or ((1 - min(probe_success{job="service-probes",service_group="syncthing"}))
-      and on() ((count(up{job="service-probes",service_group="syncthing"}) == 3) and
+      and on() ((count(up{job="service-probes",service_group="syncthing"}) == 2) and
       on() (min(up{job="service-probes",service_group="syncthing"}) == 1) and on()
       (time() - min(timestamp(up{job="service-probes",service_group="syncthing"}))
       < 90) and on() (count(probe_success{job="service-probes",service_group="syncthing"})
-      == 3) and on() (time() - min(timestamp(probe_success{job="service-probes",service_group="syncthing"}))
+      == 2) and on() (time() - min(timestamp(probe_success{job="service-probes",service_group="syncthing"}))
       < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~".*;socrat.services.availability"})
       < 90))) or vector(-2)
     eval_time: 3m
@@ -5809,11 +5789,11 @@ tests:
   - expr: (max(2 * ALERTS{alertname="SocratServiceSyncthingUnavailable",alertstate="firing"}
       or ALERTS{alertname="SocratServiceSyncthingUnavailable",alertstate="pending"}))
       or ((1 - min(probe_success{job="service-probes",service_group="syncthing"}))
-      and on() ((count(up{job="service-probes",service_group="syncthing"}) == 3) and
+      and on() ((count(up{job="service-probes",service_group="syncthing"}) == 2) and
       on() (min(up{job="service-probes",service_group="syncthing"}) == 1) and on()
       (time() - min(timestamp(up{job="service-probes",service_group="syncthing"}))
       < 90) and on() (count(probe_success{job="service-probes",service_group="syncthing"})
-      == 3) and on() (time() - min(timestamp(probe_success{job="service-probes",service_group="syncthing"}))
+      == 2) and on() (time() - min(timestamp(probe_success{job="service-probes",service_group="syncthing"}))
       < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~".*;socrat.services.availability"})
       < 90))) or vector(-2)
     eval_time: 1m30s
