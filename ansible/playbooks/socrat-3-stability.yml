@@ -1,0 +1,158 @@
+---
+- name: Keep socrat-3 out of C2 idle and arm its hardware watchdog
+  hosts: socrat-3
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Read the CPU model
+      ansible.builtin.command:
+        argv: [awk, "-F:", '/^model name/{print $2; exit}', /proc/cpuinfo]
+      register: host_cpu_model
+      changed_when: false
+
+    - name: Read the hardware watchdog identity and timeout
+      ansible.builtin.command: cat /sys/class/watchdog/watchdog0/identity /sys/class/watchdog/watchdog0/timeout
+      register: host_watchdog
+      changed_when: false
+
+    - name: Require the Kabini APU and its existing 60s TCO watchdog
+      ansible.builtin.assert:
+        that:
+          - "'AMD A4-5000' in host_cpu_model.stdout"
+          - "'SP5100 TCO' in host_watchdog.stdout"
+          - host_watchdog.stdout_lines[-1] | trim == '60'
+
+    - name: Install the C2 idle guard
+      ansible.builtin.copy:
+        dest: /usr/local/sbin/homelab-disable-c2
+        owner: root
+        group: root
+        mode: '0755'
+        content: |
+          #!/bin/sh
+          set -eu
+          changed=0
+          found=0
+          for dir in /sys/devices/system/cpu/cpu*/cpuidle/state*; do
+            name=$(cat "$dir/name")
+            if [ "$name" != C2 ]; then
+              continue
+            fi
+            found=$((found + 1))
+            if [ "$(cat "$dir/disable")" != 1 ]; then
+              echo 1 > "$dir/disable"
+              changed=$((changed + 1))
+            fi
+          done
+          if [ "$found" -lt 1 ]; then
+            echo "no C2 cpuidle state" >&2
+            exit 1
+          fi
+          echo "changed=$changed found=$found"
+      register: host_c2_script
+
+    - name: Install the boot unit for the C2 idle guard
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/homelab-disable-c2.service
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Keep Kabini CPUs out of C2 idle
+          DefaultDependencies=no
+          After=sysinit.target
+          Before=basic.target
+
+          [Service]
+          Type=oneshot
+          RemainAfterExit=yes
+          ExecStart=/usr/local/sbin/homelab-disable-c2
+
+          [Install]
+          WantedBy=sysinit.target
+      register: host_c2_unit
+
+    - name: Enable the C2 idle guard
+      ansible.builtin.systemd_service:
+        name: homelab-disable-c2.service
+        enabled: true
+        state: started
+        daemon_reload: true
+
+    - name: Apply the C2 idle guard to the running CPUs
+      ansible.builtin.command: /usr/local/sbin/homelab-disable-c2
+      register: host_c2_apply
+      changed_when: "'changed=0 ' not in (host_c2_apply.stdout ~ ' ')"
+
+    - name: Verify C2 is disabled and C1 remains available
+      ansible.builtin.command:
+        argv:
+          - python3
+          - -c
+          - |
+            import pathlib
+            root = pathlib.Path("/sys/devices/system/cpu")
+            c1 = c2 = 0
+            for state in root.glob("cpu[0-9]*/cpuidle/state*"):
+                name = (state / "name").read_text().strip()
+                disabled = (state / "disable").read_text().strip()
+                if name == "C2":
+                    if disabled != "1":
+                        raise SystemExit(f"{state} still enabled")
+                    c2 += 1
+                elif name == "C1":
+                    if disabled != "0":
+                        raise SystemExit(f"{state} was disabled")
+                    c1 += 1
+            if c1 < 1 or c1 != c2:
+                raise SystemExit(f"unexpected idle states c1={c1} c2={c2}")
+      changed_when: false
+
+    - name: Create the systemd manager drop-in directory
+      ansible.builtin.file:
+        path: /etc/systemd/system.conf.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Arm the existing hardware watchdog for a 60s runtime hang
+      ansible.builtin.copy:
+        dest: /etc/systemd/system.conf.d/homelab-watchdog.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          [Manager]
+          RuntimeWatchdogSec=60s
+      register: host_watchdog_config
+
+    - name: Read whether systemd is already holding the watchdog
+      ansible.builtin.command: cat /sys/class/watchdog/watchdog0/state
+      register: host_watchdog_state
+      changed_when: false
+
+    - name: Re-exec systemd so it opens the hardware watchdog
+      ansible.builtin.command: systemctl daemon-reexec
+      when: host_watchdog_config.changed or (host_watchdog_state.stdout | trim) != 'active'
+      changed_when: true
+
+    - name: Verify the watchdog is counting down under systemd
+      ansible.builtin.command:
+        argv:
+          - python3
+          - -c
+          - |
+            import pathlib
+            root = pathlib.Path("/sys/class/watchdog/watchdog0")
+            state = (root / "state").read_text().strip()
+            timeleft = int((root / "timeleft").read_text().strip())
+            timeout = int((root / "timeout").read_text().strip())
+            if state != "active" or not 0 < timeleft <= timeout or timeout != 60:
+                raise SystemExit(f"watchdog state={state} timeleft={timeleft} timeout={timeout}")
+      changed_when: false
+      retries: 5
+      delay: 1
+      register: host_watchdog_verified
+      until: host_watchdog_verified.rc == 0
