@@ -32,6 +32,9 @@ wg_socrat_admin_clients:
   antonmoss-mac:
     address: 10.250.0.4
     public_key: wys2VBbZrDMU+a1w5Gjpu4QlEefD7ZhoJEcCT7mKgyA=
+  xiaomi-tv:
+    address: 10.250.0.8
+    public_key: 2iba8vq4KkAZmoLR+5u9t/WUlvtrHOtS+ys/k8oN4wQ=
 wg_socrat_nodes:
   socrat-0:
     address: 10.250.0.1

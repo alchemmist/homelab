@@ -18,6 +18,8 @@ metadata:
 data:
   rancher-layout.js: |
 {{ .Files.Get "files/rancher-layout.js" | indent 4 }}
+  traffic-light-inset.js: |
+{{ .Files.Get "files/traffic-light-inset.js" | indent 4 }}
   {{ range $node := .Values.privateGui.nodes }}
   {{ .nodeName }}.conf: |
     events {}
@@ -80,6 +82,13 @@ data:
           add_header Cache-Control "no-cache" always;
         }
         {{- end }}
+        {{- if .trafficLightInset }}
+        location = /_socrat/traffic-light-inset.js {
+          alias /etc/nginx/nodes/traffic-light-inset.js;
+          default_type application/javascript;
+          add_header Cache-Control "no-cache" always;
+        }
+        {{- end }}
         {{- if .editorUpstream }}
         {{- if not $.Values.privateGui.editorAuthSecret }}
         {{- fail "editorUpstream requires privateGui.editorAuthSecret" }}
@@ -109,7 +118,7 @@ data:
           {{- if .clearAuthorization }}
           proxy_set_header Authorization "";
           {{- end }}
-          {{- if or .responseStyle .autoSizeGrafana }}
+          {{- if or .responseStyle .autoSizeGrafana .trafficLightInset }}
           proxy_set_header Accept-Encoding $private_html_accept_encoding;
           sub_filter_once on;
           {{- $layout := "" }}
@@ -118,6 +127,9 @@ data:
           {{- end }}
           {{- if .autoSizeGrafana }}
           {{- $layout = printf "%s<script defer src=\"/_socrat/rancher-layout.js\"></script>" $layout }}
+          {{- end }}
+          {{- if .trafficLightInset }}
+          {{- $layout = printf "%s<script defer src=\"/_socrat/traffic-light-inset.js\"></script>" $layout }}
           {{- end }}
           sub_filter '</head>' {{ printf "%s</head>" $layout | quote }};
           {{- end }}

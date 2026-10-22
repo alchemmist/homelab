@@ -52,7 +52,7 @@
 
 - name: Merge Grafana into existing gateway hosts
   ansible.builtin.set_fact:
-    monitoring_wg_merged_values: "{{ monitoring_wg_values | combine({'privateGui': {'extraVirtualHosts': (monitoring_wg_values.privateGui.extraVirtualHosts | default([]) | rejectattr('name', 'equalto', 'grafana') | list) + [{'name': 'grafana', 'nodeName': monitoring_wg_node, 'host': monitoring_wg_host, 'tlsSecret': monitoring_wg_tls_secret, 'resolver': monitoring_wg_dns.stdout, 'upstream': monitoring_wg_upstream, 'clearAuthorization': true}]}}, recursive=true) }}"
+    monitoring_wg_merged_values: "{{ monitoring_wg_values | combine({'privateGui': {'extraVirtualHosts': (monitoring_wg_values.privateGui.extraVirtualHosts | default([]) | rejectattr('name', 'equalto', 'grafana') | list) + [{'name': 'grafana', 'nodeName': monitoring_wg_node, 'host': monitoring_wg_host, 'tlsSecret': monitoring_wg_tls_secret, 'resolver': monitoring_wg_dns.stdout, 'upstream': monitoring_wg_upstream, 'clearAuthorization': true, 'trafficLightInset': true}]}}, recursive=true) }}"
   no_log: true
 
 - name: Create private deployment directory

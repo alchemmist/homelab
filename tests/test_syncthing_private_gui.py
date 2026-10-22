@@ -65,6 +65,14 @@ class SyncthingPrivateGuiTests(unittest.TestCase):
     def test_gui_service_is_only_kept_for_public_mode(self):
         self.assertIn('{{- if not .Values.privateGui.enabled }}', SERVICE)
 
+    def test_traffic_light_inset_is_opt_in_and_dashboard_scoped(self):
+        self.assertIn('traffic-light-inset.js', NGINX)
+        self.assertIn('.trafficLightInset', NGINX)
+        script = (CHART / 'files/traffic-light-inset.js').read_text()
+        self.assertIn('/d/socrat-traffic-light', script)
+        self.assertIn('padding:5px', script)
+        self.assertNotIn('injectJsCode', script)
+
 
 if __name__ == '__main__':
     unittest.main()

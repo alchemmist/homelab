@@ -1,4 +1,4 @@
-{{- range $name := list "overview" "nodes" "services" "llm" "metrics" }}
+{{- range $name := list "overview" "nodes" "services" "llm" "metrics" "traffic-light" }}
 {{- $content := $.Files.Get (printf "dashboards/%s.json" $name) }}
 {{- $alertLinks := dict }}
 {{- if eq $name "nodes" }}

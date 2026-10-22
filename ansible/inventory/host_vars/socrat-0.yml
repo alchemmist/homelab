@@ -30,6 +30,7 @@ syncthing_private_ui_extra_virtual_hosts:
     tlsSecret: grafana-private-tls
     resolver: 10.43.0.10
     clearAuthorization: true
+    trafficLightInset: true
   - name: grafana-mcp
     host: grafana-mcp.socrat.alchemmist.xyz
     nodeName: socrat-1

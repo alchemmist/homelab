@@ -6,6 +6,13 @@
     homelab_tv_serial: 192.168.0.19:5555
     homelab_tv_expected_model: MiTV-MOOQ1
     homelab_tv_select_hdmi: false
+    homelab_tv_fully_package: de.ozerov.fully
+    homelab_tv_fully_reapply: false
+    homelab_tv_fully_start_url: https://grafana.socrat.alchemmist.xyz/d/socrat-traffic-light?kiosk=1&hideLogo=1
+    homelab_tv_fully_settings:
+      startURL: "{{ homelab_tv_fully_start_url }}"
+      injectJsCode: ""
+    homelab_tv_fully_settings_path: "{{ homelab_user_home }}/.cache/homelab-tv/fully-once-settings.json"
   tasks:
     - name: Install Android Debug Bridge
       become: true
@@ -92,3 +99,65 @@
           - -d
           - content://android.media.tv/passthrough/com.mediatek.tvinput%2F.hdmi.HDMIInputService%2FHW4
       when: homelab_tv_select_hdmi | bool
+
+    - name: Require Fully Kiosk Browser
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, pm, path, "{{ homelab_tv_fully_package }}"]
+      register: homelab_tv_fully_path
+      changed_when: false
+      check_mode: false
+      failed_when: homelab_tv_fully_path.rc != 0 or homelab_tv_fully_package not in homelab_tv_fully_path.stdout
+
+    - name: Read Fully shared-storage access
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, appops, get, "{{ homelab_tv_fully_package }}", "{{ item }}"]
+      loop:
+        - NO_ISOLATED_STORAGE
+        - LEGACY_STORAGE
+      register: homelab_tv_fully_storage
+      changed_when: false
+      check_mode: false
+
+    - name: Let Fully read one-shot settings from shared storage
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, appops, set, "{{ homelab_tv_fully_package }}", "{{ item.item }}", allow]
+      loop: "{{ homelab_tv_fully_storage.results }}"
+      when: "'allow' not in item.stdout"
+
+    - name: Create the Fully settings directory
+      ansible.builtin.file:
+        path: "{{ homelab_tv_fully_settings_path | dirname }}"
+        state: directory
+        mode: '0700'
+
+    - name: Render Fully one-shot settings
+      ansible.builtin.copy:
+        dest: "{{ homelab_tv_fully_settings_path }}"
+        content: "{{ (homelab_tv_fully_settings | to_nice_json) ~ '\n' }}"
+        mode: '0600'
+      register: homelab_tv_fully_settings_file
+
+    - name: Push Fully one-shot settings
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", push, "{{ homelab_tv_fully_settings_path }}", /sdcard/fully-once-settings.json]
+      when: homelab_tv_fully_settings_file.changed or homelab_tv_fully_reapply | bool
+
+    - name: Restart Fully so it imports the start URL
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, "{{ item }}"]
+      loop:
+        - am force-stop {{ homelab_tv_fully_package }}
+        - am start -n {{ homelab_tv_fully_package }}/.FullyActivity
+      when: homelab_tv_fully_settings_file.changed or homelab_tv_fully_reapply | bool
+
+    - name: Wait until Fully consumes the one-shot settings
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, ls, /sdcard/fully-once-settings.json]
+      register: homelab_tv_fully_import
+      changed_when: false
+      check_mode: false
+      failed_when: false
+      retries: 8
+      delay: 1
+      until: homelab_tv_fully_import.rc != 0
+      when: homelab_tv_fully_settings_file.changed or homelab_tv_fully_reapply | bool
