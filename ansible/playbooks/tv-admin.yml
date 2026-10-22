@@ -12,6 +12,21 @@
     homelab_tv_fully_settings:
       startURL: "{{ homelab_tv_fully_start_url }}"
       injectJsCode: ""
+      launchOnBoot: false
+      kioskMode: false
+      disableHome: false
+      disableHomeButton: false
+    homelab_tv_quickactions_package: dev.vodik7.tvquickactions.free
+    homelab_tv_quickactions_service: dev.vodik7.tvquickactions.free/dev.vodik7.tvquickactions.KeyAccessibilityService
+    homelab_tv_wireguard_package: com.wireguard.android
+    homelab_tv_hdmi_package: xyz.alchemmist.hdmi
+    homelab_tv_partner_package: com.xiaomi.android.tvsetup.partnercustomizer
+    homelab_tv_home_component: com.google.android.tvlauncher/.MainActivity
+    homelab_tv_persistent_packages:
+      - "{{ homelab_tv_fully_package }}"
+      - "{{ homelab_tv_quickactions_package }}"
+      - "{{ homelab_tv_wireguard_package }}"
+      - "{{ homelab_tv_hdmi_package }}"
     homelab_tv_fully_settings_path: "{{ homelab_user_home }}/.cache/homelab-tv/fully-once-settings.json"
   tasks:
     - name: Install Android Debug Bridge
@@ -100,13 +115,133 @@
           - content://android.media.tv/passthrough/com.mediatek.tvinput%2F.hdmi.HDMIInputService%2FHW4
       when: homelab_tv_select_hdmi | bool
 
-    - name: Require Fully Kiosk Browser
+    - name: Require the living-room television packages
       ansible.builtin.command:
-        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, pm, path, "{{ homelab_tv_fully_package }}"]
-      register: homelab_tv_fully_path
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, pm, path, "{{ item }}"]
+      loop: "{{ homelab_tv_persistent_packages }}"
       changed_when: false
       check_mode: false
-      failed_when: homelab_tv_fully_path.rc != 0 or homelab_tv_fully_package not in homelab_tv_fully_path.stdout
+      failed_when: rc != 0 or item not in stdout
+
+    - name: Read disabled television packages
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, pm, list, packages, -d]
+      register: homelab_tv_disabled_packages
+      changed_when: false
+      check_mode: false
+
+    - name: Keep the Xiaomi partner customizer from taking the remote buttons
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, pm, disable-user, --user, "0", "{{ homelab_tv_partner_package }}"]
+      when: homelab_tv_partner_package not in homelab_tv_disabled_packages.stdout
+
+    - name: Read the current home screen
+      ansible.builtin.command:
+        argv:
+          - adb
+          - -s
+          - "{{ homelab_tv_serial }}"
+          - shell
+          - cmd
+          - package
+          - resolve-activity
+          - --brief
+          - -a
+          - android.intent.action.MAIN
+          - -c
+          - android.intent.category.HOME
+      register: homelab_tv_home
+      changed_when: false
+      check_mode: false
+
+    - name: Keep Home on the normal television launcher
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, cmd, package, set-home-activity, "{{ homelab_tv_home_component }}"]
+      when: homelab_tv_fully_package in homelab_tv_home.stdout
+
+    - name: Read the accessibility master switch
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, settings, get, secure, accessibility_enabled]
+      register: homelab_tv_accessibility_enabled
+      changed_when: false
+      check_mode: false
+
+    - name: Leave accessibility available for the remote helper
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, settings, put, secure, accessibility_enabled, "1"]
+      when: homelab_tv_accessibility_enabled.stdout != '1'
+
+    - name: Read enabled accessibility services
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, settings, get, secure, enabled_accessibility_services]
+      register: homelab_tv_accessibility_services
+      changed_when: false
+      check_mode: false
+
+    - name: Keep tvQuickActions bound across reboot
+      ansible.builtin.command:
+        argv:
+          - adb
+          - -s
+          - "{{ homelab_tv_serial }}"
+          - shell
+          - settings
+          - put
+          - secure
+          - enabled_accessibility_services
+          - "{{ homelab_tv_quickactions_service if homelab_tv_accessibility_services.stdout in ['null', ''] else homelab_tv_accessibility_services.stdout ~ ':' ~ homelab_tv_quickactions_service }}"
+      when: homelab_tv_quickactions_service not in homelab_tv_accessibility_services.stdout
+
+    - name: Read the standby whitelist
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, dumpsys, deviceidle, whitelist]
+      register: homelab_tv_idle_whitelist
+      changed_when: false
+      check_mode: false
+
+    - name: Keep the television helpers out of standby
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, dumpsys, deviceidle, whitelist, "+{{ item }}"]
+      loop: "{{ homelab_tv_persistent_packages }}"
+      when: item not in homelab_tv_idle_whitelist.stdout
+
+    - name: Read background execution for the television helpers
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, appops, get, "{{ item.0 }}", "{{ item.1 }}"]
+      loop: "{{ homelab_tv_persistent_packages | product(['RUN_IN_BACKGROUND', 'RUN_ANY_IN_BACKGROUND']) | list }}"
+      register: homelab_tv_background
+      changed_when: false
+      check_mode: false
+
+    - name: Allow the television helpers to start again after boot
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, appops, set, "{{ item.item.0 }}", "{{ item.item.1 }}", allow]
+      loop: "{{ homelab_tv_background.results }}"
+      when: "'allow' not in item.stdout"
+
+    - name: Read the always-on VPN app
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, settings, get, secure, always_on_vpn_app]
+      register: homelab_tv_vpn_app
+      changed_when: false
+      check_mode: false
+
+    - name: Bring the WireGuard tunnel up when the television boots
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, settings, put, secure, always_on_vpn_app, "{{ homelab_tv_wireguard_package }}"]
+      when: homelab_tv_vpn_app.stdout != homelab_tv_wireguard_package
+
+    - name: Read VPN lockdown
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, settings, get, secure, always_on_vpn_lockdown]
+      register: homelab_tv_vpn_lockdown
+      changed_when: false
+      check_mode: false
+
+    - name: Leave YouTube and Kinopoisk on the normal network
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, settings, put, secure, always_on_vpn_lockdown, "0"]
+      when: homelab_tv_vpn_lockdown.stdout != '0'
 
     - name: Read Fully shared-storage access
       ansible.builtin.command:
