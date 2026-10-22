@@ -9,6 +9,22 @@
   vars:
     webui_guard_chart: '{{ homelab_user_home }}/tmp-charts/open-webui-tool-guard'
   tasks:
+    - name: Configure a finite web loader timeout
+      ansible.builtin.command:
+        argv:
+          - kubectl
+          - -n
+          - llm
+          - exec
+          - -i
+          - deployment/open-webui
+          - --
+          - python
+          - '-'
+        stdin: "{{ lookup('file', playbook_dir + '/../files/configure_webui_fetch_timeout.py') }}"
+      register: webui_fetch_timeout
+      changed_when: '"\"changed\": true" in webui_fetch_timeout.stdout'
+
     - name: Copy the managed WebUI chart
       ansible.builtin.copy:
         src: '{{ playbook_dir }}/../../charts/open-webui/'
