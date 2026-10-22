@@ -989,10 +989,10 @@ container_resource_policy_profiles:
     minio:
       requests:
         cpu: 25m
-        memory: 64Mi
+        memory: 128Mi
         ephemeral-storage: 64Mi
       limits:
-        memory: 256Mi
+        memory: 512Mi
         ephemeral-storage: 1Gi
       removeCpuLimit: true
   nodeSelector:

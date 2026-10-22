@@ -1,7 +1,6 @@
 images:
   thanos: quay.io/thanos/thanos:v0.42.4
-  minio: quay.io/minio/minio:RELEASE.2025-10-15T17-29-55Z
-  minioClient: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+  minio: docker.io/chrislusf/seaweedfs:3.80
   cascade: python:3.12-slim
 rawDirectory: /var/lib/socrat-thanos
 workHostPath: /var/lib/socrat-thanos-work
@@ -289,8 +288,8 @@ minio:
     resources:
       requests:
         cpu: 25m
-        memory: 64Mi
+        memory: 128Mi
         ephemeral-storage: 64Mi
       limits:
-        memory: 256Mi
+        memory: 512Mi
         ephemeral-storage: 1Gi

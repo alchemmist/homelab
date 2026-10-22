@@ -6,7 +6,7 @@ monitoring_thanos_helm_binary: /usr/local/bin/helm
 monitoring_thanos_k3s_binary: /usr/local/bin/k3s
 monitoring_thanos_directory: /home/alchemmist/.cache/homelab-thanos
 monitoring_thanos_chart_source: "{{ playbook_dir }}/../../charts/thanos"
-monitoring_thanos_version: v0.42.4
+monitoring_thanos_version: 0.42.4
 monitoring_thanos_archive_sha256: 5292f95f6f18199fe90cd24a5bf8eaca51ce48812a24f8778a3b9148c8fb71e1
 monitoring_thanos_nodes:
   - name: socrat-0
