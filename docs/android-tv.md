@@ -34,7 +34,15 @@ cd ansible
 ansible-playbook playbooks/tv-admin.yml --ask-become-pass
 ```
 
-The playbook prepares ADB and a dedicated SSH key, checks the authorized TV model, and enables restoration of the last input. It does not bypass TV authorization or install the public key on a new television automatically.
+The playbook prepares ADB and a dedicated SSH key, checks the authorized TV model, and enables restoration of the last input. It also points Fully Kiosk Browser at the living-room dashboard. It does not bypass TV authorization, install Fully, or install the public key on a new television automatically.
+
+## Fully Kiosk
+
+Fully Kiosk Browser (`de.ozerov.fully`) is the living-room browser. `tv-admin.yml` writes its start URL and clears `injectJsCode`, then imports that pair through `/sdcard/fully-once-settings.json`. Fully reads the file on the next start and deletes it. The playbook allows `NO_ISOLATED_STORAGE` and `LEGACY_STORAGE` so that import can see shared storage, and it restarts Fully only when the settings file changes. Force another import with `-e homelab_tv_fully_reapply=true`.
+
+The start URL is `https://grafana.socrat.alchemmist.xyz/d/socrat-traffic-light?kiosk=1&hideLogo=1`. `kiosk=1` hides Grafana navigation. `hideLogo=1` hides the kiosk footer. Leave `injectJsCode` empty: Fully treats injected JavaScript as a Plus feature and paints a “PLUS Features Activated” watermark.
+
+The 5px screen inset is not a Fully setting. The private Grafana gateway injects `charts/syncthing/files/traffic-light-inset.js` only for `/d/socrat-traffic-light`. That script is enabled by `trafficLightInset: true` on the grafana virtual host and is applied by `playbooks/syncthing-private-ui.yml`. `monitoring_wg_access` keeps the same flag when it rewrites the grafana host.
 
 ## Restore HDMI at startup
 
