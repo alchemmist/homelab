@@ -16,6 +16,10 @@
   register: ha_dependency_current
   changed_when: false
 
+- name: Select the nodes allowed for this service
+  ansible.builtin.set_fact:
+    ha_dependency_nodes: "{{ k3s_ha_dependencies_coredns_nodes if ha_dependency.name == 'coredns' else k3s_ha_dependencies_nodes }}"
+
 - name: Build placement using the existing deployment selector
   ansible.builtin.set_fact:
     ha_dependency_affinity:
@@ -25,7 +29,7 @@
             - matchExpressions:
                 - key: kubernetes.io/hostname
                   operator: In
-                  values: "{{ k3s_ha_dependencies_nodes }}"
+                  values: "{{ ha_dependency_nodes }}"
       podAntiAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:
           - labelSelector: "{{ (ha_dependency_current.stdout | from_json).spec.selector }}"
@@ -87,7 +91,7 @@
       - --timeout=600s
   changed_when: false
 
-- name: Verify ready replicas on the home and external nodes
+- name: Verify ready replicas on the selected nodes
   ansible.builtin.command:
     argv:
       - python3
@@ -109,5 +113,5 @@
       - "{{ k3s_ha_dependencies_kubeconfig }}"
       - "{{ ha_dependency.namespace }}"
       - "{{ ha_dependency.name }}"
-      - "{{ k3s_ha_dependencies_nodes | to_json }}"
+      - "{{ ha_dependency_nodes | to_json }}"
   changed_when: false

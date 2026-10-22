@@ -3,6 +3,9 @@ k3s_ha_dependencies_kubeconfig: /etc/rancher/k3s/k3s.yaml
 k3s_ha_dependencies_nodes:
   - socrat-0
   - socrat-3
+k3s_ha_dependencies_coredns_nodes:
+  - socrat-0
+  - socrat-2
 k3s_ha_dependencies_deployments:
   - namespace: kube-system
     name: coredns
