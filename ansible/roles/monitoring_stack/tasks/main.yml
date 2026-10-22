@@ -152,7 +152,7 @@
 - name: Decide whether the Prometheus volume can move
   ansible.builtin.command:
     argv: [python3, "{{ monitoring_directory }}/prometheus_relocate.py"]
-    stdin: "{{ {'desired': monitoring_prometheus_desired_node, 'relocate': monitoring_prometheus_relocate | bool, 'pods': ((monitoring_prometheus_pods.stdout | from_json).items if monitoring_prometheus_pods.rc == 0 else []), 'volumes': (monitoring_persistent_volumes.stdout | from_json).items} | to_json }}"
+    stdin: "{{ {'desired': monitoring_prometheus_desired_node, 'relocate': monitoring_prometheus_relocate | bool, 'pods': ((monitoring_prometheus_pods.stdout | from_json)['items'] if monitoring_prometheus_pods.rc == 0 else []), 'volumes': (monitoring_persistent_volumes.stdout | from_json)['items']} | to_json }}"
   register: monitoring_prometheus_decision
   changed_when: false
 

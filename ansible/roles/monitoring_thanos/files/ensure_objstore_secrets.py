@@ -55,6 +55,16 @@ def s3_config(endpoint, access_key, secret_key):
     )
 
 
+def s3_identity(access_key, secret_key):
+    return json.dumps({
+        'identities': [{
+            'name': 'thanos',
+            'credentials': [{'accessKey': access_key, 'secretKey': secret_key}],
+            'actions': ['Admin', 'Read', 'Write', 'List', 'Tagging'],
+        }],
+    }) + '\n'
+
+
 def ensure(binary, kubeconfig, namespace):
     created = []
     if not exists(binary, kubeconfig, namespace, 'thanos-objstore-raw'):
@@ -68,11 +78,22 @@ def ensure(binary, kubeconfig, namespace):
     )
     for credentials, objstore, endpoint in shelves:
         if not exists(binary, kubeconfig, namespace, credentials):
+            password = secrets.token_urlsafe(32)
             apply_secret(binary, kubeconfig, namespace, credentials, {
                 'rootUser': 'thanos',
-                'rootPassword': secrets.token_urlsafe(32),
+                'rootPassword': password,
+                's3.json': s3_identity('thanos', password),
             })
             created.append(credentials)
+        else:
+            stored = read_secret(binary, kubeconfig, namespace, credentials)
+            if 's3.json' not in stored:
+                apply_secret(binary, kubeconfig, namespace, credentials, {
+                    'rootUser': stored['rootUser'],
+                    'rootPassword': stored['rootPassword'],
+                    's3.json': s3_identity(stored['rootUser'], stored['rootPassword']),
+                })
+                created.append(credentials)
         if not exists(binary, kubeconfig, namespace, objstore):
             stored = read_secret(binary, kubeconfig, namespace, credentials)
             apply_secret(binary, kubeconfig, namespace, objstore, {

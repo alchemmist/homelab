@@ -31,23 +31,35 @@ spec:
         - name: minio
           image: {{ $.Values.images.minio }}
           imagePullPolicy: IfNotPresent
-          args: ["server", "/data", "--console-address", ":9001"]
-          env:
-            - name: MINIO_ROOT_USER
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $minio.secret }}
-                  key: rootUser
-            - name: MINIO_ROOT_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $minio.secret }}
-                  key: rootPassword
-            - name: HOME
-              value: /tmp
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              weed server -filer=true -s3=true -s3.port=9000 -s3.config=/etc/seaweed/s3.json -ip.bind=0.0.0.0 &
+              weed_pid=$!
+              i=0
+              ok=0
+              while [ "$i" -lt 60 ]; do
+                  out=$(echo 's3.bucket.create -name thanos' | timeout 10 weed shell -master=localhost:9333 2>&1 || true)
+                  echo "$out"
+                  case "$out" in
+                      *'created bucket thanos'*) ok=1; break ;;
+                  esac
+                  i=$((i + 1))
+                  sleep 2
+              done
+              if [ "$ok" != 1 ]; then
+                  kill "$weed_pid" || true
+                  exit 1
+              fi
+              wait "$weed_pid"
           ports:
             - name: http
               containerPort: 9000
+            - name: filer
+              containerPort: 8888
+            - name: master
+              containerPort: 9333
           resources:
             {{- toYaml $minio.resources | nindent 12 }}
           securityContext:
@@ -60,6 +72,9 @@ spec:
               mountPath: /data
             - name: tmp
               mountPath: /tmp
+            - name: s3config
+              mountPath: /etc/seaweed
+              readOnly: true
       volumes:
         - name: data
           hostPath:
@@ -67,6 +82,12 @@ spec:
             type: Directory
         - name: tmp
           emptyDir: {}
+        - name: s3config
+          secret:
+            secretName: {{ $minio.secret }}
+            items:
+              - key: s3.json
+                path: s3.json
 ---
 apiVersion: v1
 kind: Service
@@ -81,52 +102,10 @@ spec:
     - name: http
       port: 9000
       targetPort: http
----
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: {{ $name }}-bucket
-  annotations:
-    helm.sh/hook: post-install,post-upgrade
-    helm.sh/hook-weight: "5"
-    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
-spec:
-  backoffLimit: 10
-  ttlSecondsAfterFinished: 600
-  template:
-    spec:
-      automountServiceAccountToken: false
-      restartPolicy: OnFailure
-      nodeSelector:
-        kubernetes.io/hostname: {{ $minio.node }}
-      containers:
-        - name: mc
-          image: {{ $.Values.images.minioClient }}
-          imagePullPolicy: IfNotPresent
-          env:
-            - name: MINIO_ROOT_USER
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $minio.secret }}
-                  key: rootUser
-            - name: MINIO_ROOT_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ $minio.secret }}
-                  key: rootPassword
-          command: ["/bin/sh", "-c"]
-          args:
-            - |
-              set -eu
-              ok=0
-              for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do
-                if mc alias set local http://{{ $name }}:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"; then
-                  ok=1
-                  break
-                fi
-                sleep 2
-              done
-              test "$ok" = 1
-              mc mb -p local/thanos || mc stat local/thanos
----
+    - name: filer
+      port: 8888
+      targetPort: filer
+    - name: master
+      port: 9333
+      targetPort: master
 {{- end }}

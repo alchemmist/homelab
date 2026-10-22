@@ -31,7 +31,7 @@
 - name: Decide whether Prometheus can leave socrat-1
   ansible.builtin.command:
     argv: [python3, "{{ monitoring_thanos_directory }}/prometheus_relocate.py"]
-    stdin: "{{ {'desired': monitoring_prometheus_desired_node, 'relocate': monitoring_prometheus_relocate | default(false) | bool, 'pods': ((monitoring_thanos_prometheus_pods.stdout | from_json).items if monitoring_thanos_prometheus_pods.rc == 0 else []), 'volumes': (monitoring_thanos_persistent_volumes.stdout | from_json).items} | to_json }}"
+    stdin: "{{ {'desired': monitoring_prometheus_desired_node, 'relocate': monitoring_prometheus_relocate | default(false) | bool, 'pods': ((monitoring_thanos_prometheus_pods.stdout | from_json)['items'] if monitoring_thanos_prometheus_pods.rc == 0 else []), 'volumes': (monitoring_thanos_persistent_volumes.stdout | from_json)['items']} | to_json }}"
   register: monitoring_thanos_prometheus_decision
   changed_when: false
 
@@ -90,7 +90,7 @@
 
 - name: Download the pinned Thanos archive
   ansible.builtin.get_url:
-    url: "https://github.com/thanos-io/thanos/releases/download/{{ monitoring_thanos_version }}/thanos-{{ monitoring_thanos_version }}.linux-amd64.tar.gz"
+    url: "https://github.com/thanos-io/thanos/releases/download/v{{ monitoring_thanos_version }}/thanos-{{ monitoring_thanos_version }}.linux-amd64.tar.gz"
     dest: "{{ monitoring_thanos_directory }}/thanos.tar.gz"
     checksum: "sha256:{{ monitoring_thanos_archive_sha256 }}"
     mode: "0644"

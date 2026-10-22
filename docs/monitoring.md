@@ -20,8 +20,8 @@ Grafana and Alertmanager stay on socrat-1 and explicitly select `local-path`, be
 | --- | --- | --- |
 | Prometheus | socrat-0, 10 GiB local-path PVC | 12 hours of 5-second samples, no size quota, compaction disabled |
 | Thanos raw | socrat-0, `/var/lib/socrat-thanos` | 5 days of raw blocks, plus the 5-minute blocks still needed to build the hour |
-| Thanos 5-minute shelf | socrat-1, one-disk MinIO | 5-minute blocks for 30 days |
-| Thanos hourly shelf | socrat-3, one-disk MinIO | hourly blocks for 730 days |
+| Thanos 5-minute shelf | socrat-1, one-disk SeaweedFS | 5-minute blocks for 30 days |
+| Thanos hourly shelf | socrat-3, one-disk SeaweedFS | hourly blocks for 730 days |
 | Grafana | socrat-1, 1 GiB | Persistent database and settings |
 | Alertmanager | socrat-1, 1 GiB | Persistent silences and notification state |
 
