@@ -969,30 +969,30 @@ container_resource_policy_profiles:
     kubernetes.io/hostname: socrat-3
 - namespace: cattle-monitoring-system
   ownerKind: ReplicaSet
-  ownerPattern: ^thanos-minio-5m-[a-z0-9]+$
+  ownerPattern: ^thanos-shelf-5m-[a-z0-9]+$
   containers:
-    minio:
+    shelf:
       requests:
-        cpu: 50m
-        memory: 128Mi
+        cpu: 25m
+        memory: 64Mi
         ephemeral-storage: 64Mi
       limits:
-        memory: 512Mi
+        memory: 256Mi
         ephemeral-storage: 1Gi
       removeCpuLimit: true
   nodeSelector:
     kubernetes.io/hostname: socrat-1
 - namespace: cattle-monitoring-system
   ownerKind: ReplicaSet
-  ownerPattern: ^thanos-minio-1h-[a-z0-9]+$
+  ownerPattern: ^thanos-shelf-1h-[a-z0-9]+$
   containers:
-    minio:
+    shelf:
       requests:
         cpu: 25m
-        memory: 128Mi
+        memory: 64Mi
         ephemeral-storage: 64Mi
       limits:
-        memory: 512Mi
+        memory: 256Mi
         ephemeral-storage: 1Gi
       removeCpuLimit: true
   nodeSelector:

@@ -75,17 +75,24 @@
     - /var/lib/socrat-thanos-work
   become: true
 
-- name: Create the single-disk MinIO directories
+- name: Create the five-minute shelf directory on socrat-1
   ansible.builtin.file:
-    path: /var/lib/socrat-thanos-minio
+    path: /var/lib/socrat-thanos-5m
     state: directory
     owner: "1000"
-    group: "1000"
+    group: "2000"
     mode: "0775"
-  delegate_to: "{{ item }}"
-  loop:
-    - socrat-1
-    - socrat-3
+  delegate_to: socrat-1
+  become: true
+
+- name: Create the hourly shelf directory on socrat-3
+  ansible.builtin.file:
+    path: /var/lib/socrat-thanos-1h
+    state: directory
+    owner: "1000"
+    group: "2000"
+    mode: "0775"
+  delegate_to: socrat-3
   become: true
 
 - name: Download the pinned Thanos archive
@@ -151,3 +158,31 @@
       - --timeout
       - 10m
   changed_when: true
+
+- name: Remove the retired SeaweedFS directories
+  ansible.builtin.file:
+    path: /var/lib/socrat-thanos-minio
+    state: absent
+  delegate_to: "{{ item }}"
+  loop:
+    - socrat-1
+    - socrat-3
+  become: true
+
+- name: Remove retired shelf object-store secrets
+  ansible.builtin.command:
+    argv:
+      - "{{ monitoring_thanos_k3s_binary }}"
+      - kubectl
+      - --kubeconfig
+      - "{{ monitoring_thanos_kubeconfig }}"
+      - -n
+      - "{{ monitoring_thanos_namespace }}"
+      - delete
+      - secret
+      - thanos-minio-5m-credentials
+      - thanos-minio-1h-credentials
+      - thanos-objstore-5m
+      - thanos-objstore-1h
+      - --ignore-not-found
+  changed_when: false

@@ -1,0 +1,109 @@
+{{- $token := "thanos-shelf-token" }}
+{{- range $name, $shelf := .Values.shelves }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}
+  labels:
+    app: {{ $name }}
+data:
+  shelf.py: |
+{{ $.Files.Get "files/shelf.py" | indent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    app: {{ $name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ $name }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: {{ $name }}
+      annotations:
+        checksum/script: {{ $.Files.Get "files/shelf.py" | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: {{ $shelf.node }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 2000
+        fsGroup: 2000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: shelf
+          image: {{ $.Values.images.cascade }}
+          imagePullPolicy: IfNotPresent
+          command: ["python3", "-u", "/scripts/shelf.py"]
+          env:
+            - name: SHELF_DIRECTORY
+              value: {{ $shelf.directory }}
+            - name: SHELF_TOKEN_FILE
+              value: /etc/shelf/token
+            - name: SHELF_PORT
+              value: "8080"
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          resources:
+            {{- toYaml $shelf.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+              readOnly: true
+            - name: data
+              mountPath: {{ $shelf.directory }}
+            - name: token
+              mountPath: /etc/shelf
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: script
+          configMap:
+            name: {{ $name }}
+        - name: data
+          hostPath:
+            path: {{ $shelf.directory }}
+            type: Directory
+        - name: token
+          secret:
+            secretName: {{ $token }}
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    app: {{ $name }}
+spec:
+  selector:
+    app: {{ $name }}
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+{{- end }}

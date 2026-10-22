@@ -78,10 +78,14 @@ spec:
                   value: thanos-compactor
                 - name: OBJSTORE_RAW
                   value: /etc/thanos/raw/objstore.yml
-                - name: OBJSTORE_FIVE
-                  value: /etc/thanos/five/objstore.yml
-                - name: OBJSTORE_HOUR
-                  value: /etc/thanos/hour/objstore.yml
+                - name: RAW_DIRECTORY
+                  value: {{ .Values.rawDirectory | quote }}
+                - name: SHELF_FIVE_URL
+                  value: http://thanos-shelf-5m.{{ .Release.Namespace }}.svc.cluster.local:8080
+                - name: SHELF_HOUR_URL
+                  value: http://thanos-shelf-1h.{{ .Release.Namespace }}.svc.cluster.local:8080
+                - name: SHELF_TOKEN_FILE
+                  value: /etc/shelf/token
                 - name: PROMETHEUS_URL
                   value: {{ .Values.prometheusURL | quote }}
               resources:
@@ -105,11 +109,8 @@ spec:
                 - name: raw
                   mountPath: /etc/thanos/raw
                   readOnly: true
-                - name: five
-                  mountPath: /etc/thanos/five
-                  readOnly: true
-                - name: hour
-                  mountPath: /etc/thanos/hour
+                - name: token
+                  mountPath: /etc/shelf
                   readOnly: true
                 - name: thanos
                   mountPath: /usr/local/bin/thanos
@@ -126,12 +127,9 @@ spec:
             - name: raw
               secret:
                 secretName: {{ .Values.objstoreSecretRaw }}
-            - name: five
+            - name: token
               secret:
-                secretName: {{ .Values.objstoreSecretFive }}
-            - name: hour
-              secret:
-                secretName: {{ .Values.objstoreSecretHour }}
+                secretName: thanos-shelf-token
             - name: thanos
               hostPath:
                 path: /usr/local/bin/thanos

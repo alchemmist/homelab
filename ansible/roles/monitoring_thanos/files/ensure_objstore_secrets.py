@@ -43,26 +43,6 @@ def filesystem_config(directory):
     return 'type: FILESYSTEM\nconfig:\n  directory: ' + directory + '\n'
 
 
-def s3_config(endpoint, access_key, secret_key):
-    return (
-        'type: S3\n'
-        'config:\n'
-        '  bucket: thanos\n'
-        '  endpoint: ' + endpoint + '\n'
-        '  access_key: ' + access_key + '\n'
-        '  secret_key: ' + secret_key + '\n'
-        '  insecure: true\n'
-    )
-
-
-def s3_identity(access_key, secret_key):
-    return json.dumps({
-        'identities': [{
-            'name': 'thanos',
-            'credentials': [{'accessKey': access_key, 'secretKey': secret_key}],
-            'actions': ['Admin', 'Read', 'Write', 'List', 'Tagging'],
-        }],
-    }) + '\n'
 
 
 def ensure(binary, kubeconfig, namespace):
@@ -72,34 +52,11 @@ def ensure(binary, kubeconfig, namespace):
             'objstore.yml': filesystem_config('/var/lib/socrat-thanos'),
         })
         created.append('thanos-objstore-raw')
-    shelves = (
-        ('thanos-minio-5m-credentials', 'thanos-objstore-5m', 'thanos-minio-5m.cattle-monitoring-system.svc.cluster.local:9000'),
-        ('thanos-minio-1h-credentials', 'thanos-objstore-1h', 'thanos-minio-1h.cattle-monitoring-system.svc.cluster.local:9000'),
-    )
-    for credentials, objstore, endpoint in shelves:
-        if not exists(binary, kubeconfig, namespace, credentials):
-            password = secrets.token_urlsafe(32)
-            apply_secret(binary, kubeconfig, namespace, credentials, {
-                'rootUser': 'thanos',
-                'rootPassword': password,
-                's3.json': s3_identity('thanos', password),
-            })
-            created.append(credentials)
-        else:
-            stored = read_secret(binary, kubeconfig, namespace, credentials)
-            if 's3.json' not in stored:
-                apply_secret(binary, kubeconfig, namespace, credentials, {
-                    'rootUser': stored['rootUser'],
-                    'rootPassword': stored['rootPassword'],
-                    's3.json': s3_identity(stored['rootUser'], stored['rootPassword']),
-                })
-                created.append(credentials)
-        if not exists(binary, kubeconfig, namespace, objstore):
-            stored = read_secret(binary, kubeconfig, namespace, credentials)
-            apply_secret(binary, kubeconfig, namespace, objstore, {
-                'objstore.yml': s3_config(endpoint, stored['rootUser'], stored['rootPassword']),
-            })
-            created.append(objstore)
+    if not exists(binary, kubeconfig, namespace, 'thanos-shelf-token'):
+        apply_secret(binary, kubeconfig, namespace, 'thanos-shelf-token', {
+            'token': secrets.token_urlsafe(32),
+        })
+        created.append('thanos-shelf-token')
     print('created' if created else 'present')
     return created
 

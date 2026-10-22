@@ -1,0 +1,102 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: thanos-disk
+  labels:
+    app: thanos-disk
+    app.kubernetes.io/part-of: thanos
+data:
+  disk.py: |
+{{ .Files.Get "files/disk.py" | indent 4 }}
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: thanos-disk
+  labels:
+    app: thanos-disk
+    app.kubernetes.io/part-of: thanos
+spec:
+  selector:
+    matchLabels:
+      app: thanos-disk
+  template:
+    metadata:
+      labels:
+        app: thanos-disk
+        app.kubernetes.io/part-of: thanos
+      annotations:
+        checksum/script: {{ .Files.Get "files/disk.py" | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - socrat-0
+                      - socrat-1
+                      - socrat-3
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: disk
+          image: {{ .Values.images.cascade }}
+          imagePullPolicy: IfNotPresent
+          command: ["python3", "-u", "/scripts/disk.py"]
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: HOST_VAR_LIB
+              value: /host/var/lib
+            - name: OUTPUT
+              value: /textfile/socrat-metrics-disk.prom
+            - name: INTERVAL_SECONDS
+              value: "30"
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+              ephemeral-storage: 32Mi
+            limits:
+              memory: 256Mi
+              ephemeral-storage: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+              readOnly: true
+            - name: textfile
+              mountPath: /textfile
+            - name: varlib
+              mountPath: /host/var/lib
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: script
+          configMap:
+            name: thanos-disk
+        - name: textfile
+          hostPath:
+            path: /var/lib/node_exporter/textfile_collector
+            type: DirectoryOrCreate
+        - name: varlib
+          hostPath:
+            path: /var/lib
+            type: Directory
+        - name: tmp
+          emptyDir: {}

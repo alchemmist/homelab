@@ -1,15 +1,9 @@
 images:
   thanos: quay.io/thanos/thanos:v0.42.4
-  minio: docker.io/chrislusf/seaweedfs:3.80
   cascade: python:3.12-slim
 rawDirectory: /var/lib/socrat-thanos
 workHostPath: /var/lib/socrat-thanos-work
-minioHostPath: /var/lib/socrat-thanos-minio
 objstoreSecretRaw: thanos-objstore-raw
-objstoreSecretFive: thanos-objstore-5m
-objstoreSecretHour: thanos-objstore-1h
-minioSecretFive: thanos-minio-5m-credentials
-minioSecretHour: thanos-minio-1h-credentials
 sidecarService: kube-prometheus-stack-thanos-discovery.cattle-monitoring-system.svc.cluster.local:10901
 prometheusURL: http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090
 components:
@@ -105,14 +99,20 @@ components:
         readOnly: true
       - name: data
         mountPath: /var/thanos/store
+      - name: shelf
+        mountPath: /var/lib/socrat-thanos-5m
       - name: tmp
         mountPath: /tmp
     volumes:
       - name: objstore
-        secret:
-          secretName: thanos-objstore-5m
+        configMap:
+          name: thanos-objstore-5m
       - name: data
         emptyDir: {}
+      - name: shelf
+        hostPath:
+          path: /var/lib/socrat-thanos-5m
+          type: Directory
       - name: tmp
         emptyDir: {}
   thanos-store-1h:
@@ -139,14 +139,20 @@ components:
         readOnly: true
       - name: data
         mountPath: /var/thanos/store
+      - name: shelf
+        mountPath: /var/lib/socrat-thanos-1h
       - name: tmp
         mountPath: /tmp
     volumes:
       - name: objstore
-        secret:
-          secretName: thanos-objstore-1h
+        configMap:
+          name: thanos-objstore-1h
       - name: data
         emptyDir: {}
+      - name: shelf
+        hostPath:
+          path: /var/lib/socrat-thanos-1h
+          type: Directory
       - name: tmp
         emptyDir: {}
   thanos-compactor:
@@ -220,14 +226,20 @@ components:
       - name: objstore
         mountPath: /etc/thanos
         readOnly: true
+      - name: shelf
+        mountPath: /var/lib/socrat-thanos-5m
       - name: work
         mountPath: /var/thanos/work
       - name: tmp
         mountPath: /tmp
     volumes:
       - name: objstore
-        secret:
-          secretName: thanos-objstore-5m
+        configMap:
+          name: thanos-objstore-5m
+      - name: shelf
+        hostPath:
+          path: /var/lib/socrat-thanos-5m
+          type: Directory
       - name: work
         emptyDir: {}
       - name: tmp
@@ -258,38 +270,44 @@ components:
       - name: objstore
         mountPath: /etc/thanos
         readOnly: true
+      - name: shelf
+        mountPath: /var/lib/socrat-thanos-1h
       - name: work
         mountPath: /var/thanos/work
       - name: tmp
         mountPath: /tmp
     volumes:
       - name: objstore
-        secret:
-          secretName: thanos-objstore-1h
+        configMap:
+          name: thanos-objstore-1h
+      - name: shelf
+        hostPath:
+          path: /var/lib/socrat-thanos-1h
+          type: Directory
       - name: work
         emptyDir: {}
       - name: tmp
         emptyDir: {}
-minio:
-  thanos-minio-5m:
+shelves:
+  thanos-shelf-5m:
     node: socrat-1
-    secret: thanos-minio-5m-credentials
-    resources:
-      requests:
-        cpu: 50m
-        memory: 128Mi
-        ephemeral-storage: 64Mi
-      limits:
-        memory: 512Mi
-        ephemeral-storage: 1Gi
-  thanos-minio-1h:
-    node: socrat-3
-    secret: thanos-minio-1h-credentials
+    directory: /var/lib/socrat-thanos-5m
     resources:
       requests:
         cpu: 25m
-        memory: 128Mi
+        memory: 64Mi
         ephemeral-storage: 64Mi
       limits:
-        memory: 512Mi
+        memory: 256Mi
+        ephemeral-storage: 1Gi
+  thanos-shelf-1h:
+    node: socrat-3
+    directory: /var/lib/socrat-thanos-1h
+    resources:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 256Mi
         ephemeral-storage: 1Gi

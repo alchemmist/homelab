@@ -35,6 +35,12 @@
       "type": "link",
       "includeVars": false,
       "keepTime": true
+    },
+    {
+      "title": "Metrics",
+      "url": "/d/socrat-metrics",
+      "type": "link",
+      "keepTime": true
     }
   ],
   "templating": {

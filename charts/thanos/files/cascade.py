@@ -267,18 +267,56 @@ def mark_blocks(ulids, config, thanos_bin, runner):
         ]), ulid)
 
 
-def replicate_blocks(ulids, source, destination, thanos_bin, runner):
+def shelf_open(url, token, method, data=None, timeout=120):
+    headers = {"Authorization": "Bearer " + token, "Accept": "application/json"}
+    if hasattr(data, "read"):
+        headers["Content-Length"] = str(os.fstat(data.fileno()).st_size)
+    request = urllib.request.Request(url, data=data, method=method, headers=headers)
+    return urllib.request.urlopen(request, timeout=timeout)
+
+
+def fetch_shelf(base, token):
+    if not base or not token:
+        return [], False
+    try:
+        with shelf_open(base.rstrip("/") + "/v1/blocks", token, "GET") as response:
+            payload = json.load(response)
+        if not isinstance(payload, list):
+            return [], False
+        return payload, True
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, ValueError):
+        return [], False
+
+
+def upload_block(base, token, directory, ulid):
+    root = os.path.join(directory, ulid)
+    if not os.path.isdir(root):
+        raise FileNotFoundError(ulid)
+    prefix = base.rstrip("/") + "/v1/blocks/" + ulid
+    with shelf_open(prefix, token, "POST", b"") as response:
+        response.read()
+    for dirpath, _dirnames, filenames in os.walk(root):
+        for filename in filenames:
+            full = os.path.join(dirpath, filename)
+            relative = os.path.relpath(full, root).replace(os.sep, "/")
+            with open(full, "rb") as handle:
+                with shelf_open(prefix + "/files/" + relative, token, "PUT", handle, timeout=600) as response:
+                    response.read()
+    with shelf_open(prefix + "/commit", token, "POST", b"") as response:
+        response.read()
+
+
+def mark_shelf(base, token, ulids):
     for ulid in ulids:
-        command_code(runner([
-            thanos_bin, "tools", "bucket", "replicate",
-            "--objstore.config-file=" + source,
-            "--objstore-to.config-file=" + destination,
-            "--id=" + ulid,
-            "--ignore-marked-for-deletion",
-            "--single-run",
-            "--http-address=127.0.0.1:0",
-            "--log.level=error",
-        ]), ulid)
+        with shelf_open(base.rstrip("/") + "/v1/blocks/" + ulid + "/deletion-mark", token, "POST", b"{}") as response:
+            response.read()
+
+
+def read_token():
+    path = os.environ.get("SHELF_TOKEN_FILE", "")
+    if not path:
+        return ""
+    return Path(path).read_text().strip()
 
 
 def execute():
@@ -286,46 +324,30 @@ def execute():
     namespace = os.environ.get("NAMESPACE", "cattle-monitoring-system")
     compactor = os.environ.get("COMPACTOR_NAME", "thanos-compactor")
     raw_config = os.environ["OBJSTORE_RAW"]
-    five_config = os.environ["OBJSTORE_FIVE"]
-    hour_config = os.environ["OBJSTORE_HOUR"]
+    raw_directory = os.environ.get("RAW_DIRECTORY", "/var/lib/socrat-thanos")
+    five_url = os.environ.get("SHELF_FIVE_URL", "")
+    hour_url = os.environ.get("SHELF_HOUR_URL", "")
+    token = read_token()
     prometheus_url = os.environ["PROMETHEUS_URL"]
 
     scale_compactor(namespace, compactor, 0)
     try:
         wait_compactor_idle(namespace, compactor)
-        five_reachable = True
-        hour_reachable = True
         raw_blocks = list_blocks(raw_config, thanos_bin, default_runner)
-        try:
-            five_blocks = list_blocks(five_config, thanos_bin, default_runner)
-        except subprocess.CalledProcessError:
-            five_blocks = []
-            five_reachable = False
-        try:
-            hour_blocks = list_blocks(hour_config, thanos_bin, default_runner)
-        except subprocess.CalledProcessError:
-            hour_blocks = []
-            hour_reachable = False
+        five_blocks, five_reachable = fetch_shelf(five_url, token)
+        hour_blocks, hour_reachable = fetch_shelf(hour_url, token)
         current = plan(
             raw_blocks, five_blocks, hour_blocks, int(time.time() * 1000),
             disk_free_bytes(prometheus_url), five_reachable, hour_reachable,
         )
         if five_reachable:
-            replicate_blocks(current["copyFive"], raw_config, five_config, thanos_bin, default_runner)
+            for ulid in current["copyFive"]:
+                upload_block(five_url, token, raw_directory, ulid)
         if hour_reachable:
-            replicate_blocks(current["copyHour"], raw_config, hour_config, thanos_bin, default_runner)
-        if five_reachable:
-            try:
-                five_blocks = list_blocks(five_config, thanos_bin, default_runner)
-            except subprocess.CalledProcessError:
-                five_blocks = []
-                five_reachable = False
-        if hour_reachable:
-            try:
-                hour_blocks = list_blocks(hour_config, thanos_bin, default_runner)
-            except subprocess.CalledProcessError:
-                hour_blocks = []
-                hour_reachable = False
+            for ulid in current["copyHour"]:
+                upload_block(hour_url, token, raw_directory, ulid)
+        five_blocks, five_reachable = fetch_shelf(five_url, token)
+        hour_blocks, hour_reachable = fetch_shelf(hour_url, token)
         raw_blocks = list_blocks(raw_config, thanos_bin, default_runner)
         confirmed = plan(
             raw_blocks, five_blocks, hour_blocks, int(time.time() * 1000),
@@ -336,7 +358,7 @@ def execute():
             raw_config, thanos_bin, default_runner,
         )
         if five_reachable:
-            mark_blocks(confirmed["markFiveShelf"], five_config, thanos_bin, default_runner)
+            mark_shelf(five_url, token, confirmed["markFiveShelf"])
     finally:
         scale_compactor(namespace, compactor, 1)
     return 0
