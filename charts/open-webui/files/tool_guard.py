@@ -1,7 +1,9 @@
 import ast
+import asyncio
 import functools
 import hashlib
 import json
+import sys
 from itertools import islice
 
 from jsonschema import Draft202012Validator
@@ -9,6 +11,52 @@ from jsonschema import Draft202012Validator
 STATE_KEY = 'homelab_terminal_validation_guard'
 STOP_MESSAGE = 'Stopped repeated invalid terminal calls. Your conversation and files are preserved. Correct the tool arguments before continuing.'
 MAX_IDENTICAL_FAILURES = 3
+FETCH_TIMEOUT_SECONDS = 45
+FETCH_WORKER = '''
+import asyncio
+import contextlib
+import json
+import sys
+
+with contextlib.redirect_stdout(sys.stderr):
+    from open_webui.tools.builtin import fetch_url
+    arguments = json.load(sys.stdin)
+    result = asyncio.run(fetch_url(arguments['url'], __request__=object()))
+print(json.dumps(result))
+'''
+
+
+async def bounded_fetch(params):
+    try:
+        process = await asyncio.create_subprocess_exec(
+            sys.executable, '-c', FETCH_WORKER,
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+    except OSError:
+        return {'error': 'fetch_url could not start its worker. Try again later.'}
+    try:
+        stdout, _ = await asyncio.wait_for(
+            process.communicate(json.dumps(params).encode()), FETCH_TIMEOUT_SECONDS,
+        )
+        if process.returncode:
+            return {'error': 'fetch_url failed while loading the page. Try another source.'}
+        result = json.loads(stdout)
+        if not isinstance(result, str) or not result.strip():
+            return {'error': 'fetch_url could not load the page (network error, timeout, or empty response). Try another source.'}
+        return result
+    except TimeoutError:
+        return {'error': f'fetch_url exceeded its {FETCH_TIMEOUT_SECONDS}-second deadline. Try another source; do not repeatedly retry this URL.'}
+    except (ValueError, OSError):
+        return {'error': 'fetch_url worker returned an invalid response. Try another source.'}
+    finally:
+        if process.returncode is None:
+            try:
+                process.kill()
+            except ProcessLookupError:
+                pass
+        await process.wait()
 
 
 def validation_problem(params, schema):
@@ -81,6 +129,12 @@ def guarded_execute(function):
         call = tool_call.get('function', {})
         name = call.get('name', '')
         tool = metadata.get('tools', {}).get(name, {})
+        if name == 'fetch_url' and tool.get('type') == 'builtin' and not tool.get('direct'):
+            async def fetch(url):
+                return await bounded_fetch({'url': url})
+
+            tools = {**metadata['tools'], name: {**tool, 'callable': fetch}}
+            return await function(form_data, {**metadata, 'tools': tools}, event_caller, tool_call)
         if tool.get('type') != 'terminal':
             return await function(form_data, metadata, event_caller, tool_call)
         direct = tool.get('direct', False)
