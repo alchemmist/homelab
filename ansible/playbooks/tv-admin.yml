@@ -19,14 +19,37 @@
     homelab_tv_quickactions_package: dev.vodik7.tvquickactions.free
     homelab_tv_quickactions_service: dev.vodik7.tvquickactions.free/dev.vodik7.tvquickactions.KeyAccessibilityService
     homelab_tv_wireguard_package: com.wireguard.android
+    homelab_tv_happ_package: su.happ.proxyutility
     homelab_tv_hdmi_package: xyz.alchemmist.hdmi
+    homelab_tv_grafana_package: xyz.alchemmist.grafana
+    homelab_tv_youtube_package: xyz.alchemmist.tvmode
+    homelab_tv_helper_apk_dir: "{{ homelab_user_home }}/.cache/homelab-tv/apks"
+    homelab_tv_helper_apks:
+      - package: "{{ homelab_tv_youtube_package }}"
+        name: tv-mode.apk
+      - package: "{{ homelab_tv_grafana_package }}"
+        name: tv-grafana.apk
+      - package: "{{ homelab_tv_hdmi_package }}"
+        name: tv-hdmi.apk
+    homelab_tv_helper_permissions:
+      - package: "{{ homelab_tv_youtube_package }}"
+        name: android.permission.WRITE_SECURE_SETTINGS
+      - package: "{{ homelab_tv_youtube_package }}"
+        name: com.wireguard.android.permission.CONTROL_TUNNELS
+      - package: "{{ homelab_tv_grafana_package }}"
+        name: android.permission.WRITE_SECURE_SETTINGS
+      - package: "{{ homelab_tv_grafana_package }}"
+        name: com.wireguard.android.permission.CONTROL_TUNNELS
     homelab_tv_partner_package: com.xiaomi.android.tvsetup.partnercustomizer
     homelab_tv_home_component: com.google.android.tvlauncher/.MainActivity
     homelab_tv_persistent_packages:
       - "{{ homelab_tv_fully_package }}"
       - "{{ homelab_tv_quickactions_package }}"
       - "{{ homelab_tv_wireguard_package }}"
+      - "{{ homelab_tv_happ_package }}"
       - "{{ homelab_tv_hdmi_package }}"
+      - "{{ homelab_tv_grafana_package }}"
+      - "{{ homelab_tv_youtube_package }}"
     homelab_tv_fully_settings_path: "{{ homelab_user_home }}/.cache/homelab-tv/fully-once-settings.json"
   tasks:
     - name: Install Android Debug Bridge
@@ -82,6 +105,52 @@
         that:
           - homelab_tv_model.stdout == homelab_tv_expected_model
         quiet: true
+
+    - name: Create the helper APK cache
+      ansible.builtin.file:
+        path: "{{ homelab_tv_helper_apk_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Copy homelab Android TV helper APKs
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../android/releases/{{ item.name }}"
+        dest: "{{ homelab_tv_helper_apk_dir }}/{{ item.name }}"
+        mode: '0644'
+      loop: "{{ homelab_tv_helper_apks }}"
+
+    - name: Install homelab Android TV helper APKs
+      ansible.builtin.command:
+        argv:
+          - adb
+          - -s
+          - "{{ homelab_tv_serial }}"
+          - install
+          - -r
+          - "{{ homelab_tv_helper_apk_dir }}/{{ item.name }}"
+      register: homelab_tv_helper_install
+      changed_when: "'Success' in homelab_tv_helper_install.stdout"
+      loop: "{{ homelab_tv_helper_apks }}"
+
+    - name: Read homelab helper permission state
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, dumpsys, package, "{{ item }}"]
+      register: homelab_tv_helper_permission_state
+      changed_when: false
+      check_mode: false
+      loop:
+        - "{{ homelab_tv_youtube_package }}"
+        - "{{ homelab_tv_grafana_package }}"
+
+    - name: Grant helper access to VPN and secure settings controls
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, pm, grant, "{{ item.package }}", "{{ item.name }}"]
+      loop: "{{ homelab_tv_helper_permissions }}"
+      when: >-
+        item.name ~ ': granted=true' not in
+        (homelab_tv_helper_permission_state.results
+        | selectattr('item', 'equalto', item.package)
+        | map(attribute='stdout') | first)
 
     - name: Read source restoration behavior
       ansible.builtin.command:
