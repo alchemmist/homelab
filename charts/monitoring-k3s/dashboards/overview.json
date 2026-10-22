@@ -4435,6 +4435,12 @@
       "keepTime": true
     },
     {
+      "title": "Metrics",
+      "url": "/d/socrat-metrics",
+      "type": "link",
+      "keepTime": true
+    },
+    {
       "title": "LLM",
       "url": "/d/socrat-llm",
       "type": "link",

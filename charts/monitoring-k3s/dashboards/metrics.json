@@ -1,0 +1,2592 @@
+{
+  "uid": "socrat-metrics",
+  "title": "Metrics",
+  "description": "The metric cascade itself: the 5-second scrape on socrat-0, Thanos blocks on each shelf, node disk, and the hourly thanos-cascade Job. socrat-2 is not part of the cascade.",
+  "tags": [
+    "Primary"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "editable": false,
+  "links": [
+    {
+      "title": "Overview",
+      "url": "/d/socrat-overview",
+      "type": "link",
+      "keepTime": true
+    },
+    {
+      "title": "Nodes",
+      "url": "/d/socrat-nodes",
+      "type": "link",
+      "keepTime": true
+    },
+    {
+      "title": "Services",
+      "url": "/d/socrat-services",
+      "type": "link",
+      "keepTime": true
+    },
+    {
+      "title": "LLM",
+      "url": "/d/socrat-llm",
+      "type": "link",
+      "keepTime": true
+    },
+    {
+      "title": "Cascade Job",
+      "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/cronjob/cattle-monitoring-system/thanos-cascade",
+      "type": "link",
+      "targetBlank": true,
+      "icon": "external link",
+      "tooltip": "Open thanos-cascade in Rancher"
+    }
+  ],
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Live scrape on socrat-0",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 2,
+      "title": "Head series",
+      "type": "stat",
+      "description": "Active time series in the Prometheus head on socrat-0 at the end of the range. This is the live 5-second scrape, before Thanos folds blocks. A gap means Prometheus was not scraped.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 6,
+        "h": 3
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "prometheus_tsdb_head_series{pod=\"prometheus-kube-prometheus-stack-prometheus-0\",container=\"prometheus\"}",
+          "legendFormat": "Series",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 18
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 3,
+      "title": "Sample rate",
+      "type": "stat",
+      "description": "Rate of samples appended to the Prometheus head over 5 minutes. This tracks ingest, not the number of stored blocks. No data means the head metric is missing.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 1,
+        "w": 6,
+        "h": 3
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(rate(prometheus_tsdb_head_samples_appended_total{pod=\"prometheus-kube-prometheus-stack-prometheus-0\",container=\"prometheus\"}[5m]))",
+          "legendFormat": "Samples/s",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "noValue": "No data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 18
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 4,
+      "title": "Head size",
+      "type": "stat",
+      "description": "Bytes of chunk data held in the Prometheus head. This is the not-yet-finished raw scrape on socrat-0, not the Thanos shelves. No data means the head metric is missing.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 6,
+        "h": 3
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "prometheus_tsdb_head_chunks_storage_size_bytes{pod=\"prometheus-kube-prometheus-stack-prometheus-0\",container=\"prometheus\"}",
+          "legendFormat": "Head",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "noValue": "No data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 18
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 5,
+      "title": "Local blocks",
+      "type": "stat",
+      "description": "Bytes of finished blocks still in the Prometheus TSDB on socrat-0. Retention there is 12 hours. Zero is normal just after a fresh TSDB. This is not the long archive.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 1,
+        "w": 6,
+        "h": 3
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "prometheus_tsdb_storage_blocks_bytes{pod=\"prometheus-kube-prometheus-stack-prometheus-0\",container=\"prometheus\"}",
+          "legendFormat": "TSDB",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "noValue": "No data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 18
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 6,
+      "title": "Targets up",
+      "type": "stat",
+      "description": "Number of Prometheus scrape targets reporting up at the range end. It counts every job, not only the cascade. No data means Prometheus itself did not answer.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 6,
+        "h": 3
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(up == 1)",
+          "legendFormat": "Targets",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 18
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 7,
+      "title": "Sidecar",
+      "type": "stat",
+      "description": "Whether the Thanos sidecar next to Prometheus can see Prometheus. Up means fresh blocks can be written under /var/lib/socrat-thanos. Down means shipping from socrat-0 has stopped.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 4,
+        "w": 6,
+        "h": 3
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "thanos_sidecar_prometheus_up{job=\"kube-prometheus-stack-thanos-discovery\"}",
+          "legendFormat": "Sidecar",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#B42332",
+                "value": null
+              },
+              {
+                "color": "#26783D",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Down",
+                  "color": "#B42332"
+                },
+                "1": {
+                  "text": "Up",
+                  "color": "#26783D"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 18
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 8,
+      "title": "Last sidecar upload",
+      "type": "stat",
+      "description": "Time since the sidecar last uploaded a block into the raw directory. No data means no successful upload has been recorded yet, which is expected until the first 2-hour block closes. Zero timestamps are hidden.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 4,
+        "w": 12,
+        "h": 3
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(thanos_objstore_bucket_last_successful_upload_time{job=\"kube-prometheus-stack-thanos-discovery\"} > 0) * 1000",
+          "legendFormat": "Last upload",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dateTimeFromNow",
+          "noValue": "No data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 18
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 9,
+      "type": "row",
+      "title": "Blocks on each shelf",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 10,
+      "title": "Loaded blocks",
+      "type": "stat",
+      "description": "Blocks the compactors currently have loaded. raw \u00b7 socrat-0 is the workshop and can hold raw, 5-minute and hourly blocks until they are copied away. 5m \u00b7 socrat-1 and 1h \u00b7 socrat-3 are the shelves. Zero means that shelf has no loaded blocks yet. A missing shelf means that compactor is not being scraped.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (shelf) (label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-[0-9a-f]+-.+\"}, \"shelf\", \"raw \u00b7 socrat-0\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-5m-.+\"}, \"shelf\", \"5m \u00b7 socrat-1\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-1h-.+\"}, \"shelf\", \"1h \u00b7 socrat-3\", \"pod\", \".+\"))",
+          "legendFormat": "{{shelf}}",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "titleSize": 12,
+          "valueSize": 18
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 11,
+      "title": "Marked for deletion",
+      "type": "stat",
+      "description": "Blocks on each shelf already marked for deletion and waiting out the delete delay. Marking is not the same as bytes already freed. A missing shelf means that compactor is not being scraped.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 8,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (shelf) (label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"marked-for-deletion\",pod=~\"thanos-compactor-[0-9a-f]+-.+\"}, \"shelf\", \"raw \u00b7 socrat-0\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"marked-for-deletion\",pod=~\"thanos-compactor-5m-.+\"}, \"shelf\", \"5m \u00b7 socrat-1\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"marked-for-deletion\",pod=~\"thanos-compactor-1h-.+\"}, \"shelf\", \"1h \u00b7 socrat-3\", \"pod\", \".+\"))",
+          "legendFormat": "{{shelf}}",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "titleSize": 12,
+          "valueSize": 18
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 12,
+      "title": "Compactors",
+      "type": "stat",
+      "description": "Compactor health by shelf. Halted means downsampling or deletion on that shelf has stopped. Running means thanos_compact_halted is 0. A missing shelf means that compactor is not being scraped.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 8,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (shelf) (label_replace(thanos_compact_halted{job=\"cattle-monitoring-system/thanos\",pod=~\"thanos-compactor-[0-9a-f]+-.+\"}, \"shelf\", \"raw \u00b7 socrat-0\", \"pod\", \".+\") or label_replace(thanos_compact_halted{job=\"cattle-monitoring-system/thanos\",pod=~\"thanos-compactor-5m-.+\"}, \"shelf\", \"5m \u00b7 socrat-1\", \"pod\", \".+\") or label_replace(thanos_compact_halted{job=\"cattle-monitoring-system/thanos\",pod=~\"thanos-compactor-1h-.+\"}, \"shelf\", \"1h \u00b7 socrat-3\", \"pod\", \".+\"))",
+          "legendFormat": "{{shelf}}",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#B42332",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Running",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Halted",
+                  "color": "#B42332"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "titleSize": 12,
+          "valueSize": 18
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 13,
+      "title": "Loaded blocks",
+      "type": "timeseries",
+      "description": "Loaded block count on each shelf across the selected range. The raw shelf on socrat-0 includes every resolution still waiting there. Shelves stay at zero until the first blocks are compacted and, for socrat-1 and socrat-3, copied.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 16,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (shelf) (label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-[0-9a-f]+-.+\"}, \"shelf\", \"raw \u00b7 socrat-0\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-5m-.+\"}, \"shelf\", \"5m \u00b7 socrat-1\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-1h-.+\"}, \"shelf\", \"1h \u00b7 socrat-3\", \"pod\", \".+\"))",
+          "legendFormat": "{{shelf}}",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 14,
+      "title": "Blocks still to downsample",
+      "type": "timeseries",
+      "description": "Blocks on the socrat-0 compactor that are not yet folded to the next resolution. The 5-minute and hourly compactors do not downsample; they only appear here if this metric is present on them. No data means the raw compactor is not scraped.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 12,
+        "w": 8,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "thanos_compact_todo_downsample_blocks{job=\"cattle-monitoring-system/thanos\",pod=~\"thanos-compactor-[0-9a-f]+-.+\"}",
+          "legendFormat": "Waiting",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 15,
+      "type": "row",
+      "title": "Metrics disk",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 16,
+      "title": "Allowance",
+      "type": "table",
+      "description": "Soft allowance for cascade data: 22 GiB on socrat-0, 7 GiB on socrat-1, 29 GiB on socrat-3. These are the steady sizes from the cascade plan, not hard quotas. The bar is current metrics bytes divided by that allowance. Green is under 80%, orange from 80%, red at or above the allowance. Data keeps being written past the allowance until the cascade job moves or deletes a block that already has a coarser copy. Left is allowance minus current metrics and can be negative. Disk free is the whole root filesystem. An empty shelf is only the directory itself. Bytes grow when blocks arrive.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 24,
+        "h": 6
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (node) (socrat_metrics_directory_bytes)",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "B",
+          "expr": "(22 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-0\", \"\", \"\")\nor (7 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-1\", \"\", \"\")\nor (29 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-3\", \"\", \"\")",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "C",
+          "expr": "((22 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-0\", \"\", \"\")\nor (7 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-1\", \"\", \"\")\nor (29 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-3\", \"\", \"\")) - on(node) sum by (node) (socrat_metrics_directory_bytes)",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "D",
+          "expr": "100 * sum by (node) (socrat_metrics_directory_bytes) / on(node) group_left() ((22 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-0\", \"\", \"\")\nor (7 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-1\", \"\", \"\")\nor (29 * 1024 * 1024 * 1024) * label_replace(vector(1), \"node\", \"socrat-3\", \"\", \"\"))",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "E",
+          "expr": "sum by (node) (label_replace(node_filesystem_avail_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype=~\"ext4|xfs\"} * on(instance) group_left(nodename) node_uname_info{job=\"node-exporter\",nodename=~\"socrat-0|socrat-1|socrat-3\"}, \"node\", \"$1\", \"nodename\", \"(.+)\"))",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Node"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 120
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Of allowance"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#26783D",
+                      "value": null
+                    },
+                    {
+                      "color": "#A85D08",
+                      "value": 80
+                    },
+                    {
+                      "color": "#B42332",
+                      "value": 100
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 320
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Used"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              },
+              {
+                "id": "custom.width",
+                "value": 120
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Allowance"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              },
+              {
+                "id": "custom.width",
+                "value": 130
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Left"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#B42332",
+                      "value": null
+                    },
+                    {
+                      "color": "#26783D",
+                      "value": 0
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 130
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Disk free"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              },
+              {
+                "id": "custom.width",
+                "value": 130
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "md",
+        "footer": {
+          "show": false
+        },
+        "sortBy": [
+          {
+            "displayName": "Node",
+            "desc": false
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true
+            },
+            "renameByName": {
+              "node": "Node",
+              "Value #A": "Used",
+              "Value #B": "Allowance",
+              "Value #C": "Left",
+              "Value #D": "Of allowance",
+              "Value #E": "Disk free"
+            },
+            "indexByName": {
+              "Node": 0,
+              "Of allowance": 1,
+              "Used": 2,
+              "Allowance": 3,
+              "Left": 4,
+              "Disk free": 5
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "title": "Metrics bytes",
+      "type": "timeseries",
+      "description": "Allocated bytes of metrics data on each cascade node. socrat-0 includes the Prometheus TSDB plus raw and work directories. socrat-1 and socrat-3 are the block directories. The directory split is in the table below.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 27,
+        "w": 24,
+        "h": 11
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (node) (socrat_metrics_directory_bytes)",
+          "legendFormat": "{{node}}",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "spanNulls": false,
+            "showPoints": "never"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 20,
+      "type": "row",
+      "title": "Cascade job",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 46,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 21,
+      "title": "Last success",
+      "type": "stat",
+      "description": "When thanos-cascade last finished successfully. The job is scheduled at minute 30 of every hour, Europe/Moscow. The value is a timestamp, so it reads as a time ago. No data means kube-state-metrics has not reported a successful run.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 47,
+        "w": 6,
+        "h": 3
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(kube_cronjob_status_last_successful_time{cronjob=\"thanos-cascade\",namespace=\"cattle-monitoring-system\"} > 0) * 1000",
+          "legendFormat": "Last success",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dateTimeFromNow",
+          "noValue": "No data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 18
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 22,
+      "title": "Next run",
+      "type": "stat",
+      "description": "Next scheduled start of thanos-cascade. A run that is still going blocks the next one. No data means kube-state-metrics has not reported this CronJob.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 47,
+        "w": 6,
+        "h": 3
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(kube_cronjob_next_schedule_time{cronjob=\"thanos-cascade\",namespace=\"cattle-monitoring-system\"}) * 1000",
+          "legendFormat": "Next run",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dateTimeFromNow",
+          "noValue": "No data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 18
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 23,
+      "title": "Active runs",
+      "type": "stat",
+      "description": "How many thanos-cascade Jobs are active now. Idle is the steady state. Running means a copy or cleanup pass is in progress. The policy allows only one at a time.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 47,
+        "w": 6,
+        "h": 3
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "kube_cronjob_status_active{cronjob=\"thanos-cascade\",namespace=\"cattle-monitoring-system\"}",
+          "legendFormat": "Runs",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Idle",
+                  "color": "green"
+                },
+                "1": {
+                  "text": "Running",
+                  "color": "yellow"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 18
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 24,
+      "title": "Since last success",
+      "type": "stat",
+      "description": "Seconds since the last successful thanos-cascade run. Yellow after 3 hours, which is also when the shipping alert is allowed to fire. Red after 6 hours. Finished blocks stay on socrat-0 until a later run moves them.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 47,
+        "w": 6,
+        "h": 3
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "time() - kube_cronjob_status_last_successful_time{cronjob=\"thanos-cascade\",namespace=\"cattle-monitoring-system\"}",
+          "legendFormat": "Age",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "No data",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#A85D08",
+                "value": 7200
+              },
+              {
+                "color": "#B42332",
+                "value": 10800
+              }
+            ]
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 18
+        },
+        "wideLayout": true
+      }
+    },
+    {
+      "id": 25,
+      "title": "Retained jobs",
+      "type": "timeseries",
+      "description": "Success and failure of thanos-cascade Jobs still kept by Kubernetes. History is the last three successes and three failures, not the lifetime total. A job drops off this graph after it ages out of that history.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 50,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "kube_job_status_succeeded{namespace=\"cattle-monitoring-system\",job_name=~\"thanos-cascade-.+\"}",
+          "legendFormat": "Succeeded \u00b7 {{job_name}}",
+          "instant": false,
+          "format": "time_series"
+        },
+        {
+          "refId": "B",
+          "expr": "kube_job_status_failed{namespace=\"cattle-monitoring-system\",job_name=~\"thanos-cascade-.+\"}",
+          "legendFormat": "Failed \u00b7 {{job_name}}",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 26,
+      "title": "Job duration",
+      "type": "timeseries",
+      "description": "How long each retained thanos-cascade Job took, from start to completion. Jobs that have not finished yet are omitted. History is limited to the Jobs Kubernetes still keeps.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 50,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by (job_name) ((kube_job_status_completion_time{namespace=\"cattle-monitoring-system\",job_name=~\"thanos-cascade-.+\"} - kube_job_status_start_time{namespace=\"cattle-monitoring-system\",job_name=~\"thanos-cascade-.+\"}) and (kube_job_status_completion_time{namespace=\"cattle-monitoring-system\",job_name=~\"thanos-cascade-.+\"} > 0))",
+          "legendFormat": "{{job_name}}",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 27,
+      "title": "Sidecar uploads",
+      "type": "timeseries",
+      "description": "Increase over one hour of block uploads from the Prometheus sidecar into the raw directory, and of upload failures. This is the sidecar shipper, not the hourly copy onto socrat-1 and socrat-3. Flat zero is expected until the first block closes.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 58,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "increase(thanos_shipper_uploads_total{job=\"kube-prometheus-stack-thanos-discovery\"}[1h])",
+          "legendFormat": "Uploads",
+          "instant": false,
+          "format": "time_series"
+        },
+        {
+          "refId": "B",
+          "expr": "increase(thanos_shipper_upload_failures_total{job=\"kube-prometheus-stack-thanos-discovery\"}[1h])",
+          "legendFormat": "Failures",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "spanNulls": false,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 28,
+      "type": "row",
+      "title": "Workloads",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 66,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 34,
+      "title": "Directories",
+      "type": "table",
+      "description": "Each metrics directory the disk collector can see, with the allocated bytes on that directory. prometheus is the local Prometheus volume. raw and work stay on socrat-0. shelf is the block directory on socrat-1 or socrat-3.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 38,
+        "w": 24,
+        "h": 7
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "socrat_metrics_directory_bytes",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "No data",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Bytes"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "sortBy": [
+          {
+            "displayName": "Bytes",
+            "desc": true
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "instance": true,
+              "job": true,
+              "container": true,
+              "endpoint": true,
+              "namespace": true,
+              "pod": true,
+              "service": true,
+              "prometheus": true,
+              "prometheus_replica": true
+            },
+            "renameByName": {
+              "node": "Node",
+              "role": "Role",
+              "path": "Path",
+              "Value": "Bytes"
+            },
+            "indexByName": {
+              "Node": 0,
+              "Role": 1,
+              "Bytes": 2,
+              "Path": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "title": "",
+      "type": "stat",
+      "description": "Prometheus has a ready Pod. Green is ready, red is not ready, gray means the Pod is absent. Prometheus is one workload of the metrics cascade.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 67,
+        "w": 4,
+        "h": 2
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(label_replace(kube_pod_status_ready{namespace=\"cattle-monitoring-system\",condition=\"true\",pod=\"prometheus-kube-prometheus-stack-prometheus-0\"}, \"workload\", \"Prometheus\", \"pod\", \".+\"))",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "Prometheus",
+          "unit": "short",
+          "noValue": "Missing",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#555555",
+                "value": null
+              },
+              {
+                "color": "#B42332",
+                "value": 0
+              },
+              {
+                "color": "#26783D",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Prometheus",
+                  "color": "#B42332"
+                },
+                "1": {
+                  "text": "Prometheus",
+                  "color": "#26783D"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 14
+        }
+      }
+    },
+    {
+      "id": 40,
+      "title": "",
+      "type": "stat",
+      "description": "Raw store has a ready Pod. Green is ready, red is not ready, gray means the Pod is absent. Raw store is one workload of the metrics cascade.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 67,
+        "w": 4,
+        "h": 2
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(label_replace(kube_pod_status_ready{namespace=\"cattle-monitoring-system\",condition=\"true\",pod=~\"thanos-store-[a-f0-9]{8,10}-[a-z0-9]+\"}, \"workload\", \"Raw store\", \"pod\", \".+\"))",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "Raw store",
+          "unit": "short",
+          "noValue": "Missing",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#555555",
+                "value": null
+              },
+              {
+                "color": "#B42332",
+                "value": 0
+              },
+              {
+                "color": "#26783D",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Raw store",
+                  "color": "#B42332"
+                },
+                "1": {
+                  "text": "Raw store",
+                  "color": "#26783D"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 14
+        }
+      }
+    },
+    {
+      "id": 41,
+      "title": "",
+      "type": "stat",
+      "description": "Raw compact has a ready Pod. Green is ready, red is not ready, gray means the Pod is absent. Raw compact is one workload of the metrics cascade.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 67,
+        "w": 4,
+        "h": 2
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(label_replace(kube_pod_status_ready{namespace=\"cattle-monitoring-system\",condition=\"true\",pod=~\"thanos-compactor-[a-f0-9]{8,10}-[a-z0-9]+\"}, \"workload\", \"Raw compactor\", \"pod\", \".+\"))",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "Raw compact",
+          "unit": "short",
+          "noValue": "Missing",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#555555",
+                "value": null
+              },
+              {
+                "color": "#B42332",
+                "value": 0
+              },
+              {
+                "color": "#26783D",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Raw compact",
+                  "color": "#B42332"
+                },
+                "1": {
+                  "text": "Raw compact",
+                  "color": "#26783D"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 14
+        }
+      }
+    },
+    {
+      "id": 42,
+      "title": "",
+      "type": "stat",
+      "description": "Query has a ready Pod. Green is ready, red is not ready, gray means the Pod is absent. Query is one workload of the metrics cascade.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 67,
+        "w": 4,
+        "h": 2
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(label_replace(kube_pod_status_ready{namespace=\"cattle-monitoring-system\",condition=\"true\",pod=~\"thanos-query-.+\"}, \"workload\", \"Query\", \"pod\", \".+\"))",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "Query",
+          "unit": "short",
+          "noValue": "Missing",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#555555",
+                "value": null
+              },
+              {
+                "color": "#B42332",
+                "value": 0
+              },
+              {
+                "color": "#26783D",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Query",
+                  "color": "#B42332"
+                },
+                "1": {
+                  "text": "Query",
+                  "color": "#26783D"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 14
+        }
+      }
+    },
+    {
+      "id": 43,
+      "title": "",
+      "type": "stat",
+      "description": "5m store has a ready Pod. Green is ready, red is not ready, gray means the Pod is absent. 5m store is one workload of the metrics cascade.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 67,
+        "w": 4,
+        "h": 2
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(label_replace(kube_pod_status_ready{namespace=\"cattle-monitoring-system\",condition=\"true\",pod=~\"thanos-store-5m-.+\"}, \"workload\", \"5m store\", \"pod\", \".+\"))",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "5m store",
+          "unit": "short",
+          "noValue": "Missing",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#555555",
+                "value": null
+              },
+              {
+                "color": "#B42332",
+                "value": 0
+              },
+              {
+                "color": "#26783D",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "5m store",
+                  "color": "#B42332"
+                },
+                "1": {
+                  "text": "5m store",
+                  "color": "#26783D"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 14
+        }
+      }
+    },
+    {
+      "id": 44,
+      "title": "",
+      "type": "stat",
+      "description": "5m compactor has a ready Pod. Green is ready, red is not ready, gray means the Pod is absent. 5m compactor is one workload of the metrics cascade.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 67,
+        "w": 4,
+        "h": 2
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(label_replace(kube_pod_status_ready{namespace=\"cattle-monitoring-system\",condition=\"true\",pod=~\"thanos-compactor-5m-.+\"}, \"workload\", \"5m compactor\", \"pod\", \".+\"))",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "5m compactor",
+          "unit": "short",
+          "noValue": "Missing",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#555555",
+                "value": null
+              },
+              {
+                "color": "#B42332",
+                "value": 0
+              },
+              {
+                "color": "#26783D",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "5m compactor",
+                  "color": "#B42332"
+                },
+                "1": {
+                  "text": "5m compactor",
+                  "color": "#26783D"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 14
+        }
+      }
+    },
+    {
+      "id": 45,
+      "title": "",
+      "type": "stat",
+      "description": "5m shelf has a ready Pod. Green is ready, red is not ready, gray means the Pod is absent. 5m shelf is one workload of the metrics cascade.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 69,
+        "w": 4,
+        "h": 2
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(label_replace(kube_pod_status_ready{namespace=\"cattle-monitoring-system\",condition=\"true\",pod=~\"thanos-shelf-5m-.+\"}, \"workload\", \"5m shelf\", \"pod\", \".+\"))",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "5m shelf",
+          "unit": "short",
+          "noValue": "Missing",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#555555",
+                "value": null
+              },
+              {
+                "color": "#B42332",
+                "value": 0
+              },
+              {
+                "color": "#26783D",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "5m shelf",
+                  "color": "#B42332"
+                },
+                "1": {
+                  "text": "5m shelf",
+                  "color": "#26783D"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 14
+        }
+      }
+    },
+    {
+      "id": 46,
+      "title": "",
+      "type": "stat",
+      "description": "1h store has a ready Pod. Green is ready, red is not ready, gray means the Pod is absent. 1h store is one workload of the metrics cascade.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 69,
+        "w": 4,
+        "h": 2
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(label_replace(kube_pod_status_ready{namespace=\"cattle-monitoring-system\",condition=\"true\",pod=~\"thanos-store-1h-.+\"}, \"workload\", \"1h store\", \"pod\", \".+\"))",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "1h store",
+          "unit": "short",
+          "noValue": "Missing",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#555555",
+                "value": null
+              },
+              {
+                "color": "#B42332",
+                "value": 0
+              },
+              {
+                "color": "#26783D",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "1h store",
+                  "color": "#B42332"
+                },
+                "1": {
+                  "text": "1h store",
+                  "color": "#26783D"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 14
+        }
+      }
+    },
+    {
+      "id": 47,
+      "title": "",
+      "type": "stat",
+      "description": "1h compactor has a ready Pod. Green is ready, red is not ready, gray means the Pod is absent. 1h compactor is one workload of the metrics cascade.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 69,
+        "w": 4,
+        "h": 2
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(label_replace(kube_pod_status_ready{namespace=\"cattle-monitoring-system\",condition=\"true\",pod=~\"thanos-compactor-1h-.+\"}, \"workload\", \"1h compactor\", \"pod\", \".+\"))",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "1h compactor",
+          "unit": "short",
+          "noValue": "Missing",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#555555",
+                "value": null
+              },
+              {
+                "color": "#B42332",
+                "value": 0
+              },
+              {
+                "color": "#26783D",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "1h compactor",
+                  "color": "#B42332"
+                },
+                "1": {
+                  "text": "1h compactor",
+                  "color": "#26783D"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 14
+        }
+      }
+    },
+    {
+      "id": 48,
+      "title": "",
+      "type": "stat",
+      "description": "1h shelf has a ready Pod. Green is ready, red is not ready, gray means the Pod is absent. 1h shelf is one workload of the metrics cascade.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 69,
+        "w": 4,
+        "h": 2
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(label_replace(kube_pod_status_ready{namespace=\"cattle-monitoring-system\",condition=\"true\",pod=~\"thanos-shelf-1h-.+\"}, \"workload\", \"1h shelf\", \"pod\", \".+\"))",
+          "instant": true,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "1h shelf",
+          "unit": "short",
+          "noValue": "Missing",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#555555",
+                "value": null
+              },
+              {
+                "color": "#B42332",
+                "value": 0
+              },
+              {
+                "color": "#26783D",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "1h shelf",
+                  "color": "#B42332"
+                },
+                "1": {
+                  "text": "1h shelf",
+                  "color": "#26783D"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "text": {
+          "valueSize": 14
+        }
+      }
+    }
+  ]
+}

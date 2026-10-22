@@ -166,10 +166,10 @@ def main():
     catalog = kubectl(args.ssh_host, 'get', '--raw', f'/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/search?limit=1000')
     dashboards = [item for item in catalog if item.get('type') == 'dash-db']
     primary = {item['uid']: item['title'] for item in dashboards if not item.get('folderUid')}
-    require(primary == {'socrat-overview': 'Overview', 'socrat-nodes': 'Nodes', 'socrat-services': 'Services', 'socrat-llm': 'LLM'}, 'Only the four primary dashboards appear at the root')
+    require(primary == {'socrat-overview': 'Overview', 'socrat-nodes': 'Nodes', 'socrat-services': 'Services', 'socrat-llm': 'LLM', 'socrat-metrics': 'Metrics'}, 'Only the five primary dashboards appear at the root')
     embedded = [item for item in dashboards if item.get('folderTitle') == 'Rancher']
     require(len(embedded) == 12 and all(not item['title'].startswith(('[Rancher] ', 'Rancher / ')) for item in embedded), 'Embedded Rancher dashboards are grouped without title prefixes')
-    require(len(dashboards) == 16 and all(not item.get('folderUid') or item.get('folderTitle') == 'Rancher' for item in dashboards), 'Only primary and embedded Rancher dashboards are installed')
+    require(len(dashboards) == 17 and all(not item.get('folderUid') or item.get('folderTitle') == 'Rancher' for item in dashboards), 'Only primary and embedded Rancher dashboards are installed')
     for uid in ['rancher-node-1', 'rancher-node-detail-1']:
         node_dashboard = kubectl(args.ssh_host, 'get', '--raw', f'/api/v1/namespaces/{NAMESPACE}/services/http:kube-prometheus-stack-grafana:80/proxy/api/dashboards/uid/{uid}')['dashboard']
         resolver = next(v for v in node_dashboard['templating']['list'] if v['name'] == 'exporter_instance')
