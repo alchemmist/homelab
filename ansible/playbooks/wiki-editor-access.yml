@@ -14,8 +14,8 @@
       ansible.builtin.copy:
         dest: /etc/homelab-private-dns.d/wiki-editor.conf
         content: |
-          host-record=wiki.alchemmist.xyz,10.250.0.1,10.250.0.3
-          local=/wiki.alchemmist.xyz/
+          host-record=wiki.socrat.alchemmist.xyz,10.250.0.1,10.250.0.3
+          local=/wiki.socrat.alchemmist.xyz/
         owner: root
         group: root
         mode: '0644'

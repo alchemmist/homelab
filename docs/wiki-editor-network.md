@@ -1,6 +1,6 @@
 # Wiki access and optional WireGuard routing
 
-The runtime serves public reading and locally authenticated editing on `wiki.alchemmist.xyz`. Users can sign in at `/login` from the internet or the administrative WireGuard network. Authorization comes from reader/editor/administrator accounts, not network membership. OIDC is not configured.
+The runtime serves public reading and locally authenticated editing on `wiki.socrat.alchemmist.xyz`. Users can sign in at `/login` from the internet or the administrative WireGuard network. Authorization comes from reader/editor/administrator accounts, not network membership. OIDC is not configured.
 
 Production public ingress and both private virtual hosts have switched to the shared runtime. Local administrator login/logout over HTTPS was verified through public `109.173.40.247` and private `10.250.0.1` addresses. See [the migration runbook](wiki-runtime-migration.md) for data preservation and rollback.
 
@@ -14,7 +14,7 @@ The new runtime is declared by `deploy/fleet/wiki-runtime.yaml` and `deploy/wiki
 
 ## macOS
 
-`ansible/playbooks/wiki-editor-client.yml` installs a root-owned launch daemon. Every ten seconds it checks that a private DNS server is reached over an `utun` interface and actually returns the private wiki address. Only then does it install `/etc/resolver/wiki.alchemmist.xyz`. When the private route or resolver disappears, it removes its own override and flushes the OS DNS cache, restoring public resolution. It refuses to overwrite an unmanaged existing resolver. Existing `socrat.alchemmist.xyz` resolution is unchanged.
+`ansible/playbooks/wiki-editor-client.yml` installs a root-owned launch daemon. Every ten seconds it checks that a private DNS server is reached over an `utun` interface and actually returns the private wiki address. Only then does it install `/etc/resolver/wiki.socrat.alchemmist.xyz`. When the private route or resolver disappears, it removes its own override and flushes the OS DNS cache, restoring public resolution. It refuses to overwrite an unmanaged existing resolver. Existing `socrat.alchemmist.xyz` resolution is unchanged.
 
 Browser DNS caches, already-open connections, and browser-specific encrypted DNS may delay route changes. Reload after connecting or disconnecting WireGuard; browser encrypted DNS must respect the system resolver for this hostname. Expect up to ten seconds before the OS resolver changes. Disconnecting WG changes the route, not the user's application permissions: authenticated editing remains available through public ingress.
 
@@ -22,7 +22,7 @@ To remove the client integration, unload `system/xyz.alchemmist.wiki-resolver`, 
 
 ## Other clients
 
-Configure split DNS for the **exact hostname** `wiki.alchemmist.xyz` on the administrative WireGuard link, using `10.250.0.1` or `10.250.0.3` as DNS servers. Remove the routing domain when that link disconnects. On Linux with systemd-resolved, a per-link `~wiki.alchemmist.xyz` route-only domain is suitable. Do not redirect the entire `alchemmist.xyz` zone or leave a permanent hosts-file entry. Clients without split DNS use the public ingress and the same account permissions.
+Configure split DNS for the **exact hostname** `wiki.socrat.alchemmist.xyz` on the administrative WireGuard link, using `10.250.0.1` or `10.250.0.3` as DNS servers. Remove the routing domain when that link disconnects. On Linux with systemd-resolved, a per-link `~wiki.socrat.alchemmist.xyz` route-only domain is suitable. Do not redirect the entire `alchemmist.xyz` zone or leave a permanent hosts-file entry. Clients without split DNS use the public ingress and the same account permissions.
 
 ## Acceptance checks after cutover
 

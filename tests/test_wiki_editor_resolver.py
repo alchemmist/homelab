@@ -18,7 +18,7 @@ class WikiEditorResolverTests(unittest.TestCase):
         self.root = Path(self.directory.name)
         self.resolver_directory = self.root / 'resolvers'
         self.resolver_directory.mkdir()
-        self.resolver = self.resolver_directory / 'wiki.alchemmist.xyz'
+        self.resolver = self.resolver_directory / 'wiki.socrat.alchemmist.xyz'
         self.marker = self.root / 'owned'
         self.log = self.root / 'commands.log'
         self.environment = {
@@ -40,7 +40,7 @@ printf '%s\\n' "$FIXTURE_ANSWER"
         kill = self.fixture('kill', 'printf "reload\\n" >> "$FIXTURE_LOG"\n')
         source = SOURCE.read_text()
         source = source.replace('/etc/resolver/.socrat-wiki.XXXXXX', shlex.quote(str(self.resolver_directory / '.socrat-wiki.XXXXXX')))
-        source = source.replace('/etc/resolver/wiki.alchemmist.xyz', shlex.quote(str(self.resolver)))
+        source = source.replace('/etc/resolver/wiki.socrat.alchemmist.xyz', shlex.quote(str(self.resolver)))
         source = source.replace('/etc/resolver', shlex.quote(str(self.resolver_directory)))
         source = source.replace('/var/db/socrat-wiki-resolver-owned', shlex.quote(str(self.marker)))
         for original, replacement in {

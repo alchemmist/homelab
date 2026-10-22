@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-resolver=/etc/resolver/wiki.alchemmist.xyz
+resolver=/etc/resolver/wiki.socrat.alchemmist.xyz
 marker=/var/db/socrat-wiki-resolver-owned
 server=''
 for candidate in 10.250.0.1 10.250.0.3 10.250.0.2; do
@@ -10,7 +10,7 @@ for candidate in 10.250.0.1 10.250.0.3 10.250.0.2; do
         utun*) ;;
         *) continue ;;
     esac
-    answer=$(/usr/bin/dig +time=1 +tries=1 +short "@$candidate" wiki.alchemmist.xyz A 2>/dev/null || true)
+    answer=$(/usr/bin/dig +time=1 +tries=1 +short "@$candidate" wiki.socrat.alchemmist.xyz A 2>/dev/null || true)
     if printf '%s\n' "$answer" | /usr/bin/grep -Eq '^10\.250\.0\.(1|3)$'; then
         server=$candidate
         break

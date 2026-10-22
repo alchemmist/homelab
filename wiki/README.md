@@ -1,6 +1,6 @@
 # Socrat Wiki content
 
-Public Russian documentation for Socrat at <https://wiki.alchemmist.xyz/>. This directory contains instance content and branding. The Hugo theme, browser editor, runtime backend, container, chart and their tests live in [hugo-docs](https://github.com/alchemmist/hugo-docs). Hugo still renders the site.
+Public Russian documentation for Socrat at <https://wiki.socrat.alchemmist.xyz/>. This directory contains instance content and branding. The Hugo theme, browser editor, runtime backend, container, chart and their tests live in [hugo-docs](https://github.com/alchemmist/hugo-docs). Hugo still renders the site.
 
 ## Content
 

@@ -1,4 +1,4 @@
-wiki_editor_host: wiki.alchemmist.xyz
+wiki_editor_host: wiki.socrat.alchemmist.xyz
 wiki_editor_gateway_nodes: [socrat-0, socrat-1]
 wiki_editor_gateway_namespace: syncthing
 wiki_editor_gateway_release: syncthing

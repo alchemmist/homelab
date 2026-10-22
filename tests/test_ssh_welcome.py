@@ -65,8 +65,8 @@ class WelcomeTests(unittest.TestCase):
         result = WELCOME.render(self.config, self.portraits, [], 180, False, False)
         note = result[result.index('This node is managed'):].strip()
         self.assertTrue(all(len(line) <= 76 for line in note.splitlines()))
-        self.assertIn('More info about cluster on https://wiki.alchemmist.xyz/', ' '.join(note.split()))
-        self.assertIn('https://wiki.alchemmist.xyz/', note)
+        self.assertIn('More info about cluster on https://wiki.socrat.alchemmist.xyz/', ' '.join(note.split()))
+        self.assertIn('https://wiki.socrat.alchemmist.xyz/', note)
 
     def test_plain_output_retains_full_urls(self):
         result = WELCOME.render(self.config, self.portraits, [('RAM', '13 / 32 GiB used')], 110, False, False)

@@ -97,7 +97,7 @@ def render(config, portraits, stats, width=100, color=True, hyperlinks=False, lo
             lines.extend('  ' + tint(line) for line in logo)
         lines.extend('  ' + line for line in info)
     lines.append('')
-    lines.extend(textwrap.wrap("This node is managed by the root user alchemmist. If you need to change system dependencies or perform other root operations, contact him via email: anton.ingrish@gmail.com or telegram: @alchemmist. More info about cluster on https://wiki.alchemmist.xyz/", min(76, max(24, width - 2))))
+    lines.extend(textwrap.wrap("This node is managed by the root user alchemmist. If you need to change system dependencies or perform other root operations, contact him via email: anton.ingrish@gmail.com or telegram: @alchemmist. More info about cluster on https://wiki.socrat.alchemmist.xyz/", min(76, max(24, width - 2))))
     lines.append('')
     return '\n'.join(lines)
 
