@@ -3537,6 +3537,181 @@
           }
         }
       ]
+    },
+    {
+      "id": 334,
+      "title": "External traffic · RPS",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 15,
+        "w": 14,
+        "h": 6
+      },
+      "description": "Requests entering the public HTTP and HTTPS entrypoints of Traefik, grouped by response class. This measures external traffic only; pod-to-pod traffic and VPN bytes are not included.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "decimals": 2,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "fillOpacity": 8,
+            "showPoints": "never",
+            "lineWidth": 2,
+            "spanNulls": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "2xx"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#2b9a5b",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "3xx"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#3b82c4",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "4xx"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#c28a1a",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "5xx"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#b42332",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#202b3c",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    6,
+                    4
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "graphTooltip": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(traefik_entrypoint_requests_total{entrypoint=~\"web|websecure\",code=~\"2..\"}[5m]))",
+          "legendFormat": "2xx",
+          "format": "time_series",
+          "range": true
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(traefik_entrypoint_requests_total{entrypoint=~\"web|websecure\",code=~\"3..\"}[5m]))",
+          "legendFormat": "3xx",
+          "format": "time_series",
+          "range": true
+        },
+        {
+          "refId": "C",
+          "expr": "sum(rate(traefik_entrypoint_requests_total{entrypoint=~\"web|websecure\",code=~\"4..\"}[5m]))",
+          "legendFormat": "4xx",
+          "format": "time_series",
+          "range": true
+        },
+        {
+          "refId": "D",
+          "expr": "sum(rate(traefik_entrypoint_requests_total{entrypoint=~\"web|websecure\",code=~\"5..\"}[5m]))",
+          "legendFormat": "5xx",
+          "format": "time_series",
+          "range": true
+        },
+        {
+          "refId": "E",
+          "expr": "sum(rate(traefik_entrypoint_requests_total{entrypoint=~\"web|websecure\"}[5m]))",
+          "legendFormat": "Total",
+          "format": "time_series",
+          "range": true
+        }
+      ]
     }
   ],
   "timepicker": {
