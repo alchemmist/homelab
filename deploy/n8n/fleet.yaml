@@ -1,6 +1,6 @@
 defaultNamespace: automation
 createNamespace: true
-paused: true
+paused: false
 helm:
   releaseName: n8n
   repo: oci://ghcr.io/alchemmist/charts/n8n
