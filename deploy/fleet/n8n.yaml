@@ -9,6 +9,9 @@ spec:
   paths:
     - deploy/n8n
   pollingInterval: 1m
+  helm:
+    repoAuthSecret:
+      name: ghcr-oci-auth
   targets:
     - name: local
       clusterSelector:
