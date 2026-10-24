@@ -1,0 +1,23 @@
+---
+- name: Move auxiliary workloads off the VPN VPS
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  vars_files:
+    - ../vars/container-resources.yml
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+    K3S_CONFIG_FILE: /dev/null
+  pre_tasks:
+    - name: Require the destination node to be ready
+      ansible.builtin.command:
+        argv: [kubectl, wait, node/socrat-1, --for=condition=Ready, --timeout=30s]
+      changed_when: false
+
+    - name: Keep the resource-policy rollout limited to future pod admission
+      ansible.builtin.assert:
+        that: not (container_resource_policy_reconcile | default(false) | bool)
+        fail_msg: This playbook only rolls out the three selected deployments.
+  roles:
+    - container_resource_policy
+    - vps_workload_offload

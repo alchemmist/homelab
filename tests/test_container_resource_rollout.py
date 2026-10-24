@@ -33,6 +33,52 @@ def profiled_pod():
 
 
 class RolloutTests(unittest.TestCase):
+    def test_profile_node_selector_requires_reconciliation_when_missing_or_different(self):
+        expected = dict(profile(), nodeSelector={'kubernetes.io/hostname': 'socrat-1'})
+        for selector in ({}, {'kubernetes.io/hostname': 'socrat-2'}):
+            value = profiled_pod()
+            value['spec']['nodeSelector'] = selector
+            self.assertIn('nodeSelector/kubernetes.io/hostname', ROLLOUT.profile_mismatches(value, expected))
+            self.assertTrue(ROLLOUT.needs_reconcile(value, [expected]))
+
+    def test_profile_node_selector_preserves_unrelated_labels(self):
+        expected = dict(profile(), nodeSelector={'kubernetes.io/hostname': 'socrat-1'})
+        value = profiled_pod()
+        value['spec']['nodeSelector'] = {'kubernetes.io/hostname': 'socrat-1', 'kubernetes.io/os': 'linux'}
+        before = copy.deepcopy(value)
+        self.assertFalse(ROLLOUT.needs_reconcile(value, [expected]))
+        self.assertEqual(value, before)
+
+    def test_profile_node_selector_detects_bound_wrong_node(self):
+        expected = dict(profile(), nodeSelector={'kubernetes.io/hostname': 'socrat-1'})
+        value = profiled_pod()
+        value['spec']['nodeSelector'] = expected['nodeSelector']
+        value['spec']['nodeName'] = 'socrat-2'
+        self.assertIn('nodeName', ROLLOUT.profile_mismatches(value, expected))
+        del value['spec']['nodeName']
+        self.assertFalse(ROLLOUT.needs_reconcile(value, [expected]))
+
+    def test_profile_without_placement_does_not_reconcile_node(self):
+        value = profiled_pod()
+        value['spec']['nodeName'] = 'socrat-2'
+        value['spec']['nodeSelector'] = {'custom': 'unchanged'}
+        for expected in (profile(), dict(profile(), nodeSelector={})):
+            self.assertFalse(ROLLOUT.needs_reconcile(value, [expected]))
+
+    def test_node_selector_schema_accepts_literal_labels(self):
+        for selector in ({}, {'kubernetes.io/hostname': 'socrat-1'}, {'pool': '', 'example.com/rack': 'Rack_1.2'}):
+            expected = dict(profile(), nodeSelector=selector)
+            with tempfile.NamedTemporaryFile(mode='w+', suffix='.json') as source:
+                json.dump([expected], source)
+                source.flush()
+                self.assertEqual(ROLLOUT.load_profiles(source.name), [expected])
+
+    def test_node_selector_schema_rejects_invalid_maps_and_labels(self):
+        for selector in (None, [], 'socrat-1', {'node': 1}, {'': 'value'}, {'/node': 'value'}, {'UPPER.com/node': 'value'}, {'a/b/c': 'value'}, {'node': '*'}, {'node': 'a' * 64}, {'a' * 64: 'value'}, {'node': 'socrat 1'}):
+            with self.subTest(selector=selector):
+                with self.assertRaisesRegex(ValueError, 'nodeSelector'):
+                    ROLLOUT.validate_node_selector(selector)
+
     def test_excluded_nodes_remain_visible_but_not_actionable(self):
         values = [pod(), pod('excluded', node='socrat-3')]
         output = io.StringIO()
@@ -170,7 +216,8 @@ class RolloutTests(unittest.TestCase):
         expected['containers']['main']['removeCpuLimit'] = True
         del expected['containers']['main']['limits']['cpu']
         variables = yaml.safe_load((role / 'defaults/main.yml').read_text())
-        variables['container_resource_policy_profiles'] = [expected]
+        expected['nodeSelector'] = {'kubernetes.io/hostname': 'socrat-1'}
+        variables['container_resource_policy_profiles'] = [expected, profile()]
         environment = jinja2.Environment(loader=jinja2.FileSystemLoader(str(role / 'templates')))
         environment.filters['to_json'] = json.dumps
         rendered = environment.get_template('resource-policy.yaml.j2').render(**variables)
@@ -179,7 +226,12 @@ class RolloutTests(unittest.TestCase):
         self.assertIn('"removeCpuLimit": dyn(true)', expression)
         self.assertIn('"requests": dyn({', expression)
         self.assertIn('"limits": dyn({', expression)
+        self.assertIn('"nodeSelector": dyn({"kubernetes.io/hostname": "socrat-1"})', expression)
+        self.assertIn('"nodeSelector": dyn({})', expression)
         removal = policy['spec']['mutations'][0]['jsonPatch']['expression']
+        self.assertIn('variables.profileNodeSelector.size() == 0 ? []', removal)
+        self.assertIn('!has(object.spec.nodeSelector)', removal)
+        self.assertIn('jsonpatch.escapeKey(key)', removal)
         self.assertEqual(removal.count('quantity(c.resources.limits["cpu"]).compareTo(quantity("0")) == 0'), 2)
         self.assertEqual([mutation['patchType'] for mutation in policy['spec']['mutations']], ['JSONPatch', 'ApplyConfiguration'])
 

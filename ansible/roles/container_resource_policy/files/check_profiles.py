@@ -13,6 +13,8 @@ RESOURCE_NAMES = ('cpu', 'memory', 'ephemeral-storage')
 
 def check(namespace, kubectl, kubeconfig, profile, owner_name):
     command = [kubectl, '--kubeconfig', kubeconfig, '--request-timeout=30s']
+    selector = {'resource-policy.socrat.io/probe': 'preserved'}
+    selector.update({key: 'previous' for key in profile.get('nodeSelector', {})})
     containers = []
     for name in profile['containers']:
         containers.append({
@@ -39,9 +41,10 @@ def check(namespace, kubectl, kubeconfig, profile, owner_name):
                     'controller': True,
                 }],
             },
-            'spec': {'restartPolicy': 'Never', 'containers': copy.deepcopy(containers)},
+            'spec': {'restartPolicy': 'Never', 'nodeSelector': selector, 'containers': copy.deepcopy(containers)},
         }
         if container_type == 'initContainers':
+            del pod['spec']['nodeSelector']
             pod['spec']['containers'] = [{'name': 'main-unprofiled', 'image': 'registry.k8s.io/pause:3.10'}]
             pod['spec']['initContainers'] = copy.deepcopy(containers)
         result = subprocess.run(
@@ -49,6 +52,8 @@ def check(namespace, kubectl, kubeconfig, profile, owner_name):
             input=json.dumps(pod), text=True, capture_output=True, check=True, timeout=40,
         )
         returned = json.loads(result.stdout)
+        expected_selector = dict(pod['spec'].get('nodeSelector', {}), **profile.get('nodeSelector', {}))
+        assert returned['spec'].get('nodeSelector', {}) == expected_selector, returned['spec'].get('nodeSelector')
         for container in returned['spec'][container_type]:
             actual = container['resources']
             if container['name'] not in profile['containers']:

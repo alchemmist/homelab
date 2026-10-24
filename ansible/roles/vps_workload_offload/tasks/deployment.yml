@@ -1,0 +1,44 @@
+---
+- name: Pin the selected deployment to the home worker
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - -n
+      - "{{ offload_workload.namespace }}"
+      - patch
+      - deployment
+      - "{{ offload_workload.name }}"
+      - --type=merge
+      - -p
+      - "{{ {'spec': {'template': {'spec': {'nodeSelector': {'kubernetes.io/hostname': 'socrat-1'}}}}} | to_json }}"
+  register: offload_patch
+  changed_when: "'(no change)' not in offload_patch.stdout"
+
+- name: Wait for this deployment before moving the next one
+  ansible.builtin.command:
+    argv: [kubectl, -n, "{{ offload_workload.namespace }}", rollout, status, "deployment/{{ offload_workload.name }}", --timeout=300s]
+  changed_when: false
+
+- name: Verify the new ready pod is on socrat-1
+  ansible.builtin.command:
+    argv:
+      - python3
+      - -c
+      - |
+        import json
+        import subprocess
+        import sys
+        command = ['kubectl', '-n', sys.argv[1]]
+        deployment = json.loads(subprocess.check_output(command + ['get', 'deployment', sys.argv[2], '-o', 'json']))
+        labels = deployment['spec']['selector']['matchLabels']
+        selector = ','.join(key + '=' + value for key, value in labels.items())
+        pods = json.loads(subprocess.check_output(command + ['get', 'pods', '-l', selector, '-o', 'json']))['items']
+        active = [pod for pod in pods if not pod['metadata'].get('deletionTimestamp') and pod['status'].get('phase') not in ('Succeeded', 'Failed')]
+        assert len(active) == deployment['spec']['replicas'], [(pod['metadata']['name'], pod['status']) for pod in active]
+        for pod in active:
+            assert pod['spec'].get('nodeName') == 'socrat-1', pod['metadata']['name']
+            assert any(condition['type'] == 'Ready' and condition['status'] == 'True' for condition in pod['status'].get('conditions', [])), pod['metadata']['name']
+        print(sys.argv[2] + ': ready on socrat-1')
+      - "{{ offload_workload.namespace }}"
+      - "{{ offload_workload.name }}"
+  changed_when: false

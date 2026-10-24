@@ -1,0 +1,83 @@
+---
+- name: Enable the existing host swap partition on socrat-3
+  hosts: socrat-3
+  gather_facts: false
+  become: true
+  vars:
+    host_swap_uuid: 0e5b3741-8d54-40b5-b48e-cac14237ad36
+    host_swap_device: /dev/disk/by-uuid/{{ host_swap_uuid }}
+  tasks:
+    - name: Verify the existing partition type without formatting it
+      ansible.builtin.command:
+        argv: [blkid, -s, TYPE, -o, value, '{{ host_swap_device }}']
+      register: host_swap_type
+      changed_when: false
+
+    - name: Read the running kubelet configuration
+      ansible.builtin.command:
+        argv:
+          - k3s
+          - kubectl
+          - --kubeconfig
+          - /etc/rancher/k3s/k3s.yaml
+          - --request-timeout=30s
+          - get
+          - --raw
+          - /api/v1/nodes/socrat-3/proxy/configz
+      register: host_swap_kubelet
+      changed_when: false
+
+    - name: Require an existing swap partition and compatible live kubelet
+      ansible.builtin.assert:
+        that:
+          - host_swap_type.stdout | trim == 'swap'
+          - (host_swap_kubelet.stdout | from_json).kubeletconfig.failSwapOn == false
+          - ((host_swap_kubelet.stdout | from_json).kubeletconfig.memorySwap | default({})).get('swapBehavior', 'NoSwap') == 'NoSwap'
+
+    - name: Persist conservative host swappiness
+      ansible.builtin.copy:
+        dest: /etc/sysctl.d/90-homelab-swap.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: "vm.swappiness = 10\n"
+
+    - name: Read current swappiness
+      ansible.builtin.command: sysctl -n vm.swappiness
+      register: host_swappiness
+      changed_when: false
+
+    - name: Apply conservative host swappiness
+      ansible.builtin.command: sysctl -w vm.swappiness=10
+      when: host_swappiness.stdout | trim != '10'
+      changed_when: true
+
+    - name: Enable the existing swap entry at boot
+      ansible.builtin.lineinfile:
+        path: /etc/fstab
+        regexp: '^\s*#?\s*UUID={{ host_swap_uuid }}\s+'
+        line: 'UUID={{ host_swap_uuid }} none swap sw,nofail 0 0'
+        backup: true
+      register: host_swap_fstab
+
+    - name: Reload generated systemd units without restarting services
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+      when: host_swap_fstab.changed
+
+    - name: Read active swap UUIDs
+      ansible.builtin.command: swapon --show=UUID --noheadings --raw
+      register: host_swap_active
+      changed_when: false
+
+    - name: Activate only the existing swap partition
+      ansible.builtin.command:
+        argv: [swapon, '{{ host_swap_device }}']
+      when: host_swap_uuid not in host_swap_active.stdout.split()
+      changed_when: true
+
+    - name: Verify the requested swap partition is active
+      ansible.builtin.command: swapon --show=UUID --noheadings --raw
+      register: host_swap_verified
+      changed_when: false
+      failed_when: host_swap_uuid not in host_swap_verified.stdout.split()

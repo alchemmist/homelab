@@ -91,12 +91,16 @@
         used = sum(int(line.split()[3]) for line in Path('/proc/swaps').read_text().splitlines()[1:])
         if available < used + 262144:
             raise SystemExit('Insufficient available RAM to disable swap safely; stop desktop applications first')
-  when: k3s_worker_swap.stdout_lines | length > 1
+  when:
+    - not k3s_worker_swap_enabled | bool
+    - k3s_worker_swap.stdout_lines | length > 1
   changed_when: false
 
 - name: Disable active swap before admitting workloads
   ansible.builtin.command: swapoff -a
-  when: k3s_worker_swap.stdout_lines | length > 1
+  when:
+    - not k3s_worker_swap_enabled | bool
+    - k3s_worker_swap.stdout_lines | length > 1
   changed_when: true
 
 - name: Disable persistent swap entries on the worker
@@ -105,6 +109,7 @@
     regexp: '^(\s*[^#\s]\S*\s+\S+\s+swap\s+.*)$'
     replace: '# \1'
     backup: true
+  when: not k3s_worker_swap_enabled | bool
 
 - name: Persist IPv4 forwarding for pod networking
   ansible.builtin.copy:
