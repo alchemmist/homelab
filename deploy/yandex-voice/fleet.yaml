@@ -3,6 +3,7 @@ createNamespace: true
 paused: false
 helm:
   releaseName: yandex-voice
-  chart: ../../charts/yandex-voice
+  repo: oci://ghcr.io/alchemmist/charts/yandex-voice
+  version: 0.1.0
   valuesFiles:
     - values.yaml

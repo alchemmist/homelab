@@ -3,6 +3,7 @@ createNamespace: true
 paused: true
 helm:
   releaseName: n8n
-  chart: ../../charts/n8n
+  repo: oci://ghcr.io/alchemmist/charts/n8n
+  version: 0.1.0
   valuesFiles:
     - values.yaml
