@@ -3711,7 +3711,8 @@
           "format": "time_series",
           "range": true
         }
-      ]
+      ],
+      "timeFrom": "3h"
     }
   ],
   "timepicker": {
