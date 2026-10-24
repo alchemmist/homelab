@@ -8,6 +8,13 @@ nodes:
   socrat-3: 10.250.0.5
 nodeAlertLinks: {}
 
+traefikMetrics:
+  enabled: true
+  serviceName: monitoring-traefik-metrics
+  port: 9100
+  interval: 5s
+  scrapeTimeout: 4s
+
 serviceProbes:
   enabled: true
   image: quay.io/prometheus/blackbox-exporter:v0.29.0
