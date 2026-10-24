@@ -1,0 +1,158 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Chart.Name }}-private-nginx
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  rancher-layout.js: |
+{{ .Files.Get "files/rancher-layout.js" | indent 4 }}
+  traffic-light-inset.js: |
+{{ .Files.Get "files/traffic-light-inset.js" | indent 4 }}
+  {{ range $node := .Values.nodes }}
+  {{ .nodeName }}.conf: |
+    events {}
+    http {
+      access_log /dev/stdout;
+      error_log /dev/stderr warn;
+      {{- if $.Values.extraVirtualHosts }}
+      map $http_accept $private_html_accept_encoding {
+        default $http_accept_encoding;
+        ~*text/html "";
+      }
+      map $http_upgrade $connection_upgrade {
+        default upgrade;
+        '' close;
+      }
+      {{- end }}
+      {{- if $.Values.syncthingGui.enabled }}
+      server {
+        listen {{ $node.wgIP }}:{{ $.Values.listenPort }} ssl;
+        absolute_redirect off;
+        ssl_certificate /etc/nginx/tls/tls.crt;
+        ssl_certificate_key /etc/nginx/tls/tls.key;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        auth_basic "Syncthing";
+        auth_basic_user_file /etc/nginx/auth/users;
+        location = /sync {
+          return 301 /sync/;
+        }
+        location /sync/ {
+          proxy_pass {{ $.Values.syncthingGui.upstream }}/;
+          proxy_http_version 1.1;
+          proxy_set_header Host $proxy_host;
+          proxy_set_header X-Forwarded-Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_read_timeout 600s;
+          proxy_send_timeout 600s;
+        }
+        location / {
+          return 404;
+        }
+      }
+      {{- end }}
+      {{- range $.Values.extraVirtualHosts }}
+      {{- if eq .nodeName $node.nodeName }}
+      server {
+        listen {{ $node.wgIP }}:{{ $.Values.listenPort }} ssl;
+        server_name {{ .host }};
+        ssl_certificate /etc/nginx/extra-tls/{{ .name }}/tls.crt;
+        ssl_certificate_key /etc/nginx/extra-tls/{{ .name }}/tls.key;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        {{- range (.allowedCIDRs | default (list "10.250.0.0/24")) }}
+        allow {{ . }};
+        {{- end }}
+        deny all;
+        resolver {{ .resolver }} valid=30s ipv6=off;
+        {{- if .autoSizeGrafana }}
+        location = /_socrat/rancher-layout.js {
+          alias /etc/nginx/nodes/rancher-layout.js;
+          default_type application/javascript;
+          add_header Cache-Control "no-cache" always;
+        }
+        {{- end }}
+        {{- if .trafficLightInset }}
+        location = /_socrat/traffic-light-inset.js {
+          alias /etc/nginx/nodes/traffic-light-inset.js;
+          default_type application/javascript;
+          add_header Cache-Control "no-cache" always;
+        }
+        {{- end }}
+        {{- if .editorUpstream }}
+        {{- if not $.Values.editorAuthSecret }}
+        {{- fail "editorUpstream requires editorAuthSecret" }}
+        {{- end }}
+        location ^~ /api/editor/ {
+          set $editor_backend {{ .editorUpstream | quote }};
+          proxy_pass $editor_backend;
+          proxy_http_version 1.1;
+          proxy_set_header Host $host;
+          include /etc/wiki-editor-secret/headers.conf;
+          proxy_set_header X-Socrat-WG-Peer $remote_addr;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $remote_addr;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header Connection "";
+          proxy_buffering off;
+          client_max_body_size 2m;
+          proxy_read_timeout 120s;
+          add_header Cache-Control "no-store" always;
+        }
+        {{- end }}
+        location / {
+          set $backend {{ .upstream | quote }};
+          proxy_pass $backend;
+          proxy_http_version 1.1;
+          proxy_set_header Host $host;
+          {{- if .clearAuthorization }}
+          proxy_set_header Authorization "";
+          {{- end }}
+          {{- if or .responseStyle .autoSizeGrafana .trafficLightInset }}
+          proxy_set_header Accept-Encoding $private_html_accept_encoding;
+          sub_filter_once on;
+          {{- $layout := "" }}
+          {{- if .responseStyle }}
+          {{- $layout = printf "<style id=\"socrat-layout-fix\">%s</style>" .responseStyle }}
+          {{- end }}
+          {{- if .autoSizeGrafana }}
+          {{- $layout = printf "%s<script defer src=\"/_socrat/rancher-layout.js\"></script>" $layout }}
+          {{- end }}
+          {{- if .trafficLightInset }}
+          {{- $layout = printf "%s<script defer src=\"/_socrat/traffic-light-inset.js\"></script>" $layout }}
+          {{- end }}
+          sub_filter '</head>' {{ printf "%s</head>" $layout | quote }};
+          {{- end }}
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection $connection_upgrade;
+          proxy_buffering off;
+          proxy_request_buffering off;
+          proxy_read_timeout 600s;
+          proxy_send_timeout 600s;
+        }
+      }
+      {{- end }}
+      {{- end }}
+      server {
+        listen 127.0.0.1:{{ $.Values.healthPort }};
+        listen {{ .wgIP }}:{{ $.Values.healthPort }};
+        location = /healthz {
+          {{- if or (not $.Values.syncthingGui.enabled) (has $node.nodeName ($.Values.gatewayOnlyNodes | default (list))) }}
+          return 200 "OK\n";
+          {{- else }}
+          proxy_pass {{ $.Values.syncthingGui.healthUpstream }};
+          proxy_set_header Host $proxy_host;
+          proxy_read_timeout 5s;
+          {{- end }}
+        }
+        location / {
+          return 404;
+        }
+      }
+    }
+{{- end }}

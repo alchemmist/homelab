@@ -1,0 +1,113 @@
+{{- if (.Values.gatewayOnlyNodes | default (list) | len) }}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ .Chart.Name }}
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Chart.Name }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Chart.Name }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        checksum/private-nginx: {{ omit (get (include (print $.Template.BasePath "/private-nginx.yaml") . | fromYaml) "data") "rancher-layout.js" | toYaml | sha256sum | quote }}
+    spec:
+      hostNetwork: true
+      dnsPolicy: Default
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              {{- range .Values.gatewayOnlyNodes }}
+              - matchFields:
+                  - key: metadata.name
+                    operator: In
+                    values: [{{ . | quote }}]
+              {{- end }}
+      containers:
+        - name: private-gui
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              cp "/etc/nginx/nodes/${NODE_NAME}.conf" /etc/nginx/nginx.conf
+              nginx -t
+              exec nginx -g 'daemon off;'
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          ports:
+            - name: private-gui
+              containerPort: {{ .Values.listenPort }}
+              protocol: TCP
+            - name: private-health
+              containerPort: {{ .Values.healthPort }}
+              protocol: TCP
+          readinessProbe:
+            exec:
+              command: ["/bin/sh", "-ec", "wget -qO- http://10.250.0.3:{{ .Values.healthPort }}/healthz"]
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["/bin/sh", "-ec", "wget -qO- http://10.250.0.3:{{ .Values.healthPort }}/healthz"]
+            periodSeconds: 30
+          volumeMounts:
+            {{- if .Values.editorAuthSecret }}
+            - name: wiki-editor-secret
+              mountPath: /etc/wiki-editor-secret
+              readOnly: true
+            {{- end }}
+            - name: private-nginx-config
+              mountPath: /etc/nginx/nodes
+              readOnly: true
+            - name: private-tls
+              mountPath: /etc/nginx/tls
+              readOnly: true
+            {{- range .Values.extraVirtualHosts }}
+            - name: extra-tls-{{ .name }}
+              mountPath: /etc/nginx/extra-tls/{{ .name }}
+              readOnly: true
+            {{- end }}
+            - name: basic-auth
+              mountPath: /etc/nginx/auth
+              readOnly: true
+      volumes:
+        {{- if .Values.editorAuthSecret }}
+        - name: wiki-editor-secret
+          secret:
+            secretName: {{ .Values.editorAuthSecret | quote }}
+            items:
+              - key: headers.conf
+                path: headers.conf
+        {{- end }}
+        - name: private-nginx-config
+          configMap:
+            name: {{ .Chart.Name }}-private-nginx
+        - name: private-tls
+          secret:
+            secretName: {{ .Values.tlsSecret }}
+        {{- range .Values.extraVirtualHosts }}
+        - name: extra-tls-{{ .name }}
+          secret:
+            secretName: {{ .tlsSecret }}
+        {{- end }}
+        - name: basic-auth
+          secret:
+            secretName: {{ .Values.basicAuth.existingSecret }}
+            items:
+              - key: users
+                path: users
+{{- end }}

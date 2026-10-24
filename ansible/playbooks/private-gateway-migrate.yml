@@ -1,0 +1,136 @@
+---
+# Migrate the private HTTPS gateway from the syncthing chart (privateGui) to the
+# standalone private-gateway chart. Both gateways bind the same hostNetwork
+# ports (18443/18444) on the same WireGuard IPs, so they CANNOT run at the
+# same time. Ordering: stage chart -> stop old gateway (brief private-UI
+# downtime) -> install new gateway -> verify healthz -> disable privateGui in
+# the syncthing release. Rollback if the new install fails: the playbook
+# aborts before touching syncthing values; to restore the old gateway run
+#   helm upgrade syncthing charts/syncthing --reuse-values
+# which re-renders and recreates the syncthing-gateway DaemonSet.
+- name: Migrate the private HTTPS gateway to the private-gateway chart
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  tags: [private_gateway_migrate]
+  vars:
+    private_gateway_directory: "{{ homelab_user_home }}/tmp-charts/private-gateway-migrate"
+    private_gateway_kubeconfig: /etc/rancher/k3s/k3s.yaml
+    private_gateway_health_port: 18444
+  tasks:
+    - name: Create private staging directory
+      ansible.builtin.file:
+        path: "{{ private_gateway_directory }}"
+        state: directory
+        mode: '0700'
+
+    - name: 'Sanity pre-check syncthing deployment is Ready'
+      ansible.builtin.command:
+        argv: [kubectl, --kubeconfig, "{{ private_gateway_kubeconfig }}", -n, syncthing, get, deploy, syncthing, -o, 'jsonpath={.status.readyReplicas}']
+      register: private_gateway_syncthing_ready
+      changed_when: false
+      failed_when: private_gateway_syncthing_ready.stdout != '1'
+
+    - name: 'Sanity pre-check old syncthing-gateway DaemonSet exists'
+      ansible.builtin.command:
+        argv: [kubectl, --kubeconfig, "{{ private_gateway_kubeconfig }}", -n, syncthing, get, daemonset, syncthing-gateway, -o, 'jsonpath={.metadata.name}']
+      register: private_gateway_old_gateway
+      changed_when: false
+      failed_when: private_gateway_old_gateway.stdout != 'syncthing-gateway'
+
+    - name: Stage private gateway chart
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../charts/private-gateway/"
+        dest: "{{ private_gateway_directory }}/gateway-chart/"
+        mode: preserve
+
+    - name: Install manifest comparison helper
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../files/helm_manifest_changed.py"
+        dest: "{{ private_gateway_directory }}/helm_manifest_changed.py"
+        mode: '0600'
+
+    # Values (including the live host list) are baked into the chart's values.yaml.
+    - name: Compare private gateway manifests
+      ansible.builtin.command:
+        argv: [python3, "{{ private_gateway_directory }}/helm_manifest_changed.py", --release, private-gateway, --chart, "{{ private_gateway_directory }}/gateway-chart", --namespace, syncthing, --values, "{{ private_gateway_directory }}/gateway-chart/values.yaml", --kubeconfig, "{{ private_gateway_kubeconfig }}"]
+      register: private_gateway_diff
+      changed_when: false
+
+    # Ports 18443/18444 must be free before the new gateway can start.
+    # Deleting the DaemonSet is the only reliable way to stop it (DS cannot be
+    # scaled); helm recreates it on any later syncthing upgrade while
+    # privateGui is enabled, and after the syncthing upgrade below it is
+    # pruned from the release anyway.
+    - name: Stop the old syncthing-gateway DaemonSet
+      ansible.builtin.command:
+        argv: [kubectl, --kubeconfig, "{{ private_gateway_kubeconfig }}", -n, syncthing, delete, daemonset, syncthing-gateway, --wait=false]
+      changed_when: true
+
+    - name: Wait for the old gateway pod to terminate
+      ansible.builtin.command:
+        argv: [kubectl, --kubeconfig, "{{ private_gateway_kubeconfig }}", -n, syncthing, wait, --for=delete, pod, -l, app.kubernetes.io/name=syncthing-gateway, --timeout=90s]
+      changed_when: false
+
+    - name: Install the new private-gateway release
+      ansible.builtin.command:
+        argv: [helm, upgrade, --install, private-gateway, "{{ private_gateway_directory }}/gateway-chart", --namespace, syncthing, --kubeconfig, "{{ private_gateway_kubeconfig }}", --values, "{{ private_gateway_directory }}/gateway-chart/values.yaml", --atomic, --wait, --timeout, 5m]
+      when: (private_gateway_diff.stdout | from_json).changed
+      changed_when: true
+
+    - name: Wait for the private-gateway DaemonSet to be Ready
+      ansible.builtin.command:
+        argv: [kubectl, --kubeconfig, "{{ private_gateway_kubeconfig }}", -n, syncthing, rollout, status, daemonset/private-gateway, --timeout=120s]
+      changed_when: false
+
+    # nginx -t already ran in the container entrypoint; verify one health endpoint
+    # from inside the pod.
+    - name: Verify the gateway health endpoint returns OK
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          pod=$(kubectl --kubeconfig {{ private_gateway_kubeconfig }} -n syncthing get pod -l app.kubernetes.io/name=private-gateway -o jsonpath='{.items[0].metadata.name}')
+          kubectl --kubeconfig {{ private_gateway_kubeconfig }} -n syncthing exec "$pod" -- wget -qO- http://127.0.0.1:{{ private_gateway_health_port }}/healthz
+      register: private_gateway_healthz
+      changed_when: false
+      failed_when: private_gateway_healthz.stdout != 'OK'
+
+    # Only now, with the new gateway Ready, disable the old one.
+    - name: Read live syncthing release values
+      ansible.builtin.command:
+        argv: [helm, get, values, syncthing, --namespace, syncthing, --kubeconfig, "{{ private_gateway_kubeconfig }}", --output, json]
+      register: private_gateway_syncthing_values
+      changed_when: false
+      no_log: true
+
+    - name: Merge privateGui.enabled=false into live syncthing values
+      ansible.builtin.set_fact:
+        private_gateway_syncthing_merged: "{{ (private_gateway_syncthing_values.stdout | from_json) | combine({'privateGui': {'enabled': false}}, recursive=true) }}"
+      no_log: true
+
+    - name: Stage merged syncthing values
+      ansible.builtin.copy:
+        content: "{{ private_gateway_syncthing_merged | to_nice_yaml }}"
+        dest: "{{ private_gateway_directory }}/syncthing-values.yaml"
+        mode: '0600'
+      no_log: true
+
+    - name: Disable the old syncthing-gateway DaemonSet
+      ansible.builtin.command:
+        argv: [helm, upgrade, syncthing, "{{ playbook_dir }}/../../charts/syncthing/", --namespace, syncthing, --kubeconfig, "{{ private_gateway_kubeconfig }}", --reuse-values, --values, "{{ private_gateway_directory }}/syncthing-values.yaml", --atomic, --wait, --timeout, 5m]
+      changed_when: true
+
+    - name: 'Post-check old syncthing-gateway DaemonSet is gone'
+      ansible.builtin.command:
+        argv: [kubectl, --kubeconfig, "{{ private_gateway_kubeconfig }}", -n, syncthing, get, daemonset, syncthing-gateway]
+      register: private_gateway_old_gone
+      changed_when: false
+      failed_when: private_gateway_old_gone.rc == 0
+
+    - name: 'Post-check syncthing deployment is Ready 1/1'
+      ansible.builtin.command:
+        argv: [kubectl, --kubeconfig, "{{ private_gateway_kubeconfig }}", -n, syncthing, get, deploy, syncthing, -o, 'jsonpath={.status.readyReplicas}']
+      register: private_gateway_post_syncthing_ready
+      changed_when: false
+      failed_when: private_gateway_post_syncthing_ready.stdout != '1'
