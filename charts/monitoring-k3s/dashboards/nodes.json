@@ -46,6 +46,12 @@
       "targetBlank": true,
       "icon": "external link",
       "tooltip": "Open the selected node in Rancher (outside Grafana)"
+    },
+    {
+      "title": "Traffic-light panel",
+      "url": "/d/socrat-traffic-light",
+      "type": "link",
+      "keepTime": true
     }
   ],
   "templating": {
@@ -730,7 +736,7 @@
       "id": 207,
       "type": "stat",
       "title": "",
-      "description": "CPU temperature within 10 °C of its critical limit for 5m, or hardware thermal throttle events sustained for 2m where supported. The AMD socrat-1 provides temperature but no thermal event counter; the Intel socrat-0 provides both. These are separate checks: temperature alone does not prove hardware throttling. Hardware critical temperature limits take precedence; socrat-1 falls back to its validated 100 °C limit. N/A means temperature telemetry is unsupported. No telemetry means its source or rule evaluation is unavailable. Active alerts take precedence. Click to choose the temperature or hardware-throttling alert in Grafana.",
+      "description": "CPU temperature within 10 \u00b0C of its critical limit for 5m, or hardware thermal throttle events sustained for 2m where supported. The AMD socrat-1 provides temperature but no thermal event counter; the Intel socrat-0 provides both. These are separate checks: temperature alone does not prove hardware throttling. Hardware critical temperature limits take precedence; socrat-1 falls back to its validated 100 \u00b0C limit. N/A means temperature telemetry is unsupported. No telemetry means its source or rule evaluation is unavailable. Active alerts take precedence. Click to choose the temperature or hardware-throttling alert in Grafana.",
       "gridPos": {
         "x": 12,
         "y": 3,
@@ -3728,7 +3734,7 @@
     },
     {
       "id": 103,
-      "title": "Container restarts · selected period",
+      "title": "Container restarts \u00b7 selected period",
       "description": "Estimated restarts over the selected period for containers in pods currently assigned to this node. Counter increases are extrapolated and may be fractional. Deleted pods and init containers are not included.",
       "type": "stat",
       "datasource": {
@@ -3782,7 +3788,7 @@
     },
     {
       "id": 104,
-      "title": "Top pods · CPU cores",
+      "title": "Top pods \u00b7 CPU cores",
       "description": "Ten pods using the most CPU on the selected node at the end of the selected period. CPU seconds per second equal CPU cores; averaged over the automatic rate interval. Click a pod to open it in Rancher. Duplicate scrape series are removed before summing containers.",
       "type": "table",
       "datasource": {
@@ -3864,7 +3870,7 @@
     },
     {
       "id": 105,
-      "title": "Top pods · Memory",
+      "title": "Top pods \u00b7 Memory",
       "description": "Ten pods with the largest container memory working set on the selected node at the end of the selected period. Working set includes non-reclaimable cache and differs from process RSS. Click a pod to open it in Rancher.",
       "type": "table",
       "datasource": {
@@ -3959,7 +3965,7 @@
     },
     {
       "id": 111,
-      "title": "CPU · usage, requests and limits",
+      "title": "CPU \u00b7 usage, requests and limits",
       "description": "Container CPU usage in cores compared with declared requests, limits and node allocatable capacity. Requests and limits sum regular containers in active assigned pods; init-container maxima and pod overhead are excluded, so this is not the exact scheduler reservation. Requests reserve scheduling capacity, not physical usage. Containers without limits add no declared limit; the limits line is not an overall usage cap. Host processes are excluded from container usage.",
       "type": "timeseries",
       "datasource": {
@@ -4036,7 +4042,7 @@
     },
     {
       "id": 112,
-      "title": "Memory · usage, requests and limits",
+      "title": "Memory \u00b7 usage, requests and limits",
       "description": "Container memory working set in bytes compared with declared requests, limits and node allocatable capacity. Requests and limits sum regular containers in active assigned pods; init-container maxima and pod overhead are excluded, so this is not the exact scheduler reservation. Requests reserve scheduling capacity, not physical usage. Containers without limits add no declared limit; the limits line is not an overall usage cap. Host processes are excluded from container usage.",
       "type": "timeseries",
       "datasource": {
@@ -4499,7 +4505,7 @@
     },
     {
       "id": 8,
-      "title": "Load average · 1 / 5 / 15 minutes",
+      "title": "Load average \u00b7 1 / 5 / 15 minutes",
       "description": "Average number of runnable tasks and tasks in uninterruptible sleep, including disk I/O wait, over 1, 5 and 15 minutes. Compare with logical CPU core count to assess demand. These fixed averaging windows do not change with the dashboard time range.",
       "type": "timeseries",
       "datasource": {
@@ -4516,21 +4522,21 @@
         {
           "refId": "A",
           "expr": "avg by (nodename) ((node_load1{job=\"node-exporter\"}) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"}))",
-          "legendFormat": "{{nodename}} · 1 min",
+          "legendFormat": "{{nodename}} \u00b7 1 min",
           "range": true,
           "instant": false
         },
         {
           "refId": "B",
           "expr": "avg by (nodename) ((node_load5{job=\"node-exporter\"}) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"}))",
-          "legendFormat": "{{nodename}} · 5 min",
+          "legendFormat": "{{nodename}} \u00b7 5 min",
           "range": true,
           "instant": false
         },
         {
           "refId": "C",
           "expr": "avg by (nodename) ((node_load15{job=\"node-exporter\"}) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"}))",
-          "legendFormat": "{{nodename}} · 15 min",
+          "legendFormat": "{{nodename}} \u00b7 15 min",
           "range": true,
           "instant": false
         }
@@ -4760,7 +4766,7 @@
     },
     {
       "id": 14,
-      "title": "Root filesystem · used",
+      "title": "Root filesystem \u00b7 used",
       "description": "Percentage of the root filesystem unavailable to ordinary processes, including used space and filesystem reservations. Near 100% means little writable space remains; other mount points are not included.",
       "type": "timeseries",
       "datasource": {
@@ -4816,7 +4822,7 @@
     },
     {
       "id": 15,
-      "title": "Root filesystem · available",
+      "title": "Root filesystem \u00b7 available",
       "description": "Free root-filesystem space available to ordinary processes, in byte-based units. Filesystem reservations are excluded. A falling value means less room for application data, images and logs on this filesystem.",
       "type": "timeseries",
       "datasource": {
@@ -4888,14 +4894,14 @@
         {
           "refId": "A",
           "expr": "avg by (nodename, device) ((rate(node_disk_read_bytes_total{job=\"node-exporter\",device!~\"loop.*|ram.*|sr.*\"}[$__rate_interval])) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"}))",
-          "legendFormat": "{{nodename}} · {{device}} · read",
+          "legendFormat": "{{nodename}} \u00b7 {{device}} \u00b7 read",
           "range": true,
           "instant": false
         },
         {
           "refId": "B",
           "expr": "avg by (nodename, device) ((rate(node_disk_written_bytes_total{job=\"node-exporter\",device!~\"loop.*|ram.*|sr.*\"}[$__rate_interval])) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"}))",
-          "legendFormat": "{{nodename}} · {{device}} · write",
+          "legendFormat": "{{nodename}} \u00b7 {{device}} \u00b7 write",
           "range": true,
           "instant": false
         }
@@ -4963,7 +4969,7 @@
         {
           "refId": "A",
           "expr": "avg by (nodename, device) ((rate(node_network_receive_bytes_total{job=\"node-exporter\",device!~\"lo|veth.*|cali.*|cni.*|flannel.*|docker.*|br-.*\"}[$__rate_interval])) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"}))",
-          "legendFormat": "{{nodename}} · {{device}}",
+          "legendFormat": "{{nodename}} \u00b7 {{device}}",
           "range": true,
           "instant": false
         }
@@ -5018,7 +5024,7 @@
         {
           "refId": "A",
           "expr": "avg by (nodename, device) ((rate(node_network_transmit_bytes_total{job=\"node-exporter\",device!~\"lo|veth.*|cali.*|cni.*|flannel.*|docker.*|br-.*\"}[$__rate_interval])) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"}))",
-          "legendFormat": "{{nodename}} · {{device}}",
+          "legendFormat": "{{nodename}} \u00b7 {{device}}",
           "range": true,
           "instant": false
         }
@@ -5073,14 +5079,14 @@
         {
           "refId": "A",
           "expr": "avg by (nodename, device) ((rate(node_network_receive_errs_total{job=\"node-exporter\",device!~\"lo|veth.*|cali.*|cni.*|flannel.*|docker.*|br-.*\"}[$__rate_interval])) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"}))",
-          "legendFormat": "{{nodename}} · {{device}} · receive",
+          "legendFormat": "{{nodename}} \u00b7 {{device}} \u00b7 receive",
           "range": true,
           "instant": false
         },
         {
           "refId": "B",
           "expr": "avg by (nodename, device) ((rate(node_network_transmit_errs_total{job=\"node-exporter\",device!~\"lo|veth.*|cali.*|cni.*|flannel.*|docker.*|br-.*\"}[$__rate_interval])) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\",nodename=\"$node\"}))",
-          "legendFormat": "{{nodename}} · {{device}} · transmit",
+          "legendFormat": "{{nodename}} \u00b7 {{device}} \u00b7 transmit",
           "range": true,
           "instant": false
         }

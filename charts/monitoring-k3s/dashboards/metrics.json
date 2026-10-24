@@ -46,6 +46,12 @@
       "targetBlank": true,
       "icon": "external link",
       "tooltip": "Open thanos-cascade in Rancher"
+    },
+    {
+      "title": "Traffic-light panel",
+      "url": "/d/socrat-traffic-light",
+      "type": "link",
+      "keepTime": true
     }
   ],
   "templating": {

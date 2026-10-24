@@ -10,6 +10,8 @@ from decimal import Decimal, InvalidOperation
 
 RESOURCE_NAMES = ('cpu', 'memory', 'ephemeral-storage')
 LIMIT_RESOURCE_NAMES = ('memory', 'ephemeral-storage')
+LABEL_NAME = re.compile(r'^[A-Za-z0-9](?:[-_.A-Za-z0-9]*[A-Za-z0-9])?$')
+DNS_LABEL = re.compile(r'^[a-z0-9](?:[-a-z0-9]*[a-z0-9])?$')
 SUPPORTED_OWNERS = {'ReplicaSet', 'DaemonSet', 'StatefulSet'}
 QUANTITY = re.compile(r'^([+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+))([eE][+-]?[0-9]+|[numkKMGTP E]i?)?$'.replace(' ', ''))
 
@@ -37,6 +39,24 @@ def positive(value):
         return False
 
 
+def validate_node_selector(selector):
+    if not isinstance(selector, dict):
+        raise ValueError('nodeSelector must be a string map')
+    for key, value in selector.items():
+        if not isinstance(key, str) or not isinstance(value, str):
+            raise ValueError('nodeSelector must be a string map')
+        parts = key.split('/')
+        name = parts[-1]
+        if len(parts) > 2 or not 1 <= len(name) <= 63 or not LABEL_NAME.fullmatch(name):
+            raise ValueError('Invalid nodeSelector label key: ' + key)
+        if len(parts) == 2:
+            prefix = parts[0]
+            if not prefix or len(prefix) > 253 or any(not 1 <= len(part) <= 63 or not DNS_LABEL.fullmatch(part) for part in prefix.split('.')):
+                raise ValueError('Invalid nodeSelector label prefix: ' + key)
+        if len(value) > 63 or (value and not LABEL_NAME.fullmatch(value)):
+            raise ValueError('Invalid nodeSelector label value: ' + value)
+
+
 def load_profiles(path):
     with open(path) as source:
         profiles = json.load(source)
@@ -45,6 +65,7 @@ def load_profiles(path):
     for profile in profiles:
         if not all(isinstance(profile.get(key), str) and profile[key] for key in ('namespace', 'ownerKind', 'ownerPattern')):
             raise ValueError('Profile requires namespace, ownerKind, and ownerPattern')
+        validate_node_selector(profile.get('nodeSelector', {}))
         pattern = profile['ownerPattern']
         if not pattern.startswith('^') or not pattern.endswith('$'):
             raise ValueError('Profile ownerPattern must be anchored with ^ and $')
@@ -85,6 +106,13 @@ def profile_mismatches(pod, profile):
     if profile is None:
         return []
     mismatches = []
+    spec = pod.get('spec', {})
+    for key, desired in profile.get('nodeSelector', {}).items():
+        if spec.get('nodeSelector', {}).get(key) != desired:
+            mismatches.append('nodeSelector/' + key)
+    hostname = profile.get('nodeSelector', {}).get('kubernetes.io/hostname')
+    if hostname and spec.get('nodeName') and spec['nodeName'] != hostname:
+        mismatches.append('nodeName')
     present = set()
     for kind in ('containers', 'initContainers'):
         for container in pod.get('spec', {}).get(kind, []):

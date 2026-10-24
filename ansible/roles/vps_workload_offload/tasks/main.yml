@@ -1,0 +1,62 @@
+---
+- name: Create isolated chart staging directory
+  ansible.builtin.file:
+    path: /home/alchemmist/.cache/homelab-vps-offload
+    state: directory
+    mode: '0700'
+
+- name: Copy the image proxy chart with persistent home-node placement
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../charts/img-proxy/"
+    dest: /home/alchemmist/.cache/homelab-vps-offload/img-proxy/
+    mode: preserve
+
+- name: Stage explicit image proxy placement for existing Helm values
+  ansible.builtin.copy:
+    content: "{{ {'nodeSelector': {'kubernetes.io/hostname': 'socrat-1'}} | to_nice_yaml }}"
+    dest: /home/alchemmist/.cache/homelab-vps-offload/placement.yml
+    mode: '0600'
+
+- name: Validate the image proxy chart
+  ansible.builtin.command:
+    argv: [helm, lint, /home/alchemmist/.cache/homelab-vps-offload/img-proxy]
+  changed_when: false
+
+- name: Move the image proxy through its Helm release
+  ansible.builtin.command:
+    argv:
+      - helm
+      - upgrade
+      - img-proxy
+      - /home/alchemmist/.cache/homelab-vps-offload/img-proxy
+      - --namespace
+      - img-proxy
+      - --reuse-values
+      - --values
+      - /home/alchemmist/.cache/homelab-vps-offload/placement.yml
+      - --atomic
+      - --wait
+      - --timeout
+      - 5m
+  changed_when: true
+
+- name: Converge and verify each selected deployment sequentially
+  ansible.builtin.include_tasks: deployment.yml
+  loop:
+    - namespace: img-proxy
+      name: img-proxy
+    - namespace: kube-system
+      name: metrics-server
+    - namespace: kube-system
+      name: local-path-provisioner
+  loop_control:
+    loop_var: offload_workload
+
+- name: Verify the aggregated metrics API after relocation
+  ansible.builtin.command:
+    argv: [kubectl, get, --raw, /apis/metrics.k8s.io/v1beta1/nodes]
+  register: offload_metrics_api
+  until: offload_metrics_api.rc == 0 and (offload_metrics_api.stdout | from_json).get('items', []) | length > 0
+  retries: 12
+  delay: 5
+  changed_when: false

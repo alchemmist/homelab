@@ -21,6 +21,7 @@ spec:
             "namespace": dyn({{ profile.namespace | to_json }}),
             "ownerKind": dyn({{ profile.ownerKind | to_json }}),
             "ownerPattern": dyn({{ profile.ownerPattern | to_json }}),
+            "nodeSelector": dyn({{ profile.nodeSelector | default({}) | to_json }}),
             "containers": dyn({
 {% for container_name, resources in profile.containers.items() %}
               {{ container_name | to_json }}: {
@@ -46,10 +47,20 @@ spec:
     - name: profileContainers
       expression: >-
         variables.matchingProfiles.size() == 1 ? variables.matchingProfiles[0].containers : {}
+    - name: profileNodeSelector
+      expression: >-
+        variables.matchingProfiles.size() == 1 ? variables.matchingProfiles[0].nodeSelector : {}
   mutations:
     - patchType: JSONPatch
       jsonPatch:
         expression: >-
+          (variables.profileNodeSelector.size() == 0 ? [] :
+            !has(object.spec.nodeSelector) ? [JSONPatch{
+              op: "add", path: "/spec/nodeSelector", value: variables.profileNodeSelector
+            }] : variables.profileNodeSelector.map(key, JSONPatch{
+              op: "add", path: "/spec/nodeSelector/" + jsonpatch.escapeKey(key),
+              value: variables.profileNodeSelector[key]
+            })) +
           object.spec.containers.filter(c,
             has(c.resources) && has(c.resources.limits) && "cpu" in c.resources.limits &&
             (quantity(c.resources.limits["cpu"]).compareTo(quantity("0")) == 0 ||

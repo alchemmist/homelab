@@ -37,6 +37,12 @@
       "url": "/d/socrat-llm",
       "type": "link",
       "keepTime": true
+    },
+    {
+      "title": "Traffic-light panel",
+      "url": "/d/socrat-traffic-light",
+      "type": "link",
+      "keepTime": true
     }
   ],
   "templating": {

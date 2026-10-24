@@ -26,7 +26,6 @@ Most existing CPU requests were retained: CPU scheduling capacity was not the bo
 | vLLM | 11309 / 16822 MiB | 12Gi / 24Gi | Loading peaks differ from steady state; GPU memory is separate |
 | Open Terminal | 762 / 3894 MiB | 512Mi / 4Gi | Idle/interactive baseline; retain explicit runaway guard |
 | VPN primary | 364 / 387 MiB | 448Mi / 768Mi | Protect critical service on small VPS |
-| VPN compatibility | 320 / 331 MiB | 384Mi / 512Mi | Protect critical compatibility service |
 
 Ephemeral-storage measurements from kubelet stats showed Rancher writable layers/logs near 2.1Gi, vLLM about 211Mi, LiteLLM 63Mi and WebUI 59Mi. Requests include realistic reservations and limits retain burst/log headroom; Open Terminal no longer inherits a 5Gi request merely because its limit is 5Gi. These measurements do not measure PVC contents.
 
@@ -74,6 +73,18 @@ The scheduler redistributed some unpinned workloads during recreation; this is t
 The smallest scheduling margin is socrat-2 (~287Mi). Do not add workloads there merely because aggregate cluster capacity is available. Physical MemAvailable fluctuates independently; it was about 809Mi on both small nodes at final verification. Neither this snapshot nor requests guarantee survival of simultaneous peaks or node loss.
 
 Verification: 41 resource-policy/budget unit tests; Ansible syntax check; server-side policy validation plus all 56 regular/init profile dry-runs; 18 Promtool scenarios for the quota tile. Live tile values are Clear on socrat-0/1 and N/A on socrat-2/3, which have no CPU-limited containers. CPU limits remain on exactly four containers (Open Terminal, cleanup sidecar, vLLM, SearXNG).
+
+## Follow-up: offload auxiliary workloads from socrat-2
+
+`ansible/playbooks/socrat-2-offload.yml` moves only `img-proxy`, `metrics-server` and `local-path-provisioner` to socrat-1. It refuses cluster-wide resource reconciliation, applies admission configuration first, and rolls out the selected deployments sequentially. The image proxy is updated through Helm with its previous values preserved; the two K3s controllers receive minimal node-selector patches.
+
+The three profiles also specify `nodeSelector: {kubernetes.io/hostname: socrat-1}`. Admission enforces this placement for replacement Pods even if K3s regenerates a packaged Deployment. Other node-selector labels are preserved. The image proxy chart carries the same default. Changing placement requires updating the profile as well as the controller/chart, not just patching a Pod. No packaged K3s manifests are disabled or rewritten.
+
+The migration frees 192Mi of memory requests on socrat-2: its total is now 1488Mi, leaving approximately 479Mi unreserved. Actual RAM usage is independent of that reservation. CoreDNS is the later exception: one replica is placed on socrat-2 and admission reserves 128Mi for it. That leaves roughly 350Mi of requests unreserved on a node with about 1.92Gi allocatable. The other replica stays on socrat-0. Metrics Server and new local-path volume provisioning now depend on socrat-1; existing volume data stays on its original nodes.
+
+Verification on 2026-10-20: all three deployments Ready on socrat-1; metrics API returned all four nodes; image proxy returned HTTP 200 and an image through both public IPs; all 15 PV specifications and identities unchanged; resource audit found no mismatches across 74 active Pods. Final repeated checks found all four nodes Ready without pressure and 33/33 fresh successful service probes, including Wiki. An earlier transient Wiki probe failure was not reproduced or diagnosed; no Wiki changes were made. All 47 resource/budget and four offload scope unit tests passed, covering selector validation, unrelated-label preservation, wrong-node detection and the restricted rollout scope.
+
+VPN, Remark42, edge ingress and node telemetry remain on socrat-2. Uptime Kuma runs on socrat-3. Syncthing no longer runs there: the node had no folders, and its `/srv/syncthing` directory is kept. The DaemonSet, probes and grouped tile cover socrat-0 and socrat-1.
 
 ## Reproduce the measurements
 
@@ -158,7 +169,6 @@ Export current Pods and Nodes with `kubectl get pods -A -o json` and `kubectl ge
 | umami / `^umami\-db-[a-z0-9]+$` / postgres | 10m | none | 256Mi | 1024Mi | 64Mi / 1Gi |
 | uptime-kuma / `^uptime\-kuma-[a-z0-9]+$` / uptime-kuma | 50m | none | 256Mi | 512Mi | 64Mi / 1Gi |
 | wiki / `^wiki\-runtime\-wiki-[a-z0-9]+$` / wiki | 100m | none | 192Mi | 1024Mi | 64Mi / 1Gi |
-| x-ui / `^x\-ui-[a-z0-9]+$` / compatibility | 50m | none | 384Mi | 512Mi | 64Mi / 1Gi |
 | x-ui / `^x\-ui-[a-z0-9]+$` / primary | 100m | none | 448Mi | 768Mi | 64Mi / 1Gi |
 | cattle-monitoring-system / `^alertmanager\-kube\-prometheus\-stack\-alertmanager$` / alertmanager | 25m | none | 64Mi | 128Mi | 64Mi / 1Gi |
 | cattle-monitoring-system / `^alertmanager\-kube\-prometheus\-stack\-alertmanager$` / config-reloader | 25m | none | 48Mi | 128Mi | 16Mi / 256Mi |
