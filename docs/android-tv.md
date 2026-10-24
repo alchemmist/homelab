@@ -34,7 +34,33 @@ cd ansible
 ansible-playbook playbooks/tv-admin.yml --ask-become-pass
 ```
 
-The playbook prepares ADB and a dedicated SSH key, checks the authorized TV model, and enables restoration of the last input. It points Fully Kiosk Browser at the living-room dashboard without starting it on boot, keeps tvQuickActions and the HDMI helper alive across reboot, and sets WireGuard as the always-on VPN with lockdown off. It does not bypass TV authorization, install Fully, tvQuickActions, WireGuard, or the HDMI helper, and it does not install the public key on a new television automatically.
+## VPN switching and remote buttons
+
+The TV uses one WireGuard app with two mutually exclusive profiles:
+
+| Profile | Purpose | Expected tunnel address |
+| --- | --- | --- |
+| `xiaomi-tv` | Split-tunnel access to Grafana and the homelab | `10.250.0.8` |
+| `alchemmist-tv` | Full-tunnel global internet access for YouTube | `10.0.0.10` |
+
+The global profile is imported from the private client configuration supplied as `tv.conf`. Keep its private key out of this repository and Ansible inventory. On a replacement TV, securely copy the file to the TV, import it in WireGuard, and name the profile `alchemmist-tv`. The homelab profile must be named `xiaomi-tv`.
+
+tvQuickActions (`dev.vodik7.tvquickactions.free`) opens the local helper apps, which own the VPN handoff:
+
+| Button | Helper | Sequence |
+| --- | --- | --- |
+| BUTTON_11 | `xyz.alchemmist.grafana` | Stop both WireGuard profiles, start `xiaomi-tv`, wait for Android network validation, then open Fully Kiosk |
+| BUTTON_16 | `xyz.alchemmist.tvmode` | Stop both profiles, start `alchemmist-tv`, wait for validation, close Fully from the foreground, then open YouTube |
+| BUTTON_10 | `xyz.alchemmist.hdmi` | Select HDMI 1 |
+| BUTTON_14 | `ru.kinopoisk.tv` | Open Kinopoisk |
+
+The same WireGuard client is used for both routes because Android permits only one active `VpnService` tunnel at a time. The helper does not identify the current profile by the generic Android VPN network; it explicitly requests both profiles down before bringing the desired one up. The WireGuard remote-control permission must remain granted to both helpers. Android's always-on VPN application remains `com.wireguard.android`, with lockdown disabled. Happ has been removed and the Ansible playbook removes it if it is reinstalled.
+
+Android Private DNS is set to `off` by `tv-admin.yml`. With Private DNS in automatic mode, YouTube's Cronet requests failed with `ERR_NAME_NOT_RESOLVED` over the global tunnel; the affected host resolved after Private DNS was disabled. Each WireGuard profile still supplies its own DNS resolver, and while the VPN is active those DNS packets travel inside the encrypted tunnel. When no VPN is active, DNS uses the current Wi-Fi network without Android DoT.
+
+The TV profile configuration and tvQuickActions button database are private device state. Neither is recreated from this repository: after importing profiles on a replacement TV, assign BUTTON_11 and BUTTON_16 to the corresponding helper apps in tvQuickActions. Never map those buttons directly to Fully or YouTube, because that bypasses tunnel selection.
+
+The playbook prepares ADB and a dedicated SSH key, checks the authorized TV model, and enables restoration of the last input. It points Fully Kiosk Browser at the living-room dashboard without starting it on boot, keeps the TV helpers alive across reboot, removes Happ, and sets WireGuard as the always-on VPN with lockdown off. It does not bypass TV authorization, install Fully, tvQuickActions, WireGuard, or the HDMI helper, and it does not install the public key on a new television automatically.
 
 ## Fully Kiosk
 
@@ -68,6 +94,6 @@ adb -s 192.168.0.19:5555 shell settings put global set_auto_play 0
 
 Power-on shows the last television input. Fully does not start on boot, so an app that was open before the outage does not cover that input. While HDMI 1 stays the selected source, the server picture is what comes up. Home still opens `com.google.android.tvlauncher`. The colored remote buttons are handled by tvQuickActions (`dev.vodik7.tvquickactions.free`); its accessibility service is `KeyAccessibilityService`. Those button mappings live in the application's private data and are not rewritten by the playbook. The playbook only keeps the service enabled and stops `com.xiaomi.android.tvsetup.partnercustomizer` from claiming the same keys.
 
-WireGuard on this television is the userspace VPN, tunnel `xiaomi-tv`, split so the homelab network uses the tunnel and ordinary traffic stays on Wi-Fi. Its boot receiver does not restore that userspace tunnel. `tv-admin.yml` sets WireGuard as the always-on VPN and leaves lockdown off, so the tunnel comes back after a cold boot without sending YouTube or Kinopoisk through it. Fully, tvQuickActions, WireGuard, and the HDMI helper are also kept on the standby whitelist.
+WireGuard on this television is the userspace VPN. `xiaomi-tv` is split-tunnel, so the homelab network uses it and ordinary traffic stays on Wi-Fi. `alchemmist-tv` is full-tunnel for YouTube. The boot receiver does not restore the userspace tunnel by itself; `tv-admin.yml` sets WireGuard as the always-on VPN app and leaves lockdown off. Fully, tvQuickActions, WireGuard, the Grafana and YouTube helpers, and the HDMI helper are kept on the standby whitelist.
 
 The user verified a real power cycle: the server picture on HDMI 1 comes up, the colored buttons still switch between Grafana and HDMI, and Home still opens the normal launcher. Network ADB is only `service.adb.tcp.port=5555`; `persist.adb.tcp.port` cannot be set without root, so a reboot can drop the debugging connection until it is approved again.

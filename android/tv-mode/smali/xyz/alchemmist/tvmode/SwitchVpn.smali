@@ -98,74 +98,13 @@
     return v0
 .end method
 
-.method private wireguardMarked()Z
-    .locals 3
 
-    iget-object v0, p0, Lxyz/alchemmist/tvmode/SwitchVpn;->activity:Landroid/app/Activity;
-    invoke-virtual {v0}, Landroid/content/Context;->getContentResolver()Landroid/content/ContentResolver;
-    move-result-object v0
-
-    const-string v1, "always_on_vpn_app"
-    invoke-static {v0, v1}, Landroid/provider/Settings$Secure;->getString(Landroid/content/ContentResolver;Ljava/lang/String;)Ljava/lang/String;
-    move-result-object v0
-
-    const-string v1, "com.wireguard.android"
-    invoke-virtual {v1, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
-    move-result v0
-    return v0
-.end method
-
-.method private targetPresent()Z
-    .locals 2
-
-    invoke-direct {p0}, Lxyz/alchemmist/tvmode/SwitchVpn;->activeVpn()Z
-    move-result v0
-    if-eqz v0, :no
-
-    iget-boolean v0, p0, Lxyz/alchemmist/tvmode/SwitchVpn;->youtube:Z
-    if-eqz v0, :grafana
-
-    invoke-direct {p0}, Lxyz/alchemmist/tvmode/SwitchVpn;->wireguardMarked()Z
-    move-result v0
-    if-nez v0, :no
-
-    const/4 v0, 0x1
-    return v0
-
-    :grafana
-    invoke-direct {p0}, Lxyz/alchemmist/tvmode/SwitchVpn;->wireguardMarked()Z
-    move-result v0
-    return v0
-
-    :no
-    const/4 v0, 0x0
-    return v0
-.end method
 
 .method private targetActive()Z
-    .locals 2
+    .locals 1
 
     invoke-direct {p0}, Lxyz/alchemmist/tvmode/SwitchVpn;->vpnReady()Z
     move-result v0
-    if-eqz v0, :not_ready
-
-    iget-boolean v0, p0, Lxyz/alchemmist/tvmode/SwitchVpn;->youtube:Z
-    if-eqz v0, :grafana
-
-    invoke-direct {p0}, Lxyz/alchemmist/tvmode/SwitchVpn;->wireguardMarked()Z
-    move-result v0
-    if-nez v0, :not_ready
-
-    const/4 v0, 0x1
-    return v0
-
-    :grafana
-    invoke-direct {p0}, Lxyz/alchemmist/tvmode/SwitchVpn;->wireguardMarked()Z
-    move-result v0
-    return v0
-
-    :not_ready
-    const/4 v0, 0x0
     return v0
 .end method
 
@@ -187,24 +126,8 @@
     return-void
 .end method
 
-.method private clearAlwaysOn()V
-    .locals 3
 
-    iget-object v0, p0, Lxyz/alchemmist/tvmode/SwitchVpn;->activity:Landroid/app/Activity;
-    invoke-virtual {v0}, Landroid/content/Context;->getContentResolver()Landroid/content/ContentResolver;
-    move-result-object v0
-
-    const-string v1, "always_on_vpn_app"
-    const/4 v2, 0x0
-    invoke-static {v0, v1, v2}, Landroid/provider/Settings$Secure;->putString(Landroid/content/ContentResolver;Ljava/lang/String;Ljava/lang/String;)Z
-
-    const-string v1, "always_on_vpn_lockdown"
-    invoke-static {v0, v1, v2}, Landroid/provider/Settings$Secure;->putInt(Landroid/content/ContentResolver;Ljava/lang/String;I)Z
-
-    return-void
-.end method
-
-.method private sendWireguard(Z)V
+.method private sendWireguard(ZLjava/lang/String;)V
     .locals 4
 
     new-instance v0, Landroid/content/Intent;
@@ -223,8 +146,7 @@
     invoke-virtual {v0, v1}, Landroid/content/Intent;->setPackage(Ljava/lang/String;)Landroid/content/Intent;
 
     const-string v1, "tunnel"
-    const-string v2, "xiaomi-tv"
-    invoke-virtual {v0, v1, v2}, Landroid/content/Intent;->putExtra(Ljava/lang/String;Ljava/lang/String;)Landroid/content/Intent;
+    invoke-virtual {v0, v1, p2}, Landroid/content/Intent;->putExtra(Ljava/lang/String;Ljava/lang/String;)Landroid/content/Intent;
 
     iget-object v1, p0, Lxyz/alchemmist/tvmode/SwitchVpn;->activity:Landroid/app/Activity;
     invoke-virtual {v1, v0}, Landroid/content/Context;->sendBroadcast(Landroid/content/Intent;)V
@@ -232,28 +154,6 @@
     return-void
 .end method
 
-.method private sendHapp(Ljava/lang/String;)V
-    .locals 4
-
-    new-instance v0, Landroid/content/Intent;
-    const-string v1, "android.intent.action.VIEW"
-    invoke-direct {v0, v1}, Landroid/content/Intent;-><init>(Ljava/lang/String;)V
-
-    invoke-static {p1}, Landroid/net/Uri;->parse(Ljava/lang/String;)Landroid/net/Uri;
-    move-result-object v1
-    invoke-virtual {v0, v1}, Landroid/content/Intent;->setData(Landroid/net/Uri;)Landroid/content/Intent;
-
-    const-string v1, "su.happ.proxyutility"
-    invoke-virtual {v0, v1}, Landroid/content/Intent;->setPackage(Ljava/lang/String;)Landroid/content/Intent;
-
-    const/high16 v1, 0x10000000
-    invoke-virtual {v0, v1}, Landroid/content/Intent;->addFlags(I)Landroid/content/Intent;
-
-    iget-object v1, p0, Lxyz/alchemmist/tvmode/SwitchVpn;->activity:Landroid/app/Activity;
-    invoke-virtual {v1, v0}, Landroid/content/Context;->startActivity(Landroid/content/Intent;)V
-
-    return-void
-.end method
 
 .method private launchDestination()V
     .locals 4
@@ -266,6 +166,7 @@
     if-eqz v2, :open_fully
 
     invoke-direct {p0}, Lxyz/alchemmist/tvmode/SwitchVpn;->closeFully()V
+    invoke-direct {p0}, Lxyz/alchemmist/tvmode/SwitchVpn;->closeYoutube()V
 
     const-string v2, "com.google.android.youtube.tv"
     const-string v3, "com.google.android.apps.youtube.tv.activity.ShellActivity"
@@ -282,6 +183,21 @@
     invoke-virtual {v1, v2}, Landroid/content/Intent;->addFlags(I)Landroid/content/Intent;
     invoke-virtual {v0, v1}, Landroid/app/Activity;->startActivity(Landroid/content/Intent;)V
     invoke-virtual {v0}, Landroid/app/Activity;->finish()V
+
+    return-void
+.end method
+
+.method private closeYoutube()V
+    .locals 3
+
+    iget-object v0, p0, Lxyz/alchemmist/tvmode/SwitchVpn;->activity:Landroid/app/Activity;
+    const-string v1, "activity"
+    invoke-virtual {v0, v1}, Landroid/content/Context;->getSystemService(Ljava/lang/String;)Ljava/lang/Object;
+    move-result-object v0
+    check-cast v0, Landroid/app/ActivityManager;
+
+    const-string v1, "com.google.android.youtube.tv"
+    invoke-virtual {v0, v1}, Landroid/app/ActivityManager;->killBackgroundProcesses(Ljava/lang/String;)V
 
     return-void
 .end method
@@ -316,101 +232,59 @@
 
     iget v0, p0, Lxyz/alchemmist/tvmode/SwitchVpn;->phase:I
     if-nez v0, :poll_disconnect
-
-    invoke-direct {p0}, Lxyz/alchemmist/tvmode/SwitchVpn;->targetPresent()Z
-    move-result v0
-    if-eqz v0, :not_already_target
-
-    invoke-direct {p0}, Lxyz/alchemmist/tvmode/SwitchVpn;->targetActive()Z
-    move-result v0
-    if-nez v0, :already_target_ready
-
-    const/4 v0, 0x2
-    iput v0, p0, Lxyz/alchemmist/tvmode/SwitchVpn;->phase:I
-    invoke-static {}, Landroid/os/SystemClock;->elapsedRealtime()J
-    move-result-wide v0
-    const-wide/16 v2, 0x7530
-    add-long/2addr v0, v2
-    iput-wide v0, p0, Lxyz/alchemmist/tvmode/SwitchVpn;->deadline:J
-    invoke-direct {p0}, Lxyz/alchemmist/tvmode/SwitchVpn;->schedule()V
-    return-void
-
-    :already_target_ready
-    invoke-direct {p0}, Lxyz/alchemmist/tvmode/SwitchVpn;->launchDestination()V
-    return-void
-
-    :not_already_target
-    invoke-direct {p0}, Lxyz/alchemmist/tvmode/SwitchVpn;->activeVpn()Z
-    move-result v0
-    if-eqz v0, :begin_connect
-
-    iget-boolean v0, p0, Lxyz/alchemmist/tvmode/SwitchVpn;->youtube:Z
-    if-eqz v0, :disconnect_happ
-
-    invoke-direct {p0}, Lxyz/alchemmist/tvmode/SwitchVpn;->clearAlwaysOn()V
-    const/4 v0, 0x0
-    invoke-direct {p0, v0}, Lxyz/alchemmist/tvmode/SwitchVpn;->sendWireguard(Z)V
-    goto :wait_for_disconnect
-
-    :disconnect_happ
-    const-string v0, "happ://disconnect_without_ui"
-    invoke-direct {p0, v0}, Lxyz/alchemmist/tvmode/SwitchVpn;->sendHapp(Ljava/lang/String;)V
-
-    :wait_for_disconnect
-    const/4 v0, 0x1
-    iput v0, p0, Lxyz/alchemmist/tvmode/SwitchVpn;->phase:I
-
-    invoke-static {}, Landroid/os/SystemClock;->elapsedRealtime()J
-    move-result-wide v0
-    const-wide/16 v2, 0x3a98
-    add-long/2addr v0, v2
-    iput-wide v0, p0, Lxyz/alchemmist/tvmode/SwitchVpn;->deadline:J
-
-    invoke-direct {p0}, Lxyz/alchemmist/tvmode/SwitchVpn;->schedule()V
-    return-void
-
-    :begin_connect
-    iget-boolean v0, p0, Lxyz/alchemmist/tvmode/SwitchVpn;->youtube:Z
-    if-eqz v0, :connect_wireguard
-
-    invoke-direct {p0}, Lxyz/alchemmist/tvmode/SwitchVpn;->clearAlwaysOn()V
-    const-string v0, "happ://connect_without_ui"
-    invoke-direct {p0, v0}, Lxyz/alchemmist/tvmode/SwitchVpn;->sendHapp(Ljava/lang/String;)V
-    goto :connect_started
-
-    :connect_wireguard
     invoke-direct {p0}, Lxyz/alchemmist/tvmode/SwitchVpn;->setWireguardAlwaysOn()V
-    const/4 v0, 0x1
-    invoke-direct {p0, v0}, Lxyz/alchemmist/tvmode/SwitchVpn;->sendWireguard(Z)V
+    const/4 v1, 0x0
+    const-string v2, "xiaomi-tv"
+    invoke-direct {p0, v1, v2}, Lxyz/alchemmist/tvmode/SwitchVpn;->sendWireguard(ZLjava/lang/String;)V
+    const-string v2, "alchemmist-tv"
+    invoke-direct {p0, v1, v2}, Lxyz/alchemmist/tvmode/SwitchVpn;->sendWireguard(ZLjava/lang/String;)V
 
-    :connect_started
-    const/4 v0, 0x2
-    iput v0, p0, Lxyz/alchemmist/tvmode/SwitchVpn;->phase:I
-
+    invoke-direct {p0}, Lxyz/alchemmist/tvmode/SwitchVpn;->activeVpn()Z
+    move-result v1
+    if-eqz v1, :begin_connect
+    const/4 v1, 0x1
+    iput v1, p0, Lxyz/alchemmist/tvmode/SwitchVpn;->phase:I
     invoke-static {}, Landroid/os/SystemClock;->elapsedRealtime()J
-    move-result-wide v0
-    const-wide/16 v2, 0x7530
-    add-long/2addr v0, v2
-    iput-wide v0, p0, Lxyz/alchemmist/tvmode/SwitchVpn;->deadline:J
-
+    move-result-wide v1
+    const-wide/16 v3, 0x3a98
+    add-long/2addr v1, v3
+    iput-wide v1, p0, Lxyz/alchemmist/tvmode/SwitchVpn;->deadline:J
     invoke-direct {p0}, Lxyz/alchemmist/tvmode/SwitchVpn;->schedule()V
     return-void
 
     :poll_disconnect
     const/4 v1, 0x1
     if-ne v0, v1, :poll_connect
-
     invoke-direct {p0}, Lxyz/alchemmist/tvmode/SwitchVpn;->activeVpn()Z
-    move-result v0
-    if-eqz v0, :begin_connect
+    move-result v1
+    if-eqz v1, :begin_connect
     goto :check_deadline
 
     :poll_connect
     invoke-direct {p0}, Lxyz/alchemmist/tvmode/SwitchVpn;->targetActive()Z
-    move-result v0
-    if-eqz v0, :check_deadline
-
+    move-result v1
+    if-eqz v1, :check_deadline
     invoke-direct {p0}, Lxyz/alchemmist/tvmode/SwitchVpn;->launchDestination()V
+    return-void
+
+    :begin_connect
+    const/4 v1, 0x1
+    iget-boolean v2, p0, Lxyz/alchemmist/tvmode/SwitchVpn;->youtube:Z
+    if-eqz v2, :connect_internal
+    const-string v2, "alchemmist-tv"
+    goto :connect_requested
+    :connect_internal
+    const-string v2, "xiaomi-tv"
+    :connect_requested
+    invoke-direct {p0, v1, v2}, Lxyz/alchemmist/tvmode/SwitchVpn;->sendWireguard(ZLjava/lang/String;)V
+    const/4 v1, 0x2
+    iput v1, p0, Lxyz/alchemmist/tvmode/SwitchVpn;->phase:I
+    invoke-static {}, Landroid/os/SystemClock;->elapsedRealtime()J
+    move-result-wide v1
+    const-wide/16 v3, 0x7530
+    add-long/2addr v1, v3
+    iput-wide v1, p0, Lxyz/alchemmist/tvmode/SwitchVpn;->deadline:J
+    invoke-direct {p0}, Lxyz/alchemmist/tvmode/SwitchVpn;->schedule()V
     return-void
 
     :check_deadline
