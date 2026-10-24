@@ -116,9 +116,15 @@
         mode: '0600'
       no_log: true
 
+    - name: Stage syncthing chart
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../charts/syncthing/"
+        dest: "{{ private_gateway_directory }}/syncthing-chart/"
+        mode: preserve
+
     - name: Disable the old syncthing-gateway DaemonSet
       ansible.builtin.command:
-        argv: [helm, upgrade, syncthing, "{{ playbook_dir }}/../../charts/syncthing/", --namespace, syncthing, --kubeconfig, "{{ private_gateway_kubeconfig }}", --reuse-values, --values, "{{ private_gateway_directory }}/syncthing-values.yaml", --atomic, --wait, --timeout, 5m]
+        argv: [helm, upgrade, syncthing, "{{ private_gateway_directory }}/syncthing-chart", --namespace, syncthing, --kubeconfig, "{{ private_gateway_kubeconfig }}", --reuse-values, --values, "{{ private_gateway_directory }}/syncthing-values.yaml", --atomic, --wait, --timeout, 5m]
       changed_when: true
 
     - name: 'Post-check old syncthing-gateway DaemonSet is gone'

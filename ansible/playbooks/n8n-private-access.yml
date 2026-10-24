@@ -39,7 +39,7 @@
 
     - name: Merge n8n virtual host while preserving existing hosts
       ansible.builtin.set_fact:
-        n8n_private_gateway_values: "{{ (n8n_private_gateway.stdout | from_json) | combine({'extraVirtualHosts': ((n8n_private_gateway.stdout | from_json).extraVirtualHosts | default([]) | rejectattr('name', 'equalto', 'n8n') | list) + [{'name': 'n8n', 'host': n8n_private_host, 'nodeName': n8n_private_node, 'upstream': 'http://n8n.automation.svc.cluster.local:5678', 'tlsSecret': n8n_private_tls_secret, 'resolver': '10.43.0.10', 'clearAuthorization': false}]}, recursive=true) }}"
+        n8n_private_gateway_values: "{{ (n8n_private_gateway.stdout | from_json) | combine({'extraVirtualHosts': ((n8n_private_gateway.stdout | from_json).extraVirtualHosts | default([]) | rejectattr('name', 'equalto', 'n8n') | list) + [{'name': 'n8n', 'host': n8n_private_host, 'nodeName': n8n_private_node, 'upstream': 'http://n8n.automation.svc.cluster.local:80', 'tlsSecret': n8n_private_tls_secret, 'resolver': '10.43.0.10', 'clearAuthorization': false}]}, recursive=true) }}"
       no_log: true
 
     - name: Stage private gateway chart

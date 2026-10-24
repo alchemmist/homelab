@@ -9,6 +9,7 @@ image:
 
 # Nodes on which the gateway DaemonSet pod runs.
 gatewayOnlyNodes:
+  - socrat-0
   - socrat-1
 
 nodes:
