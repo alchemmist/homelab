@@ -11,6 +11,11 @@ from jsonschema import Draft202012Validator
 STATE_KEY = 'homelab_terminal_validation_guard'
 STOP_MESSAGE = 'Stopped repeated invalid terminal calls. Your conversation and files are preserved. Correct the tool arguments before continuing.'
 MAX_IDENTICAL_FAILURES = 3
+REPEAT_PERIODS = (1, 2, 3)
+REPEAT_CYCLES = 3
+REPEAT_HISTORY = 64
+REPEAT_WARN_MESSAGE = 'This exact terminal call sequence was already executed {cycles} times in a row with identical arguments, so this call was not run again. Repeating it further will stop the response. Verify the current state with a different command, or summarize your findings and finish.'
+REPEAT_STOP_MESSAGE = 'Stopped repeated identical terminal calls. Your conversation and files are preserved. The identical call is repeated without progress; describe the current state and finish, or continue with a genuinely different action.'
 FETCH_TIMEOUT_SECONDS = 45
 FETCH_WORKER = '''
 import asyncio
@@ -80,6 +85,14 @@ def validation_problem(params, schema):
     return '; '.join(problems)
 
 
+def repeated_period(fingerprints, periods=REPEAT_PERIODS, cycles=REPEAT_CYCLES):
+    for period in periods:
+        need = period * cycles
+        if len(fingerprints) >= need and fingerprints[-need:] == fingerprints[-period:] * cycles:
+            return period
+    return None
+
+
 def record_failure(metadata, name, arguments, problem):
     state = guard_state(metadata)
     fingerprint = hashlib.sha256((name + '\n' + arguments).encode()).hexdigest()
@@ -89,6 +102,7 @@ def record_failure(metadata, name, arguments, problem):
     count = failures.get(fingerprint, 0) + 1
     failures[fingerprint] = count
     state['stopped'] = state['stopped'] or count >= MAX_IDENTICAL_FAILURES
+    state['stop_message'] = state.get('stop_message') or (STOP_MESSAGE if state['stopped'] else None)
     suffix = STOP_MESSAGE if state['stopped'] else 'Correct the arguments using the tool schema before retrying. Do not inspect screenshots as evidence of an unapplied edit.'
     return {'error': f'Tool validation failed; the operation was not executed. {problem}. Identical invalid call {count}/{MAX_IDENTICAL_FAILURES}. {suffix}'}
 
@@ -97,13 +111,17 @@ def guard_state(metadata):
     generation = metadata.get('message_id') or metadata.get('assistant_message_id')
     state = metadata.get(STATE_KEY)
     if not isinstance(state, dict) or state.get('generation') != generation:
-        state = {'generation': generation, 'failures': {}, 'stopped': False}
+        state = {'generation': generation, 'failures': {}, 'recent': [], 'warned': None, 'stopped': False, 'stop_message': None}
         metadata[STATE_KEY] = state
     return state
 
 
 def guard_stopped(metadata):
     return guard_state(metadata)['stopped']
+
+
+def guard_stop_message(metadata):
+    return guard_state(metadata).get('stop_message') or STOP_MESSAGE
 
 
 def backend_validation_problem(result):
@@ -139,7 +157,7 @@ def guarded_execute(function):
             return await function(form_data, metadata, event_caller, tool_call)
         direct = tool.get('direct', False)
         if guard_stopped(metadata):
-            return {}, {'error': STOP_MESSAGE}, tool, 'terminal', direct
+            return {}, {'error': guard_stop_message(metadata)}, tool, 'terminal', direct
         arguments = call.get('arguments', '{}')
         try:
             try:
@@ -156,11 +174,26 @@ def guarded_execute(function):
         if problem:
             result = record_failure(metadata, name, canonical, problem)
             return params if isinstance(params, dict) else {}, result, tool, 'terminal', direct
+        fingerprint = hashlib.sha256((name + '\n' + canonical).encode()).hexdigest()
+        state = guard_state(metadata)
+        recent = state.setdefault('recent', [])
+        projected = recent[-(REPEAT_HISTORY - 1):] + [fingerprint]
+        period = repeated_period(projected)
+        if period:
+            block = hashlib.sha256('\n'.join(projected[-period:]).encode()).hexdigest()
+            if state.get('warned') == block:
+                state['stopped'] = True
+                state['stop_message'] = REPEAT_STOP_MESSAGE
+                return params, {'error': REPEAT_STOP_MESSAGE}, tool, 'terminal', direct
+            state['warned'] = block
+            return params, {'error': REPEAT_WARN_MESSAGE.format(cycles=REPEAT_CYCLES)}, tool, 'terminal', direct
         response = await function(form_data, metadata, event_caller, tool_call)
         problem = backend_validation_problem(response[1])
         if problem:
             return response[0], record_failure(metadata, name, canonical, problem), *response[2:]
-        fingerprint = hashlib.sha256((name + '\n' + canonical).encode()).hexdigest()
+        state['warned'] = None if fingerprint not in recent else state.get('warned')
+        recent.append(fingerprint)
+        del recent[:-REPEAT_HISTORY]
         value = response[1]
         if isinstance(value, tuple) and value:
             value = value[0]
