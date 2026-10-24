@@ -20,6 +20,7 @@
     homelab_tv_quickactions_service: dev.vodik7.tvquickactions.free/dev.vodik7.tvquickactions.KeyAccessibilityService
     homelab_tv_wireguard_package: com.wireguard.android
     homelab_tv_happ_package: su.happ.proxyutility
+    homelab_tv_private_dns_mode: off
     homelab_tv_hdmi_package: xyz.alchemmist.hdmi
     homelab_tv_grafana_package: xyz.alchemmist.grafana
     homelab_tv_youtube_package: xyz.alchemmist.tvmode
@@ -46,7 +47,6 @@
       - "{{ homelab_tv_fully_package }}"
       - "{{ homelab_tv_quickactions_package }}"
       - "{{ homelab_tv_wireguard_package }}"
-      - "{{ homelab_tv_happ_package }}"
       - "{{ homelab_tv_hdmi_package }}"
       - "{{ homelab_tv_grafana_package }}"
       - "{{ homelab_tv_youtube_package }}"
@@ -131,6 +131,20 @@
       register: homelab_tv_helper_install
       changed_when: "'Success' in homelab_tv_helper_install.stdout"
       loop: "{{ homelab_tv_helper_apks }}"
+
+    - name: Read installed Android TV packages
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, pm, list, packages]
+      register: homelab_tv_installed_packages
+      changed_when: false
+      check_mode: false
+
+    - name: Remove Happ now that both TV modes use WireGuard profiles
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", uninstall, "{{ homelab_tv_happ_package }}"]
+      register: homelab_tv_happ_uninstall
+      changed_when: "'Success' in homelab_tv_happ_uninstall.stdout"
+      when: "'package:' ~ homelab_tv_happ_package in homelab_tv_installed_packages.stdout"
 
     - name: Read homelab helper permission state
       ansible.builtin.command:
@@ -311,6 +325,18 @@
       ansible.builtin.command:
         argv: [adb, -s, "{{ homelab_tv_serial }}", shell, settings, put, secure, always_on_vpn_lockdown, "0"]
       when: homelab_tv_vpn_lockdown.stdout != '0'
+
+    - name: Read Android private DNS mode
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, settings, get, global, private_dns_mode]
+      register: homelab_tv_private_dns
+      changed_when: false
+      check_mode: false
+
+    - name: Keep DNS resolution compatible with the television VPN profiles
+      ansible.builtin.command:
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, settings, put, global, private_dns_mode, "{{ homelab_tv_private_dns_mode }}"]
+      when: homelab_tv_private_dns.stdout != homelab_tv_private_dns_mode
 
     - name: Read Fully shared-storage access
       ansible.builtin.command:
