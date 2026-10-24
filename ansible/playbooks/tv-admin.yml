@@ -16,6 +16,7 @@
       kioskMode: false
       disableHome: false
       disableHomeButton: false
+      initialScale: "55"
     homelab_tv_quickactions_package: dev.vodik7.tvquickactions.free
     homelab_tv_quickactions_service: dev.vodik7.tvquickactions.free/dev.vodik7.tvquickactions.KeyAccessibilityService
     homelab_tv_wireguard_package: com.wireguard.android
