@@ -4,7 +4,7 @@ metadata:
   name: uptime-kuma
   labels: { app: uptime-kuma }
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicaCount | default 1 }}
   strategy:
     type: Recreate
   selector:
@@ -13,12 +13,6 @@ spec:
     metadata:
       labels: { app: uptime-kuma }
     spec:
-      hostNetwork: true
-      dnsPolicy: None
-      dnsConfig:
-        {{- toYaml (.Values.dnsConfig | default (dict "nameservers" (list "10.250.0.2" "10.250.0.1" "10.250.0.3") "options" (list (dict "name" "ndots" "value" "1") (dict "name" "timeout" "value" "2") (dict "name" "attempts" "value" "2")))) | nindent 8 }}
-      nodeSelector:
-        kubernetes.io/hostname: {{ .Values.nodeName | quote }}
       containers:
         - name: uptime-kuma
           image: {{ .Values.image | quote }}
@@ -38,13 +32,28 @@ spec:
             - name: http
               containerPort: 3001
               protocol: TCP
+          env:
+            - name: UPTIME_KUMA_DB_TYPE
+              value: mariadb
+            - name: UPTIME_KUMA_DB_HOSTNAME
+              value: {{ .Values.database.serviceName | quote }}
+            - name: UPTIME_KUMA_DB_PORT
+              value: "3306"
+            - name: UPTIME_KUMA_DB_NAME
+              value: {{ .Values.database.database | quote }}
+            - name: UPTIME_KUMA_DB_USERNAME
+              value: {{ .Values.database.username | quote }}
+            - name: UPTIME_KUMA_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.existingSecret | quote }}
+                  key: {{ .Values.database.passwordKey | quote }}
           volumeMounts:
-            - name: data
-              mountPath: /app/data
+            - name: branding
+              mountPath: /app/data/upload
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:
-        - name: data
-          hostPath:
-            path: {{ .Values.hostPath | quote }}
-            type: Directory
+        - name: branding
+          configMap:
+            name: uptime-kuma-branding
