@@ -11,7 +11,7 @@
   "version": 5,
   "refresh": "5s",
   "time": {
-    "from": "now-15m",
+    "from": "now-3h",
     "to": "now"
   },
   "editable": false,
@@ -3540,7 +3540,7 @@
     },
     {
       "id": 334,
-      "title": "External traffic · RPS",
+      "title": "",
       "type": "timeseries",
       "gridPos": {
         "x": 0,
@@ -3548,7 +3548,6 @@
         "w": 14,
         "h": 5
       },
-      "description": "Requests entering the public HTTP and HTTPS entrypoints of Traefik, grouped by response class. This measures external traffic only; pod-to-pod traffic and VPN bytes are not included.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -3563,7 +3562,7 @@
           "custom": {
             "axisBorderShow": false,
             "axisGridShow": false,
-            "axisPlacement": "hidden",
+            "axisPlacement": "auto",
             "drawStyle": "line",
             "lineInterpolation": "smooth",
             "fillOpacity": 8,
@@ -3670,7 +3669,7 @@
         "xAxis": {
           "axisBorderShow": false,
           "axisGridShow": false,
-          "axisPlacement": "hidden"
+          "axisPlacement": "auto"
         },
         "tooltip": {
           "mode": "multi",
@@ -3714,8 +3713,7 @@
           "format": "time_series",
           "range": true
         }
-      ],
-      "timeFrom": "3h"
+      ]
     }
   ],
   "timepicker": {
