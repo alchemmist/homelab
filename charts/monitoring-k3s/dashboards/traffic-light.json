@@ -3642,8 +3642,8 @@
      },
      "custom": {
       "axisBorderShow": false,
-      "axisGridShow": false,
-      "axisPlacement": "auto",
+      "axisGridShow": true,
+      "axisPlacement": "hidden",
       "drawStyle": "line",
       "lineInterpolation": "smooth",
       "fillOpacity": 8,
@@ -3701,7 +3701,7 @@
    "id": 907,
    "title": "",
    "type": "timeseries",
-   "description": "Active VPN clients among the accounts registered in xray on the user VPN hosted by socrat-2: each point counts the xray accounts (by email) whose traffic counters grew within the last 60 seconds, sampled from the xray runtime by the host textfile collector every 15 seconds. Scanners that never authenticate and carrier NAT duplicates never inflate the number, and a client that stays connected but silent simply stops counting as active. Zero means the entrypoints are up with nobody passing traffic; gaps mean collection or scraping failed and are never read as zero. Clicking is disabled by the TV kiosk view.",
+   "description": "Active VPN clients (xray email stats, 60s activity); area color follows traffic-light thresholds, Y and X axes hidden, grid only.",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -3723,14 +3723,33 @@
      },
      "custom": {
       "axisBorderShow": false,
-      "axisGridShow": false,
-      "axisPlacement": "auto",
+      "axisGridShow": true,
+      "axisPlacement": "hidden",
       "drawStyle": "line",
       "lineInterpolation": "smooth",
-      "fillOpacity": 8,
+      "fillOpacity": 18,
       "showPoints": "never",
       "lineWidth": 1,
-      "spanNulls": false
+      "spanNulls": false,
+      "gradientMode": "none",
+      "hideFrom": {
+       "legend": false,
+       "tooltip": false,
+       "viz": false
+      },
+      "thresholdsStyle": {
+       "mode": "off"
+      }
+     },
+     "max": 15,
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       }
+      ]
      }
     },
     "overrides": []
@@ -4402,6 +4421,35 @@
    "1h",
    "2h",
    "1d"
+  ]
+ },
+ "templating": {
+  "list": [
+   {
+    "current": {},
+    "hide": 2,
+    "includeAll": false,
+    "allFormat": "glob",
+    "allValue": null,
+    "datasource": {
+     "type": "prometheus",
+     "uid": "P057DBB7E5797FA9E"
+    },
+    "name": "vpn_now",
+    "type": "query",
+    "label": "vpn now",
+    "query": {
+     "query": "max_over_time(socrat_vpn_active_clients[5m])",
+     "refId": "PrometheusVariableQueryEditor-0"
+    },
+    "refresh": 2,
+    "skipUrlSync": false,
+    "sort": 1,
+    "multi": false,
+    "regex": "",
+    "definition": "",
+    "refresh_on_time_range_changed": false
+   }
   ]
  }
 }

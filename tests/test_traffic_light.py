@@ -137,6 +137,22 @@ class TrafficLightQueriesTest(unittest.TestCase):
             self.assertIn(f'id: {service_id}\n', text)
             self.assertIn(alert, text)
 
+    def test_tv_charts_hide_axes_but_keep_grid(self):
+        for panel_id in (907, 909):
+            custom = panel_by_id(self.dashboard, panel_id)['fieldConfig']['defaults']['custom']
+            self.assertEqual(custom['axisPlacement'], 'hidden')
+            self.assertTrue(custom['axisGridShow'])
+
+    def test_vpn_panel_bindings(self):
+        panel = panel_by_id(self.dashboard, 907)
+        self.assertEqual(panel['title'], '')
+        self.assertEqual(panel['fieldConfig']['defaults']['min'], 0)
+        self.assertEqual(panel['fieldConfig']['defaults']['max'], 15)
+        # no traffic-light zones: a single calm threshold and fixed blue fill
+        custom = panel['fieldConfig']['defaults']['custom']
+        self.assertEqual(custom['thresholdsStyle'], {'mode': 'off'})
+        self.assertEqual(len(panel['fieldConfig']['defaults']['thresholds']['steps']), 1)
+
     def test_cluster_cpu_history_shows_average_utilization(self):
         panel = panel_by_id(self.dashboard, 909)
         target = panel['targets'][0]
