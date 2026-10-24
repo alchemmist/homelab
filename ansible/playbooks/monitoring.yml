@@ -1,4 +1,12 @@
 ---
+- name: Collect active VPN client metrics on the edge node
+  hosts: socrat-2
+  gather_facts: false
+  become: true
+  tags: [monitoring_vpn]
+  roles:
+    - monitoring_vpn
+
 - name: Deploy persistent cluster metrics and Grafana
   hosts: socrat-0
   gather_facts: false

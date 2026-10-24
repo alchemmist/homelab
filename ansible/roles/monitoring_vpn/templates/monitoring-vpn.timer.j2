@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh active VPN client metrics
+
+[Timer]
+OnBootSec=15s
+OnUnitActiveSec={{ monitoring_vpn_interval }}
+AccuracySec=1s
+Unit=monitoring-vpn.service
+
+[Install]
+WantedBy=timers.target

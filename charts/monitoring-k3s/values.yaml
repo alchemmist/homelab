@@ -139,6 +139,16 @@ serviceProbes:
     url: http://monitoring-grafana-mcp-health.cattle-monitoring-system.svc.cluster.local:8080/healthz
     module: http_2xx
     alertName: SocratServiceGrafanaMcpUnavailable
+  - id: edge-home
+    title: Home IP
+    url: 109.173.40.247:443
+    module: tcp_connect
+    alertName: SocratServiceEdgeHomeUnavailable
+  - id: edge-vps
+    title: VPS IP
+    url: 176.98.185.59:443
+    module: tcp_connect
+    alertName: SocratServiceEdgeVpsUnavailable
   - id: vpn
     title: VPN
     url: traefik-edge-trojan.traefik-edge.svc.cluster.local:32087

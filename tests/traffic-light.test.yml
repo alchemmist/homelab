@@ -1,0 +1,115 @@
+rule_files: []
+evaluation_interval: 30s
+tests:
+- name: node strip healthy
+  interval: 30s
+  input_series:
+  - series: kube_node_status_condition{node="socrat-0",condition="Ready",status="true"}
+    values: 1x20
+  promql_expr_test:
+  - expr: ((2 * (1 - (max(kube_node_status_condition{node="socrat-0",condition="Ready",status="true"})
+      or vector(0)))) + max(kube_node_status_condition{node="socrat-0",condition=~"DiskPressure|MemoryPressure",status="true"}
+      or vector(0))) and on() (time() - max(timestamp(kube_node_status_condition{node="socrat-0"})) < 120) or vector(-2)
+    eval_time: 5m
+    exp_samples:
+    - labels: '{}'
+      value: 0
+- name: node strip not ready
+  interval: 30s
+  input_series:
+  - series: kube_node_status_condition{node="socrat-0",condition="Ready",status="true"}
+    values: 0x20
+  promql_expr_test:
+  - expr: ((2 * (1 - (max(kube_node_status_condition{node="socrat-0",condition="Ready",status="true"})
+      or vector(0)))) + max(kube_node_status_condition{node="socrat-0",condition=~"DiskPressure|MemoryPressure",status="true"}
+      or vector(0))) and on() (time() - max(timestamp(kube_node_status_condition{node="socrat-0"})) < 120) or vector(-2)
+    eval_time: 5m
+    exp_samples:
+    - labels: '{}'
+      value: 2
+- name: node strip reports pressure while ready
+  interval: 30s
+  input_series:
+  - series: kube_node_status_condition{node="socrat-0",condition="Ready",status="true"}
+    values: 1x20
+  - series: kube_node_status_condition{node="socrat-0",condition="DiskPressure",status="true"}
+    values: 1x20
+  - series: kube_node_status_condition{node="socrat-0",condition="DiskPressure",status="false"}
+    values: 0x20
+  promql_expr_test:
+  - expr: ((2 * (1 - (max(kube_node_status_condition{node="socrat-0",condition="Ready",status="true"})
+      or vector(0)))) + max(kube_node_status_condition{node="socrat-0",condition=~"DiskPressure|MemoryPressure",status="true"}
+      or vector(0))) and on() (time() - max(timestamp(kube_node_status_condition{node="socrat-0"})) < 120) or vector(-2)
+    eval_time: 5m
+    exp_samples:
+    - labels: '{}'
+      value: 1
+- name: node strip not ready wins over concurrent pressure
+  interval: 30s
+  input_series:
+  - series: kube_node_status_condition{node="socrat-0",condition="Ready",status="true"}
+    values: 0x20
+  - series: kube_node_status_condition{node="socrat-0",condition="MemoryPressure",status="true"}
+    values: 1x20
+  promql_expr_test:
+  - expr: ((2 * (1 - (max(kube_node_status_condition{node="socrat-0",condition="Ready",status="true"})
+      or vector(0)))) + max(kube_node_status_condition{node="socrat-0",condition=~"DiskPressure|MemoryPressure",status="true"}
+      or vector(0))) and on() (time() - max(timestamp(kube_node_status_condition{node="socrat-0"})) < 120) or vector(-2)
+    eval_time: 5m
+    exp_samples:
+    - labels: '{}'
+      value: 3
+- name: node strip without condition telemetry is no telemetry
+  interval: 30s
+  promql_expr_test:
+  - expr: ((2 * (1 - (max(kube_node_status_condition{node="socrat-0",condition="Ready",status="true"})
+      or vector(0)))) + max(kube_node_status_condition{node="socrat-0",condition=~"DiskPressure|MemoryPressure",status="true"}
+      or vector(0))) and on() (time() - max(timestamp(kube_node_status_condition{node="socrat-0"})) < 120) or vector(-2)
+    eval_time: 5m
+    exp_samples:
+    - labels: '{}'
+      value: -2
+- name: vpn clients tracked while collection succeeds
+  interval: 30s
+  input_series:
+  - series: socrat_vpn_active_clients{instance="10.250.0.2:9100"}
+    values: '2x20'
+  - series: socrat_vpn_collection_success{instance="10.250.0.2:9100"}
+    values: 1x20
+  - series: socrat_vpn_collection_timestamp_seconds{instance="10.250.0.2:9100"}
+    values: 0+30x20
+  promql_expr_test:
+  - expr: max(socrat_vpn_active_clients and on(instance) (socrat_vpn_collection_success
+      == 1) and on(instance) (time() - socrat_vpn_collection_timestamp_seconds < 90))
+    eval_time: 3m
+    exp_samples:
+    - labels: '{}'
+      value: 2
+- name: failed vpn collection is never read as zero clients
+  interval: 30s
+  input_series:
+  - series: socrat_vpn_active_clients{instance="10.250.0.2:9100"}
+    values: 2x20
+  - series: socrat_vpn_collection_success{instance="10.250.0.2:9100"}
+    values: 0x20
+  - series: socrat_vpn_collection_timestamp_seconds{instance="10.250.0.2:9100"}
+    values: 0+30x20
+  promql_expr_test:
+  - expr: max(socrat_vpn_active_clients and on(instance) (socrat_vpn_collection_success
+      == 1) and on(instance) (time() - socrat_vpn_collection_timestamp_seconds < 90))
+    eval_time: 3m
+    exp_samples: []
+- name: stale vpn collection timestamp drops the sample
+  interval: 30s
+  input_series:
+  - series: socrat_vpn_active_clients{instance="10.250.0.2:9100"}
+    values: 2x6 _x30
+  - series: socrat_vpn_collection_success{instance="10.250.0.2:9100"}
+    values: 1x6 _x30
+  - series: socrat_vpn_collection_timestamp_seconds{instance="10.250.0.2:9100"}
+    values: 0+30x6
+  promql_expr_test:
+  - expr: max(socrat_vpn_active_clients and on(instance) (socrat_vpn_collection_success
+      == 1) and on(instance) (time() - socrat_vpn_collection_timestamp_seconds < 90))
+    eval_time: 5m
+    exp_samples: []
