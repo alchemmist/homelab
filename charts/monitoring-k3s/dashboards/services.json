@@ -8,7 +8,7 @@
     "Primary"
   ],
   "timezone": "browser",
-  "refresh": "30s",
+  "refresh": "5s",
   "time": {
     "from": "now-6h",
     "to": "now"
