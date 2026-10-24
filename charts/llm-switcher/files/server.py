@@ -179,6 +179,8 @@ class Gateway:
         async def summarize(messages, maximum):
             return await self.summarize_context(model, messages, maximum)
         result, info = await compact_chat(body, window, self.count_context, summarize, force=force)
+        if info.get('deduplicated_tool_results'):
+            LOG.info('deduplicated model=%s tool_results=%s', model, info['deduplicated_tool_results'])
         final_tokens = await self.count_context(result)
         reserve = int(result.get('max_completion_tokens') or result.get('max_tokens') or 16384)
         if final_tokens + reserve > window:

@@ -13,7 +13,7 @@
         dest: '{{ homelab_user_home }}/tmp-charts/configure-webui-compaction.py'
         mode: '0600'
     - name: Locate the running Open WebUI pod
-      ansible.builtin.command: kubectl -n llm get pod -l app=open-webui -o jsonpath={.items[0].metadata.name}
+      ansible.builtin.command: kubectl -n llm get pod -l app=open-webui --field-selector=status.phase=Running -o jsonpath={.items[0].metadata.name}
       register: webui_compaction_pod
       changed_when: false
     - name: Copy the helper into Open WebUI

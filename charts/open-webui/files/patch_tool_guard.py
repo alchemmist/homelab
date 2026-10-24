@@ -2,7 +2,7 @@ import ast
 import pathlib
 import sys
 
-IMPORT = 'from open_webui.utils.homelab_tool_guard import guarded_execute, guard_stopped, STOP_MESSAGE\n'
+IMPORT = 'from open_webui.utils.homelab_tool_guard import guarded_execute, guard_stopped, guard_stop_message\n'
 FUNCTION = 'async def execute_tool_call(form_data, metadata, event_caller, tool_call):\n'
 CONTINUATION = '''                    await emit_output()
 
@@ -11,7 +11,7 @@ CONTINUATION = '''                    await emit_output()
 GUARDED_CONTINUATION = '''                    await emit_output()
 
                     if guard_stopped(metadata):
-                        await emit_message_error(STOP_MESSAGE)
+                        await emit_message_error(guard_stop_message(metadata))
                         break
 
                     try:

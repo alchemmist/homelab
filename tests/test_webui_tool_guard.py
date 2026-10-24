@@ -75,6 +75,57 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.calls, 1)
         self.assertFalse(GUARD.guard_stopped(self.metadata))
 
+    async def test_identical_valid_calls_warn_then_stop(self):
+        await self.call(GOOD)
+        await self.call(GOOD)
+        warned = await self.call(GOOD)
+        self.assertEqual(self.calls, 2)
+        self.assertIn('not run again', warned[1]['error'])
+        self.assertFalse(GUARD.guard_stopped(self.metadata))
+        stopped = await self.call(GOOD)
+        self.assertTrue(GUARD.guard_stopped(self.metadata))
+        self.assertEqual(self.calls, 2)
+        self.assertEqual(stopped[1]['error'], GUARD.REPEAT_STOP_MESSAGE)
+        self.assertEqual(GUARD.guard_stop_message(self.metadata), GUARD.REPEAT_STOP_MESSAGE)
+
+    async def test_alternating_valid_calls_escalate_to_stop(self):
+        other = {'path': '/tmp/other', 'replacements': [{'target': 'x', 'replacement': 'y'}]}
+        executed = 0
+        for _ in range(6):
+            await self.call(GOOD)
+            executed += 1
+            if GUARD.guard_stopped(self.metadata):
+                break
+            await self.call(other)
+            executed += 1
+            if GUARD.guard_stopped(self.metadata):
+                break
+        self.assertTrue(GUARD.guard_stopped(self.metadata))
+        self.assertLess(self.calls, executed)
+        self.assertGreaterEqual(self.calls, 4)
+
+    async def test_varied_calls_reset_repeat_warning(self):
+        other = {'path': '/tmp/other', 'replacements': []}
+        await self.call(GOOD)
+        await self.call(GOOD)
+        warned = await self.call(GOOD)
+        self.assertIn('not run again', warned[1]['error'])
+        self.assertFalse(GUARD.guard_stopped(self.metadata))
+        recovered = await self.call(other)
+        self.assertEqual(recovered[1], self.result)
+        self.assertEqual(self.calls, 3)
+        await self.call(GOOD)
+        self.assertEqual(self.calls, 4)
+        await self.call(GOOD)
+        self.assertEqual(self.calls, 5)
+        warned_again = await self.call(GOOD)
+        self.assertIn('not run again', warned_again[1]['error'])
+        self.assertEqual(self.calls, 5)
+        self.assertFalse(GUARD.guard_stopped(self.metadata))
+        stopped = await self.call(GOOD)
+        self.assertTrue(GUARD.guard_stopped(self.metadata))
+        self.assertEqual(stopped[1]['error'], GUARD.REPEAT_STOP_MESSAGE)
+
     async def test_alias_resolved_before_validation(self):
         def resolve(call, tools):
             call['function']['name'] = 'replace_file_content'
@@ -121,10 +172,18 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_backend_other_errors_do_not_count(self):
         self.result = {'error': 'HTTP error 503: unavailable'}
-        for _ in range(4):
-            result = await self.call(GOOD)
-        self.assertEqual(result[1], self.result)
+        first = await self.call(GOOD)
+        second = await self.call(GOOD)
+        self.assertEqual(first[1], self.result)
+        self.assertEqual(second[1], self.result)
         self.assertFalse(GUARD.guard_stopped(self.metadata))
+        self.assertEqual(GUARD.guard_state(self.metadata)['failures'], {})
+        warned = await self.call(GOOD)
+        self.assertIn('not run again', warned[1]['error'])
+        stopped = await self.call(GOOD)
+        self.assertEqual(stopped[1]['error'], GUARD.REPEAT_STOP_MESSAGE)
+        self.assertTrue(GUARD.guard_stopped(self.metadata))
+        self.assertEqual(GUARD.guard_state(self.metadata)['failures'], {})
 
     def test_internal_refs_are_validated(self):
         schema = {'$defs': {'value': {'type': 'string'}}, 'type': 'object', 'properties': {'name': {'$ref': '#/$defs/value'}}}

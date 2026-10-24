@@ -35,6 +35,30 @@ class ContextBudgetTests(unittest.IsolatedAsyncioTestCase):
                 outstanding.update(call['id'] for call in message.get('tool_calls', []))
         self.assertFalse(outstanding)
 
+    async def test_duplicate_tool_results_are_collapsed_and_latest_kept(self):
+        result_text = 'ALL TESTS PASSED ' + 'x' * 500
+        messages = [{'role': 'user', 'content': 'Iterate on the tests'}]
+        for number in range(5):
+            messages.extend([
+                {'role': 'assistant', 'content': None, 'tool_calls': [{'id': f'run-{number}', 'type': 'function', 'function': {'name': 'execute', 'arguments': '{"command":"node test.js"}'}}]},
+                {'role': 'tool', 'tool_call_id': f'run-{number}', 'content': result_text},
+            ])
+        original = copy.deepcopy(messages)
+        body = self.body(messages)
+
+        async def forbidden_summary(*args):
+            self.fail('Duplicate removal keeps the request below threshold; no summarization is needed')
+
+        result, info = await MODULE.compact_chat(body, 114688, count_tokens, forbidden_summary)
+        self.assertEqual(info['deduplicated_tool_results'], 4)
+        self.assertFalse(info['compacted'])
+        replies = [message for message in result['messages'] if message['role'] == 'tool']
+        self.assertEqual(len(replies), 5)
+        self.assertEqual(replies[-1]['content'], result_text)
+        for earlier in replies[:-1]:
+            self.assertIn('Duplicate tool result omitted', earlier['content'])
+        self.assertLess(await count_tokens(result), await count_tokens(self.body(original)))
+
     async def test_below_threshold_is_unchanged_and_does_not_summarize(self):
         body = self.body([{'role': 'user', 'content': 'x' * 93000}])
 
@@ -78,7 +102,7 @@ class ContextBudgetTests(unittest.IsolatedAsyncioTestCase):
         tools = [{'type': 'function', 'function': {'name': 'execute', 'description': 'd' * 10000, 'parameters': {'type': 'object'}}}]
         body = self.body([
             {'role': 'system', 'content': 's' * 10000},
-            {'role': 'user', 'content': 'old ' + 'x' * 75000},
+            {'role': 'user', 'content': 'old ' + 'x' * 80000},
             {'role': 'assistant', 'content': 'Completed old work'},
             {'role': 'user', 'content': 'Now verify the result'},
         ], tools=tools)
@@ -185,7 +209,7 @@ class ContextBudgetTests(unittest.IsolatedAsyncioTestCase):
         markers = [f'UNIQUE_GROUP_{number}:' for number in range(6)]
         body = self.body([
             {'role': 'user', 'content': 'Build and verify index.html'},
-            *[{'role': 'assistant', 'content': marker + 'x' * 16000} for marker in markers],
+            *[{'role': 'assistant', 'content': marker + 'x' * 18000} for marker in markers],
             {'role': 'user', 'content': 'Continue final verification'},
         ])
         summary_inputs = []

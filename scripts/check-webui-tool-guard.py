@@ -3,7 +3,7 @@ import json
 import uuid
 
 from open_webui.utils.middleware import execute_tool_call, build_terminal_file_tool_result
-from open_webui.utils.homelab_tool_guard import guard_stopped
+from open_webui.utils.homelab_tool_guard import REPEAT_STOP_MESSAGE, guard_stopped
 from open_webui.utils.tools import Config, clean_openai_tool_schema, execute_tool_server, get_tool_servers_data, get_terminal_server_url
 
 
@@ -57,6 +57,30 @@ async def main():
         read = await raw('read_file', {'path': path})
         assert changed in serialize(read) and original not in serialize(read), 'Corrected edit did not change fixture'
         assert build_terminal_file_tool_result('display_file', {'path': path}, {'error': 'validation failed'}, {'tool_id': 'terminal:socrat-terminal'}, {}) is None
+        # Repeated identical valid calls warn first and then stop the loop.
+        metadata['message_id'] = str(uuid.uuid4())
+        metadata['tools']['read_file'] = {'type': 'terminal', 'spec': specs['read_file']}
+
+        async def read(params):
+            async def dispatch(**kwargs):
+                return await raw('read_file', params)
+
+            metadata['tools']['read_file']['callable'] = dispatch
+            return await execute_tool_call({'messages': []}, metadata, None, {'id': str(uuid.uuid4()), 'function': {'name': 'read_file', 'arguments': json.dumps(params)}})
+
+        identical = {'path': path}
+        await read(identical)
+        await read(identical)
+        warned = await read(identical)
+        error = serialize(warned[1])
+        assert 'not run again' in error and not guard_stopped(metadata), 'Third identical valid call did not warn'
+        stopped = await read(identical)
+        error = stopped[1].get('error') if isinstance(stopped[1], dict) else serialize(stopped[1])
+        assert guard_stopped(metadata) and error == REPEAT_STOP_MESSAGE, 'Fourth identical valid call did not stop the loop'
+        # A genuinely different command clears the warning in a fresh response.
+        metadata['message_id'] = str(uuid.uuid4())
+        result = await read({'path': path + '.missing'})
+        assert not guard_stopped(metadata), 'Fresh response inherited repeat stop'
     finally:
         cleanup = await raw('run_command', {'command': 'rm -f -- ' + path, 'wait': 10})
         cleanup_body = json.loads(serialize(cleanup))
@@ -67,7 +91,7 @@ async def main():
             assert process_id, 'Fixture cleanup returned no process identifier'
             cleanup_body = json.loads(serialize(await raw('get_process_status', {'process_id': process_id, 'wait': 10})))
         assert cleanup_body.get('exit_code') == 0, 'Fixture cleanup did not finish successfully'
-    print(json.dumps({'ok': True, 'invalid_calls': 3, 'invalid_dispatches': 0, 'corrected_dispatches': 1, 'file_unchanged_after_invalid': True, 'file_changed_after_correction': True, 'failed_display_has_no_card': True}))
+    print(json.dumps({'ok': True, 'invalid_calls': 3, 'invalid_dispatches': 0, 'corrected_dispatches': 1, 'file_unchanged_after_invalid': True, 'file_changed_after_correction': True, 'failed_display_has_no_card': True, 'repeat_warn_stopped': True, 'repeat_reset_per_response': True}))
 
 
 asyncio.run(main())
