@@ -206,5 +206,63 @@ class ToolGuardTests(unittest.IsolatedAsyncioTestCase):
             PATCHER.patch(patched)
 
 
+class NoProgressRoundTests(unittest.TestCase):
+    def call(self, name, error):
+        return [
+            {'type': 'message', 'status': 'in_progress'},
+            {'type': 'function_call', 'call_id': 'c1', 'name': name, 'arguments': '{}', 'status': 'failed'},
+            {'type': 'function_call_output', 'call_id': 'c1', 'output': [{'type': 'input_text', 'text': error}], 'status': 'failed'},
+        ]
+
+    def test_three_identical_unresolved_rounds_stop(self):
+        metadata = {'message_id': 'm', 'tools': {}}
+        for _ in range(2):
+            GUARD.record_no_progress_round(metadata, self.call('missing_tool', 'Error: Tool not found'))
+            self.assertFalse(GUARD.guard_stopped(metadata))
+        # output shrinks (new iteration), seen counter must reset with it
+        GUARD.record_no_progress_round(metadata, self.call('missing_tool', 'Error: Tool not found'))
+        self.assertTrue(GUARD.guard_stopped(metadata))
+        self.assertEqual(GUARD.guard_stop_message(metadata), GUARD.NO_PROGRESS_STOP_MESSAGE)
+
+    def test_resolving_call_resets_no_progress(self):
+        metadata = {'message_id': 'm', 'tools': {}}
+        for _ in range(2):
+            GUARD.record_no_progress_round(metadata, self.call('missing_tool', 'Error: Tool not found'))
+        executed = [
+            {'type': 'function_call', 'call_id': 'c1', 'name': 'present_tool', 'arguments': '{}'},
+            {'type': 'function_call_output', 'call_id': 'c1', 'output': [{'type': 'input_text', 'text': 'ok'}], 'status': 'completed'},
+        ]
+        GUARD.record_no_progress_round(metadata, executed)
+        self.assertFalse(GUARD.guard_stopped(metadata))
+        GUARD.record_no_progress_round(metadata, self.call('missing_tool', 'Error: Tool not found'))
+        self.assertFalse(GUARD.guard_stopped(metadata))
+
+    def test_alternating_unresolved_rounds_stop(self):
+        metadata = {'message_id': 'm', 'tools': {}}
+        rounds = [self.call('a', 'Error: Tool not found'), self.call('b', 'Error: unavailable tool')]
+        for index in range(6):
+            GUARD.record_no_progress_round(metadata, rounds[index % 2])
+        self.assertTrue(GUARD.guard_stopped(metadata))
+        self.assertEqual(GUARD.guard_stop_message(metadata), GUARD.NO_PROGRESS_STOP_MESSAGE)
+
+    def test_changing_errors_do_not_stop(self):
+        metadata = {'message_id': 'm', 'tools': {}}
+        errors = ['Error: Tool not found', 'Error: bad arguments', 'Error: schema mismatch', 'Error: disabled']
+        for error in errors:
+            GUARD.record_no_progress_round(metadata, self.call('missing_tool', error))
+        self.assertFalse(GUARD.guard_stopped(metadata))
+
+    def test_round_without_tool_outputs_is_ignored(self):
+        metadata = {'message_id': 'm', 'tools': {}}
+        GUARD.record_no_progress_round(metadata, [{'type': 'message', 'content': []}])
+        self.assertFalse(GUARD.guard_stopped(metadata))
+        self.assertIsNone(GUARD.guard_state(metadata).get('no_progress'))
+
+    def test_non_list_output_is_safe(self):
+        metadata = {'message_id': 'm', 'tools': {}}
+        GUARD.record_no_progress_round(metadata, None)
+        self.assertFalse(GUARD.guard_stopped(metadata))
+
+
 if __name__ == '__main__':
     unittest.main()

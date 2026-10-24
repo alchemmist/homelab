@@ -16,6 +16,8 @@ REPEAT_CYCLES = 3
 REPEAT_HISTORY = 64
 REPEAT_WARN_MESSAGE = 'This exact terminal call sequence was already executed {cycles} times in a row with identical arguments, so this call was not run again. Repeating it further will stop the response. Verify the current state with a different command, or summarize your findings and finish.'
 REPEAT_STOP_MESSAGE = 'Stopped repeated identical terminal calls. Your conversation and files are preserved. The identical call is repeated without progress; describe the current state and finish, or continue with a genuinely different action.'
+NO_PROGRESS_HISTORY = 9
+NO_PROGRESS_STOP_MESSAGE = 'Stopped a degenerate tool-call loop. The same tool calls failed to run in the same way three cycles in a row, and no tool executed. Your conversation and files are preserved. Check that the failing tool is enabled in this chat and matches the expected name and argument schema, then continue with a corrected or different call, or answer directly.'
 FETCH_TIMEOUT_SECONDS = 45
 FETCH_WORKER = '''
 import asyncio
@@ -122,6 +124,52 @@ def guard_stopped(metadata):
 
 def guard_stop_message(metadata):
     return guard_state(metadata).get('stop_message') or STOP_MESSAGE
+
+
+def record_no_progress_round(metadata, output):
+    """Track rounds whose every tool call failed before execution.
+
+    Calls that resolve_tool_call rejects never reach guarded_execute, so the
+    invalid-call and repeat-call guards cannot see them. A round whose every
+    function_call_output carries status 'failed' executed no tool at all.
+    Repeating the same all-failed round 1-3 times over in a fixed pattern
+    means the model cannot make progress; the response is stopped with a
+    message explaining what to fix. Any round with a resolving call resets
+    the pattern, so honest work is unaffected.
+    """
+    state = guard_state(metadata)
+    if not isinstance(output, list):
+        return
+    seen = state.get('no_progress_seen') or 0
+    if id(output) != state.get('no_progress_output_id'):
+        # The loop rebinds output to a fresh list for every generated response.
+        seen = 0
+        state['no_progress_output_id'] = id(output)
+    if seen > len(output):
+        seen = 0
+    new_items = output[seen:]
+    state['no_progress_seen'] = len(output)
+    outputs = [item for item in new_items if isinstance(item, dict) and item.get('type') == 'function_call_output']
+    if not outputs:
+        return
+    history = state.setdefault('no_progress', [])
+    if not all(item.get('status') == 'failed' for item in outputs):
+        history.clear()
+        return
+    calls = {
+        item.get('call_id'): item
+        for item in new_items
+        if isinstance(item, dict) and item.get('type') == 'function_call' and item.get('call_id')
+    }
+    signature = []
+    for item in sorted(outputs, key=lambda item: str(item.get('call_id'))):
+        call = calls.get(item.get('call_id'), {})
+        signature.append((str(call.get('name', '')), repr(item.get('output'))))
+    history.append(hashlib.sha256(repr(signature).encode()).hexdigest())
+    del history[:-NO_PROGRESS_HISTORY]
+    if repeated_period(history):
+        state['stopped'] = True
+        state['stop_message'] = NO_PROGRESS_STOP_MESSAGE
 
 
 def backend_validation_problem(result):
