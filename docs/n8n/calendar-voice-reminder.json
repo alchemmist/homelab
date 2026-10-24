@@ -54,7 +54,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://yandex-voice.voice.svc.cluster.local:8080/say",
+        "url": "http://yandex-voice.voice.svc.cluster.local/say",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
@@ -98,7 +98,7 @@
     },
     {
       "parameters": {
-        "content": "## Calendar -> Yandex Station voice reminder\n\nEvery minute this workflow:\n1. Fetches Google Calendar events for the next 48 hours.\n2. Keeps only events with explicit (non-default) reminders, reads their `popup` offsets (M minutes before start).\n3. If now is within [due-15s, due+75s] where due = eventStart - M, builds a Russian announcement:\n   `Через <offset> начинается «<summary>». Место: <location>.`\n4. POSTs `{\"text\": ...}` to http://yandex-voice.voice.svc.cluster.local:8080/say with the X-Voice-Token header (Header Auth credential `yandex-voice-token`). HTTP failures do not break the run.\n5. Records the dedup key `${id}|${startISO}|${M}` in workflow static data *after* the announcement, so each reminder is spoken exactly once. Keys are pruned after 48h.\n\nAll-day events (start.date) are treated as local midnight. Offsets >=60min are spoken in hours/days with correct Russian plurals.\n\nCredentials to assign after import: Google Calendar OAuth2 + Header Auth `yandex-voice-token`."
+        "content": "## Calendar -> Yandex Station voice reminder\n\nEvery minute this workflow:\n1. Fetches Google Calendar events for the next 48 hours.\n2. Keeps only events with explicit (non-default) reminders, reads their `popup` offsets (M minutes before start).\n3. If now is within [due-15s, due+75s] where due = eventStart - M, builds a Russian announcement:\n   `Через <offset> начинается «<summary>». Место: <location>.`\n4. POSTs `{\"text\": ...}` to http://yandex-voice.voice.svc.cluster.local/say with the X-Voice-Token header (Header Auth credential `yandex-voice-token`). HTTP failures do not break the run.\n5. Records the dedup key `${id}|${startISO}|${M}` in workflow static data *after* the announcement, so each reminder is spoken exactly once. Keys are pruned after 48h.\n\nAll-day events (start.date) are treated as local midnight. Offsets >=60min are spoken in hours/days with correct Russian plurals.\n\nCredentials to assign after import: Google Calendar OAuth2 + Header Auth `yandex-voice-token`."
       },
       "id": "a1b2c3d4-0101-4000-8000-000000000101",
       "name": "Sticky Note - Logic",
