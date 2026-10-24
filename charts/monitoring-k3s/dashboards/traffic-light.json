@@ -293,7 +293,7 @@
       "id": 16,
       "title": "",
       "type": "stat",
-      "description": "Highest GPU temperature. The sample is used only when collection succeeded in the last minute. Orange starts at 80\u00b0C and red at 90\u00b0C.",
+      "description": "Highest GPU temperature. The sample is used only when collection succeeded in the last minute. Orange starts at 80°C and red at 90°C.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -3220,8 +3220,8 @@
         "namePlacement": "auto",
         "sizing": "auto",
         "text": {
-          "titleSize": 16,
-          "valueSize": 16
+          "titleSize": 14,
+          "valueSize": 12
         }
       },
       "transformations": [
@@ -3317,8 +3317,8 @@
         "namePlacement": "auto",
         "sizing": "auto",
         "text": {
-          "titleSize": 16,
-          "valueSize": 16
+          "titleSize": 14,
+          "valueSize": 12
         }
       },
       "transformations": [
@@ -3414,8 +3414,8 @@
         "namePlacement": "auto",
         "sizing": "auto",
         "text": {
-          "titleSize": 16,
-          "valueSize": 16
+          "titleSize": 14,
+          "valueSize": 12
         }
       },
       "transformations": [
@@ -3511,8 +3511,8 @@
         "namePlacement": "auto",
         "sizing": "auto",
         "text": {
-          "titleSize": 16,
-          "valueSize": 16
+          "titleSize": 14,
+          "valueSize": 12
         }
       },
       "transformations": [
