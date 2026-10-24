@@ -1,0 +1,15 @@
+image: docker.io/n8nio/n8n@sha256:624a1f10f37119a73eca34c0cbd358668aebf0068d320ad5eae584f9d35aa314
+nodeName: socrat-1
+secretName: n8n-secrets
+persistence:
+  storageClass: local-path
+  size: 5Gi
+host: n8n.socrat.alchemmist.xyz
+webhookUrl: https://n8n.socrat.alchemmist.xyz/
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: '1'
+    memory: 1Gi

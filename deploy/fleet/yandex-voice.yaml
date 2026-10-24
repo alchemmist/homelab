@@ -1,0 +1,16 @@
+apiVersion: fleet.cattle.io/v1alpha1
+kind: GitRepo
+metadata:
+  name: yandex-voice
+  namespace: fleet-local
+spec:
+  repo: https://github.com/alchemmist/homelab.git
+  branch: main
+  paths:
+    - deploy/yandex-voice
+  pollingInterval: 1m
+  targets:
+    - name: local
+      clusterSelector:
+        matchLabels:
+          name: local

@@ -1,0 +1,4 @@
+apiVersion: v2
+name: n8n
+version: 0.1.0
+appVersion: '1.123.87'

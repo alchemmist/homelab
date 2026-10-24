@@ -1,0 +1,16 @@
+apiVersion: fleet.cattle.io/v1alpha1
+kind: GitRepo
+metadata:
+  name: n8n
+  namespace: fleet-local
+spec:
+  repo: https://github.com/alchemmist/homelab.git
+  branch: main
+  paths:
+    - deploy/n8n
+  pollingInterval: 1m
+  targets:
+    - name: local
+      clusterSelector:
+        matchLabels:
+          name: local

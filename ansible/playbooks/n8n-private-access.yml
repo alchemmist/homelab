@@ -1,0 +1,109 @@
+---
+- name: Publish private n8n HTTPS gateway
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  tags: [n8n_gateway]
+  vars:
+    n8n_private_directory: "{{ homelab_user_home }}/tmp-charts/n8n-private"
+    n8n_private_kubeconfig: /etc/rancher/k3s/k3s.yaml
+    n8n_private_tls_secret: n8n-private-tls
+    n8n_private_host: n8n.socrat.alchemmist.xyz
+    n8n_private_node: socrat-0
+  tasks:
+    - name: Create private staging directory
+      ansible.builtin.file:
+        path: "{{ n8n_private_directory }}"
+        state: directory
+        mode: '0700'
+
+    - name: Request private gateway certificate
+      ansible.builtin.command:
+        argv: [kubectl, --kubeconfig, "{{ n8n_private_kubeconfig }}", apply, -f, '-']
+        stdin: "{{ {'apiVersion': 'cert-manager.io/v1', 'kind': 'Certificate', 'metadata': {'name': n8n_private_tls_secret, 'namespace': 'syncthing'}, 'spec': {'secretName': n8n_private_tls_secret, 'dnsNames': [n8n_private_host], 'issuerRef': {'name': 'letsencrypt-http01', 'kind': 'ClusterIssuer'}}} | to_nice_yaml }}"
+      register: n8n_private_certificate
+      changed_when: "'created' in n8n_private_certificate.stdout or 'configured' in n8n_private_certificate.stdout"
+
+    - name: Wait for private gateway certificate
+      ansible.builtin.command:
+        argv: [kubectl, --kubeconfig, "{{ n8n_private_kubeconfig }}", -n, syncthing, wait, '--for=condition=Ready', 'certificate/{{ n8n_private_tls_secret }}', --timeout=300s]
+      changed_when: false
+
+    - name: Read existing private gateway values
+      ansible.builtin.command:
+        argv: [helm, get, values, private-gateway, --namespace, syncthing, --kubeconfig, "{{ n8n_private_kubeconfig }}", --output, json]
+      register: n8n_private_gateway
+      changed_when: false
+      no_log: true
+
+    - name: Merge n8n virtual host while preserving existing hosts
+      ansible.builtin.set_fact:
+        n8n_private_gateway_values: "{{ (n8n_private_gateway.stdout | from_json) | combine({'extraVirtualHosts': ((n8n_private_gateway.stdout | from_json).extraVirtualHosts | default([]) | rejectattr('name', 'equalto', 'n8n') | list) + [{'name': 'n8n', 'host': n8n_private_host, 'nodeName': n8n_private_node, 'upstream': 'http://n8n.automation.svc.cluster.local:5678', 'tlsSecret': n8n_private_tls_secret, 'resolver': '10.43.0.10', 'clearAuthorization': false}]}, recursive=true) }}"
+      no_log: true
+
+    - name: Stage private gateway chart
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../charts/private-gateway/"
+        dest: "{{ n8n_private_directory }}/gateway-chart/"
+        mode: preserve
+
+    - name: Stage merged private gateway values
+      ansible.builtin.copy:
+        content: "{{ n8n_private_gateway_values | to_nice_yaml }}"
+        dest: "{{ n8n_private_directory }}/gateway-values.yaml"
+        mode: '0600'
+      no_log: true
+
+    - name: Install manifest comparison helper
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../files/helm_manifest_changed.py"
+        dest: "{{ n8n_private_directory }}/helm_manifest_changed.py"
+        mode: '0600'
+
+    - name: Compare private gateway manifests
+      ansible.builtin.command:
+        argv: [python3, "{{ n8n_private_directory }}/helm_manifest_changed.py", --release, private-gateway, --chart, "{{ n8n_private_directory }}/gateway-chart", --namespace, syncthing, --values, "{{ n8n_private_directory }}/gateway-values.yaml", --kubeconfig, "{{ n8n_private_kubeconfig }}"]
+      register: n8n_private_gateway_diff
+      changed_when: false
+
+    - name: Publish the n8n endpoint inside WireGuard
+      ansible.builtin.command:
+        argv: [helm, upgrade, private-gateway, "{{ n8n_private_directory }}/gateway-chart", --namespace, syncthing, --kubeconfig, "{{ n8n_private_kubeconfig }}", --reuse-values, --values, "{{ n8n_private_directory }}/gateway-values.yaml", --atomic, --wait, --timeout, 5m]
+      when: (n8n_private_gateway_diff.stdout | from_json).changed
+      changed_when: true
+
+- name: Publish n8n in the private WireGuard DNS
+  hosts: socrat-0:socrat-1:socrat-2
+  gather_facts: false
+  become: true
+  serial: 1
+  any_errors_fatal: true
+  tags: [n8n_dns]
+  tasks:
+    - name: Create the private DNS snippets directory
+      ansible.builtin.file:
+        path: /etc/homelab-private-dns.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Add only the n8n private DNS record
+      ansible.builtin.copy:
+        content: "host-record=n8n.socrat.alchemmist.xyz,{{ wg_socrat_nodes['socrat-0'].address }}\nlocal=/n8n.socrat.alchemmist.xyz/\n"
+        dest: /etc/homelab-private-dns.d/n8n.conf
+        owner: root
+        group: root
+        mode: '0644'
+      register: n8n_dns_record
+
+    - name: Validate private DNS configuration before restart
+      ansible.builtin.command: dnsmasq --test --conf-file=/etc/homelab-private-dns.conf
+      changed_when: false
+
+    - name: Activate the private n8n DNS record
+      ansible.builtin.systemd_service:
+        name: homelab-private-dns.service
+        state: restarted
+      when: n8n_dns_record.changed
