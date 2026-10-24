@@ -1,0 +1,15 @@
+image: ghcr.io/alchemmist/yandex-voice:v0.1.0@sha256:4835dfb18a255b4df9d25c0008555f6ba7ee8eaa31ff8191dba65bcdaae94f1a
+imagePullSecrets:
+  - ghcr-pull
+nodeName: socrat-1
+secretName: yandex-voice-secrets
+station:
+  deviceId: R10KBJE00W5QSG
+  platform: cucumber
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi

@@ -1,0 +1,8 @@
+defaultNamespace: automation
+createNamespace: true
+paused: true
+helm:
+  releaseName: n8n
+  chart: ../charts/n8n
+  valuesFiles:
+    - values.yaml

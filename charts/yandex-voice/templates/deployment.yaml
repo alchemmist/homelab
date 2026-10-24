@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yandex-voice
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: yandex-voice
+  template:
+    metadata:
+      labels:
+        app: yandex-voice
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+        {{- end }}
+      {{- end }}
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.nodeName }}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: yandex-voice
+          image: {{ .Values.image | quote }}
+          env:
+            - name: VOICE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secretName }}
+                  key: voice-token
+            - name: YANDEX_COOKIES
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secretName }}
+                  key: yandex-cookies
+            - name: STATION_DEVICE_ID
+              value: {{ .Values.station.deviceId }}
+            - name: STATION_PLATFORM
+              value: {{ .Values.station.platform }}
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
