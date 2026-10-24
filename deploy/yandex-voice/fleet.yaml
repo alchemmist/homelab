@@ -1,6 +1,6 @@
 defaultNamespace: voice
 createNamespace: true
-paused: true
+paused: false
 helm:
   releaseName: yandex-voice
   chart: ../charts/yandex-voice
