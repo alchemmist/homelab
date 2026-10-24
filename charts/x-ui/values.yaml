@@ -26,6 +26,7 @@ instances:
       limits:
         memory: 768Mi
   compatibility:
+    enabled: false
     image: ghcr.io/mhsanaei/3x-ui@sha256:93a7a68e3d0a65be1b02d2bfc1f3ca02d0e800516a403e103cea2d7c7090855d
     hostPath:
       db: /etc/x-ui

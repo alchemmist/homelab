@@ -11,10 +11,9 @@ import time
 NAMESPACE = 'homelab-vpn-smoke'
 ROOT = Path('/opt/homelab-vpn-failover')
 CONFIG = Path('/etc/homelab-vpn-failover')
-UNITS = ['homelab-vpn-smoke-primary.service', 'homelab-vpn-smoke-legacy.service', 'homelab-vpn-smoke-caddy.service']
+UNITS = ['homelab-vpn-smoke-primary.service', 'homelab-vpn-smoke-caddy.service']
 WORKLOADS = [
     ('primary', '/srv/x-ui-lab/db', '/srv/x-ui-lab/cert', '/srv/x-ui-lab/acme', ROOT / 'primary/app/bin', 'Asia/Tehran'),
-    ('legacy', '/etc/x-ui', '/srv/x-ui/cert', '/srv/x-ui/acme', Path('/usr/local/x-ui/bin'), 'Europe/Moscow'),
 ]
 
 
@@ -106,7 +105,7 @@ def main():
             if time.monotonic() >= deadline:
                 raise RuntimeError('Isolated native VPN health checks did not pass')
             time.sleep(2)
-        print(json.dumps({'healthy': True, 'runtime': 'isolated native primary, legacy and Caddy', 'production_runtime_changed': False}))
+        print(json.dumps({'healthy': True, 'runtime': 'isolated native primary and Caddy', 'production_runtime_changed': False}))
     finally:
         for unit in reversed(started):
             try:

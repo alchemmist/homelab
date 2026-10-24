@@ -32,7 +32,7 @@ class XuiWorkloadTests(unittest.TestCase):
         self.assertEqual([item['metadata']['name'] for item in self.documents if item['kind'] == 'Deployment'], ['x-ui'])
         self.assertEqual(self.deployment['spec']['replicas'], 1)
         self.assertEqual(self.deployment['spec']['strategy'], {'type': 'Recreate'})
-        self.assertEqual(set(self.containers), {'primary', 'compatibility'})
+        self.assertEqual(set(self.containers), {'primary'})
         self.assertTrue(self.pod['hostNetwork'])
         self.assertEqual(self.pod['dnsPolicy'], 'Default')
         self.assertEqual(self.pod['nodeSelector'], {'kubernetes.io/hostname': 'socrat-2'})
@@ -40,7 +40,6 @@ class XuiWorkloadTests(unittest.TestCase):
     def test_existing_database_and_runtime_paths_remain_isolated(self):
         expected = {
             'primary': {'/etc/x-ui': '/srv/x-ui-lab/db', '/root/cert': '/srv/x-ui-lab/cert', '/root/.acme.sh': '/srv/x-ui-lab/acme'},
-            'compatibility': {'/etc/x-ui': '/etc/x-ui', '/root/cert': '/srv/x-ui/cert', '/root/.acme.sh': '/srv/x-ui/acme', '/app/bin': '/usr/local/x-ui/bin'},
         }
         for name, paths in expected.items():
             with self.subTest(container=name):
@@ -52,7 +51,6 @@ class XuiWorkloadTests(unittest.TestCase):
     def test_versions_and_probe_endpoints_are_preserved(self):
         expected = {
             'primary': ('6c7e73c5bc4b6d7d70866616f78d6c9866b4904defad3077c1e2b5c1c89c2ec1', '127.0.0.1', 18082, 12096, 32087),
-            'compatibility': ('93a7a68e3d0a65be1b02d2bfc1f3ca02d0e800516a403e103cea2d7c7090855d', '172.18.0.1', 16582, 2096, 10443),
         }
         names = []
         for name, (digest, host, panel, subscription, trojan) in expected.items():

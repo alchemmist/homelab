@@ -690,15 +690,6 @@ container_resource_policy_profiles:
   ownerKind: ReplicaSet
   ownerPattern: ^x\-ui-[a-z0-9]+$
   containers:
-    compatibility:
-      requests:
-        cpu: 50m
-        memory: 384Mi
-        ephemeral-storage: 64Mi
-      limits:
-        memory: 512Mi
-        ephemeral-storage: 1Gi
-      removeCpuLimit: true
     primary:
       requests:
         cpu: 100m

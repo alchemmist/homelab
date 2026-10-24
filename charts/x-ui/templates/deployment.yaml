@@ -25,6 +25,7 @@ spec:
         kubernetes.io/hostname: {{ .Values.nodeName | quote }}
       containers:
         {{- range $name, $instance := .Values.instances }}
+        {{- if or (not (hasKey $instance "enabled")) $instance.enabled }}
         {{- $prefix := ternary "primary" "compat" (eq $name "primary") }}
         - name: {{ $name }}
           image: {{ $instance.image | quote }}
@@ -75,8 +76,10 @@ spec:
           resources:
             {{- toYaml $instance.resources | nindent 12 }}
         {{- end }}
+        {{- end }}
       volumes:
         {{- range $name, $instance := .Values.instances }}
+        {{- if or (not (hasKey $instance "enabled")) $instance.enabled }}
         - name: {{ $name }}-db
           hostPath:
             path: {{ $instance.hostPath.db | quote }}
@@ -94,5 +97,6 @@ spec:
           hostPath:
             path: {{ $instance.hostPath.runtime | quote }}
             type: Directory
+        {{- end }}
         {{- end }}
         {{- end }}

@@ -425,7 +425,7 @@ ansible-playbook playbooks/apps.yml -e ansible_become_password=...
 
 Use `socrat-2` for workloads that need public/VPS reachability:
 
-- `x-ui` / one Deployment containing primary and compatibility 3x-ui/Xray runtimes
+- `x-ui` / one Deployment containing the primary 3x-ui/Xray runtime
 - `traefik-edge` / Kubernetes Ingress for `vpn.alchemmist.xyz:80/443`
 - `remark42`
 
@@ -448,8 +448,8 @@ This pattern fixed DNS problems for hostNetwork pods.
 
 Managed configuration:
 
-- Kubernetes release, namespace and Deployment `x-ui` run on `socrat-2` with two containers. `primary` uses the pinned 3.10.0 image and `/srv/x-ui-lab/db`.
-- `compatibility` preserves legacy ports and clients with the pinned 3.9.0 image, `/etc/x-ui`, and the existing Xray assets. The two databases stay separate. The old directory names are intentionally retained.
+- Kubernetes release, namespace and Deployment `x-ui` run on `socrat-2` with the primary container. It uses the pinned 3.10.2 image and `/srv/x-ui-lab/db`.
+- The former compatibility container is disabled. Its database and runtime assets remain on disk only for emergency rollback.
 - `playbooks/vpn-consolidate.yml` migrates the former `x-ui-lab` and `x-ui-legacy` releases with watchdog inhibition, private backups, configuration/subscription comparison, an authenticated tunnel probe and rollback of workload settings on failure. The 2026-10-15 migration preserved all 31 subscriptions and 155 normalized links and passed authenticated VPN probes before and after cutover. Both former namespaces were removed; see the migration record for the private backup location.
 - Production subscription/Traefik routes point to Kubernetes-managed x-ui.
 - Native host `x-ui.service` is stopped/disabled. The emergency Docker container is stopped with restart policy `no`. The cutover preserved client settings, ports, and subscription URLs; no subscription update is required.

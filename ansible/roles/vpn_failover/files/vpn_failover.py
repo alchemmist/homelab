@@ -15,7 +15,7 @@ import time
 
 CONFIG_PATH = '/etc/homelab-vpn-failover/config.json'
 STATE_DIR = '/var/lib/homelab-vpn-failover'
-NATIVE_UNITS = ['homelab-vpn-primary.service', 'homelab-vpn-legacy.service', 'homelab-vpn-caddy.service']
+NATIVE_UNITS = ['homelab-vpn-primary.service', 'homelab-vpn-caddy.service']
 
 
 class Watchdog:

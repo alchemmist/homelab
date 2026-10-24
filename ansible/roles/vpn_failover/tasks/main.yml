@@ -250,7 +250,6 @@
   ansible.builtin.command: >-
     systemd-analyze verify
     /etc/systemd/system/homelab-vpn-primary.service
-    /etc/systemd/system/homelab-vpn-legacy.service
     /etc/systemd/system/homelab-vpn-caddy.service
     /etc/systemd/system/homelab-vpn-watchdog.service
     /etc/systemd/system/homelab-vpn-watchdog.timer
