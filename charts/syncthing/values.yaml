@@ -1,6 +1,6 @@
-# One Syncthing pod on each enrolled node. Each pod stores its own
-# Syncthing identity/config/database under hostPath on that node.
-mode: daemonset
+# One Syncthing pod with a node-local identity and database.
+mode: deployment
+replicaCount: 1
 
 image:
   repository: syncthing/syncthing
@@ -9,7 +9,8 @@ image:
 
 hostPath: /srv/syncthing
 
-nodeSelector: {}
+nodeSelector:
+  kubernetes.io/hostname: socrat-0
 
 hostNetwork: true
 
@@ -32,6 +33,8 @@ privateGui:
     clusterIssuer: letsencrypt-http01
   listenPort: 18443
   healthPort: 18444
+  gatewayOnlyNodes:
+    - socrat-1
   nodes:
     - nodeName: socrat-0
       host: 0.socrat.alchemmist.xyz

@@ -1004,7 +1004,7 @@
     {
       "id": 7,
       "type": "row",
-      "title": "Services · Availability",
+      "title": "Services \u00b7 Availability",
       "collapsed": false,
       "gridPos": {
         "x": 0,
@@ -3889,7 +3889,7 @@
       "id": 330,
       "title": "",
       "type": "stat",
-      "description": "HTTP health checks for both Syncthing instances on socrat-0 and socrat-1. The tile shows the worst Pending/Firing state. Green requires both probes and their scrape results to be fresh and successful; a missing instance makes the tile gray. A failed check becomes Firing after 2 minutes. Click to open the common alert, whose Instances identify the affected nodes.",
+      "description": "HTTP health checks for the Syncthing instance on socrat-0. The tile shows the worst Pending/Firing state. Green requires the probe and their scrape results to be fresh and successful; missing telemetry makes the tile gray. A failed check becomes Firing after 2 minutes. Click to open the common alert, whose Instances identify the affected nodes.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -3903,7 +3903,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceSyncthingUnavailable\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceSyncthingUnavailable\",alertstate=\"pending\"})) or ((1 - min(probe_success{job=\"service-probes\",service_group=\"syncthing\"})) and on() ((count(up{job=\"service-probes\",service_group=\"syncthing\"}) == 2) and on() (min(up{job=\"service-probes\",service_group=\"syncthing\"}) == 1) and on() (time() - min(timestamp(up{job=\"service-probes\",service_group=\"syncthing\"})) < 90) and on() (count(probe_success{job=\"service-probes\",service_group=\"syncthing\"}) == 2) and on() (time() - min(timestamp(probe_success{job=\"service-probes\",service_group=\"syncthing\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceSyncthingUnavailable\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceSyncthingUnavailable\",alertstate=\"pending\"})) or ((1 - min(probe_success{job=\"service-probes\",service_group=\"syncthing\"})) and on() ((count(up{job=\"service-probes\",service_group=\"syncthing\"}) == 1) and on() (min(up{job=\"service-probes\",service_group=\"syncthing\"}) == 1) and on() (time() - min(timestamp(up{job=\"service-probes\",service_group=\"syncthing\"})) < 90) and on() (count(probe_success{job=\"service-probes\",service_group=\"syncthing\"}) == 1) and on() (time() - min(timestamp(probe_success{job=\"service-probes\",service_group=\"syncthing\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
           "instant": true,
           "range": false,
           "format": "time_series"
@@ -4098,7 +4098,7 @@
     },
     {
       "id": 20,
-      "title": "etcd · members with a leader",
+      "title": "etcd \u00b7 members with a leader",
       "type": "timeseries",
       "gridPos": {
         "x": 0,
@@ -4160,7 +4160,7 @@
     },
     {
       "id": 21,
-      "title": "Kubernetes API · available targets",
+      "title": "Kubernetes API \u00b7 available targets",
       "type": "timeseries",
       "gridPos": {
         "x": 8,
@@ -4307,7 +4307,7 @@
         {
           "refId": "A",
           "expr": "max by(namespace,pod,container) (increase(kube_pod_container_status_restarts_total[$__interval])) and on(namespace,pod,container) (topk(10, max by(namespace,pod,container) (increase(kube_pod_container_status_restarts_total[$__range] @ end()))) > 0)",
-          "legendFormat": "{{namespace}} / {{pod}} · {{container}}",
+          "legendFormat": "{{namespace}} / {{pod}} \u00b7 {{container}}",
           "instant": false,
           "range": true,
           "format": "time_series"
@@ -4443,6 +4443,12 @@
     {
       "title": "LLM",
       "url": "/d/socrat-llm",
+      "type": "link",
+      "keepTime": true
+    },
+    {
+      "title": "Traffic-light panel",
+      "url": "/d/socrat-traffic-light",
       "type": "link",
       "keepTime": true
     }

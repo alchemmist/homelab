@@ -150,9 +150,13 @@ data:
         listen 127.0.0.1:{{ $.Values.privateGui.healthPort }};
         listen {{ .wgIP }}:{{ $.Values.privateGui.healthPort }};
         location = /healthz {
+          {{- if has $node.nodeName ($.Values.privateGui.gatewayOnlyNodes | default (list)) }}
+          return 200 "OK\n";
+          {{- else }}
           proxy_pass http://127.0.0.1:{{ $.Values.service.guiPort }}/rest/noauth/health;
           proxy_set_header Host $proxy_host;
           proxy_read_timeout 5s;
+          {{- end }}
         }
         location / {
           return 404;
