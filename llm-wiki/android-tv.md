@@ -112,7 +112,7 @@ ansible-playbook playbooks/tv-admin.yml --ask-become-pass
 
 Браузер — Fully Kiosk `de.ozerov.fully`. Стартовый адрес:
 
-`https://grafana.socrat.alchemmist.xyz/d/socrat-traffic-light?kiosk=1&hideLogo=1`
+`https://grafana.socrat.alchemmist.xyz/d/socrat-traffic-light?kiosk=1&hideLogo=1&autofitpanels=true`
 
 - `kiosk=1` — полный киоск Grafana, без верхней полосы диапазона и Refresh.
 - `hideLogo=1` — без нижней плашки Powered by Grafana. Голый `?kiosk` верхнюю полосу оставлял.

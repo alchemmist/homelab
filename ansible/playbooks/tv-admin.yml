@@ -8,7 +8,7 @@
     homelab_tv_select_hdmi: false
     homelab_tv_fully_package: de.ozerov.fully
     homelab_tv_fully_reapply: false
-    homelab_tv_fully_start_url: https://grafana.socrat.alchemmist.xyz/d/socrat-traffic-light?kiosk=1&hideLogo=1
+    homelab_tv_fully_start_url: https://grafana.socrat.alchemmist.xyz/d/socrat-traffic-light?kiosk=1&hideLogo=1&autofitpanels=true
     homelab_tv_fully_settings:
       startURL: "{{ homelab_tv_fully_start_url }}"
       injectJsCode: ""
