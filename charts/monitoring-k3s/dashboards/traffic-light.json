@@ -3567,7 +3567,7 @@
             "lineInterpolation": "smooth",
             "fillOpacity": 8,
             "showPoints": "never",
-            "lineWidth": 2,
+            "lineWidth": 1,
             "spanNulls": true
           }
         },
@@ -3641,7 +3641,7 @@
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "#202b3c",
+                  "fixedColor": "#9aa7b8",
                   "mode": "fixed"
                 }
               },
