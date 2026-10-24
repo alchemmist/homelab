@@ -51,7 +51,7 @@
   failed_when: syncthing_private_ui_auth_after.stdout != syncthing_private_ui_auth_before.stdout
   no_log: true
 
-- name: Verify all Syncthing pods are ready
+- name: Verify the Syncthing deployment is ready
   ansible.builtin.command:
     argv:
       - kubectl
@@ -61,6 +61,21 @@
       - "{{ syncthing_private_ui_namespace }}"
       - rollout
       - status
-      - daemonset/syncthing
+      - deployment/syncthing
       - --timeout=120s
   changed_when: false
+
+- name: Verify gateway-only nodes are ready
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig
+      - "{{ syncthing_private_ui_kubeconfig }}"
+      - -n
+      - "{{ syncthing_private_ui_namespace }}"
+      - rollout
+      - status
+      - daemonset/syncthing-gateway
+      - --timeout=120s
+  changed_when: false
+  when: syncthing_private_ui_gateway_nodes | length > 0

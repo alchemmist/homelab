@@ -11,4 +11,5 @@ syncthing_private_ui_kubeconfig: /etc/rancher/k3s/k3s.yaml
 syncthing_private_ui_extra_virtual_hosts: []
 syncthing_private_ui_enrolled_nodes:
   - socrat-0
+syncthing_private_ui_gateway_nodes:
   - socrat-1

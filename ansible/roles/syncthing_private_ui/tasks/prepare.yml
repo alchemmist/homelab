@@ -12,12 +12,12 @@
   ansible.builtin.assert:
     that:
       - syncthing_private_ui_enrolled_nodes | length > 0
-      - syncthing_private_ui_enrolled_nodes | difference(wg_socrat_nodes.keys() | list) | length == 0
+      - (syncthing_private_ui_enrolled_nodes + syncthing_private_ui_gateway_nodes) | difference(wg_socrat_nodes.keys() | list) | length == 0
 
 - name: Derive private Syncthing endpoints from the enrolled nodes
   ansible.builtin.set_fact:
     syncthing_private_ui_nodes: "{{ syncthing_private_ui_nodes + [{'nodeName': item, 'host': item.split('-')[-1] ~ '.' ~ homelab_ssh_public_host, 'wgIP': wg_socrat_nodes[item].address}] }}"
-  loop: "{{ syncthing_private_ui_enrolled_nodes }}"
+  loop: "{{ syncthing_private_ui_enrolled_nodes + syncthing_private_ui_gateway_nodes }}"
   loop_control:
     label: "{{ item }}"
 
@@ -30,7 +30,7 @@
 - name: Generate private Syncthing Helm values
   ansible.builtin.copy:
     dest: "{{ syncthing_private_ui_values_path }}"
-    content: "{{ {'privateGui': {'enabled': true, 'nodes': syncthing_private_ui_nodes, 'extraVirtualHosts': syncthing_private_ui_extra_virtual_hosts, 'listenPort': syncthing_private_ui_port, 'healthPort': syncthing_private_ui_health_port, 'tlsSecret': syncthing_private_ui_tls_secret, 'certificate': {'enabled': true, 'commonName': syncthing_private_ui_nodes[0].host, 'clusterIssuer': syncthing_private_ui_cluster_issuer}}, 'ingress': {'enabled': false}, 'basicAuth': {'enabled': true, 'existingSecret': syncthing_private_ui_auth_secret}} | to_nice_yaml }}"
+    content: "{{ {'replicaCount': 1, 'nodeSelector': {'kubernetes.io/hostname': syncthing_private_ui_enrolled_nodes[0]}, 'privateGui': {'enabled': true, 'gatewayOnlyNodes': syncthing_private_ui_gateway_nodes, 'nodes': syncthing_private_ui_nodes, 'extraVirtualHosts': syncthing_private_ui_extra_virtual_hosts, 'listenPort': syncthing_private_ui_port, 'healthPort': syncthing_private_ui_health_port, 'tlsSecret': syncthing_private_ui_tls_secret, 'certificate': {'enabled': true, 'commonName': syncthing_private_ui_nodes[0].host, 'clusterIssuer': syncthing_private_ui_cluster_issuer}}, 'ingress': {'enabled': false}, 'basicAuth': {'enabled': true, 'existingSecret': syncthing_private_ui_auth_secret}} | to_nice_yaml }}"
     mode: '0600'
 
 - name: Install the private manifest comparison utility

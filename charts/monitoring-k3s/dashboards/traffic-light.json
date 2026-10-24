@@ -2974,7 +2974,7 @@
       "id": 330,
       "title": "",
       "type": "stat",
-      "description": "HTTP health checks for both Syncthing instances on socrat-0 and socrat-1. The tile shows the worst Pending/Firing state. Green requires both probes and their scrape results to be fresh and successful; a missing instance makes the tile gray. A failed check becomes Firing after 2 minutes. Click to open the common alert, whose Instances identify the affected nodes.",
+      "description": "HTTP health checks for the Syncthing instance on socrat-0. The tile shows the worst Pending/Firing state. Green requires the probe and their scrape results to be fresh and successful; missing telemetry makes the tile gray. A failed check becomes Firing after 2 minutes. Click to open the common alert, whose Instances identify the affected nodes.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -2988,7 +2988,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceSyncthingUnavailable\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceSyncthingUnavailable\",alertstate=\"pending\"})) or ((1 - min(probe_success{job=\"service-probes\",service_group=\"syncthing\"})) and on() ((count(up{job=\"service-probes\",service_group=\"syncthing\"}) == 2) and on() (min(up{job=\"service-probes\",service_group=\"syncthing\"}) == 1) and on() (time() - min(timestamp(up{job=\"service-probes\",service_group=\"syncthing\"})) < 90) and on() (count(probe_success{job=\"service-probes\",service_group=\"syncthing\"}) == 2) and on() (time() - min(timestamp(probe_success{job=\"service-probes\",service_group=\"syncthing\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceSyncthingUnavailable\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceSyncthingUnavailable\",alertstate=\"pending\"})) or ((1 - min(probe_success{job=\"service-probes\",service_group=\"syncthing\"})) and on() ((count(up{job=\"service-probes\",service_group=\"syncthing\"}) == 1) and on() (min(up{job=\"service-probes\",service_group=\"syncthing\"}) == 1) and on() (time() - min(timestamp(up{job=\"service-probes\",service_group=\"syncthing\"})) < 90) and on() (count(probe_success{job=\"service-probes\",service_group=\"syncthing\"}) == 1) and on() (time() - min(timestamp(probe_success{job=\"service-probes\",service_group=\"syncthing\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
           "instant": true,
           "range": false,
           "format": "time_series"

@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-kind: DaemonSet
+kind: Deployment
 metadata:
   name: {{ .Chart.Name }}
   labels:
@@ -10,8 +10,9 @@ spec:
     matchLabels:
       app.kubernetes.io/name: {{ .Chart.Name }}
       app.kubernetes.io/instance: {{ .Release.Name }}
-  updateStrategy:
-    type: RollingUpdate
+  replicas: {{ .Values.replicaCount | default 1 }}
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:
@@ -39,11 +40,13 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
               {{- range .Values.privateGui.nodes }}
+              {{- if not (has .nodeName ($.Values.privateGui.gatewayOnlyNodes | default (list))) }}
               - matchFields:
                   - key: metadata.name
                     operator: In
                     values:
                       - {{ .nodeName | quote }}
+              {{- end }}
               {{- end }}
       {{- end }}
       containers:
