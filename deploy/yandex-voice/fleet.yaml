@@ -2,8 +2,6 @@ defaultNamespace: voice
 createNamespace: true
 paused: false
 helm:
-  repoAuthSecret:
-    name: ghcr-oci-auth
   releaseName: yandex-voice
   repo: oci://ghcr.io/alchemmist/charts/yandex-voice
   version: 0.1.0
