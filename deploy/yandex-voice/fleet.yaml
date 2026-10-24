@@ -3,6 +3,6 @@ createNamespace: true
 paused: false
 helm:
   releaseName: yandex-voice
-  chart: ../charts/yandex-voice
+  chart: ../../charts/yandex-voice
   valuesFiles:
     - values.yaml
