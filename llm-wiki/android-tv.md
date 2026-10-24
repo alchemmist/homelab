@@ -127,7 +127,7 @@ ansible-playbook playbooks/tv-admin.yml --ask-become-pass
 
 Верхняя полоса управления скрыта полем дашборда `timepicker.hidden`, не стилями. Отступ 5px со всех сторон — не настройка Fully и не CSS всего сайта. Приватный шлюз Grafana подмешивает `charts/syncthing/files/traffic-light-inset.js` только на `/d/socrat-traffic-light`, и только если у virtual host `grafana` стоит `trafficLightInset: true`. Флаг есть и в inventory socrat-0, и в `monitoring_wg_access`, чтобы повторный выкат его не стёр. Шлюз — nginx в DaemonSet Syncthing, Grafana на socrat-1, `10.250.0.3:18443`.
 
-Масштаб страницы Fully задаётся плейбуком как 55% через `initialScale`; desktop mode остаётся включённым вручную.
+Масштаб страницы Fully задаётся плейбуком как 55% через `initialScale`, размер веб-шрифта — 75% через `fontSize`; desktop mode остаётся включённым вручную.
 
 ## Сеть до Grafana
 
