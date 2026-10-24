@@ -1,0 +1,11 @@
+---
+- name: Restart VPN metrics timer
+  ansible.builtin.systemd_service:
+    name: monitoring-vpn.timer
+    state: restarted
+    daemon_reload: true
+
+- name: Collect VPN metrics
+  ansible.builtin.systemd_service:
+    name: monitoring-vpn.service
+    state: started

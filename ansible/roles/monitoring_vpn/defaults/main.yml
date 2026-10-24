@@ -1,0 +1,14 @@
+---
+monitoring_vpn_enabled: "{{ inventory_hostname == 'socrat-2' }}"
+monitoring_vpn_textfile_directory: /var/lib/node_exporter/textfile_collector
+monitoring_vpn_interval: 15s
+monitoring_vpn_binary: /usr/bin/python3
+monitoring_vpn_ports:
+  - 32087
+  - 32053
+  - 32083
+  - 32063
+monitoring_vpn_xray_metrics_url: http://127.0.0.1:11112/debug/vars
+monitoring_vpn_xray_timeout: 5
+monitoring_vpn_activity_window: 60
+monitoring_vpn_state_file: "{{ monitoring_vpn_textfile_directory }}/vpn.state.json"

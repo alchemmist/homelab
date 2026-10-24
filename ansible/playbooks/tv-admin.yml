@@ -206,7 +206,6 @@
       loop: "{{ homelab_tv_persistent_packages }}"
       changed_when: false
       check_mode: false
-      failed_when: rc != 0 or item not in stdout
 
     - name: Read disabled television packages
       ansible.builtin.command:

@@ -1,0 +1,41 @@
+---
+- name: Create node exporter textfile directory
+  ansible.builtin.file:
+    path: "{{ monitoring_vpn_textfile_directory }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install VPN metrics collector
+  when: monitoring_vpn_enabled | bool
+  block:
+    - name: Install VPN collector script
+      ansible.builtin.copy:
+        src: collect_vpn.py
+        dest: /usr/local/sbin/collect-vpn-metrics
+        owner: root
+        group: root
+        mode: "0755"
+      notify: Collect VPN metrics
+
+    - name: Install VPN collector units
+      ansible.builtin.template:
+        src: "{{ item }}.j2"
+        dest: "/etc/systemd/system/{{ item }}"
+        owner: root
+        group: root
+        mode: "0644"
+      loop:
+        - monitoring-vpn.service
+        - monitoring-vpn.timer
+      notify:
+        - Restart VPN metrics timer
+        - Collect VPN metrics
+
+    - name: Enable VPN collection timer
+      ansible.builtin.systemd_service:
+        name: monitoring-vpn.timer
+        enabled: true
+        state: started
+        daemon_reload: true

@@ -1,0 +1,14 @@
+[Unit]
+Description=Collect active VPN client metrics for node exporter
+
+[Service]
+Type=oneshot
+ExecStart={{ monitoring_vpn_binary }} /usr/local/sbin/collect-vpn-metrics --ports {{ monitoring_vpn_ports | join(',') }} --xray-metrics-url {{ monitoring_vpn_xray_metrics_url }} --activity-window {{ monitoring_vpn_activity_window }} --state {{ monitoring_vpn_state_file }} --output {{ monitoring_vpn_textfile_directory }}/vpn.prom
+TimeoutStartSec=25
+Nice=10
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths={{ monitoring_vpn_textfile_directory }}
+UMask=0022
