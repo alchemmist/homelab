@@ -1,4 +1,4 @@
-image: ghcr.io/alchemmist/yandex-voice:v0.1.0@sha256:4835dfb18a255b4df9d25c0008555f6ba7ee8eaa31ff8191dba65bcdaae94f1a
+image: ghcr.io/alchemmist/yandex-voice:v0.1.1@sha256:4b8ea03b1370682302e3eef1c89ba7fe586795aaaea423c244bb04b669ff16ab
 imagePullSecrets:
   - ghcr-pull
 nodeName: socrat-1

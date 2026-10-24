@@ -4,6 +4,6 @@ paused: false
 helm:
   releaseName: yandex-voice
   repo: oci://ghcr.io/alchemmist/charts/yandex-voice
-  version: 0.1.0
+  version: 0.1.1
   valuesFiles:
     - values.yaml
