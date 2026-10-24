@@ -3561,6 +3561,9 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisGridShow": false,
+            "axisPlacement": "hidden",
             "drawStyle": "line",
             "lineInterpolation": "smooth",
             "fillOpacity": 8,
@@ -3662,12 +3665,12 @@
       },
       "options": {
         "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ]
+          "showLegend": false
+        },
+        "xAxis": {
+          "axisBorderShow": false,
+          "axisGridShow": false,
+          "axisPlacement": "hidden"
         },
         "tooltip": {
           "mode": "multi",
