@@ -3220,8 +3220,8 @@
         "namePlacement": "auto",
         "sizing": "auto",
         "text": {
-          "titleSize": 14,
-          "valueSize": 12
+          "titleSize": 16,
+          "valueSize": 16
         }
       },
       "transformations": [
@@ -3317,8 +3317,8 @@
         "namePlacement": "auto",
         "sizing": "auto",
         "text": {
-          "titleSize": 14,
-          "valueSize": 12
+          "titleSize": 16,
+          "valueSize": 16
         }
       },
       "transformations": [
@@ -3414,8 +3414,8 @@
         "namePlacement": "auto",
         "sizing": "auto",
         "text": {
-          "titleSize": 14,
-          "valueSize": 12
+          "titleSize": 16,
+          "valueSize": 16
         }
       },
       "transformations": [
@@ -3511,8 +3511,8 @@
         "namePlacement": "auto",
         "sizing": "auto",
         "text": {
-          "titleSize": 14,
-          "valueSize": 12
+          "titleSize": 16,
+          "valueSize": 16
         }
       },
       "transformations": [
