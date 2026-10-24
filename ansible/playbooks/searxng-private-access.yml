@@ -32,19 +32,19 @@
 
     - name: Read existing private gateway values
       ansible.builtin.command:
-        argv: [helm, get, values, syncthing, --namespace, syncthing, --kubeconfig, "{{ searxng_private_kubeconfig }}", --output, json]
+        argv: [helm, get, values, private-gateway, --namespace, syncthing, --kubeconfig, "{{ searxng_private_kubeconfig }}", --output, json]
       register: searxng_private_gateway
       changed_when: false
       no_log: true
 
     - name: Merge search virtual host while preserving existing hosts
       ansible.builtin.set_fact:
-        searxng_private_gateway_values: "{{ (searxng_private_gateway.stdout | from_json) | combine({'privateGui': {'extraVirtualHosts': ((searxng_private_gateway.stdout | from_json).privateGui.extraVirtualHosts | default([]) | rejectattr('name', 'equalto', 'searxng') | list) + [{'name': 'searxng', 'host': searxng_private_host, 'nodeName': searxng_private_node, 'upstream': 'http://searxng.llm.svc.cluster.local:8080', 'tlsSecret': searxng_private_tls_secret, 'resolver': '10.43.0.10', 'clearAuthorization': false}]}}, recursive=true) }}"
+        searxng_private_gateway_values: "{{ (searxng_private_gateway.stdout | from_json) | combine({'extraVirtualHosts': ((searxng_private_gateway.stdout | from_json).extraVirtualHosts | default([]) | rejectattr('name', 'equalto', 'searxng') | list) + [{'name': 'searxng', 'host': searxng_private_host, 'nodeName': searxng_private_node, 'upstream': 'http://searxng.llm.svc.cluster.local:8080', 'tlsSecret': searxng_private_tls_secret, 'resolver': '10.43.0.10', 'clearAuthorization': false}]}, recursive=true) }}"
       no_log: true
 
     - name: Stage private gateway chart
       ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../../charts/syncthing/"
+        src: "{{ playbook_dir }}/../../charts/private-gateway/"
         dest: "{{ searxng_private_directory }}/gateway-chart/"
         mode: preserve
 
@@ -63,13 +63,13 @@
 
     - name: Compare private gateway manifests
       ansible.builtin.command:
-        argv: [python3, "{{ searxng_private_directory }}/helm_manifest_changed.py", --release, syncthing, --chart, "{{ searxng_private_directory }}/gateway-chart", --namespace, syncthing, --values, "{{ searxng_private_directory }}/gateway-values.yaml", --kubeconfig, "{{ searxng_private_kubeconfig }}"]
+        argv: [python3, "{{ searxng_private_directory }}/helm_manifest_changed.py", --release, private-gateway, --chart, "{{ searxng_private_directory }}/gateway-chart", --namespace, syncthing, --values, "{{ searxng_private_directory }}/gateway-values.yaml", --kubeconfig, "{{ searxng_private_kubeconfig }}"]
       register: searxng_private_gateway_diff
       changed_when: false
 
     - name: Publish the search endpoint inside WireGuard
       ansible.builtin.command:
-        argv: [helm, upgrade, syncthing, "{{ searxng_private_directory }}/gateway-chart", --namespace, syncthing, --kubeconfig, "{{ searxng_private_kubeconfig }}", --reuse-values, --values, "{{ searxng_private_directory }}/gateway-values.yaml", --atomic, --wait, --timeout, 5m]
+        argv: [helm, upgrade, private-gateway, "{{ searxng_private_directory }}/gateway-chart", --namespace, syncthing, --kubeconfig, "{{ searxng_private_kubeconfig }}", --reuse-values, --values, "{{ searxng_private_directory }}/gateway-values.yaml", --atomic, --wait, --timeout, 5m]
       when: (searxng_private_gateway_diff.stdout | from_json).changed
       changed_when: true
 

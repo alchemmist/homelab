@@ -1,0 +1,19 @@
+{{- if .Values.certificate.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .Values.tlsSecret }}
+  labels:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  secretName: {{ .Values.tlsSecret }}
+  commonName: {{ .Values.certificate.commonName | quote }}
+  dnsNames:
+    {{- range .Values.nodes }}
+    - {{ .host | quote }}
+    {{- end }}
+  issuerRef:
+    name: {{ .Values.certificate.clusterIssuer | quote }}
+    kind: ClusterIssuer
+{{- end }}

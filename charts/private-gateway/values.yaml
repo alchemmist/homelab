@@ -1,0 +1,119 @@
+# Private HTTPS gateway: one nginx DaemonSet serving the WireGuard network.
+listenPort: 18443
+healthPort: 18444
+
+image:
+  repository: nginx
+  tag: 1.27-alpine
+  pullPolicy: IfNotPresent
+
+# Nodes on which the gateway DaemonSet pod runs.
+gatewayOnlyNodes:
+  - socrat-1
+
+nodes:
+  - nodeName: socrat-0
+    host: 0.socrat.alchemmist.xyz
+    wgIP: 10.250.0.1
+  - nodeName: socrat-1
+    host: 1.socrat.alchemmist.xyz
+    wgIP: 10.250.0.3
+
+# Syncthing GUI upstream served under /sync/ on the per-node host server blocks.
+syncthingGui:
+  enabled: true
+  upstream: http://127.0.0.1:8384
+  healthUpstream: http://127.0.0.1:8384/rest/noauth/health
+
+# Basic-auth users file; the secret must already exist in the release namespace
+# (created by the syncthing chart). This chart only references it.
+basicAuth:
+  enabled: true
+  existingSecret: syncthing-basic-auth
+
+tlsSecret: syncthing-private-ui-tls
+certificate:
+  enabled: false
+  # commonName: 0.socrat.alchemmist.xyz
+  # clusterIssuer: letsencrypt-http01
+
+editorAuthSecret: ""
+
+# Live host list (source of truth at migration time). Same schema and nginx
+# location logic as the syncthing chart's privateGui.extraVirtualHosts.
+extraVirtualHosts:
+  - name: searxng
+    host: search.socrat.alchemmist.xyz
+    nodeName: socrat-0
+    upstream: http://searxng.llm.svc.cluster.local:8080
+    tlsSecret: searxng-private-tls
+    resolver: 10.43.0.10
+    clearAuthorization: false
+  - name: open-webui
+    host: llm.socrat.alchemmist.xyz
+    nodeName: socrat-0
+    upstream: http://open-webui.llm.svc.cluster.local:8080
+    tlsSecret: open-webui-private-tls
+    resolver: 10.43.0.10
+    clearAuthorization: false
+  - name: litellm
+    host: litellm.socrat.alchemmist.xyz
+    nodeName: socrat-0
+    upstream: http://litellm.llm.svc.cluster.local:4000
+    tlsSecret: litellm-private-tls
+    resolver: 10.43.0.10
+    clearAuthorization: false
+  - name: grafana
+    host: grafana.socrat.alchemmist.xyz
+    nodeName: socrat-1
+    upstream: http://kube-prometheus-stack-grafana.cattle-monitoring-system.svc.cluster.local:80
+    tlsSecret: grafana-private-tls
+    resolver: 10.43.0.10
+    clearAuthorization: true
+    trafficLightInset: true
+  - name: grafana-mcp
+    host: grafana-mcp.socrat.alchemmist.xyz
+    nodeName: socrat-1
+    upstream: http://grafana-mcp.cattle-monitoring-system.svc.cluster.local:8000
+    tlsSecret: grafana-mcp-private-tls
+    resolver: 10.43.0.10
+    clearAuthorization: false
+  - name: rancher-0
+    host: rancher.socrat.alchemmist.xyz
+    nodeName: socrat-0
+    upstream: http://rancher.cattle-system.svc.cluster.local:80
+    tlsSecret: rancher-private-tls
+    resolver: 10.43.0.10
+    clearAuthorization: false
+    autoSizeGrafana: true
+    allowedCIDRs:
+      - 10.250.0.0/24
+      - 10.42.0.0/16
+    responseStyle: '.dashboard.outlet .tabbed-container:has(#cluster-events) { min-width: 0; width: 100%; } .dashboard.outlet #cluster-events table.sortable-table td { overflow-wrap: anywhere; }'
+  - name: rancher-1
+    host: rancher.socrat.alchemmist.xyz
+    nodeName: socrat-1
+    upstream: http://rancher.cattle-system.svc.cluster.local:80
+    tlsSecret: rancher-private-tls
+    resolver: 10.43.0.10
+    clearAuthorization: false
+    autoSizeGrafana: true
+    allowedCIDRs:
+      - 10.250.0.0/24
+      - 10.42.0.0/16
+    responseStyle: '.dashboard.outlet .tabbed-container:has(#cluster-events) { min-width: 0; width: 100%; } .dashboard.outlet #cluster-events table.sortable-table td { overflow-wrap: anywhere; }'
+  # uncomment after n8n-private-tls certificate is issued
+  # - name: n8n
+  #   host: n8n.socrat.alchemmist.xyz
+  #   nodeName: socrat-0
+  #   upstream: http://n8n.automation.svc.cluster.local:5678
+  #   tlsSecret: n8n-private-tls
+  #   resolver: 10.43.0.10
+  #   clearAuthorization: false
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
