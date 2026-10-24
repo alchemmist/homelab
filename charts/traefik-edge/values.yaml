@@ -16,6 +16,7 @@ watchNamespaces:
   - monori
   - remark42
   - socrat-home
+  - syncthing
   - umami
   - uptime-kuma
   - wiki
