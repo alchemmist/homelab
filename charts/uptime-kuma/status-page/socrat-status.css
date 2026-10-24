@@ -349,3 +349,157 @@ body .container.mt-3 .overall-status:has(.ok) *,
 body .container.mt-3 .overall-status .ok {
   color: var(--socrat-up) !important;
 }
+
+/* Two services per line while retaining the original type scale and visual language. */
+body .container.mt-3 div.monitor-list {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  column-gap: 32px !important;
+  row-gap: 0 !important;
+}
+
+body .container.mt-3 div.monitor-list div.item {
+  width: 100% !important;
+  max-width: none !important;
+  padding: 10px 0 !important;
+}
+
+body .container.mt-3 div.monitor-list div.item > div.row {
+  grid-template-columns: minmax(120px, 1fr) minmax(110px, 1.35fr) 94px !important;
+  gap: 12px !important;
+}
+
+body .container.mt-3 div.monitor-list div.item a.item-name,
+body .container.mt-3 div.monitor-list div.item p.item-name {
+  font-size: .95rem !important;
+}
+
+body .container.mt-3 div.monitor-list div.item span.badge.rounded-pill,
+body .container.mt-3 div.monitor-list div.item span.badge {
+  min-width: 94px !important;
+  width: 94px !important;
+  font-size: .9rem !important;
+}
+
+@media (max-width: 760px) {
+  body .container.mt-3 div.monitor-list {
+    display: block !important;
+  }
+}
+
+/* Fit the three data points inside each half without allowing labels to collide. */
+body .container.mt-3 div.monitor-list {
+  column-gap: 16px !important;
+}
+
+body .container.mt-3 div.monitor-list div.item > div.row {
+  grid-template-columns: minmax(90px, 1.2fr) minmax(80px, 1fr) 64px !important;
+  gap: 8px !important;
+}
+
+body .container.mt-3 div.monitor-list div.item a.item-name,
+body .container.mt-3 div.monitor-list div.item p.item-name {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  line-height: 1.15 !important;
+  font-size: .9rem !important;
+}
+
+body .container.mt-3 div.monitor-list div.item span.badge.rounded-pill,
+body .container.mt-3 div.monitor-list div.item span.badge {
+  min-width: 64px !important;
+  width: 64px !important;
+  font-size: .75rem !important;
+}
+
+body .container.mt-3 div.monitor-list div.item div.hp-bar-big {
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Kuma wraps the actual item grid in a second monitor-list shell. */
+body .container.mt-3 div.shadow-box.monitor-list {
+  display: block !important;
+}
+
+body .container.mt-3 div.shadow-box.monitor-list > div.monitor-list {
+  display: grid !important;
+  grid-template-columns: minmax(0, 420px) minmax(0, 420px) !important;
+  justify-content: space-between !important;
+  column-gap: 0 !important;
+  row-gap: 0 !important;
+}
+
+@media (max-width: 760px) {
+  body .container.mt-3 div.shadow-box.monitor-list > div.monitor-list {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  body .container.mt-3 div.shadow-box.monitor-list > div.monitor-list div.item > div.row {
+    grid-template-columns: 1fr 104px !important;
+    gap: 8px !important;
+  }
+
+  body .container.mt-3 div.shadow-box.monitor-list > div.monitor-list div.item div.col-3.col-md-4 {
+    grid-column: 1 / -1 !important;
+    grid-row: 2 !important;
+  }
+}
+
+/* Keep each service's graph and percentage together, with a clear gutter before the next service. */
+body .container.mt-3 div.shadow-box.monitor-list > div.monitor-list div.item > div.row {
+  grid-template-columns: minmax(0, 170px) 170px 58px !important;
+  column-gap: 6px !important;
+}
+
+body .container.mt-3 div.shadow-box.monitor-list > div.monitor-list div.item {
+  padding: 9px 0 !important;
+}
+
+body .container.mt-3 div.shadow-box.monitor-list > div.monitor-list div.item span.badge.rounded-pill,
+body .container.mt-3 div.shadow-box.monitor-list > div.monitor-list div.item span.badge {
+  min-width: 58px !important;
+  width: 58px !important;
+}
+
+/* Kuma v2 keeps the same semantics but changed the Bootstrap column classes and
+   replaced SVG beats with a heartbeat canvas. */
+body .container.mt-3 div.shadow-box.monitor-list > div.monitor-list div.item div.col-9.col-xl-6,
+body .container.mt-3 div.shadow-box.monitor-list > div.monitor-list div.item div.info {
+  display: contents !important;
+}
+
+body .container.mt-3 div.shadow-box.monitor-list > div.monitor-list div.item a.item-name,
+body .container.mt-3 div.shadow-box.monitor-list > div.monitor-list div.item p.item-name {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  align-self: center !important;
+}
+
+body .container.mt-3 div.shadow-box.monitor-list > div.monitor-list div.item span.badge {
+  grid-column: 3 !important;
+  grid-row: 1 !important;
+  align-self: center !important;
+  justify-self: end !important;
+}
+
+body .container.mt-3 div.shadow-box.monitor-list > div.monitor-list div.item div.col-3.col-xl-6 {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  align-self: center !important;
+  width: auto !important;
+  max-width: none !important;
+}
+
+body .container.mt-3 div.shadow-box.monitor-list > div.monitor-list div.item canvas.heartbeat-canvas {
+  display: block !important;
+  width: 170px !important;
+  height: 24px !important;
+}
+
+body .container.mt-3 div.shadow-box.monitor-list > div.monitor-list div.item .wrap {
+  padding: 0 !important;
+}

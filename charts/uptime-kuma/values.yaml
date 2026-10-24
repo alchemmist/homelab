@@ -1,15 +1,20 @@
-image: louislam/uptime-kuma:1.23.16
-nodeName: socrat-3
+image: louislam/uptime-kuma:2.5.7
+replicaCount: 1
+database:
+  enabled: true
+  image: mariadb:11.4
+  nodeName: socrat-0
+  serviceName: uptime-kuma-db
+  database: uptime_kuma
+  username: uptime_kuma
+  existingSecret: uptime-kuma-db
+  passwordKey: password
+  rootPasswordKey: root-password
+  hostPath: /srv/uptime-kuma-mariadb
 hostPath: /srv/uptime-kuma
 host: status.alchemmist.xyz
 tlsSecret: uptime-kuma-tls
 clusterIssuer: letsencrypt-http01
-dnsConfig:
-  nameservers: [10.250.0.2, 10.250.0.1, 10.250.0.3]
-  options:
-    - {name: ndots, value: '1'}
-    - {name: timeout, value: '2'}
-    - {name: attempts, value: '2'}
 resources:
   requests:
     cpu: 50m

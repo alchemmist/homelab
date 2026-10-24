@@ -1,0 +1,64 @@
+{{- if .Values.database.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.database.serviceName }}
+spec:
+  selector:
+    app.kubernetes.io/name: uptime-kuma-db
+  ports:
+    - name: mysql
+      port: 3306
+      targetPort: mysql
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: uptime-kuma-db
+  labels:
+    app.kubernetes.io/name: uptime-kuma-db
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: uptime-kuma-db
+  template:
+    metadata:
+      labels:
+        app: uptime-kuma-db
+        app.kubernetes.io/name: uptime-kuma-db
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.database.nodeName | quote }}
+      containers:
+        - name: mariadb
+          image: {{ .Values.database.image | quote }}
+          env:
+            - name: MARIADB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.existingSecret | quote }}
+                  key: {{ .Values.database.rootPasswordKey | quote }}
+            - name: MARIADB_DATABASE
+              value: {{ .Values.database.database | quote }}
+            - name: MARIADB_USER
+              value: {{ .Values.database.username | quote }}
+            - name: MARIADB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.existingSecret | quote }}
+                  key: {{ .Values.database.passwordKey | quote }}
+          ports:
+            - name: mysql
+              containerPort: 3306
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: data
+          hostPath:
+            path: {{ .Values.database.hostPath | quote }}
+            type: DirectoryOrCreate
+{{- end }}
