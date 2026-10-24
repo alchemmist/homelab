@@ -4,7 +4,7 @@
   --socrat-muted: #6f6f6f;
   --socrat-line: #e7e7e7;
   --socrat-soft: #fafafa;
-  --socrat-up: #14883e;
+  --socrat-up: #2b9a5b;
   --socrat-warn: #9a6a00;
   --socrat-down: #c62828;
 }
@@ -502,4 +502,8 @@ body .container.mt-3 div.shadow-box.monitor-list > div.monitor-list div.item can
 
 body .container.mt-3 div.shadow-box.monitor-list > div.monitor-list div.item .wrap {
   padding: 0 !important;
+}
+
+body .container.mt-3 canvas.heartbeat-canvas {
+  filter: brightness(.78) saturate(.88);
 }
