@@ -3554,8 +3554,7 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "reqps",
-          "decimals": 2,
+          "unit": "none",
           "color": {
             "mode": "palette-classic"
           },
