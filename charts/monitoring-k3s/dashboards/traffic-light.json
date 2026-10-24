@@ -3561,7 +3561,7 @@
           },
           "custom": {
             "axisBorderShow": false,
-            "axisGridShow": false,
+            "axisGridShow": true,
             "axisPlacement": "auto",
             "drawStyle": "line",
             "lineInterpolation": "smooth",
@@ -3668,7 +3668,7 @@
         },
         "xAxis": {
           "axisBorderShow": false,
-          "axisGridShow": false,
+          "axisGridShow": true,
           "axisPlacement": "auto"
         },
         "tooltip": {
