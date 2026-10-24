@@ -1,13 +1,12 @@
 # VPN workload and retained runtime configurations
 
-The unified chart runs both VPN configurations in one Kubernetes Deployment, Helm release and namespace named `x-ui` on `socrat-2`. Its containers are `primary` and `compatibility`. Keep the configurations separate: their databases contain different ports and client sets, including a client present only in the native configuration. Do not replace either database with the other or with the older `/srv/x-ui/db` snapshot.
+The chart runs the primary VPN configuration in one Kubernetes Deployment, Helm release and namespace named `x-ui` on `socrat-2`. The former `compatibility` container is disabled; its database and runtime are retained only for emergency rollback.
 
 | Container | Application version | Active database directory | Runtime assets |
 | --- | --- | --- | --- |
 | `primary` | 3.10.2, pinned image digest | `/srv/x-ui-lab/db` | Container image |
-| `compatibility` | 3.9.0, pinned image digest | `/etc/x-ui` | `/usr/local/x-ui/bin`, mounted at `/app/bin` |
 
-The deployment uses `hostNetwork`, `dnsPolicy: Default`, a single replica, and `Recreate`. Each container has separate database and runtime mounts. The database directories must already exist. Each container checks its own panel listener at startup and its Trojan listener for readiness. Consolidation does not merge databases, change images or migrate clients.
+The deployment uses `hostNetwork`, `dnsPolicy: Default`, a single replica, and `Recreate`. The primary container uses the `/srv/x-ui-lab` database and runtime. Its database directory must already exist, and its panel and Trojan listeners are checked at startup. The former compatibility database is not mounted by the normal workload.
 
 ## Preserved endpoints
 
@@ -20,7 +19,7 @@ Primary listeners:
 - AmneziaWG: UDP `32086`.
 - Trojan backend: TCP `32087`.
 
-Legacy listeners:
+Retained legacy listeners (inactive in the normal workload):
 
 - Panel: `172.18.0.1:16582`.
 - Subscriptions: `172.18.0.1:2096`.
@@ -31,7 +30,7 @@ Legacy listeners:
 
 `traefik-edge` owns public TCP `80`/`443` and UDP `443` on `socrat-2`. Kubernetes Ingress routes preserve the existing hostname, panel fallback, subscription prefixes, and exact Trojan WebSocket path. Public Trojan remains on `vpn.alchemmist.xyz:443`. The former `caddy-edge` Helm release and chart have been removed; host Caddy is not used.
 
-The legacy loopback address is maintained by `vpn-legacy-loopback.service`, ordered before `k3s-agent`. It does not depend on Docker's bridge. The compatibility container has no separate Kubernetes Service because its panel/subscription endpoints intentionally retain their original loopback binding.
+The legacy loopback address and dormant native fallback are retained by `vpn-legacy-loopback.service` and the VPN failover role for rollback. They are not part of the normal Kubernetes workload.
 
 ## Deployment
 
@@ -43,7 +42,7 @@ ansible-playbook playbooks/vpn.yml --ask-become-pass
 
 This prepares the loopback address on `socrat-2`, verifies that the existing databases are present, deploys the unified release through `socrat-0`, and disables the native VPN and idle host Docker services after successful rollout. It refuses to compete with an active native service or emergency container. It does not perform an initial live cutover automatically.
 
-The unified release is also included in `playbooks/apps.yml`. Both runtime configurations and pinned images are defined under `instances.primary` and `instances.compatibility` in `charts/x-ui/values.yaml`; native recovery reads the same image definitions. Avoid changing pinned image versions during recovery. Existing installations with `x-ui-lab` or `x-ui-legacy` must use the dedicated migration first; normal deployment refuses to compete with them.
+The release is also included in `playbooks/apps.yml`. The primary runtime is enabled in `charts/x-ui/values.yaml`; the disabled compatibility definition remains available to native recovery. Avoid changing pinned image versions during recovery. Existing installations with `x-ui-lab` or `x-ui-legacy` must use the dedicated migration first; normal deployment refuses to compete with them.
 
 ## Consolidating the former releases
 
@@ -135,8 +134,8 @@ The old `/srv/caddy/data` and `/srv/caddy/config` directories remain as recovery
 
 Applied on 2026-10-15 using `playbooks/vpn-upgrade.yml`. The primary image is
 pinned to `ghcr.io/mhsanaei/3x-ui@sha256:6c7e73c5bc4b6d7d70866616f78d6c9866b4904defad3077c1e2b5c1c89c2ec1`
-from the upstream `v3.10.2` release. The compatibility container remains on its
-existing 3.9.0 image and retains its separate database and runtime mounts.
+from the upstream `v3.10.2` release. The former compatibility container is not
+deployed; its separate database and runtime mounts are retained for rollback.
 
 Run from `ansible/` with an inventory that can reach both the VPS and controller:
 

@@ -1,7 +1,6 @@
 [Unit]
 Description=Emergency native 3x-ui {{ item.name }}
-Requires=vpn-legacy-loopback.service
-After=network-online.target vpn-legacy-loopback.service
+After=network-online.target
 Wants=network-online.target
 ConditionPathExists={{ vpn_failover_state }}/active
 

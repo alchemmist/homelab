@@ -1,6 +1,6 @@
 # Independent VPN recovery on socrat-2
 
-The optional `vpn_failover` role prepares native systemd recovery for both 3x-ui configurations and Caddy on `socrat-2`. The normal runtime is the Kubernetes `x-ui` Deployment in namespace `x-ui`, with `primary` and `compatibility` containers. Both live databases remain separate; the native service names and database paths are unchanged by workload consolidation. A short Python process runs from a systemd timer every 30 seconds after the previous check finishes; no additional daemon or container runs while the VPN is healthy.
+The optional `vpn_failover` role prepares native systemd recovery for the primary 3x-ui configuration and the retained legacy fallback plus Caddy on `socrat-2`. The normal runtime is the Kubernetes `x-ui` Deployment in namespace `x-ui` with only the `primary` container. A short Python process runs from a systemd timer every 30 seconds after the previous check finishes; no additional daemon or container runs while the VPN is healthy.
 
 Install from `ansible/`:
 

@@ -16,13 +16,6 @@ vpn_failover_workloads:
     acme: /srv/x-ui-lab/acme
     runtime: ''
     timezone: Asia/Tehran
-  - name: legacy
-    instance: compatibility
-    database: /etc/x-ui
-    cert: /srv/x-ui/cert
-    acme: /srv/x-ui/acme
-    runtime: /usr/local/x-ui/bin
-    timezone: Europe/Moscow
 vpn_failover_primary_ports:
   - {protocol: tcp, port: 18082}
   - {protocol: tcp, port: 12096}
@@ -33,16 +26,6 @@ vpn_failover_primary_ports:
   - {protocol: tcp, port: 32087}
   - {protocol: udp, port: 32085}
   - {protocol: udp, port: 32086}
-vpn_failover_legacy_ports:
-  - {protocol: tcp, port: 16582}
-  - {protocol: tcp, port: 2096}
-  - {protocol: tcp, port: 2053}
-  - {protocol: tcp, port: 2083}
-  - {protocol: tcp, port: 25763}
-  - {protocol: tcp, port: 48702}
-  - {protocol: tcp, port: 10443}
-  - {protocol: udp, port: 51822}
-  - {protocol: udp, port: 51821}
 vpn_failover_caddy_ports:
   - {protocol: tcp, port: 80}
   - {protocol: tcp, port: 443}
