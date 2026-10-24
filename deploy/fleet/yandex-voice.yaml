@@ -9,9 +9,6 @@ spec:
   paths:
     - deploy/yandex-voice
   pollingInterval: 1m
-  helm:
-    repoAuthSecret:
-      name: ghcr-oci-auth
   targets:
     - name: local
       clusterSelector:
