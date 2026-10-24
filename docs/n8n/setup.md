@@ -8,7 +8,7 @@ popup reminders.
   (private access via the private gateway).
 - The companion `yandex-voice` microservice runs in namespace `voice` and is
   reachable in-cluster at
-  `http://yandex-voice.voice.svc.cluster.local:8080/say` (POST `{"text": str}`,
+  `http://yandex-voice.voice.svc.cluster.local/say` (POST `{"text": str}`,
   header `X-Voice-Token`).
 - Workflow definition (source of truth copy): `docs/n8n/calendar-voice-reminder.json`.
 
