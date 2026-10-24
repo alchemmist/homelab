@@ -3163,7 +3163,7 @@
         "x": 14,
         "y": 0,
         "w": 5,
-        "h": 6
+        "h": 7
       },
       "targets": [
         {
@@ -3260,7 +3260,7 @@
         "x": 19,
         "y": 0,
         "w": 5,
-        "h": 6
+        "h": 7
       },
       "targets": [
         {
@@ -3355,9 +3355,9 @@
       },
       "gridPos": {
         "x": 14,
-        "y": 6,
+        "y": 7,
         "w": 5,
-        "h": 6
+        "h": 8
       },
       "targets": [
         {
@@ -3452,9 +3452,9 @@
       },
       "gridPos": {
         "x": 19,
-        "y": 6,
+        "y": 7,
         "w": 5,
-        "h": 6
+        "h": 8
       },
       "targets": [
         {
@@ -3546,7 +3546,7 @@
         "x": 0,
         "y": 12,
         "w": 14,
-        "h": 6
+        "h": 5
       },
       "description": "Requests entering the public HTTP and HTTPS entrypoints of Traefik, grouped by response class. This measures external traffic only; pod-to-pod traffic and VPN bytes are not included.",
       "datasource": {
