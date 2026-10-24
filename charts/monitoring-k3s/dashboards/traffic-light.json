@@ -14,7 +14,7 @@
     "from": "now-3h",
     "to": "now"
   },
-  "editable": false,
+  "editable": true,
   "links": [],
   "panels": [
     {
