@@ -5800,3 +5800,80 @@ tests:
     exp_samples:
     - labels: '{}'
       value: 1
+- name: edge home entrance healthy
+  interval: 30s
+  input_series:
+  - series: probe_success{job="service-probes",service_id="edge-home"}
+    values: 1x20
+  - series: up{job="service-probes",service_id="edge-home"}
+    values: 1x20
+  - series: up{job="service-probes-exporter"}
+    values: 1x20
+  - series: prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group="/rules/file;socrat.services.availability"}
+    values: 0+30x20
+  promql_expr_test:
+  - expr: (max(2 * ALERTS{alertname="SocratServiceEdgeHomeUnavailable",service_id="edge-home",alertstate="firing"}
+      or ALERTS{alertname="SocratServiceEdgeHomeUnavailable",service_id="edge-home",alertstate="pending"}))
+      or ((1 - max(probe_success{job="service-probes",service_id="edge-home"})) and on()
+      ((max(up{job="service-probes",service_id="edge-home"}) == 1) and on() (time()
+      - max(timestamp(up{job="service-probes",service_id="edge-home"})) < 90) and on()
+      (time() - max(timestamp(probe_success{job="service-probes",service_id="edge-home"}))
+      < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~".*;socrat.services.availability"})
+      < 90))) or vector(-2)
+    eval_time: 3m
+    exp_samples:
+    - labels: '{}'
+      value: 0
+- name: edge vps entrance pending then firing
+  interval: 30s
+  input_series:
+  - series: probe_success{job="service-probes",service_id="edge-vps"}
+    values: 0x9 1x11
+  - series: up{job="service-probes",service_id="edge-vps"}
+    values: 1x20
+  - series: up{job="service-probes-exporter"}
+    values: 1x20
+  - series: prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group="/rules/file;socrat.services.availability"}
+    values: 0+30x20
+  promql_expr_test:
+  - expr: (max(2 * ALERTS{alertname="SocratServiceEdgeVpsUnavailable",service_id="edge-vps",alertstate="firing"}
+      or ALERTS{alertname="SocratServiceEdgeVpsUnavailable",service_id="edge-vps",alertstate="pending"}))
+      or ((1 - max(probe_success{job="service-probes",service_id="edge-vps"})) and on()
+      ((max(up{job="service-probes",service_id="edge-vps"}) == 1) and on() (time()
+      - max(timestamp(up{job="service-probes",service_id="edge-vps"})) < 90) and on()
+      (time() - max(timestamp(probe_success{job="service-probes",service_id="edge-vps"}))
+      < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~".*;socrat.services.availability"})
+      < 90))) or vector(-2)
+    eval_time: 1m30s
+    exp_samples:
+    - labels: '{}'
+      value: 1
+- name: edge vps entrance firing
+  interval: 30s
+  input_series:
+  - series: probe_success{job="service-probes",service_id="edge-vps"}
+    values: 0x9 1x11
+  - series: up{job="service-probes",service_id="edge-vps"}
+    values: 1x20
+  - series: up{job="service-probes-exporter"}
+    values: 1x20
+  - series: prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group="/rules/file;socrat.services.availability"}
+    values: 0+30x20
+  promql_expr_test:
+  - expr: count(ALERTS{alertname="SocratServiceEdgeVpsUnavailable",alertstate="firing"})
+    eval_time: 3m
+    exp_samples:
+    - labels: '{}'
+      value: 1
+  - expr: (max(2 * ALERTS{alertname="SocratServiceEdgeVpsUnavailable",service_id="edge-vps",alertstate="firing"}
+      or ALERTS{alertname="SocratServiceEdgeVpsUnavailable",service_id="edge-vps",alertstate="pending"}))
+      or ((1 - max(probe_success{job="service-probes",service_id="edge-vps"})) and on()
+      ((max(up{job="service-probes",service_id="edge-vps"}) == 1) and on() (time()
+      - max(timestamp(up{job="service-probes",service_id="edge-vps"})) < 90) and on()
+      (time() - max(timestamp(probe_success{job="service-probes",service_id="edge-vps"}))
+      < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~".*;socrat.services.availability"})
+      < 90))) or vector(-2)
+    eval_time: 3m
+    exp_samples:
+    - labels: '{}'
+      value: 2

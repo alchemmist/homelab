@@ -19,6 +19,7 @@ Prometheus textfile metrics:
 import argparse
 import json
 import os
+import sqlite3
 import subprocess
 import tempfile
 import time
@@ -79,6 +80,30 @@ def read_xray_user_counters(url, timeout):
     return counters
 
 
+def read_registered_clients(db_path):
+    """Count unique enabled client emails across all 3x-ui inbounds."""
+    try:
+        connection = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=5)
+    except sqlite3.Error:
+        return None
+    try:
+        rows = connection.execute("select settings from inbounds").fetchall()
+        emails = set()
+        for (raw,) in rows:
+            try:
+                settings = json.loads(raw)
+            except (TypeError, ValueError):
+                continue
+            for client in settings.get('clients', []):
+                if client.get('enable', True) and client.get('email'):
+                    emails.add(client['email'])
+        return len(emails)
+    except sqlite3.Error:
+        return None
+    finally:
+        connection.close()
+
+
 def active_users(counters, state, now, window):
     """Merge new counters into the state, refresh per-user last-activity
     timestamps, and return accounts that transferred traffic within the window."""
@@ -112,7 +137,7 @@ def write_state(path, state):
         raise
 
 
-def write_metrics(path, streams, users, success):
+def write_metrics(path, streams, users, success, registered=0):
     timestamp = time.time()
     lines = [
         '# HELP socrat_vpn_trojan_connections Established TCP streams on the local VPN entrypoint ports.',
@@ -121,6 +146,9 @@ def write_metrics(path, streams, users, success):
         '# HELP socrat_vpn_active_clients VPN client accounts that transferred traffic within the activity window.',
         '# TYPE socrat_vpn_active_clients gauge',
         f'socrat_vpn_active_clients {len(users)}',
+        '# HELP socrat_vpn_registered_clients VPN client accounts registered on the xray server, active or not.',
+        '# TYPE socrat_vpn_registered_clients gauge',
+        f'socrat_vpn_registered_clients {registered}',
         '# HELP socrat_vpn_client_active Whether this VPN client account transferred traffic within the activity window.',
         '# TYPE socrat_vpn_client_active gauge',
     ]
@@ -160,7 +188,8 @@ def try_load_state(path):
     return {}
 
 
-def collect(ports, metrics_url, metrics_timeout, window, output, state_path):
+def collect(ports, metrics_url, metrics_timeout, window, output, state_path,
+            xui_db='/etc/x-ui/x-ui.db'):
     try:
         streams = observe_streams(ports)
         counters = read_xray_user_counters(metrics_url, metrics_timeout)
@@ -170,7 +199,10 @@ def collect(ports, metrics_url, metrics_timeout, window, output, state_path):
     except (subprocess.SubprocessError, OSError, ValueError, KeyError):
         write_metrics(output, 0, [], False)
         return 1
-    write_metrics(output, streams, users, True)
+    registered = read_registered_clients(xui_db)
+    if registered is None:
+        registered = len(counters)
+    write_metrics(output, streams, users, True, registered=registered)
     return 0
 
 
@@ -196,13 +228,15 @@ def main():
                         help='HTTP timeout for the xray expvar endpoint in seconds')
     parser.add_argument('--activity-window', type=float, default=60.0,
                         help='seconds of counter silence before a client stops counting as active')
+    parser.add_argument('--xui-db', default='/etc/x-ui/x-ui.db',
+                        help='3x-ui sqlite database with the registered client list')
     parser.add_argument('--state', required=True,
                         help='state file keeping the previous snapshot of per-user counters')
     parser.add_argument('--output', required=True, help='Prometheus textfile output path')
     args = parser.parse_args()
 
     return collect(args.ports, args.xray_metrics_url, args.xray_timeout,
-                   args.activity_window, args.output, args.state)
+                   args.activity_window, args.output, args.state, args.xui_db)
 
 
 if __name__ == '__main__':

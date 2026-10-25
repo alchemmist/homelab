@@ -1,7 +1,7 @@
 ---
 monitoring_vpn_enabled: "{{ inventory_hostname == 'socrat-2' }}"
 monitoring_vpn_textfile_directory: /var/lib/node_exporter/textfile_collector
-monitoring_vpn_interval: 15s
+monitoring_vpn_interval: 5s
 monitoring_vpn_binary: /usr/bin/python3
 monitoring_vpn_ports:
   - 32087

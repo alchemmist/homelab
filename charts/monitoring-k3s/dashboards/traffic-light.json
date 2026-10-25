@@ -11,7 +11,7 @@
  "version": 5,
  "refresh": "5s",
  "time": {
-  "from": "now-3h",
+  "from": "now-12h",
   "to": "now"
  },
  "editable": true,
@@ -3357,7 +3357,7 @@
     "x": 14,
     "y": 7,
     "w": 5,
-    "h": 8
+    "h": 7
    },
    "targets": [
     {
@@ -3630,7 +3630,7 @@
     "x": 19,
     "y": 9,
     "w": 5,
-    "h": 3
+    "h": 4
    },
    "fieldConfig": {
     "defaults": {
@@ -3638,7 +3638,7 @@
      "min": 0,
      "decimals": 0,
      "color": {
-      "mode": "thresholds"
+      "mode": "palette-classic"
      },
      "custom": {
       "axisBorderShow": false,
@@ -3690,8 +3690,8 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "100 * (1 - avg(rate(node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"}[5m])))",
-     "legendFormat": "CPU",
+     "expr": "100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"}[5m])))",
+     "legendFormat": "{{instance}}",
      "format": "time_series",
      "range": true
     }
@@ -3708,9 +3708,9 @@
    },
    "gridPos": {
     "x": 19,
-    "y": 12,
+    "y": 13,
     "w": 5,
-    "h": 3
+    "h": 2
    },
    "fieldConfig": {
     "defaults": {
@@ -3741,7 +3741,6 @@
        "mode": "off"
       }
      },
-     "max": 15,
      "thresholds": {
       "mode": "absolute",
       "steps": [
@@ -3777,7 +3776,8 @@
      "format": "time_series",
      "range": true
     }
-   ]
+   ],
+   "transparent": true
   },
   {
    "id": 901,
@@ -4406,6 +4406,136 @@
      "format": "time_series"
     }
    ]
+  },
+  {
+   "id": 910,
+   "type": "stat",
+   "title": "",
+   "description": "Current active VPN clients (xray email stats, 60s activity) out of all registered clients.",
+   "gridPos": {
+    "x": 14,
+    "y": 14,
+    "w": 3,
+    "h": 1
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "expr": "socrat_vpn_active_clients",
+     "refId": "A",
+     "legendFormat": "VPN:"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#3b82c4"
+     },
+     "decimals": 0,
+     "mappings": [],
+     "noValue": "0",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "orientation": "horizontal",
+    "textMode": "value_and_name",
+    "colorMode": "none",
+    "graphMode": "none",
+    "justifyMode": "right",
+    "wideLayout": true,
+    "text": {
+     "titleSize": 30,
+     "valueSize": 30
+    }
+   },
+   "pluginVersion": "13.2.4",
+   "transparent": true
+  },
+  {
+   "id": 911,
+   "type": "stat",
+   "title": "",
+   "description": "Registered VPN client accounts (xray email stats) shown as the /denominator next to the active count.",
+   "gridPos": {
+    "x": 17,
+    "y": 14,
+    "w": 2,
+    "h": 1
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "expr": "socrat_vpn_registered_clients",
+     "refId": "B",
+     "legendFormat": "/"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#3b82c4"
+     },
+     "decimals": 0,
+     "mappings": [],
+     "noValue": "0",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "orientation": "horizontal",
+    "textMode": "value_and_name",
+    "colorMode": "none",
+    "graphMode": "none",
+    "justifyMode": "left",
+    "wideLayout": true,
+    "text": {
+     "titleSize": 30,
+     "valueSize": 30
+    }
+   },
+   "pluginVersion": "13.2.4",
+   "transparent": true
   }
  ],
  "timepicker": {

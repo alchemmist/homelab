@@ -70,10 +70,10 @@ class TrafficLightLayoutTest(unittest.TestCase):
         self.assertEqual(up['gridPos'], {'x': 23, 'y': 7, 'w': 1, 'h': 2})
         self.assertEqual(up['fieldConfig']['defaults']['displayName'], 'UP')
         chart = panel_by_id(self.dashboard, 907)
-        self.assertEqual(chart['gridPos'], {'x': 19, 'y': 12, 'w': 5, 'h': 3})
+        self.assertEqual(chart['gridPos'], {'x': 19, 'y': 13, 'w': 5, 'h': 2})
         self.assertEqual(chart['type'], 'timeseries')
         history = panel_by_id(self.dashboard, 909)
-        self.assertEqual(history['gridPos'], {'x': 19, 'y': 9, 'w': 5, 'h': 3})
+        self.assertEqual(history['gridPos'], {'x': 19, 'y': 9, 'w': 5, 'h': 4})
         self.assertEqual(history['type'], 'timeseries')
 
     def test_unmodified_resource_columns(self):
@@ -84,7 +84,7 @@ class TrafficLightLayoutTest(unittest.TestCase):
             self.assertEqual(panel['gridPos']['x'] in (14, 19), True)
         self.assertEqual(cpu['gridPos'], {'x': 14, 'y': 0, 'w': 5, 'h': 7})
         self.assertEqual(memory['gridPos'], {'x': 19, 'y': 0, 'w': 5, 'h': 7})
-        self.assertEqual(disk['gridPos'], {'x': 14, 'y': 7, 'w': 5, 'h': 8})
+        self.assertEqual(disk['gridPos'], {'x': 14, 'y': 7, 'w': 5, 'h': 7})
 
     def test_rps_chart_keeps_full_width(self):
         panel = panel_by_id(self.dashboard, 334)
@@ -143,25 +143,32 @@ class TrafficLightQueriesTest(unittest.TestCase):
             self.assertEqual(custom['axisPlacement'], 'hidden')
             self.assertTrue(custom['axisGridShow'])
 
+    def test_dashboard_time_window_is_twelve_hours(self):
+        self.assertEqual(self.dashboard['time'], {'from': 'now-12h', 'to': 'now'})
+
+    def test_vpn_chart_hides_its_background(self):
+        panel = panel_by_id(self.dashboard, 907)
+        self.assertTrue(panel['transparent'])
+        self.assertFalse(panel['options']['legend']['showLegend'])
+
     def test_vpn_panel_bindings(self):
         panel = panel_by_id(self.dashboard, 907)
         self.assertEqual(panel['title'], '')
         self.assertEqual(panel['fieldConfig']['defaults']['min'], 0)
-        self.assertEqual(panel['fieldConfig']['defaults']['max'], 15)
+        self.assertNotIn('max', panel['fieldConfig']['defaults'])
         # no traffic-light zones: a single calm threshold and fixed blue fill
         custom = panel['fieldConfig']['defaults']['custom']
         self.assertEqual(custom['thresholdsStyle'], {'mode': 'off'})
         self.assertEqual(len(panel['fieldConfig']['defaults']['thresholds']['steps']), 1)
 
-    def test_cluster_cpu_history_shows_average_utilization(self):
+    def test_cluster_cpu_history_shows_per_node_series(self):
         panel = panel_by_id(self.dashboard, 909)
         target = panel['targets'][0]
-        self.assertEqual(target['refId'], 'A')
-        self.assertIn('node_cpu_seconds_total', target['expr'])
-        self.assertIn("mode=\"idle\"", target['expr'])
-        self.assertIn('avg(rate(', target['expr'])
-        self.assertNotIn(' by ', target['expr'])
+        self.assertEqual(target['expr'],
+                         '100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{job="node-exporter",mode="idle"}[5m])))')
+        self.assertEqual(target['legendFormat'], '{{instance}}')
         defaults = panel['fieldConfig']['defaults']
+        self.assertEqual(defaults['color']['mode'], 'palette-classic')
         self.assertEqual(defaults['unit'], 'percent')
         self.assertEqual((defaults['min'], defaults['max']), (0, 100))
         self.assertEqual([s['color'] for s in defaults['thresholds']['steps']],
@@ -177,6 +184,23 @@ class TrafficLightQueriesTest(unittest.TestCase):
         self.assertEqual(steps[0]['color'], '#B42332')
         self.assertEqual(steps[1], {'color': '#A85D08', 'value': 3})
         self.assertEqual(steps[2], {'color': '#26783D', 'value': 4})
+
+    def test_vpn_active_counter_tile(self):
+        panel = panel_by_id(self.dashboard, 910)
+        self.assertEqual(panel['gridPos']['x'], 14)
+        self.assertEqual(panel['gridPos']['h'], 1)
+        disk = panel_by_id(self.dashboard, 23)
+        self.assertEqual(disk['gridPos']['h'], 7)
+        self.assertEqual(panel['targets'][0]['expr'], 'socrat_vpn_active_clients')
+        self.assertEqual(panel['targets'][0]['legendFormat'], 'VPN:')
+        self.assertTrue(panel['transparent'])
+        self.assertEqual(panel['options']['textMode'], 'value_and_name')
+        sibling = panel_by_id(self.dashboard, 911)
+        self.assertEqual(sibling['targets'][0]['expr'], 'socrat_vpn_registered_clients')
+        self.assertEqual(sibling['targets'][0]['legendFormat'], '/')
+        self.assertEqual(sibling['gridPos'], {'x': 17, 'y': 14, 'w': 2, 'h': 1})
+        for tile in (panel, sibling):
+            self.assertEqual(tile['options']['text'], {'titleSize': 30, 'valueSize': 30})
 
     def test_new_panels_have_an_english_description(self):
         for panel in self.dashboard['panels']:

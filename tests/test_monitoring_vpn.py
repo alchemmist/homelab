@@ -2,6 +2,7 @@ import importlib.util
 import io
 import json
 import os
+import sqlite3
 import subprocess
 import tempfile
 import unittest
@@ -138,6 +139,30 @@ class CollectorTests(unittest.TestCase):
     def tearDown(self):
         self.directory.cleanup()
 
+    def test_registered_clients_read_from_xui_db(self):
+        path = Path(self.directory.name) / "x-ui.db"
+        connection = sqlite3.connect(path)
+        connection.execute("create table inbounds (settings text)")
+        docs = [
+            json.dumps({"clients": [{"email": "a@x", "enable": True},
+                                    {"email": "dup@x", "enable": True}]}),
+            json.dumps({"clients": [{"email": "dup@x", "enable": True},
+                                    {"email": "off@x", "enable": False},
+                                    {"email": "b@x"}]}),
+            "not json",
+        ]
+        for doc in docs:
+            connection.execute("insert into inbounds values (?)", (doc,))
+        connection.commit()
+        connection.close()
+        self.assertEqual(MODULE.read_registered_clients(str(path)), 3)
+        self.assertIsNone(MODULE.read_registered_clients("/nonexistent/nope.db"))
+
+    def test_registered_clients_metric_exported(self):
+        output = self.directory.name + '/metrics.prom'
+        MODULE.write_metrics(output, 3, ['a@x', 'b@x'], True, registered=7)
+        self.assertIn('socrat_vpn_registered_clients 7', open(output).read())
+
     def test_full_success_cycle_across_runs(self):
         ss = subprocess.CompletedProcess([], 0, stdout="line1\nline2\n")
         payload = counters_payload({"mom": {"downlink": 100, "uplink": 5}})
@@ -215,6 +240,12 @@ class CollectorTests(unittest.TestCase):
         self.assertIn("socrat_vpn_collection_success 1", self.output.read_text())
         self.assertEqual(json.loads(self.state.read_text())["counters"], {"mom": 100})
 
+
+    def test_collector_interval_is_five_seconds(self):
+        import importlib.util as _ilu
+        from pathlib import Path
+        path = Path(__file__).resolve().parent.parent / 'ansible/roles/monitoring_vpn/defaults/main.yml'
+        self.assertIn('monitoring_vpn_interval: 5s', path.read_text())
 
 if __name__ == "__main__":
     unittest.main()
