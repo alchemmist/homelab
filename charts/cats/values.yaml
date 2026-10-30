@@ -3,7 +3,9 @@ replicaCount: 2
 image:
   repository: alchemmist/cats
   tag: latest
-  pullPolicy: Always
+  # Verified digest of the existing healthy replica; prewarm new nodes before rollout.
+  digest: sha256:a85ce9a2ade6edad537e920303b171c8a7dd5c60ce072edf981ff2fe4b52b4b8
+  pullPolicy: IfNotPresent
 
 service:
   port: 80
