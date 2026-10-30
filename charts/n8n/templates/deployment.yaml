@@ -43,7 +43,7 @@ spec:
             - name: WEBHOOK_URL
               value: {{ .Values.webhookUrl }}
             - name: N8N_SECURE_COOKIE
-              value: 'false'
+              value: 'true'
             - name: GENERIC_TIMEZONE
               value: Europe/Moscow
             - name: TZ

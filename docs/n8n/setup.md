@@ -103,3 +103,47 @@ n8n is already deployed behind the private gateway.
 - **git is the source of truth**: after any edit made in the n8n UI, export the
   workflow (n8n UI -> Save/Download) and update
   `docs/n8n/calendar-voice-reminder.json` in this repo, then commit.
+
+## Git-managed workflow synchronization
+
+The workflow source is `docs/n8n/calendar-voice-reminder.json`.
+Run `python3 scripts/n8n/sync.py` to create or update an **inactive** workflow.
+The script refuses to modify an active workflow; deactivation and reactivation
+are explicit operations. It currently targets this homelab over WireGuard.
+
+Local files (never commit):
+- `~/.config/n8n/api-key`: public API key, mode 0600.
+- `~/.config/n8n/calendar-credentials.json`: mapping of credential type to
+  `{ "id": "instance credential ID", "name": "credential name" }`, using
+  keys `googleCalendarOAuth2Api` and `httpHeaderAuth`.
+
+Google OAuth consent must be completed in the n8n UI. Workflow JSON contains
+placeholders, not OAuth tokens or the voice service token.
+
+### Validation, 2026-10-30
+
+- Production Calendar node successfully read the primary calendar through OAuth.
+- Repeated scheduled production executions succeeded.
+- An isolated temporary workflow injected a synthetic event with an explicit
+  popup reminder through the same matching, HTTP and dedup nodes.
+- First scheduled execution returned `{"status":"ok"}` from the real voice
+  service; second execution emitted zero reminders, verifying persisted dedup.
+- Temporary workflow was deactivated and deleted; no Google event was created.
+
+This is best-effort deduplication, not transactional exactly-once delivery:
+if speech succeeds but workflow static-data persistence fails, a retry can
+repeat speech. Reminders use explicit popup overrides only; default reminders
+are not expanded. The polling horizon is 48 hours.
+
+## Public HTTPS access (2026-10-30)
+
+`https://n8n.socrat.alchemmist.xyz` is now publicly reachable through both
+109.173.40.247 (home Traefik) and 176.98.185.59 (VPS edge Traefik).
+The `automation` namespace is watched by edge Traefik. The public Ingress
+uses `n8n-public-tls` in `automation`, issued by `letsencrypt-http01`.
+Private WG gateway access remains available at the same hostname.
+Secure cookies are enabled. Google OAuth callback URL is unchanged.
+Both public paths were checked with certificate verification enabled (200);
+the public API rejects requests without credentials (401).
+The voice service remains ClusterIP-only. Use strong n8n account passwords
+and keep n8n updated; public access includes the authenticated editor/API/MCP.
