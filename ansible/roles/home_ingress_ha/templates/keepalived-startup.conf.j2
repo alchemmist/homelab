@@ -1,0 +1,11 @@
+# Managed by Ansible: wait for the configured device, not only network-online.
+[Unit]
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+ExecStartPre=/usr/local/libexec/wait-home-ingress-interface
+TimeoutStartSec=90s
+Restart=on-failure
+RestartSec=15s

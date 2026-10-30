@@ -67,6 +67,18 @@ VPS `traefik-edge` now uses `https://127.0.0.1:6444`, the standard k3s agent API
 
 See [router operations](router-static-mappings.md). Verify exactly one VIP owner, both direct ingress endpoints and public Rancher before and after cutover. A keepalived handover checks ingress, not complete node-loss recovery.
 
+### Keepalived startup ordering
+
+On 2026-10-30 socrat-1's keepalived failed at boot because `wlan0` did not
+exist yet, despite `network-online.target`. The home_ingress_ha role now
+installs a bounded interface wait (60 seconds) as ExecStartPre and a systemd
+override with Restart=on-failure / RestartSec=15s. Missing devices can recover
+without manual reset; configuration errors still remain visible in the journal.
+The override was applied only to socrat-1 during recovery, without restarting
+the active socrat-0 instance. Socrat-1 passed its health probe and entered
+BACKUP; the VIP remained solely on socrat-0. No outage/failover test was run.
+Reapplying the role manages the startup policy on both home nodes.
+
 ### Wi-Fi ARP recovery
 
 The home access point drops wired-to-Wi-Fi broadcast ARP for both `socrat-1`'s physical address and the VIP. Directed unicast ARP succeeded in all three probes. The managed helper therefore announces the node's physical address and, only when locally owned, the VIP directly to the router and peer. Keepalived invokes this repair through its health check every three seconds. Actual local VIP ownership is checked before announcing it, avoiding announcements from the standby node.

@@ -136,6 +136,39 @@
     validate: /usr/sbin/keepalived --config-test --use-file=%s
   notify: Restart home ingress keepalived
 
+- name: Install interface readiness wait for keepalived
+  ansible.builtin.template:
+    src: wait-home-ingress-interface.sh.j2
+    dest: /usr/local/libexec/wait-home-ingress-interface
+    owner: root
+    group: root
+    mode: '0755'
+    validate: /bin/sh -n %s
+  notify: Restart home ingress keepalived
+
+- name: Create keepalived systemd override directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/keepalived.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Install keepalived startup ordering and retry policy
+  ansible.builtin.template:
+    src: keepalived-startup.conf.j2
+    dest: /etc/systemd/system/keepalived.service.d/10-home-ingress-startup.conf
+    owner: root
+    group: root
+    mode: '0644'
+  register: home_ingress_ha_systemd_override
+  notify: Restart home ingress keepalived
+
+- name: Reload keepalived systemd startup policy
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+  when: home_ingress_ha_systemd_override.changed
+
 - name: Activate validated home ingress configuration
   ansible.builtin.meta: flush_handlers
 

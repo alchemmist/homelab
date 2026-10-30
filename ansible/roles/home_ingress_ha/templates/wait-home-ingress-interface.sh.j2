@@ -1,0 +1,14 @@
+#!/bin/sh
+# network-online.target does not guarantee that a Wi-Fi device exists yet.
+set -eu
+interface={{ home_ingress_ha_nodes[inventory_hostname].interface | quote }}
+attempt=0
+while [ "$attempt" -lt 60 ]; do
+    if ip link show dev "$interface" >/dev/null 2>&1; then
+        exit 0
+    fi
+    attempt=$((attempt + 1))
+    sleep 1
+done
+printf 'Home ingress interface %s did not appear within 60s\n' "$interface" >&2
+exit 1
