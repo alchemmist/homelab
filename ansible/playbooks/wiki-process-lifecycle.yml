@@ -1,0 +1,54 @@
+---
+# Compatibility mitigation for the published 0.4.1 image. The upstream runtime
+# source also passes these options per Git invocation for future releases.
+- name: Keep Wiki Git maintenance in the foreground
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  vars:
+    wiki_process_reconcile: false
+  tasks:
+    - name: Persist foreground maintenance in both existing Wiki repositories
+      ansible.builtin.command:
+        argv:
+          - env
+          - K3S_CONFIG_FILE=/dev/null
+          - k3s
+          - kubectl
+          - -n
+          - wiki
+          - exec
+          - deployment/wiki-runtime-wiki
+          - --
+          - python
+          - -c
+          - |
+            import pathlib, subprocess
+            changed = False
+            for directory in ['/data/repository', '/data/live/remote']:
+                if not (pathlib.Path(directory) / '.git/config').is_file():
+                    raise RuntimeError('Expected initialized Wiki repository: ' + directory)
+                for key in ['maintenance.autoDetach', 'gc.autoDetach']:
+                    command = ['git', '-C', directory, 'config', '--local']
+                    current = subprocess.run([*command, '--get', key], capture_output=True, text=True)
+                    if current.returncode not in (0, 1):
+                        raise RuntimeError('Cannot inspect Wiki Git configuration')
+                    if current.stdout.strip() != 'false':
+                        subprocess.run([*command, key, 'false'], check=True, capture_output=True)
+                        changed = True
+            print('changed' if changed else 'unchanged')
+      register: wiki_process_config
+      changed_when: wiki_process_config.stdout | trim == 'changed'
+
+    - name: Recreate the single writer only when explicitly requested
+      ansible.builtin.command: >-
+        env K3S_CONFIG_FILE=/dev/null k3s kubectl -n wiki
+        rollout restart deployment/wiki-runtime-wiki
+      when: wiki_process_reconcile | bool
+      changed_when: true
+
+    - name: Wait for Wiki readiness
+      ansible.builtin.command: >-
+        env K3S_CONFIG_FILE=/dev/null k3s kubectl -n wiki
+        rollout status deployment/wiki-runtime-wiki --timeout=180s
+      changed_when: false
