@@ -1,5 +1,7 @@
 defaultRules:
   disabled:
+    # Full largest-node N-1 memory capacity is not a requirement for this homelab.
+    KubeMemoryOvercommit: true
     KubeNodeNotReady: true
     KubeNodePressure: true
     NodeRAIDDegraded: true
