@@ -1,0 +1,119 @@
+# Harbor container registry
+
+Public endpoint: **https://harbor.socrat.alchemmist.xyz**.
+Official Harbor chart **1.19.4**, Harbor **2.15.4**, archive SHA-256 pinned in
+`ansible/roles/harbor/defaults/main.yml`. Values: `deploy/harbor/values.yaml`.
+
+## Architecture and access
+
+All six Pods (seven containers) run on socrat-0. Traefik home and VPS share
+ingress and the cert-manager-managed `harbor-tls` certificate. Edge namespace
+allowlist includes `harbor`, including HTTP-01 solver resources.
+
+Registration is disabled and only admins can create projects. Both `homelab`
+and the default `library` project are private. `homelab` initially has an 80 GiB
+Harbor project quota. There is no anonymous pull of private images.
+
+Robot accounts expire after **90 days** and must be renewed/rotated before expiry:
+
+- `ci-push`: repository pull/push in `homelab` only;
+- `cluster-pull`: repository pull only in `homelab`.
+
+The initializer never silently rotates existing robots. If the local credential
+file is missing but a robot exists, it stops: rotate that robot deliberately.
+Do not use admin credentials in CI or application namespaces.
+
+Credentials are generated once on socrat-0 under
+`/home/alchemmist/.cache/homelab-harbor/` (0700 directory, 0600 credential files).
+`private-values.json` contains the initial admin password and database/encryption
+secrets. Robot results are `ci-push.json` and `cluster-pull.json`. Do not print,
+commit, or place these in logs. Helm release Secrets also contain sensitive values.
+Admin login is `admin`; retrieve the password through a private local channel.
+
+Initial robot credentials were also copied to the administrator Mac under
+`~/.config/homelab/harbor/`, outside Git. The smoke-test Docker login uses the
+isolated `~/.config/homelab/harbor/docker/` directory, not the normal Docker config.
+Docker config contains a credential, not encryption; protect it like a password.
+
+## Deployment
+
+From `ansible/`, with verified SSH access:
+
+```sh
+ansible-playbook playbooks/harbor.yml
+```
+
+When dual-address public SSH selects the VPS, use a verified direct inventory
+hostname override and the existing host key alias, not StrictHostKeyChecking=no.
+The initial deployment used home IP `109.173.40.247` and
+`HostKeyAlias=[socrat.alchemmist.xyz]:2222`.
+
+The playbook prepares the namespace, reconciles edge ingress, checks at least
+6 GiB available RAM and 150 GiB free disk, deploys Harbor, waits for TLS,
+configures projects/robots, and sets PV reclaim policies to Retain.
+It does not redeploy existing applications or migrate their GHCR references.
+
+Use image names such as:
+
+```text
+harbor.socrat.alchemmist.xyz/homelab/blog:<git-sha>
+```
+
+CI should push immutable git-SHA tags and deploy by digest. Put the push robot
+in the CI secret store. Create a `kubernetes.io/dockerconfigjson` Secret with the
+pull robot in each consuming namespace and reference it in `imagePullSecrets`.
+No cluster-wide unauthenticated registry or insecure TLS exception is needed.
+Fleet image automation credentials are a separate integration, not yet configured.
+
+## Storage, retention and recovery
+
+Explicit **local-path** PVCs: registry 100 GiB, PostgreSQL 5 GiB, Redis 1 GiB.
+All reside on socrat-0; no NFS dependency is added. PVC keep annotations and PV
+Retain protect against normal Helm uninstall/PVC deletion, not disk loss.
+Local-path requested capacity is **not an enforced filesystem quota**. Monitor
+actual filesystem usage; Harbor's project quota does not include every kind of
+filesystem overhead, logs or deleted-but-not-garbage-collected layers.
+
+This is **single-node storage, not HA**. An outage of socrat-0 prevents push and
+uncached pull even if the VPS ingress is alive. Existing running containers are
+not stopped by registry loss. Do not make Harbor's own bootstrap depend on itself:
+upstream Harbor images remain on Docker Hub.
+
+Trivy, automatic garbage collection and retention deletion are not enabled.
+Choose release/rollback retention before scheduling deletion; deleting a tag
+needed by a Deployment can break its next restart.
+
+**Scheduled independent backups are not configured yet.** Before relying on this
+registry as the sole image copy, establish and test off-node backups. Preserve:
+
+1. An application-consistent PostgreSQL dump (`pg_dump` from harbor-database).
+2. Registry PVC contents, coordinated with the database and without concurrent
+   pushes/deletes/GC; use a maintenance window to quiesce writers.
+3. Bootstrap secrets, chart version, values, TLS/token signing Secrets and robot
+   credentials, in encrypted private backup storage, not Git.
+
+Restore into isolated storage first: recover the same chart and secrets, database
+and registry data, then verify authenticated pull by known digest. Do not delete
+original PVs or overwrite a running database to test restoration. Redis is not a
+substitute for the PostgreSQL/registry backup.
+
+## Initial verification (2026-10-30)
+
+- Trusted HTTPS and `/api/v2.0/health` 200 through both public IPs; all components healthy.
+- Anonymous `/v2/` returns 401 through both entrances.
+- Push robot uploaded `homelab/registry-smoke:1.37.0` (BusyBox linux/amd64).
+- A Pod on socrat-1 pulled it with the pull-only robot, `imagePullPolicy: Always`,
+  and logged `harbor-pull-ok`.
+- Smoke Pod and its temporary image-pull Secret removed after verification;
+  the small smoke image remains available for future checks.
+- Jobservice restarted during initial dependency startup, then became Ready.
+
+Not verified: physical node-loss, restore from backup, large/slow layer uploads,
+CI integration or migration of existing deployment image references.
+
+## Distributed HA work
+
+The requested HA migration is tracked in [harbor-ha.md](harbor-ha.md). Initial
+read-only preflight is implemented and currently blocks staging on resource
+headroom, including OTel reservations. No distributed dependencies or storage
+migration have been applied. The active installation above is unchanged.

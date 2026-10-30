@@ -1,0 +1,47 @@
+{
+  "passed": false,
+  "nodes": {
+    "socrat-0": {
+      "passed": false,
+      "blockers": [
+        "disk-reserve"
+      ],
+      "harborAdditionalMiB": 2944,
+      "otelReservedMiB": 2304,
+      "requiredAvailableMiB": 5760,
+      "observedAvailableMiB": 21804,
+      "schedulerFreeMiB": 10470,
+      "diskFreeAfterStagingGiB": 155.7
+    },
+    "socrat-1": {
+      "passed": false,
+      "blockers": [
+        "physical-memory",
+        "scheduler-memory"
+      ],
+      "harborAdditionalMiB": 2944,
+      "otelReservedMiB": 4352,
+      "requiredAvailableMiB": 7808,
+      "observedAvailableMiB": 6520,
+      "schedulerFreeMiB": 5366,
+      "diskFreeAfterStagingGiB": 89.1
+    },
+    "socrat-3": {
+      "passed": false,
+      "blockers": [
+        "physical-memory",
+        "scheduler-memory"
+      ],
+      "harborAdditionalMiB": 1856,
+      "otelReservedMiB": 256,
+      "requiredAvailableMiB": 2624,
+      "observedAvailableMiB": 927,
+      "schedulerFreeMiB": 803,
+      "diskFreeAfterStagingGiB": 271.0
+    }
+  },
+  "cutoverAuthorized": false,
+  "scope": "Conservative staging gate only; no N-1, IOPS, latency, CPU, or restore certification",
+  "observedAt": "2026-10-30T14:28:09.093051+00:00",
+  "note": "Historical capacity evidence only; rerun fresh preflight before any deployment. No HA components deployed."
+}

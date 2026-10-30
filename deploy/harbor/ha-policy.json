@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "status": "capacity-design-not-deploy-authorization",
+  "maximumObservationAgeSeconds": 900,
+  "hostReserveMiB": 512,
+  "minimumFreeDiskFraction": 0.2,
+  "otelPolicy": "deploy/monitoring/otel-migration-policy.json",
+  "nodes": {
+    "socrat-0": {
+      "ssh": [
+        "-o",
+        "Hostname=109.173.40.247",
+        "-o",
+        "HostKeyAlias=[socrat.alchemmist.xyz]:2222",
+        "socrat-0"
+      ],
+      "componentsMiB": {
+        "portal": 64,
+        "core": 256,
+        "jobservice": 256,
+        "registry": 384,
+        "s3": 1024,
+        "postgres": 512,
+        "redis": 256,
+        "sentinel": 64,
+        "databaseOperator": 128
+      },
+      "additionalDiskGiB": 120,
+      "minimumFreeDiskGiB": 80
+    },
+    "socrat-1": {
+      "ssh": [
+        "socrat-1"
+      ],
+      "componentsMiB": {
+        "portal": 64,
+        "core": 256,
+        "jobservice": 256,
+        "registry": 384,
+        "s3": 1024,
+        "postgres": 512,
+        "redis": 256,
+        "sentinel": 64,
+        "databaseOperator": 128
+      },
+      "additionalDiskGiB": 120,
+      "minimumFreeDiskGiB": 40
+    },
+    "socrat-3": {
+      "ssh": [
+        "socrat-3"
+      ],
+      "componentsMiB": {
+        "s3": 1024,
+        "postgres": 512,
+        "redis": 256,
+        "sentinel": 64
+      },
+      "additionalDiskGiB": 120,
+      "minimumFreeDiskGiB": 20
+    }
+  },
+  "reservedExternalMemoryMiB": {
+    "socrat-0": 2304,
+    "socrat-1": 4352,
+    "socrat-3": 256
+  }
+}

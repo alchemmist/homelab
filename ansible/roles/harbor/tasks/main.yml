@@ -1,0 +1,128 @@
+---
+- name: Check available memory and disk on the storage node
+  ansible.builtin.command:
+    argv:
+      - python3
+      - -c
+      - "import os,json; m=dict(x.split(':',1) for x in open('/proc/meminfo')); d=os.statvfs('/var/lib/rancher/k3s/storage'); print(json.dumps({'ram':int(m['MemAvailable'].split()[0])*1024,'disk':d.f_bavail*d.f_frsize}))"
+  register: harbor_capacity
+  changed_when: false
+
+- name: Require headroom for Harbor and existing workloads
+  ansible.builtin.assert:
+    that:
+      - (harbor_capacity.stdout | from_json).ram | int >= 6442450944
+      - (harbor_capacity.stdout | from_json).disk | int >= 161061273600
+
+- name: Create private deployment directory
+  ansible.builtin.file:
+    path: "{{ harbor_directory }}"
+    state: directory
+    mode: '0700'
+
+- name: Download pinned official chart
+  ansible.builtin.get_url:
+    url: "https://helm.goharbor.io/harbor-{{ harbor_chart_version }}.tgz"
+    dest: "{{ harbor_directory }}/harbor-{{ harbor_chart_version }}.tgz"
+    checksum: "sha256:{{ harbor_chart_sha256 }}"
+    mode: '0600'
+    timeout: 120
+  register: harbor_chart_download
+  retries: 3
+  delay: 5
+  until: harbor_chart_download is succeeded
+
+- name: Copy public values
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../deploy/harbor/values.yaml"
+    dest: "{{ harbor_directory }}/values.yaml"
+    mode: '0600'
+
+- name: Create namespace
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, apply, -f, '-']
+    stdin: '{"apiVersion":"v1","kind":"Namespace","metadata":{"name":"harbor"}}'
+  register: harbor_namespace
+  changed_when: "'created' in harbor_namespace.stdout"
+
+- name: Copy private credential initializer
+  ansible.builtin.copy:
+    src: bootstrap.py
+    dest: "{{ harbor_directory }}/bootstrap.py"
+    mode: '0600'
+
+- name: Initialize stable credentials without logging them
+  ansible.builtin.command:
+    argv: [python3, "{{ harbor_directory }}/bootstrap.py", "{{ harbor_directory }}"]
+  environment:
+    K3S_CONFIG_FILE: /dev/null
+  no_log: true
+  changed_when: false
+
+- name: Install or upgrade Harbor without deleting PVCs on failure
+  ansible.builtin.command:
+    argv:
+      - helm
+      - upgrade
+      - --install
+      - harbor
+      - "{{ harbor_directory }}/harbor-{{ harbor_chart_version }}.tgz"
+      - --namespace
+      - harbor
+      - --kubeconfig
+      - /etc/rancher/k3s/k3s.yaml
+      - --values
+      - "{{ harbor_directory }}/values.yaml"
+      - --values
+      - "{{ harbor_directory }}/private-values.json"
+      - --wait
+      - --timeout
+      - 12m
+  environment:
+    K3S_CONFIG_FILE: /dev/null
+  changed_when: true
+
+- name: Require trusted TLS certificate
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, -n, harbor, wait, --for=condition=Ready, certificate/harbor-tls, --timeout=300s]
+  environment:
+    K3S_CONFIG_FILE: /dev/null
+  changed_when: false
+
+- name: Copy private project and robot initializer
+  ansible.builtin.copy:
+    src: configure.py
+    dest: "{{ harbor_directory }}/configure.py"
+    mode: '0600'
+
+- name: Configure private projects and scoped robots
+  ansible.builtin.command:
+    argv: [python3, "{{ harbor_directory }}/configure.py", "{{ harbor_directory }}"]
+  no_log: true
+  changed_when: false
+
+- name: Find Harbor persistent volumes
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, -n, harbor, get, pvc, -o, json]
+  environment:
+    K3S_CONFIG_FILE: /dev/null
+  register: harbor_claims
+  changed_when: false
+
+- name: Preserve data even if a Harbor PVC is accidentally deleted
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig
+      - /etc/rancher/k3s/k3s.yaml
+      - patch
+      - pv
+      - "{{ item.spec.volumeName }}"
+      - --type=merge
+      - '-p={"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
+  environment:
+    K3S_CONFIG_FILE: /dev/null
+  loop: "{{ (harbor_claims.stdout | from_json)['items'] }}"
+  loop_control:
+    label: "{{ item.metadata.name }}"
+  changed_when: true

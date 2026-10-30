@@ -11,6 +11,7 @@ watchNamespaces:
   - blog
   - cats
   - format-quorum
+  - harbor
   - img-proxy
   - llm
   - lms

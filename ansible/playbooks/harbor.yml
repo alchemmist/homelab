@@ -1,0 +1,24 @@
+---
+# Edge RBAC requires the namespace to exist before its Helm upgrade.
+- name: Prepare Harbor namespace before extending public ingress
+  hosts: socrat-0
+  gather_facts: false
+  tasks:
+    - name: Create Harbor namespace idempotently
+      ansible.builtin.command:
+        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, apply, -f, '-']
+        stdin: '{"apiVersion":"v1","kind":"Namespace","metadata":{"name":"harbor"}}'
+      environment:
+        K3S_CONFIG_FILE: /dev/null
+      register: harbor_namespace_prepare
+      changed_when: "'created' in harbor_namespace_prepare.stdout"
+
+- ansible.builtin.import_playbook: vpn-edge.yml
+
+- name: Deploy public authenticated Harbor on socrat-0
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  roles:
+    - harbor

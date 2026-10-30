@@ -161,3 +161,13 @@ adb -s 192.168.0.19:5555 shell monkey -p de.ozerov.fully 1
 - `0437f6c restore previous traffic layout`
 
 Live deployment revisions reached monitoring-k3s Helm revision 136 during the session. The final dashboard source must remain the source of truth; UI changes should be exported and merged deliberately.
+
+
+## Harbor registry — 30 октября 2026
+
+Публичный Harbor: `https://harbor.socrat.alchemmist.xyz`, web login `admin`.
+Подробная памятка по безопасному получению credentials, push/pull, robot accounts
+и ограничениям — **`llm-wiki/harbor.md`**. Пароли в wiki не хранить.
+Harbor сейчас single-node на socrat-0; существующие GHCR deployment не переведены.
+Полноценная HA-схема согласована как направление, но заблокирована ёмкостью;
+реализован read-only preflight, HA foundation не развёрнут.

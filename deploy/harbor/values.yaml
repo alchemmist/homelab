@@ -1,0 +1,136 @@
+# Harbor chart 1.19.4 / app 2.15.4. Credentials are generated on the control plane.
+externalURL: https://harbor.socrat.alchemmist.xyz
+expose:
+  type: ingress
+  tls:
+    enabled: true
+    certSource: secret
+    secret:
+      secretName: harbor-tls
+  ingress:
+    className: traefik
+    hosts:
+      core: harbor.socrat.alchemmist.xyz
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-http01
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      traefik.ingress.kubernetes.io/router.tls: 'true'
+existingSecretAdminPassword: harbor-bootstrap
+existingSecretSecretKey: harbor-bootstrap
+updateStrategy:
+  type: Recreate
+trivy:
+  enabled: false
+persistence:
+  enabled: true
+  resourcePolicy: keep
+  persistentVolumeClaim:
+    registry:
+      storageClass: local-path
+      size: 100Gi
+    database:
+      storageClass: local-path
+      size: 5Gi
+    redis:
+      storageClass: local-path
+      size: 1Gi
+metrics:
+  enabled: false
+portal:
+  nodeSelector: &id001
+    kubernetes.io/hostname: socrat-0
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+      ephemeral-storage: 64Mi
+    limits:
+      memory: 256Mi
+      ephemeral-storage: 1Gi
+core:
+  nodeSelector: *id001
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+      ephemeral-storage: 64Mi
+    limits:
+      memory: 1Gi
+      ephemeral-storage: 1Gi
+  extraEnvVars:
+  - name: CONFIG_OVERWRITE_JSON
+    value: '{"auth_mode":"db_auth","self_registration":false,"project_creation_restriction":"adminonly"}'
+jobservice:
+  nodeSelector: *id001
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+      ephemeral-storage: 64Mi
+    limits:
+      memory: 1Gi
+      ephemeral-storage: 1Gi
+  jobLoggers:
+  - stdout
+  maxJobWorkers: 2
+registry:
+  nodeSelector: *id001
+  registry:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 1Gi
+        ephemeral-storage: 1Gi
+  controller:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 1Gi
+database:
+  internal:
+    nodeSelector: *id001
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 1Gi
+        ephemeral-storage: 1Gi
+    initContainer:
+      permissions:
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+            ephemeral-storage: 64Mi
+          limits:
+            memory: 256Mi
+            ephemeral-storage: 1Gi
+      migrator:
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+            ephemeral-storage: 64Mi
+          limits:
+            memory: 256Mi
+            ephemeral-storage: 1Gi
+redis:
+  internal:
+    nodeSelector: *id001
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+        ephemeral-storage: 64Mi
+      limits:
+        memory: 512Mi
+        ephemeral-storage: 1Gi

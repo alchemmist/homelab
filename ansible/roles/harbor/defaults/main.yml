@@ -1,0 +1,4 @@
+---
+harbor_directory: /home/alchemmist/.cache/homelab-harbor
+harbor_chart_version: 1.19.4
+harbor_chart_sha256: 759872bbabaf05524268096b9d551a480d3f6814d13ed08723036e2673859182
