@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blog-updates-worker
+  namespace: automation
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: blog-updates-worker
+  template:
+    metadata:
+      labels:
+        app: blog-updates-worker
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: worker
+          image: python:3.13-alpine@sha256:7984cf56ceaddebe4fefeb75d64000b9f45d8b77b11a09b24524da6cdc3af0c8
+          command: [python, -B, /app/scripts/blog_updates/server.py]
+          envFrom:
+            - secretRef:
+                name: blog-updates-worker
+          env:
+            - name: PROMPT_FILE
+              value: /app/docs/n8n/blog-updates/prompt.md
+            - name: WRITE_ENABLED
+              value: 'false'
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: '1'
+              memory: 256Mi
+          volumeMounts:
+            - name: code
+              mountPath: /app/scripts/blog_updates
+            - name: prompt
+              mountPath: /app/docs/n8n/blog-updates
+      volumes:
+        - name: code
+          configMap:
+            name: blog-updates-code
+        - name: prompt
+          configMap:
+            name: blog-updates-prompt
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: blog-updates-worker
+  namespace: automation
+spec:
+  selector:
+    app: blog-updates-worker
+  ports:
+    - port: 8080
+      targetPort: 8080

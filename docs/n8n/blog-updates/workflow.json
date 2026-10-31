@@ -1,0 +1,163 @@
+{
+  "name": "Blog Updates — GitHub to Qwen to PR",
+  "nodes": [
+    {
+      "id": "2edfb13a-b2f2-4488-9857-deba7f4130ac",
+      "name": "Blog push",
+      "type": "n8n-nodes-base.githubTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "0b2b998b-bbd3-4c03-b423-a9313831def4",
+      "parameters": {
+        "authentication": "accessToken",
+        "owner": {
+          "__rl": true,
+          "mode": "name",
+          "value": "alchemmist"
+        },
+        "repository": {
+          "__rl": true,
+          "mode": "name",
+          "value": "blog"
+        },
+        "events": [
+          "push"
+        ],
+        "options": {}
+      },
+      "credentials": {
+        "githubApi": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "blog-updates GitHub"
+        }
+      }
+    },
+    {
+      "id": "cfcc1b41-f2fc-4ff2-851e-fb312b1a2dc6",
+      "name": "Валидация через LiteLLM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        300,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://blog-updates-worker.automation.svc.cluster.local:8080/validate",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "blog-updates worker"
+        }
+      }
+    },
+    {
+      "id": "d564f3bf-5866-4d07-b87a-5e026ca837a3",
+      "name": "Генерация через LiteLLM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        600,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://blog-updates-worker.automation.svc.cluster.local:8080/generate",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "blog-updates worker"
+        }
+      }
+    },
+    {
+      "id": "13567035-79db-4757-90c1-54db64853a80",
+      "name": "Создание PR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://blog-updates-worker.automation.svc.cluster.local:8080/create-pr",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "blog-updates worker"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Blog push": {
+      "main": [
+        [
+          {
+            "node": "Валидация через LiteLLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Валидация через LiteLLM": {
+      "main": [
+        [
+          {
+            "node": "Генерация через LiteLLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Генерация через LiteLLM": {
+      "main": [
+        [
+          {
+            "node": "Создание PR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Moscow",
+    "saveDataSuccessExecution": "all"
+  }
+}
