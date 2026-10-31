@@ -37,7 +37,7 @@
     },
     {
       "id": "cfcc1b41-f2fc-4ff2-851e-fb312b1a2dc6",
-      "name": "Валидация через LiteLLM",
+      "name": "Validate via LiteLLM",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -65,7 +65,7 @@
     },
     {
       "id": "d564f3bf-5866-4d07-b87a-5e026ca837a3",
-      "name": "Генерация через LiteLLM",
+      "name": "Generate via LiteLLM",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -93,7 +93,7 @@
     },
     {
       "id": "13567035-79db-4757-90c1-54db64853a80",
-      "name": "Создание PR",
+      "name": "Create Pull Request",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -125,29 +125,29 @@
       "main": [
         [
           {
-            "node": "Валидация через LiteLLM",
+            "node": "Validate via LiteLLM",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Валидация через LiteLLM": {
+    "Validate via LiteLLM": {
       "main": [
         [
           {
-            "node": "Генерация через LiteLLM",
+            "node": "Generate via LiteLLM",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Генерация через LiteLLM": {
+    "Generate via LiteLLM": {
       "main": [
         [
           {
-            "node": "Создание PR",
+            "node": "Create Pull Request",
             "type": "main",
             "index": 0
           }
