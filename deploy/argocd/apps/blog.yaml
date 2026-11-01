@@ -16,6 +16,7 @@ spec:
       releaseName: blog
       valueFiles:
         - ../../deploy/blog/values.yaml
+      parameters: []
   destination:
     namespace: blog
     server: https://kubernetes.default.svc
