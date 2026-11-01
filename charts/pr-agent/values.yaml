@@ -9,15 +9,17 @@ port: 3000
 openaiApiBase: http://litellm.llm.svc.cluster.local:4000/v1
 model: openai/qwen3.8-27b
 customModelMaxTokens: "131072"
-# Per-call cap. The 27B model has a 131072 window, but a review call that fills it
-# gets worse, not better. Chunking below covers a large PR as several calls of this size.
-maxModelTokens: "32768"
+# Per-call cap. Chunk count is this budget, not max calls: a diff is split only when it
+# exceeds one call. 12288 keeps each call small enough for the 27B model. The call caps
+# below cover about 150k tokens of diff before files are left out. Calls run in parallel
+# against one local model, so the cap stays well below a hundred.
+maxModelTokens: "12288"
 inlineKeyIssues: true
 largePrChunking: true
-reviewMaxCalls: "4"
-numMaxFindings: "8"
+reviewMaxCalls: "12"
+numMaxFindings: "12"
 committableSuggestions: true
-suggestionsMaxCalls: "4"
+suggestionsMaxCalls: "12"
 persistentInlineComments: true
 handlePushTrigger: true
 pushCommands: '["/review", "/improve"]'
