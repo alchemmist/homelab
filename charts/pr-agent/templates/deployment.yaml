@@ -27,6 +27,19 @@ spec:
       containers:
         - name: pr-agent
           image: {{ .Values.image | quote }}
+          args:
+            - python
+            - -m
+            - gunicorn
+            - -k
+            - uvicorn.workers.UvicornWorker
+            - -c
+            - pr_agent/servers/gunicorn_config.py
+            - --timeout
+            - {{ .Values.gunicornTimeout | quote }}
+            - --forwarded-allow-ips
+            - "*"
+            - pr_agent.servers.github_app:app
           ports:
             - name: http
               containerPort: {{ .Values.port }}
@@ -35,6 +48,8 @@ spec:
               value: {{ .Values.port | quote }}
             - name: GUNICORN_WORKERS
               value: {{ .Values.gunicornWorkers | quote }}
+            - name: CONFIG__AI_TIMEOUT
+              value: {{ .Values.aiTimeout | quote }}
             - name: CONFIG__MODEL
               value: {{ .Values.model | quote }}
             - name: CONFIG__FALLBACK_MODELS

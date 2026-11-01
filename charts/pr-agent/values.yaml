@@ -23,6 +23,11 @@ persistentInlineComments: true
 handlePushTrigger: true
 pushCommands: '["/review", "/improve"]'
 gunicornWorkers: "2"
+# Match LiteLLM's request_timeout. The webhook returns immediately, but each model
+# call used to give up after 120s while the proxy would still be waiting in queue.
+aiTimeout: "7200"
+# 0 disables gunicorn's silent-worker kill. A queued review may run for the full AI timeout.
+gunicornTimeout: "0"
 resources:
   requests:
     cpu: 100m
