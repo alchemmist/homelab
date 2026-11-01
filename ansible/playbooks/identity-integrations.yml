@@ -1,0 +1,13 @@
+---
+- name: Integrate explicitly selected services with Authentik
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  environment:
+    K3S_CONFIG_FILE: /dev/null
+  vars:
+    # No surprise authentication migration when running the foundation playbook.
+    identity_oidc_services: []
+  roles:
+    - identity_integrations

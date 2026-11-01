@@ -1,0 +1,8 @@
+# Client credentials stay in this Kubernetes Secret, not Helm values.
+core:
+  extraEnvVars:
+    - name: CONFIG_OVERWRITE_JSON
+      valueFrom:
+        secretKeyRef:
+          name: socrat-authentik-harbor
+          key: config-json

@@ -1,0 +1,25 @@
+---
+- name: Copy explicit OIDC integration controller
+  ansible.builtin.copy:
+    src: integrate.py
+    dest: /home/alchemmist/.cache/homelab-authentik/integrate.py
+    mode: '0600'
+
+- name: Copy non-secret Grafana environment settings
+  ansible.builtin.copy:
+    content: "{{ (lookup('file', playbook_dir + '/../../deploy/identity/grafana-oidc-values.yaml') | from_yaml).grafana.env | to_json }}"
+    dest: /home/alchemmist/.cache/homelab-authentik/grafana-public-env.json
+    mode: '0600'
+
+- name: Copy non-secret Open WebUI environment settings
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../deploy/identity/open-webui-env.json"
+    dest: /home/alchemmist/.cache/homelab-authentik/open-webui-env.json
+    mode: '0600'
+
+- name: Integrate selected native OIDC services while preserving local emergency logins
+  ansible.builtin.command:
+    argv: [python3, /home/alchemmist/.cache/homelab-authentik/integrate.py, /home/alchemmist/.cache/homelab-authentik, '{{ item }}']
+  loop: '{{ identity_oidc_services }}'
+  no_log: true
+  changed_when: true

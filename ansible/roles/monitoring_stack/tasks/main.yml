@@ -188,6 +188,19 @@
     fail_msg: /var/lib/socrat-thanos must exist on socrat-0 before the Prometheus volume is deleted.
   when: monitoring_prometheus_action == 'relocate'
 
+- name: Detect activated Authentik Grafana integration without reading credentials
+  ansible.builtin.command:
+    argv: ["{{ monitoring_k3s_binary }}", kubectl, --kubeconfig, "{{ monitoring_kubeconfig }}", -n, "{{ monitoring_namespace }}", get, secret, socrat-authentik-grafana, --ignore-not-found, -o, name]
+  changed_when: false
+  register: monitoring_identity_oidc
+
+- name: Copy the separately activated identity overlay
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../deploy/identity/grafana-oidc-values.yaml"
+    dest: "{{ monitoring_directory }}/identity-oidc-values.yaml"
+    mode: '0600'
+  when: monitoring_identity_oidc.stdout | trim | length > 0
+
 - name: Install the pinned monitoring stack
   ansible.builtin.command:
     argv:
@@ -206,6 +219,8 @@
       - "{{ monitoring_kubeconfig }}"
       - --values
       - "{{ monitoring_directory }}/values.yaml"
+      - --values
+      - "{{ monitoring_directory }}/{{ 'identity-oidc-values.yaml' if monitoring_identity_oidc.stdout | trim | length > 0 else 'values.yaml' }}"
       - --post-renderer
       - "{{ monitoring_directory }}/stable_node_series.py"
       - "{{ '--wait=false' if monitoring_prometheus_action == 'relocate' else ('--wait' if monitoring_wait_for_daemonsets | bool else '--wait=false') }}"

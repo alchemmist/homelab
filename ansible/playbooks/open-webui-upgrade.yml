@@ -148,3 +148,5 @@
     - name: Report the upgrade and backup location
       ansible.builtin.debug:
         msg: "Open WebUI {{ webui_version }} is ready; backup: {{ webui_backup.stdout }} on {{ inventory_hostname }}."
+
+- ansible.builtin.import_playbook: identity-webui-reconcile.yml

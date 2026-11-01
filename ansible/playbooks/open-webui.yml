@@ -127,3 +127,5 @@
 - import_playbook: open-webui-compaction.yml
 
 - import_playbook: open-webui-sampling.yml
+
+- ansible.builtin.import_playbook: identity-webui-reconcile.yml

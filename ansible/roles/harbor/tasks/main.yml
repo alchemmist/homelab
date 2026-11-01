@@ -59,6 +59,19 @@
   no_log: true
   changed_when: false
 
+- name: Detect activated Harbor OIDC without reading client credentials
+  ansible.builtin.command:
+    argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, -n, harbor, get, secret, socrat-authentik-harbor, --ignore-not-found, -o, name]
+  register: harbor_identity_oidc
+  changed_when: false
+
+- name: Copy the identity overlay for persistent Helm reconciliation
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../deploy/identity/harbor-oidc-values.yaml"
+    dest: "{{ harbor_directory }}/identity-oidc-values.yaml"
+    mode: '0600'
+  when: harbor_identity_oidc.stdout | trim | length > 0
+
 - name: Install or upgrade Harbor without deleting PVCs on failure
   ansible.builtin.command:
     argv:
@@ -75,6 +88,8 @@
       - "{{ harbor_directory }}/values.yaml"
       - --values
       - "{{ harbor_directory }}/private-values.json"
+      - --values
+      - "{{ harbor_directory }}/{{ 'identity-oidc-values.yaml' if harbor_identity_oidc.stdout | trim | length > 0 else 'private-values.json' }}"
       - --wait
       - --timeout
       - 12m
@@ -100,6 +115,7 @@
     argv: [python3, "{{ harbor_directory }}/configure.py", "{{ harbor_directory }}"]
   no_log: true
   changed_when: false
+  when: harbor_identity_oidc.stdout | trim | length == 0
 
 - name: Find Harbor persistent volumes
   ansible.builtin.command:

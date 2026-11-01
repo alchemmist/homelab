@@ -1,0 +1,20 @@
+---
+# Run after WebUI Helm changes so explicit identity settings cannot drift away.
+- name: Preserve an already activated Open WebUI identity integration
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  environment:
+    K3S_CONFIG_FILE: /dev/null
+  tasks:
+    - name: Detect activation without reading credentials
+      ansible.builtin.command:
+        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, -n, llm, get, secret, socrat-authentik-webui, --ignore-not-found, -o, name]
+      register: webui_identity_active
+      changed_when: false
+    - name: Reconcile activated identity configuration
+      ansible.builtin.include_role:
+        name: identity_integrations
+      vars:
+        identity_oidc_services: [open-webui]
+      when: webui_identity_active.stdout | trim | length > 0

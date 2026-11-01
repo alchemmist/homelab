@@ -53,3 +53,5 @@
           - -c
           - "from pathlib import Path; import open_webui.utils.homelab_tool_guard; s = Path('/app/backend/open_webui/utils/middleware.py').read_text(); assert 'homelab_tool_guard' in s; print('tool guard installed')"
       changed_when: false
+
+- ansible.builtin.import_playbook: identity-webui-reconcile.yml

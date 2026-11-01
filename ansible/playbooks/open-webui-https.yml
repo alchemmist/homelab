@@ -77,3 +77,5 @@
       register: webui_syncthing_after
       changed_when: false
       failed_when: webui_syncthing_after.stdout != webui_syncthing_before.stdout
+
+- ansible.builtin.import_playbook: identity-webui-reconcile.yml
