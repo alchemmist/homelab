@@ -10,8 +10,8 @@
 
 1. GitHub Actions собирает и проверяет артефакт.
 2. CI пушит immutable-образ в Harbor. Тег — полный git SHA, не `latest`. Выкатка идёт по `sha256` digest.
-3. CI вызывает `alchemmist/deploy-to-socrat/.github/workflows/deploy.yml` и передаёт digest.
-4. Этот workflow кладёт коммит в `homelab`: обновляет `image.tag` и `image.digest` в `deploy/<app>/values.yaml` и пушит в `main`. Ключ записи лежит только в секретах `deploy-to-socrat`.
+3. CI вызывает action `alchemmist/deploy-to-socrat` и передаёт digest.
+4. Action кладёт коммит в `homelab`: обновляет `image.tag` и `image.digest` в `deploy/<app>/values.yaml` и пушит в `main`.
 5. Argo CD видит новый коммит и синкает Application. Отдельный Sync из CI не вызывается.
 
 Образ:
@@ -30,7 +30,7 @@ harbor.socrat.alchemmist.xyz/homelab/<app>:<git-sha>
 
 ## Ручка
 
-Ручка — reusable workflow `alchemmist/deploy-to-socrat/.github/workflows/deploy.yml`. Она принимает digest уже запушенного образа и коммитит версию в homelab. CI после пуша в Harbor вызывает её один раз.
+Ручка — action `alchemmist/deploy-to-socrat`. Она принимает digest уже запушенного образа и коммитит версию в homelab. CI после пуша в Harbor вызывает её одним шагом.
 
 Она:
 
