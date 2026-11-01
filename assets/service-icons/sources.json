@@ -1,0 +1,34 @@
+{
+  "repository": "https://github.com/homarr-labs/dashboard-icons",
+  "revision": "83f32e08257b66fbd971ac8d7645f5b38d52e85d",
+  "files": {
+    "grafana.svg": {
+      "url": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/grafana.svg",
+      "sha256": "8f32897073ee93594ab2339482ef21ca3767044055da89e2baf9066d25592df7"
+    },
+    "harbor.svg": {
+      "url": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/harbor.svg",
+      "sha256": "51ef5dd74fab4dfb67a37f8b1b91530952276edb5738f4c1615d6794f3f7727d"
+    },
+    "rancher.svg": {
+      "url": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/rancher.svg",
+      "sha256": "6fb0a4f542f7ea22e00c6a4a522a1281f1a11fb2a25f429fbaa0eb83de5b5c7e"
+    },
+    "open-webui.svg": {
+      "url": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/open-webui.svg",
+      "sha256": "54717f2b0d403a6a559c87622d23dfd3cff3538e910ea3dbd8ffbf015aa3ff89"
+    },
+    "n8n.svg": {
+      "url": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/n8n.svg",
+      "sha256": "45b282108f60b12df6cba68e3fa633d56970eab4d2ac6b1eef43a60b5ea29af5"
+    },
+    "wiki.svg": {
+      "url": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/bookstack.svg",
+      "sha256": "875148604f2e828e977c23a9afa04869dd958dd6300650ec3350eff9c242cd64"
+    },
+    "uptime-kuma.svg": {
+      "url": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/uptime-kuma.svg",
+      "sha256": "f3caa8a8bac253a77fa2ae7e7bc9b062b55a006abd787b111533714152ec744c"
+    }
+  }
+}

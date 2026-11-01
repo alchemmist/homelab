@@ -1,0 +1,4 @@
+---
+authentik_directory: /home/alchemmist/.cache/homelab-authentik
+authentik_chart_version: '2026.8.5'
+authentik_chart_sha256: d00e8addefb2c758e071bd6eb8886f99be04eeba15c26ac869027c3d89d0a75e  # gitleaks:allow -- public pinned Helm chart checksum, not a credential

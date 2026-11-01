@@ -12,6 +12,7 @@ watchNamespaces:
   - cats
   - format-quorum
   - harbor
+  - identity
   - img-proxy
   - llm
   - lms

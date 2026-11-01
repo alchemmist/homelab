@@ -1,0 +1,25 @@
+---
+- name: Prepare identity namespace before extending public edge RBAC
+  hosts: socrat-0
+  gather_facts: false
+  tasks:
+    - name: Create namespace for shared ingress watch list
+      ansible.builtin.command:
+        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, apply, -f, '-']
+        stdin: '{"apiVersion":"v1","kind":"Namespace","metadata":{"name":"identity"}}'
+      environment:
+        K3S_CONFIG_FILE: /dev/null
+      register: identity_ns
+      changed_when: "'created' in identity_ns.stdout"
+
+- ansible.builtin.import_playbook: vpn-edge.yml
+
+- name: Deploy Authentik identity foundation
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  environment:
+    K3S_CONFIG_FILE: /dev/null
+  roles:
+    - authentik

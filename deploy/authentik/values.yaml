@@ -1,0 +1,52 @@
+# Single-node identity foundation, not HA. Preserve local break-glass service logins.
+global:
+  image:
+    tag: '2026.8.5'
+  nodeSelector:
+    kubernetes.io/hostname: socrat-0
+  deploymentStrategy:
+    type: Recreate
+  securityContext:
+    fsGroup: 1000
+  volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: authentik-data
+  volumeMounts:
+    - name: data
+      mountPath: /data
+authentik:
+  existingSecret:
+    secretName: authentik-runtime
+  error_reporting:
+    enabled: false
+    send_pii: false
+postgresql:
+  enabled: false
+serviceAccount:
+  create: false
+server:
+  replicas: 1
+  serviceAccountName: identity-runtime
+  automountServiceAccountToken: false
+  resources:
+    requests: {cpu: 100m, memory: 768Mi, ephemeral-storage: 256Mi}
+    limits: {memory: 1536Mi, ephemeral-storage: 1Gi}
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-http01
+    hosts: [auth.socrat.alchemmist.xyz]
+    tls:
+      - secretName: authentik-tls
+        hosts: [auth.socrat.alchemmist.xyz]
+worker:
+  replicas: 1
+  serviceAccountName: identity-runtime
+  automountServiceAccountToken: false
+  resources:
+    requests: {cpu: 100m, memory: 768Mi, ephemeral-storage: 256Mi}
+    limits: {memory: 1536Mi, ephemeral-storage: 1Gi}
+geoip:
+  enabled: false

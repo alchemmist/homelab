@@ -1,0 +1,93 @@
+{
+  "grafana": {
+    "name": "Grafana",
+    "url": "https://grafana.socrat.alchemmist.xyz/",
+    "description": "Metrics, dashboards and alerts; private WireGuard access remains required.",
+    "redirect": "https://grafana.socrat.alchemmist.xyz/login/generic_oauth",
+    "groups": [
+      "homelab-owner",
+      "homelab-observer",
+      "homelab-platform-operator",
+      "homelab-project-maintainer"
+    ],
+    "migration": "native-oidc-candidate",
+    "icon": "service-icons/grafana-8f32897073ee.svg"
+  },
+  "harbor": {
+    "name": "Harbor",
+    "url": "https://harbor.socrat.alchemmist.xyz/",
+    "description": "Private container images; use scoped robots for automation.",
+    "redirect": "https://harbor.socrat.alchemmist.xyz/c/oidc/callback",
+    "groups": [
+      "homelab-owner",
+      "homelab-platform-operator",
+      "homelab-project-maintainer"
+    ],
+    "migration": "native-oidc-candidate",
+    "icon": "service-icons/harbor-51ef5dd74fab.svg"
+  },
+  "rancher": {
+    "name": "Rancher",
+    "url": "https://rancher.socrat.alchemmist.xyz/",
+    "description": "Kubernetes administration; private WireGuard access remains required.",
+    "migration": "native-oidc-explicit-principal-linking",
+    "icon": "service-icons/rancher-6fb0a4f542f7.svg",
+    "redirect": "https://rancher.socrat.alchemmist.xyz/verify-auth",
+    "subMode": "user_uuid",
+    "groups": [
+      "homelab-owner",
+      "homelab-observer"
+    ]
+  },
+  "open-webui": {
+    "name": "Open WebUI",
+    "url": "https://chat.alchemmist.xyz/",
+    "description": "Chat UI for local language models.",
+    "redirect": "https://chat.alchemmist.xyz/oauth/oidc/callback",
+    "groups": [
+      "homelab-owner",
+      "homelab-observer"
+    ],
+    "migration": "native-oidc-candidate-account-linking-review-required",
+    "icon": "service-icons/open-webui-54717f2b0d40.svg",
+    "subMode": "user_uuid",
+    "extraRedirects": [
+      "https://llm.socrat.alchemmist.xyz/oauth/oidc/callback"
+    ]
+  },
+  "n8n": {
+    "name": "n8n",
+    "url": "https://n8n.socrat.alchemmist.xyz/",
+    "description": "Workflow automation. Do not expose webhooks behind an interactive login proxy.",
+    "migration": "authentik-ui-gateway-native-sso-requires-license",
+    "icon": "service-icons/n8n-45b282108f60.svg",
+    "proxy": {
+      "internalHost": "http://n8n.automation.svc.cluster.local/",
+      "skipPathRegex": "^/(webhook(?:/|$)|webhook-waiting(?:/|$)|form(?:/|$)|form-waiting(?:/|$)|healthz(?:/|$)|api/v1(?:/|$)|rest/oauth[12]-credential/callback(?:/|$))"
+    },
+    "groups": [
+      "homelab-owner"
+    ]
+  },
+  "wiki": {
+    "name": "Wiki",
+    "url": "https://wiki.socrat.alchemmist.xyz/",
+    "description": "Published infrastructure documentation; editor/API credentials are separate.",
+    "migration": "native-oidc-owner-only-local-fallback",
+    "icon": "service-icons/wiki-875148604f2e.svg",
+    "redirect": "https://wiki.socrat.alchemmist.xyz/api/auth/oidc/callback",
+    "groups": [
+      "homelab-owner",
+      "homelab-observer",
+      "homelab-project-maintainer"
+    ],
+    "subMode": "user_uuid"
+  },
+  "uptime-kuma": {
+    "name": "Uptime Kuma",
+    "url": "https://status.alchemmist.xyz/",
+    "description": "Uptime checks and status pages; public status is not an administrative interface.",
+    "migration": "verify-native-sso-or-admin-only-proxy-without-breaking-public-status",
+    "icon": "service-icons/uptime-kuma-f3caa8a8bac2.svg"
+  }
+}

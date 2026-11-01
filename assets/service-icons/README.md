@@ -1,0 +1,1 @@
+Service icons from homarr-labs/dashboard-icons, pinned in sources.json. Logos remain trademarks of their respective owners. Wiki uses a generic book/documentation symbol (BookStack artwork), not a claim that the wiki runs BookStack.
