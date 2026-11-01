@@ -37,7 +37,7 @@
 
 - name: Refuse to install the cascade while Prometheus data is still on socrat-1
   ansible.builtin.fail:
-    msg: Rerun with -e monitoring_prometheus_relocate=true. That deletes only the Prometheus TSDB PVC and the current 30-second history. Grafana and Alertmanager volumes stay on socrat-1.
+    msg: Prometheus storage cannot be relocated by deleting its PVC. Preserve the existing volume and use a separately verified backup and restore procedure.
   when: (monitoring_thanos_prometheus_decision.stdout | from_json).action == 'refuse'
 
 - name: Measure cascade node capacity
@@ -158,31 +158,3 @@
       - --timeout
       - 10m
   changed_when: true
-
-- name: Remove the retired SeaweedFS directories
-  ansible.builtin.file:
-    path: /var/lib/socrat-thanos-minio
-    state: absent
-  delegate_to: "{{ item }}"
-  loop:
-    - socrat-1
-    - socrat-3
-  become: true
-
-- name: Remove retired shelf object-store secrets
-  ansible.builtin.command:
-    argv:
-      - "{{ monitoring_thanos_k3s_binary }}"
-      - kubectl
-      - --kubeconfig
-      - "{{ monitoring_thanos_kubeconfig }}"
-      - -n
-      - "{{ monitoring_thanos_namespace }}"
-      - delete
-      - secret
-      - thanos-minio-5m-credentials
-      - thanos-minio-1h-credentials
-      - thanos-objstore-5m
-      - thanos-objstore-1h
-      - --ignore-not-found
-  changed_when: false

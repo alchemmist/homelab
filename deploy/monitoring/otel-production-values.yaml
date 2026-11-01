@@ -1,0 +1,162 @@
+prometheus:
+  prometheusSpec:
+    containers:
+    - args:
+      - --config=/etc/otel/config/collector.yaml
+      env:
+      - name: OTEL_BIND_IP
+        value: 0.0.0.0
+      - name: OTEL_TLS_DIR
+        value: /etc/otel/tls
+      - name: OTEL_STORAGE_DIR
+        value: /var/lib/otel-data/otel-cluster
+      - name: OTEL_SCRAPE_CONFIG
+        value: /etc/otel/config/scrape.yaml
+      - name: OTEL_LOG_INGESTION_START_NS
+        value: '1793447920650563000'
+      - name: OTEL_LOKI_ENDPOINT
+        value: https://10.250.0.3:3100/otlp
+      - name: OTEL_TRACE_GATEWAY_ENDPOINT
+        value: 10.250.0.1:44317
+      - name: GOMEMLIMIT
+        value: 768MiB
+      - name: GOMAXPROCS
+        value: '2'
+      image: docker.io/otel/opentelemetry-collector-contrib@sha256:ac0bb9cdc844b55d2fd2655d03e596243787d6a8c52dd408b1dc96dd1bd372ee
+      imagePullPolicy: IfNotPresent
+      livenessProbe:
+        httpGet:
+          path: /
+          port: 13133
+        initialDelaySeconds: 20
+        periodSeconds: 10
+      name: otel-cluster
+      ports:
+      - containerPort: 4317
+        hostIP: 10.250.0.1
+        hostPort: 4317
+        name: otel-grpc
+        protocol: TCP
+      readinessProbe:
+        httpGet:
+          path: /
+          port: 13133
+        periodSeconds: 5
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          cpu: 100m
+          memory: 256Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        runAsGroup: 2000
+        runAsNonRoot: true
+        runAsUser: 1000
+      volumeMounts:
+      - mountPath: /etc/otel/config
+        name: otel-config
+        readOnly: true
+      - mountPath: /etc/otel/tls
+        name: otel-tls
+        readOnly: true
+      - mountPath: /etc/otel/source-auth
+        name: otel-source-auth
+        readOnly: true
+      - mountPath: /etc/prometheus/certs
+        name: otel-source-tls
+        readOnly: true
+      - mountPath: /var/lib/otel-data
+        name: prometheus-kube-prometheus-stack-prometheus-db
+        subPath: prometheus-db
+    - livenessProbe:
+        exec:
+          command:
+          - /bin/promtool
+          - check
+          - healthy
+          - --url=http://127.0.0.1:9090
+      name: prometheus
+      readinessProbe:
+        exec:
+          command:
+          - /bin/promtool
+          - check
+          - ready
+          - --url=http://127.0.0.1:9090
+      startupProbe:
+        exec:
+          command:
+          - /bin/promtool
+          - check
+          - ready
+          - --url=http://127.0.0.1:9090
+    volumes:
+    - hostPath:
+        path: /var/lib/socrat-thanos
+        type: Directory
+      name: thanos-data
+    - name: otel-source-tls
+      secret:
+        defaultMode: 288
+        items:
+        - key: tls-0
+          path: 0_cattle-monitoring-system_kube-prometheus-stack-admission_ca
+        - key: tls-1
+          path: 1_cattle-monitoring-system_kube-root-ca.crt_ca.crt
+        secretName: otel-source-auth
+    - configMap:
+        name: otel-cluster-config
+      name: otel-config
+    - name: otel-source-auth
+      secret:
+        defaultMode: 288
+        secretName: otel-source-auth
+    - name: otel-tls
+      secret:
+        defaultMode: 288
+        items:
+        - key: ca.crt
+          path: ca.crt
+        - key: tls.crt
+          path: server.crt
+        - key: tls.key
+          path: server.key
+        - key: tls.crt
+          path: client.crt
+        - key: tls.key
+          path: client.key
+        secretName: otel-tls-cluster
+    enableOTLPReceiver: true
+    listenLocal: true
+    evaluationInterval: 5s
+    otlp:
+      promoteScopeMetadata: false
+      translationStrategy: NoTranslation
+    tsdb:
+      outOfOrderTimeWindow: 30m
+    serviceMonitorSelector:
+      matchLabels:
+        homelab.alchemmist.xyz/scrape-owner: retired-legacy-prometheus
+        release: kube-prometheus-stack
+    podMonitorSelector:
+      matchLabels:
+        homelab.alchemmist.xyz/scrape-owner: retired-legacy-prometheus
+        release: kube-prometheus-stack
+    probeSelector:
+      matchLabels:
+        homelab.alchemmist.xyz/scrape-owner: retired-legacy-prometheus
+        release: kube-prometheus-stack
+    scrapeConfigSelector:
+      matchLabels:
+        homelab.alchemmist.xyz/scrape-owner: retired-legacy-prometheus
+        release: kube-prometheus-stack
+    podMetadata:
+      annotations:
+        homelab.alchemmist.xyz/otel-config-sha256: 90be50a866f9e26f8b01675af1af421ab3d880ab91baee80fad1cb36c34b5a93
+prometheus-node-exporter:
+  nodeSelector:
+    homelab.alchemmist.xyz/legacy-node-exporter-enabled: 'true'

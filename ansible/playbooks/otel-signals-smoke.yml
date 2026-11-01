@@ -1,0 +1,136 @@
+---
+- name: Verify native Loki and Tempo OTLP ingestion with isolated synthetic signals
+  hosts: socrat-0
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  vars:
+    otel_signal_stage: /var/tmp/otel-signals-smoke
+  tasks:
+    - name: Require explicit pinned validation artifacts
+      ansible.builtin.assert:
+        that:
+          - otel_validation_binaries.startswith('/tmp/otel-validation-binaries-')
+          - otel_validation_tls.startswith('/tmp/otel-validation-tls-')
+          - otel_signal_stage == '/var/tmp/otel-signals-smoke'
+
+    - name: Assign an exclusive synthetic run
+      ansible.builtin.set_fact:
+        otel_signal_suffix: "{{ now(utc=true, fmt='%Y%m%dT%H%M%S%fZ') }}"
+
+    - name: Prepare protected signal test directories
+      ansible.builtin.file:
+        path: "{{ otel_signal_stage }}/{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0700'
+      loop: ['', bin, tls, config]
+
+    - name: Hash controller binaries already verified against image digests
+      ansible.builtin.stat:
+        path: "{{ otel_validation_binaries }}/{{ item }}"
+        checksum_algorithm: sha256
+      delegate_to: localhost
+      become: false
+      loop: [otelcol-contrib, loki, tempo]
+      register: otel_signal_binary_checksums
+
+    - name: Copy cached native executables into root-owned staging
+      ansible.builtin.copy:
+        src: "/home/alchemmist/.cache/homelab-otel-validation/bin/{{ item }}"
+        dest: "{{ otel_signal_stage }}/bin/{{ item }}"
+        remote_src: true
+        owner: root
+        group: root
+        mode: '0700'
+      loop: [otelcol-contrib, loki, tempo]
+
+    - name: Hash the protected copies before executing them
+      ansible.builtin.stat:
+        path: "{{ otel_signal_stage }}/bin/{{ item.item }}"
+        checksum_algorithm: sha256
+      loop: "{{ otel_signal_binary_checksums.results }}"
+      register: otel_signal_protected_checksums
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Require exact pinned binary identity after remote copying
+      ansible.builtin.assert:
+        that:
+          - item.stat.checksum == item.item.stat.checksum
+      loop: "{{ otel_signal_protected_checksums.results }}"
+      loop_control:
+        label: "{{ item.item.item }}"
+
+    - name: Copy strict test TLS without its CA private key
+      ansible.builtin.copy:
+        src: "{{ otel_validation_tls }}/{{ item }}"
+        dest: "{{ otel_signal_stage }}/tls/{{ item }}"
+        owner: root
+        group: root
+        mode: '0600'
+      loop: [ca.crt, server.crt, server.key, client.crt, client.key]
+      no_log: true
+
+    - name: Render the candidate native signal configurations
+      ansible.builtin.copy:
+        content: "{{ lookup('ansible.builtin.file', playbook_dir + '/../../deploy/monitoring/otel/' + item + '.yaml') | from_yaml | to_nice_json }}\n"
+        dest: "{{ otel_signal_stage }}/config/{{ item }}.json"
+        owner: root
+        group: root
+        mode: '0600'
+      loop: [cluster, trace-gateway, loki, tempo]
+
+    - name: Copy the synthetic-only driver
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../scripts/otel-signals-smoke.py"
+        dest: "{{ otel_signal_stage }}/smoke.py"
+        owner: root
+        group: root
+        mode: '0600'
+
+    - name: Run native services in a private network namespace with hard resource bounds
+      ansible.builtin.command:
+        argv:
+          - systemd-run
+          - --quiet
+          - --collect
+          - --wait
+          - --pipe
+          - "--unit=otel-signals-smoke-{{ otel_signal_suffix }}"
+          - --property=MemoryMax=4294967296
+          - --property=CPUQuota=200%
+          - --property=RuntimeMaxSec=240
+          - --property=OOMPolicy=kill
+          - unshare
+          - --net
+          - --
+          - sh
+          - -ec
+          - 'ip link set lo up; exec python3 "$@"'
+          - otel-signal-smoke
+          - "{{ otel_signal_stage }}/smoke.py"
+          - --binaries
+          - "{{ otel_signal_stage }}/bin"
+          - --config
+          - "{{ otel_signal_stage }}/config"
+          - --tls
+          - "{{ otel_signal_stage }}/tls"
+          - --workspace
+          - "{{ otel_signal_stage }}/run-{{ otel_signal_suffix }}"
+      timeout: 270
+      changed_when: false
+      register: otel_signals_smoke
+
+    - name: Report sanitized synthetic-only signal evidence
+      ansible.builtin.debug:
+        msg: "{{ otel_signals_smoke.stdout | from_json }}"
+
+    - name: Save controller signal acceptance metadata
+      ansible.builtin.copy:
+        content: "{{ otel_signals_smoke.stdout }}\n"
+        dest: /tmp/otel-signals-smoke-result-20261029.json
+        mode: '0600'
+      delegate_to: localhost
+      become: false

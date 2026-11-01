@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "images": {
+    "collector": {
+      "repository": "docker.io/otel/opentelemetry-collector-contrib",
+      "version": "0.164.0",
+      "indexDigest": "sha256:340c9ca6a36617084c6661bdc4f0fe92b7cda5a805d61673ec8db375fddc522b",
+      "linuxAMD64Digest": "sha256:ac0bb9cdc844b55d2fd2655d03e596243787d6a8c52dd408b1dc96dd1bd372ee",
+      "image": "docker.io/otel/opentelemetry-collector-contrib@sha256:340c9ca6a36617084c6661bdc4f0fe92b7cda5a805d61673ec8db375fddc522b"
+    },
+    "loki": {
+      "repository": "docker.io/grafana/loki",
+      "version": "3.7.9",
+      "indexDigest": "sha256:0db216b630ae1f348a1584c67f3cead8b4c1fc839169a39501db664744158e28",
+      "linuxAMD64Digest": "sha256:569e5cab050b7705eb82080335ff9a8bd329650b358bb0d42131e3ced8d9492e",
+      "image": "docker.io/grafana/loki@sha256:0db216b630ae1f348a1584c67f3cead8b4c1fc839169a39501db664744158e28"
+    },
+    "tempo": {
+      "repository": "docker.io/grafana/tempo",
+      "version": "2.10.10",
+      "indexDigest": "sha256:12b0820f13ffa10ce956b6e9acc3b03f3cffded99109be6cc09d106fe56e5d38",
+      "linuxAMD64Digest": "sha256:2cd56a993318ae307f58289ebc89ae6cb5edc7e82c069371fd5225c393aca867",
+      "image": "docker.io/grafana/tempo@sha256:12b0820f13ffa10ce956b6e9acc3b03f3cffded99109be6cc09d106fe56e5d38"
+    },
+    "validationPrometheus": {
+      "repository": "docker.io/prom/prometheus",
+      "version": "v3.15.0-distroless",
+      "indexDigest": "sha256:b2a413d5a03ea6a76782a508d1c7947440bba3b973931a25676e278431891b01",
+      "linuxAMD64Digest": "sha256:3e84c7d7c1b07a779c0d51ab41982dce05147a6bb49a674e8dec794a7ba25447",
+      "image": "docker.io/prom/prometheus@sha256:b2a413d5a03ea6a76782a508d1c7947440bba3b973931a25676e278431891b01"
+    }
+  },
+  "tempoVersionRationale": "Pinned patched 2.10 monolithic release; do not silently adopt Tempo 3 architecture."
+}

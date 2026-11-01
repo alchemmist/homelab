@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "image": "quay.io/prometheus/node-exporter:v1.12.1-distroless",
+  "runtimeIndexDigest": "sha256:8c9bac11973b94b59be88d6e11fee4429aa743c8846cdc75d65b18db33f6a106",
+  "linuxAMD64ManifestDigest": "sha256:bbfbd533202cfef891c70383ddf6f0c32acece66400ad8091a18bed7aad5db6f",
+  "imageEntrypoint": "/bin/node_exporter",
+  "resolvedExecutable": "/usr/bin/node_exporter",
+  "validatedImageDirectorySymlink": "bin -> usr/bin",
+  "binarySHA256": "1108f7453ecfe4a72f131c73b69537c171840ad4f1713a2402328ad56cf12e09",
+  "bytes": 23900840,
+  "exactRegularExecutableExtracted": true,
+  "allFourLegacyPodsMatchIndexDigest": true,
+  "productionOwnershipChanged": false
+}

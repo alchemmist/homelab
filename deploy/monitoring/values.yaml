@@ -60,7 +60,7 @@ prometheus:
     retention: 12h
     scrapeInterval: 5s
     scrapeTimeout: 4s
-    evaluationInterval: 30s
+    evaluationInterval: 5s
     disableCompaction: true
     walCompression: true
     resources:

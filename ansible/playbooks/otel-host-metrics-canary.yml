@@ -1,0 +1,195 @@
+---
+- name: Stage bounded independent native host metrics canary
+  hosts: socrat-0:socrat-1:socrat-2:socrat-3
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - name: Require private canary artifacts
+      ansible.builtin.assert:
+        that:
+          - otel_host_metrics_directory.startswith('/var/tmp/otel-host-metrics-canary-')
+          - otel_host_metrics_artifacts.startswith('/tmp/otel-host-metrics-')
+          - otel_host_metrics_bundle.startswith('/tmp/otel-scrape-bundle-')
+    - name: Create isolated root-only staging
+      ansible.builtin.file:
+        path: '{{ otel_host_metrics_directory }}/{{ item }}'
+        state: directory
+        owner: root
+        group: root
+        mode: '0700'
+      loop: ['', tls]
+    - name: Copy pinned Collector binary
+      ansible.builtin.copy:
+        src: '{{ otel_host_metrics_binaries }}/otelcol-contrib'
+        dest: '{{ otel_host_metrics_directory }}/otelcol-contrib'
+        owner: root
+        group: root
+        mode: '0700'
+    - name: Copy pinned shadow Prometheus on healthy backend host only
+      ansible.builtin.copy:
+        src: '{{ otel_host_metrics_prometheus }}/prometheus'
+        dest: '{{ otel_host_metrics_directory }}/prometheus'
+        owner: root
+        group: root
+        mode: '0700'
+      when: inventory_hostname == 'socrat-1'
+    - name: Copy bounded canary driver and non-secret request
+      ansible.builtin.copy:
+        src: '{{ item.source }}'
+        dest: '{{ otel_host_metrics_directory }}/{{ item.target }}'
+        owner: root
+        group: root
+        mode: '0600'
+      loop:
+        - source: '{{ playbook_dir }}/../../scripts/otel-host-metrics-canary.py'
+          target: canary.py
+        - source: '{{ otel_host_metrics_artifacts }}/request.json'
+          target: request.json
+    - name: Copy mTLS canary credentials without CA private key
+      ansible.builtin.copy:
+        src: '{{ otel_host_metrics_tls }}/{{ item }}'
+        dest: '{{ otel_host_metrics_directory }}/tls/{{ item }}'
+        owner: root
+        group: root
+        mode: '0600'
+      loop: '{{ (inventory_hostname == "socrat-1") | ternary(["ca.crt", "client.crt", "client.key", "server.crt", "server.key"], ["ca.crt", "client.crt", "client.key"]) }}'
+      no_log: true
+    - name: Render stock source configurations and frozen legacy aliases
+      ansible.builtin.copy:
+        content: '{{ lookup("ansible.builtin.file", item.source) | from_yaml | to_nice_json }}'
+        dest: '{{ otel_host_metrics_directory }}/{{ item.target }}'
+        owner: root
+        group: root
+        mode: '0600'
+      loop:
+        - source: '{{ playbook_dir }}/../../deploy/monitoring/otel/agent.yaml'
+          target: agent-source.json
+        - source: '{{ playbook_dir }}/../../deploy/monitoring/otel/cluster.yaml'
+          target: cluster-source.json
+        - source: '{{ otel_host_metrics_bundle }}/{{ inventory_hostname }}.yaml'
+          target: scrape.json
+    - name: Validate exact native configs and preserved resource reserves
+      ansible.builtin.command:
+        argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, prepare]
+      changed_when: false
+
+- name: Prove four native agent metrics pipelines and durable restart replay
+  hosts: socrat-0:socrat-1:socrat-2:socrat-3
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - name: Exercise only an isolated native shadow backend
+      block:
+        - name: Start private mTLS backend on healthy host
+          ansible.builtin.command:
+            argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, backend-start]
+          changed_when: false
+          when: inventory_hostname == "socrat-1"
+        - name: Start bounded exporter and actual metrics agent on every host
+          ansible.builtin.command:
+            argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, agents-start]
+          changed_when: false
+        - name: Check complete legacy target labels and three fresh healthy observations
+          ansible.builtin.command:
+            argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, probe]
+          changed_when: false
+          timeout: 150
+          when: inventory_hostname == "socrat-1"
+        - name: Retain actual native resource and queue telemetry before failure
+          ansible.builtin.command:
+            argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, telemetry]
+          changed_when: false
+        - name: Interrupt only test gateway delivery
+          ansible.builtin.command:
+            argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, gateway-stop]
+          changed_when: false
+          when: inventory_hostname == "socrat-1"
+        - name: Wait for persistent queues on all four hosts
+          ansible.builtin.command:
+            argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, await-queued]
+          changed_when: false
+          timeout: 90
+        - name: Restart each native agent while the backend remains unavailable
+          ansible.builtin.command:
+            argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, agent-restart]
+          changed_when: false
+          register: native_restart
+        - name: Assemble only non-secret restart times and queue counts
+          ansible.builtin.set_fact:
+            native_restart_receipts: '{{ native_restart_receipts | default({}) | combine({item: (hostvars[item].native_restart.stdout | from_json)}) }}'
+          loop: [socrat-0, socrat-1, socrat-2, socrat-3]
+          run_once: true
+        - name: Supply native shadow verifier with restart boundaries
+          ansible.builtin.copy:
+            content: '{{ hostvars["socrat-0"].native_restart_receipts | to_nice_json }}'
+            dest: '{{ otel_host_metrics_directory }}/restarts.json'
+            mode: '0600'
+          when: inventory_hostname == "socrat-1"
+        - name: Restore native test gateway
+          ansible.builtin.command:
+            argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, gateway-start]
+          changed_when: false
+          when: inventory_hostname == "socrat-1"
+        - name: Require fresh healthy data again after restart
+          ansible.builtin.command:
+            argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, probe]
+          changed_when: false
+          timeout: 150
+          when: inventory_hostname == "socrat-1"
+        - name: Require acknowledged queue drain on all four hosts
+          ansible.builtin.command:
+            argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, await-drained]
+          changed_when: false
+          timeout: 90
+        - name: Verify raw pre-restart outage samples rather than lookback-interpolated values
+          ansible.builtin.command:
+            argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, outage-proof]
+          changed_when: false
+          when: inventory_hostname == "socrat-1"
+      always:
+        - name: Stop all native agents before stopping their shared test backend
+          ansible.builtin.command:
+            argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, agents-cleanup]
+          changed_when: false
+        - name: Stop gateway then shadow Prometheus only after the agent barrier
+          ansible.builtin.command:
+            argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, backend-cleanup]
+          changed_when: false
+          when: inventory_hostname == "socrat-1"
+        - name: Verify process termination and remove temporary client keys
+          ansible.builtin.command:
+            argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, cleanup]
+          changed_when: false
+        - name: Preserve every owned phase receipt without log bodies
+          ansible.builtin.shell: 'cat {{ otel_host_metrics_directory | quote }}/*-result.json'
+          changed_when: false
+          register: native_phase_receipts
+          no_log: true
+        - name: Save private counts and phase evidence on controller
+          ansible.builtin.copy:
+            content: '{{ native_phase_receipts.stdout }}'
+            dest: '{{ otel_host_metrics_artifacts }}/{{ inventory_hostname }}-all-phases.jsons'
+            mode: '0600'
+          delegate_to: localhost
+          become: false
+          no_log: true
+    - name: Account for pinned upstream persistent-queue shutdown replay
+      ansible.builtin.command:
+        argv: [python3, '{{ otel_host_metrics_directory }}/canary.py', --directory, '{{ otel_host_metrics_directory }}', --phase, journal-evidence]
+      changed_when: false
+      register: native_final_journal
+    - name: Reject unaccounted drops, storage failures and memory refusals
+      ansible.builtin.assert:
+        that:
+          - (native_final_journal.stdout | from_json).shutdownReplay.shutdownReplayAccounted
+          - (native_final_journal.stdout | from_json).rejections.memoryRefusals == 0
+          - (native_final_journal.stdout | from_json).rejections.failedScrapeCommits == 0
+    - name: Save accounted shutdown replay and physical queue measurements
+      ansible.builtin.copy:
+        content: '{{ native_final_journal.stdout }}'
+        dest: '{{ otel_host_metrics_artifacts }}/{{ inventory_hostname }}-journal-evidence.json'
+        mode: '0600'
+      delegate_to: localhost
+      become: false

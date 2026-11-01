@@ -1,0 +1,26 @@
+---
+- name: Enable native OTLP metrics on independent host agents after the cluster ownership switch
+  hosts: socrat-0:socrat-1:socrat-2:socrat-3
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - name: Require operator-authorized switch and already running native sources
+      ansible.builtin.command: systemctl is-active homelab-otel-node-exporter.service
+      changed_when: false
+    - name: Activate the full maintained native metrics and logs configuration
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/../../deploy/monitoring/otel/agent.yaml'
+        dest: /etc/homelab-otel/agent.yaml
+        mode: '0644'
+    - name: Switch only the independent agent to its native full pipeline
+      ansible.builtin.systemd_service:
+        name: homelab-otel-agent.service
+        state: restarted
+    - name: Require native host-agent process and health endpoint
+      ansible.builtin.command: curl --fail --silent http://127.0.0.1:13133/
+      register: agent_health
+      retries: 12
+      delay: 2
+      until: agent_health.rc == 0
+      changed_when: false

@@ -29,6 +29,9 @@ def rewrite_panels(panels):
 def render(resources):
     for resource in resources:
         apply_alert_descriptions(resource)
+        if isinstance(resource, dict) and resource.get("kind") == "PrometheusRule":
+            for group in resource.get("spec", {}).get("groups", []):
+                group["interval"] = "5s"
         if not isinstance(resource, dict) or resource.get("kind") != "ConfigMap":
             continue
         for key, value in resource.get("data", {}).items():

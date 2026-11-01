@@ -1,0 +1,98 @@
+extensions:
+  file_storage:
+    create_directory: true
+    directory: ${env:OTEL_STORAGE_DIR}/traces
+    fsync: true
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: ${env:OTEL_BIND_IP}:4317
+        max_recv_msg_size_mib: 8
+        tls:
+          cert_file: ${env:OTEL_TLS_DIR}/server.crt
+          key_file: ${env:OTEL_TLS_DIR}/server.key
+          client_ca_file: ${env:OTEL_TLS_DIR}/ca.crt
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 896
+    spike_limit_mib: 128
+  transform/privacy:
+    error_mode: propagate
+    trace_statements:
+      - context: resource
+        statements:
+          - delete_matching_keys(attributes, "(?i).*(authorization|password|secret|token|cookie|prompt|completion|request.body|response.body|gen_ai[.](input|output|system_instructions)|db[.](statement|query[.]text)|exception[.](message|stacktrace)).*")
+      - context: span
+        statements:
+          - set(status.message, "")
+          - delete_matching_keys(attributes, "(?i).*(authorization|password|secret|token|cookie|prompt|completion|request.body|response.body|gen_ai[.](input|output|system_instructions)|db[.](statement|query[.]text)|exception[.](message|stacktrace)).*")
+          - replace_pattern(attributes["url.full"], "\\?.*", "?<redacted>") where attributes["url.full"] != nil
+          - replace_pattern(attributes["http.url"], "\\?.*", "?<redacted>") where attributes["http.url"] != nil
+      - context: spanevent
+        statements:
+          - delete_matching_keys(attributes, "(?i).*(authorization|password|secret|token|cookie|prompt|completion|request.body|response.body|gen_ai[.](input|output|system_instructions)|db[.](statement|query[.]text)|exception[.](message|stacktrace)).*")
+  tail_sampling:
+    decision_wait: 30s
+    num_traces: 20000
+    expected_new_traces_per_sec: 100
+    policies:
+      - name: errors
+        type: status_code
+        status_code:
+          status_codes: [ERROR]
+      - name: http-5xx
+        type: numeric_attribute
+        numeric_attribute:
+          key: http.response.status_code
+          min_value: 500
+          max_value: 599
+      - name: legacy-http-5xx
+        type: numeric_attribute
+        numeric_attribute:
+          key: http.status_code
+          min_value: 500
+          max_value: 599
+      - name: slow
+        type: latency
+        latency:
+          threshold_ms: 2000
+      - name: other
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: 10
+  batch:
+    timeout: 1s
+    send_batch_size: 256
+    send_batch_max_size: 512
+exporters:
+  otlp/tempo:
+    endpoint: ${env:OTEL_TEMPO_ENDPOINT}
+    tls:
+      ca_file: ${env:OTEL_TLS_DIR}/ca.crt
+      cert_file: ${env:OTEL_TLS_DIR}/client.crt
+      key_file: ${env:OTEL_TLS_DIR}/client.key
+    sending_queue:
+      storage: file_storage
+      sizer: bytes
+      queue_size: 268435456
+      num_consumers: 2
+    retry_on_failure:
+      enabled: true
+      max_elapsed_time: 0s
+service:
+  extensions: [file_storage]
+  telemetry:
+    metrics:
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: ${env:OTEL_BIND_IP}
+                port: 8888
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, transform/privacy, tail_sampling, batch]
+      exporters: [otlp/tempo]

@@ -1,0 +1,155 @@
+extensions:
+  file_storage:
+    create_directory: true
+    directory: ${env:OTEL_STORAGE_DIR}/cluster
+    fsync: true
+  health_check:
+    endpoint: ${env:OTEL_BIND_IP}:13133
+receivers:
+  prometheus:
+    trim_metric_suffixes: false
+    config: ${file:${env:OTEL_SCRAPE_CONFIG}}
+  otlp:
+    protocols:
+      grpc:
+        endpoint: ${env:OTEL_BIND_IP}:4317
+        max_recv_msg_size_mib: 16
+        tls:
+          cert_file: ${env:OTEL_TLS_DIR}/server.crt
+          key_file: ${env:OTEL_TLS_DIR}/server.key
+          client_ca_file: ${env:OTEL_TLS_DIR}/ca.crt
+          reload_interval: 1m
+      http:
+        endpoint: ${env:OTEL_BIND_IP}:4318
+        tls:
+          cert_file: ${env:OTEL_TLS_DIR}/server.crt
+          key_file: ${env:OTEL_TLS_DIR}/server.key
+          client_ca_file: ${env:OTEL_TLS_DIR}/ca.crt
+          reload_interval: 1m
+processors:
+  filter/log-ingestion-cut:
+    error_mode: propagate
+    logs:
+      log_record:
+      - time_unix_nano == 0 or time_unix_nano < ${env:OTEL_LOG_INGESTION_START_NS}
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 896
+    spike_limit_mib: 192
+  batch/metrics:
+    timeout: 1s
+    send_batch_size: 1000
+    send_batch_max_size: 2000
+  batch/logs:
+    timeout: 1s
+    send_batch_size: 8
+    send_batch_max_size: 8
+  batch/traces:
+    timeout: 1s
+    send_batch_size: 256
+    send_batch_max_size: 512
+  transform/log-privacy:
+    error_mode: propagate
+    log_statements:
+    - context: resource
+      statements:
+      - delete_matching_keys(attributes, "(?i).*(authorization|password|secret|token|cookie|prompt|completion|request.body|response.body).*")
+    - context: log
+      statements:
+      - set(body, String(body)) where not IsString(body)
+      - delete_matching_keys(attributes, "(?i).*(authorization|password|secret|token|cookie|prompt|completion|request.body|response.body).*")
+      - replace_pattern(body, "(?i)Bearer[ \\t]+[A-Za-z0-9._~+/=-]+", "Bearer <redacted>")
+        where IsString(body)
+      - replace_pattern(body, "(?i)(password|secret|token|api[_-]?key|authorization)[\\\"'
+        \\t:=]+[^ \\t,;\\\"']+", "credential=<redacted>") where IsString(body)
+      - replace_pattern(body, "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}", "<redacted-email>")
+        where IsString(body)
+      - replace_pattern(body, "\\?[^ \\t\\\"]+", "?<redacted-query>") where IsString(body)
+exporters:
+  otlp_http/metrics:
+    endpoint: ${env:OTEL_METRICS_ENDPOINT}
+    compression: gzip
+    tls:
+      ca_file: ${env:OTEL_TLS_DIR}/ca.crt
+      cert_file: ${env:OTEL_TLS_DIR}/client.crt
+      key_file: ${env:OTEL_TLS_DIR}/client.key
+      reload_interval: 1m
+    sending_queue:
+      storage: file_storage
+      sizer: bytes
+      queue_size: 268435456
+      num_consumers: 2
+    retry_on_failure:
+      enabled: true
+      max_elapsed_time: 0s
+  otlp_http/loki:
+    endpoint: ${env:OTEL_LOKI_ENDPOINT}
+    compression: gzip
+    tls:
+      ca_file: ${env:OTEL_TLS_DIR}/ca.crt
+      cert_file: ${env:OTEL_TLS_DIR}/client.crt
+      key_file: ${env:OTEL_TLS_DIR}/client.key
+      reload_interval: 1m
+    sending_queue:
+      storage: file_storage
+      sizer: bytes
+      queue_size: 268435456
+      num_consumers: 2
+    retry_on_failure:
+      enabled: true
+      max_elapsed_time: 0s
+  otlp/traces:
+    endpoint: ${env:OTEL_TRACE_GATEWAY_ENDPOINT}
+    tls:
+      ca_file: ${env:OTEL_TLS_DIR}/ca.crt
+      cert_file: ${env:OTEL_TLS_DIR}/client.crt
+      key_file: ${env:OTEL_TLS_DIR}/client.key
+      reload_interval: 1m
+    sending_queue:
+      storage: file_storage
+      sizer: bytes
+      queue_size: 268435456
+      num_consumers: 2
+    retry_on_failure:
+      enabled: true
+      max_elapsed_time: 0s
+service:
+  extensions:
+  - file_storage
+  - health_check
+  telemetry:
+    metrics:
+      readers:
+      - pull:
+          exporter:
+            prometheus:
+              host: ${env:OTEL_BIND_IP}
+              port: 8888
+  pipelines:
+    metrics:
+      receivers:
+      - prometheus
+      - otlp
+      processors:
+      - memory_limiter
+      - batch/metrics
+      exporters:
+      - otlp_http/metrics
+    logs:
+      receivers:
+      - otlp
+      processors:
+      - memory_limiter
+      - filter/log-ingestion-cut
+      - transform/log-privacy
+      - batch/logs
+      exporters:
+      - otlp_http/loki
+    traces:
+      receivers:
+      - otlp
+      processors:
+      - memory_limiter
+      - batch/traces
+      exporters:
+      - otlp/traces

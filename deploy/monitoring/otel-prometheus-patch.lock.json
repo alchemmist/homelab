@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "scope": "validation-only patch comparison; not a production upgrade",
+  "images": {
+    "validationPrometheus": {
+      "repository": "docker.io/prom/prometheus",
+      "version": "v3.15.1-distroless",
+      "indexDigest": "sha256:451a845bae1d51622b41af1780eb2ad911bbb79a9855bc8e9bb67fabbc03f934",
+      "linuxAMD64Digest": "sha256:654d8f0008e660c00203e0b94938ec7b804e35b5772641d6416c20fff7684ee9",
+      "image": "docker.io/prom/prometheus@sha256:451a845bae1d51622b41af1780eb2ad911bbb79a9855bc8e9bb67fabbc03f934"
+    }
+  }
+}

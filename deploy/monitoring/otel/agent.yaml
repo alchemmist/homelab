@@ -1,0 +1,89 @@
+extensions:
+  file_storage:
+    create_directory: true
+    directory: ${env:OTEL_STORAGE_DIR}/agent
+    fsync: true
+  health_check:
+    endpoint: 127.0.0.1:13133
+receivers:
+  prometheus:
+    trim_metric_suffixes: false
+    config: ${file:${env:OTEL_SCRAPE_CONFIG}}
+  filelog:
+    include: [/var/log/pods/*/*/*.log]
+    exclude: [/var/log/pods/*_otel-*_*/*/*.log]
+    start_at: beginning
+    storage: file_storage
+    include_file_path: true
+    max_log_size: 1MiB
+    operators:
+      - type: container
+        id: container-parser
+  journald:
+    storage: file_storage
+    start_at: end
+processors:
+  filter/log-ingestion-cut:
+    error_mode: propagate
+    logs:
+      log_record:
+        - 'time_unix_nano == 0 or time_unix_nano < ${env:OTEL_LOG_INGESTION_START_NS}'
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 208
+    spike_limit_mib: 48
+  resource:
+    attributes:
+      - key: host.name
+        action: upsert
+        value: ${env:OTEL_NODE_NAME}
+  transform/journal:
+    error_mode: propagate
+    log_statements:
+      - context: log
+        statements:
+          - set(resource.attributes["service.name"], body["_SYSTEMD_UNIT"]) where IsMap(body) and body["_SYSTEMD_UNIT"] != nil
+          - set(body, body["MESSAGE"]) where IsMap(body) and body["MESSAGE"] != nil
+  batch/metrics:
+    timeout: 1s
+    send_batch_size: 1000
+    send_batch_max_size: 2000
+  batch/logs:
+    timeout: 1s
+    send_batch_size: 8
+    send_batch_max_size: 8
+exporters:
+  otlp:
+    endpoint: ${env:OTEL_CLUSTER_ENDPOINT}
+    tls:
+      ca_file: ${env:OTEL_TLS_DIR}/ca.crt
+      cert_file: ${env:OTEL_TLS_DIR}/client.crt
+      key_file: ${env:OTEL_TLS_DIR}/client.key
+      server_name_override: ${env:OTEL_CLUSTER_TLS_NAME}
+    sending_queue:
+      storage: file_storage
+      sizer: bytes
+      queue_size: 134217728
+      num_consumers: 2
+    retry_on_failure:
+      enabled: true
+      max_elapsed_time: 0s
+service:
+  extensions: [file_storage, health_check]
+  telemetry:
+    metrics:
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: 127.0.0.1
+                port: 8888
+  pipelines:
+    metrics:
+      receivers: [prometheus]
+      processors: [memory_limiter, resource, batch/metrics]
+      exporters: [otlp]
+    logs:
+      receivers: [filelog, journald]
+      processors: [memory_limiter, filter/log-ingestion-cut, resource, transform/journal, batch/logs]
+      exporters: [otlp]

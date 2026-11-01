@@ -38,8 +38,6 @@ def claim_name(volumes):
 def decide(desired_node, current_node, relocate):
     if current_node in (None, '', desired_node):
         return 'proceed'
-    if desired_node == 'socrat-0' and current_node == 'socrat-1':
-        return 'relocate' if relocate else 'refuse'
     return 'refuse'
 
 

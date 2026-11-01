@@ -163,30 +163,39 @@
 
 - name: Refuse to retarget Prometheus while its volume is still on socrat-1
   ansible.builtin.fail:
-    msg: Rerun with -e monitoring_prometheus_relocate=true. That deletes only the Prometheus TSDB PVC and the current 30-second history. Grafana and Alertmanager volumes stay on socrat-1.
+    msg: Prometheus storage cannot be relocated by deleting its PVC. Preserve the existing volume and use a separately verified backup and restore procedure.
   when: monitoring_prometheus_action == 'refuse'
 
-- name: Require the Thanos raw bucket before deleting the Prometheus volume
+- name: Read current native production ownership before any Helm reconciliation
   ansible.builtin.command:
-    argv: ["{{ monitoring_k3s_binary }}", kubectl, --kubeconfig, "{{ monitoring_kubeconfig }}", -n, "{{ monitoring_namespace }}", get, "{{ item }}"]
-  loop:
-    - secret/thanos-objstore-raw
-    - deployment/thanos-query
-  when: monitoring_prometheus_action == 'relocate'
+    argv: ["{{ monitoring_k3s_binary }}", kubectl, --kubeconfig, "{{ monitoring_kubeconfig }}", -n, "{{ monitoring_namespace }}", get, prometheus, "{{ monitoring_release }}-prometheus", --ignore-not-found, -o, json]
+  register: monitoring_native_owner
   changed_when: false
 
-- name: Require the raw Thanos directory before deleting the Prometheus volume
-  ansible.builtin.stat:
-    path: /var/lib/socrat-thanos
-  register: monitoring_thanos_raw_directory
-  when: monitoring_prometheus_action == 'relocate'
+- name: Preserve an already switched native OTLP deployment
+  ansible.builtin.set_fact:
+    monitoring_native_production: "{{ ((monitoring_native_owner.stdout | default('{}', true) | from_json).get('spec', {}).get('enableOTLPReceiver', false)) and ((monitoring_native_owner.stdout | default('{}', true) | from_json).get('spec', {}).get('listenLocal', false)) }}"
 
-- name: Stop if the raw Thanos directory is missing
-  ansible.builtin.assert:
-    that:
-      - monitoring_thanos_raw_directory.stat.isdir | default(false)
-    fail_msg: /var/lib/socrat-thanos must exist on socrat-0 before the Prometheus volume is deleted.
-  when: monitoring_prometheus_action == 'relocate'
+- name: Copy production native ownership overlay without reverting source collection
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../deploy/monitoring/otel-production-values.yaml"
+    dest: "{{ monitoring_directory }}/native-otlp-values.yaml"
+    mode: '0600'
+  when: monitoring_native_production | bool
+
+- name: Maintain dedicated application client PKI after native bootstrap
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../deploy/monitoring/otel-application-pki.yaml"
+    dest: "{{ monitoring_directory }}/application-client-pki.yaml"
+    mode: '0600'
+  when: monitoring_native_production | bool
+
+- name: Reconcile client-only leaves and narrowly scoped reader without SDK rollout
+  ansible.builtin.command:
+    argv: ["{{ monitoring_k3s_binary }}", kubectl, --kubeconfig, "{{ monitoring_kubeconfig }}", apply, -f, "{{ monitoring_directory }}/application-client-pki.yaml"]
+  register: monitoring_application_pki_apply
+  changed_when: "'created' in monitoring_application_pki_apply.stdout or 'configured' in monitoring_application_pki_apply.stdout"
+  when: monitoring_native_production | bool
 
 - name: Detect activated Authentik Grafana integration without reading credentials
   ansible.builtin.command:
@@ -220,33 +229,17 @@
       - --values
       - "{{ monitoring_directory }}/values.yaml"
       - --values
-      - "{{ monitoring_directory }}/{{ 'identity-oidc-values.yaml' if monitoring_identity_oidc.stdout | trim | length > 0 else 'values.yaml' }}"
+      - "{{ monitoring_directory }}/{{ 'native-otlp-values.yaml' if monitoring_native_production | bool else 'values.yaml' }}"
+      - --values
+      - "{{ monitoring_directory }}/{{ 'identity-oidc-values.yaml' if monitoring_identity_oidc.stdout | trim | length > 0 else ('native-otlp-values.yaml' if monitoring_native_production | bool else 'values.yaml') }}"
       - --post-renderer
       - "{{ monitoring_directory }}/stable_node_series.py"
-      - "{{ '--wait=false' if monitoring_prometheus_action == 'relocate' else ('--wait' if monitoring_wait_for_daemonsets | bool else '--wait=false') }}"
+      - "{{ '--wait' if monitoring_wait_for_daemonsets | bool else '--wait=false' }}"
       - --timeout
       - 12m
       - --history-max
       - '5'
   register: monitoring_helm_install
-  changed_when: true
-
-- name: Delete the Prometheus pod that is still attached to socrat-1
-  ansible.builtin.command:
-    argv: ["{{ monitoring_k3s_binary }}", kubectl, --kubeconfig, "{{ monitoring_kubeconfig }}", -n, "{{ monitoring_namespace }}", delete, pod, prometheus-kube-prometheus-stack-prometheus-0, --ignore-not-found, --wait=true, --timeout=180s]
-  when: monitoring_prometheus_action == 'relocate'
-  changed_when: true
-
-- name: Delete only the Prometheus TSDB claim bound to socrat-1
-  ansible.builtin.command:
-    argv: ["{{ monitoring_k3s_binary }}", kubectl, --kubeconfig, "{{ monitoring_kubeconfig }}", -n, "{{ monitoring_namespace }}", delete, pvc, "{{ monitoring_prometheus_claim }}", --wait=true, --timeout=180s]
-  when: monitoring_prometheus_action == 'relocate' and monitoring_prometheus_claim | length > 0
-  changed_when: true
-
-- name: Recreate Prometheus so the new claim binds on socrat-0
-  ansible.builtin.command:
-    argv: ["{{ monitoring_k3s_binary }}", kubectl, --kubeconfig, "{{ monitoring_kubeconfig }}", -n, "{{ monitoring_namespace }}", delete, pod, prometheus-kube-prometheus-stack-prometheus-0, --ignore-not-found, --wait=true, --timeout=180s]
-  when: monitoring_prometheus_action == 'relocate'
   changed_when: true
 
 - name: Discover monitoring workloads

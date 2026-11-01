@@ -1,0 +1,163 @@
+---
+- name: Install persistent native host agents and trace gateway
+  hosts: socrat-0:socrat-1:socrat-2:socrat-3
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  vars:
+    native_files: [ca.crt, client.crt, client.key, server.crt, server.key]
+  tasks:
+    - name: Prepare immutable upstream executable and configuration locations
+      ansible.builtin.file:
+        path: '{{ item }}'
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      loop: [/usr/local/lib/homelab-otel, /etc/homelab-otel]
+    - name: Install hash-verified stock Collector executable
+      ansible.builtin.unarchive:
+        src: '{{ otel_production_artifacts }}/agent.tar.gz'
+        dest: /usr/local/lib/homelab-otel
+        owner: root
+        group: root
+        mode: '0755'
+    - name: Verify upstream binary identity
+      ansible.builtin.command: sha256sum /usr/local/lib/homelab-otel/otelcol-contrib
+      register: collector_hash
+      failed_when: "'57911a9d902cfe2c287dac09fcee4b054630b4ec248fa190a3115d860a32f81f' not in collector_hash.stdout"
+      changed_when: false
+    - name: Install already independently verified stock host exporter
+      ansible.builtin.command: install -m 0755 -o root -g root /var/tmp/otel-host-source-canary-20261030T1645/node_exporter /usr/local/lib/homelab-otel/node_exporter
+      changed_when: false
+    - name: Verify immutable native exporter identity after copy
+      ansible.builtin.command: sha256sum /usr/local/lib/homelab-otel/node_exporter
+      register: exporter_hash
+      failed_when: "'1108f7453ecfe4a72f131c73b69537c171840ad4f1713a2402328ad56cf12e09' not in exporter_hash.stdout"
+      changed_when: false
+    - name: Install full native logs pipeline with metrics initially unowned
+      ansible.builtin.copy:
+        src: '{{ otel_production_artifacts }}/{{ inventory_hostname }}-agent.yaml'
+        dest: /etc/homelab-otel/agent.yaml
+        mode: '0644'
+    - name: Install frozen alias source for independent exporter
+      ansible.builtin.copy:
+        src: '{{ otel_production_bundle }}/{{ inventory_hostname }}.yaml'
+        dest: /etc/homelab-otel/scrape.yaml
+        mode: '0644'
+    - name: Install persistent independent host exporter
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/homelab-otel-node-exporter.service
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Stock independent native host metric source
+          After=network.target
+          [Service]
+          User=65534
+          Group=65534
+          Environment=DBUS_SYSTEM_BUS_ADDRESS=unix:path=/run/dbus/system_bus_socket
+          Environment=TZ=UTC
+          BindReadOnlyPaths=/var/lib/node_exporter/textfile_collector:/host/root/var/lib/node_exporter/textfile_collector
+          ExecStart=/usr/local/lib/homelab-otel/node_exporter --web.listen-address=127.0.0.1:19100 --path.procfs=/proc --path.sysfs=/sys --path.rootfs=/ --path.udev.data=/run/udev/data --collector.textfile.directory=/host/root/var/lib/node_exporter/textfile_collector --collector.systemd --collector.systemd.enable-restarts-metrics
+          MemoryMax=67108864
+          MemorySwapMax=0
+          NoNewPrivileges=yes
+          Restart=on-failure
+          RestartSec=5
+          [Install]
+          WantedBy=multi-user.target
+    - name: Install persistent native full host agent
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/homelab-otel-agent.service
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Native OTLP host metrics and logs agent
+          After=network-online.target homelab-otel-node-exporter.service
+          Wants=network-online.target homelab-otel-node-exporter.service
+          [Service]
+          StateDirectory=homelab-otel-agent
+          StateDirectoryMode=0700
+          Environment=OTEL_NODE_NAME={{ inventory_hostname }}
+          Environment=OTEL_STORAGE_DIR=/var/lib/homelab-otel-agent
+          Environment=OTEL_TLS_DIR=%d
+          Environment=OTEL_SCRAPE_CONFIG=/etc/homelab-otel/scrape.yaml
+          Environment=OTEL_CLUSTER_ENDPOINT=10.250.0.1:4317
+          Environment=OTEL_CLUSTER_TLS_NAME=kube-prometheus-stack-prometheus.cattle-monitoring-system.svc
+          Environment=OTEL_LOG_INGESTION_START_NS={{ otel_production_boundary }}
+          Environment=GOMEMLIMIT=192MiB
+          Environment=GOMAXPROCS=2
+          {% for file in native_files %}
+          LoadCredential={{ file }}:/var/lib/homelab-otel/tls/{{ file }}
+          {% endfor %}
+          ExecStart=/usr/local/lib/homelab-otel/otelcol-contrib --config=/etc/homelab-otel/agent.yaml
+          Restart=on-failure
+          RestartSec=5
+          TimeoutStopSec=90
+          MemoryMax=268435456
+          MemorySwapMax=0
+          NoNewPrivileges=yes
+          ProtectSystem=strict
+          ProtectHome=yes
+          PrivateTmp=yes
+          UMask=0077
+          [Install]
+          WantedBy=multi-user.target
+    - name: Enable production native sources and full logs agent
+      ansible.builtin.systemd_service:
+        name: '{{ item }}'
+        daemon_reload: true
+        enabled: true
+        state: started
+      loop: [homelab-otel-node-exporter.service, homelab-otel-agent.service]
+    - name: Install trace gateway configuration on its planned host
+      ansible.builtin.copy:
+        src: '{{ otel_production_artifacts }}/trace.yaml'
+        dest: /etc/homelab-otel/traces.yaml
+        mode: '0644'
+      when: inventory_hostname == 'socrat-0'
+    - name: Install native tail sampling gateway
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/homelab-otel-traces.service
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Native OTel privacy and tail sampling gateway
+          After=network-online.target
+          Wants=network-online.target
+          [Service]
+          DynamicUser=yes
+          StateDirectory=homelab-otel-traces
+          StateDirectoryMode=0700
+          Environment=OTEL_BIND_IP=10.250.0.1
+          Environment=OTEL_STORAGE_DIR=/var/lib/homelab-otel-traces
+          Environment=OTEL_TLS_DIR=%d
+          Environment=OTEL_TEMPO_ENDPOINT=10.250.0.3:4317
+          Environment=GOMEMLIMIT=768MiB
+          Environment=GOMAXPROCS=2
+          {% for file in native_files %}
+          LoadCredential={{ file }}:/var/lib/homelab-otel/tls/{{ file }}
+          {% endfor %}
+          ExecStart=/usr/local/lib/homelab-otel/otelcol-contrib --config=/etc/homelab-otel/traces.yaml
+          Restart=on-failure
+          RestartSec=5
+          TimeoutStopSec=90
+          MemoryMax=1073741824
+          MemorySwapMax=0
+          NoNewPrivileges=yes
+          ProtectSystem=strict
+          ProtectHome=yes
+          PrivateTmp=yes
+          PrivateDevices=yes
+          UMask=0077
+          [Install]
+          WantedBy=multi-user.target
+      when: inventory_hostname == 'socrat-0'
+    - name: Enable native trace gateway
+      ansible.builtin.systemd_service:
+        name: homelab-otel-traces.service
+        daemon_reload: true
+        enabled: true
+        state: started
+      when: inventory_hostname == 'socrat-0'

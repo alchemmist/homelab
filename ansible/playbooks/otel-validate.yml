@@ -1,0 +1,142 @@
+---
+- name: Validate pinned observability binaries without starting services
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  vars:
+    otel_validation_cache: /home/alchemmist/.cache/homelab-otel-validation
+    otel_validation_environment:
+      OTEL_TLS_DIR: "{{ otel_validation_cache }}/tls"
+      OTEL_STORAGE_DIR: "{{ otel_validation_cache }}/state"
+      OTEL_VALIDATION_ASSET_DIR: "{{ otel_validation_cache }}/assets"
+      OTEL_SCRAPE_CONFIG: "{{ otel_validation_cache }}/scrape.yaml"
+      OTEL_NODE_NAME: socrat-0
+      OTEL_BIND_IP: 127.0.0.1
+      OTEL_LOG_INGESTION_START_NS: "1793220000000000000"
+      OTEL_CLUSTER_ENDPOINT: 127.0.0.1:4317
+      OTEL_CLUSTER_TLS_NAME: otel-validation.local
+      OTEL_METRICS_ENDPOINT: https://otel-metrics-shadow.cattle-monitoring-system.svc.cluster.local:9443/api/v1/otlp
+      OTEL_LOKI_ENDPOINT: https://otel-loki.cattle-monitoring-system.svc.cluster.local:3100/otlp
+      OTEL_TRACE_GATEWAY_ENDPOINT: otel-trace-gateway.cattle-monitoring-system.svc.cluster.local:4317
+      OTEL_TEMPO_ENDPOINT: otel-tempo.cattle-monitoring-system.svc.cluster.local:4317
+  tasks:
+    - name: Require explicit verified binaries and validation-only TLS
+      ansible.builtin.assert:
+        that:
+          - otel_validation_binaries is defined
+          - otel_validation_tls is defined
+          - otel_validation_binaries.startswith('/tmp/otel-validation-binaries-')
+          - otel_validation_tls.startswith('/tmp/otel-validation-tls-')
+
+    - name: Prepare private validation directories
+      ansible.builtin.file:
+        path: "{{ otel_validation_cache }}/{{ item }}"
+        state: directory
+        mode: "0700"
+      loop: ['', bin, tls, config, state, assets]
+
+    - name: Copy pinned Linux validation binaries
+      ansible.builtin.copy:
+        src: "{{ otel_validation_binaries }}/{{ item }}"
+        dest: "{{ otel_validation_cache }}/bin/{{ item }}"
+        mode: "0700"
+      loop: [otelcol-contrib, loki, tempo]
+
+    - name: Copy validation-only certificates without the CA private key
+      ansible.builtin.copy:
+        src: "{{ otel_validation_tls }}/{{ item }}"
+        dest: "{{ otel_validation_cache }}/tls/{{ item }}"
+        mode: "0600"
+      loop: [ca.crt, server.crt, server.key, client.crt, client.key]
+      no_log: true
+
+    - name: Copy candidate configurations
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../deploy/monitoring/otel/{{ item }}.yaml"
+        dest: "{{ otel_validation_cache }}/config/{{ item }}.yaml"
+        mode: "0600"
+      loop: [agent, cluster, trace-gateway, loki, tempo]
+
+    - name: Supply an inert authentication fixture without real API credentials
+      ansible.builtin.copy:
+        content: "validation-only-not-a-real-token\n"
+        dest: "{{ otel_validation_cache }}/assets/token"
+        mode: "0600"
+
+    - name: Supply inert discovery for schema validation without starting a scraper
+      ansible.builtin.copy:
+        content: "global:\n  scrape_interval: 5s\n  scrape_timeout: 4s\nscrape_configs:\n  - job_name: validation-only\n    static_configs:\n      - targets: [127.0.0.1:1]\n"
+        dest: "{{ otel_validation_cache }}/scrape.yaml"
+        mode: "0600"
+
+    - name: Validate Collector configurations without running pipelines
+      ansible.builtin.command:
+        argv:
+          - "{{ otel_validation_cache }}/bin/otelcol-contrib"
+          - validate
+          - "--config={{ otel_validation_cache }}/config/{{ item }}.yaml"
+      environment: "{{ otel_validation_environment }}"
+      loop: [agent, cluster, trace-gateway]
+      changed_when: false
+
+    - name: Validate Loki configuration without starting the backend
+      ansible.builtin.command:
+        argv:
+          - "{{ otel_validation_cache }}/bin/loki"
+          - "-config.file={{ otel_validation_cache }}/config/loki.yaml"
+          - -config.expand-env=true
+          - -verify-config=true
+      environment: "{{ otel_validation_environment }}"
+      changed_when: false
+
+    - name: Validate Tempo configuration without starting the backend
+      ansible.builtin.command:
+        argv:
+          - "{{ otel_validation_cache }}/bin/tempo"
+          - "-config.file={{ otel_validation_cache }}/config/tempo.yaml"
+          - -config.expand-env=true
+          - -config.verify=true
+      environment: "{{ otel_validation_environment }}"
+      changed_when: false
+
+    - name: Inspect Tempo validation options
+      ansible.builtin.command:
+        argv: ["{{ otel_validation_cache }}/bin/tempo", '-help']
+      changed_when: false
+      register: otel_tempo_options
+      failed_when: otel_tempo_options.rc not in [0, 2]
+      no_log: true
+
+    - name: Save public Tempo help for validation inspection
+      ansible.builtin.copy:
+        content: "{{ otel_tempo_options.stdout }}\n{{ otel_tempo_options.stderr }}\n"
+        dest: "{{ otel_validation_cache }}/tempo-help.txt"
+        mode: "0600"
+
+    - name: Require a private explicit effective-config bundle
+      ansible.builtin.assert:
+        that:
+          - otel_validation_scrape_bundle.startswith('/tmp/otel-scrape-bundle-')
+      when: otel_validation_scrape_bundle is defined
+
+    - name: Copy effective scrape configurations for schema checks
+      ansible.builtin.copy:
+        src: "{{ otel_validation_scrape_bundle }}/validation-{{ item }}.yaml"
+        dest: "{{ otel_validation_cache }}/config/scrape-{{ item }}.yaml"
+        mode: "0600"
+      loop: [cluster, socrat-0, socrat-1, socrat-2, socrat-3]
+      when: otel_validation_scrape_bundle is defined
+      no_log: true
+
+    - name: Validate effective source grammar using inert auth and CA fixtures
+      ansible.builtin.command:
+        argv:
+          - "{{ otel_validation_cache }}/bin/otelcol-contrib"
+          - validate
+          - "--config={{ otel_validation_cache }}/config/{{ 'cluster' if item == 'cluster' else 'agent' }}.yaml"
+      environment: "{{ otel_validation_environment | combine({'OTEL_SCRAPE_CONFIG': otel_validation_cache + '/config/scrape-' + item + '.yaml'}) }}"
+      loop: [cluster, socrat-0, socrat-1, socrat-2, socrat-3]
+      when: otel_validation_scrape_bundle is defined
+      changed_when: false
+      no_log: true

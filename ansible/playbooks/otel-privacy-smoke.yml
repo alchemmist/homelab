@@ -1,0 +1,99 @@
+---
+- name: Test synthetic OTLP log privacy in an isolated network namespace
+  hosts: socrat-0
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  vars:
+    otel_smoke_stage: /var/tmp/otel-privacy-smoke-20261029
+  tasks:
+    - name: Require explicit validation artifacts
+      ansible.builtin.assert:
+        that:
+          - otel_validation_binaries is defined
+          - otel_validation_tls is defined
+          - otel_validation_binaries.startswith('/tmp/otel-validation-binaries-')
+          - otel_validation_tls.startswith('/tmp/otel-validation-tls-')
+          - otel_smoke_stage.startswith('/var/tmp/otel-privacy-smoke-')
+
+    - name: Assign a unique run without overwriting earlier smoke artifacts
+      ansible.builtin.set_fact:
+        otel_smoke_run_suffix: "{{ now(utc=true, fmt='%Y%m%dT%H%M%S%fZ') }}"
+
+    - name: Prepare root-owned private staging
+      ansible.builtin.file:
+        path: "{{ otel_smoke_stage }}/{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+      loop: ['', tls]
+
+    - name: Copy the pinned Collector to root-owned staging
+      ansible.builtin.copy:
+        src: "{{ otel_validation_binaries }}/otelcol-contrib"
+        dest: "{{ otel_smoke_stage }}/otelcol-contrib"
+        owner: root
+        group: root
+        mode: "0700"
+
+    - name: Copy validation-only TLS without the CA private key
+      ansible.builtin.copy:
+        src: "{{ otel_validation_tls }}/{{ item }}"
+        dest: "{{ otel_smoke_stage }}/tls/{{ item }}"
+        owner: root
+        group: root
+        mode: "0600"
+      loop: [ca.crt, server.crt, server.key, client.crt, client.key]
+      no_log: true
+
+    - name: Render candidate configuration as JSON for the isolated test
+      ansible.builtin.copy:
+        content: "{{ lookup('ansible.builtin.file', playbook_dir + '/../../deploy/monitoring/otel/cluster.yaml') | from_yaml | to_nice_json }}\n"
+        dest: "{{ otel_smoke_stage }}/source.json"
+        owner: root
+        group: root
+        mode: "0600"
+
+    - name: Copy the synthetic-only smoke driver
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../scripts/otel-privacy-smoke.py"
+        dest: "{{ otel_smoke_stage }}/smoke.py"
+        owner: root
+        group: root
+        mode: "0600"
+
+    - name: Run transient Collector with loopback-only isolated networking
+      ansible.builtin.command:
+        argv:
+          - unshare
+          - --net
+          - --
+          - sh
+          - -ec
+          - 'ip link set lo up; exec python3 "$@"'
+          - otel-privacy-smoke
+          - "{{ otel_smoke_stage }}/smoke.py"
+          - --binary
+          - "{{ otel_smoke_stage }}/otelcol-contrib"
+          - --config
+          - "{{ otel_smoke_stage }}/source.json"
+          - --tls
+          - "{{ otel_smoke_stage }}/tls"
+          - --workspace
+          - "{{ otel_smoke_stage }}/run-{{ otel_smoke_run_suffix }}"
+      changed_when: false
+      timeout: 120
+      register: otel_privacy_smoke
+
+    - name: Report synthetic-only test results
+      ansible.builtin.debug:
+        msg: "{{ otel_privacy_smoke.stdout | from_json }}"
+
+    - name: Save synthetic-only result metadata on the controller
+      ansible.builtin.copy:
+        content: "{{ otel_privacy_smoke.stdout }}\n"
+        dest: /tmp/otel-privacy-smoke-result-20261029.json
+        mode: "0600"
+      delegate_to: localhost
+      become: false

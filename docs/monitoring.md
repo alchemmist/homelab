@@ -4,6 +4,10 @@ The first phase installs `kube-prometheus-stack` in `cattle-monitoring-system`: 
 
 Prometheus runs on socrat-0 and scrapes every 5 seconds. Grafana, Alertmanager and their supporting controllers stay on socrat-1. Node-exporter runs on every node. Dashboards keep the datasource uid `prometheus`, and that datasource reads Thanos Query. Alerts are still evaluated by the local Prometheus. Rancher integration and the private Grafana gateway share this stack; they do not create a second Prometheus.
 
+## OpenTelemetry migration
+
+The migration is currently blocked at its live capacity gate; production collection and the Thanos cascade remain unchanged. See [implementation status, safety guards and reproducible preflight](opentelemetry-migration.md).
+
 ## Container resource budgets
 
 `ansible/playbooks/container-resources.yml` manages measured per-workload requests and selective CPU limits through the native `socrat-container-resource-defaults` admission policy. The authoritative catalog is `ansible/vars/container-resources.yml`; see [resource budgets](resource-budgets.md) for measurements, per-container values, capacity checks, rollout and rollback.
@@ -29,7 +33,7 @@ Local-path PVC sizes do not enforce filesystem quotas. At about 150 thousand ser
 
 The Grafana datasource uid `prometheus` points at Thanos Query on socrat-1. Dashboard JSON is not rewritten. Alerts are evaluated by Prometheus on socrat-0 and sent to Alertmanager on socrat-1. If socrat-0 is down, fresh samples and alert evaluation stop with it; Grafana stays up. If socrat-3 is offline, graphs lose only hourly blocks that have already moved there. Alertmanager's receiver discards notifications intentionally; delivery is not configured yet.
 
-Moving Prometheus off socrat-1 deletes its current TSDB and does not copy the old 30-second history into Thanos. Run `ansible-playbook playbooks/monitoring.yml -e monitoring_prometheus_relocate=true` from `ansible/`. Without that flag the stack role refuses the upgrade while the Prometheus volume is still on socrat-1. Grafana and Alertmanager claims are not deleted.
+Prometheus relocation is refused even with the legacy `monitoring_prometheus_relocate=true` flag. Monitoring playbooks never delete its PVC to relocate storage. Use a separately verified backup/restore procedure; Grafana, Alertmanager and Thanos history are preserved. Retired Thanos directories and secrets are not automatically deleted by routine deployments.
 
 ## Metrics and access
 

@@ -6,7 +6,7 @@ STATUS_SLUG = 'socrat'
 SERVICES = {
     'Socrat core': [
         ('Grafana', 'http://kube-prometheus-stack-grafana.cattle-monitoring-system.svc.cluster.local/api/health'),
-        ('Prometheus', 'http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090/-/ready'),
+        ('Prometheus', 'http://kube-prometheus-stack-thanos-discovery.cattle-monitoring-system.svc.cluster.local:10902/-/ready'),
         ('Alertmanager', 'http://kube-prometheus-stack-alertmanager.cattle-monitoring-system.svc.cluster.local:9093/-/ready'),
         ('Grafana MCP', 'http://monitoring-grafana-mcp-health.cattle-monitoring-system.svc.cluster.local:8080/healthz'),
     ],

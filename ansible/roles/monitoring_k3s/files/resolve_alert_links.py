@@ -8,7 +8,7 @@ import tempfile
 import time
 from urllib.parse import quote, urlencode
 
-PROMETHEUS_PATH = '/api/v1/namespaces/cattle-monitoring-system/services/http:kube-prometheus-stack-prometheus:9090/proxy/api/v1/rules'
+PROMETHEUS_PATH = '/api/v1/namespaces/cattle-monitoring-system/services/http:thanos-query:9090/proxy/api/v1/rules'
 RULE_RESOURCES_PATH = '/apis/monitoring.coreos.com/v1/namespaces/cattle-monitoring-system/prometheusrules'
 FORMAT_QUERY_PATH = PROMETHEUS_PATH.rsplit('/', 1)[0] + '/format_query'
 GRAFANA_PATH = '/api/v1/namespaces/cattle-monitoring-system/services/http:kube-prometheus-stack-grafana:80/proxy/api/frontend/settings'
@@ -142,6 +142,14 @@ def require_convergence(response, expected):
 
 
 def fetch(path):
+    if '/format_query?' in path:
+        from urllib.parse import parse_qs, urlsplit
+        expression = parse_qs(urlsplit(path).query)['query'][0]
+        result = subprocess.run(['k3s', 'kubectl', '--kubeconfig', '/etc/rancher/k3s/k3s.yaml',
+            '-n', 'cattle-monitoring-system', 'exec', 'prometheus-kube-prometheus-stack-prometheus-0',
+            '-c', 'prometheus', '--', '/bin/promtool', '--experimental', 'promql', 'format', expression],
+            env=dict(os.environ, K3S_CONFIG_FILE='/dev/null'), capture_output=True, text=True, check=True, timeout=25)
+        return {'status': 'success', 'data': result.stdout.strip()}
     env = dict(os.environ, K3S_CONFIG_FILE='/dev/null')
     completed = subprocess.run(['k3s', 'kubectl', '--kubeconfig', '/etc/rancher/k3s/k3s.yaml', 'get', '--raw', path, '--request-timeout=20s'], env=env, capture_output=True, text=True, check=True, timeout=25)
     return json.loads(completed.stdout)

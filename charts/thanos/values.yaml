@@ -40,7 +40,6 @@ components:
       - store
       - --objstore.config-file=/etc/thanos/objstore.yml
       - --data-dir=/var/thanos/store
-      - --max-time=-12h
       - --consistency-delay=30m
       - --ignore-deletion-marks-delay=1h
       - --http-address=0.0.0.0:10902

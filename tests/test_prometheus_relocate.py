@@ -36,13 +36,22 @@ class RelocateTests(unittest.TestCase):
         decision = RELOCATE.evaluate({'desired': 'socrat-0', 'relocate': False, 'pods': [pod('socrat-0')], 'volumes': []})
         self.assertEqual(decision['action'], 'proceed')
 
-    def test_socrat_1_volume_is_refused_until_the_flag_is_set(self):
+    def test_socrat_1_volume_is_refused_even_with_the_legacy_flag(self):
         payload = {'desired': 'socrat-0', 'relocate': False, 'pods': [], 'volumes': [volume('socrat-1')]}
         self.assertEqual(RELOCATE.evaluate(payload)['action'], 'refuse')
         payload['relocate'] = True
         decision = RELOCATE.evaluate(payload)
-        self.assertEqual(decision['action'], 'relocate')
+        self.assertEqual(decision['action'], 'refuse')
         self.assertTrue(decision['claim'].startswith('prometheus-kube-prometheus-stack-prometheus-db'))
+
+    def test_monitoring_roles_do_not_delete_history(self):
+        root = Path(__file__).resolve().parents[1]
+        stack = (root / 'ansible/roles/monitoring_stack/tasks/main.yml').read_text()
+        thanos = (root / 'ansible/roles/monitoring_thanos/tasks/main.yml').read_text()
+        self.assertNotIn('delete, pvc', stack)
+        self.assertNotIn('delete, pod', stack)
+        self.assertNotIn('state: absent', thanos)
+        self.assertNotIn('      - delete', thanos)
 
     def test_grafana_volume_is_not_selected(self):
         grafana = volume('socrat-1', claim='kube-prometheus-stack-grafana')

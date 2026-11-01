@@ -1,0 +1,54 @@
+---
+- name: Measure system journal rates without exporting log contents
+  hosts: Socrat
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - name: Require an explicit controller evidence directory
+      ansible.builtin.assert:
+        that:
+          - otel_inspection_directory is defined
+          - otel_inspection_directory.startswith('/tmp/otel-')
+      run_once: true
+
+    - name: Prepare private controller evidence directory
+      ansible.builtin.file:
+        path: "{{ otel_inspection_directory }}"
+        state: directory
+        mode: "0700"
+      delegate_to: localhost
+      become: false
+      run_once: true
+
+    - name: Count journal bytes in memory
+      ansible.builtin.command:
+        argv: [python3, '-']
+        stdin: "{{ lookup('ansible.builtin.file', playbook_dir + '/../../scripts/otel-journal-probe.py') }}"
+      register: otel_journal_probe
+      changed_when: false
+      no_log: true
+      timeout: 90
+
+    - name: Verify privileged measurement
+      ansible.builtin.assert:
+        that:
+          - (otel_journal_probe.stdout | from_json).schemaVersion == 1
+          - (otel_journal_probe.stdout | from_json).rootAccessVerified
+          - (otel_journal_probe.stdout | from_json).systemJournalReadSucceeded
+          - (otel_journal_probe.stdout | from_json).invalidRecords == 0
+          - not (otel_journal_probe.stdout | from_json).rawLogBodiesPersisted
+      no_log: true
+
+    - name: Save counts without log contents on the controller
+      ansible.builtin.copy:
+        content: "{{ otel_journal_probe.stdout }}\n"
+        dest: "{{ otel_inspection_directory }}/{{ inventory_hostname }}.json"
+        mode: "0600"
+      delegate_to: localhost
+      become: false
+      no_log: true
+
+    - name: Report measurement availability
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }}: privileged journal counts saved; raw messages were not persisted"
