@@ -172,6 +172,7 @@ kubelet:
 prometheus:
   prometheusSpec:
     disableCompaction: true
+    enableOTLPReceiver: true
     evaluationInterval: 30s
     nodeSelector:
       kubernetes.io/hostname: socrat-0
