@@ -19,7 +19,7 @@ CLIENTS_PATH = ROOT / "oidc-clients.json"
 KUBECTL = ["kubectl", "--kubeconfig", "/etc/rancher/k3s/k3s.yaml"]
 NAMESPACE = "argocd"
 SECRET_KEY = "oidc.authentik.clientSecret"
-PROVIDER_NAME = "homelab-argocd"
+STAGE = "startup"
 APP_SLUG = "argocd"
 APP_URL = "https://argocd.socrat.alchemmist.xyz/"
 REDIRECT_URI = "https://argocd.socrat.alchemmist.xyz/auth/callback"
@@ -39,28 +39,40 @@ a=[x for x in a if x.get("slug")=="argocd"]
 if len(p)>1 or len(a)>1:raise SystemExit(2)
 print(json.dumps({"provider_exists":bool(p),"application_exists":bool(a)}))'''
 
-RECONCILE_CODE = r'''import json, os, urllib.parse, urllib.request
+RECONCILE_CODE = r'''import json, os, sys, urllib.parse, urllib.request
 base="http://authentik-server.identity.svc/api/v3/"
 token=os.environ["AUTHENTIK_BOOTSTRAP_TOKEN"]
-client=json.load(__import__("sys").stdin)
+client=json.load(sys.stdin)
+stage="initialise"
+def unhandled(error_type, error, traceback):
+    print(json.dumps({"ok":False,"stage":stage,"error_type":error_type.__name__}))
+    sys.exit(0)
+sys.excepthook=unhandled
 def api(method,path,payload=None):
     req=urllib.request.Request(base+path,method=method,
         headers={"Authorization":"Bearer "+token,"Content-Type":"application/json"},
         data=json.dumps(payload).encode() if payload is not None else None)
-    with urllib.request.urlopen(req,timeout=60) as r:
-        body=r.read();return json.loads(body) if body else None
+    try:
+        with urllib.request.urlopen(req,timeout=60) as r:
+            body=r.read();return json.loads(body) if body else None
+    except Exception as exc:
+        print(json.dumps({"ok":False,"operation":method,"endpoint":path.split("?",1)[0],
+            "error_type":type(exc).__name__}))
+        raise SystemExit(0)
 def rows(path):return api("GET",path+"?page_size=100")["results"]
 def unique(path,field,value):
     endpoint=path+"?superuser_full_list=true&page_size=100" if path=="core/applications/" else path+"?page_size=100"
     found=[x for x in api("GET",endpoint)["results"] if x.get(field)==value]
     if len(found)>1:raise RuntimeError("duplicate")
     return found[0] if found else None
+stage="default-flows-and-signing-key"
 flows={x["slug"]:x["pk"] for x in rows("flows/instances/")}
 cert=unique("crypto/certificatekeypairs/","name","authentik Self-signed Certificate")
 scopes=rows("propertymappings/provider/scope/")
 standard={x.get("scope_name"):x["pk"] for x in scopes}
 required=["openid","profile","email"]
 if not cert or any(x not in standard for x in required):raise RuntimeError("missing defaults")
+stage="groups-scope-mapping"
 expression='return {"groups": [group.name for group in request.user.ak_groups.all()]}'
 changed=False
 groups=unique("propertymappings/provider/scope/","scope_name","groups")
@@ -70,6 +82,7 @@ else:
     groups=api("POST","propertymappings/provider/scope/",{
         "name":"homelab Argo CD groups","scope_name":"groups","expression":expression})
     changed=True
+stage="oauth-provider"
 provider=unique("providers/oauth2/","name","homelab-argocd")
 settings={"name":"homelab-argocd","client_type":"confidential",
     "client_id":client["client_id"],"client_secret":client["client_secret"],
@@ -86,6 +99,7 @@ if provider:provider=api("PATCH","providers/oauth2/"+str(provider["pk"])+"/",set
 else:
     provider=api("POST","providers/oauth2/",settings)
     changed=True
+stage="application"
 app=unique("core/applications/","slug","argocd")
 app_settings={"name":"Argo CD","slug":"argocd","provider":provider["pk"],
     "meta_launch_url":"https://argocd.socrat.alchemmist.xyz/",
@@ -93,10 +107,11 @@ app_settings={"name":"Argo CD","slug":"argocd","provider":provider["pk"],
     "policy_engine_mode":"any","group":"Socrat"}
 if app:
     if app.get("provider") not in (None,provider["pk"]):raise RuntimeError("application provider conflict")
-    app=api("PATCH","core/applications/"+str(app["pk"])+"/",app_settings)
+    app=api("PATCH","core/applications/argocd/",app_settings)
 else:
     app=api("POST","core/applications/",app_settings)
     changed=True
+stage="access-bindings"
 allowed=["homelab-owner","homelab-platform-operator"]
 known={x.get("name"):x["pk"] for x in rows("core/groups/")}
 if any(x not in known for x in allowed):raise RuntimeError("required Authentik group missing")
@@ -148,33 +163,46 @@ def persist_clients(clients: dict) -> None:
 
 
 def main() -> None:
+    global STAGE
+    STAGE = "read-private-credential-journal"
     if not (ROOT / "credentials.json").is_file():
         raise RuntimeError("Authentik runtime credential file is missing")
     clients = json.loads(CLIENTS_PATH.read_text()) if CLIENTS_PATH.exists() else {}
     entry = clients.get("argocd")
+    STAGE = "Authentik-preflight"
     state = exec_authentik(PROBE_CODE)
     if entry is None:
         if state["provider_exists"]:
             raise RuntimeError("Existing provider has no local credential journal; refusing rotation")
         entry = {"client_id": "socrat-argocd", "client_secret": secrets.token_urlsafe(48)}
         clients["argocd"] = entry
+        STAGE = "persist-client-credential-journal"
         persist_clients(clients)
     if not entry.get("client_id") or not entry.get("client_secret"):
         raise RuntimeError("Argo CD OAuth credential journal is incomplete")
+    STAGE = "reconcile-Authentik-provider-and-access-bindings"
     result = exec_authentik(RECONCILE_CODE, json.dumps(entry))
     if result.get("ok") is not True:
+        detail = result.get("operation") or result.get("stage", "reconcile")
+        endpoint = result.get("endpoint", "")
+        error_type = result.get("error_type", "rejected")
+        STAGE = "Authentik-" + str(detail) + (":" + str(endpoint) if endpoint else "") + ":" + str(error_type)
         raise RuntimeError("Authentik did not confirm the Argo CD client")
 
     desired = base64.b64encode(entry["client_secret"].encode()).decode()
+    STAGE = "read-Argo-CD-runtime-secret"
     current = json.loads(run(KUBECTL + ["-n", NAMESPACE, "get", "secret",
                                         "argocd-secret", "-o", "json"]))
     if current.get("data", {}).get(SECRET_KEY) != desired:
         patch = {"data": {SECRET_KEY: desired}}
+        STAGE = "inject-OIDC-client-secret"
         run(KUBECTL + ["-n", NAMESPACE, "patch", "secret", "argocd-secret",
                        "--type=merge", "--patch-file", "/dev/stdin"],
             input_text=json.dumps(patch))
+        STAGE = "restart-Argo-CD-server"
         run(KUBECTL + ["-n", NAMESPACE, "rollout", "restart",
                        "deployment/argo-cd-argocd-server"])
+        STAGE = "wait-for-Argo-CD-server"
         run(KUBECTL + ["-n", NAMESPACE, "rollout", "status",
                        "deployment/argo-cd-argocd-server", "--timeout=180s"])
         result["changed"] = True
@@ -184,6 +212,7 @@ def main() -> None:
 if __name__ == "__main__":
     try:
         if sys.argv[1:] == ["--check"]:
+            STAGE = "preflight"
             if not (ROOT / "credentials.json").is_file():
                 raise RuntimeError("Authentik runtime credential file is missing")
             state = exec_authentik(PROBE_CODE)
@@ -193,6 +222,7 @@ if __name__ == "__main__":
             main()
         else:
             raise RuntimeError("unsupported option")
-    except Exception:
-        print("Argo CD Authentik OIDC setup failed; sensitive command output was suppressed", file=sys.stderr)
+    except Exception as exc:
+        print("Argo CD Authentik OIDC setup failed at " + STAGE +
+              " (" + type(exc).__name__ + "); sensitive output suppressed", file=sys.stderr)
         raise SystemExit(1)
