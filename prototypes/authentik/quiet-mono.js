@@ -148,6 +148,17 @@
     closeLanguages(); updateInspector(); dialog.showModal(); inspectorTrigger.setAttribute('aria-expanded', 'true');
   });
   document.querySelector('.inspector-close').addEventListener('click', () => dialog.close());
+  dialog.addEventListener('keydown', event => {
+    if (event.key !== 'Tab') return;
+    const controls = [...dialog.querySelectorAll('button, a[href], input, select, textarea, summary, [tabindex]:not([tabindex="-1"])')]
+      .filter(el => !el.disabled && el.getClientRects().length);
+    const first = controls[0]; const last = controls[controls.length - 1];
+    if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+      event.preventDefault(); last.focus();
+    } else if (!event.shiftKey && (document.activeElement === last || document.activeElement === dialog)) {
+      event.preventDefault(); first.focus();
+    }
+  });
   dialog.addEventListener('close', () => {
     inspectorTrigger.setAttribute('aria-expanded', 'false'); inspectorTrigger.focus({preventScroll: true});
   });

@@ -43,5 +43,9 @@
     "local": "wiki-favicon.svg",
     "processing": "None; exact byte-for-byte copy of the favicon linked by the live Wiki.",
     "sha256": "a86fb867f8e5ccce0336c38da738ec2ddb81ff5bc4639b26de535c9d4c4f9e32"
+  },
+  "consent_reference": {
+    "source": "Owner-provided saved HTML: Redirecting to Argo CD - authentik.html",
+    "usage": "Offline structural inspection only. Original file is not copied, executed or shipped. All prototype identity/session/plan data is synthetic."
   }
 }
