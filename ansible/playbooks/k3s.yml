@@ -280,10 +280,11 @@
             solvers:
               - http01:
                   ingress:
-                    class: traefik
+                    ingressClassName: traefik
         EOF
       register: issuer_apply
       changed_when: "'created' in issuer_apply.stdout or 'configured' in issuer_apply.stdout"
+      tags: [cert_manager_issuer]
 
     - name: Create homepage namespace
       ansible.builtin.command: k3s kubectl create namespace socrat-home
