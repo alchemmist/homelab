@@ -1,0 +1,21 @@
+image:
+  repository: ghcr.io/alchemmist/blog
+  tag: "7da9b66790ef5c669561ad4791977eb42ae14c08" # {"$imagescan": "blog-image:tag"}
+  pullPolicy: IfNotPresent
+
+replicaCount: 2
+service:
+  port: 80
+  targetPort: 8080
+ingress:
+  className: traefik
+  hosts:
+    - alchemmist.xyz
+    - www.alchemmist.xyz
+  tlsSecretName: blog-tls
+  clusterIssuer: letsencrypt-http01
+resources:
+  requests: { cpu: 20m, memory: 64Mi }
+  limits: { memory: 256Mi }
+imagePullSecrets:
+  - ghcr-pull
