@@ -1,0 +1,30 @@
+---
+- name: Reserve small-node capacity for independent observability agents
+  hosts: socrat-0
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Require explicit private rollback and controller evidence paths
+      ansible.builtin.assert:
+        that:
+          - otel_capacity_state_directory is defined
+          - otel_capacity_state_directory.startswith('/var/lib/otel-migration/')
+          - otel_capacity_result is defined
+          - otel_capacity_result.startswith('/tmp/otel-')
+    - name: Place only allowlisted stateless controllers with zero unavailable replicas
+      ansible.builtin.command:
+        argv: [python3, '-', --state-directory, '{{ otel_capacity_state_directory }}']
+        stdin: "{{ lookup('ansible.builtin.file', playbook_dir + '/../../scripts/otel-capacity-placement.py') }}"
+      register: capacity_placement
+      changed_when: "(capacity_placement.stdout | from_json).controllers | selectattr('changed') | list | length > 0"
+      timeout: 1200
+    - name: Save placement result without environment or credentials
+      ansible.builtin.copy:
+        content: '{{ capacity_placement.stdout }}'
+        dest: '{{ otel_capacity_result }}'
+        mode: '0600'
+      delegate_to: localhost
+      become: false
+    - name: Report placement result
+      ansible.builtin.debug:
+        msg: '{{ capacity_placement.stdout | from_json }}'

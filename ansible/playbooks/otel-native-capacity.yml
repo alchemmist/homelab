@@ -1,0 +1,69 @@
+---
+- name: Observe real native retention inputs without changing retention or deleting history
+  hosts: socrat-1
+  gather_facts: false
+  become: true
+  tasks:
+    - ansible.builtin.file:
+        path: /var/lib/homelab-otel-capacity
+        state: directory
+        mode: '0700'
+    - ansible.builtin.copy:
+        src: ../../scripts/otel-native-capacity-observe.py
+        dest: /var/lib/homelab-otel-capacity/observe.py
+        mode: '0700'
+    - name: Require a successful bounded initial observation before enabling periodic collection
+      ansible.builtin.command:
+        argv: [python3, /var/lib/homelab-otel-capacity/observe.py]
+      changed_when: false
+    - name: Maintain isolated metadata-only observer
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/homelab-otel-capacity.service
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Metadata-only native log trace queue capacity observation
+          After=network-online.target
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/bin/python3 /var/lib/homelab-otel-capacity/observe.py
+          TimeoutStartSec=90
+          MemoryMax=128M
+          MemorySwapMax=0
+          CPUQuota=25%
+          IOWeight=25
+          TasksMax=32
+          NoNewPrivileges=yes
+          CapabilityBoundingSet=CAP_DAC_READ_SEARCH
+          ProtectSystem=strict
+          ProtectHome=yes
+          PrivateTmp=yes
+          PrivateDevices=yes
+          ReadWritePaths=/var/lib/homelab-otel-capacity
+          IPAddressDeny=any
+          IPAddressAllow=127.0.0.0/8
+          IPAddressAllow=10.250.0.0/24
+          UMask=0077
+    - name: Maintain actual five-minute observations with durable failures and no fabricated duration
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/homelab-otel-capacity.timer
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Observe real native retention capacity every five minutes
+          [Timer]
+          OnCalendar=*-*-* *:0/5:00
+          RandomizedDelaySec=15
+          AccuracySec=1
+          Persistent=true
+          [Install]
+          WantedBy=timers.target
+    - ansible.builtin.systemd_service:
+        name: homelab-otel-capacity.timer
+        daemon_reload: true
+        enabled: true
+        state: started
+    - name: Prove the constrained service can read required metadata without write capabilities
+      ansible.builtin.systemd_service:
+        name: homelab-otel-capacity.service
+        state: started

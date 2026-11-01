@@ -1,0 +1,45 @@
+---
+- name: Stop all native agents before reverting their shared backend owner
+  hosts: socrat-0:socrat-1:socrat-2:socrat-3
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - name: Preserve native durable queues and stop agent delivery
+      ansible.builtin.systemd_service:
+        name: homelab-otel-agent.service
+        state: stopped
+- name: Restore exact saved legacy metrics ownership without touching history
+  hosts: socrat-0
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - name: Require explicit durable rollback artifacts
+      ansible.builtin.assert:
+        that:
+          - otel_rollback_artifacts is defined
+    - name: Copy private original controller specifications
+      ansible.builtin.copy:
+        src: '{{ otel_rollback_artifacts }}/{{ item }}'
+        dest: '/var/lib/homelab-otel/{{ item }}'
+        mode: '0600'
+      loop: [prometheus-before.json, legacy-node-exporter-before.json]
+    - name: Atomically restore complete original specs rather than retaining new merge keys
+      ansible.builtin.command:
+        argv:
+          - python3
+          - -c
+          - |
+            import json,subprocess
+            from pathlib import Path
+            for filename,kind in [('prometheus-before.json','prometheus'),('legacy-node-exporter-before.json','daemonset')]:
+                original=json.loads((Path('/var/lib/homelab-otel')/filename).read_text())
+                subprocess.run(['k3s','kubectl','-n',original['metadata']['namespace'],'patch',kind,original['metadata']['name'],
+                    '--type=json','-p',json.dumps([{'op':'replace','path':'/spec','value':original['spec']}])],check=True,capture_output=True)
+            print(json.dumps({'originalMetricsOwnershipRestored':True,'historyDeleted':False,'nativeQueuesDeleted':False,'nativeLogsAgentsPaused':True}))
+      changed_when: false
+    - name: Require restored Prometheus to finish its native StatefulSet rollout
+      ansible.builtin.command: k3s kubectl -n cattle-monitoring-system rollout status statefulset/prometheus-kube-prometheus-stack-prometheus --timeout=600s
+      changed_when: false
+      timeout: 630
