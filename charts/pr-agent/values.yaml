@@ -9,6 +9,18 @@ port: 3000
 openaiApiBase: http://litellm.llm.svc.cluster.local:4000/v1
 model: openai/qwen3.8-27b
 customModelMaxTokens: "131072"
+# Per-call cap. The 27B model has a 131072 window, but a review call that fills it
+# gets worse, not better. Chunking below covers a large PR as several calls of this size.
+maxModelTokens: "32768"
+inlineKeyIssues: true
+largePrChunking: true
+reviewMaxCalls: "4"
+numMaxFindings: "8"
+committableSuggestions: true
+suggestionsMaxCalls: "4"
+persistentInlineComments: true
+handlePushTrigger: true
+pushCommands: '["/review", "/improve"]'
 gunicornWorkers: "2"
 resources:
   requests:

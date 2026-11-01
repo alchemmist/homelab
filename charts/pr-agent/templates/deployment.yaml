@@ -41,6 +41,26 @@ spec:
               value: "[]"
             - name: CONFIG__CUSTOM_MODEL_MAX_TOKENS
               value: {{ .Values.customModelMaxTokens | quote }}
+            - name: CONFIG__MAX_MODEL_TOKENS
+              value: {{ .Values.maxModelTokens | quote }}
+            - name: CONFIG__PERSISTENT_INLINE_COMMENTS
+              value: {{ .Values.persistentInlineComments | quote }}
+            - name: PR_REVIEWER__INLINE_KEY_ISSUES
+              value: {{ .Values.inlineKeyIssues | quote }}
+            - name: PR_REVIEWER__ENABLE_LARGE_PR_CHUNKING
+              value: {{ .Values.largePrChunking | quote }}
+            - name: PR_REVIEWER__MAX_NUMBER_OF_CALLS
+              value: {{ .Values.reviewMaxCalls | quote }}
+            - name: PR_REVIEWER__NUM_MAX_FINDINGS
+              value: {{ .Values.numMaxFindings | quote }}
+            - name: PR_CODE_SUGGESTIONS__COMMITTABLE_CODE_SUGGESTIONS
+              value: {{ .Values.committableSuggestions | quote }}
+            - name: PR_CODE_SUGGESTIONS__MAX_NUMBER_OF_CALLS
+              value: {{ .Values.suggestionsMaxCalls | quote }}
+            - name: GITHUB_APP__HANDLE_PUSH_TRIGGER
+              value: {{ .Values.handlePushTrigger | quote }}
+            - name: GITHUB_APP__PUSH_COMMANDS
+              value: {{ .Values.pushCommands | quote }}
             - name: CONFIG__GIT_PROVIDER
               value: github
             - name: GITHUB__DEPLOYMENT_TYPE
