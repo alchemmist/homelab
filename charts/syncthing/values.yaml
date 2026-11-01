@@ -19,7 +19,8 @@ env:
   STGUIADDRESS: http://0.0.0.0:8384
 
 privateGui:
-  enabled: true
+  # socrat-0 already serves 18443/18444 from the private-gateway DaemonSet.
+  enabled: false
   image:
     repository: nginx
     tag: 1.27-alpine
