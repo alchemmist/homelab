@@ -3,7 +3,6 @@ createNamespace: false
 paused: false
 helm:
   releaseName: wiki-runtime
-  repo: oci://ghcr.io/alchemmist/charts/wiki
-  version: 0.4.1
+  chart: ./chart
   valuesFiles:
     - values.yaml

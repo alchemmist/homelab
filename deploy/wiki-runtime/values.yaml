@@ -1,7 +1,10 @@
 image:
-  repository: ghcr.io/alchemmist/hugo-docs-wiki
-  tag: "0.4.1"
-  digest: "sha256:56b24ca70f7ebcb5c3d4844c0e5ec5b779416f74f891be5b24807f65e8878b7e"
+  repository: harbor.socrat.alchemmist.xyz/homelab/wiki-runtime
+  tag: "0.4.1-oidc-20261101"
+  digest: "sha256:64d27d6f320ab7440be82578d1d73193278e6b12f77127776b715c2e98b17515"
+oidcSecret: socrat-authentik-wiki
+imagePullSecrets:
+  - name: wiki-harbor-pull
 publicURL: https://wiki.socrat.alchemmist.xyz
 visibility: public
 contentPrefix: wiki/content

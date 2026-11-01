@@ -117,3 +117,12 @@ The requested HA migration is tracked in [harbor-ha.md](harbor-ha.md). Initial
 read-only preflight is implemented and currently blocks staging on resource
 headroom, including OTel reservations. No distributed dependencies or storage
 migration have been applied. The active installation above is unchanged.
+
+## Authentik migration (2026-11-01)
+
+Native OIDC is active; `homelab-owner` maps to Harbor system admin. Local `admin`
+remains break-glass and robots are unchanged. The saved initial admin password may
+be stale; do not reset it or rerun the old initializer just to change auth. A supported
+Secret-backed CONFIG_OVERWRITE_JSON and conditional Helm identity overlay preserve
+OIDC configuration. See [identity/access-management.md](identity/access-management.md)
+for migration, backup/restore evidence and remaining browser acceptance.

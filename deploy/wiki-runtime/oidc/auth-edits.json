@@ -1,0 +1,36 @@
+{
+  "baseSha256": "867041976f336ea6d8c4956470c15db498b6896f078102160994d618c445ed69",
+  "resultSha256": "95b7d5f1370fad162cbeae1ef65cce0b35252920501723f300e4b3f4b3bb96d0",
+  "edits": [
+    {
+      "start": 131,
+      "end": 131,
+      "old": "",
+      "new": "        from oidc import configure_store\n        configure_store(self)\n"
+    },
+    {
+      "start": 198,
+      "end": 199,
+      "old": "            if not valid or not row or row['disabled']:\n",
+      "new": "            if not valid or not row or row['disabled'] or (self.oidc_enabled and row['id'] not in self.local_owners):\n"
+    },
+    {
+      "start": 219,
+      "end": 219,
+      "old": "",
+      "new": "            if row and self.oidc_enabled and row['id'] not in self.local_owners:\n                if not db.execute('SELECT 1 FROM oidc_sessions WHERE token=?', (self.digest(token),)).fetchone():\n                    return None\n"
+    },
+    {
+      "start": 423,
+      "end": 423,
+      "old": "",
+      "new": "        if store.oidc_enabled and request.query_params.get('local') != '1':\n            return RedirectResponse(prefix+'/api/auth/oidc/login',status_code=303,headers={'Cache-Control':'no-store'})\n"
+    },
+    {
+      "start": 526,
+      "end": 526,
+      "old": "",
+      "new": "    if store.oidc_enabled:\n        from oidc import install_oidc\n        install_oidc(app,store,allowed_origin,prefix,cookie_path,session_seconds)\n"
+    }
+  ]
+}

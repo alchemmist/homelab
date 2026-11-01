@@ -167,3 +167,18 @@ Policy `deploy/harbor/ha-policy.json` хранит резерв OTel незав�
 Не уменьшать бюджеты ради зелёного результата, не отбирать ресурсы OTel и не
 удалять данные без согласования. Следующий шаг — решение по RAM/ёмкости, затем
 независимый проверенный бэкап и изолированное развёртывание HA foundation.
+
+
+## Дополнение 1 ноября 2026: Authentik
+
+**Harbor теперь использует native OIDC / Authentik**: provider grant_types исправлены,
+`systeminfo.auth_mode=oidc_auth`, owner group → system admin. Старый local admin
+остаётся аварийным входом. Initial admin password оказался stale; его не сбрасывали.
+Применён поддерживаемый CONFIG_OVERWRITE_JSON из Secret, отдельный Helm overlay.
+Private project и scoped robots сохранены: pull-only robot после миграции получил
+BusyBox manifest 200 с прежним digest. Browser owner login ещё требует проверки.
+
+Перед переключением encrypted DB+registry+credentials backup на Mac; PG18 dump
+восстановлен в isolated PG18, три blob проверены SHA-256. Это не full Harbor DR.
+Не применять legacy bootstrap API с устаревшим initial password после активации OIDC.
+Другие детали/границы SSO: `llm-wiki/identity.md`.

@@ -1,0 +1,50 @@
+{
+  "observedAt": "2026-11-01T12:42:52.424853+00:00",
+  "authentik": {
+    "chart": "2026.8.5",
+    "namespace": "identity",
+    "node": "socrat-0",
+    "ha": false,
+    "publicHealthBothIngresses": true,
+    "trustedTLS": true,
+    "ownerInitialPasswordReachedTOTPSetup": true,
+    "realOwnerMFAEnrolledByAutomation": false,
+    "oidcDiscoveryValidated": [
+      "grafana",
+      "harbor",
+      "open-webui"
+    ]
+  },
+  "grafana": {
+    "oidcConfigured": true,
+    "expectedIdPClientCallbackRedirectValidated": true,
+    "localLoginRetained": true,
+    "anonymousViewerRetained": true,
+    "browserLoginRoleLogoutValidated": false
+  },
+  "harbor": {
+    "authModeChanged": false,
+    "blocker": "stored initial admin password returned 401; current credential required"
+  },
+  "hosts": {
+    "linuxRoleRefactored": true,
+    "hostChangesApplied": false,
+    "blocker": "sudo/su credentials required",
+    "criticalOpenFinding": "socrat-0 admin kubeconfig remains world-readable; source fix prepared"
+  },
+  "rbac": {
+    "observerRoleApplied": true,
+    "humanBindingsAdded": false
+  },
+  "backup": {
+    "offNodeAES256GCM": true,
+    "sha256": "8fd74188f25330b747e837bf2a5fbe0868600d9d2c6e54b85b5e6886486d270c",
+    "isolatedPostgresRestore": "passed",
+    "restoredRoleGroups": 5,
+    "fullApplicationRecovery": false,
+    "scheduled": false
+  },
+  "wireguardChanged": false,
+  "netbirdDeployed": false,
+  "allStagesComplete": false
+}

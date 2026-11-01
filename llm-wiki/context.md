@@ -171,3 +171,15 @@ Live deployment revisions reached monitoring-k3s Helm revision 136 during the se
 Harbor сейчас single-node на socrat-0; существующие GHCR deployment не переведены.
 Полноценная HA-схема согласована как направление, но заблокирована ёмкостью;
 реализован read-only preflight, HA foundation не развёрнут.
+
+
+## Identity / Authentik — 1 ноября 2026
+
+См. **`llm-wiki/identity.md`** и `docs/identity/access-management.md`: Authentik live,
+личные alchemmist/tim с MFA; native OIDC включён в Grafana/Harbor/Rancher/WebUI.
+Ошибка Grafana grant_types исправлена, полный observer MFA/OIDC smoke прошёл.
+На socrat-0 admin kubeconfig уже **0640 root:alchemmist**, Linux policy применена
+на четырёх нодах. n8n UI защищён MFA-gate (не native account SSO), machine endpoints
+отдельно. Wiki native OIDC + owner-only local fallback уже live; Tim сохраняет editor role.
+Kuma НЕ мигрирована; публичное чтение/status сохранены. Wiki WG-TLS gap записан отдельно.
+NetBird отложен; WG topology не изменена. Подробные ограничения и acceptance в wiki.

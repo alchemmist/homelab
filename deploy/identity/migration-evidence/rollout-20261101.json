@@ -1,0 +1,117 @@
+{
+  "observedAt": "2026-11-01T14:10:09.309778+00:00",
+  "scope": "Second rollout; supersedes foundation snapshot for live migration state, not full lifecycle completion",
+  "allNodesReady": true,
+  "grafana": {
+    "incidentCause": "authorization_code absent from provider grant_types",
+    "grantTypesFixed": true,
+    "passwordTotpConsentCodePkceRoundtrip": "passed",
+    "fixtureRole": "Viewer",
+    "fixtureServerAdmin": false,
+    "temporaryProfilesCleaned": true,
+    "ownerPolicy": "GrafanaAdmin",
+    "realOwnerBrowserAcceptancePending": true,
+    "localLoginRetained": true,
+    "anonymousViewerRetained": true
+  },
+  "harbor": {
+    "nativeOIDC": true,
+    "activation": "supported Secret-backed CONFIG_OVERWRITE_JSON",
+    "adminPasswordReset": false,
+    "privateRobotManifestPull": 200,
+    "manifestDigest": "sha256:1a5a74651820598dfcab536da9ef1094f2dec5e387af6f90c5f99f4dff4894c4",
+    "localAdminRetained": true,
+    "realOwnerBrowserAcceptancePending": true
+  },
+  "rancher": {
+    "nativeGenericOIDC": true,
+    "pkce": true,
+    "restrictedExactPrincipals": true,
+    "oldPrincipalIdsMutated": false,
+    "webhookBypassed": false,
+    "reviewedExternalUsers": 2,
+    "legacyLocalUsersRetained": true,
+    "realHumanBrowserAcceptancePending": true
+  },
+  "openWebui": {
+    "nativeOIDC": true,
+    "reviewedOriginalUserIdsPreserved": 2,
+    "exactUUIDLinked": true,
+    "emailAutoMerge": false,
+    "ownerRole": "admin",
+    "timRole": "user",
+    "localLoginRetained": true,
+    "realHumanBrowserAcceptancePending": true
+  },
+  "n8n": {
+    "mode": "Authentik UI MFA gate, not native account SSO",
+    "ownerOnly": true,
+    "bothPublicEdges": true,
+    "ui": 302,
+    "restSettings": 302,
+    "health": 200,
+    "apiWithoutKey": 401,
+    "nonexistentWebhook": 404,
+    "machineIngressIndependentOfIdp": true,
+    "originalFleetIngressRetained": true
+  },
+  "wiki": {
+    "nativeSSO": false,
+    "publicReadingPreserved": true,
+    "privateEditorAndMachineBoundaryReviewPending": true
+  },
+  "uptimeKuma": {
+    "nativeSSO": false,
+    "publicStatusPreserved": true,
+    "adminSocketBoundaryReviewPending": true
+  },
+  "icons": {
+    "localPersistedMedia": true,
+    "verifiedHttps200Svg": 7,
+    "pinnedUpstreamRevision": "83f32e08257b66fbd971ac8d7645f5b38d52e85d"
+  },
+  "hosts": {
+    "applied": [
+      "socrat-0",
+      "socrat-1",
+      "socrat-2",
+      "socrat-3"
+    ],
+    "timKeysPerHost": 2,
+    "timEffectiveSudoGrant": false,
+    "timCanReadAdminKubeconfig": false,
+    "pubkeyAuthentication": true,
+    "usePAM": true,
+    "primaryKubeconfig": "0640 root:alchemmist",
+    "ownerAutomationWorks": true,
+    "idempotentReplaysPassed": true,
+    "historicalClientCredentialRevoked": false,
+    "actualTimPrivateKeyLoginNotTested": true
+  },
+  "backup": {
+    "authentik": {
+      "archiveName": "authentik-backup-20261101T165843.aesgcm",
+      "sha256": "00660629985474a0d892ac6b6454eb6e03c41e607bb3a54357c5f60657942ea4",
+      "isolatedPostgresRestore": "passed",
+      "verifiedGroups": 5
+    },
+    "harbor": {
+      "archiveName": "harbor-before-oidc-20261101T160755.aesgcm",
+      "sha256": "22a37ddd2f04f6cb3c6771d6afa697f30ff0c2240c62faf8af1c092293881cc2",
+      "isolatedPostgres18Restore": "passed",
+      "verifiedBlobs": 3
+    },
+    "openWebui": {
+      "archiveName": "open-webui-before-oidc-20261101T162134.aesgcm",
+      "sha256": "1db40184884ff2f49116b16bbba6a1da67da6a9283d2612743a8ed2b72608e91",
+      "sqliteIntegrity": "passed",
+      "originalReviewedUserIds": 2
+    },
+    "fullApplicationDR": false,
+    "scheduled": false
+  },
+  "wireguardChanged": false,
+  "netbirdDeployed": false,
+  "allServicesNativeSSO": false,
+  "allStagesComplete": false
+}
