@@ -4,6 +4,7 @@ nodeSelector:
 image:
   repository: ghcr.io/alchemmist/homelab-format-quorum
   tag: latest
+  digest: ""
   pullPolicy: IfNotPresent
 service:
   port: 80
