@@ -1,0 +1,50 @@
+---
+- name: Reconcile proof-gated native vLLM SDK with source-safe renewable transport
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+  vars:
+    otel_controller_root: "{{ lookup('env', 'HOME') }}/Library/Application Support/homelab/otel-controller"
+  tasks:
+    - ansible.builtin.set_fact:
+        switcher_reconcile_directory: '{{ otel_controller_root }}/switcher-trace-reconcile-{{ lookup("pipe", "date -u +%Y%m%dT%H%M%SZ") }}'
+    - name: Preserve tracing endpoint across model switching without changing profiles or forcing drain
+      ansible.builtin.command:
+        argv:
+          - python3
+          - '{{ playbook_dir }}/../../scripts/otel-switcher-trace-preserve.py'
+          - --apply
+          - --output
+          - '{{ switcher_reconcile_directory }}'
+      register: switcher_trace_reconcile
+      changed_when: switcher_trace_reconcile.rc == 0 and (switcher_trace_reconcile.stdout | from_json).applied
+    - name: Apply only proven SDK environment flags immutable privacy source and leaf mounts
+      ansible.builtin.command:
+        argv:
+          - python3
+          - '{{ playbook_dir }}/../../scripts/otel-vllm-sdk-rollout.py'
+          - --switcher-receipt
+          - '{{ switcher_reconcile_directory }}/result.json'
+          - --apply
+          - --output
+          - '{{ otel_controller_root }}/vllm-sdk-reconcile-{{ lookup("pipe", "date -u +%Y%m%dT%H%M%SZ") }}'
+      register: vllm_sdk_reconcile
+      changed_when: vllm_sdk_reconcile.rc == 0 and (vllm_sdk_reconcile.stdout | from_json).applied
+    - ansible.builtin.set_fact:
+        vllm_sdk_configuration_sha256: '{{ (vllm_sdk_reconcile.stdout | from_json).configurationSHA256 }}'
+        switcher_source_sha256: '{{ (switcher_trace_reconcile.stdout | from_json).sourceSHA256 }}'
+
+- name: Preserve independent receiver and application epoch bindings after real source changes
+  hosts: socrat-1
+  gather_facts: false
+  become: true
+  tasks:
+    - ansible.builtin.slurp:
+        src: /var/lib/homelab-otel-soak/configuration-epoch.json
+      register: vllm_existing_epoch
+    - ansible.builtin.copy:
+        dest: /var/lib/homelab-otel-soak/configuration-epoch.json
+        mode: '0600'
+        content: |
+          {{ (vllm_existing_epoch.content | b64decode | from_json) | combine({'vllmSdkConfigurationSHA256': hostvars['localhost'].vllm_sdk_configuration_sha256, 'switcherSourceSHA256': hostvars['localhost'].switcher_source_sha256}) | to_json(sort_keys=True) }}

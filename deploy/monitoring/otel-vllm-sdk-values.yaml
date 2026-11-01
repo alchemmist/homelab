@@ -1,0 +1,22 @@
+otel:
+  enabled: true
+  endpoint: https://10.250.0.3:44318/v1/traces
+  sourceConfigMap: vllm-otel-source-fac326dd47cf5b7e
+  environment:
+    PYTHONPATH: /etc/otel-source
+    PYTHONDONTWRITEBYTECODE: '1'
+    HOMELAB_VLLM_TRACE_ENDPOINT: https://10.250.0.3:44318/v1/traces
+    OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: http/protobuf
+    OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+    OTEL_EXPORTER_OTLP_ENDPOINT: https://10.250.0.3:44318
+    OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: https://10.250.0.3:44318/v1/traces
+    OTEL_EXPORTER_OTLP_CERTIFICATE: /etc/otel-client/ca.crt
+    OTEL_EXPORTER_OTLP_CLIENT_CERTIFICATE: /etc/otel-client/tls.crt
+    OTEL_EXPORTER_OTLP_CLIENT_KEY: /etc/otel-client/tls.key
+    OTEL_EXPORTER_OTLP_INSECURE: 'false'
+    OTEL_EXPORTER_OTLP_HEADERS: Connection=close
+    OTEL_SERVICE_NAME: vllm
+    OTEL_TRACES_SAMPLER: always_on
+    OTEL_METRICS_EXPORTER: none
+    OTEL_LOGS_EXPORTER: none
+    OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: NO_CONTENT

@@ -1,0 +1,43 @@
+[Unit]
+Description=Private client-mTLS native OTLP HTTP trace ingress to the single global sampler
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=3
+
+[Service]
+Type=simple
+Environment=GOMEMLIMIT=96MiB
+Environment=GOMAXPROCS=1
+Environment=GOGC=50
+ExecStartPre=/usr/local/lib/homelab-otel/otelcol-contrib validate --config=/etc/homelab-otel/application-ingress.yaml
+ExecStart=/usr/local/lib/homelab-otel/otelcol-contrib --config=/etc/homelab-otel/application-ingress.yaml
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=90
+MemoryHigh=160M
+MemoryMax=192M
+MemorySwapMax=0
+CPUQuota=50%
+TasksMax=64
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/var/lib/homelab-otel/application-ingress-queue
+IPAddressDeny=any
+IPAddressAllow=127.0.0.0/8
+IPAddressAllow=10.250.0.0/24
+IPAddressAllow=10.42.0.0/16
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

@@ -30,6 +30,31 @@ with patch.dict(os.environ, {'BACKEND_API_KEY': 'test-key'}), patch.object(Path,
     spec.loader.exec_module(switcher)
 
 
+class NativeTraceConfigurationTests(unittest.TestCase):
+    def test_only_valid_w3c_identity_forwarded_without_caller_credentials_or_baggage(self):
+        valid = '00-' + 'a' * 32 + '-' + 'b' * 16 + '-01'
+        result = switcher.upstream_headers({'traceparent': valid, 'Authorization': 'Bearer private', 'baggage': 'secret', 'tracestate': 'private=value'}, 42)
+        self.assertEqual(result, {'traceparent': valid, 'Authorization': 'Bearer test-key', 'Content-Type': 'application/json', 'Content-Length': '42'})
+        for invalid in [valid.upper(), valid + 'x', '00-' + '0' * 32 + '-' + '2' * 16 + '-01', '00-' + '1' * 32 + '-' + '0' * 16 + '-01', 'private', 'ff' + valid[2:]]:
+            self.assertNotIn('traceparent', switcher.upstream_headers({'traceparent': invalid}, 42))
+
+    def test_disabled_sdk_preserves_original_model_arguments(self):
+        self.assertEqual(switcher.native_trace_args({'args': ['model'], 'env': []}), [])
+
+    def test_verified_endpoint_survives_model_switch_without_model_changes(self):
+        container = {'env': [{'name': 'HOMELAB_VLLM_TRACE_ENDPOINT', 'value': 'https://10.250.0.3:44318/v1/traces'},
+                             {'name': 'OTEL_EXPORTER_OTLP_TRACES_PROTOCOL', 'value': 'http/protobuf'}]}
+        self.assertEqual(switcher.native_trace_args(container), ['--otlp-traces-endpoint', 'https://10.250.0.3:44318/v1/traces'])
+
+    def test_arbitrary_destination_insecure_protocol_and_unowned_flag_rejected(self):
+        for env in [
+            [{'name': 'HOMELAB_VLLM_TRACE_ENDPOINT', 'value': 'https://public.invalid'}],
+            [{'name': 'HOMELAB_VLLM_TRACE_ENDPOINT', 'value': 'https://10.250.0.3:44318/v1/traces'}, {'name': 'OTEL_EXPORTER_OTLP_TRACES_PROTOCOL', 'value': 'grpc'}],
+        ]:
+            with self.assertRaises(ValueError):switcher.native_trace_args({'env': env})
+        with self.assertRaises(ValueError):switcher.native_trace_args({'args': ['--otlp-traces-endpoint=http://anonymous']})
+
+
 class Stream:
     def __init__(self, model, gate):
         self.model = model

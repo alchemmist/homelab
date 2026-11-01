@@ -1,0 +1,156 @@
+{
+  "schemaVersion": 1,
+  "status": "partial-production-sdk-litellm-error-path-and-vllm-successful-inference-and-log-delivery-proven-other-applications-pending",
+  "applications": [
+    {
+      "namespace": "harbor",
+      "workloads": [
+        "harbor-core",
+        "harbor-jobservice",
+        "harbor-registry"
+      ],
+      "version": "2.15.4",
+      "nativeTraceConfigurationVerifiedInVersionedSource": true,
+      "exportProtocol": "http/protobuf",
+      "source": "https://github.com/goharbor/harbor/blob/v2.15.4/src/lib/trace/trace.go",
+      "notes": [
+        "Chart 1.19.4 exposes trace.enabled/provider/sample_rate/otel settings.",
+        "Set sample_rate=1; existing downstream tail policy remains authoritative.",
+        "Dedicated client leaf, HTTP mTLS route and renewal/reload must be proven before enabling."
+      ]
+    },
+    {
+      "namespace": "llm",
+      "workloads": [
+        "litellm"
+      ],
+      "version": "1.105.1",
+      "nativeTraceConfigurationVerifiedInRuntimeSource": true,
+      "sdkPackagesInstalled": true,
+      "notes": [
+        "Native otel callback is supported; not enabled by this audit.",
+        "Existing Prometheus callback must remain; do not create duplicate metric export ownership.",
+        "Disable all message logging and content capture at source before enabling.",
+        "Verify actual installed exporter TLS behavior, privacy and internal child spans using a correlated safe request."
+      ],
+      "isolatedSdkLibraryCanaries": {
+        "grpcMtlsNativeChildSpanVerified": true,
+        "httpMtlsNativeChildSpanVerified": true,
+        "sensitiveSyntheticContentAbsentBeforeExport": true,
+        "sensitiveSyntheticContentAbsentInBackend": true,
+        "realLlmRequests": 0,
+        "productionSdkCoverage": false,
+        "proxySpecificPrivacyReviewStillRequired": false,
+        "actualProxyAsgiRouteCanaryVerified": true,
+        "proxyNativeSpansObserved": 7,
+        "productionStartupNetworkW3CAndRenewalProofStillRequired": true
+      },
+      "productionSdkEnabled": true,
+      "productionW3cAuthRouterErrorPathVerified": true,
+      "productionIndividualPodLogDeliveryVerified": true,
+      "productionMetricsCallbackRetainedAndUp": true,
+      "productionInferenceSuccessPathStillRequired": false,
+      "productionNativeInferenceSuccessPathVerified": true,
+      "productionW3cSuccessPathVerified": true,
+      "crossAppW3cNativeVllmDescendantStillRequired": true,
+      "syntheticPromptAbsentInBackendAndBoundedApplicationLogCheck": true
+    },
+    {
+      "namespace": "llm",
+      "workloads": [
+        "vllm"
+      ],
+      "version": "0.31.0",
+      "nativeTraceConfigurationVerifiedInVersionedAndRuntimeSource": true,
+      "sdkPackagesInstalled": true,
+      "source": "https://github.com/vllm-project/vllm/blob/v0.31.0/vllm/tracing/otel.py",
+      "notes": [
+        "This version hardcodes insecure=True in its gRPC exporter. Do not point that exporter at an unauthenticated network receiver.",
+        "HTTP/protobuf exporter is present; use a verified mTLS-capable path or a stock loopback Collector sidecar.",
+        "Do not enable expensive detailed tracing by default or alter existing inference/model settings."
+      ],
+      "traceSpecificProtocolVariableRequired": "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL=http/protobuf",
+      "nativeRequestTracingCpuOnlyCanaryVerified": true,
+      "httpClientMtlsAndBackendNativeChildVerified": true,
+      "defaultDecoratorSourceExceptionPrivacyGatePassed": false,
+      "sourcePrivacyGuardPrototypeTestedInPinnedRuntime": true,
+      "productionSdkEnabled": true,
+      "maintainedBootstrapCredentialRenewalAndRealInferenceProofStillRequired": false,
+      "sameNativeSdkInstanceLeafAndKeypairRenewalVerified": true,
+      "productionNativeW3cInferenceSuccessVerified": true,
+      "productionSourceGuardActive": true,
+      "individualPodLogAndExistingMetricDeliveryVerified": true,
+      "rollbackExerciseStillRequired": true
+    },
+    {
+      "namespace": "llm",
+      "workloads": [
+        "open-webui"
+      ],
+      "version": "0.12.3",
+      "sdkPackagesInstalled": true,
+      "nativeEnvironmentControlsDeclaredInVersionedSource": true,
+      "entrypointAndInitializerReviewStillRequired": false,
+      "source": "https://github.com/open-webui/open-webui/blob/v0.12.3/backend/open_webui/env.py",
+      "notes": [
+        "ENABLE_OTEL and ENABLE_OTEL_TRACES exist; installed SDK/exporters observed in the running slim image.",
+        "Do not infer support for custom llm-switcher/status workloads from their shared Open WebUI base image.",
+        "Keep metrics and SDK log exporters off unless independently approved; preserve existing scrape/log ownership.",
+        "Installed Instrumentor serializes Redis command arguments into db.statement, full outbound URLs into span names, and raw aiohttp exceptions. Do not enable as-is or rely on downstream attr redaction; source-safe instrumentation profile and negative tests required."
+      ],
+      "runtimeEntrypointInitializerVerified": true,
+      "sourcePrivacyGatePassed": true,
+      "nativeSdkEnablementBlockedByUnsafeHooks": false,
+      "defaultUnsafeInstrumentorsSourcePrivacyGatePassed": false,
+      "maintainedHttpOnlySourceSafeProfileRequired": true,
+      "redisSqlSystemMetricsAndLogInstrumentorsDisabled": true,
+      "sourceSafeEarlyBootstrapWithoutManualFallbackVerified": true,
+      "sameNativeSdkInstanceLeafAndKeypairRenewalVerified": true,
+      "productionSdkEnabled": true,
+      "productionNativeW3cFastapiVersionRouteVerified": true,
+      "individualPodContainerLogDeliveryVerified": true,
+      "productionInferencePathVerified": false,
+      "rollbackExerciseStillRequired": true
+    }
+  ],
+  "requiredAcceptance": [
+    "Dedicated renewable client leaves; no CA private-key distribution and no public unauthenticated OTLP.",
+    "SDK AlwaysOn; downstream 30s decision, errors/5xx 100%, >=2s 100%, ordinary 10%.",
+    "Prove internal application spans and W3C parent-child relationships, not only Traefik ingress spans.",
+    "Negative privacy checks for credential, prompt, completion, request/response body and exception content.",
+    "Version-pinned maintained deployment and renewal/reload/rollback, with no configuration-only coverage claims.",
+    "Classify every remaining source as supported, genuinely unsupported or not applicable, with evidence; no blanket exclusions."
+  ],
+  "productionModified": true,
+  "internalSdkCoverageComplete": false,
+  "productionApplicationDeploymentsModified": true,
+  "sharedNativeHttpTransport": {
+    "endpoint": "https://10.250.0.3:44318/v1/traces",
+    "clientCertificateRequired": true,
+    "tlsMinimumVersion": "1.3",
+    "newMetricOrLogOwnership": false,
+    "singleGlobalSamplerEndpoint": "10.250.0.1:44317",
+    "privacyBeforePersistentQueue": true,
+    "persistentQueueBudgetBytes": 67108864,
+    "serviceMemoryMaxBytes": 201326592,
+    "stockInstalledCollectorBinarySHA256": "57911a9d902cfe2c287dac09fcee4b054630b4ec248fa190a3115d860a32f81f"
+  },
+  "dedicatedClientCertificates": {
+    "allFourReady": true,
+    "nativeGrpcMtlsProvenForAllFour": true,
+    "namedCrossNamespaceLeafMirrorsActive": true,
+    "caPrivateKeyAccessDenied": true,
+    "sdkDeploymentReloadOnRenewalConfigured": false,
+    "maintainedPlaybook": "ansible/playbooks/otel-application-credentials.yml",
+    "sdkReloadVerifiedForApplications": [
+      "litellm",
+      "vllm"
+    ],
+    "sdkReloadMechanismLitellm": "native HTTP SDK file paths plus Connection: close; projected Secret; no Deployment patch rights",
+    "nativeFileReloadConfiguredForApplications": [
+      "litellm",
+      "vllm"
+    ],
+    "sdkReloadMechanismVllm": "native HTTP SDK1.40 file paths plus Connection: close; projected Secret; same provider/exporter before and after keypair renewal"
+  }
+}

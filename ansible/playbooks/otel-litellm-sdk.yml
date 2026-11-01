@@ -1,0 +1,37 @@
+---
+- name: Reconcile only native LiteLLM SDK callback and renewable client mount after proof gates
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+  vars:
+    otel_controller_root: "{{ lookup('env', 'HOME') }}/Library/Application Support/homelab/otel-controller"
+  tasks:
+    - name: Apply the minimal fenced SDK configuration preserving model DB GPU metrics and drains
+      ansible.builtin.command:
+        argv:
+          - python3
+          - '{{ playbook_dir }}/../../scripts/otel-litellm-sdk-rollout.py'
+          - --apply
+          - --output
+          - '{{ otel_controller_root }}/litellm-sdk-reconcile-{{ lookup("pipe", "date -u +%Y%m%dT%H%M%SZ") }}'
+      register: litellm_sdk_reconcile
+      changed_when: (litellm_sdk_reconcile.stdout | from_json).applied
+    - ansible.builtin.set_fact:
+        litellm_sdk_configuration_sha256: '{{ (litellm_sdk_reconcile.stdout | from_json).configurationSHA256 }}'
+
+- name: Bind the genuine soak to the actual SDK configuration without removing receiver bindings
+  hosts: socrat-1
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Preserve existing independent configuration epoch bindings
+      ansible.builtin.slurp:
+        src: /var/lib/homelab-otel-soak/configuration-epoch.json
+      register: litellm_existing_epoch
+    - name: Maintain deterministic SDK binding; changes reset the real continuous window
+      ansible.builtin.copy:
+        dest: /var/lib/homelab-otel-soak/configuration-epoch.json
+        mode: '0600'
+        content: |
+          {{ (litellm_existing_epoch.content | b64decode | from_json) | combine({'litellmSdkConfigurationSHA256': hostvars['localhost'].litellm_sdk_configuration_sha256}) | to_json(sort_keys=True) }}

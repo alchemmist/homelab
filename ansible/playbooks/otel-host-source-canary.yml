@@ -1,0 +1,55 @@
+---
+- name: Validate independent native host sources without changing production ingestion
+  hosts: socrat-0:socrat-1:socrat-2:socrat-3
+  serial: 1
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Require explicit validation-only artifact paths
+      ansible.builtin.assert:
+        that:
+          - otel_host_source_directory is defined
+          - otel_host_source_directory.startswith('/var/tmp/otel-host-source-canary-')
+          - otel_host_source_artifacts is defined
+          - otel_host_source_artifacts.startswith('/tmp/otel-')
+    - name: Create root-owned source canary staging directory
+      ansible.builtin.file:
+        path: '{{ otel_host_source_directory }}'
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+    - name: Copy pinned native exporter and read-only source probe
+      ansible.builtin.copy:
+        src: '{{ otel_host_source_artifacts }}/{{ item }}'
+        dest: '{{ otel_host_source_directory }}/{{ item }}'
+        owner: root
+        group: root
+        mode: '0755'
+      loop: [node_exporter, host-source-probe]
+    - name: Copy private bounded validation request
+      ansible.builtin.copy:
+        src: '{{ otel_host_source_artifacts }}/request.json'
+        dest: '{{ otel_host_source_directory }}/request.json'
+        owner: root
+        group: root
+        mode: '0600'
+    - name: Validate full native source families outside Kubernetes
+      block:
+        - name: Run owned loopback canary with cleanup
+          ansible.builtin.command:
+            argv: [python3, '-', --directory, '{{ otel_host_source_directory }}']
+            stdin: "{{ lookup('ansible.builtin.file', playbook_dir + '/../../scripts/otel-host-source-canary.py') }}"
+          changed_when: false
+          register: native_host_source
+          timeout: 180
+      always:
+        - name: Preserve counts and label hashes without raw metric bodies
+          ansible.builtin.fetch:
+            src: '{{ otel_host_source_directory }}/result.json'
+            dest: '{{ otel_host_source_artifacts }}/{{ inventory_hostname }}-result.json'
+            flat: true
+          no_log: true
+    - name: Report source comparison availability
+      ansible.builtin.debug:
+        msg: '{{ native_host_source.stdout | from_json }}'

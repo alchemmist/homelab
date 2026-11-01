@@ -1,0 +1,134 @@
+---
+- name: Verify real cluster sources through native OTLP without changing production ownership
+  hosts: socrat-0
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  vars:
+    otel_real_canary_stage: /var/tmp/otel-real-source-canary
+  tasks:
+    - name: Require explicit verified fixtures and a fresh scrape bundle
+      ansible.builtin.assert:
+        that:
+          - otel_scrape_bundle.startswith('/tmp/otel-scrape-bundle-')
+          - otel_validation_binaries.startswith('/tmp/otel-validation-binaries-')
+          - otel_validation_tls.startswith('/tmp/otel-validation-tls-')
+          - otel_validation_prometheus.startswith('/tmp/otel-validation-prometheus-')
+          - otel_real_canary_stage == '/var/tmp/otel-real-source-canary'
+
+    - name: Assign unique private run and bounded transient service names
+      ansible.builtin.set_fact:
+        otel_real_canary_suffix: "{{ now(utc=true, fmt='%Y%m%dT%H%M%S%fZ') }}"
+
+    - name: Prepare private root-owned staging without touching production storage
+      ansible.builtin.file:
+        path: "{{ otel_real_canary_stage }}/{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0700'
+      loop: ['', tls, "bundle-{{ otel_real_canary_suffix }}"]
+
+    - name: Copy pinned validation binaries
+      ansible.builtin.copy:
+        src: "{{ item.source }}"
+        dest: "{{ otel_real_canary_stage }}/{{ item.name }}"
+        owner: root
+        group: root
+        mode: '0700'
+      loop:
+        - source: "{{ otel_validation_binaries }}/otelcol-contrib"
+          name: otelcol-contrib
+        - source: "{{ otel_validation_prometheus }}/prometheus"
+          name: prometheus
+
+    - name: Copy loopback-only validation TLS without its CA private key
+      ansible.builtin.copy:
+        src: "{{ otel_validation_tls }}/{{ item }}"
+        dest: "{{ otel_real_canary_stage }}/tls/{{ item }}"
+        owner: root
+        group: root
+        mode: '0600'
+      loop: [ca.crt, server.crt, server.key, client.crt, client.key]
+      no_log: true
+
+    - name: Copy non-secret source contract
+      ansible.builtin.copy:
+        src: "{{ otel_scrape_bundle }}/contract.json"
+        dest: "{{ otel_real_canary_stage }}/bundle-{{ otel_real_canary_suffix }}/contract.json"
+        owner: root
+        group: root
+        mode: '0600'
+
+    - name: Render the actual source and candidate pipeline configurations
+      ansible.builtin.copy:
+        content: "{{ lookup('ansible.builtin.file', item.source) | from_yaml | to_nice_json }}\n"
+        dest: "{{ otel_real_canary_stage }}/{{ item.destination }}"
+        owner: root
+        group: root
+        mode: '0600'
+      loop:
+        - source: "{{ otel_scrape_bundle }}/cluster.yaml"
+          destination: "bundle-{{ otel_real_canary_suffix }}/cluster.json"
+        - source: "{{ playbook_dir }}/../../deploy/monitoring/otel/cluster.yaml"
+          destination: source.json
+
+    - name: Copy the bounded real-source canary driver
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../scripts/otel-real-source-canary.py"
+        dest: "{{ otel_real_canary_stage }}/canary.py"
+        owner: root
+        group: root
+        mode: '0600'
+
+    - name: Bound the canary lifetime and always remove its temporary authentication
+      block:
+        - name: Run a loopback-only shadow backend and Collector with hard aggregate resource limits
+          ansible.builtin.command:
+            argv:
+              - systemd-run
+              - --quiet
+              - --collect
+              - --wait
+              - --pipe
+              - "--unit=otel-source-canary-{{ otel_real_canary_suffix }}"
+              - --property=MemoryMax=3221225472
+              - --property=CPUQuota=200%
+              - --property=RuntimeMaxSec=300
+              - --property=OOMPolicy=kill
+              - python3
+              - "{{ otel_real_canary_stage }}/canary.py"
+              - --binary
+              - "{{ otel_real_canary_stage }}/otelcol-contrib"
+              - --prometheus
+              - "{{ otel_real_canary_stage }}/prometheus"
+              - --config
+              - "{{ otel_real_canary_stage }}/source.json"
+              - --bundle
+              - "{{ otel_real_canary_stage }}/bundle-{{ otel_real_canary_suffix }}"
+              - --tls
+              - "{{ otel_real_canary_stage }}/tls"
+              - --workspace
+              - "{{ otel_real_canary_stage }}/run-{{ otel_real_canary_suffix }}"
+          changed_when: false
+          timeout: 330
+          register: otel_real_canary
+
+      always:
+        - name: Remove only this run's temporary RBAC and copied source credentials
+          ansible.builtin.command:
+            argv: [python3, "{{ otel_real_canary_stage }}/canary.py", --cleanup-workspace, "{{ otel_real_canary_stage }}/run-{{ otel_real_canary_suffix }}"]
+          changed_when: false
+          timeout: 180
+
+    - name: Report only sanitized delivery evidence
+      ansible.builtin.debug:
+        msg: "{{ otel_real_canary.stdout | from_json }}"
+
+    - name: Retain sanitized canary evidence on the controller
+      ansible.builtin.copy:
+        content: "{{ otel_real_canary.stdout }}\n"
+        dest: /tmp/otel-real-source-canary-result-20261029.json
+        mode: '0600'
+      delegate_to: localhost
+      become: false

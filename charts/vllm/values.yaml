@@ -45,3 +45,10 @@ resources:
     cpu: "8"
     memory: 24Gi
     nvidia.com/gpu: "1"
+
+# Activate only through the proof-gated SDK playbook/maintained overlay.
+otel:
+  enabled: false
+  endpoint: https://10.250.0.3:44318/v1/traces
+  sourceConfigMap: ""
+  environment: {}

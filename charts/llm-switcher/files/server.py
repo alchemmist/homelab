@@ -5,6 +5,7 @@ import hmac
 import json
 import logging
 import os
+import re
 import ssl
 import time
 import uuid
@@ -14,6 +15,18 @@ from pathlib import Path
 
 from aiohttp import ClientError, ClientSession, ClientTimeout, web
 from context_budget import compact_chat
+
+
+def upstream_headers(incoming, content_length):
+    # Forward only validated W3C identity, never arbitrary headers, baggage,
+    # caller credentials or potentially sensitive tracestate vendor values.
+    result = {'Authorization': 'Bearer ' + KEY, 'Content-Type': 'application/json', 'Content-Length': str(content_length)}
+    parent = incoming.get('traceparent', '')
+    if len(parent) == 55 and re.fullmatch(r'00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}', parent):
+        _, trace_id, span_id, _ = parent.split('-')
+        if trace_id != '0' * 32 and span_id != '0' * 16:
+            result['traceparent'] = parent
+    return result
 
 LOG = logging.getLogger('llm-switcher')
 PROFILES = json.loads(Path('/config/profiles.json').read_text())
@@ -42,6 +55,23 @@ async def body_chunks(raw):
 
 def model_args(profile):
     return [profile['model'], '--revision', profile['revision'], '--tokenizer-revision', profile['revision'], '--served-model-name', profile['servedModelName'], '--host', '0.0.0.0', '--port', '8000', *profile['args']]
+
+
+def native_trace_args(container):
+    """Preserve the proof-gated native SDK endpoint across model switches.
+
+    Never copy arbitrary tracing destinations or collect-detailed-traces flags.
+    Model/DB/GPU parameters continue to come only from the selected profile.
+    """
+    env = {entry['name']: entry.get('value') for entry in container.get('env', [])}
+    endpoint = env.get('HOMELAB_VLLM_TRACE_ENDPOINT')
+    if endpoint is None:
+        if any(arg.startswith('--otlp-traces-endpoint') for arg in container.get('args', [])):
+            raise ValueError('Unreviewed tracing flag without renewable SDK configuration')
+        return []
+    if endpoint != 'https://10.250.0.3:44318/v1/traces' or env.get('OTEL_EXPORTER_OTLP_TRACES_PROTOCOL') != 'http/protobuf':
+        raise ValueError('Only the verified private HTTP/mTLS native tracing profile is allowed')
+    return ['--otlp-traces-endpoint', endpoint]
 
 
 class ModelScheduler:
@@ -213,9 +243,9 @@ class Gateway:
         return set()
 
     async def ensure_model(self, name):
-        args = model_args(PROFILES[name])
         deployment = await self.kube('GET')
         container = next(c for c in deployment['spec']['template']['spec']['containers'] if c['name'] == 'vllm')
+        args = model_args(PROFILES[name]) + native_trace_args(container)
         if container.get('args') != args:
             LOG.info('switching model to %s', name)
             deployment = await self.kube('PATCH', {'spec': {'template': {'metadata': {'annotations': {'llm.homelab/model-profile': hashlib.sha256(json.dumps(args).encode()).hexdigest()}}, 'spec': {'containers': [{'name': 'vllm', 'args': args}]}}}})
@@ -301,7 +331,7 @@ class Gateway:
                     sampling = {key: value for key, value in json.loads(raw).items() if key in ('temperature', 'top_p', 'top_k', 'min_p', 'presence_penalty', 'frequency_penalty', 'repetition_penalty', 'max_tokens', 'max_completion_tokens') and isinstance(value, (int, float)) and not isinstance(value, bool)}
                     LOG.info('sampling request=%s model=%s values=%s', request_id, model, json.dumps(sampling, sort_keys=True))
                     for attempt in range(3):
-                        async with self.session.post(BACKEND + request.path, data=body_chunks(raw), headers={'Authorization': 'Bearer ' + KEY, 'Content-Type': 'application/json', 'Content-Length': str(len(raw))}, timeout=ClientTimeout(total=None, sock_connect=10, sock_read=1800)) as upstream:
+                        async with self.session.post(BACKEND + request.path, data=body_chunks(raw), headers=upstream_headers(request.headers, len(raw)), timeout=ClientTimeout(total=None, sock_connect=10, sock_read=1800)) as upstream:
                             rejected = None
                             if upstream.status == 400 and context_info:
                                 rejected = await upstream.read()

@@ -1,0 +1,81 @@
+extensions:
+  file_storage:
+    create_directory: true
+    directory: /var/lib/homelab-otel/application-ingress-queue
+    fsync: true
+  health_check:
+    endpoint: 127.0.0.1:13134
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 10.250.0.3:44318
+        max_request_body_size: 8388608
+        tls:
+          cert_file: /var/lib/homelab-otel/tls/server.crt
+          key_file: /var/lib/homelab-otel/tls/server.key
+          client_ca_file: /var/lib/homelab-otel/tls/ca.crt
+          min_version: '1.3'
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 128
+    spike_limit_mib: 32
+  transform/privacy:
+    error_mode: propagate
+    trace_statements:
+    - context: resource
+      statements:
+      - delete_matching_keys(attributes, "(?i).*(authorization|password|secret|token|cookie|prompt|completion|request.body|response.body|gen_ai[.](input|output|system_instructions)|db[.](statement|query[.]text)|exception[.](message|stacktrace)).*")
+    - context: span
+      statements:
+      - set(status.message, "")
+      - delete_matching_keys(attributes, "(?i).*(authorization|password|secret|token|cookie|prompt|completion|request.body|response.body|gen_ai[.](input|output|system_instructions)|db[.](statement|query[.]text)|exception[.](message|stacktrace)).*")
+      - replace_pattern(attributes["url.full"], "\\?.*", "?<redacted>") where attributes["url.full"]
+        != nil
+      - replace_pattern(attributes["http.url"], "\\?.*", "?<redacted>") where attributes["http.url"]
+        != nil
+    - context: spanevent
+      statements:
+      - delete_matching_keys(attributes, "(?i).*(authorization|password|secret|token|cookie|prompt|completion|request.body|response.body|gen_ai[.](input|output|system_instructions)|db[.](statement|query[.]text)|exception[.](message|stacktrace)).*")
+  batch:
+    timeout: 1s
+    send_batch_size: 128
+    send_batch_max_size: 256
+exporters:
+  otlp/global-sampler:
+    endpoint: 10.250.0.1:44317
+    tls:
+      ca_file: /var/lib/homelab-otel/tls/ca.crt
+      cert_file: /var/lib/homelab-otel/tls/client.crt
+      key_file: /var/lib/homelab-otel/tls/client.key
+    sending_queue:
+      storage: file_storage
+      sizer: bytes
+      queue_size: 67108864
+      num_consumers: 2
+    retry_on_failure:
+      enabled: true
+      max_elapsed_time: 0s
+service:
+  extensions:
+  - file_storage
+  - health_check
+  telemetry:
+    metrics:
+      readers:
+      - pull:
+          exporter:
+            prometheus:
+              host: 127.0.0.1
+              port: 18889
+  pipelines:
+    traces:
+      receivers:
+      - otlp
+      processors:
+      - memory_limiter
+      - transform/privacy
+      - batch
+      exporters:
+      - otlp/global-sampler

@@ -1,0 +1,35 @@
+---
+- name: Reconcile only proof-gated source-safe native Open WebUI HTTP tracing
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+  vars:
+    otel_controller_root: "{{ lookup('env', 'HOME') }}/Library/Application Support/homelab/otel-controller"
+  tasks:
+    - name: Preserve native app DB image auth metrics ownership and natural long-request drain
+      ansible.builtin.command:
+        argv:
+          - python3
+          - '{{ playbook_dir }}/../../scripts/otel-open-webui-sdk-rollout.py'
+          - --apply
+          - --output
+          - '{{ otel_controller_root }}/open-webui-sdk-reconcile-{{ lookup("pipe", "date -u +%Y%m%dT%H%M%SZ") }}'
+      register: open_webui_sdk_reconcile
+      changed_when: open_webui_sdk_reconcile.rc == 0 and (open_webui_sdk_reconcile.stdout | from_json).applied
+    - ansible.builtin.set_fact:
+        open_webui_sdk_configuration_sha256: '{{ (open_webui_sdk_reconcile.stdout | from_json).configurationSHA256 }}'
+
+- name: Preserve independent application and receiver epoch bindings after real SDK rollout
+  hosts: socrat-1
+  gather_facts: false
+  become: true
+  tasks:
+    - ansible.builtin.slurp:
+        src: /var/lib/homelab-otel-soak/configuration-epoch.json
+      register: open_webui_existing_epoch
+    - ansible.builtin.copy:
+        dest: /var/lib/homelab-otel-soak/configuration-epoch.json
+        mode: '0600'
+        content: |
+          {{ (open_webui_existing_epoch.content | b64decode | from_json) | combine({'openWebuiSdkConfigurationSHA256': hostvars['localhost'].open_webui_sdk_configuration_sha256}) | to_json(sort_keys=True) }}

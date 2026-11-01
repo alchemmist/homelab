@@ -1,0 +1,82 @@
+---
+- name: Keep the new native HTTP receiver in the existing host-leaf reload lifecycle
+  hosts: socrat-1
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Maintain credential updater without touching credential values or restarting signals
+      ansible.builtin.copy:
+        src: ../../scripts/otel-host-credentials.py
+        dest: /var/lib/homelab-otel/credentials.py
+        mode: '0700'
+
+- name: Maintain private native OTLP HTTP traces without restarting existing owners
+  hosts: socrat-1
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Verify the reused installed stock Collector binary
+      ansible.builtin.stat:
+        path: /usr/local/lib/homelab-otel/otelcol-contrib
+        checksum_algorithm: sha256
+      register: application_collector_binary
+    - ansible.builtin.assert:
+        that:
+          - application_collector_binary.stat.checksum == '57911a9d902cfe2c287dac09fcee4b054630b4ec248fa190a3115d860a32f81f'
+    - name: Fail closed if the bounded receiver would breach measured memory or disk reserves
+      ansible.builtin.command:
+        argv:
+          - python3
+          - -c
+          - "import os; m={k:int(v.split()[0])*1024 for k,v in (line.split(':',1) for line in open('/proc/meminfo'))}; d=os.statvfs('/var/lib/homelab-otel'); assert m['MemAvailable']-192*1024**2>=m['MemTotal']*.2; assert d.f_bavail*d.f_frsize-64*1024**2>=d.f_blocks*d.f_frsize*.2"
+      changed_when: false
+    - name: Create a separate protected durable queue without touching existing signal queues
+      ansible.builtin.file:
+        path: /var/lib/homelab-otel/application-ingress-queue
+        state: directory
+        mode: '0700'
+    - name: Maintain client-mTLS HTTP-only traces with privacy before durable queueing
+      ansible.builtin.copy:
+        src: ../../deploy/monitoring/otel/application-ingress.yaml
+        dest: /etc/homelab-otel/application-ingress.yaml
+        mode: '0600'
+      register: application_ingress_configuration
+    - name: Validate the configuration using the unchanged stock Collector
+      ansible.builtin.command:
+        argv: [/usr/local/lib/homelab-otel/otelcol-contrib, validate, --config=/etc/homelab-otel/application-ingress.yaml]
+      environment:
+        GOMEMLIMIT: 96MiB
+        GOMAXPROCS: '1'
+      changed_when: false
+    - name: Maintain isolated resource-bounded native service
+      ansible.builtin.copy:
+        src: ../../deploy/monitoring/otel/homelab-otel-application-ingress.service
+        dest: /etc/systemd/system/homelab-otel-application-ingress.service
+        mode: '0644'
+      register: application_ingress_unit
+    - name: Start only the new receiver; never restart metrics, logs or global tail sampling
+      ansible.builtin.systemd_service:
+        name: homelab-otel-application-ingress.service
+        enabled: true
+        daemon_reload: '{{ application_ingress_unit.changed }}'
+        state: "{{ 'restarted' if application_ingress_configuration.changed or application_ingress_unit.changed else 'started' }}"
+    - name: Wait for the new loopback-only native health endpoint
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: 13134
+        timeout: 30
+    - name: Maintain the strict raw-boundary and authenticated HTTP receiver soak checks
+      ansible.builtin.copy:
+        src: ../../scripts/otel-production-soak.py
+        dest: /var/lib/homelab-otel/soak.py
+        mode: '0700'
+    - name: Preserve other independently maintained SDK configuration epoch bindings
+      ansible.builtin.slurp:
+        src: /var/lib/homelab-otel-soak/configuration-epoch.json
+      register: application_existing_epoch
+    - name: Bind the real continuous soak to this receiver and credential lifecycle configuration
+      ansible.builtin.copy:
+        dest: /var/lib/homelab-otel-soak/configuration-epoch.json
+        mode: '0600'
+        content: |
+          {{ (application_existing_epoch.content | b64decode | from_json) | combine({'epoch': '20261101-private-native-http-traces', 'rawReadBoundaryCheckRequired': true, 'ingressConfigSHA256': lookup('file', '../../deploy/monitoring/otel/application-ingress.yaml') | hash('sha256'), 'ingressUnitSHA256': lookup('file', '../../deploy/monitoring/otel/homelab-otel-application-ingress.service') | hash('sha256'), 'credentialScriptSHA256': lookup('file', '../../scripts/otel-host-credentials.py') | hash('sha256')}) | to_json(sort_keys=True) }}
