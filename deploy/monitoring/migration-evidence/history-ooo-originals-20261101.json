@@ -1,0 +1,21 @@
+{
+  "success": true,
+  "productionModified": false,
+  "otlpRoundtripStillRequired": true,
+  "blocks": [
+    {
+      "block": "01M690QQG8K9TQ5WBE7W573CW0",
+      "samples": 38731,
+      "canonicalSHA256": "f7f081130c485e7df717ce76254e30b6efb6020da39fc0ae366c05faa38a4234",
+      "outOfOrderCompanion": true,
+      "fullNativeCanonicalVerified": true
+    },
+    {
+      "block": "01M697KFH379N839ZYW5VM28J5",
+      "samples": 4279,
+      "canonicalSHA256": "87ff7eba08390b39dab7aaa0d4824560270a61e4d683545edf9a0d44787f15fc",
+      "outOfOrderCompanion": true,
+      "fullNativeCanonicalVerified": true
+    }
+  ]
+}

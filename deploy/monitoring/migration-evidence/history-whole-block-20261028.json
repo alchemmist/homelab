@@ -1,0 +1,55 @@
+{
+  "benchmark": {
+    "after": {
+      "exportAllocations": 40756,
+      "exportBytes": 8568175,
+      "exportNs": 28523115,
+      "walkAllocations": 358,
+      "walkBytes": 40709,
+      "walkNs": 1075333
+    },
+    "before": {
+      "exportAllocations": 380738,
+      "exportBytes": 23614067,
+      "exportNs": 40597221,
+      "walkAllocations": 100357,
+      "walkBytes": 4363214,
+      "walkNs": 7912037
+    },
+    "scope": "synthetic 20000-sample fixture on Apple M3 Pro; not whole-history throughput"
+  },
+  "binarySHA256": "160d09abda547bb65e296b2e6fe3f24ea227d00ae9bc001241f5c53af6ca31b7",
+  "canonicalFormatUnchanged": true,
+  "compressedOTLPBytes": 1703500265,
+  "exportManifestSHA256": "22efce13b5bce4fadc75143e936822615e2591c82e82c3199ce0f7b363102952",
+  "interruption": {
+    "finalCanonicalVerificationResumed": true,
+    "initialRunTimedOutSeconds": 1800,
+    "partialImportRetained": true,
+    "separateVerificationElapsedSeconds": 40.38,
+    "separateVerificationMaxRSSBytes": 238829568
+  },
+  "productionModified": false,
+  "queryAcceptanceVerified": false,
+  "receiverCompatibilityTest": "TestExportThroughPrometheus315OTLPTranslator; pinned Prometheus v0.315.0",
+  "restoredBlockBytes": 207173116,
+  "schemaVersion": 1,
+  "scope": "one-complete-source-block-of-seven-active-raw-blocks",
+  "sourceArchive": "prometheus-snapshot.tar.gz",
+  "sourceBlock": "01M61CDMNWPCZ4GZWFB5FHS67S",
+  "sourceBlockBytes": 216144711,
+  "stalenessEncoding": "standard OTLP DataPointFlags.NO_RECORDED_VALUE_MASK",
+  "verification": {
+    "block": "01M61PJFZ9Q86GRQ70N0M81NH3",
+    "canonicalSHA256": "7f7fac361193bea3f23f53bcdb40ceeef2495f724e3d0d86ecbc486fd371088f",
+    "completeSourceBlock": true,
+    "metricSelection": "",
+    "productionModified": false,
+    "samples": 235173517,
+    "staleMarkers": 22716,
+    "verified": true
+  },
+  "verifiedAt": "2026-10-28T17:12:44.452535+00:00",
+  "wholeHistoryRoundtripVerified": false,
+  "workspace": "/tmp/otel-history-classification-20261028"
+}

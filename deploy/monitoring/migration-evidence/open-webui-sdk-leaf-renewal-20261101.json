@@ -1,0 +1,117 @@
+{
+  "source": {
+    "success": true,
+    "traceId": "e77c3d8c0ef8d229f3e0028df1a42224",
+    "parentSpanId": "fbdf3fe71f4277cf",
+    "httpStatus": 500,
+    "nativeSetupFunctionCalled": true,
+    "sameNativeProviderAndExporterInstance": true,
+    "sdkLeafReloadVerified": true,
+    "traces": [
+      {
+        "traceId": "e77c3d8c0ef8d229f3e0028df1a42224",
+        "parentSpanId": "fbdf3fe71f4277cf",
+        "httpStatus": 500
+      },
+      {
+        "traceId": "94e33ac527796a5e5e93b144bd4d6854",
+        "parentSpanId": "623f44c1cabc1216",
+        "httpStatus": 500
+      }
+    ],
+    "beforeCertificateSHA256": "e8da0f2e3e0b5631add94759e6d01384ee082c361cb007b8bec4669cdadf89cf",
+    "afterCertificateSHA256": "25c44649379060e4e36c3bacb2aadca9abd9eddfdd4957d6f2bcc13d78691017",
+    "nativeHttpLoadedPublicCertificateHashes": [
+      "25c44649379060e4e36c3bacb2aadca9abd9eddfdd4957d6f2bcc13d78691017",
+      "e8da0f2e3e0b5631add94759e6d01384ee082c361cb007b8bec4669cdadf89cf"
+    ],
+    "nativeFactoryReplacedBeforeSetupImport": true,
+    "unsafeAndDuplicateInstrumentorsDisabled": {
+      "redis": true,
+      "sqlalchemy": true,
+      "systemMetrics": true,
+      "logging": true
+    },
+    "nativeHttpConstructorPreservedConnectionClose": [
+      true
+    ],
+    "sourcePrivacyAudit": {
+      "endedSpans": 12,
+      "sensitiveSyntheticContentFoundBeforeDownstreamProcessor": false,
+      "httpClientSpanSeen": true,
+      "serverSpanSeen": true
+    },
+    "productionDatabaseOrModelCalled": false,
+    "productionDeploymentChanged": false,
+    "profile": "stock-http-only-no-redis-no-sql-no-systemmetrics-no-log-export",
+    "productionApplicationSdkCoverageVerified": false,
+    "backendAndSdkRenewalProofStillRequired": true
+  },
+  "rotation": {
+    "success": true,
+    "application": "open-webui",
+    "phase": "native-leaf-renewal-and-mirror-verified",
+    "originalRevision": 1,
+    "originalCertificateSHA256": "e8da0f2e3e0b5631add94759e6d01384ee082c361cb007b8bec4669cdadf89cf",
+    "originalPublicKeySHA256": "f44caf6f88605f25e772bd28543958dac24016b6524bb6ad0807bb16a3f38676",
+    "secretsDeleted": false,
+    "privateKeysSaved": false,
+    "applicationDeploymentsChanged": false,
+    "sdkExporterReloadVerified": false,
+    "nativeReference": "https://github.com/cert-manager/cmctl/blob/v2.3.0/pkg/renew/renew.go",
+    "renewedPublicKeySHA256": "e1c56268b8bb24a7979542f2022a326f8f9c5f46aca4a55513d5c5122fc3ce55",
+    "clientKeypairRotationVerified": true,
+    "renewedRevision": 2,
+    "renewedCertificateSHA256": "25c44649379060e4e36c3bacb2aadca9abd9eddfdd4957d6f2bcc13d78691017",
+    "mirrorJob": "otel-app-leaf-rotation-20261101113536",
+    "certificateSpecChanged": false,
+    "newLeafNativeClientMtlsVerified": true,
+    "targetMirrorCertificateEqualityVerified": true,
+    "oldStillValidLeafRevocationClaimed": false
+  },
+  "backend": [
+    {
+      "success": true,
+      "traceId": "e77c3d8c0ef8d229f3e0028df1a42224",
+      "parentSpanId": "fbdf3fe71f4277cf",
+      "spanCount": 6,
+      "serviceNames": [
+        "homelab-open-webui-sdk-canary"
+      ],
+      "internalLibraryChildSpanNames": [
+        "POST /synthetic"
+      ],
+      "internalLibraryChildVerified": true,
+      "sensitiveSyntheticContentFound": false,
+      "productionApplicationSdkCoverageVerified": false,
+      "mockProviderOnly": true,
+      "dedicatedClientMtlsCredentialUsed": true,
+      "realLlmApiTokensUsed": false,
+      "productionOpenWebuiSdkCoverageVerified": false,
+      "isolatedNativeSetupOnly": true,
+      "realInferenceRequests": 0
+    },
+    {
+      "success": true,
+      "traceId": "94e33ac527796a5e5e93b144bd4d6854",
+      "parentSpanId": "623f44c1cabc1216",
+      "spanCount": 6,
+      "serviceNames": [
+        "homelab-open-webui-sdk-canary"
+      ],
+      "internalLibraryChildSpanNames": [
+        "POST /synthetic"
+      ],
+      "internalLibraryChildVerified": true,
+      "sensitiveSyntheticContentFound": false,
+      "productionApplicationSdkCoverageVerified": false,
+      "mockProviderOnly": true,
+      "dedicatedClientMtlsCredentialUsed": true,
+      "realLlmApiTokensUsed": false,
+      "productionOpenWebuiSdkCoverageVerified": false,
+      "isolatedNativeSetupOnly": true,
+      "realInferenceRequests": 0
+    }
+  ],
+  "productionDeploymentChanged": false
+}

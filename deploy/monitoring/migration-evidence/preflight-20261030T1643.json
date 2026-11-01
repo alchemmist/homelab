@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "readyForCutover": false,
+  "errors": [
+    "Unverified prerequisite: diskProjectionVerified",
+    "Unverified prerequisite: historyRoundtripVerified",
+    "Unverified prerequisite: historySourceIntegrityVerified",
+    "Unverified prerequisite: sourceRegistryVerified"
+  ],
+  "capacity": {
+    "socrat-0": {
+      "diskAfterPeakBytes": 305537011712,
+      "diskFloorBytes": 189770101556,
+      "memoryAvailableBytes": 20049940480,
+      "memoryRequiredBytes": 3019898880,
+      "additionalComponentMemoryBytes": 2483027968
+    },
+    "socrat-1": {
+      "diskAfterPeakBytes": 224423804928,
+      "diskFloorBytes": 79264636109,
+      "memoryAvailableBytes": 7648079872,
+      "memoryRequiredBytes": 5167382528,
+      "additionalComponentMemoryBytes": 4630511616
+    },
+    "socrat-2": {
+      "diskAfterPeakBytes": 15113809920,
+      "diskFloorBytes": 8441620071,
+      "memoryAvailableBytes": 666259456,
+      "memoryRequiredBytes": 603979776,
+      "additionalComponentMemoryBytes": 335544320
+    },
+    "socrat-3": {
+      "diskAfterPeakBytes": 419713486848,
+      "diskFloorBytes": 97491134055,
+      "memoryAvailableBytes": 1110847488,
+      "memoryRequiredBytes": 603979776,
+      "additionalComponentMemoryBytes": 335544320
+    }
+  },
+  "observedAt": "2026-10-30T16:54:58.411090+00:00",
+  "hostExporterMemoryIncluded": true
+}

@@ -1,0 +1,90 @@
+{
+  "source": {
+    "success": true,
+    "sameNativeSdkProviderAndExporterInstance": true,
+    "oldCertificateSHA256": "fc1b71441a6d2b112e67c752324f50a007c262ecc0ae1db28f0f2de4762cfe5a",
+    "newCertificateSHA256": "024849ad9b619777b9cf6f9f420ee42da5070485d51a5af6eeeb6fda36701b4d",
+    "oldAndNewLeafLoadedByNativeTlsStack": true,
+    "connectionCloseEnabled": true,
+    "sourcePrivacyAudit": {
+      "endedSpans": 4,
+      "sensitiveSyntheticContentFoundAtSource": false
+    },
+    "traces": [
+      {
+        "traceId": "686b5a449d7a2b2bec15eb8fae14da46",
+        "parentSpanId": "f923dcb6c5ae2c59"
+      },
+      {
+        "traceId": "04aa6f3a44e6a079582b0d5322b65ce9",
+        "parentSpanId": "13351cf993bb2d77"
+      }
+    ],
+    "applicationDeploymentsPatched": false,
+    "privateKeysSavedOrLogged": false,
+    "realLlmRequests": 0,
+    "productionApplicationSdkCoverageVerified": false,
+    "backendProofForBothTracesStillRequired": true
+  },
+  "backend": [
+    {
+      "success": true,
+      "traceId": "686b5a449d7a2b2bec15eb8fae14da46",
+      "parentSpanId": "f923dcb6c5ae2c59",
+      "spanCount": 2,
+      "serviceNames": [
+        "homelab-litellm-sdk-canary"
+      ],
+      "internalLibraryChildSpanNames": [
+        "litellm_request"
+      ],
+      "internalLibraryChildVerified": true,
+      "sensitiveSyntheticContentFound": false,
+      "productionApplicationSdkCoverageVerified": false,
+      "mockProviderOnly": true,
+      "dedicatedClientMtlsCredentialUsed": true,
+      "realLlmApiTokensUsed": false
+    },
+    {
+      "success": true,
+      "traceId": "04aa6f3a44e6a079582b0d5322b65ce9",
+      "parentSpanId": "13351cf993bb2d77",
+      "spanCount": 2,
+      "serviceNames": [
+        "homelab-litellm-sdk-canary"
+      ],
+      "internalLibraryChildSpanNames": [
+        "litellm_request"
+      ],
+      "internalLibraryChildVerified": true,
+      "sensitiveSyntheticContentFound": false,
+      "productionApplicationSdkCoverageVerified": false,
+      "mockProviderOnly": true,
+      "dedicatedClientMtlsCredentialUsed": true,
+      "realLlmApiTokensUsed": false
+    }
+  ],
+  "rotation": {
+    "success": true,
+    "phase": "native-leaf-renewal-and-mirror-verified",
+    "originalRevision": 2,
+    "originalCertificateSHA256": "fc1b71441a6d2b112e67c752324f50a007c262ecc0ae1db28f0f2de4762cfe5a",
+    "originalPublicKeySHA256": "b418180a52906ade027cb102bcb5581b3f9e49a3f3e5de42f97cac80406a4802",
+    "secretsDeleted": false,
+    "privateKeysSaved": false,
+    "applicationDeploymentsChanged": false,
+    "sdkExporterReloadVerified": false,
+    "nativeReference": "https://github.com/cert-manager/cmctl/blob/v2.3.0/pkg/renew/renew.go",
+    "renewedPublicKeySHA256": "a2a41cd0d70e59bb3422aac910d66085b94471867d9b72f29c8ee521b3691b99",
+    "clientKeypairRotationVerified": true,
+    "renewedRevision": 3,
+    "renewedCertificateSHA256": "024849ad9b619777b9cf6f9f420ee42da5070485d51a5af6eeeb6fda36701b4d",
+    "mirrorJob": "otel-app-leaf-rotation-20261101085838",
+    "certificateSpecChanged": false,
+    "newLeafNativeClientMtlsVerified": true,
+    "targetMirrorCertificateEqualityVerified": true,
+    "oldStillValidLeafRevocationClaimed": false
+  },
+  "deploymentPatchRightsGranted": false,
+  "productionSdkCoverageVerified": false
+}

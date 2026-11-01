@@ -1,0 +1,15 @@
+{
+  "version": "0.12.3",
+  "runtimeEntrypointCallsNativeSetup": true,
+  "sourcePath": "open_webui/utils/telemetry/instrumentors.py",
+  "sourceSHA256": "f26fd7f3f437a496b08a86fe1f28a770e3855c198240e47ddb6db7aef2e02d6b",
+  "findings": {
+    "redisHookSerializesAllCommandArgumentsIntoDbStatement": true,
+    "outboundHooksPutFullUrlIntoSpanName": true,
+    "aiohttpHookCapturesRawExceptionString": true,
+    "sourcePrivacyGatePassed": false,
+    "collectorRedactionIsNotSourcePrivacyProof": true
+  },
+  "nativeSdkEnabledByThisReview": false,
+  "genuinelyUnsupportedExclusionClaimed": false
+}

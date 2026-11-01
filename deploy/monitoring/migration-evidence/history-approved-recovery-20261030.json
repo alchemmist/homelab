@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-10-30T13:17:25.327531+00:00",
+  "operatorAuthorizedMaximumLossWindowMS": 86400000,
+  "recovery": {
+    "allOtherSamplesCanonicalVerified": true,
+    "block": "01M66BZJJH7AX3HTZFRZD02SXP",
+    "canonicalSHA256": "0904e594038c9cfc60720e01bee3b27cbfdca450b913dd9f5f5dda8da16c4209",
+    "maximumLossWindowMS": 86400000,
+    "originalsDeleted": false,
+    "productionModified": false,
+    "removedMaxTime": 1793276996534,
+    "removedMetric": "node_scrape_collector_duration_seconds",
+    "removedMinTime": 1793276401534,
+    "removedSamples": 120,
+    "samples": 6383043932,
+    "sourceULID": "01M65MWZVAGM92C51JW43C3SZ7",
+    "verified": true
+  },
+  "worker": {
+    "startedAt": "2026-10-30T12:05:43.937353+00:00",
+    "productionModified": false,
+    "success": true,
+    "returnCode": 0,
+    "finishedAt": "2026-10-30T12:32:31.130605+00:00"
+  },
+  "pinnedExecutableSHA256": "ef7722cce2ad09a8417192e50560d117e9c24b7dae1a07bad36f84f7afb5ef57",
+  "nativeThanosCompatibilityVerified": true,
+  "publishedToProduction": true,
+  "sourceIntegrityGateCleared": false,
+  "currentSourceCodeHardeningNotInPinnedWorker": [
+    "close source mmap before independently verifying target",
+    "reject output nested inside preserved source"
+  ],
+  "canonicalVerificationOutsideApprovedLossRelaxed": false,
+  "nativeThanosCompatibility": {
+    "verified": true,
+    "nativeThanosVersion": "0.42.4",
+    "nativeBinarySHA256": "e88cf130a15f91ba8437885231fd3aa27fe88ef118b1fa2f2251465a526c7df9",
+    "nativeIndexIssueVerificationPassed": true,
+    "exactAffectedSeriesCounts": {
+      "before": 1.0,
+      "inside": 0,
+      "after": 1.0
+    },
+    "candidateFilesSHA256Verified": true,
+    "productionModified": false,
+    "newBlock": "01M66BZJJH7AX3HTZFRZD02SXP"
+  },
+  "productionRepairPublication": {
+    "published": true,
+    "oldBlock": "01M65MWZVAGM92C51JW43C3SZ7",
+    "newBlock": "01M66BZJJH7AX3HTZFRZD02SXP",
+    "originalQuarantined": true,
+    "originalDeleted": false,
+    "coServedOriginalAndReplacement": false,
+    "canonicalRetainedSamples": 6383043932,
+    "approvedRemovedSamples": 120,
+    "livePrometheusStoppedForReplacement": false,
+    "allCandidateFilesSHA256VerifiedAfterMove": true,
+    "otelCutoverPerformed": false,
+    "memoryFaultDeclaredFixed": false
+  }
+}

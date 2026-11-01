@@ -1,0 +1,93 @@
+{
+  "sealedSourceBundle": {
+    "success": true,
+    "sourceNode": "socrat-1",
+    "destinationNode": "socrat-0",
+    "archiveSHA256": "9edcbb69a6d1eadbe3bbb315c26de9a0a3f0b2468f1e28ffed1c12fe6766e7ee",
+    "archiveBytes": 8918220800,
+    "completedRoundtripSamples": 6383043932,
+    "completedRoundtripCanonicalSHA256": "0904e594038c9cfc60720e01bee3b27cbfdca450b913dd9f5f5dda8da16c4209",
+    "originalsDeleted": false,
+    "productionPublished": false,
+    "importerStarted": false
+  },
+  "directTransferSHA256": "9edcbb69a6d1eadbe3bbb315c26de9a0a3f0b2468f1e28ffed1c12fe6766e7ee",
+  "destination": {
+    "success": true,
+    "archiveSHA256": "9edcbb69a6d1eadbe3bbb315c26de9a0a3f0b2468f1e28ffed1c12fe6766e7ee",
+    "archiveBytes": 8918220800,
+    "completedRoundtripReusedWithoutReimport": true,
+    "tailImporterStarted": false,
+    "originalsDeleted": false,
+    "productionPublished": false,
+    "node": "socrat-0"
+  },
+  "nativeFinalization": {
+    "success": true,
+    "samples": 6383043932,
+    "canonicalSHA256": "0904e594038c9cfc60720e01bee3b27cbfdca450b913dd9f5f5dda8da16c4209",
+    "actualNativeThanosQueryVerified": true,
+    "durableStagingVerified": true,
+    "restoredBlock": "01M6BBYTZHHWT579DX99J3S7EF",
+    "productionPublished": false,
+    "resumedAlreadyVerifiedNativeRelocation": true,
+    "finishedAtUnix": 1793542371.1894574
+  },
+  "latestStatus": {
+    "current": {
+      "result.json": {
+        "success": true,
+        "sourceSamples": 6383043932,
+        "sourceCanonicalSHA256": "0904e594038c9cfc60720e01bee3b27cbfdca450b913dd9f5f5dda8da16c4209",
+        "productionPublished": false,
+        "originalsDeleted": false,
+        "additionalLossApproved": false,
+        "startedAtUnix": 1793480479.6698303,
+        "exportBudgetBytes": 60129542144,
+        "restoredBlock": "/home/alchemmist/otel-history-current-roundtrip-work-20261031/restored/01M6BBYTZHHWT579DX99J3S7EF",
+        "fullCanonicalRoundtripVerified": true,
+        "nativeThanosIndexAndQueryStillRequired": true,
+        "finishedAtUnix": 1793533191.1882668
+      }
+    },
+    "nativeFinalize": {
+      "final-result.json": {
+        "success": true,
+        "samples": 6383043932,
+        "canonicalSHA256": "0904e594038c9cfc60720e01bee3b27cbfdca450b913dd9f5f5dda8da16c4209",
+        "actualNativeThanosQueryVerified": true,
+        "durableStagingVerified": true,
+        "restoredBlock": "01M6BBYTZHHWT579DX99J3S7EF",
+        "productionPublished": false,
+        "resumedAlreadyVerifiedNativeRelocation": true,
+        "finishedAtUnix": 1793542371.1894574
+      }
+    },
+    "tail": {
+      "progress.json": {
+        "phase": "inventory",
+        "originalBlock": "01M66G9HT3YJ4W6TSADWG305M6",
+        "completedBlocks": 0
+      }
+    },
+    "units": "MemoryCurrent=[not set]\nId=otel-history-current-roundtrip-20261031-v2.service\nActiveState=inactive\nSubState=dead\n\nMemoryCurrent=[not set]\nId=otel-history-current-native-finalize-20261031.service\nActiveState=failed\nSubState=failed\n\nMemoryCurrent=3291086848\nId=otel-history-tail-roundtrip-20261101.service\nActiveState=active\nSubState=running\n"
+  },
+  "singleImporterOwner": "socrat-0",
+  "fastResources": {
+    "memoryBytes": 6442450944,
+    "cpuQuotaPercent": 600,
+    "goMaxProcs": 6,
+    "goMemoryLimit": "4GiB"
+  },
+  "oneTimeReadOnlySshAuthorizationRemoved": true,
+  "oneTimePrivateTransferKeyRemoved": true,
+  "failedReceiptsAndJournalsRetained": true,
+  "sourceDataDeleted": false,
+  "productionHistoryPublished": false,
+  "additionalHistoryLossApproved": false,
+  "sourceFilesSHA256": {
+    "scripts/otel-history-fast-transfer.py": "8d3ce467c6c563140dac195cdf2cc9c1a652ae39ddde482249a21c71ae3536bc",
+    "scripts/otel-history-resume-native.py": "55e8f7581b1364191fc5cb1bcc9b4a44bf3867bdc7520ddf02686b74ce7288a9",
+    "scripts/otel-history-tail-roundtrip.py": "64cf6f9fe65d69f61b32f493d213370daef8988c91a6afe1e923afbb80a00501"
+  }
+}

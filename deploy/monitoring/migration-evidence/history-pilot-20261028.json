@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "verified": true,
+  "completeHistoryMigration": false,
+  "sourceBackupEvidence": "deploy/monitoring/migration-evidence/backup-20261028.json",
+  "sourceBlock": "01M6076H3XNHHMS09HJPWX3179",
+  "encoding": "standard-otlp-untyped-gauge",
+  "pilot": {
+    "block": "01M61HZJ64B32P0Q7AWG14NHVZ",
+    "canonicalSHA256": "f9df07ff16ffc299d1277ee55354238f6cc59043d5a8bf88b975e9b0212b9ad7",
+    "completeSourceBlock": false,
+    "metricSelection": "node_cpu_seconds_total",
+    "productionModified": false,
+    "samples": 483840,
+    "verified": true
+  },
+  "exportBatchCount": 97,
+  "exportCompressedBytes": 4664915,
+  "initiallyRefused": [
+    {
+      "sourceBlock": "01M61CDMNWPCZ4GZWFB5FHS67S",
+      "reason": "Prometheus staleness markers; standard OTLP roundtrip refused; original block preserved"
+    }
+  ],
+  "nativeExceptions": [],
+  "stalenessCorrection": {
+    "standardEncoding": "NoRecordedValue",
+    "supersededBy": "deploy/monitoring/migration-evidence/history-whole-block-20261028.json",
+    "description": "Initial exporter refusal was an implementation limitation, not a limitation of standard OTLP."
+  }
+}

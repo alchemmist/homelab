@@ -1,0 +1,52 @@
+{
+  "collectedAt": "2026-11-01T07:28:15.534194+00:00",
+  "applicationDeploymentsChanged": false,
+  "privateKeysReadByThisTool": false,
+  "secretValuesSaved": false,
+  "dedicatedClientCertificatesReady": true,
+  "namedClientLeafReadAllowed": {
+    "harbor": true,
+    "litellm": true,
+    "vllm": true,
+    "open-webui": true
+  },
+  "forbiddenPermissionsAllowed": {
+    "caPrivateKeyRead": false,
+    "hostPrivateKeyRead": false,
+    "listAllSecrets": false,
+    "certificateCreation": false,
+    "deploymentPatch": false
+  },
+  "renewalMirrorAndSdkReloadStillRequired": true,
+  "internalSdkCoverageComplete": false,
+  "certificates": [
+    {
+      "name": "otel-app-tls-harbor",
+      "notBefore": "2026-11-01T07:27:52Z",
+      "notAfter": "2027-01-30T07:27:52Z",
+      "renewalTime": "2026-12-31T07:27:52Z",
+      "revision": 1
+    },
+    {
+      "name": "otel-app-tls-litellm",
+      "notBefore": "2026-11-01T07:27:52Z",
+      "notAfter": "2027-01-30T07:27:52Z",
+      "renewalTime": "2026-12-31T07:27:52Z",
+      "revision": 1
+    },
+    {
+      "name": "otel-app-tls-open-webui",
+      "notBefore": "2026-11-01T07:27:53Z",
+      "notAfter": "2027-01-30T07:27:53Z",
+      "renewalTime": "2026-12-31T07:27:53Z",
+      "revision": 1
+    },
+    {
+      "name": "otel-app-tls-vllm",
+      "notBefore": "2026-11-01T07:27:52Z",
+      "notAfter": "2027-01-30T07:27:52Z",
+      "renewalTime": "2026-12-31T07:27:52Z",
+      "revision": 1
+    }
+  ]
+}

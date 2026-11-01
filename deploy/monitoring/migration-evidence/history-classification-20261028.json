@@ -1,0 +1,444 @@
+{
+  "activeRawBlockCount": 7,
+  "backupReceiptSHA256": "186d9f06ab590f4771ab83cba9a4dd0a5a2a65e68f21edbc39033d85fe9abbd2",
+  "binarySHA256": "160d09abda547bb65e296b2e6fe3f24ea227d00ae9bc001241f5c53af6ca31b7",
+  "canonicalWholeHistoryVerified": false,
+  "classificationComplete": true,
+  "deduplicationRequiresCompactionAncestry": true,
+  "diskProjectionVerified": false,
+  "estimatedOTLPBytesUsingOneBlockRatio": 134007465848,
+  "estimationLimit": "One block cannot establish the expansion, memory or peak-disk budget of all history, logs, traces and queues.",
+  "nativePreservation": [
+    {
+      "archive": "prometheus-snapshot.tar.gz",
+      "compactionSources": [
+        "01M6076H3XNHHMS09HJPWX3179"
+      ],
+      "deletionMarked": false,
+      "maxTime": 1793152800000,
+      "minTime": 1793145600012,
+      "reason": "snapshot-range-covered-by-active-thanos-raw",
+      "resolution": 0,
+      "ulid": "01M6076H3XNHHMS09HJPWX3179"
+    },
+    {
+      "archive": "prometheus-snapshot.tar.gz",
+      "compactionSources": [
+        "01M60E28BXTCEW4KTSH771N8HH"
+      ],
+      "deletionMarked": false,
+      "maxTime": 1793160000000,
+      "minTime": 1793152800056,
+      "reason": "snapshot-range-covered-by-active-thanos-raw",
+      "resolution": 0,
+      "ulid": "01M60E28BXTCEW4KTSH771N8HH"
+    },
+    {
+      "archive": "prometheus-snapshot.tar.gz",
+      "compactionSources": [
+        "01M60MXZKX32Y19H3VHBK19EES"
+      ],
+      "deletionMarked": false,
+      "maxTime": 1793167200000,
+      "minTime": 1793160000028,
+      "reason": "snapshot-range-covered-by-active-thanos-raw",
+      "resolution": 0,
+      "ulid": "01M60MXZKX32Y19H3VHBK19EES"
+    },
+    {
+      "archive": "prometheus-snapshot.tar.gz",
+      "compactionSources": [
+        "01M60VSPVYQ8V1GR2SSKSTBBV7"
+      ],
+      "deletionMarked": false,
+      "maxTime": 1793174400000,
+      "minTime": 1793167200069,
+      "reason": "snapshot-range-covered-by-active-thanos-raw",
+      "resolution": 0,
+      "ulid": "01M60VSPVYQ8V1GR2SSKSTBBV7"
+    },
+    {
+      "archive": "prometheus-snapshot.tar.gz",
+      "compactionSources": [
+        "01M612NE3X7QKRHX9Q1NWWPEH4"
+      ],
+      "deletionMarked": false,
+      "maxTime": 1793181600000,
+      "minTime": 1793174400046,
+      "reason": "snapshot-range-covered-by-active-thanos-raw",
+      "resolution": 0,
+      "ulid": "01M612NE3X7QKRHX9Q1NWWPEH4"
+    },
+    {
+      "archive": "prometheus-snapshot.tar.gz",
+      "compactionSources": [
+        "01M619H5BTN00D1MVWZNRTJ2VC"
+      ],
+      "deletionMarked": false,
+      "maxTime": 1793188800000,
+      "minTime": 1793181600003,
+      "reason": "snapshot-range-covered-by-active-thanos-raw",
+      "resolution": 0,
+      "ulid": "01M619H5BTN00D1MVWZNRTJ2VC"
+    },
+    {
+      "archive": "thanos-raw.tar.gz",
+      "compactionSources": [
+        "01M5HGSHWRRQAB7GHV0A7R3BPZ",
+        "01M5HM9425SXWJJ7V153JJCQ5F",
+        "01M5HV4VTFK3EKB079AEKNCRPG",
+        "01M5J20JHWDCWRMWJ3ZJYJEFVF",
+        "01M5J8WAZACSW8MGKAPJ9MSXWZ",
+        "01M5JFR1QM2H6Q5BCC7SSGK79X",
+        "01M5JPKRYCNK0SQ2XK56W9VHHD",
+        "01M5JXFG69HP0G8516KQN9Y16D",
+        "01M5K4B7EGBR8E526JW8QHR7XZ",
+        "01M5KB6YMX396C2DBPEQ2KSSMJ",
+        "01M5KJ2NYFKPXSWCAY8MNRKJ36",
+        "01M5KRYDCCNW9NN9BRAS0T76BY",
+        "01M5KZT4FNRQ5GEAPV7B2AJKV2",
+        "01M5M6NV47CZRPCXPHQEWZTNKN",
+        "01M5MDHJZD688RCQ1E2MVZS9A9",
+        "01M5MMDA6KH1NZ6TANZBGHYR7H",
+        "01M5MV90W3ZF5XH8J7F76XKQ73",
+        "01M5N24RN4EC5FZ5GZTE9XT5ET",
+        "01M5N90FXBDREMTX04X3ENJKVG",
+        "01M5NFW756NK829MS7FD3RGE77",
+        "01M5NPQYEC3B30JJF3YNZBXSRA"
+      ],
+      "deletionMarked": false,
+      "maxTime": 1792800000000,
+      "minTime": 1792652344262,
+      "reason": "downsampled-native",
+      "resolution": 300000,
+      "ulid": "01M5P6HX87BCPBXY5CH33N3FQ0"
+    },
+    {
+      "archive": "thanos-raw.tar.gz",
+      "compactionSources": [
+        "01M5NXKNPGC6WX1Z6BC9T1070B",
+        "01M5P4FCX5Z245NZ7SBPT1F4N3",
+        "01M5PBB47YBJSNYW3JDKT34161",
+        "01M5PJ6TW5HPTNXXZN40AC0ANH",
+        "01M5PS2JRXB7E5NAN7KQV8ZYVH",
+        "01M5PZYA00EF55Y9EEDCS8KCW2",
+        "01M5Q6T0QY3BY1PCWRVBZZ2PS6",
+        "01M5QDNR1T5RQFVB0M5AHTBD1X",
+        "01M5QMHF3RM07X1C8KGATVV0XN",
+        "01M5QVD6BTYKM40V403HPD64Q6",
+        "01M5R28XKV1D8N17VQ9Q28PCJX",
+        "01M5R94MVSQEGCD35HT43Q944K",
+        "01M5RG0C3X2D26NPCAXM01AQ1Z",
+        "01M5RPW3BWB6NA41184FTH4BH1",
+        "01M5RXQTKXHS397TKTXA77N6ZM",
+        "01M5S4KHVYWQBXMT26KM6QB09F",
+        "01M5SBF93SHGY219CQ16PCNBNA",
+        "01M5SJB0BVZTMNE5XJA35P1TVT",
+        "01M5SS6QKX39CM66B2TD90KVYQ",
+        "01M5T02EVSZGPB882JAWDKPCSH",
+        "01M5T6Y63XEWY2J5HJ9RK4DE3Y",
+        "01M5TDSXBRBZ5G9PG94R9AXKN8",
+        "01M5TMNMKJG2SEMRCV88XTCXRB",
+        "01M5TVHBVV6HZ3EJ2JKFKQ9V60"
+      ],
+      "deletionMarked": false,
+      "maxTime": 1792972800000,
+      "minTime": 1792800000056,
+      "reason": "downsampled-native",
+      "resolution": 300000,
+      "ulid": "01M5VBBWAGG2X5XWQ8K5QJ7KV6"
+    },
+    {
+      "archive": "thanos-raw.tar.gz",
+      "compactionSources": [
+        "01M6076H3XNHHMS09HJPWX3179"
+      ],
+      "deletionMarked": true,
+      "maxTime": 1793152800000,
+      "minTime": 1793145600012,
+      "reason": "bucket-deletion-mark-preserved",
+      "resolution": 0,
+      "ulid": "01M6076H3XNHHMS09HJPWX3179"
+    },
+    {
+      "archive": "thanos-raw.tar.gz",
+      "compactionSources": [
+        "01M60E28BXTCEW4KTSH771N8HH"
+      ],
+      "deletionMarked": true,
+      "maxTime": 1793160000000,
+      "minTime": 1793152800056,
+      "reason": "bucket-deletion-mark-preserved",
+      "resolution": 0,
+      "ulid": "01M60E28BXTCEW4KTSH771N8HH"
+    },
+    {
+      "archive": "thanos-raw.tar.gz",
+      "compactionSources": [
+        "01M5V2D33TR68MATYRMZXGXFC3",
+        "01M5V98TC0VG014N3WX72JGFPP",
+        "01M5VG4HKSX9JHJGEM7YDJ6Z28",
+        "01M5VQ08VZQS19ADFC3A33MQBN",
+        "01M5VXW03Q6J8BHM8FXPPNTSWV",
+        "01M5W4QQBXEG6MSZ62T8X5HNWT",
+        "01M5WBKEKTR09FKZSH61KYJWSE",
+        "01M5WJF5VTMBY2ERBZHZSFAP7M",
+        "01M5WSAX3S793WGTZM1SXJEFFS",
+        "01M5X06MBTBG6FG3GW122A8HXZ",
+        "01M5X72BKV1W13W98PSZ37SD0W",
+        "01M5XDY2VNAN58A09V9RJWE1HZ",
+        "01M5XMST3SFT1GT4FQ3QWSNQWK",
+        "01M5XVNHBNWNGPY222H0T74XC6",
+        "01M5Y2H8KVC69FN0MQ0P1SVF4G",
+        "01M5Y9CZVZHGT7NA758X8DT18M",
+        "01M5YG8QKDJWJEJAF2TW31ASAR",
+        "01M5YQ4EBWV44Y8TWQKXSHAAXT",
+        "01M5YY05KZ7DJ5YRF7Z604WWT1",
+        "01M5Z4VWVKW43SPDF55R4PNQ1J",
+        "01M5ZBQM3XBQPHXMPCNCN89VXB",
+        "01M5ZJKBBY41V386CNQ2G6PCNF",
+        "01M5ZSF2KT47N8K47A7QKPJ6E2",
+        "01M600ASVV4F8FYEN3VFSYFY8F"
+      ],
+      "deletionMarked": false,
+      "maxTime": 1793145600000,
+      "minTime": 1792972800008,
+      "reason": "downsampled-native",
+      "resolution": 300000,
+      "ulid": "01M60G57WS41VSTDSS6XMZKSKQ"
+    },
+    {
+      "archive": "thanos-raw.tar.gz",
+      "compactionSources": [
+        "01M60MXZKX32Y19H3VHBK19EES"
+      ],
+      "deletionMarked": true,
+      "maxTime": 1793167200000,
+      "minTime": 1793160000028,
+      "reason": "bucket-deletion-mark-preserved",
+      "resolution": 0,
+      "ulid": "01M60MXZKX32Y19H3VHBK19EES"
+    },
+    {
+      "archive": "thanos-raw.tar.gz",
+      "compactionSources": [
+        "01M60VSPVYQ8V1GR2SSKSTBBV7"
+      ],
+      "deletionMarked": true,
+      "maxTime": 1793174400000,
+      "minTime": 1793167200069,
+      "reason": "bucket-deletion-mark-preserved",
+      "resolution": 0,
+      "ulid": "01M60VSPVYQ8V1GR2SSKSTBBV7"
+    }
+  ],
+  "productionModified": false,
+  "rawBlocks": [
+    {
+      "archive": "prometheus-snapshot.tar.gz",
+      "compactionSources": [
+        "01M61CDMNWPCZ4GZWFB5FHS67S"
+      ],
+      "inventory": {
+        "canonicalSamplesVerified": false,
+        "chunks": 2195839,
+        "samplesInChunks": 235173517,
+        "series": 225937,
+        "stalenessEncoding": "NoRecordedValue",
+        "standardOTLPRepresentable": true
+      },
+      "maxTime": 1793195430560,
+      "minTime": 1793188800016,
+      "resolution": 0,
+      "status": "roundtrip-verified",
+      "ulid": "01M61CDMNWPCZ4GZWFB5FHS67S"
+    },
+    {
+      "archive": "thanos-raw.tar.gz",
+      "compactionSources": [
+        "01M5HGSHWRRQAB7GHV0A7R3BPZ",
+        "01M5HM9425SXWJJ7V153JJCQ5F",
+        "01M5HV4VTFK3EKB079AEKNCRPG",
+        "01M5J20JHWDCWRMWJ3ZJYJEFVF",
+        "01M5J8WAZACSW8MGKAPJ9MSXWZ",
+        "01M5JFR1QM2H6Q5BCC7SSGK79X",
+        "01M5JPKRYCNK0SQ2XK56W9VHHD",
+        "01M5JXFG69HP0G8516KQN9Y16D",
+        "01M5K4B7EGBR8E526JW8QHR7XZ",
+        "01M5KB6YMX396C2DBPEQ2KSSMJ",
+        "01M5KJ2NYFKPXSWCAY8MNRKJ36",
+        "01M5KRYDCCNW9NN9BRAS0T76BY",
+        "01M5KZT4FNRQ5GEAPV7B2AJKV2",
+        "01M5M6NV47CZRPCXPHQEWZTNKN",
+        "01M5MDHJZD688RCQ1E2MVZS9A9",
+        "01M5MMDA6KH1NZ6TANZBGHYR7H",
+        "01M5MV90W3ZF5XH8J7F76XKQ73",
+        "01M5N24RN4EC5FZ5GZTE9XT5ET",
+        "01M5N90FXBDREMTX04X3ENJKVG",
+        "01M5NFW756NK829MS7FD3RGE77",
+        "01M5NPQYEC3B30JJF3YNZBXSRA"
+      ],
+      "inventory": {
+        "canonicalSamplesVerified": false,
+        "chunks": 38411035,
+        "samplesInChunks": 4606695568,
+        "series": 312851,
+        "stalenessEncoding": "NoRecordedValue",
+        "standardOTLPRepresentable": true
+      },
+      "maxTime": 1792800000000,
+      "minTime": 1792652344262,
+      "resolution": 0,
+      "status": "representable",
+      "ulid": "01M5P6GGQM3K9NAF43KP5JX3JW"
+    },
+    {
+      "archive": "thanos-raw.tar.gz",
+      "compactionSources": [
+        "01M5NXKNPGC6WX1Z6BC9T1070B",
+        "01M5P4FCX5Z245NZ7SBPT1F4N3",
+        "01M5PBB47YBJSNYW3JDKT34161",
+        "01M5PJ6TW5HPTNXXZN40AC0ANH",
+        "01M5PS2JRXB7E5NAN7KQV8ZYVH",
+        "01M5PZYA00EF55Y9EEDCS8KCW2",
+        "01M5Q6T0QY3BY1PCWRVBZZ2PS6",
+        "01M5QDNR1T5RQFVB0M5AHTBD1X",
+        "01M5QMHF3RM07X1C8KGATVV0XN",
+        "01M5QVD6BTYKM40V403HPD64Q6",
+        "01M5R28XKV1D8N17VQ9Q28PCJX",
+        "01M5R94MVSQEGCD35HT43Q944K",
+        "01M5RG0C3X2D26NPCAXM01AQ1Z",
+        "01M5RPW3BWB6NA41184FTH4BH1",
+        "01M5RXQTKXHS397TKTXA77N6ZM",
+        "01M5S4KHVYWQBXMT26KM6QB09F",
+        "01M5SBF93SHGY219CQ16PCNBNA",
+        "01M5SJB0BVZTMNE5XJA35P1TVT",
+        "01M5SS6QKX39CM66B2TD90KVYQ",
+        "01M5T02EVSZGPB882JAWDKPCSH",
+        "01M5T6Y63XEWY2J5HJ9RK4DE3Y",
+        "01M5TDSXBRBZ5G9PG94R9AXKN8",
+        "01M5TMNMKJG2SEMRCV88XTCXRB",
+        "01M5TVHBVV6HZ3EJ2JKFKQ9V60"
+      ],
+      "inventory": {
+        "canonicalSamplesVerified": false,
+        "chunks": 49546867,
+        "samplesInChunks": 5955368159,
+        "series": 371349,
+        "stalenessEncoding": "NoRecordedValue",
+        "standardOTLPRepresentable": true
+      },
+      "maxTime": 1792972800000,
+      "minTime": 1792800000056,
+      "resolution": 0,
+      "status": "representable",
+      "ulid": "01M5VBA2WTA1H8QE21D6PHVHWY"
+    },
+    {
+      "archive": "thanos-raw.tar.gz",
+      "compactionSources": [
+        "01M5V2D33TR68MATYRMZXGXFC3",
+        "01M5V98TC0VG014N3WX72JGFPP",
+        "01M5VG4HKSX9JHJGEM7YDJ6Z28",
+        "01M5VQ08VZQS19ADFC3A33MQBN",
+        "01M5VXW03Q6J8BHM8FXPPNTSWV",
+        "01M5W4QQBXEG6MSZ62T8X5HNWT",
+        "01M5WBKEKTR09FKZSH61KYJWSE",
+        "01M5WJF5VTMBY2ERBZHZSFAP7M",
+        "01M5WSAX3S793WGTZM1SXJEFFS",
+        "01M5X06MBTBG6FG3GW122A8HXZ",
+        "01M5X72BKV1W13W98PSZ37SD0W",
+        "01M5XDY2VNAN58A09V9RJWE1HZ",
+        "01M5XMST3SFT1GT4FQ3QWSNQWK",
+        "01M5XVNHBNWNGPY222H0T74XC6",
+        "01M5Y2H8KVC69FN0MQ0P1SVF4G",
+        "01M5Y9CZVZHGT7NA758X8DT18M",
+        "01M5YG8QKDJWJEJAF2TW31ASAR",
+        "01M5YQ4EBWV44Y8TWQKXSHAAXT",
+        "01M5YY05KZ7DJ5YRF7Z604WWT1",
+        "01M5Z4VWVKW43SPDF55R4PNQ1J",
+        "01M5ZBQM3XBQPHXMPCNCN89VXB",
+        "01M5ZJKBBY41V386CNQ2G6PCNF",
+        "01M5ZSF2KT47N8K47A7QKPJ6E2",
+        "01M600ASVV4F8FYEN3VFSYFY8F"
+      ],
+      "inventory": {
+        "canonicalSamplesVerified": false,
+        "chunks": 51048768,
+        "samplesInChunks": 6137437488,
+        "series": 282038,
+        "stalenessEncoding": "NoRecordedValue",
+        "standardOTLPRepresentable": true
+      },
+      "maxTime": 1793145600000,
+      "minTime": 1792972800008,
+      "resolution": 0,
+      "status": "representable",
+      "ulid": "01M60G3GYDQYMVRYQ7NSNB2FGR"
+    },
+    {
+      "archive": "thanos-raw.tar.gz",
+      "compactionSources": [
+        "01M612NE3X7QKRHX9Q1NWWPEH4"
+      ],
+      "inventory": {
+        "canonicalSamplesVerified": false,
+        "chunks": 2171703,
+        "samplesInChunks": 260844250,
+        "series": 197770,
+        "stalenessEncoding": "NoRecordedValue",
+        "standardOTLPRepresentable": true
+      },
+      "maxTime": 1793181600000,
+      "minTime": 1793174400046,
+      "resolution": 0,
+      "status": "representable",
+      "ulid": "01M612NE3X7QKRHX9Q1NWWPEH4"
+    },
+    {
+      "archive": "thanos-raw.tar.gz",
+      "compactionSources": [
+        "01M619H5BTN00D1MVWZNRTJ2VC"
+      ],
+      "inventory": {
+        "canonicalSamplesVerified": false,
+        "chunks": 2175676,
+        "samplesInChunks": 261337432,
+        "series": 198312,
+        "stalenessEncoding": "NoRecordedValue",
+        "standardOTLPRepresentable": true
+      },
+      "maxTime": 1793188800000,
+      "minTime": 1793181600003,
+      "resolution": 0,
+      "status": "representable",
+      "ulid": "01M619H5BTN00D1MVWZNRTJ2VC"
+    },
+    {
+      "archive": "thanos-raw.tar.gz",
+      "compactionSources": [
+        "01M6076H3XNHHMS09HJPWX3179",
+        "01M60E28BXTCEW4KTSH771N8HH",
+        "01M60MXZKX32Y19H3VHBK19EES",
+        "01M60VSPVYQ8V1GR2SSKSTBBV7"
+      ],
+      "inventory": {
+        "canonicalSamplesVerified": false,
+        "chunks": 8684623,
+        "samplesInChunks": 1043291602,
+        "series": 203866,
+        "stalenessEncoding": "NoRecordedValue",
+        "standardOTLPRepresentable": true
+      },
+      "maxTime": 1793174400000,
+      "minTime": 1793145600012,
+      "resolution": 0,
+      "status": "representable",
+      "ulid": "01M61BHKG8EYTCRNMDHRYTBNKR"
+    }
+  ],
+  "roundtripVerifiedCount": 1,
+  "samplesInRawChunks": 18500148016,
+  "schemaVersion": 1,
+  "snapshotQueryExternalLabelBindingVerified": false
+}

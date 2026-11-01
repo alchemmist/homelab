@@ -1,0 +1,223 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-10-30T11:14:01.801136+00:00",
+  "sourceIntegrityVerified": false,
+  "productionHistoryModified": false,
+  "originalsDeleted": false,
+  "checksumChecksBypassed": false,
+  "block": "01M65MWZVAGM92C51JW43C3SZ7",
+  "sourceTimeRangeUTC": [
+    "2026-10-28T00:00:00.012Z",
+    "2026-10-30T00:00:00Z"
+  ],
+  "sourceSampleCount": 6383044052,
+  "checkedChunkCount": 53139089,
+  "badChunkCount": 1,
+  "badChunks": [
+    {
+      "ref": 26271230468,
+      "length": 902,
+      "storedCRC": 2591134502,
+      "actualCRC": 1175756743,
+      "minTime": 1793276401534,
+      "maxTime": 1793276996534,
+      "labelSHA256": "9818d69729bfd2daca45102c8be161d125f292b42f3acbdc9d8beb576daa3ed7",
+      "metric": "node_scrape_collector_duration_seconds",
+      "indexLocated": true
+    }
+  ],
+  "sourceCorruptionConfirmedByNativeReaderAndIndependentCRC": true,
+  "backup20261028CoversBadInterval": false,
+  "physicalRootCauseEstablished": false,
+  "preservedCopiesOnSourceHost": {
+    "bucket": {
+      "files": {
+        "chunks/000001": {
+          "bytes": 536870667,
+          "sha256": "39b1a1099b27134bdcd6955c39ef44b4ddcf94b3643db6f85d3ab783a1c6090f"
+        },
+        "chunks/000002": {
+          "bytes": 536870442,
+          "sha256": "20ce405a834fee2b83c48d1ea5000debb874af2c6e9220ed2bda576c57585858"
+        },
+        "chunks/000003": {
+          "bytes": 536869997,
+          "sha256": "1d633d97a80bfac4273c10a46890278c952d95ebcf3787f0af387f6e457274b2"
+        },
+        "chunks/000004": {
+          "bytes": 536870781,
+          "sha256": "6328dd4dd90dfaf8864d44618f9e3b55d8bbd17fb5eb7842c4e6eca3cd7b3653"
+        },
+        "chunks/000005": {
+          "bytes": 536870024,
+          "sha256": "72c9fcfce134a02bffd0cf605ad8e4fc26efb767b2bb4174506215705a6f5c2f"
+        },
+        "chunks/000006": {
+          "bytes": 536870497,
+          "sha256": "caf0e145bbcce146b148b7b27269d75601536f6476970820f586283508aaaeef"
+        },
+        "chunks/000007": {
+          "bytes": 536870762,
+          "sha256": "37df984a6248aababc001fbd43c59b180c2d87260bbd18904df20ef6064f5b26"
+        },
+        "chunks/000008": {
+          "bytes": 536870185,
+          "sha256": "edb3360c58552a49561d15621a0110ae4c47990d6794089e56b71f3f3a6d0d67"
+        },
+        "chunks/000009": {
+          "bytes": 179525817,
+          "sha256": "d18c64b18d6fa072d43b83b07b275998db2fa6e32e536ce8fae02414726cb338"
+        },
+        "index": {
+          "bytes": 365284957,
+          "sha256": "5acadb5b34e95d7557e0d7a1a1f37cdac2afa62a87efeb3a2c264e89029a5969"
+        },
+        "meta.json": {
+          "bytes": 3063,
+          "sha256": "ff90708dc5af62ea443bde851a860d01312e3ad9574c115e4c231fa8439ef312"
+        }
+      },
+      "bytes": 4839777192
+    },
+    "download": {
+      "files": {
+        "chunks/000001": {
+          "bytes": 536870667,
+          "sha256": "39b1a1099b27134bdcd6955c39ef44b4ddcf94b3643db6f85d3ab783a1c6090f"
+        },
+        "chunks/000002": {
+          "bytes": 536870442,
+          "sha256": "20ce405a834fee2b83c48d1ea5000debb874af2c6e9220ed2bda576c57585858"
+        },
+        "chunks/000003": {
+          "bytes": 536869997,
+          "sha256": "1d633d97a80bfac4273c10a46890278c952d95ebcf3787f0af387f6e457274b2"
+        },
+        "chunks/000004": {
+          "bytes": 536870781,
+          "sha256": "6328dd4dd90dfaf8864d44618f9e3b55d8bbd17fb5eb7842c4e6eca3cd7b3653"
+        },
+        "chunks/000005": {
+          "bytes": 536870024,
+          "sha256": "72c9fcfce134a02bffd0cf605ad8e4fc26efb767b2bb4174506215705a6f5c2f"
+        },
+        "chunks/000006": {
+          "bytes": 536870497,
+          "sha256": "caf0e145bbcce146b148b7b27269d75601536f6476970820f586283508aaaeef"
+        },
+        "chunks/000007": {
+          "bytes": 536870762,
+          "sha256": "37df984a6248aababc001fbd43c59b180c2d87260bbd18904df20ef6064f5b26"
+        },
+        "chunks/000008": {
+          "bytes": 536870185,
+          "sha256": "edb3360c58552a49561d15621a0110ae4c47990d6794089e56b71f3f3a6d0d67"
+        },
+        "chunks/000009": {
+          "bytes": 179525817,
+          "sha256": "d18c64b18d6fa072d43b83b07b275998db2fa6e32e536ce8fae02414726cb338"
+        },
+        "index": {
+          "bytes": 365284957,
+          "sha256": "5acadb5b34e95d7557e0d7a1a1f37cdac2afa62a87efeb3a2c264e89029a5969"
+        },
+        "meta.json": {
+          "bytes": 3063,
+          "sha256": "ff90708dc5af62ea443bde851a860d01312e3ad9574c115e4c231fa8439ef312"
+        }
+      },
+      "bytes": 4839777192
+    }
+  },
+  "offNodePreservation": {
+    "host": "migration-controller",
+    "originalCapturedArchiveSHA256": "93d9a8878d4199a78e89fe0f93925fe8fc7c151d7fe8c5c29b8a9304ccd24920",
+    "archiveBytes": 4839792640,
+    "sourceArchiveSHA256AtRepeatedRead": "046e45c6afcda3c13ba7f00a2edf5a84deab72a29f5f4eeaa7288a3d45115279",
+    "initialTransferMatchedRepeatedSourceHashButNotOriginalReceipt": true,
+    "archivePayloadChangedBytes": 1,
+    "archivePayloadChangedBits": 1,
+    "changedSegment": "chunks/000002",
+    "changedOffsetsInSegment": [
+      404044312
+    ],
+    "reconstructedFromIndependentlySHA256VerifiedPreservedSegment": true,
+    "reconstructedArchiveMatchesOriginalCapturedSHA256": true,
+    "knownOriginalRawCRCFailureStillPreserved": true,
+    "durableReplicaVerified": true,
+    "durableReplicaTransferStarted": true,
+    "verificationReconciledAfterClientTimeout": {
+      "remoteReceiptVerified": true,
+      "remoteSHA256IndependentlyRechecked": true,
+      "sha256": "93d9a8878d4199a78e89fe0f93925fe8fc7c151d7fe8c5c29b8a9304ccd24920"
+    }
+  },
+  "cutoverBlocked": true,
+  "directIOCRCConfirmsSameBadChunkAsCachedRead": true,
+  "kernelHardwareProbe": {
+    "rawKernelMessagesPersisted": false,
+    "kernelMessagesExamined": 826,
+    "journalReturnCode": 0,
+    "matchingEventCounts": {
+      "hardwareError": 0,
+      "edacError": 0,
+      "storageIOError": 0
+    },
+    "smartctlAvailable": false,
+    "hardwareRootCauseEstablished": false
+  },
+  "operatorLossAuthorization": {
+    "accepted": true,
+    "recordedAt": "2026-10-30T13:17:25.327531+00:00",
+    "maximumLossWindowMilliseconds": 86400000,
+    "scope": "Known preexisting historical corruption only; not permission to ignore new integrity failures",
+    "implementation": "one exactly identified corrupt chunk, 120 samples of one metric"
+  },
+  "approvedRecovery": {
+    "allOtherSamplesCanonicalVerified": true,
+    "block": "01M66BZJJH7AX3HTZFRZD02SXP",
+    "canonicalSHA256": "0904e594038c9cfc60720e01bee3b27cbfdca450b913dd9f5f5dda8da16c4209",
+    "maximumLossWindowMS": 86400000,
+    "originalsDeleted": false,
+    "productionModified": false,
+    "removedMaxTime": 1793276996534,
+    "removedMetric": "node_scrape_collector_duration_seconds",
+    "removedMinTime": 1793276401534,
+    "removedSamples": 120,
+    "samples": 6383043932,
+    "sourceULID": "01M65MWZVAGM92C51JW43C3SZ7",
+    "verified": true,
+    "nativeThanosCompatibilityVerified": true,
+    "publishedToProduction": true
+  },
+  "integrityVerified": false,
+  "remainingIntegrityBlocker": "Pre-reboot positive memory test is not resolved by a complete independently recorded post-reboot memory test; current repaired raw block passes native verification",
+  "latestProductionRepair": {
+    "published": true,
+    "oldBlock": "01M65MWZVAGM92C51JW43C3SZ7",
+    "newBlock": "01M66BZJJH7AX3HTZFRZD02SXP",
+    "originalQuarantined": true,
+    "originalDeleted": false,
+    "coServedOriginalAndReplacement": false,
+    "canonicalRetainedSamples": 6383043932,
+    "approvedRemovedSamples": 120,
+    "livePrometheusStoppedForReplacement": false,
+    "allCandidateFilesSHA256VerifiedAfterMove": true,
+    "otelCutoverPerformed": false,
+    "memoryFaultDeclaredFixed": false
+  },
+  "latestNativeCompatibility": {
+    "verified": true,
+    "nativeThanosVersion": "0.42.4",
+    "nativeBinarySHA256": "e88cf130a15f91ba8437885231fd3aa27fe88ef118b1fa2f2251465a526c7df9",
+    "nativeIndexIssueVerificationPassed": true,
+    "exactAffectedSeriesCounts": {
+      "before": 1.0,
+      "inside": 0,
+      "after": 1.0
+    },
+    "candidateFilesSHA256Verified": true,
+    "productionModified": false,
+    "newBlock": "01M66BZJJH7AX3HTZFRZD02SXP"
+  }
+}

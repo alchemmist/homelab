@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-10-29T08:09:02.578476+00:00",
+  "syntheticSourcesOnly": true,
+  "separateNetworkNamespace": true,
+  "productionModified": false,
+  "mTLSMissingClientRejected": true,
+  "historicalCutVerified": true,
+  "zeroTimestampRejected": true,
+  "textAndStructuredPrivacyFixturesVerified": true,
+  "allSourcePrivacyVerified": false,
+  "productionDeployed": false,
+  "playbook": "ansible/playbooks/otel-privacy-smoke.yml",
+  "collectorImage": "docker.io/otel/opentelemetry-collector-contrib@sha256:340c9ca6a36617084c6661bdc4f0fe92b7cda5a805d61673ec8db375fddc522b",
+  "clusterConfigSHA256": "69d5d91458eaa2be651972c07263860ce78199a76cb437f4771ff3cf616345b4"
+}

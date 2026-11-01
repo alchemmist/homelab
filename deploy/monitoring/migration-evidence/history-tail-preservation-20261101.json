@@ -1,0 +1,13 @@
+{
+  "verified": true,
+  "productionModified": false,
+  "canonicalVerificationStillRequired": true,
+  "archiveSHA256": "64d364074f13f6977cdc92f9117181340563c217f68de92a85c6cd5e6b48bac5",
+  "archiveBytes": 3576514560,
+  "blockCount": 9,
+  "samples": 4170768866,
+  "originalArchiveUnchanged": true,
+  "scope": "Nine immutable whole blocks intersecting the legacy cutover tail; boundary blocks may also contain native post-cutover points.",
+  "productionPublished": false,
+  "fullCanonicalAndOtlpRoundtripStillRequired": true
+}

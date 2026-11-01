@@ -1,0 +1,8 @@
+{
+  "operatorDesignatesSocrat0TrustedHealthyWorkNode": true,
+  "preferNewWorkOnSocrat0OverSocrat2And3": true,
+  "additionalIndependentVerificationRequiredSolelyForOldRamFindings": false,
+  "newHardwareDiagnosticPerformed": false,
+  "ordinaryTransferChecksumsExactComparisonsAndNoOverlapGatesRemain": true,
+  "source": "Explicit operator instruction in current conversation"
+}

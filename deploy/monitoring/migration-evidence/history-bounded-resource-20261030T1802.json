@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-10-30T18:03:59.192680+00:00",
+  "productionModified": false,
+  "sourceJobStillRunning": true,
+  "fullRoundtripVerifiedBlocks": 2,
+  "candidateRawBlocks": 7,
+  "mutableHeadSampleLimit": 2500000,
+  "compactionMaximumFanIn": 16,
+  "observation": {
+    "schemaVersion": 1,
+    "startedAt": "2026-10-30T10:13:35.807503+00:00",
+    "sampleIntervalSeconds": 10,
+    "samplingMayMissShortPeaks": true,
+    "rssScope": "Go child processes only; excludes coordinator and supervisor",
+    "hardMemoryLimitEnforced": false,
+    "productionModified": false,
+    "workerGroup": 5511,
+    "binarySHA256": "e7db18da5afcde9dcadfede588bf2f3b27aaf23f5beba03f916cfac50f5454d2",
+    "phases": {
+      "01M5P6GGQM3K9NAF43KP5JX3JW:import": {
+        "sampleCount": 1806,
+        "sampledPeakRSSBytes": 4442226688,
+        "lastObservedAt": "2026-10-30T15:17:02.397818+00:00"
+      },
+      "01M5VBA2WTA1H8QE21D6PHVHWY:export": {
+        "sampleCount": 993,
+        "sampledPeakRSSBytes": 1497300992,
+        "lastObservedAt": "2026-10-30T18:03:51.630368+00:00"
+      }
+    },
+    "lastObservedAt": "2026-10-30T18:03:51.630409+00:00"
+  },
+  "note": "Initial ~1.14 GB RSS was not the final large-import peak. Sampled peak including upstream compaction reached 4,442,226,688 bytes. GOMEMLIMIT is soft, RSS/mmap is not hard-capped; do not budget native compaction at 1.14 GB. This offline importer runs on the controller, not in the production Collector budget.",
+  "readyForCutover": false
+}

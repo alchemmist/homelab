@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-31T11:34:10Z",
+  "operatorAuthorizedProductionCutover": true,
+  "operatorAcceptsDataLossRisk": true,
+  "sourceMemoryFailuresResolved": false,
+  "historySourceIntegrityVerified": false,
+  "waiverIsNotVerification": true,
+  "preserveOriginalsAndRollback": true,
+  "publicUnauthenticatedOTLPAllowed": false,
+  "source": "Explicit operator instruction to continue and switch production, accepting data-loss risk."
+}

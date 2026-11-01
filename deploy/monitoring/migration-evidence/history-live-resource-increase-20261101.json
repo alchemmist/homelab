@@ -1,0 +1,75 @@
+{
+  "success": true,
+  "observedAtUnix": 1793546254.1835551,
+  "before": {
+    "before": "MainPID=945326\nControlGroup=/system.slice/otel-history-tail-roundtrip-20261101.service\nCPUQuotaPerSecUSec=6s\nIOWeight=50\nMemoryMax=6442450944\n",
+    "memory": {
+      "MemTotal": 33326227456,
+      "MemAvailable": 17311649792
+    },
+    "mainPID": "945326"
+  },
+  "memoryMaxBytes": 9663676416,
+  "cpuQuotaCores": 16.0,
+  "ioWeight": "default 100",
+  "mainPIDUnchanged": true,
+  "currentChildRuntimeEnvironmentNotChanged": true,
+  "runningChildGoMaxProcs": 6,
+  "runningChildGoMemoryLimit": "4GiB",
+  "restartPerformed": false,
+  "secondImporterStarted": false,
+  "note": "Higher cgroup ceilings do not parallelize serial export; future fresh launches use maintained16/6GiB Go profile.",
+  "preChangeObservation": {
+    "cpuCount": 20,
+    "load": [
+      5.02978515625,
+      4.994140625,
+      4.75927734375
+    ],
+    "memory": {
+      "MemTotal": 33326227456,
+      "MemAvailable": 17341902848
+    },
+    "cpuBefore": "usage_usec 4170353706\nuser_usec 4090963808\nsystem_usec 79389897\nnice_usec 0\nnr_periods 37567\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0",
+    "cpuAfter": "usage_usec 4172622169\nuser_usec 4093208384\nsystem_usec 79413785\nnice_usec 0\nnr_periods 37587\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0",
+    "cpuMax": "600000 100000",
+    "memoryMax": "6442450944",
+    "memoryCurrent": "2771787776",
+    "memoryEvents": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0",
+    "ioStat": "259:0 rbytes=4956139520 wbytes=4984262656 rios=38875 wios=197417 dbytes=0 dios=0",
+    "processes": [
+      {
+        "pid": 945326,
+        "comm": "python3",
+        "status": {
+          "VmRSS": "25008 kB",
+          "Threads": "1"
+        }
+      },
+      {
+        "pid": 976965,
+        "comm": "otel-history",
+        "status": {
+          "VmRSS": "492080 kB",
+          "Threads": "9"
+        }
+      }
+    ],
+    "progress": {
+      "phase": "export",
+      "originalBlock": "01M66G9HT3YJ4W6TSADWG305M6",
+      "completedBlocks": 0
+    }
+  },
+  "measuredCpuCoresUsedBeforeChange": 1.1342315,
+  "cpuThrottlingObservedBeforeChange": false,
+  "futureLaunchProfile": {
+    "cpuQuotaCores": 16,
+    "memoryBytes": 9663676416,
+    "gomaxprocs": 16,
+    "gomemlimit": "6GiB"
+  },
+  "currentProcessNotReconfiguredOrRestarted": true,
+  "throughputImprovementClaimed": false,
+  "scriptSHA256": "740efe14907c4f0d7766f8573baa2709c1af3b805600de1fe6d03a75ca5eaab3"
+}

@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "scope": "synthetic native Prometheus 3.15.0 versus OTLP-ingest Prometheus 3.15.1",
+  "productionModified": false,
+  "productionDeployed": false,
+  "legacyBounds": [
+    "0.1",
+    "1.0",
+    "+Inf"
+  ],
+  "otlpBounds": [
+    "0.1",
+    "1",
+    "+Inf"
+  ],
+  "strictLabelCompatibilityVerified": false,
+  "upstreamPatchRuntimeTested": true,
+  "upstreamPatchImageLock": "deploy/monitoring/otel-prometheus-patch.lock.json",
+  "strictTestPassed": false,
+  "failureWorkspace": "socrat-0:/var/tmp/otel-metrics-smoke-20261029/run-20261029T110733498745Z",
+  "requiresArchitectureDecision": false,
+  "status": "superseded-by-approved-standard-otlp-semantics",
+  "blocking": false,
+  "numericNormalizationAcceptedByOperator": true,
+  "decisionEvidence": "deploy/monitoring/migration-evidence/native-otlp-decision-20261029.json"
+}

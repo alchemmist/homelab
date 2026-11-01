@@ -1,0 +1,8 @@
+{
+  "namedTargetPatchAllowed": true,
+  "unrelatedApplicationSecretPatchAllowed": false,
+  "privateCaReadAllowed": false,
+  "listSecretsAllowed": false,
+  "certificateCreationAllowed": false,
+  "applicationDeploymentPatchAllowed": false
+}

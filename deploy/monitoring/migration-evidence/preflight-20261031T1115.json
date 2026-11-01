@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "readyForCutover": false,
+  "errors": [
+    "Unverified prerequisite: diskProjectionVerified",
+    "Unverified prerequisite: historyRoundtripVerified",
+    "Unverified prerequisite: historySourceIntegrityVerified",
+    "Unverified prerequisite: sourceRegistryVerified"
+  ],
+  "capacity": {
+    "socrat-0": {
+      "diskAfterPeakBytes": 308890001408,
+      "diskFloorBytes": 189770101556,
+      "memoryAvailableBytes": 19559071744,
+      "memoryRequiredBytes": 3019898880,
+      "additionalComponentMemoryBytes": 2483027968
+    },
+    "socrat-1": {
+      "diskAfterPeakBytes": 214845652992,
+      "diskFloorBytes": 79264636109,
+      "memoryAvailableBytes": 7815135232,
+      "memoryRequiredBytes": 5167382528,
+      "additionalComponentMemoryBytes": 4630511616
+    },
+    "socrat-2": {
+      "diskAfterPeakBytes": 15060262912,
+      "diskFloorBytes": 8441620071,
+      "memoryAvailableBytes": 673091584,
+      "memoryRequiredBytes": 603979776,
+      "additionalComponentMemoryBytes": 335544320
+    },
+    "socrat-3": {
+      "diskAfterPeakBytes": 419707318272,
+      "diskFloorBytes": 97491134055,
+      "memoryAvailableBytes": 1286471680,
+      "memoryRequiredBytes": 603979776,
+      "additionalComponentMemoryBytes": 335544320
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-10-29T12:40:30.643649+00:00",
+  "operatorApproved": true,
+  "deliveryPath": "native Collector OTLP exporter to native Prometheus OTLP receiver; native Loki OTLP ingestion and Tempo OTLP ingestion",
+  "numericLabelNormalizationAccepted": true,
+  "customCompatibilityGatewayAllowed": false,
+  "forkThirdPartyApplications": false,
+  "historicalRawCanonicalVerificationUnchanged": true,
+  "ordinaryLabelsAndMetricValuesMustStillMatch": true,
+  "productionModified": false,
+  "productionDeployed": false,
+  "newRuntimeCanaryPending": false,
+  "remoteAccessBlocked": false,
+  "remoteAccessBlocker": null,
+  "sshEndpoint": "[socrat.alchemmist.xyz]:2222",
+  "unverifiedObservedED25519Fingerprint": "SHA256:JW4D2bA1K2PILqDRugX67FpBjykS1/bIq2f455l1EDY",
+  "hostKeyVerificationBypassed": false,
+  "soakStarted": false,
+  "sshStrictHostKeyVerificationSucceeded": true,
+  "sshRevalidatedAt": "2026-10-29T15:48:28.716164+00:00",
+  "sshResolution": {
+    "dnsAddresses": [
+      "109.173.40.247",
+      "176.98.185.59"
+    ],
+    "verifiedMigrationAddress": "109.173.40.247",
+    "trustedHostKeyFingerprint": "SHA256:MA4VJJrjmmemYOzgxSsXxxfs+vX09cssKgXgEK2lDSI",
+    "knownHostsModified": false,
+    "dnsModified": false,
+    "runtimeRouteOverrideOnly": true
+  }
+}

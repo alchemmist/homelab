@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-10-29T12:34:37.774589+00:00",
+  "productionModified": false,
+  "scope": "supplied repository/rendered configuration only; not live Grafana database",
+  "sourceFileCount": 9,
+  "expressionCount": 869,
+  "numericDimensionSelectorCount": 31,
+  "dynamicSelectorCount": 0,
+  "reviewRequiredCount": 0,
+  "reviews": [],
+  "queriesAutomaticallyRewritten": false,
+  "liveQueryRegressionVerified": false,
+  "renderedRuleSyntaxVerifiedCount": 263,
+  "syntheticPromQLSyntaxVerifiedCount": 8,
+  "prometheusParserVersion": "v0.315.0",
+  "stockCompatibleNumericSelectorPatterns": [
+    "1(\\.0)?",
+    "5(\\.0)?",
+    "30(\\.0)?"
+  ],
+  "renderedRuleGroupIntervals": [
+    "3m",
+    "5s",
+    "global"
+  ],
+  "ruleGroupInterval3mStillRequiresContractAlignment": true,
+  "liveGlobalEvaluationIntervalStill30s": true,
+  "productionDeployed": false
+}

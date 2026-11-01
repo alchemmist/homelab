@@ -1,0 +1,51 @@
+{
+  "sdkCanary": {
+    "success": true,
+    "traceId": "fd959ae90a5829beac8b4cd80018a691",
+    "parentSpanId": "1121b1a66055376d",
+    "sourcePrivacyAudit": {
+      "endedSpans": 2,
+      "sensitiveSyntheticContentFoundAtSource": false
+    },
+    "mockProviderOnly": true,
+    "realLlmRequests": 0,
+    "realApiTokensUsed": false,
+    "dedicatedClientMtlsCredentialUsed": true,
+    "productionApplicationSdkCoverageVerified": false,
+    "backendInternalChildSpanAndPrivacyVerificationStillRequired": true
+  },
+  "nativeBackend": {
+    "success": true,
+    "traceId": "fd959ae90a5829beac8b4cd80018a691",
+    "parentSpanId": "1121b1a66055376d",
+    "spanCount": 2,
+    "serviceNames": [
+      "homelab-litellm-sdk-canary"
+    ],
+    "internalLibraryChildSpanNames": [
+      "litellm_request"
+    ],
+    "internalLibraryChildVerified": true,
+    "sensitiveSyntheticContentFound": false,
+    "productionApplicationSdkCoverageVerified": false,
+    "mockProviderOnly": true,
+    "dedicatedClientMtlsCredentialUsed": true,
+    "realLlmApiTokensUsed": false
+  },
+  "transport": "HTTP/protobuf TLS1.3 private client-mTLS",
+  "newPrivateReceiver": {
+    "success": true,
+    "authenticatedNativeTraceRouteReady": true,
+    "anonymousCertificateAuthenticationRejected": true,
+    "additionalMetricsOrLogsRouteCreated": false,
+    "otherSignalStatusCodes": {
+      "/v1/metrics": 404,
+      "/v1/logs": 404
+    },
+    "privateBindAddress": "10.250.0.3:44318",
+    "singleGlobalSamplerRetained": true,
+    "existingMetricLogAndGlobalSamplerOwnersRestarted": false,
+    "service": "ActiveState=active\nMemoryCurrent=41103360\nMemoryMax=201326592\n"
+  },
+  "productionApplicationSdkCoverageVerified": false
+}

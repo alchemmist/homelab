@@ -1,0 +1,124 @@
+{
+  "productionModified": false,
+  "publicationApproved": false,
+  "allCurrentHistoryVerified": false,
+  "candidateSamples": 17456856414,
+  "currentBlockCount": 19,
+  "candidates": [
+    {
+      "candidate": "01M61PJFZ9Q86GRQ70N0M81NH3",
+      "samples": 235173517,
+      "category": "contained-range-needs-full-sample-subset-proof",
+      "exactAncestryMatches": [],
+      "coveringRawBlocks": [
+        "01M66BZJJH7AX3HTZFRZD02SXP"
+      ],
+      "relatedRepresentations": [],
+      "publicationApproved": false,
+      "sampleCoverageVerified": false
+    },
+    {
+      "candidate": "01M66N9A83XZN71D7WMX02KVZZ",
+      "samples": 4606695568,
+      "category": "no-active-raw-counterpart-needs-retention-and-coverage-review",
+      "exactAncestryMatches": [],
+      "coveringRawBlocks": [],
+      "relatedRepresentations": [
+        {
+          "block": "01M5P6HX87BCPBXY5CH33N3FQ0",
+          "resolution": 300000,
+          "sharedAncestors": 21
+        }
+      ],
+      "publicationApproved": false,
+      "sampleCoverageVerified": false
+    },
+    {
+      "candidate": "01M67R1BWZR6C7VE8NYX7868TM",
+      "samples": 5955368159,
+      "category": "no-active-raw-counterpart-needs-retention-and-coverage-review",
+      "exactAncestryMatches": [],
+      "coveringRawBlocks": [],
+      "relatedRepresentations": [
+        {
+          "block": "01M5VBBWAGG2X5XWQ8K5QJ7KV6",
+          "resolution": 300000,
+          "sharedAncestors": 24
+        }
+      ],
+      "publicationApproved": false,
+      "sampleCoverageVerified": false
+    },
+    {
+      "candidate": "01M68T9FN8CKN60ZNN1R3DEQKH",
+      "samples": 6137437488,
+      "category": "exact-ancestry-replacement-needs-current-canonical-check",
+      "exactAncestryMatches": [
+        "01M60G3GYDQYMVRYQ7NSNB2FGR"
+      ],
+      "coveringRawBlocks": [
+        "01M60G3GYDQYMVRYQ7NSNB2FGR"
+      ],
+      "relatedRepresentations": [
+        {
+          "block": "01M60G3GYDQYMVRYQ7NSNB2FGR",
+          "resolution": 0,
+          "sharedAncestors": 24
+        },
+        {
+          "block": "01M60G57WS41VSTDSS6XMZKSKQ",
+          "resolution": 300000,
+          "sharedAncestors": 24
+        }
+      ],
+      "publicationApproved": false,
+      "sampleCoverageVerified": false
+    },
+    {
+      "candidate": "01M68X0C52EXRRVDQGF12XAYGH",
+      "samples": 260844250,
+      "category": "contained-range-needs-full-sample-subset-proof",
+      "exactAncestryMatches": [],
+      "coveringRawBlocks": [
+        "01M66BZJJH7AX3HTZFRZD02SXP"
+      ],
+      "relatedRepresentations": [
+        {
+          "block": "01M66BZJJH7AX3HTZFRZD02SXP",
+          "resolution": 0,
+          "sharedAncestors": 1
+        },
+        {
+          "block": "01M66MNNZ12MJ8JTQYT2N9S42S",
+          "resolution": 300000,
+          "sharedAncestors": 1
+        }
+      ],
+      "publicationApproved": false,
+      "sampleCoverageVerified": false
+    },
+    {
+      "candidate": "01M68YFW7529BN0T0KJZ0W9XRJ",
+      "samples": 261337432,
+      "category": "contained-range-needs-full-sample-subset-proof",
+      "exactAncestryMatches": [],
+      "coveringRawBlocks": [
+        "01M66BZJJH7AX3HTZFRZD02SXP"
+      ],
+      "relatedRepresentations": [
+        {
+          "block": "01M66BZJJH7AX3HTZFRZD02SXP",
+          "resolution": 0,
+          "sharedAncestors": 1
+        },
+        {
+          "block": "01M66MNNZ12MJ8JTQYT2N9S42S",
+          "resolution": 300000,
+          "sharedAncestors": 1
+        }
+      ],
+      "publicationApproved": false,
+      "sampleCoverageVerified": false
+    }
+  ]
+}

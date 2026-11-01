@@ -1,0 +1,2499 @@
+{
+  "collectedAt": "2026-10-28T17:54:03.842047+00:00",
+  "containerSourceCount": 136,
+  "countsAreLowerBounds": true,
+  "diskProjectionVerified": false,
+  "journals": {
+    "socrat-0": {
+      "journalFileCount": 28,
+      "reason": "system-journal-read-access-unverified",
+      "systemJournalAccessVerified": false,
+      "windowSeconds": 600
+    },
+    "socrat-1": {
+      "bytes": 155841,
+      "journalFileCount": 41,
+      "lines": 136,
+      "systemJournalAccessVerified": true,
+      "windowSeconds": 600
+    },
+    "socrat-2": {
+      "journalFileCount": 39,
+      "reason": "system-journal-read-access-unverified",
+      "systemJournalAccessVerified": false,
+      "windowSeconds": 600
+    },
+    "socrat-3": {
+      "journalFileCount": 24,
+      "reason": "system-journal-read-access-unverified",
+      "systemJournalAccessVerified": false,
+      "windowSeconds": 600
+    }
+  },
+  "limitations": [
+    "Ten-minute byte counts are observations, not peak rates or a retention-capacity approval.",
+    "API timestamps are included; CRI framing, multiline handling, indexes, WALs and queues need separate budgeting.",
+    "Environment and flag names do not prove SDK instrumentation or trace delivery.",
+    "Unprovisioned host logs, rotated files and previous container incarnations are not fully accounted for.",
+    "Sensitive historical logs must not be imported into Loki; no raw log bodies are saved by this tool."
+  ],
+  "logRatesComplete": false,
+  "measuredContainerCount": 135,
+  "observedContainerBytesPerSecond": 8948.336666666666,
+  "observedContainerLogBytes": 5369002,
+  "observedSourcesReadable": false,
+  "productionModified": false,
+  "rawLogBodiesPersisted": false,
+  "schemaVersion": 1,
+  "sources": [
+    {
+      "bytes": 0,
+      "container": "n8n",
+      "image": "docker.io/n8nio/n8n@sha256:624a1f10f37119a73eca34c0cbd358668aebf0068d320ad5eae584f9d35aa314",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "automation",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "n8n-7775dbd94c-z84gw",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 115,
+      "container": "blog",
+      "image": "ghcr.io/alchemmist/blog:7da9b66790ef5c669561ad4791977eb42ae14c08",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "blog",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Succeeded",
+      "pod": "blog-54ccb8c879-5fcws",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 17045,
+      "container": "blog",
+      "image": "ghcr.io/alchemmist/blog:7da9b66790ef5c669561ad4791977eb42ae14c08",
+      "instrumentationAnnotationNames": [],
+      "lines": 91,
+      "measurementAvailable": true,
+      "namespace": "blog",
+      "node": "socrat-3",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "blog-54ccb8c879-7d7xc",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 14448,
+      "container": "blog",
+      "image": "ghcr.io/alchemmist/blog:7da9b66790ef5c669561ad4791977eb42ae14c08",
+      "instrumentationAnnotationNames": [],
+      "lines": 76,
+      "measurementAvailable": true,
+      "namespace": "blog",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "blog-54ccb8c879-9mdlw",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "blog",
+      "image": "ghcr.io/alchemmist/blog:7da9b66790ef5c669561ad4791977eb42ae14c08",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "blog",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Succeeded",
+      "pod": "blog-54ccb8c879-b5jqh",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 8981,
+      "container": "cats",
+      "image": "alchemmist/cats:latest",
+      "instrumentationAnnotationNames": [],
+      "lines": 64,
+      "measurementAvailable": true,
+      "namespace": "cats",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "cats-796f4664db-6fpks",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "cats",
+      "image": "alchemmist/cats:latest",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cats",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Succeeded",
+      "pod": "cats-796f4664db-cg6td",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 9262,
+      "container": "cats",
+      "image": "alchemmist/cats:latest",
+      "instrumentationAnnotationNames": [],
+      "lines": 66,
+      "measurementAvailable": true,
+      "namespace": "cats",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "cats-796f4664db-s9vwc",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "manager",
+      "image": "rancher/cluster-api-controller:v1.13.3",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-capi-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "capi-controller-manager-754dcdb8b9-7xqlf",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "fleet-agent",
+      "image": "rancher/fleet-agent:v0.16.2",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-fleet-local-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "fleet-agent-9bb754f4c-7wdnz",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 438,
+      "container": "fleet-controller",
+      "image": "rancher/fleet:v0.16.2",
+      "instrumentationAnnotationNames": [],
+      "lines": 2,
+      "measurementAvailable": true,
+      "namespace": "cattle-fleet-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "fleet-controller-b89cdf655-rv5l5",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "fleet-cleanup",
+      "image": "rancher/fleet:v0.16.2",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-fleet-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "fleet-controller-b89cdf655-rv5l5",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "fleet-agentmanagement",
+      "image": "rancher/fleet:v0.16.2",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-fleet-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "fleet-controller-b89cdf655-rv5l5",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "gitjob",
+      "image": "rancher/fleet:v0.16.2",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-fleet-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "gitjob-7f565f8df8-5dp22",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "helmops",
+      "image": "rancher/fleet:v0.16.2",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-fleet-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "helmops-5b8b4f8cc8-kt4bh",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "alertmanager",
+      "image": "quay.io/prometheus/alertmanager:v0.34.1",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "StatefulSet"
+      ],
+      "phase": "Running",
+      "pod": "alertmanager-kube-prometheus-stack-alertmanager-0",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "config-reloader",
+      "image": "quay.io/prometheus-operator/prometheus-config-reloader:v0.94.1",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "StatefulSet"
+      ],
+      "phase": "Running",
+      "pod": "alertmanager-kube-prometheus-stack-alertmanager-0",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "init-config-reloader",
+      "image": "quay.io/prometheus-operator/prometheus-config-reloader:v0.94.1",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "StatefulSet"
+      ],
+      "phase": "Running",
+      "pod": "alertmanager-kube-prometheus-stack-alertmanager-0",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "grafana-mcp",
+      "image": "grafana/mcp-grafana:2.0.2@sha256:78d208116ec52b09b44f0eca66892073b39aefcb64483c54d43255c8eab7e97a",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "grafana-mcp-78d79d49-j2mft",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 25680,
+      "container": "grafana-sc-dashboard",
+      "image": "quay.io/kiwigrid/k8s-sidecar:2.14.1",
+      "instrumentationAnnotationNames": [],
+      "lines": 130,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "kube-prometheus-stack-grafana-6ff57f846f-6mxcd",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 2720,
+      "container": "grafana-sc-datasources",
+      "image": "quay.io/kiwigrid/k8s-sidecar:2.14.1",
+      "instrumentationAnnotationNames": [],
+      "lines": 20,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "kube-prometheus-stack-grafana-6ff57f846f-6mxcd",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 1785032,
+      "container": "grafana",
+      "image": "docker.io/grafana/grafana:13.2.4-distroless",
+      "instrumentationAnnotationNames": [],
+      "lines": 6141,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "kube-prometheus-stack-grafana-6ff57f846f-6mxcd",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "init-chown-data",
+      "image": "docker.io/library/busybox:1.38.0",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "kube-prometheus-stack-grafana-6ff57f846f-6mxcd",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "kube-state-metrics",
+      "image": "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.20.0",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "kube-prometheus-stack-kube-state-metrics-6b94698c5d-786jp",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 1895,
+      "container": "kube-prometheus-stack",
+      "image": "quay.io/prometheus-operator/prometheus-operator:v0.94.1",
+      "instrumentationAnnotationNames": [],
+      "lines": 8,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "kube-prometheus-stack-operator-74c8d4b65-c6rn4",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "node-exporter",
+      "image": "quay.io/prometheus/node-exporter:v1.12.1-distroless",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "DaemonSet"
+      ],
+      "phase": "Running",
+      "pod": "kube-prometheus-stack-prometheus-node-exporter-45tzw",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "node-exporter",
+      "image": "quay.io/prometheus/node-exporter:v1.12.1-distroless",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "DaemonSet"
+      ],
+      "phase": "Running",
+      "pod": "kube-prometheus-stack-prometheus-node-exporter-97qr4",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "node-exporter",
+      "image": "quay.io/prometheus/node-exporter:v1.12.1-distroless",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-3",
+      "ownerKinds": [
+        "DaemonSet"
+      ],
+      "phase": "Running",
+      "pod": "kube-prometheus-stack-prometheus-node-exporter-x2p8q",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "node-exporter",
+      "image": "quay.io/prometheus/node-exporter:v1.12.1-distroless",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-2",
+      "ownerKinds": [
+        "DaemonSet"
+      ],
+      "phase": "Running",
+      "pod": "kube-prometheus-stack-prometheus-node-exporter-z55rd",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "proxy",
+      "image": "nginx:1.31.2-alpine",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "DaemonSet"
+      ],
+      "phase": "Running",
+      "pod": "monitoring-etcd-metrics-2rwnk",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "proxy",
+      "image": "nginx:1.31.2-alpine",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-2",
+      "ownerKinds": [
+        "DaemonSet"
+      ],
+      "phase": "Running",
+      "pod": "monitoring-etcd-metrics-7r5fm",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "proxy",
+      "image": "nginx:1.31.2-alpine",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-3",
+      "ownerKinds": [
+        "DaemonSet"
+      ],
+      "phase": "Running",
+      "pod": "monitoring-etcd-metrics-mlcx7",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "blackbox-exporter",
+      "image": "quay.io/prometheus/blackbox-exporter:v0.29.0",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "monitoring-service-probes-7988d54b48-5cc84",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "prometheus",
+      "image": "quay.io/prometheus/prometheus:v3.15.0-distroless",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "StatefulSet"
+      ],
+      "phase": "Running",
+      "pod": "prometheus-kube-prometheus-stack-prometheus-0",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "config-reloader",
+      "image": "quay.io/prometheus-operator/prometheus-config-reloader:v0.94.1",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "StatefulSet"
+      ],
+      "phase": "Running",
+      "pod": "prometheus-kube-prometheus-stack-prometheus-0",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "thanos-sidecar",
+      "image": "quay.io/thanos/thanos:v0.42.4",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "StatefulSet"
+      ],
+      "phase": "Running",
+      "pod": "prometheus-kube-prometheus-stack-prometheus-0",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "init-config-reloader",
+      "image": "quay.io/prometheus-operator/prometheus-config-reloader:v0.94.1",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "StatefulSet"
+      ],
+      "phase": "Running",
+      "pod": "prometheus-kube-prometheus-stack-prometheus-0",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "nginx",
+      "image": "rancher/mirrored-library-nginx:1.31.2-alpine",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "rancher-monitoring-dashboards-monitoring-proxy-d9775db9f-29z2f",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "cascade",
+      "image": "python:3.12-slim",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "Job"
+      ],
+      "phase": "Succeeded",
+      "pod": "thanos-cascade-29886690-l6p5q",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "cascade",
+      "image": "python:3.12-slim",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "Job"
+      ],
+      "phase": "Succeeded",
+      "pod": "thanos-cascade-29886750-phclw",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "cascade",
+      "image": "python:3.12-slim",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "Job"
+      ],
+      "phase": "Succeeded",
+      "pod": "thanos-cascade-29886810-d9csz",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 7160,
+      "container": "thanos",
+      "image": "quay.io/thanos/thanos:v0.42.4",
+      "instrumentationAnnotationNames": [],
+      "lines": 40,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-3",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "thanos-compactor-1h-649c9668c6-fllv7",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 7157,
+      "container": "thanos",
+      "image": "quay.io/thanos/thanos:v0.42.4",
+      "instrumentationAnnotationNames": [],
+      "lines": 40,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "thanos-compactor-5m-86bfc99c77-tqb9b",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 8711,
+      "container": "thanos",
+      "image": "quay.io/thanos/thanos:v0.42.4",
+      "instrumentationAnnotationNames": [],
+      "lines": 48,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "thanos-compactor-6dcb899df9-mc5pm",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "thanos",
+      "image": "quay.io/thanos/thanos:v0.42.4",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Succeeded",
+      "pod": "thanos-compactor-6dcb899df9-wt4v2",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "disk",
+      "image": "python:3.12-slim",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "DaemonSet"
+      ],
+      "phase": "Running",
+      "pod": "thanos-disk-66sp7",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "disk",
+      "image": "python:3.12-slim",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-3",
+      "ownerKinds": [
+        "DaemonSet"
+      ],
+      "phase": "Running",
+      "pod": "thanos-disk-9ljsv",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "disk",
+      "image": "python:3.12-slim",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "DaemonSet"
+      ],
+      "phase": "Running",
+      "pod": "thanos-disk-bplrb",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "thanos",
+      "image": "quay.io/thanos/thanos:v0.42.4",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "thanos-query-8c7bb5f58-6x26q",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "shelf",
+      "image": "python:3.12-slim",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-3",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "thanos-shelf-1h-6fdfd6449-z8w7k",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "shelf",
+      "image": "python:3.12-slim",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "thanos-shelf-5m-7757987658-q8vk8",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 242,
+      "container": "thanos",
+      "image": "quay.io/thanos/thanos:v0.42.4",
+      "instrumentationAnnotationNames": [],
+      "lines": 1,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-3",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "thanos-store-1h-c8cd86bff-2ff22",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 242,
+      "container": "thanos",
+      "image": "quay.io/thanos/thanos:v0.42.4",
+      "instrumentationAnnotationNames": [],
+      "lines": 1,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "thanos-store-5m-859b86b7f6-t66p6",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "thanos",
+      "image": "quay.io/thanos/thanos:v0.42.4",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Succeeded",
+      "pod": "thanos-store-68bbcb57f8-8qfpr",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 243,
+      "container": "thanos",
+      "image": "quay.io/thanos/thanos:v0.42.4",
+      "instrumentationAnnotationNames": [],
+      "lines": 1,
+      "measurementAvailable": true,
+      "namespace": "cattle-monitoring-system",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "thanos-store-68bbcb57f8-hqndw",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 19497,
+      "container": "rancher",
+      "image": "rancher/rancher:v2.15.2",
+      "instrumentationAnnotationNames": [],
+      "lines": 49,
+      "measurementAvailable": true,
+      "namespace": "cattle-system",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "rancher-6864d67b6b-fxj7s",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "rancher",
+      "image": "rancher/rancher:v2.15.2",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-system",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Succeeded",
+      "pod": "rancher-6864d67b6b-qjcv5",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 1989,
+      "container": "rancher",
+      "image": "rancher/rancher:v2.15.2",
+      "instrumentationAnnotationNames": [],
+      "lines": 13,
+      "measurementAvailable": true,
+      "namespace": "cattle-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "rancher-6864d67b6b-s6tvc",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "rancher-webhook",
+      "image": "rancher/rancher-webhook:v0.11.3",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-system",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Succeeded",
+      "pod": "rancher-webhook-7dcb669cc6-bl6jq",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "rancher-webhook",
+      "image": "rancher/rancher-webhook:v0.11.3",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-system",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "rancher-webhook-7dcb669cc6-f4xxx",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "rancher-webhook",
+      "image": "rancher/rancher-webhook:v0.11.3",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-system",
+      "node": "socrat-3",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "rancher-webhook-7dcb669cc6-jg57b",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "container": "system-upgrade-controller",
+      "image": "rancher/system-upgrade-controller:v0.20.1",
+      "instrumentationAnnotationNames": [],
+      "measurementAvailable": false,
+      "namespace": "cattle-system",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Failed",
+      "pod": "system-upgrade-controller-5b6fd6b596-gvvlf",
+      "reason": "api-unavailable",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": []
+    },
+    {
+      "bytes": 0,
+      "container": "system-upgrade-controller",
+      "image": "rancher/system-upgrade-controller:v0.20.1",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-system",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Succeeded",
+      "pod": "system-upgrade-controller-5b6fd6b596-nnk9d",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "system-upgrade-controller",
+      "image": "rancher/system-upgrade-controller:v0.20.1",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cattle-system",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "system-upgrade-controller-5b6fd6b596-z2fcx",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 25709,
+      "container": "manager",
+      "image": "rancher/turtles:v0.27.2",
+      "instrumentationAnnotationNames": [],
+      "lines": 64,
+      "measurementAvailable": true,
+      "namespace": "cattle-turtles-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "rancher-turtles-controller-manager-74867b76f8-b4cvb",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "cert-manager-controller",
+      "image": "quay.io/jetstack/cert-manager-controller:v1.16.2",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cert-manager",
+      "node": "socrat-3",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "cert-manager-56f54b7bb-2mwcx",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "cert-manager-controller",
+      "image": "quay.io/jetstack/cert-manager-controller:v1.16.2",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cert-manager",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "cert-manager-56f54b7bb-5xvw7",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "cert-manager-controller",
+      "image": "quay.io/jetstack/cert-manager-controller:v1.16.2",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cert-manager",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Succeeded",
+      "pod": "cert-manager-56f54b7bb-mhvct",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "cert-manager-cainjector",
+      "image": "quay.io/jetstack/cert-manager-cainjector:v1.16.2",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cert-manager",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "cert-manager-cainjector-844c7dd695-qsvtz",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 224,
+      "container": "cert-manager-cainjector",
+      "image": "quay.io/jetstack/cert-manager-cainjector:v1.16.2",
+      "instrumentationAnnotationNames": [],
+      "lines": 1,
+      "measurementAvailable": true,
+      "namespace": "cert-manager",
+      "node": "socrat-3",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "cert-manager-cainjector-844c7dd695-x7hvg",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "cert-manager-cainjector",
+      "image": "quay.io/jetstack/cert-manager-cainjector:v1.16.2",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cert-manager",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Succeeded",
+      "pod": "cert-manager-cainjector-844c7dd695-zmmm8",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "cert-manager-webhook",
+      "image": "quay.io/jetstack/cert-manager-webhook:v1.16.2",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cert-manager",
+      "node": "socrat-3",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "cert-manager-webhook-964859b56-6qmsw",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "cert-manager-webhook",
+      "image": "quay.io/jetstack/cert-manager-webhook:v1.16.2",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cert-manager",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Succeeded",
+      "pod": "cert-manager-webhook-964859b56-hdhjr",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "cert-manager-webhook",
+      "image": "quay.io/jetstack/cert-manager-webhook:v1.16.2",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "cert-manager",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "cert-manager-webhook-964859b56-pkr5t",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "llmcap",
+      "image": "nicolaka/netshoot",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "default",
+      "node": "socrat-0",
+      "ownerKinds": [],
+      "phase": "Failed",
+      "pod": "llmcap",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "rke2-machineconfig-cleanup-pod",
+      "image": "rancher/rancher-agent:v2.15.2",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "fleet-local",
+      "node": "socrat-2",
+      "ownerKinds": [
+        "Job"
+      ],
+      "phase": "Succeeded",
+      "pod": "rke2-machineconfig-cleanup-cronjob-29882705-sqhfb",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "rke2-machineconfig-cleanup-pod",
+      "image": "rancher/rancher-agent:v2.15.2",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "fleet-local",
+      "node": "socrat-2",
+      "ownerKinds": [
+        "Job"
+      ],
+      "phase": "Succeeded",
+      "pod": "rke2-machineconfig-cleanup-cronjob-29884145-5ngff",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "rke2-machineconfig-cleanup-pod",
+      "image": "rancher/rancher-agent:v2.15.2",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "fleet-local",
+      "node": "socrat-2",
+      "ownerKinds": [
+        "Job"
+      ],
+      "phase": "Succeeded",
+      "pod": "rke2-machineconfig-cleanup-cronjob-29885585-mvtqg",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 11657,
+      "container": "format-quorum",
+      "image": "ghcr.io/alchemmist/homelab-format-quorum:latest",
+      "instrumentationAnnotationNames": [],
+      "lines": 131,
+      "measurementAvailable": true,
+      "namespace": "format-quorum",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "format-quorum-664bd85865-27v75",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 2668,
+      "container": "nginx",
+      "image": "nginx:1.27-alpine",
+      "instrumentationAnnotationNames": [],
+      "lines": 14,
+      "measurementAvailable": true,
+      "namespace": "img-proxy",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "img-proxy-6c996bf476-gbm75",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 2668,
+      "container": "coredns",
+      "image": "rancher/mirrored-coredns-coredns:1.14.7",
+      "instrumentationAnnotationNames": [],
+      "lines": 23,
+      "measurementAvailable": true,
+      "namespace": "kube-system",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "coredns-c748c6bcb-dvbfw",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 1856,
+      "container": "coredns",
+      "image": "rancher/mirrored-coredns-coredns:1.14.7",
+      "instrumentationAnnotationNames": [],
+      "lines": 16,
+      "measurementAvailable": true,
+      "namespace": "kube-system",
+      "node": "socrat-2",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "coredns-c748c6bcb-pmgj9",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "helm",
+      "image": "rancher/klipper-helm:v0.13.3-build20260727",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "kube-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "Job"
+      ],
+      "phase": "Succeeded",
+      "pod": "helm-install-traefik-jvlz8",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "local-path-provisioner",
+      "image": "rancher/local-path-provisioner:v0.0.37",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "kube-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "local-path-provisioner-849978cd79-4psd5",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "metrics-server",
+      "image": "rancher/mirrored-metrics-server:v0.9.0",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "kube-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "metrics-server-fcf6cfb5b-4gb5l",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "nvidia-device-plugin",
+      "image": "nvcr.io/nvidia/k8s-device-plugin:v0.20.1",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "kube-system",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "DaemonSet"
+      ],
+      "phase": "Running",
+      "pod": "nvidia-device-plugin-fdlx6",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "lb-tcp-80",
+      "image": "rancher/klipper-lb:v0.4.17",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "kube-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "DaemonSet"
+      ],
+      "phase": "Running",
+      "pod": "svclb-traefik-80aba32c-2h2kw",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "lb-tcp-443",
+      "image": "rancher/klipper-lb:v0.4.17",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "kube-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "DaemonSet"
+      ],
+      "phase": "Running",
+      "pod": "svclb-traefik-80aba32c-2h2kw",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "lb-tcp-80",
+      "image": "rancher/klipper-lb:v0.4.17",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "kube-system",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "DaemonSet"
+      ],
+      "phase": "Running",
+      "pod": "svclb-traefik-80aba32c-tpg6t",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "lb-tcp-443",
+      "image": "rancher/klipper-lb:v0.4.17",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "kube-system",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "DaemonSet"
+      ],
+      "phase": "Running",
+      "pod": "svclb-traefik-80aba32c-tpg6t",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "traefik",
+      "image": "rancher/mirrored-library-traefik:3.7.13",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "kube-system",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "traefik-b485cc986-7tbkf",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "traefik",
+      "image": "rancher/mirrored-library-traefik:3.7.13",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "kube-system",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "traefik-b485cc986-rxpmr",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 51072,
+      "container": "litellm",
+      "image": "ghcr.io/berriai/litellm:1.105.1",
+      "instrumentationAnnotationNames": [],
+      "lines": 410,
+      "measurementAvailable": true,
+      "namespace": "llm",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "litellm-54db8b8f6b-p4k2d",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 24600,
+      "container": "nginx",
+      "image": "nginx:1.28-alpine@sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236",
+      "instrumentationAnnotationNames": [],
+      "lines": 180,
+      "measurementAvailable": true,
+      "namespace": "llm",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "litellm-branding-7dcf6b8f54-7ddng",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "nginx",
+      "image": "nginx:1.28-alpine@sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "llm",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Succeeded",
+      "pod": "litellm-branding-7dcf6b8f54-b7c28",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 898,
+      "container": "postgres",
+      "image": "postgres:18.6-alpine",
+      "instrumentationAnnotationNames": [],
+      "lines": 4,
+      "measurementAvailable": true,
+      "namespace": "llm",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "litellm-postgres-5cbbfdc865-dj468",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "postgres",
+      "image": "postgres:18.6-alpine",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "llm",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Succeeded",
+      "pod": "litellm-postgres-5cbbfdc865-vt98c",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "gateway",
+      "image": "ghcr.io/open-webui/open-webui:v0.12.2-slim@sha256:34db70a8e8f305dc996c4b459db0949b715400a489ca8a2d1a2a31ae5ddc67bb",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "llm",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Succeeded",
+      "pod": "llm-switcher-5ccf9f4bd7-k5lsx",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "gateway",
+      "image": "ghcr.io/open-webui/open-webui:v0.12.2-slim@sha256:34db70a8e8f305dc996c4b459db0949b715400a489ca8a2d1a2a31ae5ddc67bb",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "llm",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "llm-switcher-6f764bdd7-rggjj",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "collector",
+      "image": "ghcr.io/open-webui/open-webui:v0.12.2-slim@sha256:34db70a8e8f305dc996c4b459db0949b715400a489ca8a2d1a2a31ae5ddc67bb",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "llm",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "monitoring-llm-status-59659646bd-4fnxp",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 11400,
+      "container": "open-terminal",
+      "image": "ghcr.io/open-webui/open-terminal:0.14.1@sha256:03af3bd6c71af3548cbaef874f72d0a8ebd7daa813e0f08d3bdfe8f865f65212",
+      "instrumentationAnnotationNames": [],
+      "lines": 120,
+      "measurementAvailable": true,
+      "namespace": "llm",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "open-terminal-5979ffb797-zx2hs",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "browser-cleanup",
+      "image": "ghcr.io/open-webui/open-terminal:0.14.1@sha256:03af3bd6c71af3548cbaef874f72d0a8ebd7daa813e0f08d3bdfe8f865f65212",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "llm",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "open-terminal-5979ffb797-zx2hs",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "open-webui",
+      "image": "ghcr.io/open-webui/open-webui:v0.12.3-slim@sha256:5adfb0355bbe4a5860c0ba9482cc0b40f573de3749a21a64cf4789391a14fffc",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "llm",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Succeeded",
+      "pod": "open-webui-59b85fd6bf-kpdxn",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "prepare-tool-guard",
+      "image": "ghcr.io/open-webui/open-webui:v0.12.3-slim@sha256:5adfb0355bbe4a5860c0ba9482cc0b40f573de3749a21a64cf4789391a14fffc",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "llm",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Succeeded",
+      "pod": "open-webui-59b85fd6bf-kpdxn",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 1596,
+      "container": "open-webui",
+      "image": "ghcr.io/open-webui/open-webui:v0.12.3-slim@sha256:5adfb0355bbe4a5860c0ba9482cc0b40f573de3749a21a64cf4789391a14fffc",
+      "instrumentationAnnotationNames": [],
+      "lines": 10,
+      "measurementAvailable": true,
+      "namespace": "llm",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "open-webui-77c7fcb855-ftnfh",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "prepare-tool-guard",
+      "image": "ghcr.io/open-webui/open-webui:v0.12.3-slim@sha256:5adfb0355bbe4a5860c0ba9482cc0b40f573de3749a21a64cf4789391a14fffc",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "llm",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "open-webui-77c7fcb855-ftnfh",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "nginx",
+      "image": "nginx:1.28-alpine@sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "llm",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Succeeded",
+      "pod": "open-webui-gateway-5f5b67d778-97nkj",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "nginx",
+      "image": "nginx:1.28-alpine@sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "llm",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "open-webui-gateway-5f5b67d778-lmd5n",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "searxng",
+      "image": "docker.io/searxng/searxng@sha256:d81e14a4328ba7a57f297dff0472be629d30bf29580406c0d5b3bdab563c9bed",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "llm",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "searxng-77fc46b8bc-755fr",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "vllm",
+      "image": "vllm/vllm-openai:v0.31.0@sha256:c1c9f6fd5c109ba7f0546a59f5b2f15fb87f64c77782e90a27b648b42a8e67c3",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "llm",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Succeeded",
+      "pod": "vllm-566464759b-bk6n5",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 20860,
+      "container": "vllm",
+      "image": "vllm/vllm-openai:v0.31.0@sha256:c1c9f6fd5c109ba7f0546a59f5b2f15fb87f64c77782e90a27b648b42a8e67c3",
+      "instrumentationAnnotationNames": [],
+      "lines": 220,
+      "measurementAvailable": true,
+      "namespace": "llm",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "vllm-566464759b-jnrpm",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 11574,
+      "container": "lms",
+      "image": "ghcr.io/alchemmist/homelab-lms:latest",
+      "instrumentationAnnotationNames": [],
+      "lines": 130,
+      "measurementAvailable": true,
+      "namespace": "lms",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "lms-74cd699b99-tnnz9",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "front",
+      "image": "ghcr.io/alchemmist/homelab-monori-front:latest",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "monori",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Succeeded",
+      "pod": "monori-7954ddd5f7-2lq9w",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 18366,
+      "container": "front",
+      "image": "ghcr.io/alchemmist/homelab-monori-front:latest",
+      "instrumentationAnnotationNames": [],
+      "lines": 130,
+      "measurementAvailable": true,
+      "namespace": "monori",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "monori-7954ddd5f7-qzc6t",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "back",
+      "image": "ghcr.io/alchemmist/homelab-monori-back:latest",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "monori",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Succeeded",
+      "pod": "monori-back-84fc94bf59-lw5md",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 12120,
+      "container": "back",
+      "image": "ghcr.io/alchemmist/homelab-monori-back:latest",
+      "instrumentationAnnotationNames": [],
+      "lines": 120,
+      "measurementAvailable": true,
+      "namespace": "monori",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "monori-back-84fc94bf59-tc5kf",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 11400,
+      "container": "sync",
+      "image": "ghcr.io/alchemmist/homelab-monori-sync:latest",
+      "instrumentationAnnotationNames": [],
+      "lines": 120,
+      "measurementAvailable": true,
+      "namespace": "monori",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "monori-sync-6d7b97d6c-bknr2",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "sync",
+      "image": "ghcr.io/alchemmist/homelab-monori-sync:latest",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "monori",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Succeeded",
+      "pod": "monori-sync-6d7b97d6c-v7t6p",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 1765,
+      "container": "remark42",
+      "image": "ghcr.io/umputun/remark42:v1.17.1",
+      "instrumentationAnnotationNames": [],
+      "lines": 9,
+      "measurementAvailable": true,
+      "namespace": "remark42",
+      "node": "socrat-2",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "remark42-6fc74cdd49-gnrpl",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "nginx",
+      "image": "ghcr.io/alchemmist/homelab-socrat-home:latest",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "socrat-home",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Succeeded",
+      "pod": "socrat-home-85744775b-2qks8",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 9605,
+      "container": "nginx",
+      "image": "ghcr.io/alchemmist/homelab-socrat-home:latest",
+      "instrumentationAnnotationNames": [],
+      "lines": 68,
+      "measurementAvailable": true,
+      "namespace": "socrat-home",
+      "node": "socrat-3",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "socrat-home-85744775b-7pbzd",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 8768,
+      "container": "nginx",
+      "image": "ghcr.io/alchemmist/homelab-socrat-home:latest",
+      "instrumentationAnnotationNames": [],
+      "lines": 62,
+      "measurementAvailable": true,
+      "namespace": "socrat-home",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "socrat-home-85744775b-gtr4b",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "nfs-subdir-external-provisioner",
+      "image": "registry.k8s.io/sig-storage/nfs-subdir-external-provisioner:v4.0.2",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "storage",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "nfs-subdir-external-provisioner-5f4d654d97-rrz4p",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 18653,
+      "container": "private-gui",
+      "image": "nginx:1.27-alpine",
+      "instrumentationAnnotationNames": [],
+      "lines": 133,
+      "measurementAvailable": true,
+      "namespace": "syncthing",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "DaemonSet"
+      ],
+      "phase": "Running",
+      "pod": "private-gateway-pcv2q",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 3172796,
+      "container": "private-gui",
+      "image": "nginx:1.27-alpine",
+      "instrumentationAnnotationNames": [],
+      "lines": 6408,
+      "measurementAvailable": true,
+      "namespace": "syncthing",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "DaemonSet"
+      ],
+      "phase": "Running",
+      "pod": "private-gateway-qp7jg",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "syncthing",
+      "image": "syncthing/syncthing:latest",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "syncthing",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "syncthing-d6c6b689d-8frm5",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "traefik",
+      "image": "rancher/mirrored-library-traefik@sha256:f86a2cab1b5c649070c49f883c743dd32d8485a56e3368c5f93b9e91f1e91259",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "traefik-edge",
+      "node": "socrat-2",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "traefik-edge-7858b6c888-b8cbx",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "umami",
+      "image": "ghcr.io/umami-software/umami:latest",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "umami",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "umami-688f9945c5-6vn82",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "umami",
+      "image": "ghcr.io/umami-software/umami:latest",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "umami",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Failed",
+      "pod": "umami-688f9945c5-9mr9w",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 784,
+      "container": "postgres",
+      "image": "postgres:15",
+      "instrumentationAnnotationNames": [],
+      "lines": 4,
+      "measurementAvailable": true,
+      "namespace": "umami",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "umami-db-d4cff967b-h9nxk",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "postgres",
+      "image": "postgres:15",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "umami",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Succeeded",
+      "pod": "umami-db-d4cff967b-j5sn2",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "uptime-kuma",
+      "image": "louislam/uptime-kuma:2.5.7",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "uptime-kuma",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "uptime-kuma-6dfc7966f8-v8xbr",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "mariadb",
+      "image": "mariadb:11.4",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "uptime-kuma",
+      "node": "socrat-0",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "uptime-kuma-db-57cf9546d5-27qpf",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 11400,
+      "container": "yandex-voice",
+      "image": "ghcr.io/alchemmist/yandex-voice:v0.1.2@sha256:29e598ce6bb9a26292cbe09caf73dfcb388bac1734f8a9cd8fa0b53e25373e3a",
+      "instrumentationAnnotationNames": [],
+      "lines": 120,
+      "measurementAvailable": true,
+      "namespace": "voice",
+      "node": "socrat-1",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "yandex-voice-6fc5c45894-wfr8f",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 25706,
+      "container": "wiki",
+      "image": "ghcr.io/alchemmist/hugo-docs-wiki@sha256:56b24ca70f7ebcb5c3d4844c0e5ec5b779416f74f891be5b24807f65e8878b7e",
+      "instrumentationAnnotationNames": [],
+      "lines": 270,
+      "measurementAvailable": true,
+      "namespace": "wiki",
+      "node": "socrat-3",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "wiki-runtime-wiki-7595796ffd-t9676",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    },
+    {
+      "bytes": 0,
+      "container": "primary",
+      "image": "ghcr.io/mhsanaei/3x-ui@sha256:1628adbd9bed680d25d6f714bef4a20f132105f4612ea294952f6665dad32e5b",
+      "instrumentationAnnotationNames": [],
+      "lines": 0,
+      "measurementAvailable": true,
+      "namespace": "x-ui",
+      "node": "socrat-2",
+      "ownerKinds": [
+        "ReplicaSet"
+      ],
+      "phase": "Running",
+      "pod": "x-ui-79787488f4-dln2k",
+      "tracingArgumentNames": [],
+      "tracingEnvironmentNames": [],
+      "truncated": false
+    }
+  ],
+  "traceRateMeasured": false,
+  "tracingConfigurationIsOnlyAHint": true,
+  "truncatedContainerCount": 0,
+  "unavailableContainerCount": 1,
+  "windowSeconds": 600
+}

@@ -1,0 +1,221 @@
+{
+  "observedAtUnix": 1793538801.9491074,
+  "productionModified": false,
+  "newWorkExecutedOn": "socrat-0",
+  "allCapacityAccepted": false,
+  "queries": {
+    "currentAvailableFraction": [
+      {
+        "metric": {
+          "container": "node-exporter",
+          "endpoint": "http-metrics",
+          "instance": "10.250.0.2:9100",
+          "job": "node-exporter",
+          "namespace": "cattle-monitoring-system",
+          "pod": "kube-prometheus-stack-prometheus-node-exporter-z55rd",
+          "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+          "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0",
+          "service": "kube-prometheus-stack-prometheus-node-exporter"
+        },
+        "value": [
+          1793538801.965,
+          "0.22083954775555922"
+        ]
+      },
+      {
+        "metric": {
+          "container": "node-exporter",
+          "endpoint": "http-metrics",
+          "instance": "10.250.0.5:9100",
+          "job": "node-exporter",
+          "namespace": "cattle-monitoring-system",
+          "pod": "kube-prometheus-stack-prometheus-node-exporter-x2p8q",
+          "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+          "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0",
+          "service": "kube-prometheus-stack-prometheus-node-exporter"
+        },
+        "value": [
+          1793538801.965,
+          "0.2786605826898655"
+        ]
+      },
+      {
+        "metric": {
+          "container": "node-exporter",
+          "endpoint": "http-metrics",
+          "instance": "192.168.0.23:9100",
+          "job": "node-exporter",
+          "namespace": "cattle-monitoring-system",
+          "pod": "kube-prometheus-stack-prometheus-node-exporter-dt68v",
+          "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+          "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0",
+          "service": "kube-prometheus-stack-prometheus-node-exporter"
+        },
+        "value": [
+          1793538801.965,
+          "0.5322520619358759"
+        ]
+      },
+      {
+        "metric": {
+          "container": "node-exporter",
+          "endpoint": "http-metrics",
+          "instance": "192.168.0.24:9100",
+          "job": "node-exporter",
+          "namespace": "cattle-monitoring-system",
+          "pod": "kube-prometheus-stack-prometheus-node-exporter-45tzw",
+          "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+          "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0",
+          "service": "kube-prometheus-stack-prometheus-node-exporter"
+        },
+        "value": [
+          1793538801.965,
+          "0.4831056580684636"
+        ]
+      }
+    ],
+    "minimumAvailableFractionLastHour": [
+      {
+        "metric": {
+          "container": "node-exporter",
+          "endpoint": "http-metrics",
+          "instance": "192.168.0.24:9100",
+          "job": "node-exporter",
+          "namespace": "cattle-monitoring-system",
+          "pod": "kube-prometheus-stack-prometheus-node-exporter-45tzw",
+          "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+          "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0",
+          "service": "kube-prometheus-stack-prometheus-node-exporter"
+        },
+        "value": [
+          1793538801.997,
+          "0.4407499436447364"
+        ]
+      },
+      {
+        "metric": {
+          "container": "node-exporter",
+          "endpoint": "http-metrics",
+          "instance": "10.250.0.2:9100",
+          "job": "node-exporter",
+          "namespace": "cattle-monitoring-system",
+          "pod": "kube-prometheus-stack-prometheus-node-exporter-z55rd",
+          "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+          "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0",
+          "service": "kube-prometheus-stack-prometheus-node-exporter"
+        },
+        "value": [
+          1793538801.997,
+          "0.13835835982944514"
+        ]
+      },
+      {
+        "metric": {
+          "container": "node-exporter",
+          "endpoint": "http-metrics",
+          "instance": "10.250.0.5:9100",
+          "job": "node-exporter",
+          "namespace": "cattle-monitoring-system",
+          "pod": "kube-prometheus-stack-prometheus-node-exporter-x2p8q",
+          "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+          "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0",
+          "service": "kube-prometheus-stack-prometheus-node-exporter"
+        },
+        "value": [
+          1793538801.997,
+          "0.2275153180878577"
+        ]
+      },
+      {
+        "metric": {
+          "container": "node-exporter",
+          "endpoint": "http-metrics",
+          "instance": "192.168.0.23:9100",
+          "job": "node-exporter",
+          "namespace": "cattle-monitoring-system",
+          "pod": "kube-prometheus-stack-prometheus-node-exporter-dt68v",
+          "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+          "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0",
+          "service": "kube-prometheus-stack-prometheus-node-exporter"
+        },
+        "value": [
+          1793538801.997,
+          "0.5241718395838101"
+        ]
+      }
+    ],
+    "availableMemorySamplesLastHour": [
+      {
+        "metric": {
+          "container": "node-exporter",
+          "endpoint": "http-metrics",
+          "instance": "10.250.0.2:9100",
+          "job": "node-exporter",
+          "namespace": "cattle-monitoring-system",
+          "pod": "kube-prometheus-stack-prometheus-node-exporter-z55rd",
+          "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+          "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0",
+          "service": "kube-prometheus-stack-prometheus-node-exporter"
+        },
+        "value": [
+          1793538802.014,
+          "720"
+        ]
+      },
+      {
+        "metric": {
+          "container": "node-exporter",
+          "endpoint": "http-metrics",
+          "instance": "10.250.0.5:9100",
+          "job": "node-exporter",
+          "namespace": "cattle-monitoring-system",
+          "pod": "kube-prometheus-stack-prometheus-node-exporter-x2p8q",
+          "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+          "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0",
+          "service": "kube-prometheus-stack-prometheus-node-exporter"
+        },
+        "value": [
+          1793538802.014,
+          "719"
+        ]
+      },
+      {
+        "metric": {
+          "container": "node-exporter",
+          "endpoint": "http-metrics",
+          "instance": "192.168.0.23:9100",
+          "job": "node-exporter",
+          "namespace": "cattle-monitoring-system",
+          "pod": "kube-prometheus-stack-prometheus-node-exporter-dt68v",
+          "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+          "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0",
+          "service": "kube-prometheus-stack-prometheus-node-exporter"
+        },
+        "value": [
+          1793538802.014,
+          "720"
+        ]
+      },
+      {
+        "metric": {
+          "container": "node-exporter",
+          "endpoint": "http-metrics",
+          "instance": "192.168.0.24:9100",
+          "job": "node-exporter",
+          "namespace": "cattle-monitoring-system",
+          "pod": "kube-prometheus-stack-prometheus-node-exporter-45tzw",
+          "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+          "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0",
+          "service": "kube-prometheus-stack-prometheus-node-exporter"
+        },
+        "value": [
+          1793538802.014,
+          "720"
+        ]
+      }
+    ]
+  },
+  "minimumReserveFractionRequired": 0.2,
+  "socrat2ObserverRemainsPaused": true,
+  "instantaneousRecoveryDoesNotErasePeakReserveFailure": true
+}

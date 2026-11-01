@@ -1,0 +1,30 @@
+{
+  "preflight": {
+    "reviewedPredecessorSHA256": "710f1c7aa0ddcc2f3813a8a99f06f745f11ffdfcf1fbd7e0633a53528254edad"
+  },
+  "sourceSHA256": "477e48796f4cf9ffb3a5539e4cf85be52f2ef49d6195f78de232f2e44a0a0b82",
+  "rollout": {
+    "applied": true,
+    "sourceSHA256": "477e48796f4cf9ffb3a5539e4cf85be52f2ef49d6195f78de232f2e44a0a0b82",
+    "modelProfilesImageAuthAndGpuUnchanged": true,
+    "oldPodsForceKilled": false,
+    "oldReplicaDrainComplete": true,
+    "newSourceReady": true,
+    "oldPodDrainPending": []
+  },
+  "reconcile": {
+    "applied": false,
+    "sourceSHA256": "477e48796f4cf9ffb3a5539e4cf85be52f2ef49d6195f78de232f2e44a0a0b82",
+    "modelProfilesImageAuthAndGpuUnchanged": true,
+    "oldPodsForceKilled": false,
+    "oldReplicaDrainComplete": true,
+    "alreadyReconciled": true,
+    "newSourceReady": true,
+    "oldPodDrainPending": []
+  },
+  "onlyValidatedTraceparentForwarded": true,
+  "baggageTracestateOrClientCredentialsForwarded": false,
+  "allCrossAppPropagationAccepted": false,
+  "initialStaleReceiptFenceFailurePreserved": true,
+  "receiptFenceNowUsesExplicitProtectedReconcileReceipt": true
+}

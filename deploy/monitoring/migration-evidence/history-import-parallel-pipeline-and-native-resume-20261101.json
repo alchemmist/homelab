@@ -1,0 +1,287 @@
+{
+  "recordedAtUnix": 1793553044.900071,
+  "benchmark": "goos: linux\ngoarch: amd64\npkg: homelab/otel-history\ncpu: Intel(R) Core(TM) i7-7900X CPU @ 3.30GHz\nBenchmarkImportPrefetch/workers-1-16         \t       3\t1962623578 ns/op\t589187530 B/op\t10100539 allocs/op\nBenchmarkImportPrefetch/workers-4-16         \t       3\t 729118472 ns/op\t557708088 B/op\t10098800 allocs/op\nBenchmarkImportPrefetch/workers-16-16        \t       3\t 453936330 ns/op\t541201762 B/op\t10097830 allocs/op\nPASS",
+  "benchmarkScope": "synthetic500k-point full native import, 12CPU/1GiB, no real-history write",
+  "benchmarkSpeedup16Vs1": 4.323565769675231,
+  "wholeHistoryEtaOrEquivalentSpeedupClaimed": false,
+  "before": {
+    "cpuCount": 20,
+    "load": [
+      2.1044921875,
+      3.61572265625,
+      5.298828125
+    ],
+    "memory": {
+      "MemTotal": 33326227456,
+      "MemAvailable": 16669663232
+    },
+    "cpuBefore": "usage_usec 8621714706\nuser_usec 8320859128\nsystem_usec 300855578\nnice_usec 0\nnr_periods 26479\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0",
+    "cpuAfter": "usage_usec 8624820595\nuser_usec 8323895470\nsystem_usec 300925125\nnice_usec 0\nnr_periods 26499\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0",
+    "cpuMax": "1600000 100000",
+    "memoryMax": "9663676416",
+    "memoryCurrent": "1579167744",
+    "memoryEvents": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0",
+    "ioStat": "259:0 rbytes=17746567168 wbytes=654184448 rios=613177 wios=40436 dbytes=0 dios=0",
+    "processes": [
+      {
+        "pid": 1186811,
+        "comm": "python3",
+        "status": {
+          "VmRSS": "85344 kB",
+          "Threads": "1"
+        }
+      },
+      {
+        "pid": 1239973,
+        "comm": "otel-history",
+        "status": {
+          "VmRSS": "136268 kB",
+          "Threads": "19"
+        }
+      }
+    ],
+    "latestNumericCheckpoints": [
+      "import checkpoint: shards=71 samples=177500000",
+      "import checkpoint: shards=72 samples=180000000",
+      "import checkpoint: shards=73 samples=182500000",
+      "import checkpoint: shards=74 samples=185000000",
+      "import checkpoint: shards=75 samples=187500000"
+    ],
+    "progress": {
+      "phase": "import",
+      "originalBlock": "01M66G9HT3YJ4W6TSADWG305M6",
+      "completedBlocks": 0
+    }
+  },
+  "after": {
+    "cpuCount": 20,
+    "load": [
+      14.955078125,
+      9.8515625,
+      8.498046875
+    ],
+    "memory": {
+      "MemTotal": 33326227456,
+      "MemAvailable": 15533219840
+    },
+    "cpuBefore": "usage_usec 811163787\nuser_usec 791703108\nsystem_usec 19460679\nnice_usec 0\nnr_periods 738\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0",
+    "cpuAfter": "usage_usec 839349759\nuser_usec 819540380\nsystem_usec 19809379\nnice_usec 0\nnr_periods 758\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0",
+    "cpuMax": "1600000 100000",
+    "memoryMax": "9663676416",
+    "memoryCurrent": "7041187840",
+    "memoryEvents": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0",
+    "ioStat": "259:0 rbytes=7204622336 wbytes=89063424 rios=144297 wios=838 dbytes=0 dios=0",
+    "processes": [
+      {
+        "pid": 1424213,
+        "comm": "python3",
+        "status": {
+          "VmRSS": "65212 kB",
+          "Threads": "1"
+        }
+      },
+      {
+        "pid": 1425380,
+        "comm": "otel-history",
+        "status": {
+          "VmRSS": "908136 kB",
+          "Threads": "34"
+        }
+      }
+    ],
+    "latestNumericCheckpoints": [
+      "import checkpoint: shards=168 samples=420000000",
+      "import checkpoint: shards=169 samples=422500000",
+      "import checkpoint: shards=170 samples=425000000",
+      "import checkpoint: shards=171 samples=427500000",
+      "import checkpoint: shards=172 samples=430000000"
+    ],
+    "progress": {
+      "phase": "import",
+      "originalBlock": "01M66G9HT3YJ4W6TSADWG305M6",
+      "completedBlocks": 0
+    }
+  },
+  "measuredCpuCoresBefore": 1.5529445,
+  "measuredCpuCoresAfter": 14.092986,
+  "readOnlyPrefixProofSummary": {
+    "verified": true,
+    "samples": 367500000,
+    "shards": 147,
+    "files": 73500,
+    "elapsedSeconds": 502.2698531150818,
+    "readOnlyVerifier": true,
+    "withinExistingCpuAndMemoryCgroup": true,
+    "originalImporterNotInterrupted": true,
+    "candidateSHA256": "c2b4fd258ebffb1f31d9caec4c05cbc803dce52b0365fb69f7efa74ba411a077"
+  },
+  "activeImporterProof": {
+    "atUnix": 1793552662.0807674,
+    "activeUnit": "otel-history-tail-pipeline-20261101.service",
+    "singleImporterLockHeld": true,
+    "children": [
+      {
+        "pid": 1425380,
+        "sha256": "c2b4fd258ebffb1f31d9caec4c05cbc803dce52b0365fb69f7efa74ba411a077",
+        "verifiedPrefixFlagPresent": true
+      }
+    ],
+    "adoptionLog": "verified native prefix adopted: shards=147 samples=367500000 remainingBatches=96063",
+    "resumeReceipt": {
+      "verifiedPrefixSamples": 367500000,
+      "verifiedPrefixShards": 147,
+      "priorRun": {
+        "success": false,
+        "productionPublished": false,
+        "originalHistoryDeleted": false,
+        "sourceArchiveSHA256": "64d364074f13f6977cdc92f9117181340563c217f68de92a85c6cd5e6b48bac5",
+        "blocks": [],
+        "startedAtUnix": 1793547656.460029,
+        "executionProfile": "socrat0-fast",
+        "resourceBudget": {
+          "memoryBytes": 9663676416,
+          "cpus": 16,
+          "gomaxprocs": "16",
+          "gomemlimit": "6GiB"
+        },
+        "finishedAtUnix": 1793552409.9594972
+      },
+      "oldImportAndUnadoptedShardsRetained": true,
+      "originalHistoryDeleted": false
+    },
+    "handoff": {
+      "atUnix": 1793552409.873628,
+      "progress": {
+        "phase": "import",
+        "originalBlock": "01M66G9HT3YJ4W6TSADWG305M6",
+        "completedBlocks": 0
+      },
+      "verifiedPrefixSamples": 367500000,
+      "verifiedPrefixShards": 147,
+      "oldImportRetained": "/home/alchemmist/otel-tail-roundtrip-work-20261101/01M66G9HT3YJ4W6TSADWG305M6/restored",
+      "previousBinarySHA256": "ca3cf860b7735459fe5097caa5330e8f69478dc189b12a4d236b8dc2388422e0",
+      "pipelineSHA256": "c2b4fd258ebffb1f31d9caec4c05cbc803dce52b0365fb69f7efa74ba411a077"
+    },
+    "progress": {
+      "phase": "import",
+      "originalBlock": "01M66G9HT3YJ4W6TSADWG305M6",
+      "completedBlocks": 0
+    },
+    "memoryEvents": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+    "legacyImportWorkRetained": true,
+    "historicalProductionPublished": false
+  },
+  "productionMetricsAfterTransition": {
+    "observedAtUnix": 1793552664.0702374,
+    "productionModified": false,
+    "newWorkExecutedOn": "socrat-0",
+    "allCapacityAccepted": false,
+    "queries": {
+      "freshSources": [
+        {
+          "metric": {},
+          "value": [
+            1793552664.103,
+            "78"
+          ]
+        }
+      ],
+      "freshUpSources": [
+        {
+          "metric": {},
+          "value": [
+            1793552664.124,
+            "78"
+          ]
+        }
+      ],
+      "successfulNativeOtlpRequestsLast5m": [
+        {
+          "metric": {},
+          "value": [
+            1793552664.138,
+            "2695.93220338983"
+          ]
+        }
+      ]
+    }
+  },
+  "adoptedSamples": 367500000,
+  "checkpointAtFirstObservation": 430000000,
+  "oldUnverifiedSuffixReconstructedRatherThanBlindlyAdopted": true,
+  "oldNativeWorkRetained": true,
+  "sourceOriginalsDeleted": false,
+  "extraLossApproved": false,
+  "secondImporterStarted": false,
+  "historicalProductionPublished": false,
+  "validation": {
+    "goRaceAllPackages": true,
+    "goVetAllPackages": true,
+    "pythonOtelTests": 239,
+    "exactNativePrefixAdoptionAndFullCanonicalTest": true,
+    "changedShardRefusalTest": true,
+    "parallelNativeCompactionMultiGroupCanonicalTest": true,
+    "prefetchCancelOrderAndCorruptionTests": true,
+    "canonicalByteStreamLegacyEqualityTest": true
+  },
+  "sourceSHA256": {
+    "tools/otel-history/main.go": "3444fd226ba23c5370166278d0d84b438ad6d5ab45030970588f1c9f6f6b4029",
+    "tools/otel-history/canonical_stream.go": "f3576bd635399c5fae52ce2ec28c4a92ca4c0bd8698a3e66268548b824939736",
+    "tools/otel-history/import_prefetch.go": "c01dd8aa3fee03b9f3b200164608a4ced264b9cfdebd0c676a50d0211e6b239d",
+    "tools/otel-history/import_resume.go": "76d46cc88c08f795df1f36a6825a58765539238f5d8032ede861b7c18a4003a1",
+    "tools/otel-history/parallel_compact.go": "054b5020d74a2f27e14f1581d6e234f83d38d5837ed085f7d13b284a83b07716",
+    "tools/otel-history/bounded_writer.go": "48cc2ed7c01bfd285781b422665907bd81075a1328f0e6e6969c22861724b4d2",
+    "scripts/otel-history-tail-roundtrip.py": "8d66b95f57a190f01db91c8301f86c4fde9a5a8ffa832d6e7fe7e89402e8bdd2",
+    "ansible/playbooks/otel-history-pipeline-resume.yml": "a35c46a2766be7926921c658ba010f5211d2ed81164a385f67ac05807c3ffdff"
+  },
+  "latestFollowupObservation": {
+    "cpuCount": 20,
+    "load": [
+      6.70556640625,
+      10.1796875,
+      10.3388671875
+    ],
+    "memory": {
+      "MemTotal": 33326227456,
+      "MemAvailable": 16381612032
+    },
+    "cpuBefore": "usage_usec 5992352830\nuser_usec 5886762405\nsystem_usec 105590425\nnice_usec 0\nnr_periods 6961\nnr_throttled 25\nthrottled_usec 19673\nnr_bursts 0\nburst_usec 0",
+    "cpuAfter": "usage_usec 5994987584\nuser_usec 5889345381\nsystem_usec 105642203\nnice_usec 0\nnr_periods 6981\nnr_throttled 25\nthrottled_usec 19673\nnr_bursts 0\nburst_usec 0",
+    "cpuMax": "1600000 100000",
+    "memoryMax": "9663676416",
+    "memoryCurrent": "8948789248",
+    "memoryEvents": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0",
+    "ioStat": "259:0 rbytes=10012991488 wbytes=2517524480 rios=267188 wios=20913 dbytes=0 dios=0",
+    "processes": [
+      {
+        "pid": 1424213,
+        "comm": "python3",
+        "status": {
+          "VmRSS": "65212 kB",
+          "Threads": "1"
+        }
+      },
+      {
+        "pid": 1425380,
+        "comm": "otel-history",
+        "status": {
+          "VmRSS": "460196 kB",
+          "Threads": "34"
+        }
+      }
+    ],
+    "latestNumericCheckpoints": [
+      "import compaction: level=0 inputs=4 concurrentLimit=4",
+      "import compaction: level=0 inputs=16 concurrentLimit=4",
+      "import compaction: level=1 inputs=6 concurrentLimit=4",
+      "import compaction: level=1 inputs=16 concurrentLimit=4",
+      "import compaction: level=2 inputs=2 concurrentLimit=4"
+    ],
+    "progress": {
+      "phase": "import",
+      "originalBlock": "01M66G9HT3YJ4W6TSADWG305M6",
+      "completedBlocks": 0
+    }
+  },
+  "latestFollowupCpuCores": 1.317377
+}

@@ -1,0 +1,11 @@
+{
+  "success": true,
+  "productionPublished": false,
+  "startedAtUnix": 1793475691.643729,
+  "samples": 1043291602,
+  "canonicalSHA256": "96b0b9f5f763ec154578de90b490a13683a81f42bae32c634118c8b356189acf",
+  "actualNativeThanosQueryVerified": true,
+  "durableStagingVerified": true,
+  "restoredBlock": "01M69T4GP87P4YY0DBE7N7Q2JJ",
+  "finishedAtUnix": 1793478700.4576993
+}

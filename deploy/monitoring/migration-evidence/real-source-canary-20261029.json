@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-10-29T15:07:18.464384+00:00",
+  "scope": "real cluster metrics only; independent host sources excluded",
+  "productionModified": false,
+  "temporaryDiscoveryRBACCreated": true,
+  "productionDeployed": false,
+  "expectedTargetCount": 74,
+  "healthyTargetCount": 74,
+  "upTargetLabelSetsEquivalent": true,
+  "authFileReferenceCountVerified": 3,
+  "discoveryUsesDedicatedShortLivedServiceAccount": true,
+  "elapsedSeconds": 25.104,
+  "privateLoopbackAuthenticatedTLS": true,
+  "outOfOrderWindow": "30m",
+  "rejections": {
+    "droppedExportBatches": 0,
+    "memoryRefusals": 0,
+    "failedScrapeCommits": 0
+  },
+  "maximumUpAgeSeconds": 5.407,
+  "aggregateCgroupMemoryPeakBytes": 1064730624,
+  "aggregateCgroupMemoryLimitBytes": 3221225472,
+  "pipeline": "native prometheusreceiver -> native OTLP exporter -> native Prometheus OTLP receiver",
+  "credentialValuesIncludedInReport": false,
+  "allMetricFamiliesAndRulesVerified": false,
+  "readyForCutover": false,
+  "temporaryCredentialsRemoved": true,
+  "temporaryRBACRemoved": true
+}

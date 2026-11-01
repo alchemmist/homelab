@@ -1,0 +1,81 @@
+{
+  "atUnix": 1793549721.3122299,
+  "operatorRequestedWorkers": 50,
+  "configured": {
+    "success": true,
+    "atUnix": 1793549625.3525915,
+    "settings": {
+      "effectiveExportWorkers": 50,
+      "exportStarted": false,
+      "gomaxprocs": 16,
+      "samplesRead": false
+    },
+    "before": {
+      "atUnix": 1793549619.9602258,
+      "mainPID": "1186811",
+      "progress": {
+        "phase": "import",
+        "originalBlock": "01M66G9HT3YJ4W6TSADWG305M6",
+        "completedBlocks": 0
+      },
+      "previousBinarySHA256": "235650012ba0f062c27f6be701a6be9e72e5f8454237e176034f3193b81fa848",
+      "newBinarySHA256": "ca3cf860b7735459fe5097caa5330e8f69478dc189b12a4d236b8dc2388422e0"
+    },
+    "currentProgress": {
+      "phase": "import",
+      "originalBlock": "01M66G9HT3YJ4W6TSADWG305M6",
+      "completedBlocks": 0
+    },
+    "mainPIDUnchanged": true,
+    "currentImporterNotRestarted": true,
+    "workersApplyToNextExportSubprocess": true,
+    "cpuQuotaCores": 16,
+    "memoryMaxBytes": 9663676416,
+    "memoryEvents": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+    "throughputGainClaimed": false,
+    "secondImporterStarted": false
+  },
+  "initialBenchmark12Cpu": "goos: linux\ngoarch: amd64\npkg: homelab/otel-history\ncpu: Intel(R) Core(TM) i7-7900X CPU @ 3.30GHz\nBenchmarkExportWorkers/workers-16-16         \t       3\t 320147168 ns/op\t  24.99 MB/s\t145016746 B/op\t 1010270 allocs/op\nBenchmarkExportWorkers/workers-32-16         \t       3\t 333910407 ns/op\t  23.96 MB/s\t158035037 B/op\t 1010541 allocs/op\nBenchmarkExportWorkers/workers-50-16         \t       3\t 376902721 ns/op\t  21.23 MB/s\t172693208 B/op\t 1010882 allocs/op\nPASS",
+  "confirmationBenchmark16Cpu": "goos: linux\ngoarch: amd64\npkg: homelab/otel-history\ncpu: Intel(R) Core(TM) i7-7900X CPU @ 3.30GHz\nBenchmarkExportWorkers/workers-16-16         \t       5\t 317257151 ns/op\t  25.22 MB/s\t145012235 B/op\t 1010271 allocs/op\nBenchmarkExportWorkers/workers-16-16         \t       5\t 318079531 ns/op\t  25.15 MB/s\t145009388 B/op\t 1010260 allocs/op\nBenchmarkExportWorkers/workers-16-16         \t       5\t 327096361 ns/op\t  24.46 MB/s\t145008888 B/op\t 1010248 allocs/op\nBenchmarkExportWorkers/workers-32-16         \t       5\t 339951832 ns/op\t  23.53 MB/s\t158031768 B/op\t 1010527 allocs/op\nBenchmarkExportWorkers/workers-32-16         \t       5\t 305380641 ns/op\t  26.20 MB/s\t158021812 B/op\t 1010503 allocs/op\nBenchmarkExportWorkers/workers-32-16         \t       5\t 316515973 ns/op\t  25.28 MB/s\t158023572 B/op\t 1010502 allocs/op\nBenchmarkExportWorkers/workers-50-16         \t       5\t 300056049 ns/op\t  26.66 MB/s\t172672228 B/op\t 1010831 allocs/op\nBenchmarkExportWorkers/workers-50-16         \t       5\t 321702542 ns/op\t  24.87 MB/s\t172683497 B/op\t 1010850 allocs/op\nBenchmarkExportWorkers/workers-50-16         \t       5\t 359904191 ns/op\t  22.23 MB/s\t172662787 B/op\t 1010805 allocs/op\nPASS",
+  "secondsPerSameSyntheticExport": {
+    "16": [
+      0.317257151,
+      0.318079531,
+      0.327096361
+    ],
+    "32": [
+      0.339951832,
+      0.305380641,
+      0.316515973
+    ],
+    "50": [
+      0.300056049,
+      0.321702542,
+      0.359904191
+    ]
+  },
+  "meanSeconds": {
+    "16": 0.32081101433333337,
+    "32": 0.32061614866666666,
+    "50": 0.3272209273333333
+  },
+  "stableThroughputImprovementClaimed": false,
+  "workersAffectOnlyFutureExportSubprocessesNotCurrentImport": true,
+  "singleImporterPreserved": true,
+  "sourceOriginalsDeleted": false,
+  "sourceSHA256": {
+    "tools/otel-history/main.go": "8d6f6671da9dd9b8b554dc3ecac60a176fb97ce0975a32ec2326649786c10662",
+    "tools/otel-history/parallel_export.go": "8ea1a400c7456bc3d1fd7972da06b4033feedd2e051c289861d1d00ff0951d3c",
+    "tools/otel-history/export_worker_override.go": "92bc9131070729e9b3b488eedcc2aea4c46741dea2b0f14943f2e0a104b1bbbb",
+    "scripts/otel-history-tail-roundtrip.py": "b2fff48e47d742b79c575f92acb6490612c0a7b9db2bb4ab95daee406c3bc5fe",
+    "ansible/playbooks/otel-history-export-workers.yml": "ec76774b590269195b9d5f7bfaa75af4ff5a8cbf99d2a75e18bc220a5cee451d"
+  },
+  "validation": {
+    "goRaceAllPackages": true,
+    "goVetAllPackages": true,
+    "exactSerialVs50WorkerManifestTest": true,
+    "overrideOwnerPermissionSymlinkSchemaAndBoundsTests": true,
+    "effectiveConfigurationCheckedWithoutReadingSamples": true,
+    "pythonOtelTestsPassed": 238
+  }
+}

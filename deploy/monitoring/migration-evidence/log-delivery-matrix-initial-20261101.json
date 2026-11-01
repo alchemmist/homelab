@@ -1,0 +1,1274 @@
+{
+  "observedAtUnix": 1793534423.2305126,
+  "windowSeconds": 3600,
+  "logBodiesFetchedOrSaved": false,
+  "fullSourceCoverageAccepted": false,
+  "missingSourceClassificationStillRequired": true,
+  "podContainers": [
+    {
+      "metric": {
+        "audit_container": "back",
+        "audit_pod": "monori-back-84fc94bf59-5l4nc",
+        "k8s_namespace_name": "monori"
+      },
+      "value": [
+        1793534423.234,
+        "720"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "blackbox-exporter",
+        "audit_pod": "monitoring-service-probes-7988d54b48-wbftp",
+        "k8s_namespace_name": "cattle-monitoring-system"
+      },
+      "value": [
+        1793534423.234,
+        "1453"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "blog",
+        "audit_pod": "blog-54ccb8c879-7d7xc",
+        "k8s_namespace_name": "blog"
+      },
+      "value": [
+        1793534423.234,
+        "381"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "blog",
+        "audit_pod": "blog-54ccb8c879-qkkvm",
+        "k8s_namespace_name": "blog"
+      },
+      "value": [
+        1793534423.234,
+        "409"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "cats",
+        "audit_pod": "cats-98f89ffff-7mvgx",
+        "k8s_namespace_name": "cats"
+      },
+      "value": [
+        1793534423.234,
+        "406"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "cats",
+        "audit_pod": "cats-98f89ffff-jg4t9",
+        "k8s_namespace_name": "cats"
+      },
+      "value": [
+        1793534423.234,
+        "374"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "cert-manager-controller",
+        "audit_pod": "cert-manager-56f54b7bb-g2pvd",
+        "k8s_namespace_name": "cert-manager"
+      },
+      "value": [
+        1793534423.234,
+        "7"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "collector",
+        "audit_pod": "monitoring-llm-status-59659646bd-w7c5t",
+        "k8s_namespace_name": "llm"
+      },
+      "value": [
+        1793534423.234,
+        "76"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "coredns",
+        "audit_pod": "coredns-c748c6bcb-pmgj9",
+        "k8s_namespace_name": "kube-system"
+      },
+      "value": [
+        1793534423.234,
+        "98"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "coredns",
+        "audit_pod": "coredns-c748c6bcb-wz2kx",
+        "k8s_namespace_name": "kube-system"
+      },
+      "value": [
+        1793534423.234,
+        "110"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "fleet-controller",
+        "audit_pod": "fleet-controller-b89cdf655-hdhpq",
+        "k8s_namespace_name": "cattle-fleet-system"
+      },
+      "value": [
+        1793534423.234,
+        "8"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "format-quorum",
+        "audit_pod": "format-quorum-664bd85865-fb47v",
+        "k8s_namespace_name": "format-quorum"
+      },
+      "value": [
+        1793534423.234,
+        "780"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "front",
+        "audit_pod": "monori-7954ddd5f7-qvfp7",
+        "k8s_namespace_name": "monori"
+      },
+      "value": [
+        1793534423.234,
+        "782"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "grafana",
+        "audit_pod": "kube-prometheus-stack-grafana-6ff57f846f-n9czg",
+        "k8s_namespace_name": "cattle-monitoring-system"
+      },
+      "value": [
+        1793534423.234,
+        "36862"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "grafana-sc-dashboard",
+        "audit_pod": "kube-prometheus-stack-grafana-6ff57f846f-n9czg",
+        "k8s_namespace_name": "cattle-monitoring-system"
+      },
+      "value": [
+        1793534423.234,
+        "780"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "grafana-sc-datasources",
+        "audit_pod": "kube-prometheus-stack-grafana-6ff57f846f-n9czg",
+        "k8s_namespace_name": "cattle-monitoring-system"
+      },
+      "value": [
+        1793534423.234,
+        "120"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "jobservice",
+        "audit_pod": "harbor-jobservice-9c99c5dc8-dcwjz",
+        "k8s_namespace_name": "harbor"
+      },
+      "value": [
+        1793534423.234,
+        "2"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "kube-prometheus-stack",
+        "audit_pod": "kube-prometheus-stack-operator-74c8d4b65-sxmpn",
+        "k8s_namespace_name": "cattle-monitoring-system"
+      },
+      "value": [
+        1793534423.234,
+        "44"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "litellm",
+        "audit_pod": "litellm-c65d7b75c-t5f7k",
+        "k8s_namespace_name": "llm"
+      },
+      "value": [
+        1793534423.234,
+        "3658"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "lms",
+        "audit_pod": "lms-74cd699b99-kbfwv",
+        "k8s_namespace_name": "lms"
+      },
+      "value": [
+        1793534423.234,
+        "779"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "manager",
+        "audit_pod": "rancher-turtles-controller-manager-d88695588-f5w8z",
+        "k8s_namespace_name": "cattle-turtles-system"
+      },
+      "value": [
+        1793534423.234,
+        "412"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "nginx",
+        "audit_pod": "img-proxy-6c996bf476-mp6pr",
+        "k8s_namespace_name": "img-proxy"
+      },
+      "value": [
+        1793534423.234,
+        "124"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "nginx",
+        "audit_pod": "litellm-branding-7dcf6b8f54-r6sth",
+        "k8s_namespace_name": "llm"
+      },
+      "value": [
+        1793534423.234,
+        "1080"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "nginx",
+        "audit_pod": "socrat-home-85744775b-7pbzd",
+        "k8s_namespace_name": "socrat-home"
+      },
+      "value": [
+        1793534423.234,
+        "389"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "nginx",
+        "audit_pod": "socrat-home-85744775b-dxqdd",
+        "k8s_namespace_name": "socrat-home"
+      },
+      "value": [
+        1793534423.234,
+        "392"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "open-terminal",
+        "audit_pod": "open-terminal-5979ffb797-h7bg6",
+        "k8s_namespace_name": "llm"
+      },
+      "value": [
+        1793534423.234,
+        "723"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "open-webui",
+        "audit_pod": "open-webui-77c7fcb855-4t8tr",
+        "k8s_namespace_name": "llm"
+      },
+      "value": [
+        1793534423.234,
+        "49"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "open-webui",
+        "audit_pod": "open-webui-998794559-4fhk8",
+        "k8s_namespace_name": "llm"
+      },
+      "value": [
+        1793534423.234,
+        "36"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "otel-cluster",
+        "audit_pod": "prometheus-kube-prometheus-stack-prometheus-0",
+        "k8s_namespace_name": "cattle-monitoring-system"
+      },
+      "value": [
+        1793534423.234,
+        "33"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "portal",
+        "audit_pod": "harbor-portal-648f9d555f-7wdtx",
+        "k8s_namespace_name": "harbor"
+      },
+      "value": [
+        1793534423.234,
+        "1081"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "postgres",
+        "audit_pod": "litellm-postgres-5cbbfdc865-95hql",
+        "k8s_namespace_name": "llm"
+      },
+      "value": [
+        1793534423.234,
+        "24"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "private-gui",
+        "audit_pod": "private-gateway-428b2",
+        "k8s_namespace_name": "syncthing"
+      },
+      "value": [
+        1793534423.234,
+        "818"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "private-gui",
+        "audit_pod": "private-gateway-qp7jg",
+        "k8s_namespace_name": "syncthing"
+      },
+      "value": [
+        1793534423.234,
+        "38419"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "prometheus",
+        "audit_pod": "prometheus-kube-prometheus-stack-prometheus-0",
+        "k8s_namespace_name": "cattle-monitoring-system"
+      },
+      "value": [
+        1793534423.234,
+        "12"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "rancher",
+        "audit_pod": "rancher-6864d67b6b-7p6lx",
+        "k8s_namespace_name": "cattle-system"
+      },
+      "value": [
+        1793534423.234,
+        "20"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "rancher",
+        "audit_pod": "rancher-6864d67b6b-hn2t2",
+        "k8s_namespace_name": "cattle-system"
+      },
+      "value": [
+        1793534423.234,
+        "70"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "redis",
+        "audit_pod": "harbor-redis-0",
+        "k8s_namespace_name": "harbor"
+      },
+      "value": [
+        1793534423.234,
+        "60"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "registry",
+        "audit_pod": "harbor-registry-756b67c7c9-rnwcc",
+        "k8s_namespace_name": "harbor"
+      },
+      "value": [
+        1793534423.234,
+        "1080"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "registryctl",
+        "audit_pod": "harbor-registry-756b67c7c9-rnwcc",
+        "k8s_namespace_name": "harbor"
+      },
+      "value": [
+        1793534423.234,
+        "1080"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "sync",
+        "audit_pod": "monori-sync-6d7b97d6c-76lcz",
+        "k8s_namespace_name": "monori"
+      },
+      "value": [
+        1793534423.234,
+        "720"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "thanos",
+        "audit_pod": "thanos-compactor-1h-649c9668c6-fllv7",
+        "k8s_namespace_name": "cattle-monitoring-system"
+      },
+      "value": [
+        1793534423.234,
+        "240"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "thanos",
+        "audit_pod": "thanos-compactor-5m-86bfc99c77-l9f5q",
+        "k8s_namespace_name": "cattle-monitoring-system"
+      },
+      "value": [
+        1793534423.234,
+        "240"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "thanos",
+        "audit_pod": "thanos-compactor-6dcb899df9-8pg4h",
+        "k8s_namespace_name": "cattle-monitoring-system"
+      },
+      "value": [
+        1793534423.234,
+        "66"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "thanos",
+        "audit_pod": "thanos-compactor-6dcb899df9-xqjz5",
+        "k8s_namespace_name": "cattle-monitoring-system"
+      },
+      "value": [
+        1793534423.234,
+        "49"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "thanos",
+        "audit_pod": "thanos-store-1h-c8cd86bff-2ff22",
+        "k8s_namespace_name": "cattle-monitoring-system"
+      },
+      "value": [
+        1793534423.234,
+        "4"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "thanos",
+        "audit_pod": "thanos-store-55554669b7-tkmqr",
+        "k8s_namespace_name": "cattle-monitoring-system"
+      },
+      "value": [
+        1793534423.234,
+        "7"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "thanos",
+        "audit_pod": "thanos-store-5m-859b86b7f6-w7dn4",
+        "k8s_namespace_name": "cattle-monitoring-system"
+      },
+      "value": [
+        1793534423.234,
+        "4"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "thanos-sidecar",
+        "audit_pod": "prometheus-kube-prometheus-stack-prometheus-0",
+        "k8s_namespace_name": "cattle-monitoring-system"
+      },
+      "value": [
+        1793534423.234,
+        "2"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "traefik",
+        "audit_pod": "traefik-edge-7674b7b89-jzljv",
+        "k8s_namespace_name": "traefik-edge"
+      },
+      "value": [
+        1793534423.234,
+        "2"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "uptime-kuma",
+        "audit_pod": "uptime-kuma-6dfc7966f8-xn79c",
+        "k8s_namespace_name": "uptime-kuma"
+      },
+      "value": [
+        1793534423.234,
+        "61"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "vllm",
+        "audit_pod": "vllm-7bf857cbcd-cm5xd",
+        "k8s_namespace_name": "llm"
+      },
+      "value": [
+        1793534423.234,
+        "1919"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "wiki",
+        "audit_pod": "wiki-runtime-wiki-6b84fddc95-r92p8",
+        "k8s_namespace_name": "wiki"
+      },
+      "value": [
+        1793534423.234,
+        "1657"
+      ]
+    },
+    {
+      "metric": {
+        "audit_container": "yandex-voice",
+        "audit_pod": "yandex-voice-6fc5c45894-9nx8w",
+        "k8s_namespace_name": "voice"
+      },
+      "value": [
+        1793534423.234,
+        "720"
+      ]
+    }
+  ],
+  "hostUnits": [
+    {
+      "metric": {
+        "host_name": "socrat-0",
+        "service_name": "NetworkManager.service"
+      },
+      "value": [
+        1793534423.583,
+        "34"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-0",
+        "service_name": "avahi-daemon.service"
+      },
+      "value": [
+        1793534423.583,
+        "15"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-0",
+        "service_name": "cron.service"
+      },
+      "value": [
+        1793534423.583,
+        "3"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-0",
+        "service_name": "homelab-otel-agent.service"
+      },
+      "value": [
+        1793534423.583,
+        "5"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-0",
+        "service_name": "homelab-otel-credentials.service"
+      },
+      "value": [
+        1793534423.583,
+        "31"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-0",
+        "service_name": "init.scope"
+      },
+      "value": [
+        1793534423.583,
+        "1594"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-0",
+        "service_name": "k3s.service"
+      },
+      "value": [
+        1793534423.583,
+        "1940"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-0",
+        "service_name": "session-863.scope"
+      },
+      "value": [
+        1793534423.583,
+        "7"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-0",
+        "service_name": "session-872.scope"
+      },
+      "value": [
+        1793534423.583,
+        "67"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-0",
+        "service_name": "session-873.scope"
+      },
+      "value": [
+        1793534423.583,
+        "50"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-0",
+        "service_name": "session-878.scope"
+      },
+      "value": [
+        1793534423.583,
+        "18"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-0",
+        "service_name": "session-939.scope"
+      },
+      "value": [
+        1793534423.583,
+        "7"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-0",
+        "service_name": "ssh.service"
+      },
+      "value": [
+        1793534423.583,
+        "460"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-0",
+        "service_name": "systemd-logind.service"
+      },
+      "value": [
+        1793534423.583,
+        "260"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-0",
+        "service_name": "unknown_service"
+      },
+      "value": [
+        1793534423.583,
+        "13540"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-0",
+        "service_name": "user@1000.service"
+      },
+      "value": [
+        1793534423.583,
+        "1"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-1",
+        "service_name": "homelab-otel-agent.service"
+      },
+      "value": [
+        1793534423.583,
+        "3"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-1",
+        "service_name": "homelab-otel-credentials.service"
+      },
+      "value": [
+        1793534423.583,
+        "58"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-1",
+        "service_name": "homelab-otel-loki.service"
+      },
+      "value": [
+        1793534423.583,
+        "1302"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-1",
+        "service_name": "homelab-otel-soak.service"
+      },
+      "value": [
+        1793534423.583,
+        "10"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-1",
+        "service_name": "homelab-otel-tempo.service"
+      },
+      "value": [
+        1793534423.583,
+        "424"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-1",
+        "service_name": "init.scope"
+      },
+      "value": [
+        1793534423.583,
+        "1432"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-1",
+        "service_name": "k3s.service"
+      },
+      "value": [
+        1793534423.583,
+        "88"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-1",
+        "service_name": "session-213.scope"
+      },
+      "value": [
+        1793534423.583,
+        "12"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-1",
+        "service_name": "session-214.scope"
+      },
+      "value": [
+        1793534423.583,
+        "20"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-1",
+        "service_name": "session-215.scope"
+      },
+      "value": [
+        1793534423.583,
+        "48"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-1",
+        "service_name": "session-216.scope"
+      },
+      "value": [
+        1793534423.583,
+        "51"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-1",
+        "service_name": "session-217.scope"
+      },
+      "value": [
+        1793534423.583,
+        "18"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-1",
+        "service_name": "session-218.scope"
+      },
+      "value": [
+        1793534423.583,
+        "4"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-1",
+        "service_name": "session-219.scope"
+      },
+      "value": [
+        1793534423.583,
+        "11"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-1",
+        "service_name": "session-220.scope"
+      },
+      "value": [
+        1793534423.583,
+        "26"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-1",
+        "service_name": "session-221.scope"
+      },
+      "value": [
+        1793534423.583,
+        "9"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-1",
+        "service_name": "session-222.scope"
+      },
+      "value": [
+        1793534423.583,
+        "15"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-1",
+        "service_name": "session-223.scope"
+      },
+      "value": [
+        1793534423.583,
+        "13"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-1",
+        "service_name": "session-224.scope"
+      },
+      "value": [
+        1793534423.583,
+        "8"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-1",
+        "service_name": "systemd-logind.service"
+      },
+      "value": [
+        1793534423.583,
+        "56"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-1",
+        "service_name": "unknown_service"
+      },
+      "value": [
+        1793534423.583,
+        "81140"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-1",
+        "service_name": "user@1000.service"
+      },
+      "value": [
+        1793534423.583,
+        "58"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-2",
+        "service_name": "cron.service"
+      },
+      "value": [
+        1793534423.583,
+        "196"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-2",
+        "service_name": "homelab-otel-credentials.service"
+      },
+      "value": [
+        1793534423.583,
+        "109"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-2",
+        "service_name": "homelab-vpn-watchdog.service"
+      },
+      "value": [
+        1793534423.583,
+        "115"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-2",
+        "service_name": "init.scope"
+      },
+      "value": [
+        1793534423.583,
+        "2979"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-2",
+        "service_name": "k3s.service"
+      },
+      "value": [
+        1793534423.583,
+        "170"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-2",
+        "service_name": "session-21863.scope"
+      },
+      "value": [
+        1793534423.583,
+        "19"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-2",
+        "service_name": "session-21866.scope"
+      },
+      "value": [
+        1793534423.583,
+        "48"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-2",
+        "service_name": "session-21878.scope"
+      },
+      "value": [
+        1793534423.583,
+        "1"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-2",
+        "service_name": "ssh.service"
+      },
+      "value": [
+        1793534423.583,
+        "95"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-2",
+        "service_name": "systemd-logind.service"
+      },
+      "value": [
+        1793534423.583,
+        "7"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-2",
+        "service_name": "unknown_service"
+      },
+      "value": [
+        1793534423.583,
+        "900"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-2",
+        "service_name": "user@1003.service"
+      },
+      "value": [
+        1793534423.583,
+        "59"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-3",
+        "service_name": "NetworkManager.service"
+      },
+      "value": [
+        1793534423.583,
+        "1"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-3",
+        "service_name": "cron.service"
+      },
+      "value": [
+        1793534423.583,
+        "21"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-3",
+        "service_name": "dbus.service"
+      },
+      "value": [
+        1793534423.583,
+        "1"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-3",
+        "service_name": "fwupd.service"
+      },
+      "value": [
+        1793534423.583,
+        "3"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-3",
+        "service_name": "homelab-otel-agent.service"
+      },
+      "value": [
+        1793534423.583,
+        "4"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-3",
+        "service_name": "homelab-otel-credentials.service"
+      },
+      "value": [
+        1793534423.583,
+        "42"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-3",
+        "service_name": "homelab-otel-heartbeat.service"
+      },
+      "value": [
+        1793534423.583,
+        "37"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-3",
+        "service_name": "homelab-otel-node-exporter.service"
+      },
+      "value": [
+        1793534423.583,
+        "396"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-3",
+        "service_name": "homelab-otel-storage-capacity.service"
+      },
+      "value": [
+        1793534423.583,
+        "2"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-3",
+        "service_name": "init.scope"
+      },
+      "value": [
+        1793534423.583,
+        "431"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-3",
+        "service_name": "k3s.service"
+      },
+      "value": [
+        1793534423.583,
+        "12484"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-3",
+        "service_name": "session-2135.scope"
+      },
+      "value": [
+        1793534423.583,
+        "58"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-3",
+        "service_name": "session-2138.scope"
+      },
+      "value": [
+        1793534423.583,
+        "9"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-3",
+        "service_name": "smartmontools.service"
+      },
+      "value": [
+        1793534423.583,
+        "1"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-3",
+        "service_name": "ssh.service"
+      },
+      "value": [
+        1793534423.583,
+        "8"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-3",
+        "service_name": "systemd-logind.service"
+      },
+      "value": [
+        1793534423.583,
+        "6"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-3",
+        "service_name": "unknown_service"
+      },
+      "value": [
+        1793534423.583,
+        "3858"
+      ]
+    },
+    {
+      "metric": {
+        "host_name": "socrat-3",
+        "service_name": "wpa_supplicant.service"
+      },
+      "value": [
+        1793534423.583,
+        "40"
+      ]
+    }
+  ]
+}

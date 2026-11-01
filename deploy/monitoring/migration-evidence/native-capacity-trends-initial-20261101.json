@@ -1,0 +1,32 @@
+{
+  "success": true,
+  "totalObservations": 11,
+  "consecutiveObservations": 11,
+  "consecutiveMeasuredSeconds": 2670.5944316387177,
+  "configurationSHA256": "47068491599533d567f068c781f29235ff29ea217b96a9690571e558be403cc7",
+  "resets": [],
+  "nativeSignalTrends": {
+    "loki": {
+      "measuredIngressBytes": 53077728.0,
+      "meanIngressBytesPerSecond": 19874.87406218798,
+      "peakObservedIntervalBytesPerSecond": 20298.04970619824,
+      "peakIntervalIsNotPeakHourOrRetentionProjection": true,
+      "latestAllocatedBytes": 123817984
+    },
+    "tempo": {
+      "measuredIngressBytes": 535761.0,
+      "meanIngressBytesPerSecond": 200.61488695280804,
+      "peakObservedIntervalBytesPerSecond": 327.0896711752134,
+      "peakIntervalIsNotPeakHourOrRetentionProjection": true,
+      "latestAllocatedBytes": 13508608
+    }
+  },
+  "latestFilesystem": {
+    "totalBytes": 396323180544,
+    "availableBytes": 108574797824
+  },
+  "fullRetentionCapacityAcceptance": false,
+  "fullMetricsHistoryIncluded": false,
+  "minimum24hMeasurementReached": false,
+  "assumptionsOfCompressionPeakCompactionReplicationStillRequired": true
+}

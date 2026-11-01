@@ -1,0 +1,77 @@
+{
+  "source": {
+    "success": true,
+    "traceId": "b96b829c9af1ac47b6895b4a81c31f4c",
+    "parentSpanId": "04f96871851b2dcd",
+    "httpStatus": 200,
+    "syntheticExpectedInvalidModel": false,
+    "syntheticLocalInferenceRequests": 1,
+    "completionTokens": 1,
+    "modelChanged": false,
+    "externalInferenceProviderCalled": false,
+    "actualProductionHttpProcessCalled": true,
+    "w3cTraceparentSentAcrossProcesses": true,
+    "mountedCertificateSHA256": "024849ad9b619777b9cf6f9f420ee42da5070485d51a5af6eeeb6fda36701b4d",
+    "privateKeysOrApiTokensPrinted": false,
+    "backendProductionServerChildVerificationStillRequired": true
+  },
+  "backend": {
+    "success": true,
+    "traceId": "b96b829c9af1ac47b6895b4a81c31f4c",
+    "parentSpanId": "04f96871851b2dcd",
+    "spanCount": 9,
+    "serviceNames": [
+      "homelab-live-sdk-probe",
+      "litellm"
+    ],
+    "productionInternalChildSpanNames": [
+      "Received Proxy Server Request",
+      "auth",
+      "batch_write_to_db",
+      "litellm_request",
+      "proxy_pre_call",
+      "router",
+      "self"
+    ],
+    "productionLitellmHttpAuthRouterErrorPathVerified": false,
+    "sensitiveSyntheticContentFound": false,
+    "nativeVllmDescendantInSameTraceVerified": false,
+    "crossProcessW3cParentChildVerified": true,
+    "productionInferenceSuccessPathVerified": true,
+    "allApplicationSdkCoverageComplete": false,
+    "ingressSpansUsedAsInternalSdkProof": false
+  },
+  "localOnlyRoutePreflight": {
+    "singleLocalModelRouteVerified": true,
+    "modelConfigSHA256": "5d44576a62f882474a95c6b8c8479e7e46220815c16294d9b86b24cbd5f108b5",
+    "modelSwitchingAllowed": false,
+    "externalInferenceAllowed": false
+  },
+  "metricsAndLogsAfterInference": [
+    {
+      "success": true,
+      "pod": "litellm-c65d7b75c-t5f7k",
+      "nativeMetricTargets": 1,
+      "allSelectedTargetsUp": true,
+      "individualPodContainerLogEntriesLast10m": 619.0,
+      "logBodiesFetchedOrSaved": false,
+      "allApplicationLogCoverageComplete": false,
+      "syntheticPromptLogEntriesLast2h": 0,
+      "syntheticPromptAbsentFromApplicationLogs": true
+    },
+    {
+      "success": true,
+      "pod": "vllm-7bf857cbcd-cm5xd",
+      "nativeMetricTargets": 1,
+      "allSelectedTargetsUp": true,
+      "individualPodContainerLogEntriesLast10m": 326.0,
+      "logBodiesFetchedOrSaved": false,
+      "allApplicationLogCoverageComplete": false,
+      "syntheticPromptLogEntriesLast2h": 0,
+      "syntheticPromptAbsentFromApplicationLogs": true
+    }
+  ],
+  "allSourceApplicationCoverageAccepted": false,
+  "crossAppTraceToVllmStillRequired": true,
+  "nativeCallbackSourcePropagationReviewed": true
+}

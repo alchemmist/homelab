@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-10-29T07:55:09.547141+00:00",
+  "productionModified": false,
+  "ansibleInventory": [
+    "ansible/inventory/hosts.yml",
+    "ansible/inventory/socrat-3.yml"
+  ],
+  "probe": "ansible all -b -m ansible.builtin.command -a \"id -u\"",
+  "nodes": {
+    "socrat-0": {
+      "method": "sudo",
+      "rootAccessVerified": true,
+      "reason": "verified-uid-0-and-privileged-journal-probe"
+    },
+    "socrat-1": {
+      "method": "sudo",
+      "rootAccessVerified": true,
+      "reason": "verified-uid-0-and-privileged-journal-probe"
+    },
+    "socrat-2": {
+      "method": "sudo",
+      "rootAccessVerified": true,
+      "reason": "verified-uid-0-and-privileged-journal-probe"
+    },
+    "socrat-3": {
+      "method": "su",
+      "rootAccessVerified": true,
+      "reason": "verified-uid-0-and-privileged-journal-probe"
+    }
+  },
+  "requirement": "Root capability verified; resource, source, history and canary gates remain mandatory.",
+  "initialFailureObservedAt": "2026-10-28T18:00:27.229558+00:00",
+  "credentialsPersistedInRepository": false,
+  "credentialValuesRecorded": false,
+  "temporaryControllerCredentialFile": true,
+  "temporaryCredentialFileMode": "0600"
+}

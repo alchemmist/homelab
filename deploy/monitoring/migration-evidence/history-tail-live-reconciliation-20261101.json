@@ -1,0 +1,127 @@
+{
+  "productionModified": false,
+  "allCurrentHistoryVerified": false,
+  "publicationApproved": false,
+  "archiveReplicaVerified": true,
+  "archiveSHA256": "64d364074f13f6977cdc92f9117181340563c217f68de92a85c6cd5e6b48bac5",
+  "samples": 4170768866,
+  "currentBlockCount": 37,
+  "capturedSources": [
+    {
+      "originalBlock": "01M66G9HT3YJ4W6TSADWG305M6",
+      "samples": 847811515,
+      "unchangedLiveSemanticIdentity": true,
+      "outOfOrderCompanion": false,
+      "possibleCompactedCounterpartsRequiringFullSubsetProof": [],
+      "fullCanonicalVerified": false,
+      "otlpRoundtripVerified": false,
+      "publicationApproved": false
+    },
+    {
+      "originalBlock": "01M67BSZ1EMNPWMQ4SYBNEYJ8H",
+      "samples": 859196450,
+      "unchangedLiveSemanticIdentity": true,
+      "outOfOrderCompanion": false,
+      "possibleCompactedCounterpartsRequiringFullSubsetProof": [],
+      "fullCanonicalVerified": false,
+      "otlpRoundtripVerified": false,
+      "publicationApproved": false
+    },
+    {
+      "originalBlock": "01M6878TK453MC40ASW9ZAJ0HX",
+      "samples": 886337427,
+      "unchangedLiveSemanticIdentity": true,
+      "outOfOrderCompanion": false,
+      "possibleCompactedCounterpartsRequiringFullSubsetProof": [],
+      "fullCanonicalVerified": false,
+      "otlpRoundtripVerified": false,
+      "publicationApproved": false
+    },
+    {
+      "originalBlock": "01M68SVKT78T25E55SH643YFM0",
+      "samples": 224120525,
+      "unchangedLiveSemanticIdentity": true,
+      "outOfOrderCompanion": false,
+      "possibleCompactedCounterpartsRequiringFullSubsetProof": [],
+      "fullCanonicalVerified": false,
+      "otlpRoundtripVerified": false,
+      "publicationApproved": false
+    },
+    {
+      "originalBlock": "01M690QA5VG8VBK01AAHD34GT9",
+      "samples": 223309661,
+      "unchangedLiveSemanticIdentity": true,
+      "outOfOrderCompanion": false,
+      "possibleCompactedCounterpartsRequiringFullSubsetProof": [],
+      "fullCanonicalVerified": false,
+      "otlpRoundtripVerified": false,
+      "publicationApproved": false
+    },
+    {
+      "originalBlock": "01M690QQG8K9TQ5WBE7W573CW0",
+      "samples": 38731,
+      "unchangedLiveSemanticIdentity": true,
+      "outOfOrderCompanion": true,
+      "possibleCompactedCounterpartsRequiringFullSubsetProof": [],
+      "fullCanonicalVerified": false,
+      "otlpRoundtripVerified": false,
+      "publicationApproved": false
+    },
+    {
+      "originalBlock": "01M692QSEEXSXA6G4TRR7SXEWC",
+      "samples": 895644256,
+      "unchangedLiveSemanticIdentity": true,
+      "outOfOrderCompanion": false,
+      "possibleCompactedCounterpartsRequiringFullSubsetProof": [],
+      "fullCanonicalVerified": false,
+      "otlpRoundtripVerified": false,
+      "publicationApproved": false
+    },
+    {
+      "originalBlock": "01M697K1G59F78YWVGT9Y2K08Z",
+      "samples": 234306022,
+      "unchangedLiveSemanticIdentity": true,
+      "outOfOrderCompanion": false,
+      "possibleCompactedCounterpartsRequiringFullSubsetProof": [],
+      "fullCanonicalVerified": false,
+      "otlpRoundtripVerified": false,
+      "publicationApproved": false
+    },
+    {
+      "originalBlock": "01M697KFH379N839ZYW5VM28J5",
+      "samples": 4279,
+      "unchangedLiveSemanticIdentity": true,
+      "outOfOrderCompanion": true,
+      "possibleCompactedCounterpartsRequiringFullSubsetProof": [],
+      "fullCanonicalVerified": false,
+      "otlpRoundtripVerified": false,
+      "publicationApproved": false
+    }
+  ],
+  "otherCurrentRawBlocksNotCertifiedByThisAudit": [
+    "01M60G3GYDQYMVRYQ7NSNB2FGR",
+    "01M66BZJJH7AX3HTZFRZD02SXP",
+    "01M697KFHRH4WS5J9EHG1TQ0HA",
+    "01M69EERNVDT6QV5PHN0P64VB8",
+    "01M69EF6JQ1W5P11CE5VT4MSXF",
+    "01M69EF6KGX9TM8XZX9Z3QZ6EY",
+    "01M69NAFXXRC7G2QZ6G3Q2Q9S0",
+    "01M69NAYX3F65PVYTAEEZ2YZRC",
+    "01M69NAZ12JG3RDM8TX07BGS7J",
+    "01M69W675T8JM7H6DPF4MP3E2B",
+    "01M69W6NEXZ2D1RA2QJHPQK845",
+    "01M69W6NFMF6FBZ0RBM3Y3MRAB",
+    "01M6A31YDW6SMW72A161F4HDP2",
+    "01M6A32C304PJK6NCDZKK25JPG",
+    "01M6A32C4274MDKX0YA01MAYM0",
+    "01M6A9XNNR4CDMRJ7QRJ1KB3HT",
+    "01M6A9Y43AGMQZVC32SVB792RD",
+    "01M6A9Y444HHSR1B9GRR8AR02W",
+    "01M6AGSCXT2YTNZ754R08196J0",
+    "01M6AGST2VRJRV1457CFQ7ABHA",
+    "01M6AGST3WJ25GKAA73ZDFWJNQ",
+    "01M6AQN45V317DKGKF4KNB5FS4",
+    "01M6AQNH7D231B8M88WBY6YHN7",
+    "01M6AQNH8PCJ63C8PFEBPM5F4S"
+  ]
+}

@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-10-30T18:01:45.414887+00:00",
+  "scope": "four native host metrics pipelines, isolated private shadow Prometheus",
+  "pipeline": "stock node_exporter -> stock prometheusreceiver agent -> mTLS gRPC -> stock Collector -> stock Prometheus native OTLP HTTP",
+  "fourHostMetricsPipelinesValidated": true,
+  "targetLabelsEquivalent": true,
+  "backendHost": "socrat-1",
+  "backendPrivateWireGuardOnly": true,
+  "productionPlacementChanged": false,
+  "productionIngestionChanged": false,
+  "productionDeployed": false,
+  "fullAgentLogsPipelinesValidated": false,
+  "allMetricFamilyAndRuleSemanticsVerified": false,
+  "kubernetesShutdownChaosTestPerformed": false,
+  "perAgentMemoryMaxBytes": 268435456,
+  "perExporterMemoryMaxBytes": 67108864,
+  "agentSampledCgroupMemoryPeaks": {
+    "socrat-0": 86474752,
+    "socrat-1": 87834624,
+    "socrat-2": 65695744,
+    "socrat-3": 73723904
+  },
+  "rawPreRestartOutageUpSamplesRecovered": {
+    "socrat-0": 3,
+    "socrat-1": 3,
+    "socrat-2": 3,
+    "socrat-3": 4
+  },
+  "allQueuesDrainedBeforeOrderedCleanup": true,
+  "allProcessesStopped": true,
+  "temporaryTLSRemoved": true,
+  "journalEvidence": {
+    "socrat-0": {
+      "phase": "journal-evidence",
+      "hostname": "socrat-0",
+      "productionIngestionChanged": false,
+      "rejections": {
+        "droppedExportBatches": 2,
+        "memoryRefusals": 0,
+        "failedScrapeCommits": 0
+      },
+      "queueLogicalBytesAfterDrain": 16777216,
+      "queueAllocatedBytesAfterDrain": 9281536,
+      "queueSaturationOrFullHighWaterVerified": false,
+      "strictUnclassifiedLogGatePassed": false,
+      "shutdownReplay": {
+        "shutdownSendErrorEvents": 2,
+        "restoredInFlightRequests": 2,
+        "unexpectedDropEvents": 0,
+        "persistentStorageErrors": 0,
+        "shutdownReplayAccounted": true
+      },
+      "timeUnixSeconds": 1793383158.3416095
+    },
+    "socrat-1": {
+      "phase": "journal-evidence",
+      "hostname": "socrat-1",
+      "productionIngestionChanged": false,
+      "rejections": {
+        "droppedExportBatches": 2,
+        "memoryRefusals": 0,
+        "failedScrapeCommits": 0
+      },
+      "queueLogicalBytesAfterDrain": 25165824,
+      "queueAllocatedBytesAfterDrain": 15056896,
+      "queueSaturationOrFullHighWaterVerified": false,
+      "strictUnclassifiedLogGatePassed": false,
+      "shutdownReplay": {
+        "shutdownSendErrorEvents": 2,
+        "restoredInFlightRequests": 2,
+        "unexpectedDropEvents": 0,
+        "persistentStorageErrors": 0,
+        "shutdownReplayAccounted": true
+      },
+      "timeUnixSeconds": 1793383158.431456
+    },
+    "socrat-2": {
+      "phase": "journal-evidence",
+      "hostname": "socrat-2",
+      "productionIngestionChanged": false,
+      "rejections": {
+        "droppedExportBatches": 2,
+        "memoryRefusals": 0,
+        "failedScrapeCommits": 0
+      },
+      "queueLogicalBytesAfterDrain": 8388608,
+      "queueAllocatedBytesAfterDrain": 6156288,
+      "queueSaturationOrFullHighWaterVerified": false,
+      "strictUnclassifiedLogGatePassed": false,
+      "shutdownReplay": {
+        "shutdownSendErrorEvents": 2,
+        "restoredInFlightRequests": 2,
+        "unexpectedDropEvents": 0,
+        "persistentStorageErrors": 0,
+        "shutdownReplayAccounted": true
+      },
+      "timeUnixSeconds": 1793383160.3518414
+    },
+    "socrat-3": {
+      "phase": "journal-evidence",
+      "hostname": "socrat-3",
+      "productionIngestionChanged": false,
+      "rejections": {
+        "droppedExportBatches": 2,
+        "memoryRefusals": 0,
+        "failedScrapeCommits": 0
+      },
+      "queueLogicalBytesAfterDrain": 16777216,
+      "queueAllocatedBytesAfterDrain": 9072640,
+      "queueSaturationOrFullHighWaterVerified": false,
+      "strictUnclassifiedLogGatePassed": false,
+      "shutdownReplay": {
+        "shutdownSendErrorEvents": 2,
+        "restoredInFlightRequests": 2,
+        "unexpectedDropEvents": 0,
+        "persistentStorageErrors": 0,
+        "shutdownReplayAccounted": true
+      },
+      "timeUnixSeconds": 1793383165.8708985
+    }
+  },
+  "queueFullSaturationAndPeakCompactionProjectionVerified": false,
+  "productionPostCheck": {
+    "observedAt": "2026-10-30T18:01:45.387570+00:00",
+    "allFourLegacyTargetsStillMatchFrozenAliases": true,
+    "healthyTargets": 78,
+    "totalTargets": 78,
+    "productionIngestionChanged": false
+  },
+  "initialTrial": {
+    "upAndPersistenceProofSucceeded": true,
+    "naiveDropLogGateFailed": true,
+    "parallelCleanupStoppedBackendBeforeFinalAgent": true,
+    "oneRetainedCanaryBatchReplayedWithDrainOnlyNativeAgent": true,
+    "rootCauseOfShutdownLogging": "Pinned upstream queue_sender logs Send shutdown errors as drops; persistent_queue.onDone retains IsShutdownErr and restores dispatched requests on startup. All such events required exact replay accounting, not a blanket log exemption.",
+    "subsequentPrepareColdStartTimeoutPreserved": true,
+    "subsequentDelegatedSSHHostKeyGuardBlockedWrongAlias": true,
+    "hostKeyCheckingNeverDisabled": true,
+    "finalManagedRunPassedWithBackendLastCleanup": true
+  },
+  "upstreamShutdownSemantics": "https://github.com/open-telemetry/opentelemetry-collector/blob/v0.164.0/exporter/exporterhelper/internal/queue/persistent_queue.go",
+  "readyForCutover": false
+}

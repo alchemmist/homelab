@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-10-29T15:44:13.293604+00:00",
+  "productionModified": false,
+  "productionDeployed": false,
+  "syntheticFixturesOnly": true,
+  "separateNetworkNamespace": true,
+  "nativeLokiOTLPDeliveryVerified": true,
+  "nativeTempoOTLPDeliveryVerified": true,
+  "logPrivacyAndBoundaryVerified": true,
+  "traceAttributeEventResourcePrivacyVerified": true,
+  "backendClientCertificateRequired": true,
+  "mandatoryTraceCount": 32,
+  "mandatoryTracesRetained": 32,
+  "normalTraceCount": 200,
+  "normalTracesRetained": 18,
+  "tailDecisionWaitSeconds": 30,
+  "elapsedSeconds": 74.397,
+  "productionTraceRateAndRetentionCapacityVerified": false,
+  "readyForCutover": false
+}

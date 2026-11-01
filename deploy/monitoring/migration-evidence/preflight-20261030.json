@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "readyForCutover": false,
+  "errors": [
+    "socrat-2: insufficient available memory for bounded component budgets and reserve",
+    "Existing scrape targets are not all healthy",
+    "Unverified prerequisite: diskProjectionVerified",
+    "Unverified prerequisite: historyRoundtripVerified",
+    "Unverified prerequisite: historySourceIntegrityVerified",
+    "Unverified prerequisite: sourceRegistryVerified"
+  ],
+  "capacity": {
+    "socrat-0": {
+      "diskAfterPeakBytes": 304287612928,
+      "diskFloorBytes": 189770101556,
+      "memoryAvailableBytes": 15093022720,
+      "memoryRequiredBytes": 2952790016,
+      "additionalComponentMemoryBytes": 2415919104
+    },
+    "socrat-1": {
+      "diskAfterPeakBytes": 225844932608,
+      "diskFloorBytes": 79264636109,
+      "memoryAvailableBytes": 9112535040,
+      "memoryRequiredBytes": 5100273664,
+      "additionalComponentMemoryBytes": 4563402752
+    },
+    "socrat-2": {
+      "diskAfterPeakBytes": 15167705088,
+      "diskFloorBytes": 8441620071,
+      "memoryAvailableBytes": 458162176,
+      "memoryRequiredBytes": 536870912,
+      "additionalComponentMemoryBytes": 268435456
+    },
+    "socrat-3": {
+      "diskAfterPeakBytes": 422344052736,
+      "diskFloorBytes": 97491134055,
+      "memoryAvailableBytes": 853032960,
+      "memoryRequiredBytes": 536870912,
+      "additionalComponentMemoryBytes": 268435456
+    }
+  },
+  "sourceInventoryCollectedAt": "2026-10-30T11:27:27.023367+00:00"
+}
