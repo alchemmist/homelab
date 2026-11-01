@@ -6,7 +6,7 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
-  project: blog
+  project: default
   revisionHistoryLimit: 10
   source:
     repoURL: https://github.com/alchemmist/homelab.git
