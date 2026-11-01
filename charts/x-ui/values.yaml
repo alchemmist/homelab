@@ -4,7 +4,7 @@ service:
   enabled: true
 instances:
   primary:
-    image: ghcr.io/mhsanaei/3x-ui@sha256:6c7e73c5bc4b6d7d70866616f78d6c9866b4904defad3077c1e2b5c1c89c2ec1
+    image: ghcr.io/mhsanaei/3x-ui@sha256:1628adbd9bed680d25d6f714bef4a20f132105f4612ea294952f6665dad32e5b
     hostPath:
       db: /srv/x-ui-lab/db
       cert: /srv/x-ui-lab/cert

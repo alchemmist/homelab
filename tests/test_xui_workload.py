@@ -50,7 +50,7 @@ class XuiWorkloadTests(unittest.TestCase):
 
     def test_versions_and_probe_endpoints_are_preserved(self):
         expected = {
-            'primary': ('6c7e73c5bc4b6d7d70866616f78d6c9866b4904defad3077c1e2b5c1c89c2ec1', '127.0.0.1', 18082, 12096, 32087),
+            'primary': ('1628adbd9bed680d25d6f714bef4a20f132105f4612ea294952f6665dad32e5b', '127.0.0.1', 18082, 12096, 32087),
         }
         names = []
         for name, (digest, host, panel, subscription, trojan) in expected.items():
