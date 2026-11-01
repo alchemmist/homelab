@@ -248,6 +248,37 @@ prometheus:
         path: /var/lib/socrat-thanos
         type: Directory
       name: thanos-data
+    - name: otel-config
+      configMap:
+        name: otel-cluster-config
+    - name: otel-source-auth
+      secret:
+        secretName: otel-source-auth
+        defaultMode: 288
+    - name: otel-source-tls
+      secret:
+        secretName: otel-source-auth
+        defaultMode: 288
+        items:
+        - key: tls-0
+          path: 0_cattle-monitoring-system_kube-prometheus-stack-admission_ca
+        - key: tls-1
+          path: 1_cattle-monitoring-system_kube-root-ca.crt_ca.crt
+    - name: otel-tls
+      secret:
+        secretName: otel-tls-cluster
+        defaultMode: 288
+        items:
+        - key: ca.crt
+          path: ca.crt
+        - key: tls.crt
+          path: server.crt
+        - key: tls.key
+          path: server.key
+        - key: tls.crt
+          path: client.crt
+        - key: tls.key
+          path: client.key
     walCompression: true
   thanosService:
     enabled: true
