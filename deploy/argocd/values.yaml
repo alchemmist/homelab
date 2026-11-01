@@ -1,0 +1,67 @@
+global:
+  nodeSelector:
+    kubernetes.io/hostname: socrat-0
+
+# Keep the first installation private: access via kubectl port-forward until
+# authentication, ingress and RBAC have been reviewed.
+configs:
+  params:
+    server.insecure: false
+
+controller:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
+
+server:
+  replicas: 1
+  service:
+    type: ClusterIP
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 512Mi
+
+repoServer:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 768Mi
+
+applicationSet:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      memory: 256Mi
+
+notifications:
+  enabled: false
+
+dex:
+  enabled: false
+
+redis:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 256Mi
+
+redis-ha:
+  enabled: false
+
+# Do not enable automated sync, pruning, or self-heal globally. Each app will
+# opt in after its ownership transfer and rollback path are validated.
