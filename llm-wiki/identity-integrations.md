@@ -151,18 +151,21 @@ SSO неожиданно. Foundation не создаёт placeholder app без 
 
 ## 8. Argo CD
 
-Native direct OIDC, Dex выключен. Source — `deploy/argocd/values.yaml`,
+Native direct OIDC, Dex выключен. Live GitOps source —
+`deploy/platform/argo-cd/values.yaml`; bootstrap mirror — `deploy/argocd/values.yaml`,
 `ansible/roles/argocd_oidc/files/configure.py`, playbook `argocd.yml`.
 Issuer `/application/o/argocd/`, callback
 `https://argocd.socrat.alchemmist.xyz/auth/callback`, client `socrat-argocd`.
 Secret key `oidc.authentik.clientSecret` в Argo CD Secret, без значения в values.
 
-Dedicated scope `groups`; scopes openid/profile/email/groups. Application admission
+Dedicated scope `groups`; scopes openid/profile/email/groups/offline_access. Application admission
 сейчас owner + platform-operator. Argo RBAC owner/operator -> admin; maintainer/
 observer в role table -> readonly, но это **не даёт им admission** через IdP.
 Default readonly также не отменяет application gate. Built-in admin break-glass
-сохраняется до отдельной owner recovery-приёмки. Internal `server.insecure=true`
-означает TLS termination на доверенном ingress, не разрешение отключать browser TLS.
+сохраняется до отдельной owner recovery-приёмки. Native server теперь
+`server.insecure=false`: verified HTTPS также от обоих ingress к backend,
+чтобы refresh сохранял Secure cookie. Bootstrap и live values проверяются на
+семантическое равенство; ServersTransport управляется через extraObjects.
 
 В этой сессии у уже существующего app добавлена только официальная pinned icon;
 его provider/policies не перенастраивались icon uploader. Не добавлять Argo CD
@@ -275,3 +278,21 @@ replacement. Проверить readiness/graceful rollout, не force-delete dr
   считать deploy до проверки running config/images/controllers.
 
 Не объявлять «все сервисы migrated» после одного успешного app flow.
+
+
+## Фоновый refresh Argo CD и backend TLS
+
+Внедрён `offline_access` (mapping + requested scope), упреждающий refresh `60s`,
+политика Argo session `8h`; access/ID token остаётся `5min`. В Argo CD 3.5.6
+renew-cookie зависит от `!server.insecure`, поэтому backend теперь HTTPS с
+проверкой существующего сертификата и SNI через `argocd-verified-tls`.
+VPS CRD provider ограничен namespace argocd и label выбранного transport;
+без skip-verify/cross-namespace/ExternalName. DNS, WireGuard и MFA не менялись.
+
+Ingress управляется Argo selfHeal: временная пауза только traefik-edge, публикация
+исходников, hard refresh до новой revision, затем восстановление исходного autosync.
+Иначе ручной Helm upgrade откатывается. Статус приёмки/fixture cleanup и подробный
+runbook: [Argo CD refresh](../docs/identity/argocd-refresh.md). Старым сессиям нужен
+один новый SSO authorization, чтобы получить refresh token. Остальные приложения
+этой настройкой не изменяются; 8h refresh validity само по себе не доказывает,
+что конкретный клиент получает/использует refresh token.
