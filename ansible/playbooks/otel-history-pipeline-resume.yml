@@ -1,0 +1,98 @@
+---
+- name: Resume the sole history importer from exact verified native prefix, no restart from zero
+  hosts: socrat-0
+  gather_facts: false
+  become: true
+  vars:
+    ansible_host: socrat-0
+    history_base: /var/lib/homelab-otel-history/tail-roundtrip-20261101
+    pipeline_sha256: c2b4fd258ebffb1f31d9caec4c05cbc803dce52b0365fb69f7efa74ba411a077
+  tasks:
+    - name: Verify read-only prefix proof and every closed native inventory before stopping old import
+      ansible.builtin.shell: |
+        python3 - <<'PY'
+        import hashlib,json,os,shutil,stat,subprocess,time
+        from pathlib import Path
+        base=Path('{{ history_base }}');unit='otel-history-tail-parallel-20261101.service'
+        sha=lambda p:hashlib.file_digest(p.open('rb'),'sha256').hexdigest()
+        assert os.uname().nodename=='socrat-0'
+        assert subprocess.check_output(['systemctl','is-active',unit],text=True).strip()=='active'
+        assert sha(base/'otel-history')=='ca3cf860b7735459fe5097caa5330e8f69478dc189b12a4d236b8dc2388422e0'
+        assert sha(base/'otel-history.pipeline-candidate')=='{{ pipeline_sha256 }}'
+        assert not (base/'result.json').exists()
+        progress=json.loads((base/'progress.json').read_text())
+        assert progress=={'phase':'import','originalBlock':'01M66G9HT3YJ4W6TSADWG305M6','completedBlocks':0}
+        root=Path('/home/alchemmist/otel-tail-roundtrip-work-20261101')/progress['originalBlock']
+        assert not (root/'restored-fast').exists() and not (base/progress['originalBlock']).exists()
+        proof=json.loads((base/'import-prefix-proof-v1.json').read_text())
+        assert proof['verified'] and proof['samples']>0 and proof['manifestSHA256']==sha(root/'otlp/manifest.json')
+        assert proof['source']==str(root/'otlp') and proof['version']==1
+        for shard in proof['shards']:
+            directory=Path(shard['directory']);assert directory.parent==root/'restored/.import-work'
+            actual={}
+            for p in directory.rglob('*'):
+                assert not p.is_symlink()
+                if p.is_file():
+                    s=p.stat();actual[str(p.relative_to(directory))]=[s.st_size,s.st_mtime_ns,s.st_dev,s.st_ino]
+            assert actual==shard['inventory']
+        disk=shutil.disk_usage(root);assert disk.free-20*1024**3>=disk.total/5
+        previous=base/'otel-history.before-pipeline-20261101';assert not previous.exists();os.link(base/'otel-history',previous)
+        shutil.copyfile(base/'queue.py',base/'queue.before-pipeline-20261101.py')
+        receipt={'atUnix':time.time(),'progress':progress,'verifiedPrefixSamples':proof['samples'],'verifiedPrefixShards':len(proof['shards']),'oldImportRetained':str(root/'restored'),'previousBinarySHA256':sha(previous),'pipelineSHA256':'{{ pipeline_sha256 }}'}
+        (base/'pipeline-handoff-preimage.json').write_text(json.dumps(receipt,indent=2))
+        subprocess.run(['systemctl','kill','--kill-whom=main','--signal=SIGINT',unit],check=True)
+        PY
+      changed_when: true
+    - ansible.builtin.command: systemctl is-active otel-history-tail-parallel-20261101.service
+      register: previous_state
+      failed_when: false
+      changed_when: false
+      until: previous_state.stdout | trim not in ['active', 'deactivating']
+      retries: 20
+      delay: 1
+    - name: Require empty old cgroup, then atomic converter promotion
+      ansible.builtin.shell: |
+        python3 - <<'PY'
+        import hashlib,json,os,subprocess
+        from pathlib import Path
+        base=Path('{{ history_base }}');unit='otel-history-tail-parallel-20261101.service'
+        assert subprocess.check_output(['systemctl','show',unit,'-p','MainPID','--value'],text=True).strip()=='0'
+        group=Path('/sys/fs/cgroup/system.slice/'+unit+'/cgroup.procs');assert not group.exists() or not group.read_text().strip()
+        previous=json.loads((base/'result.json').read_text());assert previous['success'] is False and previous['blocks']==[]
+        with (base/'otel-history.pipeline-candidate').open('rb') as f:assert hashlib.file_digest(f,'sha256').hexdigest()=='{{ pipeline_sha256 }}'
+        os.replace(base/'otel-history.pipeline-candidate',base/'otel-history')
+        PY
+      changed_when: true
+    - ansible.builtin.copy:
+        src: '{{ playbook_dir }}/../../scripts/otel-history-tail-roundtrip.py'
+        dest: '{{ history_base }}/queue.py'
+        mode: '0700'
+    - ansible.builtin.copy:
+        dest: /etc/systemd/system/otel-history-tail-pipeline-20261101.service
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Single history importer, exact verified prefix resume and bounded parallel pipeline
+          After=network-online.target
+          ConditionPathExists={{ history_base }}/result.json
+          [Service]
+          Type=exec
+          RemainAfterExit=yes
+          ExecStart=/usr/bin/python3 {{ history_base }}/queue.py --execution-profile socrat0-fast --resume-import
+          UMask=0077
+          CPUQuota=1600%
+          MemoryMax=9G
+          MemorySwapMax=0
+          IOWeight=100
+          RuntimeMaxSec=108000
+          NoNewPrivileges=yes
+          ProtectSystem=full
+          IPAddressDeny=any
+          IPAddressAllow=localhost
+    - ansible.builtin.systemd_service:
+        name: otel-history-tail-pipeline-20261101.service
+        daemon_reload: true
+        state: started
+    - name: Require actual running replacement before reporting transition
+      ansible.builtin.command: systemctl is-active otel-history-tail-pipeline-20261101.service
+      changed_when: false

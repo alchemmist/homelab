@@ -1,0 +1,108 @@
+---
+- name: Continue verified single historical replay on trusted high-capacity socrat-0
+  hosts: socrat-0
+  gather_facts: false
+  become: true
+  vars:
+    ansible_host: socrat-0
+    history_root: /var/lib/homelab-otel-history
+    final_root: /var/lib/homelab-otel-history/current-native-finalize-20261031
+    tail_root: /var/lib/homelab-otel-history/tail-roundtrip-20261101
+  tasks:
+    - name: Require installed sealed replica and completed source roundtrip
+      ansible.builtin.command:
+        argv:
+          - python3
+          - -c
+          - >-
+            import json; from pathlib import Path;
+            r=json.loads(Path('/home/alchemmist/.local/share/homelab/otel-fast-transfer-20261101/destination-receipt.json').read_text());
+            assert r['success'] and r['completedRoundtripReusedWithoutReimport'];
+            m=dict(x.split(':',1) for x in Path('/proc/meminfo').read_text().splitlines());
+            native_done=Path('/var/lib/homelab-otel-history/current-native-finalize-20261031/final-result.json'); budget=(9 if native_done.exists() and json.loads(native_done.read_text()).get('success') is True else 11)*1024**3; assert int(m['MemAvailable'].split()[0])*1024-budget >= int(m['MemTotal'].split()[0])*1024/5;
+            print(json.dumps({'verifiedReplica':True,'memoryReserveAfterBothCgroupBudgets':True}))
+      changed_when: false
+    - ansible.builtin.file:
+        path: '{{ history_root }}/staged'
+        state: directory
+        mode: '0700'
+    - name: Install maintained finite native finalizer
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/../../scripts/{{ item.source }}'
+        dest: '{{ final_root }}/{{ item.destination }}'
+        mode: '0700'
+      loop:
+        - {source: otel-history-recovery-finalize.py, destination: finalize.py}
+        - {source: otel-history-native-compat.py, destination: compat.py}
+        - {source: otel-history-durable-stage.py, destination: durable.py}
+    - ansible.builtin.copy:
+        src: '{{ playbook_dir }}/../../scripts/{{ item.source }}'
+        dest: '{{ tail_root }}/{{ item.destination }}'
+        mode: '0700'
+      loop:
+        - {source: otel-history-tail-roundtrip.py, destination: queue.py}
+        - {source: otel-history-native-compat.py, destination: compat.py}
+        - {source: otel-history-durable-stage.py, destination: durable.py}
+    - ansible.builtin.file:
+        path: /home/alchemmist/otel-tail-roundtrip-work-20261101
+        state: directory
+        mode: '0700'
+    - ansible.builtin.copy:
+        dest: /etc/systemd/system/otel-history-current-native-finalize-20261031.service
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Finalize completed 6.383B sample native history replica on trusted socrat-0
+          After=network-online.target
+          ConditionPathExists=!{{ final_root }}/final-result.json
+          [Service]
+          Type=exec
+          RemainAfterExit=yes
+          ExecStart=/usr/bin/python3 {{ final_root }}/finalize.py --profile current-repaired
+          UMask=0077
+          MemoryMax=2G
+          MemorySwapMax=0
+          CPUQuota=200%
+          RuntimeMaxSec=10800
+          Environment=GOMEMLIMIT=512MiB
+          NoNewPrivileges=yes
+          ProtectSystem=full
+          ProtectHome=read-only
+          IPAddressDeny=any
+          IPAddressAllow=localhost
+    - ansible.builtin.copy:
+        dest: /etc/systemd/system/otel-history-tail-roundtrip-20261101.service
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Single finite nine-block OTLP historical replay on trusted socrat-0
+          After=network-online.target
+          ConditionPathExists=!{{ tail_root }}/result.json
+          [Service]
+          Type=exec
+          RemainAfterExit=yes
+          ExecStart=/usr/bin/python3 {{ tail_root }}/queue.py --execution-profile socrat0-fast
+          UMask=0077
+          MemoryMax=9G
+          MemorySwapMax=0
+          CPUQuota=1600%
+          IOWeight=100
+          RuntimeMaxSec=108000
+          NoNewPrivileges=yes
+          ProtectSystem=full
+          IPAddressDeny=any
+          IPAddressAllow=localhost
+    - name: Start native finalization, not another OTLP import of the completed block
+      ansible.builtin.systemd_service:
+        name: otel-history-current-native-finalize-20261031.service
+        daemon_reload: true
+        state: started
+    - name: Detect explicit parallel-export handoff before starting legacy controller
+      ansible.builtin.stat:
+        path: /etc/systemd/system/otel-history-tail-parallel-20261101.service
+      register: parallel_handoff_unit
+    - name: Start exactly one tail controller after durable prerequisite checks
+      ansible.builtin.systemd_service:
+        name: otel-history-tail-roundtrip-20261101.service
+        state: started
+      when: not parallel_handoff_unit.stat.exists

@@ -1,0 +1,61 @@
+---
+- name: Validate isolated converted history with stock Thanos without publication
+  hosts: socrat-1
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - name: Require explicit isolated native compatibility artifacts
+      ansible.builtin.assert:
+        that:
+          - otel_native_compat_root.startswith('/var/tmp/otel-history-native-compat-')
+          - otel_native_compat_stage.startswith('/home/alchemmist/.cache/otel-native-compat-')
+          - otel_native_compat_local.startswith('/tmp/otel-native-compat-')
+    - name: Prepare private root-owned native validation workspace
+      ansible.builtin.file:
+        path: '{{ otel_native_compat_root }}'
+        state: directory
+        owner: root
+        group: root
+        mode: '0700'
+    - name: Copy immutable request and stock-native validation driver
+      ansible.builtin.copy:
+        src: '{{ item.source }}'
+        dest: '{{ otel_native_compat_root }}/{{ item.name }}'
+        owner: root
+        group: root
+        mode: '0600'
+      loop:
+        - source: '{{ otel_native_compat_local }}/request.json'
+          name: request.json
+        - source: '{{ playbook_dir }}/../../scripts/otel-history-native-compat.py'
+          name: verify.py
+    - name: Run bounded native bucket verifier and isolated Store Query
+      ansible.builtin.command:
+        argv:
+          - systemd-run
+          - --quiet
+          - --collect
+          - --wait
+          - --pipe
+          - '--unit=otel-history-compat-{{ otel_native_compat_nonce }}'
+          - --property=MemoryMax=2147483648
+          - --property=MemorySwapMax=0
+          - --property=CPUQuota=100%
+          - --property=RuntimeMaxSec=1200
+          - python3
+          - '{{ otel_native_compat_root }}/verify.py'
+          - --directory
+          - '{{ otel_native_compat_root }}'
+          - --stage
+          - '{{ otel_native_compat_stage }}'
+      changed_when: false
+      timeout: 1260
+      register: native_compatibility
+    - name: Save sanitized native compatibility receipt
+      ansible.builtin.copy:
+        content: '{{ native_compatibility.stdout }}'
+        dest: '{{ otel_native_compat_local }}/result.json'
+        mode: '0600'
+      delegate_to: localhost
+      become: false

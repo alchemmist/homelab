@@ -1,0 +1,103 @@
+---
+- name: Transition only the first historical export to verified bounded parallel workers
+  hosts: socrat-0
+  gather_facts: false
+  become: true
+  vars:
+    ansible_host: socrat-0
+    history_base: /var/lib/homelab-otel-history/tail-roundtrip-20261101
+    previous_binary_sha256: 9725e698476cbd4ab38f04c3481083067574fd580c479afdc57bfd4c3f8bab63
+    parallel_binary_sha256: c2b4fd258ebffb1f31d9caec4c05cbc803dce52b0365fb69f7efa74ba411a077
+  tasks:
+    - name: Install the tested combined candidate without replacing running executable
+      ansible.builtin.copy:
+        src: '{{ controller_root }}/bin/otel-history-pipeline-linux-amd64'
+        dest: '{{ history_base }}/otel-history.parallel-candidate'
+        mode: '0700'
+    - name: Verify exact running export, capacity, candidate and protected preimages before interrupt
+      ansible.builtin.shell: |
+        python3 - <<'PY'
+        import hashlib,json,os,shutil,subprocess,time
+        from pathlib import Path
+        base=Path('{{ history_base }}');unit='otel-history-tail-roundtrip-20261101.service'
+        digest=lambda p:hashlib.file_digest(p.open('rb'),'sha256').hexdigest()
+        assert os.uname().nodename=='socrat-0' and os.cpu_count()>=20
+        assert digest(base/'otel-history')=='{{ previous_binary_sha256 }}'
+        assert digest(base/'otel-history.parallel-candidate')=='{{ parallel_binary_sha256 }}'
+        assert subprocess.check_output(['systemctl','is-active',unit],text=True).strip()=='active'
+        progress=json.loads((base/'progress.json').read_text())
+        assert progress=={'phase':'export','originalBlock':'01M66G9HT3YJ4W6TSADWG305M6','completedBlocks':0}
+        assert not (base/'result.json').exists()
+        root=Path('/home/alchemmist/otel-tail-roundtrip-work-20261101')/progress['originalBlock']
+        assert not (root/'restored').exists() and not (base/progress['originalBlock']).exists()
+        native=json.loads(Path('/var/lib/homelab-otel-history/current-native-finalize-20261031/final-result.json').read_text())
+        assert native['success'] and native['actualNativeThanosQueryVerified'] and native['durableStagingVerified']
+        inventory=json.loads((root/'inventory.stdout').read_text());assert inventory['samples']>0 and inventory['canonicalSHA256']
+        m={k:int(v.split()[0])*1024 for k,v in (l.split(':',1)for l in Path('/proc/meminfo').read_text().splitlines())if k in ['MemTotal','MemAvailable']}
+        assert m['MemAvailable']-9*1024**3>=m['MemTotal']/5
+        for source,name in [(base/'otel-history','otel-history.before-parallel-20261101'),(base/'queue.py','queue.before-parallel-20261101.py')]:
+            assert not (base/name).exists();shutil.copyfile(source,base/name);(base/name).chmod(0o700)
+        receipt={'authorizedHistoricalExportOnly':True,'beforeProgress':progress,'inventory':inventory,'memory':m,'atUnix':time.time(),'originalsDeleted':False,'previousBinarySHA256':'{{ previous_binary_sha256 }}','candidateBinarySHA256':'{{ parallel_binary_sha256 }}'}
+        (base/'parallel-handoff-preimage.json').write_text(json.dumps(receipt,indent=2))
+        # SIGINT invokes Python finally: terminate/wait its owned Go export,
+        # release importer lock, and retain failed/interrupted result and logs.
+        subprocess.run(['systemctl','kill','--kill-whom=main','--signal=SIGINT',unit],check=True)
+        PY
+      changed_when: true
+    - name: Require old controller and its export to finish stopping before any replacement
+      ansible.builtin.command: systemctl is-active otel-history-tail-roundtrip-20261101.service
+      register: old_state
+      changed_when: false
+      failed_when: false
+      until: old_state.stdout | trim != 'active' and old_state.stdout | trim != 'deactivating'
+      retries: 20
+      delay: 1
+    - name: Verify old cgroup is empty and stopped result has no imported blocks, then atomically install binary
+      ansible.builtin.shell: |
+        python3 - <<'PY'
+        import hashlib,json,os,subprocess
+        from pathlib import Path
+        base=Path('{{ history_base }}')
+        assert subprocess.check_output(['systemctl','show','otel-history-tail-roundtrip-20261101.service','-p','MainPID','--value'],text=True).strip()=='0'
+        group=Path('/sys/fs/cgroup/system.slice/otel-history-tail-roundtrip-20261101.service/cgroup.procs')
+        assert not group.exists() or not group.read_text().strip()
+        progress=json.loads((base/'progress.json').read_text());previous=json.loads((base/'result.json').read_text())
+        assert progress['phase']=='export' and progress['completedBlocks']==0 and previous['blocks']==[] and previous['success'] is False
+        with (base/'otel-history.parallel-candidate').open('rb') as stream:assert hashlib.file_digest(stream,'sha256').hexdigest()=='{{ parallel_binary_sha256 }}'
+        os.replace(base/'otel-history.parallel-candidate',base/'otel-history')
+        PY
+      changed_when: true
+    - ansible.builtin.copy:
+        src: '{{ playbook_dir }}/../../scripts/otel-history-tail-roundtrip.py'
+        dest: '{{ history_base }}/queue.py'
+        mode: '0700'
+    - name: Install guarded export-resume controller with one importer lock and production reserves
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/otel-history-tail-parallel-20261101.service
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Resume interrupted first historical export with16 bounded workers, single importer
+          After=network-online.target
+          ConditionPathExists={{ history_base }}/result.json
+          [Service]
+          Type=exec
+          RemainAfterExit=yes
+          ExecStart=/usr/bin/python3 {{ history_base }}/queue.py --execution-profile socrat0-fast --resume-export
+          UMask=0077
+          CPUQuota=1600%
+          MemoryMax=9G
+          MemorySwapMax=0
+          IOWeight=100
+          RuntimeMaxSec=108000
+          NoNewPrivileges=yes
+          ProtectSystem=full
+          IPAddressDeny=any
+          IPAddressAllow=localhost
+    - ansible.builtin.systemd_service:
+        name: otel-history-tail-parallel-20261101.service
+        daemon_reload: true
+        state: started
+    - name: Require active replacement, not just successful service installation
+      ansible.builtin.command: systemctl is-active otel-history-tail-parallel-20261101.service
+      changed_when: false
