@@ -30,6 +30,16 @@ spec:
 {{- if .Values.publishIngressStatus }}
             - --providers.kubernetesingress.ingressendpoint.ip={{ .Values.publicIP }}
 {{- end }}
+{{- if .Values.kubernetesCRD.enabled }}
+            - --providers.kubernetescrd=true
+            - --providers.kubernetescrd.endpoint={{ .Values.apiEndpoint }}
+            - --providers.kubernetescrd.namespaces={{ join "," .Values.kubernetesCRD.namespaces }}
+            - --providers.kubernetescrd.labelselector={{ .Values.kubernetesCRD.labelSelector }}
+            - --providers.kubernetescrd.ingressclass={{ .Values.ingressClass }}
+            - --providers.kubernetescrd.allowcrossnamespace=false
+            - --providers.kubernetescrd.allowexternalnameservices=false
+            - --providers.kubernetescrd.disableclusterscoperesources=true
+{{- end }}
             - --entrypoints.web.address={{ .Values.listenHost }}:{{ .Values.httpPort }}/tcp
             - --entrypoints.web.http.redirections.entrypoint.to=websecure
             - --entrypoints.web.http.redirections.entrypoint.scheme=https

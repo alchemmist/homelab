@@ -58,3 +58,9 @@ routes:
     port: 32087
     path: /connect-4e15326936f20a7a4f2cac67
     pathType: Exact
+
+# Only reviewed Argo backend transports; do not activate arbitrary CRD routes.
+kubernetesCRD:
+  enabled: true
+  namespaces: [argocd]
+  labelSelector: homelab.alchemmist.xyz/edge-transport=argocd
