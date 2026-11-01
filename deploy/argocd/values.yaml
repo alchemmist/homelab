@@ -2,9 +2,29 @@ global:
   nodeSelector:
     kubernetes.io/hostname: socrat-0
 
-# Keep the first installation private: access via kubectl port-forward until
-# authentication, ingress and RBAC have been reviewed.
+# Browser sessions use native Authentik OIDC through the TLS ingress.
+# Keep the built-in admin account as a break-glass login until an Authentik
+# browser login and group authorization have been verified; disable it later.
 configs:
+  cm:
+    url: https://argocd.socrat.alchemmist.xyz
+    oidc.config: |
+      name: Authentik
+      issuer: https://auth.socrat.alchemmist.xyz/application/o/argocd/
+      clientID: socrat-argocd
+      clientSecret: $oidc.authentik.clientSecret
+      requestedScopes: [openid, profile, email, groups]
+      requestedIDTokenClaims:
+        groups:
+          essential: true
+  rbac:
+    policy.default: role:readonly
+    policy.csv: |
+      g, homelab-owner, role:admin
+      g, homelab-platform-operator, role:admin
+      g, homelab-project-maintainer, role:readonly
+      g, homelab-observer, role:readonly
+    scopes: '[groups]'
   params:
     server.insecure: true
 

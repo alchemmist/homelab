@@ -11,6 +11,8 @@
     argocd_namespace: argocd
     argocd_values_local: "{{ playbook_dir }}/../../deploy/argocd/values.yaml"
     argocd_values_remote: /tmp/homelab-argocd-values.yaml
+    argocd_oidc_script_local: "{{ playbook_dir }}/../roles/argocd_oidc/files/configure.py"
+    argocd_oidc_script_remote: /home/alchemmist/.cache/homelab-authentik/argocd-oidc.py
   tasks:
     - name: Add the official Argo Helm chart repository
       ansible.builtin.command:
@@ -58,6 +60,25 @@
       changed_when: >-
         'has been upgraded' in argocd_helm.stdout or
         'has been installed' in argocd_helm.stdout
+
+    - name: Copy the Authentik OIDC reconciler without credentials
+      ansible.builtin.copy:
+        src: "{{ argocd_oidc_script_local }}"
+        dest: "{{ argocd_oidc_script_remote }}"
+        mode: '0600'
+
+    - name: Verify the Authentik API and private credential journal before reconciliation
+      ansible.builtin.command:
+        argv: [python3, "{{ argocd_oidc_script_remote }}", --check]
+      no_log: true
+      changed_when: false
+
+    - name: Reconcile Authentik OIDC client and inject its private secret
+      ansible.builtin.command:
+        argv: [python3, "{{ argocd_oidc_script_remote }}"]
+      register: argocd_oidc
+      no_log: true
+      changed_when: "'changed=true' in argocd_oidc.stdout"
 
     - name: Show Argo CD workload health
       ansible.builtin.command:
