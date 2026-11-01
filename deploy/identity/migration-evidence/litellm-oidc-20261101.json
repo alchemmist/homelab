@@ -14,7 +14,7 @@
     "jsErrors": 0,
     "ownerPrivilegesGrantedToFixture": false,
     "fixturesRemoved": true,
-    "realOwnerAcceptance": "pending",
+    "realOwnerAcceptance": "Owner confirmed successful LiteLLM login in conversation; local recovery-password acceptance remains pending",
     "trustedPublicEdges": [
       "109.173.40.247",
       "176.98.185.59"

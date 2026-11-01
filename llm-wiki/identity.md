@@ -1,4 +1,67 @@
-# Identity / Authentik — актуальный статус
+# Авторизация кластера Socrat: главный справочник
+
+**Актуализировано 1 ноября 2026 после owner-проверки LiteLLM и исправления native
+inspector/redirect controls.** Это консолидированное описание всей сессии: как
+устроены вход, MFA, права, интеграции, фронтенд, deployment и recovery. Не содержит
+паролей, токенов, MFA seeds, browser sessions или приватных сохранённых HTML.
+
+## Читать по задаче
+
+| Вопрос | Раздел |
+|---|---|
+| Как устроен Authentik, OIDC, сессии и границы доверия | [Архитектура](identity-architecture.md) |
+| Как войти, добавить человека, выдать/отозвать права, работать с MFA | [Ежедневные операции](identity-operations.md) |
+| Что сделано для каждого сервиса и как подключать следующий | [Интеграции](identity-integrations.md) |
+| Как отдельно устроены Linux/SSH, sudo, kubeconfig и Kubernetes RBAC | [Host access](identity-host-access.md) |
+| Где frontend/CSS, shadow DOM, фото/шрифты/иконки, inspector, rollback | [Quiet Mono frontend](identity-frontend.md) |
+| Backups, restore checks, аварии, диагностика, tests и безопасный push | [Восстановление и сопровождение](identity-recovery.md) |
+
+Это единый справочник из нескольких файлов, а не независимые источники
+политик. Реальное конфигурирование — source-controlled manifests/controllers плюс
+runtime Authentik/app state; подробная карта файлов есть в разделах. Перед операцией
+сверять версию и live state. Старые заметки ниже — журнал внедрения, не текущий
+перечень незакрытых задач; более поздняя приёмка и исправления описаны выше.
+
+## Краткий текущий статус
+
+- Portal: **https://auth.socrat.alchemmist.xyz/**, Authentik **2026.8.5**,
+  server/worker/PG17.11 на `socrat-0`, retained PVC. **Не HA**.
+- Owner `alchemmist` — личная MFA identity, единственный в `homelab-owner`.
+  `akadmin` — break-glass, не общий ежедневный логин.
+- Tim — отдельная observer identity, с сохранением reviewed старых app IDs.
+  Личная доставка credential/TOTP и реальная private-key SSH-проверка отдельно.
+- Native SSO: Grafana, Harbor, Rancher, Open WebUI, Wiki, LiteLLM; Argo CD имеет
+  собственный отдельный native OIDC controller. Их роли/ограничения неодинаковы.
+- **LiteLLM owner SSO подтверждён владельцем.** Owner-only admission, reviewed
+  UUID -> existing `socrat-admin`; machine API keys сохранены. Recovery password
+  не сбрасывался и не считается проверенным этим подтверждением.
+- n8n — Authentik MFA gateway, **не native account SSO**. Kuma **не мигрирован**.
+- Восемь foundation apps плюс отдельно Argo CD: все девять с локальными icons.
+- Quiet Mono v5 работает поверх native executor, без replacement auth JS.
+  `Redirecting` без raw `%(app)s`; Follow redirect anchor стилизован; лупа выровнена;
+  native history сохранена, ограничена по высоте, не сгенерирована прототипом.
+- Language picker скрыт, default English/light; старые URL/session locale overrides
+  пока не принуждаются к English. Native JSON highlighting/Copy — отдельный backlog.
+- Machine APIs/MCP/robots/webhooks не переводятся на browser redirects.
+  WireGuard не менялся, NetBird отложен. Полный cluster-wide human-auth inventory,
+  offboarding/old-session enforcement, independent backups/DR и HA ещё не завершены.
+
+## Быстрый ориентир в исходниках
+
+`deploy/identity/{services.json,account-mappings.json,access-policy.yaml}` — intent
+и reviewed linking; `ansible/roles/authentik/` — IdP foundation; роль
+`identity_integrations` — native backend reconciliation; `deploy/authentik/quiet-mono/`
+— production theme и frozen reference; `assets/service-icons/` — pinned artwork;
+`scripts/identity-*` — audit/backup/acceptance tools. Не все scripts read-only:
+fixture smoke и restore check изменяют тестовые ресурсы, запускать осознанно.
+
+Нижележащие старые записи сохранены как историческое evidence. Упоминания
+«ещё не migrated LiteLLM», «семь apps» или прежнего этапа Git не отменяют текущий
+статус и подробные runbooks выше.
+
+---
+
+# Исторические записи внедрения (читать с учётом справочника выше)
 
 **1 ноября 2026, после второго rollout.** Пользователь подтвердил работу под
 `alchemmist`, сообщил об отказе Grafana и разрешил sudo-применение/дальнейшую

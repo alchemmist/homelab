@@ -1,5 +1,7 @@
 # Identity and access management
 
+Comprehensive Russian operator manual and session consolidation: [llm-wiki identity](../../llm-wiki/identity.md).
+
 Live status: **2026-11-01**. Authentik is the identity provider for the core
 administrative services. **Not every application has native SSO.** The distinctions
 below are security boundaries, not merely UI details. NetBird remains deferred.
@@ -8,7 +10,7 @@ below are security boundaries, not merely UI details. NetBird remains deferred.
 
 The approved scope is **every deployed service with human authentication**, not
 just this portal catalog. This includes **LiteLLM administration**, now connected through native OIDC + PKCE
-with a reviewed owner UUID mapping; real owner acceptance remains pending. A complete live service/host/auth-path inventory is still required.
+with a reviewed owner UUID mapping; the owner confirmed successful SSO login. A complete live service/host/auth-path inventory is still required.
 Human login must use Authentik; server-enforced legacy fallback is owner-only.
 Scoped machine API keys, robots, webhooks and MCP remain separate and must not be
 redirected to an interactive login. A tile or an enabled OAuth provider is not proof
@@ -25,7 +27,7 @@ that local bypasses or pre-existing human sessions have been closed.
 | Open WebUI | Native OIDC; owner → admin, Tim → user | Existing users/chats retained through exact UUID linking; no generic email merging; local login retained |
 | n8n | Authentik MFA/group gate in front of browser UI | **Not native account SSO**: Community lacks the appropriate licensed integration; n8n may still ask for its own login |
 | Wiki | Native OIDC + PKCE, owner admin / existing Tim editor / other observers reader | Public reading and machine MCP remain separate; legacy passwords and old local sessions are owner-only |
-| LiteLLM | Native Generic OIDC + PKCE, owner-only application; reviewed UUID → existing `socrat-admin` | Existing owner database password fallback and machine keys retained; free SSO ≤5 users; real owner acceptance pending. See [LiteLLM](../litellm.md) |
+| LiteLLM | Native Generic OIDC + PKCE, owner-only application; reviewed UUID → existing `socrat-admin` | Existing owner database password fallback and machine keys retained; free SSO ≤5 users; owner recovery-password acceptance pending. See [LiteLLM](../litellm.md) |
 | Uptime Kuma | Existing native admin authentication + public status pages | **Not migrated to SSO**: installed auth implementation has no native OIDC; public and administrative socket traffic must be separated safely first |
 
 Other app/API credentials (LiteLLM, CI, MCP, Syncthing, VPN and webhooks) are not

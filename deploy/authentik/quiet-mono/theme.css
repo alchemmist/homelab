@@ -110,3 +110,5 @@ ak-drawer#flow-drawer{background-color:#68776f}
 :host(ak-flow-inspector) .pf-c-progress-stepper{max-block-size:22rem;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable;padding-inline-end:10px}
 :host(ak-flow-inspector) .pf-c-progress-stepper__step-title{font-size:13px;line-height:1.5;overflow-wrap:anywhere}
 @media(max-width:700px){:host(ak-flow-executor) ak-flow-inspector-button{inset-inline-end:17px!important;inset-block-start:17px!important}:host(ak-flow-inspector) .pf-c-progress-stepper{max-block-size:18rem}}
+
+:host(ak-flow-inspector-button) button.inspector-toggle:focus-visible{outline:1px solid #15223c!important;outline-offset:3px}

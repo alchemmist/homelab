@@ -1,0 +1,290 @@
+# Authentik / Quiet Mono: frontend, CSS, inspector и сопровождение
+
+Начало: [identity.md](identity.md). Подробный engineering runbook текущего дизайна.
+
+## 1. Что работает в production
+
+**Quiet Mono v5**: полноэкранное nature photo, светлая полупрозрачная матовая панель,
+реальная маска Socrat, точный Wiki favicon, CourierCyr UI и жирный Computer Modern
+для заголовков. Без маркетинговых панелей/приветствий. Production использует
+фиксированное согласованное озеро; случайная owner photo collection не внедрена.
+
+В браузере остаётся **нативный Authentik 2026.8.5**:
+
+- `ak-flow-executor` исполняет server challenges;
+- native identification/password, TOTP/validation, consent и redirect stages;
+- `ak-flow-card` рисует карточку;
+- `ak-flow-inspector-button` / `ak-flow-inspector` — штатные debug controls;
+- `ak-drawer#flow-drawer` — штатная немодальная панель.
+
+Наш login JS не подменяет executor и не проверяет пароли. Нельзя копировать в
+production `quiet-mono.js` из demo: там только synthetic offline navigation/MFA.
+Он не является OIDC client или middleware и никогда не должен получать реальные secrets.
+
+## 2. Карта файлов и владение
+
+| Путь | Назначение |
+|---|---|
+| `prototypes/authentik/01-frost.html` … `05-typewriter.html` | Исторические визуальные варианты; выбран v5 |
+| `prototypes/authentik/05-consent.html`, shared CSS/JS | Offline demo, не backend auth |
+| `deploy/authentik/quiet-mono/reference/` | Frozen approved reference; manifest sizes/SHA-256 |
+| `deploy/authentik/quiet-mono/theme.css` | Production native Brand CSS |
+| `deploy/authentik/quiet-mono/assets.json` | Reviewed asset names, paths, digests |
+| `deploy/authentik/quiet-mono/static-image.json` | Digest-pinned nginx provenance |
+| `deploy/authentik/quiet-mono/README.md`, `ACCEPTANCE.md` | Rollout/rollback, parity, measured checks |
+| `ansible/roles/authentik/files/branding.py` | Brand/native presentation reconciliation + private backups |
+| `ansible/roles/authentik/files/branding_static.py` | Детерминированные isolated static Kubernetes resources |
+| `ansible/roles/authentik/files/flow_titles.py` | Neutral authorization titles, отдельный guarded rollback |
+| `ansible/playbooks/authentik-branding.yml` | Explicit prepare/apply/rollback, без IdP upgrade/restart |
+| `scripts/identity-branding-controls-check.py` | Read-only real native component CSS probe |
+| `scripts/identity-branding-smoke.py` | Реальный temporary observer MFA/OIDC roundtrip |
+| `tests/test_authentik_branding.py`, `test_authentik_flow_titles.py` | Offline regression/security contracts |
+
+Frozen reference не редактировать, чтобы замаскировать production limitations.
+Новая owner revision оформляется отдельно с описанием отличий. Старые фразы
+«no cluster changes» в прототипах относятся к историческому этапу до rollout.
+
+## 3. Где хранится фактический theme config
+
+Domain-specific Brand `auth.socrat.alchemmist.xyz`, не blanket replacement default
+Brand для всех доменов. `branding_custom_css` содержит rendered `theme.css`.
+Brand также задаёт logo/favicon/background и light/en defaults. Эти поля лежат
+в Authentik DB; файл в Git — reproducible source, но сам commit DB не меняет.
+
+Native presentation changes помимо CSS:
+
+1. `default-authentication-flow` title — `Sign in`.
+2. Identification использует уже существующий default Password Stage: username
+   и password в одной native форме, без нового authentication backend.
+3. Native allow-show-password включён; глаз работает штатным кодом.
+4. Explicit/implicit authorization flow title — literal `Redirecting`.
+5. MFA/consent bindings и их разрешения не ослаблялись ради оформления.
+
+Для identification PATCH у данной версии требуется `user_fields`; нельзя считать
+пустой minimal payload универсально допустимым. DRF обрезает whitespace CSS,
+поэтому reconciler нормализует `.strip()` для настоящей идемпотентности.
+
+## 4. Shadow DOM: почему обычный CSS иногда не работает
+
+У Lit components отдельные shadow roots. Селектор из document не проникает
+произвольно внутрь `ak-stage-*`. Authentik AKElement применяет Brand CSS к своим
+components; поэтому `:host(ak-stage-consent)` работает внутри соответствующего root,
+а `:host([part='challenge'])` — в native challenge stage.
+
+Примеры действующих scopes:
+
+```css
+:host(ak-flow-executor) .pf-c-login__main { /* панель */ }
+:host(ak-flow-card) h1 { /* native heading */ }
+:host([part='challenge']) input.pf-c-form-control { /* поля */ }
+:host([part='challenge']) :is(button,a.pf-c-button).pf-m-primary { /* primary */ }
+:host(ak-flow-inspector-button) button.inspector-toggle { /* лупа */ }
+ak-drawer#flow-drawer::part(drawer-panel) { /* exported part */ }
+```
+
+`ak-drawer` — **обычный LitElement, не AKElement**. Его private root не получает
+Brand CSS обычным способом. Для него используются внешние exported parts:
+`drawer-content`, `drawer-panel`, `drawer-main`, `drawer-body`. Не добавлять
+случайный deep selector и не заявлять success без computed style/geometry.
+
+Часть селекторов version-specific; после upgrade проверять реальный DOM/source,
+не только сохранённый screenshot. `!important` здесь осознанно перебивает native
+component rules, но новые overrides ограничивать конкретным host/part, не всем UI.
+
+## 5. Контракт полей и primary actions
+
+- Поля имеют простую рамку; hover/focus/Tab не добавляют outline/glow.
+- Validation сохранена: invalid input получает error border, а не всегда «чистый» вид.
+- Eye button — native control внутри input group; не декоративная картинка.
+- Primary: прозрачный фон, тёмный текст, тонкая рамка, Courier, стрелка.
+- Hover: ink tint **4.5%**, arrow **3px / 160ms**, без dark/light inversion.
+- `prefers-reduced-motion` выключает движение. Browser может сериализовать alpha
+  с округлением до 8-bit; CSS `.045` не переписывать по одному computed RGB string.
+- `Follow redirect` — **anchor**, не button; оба охватывает `:is(button,a.pf-c-button)`.
+  Ранее из-за button-only selector эта ссылка оставалась синей с плохим контрастом.
+- Keyboard/ARIA/events не заменялись. Лупа имеет отдельный focus-visible indicator;
+  требование «без focus glow» для text inputs не запрещает видимый фокус у кнопки.
+
+Не стилизовать только English text match: перевод/динамический label поменяет текст,
+а component/class contract останется. Не скрывать реальные validation messages.
+
+## 6. Статика без expiring URL
+
+Первые signed media URLs Authentik оказались непригодны для persistent CSS: JWT
+подпись истекает. Brand не должен хранить такой URL как постоянный background/font.
+Вместо этого используется same-origin endpoint:
+
+```text
+https://auth.socrat.alchemmist.xyz/-/quiet-mono/v1/<sha256-prefix>-<filename>
+```
+
+`branding.py` проверяет локальный digest каждого asset, строит content-hashed URL,
+проверяет served bytes по HTTPS и заменяет `__ASSET_*__` placeholders. Если hash
+не совпал или placeholder остался, apply не должен продолжаться.
+
+`branding_static.py` создаёт immutable ConfigMap, sandboxed nginx Deployment,
+Service и prefix-only Ingress. Только reviewed `.webp`, `.svg`, `.woff2`, GET/HEAD,
+`nosniff`, годовой immutable cache. Нет JS login bundle, произвольного `/data`
+или private backup directory. API/token/login пути продолжают обслуживаться IdP.
+
+Nginx: digest закреплён в `static-image.json`, non-root, read-only FS, no SA token,
+no escalation/capabilities, ограниченный `/tmp`, requests 5m/16Mi, limits 100m/64Mi.
+Секрет TLS `authentik-tls` общий для домена; ingress priority/prefix изолируют статику.
+Это не HA и не justification для доступа к Kubernetes API из auth server.
+
+Kubernetes apply особенности, уже исправленные:
+
+- client-side last-applied annotation для binary ConfigMap превышала 256KiB:
+  используется **server-side apply** с выделенным field manager;
+- `kind: List` приводил к недоступному OpenAPI-v2 fallback: CLI выдаёт **отдельные
+  JSON-as-YAML documents**, сохраняется strict OpenAPI-v3 validation;
+- не добавлять `--validate=false` как обход этих ошибок.
+
+При замене asset меняются bytes, SHA и URL; старый immutable URL не перезаписывать.
+Проверить разумный размер bundle (renderer guard 900000 bytes) и mobile image.
+Старые ConfigMaps/resources очищать отдельно после acceptance, не во время rollback.
+
+## 7. Иконки application dashboard — отдельный слой
+
+Источник `assets/service-icons/`, manifest `sources.json` содержит URL/revision,
+SHA/provenance/license; README объясняет derivation. Это не favicon всего Authentik.
+`icons.py` загружает pinned assets и меняет только `meta_icon` существующих apps;
+не трогает provider/policies/launch URLs, включая Argo CD вне foundation registry.
+
+У Argo CD — официальный pinned `homarr-labs/dashboard-icons` знак. Wiki больше
+не использует BookStack artwork: исходный круглый Socrat из
+`deploy/litellm/branding/socrat-icon-v1.png` (2349px) уменьшен до 512px и упакован в
+SVG с embedded PNG без перерисовки. LiteLLM использует тот же круглый знак.
+Логотип login — отдельная маска; favicon Authentik — точный Wiki SVG.
+
+Все девять текущих app icons проверены через разрешённый media URL: HTTPS200 и
+совпадение bytes digest. Для media URL запрашивать свежий native resolved URL,
+не сохранять его signed query в Git. Checksum-sensitive line endings не «чистить»
+глобальным formatter: `.gitattributes` сохраняет нужные asset bytes.
+
+## 8. Инспектор: реальные данные и права
+
+Native inspector — debug tool, не обычный пользовательский timeline.
+Доступ к данным проверяется backend permission `authentik_flows.inspect_flow`.
+Normal anonymous/observer его не получает. Native `?inspector=available` может
+показать toggle без admin rights, но API всё равно обязан отказать 403/404.
+Сам видимый значок **не доказательство** разрешения читать контекст.
+
+History строит native `FlowInspector.ts` из API `flows/inspector/<slug>/`.
+Backend читает `authentik/flows/history`, фильтрует по flow UUID, не по конкретному
+приложению/входу. `stage_ok` сохраняет deep copy плана; cancel намеренно не удаляет
+историю. Provider может поставить новый план до executor, минуя no-plan reset.
+Поэтому shared authorization flow накапливает повторяющиеся consent/final пары.
+
+В двух owner-saved страницах: сначала 26 completed + current/pending, затем 28
+completed. Это 13 прежних пар и завершившаяся ещё одна, а не 28 независимых MFA
+проверок LiteLLM. По названиям нельзя восстановить приложения/время каждой пары.
+Refresh inspector заменяет state, не дописывает сгенерированные frontend записи.
+`Dynamic In-memory stage: Final stage, restores params from Flow` — штатный
+OAuth fulfillment stage, не галлюцинация ассистента и не дополнительное согласие.
+
+Production CSS ограничивает history до **22rem / 18rem mobile** с прокруткой.
+Все entries сохранены, порядок не изменён, CSS-deduplication/truncation нет.
+Если нужен настоящий фильтр «только этот вход» или grouping по authorization
+attempt, это отдельная reviewed component/backend работа, не фальсификация CSS.
+
+## 9. Лупа, drawer и Follow redirect
+
+Toggle: fixed viewport offsets 24px desktop / 17px mobile, square 39px, centered
+18px vector CSS mask вместо неудачного native search-plus glyph. Реальный button,
+ARIA label и handler сохранены. Mask CSP проверен в настоящем браузере.
+
+Drawer — native non-modal: без dimming, inert, focus trap и document scroll lock.
+На широком desktop 600px panel и 300px сдвиг центра формы при 1440px viewport;
+flex/transform transitions синхронизированы на 180ms, reduced motion учитывается.
+На узких экранах panel складывается ниже формы, а не перекрывает её модальным слоем.
+
+При **открытом инспекторе** native RedirectStage специально удерживает navigation
+и показывает URL + **Follow redirect**. Это debug pause, а не лишний SSO consent.
+Без открытого inspector обычный переход автоматический. Не удалять эту защиту
+ради красивого мгновенного редиректа и не переписывать handler.
+
+JSON syntax highlighting и работающий Copy были в offline demo, но **не добавлены
+в native inspector**. CSS может оформить `<pre>`, но не токенизировать JSON и не
+реализовать Clipboard API. Нужна отдельная component enhancement с review прав,
+безопасной DOM rendering и clipboard failures. Не обещать CSS-only parity.
+
+## 10. Заголовки и язык
+
+Показанный `Redirecting to %(app)s` оказался raw Python-style placeholder. Вместо
+скрытия текста CSS изменён native `title` двух default authorization flows на
+literal **Redirecting**. `flow_titles.py` хранит original titles и flow IDs в
+private `authorization-flow-titles-original.json`; rollback проверяет identity.
+Остальные native messages/stages этим не переименовываются.
+
+Language picker скрыт, в том числе из Tab; Brand default en/light. Но это **не
+жёсткое принуждение всех старых сессий к English**. Upstream precedence 2026.8.5:
+`?locale=` -> `sessionStorage["authentik:locale"]` -> hint -> navigator -> fallback.
+Fresh ru-browser проверен с английским UI; старый override/URL может победить.
+CSS не очищает browser storage, user attributes насильно не переписывались.
+
+## 11. Как применить / откатить theme
+
+Из `ansible/`:
+
+```sh
+ansible-playbook playbooks/authentik-branding.yml \
+  -e ansible_host=109.173.40.247 \
+  -e 'ansible_ssh_common_args="-o HostKeyAlias=[socrat.alchemmist.xyz]:2222"' \
+  -e authentik_branding_action=apply
+```
+
+Default `prepare` **не read-only dry-run**: копирует и apply/verifies static server,
+но не меняет Brand/flow settings. `apply` меняет reviewed presentation. Никакого
+IdP restart, DNS/WG modification или replacement authentication JS.
+
+Private root `/home/alchemmist/.cache/homelab-authentik/`: `quiet-mono/`, rendered
+CSS/media map, `theme-backups/`, `quiet-mono-brand-journal.json`. Journal указывает
+последний pre-change snapshot; не путать последний CSS backup с baseline всего rollout.
+
+Полный original baseline `theme-backups/quiet-mono-original-baseline.json` собран
+из самых ранних snapshots: отсутствие domain Brand, старые title/separate password/
+eye settings. Для полного rollback использовать именно его, не более поздний v5 backup:
+
+```sh
+ansible-playbook playbooks/authentik-branding.yml \
+  -e ansible_host=109.173.40.247 \
+  -e 'ansible_ssh_common_args="-o HostKeyAlias=[socrat.alchemmist.xyz]:2222"' \
+  -e authentik_branding_action=rollback \
+  -e authentik_branding_backup=/home/alchemmist/.cache/homelab-authentik/theme-backups/quiet-mono-original-baseline.json
+```
+
+Rollback identity-guarded и не удаляет static assets. Live rollback/reapply ради
+демонстрации намеренно не выполнялся: не прерывать owner login только ради теста.
+
+## 12. Проверка и upgrade checklist
+
+```sh
+python3 -m unittest discover -s tests -p test_authentik_branding.py -v
+python3 -m unittest discover -s tests -p test_authentik_flow_titles.py -v
+# Python environment с Playwright/Chromium; readonly, без fixture identities:
+python3 scripts/identity-branding-controls-check.py --run
+python3 scripts/identity-branding-controls-check.py --run --public-edge 176.98.185.59
+```
+
+Controls check использует fresh anonymous context, требует отказ inspector API и
+local-only native redirect challenge с заблокированным benign `.invalid` target.
+Это **не owner auth acceptance**, не fake API history и не server configuration.
+Проверяет реальные native components: geometry, контраст, font, arrow/hover,
+reduced motion, focus и click handler; не сохраняет sessions/screenshots.
+
+Actual auth test — `identity-branding-smoke.py --run`: временный observer + native
+TOTP/consent/Grafana, cleanup в finally. Реальные человеческие factors не трогать.
+Owner inspector осматривался по предоставленным им HTML; не брать его browser
+session и не выдавать fixtures owner/debug privileges для красивого screenshot.
+
+Saved HTML **не сохраняет все adopted shadow stylesheets**, поэтому не считать
+локальный рендер файла точной production screenshot. Для анализа держать его
+private, отключить scripts/network, не публиковать context/callback code/state.
+Использовать фактический live DOM/computed style для визуальной приёмки.
+
+Перед новым Authentik release: encrypted backup; release notes и schema migration
+review; source diff native components/parts/locale/redirect/inspector; staging/checks;
+оба edges, 320/390/desktop, password eye, invalid input, Tab, MFA, consent, anchor,
+inspector denial, reduced motion и owner existing-session check. Не снимать version
+guard прежде этой проверки. После push отдельно проверить фактический rollout.

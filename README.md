@@ -4,6 +4,13 @@ Personal homelab automation for Socrat nodes.
 
 Ansible manages the common host baseline: persistent SSH access, hostnames, shared users, the machine-wide Starship prompt, and host workload policies. Kubernetes, networking, storage, and applications have separate playbooks.
 
+## Identity and authorization
+
+The detailed [Socrat identity operator manual](llm-wiki/identity.md) documents
+Authentik/MFA, users and grants, each service integration, adding new services,
+Quiet Mono frontend/CSS, native inspector, backup/recovery and current limitations.
+The compact implementation matrix is in [access management](docs/identity/access-management.md).
+
 ## Layout
 
 ```text

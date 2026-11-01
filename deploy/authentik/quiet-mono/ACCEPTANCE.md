@@ -52,3 +52,53 @@ Important native limitation: a previously selected locale in `sessionStorage["au
 ## Owner revision: transition title
 
 Both native provider authorization flows now use the literal title **Redirecting** instead of `Redirecting to %(app)s`. The observed transient screen exposed this raw Python-style placeholder. This is fixed in native flow metadata, not by hiding the heading or substituting CSS text. Consent, spinner, executor, stage bindings and authorization remain unchanged. `flow_titles.py` saves the original titles privately and supports rollback; the branding playbook applies it explicitly.
+
+## Native owner-saved pages: inspector history and Follow redirect
+
+The two owner-saved pages remain private in Downloads and are not publication
+assets. Structural inspection found 28 rendered progress items: in the consent
+page, 26 completed entries (13 consent/final-stage pairs), one current consent
+and one pending final stage; in the redirect page all 28 are completed. These are
+native stage snapshots, not synthetic prototype records or 28 distinct checks
+for one LiteLLM login. Individual prior authorizations/apps cannot be identified
+from the repeated labels alone.
+
+Pinned upstream 2026.8.5 evidence:
+- `authentik/flows/views/executor.py`: `stage_ok` appends a deep copy of the plan
+  to session history; cancellation intentionally preserves history.
+- `authentik/flows/planner.py`: provider authorization can install a new plan
+  before the executor runs, bypassing its no-plan history reset.
+- `authentik/flows/views/inspector.py`: reads session snapshots filtered by shared
+  flow UUID, not by application or a particular authorization attempt.
+- `web/src/flow/inspector/FlowInspector.ts`: maps the received plans directly;
+  inspector refresh replaces state rather than concatenating generated entries.
+- `web/src/flow/stages/RedirectStage.ts`: opening the native inspector deliberately
+  pauses automatic navigation and renders an **anchor** labeled Follow redirect.
+  That prompt is a debug aid, not an additional normal SSO consent requirement.
+
+Presentation corrections: shared primary-action rules now cover native button
+and anchor actions, including arrow/hover/reduced motion. The native magnifier
+has a 39px square target, centered 18px CSS SVG mask, and fixed viewport offsets
+24px desktop / 17px mobile. Real ARIA labels, events and authorization are retained.
+History remains chronological and complete, within a 22rem (mobile 18rem) scroll
+region; no deduplication, truncation or hiding of entries. No document scroll lock.
+
+Saved DOMs were inspected in a network-restricted, script-disabled local browser;
+private context/callback text was removed from the transient visual preview only.
+Saved HTML does not preserve all adopted shadow stylesheets, so it is not treated
+as a production-rendering acceptance test. Actual native controls are separately
+checked by `scripts/identity-branding-controls-check.py --run` (Playwright required).
+That probe uses a fresh anonymous browser, requires inspector API denial, and uses
+a clearly local-only redirect challenge with a blocked benign `.invalid` target.
+It does not simulate owner authorization or substitute native production history.
+
+
+Production control checks passed on both trusted public edges at desktop 1440px
+and mobile 390px: exact corner offsets / centered icon; real native anchor
+transparent background, dark readable text, 43px height, Courier and arrow;
+4.5% configured hover tint and 3px arrow motion; reduced-motion handling;
+keyboard focus and native click handler with blocked probe navigation. Inspector
+API remains denied to the anonymous probe. Actual magnifier visual inspection
+found no distortion or CSP image-policy violation. No owner session was acquired
+or permissions granted for those checks. Owner separately confirmed real LiteLLM
+SSO success; this does not assert an owner recovery-password test.
