@@ -76,17 +76,21 @@ Sync request. Argo auto-sync is enabled only for the `blog` Application, with
 
 The `blog` AppProject restricts source to this repository, destination to the
 `blog` namespace, and its `ci` role to `applications,update` on `blog/blog`.
-The project token is a GitHub Actions secret, not stored in Git. Rotate it before
-its one-year expiry. The `blog-harbor-pull` Secret supplies namespace-scoped
-registry authentication. The Argo Application renders only the `Service`,
-`Deployment`, and `Ingress`; its Helm chart and base values remain in
-`homelab/main`, while the live image digest is held in the Application object.
-The AppProject and Application were created through the Argo API and are not yet
-represented as manifests in Git.
+Its namespace-resource allowlist contains only `Service`, `Deployment`, and
+`Ingress`; cluster-scoped resources are not allowed. Argo RBAC is application-
+scoped rather than field-scoped: the token can update other fields on this one
+Application, so digest-only behavior is a workflow convention, backed by the
+project's source, destination, and resource restrictions. The project token is a
+GitHub Actions secret, not stored in Git. Rotate it before its one-year expiry.
+The `blog-harbor-pull` Secret supplies namespace-scoped registry authentication.
+The chart and base values remain in `homelab/main`, while the live image digest
+is held in the Application object. The AppProject and Application were created
+through the Argo API and are not yet represented as manifests in Git.
 
 The first CI-published image was applied successfully; both replicas became
 ready on socrat-1 and socrat-3, Argo reported `Synced/Healthy`, and both public
-blog hostnames returned HTTP 200. Pulling the ~235 MB content layer to socrat-3
+blog hostnames returned HTTP 200. During the slow pull, socrat-3 briefly stopped
+posting node status, then recovered. Pulling the ~235 MB content layer to socrat-3
 took about 13 minutes, so monitor Argo health during future releases. The prior
 live image was `ghcr.io/alchemmist/blog:7da9b66790ef5c669561ad4791977eb42ae14c08`.
 For emergency rollback, set the Application's Helm parameters to that GHCR
