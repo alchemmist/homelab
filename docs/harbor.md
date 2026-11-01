@@ -76,9 +76,11 @@ Sync request. Argo auto-sync is enabled only for the `blog` Application, with
 
 The `blog` AppProject restricts source to this repository, destination to the
 `blog` namespace, and its `ci` role to `applications,update` on `blog/blog`.
-Its namespace-resource allowlist contains only `Service`, `Deployment`, and
-`Ingress`; cluster-scoped resources are not allowed. Argo RBAC is application-
-scoped rather than field-scoped: the token can update other fields on this one
+Its namespace-resource allowlist contains `Service`, `Deployment`, `ReplicaSet`,
+`Pod`, and `Ingress`; cluster-scoped resources are not allowed. The `ReplicaSet`
+and `Pod` entries let Argo CD include the Deployment's generated children in the
+resource tree. Argo RBAC is application-scoped rather than field-scoped: the
+token can update other fields on this one
 Application, so digest-only behavior is a workflow convention, backed by the
 project's source, destination, and resource restrictions. The project token is a
 GitHub Actions secret, not stored in Git. Rotate it before its one-year expiry.
