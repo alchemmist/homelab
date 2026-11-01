@@ -1,0 +1,29 @@
+@import url('styles.css');
+html{background:#f7f7f3}
+body{padding:54px max(24px,calc((100vw - 1280px)/2));color:#15223c}
+header.catalog-head{display:flex;justify-content:space-between;gap:28px;align-items:flex-start;margin-bottom:34px}
+.catalog-brand{display:flex;align-items:center;gap:12px;margin-bottom:23px;font-size:20px}
+.catalog-brand img{height:43px;width:auto}
+.catalog-head h1{font:700 clamp(30px,4vw,45px)/1.15 CM,serif;margin:0 0 13px;letter-spacing:-1px}
+.catalog-head p{font-size:13px;line-height:1.8;color:#4d596b;max-width:690px;margin:0}
+.version{font-size:11px;white-space:nowrap;padding-top:5px;color:#53616e}
+.controls{display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin-bottom:30px;font-size:12px}
+.controls>span{margin-right:9px;color:#4d596b}
+.controls button{border:1px solid #c9ced0;background:transparent;padding:8px 13px;border-radius:3px;font-size:12px}
+.controls button[aria-pressed=true]{background:#15223c;border-color:#15223c;color:white}
+.controls button:hover{border-color:#15223c}
+.designs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:32px 25px}
+.design{min-width:0}
+.preview{position:relative;width:100%;aspect-ratio:16/10;overflow:hidden;background:#a1aca2;border-radius:5px;border:1px solid #d6dbd9;isolation:isolate}
+.preview iframe{display:block;width:1280px;height:800px;border:0;transform-origin:0 0;pointer-events:none}
+.preview-link{position:absolute;inset:0;z-index:1;outline-offset:-5px}
+.preview:hover{border-color:#607384;box-shadow:0 6px 22px -15px #15223c55}
+.design-meta{display:flex;justify-content:space-between;align-items:baseline;gap:16px;margin:15px 0 7px}
+.design h2{font:700 25px/1.2 CM,serif;margin:0;letter-spacing:-.4px}
+.design h2 span{font:11px CourierCyr,monospace;color:#60707a;margin-right:10px;vertical-align:middle;letter-spacing:0}
+.design-meta>a{font-size:12px;text-decoration:none;color:#15223c;white-space:nowrap;min-height:28px;padding:5px 0}
+.design-meta>a:hover{text-decoration:underline;text-underline-offset:4px}
+.design p{font-size:12px;line-height:1.7;color:#53616e;margin:0}
+.catalog-footer{border-top:1px solid #d8dcda;margin-top:44px;padding-top:22px;font-size:12px;line-height:1.9;color:#53616e;max-width:900px}
+.catalog-footer strong{font-weight:400;color:#15223c}
+@media(max-width:760px){body{padding:30px 20px}.designs{grid-template-columns:1fr;gap:30px}header.catalog-head{margin-bottom:24px}.version{display:none}.catalog-head h1{font-size:33px}.design h2{font-size:23px}}

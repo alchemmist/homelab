@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en" data-scene="lake">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; font-src 'self'; style-src 'self'; script-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<meta name="color-scheme" content="light">
+<title>Glass — Socrat / sign-in prototype</title>
+<link rel="icon" type="image/svg+xml" href="assets/wiki-favicon.svg"><link rel="stylesheet" href="styles.css">
+<script src="preview.js" defer></script>
+</head>
+<body class="auth-page liquid">
+<main class="stage">
+<section class="glass" aria-labelledby="login-title">
+<header class="identity"><img class="mask" src="assets/socrat-mask.webp" alt="" width="80" height="124"><span class="wordmark">Socrat</span></header>
+<div class="form-side">
+<h1 id="login-title">Sign in</h1>
+<form id="login-form" novalidate>
+<div class="credentials">
+<label class="field"><span>Username</span><input id="username" name="demo-username" autocomplete="off" spellcheck="false" autocapitalize="none" placeholder="Username" required></label>
+<label class="field"><span>Password</span><span class="password-wrap"><input id="password" type="password" name="demo-password" autocomplete="off" placeholder="Password" required><button class="reveal" type="button" aria-label="Show password" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></span></label>
+</div>
+<div class="mfa" hidden><label class="field"><span>Authentication code</span><input id="code" name="demo-code" inputmode="numeric" autocomplete="off" maxlength="6" pattern="[0-9]{6}" placeholder="000000" aria-describedby="mfa-hint"></label><p id="mfa-hint" class="mfa-hint">Enter any 6 digits. This is a prototype.</p></div>
+<p class="feedback" role="status" aria-live="polite"></p>
+<button class="primary" type="submit"><span class="action-label">Sign in</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15m-5-5 5 5-5 5"/></svg></button>
+<div class="form-foot"><button class="help" type="button">Need help signing in?</button><button class="back" type="button" hidden>Back</button></div>
+</form>
+</div>
+</section>
+</main>
+</body></html>

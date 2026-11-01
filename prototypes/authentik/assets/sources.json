@@ -1,0 +1,47 @@
+{
+  "purpose": "Local visual prototypes, downloaded reference photographs; replace with owner's curated collection before production theming.",
+  "photographs": [
+    {
+      "name": "lake",
+      "source": "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=2400&q=85",
+      "license": "https://unsplash.com/license",
+      "local": [
+        "lake-1920.webp",
+        "lake-960.webp"
+      ],
+      "processing": "Downscaled to width 1920/960; RGB WebP quality 79."
+    },
+    {
+      "name": "forest",
+      "source": "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=2400&q=85",
+      "license": "https://unsplash.com/license",
+      "local": [
+        "forest-1920.webp",
+        "forest-960.webp"
+      ],
+      "processing": "Downscaled to width 1920/960; RGB WebP quality 79."
+    }
+  ],
+  "mask": {
+    "source": "deploy/litellm/branding/socrat-logo-light-v1.svg",
+    "type": "Embedded transparent PNG, not vector outlines",
+    "local": "socrat-mask.webp",
+    "processing": "Crop transparent padding, preserve alpha, downscale to height 320, WebP quality 92."
+  },
+  "fonts": {
+    "source": "../blog/site/public/assets/fonts/",
+    "local": [
+      "fonts/couriercyrps.woff2",
+      "fonts/cmu.serif-roman.woff2",
+      "fonts/cmu.serif-bold.woff2"
+    ],
+    "rights": "Existing project assets; no new license or rights claimed."
+  },
+  "favicon": {
+    "source": "wiki/static/images/socrat.svg",
+    "verified_live_url": "https://wiki.socrat.alchemmist.xyz/images/socrat.svg",
+    "local": "wiki-favicon.svg",
+    "processing": "None; exact byte-for-byte copy of the favicon linked by the live Wiki.",
+    "sha256": "a86fb867f8e5ccce0336c38da738ec2ddb81ff5bc4639b26de535c9d4c4f9e32"
+  }
+}

@@ -1,0 +1,32 @@
+[
+  {
+    "file": "01-frost.html",
+    "layout": "frost",
+    "name": "Frost",
+    "description": "Centered · restrained geometry · Wiki-inspired"
+  },
+  {
+    "file": "02-editorial.html",
+    "layout": "editorial",
+    "name": "Margins",
+    "description": "Left-aligned · fine rules · editorial layout"
+  },
+  {
+    "file": "03-liquid.html",
+    "layout": "liquid",
+    "name": "Glass",
+    "description": "Right-aligned · soft glass · rounded geometry"
+  },
+  {
+    "file": "04-gallery.html",
+    "layout": "gallery",
+    "name": "Atelier",
+    "description": "Wide panel · mask-led composition"
+  },
+  {
+    "file": "05-typewriter.html",
+    "layout": "typewriter",
+    "name": "Quiet Mono",
+    "description": "Compact center · CourierCyr · paper-like finish"
+  }
+]
