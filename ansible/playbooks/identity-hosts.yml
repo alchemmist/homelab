@@ -1,0 +1,45 @@
+---
+# Needs --ask-become-pass. No node/service restarts.
+- name: Protect the primary cluster administrator credential without breaking owner automation
+  hosts: socrat-0
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Require the credential group to be exclusive to the owner
+      ansible.builtin.command:
+        argv:
+          - python3
+          - -c
+          - "import grp,pwd; g=grp.getgrnam('alchemmist'); members=set(g.gr_mem)|{p.pw_name for p in pwd.getpwall() if p.pw_gid==g.gr_gid}; assert members <= {'alchemmist'}, 'Owner group contains unexpected users'"
+      changed_when: false
+    - name: Persist safe K3s kubeconfig mode
+      ansible.builtin.lineinfile:
+        path: /etc/rancher/k3s/config.yaml
+        regexp: '^write-kubeconfig-mode:'
+        line: 'write-kubeconfig-mode: "0640"'
+    - name: Persist owner-only kubeconfig group
+      ansible.builtin.lineinfile:
+        path: /etc/rancher/k3s/config.yaml
+        regexp: '^write-kubeconfig-group:'
+        line: 'write-kubeconfig-group: alchemmist'
+    - name: Close world-readable cluster-admin credential immediately
+      ansible.builtin.file:
+        path: /etc/rancher/k3s/k3s.yaml
+        owner: root
+        group: alchemmist
+        mode: '0640'
+    - name: Verify a non-owner cannot read cluster-admin credentials
+      ansible.builtin.command:
+        argv: [runuser, -u, tim, --, test, '!', -r, /etc/rancher/k3s/k3s.yaml]
+      changed_when: false
+    - name: Verify owner automation still works
+      become: false
+      ansible.builtin.command:
+        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, auth, can-i, '*', '*', --all-namespaces]
+      environment:
+        K3S_CONFIG_FILE: /dev/null
+      changed_when: false
+      register: identity_owner_check
+      failed_when: identity_owner_check.stdout | trim != 'yes'
+
+- ansible.builtin.import_playbook: users.yml

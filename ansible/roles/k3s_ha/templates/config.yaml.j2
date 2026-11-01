@@ -2,7 +2,10 @@ node-name: {{ inventory_hostname }}
 node-ip: {{ k3s_ha_nodes[inventory_hostname].node_ip }}
 advertise-address: {{ k3s_ha_nodes[inventory_hostname].advertise_ip }}
 flannel-iface: wg-socrat
-write-kubeconfig-mode: "{{ '0644' if inventory_hostname == k3s_ha_primary else '0600' }}"
+write-kubeconfig-mode: "{{ '0640' if inventory_hostname == k3s_ha_primary else '0600' }}"
+{% if inventory_hostname == k3s_ha_primary %}
+write-kubeconfig-group: alchemmist
+{% endif %}
 tls-san:
   - {{ k3s_ha_vip }}
   - 192.168.0.23

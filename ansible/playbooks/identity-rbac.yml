@@ -1,0 +1,14 @@
+---
+- name: Install unbound project observer role, without modifying existing grants
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  tasks:
+    - name: Apply reviewed observer permissions
+      ansible.builtin.command:
+        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, apply, -f, '-']
+        stdin: "{{ lookup('file', playbook_dir + '/../../deploy/identity/observer-role.yaml') }}"
+      environment:
+        K3S_CONFIG_FILE: /dev/null
+      register: identity_rbac
+      changed_when: "'created' in identity_rbac.stdout or 'configured' in identity_rbac.stdout"

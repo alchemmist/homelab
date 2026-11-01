@@ -1,0 +1,29 @@
+# Role intent. No new human grants until owner approves exact assignments.
+# Existing sources of truth remain homelab_users and wg_socrat_admin_clients.
+version: 1
+roles:
+  owner:
+    description: Owner only; local break-glass plus explicit Authentik administration.
+  observer:
+    description: Explicit project read-only resources; no Secrets, exec, logs or node access by default.
+  project-maintainer:
+    description: Reviewed namespace-only write access; inherently trusted with that namespace's secrets.
+  platform-operator:
+    description: Reviewed infrastructure scope; not automatically root or cluster-admin.
+  machine-owner:
+    description: Root on an owned machine is not authorization for other nodes or workloads.
+existingIdentities:
+  owner:
+    linux: alchemmist
+    rancher: user-zc7lw
+    migration: preserve-local-break-glass
+  tim:
+    linux: tim
+    rancher: u-22wv2
+    vpnDevices: [tim-phone]
+    migration: preserve-existing-grants-pending-explicit-review
+network:
+  mode: existing-wireguard-direct-peers
+  nodeIPs: [10.250.0.1, 10.250.0.3, 10.250.0.2, 10.250.0.5]
+  migration: no-automatic-route-change
+  reason: A subnet cannot be assigned to multiple direct WireGuard peers. A stable gateway topology requires separate ACL and failover design.

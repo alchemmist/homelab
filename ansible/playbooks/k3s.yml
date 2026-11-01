@@ -27,7 +27,7 @@
       ansible.builtin.shell: |
         set -eu
         curl -sfL https://get.k3s.io | \
-          INSTALL_K3S_EXEC="server --node-name socrat-0 --node-ip {{ k3s_server_ip }} --advertise-address {{ k3s_server_ip }} --write-kubeconfig-mode 644 --flannel-iface wg-socrat" \
+          INSTALL_K3S_EXEC="server --node-name socrat-0 --node-ip {{ k3s_server_ip }} --advertise-address {{ k3s_server_ip }} --write-kubeconfig-mode 640 --write-kubeconfig-group alchemmist --flannel-iface wg-socrat" \
           sh -
 
     - name: Ensure k3s server is running

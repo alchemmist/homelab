@@ -1,71 +1,111 @@
 ---
-- name: Create homelab users
+- name: Validate managed user identities before changing hosts
+  ansible.builtin.assert:
+    that:
+      - item.name is match('^[a-z_][a-z0-9_-]{0,30}$')
+      - item.name not in ['root', 'alchemmist', 'ghactions']
+      - item.state | default('present') in ['present', 'disabled']
+      - not (item.sudo | default(false) | bool)
+      - item.groups | default([]) | intersect(['sudo', 'wheel', 'admin', 'docker', 'disk', 'lxd', 'incus', 'kvm', 'libvirt']) | length == 0
+      - item.authorized_keys | default([]) is not string
+      - item.state | default('present') == 'disabled' or item.authorized_keys | default([]) | length > 0
+    fail_msg: Managed users are key-only/non-root. Privileged roles require a separately reviewed policy.
+  loop: "{{ homelab_users | default([]) }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Validate public key format before modifying any users
+  ansible.builtin.assert:
+    that:
+      - item.1 is string
+      - item.1 is match('^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp256|sk-ssh-ed25519@openssh.com|sk-ecdsa-sha2-nistp256@openssh.com) [A-Za-z0-9+/]+={0,3}( .*)?$')
+  loop: "{{ homelab_users | default([]) | subelements('authorized_keys', skip_missing=True) }}"
+  loop_control:
+    label: "{{ item.0.name }}"
+
+- name: Require unique identities
+  ansible.builtin.assert:
+    that:
+      - homelab_users | default([]) | map(attribute='name') | list | unique | length == homelab_users | default([]) | length
+
+- name: Select explicitly assigned users for this node
+  ansible.builtin.set_fact:
+    homelab_assigned_users: []
+
+- name: Build node assignments without implicitly deleting other accounts
+  ansible.builtin.set_fact:
+    homelab_assigned_users: "{{ homelab_assigned_users + [item] }}"
+  when: item.hosts is not defined or inventory_hostname in item.hosts
+  loop: "{{ homelab_users | default([]) }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Manage personal accounts with no password authentication or privilege groups
   ansible.builtin.user:
     name: "{{ item.name }}"
     state: present
     create_home: true
-    shell: "{{ item.shell | default('/bin/bash') }}"
+    shell: "{{ '/usr/sbin/nologin' if item.state | default('present') == 'disabled' else item.shell | default('/bin/bash') }}"
     groups: "{{ item.groups | default([]) | join(',') }}"
     append: false
+    password_lock: true
   become: true
-  loop: "{{ homelab_users }}"
+  loop: "{{ homelab_assigned_users }}"
   loop_control:
     label: "{{ item.name }}"
 
-- name: Ensure user .ssh directories exist
+- name: Ensure private SSH directories
   ansible.builtin.file:
     path: "/home/{{ item.name }}/.ssh"
     state: directory
     owner: "{{ item.name }}"
     group: "{{ item.name }}"
-    mode: "0700"
+    mode: '0700'
   become: true
-  loop: "{{ homelab_users }}"
+  loop: "{{ homelab_assigned_users }}"
   loop_control:
     label: "{{ item.name }}"
 
-- name: Ensure authorized_keys files exist
-  ansible.builtin.file:
-    path: "/home/{{ item.name }}/.ssh/authorized_keys"
-    state: touch
-    access_time: preserve
-    modification_time: preserve
+- name: Replace managed key sets so removed keys are actually revoked
+  ansible.builtin.copy:
+    content: "{{ '' if item.state | default('present') == 'disabled' else (item.authorized_keys | join('\n')) + '\n' }}"
+    dest: "/home/{{ item.name }}/.ssh/authorized_keys"
     owner: "{{ item.name }}"
     group: "{{ item.name }}"
-    mode: "0600"
+    mode: '0600'
   become: true
-  loop: "{{ homelab_users }}"
+  loop: "{{ homelab_assigned_users }}"
   loop_control:
     label: "{{ item.name }}"
 
-- name: Install authorized SSH keys
-  ansible.builtin.lineinfile:
-    path: "/home/{{ item.0.name }}/.ssh/authorized_keys"
-    line: "{{ item.1 }}"
-    state: present
-    owner: "{{ item.0.name }}"
-    group: "{{ item.0.name }}"
-    mode: "0600"
-  become: true
-  loop: "{{ homelab_users | subelements('authorized_keys', skip_missing=True) }}"
-  loop_control:
-    label: "{{ item.0.name }}"
-
-- name: Remove non-sudo users from privilege groups
-  ansible.builtin.command: "gpasswd -d {{ item.0.name }} {{ item.1 }}"
-  become: true
-  register: remove_priv_group
-  changed_when: remove_priv_group.rc == 0
-  failed_when: false
-  loop: "{{ homelab_users | selectattr('sudo', 'defined') | selectattr('sudo', 'equalto', false) | list | product(['sudo', 'wheel', 'admin']) | list }}"
-  loop_control:
-    label: "{{ item.0.name }} -> !{{ item.1 }}"
-
-- name: Remove direct sudoers drop-ins for non-sudo users
+- name: Remove legacy direct sudoers grants for managed non-sudo accounts
   ansible.builtin.file:
     path: "/etc/sudoers.d/{{ item.name }}"
     state: absent
   become: true
-  loop: "{{ homelab_users | selectattr('sudo', 'defined') | selectattr('sudo', 'equalto', false) | list }}"
+  loop: "{{ homelab_assigned_users }}"
   loop_control:
     label: "{{ item.name }}"
+
+- name: Inspect effective SSH, sudo and Kubernetes credential isolation
+  ansible.builtin.script:
+    cmd: 'verify.py {{ item.name }}'
+    executable: python3
+  become: true
+  changed_when: false
+  register: homelab_user_access_checks
+  loop: '{{ homelab_assigned_users }}'
+  loop_control:
+    label: '{{ item.name }}'
+
+- name: Require managed users to remain non-privileged
+  ansible.builtin.assert:
+    that:
+      - not (item.stdout | regex_search('(?m)\{"username":.*\}') | from_json).hasSudoGrant
+      - not (item.stdout | regex_search('(?m)\{"username":.*\}') | from_json).canReadAdminKubeconfig
+      - (item.stdout | regex_search('(?m)\{"username":.*\}') | from_json).pubkeyAuthentication == 'yes'
+      - (item.stdout | regex_search('(?m)\{"username":.*\}') | from_json).usePAM == 'yes'
+    fail_msg: Effective user isolation failed. Review host policy before onboarding.
+  loop: '{{ homelab_user_access_checks.results }}'
+  loop_control:
+    label: '{{ item.item.name }}'
