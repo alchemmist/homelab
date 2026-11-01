@@ -27,8 +27,7 @@ server:
     ingressClassName: traefik
     hostname: argocd.socrat.alchemmist.xyz
     tls: true
-    annotations:
-      cert-manager.io/cluster-issuer: letsencrypt-http01
+    annotations: {}
   certificate:
     enabled: true
     domain: argocd.socrat.alchemmist.xyz
