@@ -53,6 +53,9 @@ dex:
   enabled: false
 
 redis:
+  image:
+    repository: docker.io/library/redis
+    tag: 8.2-alpine
   resources:
     requests:
       cpu: 50m
