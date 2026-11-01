@@ -34,7 +34,8 @@ def get(path):
     with urllib.request.urlopen(req,timeout=30) as r:return json.load(r)
 def rows(path):return get(path+"?page_size=100")["results"]
 p=[x for x in rows("providers/oauth2/") if x.get("name")=="homelab-argocd"]
-a=[x for x in rows("core/applications/") if x.get("slug")=="argocd"]
+a=get("core/applications/?superuser_full_list=true&page_size=100")["results"]
+a=[x for x in a if x.get("slug")=="argocd"]
 if len(p)>1 or len(a)>1:raise SystemExit(2)
 print(json.dumps({"provider_exists":bool(p),"application_exists":bool(a)}))'''
 
@@ -50,7 +51,8 @@ def api(method,path,payload=None):
         body=r.read();return json.loads(body) if body else None
 def rows(path):return api("GET",path+"?page_size=100")["results"]
 def unique(path,field,value):
-    found=[x for x in rows(path) if x.get(field)==value]
+    endpoint=path+"?superuser_full_list=true&page_size=100" if path=="core/applications/" else path+"?page_size=100"
+    found=[x for x in api("GET",endpoint)["results"] if x.get(field)==value]
     if len(found)>1:raise RuntimeError("duplicate")
     return found[0] if found else None
 flows={x["slug"]:x["pk"] for x in rows("flows/instances/")}
