@@ -7,6 +7,7 @@ __pycache__/
 # Secrets
 *.vault.yml
 .vault-pass
+/.pi/mcp.json
 
 # macOS
 .DS_Store
