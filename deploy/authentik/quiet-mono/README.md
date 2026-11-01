@@ -81,3 +81,16 @@ The owner's actual inspector/history acceptance remains pending: do not create a
 ### Neutral authorization transition title
 
 `flow_titles.py` reconciles only the `title` field of the default explicit/implicit provider authorization flows to `Redirecting`. It saves the first pre-change titles and flow IDs to protected `authorization-flow-titles-original.json` in the deployment directory. Branding apply/rollback invokes this helper; it does not change stage bindings, policies, MFA, redirects, consent or spinner behavior. This replaces the raw `%(app)s` placeholder seen on the transient screen.
+
+### Native redirect/debug controls
+
+Primary action CSS covers both `<button>` and native `<a class="pf-c-button
+pf-m-primary">`; this includes Follow redirect when the real inspector pauses
+navigation. The native magnifier is fixed at the viewport corner and uses a
+centered CSS SVG mask; the real button, labels and handlers remain. Full native
+session history is retained in a bounded scroll region, not deduplicated.
+
+Read-only live control/layout check, no identity fixtures or owner session:
+`python3 scripts/identity-branding-controls-check.py --run` (also supports
+`--public-edge 176.98.185.59`). This is a native-component CSS test with a local-only
+blocked redirect challenge, not an authenticated flow acceptance test.

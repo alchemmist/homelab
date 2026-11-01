@@ -70,7 +70,7 @@ class LiteLLMIdentityTests(unittest.TestCase):
 
     def test_circle_is_original_high_resolution_artwork(self):
         sources = json.loads((ROOT / 'assets/service-icons/sources.json').read_text())['files']
-        for slug in ['wiki', 'litellm']:
+        for slug in ['wiki']:
             record = sources[slug + '.svg']
             self.assertEqual(hashlib.sha256((ROOT / record['source']).read_bytes()).hexdigest(), record['source_sha256'])
             svg = ET.fromstring((ROOT / 'assets/service-icons' / (slug + '.svg')).read_bytes())
@@ -78,6 +78,22 @@ class LiteLLMIdentityTests(unittest.TestCase):
             content = base64.b64decode(image.attrib['{http://www.w3.org/1999/xlink}href'].split(',', 1)[1])
             self.assertEqual(struct.unpack('>II', content[16:24]), (512, 512))
         self.assertIn('/svg/argo-cd.svg', sources['argocd.svg']['url'])
+
+    def test_litellm_uses_official_product_logo_not_wiki_artwork(self):
+        sources = json.loads((ROOT / 'assets/service-icons/sources.json').read_text())['files']
+        record = sources['litellm.svg']
+        self.assertIn('githubusercontent.com/BerriAI/litellm/', record['url'])
+        self.assertIn('/' + record['revision'] + '/', record['url'])
+        self.assertTrue(record['url'].endswith('/litellm_monogram.svg'))
+        content = (ROOT / 'assets/service-icons/litellm.svg').read_bytes()
+        self.assertEqual(hashlib.sha256(content).hexdigest(), record['sha256'])
+        self.assertNotEqual(record['sha256'], sources['wiki.svg']['sha256'])
+        svg = ET.fromstring(content)
+        self.assertEqual(svg.attrib['viewBox'], '0 0 372.14 371.53')
+        self.assertTrue(any(n.tag.endswith('path') for n in svg))
+        self.assertFalse(any(n.tag.split('}')[-1] in ['script','foreignObject','image'] for n in svg.iter()))
+        service = json.loads((ROOT / 'deploy/identity/services.json').read_text())['litellm']
+        self.assertEqual(service['icon'], 'service-icons/litellm-' + record['sha256'][:12] + '.svg')
 
     def test_icon_reconciler_patches_only_icon_metadata(self):
         tree = ast.parse((ROOT / 'ansible/roles/authentik/files/icons.py').read_text())

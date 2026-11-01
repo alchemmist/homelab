@@ -14,7 +14,7 @@
     "jsErrors": 0,
     "ownerPrivilegesGrantedToFixture": false,
     "fixturesRemoved": true,
-    "realOwnerAcceptance": "pending",
+    "realOwnerAcceptance": "Owner confirmed successful LiteLLM login in conversation; local recovery-password acceptance remains pending",
     "trustedPublicEdges": [
       "109.173.40.247",
       "176.98.185.59"
@@ -49,7 +49,8 @@
     "allCurrentApplications": 9,
     "verified": "resolved local media URL HTTPS200 and exact SHA256",
     "argocd": "official pinned argo-cd.svg; only icon metadata patched",
-    "wiki": "existing 2349px circular Socrat favicon, downsampled to 512px; no invented artwork"
+    "wiki": "existing 2349px circular Socrat favicon, downsampled to 512px; no invented artwork",
+    "litellm": "Owner revision: unmodified official blue LiteLLM monogram SVG from pinned BerriAI/litellm revision in assets/service-icons/sources.json; only LiteLLM meta_icon patched, served HTTPS200 and SHA256 verified; Wiki/provider/admission unchanged"
   },
   "notCompleted": [
     "real owner SSO/password fallback acceptance",
