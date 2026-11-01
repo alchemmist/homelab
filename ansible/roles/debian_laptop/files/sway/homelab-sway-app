@@ -1,13 +1,24 @@
 #!/usr/bin/python3
-import os
-import sys
+"""Open one desktop shortcut at a time.
+
+A slow machine lets a second click land before the first window exists.
+Each shortcut therefore keeps a stamp: another click is ignored while that
+launch is younger than the cooldown or its process is still alive. Firefox
+shortcuts share the already running browser instead of starting another one.
+"""
+import fcntl
 import json
+import os
+import subprocess
+import sys
+import time
 from pathlib import Path
 
 
 CONFIG = Path.home() / ".config/homelab-desktop/apps.json"
+RUNTIME = Path(os.environ.get("XDG_RUNTIME_DIR", f"/tmp/homelab-launch-{os.getuid()}")) / "homelab-launches"
+COOLDOWN_SECONDS = 10
 preferences = json.loads(CONFIG.read_text()) if CONFIG.exists() else {}
-
 
 COMMANDS = {
     "happ": ["/usr/bin/happ"],
@@ -23,11 +34,116 @@ COMMANDS = {
     "monitor": ["/usr/bin/alacritty", "--class", "homelab-monitor", "-e", "/usr/bin/tmux", "new-session", "-A", "-s", "homelab-monitor", "-n", "monitor", "/usr/local/bin/homelab-monitor-shell"],
     "terminal": ["/usr/bin/alacritty", "-o", 'window.startup_mode="Windowed"', "-o", 'window.decorations="Full"'],
 }
+SINGLE_PROCESS = {"files": "thunar", "happ": "happ"}
 
 
-if len(sys.argv) != 2 or sys.argv[1] not in COMMANDS:
-    sys.exit("Usage: homelab-sway-app " + "|".join(COMMANDS))
-os.environ["LANG"] = "ru_RU.UTF-8"
-os.environ["LANGUAGE"] = "ru:en"
-command = COMMANDS[sys.argv[1]]
-os.execv(command[0], command)
+def process_name(pid):
+    try:
+        raw = Path(f"/proc/{pid}/cmdline").read_bytes().split(b"\0")
+    except OSError:
+        return ""
+    if not raw or not raw[0]:
+        return ""
+    return Path(raw[0].decode(errors="ignore")).name
+
+
+def pids_named(executable):
+    found = []
+    proc = Path("/proc")
+    if not proc.exists():
+        return found
+    for entry in proc.iterdir():
+        if not entry.name.isdigit():
+            continue
+        if process_name(int(entry.name)) == executable:
+            found.append(int(entry.name))
+    return found
+
+
+def pid_alive(pid):
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    return Path(f"/proc/{pid}").exists()
+
+
+def read_stamp(name):
+    path = RUNTIME / f"{name}.json"
+    try:
+        return json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def launch_blocked(name, now):
+    stamp = read_stamp(name)
+    started = float(stamp.get("time", 0))
+    if started and now - started < COOLDOWN_SECONDS:
+        return True
+    return any(pid_alive(pid) for pid in stamp.get("pids", []))
+
+
+def firefox_command(command):
+    if not pids_named("firefox-esr"):
+        return command
+    rebuilt = ["/usr/bin/firefox-esr", "--new-window"]
+    if len(command) > 1:
+        rebuilt.append(command[-1])
+    return rebuilt
+
+
+def command_line(pid):
+    try:
+        raw = Path(f"/proc/{pid}/cmdline").read_bytes().split(b"\0")
+    except OSError:
+        return []
+    return [part.decode(errors="ignore") for part in raw if part]
+
+
+def monitor_running():
+    return any("homelab-monitor" in command_line(pid) for pid in pids_named("alacritty"))
+
+
+def prepare_command(name, command):
+    if name == "monitor" and monitor_running():
+        return None
+    executable = SINGLE_PROCESS.get(name)
+    if executable and pids_named(executable):
+        return None
+    if Path(command[0]).name == "firefox-esr":
+        return firefox_command(command)
+    return command
+
+
+def open_shortcut(name, now=None, spawn=None):
+    if name not in COMMANDS:
+        raise SystemExit("Usage: homelab-sway-app " + "|".join(COMMANDS))
+    RUNTIME.mkdir(parents=True, exist_ok=True)
+    now = time.time() if now is None else now
+    spawn = spawn or (lambda command: subprocess.Popen(command, start_new_session=True))
+    lock_path = RUNTIME / "launch.lock"
+    with lock_path.open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        if launch_blocked(name, now):
+            return None
+        command = prepare_command(name, COMMANDS[name])
+        if command is None:
+            return None
+        process = spawn(command)
+        (RUNTIME / f"{name}.json").write_text(json.dumps({"time": now, "pids": [process.pid]}))
+        return process
+
+
+def main():
+    if len(sys.argv) != 2:
+        raise SystemExit("Usage: homelab-sway-app " + "|".join(COMMANDS))
+    os.environ["LANG"] = "ru_RU.UTF-8"
+    os.environ["LANGUAGE"] = "ru:en"
+    open_shortcut(sys.argv[1])
+
+
+if __name__ == "__main__":
+    main()

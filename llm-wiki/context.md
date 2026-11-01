@@ -183,3 +183,12 @@ Harbor сейчас single-node на socrat-0; существующие GHCR dep
 отдельно. Wiki native OIDC + owner-only local fallback уже live; Tim сохраняет editor role.
 Kuma НЕ мигрирована; публичное чтение/status сохранены. Wiki WG-TLS gap записан отдельно.
 NetBird отложен; WG topology не изменена. Подробные ограничения и acceptance в wiki.
+
+
+## Стол socrat-3 — 1 ноября 2026
+
+Подробности: `docs/socrat-3-sway.md`. Источники: `ansible/roles/debian_laptop/files/sway/homelab-sway-app`, `homelab-graphics`, `templates/sway/config.j2`. Применено playbook `debian-laptop.yml` с тегом `sway`; в текущей сессии запущен user unit `homelab-graphics-watch`.
+
+- Повтор по тому же ярлыку не запускает второй процесс, пока жив первый и ещё 10 секунд после клика. Почта и мессенджеры открывают окно в уже работающем Firefox ESR. Это защита от пачки браузеров, которая раньше забивала 3,3 ГиБ RAM.
+- Картинка после входа погашена: нет Waybar, ярлыков и mako, экран в DPMS off. Первый пробел включает их. Пробел не привязан в Sway, поэтому после подъёма он снова обычная клавиша. Аккаунт в группе `input`.
+- Это не освобождает память кластера. Sway (около 99 МБ RSS), порталы, PipeWire и сессия GDM остаются. На замере 1 ноября 2026 при выключенной картинке было занято около 1,3 ГиБ из 3,3 ГиБ. Выигрыш картинки — десятки мегабайт и подсветка, не гигабайты.

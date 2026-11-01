@@ -12,7 +12,7 @@ client.focused #3584e4 #3584e4 #ffffff #3584e4 #3584e4
 client.unfocused #586779 #263344 #e5edf7 #586779 #586779
 client.focused_inactive #586779 #263344 #e5edf7 #586779 #586779
 client.urgent #c01c28 #c01c28 #ffffff #c01c28 #c01c28
-output * bg /usr/local/share/wallpapers/homelab/default.png fill
+output * bg #10141c solid_color
 input type:keyboard {
     xkb_layout us,ru
     xkb_options grp:alt_shift_toggle
@@ -43,9 +43,5 @@ bindsym XF86AudioMute exec pactl set-sink-mute @DEFAULT_SINK@ toggle
 bindsym XF86MonBrightnessUp exec brightnessctl set +5%
 bindsym XF86MonBrightnessDown exec brightnessctl set 5%-
 exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY SWAYSOCK XDG_CURRENT_DESKTOP
-exec /usr/local/bin/homelab-sway-shortcuts
-exec mako
 exec lxpolkit
-bar {
-    swaybar_command waybar
-}
+exec /usr/local/bin/homelab-graphics watch

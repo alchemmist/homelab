@@ -9,8 +9,19 @@ node or restart its networking.
 ## Everyday use
 
 The desktop has single-click shortcuts for Firefox ESR, Files, Yandex Mail,
-Gmail, Telegram, MAX, Video and Monitoring. Mail and messengers open their
-official web versions in Firefox; account sign-in is left to the user.
+Gmail, Telegram, MAX, Video and Monitoring. A shortcut ignores further clicks
+for 10 seconds and while the process it started is still running. Mail,
+messengers and video reuse the running Firefox instead of starting another
+copy. Account sign-in is left to the user.
+
+The picture stays down after login: the screen is blank, and the panel,
+shortcuts and notifications are not running. Pressing Space once turns the
+screen on and starts those pieces. Space is not a Sway binding. After the
+picture is up it is an ordinary Space again, including in text fields and
+key combinations. The compositor itself keeps running so this wake stays
+immediate; SSH, WireGuard and k3s are unchanged. A new login starts from the
+blank screen again.
+
 Firefox is the default browser for links. Desktop applications use Russian;
 both English and Russian UTF-8 locales remain installed.
 

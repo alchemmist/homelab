@@ -42,7 +42,7 @@
     owner: root
     group: root
     mode: '0755'
-  loop: [homelab-sway-app, homelab-sway-menu, homelab-sway-shortcuts, homelab-sway-window-action]
+  loop: [homelab-sway-app, homelab-sway-menu, homelab-sway-shortcuts, homelab-sway-window-action, homelab-graphics]
 
 - name: Configure familiar application appearance
   community.general.ini_file:
@@ -84,6 +84,12 @@
   loop:
     - {key: startup_mode, value: '"Windowed"'}
     - {key: decorations, value: '"Full"'}
+
+- name: Let the desktop account read keyboards for the graphics wake key
+  ansible.builtin.user:
+    name: "{{ homelab_user }}"
+    groups: input
+    append: true
 
 - name: Install the explicit Sway session launcher
   ansible.builtin.copy:

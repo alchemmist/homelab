@@ -1,0 +1,167 @@
+#!/usr/bin/python3
+"""Keep the visible desktop stopped until Space, then leave Space alone.
+
+The compositor stays running so the picture can appear immediately. Waybar,
+desktop shortcuts and notifications are not started with the session, and the
+outputs are switched off. Space is observed from the keyboard device rather
+than bound in Sway: the first press turns the picture on, and every later
+press is ignored by this program so typing and shortcuts keep the real key.
+"""
+import json
+import os
+import select
+import struct
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+
+EVENT = struct.Struct("llHHi")
+EV_KEY = 0x01
+KEY_SPACE = 57
+VISUAL = (
+    ["/usr/bin/waybar"],
+    ["/usr/local/bin/homelab-sway-shortcuts"],
+    ["/usr/bin/mako"],
+)
+
+
+def runtime_dir():
+    return Path(os.environ.get("XDG_RUNTIME_DIR", f"/tmp/homelab-graphics-{os.getuid()}"))
+
+
+def state_path():
+    return runtime_dir() / "homelab-graphics.json"
+
+
+def read_state():
+    try:
+        return json.loads(state_path().read_text())
+    except (OSError, json.JSONDecodeError):
+        return {"active": False}
+
+
+def write_state(active):
+    path = state_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"active": bool(active)}))
+
+
+def graphics_active():
+    return bool(read_state().get("active"))
+
+
+def swaymsg(*args):
+    socket = os.environ.get("SWAYSOCK")
+    command = ["/usr/bin/swaymsg"]
+    if socket:
+        command.extend(["-s", socket])
+    command.extend(args)
+    subprocess.run(command, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def command_running(command):
+    needle = command[0]
+    for entry in Path("/proc").iterdir() if Path("/proc").exists() else []:
+        if not entry.name.isdigit():
+            continue
+        try:
+            raw = (entry / "cmdline").read_bytes().split(b"\0")
+        except OSError:
+            continue
+        if raw and raw[0].decode(errors="ignore") == needle:
+            return True
+    return False
+
+
+def stop_visuals():
+    for command in VISUAL:
+        subprocess.run(["/usr/bin/pkill", "-f", command[0]], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def start_visuals(spawn):
+    for command in VISUAL:
+        if not command_running(command):
+            spawn(command)
+
+
+WALLPAPER = "/usr/local/share/wallpapers/homelab/default.png"
+
+
+def graphics_down(blank=swaymsg):
+    stop_visuals()
+    blank("output", "*", "bg", "#10141c", "solid_color")
+    blank("output", "*", "dpms", "off")
+    write_state(False)
+
+
+def graphics_up(blank=swaymsg, spawn=None):
+    if graphics_active():
+        return False
+    spawn = spawn or (lambda command: subprocess.Popen(command, start_new_session=True))
+    blank("output", "*", "dpms", "on")
+    blank("output", "*", "bg", WALLPAPER, "fill")
+    start_visuals(spawn)
+    write_state(True)
+    return True
+
+
+def keyboard_devices():
+    devices = []
+    for path in sorted(Path("/dev/input").glob("event*")):
+        try:
+            handle = path.open("rb", buffering=0)
+        except OSError:
+            continue
+        devices.append(handle)
+    return devices
+
+
+def space_pressed(payload):
+    if len(payload) < EVENT.size:
+        return False
+    _seconds, _useconds, event_type, code, value = EVENT.unpack_from(payload)
+    return event_type == EV_KEY and code == KEY_SPACE and value == 1
+
+
+def watch(open_devices=keyboard_devices, sleep=time.sleep):
+    graphics_down()
+    while True:
+        devices = open_devices()
+        if not devices:
+            sleep(1)
+            continue
+        try:
+            readable, _, _ = select.select(devices, [], [], 1)
+        except (OSError, ValueError):
+            for handle in devices:
+                handle.close()
+            continue
+        for handle in readable:
+            try:
+                payload = handle.read(EVENT.size)
+            except OSError:
+                continue
+            if payload and space_pressed(payload) and not graphics_active():
+                graphics_up()
+        for handle in devices:
+            handle.close()
+
+
+def main():
+    action = sys.argv[1] if len(sys.argv) == 2 else ""
+    if action == "down":
+        graphics_down()
+    elif action == "up":
+        graphics_up()
+    elif action == "watch":
+        watch()
+    elif action == "status":
+        print("up" if graphics_active() else "down")
+    else:
+        raise SystemExit("Usage: homelab-graphics down|up|watch|status")
+
+
+if __name__ == "__main__":
+    main()
