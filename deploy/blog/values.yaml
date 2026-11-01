@@ -1,6 +1,7 @@
 image:
-  repository: ghcr.io/alchemmist/blog
-  tag: "7da9b66790ef5c669561ad4791977eb42ae14c08" # {"$imagescan": "blog-image:tag"}
+  repository: harbor.socrat.alchemmist.xyz/homelab/blog
+  tag: "7da9b66790ef5c669561ad4791977eb42ae14c08"
+  digest: ""
   pullPolicy: IfNotPresent
 
 replicaCount: 2
@@ -18,4 +19,4 @@ resources:
   requests: { cpu: 20m, memory: 64Mi }
   limits: { memory: 256Mi }
 imagePullSecrets:
-  - ghcr-pull
+  - blog-harbor-pull

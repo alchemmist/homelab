@@ -1,7 +1,8 @@
 replicaCount: 2
 image:
-  repository: ghcr.io/alchemmist/blog
+  repository: harbor.socrat.alchemmist.xyz/homelab/blog
   tag: 7da9b66790ef5c669561ad4791977eb42ae14c08
+  digest: ""
   pullPolicy: IfNotPresent
 service:
   port: 80
@@ -18,4 +19,4 @@ resources:
   limits: { memory: 256Mi }
 
 imagePullSecrets:
-  - ghcr-pull
+  - blog-harbor-pull
