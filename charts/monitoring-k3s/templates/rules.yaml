@@ -14,6 +14,16 @@ spec:
           expr: sum by (instance) (workqueue_depth{job="apiserver"})
         - record: socrat:etcd_members_healthy:sum
           expr: sum(etcd_server_has_leader{job="kube-etcd"} == 1)
+    - name: socrat.vpn.health
+      interval: 5s
+      rules:
+        - alert: SocratVPNFallbackActive
+          expr: socrat_vpn_fallback_active{job="node-exporter"} == 1
+          labels:
+            severity: warning
+          annotations:
+            summary: VPN is running in native fallback mode.
+            description: 'VPN fallback is latched on {{ "{{ $labels.instance }}" }}. Kubernetes is fenced and native systemd services are responsible for VPN availability. Verify fallback health before manually returning to Kubernetes.'
     - name: socrat.nodes.health
       rules:
         - record: socrat:node_exporter_last_success_timestamp_seconds

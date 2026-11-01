@@ -137,9 +137,13 @@ def write_state(path, state):
         raise
 
 
-def write_metrics(path, streams, users, success, registered=0):
+def write_metrics(path, streams, users, success, registered=0,
+                  fallback_marker="/var/lib/homelab-vpn-failover/active"):
     timestamp = time.time()
     lines = [
+        '# HELP socrat_vpn_fallback_active Whether native VPN fallback mode is latched on this VPS.',
+        '# TYPE socrat_vpn_fallback_active gauge',
+        f'socrat_vpn_fallback_active {int(os.path.exists(fallback_marker))}',
         '# HELP socrat_vpn_trojan_connections Established TCP streams on the local VPN entrypoint ports.',
         '# TYPE socrat_vpn_trojan_connections gauge',
         f'socrat_vpn_trojan_connections {streams}',

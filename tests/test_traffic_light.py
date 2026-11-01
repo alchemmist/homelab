@@ -29,6 +29,23 @@ class TrafficLightLayoutTest(unittest.TestCase):
     def setUp(self):
         self.dashboard = load()
 
+    def test_vpn_mode_replaces_top_nodes_without_resizing(self):
+        panel = panel_by_id(self.dashboard, 9)
+        self.assertEqual(panel['gridPos'], {'x': 4, 'y': 0, 'w': 2, 'h': 2})
+        self.assertEqual(panel['title'], '')
+        defaults = panel['fieldConfig']['defaults']
+        self.assertEqual(defaults['displayName'], 'VPN mode')
+        states = defaults['mappings'][0]['options']
+        self.assertEqual(states['0'], {'text': 'K3s', 'color': '#26783D'})
+        self.assertEqual(states['1'], {'text': 'Fallback', 'color': '#A85D08'})
+        self.assertEqual(states['-2'], {'text': 'Unknown', 'color': '#555555'})
+        expr = panel['targets'][0]['expr']
+        self.assertIn('socrat_vpn_fallback_active', expr)
+        self.assertIn('timestamp(', expr)
+        self.assertIn('< 30', expr)
+        self.assertIn('or vector(-2)', expr)
+        self.assertTrue(panel['targets'][0]['instant'])
+
     def test_panels_use_the_integer_tv_grid(self):
         for panel in self.dashboard['panels']:
             grid = panel['gridPos']

@@ -249,3 +249,14 @@ class CollectorTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class FallbackMetricTests(unittest.TestCase):
+    def test_fallback_latch_is_exported_even_when_collection_fails(self):
+        with tempfile.TemporaryDirectory() as directory:
+            marker = Path(directory) / "active"
+            output = Path(directory) / "vpn.prom"
+            for active in (False, True):
+                if active:
+                    marker.touch()
+                MODULE.write_metrics(str(output), 0, [], False, fallback_marker=str(marker))
+                self.assertIn(f"socrat_vpn_fallback_active {int(active)}\n", output.read_text())
