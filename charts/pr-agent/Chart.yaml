@@ -1,0 +1,6 @@
+apiVersion: v2
+name: pr-agent
+description: PR-Agent GitHub App webhook server
+type: application
+version: 0.1.0
+appVersion: "0.49.0"

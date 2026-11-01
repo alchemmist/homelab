@@ -18,6 +18,7 @@ watchNamespaces:
   - llm
   - lms
   - monori
+  - pr-agent
   - remark42
   - socrat-home
   - syncthing

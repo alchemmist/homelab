@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pr-agent
+  labels:
+    app: pr-agent
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: pr-agent
+  template:
+    metadata:
+      labels:
+        app: pr-agent
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.nodeName | quote }}
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: pr-agent
+          image: {{ .Values.image | quote }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.port }}
+          env:
+            - name: PORT
+              value: {{ .Values.port | quote }}
+            - name: GUNICORN_WORKERS
+              value: {{ .Values.gunicornWorkers | quote }}
+            - name: CONFIG__MODEL
+              value: {{ .Values.model | quote }}
+            - name: CONFIG__FALLBACK_MODELS
+              value: "[]"
+            - name: CONFIG__CUSTOM_MODEL_MAX_TOKENS
+              value: {{ .Values.customModelMaxTokens | quote }}
+            - name: CONFIG__GIT_PROVIDER
+              value: github
+            - name: GITHUB__DEPLOYMENT_TYPE
+              value: app
+            - name: OPENAI__API_BASE
+              value: {{ .Values.openaiApiBase | quote }}
+            - name: OPENAI__KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secretName }}
+                  key: openai-key
+            - name: GITHUB__APP_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secretName }}
+                  key: github-app-id
+            - name: GITHUB__PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secretName }}
+                  key: github-private-key
+            - name: GITHUB__WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secretName }}
+                  key: github-webhook-secret
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: true
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: outputs
+              mountPath: /app/pr-agent-outputs
+            - name: lancedb
+              mountPath: /app/lancedb
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: outputs
+          emptyDir: {}
+        - name: lancedb
+          emptyDir: {}
