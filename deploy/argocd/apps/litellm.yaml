@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: litellm
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    - repoURL: ghcr.io/berriai
+      chart: litellm-helm
+      targetRevision: 1.105.1
+      helm:
+        valueFiles:
+          - $values/deploy/platform/litellm/values.yaml
+    - repoURL: https://github.com/alchemmist/homelab.git
+      targetRevision: main
+      ref: values
+  destination:
+    namespace: llm
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true

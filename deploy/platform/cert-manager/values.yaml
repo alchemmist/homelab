@@ -1,0 +1,109 @@
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - socrat-0
+          - socrat-3
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+    - labelSelector:
+        matchLabels:
+          app.kubernetes.io/component: controller
+          app.kubernetes.io/instance: cert-manager
+          app.kubernetes.io/name: cert-manager
+      topologyKey: kubernetes.io/hostname
+cainjector:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/hostname
+            operator: In
+            values:
+            - socrat-0
+            - socrat-3
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/component: cainjector
+            app.kubernetes.io/instance: cert-manager
+            app.kubernetes.io/name: cainjector
+        topologyKey: kubernetes.io/hostname
+  nodeSelector:
+    kubernetes.io/hostname: null
+  replicaCount: 2
+  resources:
+    limits:
+      memory: 512Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+crds:
+  enabled: true
+extraArgs:
+- --acme-http01-solver-nameservers=1.1.1.1:53,9.9.9.9:53
+nodeSelector:
+  kubernetes.io/hostname: null
+replicaCount: 2
+resources:
+  limits:
+    memory: 512Mi
+  requests:
+    cpu: 50m
+    memory: 128Mi
+startupapicheck:
+  resources:
+    limits:
+      memory: 128Mi
+    requests:
+      cpu: 10m
+      memory: 32Mi
+strategy:
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 1
+  type: RollingUpdate
+webhook:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/hostname
+            operator: In
+            values:
+            - socrat-0
+            - socrat-3
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/component: webhook
+            app.kubernetes.io/instance: cert-manager
+            app.kubernetes.io/name: webhook
+        topologyKey: kubernetes.io/hostname
+  nodeSelector:
+    kubernetes.io/hostname: null
+  replicaCount: 2
+  resources:
+    limits:
+      memory: 256Mi
+    requests:
+      cpu: 20m
+      memory: 64Mi
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate

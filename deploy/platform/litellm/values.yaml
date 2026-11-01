@@ -1,0 +1,103 @@
+db:
+  database: litellm
+  deployStandalone: false
+  endpoint: litellm-postgres.llm.svc.cluster.local
+  secret:
+    name: litellm-db
+    passwordKey: password
+    usernameKey: username
+  useExisting: true
+envVars:
+  FORWARDED_ALLOW_IPS: 127.0.0.1,10.42.0.0/16,10.250.0.0/24
+  LITELLM_TELEMETRY: "False"
+  PROXY_BASE_URL: https://llm.alchemmist.xyz
+environmentSecrets:
+- litellm-env
+extraEnvVars:
+- name: VLLM_API_KEY
+  valueFrom:
+    secretKeyRef:
+      key: api-key
+      name: vllm-api
+fullnameOverride: litellm
+image:
+  pullPolicy: IfNotPresent
+  repository: ghcr.io/berriai/litellm
+  tag: 1.105.1
+ingress:
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-http01
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+  className: traefik
+  enabled: true
+  hosts:
+  - host: llm.alchemmist.xyz
+    paths:
+    - path: /
+      pathType: Prefix
+  tls:
+  - hosts:
+    - llm.alchemmist.xyz
+    secretName: litellm-public-tls
+masterkeySecretKey: LITELLM_MASTER_KEY
+masterkeySecretName: litellm-env
+migrationJob:
+  enabled: true
+  hooks:
+    argocd:
+      enabled: false
+    helm:
+      enabled: true
+  resources:
+    limits:
+      cpu: "2"
+      memory: 2Gi
+    requests:
+      cpu: 100m
+      memory: 512Mi
+nodeSelector:
+  kubernetes.io/hostname: socrat-0
+numWorkers: 1
+proxy_config:
+  general_settings:
+    cancel_on_disconnect: true
+    disable_env_credential_login: true
+    master_key: os.environ/LITELLM_MASTER_KEY
+  litellm_settings:
+    callbacks:
+    - prometheus
+    num_retries: 0
+    request_timeout: 7200
+    require_auth_for_metrics_endpoint: true
+  model_list:
+  - litellm_params:
+      api_base: http://llm-switcher.llm.svc.cluster.local:8000/v1
+      api_key: os.environ/VLLM_API_KEY
+      model: openai/qwen3.8-27b
+      stream_timeout: 7200
+      timeout: 7200
+    model_info:
+      input_cost_per_token: 0
+      max_input_tokens: 114688
+      max_output_tokens: 16384
+      output_cost_per_token: 0
+    model_name: qwen3.8-27b
+redis:
+  enabled: false
+replicaCount: 1
+resources:
+  limits:
+    cpu: "2"
+    memory: 4Gi
+  requests:
+    cpu: 250m
+    memory: 1Gi
+serviceAccount:
+  automount: false
+  create: true
+strategy:
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+  type: RollingUpdate
+terminationGracePeriodSeconds: 7260

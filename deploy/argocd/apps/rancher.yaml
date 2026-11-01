@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rancher
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    - repoURL: https://releases.rancher.com/server-charts/stable
+      chart: rancher
+      targetRevision: 2.15.2
+      helm:
+        valueFiles:
+          - $values/deploy/platform/rancher/values.yaml
+    - repoURL: https://github.com/alchemmist/homelab.git
+      targetRevision: main
+      ref: values
+  destination:
+    namespace: cattle-system
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true

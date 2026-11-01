@@ -1,0 +1,63 @@
+authentik:
+  error_reporting:
+    enabled: false
+    send_pii: false
+  existingSecret:
+    secretName: authentik-runtime
+geoip:
+  enabled: false
+global:
+  deploymentStrategy:
+    type: Recreate
+  image:
+    tag: 2026.8.5
+  nodeSelector:
+    kubernetes.io/hostname: socrat-0
+  securityContext:
+    fsGroup: 1000
+  volumeMounts:
+  - mountPath: /data
+    name: data
+  volumes:
+  - name: data
+    persistentVolumeClaim:
+      claimName: authentik-data
+postgresql:
+  enabled: false
+server:
+  automountServiceAccountToken: false
+  ingress:
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-http01
+    enabled: true
+    hosts:
+    - auth.socrat.alchemmist.xyz
+    ingressClassName: traefik
+    tls:
+    - hosts:
+      - auth.socrat.alchemmist.xyz
+      secretName: authentik-tls
+  replicas: 1
+  resources:
+    limits:
+      ephemeral-storage: 1Gi
+      memory: 1536Mi
+    requests:
+      cpu: 100m
+      ephemeral-storage: 256Mi
+      memory: 768Mi
+  serviceAccountName: identity-runtime
+serviceAccount:
+  create: false
+worker:
+  automountServiceAccountToken: false
+  replicas: 1
+  resources:
+    limits:
+      ephemeral-storage: 1Gi
+      memory: 1536Mi
+    requests:
+      cpu: 100m
+      ephemeral-storage: 256Mi
+      memory: 768Mi
+  serviceAccountName: identity-runtime

@@ -1,0 +1,140 @@
+core:
+  extraEnvVars:
+  - name: CONFIG_OVERWRITE_JSON
+    value: '{"auth_mode":"db_auth","self_registration":false,"project_creation_restriction":"adminonly"}'
+  nodeSelector:
+    kubernetes.io/hostname: socrat-0
+  resources:
+    limits:
+      ephemeral-storage: 1Gi
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      ephemeral-storage: 64Mi
+      memory: 256Mi
+database:
+  internal:
+    initContainer:
+      migrator:
+        resources:
+          limits:
+            ephemeral-storage: 1Gi
+            memory: 256Mi
+          requests:
+            cpu: 50m
+            ephemeral-storage: 64Mi
+            memory: 128Mi
+      permissions:
+        resources:
+          limits:
+            ephemeral-storage: 1Gi
+            memory: 256Mi
+          requests:
+            cpu: 50m
+            ephemeral-storage: 64Mi
+            memory: 128Mi
+    nodeSelector:
+      kubernetes.io/hostname: socrat-0
+    resources:
+      limits:
+        ephemeral-storage: 1Gi
+        memory: 1Gi
+      requests:
+        cpu: 100m
+        ephemeral-storage: 64Mi
+        memory: 512Mi
+existingSecretAdminPassword: harbor-bootstrap
+existingSecretSecretKey: harbor-bootstrap
+expose:
+  ingress:
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-http01
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      traefik.ingress.kubernetes.io/router.tls: "true"
+    className: traefik
+    hosts:
+      core: harbor.socrat.alchemmist.xyz
+  tls:
+    certSource: secret
+    enabled: true
+    secret:
+      secretName: harbor-tls
+  type: ingress
+externalURL: https://harbor.socrat.alchemmist.xyz
+jobservice:
+  jobLoggers:
+  - stdout
+  maxJobWorkers: 2
+  nodeSelector:
+    kubernetes.io/hostname: socrat-0
+  resources:
+    limits:
+      ephemeral-storage: 1Gi
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      ephemeral-storage: 64Mi
+      memory: 256Mi
+metrics:
+  enabled: false
+persistence:
+  enabled: true
+  persistentVolumeClaim:
+    database:
+      size: 5Gi
+      storageClass: local-path
+    redis:
+      size: 1Gi
+      storageClass: local-path
+    registry:
+      size: 100Gi
+      storageClass: local-path
+  resourcePolicy: keep
+portal:
+  nodeSelector:
+    kubernetes.io/hostname: socrat-0
+  resources:
+    limits:
+      ephemeral-storage: 1Gi
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      ephemeral-storage: 64Mi
+      memory: 64Mi
+redis:
+  internal:
+    nodeSelector:
+      kubernetes.io/hostname: socrat-0
+    resources:
+      limits:
+        ephemeral-storage: 1Gi
+        memory: 512Mi
+      requests:
+        cpu: 50m
+        ephemeral-storage: 64Mi
+        memory: 128Mi
+registry:
+  controller:
+    resources:
+      limits:
+        ephemeral-storage: 1Gi
+        memory: 512Mi
+      requests:
+        cpu: 50m
+        ephemeral-storage: 64Mi
+        memory: 128Mi
+  nodeSelector:
+    kubernetes.io/hostname: socrat-0
+  registry:
+    resources:
+      limits:
+        ephemeral-storage: 1Gi
+        memory: 1Gi
+      requests:
+        cpu: 100m
+        ephemeral-storage: 64Mi
+        memory: 256Mi
+trivy:
+  enabled: false
+updateStrategy:
+  type: Recreate
