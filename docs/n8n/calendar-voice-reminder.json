@@ -80,6 +80,10 @@
             {
               "name": "text",
               "value": "={{ $json.text }}"
+            },
+            {
+              "name": "volume",
+              "value": "={{ 0.5 }}"
             }
           ]
         },
