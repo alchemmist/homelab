@@ -65,6 +65,39 @@ pull robot in each consuming namespace and reference it in `imagePullSecrets`.
 No cluster-wide unauthenticated registry or insecure TLS exception is needed.
 Fleet image automation credentials are a separate integration, not yet configured.
 
+### Blog CI/CD pilot (2026-11-01)
+
+`alchemmist/blog` now validates the Hugo/Pagefind site in GitHub Actions, builds
+`site/Dockerfile.blog`, and pushes the image to Harbor with its Git SHA as the
+tag. CI then makes one Argo CD Application `PATCH` containing the pushed
+`sha256` digest; it does not commit a version bump to Git or issue a separate
+Sync request. Argo auto-sync is enabled only for the `blog` Application, with
+`prune=false` and `selfHeal=false`.
+
+The `blog` AppProject restricts source to this repository, destination to the
+`blog` namespace, and its `ci` role to `applications,update` on `blog/blog`.
+The project token is a GitHub Actions secret, not stored in Git. Rotate it before
+its one-year expiry. The `blog-harbor-pull` Secret supplies namespace-scoped
+registry authentication. The Argo Application renders only the `Service`,
+`Deployment`, and `Ingress`; its Helm chart and base values remain in
+`homelab/main`, while the live image digest is held in the Application object.
+The AppProject and Application were created through the Argo API and are not yet
+represented as manifests in Git.
+
+The first CI-published image was applied successfully; both replicas became
+ready on socrat-1 and socrat-3, Argo reported `Synced/Healthy`, and both public
+blog hostnames returned HTTP 200. Pulling the ~235 MB content layer to socrat-3
+took about 13 minutes, so monitor Argo health during future releases. The prior
+live image was `ghcr.io/alchemmist/blog:7da9b66790ef5c669561ad4791977eb42ae14c08`.
+For emergency rollback, set the Application's Helm parameters to that GHCR
+repository/tag and clear `image.digest`; auto-sync will restore it. The next CI
+release replaces the parameter list with Harbor's new digest.
+
+The old Helm release record is retained for audit; Fleet/Helm no longer
+reconcile this workload. Do not run `helm upgrade` or `helm uninstall` for
+`blog` after this ownership transfer. Other applications still using GHCR have
+not been migrated.
+
 ## Storage, retention and recovery
 
 Explicit **local-path** PVCs: registry 100 GiB, PostgreSQL 5 GiB, Redis 1 GiB.
@@ -108,8 +141,9 @@ substitute for the PostgreSQL/registry backup.
   the small smoke image remains available for future checks.
 - Jobservice restarted during initial dependency startup, then became Ready.
 
-Not verified: physical node-loss, restore from backup, large/slow layer uploads,
-CI integration or migration of existing deployment image references.
+Not verified: physical node-loss or restore from backup. CI integration and
+initial deployment migration are verified for the blog pilot only; other
+application image references remain unchanged.
 
 ## Distributed HA work
 
