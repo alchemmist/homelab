@@ -26,6 +26,20 @@ extraEnvVars:
         name: vllm-api
         key: api-key
 envVars:
+  OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+  OTEL_EXPORTER_OTLP_ENDPOINT: https://10.250.0.3:44318
+  OTEL_EXPORTER_OTLP_CERTIFICATE: /etc/otel-client/ca.crt
+  OTEL_EXPORTER_OTLP_CLIENT_CERTIFICATE: /etc/otel-client/tls.crt
+  OTEL_EXPORTER_OTLP_CLIENT_KEY: /etc/otel-client/tls.key
+  OTEL_EXPORTER_OTLP_INSECURE: 'false'
+  OTEL_EXPORTER_OTLP_HEADERS: Connection=close
+  OTEL_SERVICE_NAME: litellm
+  OTEL_TRACES_SAMPLER: always_on
+  OTEL_METRICS_EXPORTER: none
+  OTEL_LOGS_EXPORTER: none
+  LITELLM_OTEL_INTEGRATION_ENABLE_METRICS: 'false'
+  LITELLM_OTEL_INTEGRATION_ENABLE_EVENTS: 'false'
+  OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: NO_CONTENT
   LITELLM_TELEMETRY: 'False'
   PROXY_BASE_URL: https://llm.alchemmist.xyz
   FORWARDED_ALLOW_IPS: '127.0.0.1,10.42.0.0/16,10.250.0.0/24'
@@ -80,7 +94,8 @@ proxy_config:
     disable_env_credential_login: true
     master_key: os.environ/LITELLM_MASTER_KEY
   litellm_settings:
-    callbacks: [prometheus]
+    callbacks: [prometheus, otel]
+    turn_off_message_logging: true
     require_auth_for_metrics_endpoint: true
     request_timeout: 7200
     num_retries: 0
@@ -100,3 +115,13 @@ ingress:
     - secretName: litellm-public-tls
       hosts:
         - llm.alchemmist.xyz
+
+volumes:
+  - name: otel-client
+    secret:
+      secretName: otel-app-tls-litellm
+      defaultMode: 256
+volumeMounts:
+  - name: otel-client
+    mountPath: /etc/otel-client
+    readOnly: true

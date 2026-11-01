@@ -50,3 +50,9 @@ maxToolCallIterations: -1
 
 toolGuard:
   enabled: true
+
+# Activate only after native source-safe bootstrap and renewable SDK proof gates.
+otel:
+  enabled: false
+  sourceConfigMap: ""
+  environment: {}

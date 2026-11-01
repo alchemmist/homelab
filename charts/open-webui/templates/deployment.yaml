@@ -11,13 +11,21 @@ spec:
       app: open-webui
   template:
     metadata:
-      {{- if .Values.toolGuard.enabled }}
+      {{- if or .Values.toolGuard.enabled .Values.otel.enabled }}
       annotations:
+        {{- if .Values.toolGuard.enabled }}
         checksum/tool-guard: {{ include (print $.Template.BasePath "/tool-guard-configmap.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if .Values.otel.enabled }}
+        checksum/otel-source: {{ .Values.otel.sourceConfigMap | quote }}
+        {{- end }}
       {{- end }}
       labels:
         app: open-webui
     spec:
+      {{- if .Values.otel.enabled }}
+      terminationGracePeriodSeconds: 7200
+      {{- end }}
       automountServiceAccountToken: false
       enableServiceLinks: false
       nodeSelector:
@@ -75,6 +83,12 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.auth.secret | quote }}
                   key: {{ .Values.auth.secretKey | quote }}
+            {{- if .Values.otel.enabled }}
+            {{- range $name, $value := .Values.otel.environment }}
+            - name: {{ $name }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           startupProbe:
@@ -98,6 +112,14 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 5
           volumeMounts:
+            {{- if .Values.otel.enabled }}
+            - name: otel-source
+              mountPath: /etc/otel-source
+              readOnly: true
+            - name: otel-client
+              mountPath: /etc/otel-client
+              readOnly: true
+            {{- end }}
             {{- if .Values.toolGuard.enabled }}
             - name: patched-middleware
               mountPath: /app/backend/open_webui/utils/middleware.py
@@ -111,6 +133,16 @@ spec:
             - name: data
               mountPath: /app/backend/data
       volumes:
+        {{- if .Values.otel.enabled }}
+        - name: otel-source
+          configMap:
+            name: {{ required "Proof-gated immutable source ConfigMap required" .Values.otel.sourceConfigMap | quote }}
+            defaultMode: 420
+        - name: otel-client
+          secret:
+            secretName: otel-app-tls-open-webui
+            defaultMode: 256
+        {{- end }}
         {{- if .Values.toolGuard.enabled }}
         - name: tool-guard
           configMap:
