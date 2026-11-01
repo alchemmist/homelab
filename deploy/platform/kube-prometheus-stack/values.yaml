@@ -280,6 +280,8 @@ prometheus:
           path: client.crt
         - key: tls.key
           path: client.key
+    tsdb:
+      outOfOrderTimeWindow: 30m
     walCompression: true
   thanosService:
     enabled: true
