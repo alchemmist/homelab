@@ -1,92 +1,87 @@
 # Выкатка на кластер Socrat
 
-Срез на **1 ноября 2026**. Это рабочий контракт для новых релизов. Пилот — приложение `blog`. Остальные workload ещё на Fleet/Helm и GHCR; их не переводить этим документом.
+Срез на **1 ноября 2026**. Контракт для новых релизов. Пилот — `blog`. Остальные workload ещё на Fleet/Helm и GHCR.
 
-Подробный журнал пилота: `docs/harbor.md`, раздел Blog CI/CD pilot. Registry: `llm-wiki/harbor.md`.
+Журнал того, что уже сделано на кластере: `docs/harbor.md`, раздел Blog CI/CD pilot. Registry: `llm-wiki/harbor.md`.
 
 ## Единый способ
 
-Новый релиз приложения делается только так:
+Живая версия образа должна лежать в Git репозитория homelab. Argo CD читает этот коммит и катит Deployment. CI сам в homelab не коммитит и не пишет digest в объект Application.
 
 1. GitHub Actions собирает и проверяет артефакт.
-2. CI пушит immutable-образ в Harbor. Тег — полный git SHA коммита, не `latest`.
-3. CI один раз вызывает Argo CD API и записывает в Application пушеный `sha256` digest.
-4. Argo CD сам синкает этот Application. Отдельный Sync из CI не вызывается.
-5. Чарт и базовые values остаются в `homelab` на `main`. Digest в Git не коммитится: живой образ лежит в объекте Application.
-
-Чего не делать для приложения, которое уже на этом пути:
-
-- не коммитить bump тега или digest в values ради релиза;
-- не вызывать `helm upgrade` и `helm uninstall` — старый Helm release блога оставлен для аудита, Fleet/Helm его больше не реконсилируют;
-- не дергать Deployment через `kubectl set image` и не ждать, что Fleet image automation сама подхватит тег. Учётные данные Fleet для Harbor ещё не настроены.
-
-## Что вызывает CI
-
-Своей ручки на homelab-кластере нет. CI ходит в Argo CD напрямую.
-
-| | |
-| --- | --- |
-| URL | `https://argocd.socrat.alchemmist.xyz` |
-| Метод | `PATCH` |
-| Путь | `/api/v1/applications/blog` |
-| Авторизация | `Authorization: Bearer <project token>` |
-| Эффект | одна замена списка Helm-parameters Application на пушеный Harbor digest |
-
-Токен — секрет GitHub Actions репозитория приложения. В Git его нет. Срок — один год; ротировать до истечения.
-
-Роль `ci` в AppProject `blog` имеет только `applications, update` на `blog/blog`. RBAC Argo ограничивает Application целиком, а не отдельным полем: токен технически может менять и другие поля этого одного Application. «Только digest» — договор воркфлоу. Защита проекта: source только этот репозиторий, destination только namespace `blog`, cluster-scoped ресурсы запрещены. В namespace разрешены `Service`, `Deployment`, `ReplicaSet`, `Pod`, `Ingress`. `ReplicaSet` и `Pod` нужны, чтобы дочерние объекты Deployment были в resource tree.
+2. CI пушит immutable-образ в Harbor. Тег — полный git SHA, не `latest`. Выкатка идёт по `sha256` digest.
+3. CI вызывает одну ручку homelab и передаёт имя приложения, тег и digest.
+4. Ручка сама кладёт коммит в `homelab`: обновляет `image.repository`, `image.tag` и `image.digest` в values этого приложения и пушит в `main`.
+5. Argo CD видит новый коммит и синкает Application. Отдельный Sync из CI не вызывается.
 
 Образ:
 
 ```text
-harbor.socrat.alchemmist.xyz/homelab/blog:<git-sha>
+harbor.socrat.alchemmist.xyz/homelab/<app>:<git-sha>
 ```
 
-Выкатка идёт по digest, не по мутабельному тегу. Push-робот Harbor живёт в secret store CI. Pull в namespace даёт Secret `blog-harbor-pull` (`kubernetes.io/dockerconfigjson`), на него ссылается `imagePullSecrets`. Анонимного registry и insecure TLS нет.
+Чарт берёт digest, если он задан, иначе тег: `charts/blog/templates/deployment.yaml`.
 
-Следующий релиз CI заменяет весь список Helm-parameters на новый Harbor digest. Поэтому ручной rollback и следующий CI-релиз нельзя смешивать в одном списке параметров: CI перезапишет список целиком.
+Чего не делать:
+
+- не патчить Application из CI, чтобы версия жила только в объекте Argo;
+- не вызывать `helm upgrade` / `helm uninstall` для приложения, которое уже отдано Argo;
+- не менять образ через `kubectl set image`.
+
+## Ручка
+
+Ручка — сервис homelab, не API Argo CD. Её задача: принять уже запушенный digest и сделать коммит версии в homelab. CI после пуша в Harbor вызывает её один раз.
+
+Этой ручки в репозитории ещё нет. Пока её нет, коммит версии сам не появляется.
+
+Она должна:
+
+- принимать только заранее заведённое приложение, repository в проекте Harbor `homelab`, тег-ша и digest;
+- менять только поля образа в values этого приложения;
+- коммитить и пушить в `main`;
+- не вызывать Sync и не хранить токен Argo у CI приложения.
+
+Push-робот Harbor остаётся в secret store CI. Pull в namespace — Secret `kubernetes.io/dockerconfigjson` и `imagePullSecrets`. Для блога это `blog-harbor-pull`.
 
 ## Как это сходится на кластере
 
-Argo CD стоит на socrat-0. UI: `https://argocd.socrat.alchemmist.xyz`, TLS через cert-manager HTTP-01, ingress Traefik, в том числе через VPS edge. Браузер входит через Authentik OIDC (`homelab-owner` и `homelab-platform-operator` — admin). Встроенный admin — break-glass, пока OIDC не выключен. Значения: `deploy/argocd/values.yaml`, playbook `ansible/playbooks/argocd.yml`.
+Argo CD на socrat-0. UI: `https://argocd.socrat.alchemmist.xyz`, TLS cert-manager HTTP-01, ingress Traefik, в том числе через VPS edge. Браузер входит через Authentik OIDC. Значения: `deploy/argocd/values.yaml`, playbook `ansible/playbooks/argocd.yml`.
 
-У пилота `blog`:
+У пилота `blog` auto-sync включён только у этого Application, `prune=false`, `selfHeal=false`. Source — этот репозиторий, destination — namespace `blog`. В AppProject разрешены `Service`, `Deployment`, `ReplicaSet`, `Pod`, `Ingress`. `ReplicaSet` и `Pod` нужны, чтобы дочерние объекты Deployment были в resource tree. Cluster-scoped ресурсы запрещены.
 
-- auto-sync включён только у этого Application;
-- `prune=false`, `selfHeal=false`;
-- source — этот репозиторий, destination — namespace `blog`;
-- чарт и база — `deploy/blog/values.yaml` и chart блога в homelab. Поле `image.digest` в Git пустое: боевой digest приходит параметром Application;
-- две реплики, ingress `alchemmist.xyz` и `www.alchemmist.xyz`.
+AppProject и Application созданы через Argo API и пока не лежат манифестами в Git. Чарт и базовые values — в Git: `deploy/blog/values.yaml`.
 
-AppProject и Application созданы через Argo API и пока не лежат манифестами в Git. Пока это так, источник правды для самого Application — живой объект, а не файл в репозитории.
+После коммита версии Argo подтягивает Helm и катит Deployment. Ноды тянут слои из Harbor сами. На первом релизе слой ~235 МБ на socrat-3 шёл около 13 минут. Пока образ качается, смотреть здоровье Application.
 
-После PATCH Argo сам подтягивает Helm-рендер с новым digest и катит Deployment. Ноды тянут слои из Harbor сами. На первом релизе слой контента ~235 МБ на socrat-3 шёл около 13 минут; нода ненадолго не писала status и потом вернулась. Пока образ качается, смотреть здоровье Application, а не считать тишину успехом.
+Harbor один на socrat-0. Падение socrat-0 ломает push и незакешированный pull. Уже запущенные контейнеры при этом не останавливаются.
 
-Первый CI-релиз прошёл: обе реплики Ready на socrat-1 и socrat-3, Argo `Synced/Healthy`, оба публичных хоста блога ответили HTTP 200.
+## Что сейчас сделано у блога
 
-Harbor один на socrat-0. Падение socrat-0 ломает push и незакешированный pull, уже запущенные контейнеры при этом не останавливаются. Trivy, GC и retention deletion выключены: удаление тега, который ещё нужен Deployment, сломает следующий рестарт. Off-node backup registry ещё не настроен.
+Первый CI-релиз прошёл в обход этого контракта. CI сам сделал `PATCH /api/v1/applications/blog` и записал digest в Helm-parameters Application. Коммита в homelab не было. Поэтому `deploy/blog/values.yaml` в Git всё ещё с пустым `image.digest` и старым тегом, а боевая версия видна только в объекте Argo.
+
+Этот PATCH не становится единым способом. Следующий релиз должен обновить values коммитом через ручку. Пока ручка не написана, повторный CI-релиз блога снова перезапишет список Helm-parameters и обойдёт Git.
+
+Токен проекта у роли `ci` имеет `applications, update` только на `blog/blog` и лежит в секрете GitHub Actions. Он нужен был для этого обхода. RBAC Argo ограничивает Application целиком, не отдельным полем.
+
+Проверка первого релиза: обе реплики Ready на socrat-1 и socrat-3, Argo `Synced/Healthy`, оба публичных хоста блога ответили HTTP 200. Старый Helm release оставлен для аудита. Fleet блог больше не реконсилирует.
 
 ## Откат
 
-Аварийный rollback блога: в Helm-parameters Application вернуть предыдущий GHCR repository/tag и очистить `image.digest`. Auto-sync подхватит это без отдельного Sync.
+Откат — тоже коммит в values: предыдущий repository, tag и digest. Auto-sync подхватит его из Git.
 
-Предыдущий живой образ до Harbor-пилота:
+Пока боевая версия блога сидит в Helm-parameters, аварийный откат без ручки делается там же: вернуть GHCR repository/tag и очистить `image.digest`.
 
 ```text
 ghcr.io/alchemmist/blog:7da9b66790ef5c669561ad4791977eb42ae14c08
 ```
 
-Следующий успешный CI-релиз снова заменит список параметров на Harbor digest.
+Следующий CI-релиз текущего пилота снова заменит весь список параметров на Harbor digest.
 
-## Как подключать следующее приложение
+## Следующее приложение
 
-Тот же контракт, отдельный Application и отдельный токен. Не расширять токен блога на чужие Application.
+Тот же контракт, свой Application. Токен блога на него не расширять.
 
-1. Чарт и values в homelab: `image.repository` вида `harbor.socrat.alchemmist.xyz/homelab/<app>`, пустой `image.digest`, `imagePullSecrets`.
-2. В namespace приложения — pull Secret от cluster-pull робота Harbor. Робот проектный, только pull в проекте `homelab`.
-3. AppProject: свой source, свой namespace, узкий allowlist, роль `ci` только на этот Application.
-4. Auto-sync включать точечно у этого Application, с теми же `prune=false` и `selfHeal=false`, пока отдельно не решено иначе.
-5. CI: push `<git-sha>`, один PATCH `/api/v1/applications/<name>` с digest, без Sync и без коммита версии в homelab.
-6. Проверить `Synced/Healthy` и живой HTTP, учитывая долгий pull на холодную ноду.
-
-Пока Application не лежит в Git, создание идёт через Argo API так же, как у блога. Это временный зазор: права и граница проекта должны быть воспроизводимы, digest по-прежнему приходит только из CI.
+1. Чарт и values в homelab, pull Secret в namespace.
+2. AppProject: свой source, свой namespace, тот же allowlist. Auto-sync точечно, `prune=false`, `selfHeal=false`.
+3. CI пушит образ и вызывает общую ручку. Ручка коммитит версию в values этого приложения.
+4. Argo синкает коммит. Проверить `Synced/Healthy` и живой HTTP, с учётом долгого pull на холодную ноду.
