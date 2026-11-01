@@ -70,7 +70,7 @@ flows={x["slug"]:x["pk"] for x in rows("flows/instances/")}
 cert=unique("crypto/certificatekeypairs/","name","authentik Self-signed Certificate")
 scopes=rows("propertymappings/provider/scope/")
 standard={x.get("scope_name"):x["pk"] for x in scopes}
-required=["openid","profile","email"]
+required=["openid","profile","email","offline_access"]
 if not cert or any(x not in standard for x in required):raise RuntimeError("missing defaults")
 stage="groups-scope-mapping"
 expression='return {"groups": [group.name for group in request.user.ak_groups.all()]}'

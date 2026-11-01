@@ -8,18 +8,20 @@ applicationSet:
       memory: 64Mi
 configs:
   cm:
+    users.session.duration: 8h
     oidc.config: |
       name: Authentik
       issuer: https://auth.socrat.alchemmist.xyz/application/o/argocd/
       clientID: socrat-argocd
       clientSecret: $oidc.authentik.clientSecret
-      requestedScopes: [openid, profile, email, groups]
+      requestedScopes: [openid, profile, email, groups, offline_access]
+      refreshTokenThreshold: 60s
       requestedIDTokenClaims:
         groups:
           essential: true
     url: https://argocd.socrat.alchemmist.xyz
   params:
-    server.insecure: true
+    server.insecure: false
   rbac:
     policy.csv: |
       g, homelab-owner, role:admin
@@ -81,3 +83,23 @@ server:
       memory: 128Mi
   service:
     type: ClusterIP
+    annotations:
+      traefik.ingress.kubernetes.io/service.serversscheme: https
+      traefik.ingress.kubernetes.io/service.serverstransport: argocd-argocd-verified-tls@kubernetescrd
+
+# Keep the verified transport managed by both bootstrap Helm and live GitOps.
+extraObjects:
+- apiVersion: traefik.io/v1alpha1
+  kind: ServersTransport
+  metadata:
+    name: argocd-verified-tls
+    namespace: argocd
+    labels:
+      homelab.alchemmist.xyz/edge-transport: argocd
+      app.kubernetes.io/managed-by: Helm
+    annotations:
+      meta.helm.sh/release-name: argo-cd
+      meta.helm.sh/release-namespace: argocd
+  spec:
+    serverName: argocd.socrat.alchemmist.xyz
+    insecureSkipVerify: false

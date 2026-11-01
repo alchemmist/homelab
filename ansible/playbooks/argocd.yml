@@ -14,6 +14,22 @@
     argocd_oidc_script_local: "{{ playbook_dir }}/../roles/argocd_oidc/files/configure.py"
     argocd_oidc_script_remote: /home/alchemmist/.cache/homelab-authentik/argocd-oidc.py
   tasks:
+    - name: Read the VPS ingress backend transport prerequisite
+      ansible.builtin.command:
+        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, -n, traefik-edge,
+               get, deployment, traefik-edge, '-o=jsonpath={.spec.template.spec.containers[0].args}']
+      environment:
+        K3S_CONFIG_FILE: /dev/null
+      register: argocd_edge_args
+      changed_when: false
+
+    - name: Refuse backend TLS until both ingress providers can resolve the transport
+      ansible.builtin.assert:
+        that:
+          - "'--providers.kubernetescrd=true' in argocd_edge_args.stdout"
+          - "'--providers.kubernetescrd.namespaces=argocd' in argocd_edge_args.stdout"
+        fail_msg: Reconcile the reviewed traefik-edge chart before the Argo CD TLS/refresh rollout.
+
     - name: Add the official Argo Helm chart repository
       ansible.builtin.command:
         argv:
@@ -35,6 +51,15 @@
         src: "{{ argocd_values_local }}"
         dest: "{{ argocd_values_remote }}"
         mode: '0600'
+
+    - name: Apply verified Argo CD backend transport before enabling HTTPS
+      ansible.builtin.command:
+        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, apply, -f, '-']
+        stdin: "{{ lookup('file', playbook_dir + '/../../deploy/argocd/server-transport.yaml') }}"
+      environment:
+        K3S_CONFIG_FILE: /dev/null
+      register: argocd_transport
+      changed_when: "'created' in argocd_transport.stdout or 'configured' in argocd_transport.stdout"
 
     - name: Install Argo CD control plane only
       ansible.builtin.command:
