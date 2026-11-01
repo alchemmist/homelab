@@ -4,7 +4,7 @@
 
 ## Что мы делаем
 
-Развиваем личный homelab Socrat: Kubernetes/K3s, VPN, приложения, локальный LLM, приватное администрирование, мониторинг и разумное распределение ресурсов. Постоянные изменения оформляем в **Ansible/Helm/Git**, а не оставляем только ручные правки в UI или kubectl. Релиз образа: CI пушит в Harbor, ручка homelab коммитит tag и digest в values, Argo CD катит этот коммит. Ручки ещё нет; пилот blog пока пишет digest прямо в Application. Гайд: `llm-wiki/cluster-deploy.md`.
+Развиваем личный homelab Socrat: Kubernetes/K3s, VPN, приложения, локальный LLM, приватное администрирование, мониторинг и разумное распределение ресурсов. Постоянные изменения оформляем в **Ansible/Helm/Git**, а не оставляем только ручные правки в UI или kubectl. Релиз образа: CI пушит в Harbor, workflow `deploy-to-socrat` коммитит tag и digest в values, Argo CD катит этот коммит. Application `root` восстанавливает дочерние Application из `deploy/argocd/apps`. Гайд: `llm-wiki/cluster-deploy.md`.
 
 ## Устройство кластера
 
