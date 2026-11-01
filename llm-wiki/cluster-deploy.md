@@ -1,18 +1,22 @@
 # Выкатка на кластер Socrat
 
-Срез на **1 ноября 2026**. Контракт для новых релизов. Пилот — `blog`. Остальные workload ещё на Fleet/Helm и GHCR.
+Срез на **1 ноября 2026**. Это контракт релиза для сервисов, которые уже живут в Argo CD. Пилот — `blog`. Остальные workload ещё на Fleet/Helm и GHCR; этим документом их не переводить.
 
-Журнал того, что уже сделано на кластере: `docs/harbor.md`, раздел Blog CI/CD pilot. Registry: `llm-wiki/harbor.md`.
+Журнал первого пилота и registry: `docs/harbor.md`, `llm-wiki/harbor.md`.
 
-## Единый способ
+## Что является правдой
 
-Живая версия образа должна лежать в Git репозитория homelab. Argo CD читает этот коммит и катит Deployment. CI сам в homelab не коммитит и не пишет digest в объект Application.
+Живая версия образа лежит в Git, в `alchemmist/homelab`, ветка `main`. Argo CD читает этот репозиторий и сам приводит кластер к коммиту. CI не вызывает API Argo CD и не делает Sync.
 
-1. GitHub Actions собирает и проверяет артефакт.
-2. CI пушит immutable-образ в Harbor. Тег — полный git SHA, не `latest`. Выкатка идёт по `sha256` digest.
-3. CI вызывает action `alchemmist/deploy-to-socrat` и передаёт digest.
-4. Action кладёт коммит в `homelab`: обновляет `image.tag` и `image.digest` в `deploy/<app>/values.yaml` и пушит в `main`.
-5. Argo CD видит новый коммит и синкает Application. Отдельный Sync из CI не вызывается.
+Ручная правка в UI Argo CD, `kubectl set image`, `helm upgrade` и Helm-parameters на Application не сохраняются. Следующий sync возвращает объект к манифесту из Git. У блога `selfHeal: true`.
+
+Ожидаемая цепочка:
+
+1. Репозиторий сервиса собирает и проверяет артефакт.
+2. CI пушит immutable-образ в Harbor. Тег образа — полный git SHA коммита сервиса, не `latest`.
+3. Тот же job одним шагом вызывает `alchemmist/deploy-to-socrat@v1` и передаёт digest, который вернул `docker/build-push-action`.
+4. Action коммитит в `homelab` `main` только поля образа этого приложения.
+5. Argo CD на следующем опросе репозитория видит коммит и синкает Application. Обычный интервал опроса — около трёх минут. Webhook на GitHub не настроен.
 
 Образ:
 
@@ -20,56 +24,104 @@
 harbor.socrat.alchemmist.xyz/homelab/<app>:<git-sha>
 ```
 
-Чарт берёт digest, если он задан, иначе тег: `charts/blog/templates/deployment.yaml`.
+В под уходит `repository@sha256:...`, если `image.digest` непустой. Тег в values остаётся как запись, какой коммит сервиса этот digest собрал. Шаблон блога: `charts/blog/templates/deployment.yaml`.
 
-Чего не делать:
+## Чего не делать
 
-- не патчить Application из CI, чтобы версия жила только в объекте Argo;
-- не вызывать `helm upgrade` / `helm uninstall` для приложения, которое уже отдано Argo;
-- не менять образ через `kubectl set image`.
+- Не патчить Application из CI и не писать digest в Helm-parameters. Пустой список в манифесте нужен явно: `parameters: []`. Если поля нет, `kubectl apply` старый список не стирает, и параметр перекроет файл в Git.
+- Не вызывать из CI `argocd app sync`, `helm upgrade`, `helm uninstall`, `kubectl set image`.
+- Не класть второй GitHub Actions job ради коммита версии. Точка входа одна: шаг `Deploy to Socrat` внутри job, который уже собрал и запушил образ.
+- Не заводить свои AppProject и ApplicationSet. Все Application стоят в встроенном проекте `default`. Поле `spec.project` у Argo обязательное; `default` создаётся вместе с Argo CD, отдельным манифестом мы его не описываем.
+- Не коммитить версию образа руками в обход action, кроме аварийного отката.
 
-## Ручка
+## Как пользоваться action
 
-Ручка — action `alchemmist/deploy-to-socrat`. Она принимает digest уже запушенного образа и коммитит версию в homelab. CI после пуша в Harbor вызывает её одним шагом.
+Репозиторий: `alchemmist/deploy-to-socrat`, тег `v1`. Это composite action, не отдельный workflow.
 
-Она:
+```yaml
+- name: Deploy to Socrat
+  uses: alchemmist/deploy-to-socrat@v1
+  with:
+    token: ${{ secrets.HOMELAB_DEPLOY_KEY }}
+    image_version: ${{ steps.image.outputs.digest }}
+```
 
-- принимает имя приложения и digest или тег;
-- меняет только `image.tag` и `image.digest` в `deploy/<app>/values.yaml` и, если файл есть, в `charts/<app>/values.yaml`;
-- коммитит и пушит в `main` deploy key-ом из секрета `HOMELAB_DEPLOY_KEY`;
-- не вызывает Sync и не отдаёт ключ вызывающему репозиторию.
+Имя Application берётся из имени репозитория. Если они разные, передать `app`. Имя — строчные буквы, цифры и дефис, не длиннее 41 символа.
 
-Push-робот Harbor остаётся в secret store CI. Pull в namespace — Secret `kubernetes.io/dockerconfigjson` и `imagePullSecrets`. Для блога это `blog-harbor-pull`.
+`image_version`:
 
-## Как это сходится на кластере
+- `sha256:` и 64 hex. Action пишет это в `image.digest` и ставит `image.tag` равным полному SHA вызывающего коммита. Так надо делать релиз.
+- Обычный тег образа. Action пишет его в `image.tag` и очищает `image.digest`. Это запасной вариант, не основной путь.
 
-Argo CD на socrat-0. UI: `https://argocd.socrat.alchemmist.xyz`, TLS cert-manager HTTP-01, ingress Traefik, в том числе через VPS edge. Браузер входит через Authentik OIDC. Значения: `deploy/argocd/values.yaml`, playbook `ansible/playbooks/argocd.yml`.
+Файлы, которые он меняет:
 
-У пилота `blog` auto-sync включён, `prune=false`, `selfHeal=true`. Source — этот репозиторий, destination — namespace `blog`. Отдельных AppProject и ApplicationSet нет: Application стоит в встроенном проекте `default`.
+- обязательный `deploy/<app>/values.yaml`;
+- `charts/<app>/values.yaml`, если файл уже есть.
 
-Application `root` смотрит `deploy/argocd/apps` и восстанавливает оттуда Application. Сам root лежит в `deploy/argocd/root.yaml` и применяется один раз: если удалить его, дочерние приложения остаются. Чарт и values — в Git: `deploy/blog/values.yaml`.
+В обоих в корневом ключе `image` должны уже быть строки `tag` и `digest`. Action не создаёт файл и не добавляет ключи. В коммит попадают только эти файлы. Автор коммита — `socrat-releaser`. Сообщение: `chore(<app>): deploy <image_version>` и строка `Source: <repo>@<sha>`.
 
-После коммита версии Argo подтягивает Helm и катит Deployment. Ноды тянут слои из Harbor сами. На первом релизе слой ~235 МБ на socrat-3 шёл около 13 минут. Пока образ качается, смотреть здоровье Application.
+Если к моменту коммита `GITHUB_SHA` уже не верхушка ветки, action выходит успешно и ничего не пушит. Старая сборка не откатывает более новый коммит. Если значения уже такие, коммита тоже нет.
 
-Harbor один на socrat-0. Падение socrat-0 ломает push и незакешированный pull. Уже запущенные контейнеры при этом не останавливаются.
+Перед коммитом action делает `git pull --rebase origin main`, чтобы два релиза подряд не затирали чужой коммит версии.
 
-## Что сейчас сделано у блога
+Пример живого вызова: `.github/workflows/deploy.yaml` в `alchemmist/blog`, job `publish-and-deploy`.
 
-Первый CI-релиз записал digest в Helm-parameters Application и не коммитил homelab. Это больше не контракт. Боевая версия теперь в `deploy/blog/values.yaml`. Параметр на Application не нужен: его снимает sync из манифеста в `deploy/argocd/apps/blog.yaml`.
+## Ключ и права
 
-Релиз пишет в Git, а не в API Argo.
+`token` — приватный ключ write deploy key `socrat-releaser` на репозиторий `alchemmist/homelab`. В GitHub он лежит секретом `HOMELAB_DEPLOY_KEY` у каждого репозитория, который вызывает action. Сейчас это `blog` и сам `deploy-to-socrat`.
 
-Проверка первого релиза: обе реплики Ready на socrat-1 и socrat-3, Argo `Synced/Healthy`, оба публичных хоста блога ответили HTTP 200. Старый Helm release оставлен для аудита. Fleet блог больше не реконсилирует.
+Ключ пушит в `homelab` что угодно. Ограничение «только поля образа» сидит в коде action, а не в правах ключа. Кто может менять workflow репозитория с этим секретом, может забрать ключ и запушить в `homelab` любой файл.
+
+`main` у `homelab` ruleset-ом не закрыт. Deploy key нельзя добавить в bypass ruleset, поэтому закрытая ветка отрежет и робота. Пока в репозиторий пушит только владелец, это принятый зазор. Когда появятся другие люди с правом менять workflow, ключ надо заменить на GitHub App, который можно внести в bypass, а приватный ключ держать только в репозитории action.
+
+Токен Argo CD релизу не нужен. Старый секрет `ARGOCD_AUTH_TOKEN` в репозитории блога к этому пути не относится.
+
+Harbor: push-учётка в секретах CI (`HARBOR_USERNAME`, `HARBOR_PASSWORD`). Pull в namespace — Secret `kubernetes.io/dockerconfigjson` и `imagePullSecrets`. У блога это `blog-harbor-pull`.
+
+## Как устроен Argo CD
+
+Argo CD стоит на socrat-0. UI: `https://argocd.socrat.alchemmist.xyz`. TLS cert-manager HTTP-01, ingress Traefik, в том числе через VPS edge. Браузер входит через Authentik OIDC. Значения: `deploy/argocd/values.yaml`, playbook `ansible/playbooks/argocd.yml`.
+
+Два Application:
+
+| Имя | Откуда | Что делает |
+| --- | --- | --- |
+| `root` | `deploy/argocd/root.yaml`, применён один раз | Смотрит каталог `deploy/argocd/apps` и держит там Application. `prune: true`, `selfHeal: true`. Самого себя в каталоге нет. |
+| `blog` | `deploy/argocd/apps/blog.yaml` | Чарт `charts/blog`, values `deploy/blog/values.yaml`, namespace `blog`. `prune: false`, `selfHeal: true`, `CreateNamespace=true`. |
+
+`root` — обычный вариант схемы app of apps без ApplicationSet. Удалил Application `blog` — `root` создаст его снова из Git. Удалил файл из `deploy/argocd/apps` — `root` удалит и Application. У блога стоит finalizer `resources-finalizer.argocd.argoproj.io`, поэтому удаление Application сносит и его ресурсы. У `root` finalizer нет: удаление самого `root` дочерние Application не стирает. Вернуть `root` можно только повторным `kubectl apply -f deploy/argocd/root.yaml`.
+
+Поды восстанавливает ReplicaSet Deployment, не `root`. `root` восстанавливает Application. Старые ReplicaSet с нулём подов — история Deployment (`revisionHistoryLimit` по умолчанию 10). Живые реплики только у текущего.
+
+Harbor один, на socrat-0. Падение socrat-0 ломает push и незакешированный pull. Уже запущенные контейнеры при этом не останавливаются. На холодной ноде слой блога шёл около 13 минут. Пока образ качается, Application может быть `Synced` и ещё не `Healthy`.
+
+## Строгий порядок для нового сервиса
+
+Делать по одному сервису. Не копировать шаг в CI, пока в Git нет Application и values.
+
+1. Чарт в `charts/<app>`. В шаблоне Deployment один образ: если `image.digest` задан, использовать `repository@digest`, иначе `repository:tag`.
+2. `deploy/<app>/values.yaml` с корневым `image.repository`, `image.tag`, `image.digest`. До первого релиза digest пустой, tag — тот образ, который уже можно катить. Те же ключи в `charts/<app>/values.yaml`, если файл есть. Application должен читать `deploy/<app>/values.yaml` через `helm.valueFiles`.
+3. В namespace — pull Secret от проектного робота Harbor и ссылка на него в `imagePullSecrets`.
+4. Манифест Application в `deploy/argocd/apps/<app>.yaml`: `project: default`, `parameters: []`, `targetRevision: main`, auto-sync, `prune: false`, `selfHeal: true`. Закоммитить. `root` создаст Application сам. Не создавать его руками в UI.
+5. Дождаться `Synced`. Первый рендер должен совпасть с тем, что уже работает, либо это сознательный первый выкат.
+6. В CI сервиса положить секрет `HOMELAB_DEPLOY_KEY` с тем же приватным ключом и добавить шаг из раздела выше. Запушить образ в `harbor.socrat.alchemmist.xyz/homelab/<app>`.
+7. Проверить коммит `socrat-releaser` в `homelab`, затем `Synced/Healthy` и живой HTTP. На холодной ноде здоровье может опоздать на время pull.
+
+Action умеет один образ на приложение и только ключи `image.tag` / `image.digest` в этих двух путях. Несколько образов в одном чарте, другое имя поля или другой каталог values он не обновит.
 
 ## Откат
 
-Откат — коммит в values: предыдущий repository, tag и digest. Auto-sync подхватит его из Git. Правка Helm-parameters в UI не сохраняется: следующий sync возвращает манифест из Git.
+Откат — новый коммит в `deploy/<app>/values.yaml` и в парный chart values: предыдущие `repository`, `tag` и `digest`. Auto-sync подхватит его. Правка digest в UI пропадёт на следующем sync.
 
-## Следующее приложение
+Если нужно вернуть конкретный уже запушенный digest, его можно взять из предыдущего коммита `chore(<app>): deploy ...`. Образ в Harbor не удалять, пока на него ссылается Deployment: следующий рестарт пода не сможет его скачать.
 
-Тот же контракт, свой Application. Токен блога на него не расширять.
+## Как проверять, что релиз дошёл
 
-1. Чарт и values в homelab, pull Secret в namespace.
-2. Манифест Application в `deploy/argocd/apps`, проект `default`. Root подхватит его сам. Auto-sync точечно, `prune=false`, `selfHeal=true`.
-3. CI пушит образ и вызывает `deploy-to-socrat`. Workflow коммитит версию в values этого приложения.
-4. Argo синкает коммит. Проверить `Synced/Healthy` и живой HTTP, с учётом долгого pull на холодную ноду.
+1. Job сервиса зелёный, в нём есть шаг `Deploy to Socrat`, отдельного job нет.
+2. В `homelab` есть коммит `socrat-releaser` с этим digest.
+3. `kubectl -n argocd get application <app>` показывает `Synced` на этот коммит и потом `Healthy`.
+4. Образ Deployment равен `harbor.socrat.alchemmist.xyz/homelab/<app>@sha256:...`.
+5. `spec.source.helm.parameters` пустой.
+6. Живой HTTP сервиса отвечает.
+
+Если Git уже новый, а кластер старый, это ожидание опроса, а не повод вызывать Sync из CI. Принудительный refresh из UI допустим, когда нужно посмотреть результат сразу.
