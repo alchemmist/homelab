@@ -21,7 +21,7 @@ class PrAgentChartTest(unittest.TestCase):
         self.assertIn('kubernetes.io/hostname: "socrat-1"', rendered)
         self.assertIn("CONFIG__MAX_MODEL_TOKENS", rendered)
         self.assertIn('value: "12288"', rendered)
-        self.assertIn('value: "12"', rendered)
+        self.assertIn('value: "100"', rendered)
         self.assertIn("PR_REVIEWER__ENABLE_LARGE_PR_CHUNKING", rendered)
         self.assertIn("PR_REVIEWER__INLINE_KEY_ISSUES", rendered)
         self.assertIn("PR_CODE_SUGGESTIONS__COMMITTABLE_CODE_SUGGESTIONS", rendered)
