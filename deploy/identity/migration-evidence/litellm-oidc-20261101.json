@@ -1,0 +1,63 @@
+{
+  "observedAt": "2026-11-01",
+  "service": "litellm",
+  "installedVersion": "1.105.1",
+  "identityProviderVersion": "2026.8.5",
+  "mode": "native-generic-oidc-authorization-code-pkce",
+  "applicationAdmission": [
+    "homelab-owner"
+  ],
+  "ownerLink": "reviewed Authentik UUID -> existing socrat-admin (proxy_admin); no email/name selection",
+  "callback": "https://llm.alchemmist.xyz/sso/callback",
+  "browserAcceptance": {
+    "temporaryReadOnlyObserver": "password -> real temporary TOTP enrollment -> native consent -> callback 303 -> server-verified internal_user_viewer",
+    "jsErrors": 0,
+    "ownerPrivilegesGrantedToFixture": false,
+    "fixturesRemoved": true,
+    "realOwnerAcceptance": "pending",
+    "trustedPublicEdges": [
+      "109.173.40.247",
+      "176.98.185.59"
+    ],
+    "secureSessionCookie": true
+  },
+  "unchanged": [
+    "original two user IDs, roles, emails, password hashes, sso_user_id fields",
+    "master/salt/database Secret data",
+    "litellm-config data",
+    "existing explicit environment including OTel",
+    "existing Open WebUI virtual key remains usable"
+  ],
+  "machineApi": {
+    "missingKey": "401, no login redirect",
+    "existingWebUIKeyModels": "200"
+  },
+  "recovery": {
+    "path": "/fallback/login",
+    "httpStatus": 200,
+    "ownerPasswordReset": false,
+    "ownerPasswordAcceptance": "pending"
+  },
+  "backup": {
+    "name": "litellm-before-oidc-20261101.aesgcm",
+    "sha256": "13e768dae97f337fce95fb92e6bf500dec4fe846ddc990cb9cdabf659679c19e",
+    "authenticatedDecryptionAndArchiveListing": true,
+    "fullRestoreTested": false
+  },
+  "licensing": "installed native free SSO up to five billable users; conservative total-row preflight <=5; no bypass",
+  "icons": {
+    "allCurrentApplications": 9,
+    "verified": "resolved local media URL HTTPS200 and exact SHA256",
+    "argocd": "official pinned argo-cd.svg; only icon metadata patched",
+    "wiki": "existing 2349px circular Socrat favicon, downsampled to 512px; no invented artwork"
+  },
+  "notCompleted": [
+    "real owner SSO/password fallback acceptance",
+    "cluster-wide inventory and legacy session lifecycle outside this service",
+    "Kuma native/gateway migration"
+  ],
+  "reconciliation": {
+    "postHelmActivationGate": "litellm.yml and llm-vision.yml",
+    "repeatAnsibleChanged": 0
+  }
+}

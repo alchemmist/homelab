@@ -149,3 +149,6 @@
         --namespace llm --values {{ homelab_user_home }}/tmp-charts/litellm-vision-values.json
         --wait --timeout 10m
       tags: metadata
+
+- import_playbook: identity-litellm-reconcile.yml
+  tags: metadata

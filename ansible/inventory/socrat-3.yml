@@ -10,6 +10,8 @@ all:
           ansible_user: alchemmist
           ansible_ssh_private_key_file: ~/.ssh/socrat-master
           ansible_become_method: sudo
+          # Server/etcd was retired on 2026-11-01; boot the worker, not k3s.service.
+          homelab_boot_k3s_service: k3s-agent.service
           k3s_worker_swap_enabled: true
           homelab_laptop_desktop: sway
           homelab_alacritty_transparent_background_colors: true

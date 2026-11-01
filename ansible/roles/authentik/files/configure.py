@@ -119,12 +119,22 @@ for slug,service in services.items():
             # Persist before provider creation, so retries cannot regenerate its secret.
             fd=os.open(clients_path,os.O_CREAT|os.O_WRONLY|os.O_TRUNC,0o600)
             with os.fdopen(fd,'w') as f:json.dump(clients,f)
+        service_mapping=list(mapping)
+        for mapping_name in service.get('extraScopeMappings', []):
+            custom_mapping=unique('propertymappings/provider/scope/','name',mapping_name)
+            if not custom_mapping:
+                if slug!='litellm':raise RuntimeError('Reviewed custom scope missing: '+slug)
+                print('LiteLLM awaits explicit reviewed native integration; no placeholder application created')
+                service_mapping=None
+                break
+            service_mapping.append(custom_mapping['pk'])
+        if service_mapping is None:continue
         settings={'name':'homelab-'+slug,'client_type':'confidential',**clients[slug],
             'grant_types':['authorization_code','refresh_token'],
             'authentication_flow':flow['default-authentication-flow'],
             'authorization_flow':flow['default-provider-authorization-explicit-consent'],
             'invalidation_flow':flow['default-provider-invalidation-flow'],
-            'property_mappings':mapping,'signing_key':cert['pk'],
+            'property_mappings':service_mapping,'signing_key':cert['pk'],
             'redirect_uris':[{'matching_mode':'strict','url':url} for url in [service['redirect']]+service.get('extraRedirects',[])],
             'include_claims_in_id_token':True,'sub_mode':service.get('subMode','hashed_user_id'),
             'access_token_validity':'minutes=5','refresh_token_validity':'hours=8'}

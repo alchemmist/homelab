@@ -1,0 +1,74 @@
+{
+  "reference": "Approved Quiet Mono v5, including non-modal inspector and magnifier toggle",
+  "captured_utc": "2026-11-01T18:24:25.692670+00:00",
+  "files": {
+    "05-consent.html": {
+      "sha256": "b41dd01e5973d946d82999152a7a146d667cc4f858c0186758a026221d3877f9",
+      "bytes": 5650
+    },
+    "05-typewriter.html": {
+      "sha256": "4011e46c32acae7fc1e702c521d63d75d6a0217f861543a4e96ebaf252f6a7d0",
+      "bytes": 6301
+    },
+    "assets/fonts/cmu.serif-bold.woff2": {
+      "sha256": "f12f08a4de4ecfde9a4c1b734e20e26b3bcf7899cf7f5c8718e3f10a7d592279",
+      "bytes": 84992
+    },
+    "assets/fonts/cmu.serif-roman.woff2": {
+      "sha256": "161747f63e8c1397d60e50fa537e2e0a2a410313b01215b4780fdc22625cd0cb",
+      "bytes": 86236
+    },
+    "assets/fonts/cmu.typewriter-text-regular.woff2": {
+      "sha256": "a9489dcbd4e94427150e2e784ba6c30bd97115a1a017237d39870037418f1f2a",
+      "bytes": 83192
+    },
+    "assets/fonts/couriercyrps.woff2": {
+      "sha256": "461cca8566fa889845e89dc4a474d5fe1ea25a31174256940bb25f4102cd05cd",
+      "bytes": 42776
+    },
+    "assets/forest-1920.webp": {
+      "sha256": "c145a108869447479e80d3b6cb6d7301a3196d5011888832e86392fece61d1a7",
+      "bytes": 453744
+    },
+    "assets/forest-960.webp": {
+      "sha256": "30f4ea75e0b4c12e16d9dd24983e383dfde090e2935c2818d44d907ad4de25cd",
+      "bytes": 133230
+    },
+    "assets/lake-1920.webp": {
+      "sha256": "b973e7b40e2d009716b6e9eabe2d99e41339dc427f8df7d048d83b39425fb585",
+      "bytes": 270980
+    },
+    "assets/lake-960.webp": {
+      "sha256": "4c0abf672d19c170332252da5b62f9c90e3f7a468327682bc4dc50e98d85dbb2",
+      "bytes": 85596
+    },
+    "assets/socrat-mask.webp": {
+      "sha256": "878a6e9d51f8bb61bce354d00312906d8ed29b0263e59f6efbd1562b72b45e8f",
+      "bytes": 17248
+    },
+    "assets/sources.json": {
+      "sha256": "8f28559201711694a036e3e05d2c84d73607c13187989acd23b19d0895fa02c5",
+      "bytes": 2760
+    },
+    "assets/wiki-favicon.svg": {
+      "sha256": "a86fb867f8e5ccce0336c38da738ec2ddb81ff5bc4639b26de535c9d4c4f9e32",
+      "bytes": 20522
+    },
+    "assets/wiki-syntax.css": {
+      "sha256": "789fa76b321cee22161e528e50a03fafaf992bb05324b42970453c17f1e3bfc6",
+      "bytes": 3853
+    },
+    "quiet-mono.css": {
+      "sha256": "085dc610ae5e6ca6503a3e09963e71934a651dd2472a666047476a4691a852dd",
+      "bytes": 9795
+    },
+    "quiet-mono.js": {
+      "sha256": "d801f7cca558333f49d36569d34edae8bbc7c69f6ca66b621b22da9a793e1f57",
+      "bytes": 22294
+    },
+    "styles.css": {
+      "sha256": "8fd1a1bceebf70a0e029e53d6416ef122802f3064f8b15de75267326aadd7d22",
+      "bytes": 10142
+    }
+  }
+}

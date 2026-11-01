@@ -1,6 +1,40 @@
 # Socrat control plane and home ingress HA
 
-## Current voting and control-plane topology
+## Current voting and control-plane topology (2026-11-01)
+
+Socrat-3 is now an ordinary worker. The HDD/Wi-Fi host no longer runs embedded
+etcd, the API server, scheduler or controller manager. Existing workload storage
+and containers were preserved; desktop and OTel were not reconfigured.
+
+| Node | Kubernetes services | etcd role |
+| --- | --- | --- |
+| `socrat-0` | API server, scheduler, controller manager, agent | Voter |
+| `socrat-1` | API server, scheduler, controller manager, agent | Voter |
+| `socrat-2` | etcd-only server with workload agent | Voter |
+| `socrat-3` | Worker agent only | None |
+
+Quorum is two of socrat-0/1/2. **Whole-home failure now removes both home votes
+and loses quorum**; the previous two-external-voters property no longer applies.
+Socrat-3 no longer provides an API endpoint at `10.250.0.5:6443`.
+
+Migration order: snapshot on socrat-0; promote socrat-1 and verify its healthy,
+synchronized vote; stop only the socrat-3 server while 0/1/2 sustain the temporary
+four-member quorum; commit removal of socrat-3; start its agent with the same node
+identity, data paths and worker settings. No uninstall, cluster reset or database
+deletion was used. Final membership and health were verified before snapshotting.
+
+Private configuration/unit backups are under `/var/lib/homelab-k3s-worker-20261101`
+on modified hosts. Socrat-3's former database is retained as
+`/var/lib/rancher/k3s/server/db/etcd-retired-worker-20261101`; it must not be reused
+as an active member or restored automatically. Its disabled server service has
+a worker-mode condition guard; `k3s-agent.service` is the enabled boot service.
+The worker-topology markers block the superseded rebalance playbook.
+
+Use `ansible/playbooks/k3s-worker-topology-verify.yml` for read-only role/quorum
+checks (it refreshes verification scripts only). See `docs/socrat3-worker.md`
+for the before/after evidence and migration details.
+
+## Historical external-voter topology (superseded on 2026-11-01)
 
 All four nodes run `v1.36.5+k3s1`. On 2026-10-18, socrat-3 was promoted without deleting its agent runtime, and socrat-1 retained its API/controller/scheduler services while relinquishing its etcd vote.
 
@@ -113,7 +147,7 @@ ansible-playbook playbooks/home-ingress-ha.yml --ask-become-pass
 ansible-playbook playbooks/rancher-placement.yml --ask-become-pass
 ```
 
-`k3s-role-rebalance.yml` is the current role-reconciliation playbook. `k3s-ha.yml` is the original bootstrap migration and refuses to run once the external-quorum completion marker exists, preventing an accidental return to home-majority etcd. `k3s.yml` refuses the legacy topology while `k3s_ha_enabled` is true. Do not use a legacy worker installer to repair a promoted server.
+`k3s-role-rebalance.yml` is the historical external-voter migration, not the current desired topology. It refuses to run when the newer worker-topology marker exists. Use `k3s-worker-topology-verify.yml` to check the current state. `k3s-ha.yml` is the original bootstrap migration and refuses to run once the external-quorum completion marker exists, preventing an accidental return to home-majority etcd. `k3s.yml` refuses the legacy topology while `k3s_ha_enabled` is true. Do not use a legacy worker installer to repair a promoted server.
 
 All current nodes use `k3s.service`. The VPS watchdog fences both server and legacy agent units during native recovery and starts the configured primary server unit on manual failback. The `socrat-1` disk reserve policy targets the server service. Its MDB backup folder remains paused; over 40 GiB free was verified before migration after removing only seven redundant archives on that node.
 

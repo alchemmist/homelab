@@ -47,5 +47,14 @@
   "consent_reference": {
     "source": "Owner-provided saved HTML: Redirecting to Argo CD - authentik.html",
     "usage": "Offline structural inspection only. Original file is not copied, executed or shipped. All prototype identity/session/plan data is synthetic."
+  },
+  "inspector_code": {
+    "syntax_source": "../hugo-docs/runtime-site/_vendor/github.com/alchemmist/hugo-content/assets/hugo-content/syntax.css",
+    "syntax_local": "wiki-syntax.css",
+    "syntax_sha256": "789fa76b321cee22161e528e50a03fafaf992bb05324b42970453c17f1e3bfc6",
+    "font_source": "wiki/public/hugo-content/fonts/cmu.typewriter-text-regular.woff2",
+    "font_local": "fonts/cmu.typewriter-text-regular.woff2",
+    "font_sha256": "a9489dcbd4e94427150e2e784ba6c30bd97115a1a017237d39870037418f1f2a",
+    "notes": "Exact source copies; code block layout adapted from hugo-content/content.css. Local safe JSON tokenizer uses Chroma classes. Not a production Authentik syntax-highlighting implementation."
   }
 }

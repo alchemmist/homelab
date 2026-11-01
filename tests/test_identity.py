@@ -74,12 +74,21 @@ class IdentityTests(unittest.TestCase):
             for provider in api.data['providers/oauth2/']:
                 self.assertEqual(provider['grant_types'],['authorization_code','refresh_token'])
             self.assertEqual(len(api.data['core/applications/']),7)
-            self.assertEqual(len(api.data['policies/bindings/']),sum(len(service.get('groups',['homelab-owner'])) for service in json.loads((root/'services.json').read_text()).values()))
+            self.assertEqual(len(api.data['policies/bindings/']),sum(len(service.get('groups',['homelab-owner'])) for slug,service in json.loads((root/'services.json').read_text()).items() if slug!='litellm'))
             for method,path,body,query in api.requests:
                 if method=='GET' and path=='core/applications/':
                     self.assertEqual(query['superuser_full_list'],['true'])
             self.assertEqual((root/'owner-login.json').stat().st_mode & 0o777,0o600)
             self.assertEqual((root/'oidc-clients.json').stat().st_mode & 0o777,0o600)
+
+    def test_existing_litellm_custom_scope_survives_foundation_replay(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);self.setup_root(root);api=FakeAuthentik()
+            api.data['propertymappings/provider/scope/'].append({'pk':'litellm-identity','name':'homelab-litellm-reviewed-identity','scope_name':'litellm_identity'})
+            self.configure(root,api);self.configure(root,api)
+            provider=next(p for p in api.data['providers/oauth2/'] if p['name']=='homelab-litellm')
+            self.assertIn('litellm-identity',provider['property_mappings'])
+            self.assertEqual(len(api.data['core/applications/']),8)
 
     def test_existing_owner_never_silently_taken_over(self):
         with tempfile.TemporaryDirectory() as d:
@@ -139,7 +148,7 @@ class RolloutRegressionTests(unittest.TestCase):
         import hashlib,xml.etree.ElementTree as ET
         manifest=json.loads((ROOT/'assets/service-icons/sources.json').read_text())
         services=json.loads((ROOT/'deploy/identity/services.json').read_text())
-        self.assertEqual(len(services),7)
+        self.assertEqual(len(services),8)
         for slug,service in services.items():
             data=(ROOT/'assets/service-icons'/f'{slug}.svg').read_bytes()
             digest=hashlib.sha256(data).hexdigest()

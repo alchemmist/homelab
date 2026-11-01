@@ -1,0 +1,48 @@
+---
+# Verification only. Does not add/remove etcd members or reinstall K3s.
+- name: Verify the current quorum and socrat-3 worker role
+  hosts: socrat-0
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  environment:
+    K3S_CONFIG_FILE: /dev/null
+  tasks:
+    - name: Install read-only topology verification helpers
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../roles/k3s_role_rebalance/files/{{ item }}"
+        dest: "/var/lib/homelab-k3s-rebalance/{{ item }}"
+        mode: '0700'
+      loop: [etcd_members.py, verify_worker_topology.py]
+
+    - name: Verify three healthy voters with matching member identities
+      ansible.builtin.command: python3 /var/lib/homelab-k3s-rebalance/verify_worker_topology.py
+      changed_when: false
+
+    - name: Read socrat-3 node state
+      ansible.builtin.command: kubectl get node socrat-3 -o json
+      register: worker_topology_node
+      changed_when: false
+
+    - name: Require a Ready worker without server role labels
+      ansible.builtin.assert:
+        that:
+          - "'node-role.kubernetes.io/control-plane' not in (worker_topology_node.stdout | from_json).metadata.labels"
+          - "'node-role.kubernetes.io/etcd' not in (worker_topology_node.stdout | from_json).metadata.labels"
+          - "(worker_topology_node.stdout | from_json).status.conditions | selectattr('type', 'equalto', 'Ready') | map(attribute='status') | list == ['True']"
+
+- name: Verify agent mode without changing workloads
+  hosts: socrat-3
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Require the active enabled agent and inactive disabled server
+      ansible.builtin.shell: |
+        set -eu
+        systemctl is-active --quiet k3s-agent
+        systemctl is-enabled --quiet k3s-agent
+        test "$(systemctl show k3s -p ActiveState --value)" = inactive
+        test "$(systemctl is-enabled k3s || true)" = disabled
+        test -f /etc/rancher/k3s/worker-mode
+        test ! -e /etc/rancher/k3s/server-mode
+      changed_when: false

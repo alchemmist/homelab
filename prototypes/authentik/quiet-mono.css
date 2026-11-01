@@ -17,30 +17,68 @@
 .locale-options{position:absolute;right:0;top:calc(100% + 7px);min-width:154px;padding:7px;background:rgba(255,254,250,.96);border:1px solid rgba(255,255,255,.9);border-radius:3px;-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
 .locale-options button{display:flex;width:100%;align-items:center;justify-content:space-between;gap:22px;border:0;background:transparent;padding:9px 8px;text-align:left;font:12px/1.4 var(--ui)}
 .locale-options button[aria-pressed=false] span{visibility:hidden}
-.flow-inspector{position:fixed;inset:0 0 0 auto;margin:0;width:min(430px,100%);max-width:100%;height:100dvh;max-height:100dvh;padding:0;border:0;border-left:1px solid rgba(255,255,255,.9);border-radius:0;color:var(--ink);background:rgba(255,254,250,.94);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);box-shadow:-14px 0 55px -35px rgba(21,34,60,.28);font:13px/1.7 var(--ui);overflow:auto;overscroll-behavior:contain}
-.flow-inspector::backdrop{background:rgba(21,34,60,.12)}
-html:has(.flow-inspector[open]){overflow:hidden}
-.inspector-header{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:25px 27px 20px;border-bottom:1px solid rgba(21,34,60,.16)}
-.inspector-header h2{font:700 29px/1.2 var(--serif);letter-spacing:-.4px;margin:0}
+@font-face{font-family:WikiCode;src:url('assets/fonts/cmu.typewriter-text-regular.woff2') format('woff2');font-weight:400;font-display:swap}
+.flow-inspector{--success:#287849;--success-line:#77b88e;--active:#245c97;position:fixed;z-index:10;inset:0 0 0 auto;margin:0;width:min(600px,100%);max-width:100%;height:100dvh;max-height:100dvh;padding:0;border:0;border-left:1px solid #dde2de;border-radius:0;color:var(--ink);background:#f7f8f5;box-shadow:-14px 0 55px -35px rgba(21,34,60,.28);font:14px/1.65 var(--ui);overflow:auto;overscroll-behavior:contain}
+/* Non-modal panel: no backdrop, no inert content and no document scroll lock. */
+.inspector-header{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:25px 28px 20px;border-bottom:1px solid #dce1dd;background:#f7f8f5}
+.inspector-header h2{font:700 30px/1.2 var(--serif);letter-spacing:-.4px;margin:0}
 .icon-button{display:grid;place-items:center;width:32px;height:32px;border:0;background:transparent;color:var(--ink);flex-shrink:0;padding:6px}
-.inspector-content{padding:21px 27px 35px}
-.inspector-note{margin:0 0 26px;font-size:11px;line-height:1.7;color:var(--muted)}
-.inspector-section+ .inspector-section{margin-top:26px;padding-top:23px;border-top:1px solid rgba(21,34,60,.15)}
-.inspector-section h3{font:400 13px/1.5 var(--ui);margin:0 0 17px}
-.stage-properties{margin:0;display:grid;gap:7px}
-.stage-properties dt{font-size:11px;color:var(--muted);margin-top:7px}
-.stage-properties dd{margin:0;font-size:12px;line-height:1.6;overflow-wrap:anywhere}
-.flow-inspector code,.flow-inspector pre{font:11px/1.7 var(--ui);overflow-wrap:anywhere;white-space:pre-wrap}
-.flow-inspector details{margin-top:17px;font-size:11px;min-width:0}
-.flow-inspector summary{cursor:pointer;min-height:28px;list-style-position:inside}
-.flow-inspector pre{margin:8px 0 0;padding:12px;border-left:1px solid rgba(21,34,60,.2);background:rgba(255,255,255,.35)}
-.plan-history{padding:0;list-style:none;margin:0;counter-reset:plan}
-.plan-history>li{position:relative;padding:0 0 19px 23px;border-left:1px solid rgba(21,34,60,.19);margin-left:3px}
-.plan-history>li:last-child{padding-bottom:0;border-left-color:transparent}
-.plan-history>li::before{content:'';position:absolute;left:-3px;top:7px;width:5px;height:5px;background:var(--ink);border-radius:50%}
-.plan-title{font-size:12px;margin:0 0 5px}
-.plan-stage{font-size:11px;color:var(--muted);margin:0;line-height:1.7}
-.plan-history details{margin-top:8px}
+.inspector-content{padding:20px 28px 35px}
+.inspector-note{margin:0 0 22px;padding:10px 12px;border-left:3px solid #a5b4a9;background:#eef2ec;font-size:12px;line-height:1.7;color:#4a5c50}
+.inspector-section{padding:20px;border:1px solid #dce2dd;border-radius:5px;background:#fff}
+.inspector-section+ .inspector-section{margin-top:18px}
+.inspector-section h3{font:400 16px/1.5 var(--ui);color:#172b28;margin:0 0 19px}
+.stage-properties{margin:0;display:grid;gap:6px}
+.stage-properties dt{font-size:12px;color:#55625c;margin-top:8px}
+.stage-properties dd{margin:0;font-size:14px;line-height:1.6;overflow-wrap:anywhere}
+.flow-inspector code{font:14px/1.5 WikiCode,monospace;overflow-wrap:anywhere}
+.flow-inspector details{margin-top:17px;font-size:12px;min-width:0}
+.flow-inspector summary{cursor:pointer;min-height:28px;list-style-position:inside;color:#36556b;line-height:1.7}
+/* Wiki code treatment: CM Typewriter, local Chroma palette, light surface. */
+.flow-inspector .code-block{display:block;min-width:0;max-width:100%;margin:9px 0 0;border-radius:5px;background:#fafafa;box-shadow:0 1px 4px rgba(0,0,0,.06);overflow:hidden}
+.flow-inspector .code-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:8px 12px;border-bottom:1px solid #e4e8e4;font:11px/1.4 var(--ui);color:#55625c}
+.flow-inspector .code-toolbar button{padding:3px 0;border:0;background:none;font:11px/1.5 var(--ui);color:#36556b}
+.flow-inspector .code-block pre{margin:0;padding:0;background:rgba(0,0,0,.02);max-width:100%;overflow:hidden}
+.flow-inspector .code-block pre code{display:block;padding:14px 16px;margin:0;max-width:100%;white-space:pre;overflow-x:auto;overflow-wrap:normal;tab-size:2;color:#333;background:transparent;line-height:1.5;scrollbar-width:thin}
+.flow-inspector .code-block code,.flow-inspector .code-block code *{font-family:WikiCode,monospace;font-size:14px;line-height:1.5;text-align:left}
+.plan-history{padding:0;list-style:none;margin:0}
+.plan-history>.pipeline-node{position:relative;display:block;padding:0 0 16px 34px;margin:0;border:0;min-width:0}
+.plan-history>.pipeline-node::before{display:none}
+.plan-history>.pipeline-node::after{content:'';position:absolute;left:10px;top:24px;bottom:-2px;width:2px;background:#dbe2dd}
+.plan-history>.pipeline-node[data-status=completed]::after{background:var(--success-line)}
+.plan-history>.pipeline-node:last-child{padding-bottom:0}
+.plan-history>.pipeline-node:last-child::after{display:none}
+.pipeline-marker{position:absolute;left:0;top:1px;z-index:1;display:grid;place-items:center;width:22px;height:22px;border:1px solid #cad4cd;border-radius:50%;background:#fff;color:#64736a;font:12px/1 var(--ui)}
+[data-status=completed]>.pipeline-marker{color:#fff;background:var(--success);border-color:var(--success)}
+[data-status=current]>.pipeline-marker{color:var(--active);border:2px solid var(--active);box-shadow:0 0 0 3px #e7eff7;font-size:9px}
+.pipeline-card{padding:12px 14px;border:1px solid #dce6de;border-radius:4px;background:#fbfdfb;min-width:0}
+[data-status=current]>.pipeline-card{border-color:#acc6df;background:#f2f7fc}
+[data-status=pending]>.pipeline-card{background:#fcfcfb;border-color:#e1e5e0}
+.pipeline-heading{display:flex;flex-wrap:wrap;gap:7px 10px;align-items:baseline;justify-content:space-between}
+.plan-title{font:14px/1.5 var(--ui);margin:0;overflow-wrap:anywhere}
+.stage-badge{display:inline-flex;align-items:center;padding:2px 6px;border-radius:3px;font:11px/1.5 var(--ui);color:#546259;background:#edf0ed;white-space:nowrap}
+[data-status=completed] .stage-badge{background:#e9f5ec;color:#256b3f}
+[data-status=current] .stage-badge{background:#e1edf9;color:#245c97}
+.plan-stage{font:12px/1.7 var(--ui);color:#51615a;margin:7px 0 0}
+.flow-inspector details.pipeline-card{margin-top:0;font-size:14px}
+.pipeline-card>summary{position:relative;padding-right:13px;list-style:none;color:var(--ink);min-height:0}
+.pipeline-card>summary::-webkit-details-marker{display:none}
+.pipeline-card>summary::after{content:"›";position:absolute;right:-2px;top:0;color:#546b61;font:22px/1 var(--serif)}
+.pipeline-card[open]>summary::after{transform:rotate(90deg)}
+.plan-snapshots{padding-top:17px;border-top:1px solid #dce2dd}
+.snapshot-title{font-size:12px;line-height:1.7;margin:18px 0 6px}
+/* Layout is coordinated with the drawer's 180ms transform animation in JS. */
+@media(min-width:1100px){
+ .typewriter.inspector-layout-open .stage{padding-right:628px}
+ .typewriter.inspector-layout-open .flow-tools{right:628px}
+}
+/* Below side-by-side width, keep both surfaces usable instead of covering the form. */
+@media(max-width:1099px){
+ .typewriter{display:flex;flex-direction:column}
+ .typewriter .stage{order:0}
+ .typewriter .flow-inspector{order:1;position:relative;inset:auto;align-self:center;margin:0 20px 28px;width:calc(100% - 40px);max-width:600px;height:auto;max-height:none;overflow:visible;border:1px solid #dde2de;border-radius:5px}
+ .typewriter.inspector-layout-open .stage{min-height:auto;padding-top:76px;padding-bottom:28px}
+}
 .typewriter.consent-page .glass{width:388px}
 .consent-identity{display:flex;justify-content:space-between;align-items:center;gap:18px;margin:0 0 25px;padding-bottom:17px;border-bottom:1px solid rgba(21,34,60,.18);font-size:12px}
 .demo-user{overflow-wrap:anywhere}
@@ -57,8 +95,16 @@ html:has(.flow-inspector[open]){overflow:hidden}
  .typewriter.consent-page .glass{max-width:388px}
  .inspector-header{padding:23px 22px 18px}
  .inspector-content{padding:20px 22px 30px}
- .flow-inspector{width:min(430px,100%)}
+ .inspector-section{padding:16px}
+ .pipeline-card{padding:11px 12px}
+ .plan-history>.pipeline-node{padding-left:30px}
+ .pipeline-heading{display:block}
+ .stage-badge{margin-top:7px}
+ .flow-inspector .code-block code,.flow-inspector .code-block code *{font-size:13px}
 }
 @media(prefers-reduced-motion:reduce){.typewriter .primary,.typewriter .primary svg{transition:none}.typewriter .primary:hover svg{transform:none}}
 @media(prefers-reduced-transparency:reduce){.tool-button,.locale-options,.flow-inspector{background:#fffefa;-webkit-backdrop-filter:none;backdrop-filter:none}}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.tool-button,.locale-options,.flow-inspector{background:#fffefa}}
+
+/* Keep off-canvas motion from creating a horizontal page scrollbar. */
+.auth-page.typewriter{overflow-x:clip}

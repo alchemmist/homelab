@@ -20,6 +20,28 @@
 - name: Integrate selected native OIDC services while preserving local emergency logins
   ansible.builtin.command:
     argv: [python3, /home/alchemmist/.cache/homelab-authentik/integrate.py, /home/alchemmist/.cache/homelab-authentik, '{{ item }}']
-  loop: '{{ identity_oidc_services }}'
+  loop: "{{ identity_oidc_services | reject('equalto', 'litellm') | list }}"
   no_log: true
   changed_when: true
+
+- name: Copy explicit reviewed identity mapping for LiteLLM
+  ansible.builtin.copy:
+    src: '{{ playbook_dir }}/../../deploy/identity/account-mappings.json'
+    dest: /home/alchemmist/.cache/homelab-authentik/account-mappings.json
+    mode: '0600'
+  when: "'litellm' in identity_oidc_services"
+
+- name: Copy reviewed LiteLLM native OIDC controller
+  ansible.builtin.copy:
+    src: litellm_oidc.py
+    dest: /home/alchemmist/.cache/homelab-authentik/litellm_oidc.py
+    mode: '0600'
+  when: "'litellm' in identity_oidc_services"
+
+- name: Reconcile explicitly selected LiteLLM native OIDC
+  ansible.builtin.command:
+    argv: [python3, /home/alchemmist/.cache/homelab-authentik/litellm_oidc.py, /home/alchemmist/.cache/homelab-authentik, --apply]
+  no_log: true
+  register: litellm_oidc_result
+  changed_when: "'rolling update started' in litellm_oidc_result.stdout"
+  when: "'litellm' in identity_oidc_services"

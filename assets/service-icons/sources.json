@@ -23,12 +23,24 @@
       "sha256": "45b282108f60b12df6cba68e3fa633d56970eab4d2ac6b1eef43a60b5ea29af5"
     },
     "wiki.svg": {
-      "url": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/bookstack.svg",
-      "sha256": "875148604f2e828e977c23a9afa04869dd958dd6300650ec3350eff9c242cd64"
+      "source": "deploy/litellm/branding/socrat-icon-v1.png",
+      "transformation": "Original 2349px circular Socrat favicon downsampled to 512px PNG, embedded unchanged in SVG wrapper.",
+      "sha256": "08ef91235235b027105679eb61a9458dea1f19d6c3472a985e3585bc0a834f7a",
+      "source_sha256": "7fe591292ddbe4bbcb0b6c7cdbf9544924763c744ee9896e15322ab4c01dc82f"
     },
     "uptime-kuma.svg": {
       "url": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/uptime-kuma.svg",
       "sha256": "f3caa8a8bac253a77fa2ae7e7bc9b062b55a006abd787b111533714152ec744c"
+    },
+    "litellm.svg": {
+      "source": "deploy/litellm/branding/socrat-icon-v1.png",
+      "transformation": "Original 2349px circular Socrat favicon downsampled to 512px PNG, embedded unchanged in SVG wrapper.",
+      "sha256": "08ef91235235b027105679eb61a9458dea1f19d6c3472a985e3585bc0a834f7a",
+      "source_sha256": "7fe591292ddbe4bbcb0b6c7cdbf9544924763c744ee9896e15322ab4c01dc82f"
+    },
+    "argocd.svg": {
+      "url": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/argo-cd.svg",
+      "sha256": "dfd0a40f38081d499182b3ecb7cb6bf9445652a8365914b9e38fffc3d2e7f8fa"
     }
   }
 }

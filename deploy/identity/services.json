@@ -74,7 +74,7 @@
     "url": "https://wiki.socrat.alchemmist.xyz/",
     "description": "Published infrastructure documentation; editor/API credentials are separate.",
     "migration": "native-oidc-owner-only-local-fallback",
-    "icon": "service-icons/wiki-875148604f2e.svg",
+    "icon": "service-icons/wiki-08ef91235235.svg",
     "redirect": "https://wiki.socrat.alchemmist.xyz/api/auth/oidc/callback",
     "groups": [
       "homelab-owner",
@@ -89,5 +89,20 @@
     "description": "Uptime checks and status pages; public status is not an administrative interface.",
     "migration": "verify-native-sso-or-admin-only-proxy-without-breaking-public-status",
     "icon": "service-icons/uptime-kuma-f3caa8a8bac2.svg"
+  },
+  "litellm": {
+    "name": "LiteLLM",
+    "url": "https://llm.alchemmist.xyz/sso/key/generate",
+    "description": "LLM gateway administration; native Authentik MFA/OIDC, machine API keys remain separate.",
+    "redirect": "https://llm.alchemmist.xyz/sso/callback",
+    "groups": [
+      "homelab-owner"
+    ],
+    "migration": "native-oidc-reviewed-owner-id-pkce",
+    "subMode": "user_uuid",
+    "extraScopeMappings": [
+      "homelab-litellm-reviewed-identity"
+    ],
+    "icon": "service-icons/litellm-08ef91235235.svg"
   }
 }

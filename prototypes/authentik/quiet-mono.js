@@ -26,7 +26,17 @@
     'Stage object': 'Объект этапа', 'Plan history': 'История планов',
     'Current plan context': 'Контекст текущего плана', 'Application': 'Приложение',
     'Session ID': 'Идентификатор сессии', 'Show context': 'Показать контекст', 'Show stages': 'Показать этапы',
-    'Plan': 'План', 'Sign-in plan': 'План входа', 'Verification plan': 'План подтверждения',
+    'Copy': 'Копировать', 'Copied': 'Скопировано', 'Select text to copy': 'Выделите текст для копирования',
+    'Completed': 'Завершён', 'Current': 'Текущий', 'Pending': 'Ожидает',
+    'Plan snapshots': 'Снимки планов', 'Identification Stage': 'Этап идентификации',
+    'Password Stage': 'Этап пароля', 'Authenticator Validation Stage': 'Проверка второго фактора',
+    'Consent Stage': 'Этап согласия', 'OAuth Fulfillment Stage': 'Завершение OAuth',
+    'Resolve the account.': 'Определение учётной записи.',
+    'Validate the password.': 'Проверка пароля.',
+    'Verify the authentication code.': 'Проверка кода второго фактора.',
+    'Review application permissions.': 'Подтверждение разрешений приложения.',
+    'Return to the application.': 'Возврат в приложение.',
+    'Stage details': 'Данные этапа', 'Plan': 'План', 'Sign-in plan': 'План входа', 'Verification plan': 'План подтверждения',
     'Authorization plan': 'План авторизации', 'Redirect preview': 'Предпросмотр перехода',
     'Credentials': 'Учётные данные', 'Authentication code verification': 'Проверка кода',
     'OAuth fulfillment': 'Завершение OAuth', 'Local preview complete': 'Локальный просмотр завершён',
@@ -64,6 +74,7 @@
   function siblingURL(file) {
     const url = new URL(file, location.href);
     url.search = new URLSearchParams({scene, lang: locale}).toString();
+    if (dialog.open) url.searchParams.set('inspector', '1');
     return url.href;
   }
   function updateReveal() {
@@ -72,34 +83,84 @@
     reveal.setAttribute('aria-pressed', String(visible));
     reveal.setAttribute('aria-label', tr(visible ? 'Hide password' : 'Show password'));
   }
+  // Reuse the Wiki's Chroma token classes/palette. Build DOM nodes, never HTML from JSON.
+  function renderJSON(target, value) {
+    const source = JSON.stringify(value, null, 2);
+    const tokens = /"(?:\\.|[^"\\])*"(?=\s*:)|"(?:\\.|[^"\\])*"|\b(?:true|false|null)\b|-?\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b|[{}[\],:]/g;
+    target.replaceChildren(); let position = 0;
+    for (const match of source.matchAll(tokens)) {
+      target.append(document.createTextNode(source.slice(position, match.index)));
+      const token = document.createElement('span');
+      token.className = match[0].startsWith('"')
+        ? (/^\s*:/.test(source.slice(match.index + match[0].length)) ? 'nt' : 's2')
+        : /^(true|false|null)$/.test(match[0]) ? 'kc' : /^-?\d/.test(match[0]) ? 'mi' : 'p';
+      token.textContent = match[0]; target.append(token); position = match.index + match[0].length;
+    }
+    target.append(document.createTextNode(source.slice(position)));
+  }
+  function codeBlock(value, id) {
+    const wrapper = document.createElement('div'); wrapper.className = 'code-block hc-content';
+    const toolbar = document.createElement('div'); toolbar.className = 'code-toolbar';
+    const language = document.createElement('span'); language.textContent = 'JSON';
+    const copy = document.createElement('button'); copy.type = 'button';
+    copy.dataset.copyTarget = id; copy.dataset.i18n = 'Copy'; copy.textContent = tr('Copy');
+    toolbar.append(language, copy);
+    const pre = document.createElement('pre'); pre.className = 'chroma';
+    const code = document.createElement('code'); code.id = id;
+    renderJSON(code, value); pre.append(code); wrapper.append(toolbar, pre); return wrapper;
+  }
   function updateInspector() {
-    const next = {
-      credentials: ['Credentials', 'authentik.stages.password.PasswordStage'],
-      mfa: ['Authentication code verification', 'authentik.stages.authenticator_validate.AuthenticatorValidateStage'],
-      consent: ['OAuth fulfillment', 'authentik.providers.oauth2.views.authorize.OAuthFulfillmentStage'],
-      redirect: ['Local preview complete', 'prototype.NoRedirect']
-    }[phase];
-    document.querySelector('#inspector-stage-name').textContent = tr(next[0]);
-    document.querySelector('#inspector-stage-kind').textContent = next[1];
-    document.querySelector('#inspector-stage-object').textContent = JSON.stringify({
-      pk: 'prototype-stage', name: next[0], verboseName: next[1], preview: true
-    }, null, 2);
-    document.querySelector('#inspector-context').textContent = JSON.stringify({
+    const stages = [
+      ['Identification Stage', 'Resolve the account.', 'authentik.stages.identification.IdentificationStage'],
+      ['Password Stage', 'Validate the password.', 'authentik.stages.password.PasswordStage'],
+      ['Authenticator Validation Stage', 'Verify the authentication code.', 'authentik.stages.authenticator_validate.AuthenticatorValidateStage'],
+      ['Consent Stage', 'Review application permissions.', 'authentik.stages.consent.ConsentStage'],
+      ['OAuth Fulfillment Stage', 'Return to the application.', 'authentik.providers.oauth2.views.authorize.OAuthFulfillmentStage']
+    ];
+    const current = {credentials: 1, mfa: 2, consent: 3, redirect: 5}[phase];
+    // All statuses are local preview states; completion never means a real grant.
+    const next = phase === 'redirect'
+      ? ['Local preview complete', '', 'prototype.NoRedirect']
+      : stages[Math.min(current + 1, stages.length - 1)];
+    document.querySelector('#inspector-stage-name').textContent = phase === 'redirect' ? tr('Local preview complete') : tr(next[0]);
+    document.querySelector('#inspector-stage-kind').textContent = phase === 'redirect' ? 'prototype.NoRedirect' : next[2];
+    renderJSON(document.querySelector('#inspector-stage-object'), {
+      pk: 'prototype-stage', name: next[0], verboseName: next[2], preview: true
+    });
+    renderJSON(document.querySelector('#inspector-context'), {
       application: 'Argo CD', scopes: ['email', 'profile'], phase,
       session_id: 'prototype-session', preview: true
-    }, null, 2);
-    const history = document.querySelector('#plan-history');
-    history.replaceChildren();
+    });
+    const history = document.querySelector('#plan-history'); history.replaceChildren();
+    stages.forEach((stage, index) => {
+      const status = index < current ? 'completed' : index === current ? 'current' : 'pending';
+      const item = document.createElement('li'); item.className = 'pipeline-node'; item.dataset.status = status;
+      if (status === 'current') item.setAttribute('aria-current', 'step');
+      const marker = document.createElement('span'); marker.className = 'pipeline-marker'; marker.setAttribute('aria-hidden', 'true');
+      marker.textContent = status === 'completed' ? '✓' : status === 'current' ? '●' : String(index + 1);
+      const body = document.createElement('details'); body.className = 'pipeline-card';
+      const header = document.createElement('div'); header.className = 'pipeline-heading';
+      const title = document.createElement('p'); title.className = 'plan-title'; title.textContent = tr(stage[0]);
+      const badge = document.createElement('span'); badge.className = 'stage-badge';
+      badge.textContent = tr({completed: 'Completed', current: 'Current', pending: 'Pending'}[status]);
+      header.append(title, badge);
+      const description = document.createElement('p'); description.className = 'plan-stage'; description.textContent = tr(stage[1]);
+      const summary = document.createElement('summary'); summary.append(header, description);
+      body.append(summary, codeBlock({name: stage[0], kind: stage[2], status, preview: true}, `pipeline-json-${index}`));
+      item.append(marker, body); history.append(item);
+    });
+    let snapshots = document.querySelector('#plan-snapshots');
+    if (!snapshots) {
+      snapshots = document.createElement('details'); snapshots.id = 'plan-snapshots'; snapshots.className = 'plan-snapshots';
+      history.after(snapshots);
+    }
+    snapshots.replaceChildren();
+    const summary = document.createElement('summary'); summary.textContent = `${tr('Plan snapshots')} · ${plans.length}`;
+    snapshots.append(summary);
     plans.forEach((plan, index) => {
-      const item = document.createElement('li');
-      const name = document.createElement('p'); name.className = 'plan-title';
-      name.textContent = `${tr('Plan')} ${String(index + 1).padStart(2, '0')} · ${tr(plan.name)}`;
-      const caption = document.createElement('p'); caption.className = 'plan-stage';
-      caption.textContent = plan.stages.join(' → ');
-      const details = document.createElement('details');
-      const summary = document.createElement('summary'); summary.textContent = tr('Show stages');
-      const pre = document.createElement('pre'); pre.textContent = JSON.stringify({stages: plan.stages, preview: true}, null, 2);
-      details.append(summary, pre); item.append(name, caption, details); history.append(item);
+      const title = document.createElement('p'); title.className = 'snapshot-title';
+      title.textContent = `${tr('Plan')} ${String(index + 1).padStart(2, '0')} · ${tr(plan.name)}`;
+      snapshots.append(title, codeBlock({stages: plan.stages, preview: true}, `snapshot-json-${index}`));
     });
   }
   function applyLocale() {
@@ -144,23 +205,89 @@
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape' && !options.hidden) { closeLanguages(true); event.preventDefault(); }
   });
-  inspectorTrigger.addEventListener('click', () => {
-    closeLanguages(); updateInspector(); dialog.showModal(); inspectorTrigger.setAttribute('aria-expanded', 'true');
+  let inspectorMotion = [];
+  let inspectorTransition = 0;
+  let inspectorClosing = false;
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  async function setInspectorOpen(open) {
+    if (open ? dialog.open && !inspectorClosing : !dialog.open || inspectorClosing) return;
+    const revision = ++inspectorTransition;
+    const moving = [...document.querySelectorAll('.stage > .glass, .flow-tools')];
+    const before = moving.map(element => element.getBoundingClientRect());
+    const panelBefore = dialog.open ? dialog.getBoundingClientRect() : null;
+    inspectorMotion.forEach(animation => animation.cancel());
+    inspectorClosing = !open;
+    if (open) {
+      closeLanguages(); updateInspector(); dialog.show();
+      inspectorTrigger.focus({preventScroll: true});
+      inspectorTrigger.setAttribute('aria-expanded', 'true');
+      for (const link of document.querySelectorAll('.signin-link')) link.href = siblingURL('05-typewriter.html');
+    }
+    document.body.classList.toggle('inspector-layout-open', open);
+    const after = moving.map(element => element.getBoundingClientRect());
+    const panelAfter = dialog.getBoundingClientRect();
+    const panelStart = panelBefore
+      ? `translate(${panelBefore.left - panelAfter.left}px, ${panelBefore.top - panelAfter.top}px)`
+      : 'translateX(100%)';
+    if (!reducedMotion.matches) {
+      const timing = {duration: 180, easing: 'cubic-bezier(.2,.65,.3,1)'};
+      // FLIP keeps the card at its visible position while the final layout is applied.
+      // Both transforms start in this frame and share exactly the same timing.
+      const panel = dialog.animate([
+        {transform: panelStart},
+        {transform: open ? 'translateX(0)' : 'translateX(100%)'}
+      ], {...timing, fill: 'forwards'});
+      const shifts = moving.map((element, index) => element.animate([
+        {transform: `translate(${before[index].left - after[index].left}px, ${before[index].top - after[index].top}px)`},
+        {transform: 'translate(0, 0)'}
+      ], timing));
+      inspectorMotion = [panel, ...shifts];
+      await Promise.allSettled(inspectorMotion.map(animation => animation.finished));
+    }
+    if (revision !== inspectorTransition) return;
+    if (!open) dialog.close();
+    inspectorMotion.forEach(animation => animation.cancel());
+    inspectorMotion = [];
+    inspectorClosing = false;
+  }
+  reducedMotion.addEventListener('change', () => {
+    if (reducedMotion.matches) inspectorMotion.forEach(animation => animation.finish());
   });
-  document.querySelector('.inspector-close').addEventListener('click', () => dialog.close());
-  dialog.addEventListener('keydown', event => {
-    if (event.key !== 'Tab') return;
-    const controls = [...dialog.querySelectorAll('button, a[href], input, select, textarea, summary, [tabindex]:not([tabindex="-1"])')]
-      .filter(el => !el.disabled && el.getClientRects().length);
-    const first = controls[0]; const last = controls[controls.length - 1];
-    if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
-      event.preventDefault(); last.focus();
-    } else if (!event.shiftKey && (document.activeElement === last || document.activeElement === dialog)) {
-      event.preventDefault(); first.focus();
+  inspectorTrigger.addEventListener('click', () => setInspectorOpen(!dialog.open || inspectorClosing));
+  dialog.addEventListener('cancel', event => {
+    event.preventDefault(); setInspectorOpen(false);
+  });
+  dialog.addEventListener('click', async event => {
+    const button = event.target.closest('[data-copy-target]');
+    if (!button) return;
+    try {
+      await navigator.clipboard.writeText(document.getElementById(button.dataset.copyTarget).textContent);
+      button.textContent = tr('Copied');
+    } catch {
+      button.textContent = tr('Select text to copy');
+    }
+  });
+  document.querySelector('.inspector-close').addEventListener('click', () => setInspectorOpen(false));
+  // Non-modal: Tab is free to move between the inspector and the login form.
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !event.defaultPrevented && dialog.open) {
+      event.preventDefault(); setInspectorOpen(false);
     }
   });
   dialog.addEventListener('close', () => {
-    inspectorTrigger.setAttribute('aria-expanded', 'false'); inspectorTrigger.focus({preventScroll: true});
+    // A queued close event may arrive after the drawer has already reopened.
+    if (dialog.open) return;
+    ++inspectorTransition;
+    inspectorMotion.forEach(animation => animation.cancel());
+    inspectorMotion = [];
+    inspectorClosing = false;
+    document.body.classList.remove('inspector-layout-open');
+    inspectorTrigger.setAttribute('aria-expanded', 'false');
+    for (const link of document.querySelectorAll('.signin-link')) link.href = siblingURL('05-typewriter.html');
+    // Closing diagnostics must not steal focus from a field being edited.
+    if (dialog.contains(document.activeElement) || document.activeElement === document.body) {
+      inspectorTrigger.focus({preventScroll: true});
+    }
   });
   if (form) {
     function showFeedback(key, kind = 'error') {
@@ -216,4 +343,5 @@
     });
   }
   applyLocale();
+  if (query.get('inspector') === '1') setInspectorOpen(true);
 })();

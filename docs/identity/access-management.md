@@ -7,8 +7,8 @@ below are security boundaries, not merely UI details. NetBird remains deferred.
 ## Requested completion boundary
 
 The approved scope is **every deployed service with human authentication**, not
-just this portal catalog. This includes **LiteLLM administration**, which is **not
-migrated yet**. A complete live service/host/auth-path inventory is still required.
+just this portal catalog. This includes **LiteLLM administration**, now connected through native OIDC + PKCE
+with a reviewed owner UUID mapping; real owner acceptance remains pending. A complete live service/host/auth-path inventory is still required.
 Human login must use Authentik; server-enforced legacy fallback is owner-only.
 Scoped machine API keys, robots, webhooks and MCP remain separate and must not be
 redirected to an interactive login. A tile or an enabled OAuth provider is not proof
@@ -25,11 +25,12 @@ that local bypasses or pre-existing human sessions have been closed.
 | Open WebUI | Native OIDC; owner → admin, Tim → user | Existing users/chats retained through exact UUID linking; no generic email merging; local login retained |
 | n8n | Authentik MFA/group gate in front of browser UI | **Not native account SSO**: Community lacks the appropriate licensed integration; n8n may still ask for its own login |
 | Wiki | Native OIDC + PKCE, owner admin / existing Tim editor / other observers reader | Public reading and machine MCP remain separate; legacy passwords and old local sessions are owner-only |
+| LiteLLM | Native Generic OIDC + PKCE, owner-only application; reviewed UUID → existing `socrat-admin` | Existing owner database password fallback and machine keys retained; free SSO ≤5 users; real owner acceptance pending. See [LiteLLM](../litellm.md) |
 | Uptime Kuma | Existing native admin authentication + public status pages | **Not migrated to SSO**: installed auth implementation has no native OIDC; public and administrative socket traffic must be separated safely first |
 
 Other app/API credentials (LiteLLM, CI, MCP, Syncthing, VPN and webhooks) are not
 silently replaced with browser credentials. The service catalog is
-`deploy/identity/services.json`; it currently covers seven main portal services,
+`deploy/identity/services.json`; it currently covers eight foundation-managed portal services; Argo CD is managed separately,
 not every endpoint in the cluster. Do not describe a portal tile as proof of SSO.
 
 ## Accounts and rights
@@ -52,7 +53,7 @@ It never silently resets a human's changed password.
 ### Personal login
 
 Portal: **https://auth.socrat.alchemmist.xyz/**. Owner already completed initial
-login/MFA. Seven local SVG icons are uploaded to Authentik's persistent media store,
+login/MFA. All nine current dashboard applications have local SVG icons uploaded to Authentik's persistent media store,
 not a third-party tracking CDN. Pinned assets, hashes and upstream attribution are
 in `assets/service-icons/`.
 

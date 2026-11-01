@@ -1,0 +1,20 @@
+---
+# Preserve only an already activated native integration after Helm changes.
+- name: Preserve activated LiteLLM native identity configuration
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  environment:
+    K3S_CONFIG_FILE: /dev/null
+  tasks:
+    - name: Detect LiteLLM OIDC activation without reading credentials
+      ansible.builtin.command:
+        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, -n, llm, get, secret, socrat-authentik-litellm, --ignore-not-found, -o, name]
+      register: litellm_identity_active
+      changed_when: false
+    - name: Reconcile only an already activated LiteLLM integration
+      ansible.builtin.include_role:
+        name: identity_integrations
+      vars:
+        identity_oidc_services: [litellm]
+      when: litellm_identity_active.stdout | trim | length > 0

@@ -8,8 +8,11 @@ imagePullSecrets:
 publicURL: https://wiki.socrat.alchemmist.xyz
 visibility: public
 contentPrefix: wiki/content
+# Local data was migrated off socrat-3; keep exactly one writer on the SSD node.
+nodeSelector:
+  kubernetes.io/hostname: socrat-0
 persistence:
-  existingClaim: wiki-runtime-data
+  existingClaim: wiki-runtime-data-socrat-0
   size: 5Gi
   storageClass: local-path
 bootstrapSecret: wiki-runtime-bootstrap

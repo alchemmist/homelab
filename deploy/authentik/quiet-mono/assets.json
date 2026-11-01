@@ -1,0 +1,30 @@
+{
+  "COURIER": {
+    "path": "reference/assets/fonts/couriercyrps.woff2",
+    "sha256": "461cca8566fa889845e89dc4a474d5fe1ea25a31174256940bb25f4102cd05cd"
+  },
+  "SERIF": {
+    "path": "reference/assets/fonts/cmu.serif-bold.woff2",
+    "sha256": "f12f08a4de4ecfde9a4c1b734e20e26b3bcf7899cf7f5c8718e3f10a7d592279"
+  },
+  "CODE": {
+    "path": "reference/assets/fonts/cmu.typewriter-text-regular.woff2",
+    "sha256": "a9489dcbd4e94427150e2e784ba6c30bd97115a1a017237d39870037418f1f2a"
+  },
+  "MASK": {
+    "path": "reference/assets/socrat-mask.webp",
+    "sha256": "878a6e9d51f8bb61bce354d00312906d8ed29b0263e59f6efbd1562b72b45e8f"
+  },
+  "FAVICON": {
+    "path": "reference/assets/wiki-favicon.svg",
+    "sha256": "a86fb867f8e5ccce0336c38da738ec2ddb81ff5bc4639b26de535c9d4c4f9e32"
+  },
+  "LAKE": {
+    "path": "reference/assets/lake-1920.webp",
+    "sha256": "b973e7b40e2d009716b6e9eabe2d99e41339dc427f8df7d048d83b39425fb585"
+  },
+  "LAKE_MOBILE": {
+    "path": "reference/assets/lake-960.webp",
+    "sha256": "4c0abf672d19c170332252da5b62f9c90e3f7a468327682bc4dc50e98d85dbb2"
+  }
+}

@@ -5,6 +5,16 @@
   become: true
   any_errors_fatal: true
   tasks:
+    - name: Inspect the newer socrat-3 worker topology marker
+      ansible.builtin.stat:
+        path: /var/lib/homelab-k3s-rebalance/worker-topology
+      register: rebalance_worker_topology
+
+    - name: Refuse the superseded promotion of socrat-3
+      ansible.builtin.assert:
+        that: not rebalance_worker_topology.stat.exists
+        fail_msg: Socrat-3 is now a worker. Use k3s-worker-topology-verify.yml; do not restore the old external-voter topology.
+
     - name: Require the pinned K3s version and sufficient local capacity
       ansible.builtin.shell: |
         python3 - <<'PY'

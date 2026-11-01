@@ -9,7 +9,10 @@
     "openWebuiUserId": "81ac54e7-89b1-4728-88e6-08802271e316",
     "wikiUserId": "ea7db81cbccae261e353dccf7f8d0dba",
     "wikiUsername": "admin",
-    "wikiRole": "admin"
+    "wikiRole": "admin",
+    "litellmUserId": "socrat-admin",
+    "litellmRole": "proxy_admin",
+    "idpUserUuid": "9e33877a-3eaa-4541-98eb-8cdc10088ef6"
   },
   "tim": {
     "name": "Tim",

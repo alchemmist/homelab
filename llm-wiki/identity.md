@@ -14,7 +14,7 @@
 - Создан **tim**, группа **homelab-observer**, initial credential вне Git в
   `~/.cache/homelab-authentik/tim-login.json` на socrat-0. Передавать вне чата,
   вход с личным TOTP и сменой initial password. SMTP приглашения пока нет.
-- Семь плиток с SVG-иконками, загруженными в собственное media-хранилище Authentik;
+- Девять текущих плиток с локальными SVG-иконками, загруженными в собственное media-хранилище Authentik;
   все icon URLs проверены 200. Assets/hash/attribution: `assets/service-icons/`.
 
 ## Grafana: причина ошибки и исправление
@@ -73,7 +73,7 @@ Private Grafana nginx намеренно очищает Authorization header; ad
 - **Kuma НЕ считать мигрированной.** Public status сохранён; admin/shared sockets
   требуют безопасной интеграции. В установленной auth реализации нет native OIDC.
 - LiteLLM, CI/robots, MCP/API, VPN и другие machine credentials не подменять SSO.
-  Каталог покрывает семь главных portal services, не буквально все endpoints кластера.
+  Каталог покрывает восемь foundation-managed portal services (Argo CD отдельно), не буквально все endpoints кластера.
 
 ## Linux / kubeconfig — уже исправлено live
 
@@ -167,8 +167,19 @@ peers: нужен gateway+ACL/failover. Root на чужой ноде = дове
 ### Уточнение владельца о полном объёме
 
 Нужна миграция **всех сервисов кластера с человеческой авторизацией**, включая
-**LiteLLM admin UI** (ещё НЕ мигрирован), а не только семи portal apps. Старые
+**LiteLLM admin UI** (теперь native OIDC + PKCE; реальная приёмка владельцем ещё нужна), а не только portal apps. Старые
 серверные методы входа — только владельцу как fallback. Полный live inventory
 и проверка всех прямых/приватных auth-paths ещё не завершены. Machine API keys,
 robots, webhooks и MCP отдельно: нельзя заменить их интерактивными редиректами.
 Не считать текущую работу завершением всей миграции.
+
+
+## LiteLLM и иконки dashboard — 2026-11-01
+
+- Исправлено реальное отсутствие LiteLLM: создан native Generic OIDC provider/application с точным `/sso/callback`, PKCE, обычным обязательным MFA и owner-only admission. Вход: `https://llm.alchemmist.xyz/sso/key/generate`.
+- Reviewed Authentik UUID владельца → существующий `socrat-admin` / `proxy_admin`; ни email, ни имя не выбирают административный ID. Пароль/IDs/roles старых записей не менялись. Реальный owner MFA не подменялся тестовым.
+- Browser smoke: временный observer получил отдельный UUID-based read-only ID, прошёл TOTP/consent/OIDC и серверную проверку роли. Его одиночный temporary admission binding, аккаунты и UI keys удалены. Production admission снова только owner.
+- Существующий Open WebUI virtual key по-прежнему читает models; без ключа 401, без browser redirects. Master/salt/DB Secrets, config и явные OTel env совпали с encrypted pre-change snapshot. vLLM не перезапускался; LiteLLM обновлён обычным graceful rollout.
+- `/fallback/login` сохранён для старого owner DB password. Сам пароль не сбрасывался/не проверялся; полноценная приёмка owner login/recovery ещё требуется. Free SSO установленной версии ограничен пятью пользователями; обходов лицензии нет.
+- У Argo CD добавлен официальный pinned SVG; Wiki заменена с BookStack на исходный круглый Socrat из `deploy/litellm/branding/socrat-icon-v1.png`, версия 512px. LiteLLM использует тот же собственный favicon. Все девять разрешённых media URLs реально проверены HTTPS 200 + SHA-256; настройки Argo CD provider/policies не менялись.
+- Encrypted backup `litellm-before-oidc-20261101.aesgcm`: decrypt/authentication и archive listing проверены, полный restore НЕ выполнялся. Подробности и команды — `docs/litellm.md`.

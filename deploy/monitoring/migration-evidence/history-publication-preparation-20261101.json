@@ -1,0 +1,1014 @@
+{
+  "schemaVersion": 1,
+  "generatedAtUnix": 1793556474.2234921,
+  "metadataObservedAtUnix": 1793556467.2839065,
+  "productionModified": false,
+  "productionPublicationApproved": false,
+  "allCurrentHistoryVerified": false,
+  "sourceRows": [
+    {
+      "originalBlock": "01M5P6GGQM3K9NAF43KP5JX3JW",
+      "samples": 4606695568,
+      "canonicalSHA256": "d49a8367a81cdd9dfd626fdf13eded48063abdb37289669d5572a8f8c3821b1f",
+      "fullOriginalCanonicalVerified": true,
+      "minTime": 1792652344262,
+      "maxTime": 1792800000000,
+      "externalLabels": {
+        "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+        "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0"
+      },
+      "containedCandidate": "01M66N9A83XZN71D7WMX02KVZZ",
+      "candidateBlock": "01M66N9A83XZN71D7WMX02KVZZ",
+      "originalPresentInSnapshot": false,
+      "publicationApproved": false,
+      "blockers": [
+        "Original absent: rule out compaction/retention/subset coverage",
+        "Fresh serving inventory, content identity and fenced handoff still required"
+      ],
+      "potentialLiveOverlap": [],
+      "action": "reconcile-missing-original-before-publication"
+    },
+    {
+      "originalBlock": "01M5VBA2WTA1H8QE21D6PHVHWY",
+      "samples": 5955368159,
+      "canonicalSHA256": "968bcb72e212318421325cf79f572066784c63433aa7d20ab60f0061ebbaaf43",
+      "fullOriginalCanonicalVerified": true,
+      "minTime": 1792800000056,
+      "maxTime": 1792972800000,
+      "externalLabels": {
+        "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+        "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0"
+      },
+      "containedCandidate": "01M67R1BWZR6C7VE8NYX7868TM",
+      "candidateBlock": "01M67R1BWZR6C7VE8NYX7868TM",
+      "originalPresentInSnapshot": false,
+      "publicationApproved": false,
+      "blockers": [
+        "Original absent: rule out compaction/retention/subset coverage",
+        "Fresh serving inventory, content identity and fenced handoff still required"
+      ],
+      "potentialLiveOverlap": [],
+      "action": "reconcile-missing-original-before-publication"
+    },
+    {
+      "originalBlock": "01M60G3GYDQYMVRYQ7NSNB2FGR",
+      "samples": 6137437488,
+      "canonicalSHA256": "aa43a0def61cd41d34336f6f68b2dae516aed8574d52b1513a6e82aa42280e81",
+      "fullOriginalCanonicalVerified": true,
+      "minTime": 1792972800008,
+      "maxTime": 1793145600000,
+      "externalLabels": {
+        "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+        "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0"
+      },
+      "containedCandidate": "01M68T9FN8CKN60ZNN1R3DEQKH",
+      "candidateBlock": "01M68T9FN8CKN60ZNN1R3DEQKH",
+      "originalPresentInSnapshot": true,
+      "publicationApproved": false,
+      "blockers": [
+        "Fresh serving inventory, content identity and fenced handoff still required"
+      ],
+      "potentialLiveOverlap": [
+        "01M60G3GYDQYMVRYQ7NSNB2FGR"
+      ],
+      "action": "replace-exact-original-after-serving-barrier"
+    },
+    {
+      "originalBlock": "01M612NE3X7QKRHX9Q1NWWPEH4",
+      "samples": 260844250,
+      "canonicalSHA256": "9da8f16dc720a85adf1a3c37ddf9cc8956b2c0121aa5b3668671d735f65d2790",
+      "fullOriginalCanonicalVerified": true,
+      "minTime": 1793174400046,
+      "maxTime": 1793181600000,
+      "externalLabels": {
+        "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+        "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0"
+      },
+      "containedCandidate": "01M68X0C52EXRRVDQGF12XAYGH",
+      "candidateBlock": "01M68X0C52EXRRVDQGF12XAYGH",
+      "originalPresentInSnapshot": false,
+      "publicationApproved": false,
+      "blockers": [],
+      "action": "do-not-publish-contained-copy",
+      "coveredByOriginal": "01M66BZJJH7AX3HTZFRZD02SXP"
+    },
+    {
+      "originalBlock": "01M619H5BTN00D1MVWZNRTJ2VC",
+      "samples": 261337432,
+      "canonicalSHA256": "14ac7b9f5acb7a25cd869bcf07103d2ca03096ca6e67bb02e20b4fc2d8780856",
+      "fullOriginalCanonicalVerified": true,
+      "minTime": 1793181600003,
+      "maxTime": 1793188800000,
+      "externalLabels": {
+        "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+        "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0"
+      },
+      "containedCandidate": "01M68YFW7529BN0T0KJZ0W9XRJ",
+      "candidateBlock": "01M68YFW7529BN0T0KJZ0W9XRJ",
+      "originalPresentInSnapshot": false,
+      "publicationApproved": false,
+      "blockers": [],
+      "action": "do-not-publish-contained-copy",
+      "coveredByOriginal": "01M66BZJJH7AX3HTZFRZD02SXP"
+    },
+    {
+      "originalBlock": "01M61BHKG8EYTCRNMDHRYTBNKR",
+      "samples": 1043291602,
+      "canonicalSHA256": "96b0b9f5f763ec154578de90b490a13683a81f42bae32c634118c8b356189acf",
+      "fullOriginalCanonicalVerified": true,
+      "minTime": 1793145600012,
+      "maxTime": 1793174400000,
+      "externalLabels": {
+        "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+        "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0"
+      },
+      "containedCandidate": "01M69T4GP87P4YY0DBE7N7Q2JJ",
+      "candidateBlock": "01M69T4GP87P4YY0DBE7N7Q2JJ",
+      "originalPresentInSnapshot": false,
+      "publicationApproved": false,
+      "blockers": [],
+      "action": "do-not-publish-contained-copy",
+      "coveredByOriginal": "01M66BZJJH7AX3HTZFRZD02SXP"
+    },
+    {
+      "originalBlock": "01M66BZJJH7AX3HTZFRZD02SXP",
+      "samples": 6383043932,
+      "canonicalSHA256": "0904e594038c9cfc60720e01bee3b27cbfdca450b913dd9f5f5dda8da16c4209",
+      "fullOriginalCanonicalVerified": true,
+      "minTime": 1793145600012,
+      "maxTime": 1793318400000,
+      "externalLabels": {
+        "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+        "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0"
+      },
+      "approvedPriorRepairLossSamples": 120,
+      "candidateBlock": "01M6BBYTZHHWT579DX99J3S7EF",
+      "originalPresentInSnapshot": true,
+      "publicationApproved": false,
+      "blockers": [
+        "Fresh serving inventory, content identity and fenced handoff still required"
+      ],
+      "potentialLiveOverlap": [
+        "01M66BZJJH7AX3HTZFRZD02SXP"
+      ],
+      "action": "replace-exact-original-after-serving-barrier"
+    },
+    {
+      "originalBlock": "01M61CDMNWPCZ4GZWFB5FHS67S",
+      "samples": 235173517,
+      "canonicalSHA256": "7f7fac361193bea3f23f53bcdb40ceeef2495f724e3d0d86ecbc486fd371088f",
+      "fullOriginalCanonicalVerified": false,
+      "containedCandidate": "01M61PJFZ9Q86GRQ70N0M81NH3",
+      "minTime": 1793188800016,
+      "maxTime": 1793195430560,
+      "externalLabels": {
+        "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+        "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0"
+      },
+      "candidateBlock": "01M61PJFZ9Q86GRQ70N0M81NH3",
+      "originalPresentInSnapshot": false,
+      "publicationApproved": false,
+      "blockers": [],
+      "action": "do-not-publish-contained-copy",
+      "coveredByOriginal": "01M66BZJJH7AX3HTZFRZD02SXP"
+    },
+    {
+      "originalBlock": "01M66G9HT3YJ4W6TSADWG305M6",
+      "samples": 847811515,
+      "canonicalSHA256": "6db1393e6b7dfb18b95495b2bf9fe910b6177f2aef95f55fc75b9d98238dcf24",
+      "fullOriginalCanonicalVerified": true,
+      "minTime": 1793318400034,
+      "maxTime": 1793347200000,
+      "externalLabels": {
+        "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+        "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0"
+      },
+      "outOfOrderCompanion": false,
+      "candidateBlock": "01M6C1A7HHG5S3K3F4WCXNR61C",
+      "originalPresentInSnapshot": true,
+      "publicationApproved": false,
+      "blockers": [
+        "Fresh serving inventory, content identity and fenced handoff still required"
+      ],
+      "potentialLiveOverlap": [
+        "01M66G9HT3YJ4W6TSADWG305M6"
+      ],
+      "action": "replace-exact-original-after-serving-barrier"
+    },
+    {
+      "originalBlock": "01M67BSZ1EMNPWMQ4SYBNEYJ8H",
+      "samples": 859196450,
+      "canonicalSHA256": null,
+      "fullOriginalCanonicalVerified": false,
+      "minTime": 1793347200074,
+      "maxTime": 1793376000000,
+      "externalLabels": {
+        "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+        "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0"
+      },
+      "outOfOrderCompanion": false,
+      "candidateBlock": null,
+      "originalPresentInSnapshot": true,
+      "publicationApproved": false,
+      "blockers": [
+        "No uniquely content-bound completed native candidate"
+      ],
+      "action": "await-full-roundtrip-and-native-stage"
+    },
+    {
+      "originalBlock": "01M6878TK453MC40ASW9ZAJ0HX",
+      "samples": 886337427,
+      "canonicalSHA256": null,
+      "fullOriginalCanonicalVerified": false,
+      "minTime": 1793376000077,
+      "maxTime": 1793404800000,
+      "externalLabels": {
+        "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+        "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0"
+      },
+      "outOfOrderCompanion": false,
+      "candidateBlock": null,
+      "originalPresentInSnapshot": true,
+      "publicationApproved": false,
+      "blockers": [
+        "No uniquely content-bound completed native candidate"
+      ],
+      "action": "await-full-roundtrip-and-native-stage"
+    },
+    {
+      "originalBlock": "01M68SVKT78T25E55SH643YFM0",
+      "samples": 224120525,
+      "canonicalSHA256": null,
+      "fullOriginalCanonicalVerified": false,
+      "minTime": 1793433600031,
+      "maxTime": 1793440800000,
+      "externalLabels": {
+        "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+        "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0"
+      },
+      "outOfOrderCompanion": false,
+      "candidateBlock": null,
+      "originalPresentInSnapshot": true,
+      "publicationApproved": false,
+      "blockers": [
+        "No uniquely content-bound completed native candidate"
+      ],
+      "action": "await-full-roundtrip-and-native-stage"
+    },
+    {
+      "originalBlock": "01M690QA5VG8VBK01AAHD34GT9",
+      "samples": 223309661,
+      "canonicalSHA256": null,
+      "fullOriginalCanonicalVerified": false,
+      "minTime": 1793440800000,
+      "maxTime": 1793448000000,
+      "externalLabels": {
+        "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+        "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0"
+      },
+      "outOfOrderCompanion": false,
+      "candidateBlock": null,
+      "originalPresentInSnapshot": true,
+      "publicationApproved": false,
+      "blockers": [
+        "No uniquely content-bound completed native candidate"
+      ],
+      "action": "await-full-roundtrip-and-native-stage"
+    },
+    {
+      "originalBlock": "01M690QQG8K9TQ5WBE7W573CW0",
+      "samples": 38731,
+      "canonicalSHA256": null,
+      "fullOriginalCanonicalVerified": false,
+      "minTime": 1793448000000,
+      "maxTime": 1793455200000,
+      "externalLabels": {
+        "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+        "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0"
+      },
+      "outOfOrderCompanion": true,
+      "candidateBlock": null,
+      "originalPresentInSnapshot": true,
+      "publicationApproved": false,
+      "blockers": [
+        "No uniquely content-bound completed native candidate"
+      ],
+      "action": "await-full-roundtrip-and-native-stage"
+    },
+    {
+      "originalBlock": "01M692QSEEXSXA6G4TRR7SXEWC",
+      "samples": 895644256,
+      "canonicalSHA256": null,
+      "fullOriginalCanonicalVerified": false,
+      "minTime": 1793404800013,
+      "maxTime": 1793433600000,
+      "externalLabels": {
+        "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+        "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0"
+      },
+      "outOfOrderCompanion": false,
+      "candidateBlock": null,
+      "originalPresentInSnapshot": true,
+      "publicationApproved": false,
+      "blockers": [
+        "No uniquely content-bound completed native candidate"
+      ],
+      "action": "await-full-roundtrip-and-native-stage"
+    },
+    {
+      "originalBlock": "01M697K1G59F78YWVGT9Y2K08Z",
+      "samples": 234306022,
+      "canonicalSHA256": null,
+      "fullOriginalCanonicalVerified": false,
+      "minTime": 1793448000077,
+      "maxTime": 1793455200000,
+      "externalLabels": {
+        "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+        "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0"
+      },
+      "outOfOrderCompanion": false,
+      "candidateBlock": null,
+      "originalPresentInSnapshot": true,
+      "publicationApproved": false,
+      "blockers": [
+        "No uniquely content-bound completed native candidate"
+      ],
+      "action": "await-full-roundtrip-and-native-stage"
+    },
+    {
+      "originalBlock": "01M697KFH379N839ZYW5VM28J5",
+      "samples": 4279,
+      "canonicalSHA256": null,
+      "fullOriginalCanonicalVerified": false,
+      "minTime": 1793448000000,
+      "maxTime": 1793455200000,
+      "externalLabels": {
+        "prometheus": "cattle-monitoring-system/kube-prometheus-stack-prometheus",
+        "prometheus_replica": "prometheus-kube-prometheus-stack-prometheus-0"
+      },
+      "outOfOrderCompanion": true,
+      "candidateBlock": null,
+      "originalPresentInSnapshot": true,
+      "publicationApproved": false,
+      "blockers": [
+        "No uniquely content-bound completed native candidate"
+      ],
+      "action": "await-full-roundtrip-and-native-stage"
+    }
+  ],
+  "summedSamplesIntentionallyOmitted": "Contained backups and OOO multiplicity are not additive scope proofs",
+  "requiredExecutionGates": [
+    "All nine tail sources complete exact roundtrip/native/durable staging",
+    "Refresh inventory including post-capture legacy-boundary blocks and deletion marks",
+    "Explicit native exceptions: downsampled aggregates and unsupported histograms",
+    "Bind candidate and original immutable file inventories before any move",
+    "Freeze competing bucket writers/compactors with preimages and restore procedure",
+    "Withdraw historical serving endpoints and drain in-flight queries before bucket mutation",
+    "Retire originals outside every served bucket before exposing replacements; never co-serve",
+    "Reconcile Store discovery, caches and downsample selection, not only filesystem names",
+    "Queries with dedup=false and max_source_resolution=0; verify labels/bits/multiplicity",
+    "Rehearse reverse serving barrier with retained original inventories",
+    "Disk/memory reserve >=20%; no retention reduction, deletion or extra sample loss"
+  ],
+  "finalAcceptanceDeferred": [
+    "Application SDK/cross-app gaps",
+    "Production-owner rollback proof",
+    "Sustained capacity and genuine configuration-bound 72h window"
+  ],
+  "inputBindings": [
+    {
+      "name": "history-publication-metadata-socrat-0.json",
+      "sha256": "33a6a78a9b72a385a137242af3e740b76ada959c85eed131f98410c9420722fd"
+    },
+    {
+      "name": "history-publication-metadata-socrat-1.json",
+      "sha256": "1b38fd9ab2a431b65f972397a964bff970622d350c4a3b1bb88efa2966531c14"
+    },
+    {
+      "name": "cutover-tail-scope.json",
+      "sha256": "5b8eaaa00c977636c9acb60d424a1a5ca706026b7c7a0b737d6e2ee4937db4e4"
+    },
+    {
+      "name": "history-classification-20261028.json",
+      "sha256": "7ad67dd87f80ad743efef2cc562f20091f6f019277283cccd2e16a14bf97a275"
+    },
+    {
+      "name": "history-original-comparison-complete-20261101.json",
+      "sha256": "1accebda441a9eae6edf0453bcbb1bc682e92a4229d949e4a89b7856fb22ebac"
+    },
+    {
+      "name": "history-staged-revalidation-20261101.json",
+      "sha256": "ac64d83efc85bfcbd91f2e11cadf48447c180d65f945ed4a9e2a244f920195bb"
+    },
+    {
+      "name": "history-backup-final-block-20261031.json",
+      "sha256": "7b9790d9aec94bc1b1011c9f401b083e88a8241772085472465a2125b0cbb187"
+    },
+    {
+      "name": "history-tail-preservation-20261101.json",
+      "sha256": "4297139749ead66ced9dea4634ad640b1aa466286218fa71da31dc170934bb86"
+    },
+    {
+      "name": "history-tail-live-reconciliation-20261101.json",
+      "sha256": "1229f17bc4163447b7306d6c5cfd0f90ef977c868680ad5039d815c3e8d0fb8e"
+    },
+    {
+      "name": "history-complete-subset-20261031.json",
+      "sha256": "dc12d51533a98123889b7c29797cb55c9eb1bdfe1181e298f7996256269593a3"
+    }
+  ],
+  "nativePreservationExceptions": [
+    {
+      "archive": "thanos-raw.tar.gz",
+      "compactionSources": [
+        "01M5HGSHWRRQAB7GHV0A7R3BPZ",
+        "01M5HM9425SXWJJ7V153JJCQ5F",
+        "01M5HV4VTFK3EKB079AEKNCRPG",
+        "01M5J20JHWDCWRMWJ3ZJYJEFVF",
+        "01M5J8WAZACSW8MGKAPJ9MSXWZ",
+        "01M5JFR1QM2H6Q5BCC7SSGK79X",
+        "01M5JPKRYCNK0SQ2XK56W9VHHD",
+        "01M5JXFG69HP0G8516KQN9Y16D",
+        "01M5K4B7EGBR8E526JW8QHR7XZ",
+        "01M5KB6YMX396C2DBPEQ2KSSMJ",
+        "01M5KJ2NYFKPXSWCAY8MNRKJ36",
+        "01M5KRYDCCNW9NN9BRAS0T76BY",
+        "01M5KZT4FNRQ5GEAPV7B2AJKV2",
+        "01M5M6NV47CZRPCXPHQEWZTNKN",
+        "01M5MDHJZD688RCQ1E2MVZS9A9",
+        "01M5MMDA6KH1NZ6TANZBGHYR7H",
+        "01M5MV90W3ZF5XH8J7F76XKQ73",
+        "01M5N24RN4EC5FZ5GZTE9XT5ET",
+        "01M5N90FXBDREMTX04X3ENJKVG",
+        "01M5NFW756NK829MS7FD3RGE77",
+        "01M5NPQYEC3B30JJF3YNZBXSRA"
+      ],
+      "deletionMarked": false,
+      "maxTime": 1792800000000,
+      "minTime": 1792652344262,
+      "reason": "downsampled-native",
+      "resolution": 300000,
+      "ulid": "01M5P6HX87BCPBXY5CH33N3FQ0"
+    },
+    {
+      "archive": "thanos-raw.tar.gz",
+      "compactionSources": [
+        "01M5NXKNPGC6WX1Z6BC9T1070B",
+        "01M5P4FCX5Z245NZ7SBPT1F4N3",
+        "01M5PBB47YBJSNYW3JDKT34161",
+        "01M5PJ6TW5HPTNXXZN40AC0ANH",
+        "01M5PS2JRXB7E5NAN7KQV8ZYVH",
+        "01M5PZYA00EF55Y9EEDCS8KCW2",
+        "01M5Q6T0QY3BY1PCWRVBZZ2PS6",
+        "01M5QDNR1T5RQFVB0M5AHTBD1X",
+        "01M5QMHF3RM07X1C8KGATVV0XN",
+        "01M5QVD6BTYKM40V403HPD64Q6",
+        "01M5R28XKV1D8N17VQ9Q28PCJX",
+        "01M5R94MVSQEGCD35HT43Q944K",
+        "01M5RG0C3X2D26NPCAXM01AQ1Z",
+        "01M5RPW3BWB6NA41184FTH4BH1",
+        "01M5RXQTKXHS397TKTXA77N6ZM",
+        "01M5S4KHVYWQBXMT26KM6QB09F",
+        "01M5SBF93SHGY219CQ16PCNBNA",
+        "01M5SJB0BVZTMNE5XJA35P1TVT",
+        "01M5SS6QKX39CM66B2TD90KVYQ",
+        "01M5T02EVSZGPB882JAWDKPCSH",
+        "01M5T6Y63XEWY2J5HJ9RK4DE3Y",
+        "01M5TDSXBRBZ5G9PG94R9AXKN8",
+        "01M5TMNMKJG2SEMRCV88XTCXRB",
+        "01M5TVHBVV6HZ3EJ2JKFKQ9V60"
+      ],
+      "deletionMarked": false,
+      "maxTime": 1792972800000,
+      "minTime": 1792800000056,
+      "reason": "downsampled-native",
+      "resolution": 300000,
+      "ulid": "01M5VBBWAGG2X5XWQ8K5QJ7KV6"
+    },
+    {
+      "archive": "thanos-raw.tar.gz",
+      "compactionSources": [
+        "01M5V2D33TR68MATYRMZXGXFC3",
+        "01M5V98TC0VG014N3WX72JGFPP",
+        "01M5VG4HKSX9JHJGEM7YDJ6Z28",
+        "01M5VQ08VZQS19ADFC3A33MQBN",
+        "01M5VXW03Q6J8BHM8FXPPNTSWV",
+        "01M5W4QQBXEG6MSZ62T8X5HNWT",
+        "01M5WBKEKTR09FKZSH61KYJWSE",
+        "01M5WJF5VTMBY2ERBZHZSFAP7M",
+        "01M5WSAX3S793WGTZM1SXJEFFS",
+        "01M5X06MBTBG6FG3GW122A8HXZ",
+        "01M5X72BKV1W13W98PSZ37SD0W",
+        "01M5XDY2VNAN58A09V9RJWE1HZ",
+        "01M5XMST3SFT1GT4FQ3QWSNQWK",
+        "01M5XVNHBNWNGPY222H0T74XC6",
+        "01M5Y2H8KVC69FN0MQ0P1SVF4G",
+        "01M5Y9CZVZHGT7NA758X8DT18M",
+        "01M5YG8QKDJWJEJAF2TW31ASAR",
+        "01M5YQ4EBWV44Y8TWQKXSHAAXT",
+        "01M5YY05KZ7DJ5YRF7Z604WWT1",
+        "01M5Z4VWVKW43SPDF55R4PNQ1J",
+        "01M5ZBQM3XBQPHXMPCNCN89VXB",
+        "01M5ZJKBBY41V386CNQ2G6PCNF",
+        "01M5ZSF2KT47N8K47A7QKPJ6E2",
+        "01M600ASVV4F8FYEN3VFSYFY8F"
+      ],
+      "deletionMarked": false,
+      "maxTime": 1793145600000,
+      "minTime": 1792972800008,
+      "reason": "downsampled-native",
+      "resolution": 300000,
+      "ulid": "01M60G57WS41VSTDSS6XMZKSKQ"
+    }
+  ],
+  "scopeWarning": "Frozen backup + repaired block + nine-tail scope only; later live blocks are not certified",
+  "otherLiveBlocksNotCertified": [
+    "01M5P6HX87BCPBXY5CH33N3FQ0",
+    "01M5VBBWAGG2X5XWQ8K5QJ7KV6",
+    "01M60G57WS41VSTDSS6XMZKSKQ",
+    "01M66MNNZ12MJ8JTQYT2N9S42S",
+    "01M697KFHRH4WS5J9EHG1TQ0HA",
+    "01M69EERNVDT6QV5PHN0P64VB8",
+    "01M69EF6JQ1W5P11CE5VT4MSXF",
+    "01M69EF6KGX9TM8XZX9Z3QZ6EY",
+    "01M69NAFXXRC7G2QZ6G3Q2Q9S0",
+    "01M69NAYX3F65PVYTAEEZ2YZRC",
+    "01M69NAZ12JG3RDM8TX07BGS7J",
+    "01M69W675T8JM7H6DPF4MP3E2B",
+    "01M69W6NEXZ2D1RA2QJHPQK845",
+    "01M69W6NFMF6FBZ0RBM3Y3MRAB",
+    "01M6A31YDW6SMW72A161F4HDP2",
+    "01M6A32C304PJK6NCDZKK25JPG",
+    "01M6A32C4274MDKX0YA01MAYM0",
+    "01M6A9XNNR4CDMRJ7QRJ1KB3HT",
+    "01M6A9Y43AGMQZVC32SVB792RD",
+    "01M6A9Y444HHSR1B9GRR8AR02W",
+    "01M6AGSCXT2YTNZ754R08196J0",
+    "01M6AGST2VRJRV1457CFQ7ABHA",
+    "01M6AGST3WJ25GKAA73ZDFWJNQ",
+    "01M6AQN45V317DKGKF4KNB5FS4",
+    "01M6AQNH7D231B8M88WBY6YHN7",
+    "01M6AQNH8PCJ63C8PFEBPM5F4S",
+    "01M6AYGVDW7DV3NTNPY655ZRBN",
+    "01M6AYHA2XXDK21Z3G7HVTSWV1",
+    "01M6AYHA48H599S5VA2MK81JWP",
+    "01M6B5CJNT6FZ133DWK85CBE9D",
+    "01M6B5D9PV64KK64CHD8X6D3WY",
+    "01M6B5D9QV83MY219RRENBK3EH",
+    "01M6BC89XVQ3J058KXG7MN1FNW",
+    "01M6BC91597FCSYNYXMT38AR8T",
+    "01M6BC9164SHWHFT38FN58RZJV",
+    "01M6BK415WHJKWF5F5R6EPE30B",
+    "01M6BK4RHYKZXGFCX4AHB0Y3HT",
+    "01M6BK4RP72J1X954JBTEHPEGF",
+    "01M6BSZRDTZC4VZBA3FVWX8FN4",
+    "01M6BT07RTNEPSNPTF57VBE0V0",
+    "01M6BT07SXW0J3N2F8WRVD8NA8",
+    "01M6C0VFNSQWQWTC2YKTC9K2RD",
+    "01M6C0VYGB1F3SHDZZGA4SCDNV",
+    "01M6C0VYNAXKJ0ZWEE51258J3P"
+  ],
+  "frozenLegacyBoundaryUpperBoundMilliseconds": 1793448900000,
+  "otherLiveBlockClassification": [
+    {
+      "block": "01M5P6HX87BCPBXY5CH33N3FQ0",
+      "category": "retain-native-downsampled-aggregate",
+      "resolution": 300000,
+      "minTime": 1792652344262,
+      "maxTime": 1792800000000,
+      "outOfOrderCompanion": false,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M5VBBWAGG2X5XWQ8K5QJ7KV6",
+      "category": "retain-native-downsampled-aggregate",
+      "resolution": 300000,
+      "minTime": 1792800000056,
+      "maxTime": 1792972800000,
+      "outOfOrderCompanion": false,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M60G57WS41VSTDSS6XMZKSKQ",
+      "category": "retain-native-downsampled-aggregate",
+      "resolution": 300000,
+      "minTime": 1792972800008,
+      "maxTime": 1793145600000,
+      "outOfOrderCompanion": false,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M66MNNZ12MJ8JTQYT2N9S42S",
+      "category": "retain-native-downsampled-aggregate",
+      "resolution": 300000,
+      "minTime": 1793145600012,
+      "maxTime": 1793318400000,
+      "outOfOrderCompanion": false,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M697KFHRH4WS5J9EHG1TQ0HA",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793455200000,
+      "maxTime": 1793462400000,
+      "outOfOrderCompanion": true,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M69EERNVDT6QV5PHN0P64VB8",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793455200039,
+      "maxTime": 1793462400000,
+      "outOfOrderCompanion": false,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M69EF6JQ1W5P11CE5VT4MSXF",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793455200000,
+      "maxTime": 1793462400000,
+      "outOfOrderCompanion": true,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M69EF6KGX9TM8XZX9Z3QZ6EY",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793462400000,
+      "maxTime": 1793469600000,
+      "outOfOrderCompanion": true,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M69NAFXXRC7G2QZ6G3Q2Q9S0",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793462400014,
+      "maxTime": 1793469600000,
+      "outOfOrderCompanion": false,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M69NAYX3F65PVYTAEEZ2YZRC",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793462400000,
+      "maxTime": 1793469600000,
+      "outOfOrderCompanion": true,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M69NAZ12JG3RDM8TX07BGS7J",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793469600000,
+      "maxTime": 1793476800000,
+      "outOfOrderCompanion": true,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M69W675T8JM7H6DPF4MP3E2B",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793469600039,
+      "maxTime": 1793476800000,
+      "outOfOrderCompanion": false,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M69W6NEXZ2D1RA2QJHPQK845",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793469600000,
+      "maxTime": 1793476800000,
+      "outOfOrderCompanion": true,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M69W6NFMF6FBZ0RBM3Y3MRAB",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793476800000,
+      "maxTime": 1793484000000,
+      "outOfOrderCompanion": true,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6A31YDW6SMW72A161F4HDP2",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793476800039,
+      "maxTime": 1793484000000,
+      "outOfOrderCompanion": false,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6A32C304PJK6NCDZKK25JPG",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793476800000,
+      "maxTime": 1793484000000,
+      "outOfOrderCompanion": true,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6A32C4274MDKX0YA01MAYM0",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793484000000,
+      "maxTime": 1793491200000,
+      "outOfOrderCompanion": true,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6A9XNNR4CDMRJ7QRJ1KB3HT",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793484000025,
+      "maxTime": 1793491200000,
+      "outOfOrderCompanion": false,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6A9Y43AGMQZVC32SVB792RD",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793484000000,
+      "maxTime": 1793491200000,
+      "outOfOrderCompanion": true,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6A9Y444HHSR1B9GRR8AR02W",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793491200000,
+      "maxTime": 1793498400000,
+      "outOfOrderCompanion": true,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6AGSCXT2YTNZ754R08196J0",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793491200039,
+      "maxTime": 1793498400000,
+      "outOfOrderCompanion": false,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6AGST2VRJRV1457CFQ7ABHA",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793491200000,
+      "maxTime": 1793498400000,
+      "outOfOrderCompanion": true,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6AGST3WJ25GKAA73ZDFWJNQ",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793498400000,
+      "maxTime": 1793505600000,
+      "outOfOrderCompanion": true,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6AQN45V317DKGKF4KNB5FS4",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793498400010,
+      "maxTime": 1793505600000,
+      "outOfOrderCompanion": false,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6AQNH7D231B8M88WBY6YHN7",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793498400000,
+      "maxTime": 1793505600000,
+      "outOfOrderCompanion": true,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6AQNH8PCJ63C8PFEBPM5F4S",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793505600000,
+      "maxTime": 1793512800000,
+      "outOfOrderCompanion": true,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6AYGVDW7DV3NTNPY655ZRBN",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793505600039,
+      "maxTime": 1793512800000,
+      "outOfOrderCompanion": false,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6AYHA2XXDK21Z3G7HVTSWV1",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793505600000,
+      "maxTime": 1793512800000,
+      "outOfOrderCompanion": true,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6AYHA48H599S5VA2MK81JWP",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793512800000,
+      "maxTime": 1793520000000,
+      "outOfOrderCompanion": true,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6B5CJNT6FZ133DWK85CBE9D",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793512800034,
+      "maxTime": 1793520000000,
+      "outOfOrderCompanion": false,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6B5D9PV64KK64CHD8X6D3WY",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793512800000,
+      "maxTime": 1793520000000,
+      "outOfOrderCompanion": true,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6B5D9QV83MY219RRENBK3EH",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793520000000,
+      "maxTime": 1793527200000,
+      "outOfOrderCompanion": true,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6BC89XVQ3J058KXG7MN1FNW",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793520000021,
+      "maxTime": 1793527200000,
+      "outOfOrderCompanion": false,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6BC91597FCSYNYXMT38AR8T",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793520000000,
+      "maxTime": 1793527200000,
+      "outOfOrderCompanion": true,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6BC9164SHWHFT38FN58RZJV",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793527200000,
+      "maxTime": 1793534400000,
+      "outOfOrderCompanion": true,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6BK415WHJKWF5F5R6EPE30B",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793527200048,
+      "maxTime": 1793534400000,
+      "outOfOrderCompanion": false,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6BK4RHYKZXGFCX4AHB0Y3HT",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793527200000,
+      "maxTime": 1793534400000,
+      "outOfOrderCompanion": true,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6BK4RP72J1X954JBTEHPEGF",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793534400000,
+      "maxTime": 1793541600000,
+      "outOfOrderCompanion": true,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6BSZRDTZC4VZBA3FVWX8FN4",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793534400015,
+      "maxTime": 1793541600000,
+      "outOfOrderCompanion": false,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6BT07RTNEPSNPTF57VBE0V0",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793534400000,
+      "maxTime": 1793541600000,
+      "outOfOrderCompanion": true,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6BT07SXW0J3N2F8WRVD8NA8",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793541600000,
+      "maxTime": 1793548800000,
+      "outOfOrderCompanion": true,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6C0VFNSQWQWTC2YKTC9K2RD",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793541600048,
+      "maxTime": 1793548800000,
+      "outOfOrderCompanion": false,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6C0VYGB1F3SHDZZGA4SCDNV",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793541600000,
+      "maxTime": 1793548800000,
+      "outOfOrderCompanion": true,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    },
+    {
+      "block": "01M6C0VYNAXKJ0ZWEE51258J3P",
+      "category": "after-frozen-boundary-preserve-native-not-certified",
+      "resolution": 0,
+      "minTime": 1793548800000,
+      "maxTime": 1793556000000,
+      "outOfOrderCompanion": true,
+      "deletionMarked": false,
+      "deleteOrRetireApproved": false
+    }
+  ]
+}

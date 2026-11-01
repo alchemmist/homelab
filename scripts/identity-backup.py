@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Off-node AES-GCM encrypted Authentik snapshot. Local key is never sent to cluster."""
+"""Off-node AES-GCM encrypted identity/service snapshot. Local key is never sent to cluster."""
 import argparse
 from datetime import datetime, timezone
 import hashlib
@@ -20,14 +20,14 @@ def save(path,data):
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output',type=Path,required=True)
-    p.add_argument('--service',choices=['authentik','harbor','open-webui'],default='authentik')
+    p.add_argument('--service',choices=['authentik','harbor','open-webui','litellm'],default='authentik')
     p.add_argument('--key',type=Path,default=Path.home()/'.config/homelab/identity-backup.key')
     args=p.parse_args()
     if args.output.exists():raise SystemExit('Refusing overwrite')
     args.key.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
     if not args.key.exists():save(args.key,AESGCM.generate_key(bit_length=256))
     if args.key.stat().st_mode & 0o077:raise SystemExit('Backup key must be private (0600)')
-    helper=ROOT / {'authentik':'ansible/roles/authentik/files/backup.py','harbor':'ansible/roles/identity_integrations/files/backup_harbor.py','open-webui':'ansible/roles/identity_integrations/files/backup_webui.py'}[args.service]
+    helper=ROOT / {'authentik':'ansible/roles/authentik/files/backup.py','harbor':'ansible/roles/identity_integrations/files/backup_harbor.py','open-webui':'ansible/roles/identity_integrations/files/backup_webui.py','litellm':'ansible/roles/identity_integrations/files/backup_litellm.py'}[args.service]
     archive=subprocess.check_output(SSH+['python3','-'],input=helper.read_bytes(),timeout=180)
     nonce=os.urandom(12)
     cipher=AESGCM(args.key.read_bytes()).encrypt(nonce,archive,HEADER)

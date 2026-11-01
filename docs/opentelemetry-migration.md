@@ -1084,3 +1084,35 @@ engineering to utilize trusted socrat-0, not just higher cgroup ceilings.
  **239Python OTEL tests** pass; no production app/SDK restart, extra loss, original
   deletion, retention reduction, second importer, commit, false historical
   publication or72h/final acceptance claim.
+
+### 2026-11-01 — offline publication ledger and serving/rollback preparation
+
+- Added `scripts/otel-history-publication-plan.py`, a controller-only, read-only
+  planner: no production network calls, TSDB chunk scans, moves, serving changes,
+  importer restarts or publication authorization. Fresh metadata, exact canonical
+  receipts and input-file SHA bindings produce an exclusive private output.
+- Lightweight observations on socrat-0/1 found nine staged candidates and 55 live
+  raw-bucket metadata entries. The 17-source planning ledger classifies four
+  fully proven contained copies as **do not publish separately**, two missing old
+  originals as requiring coverage/retention reconciliation, three completed
+  candidate mappings as requiring a serving barrier, and eight tail sources as
+  still waiting for completed roundtrip/native/durable receipts.
+- Of 44 other live identities, four are native downsampled aggregates and 40 start
+  after the frozen conservative legacy-boundary upper bound. All remain preserved;
+  time classification does not certify native ingestion or full source integrity.
+- First tail block has completed 847,811,515 exact samples, native query and durable
+  staging. The second block has moved through append checkpoints into native
+  compaction; it is not counted complete before the final receipt. Live metrics
+  still show 78 fresh / 78 UP sources and successful native OTLP requests.
+- `docs/otel-history-publication.md` defines pending execution gates and the reverse
+  serving barrier. Cached Store identities mean filesystem rename/deletion marks
+  alone cannot prevent co-serving originals and replacements. Historical writers
+  must be fenced, queries drained and all affected serving routes withdrawn before
+  any bucket mutation. This may need an explicitly approved historical-read
+  maintenance window; uninterrupted historical availability is not claimed.
+- The offline report is
+  `migration-evidence/history-publication-preparation-20261101.json`. Validation:
+  14 planner tests and all 253 OTEL Python tests pass. Existing production-owner
+  rollback, unsupported-type scope, capacity/SDK and genuine 72h acceptance gates
+  remain open. No extra sample loss, deletion, retention change, commit or
+  production publication was performed by this preparation.

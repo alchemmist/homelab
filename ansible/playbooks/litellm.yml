@@ -84,3 +84,5 @@
       ansible.builtin.command: python3 /tmp/configure-litellm-branding.py
       register: branding_result
       changed_when: "'updated branding' in branding_result.stdout"
+
+- import_playbook: identity-litellm-reconcile.yml

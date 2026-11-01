@@ -1,0 +1,125 @@
+@font-face{font-family:CourierCyr;src:url('assets/fonts/couriercyrps.woff2') format('woff2');font-weight:400;font-display:swap}
+@font-face{font-family:CM;src:url('assets/fonts/cmu.serif-roman.woff2') format('woff2');font-weight:400;font-display:swap}
+@font-face{font-family:CM;src:url('assets/fonts/cmu.serif-bold.woff2') format('woff2');font-weight:700;font-display:swap}
+:root{color-scheme:light;--ink:#15223c;--muted:#4d596b;--line:rgba(21,34,60,.24);--ui:CourierCyr,'Courier New',monospace;--serif:CM,Georgia,serif;--photo:url('assets/lake-1920.webp');--position:50% 50%}
+:root[data-scene=forest]{--photo:url('assets/forest-1920.webp');--position:50% 45%}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{min-height:100%;background:#68776f}
+body{margin:0;color:var(--ink);font-family:var(--ui);-webkit-font-smoothing:antialiased}
+.auth-page{min-height:100svh;background-image:var(--photo);background-size:cover;background-position:var(--position);background-attachment:fixed}
+.stage{min-height:100svh;display:flex;align-items:center;justify-content:center;padding:48px 28px;isolation:isolate}
+.glass{position:relative;width:408px;padding:38px 38px 28px;border:1px solid rgba(255,255,255,.78);background:rgba(255,255,255,.77);border-radius:16px;box-shadow:0 24px 80px -24px rgba(17,32,38,.35),inset 0 1px 0 rgba(255,255,255,.82);-webkit-backdrop-filter:blur(28px) saturate(1.12);backdrop-filter:blur(28px) saturate(1.12)}
+.identity{display:flex;align-items:center;gap:12px;margin-bottom:30px}
+.mask{width:auto;height:54px;object-fit:contain;flex-shrink:0}
+.wordmark{font-size:25px;letter-spacing:-1.3px;font-weight:400;line-height:1}
+h1{font:700 31px/1.12 var(--serif);letter-spacing:-.5px;margin:0 0 29px;text-wrap:balance}
+form{margin:0}
+.credentials{display:grid;gap:20px}
+.field{display:flex;flex-direction:column;gap:8px;min-width:0}
+.field>span:first-child{font:400 13px/1.4 var(--ui)}
+input{display:block;min-width:0;width:100%;height:46px;padding:11px 12px;font:400 14px/1.5 var(--ui);color:var(--ink);background:rgba(255,255,255,.57);border:1px solid var(--line);border-radius:5px;outline:none;transition:border-color .15s,background .15s,box-shadow .15s}
+input::placeholder{color:#657181;opacity:1}
+input:hover{border-color:rgba(21,34,60,.45)}
+input:focus{border-color:#254b78;background:rgba(255,255,255,.86);box-shadow:0 0 0 3px rgba(37,75,120,.12)}
+input[aria-invalid=true]{border-color:#9d3838}
+.password-wrap{display:block;position:relative}
+.password-wrap input{padding-right:46px}
+button{font:inherit;cursor:pointer;color:inherit;-webkit-tap-highlight-color:transparent}
+.reveal{position:absolute;right:2px;top:2px;width:42px;height:42px;border:0;border-radius:4px;display:grid;place-items:center;background:transparent;color:#4d596b}
+.reveal:hover{color:var(--ink);background:rgba(21,34,60,.05)}
+.reveal svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.reveal[aria-pressed=true] svg{opacity:.45}
+.primary{width:100%;min-height:46px;margin-top:27px;border:1px solid #15223c;border-radius:5px;padding:11px 15px;background:#15223c;color:#fff;display:flex;align-items:center;justify-content:center;gap:12px;font-size:14px;line-height:1.5;transition:background .15s,transform .15s}
+.primary:hover{background:#263a59}
+.primary:active{transform:translateY(1px)}
+.primary svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
+.form-foot{min-height:18px;margin-top:21px;display:flex;justify-content:center;gap:20px}
+.help,.back{padding:2px 0;background:none;border:0;font:400 12px/1.5 var(--ui);color:#465365;text-underline-offset:4px}
+.help:hover,.back:hover{text-decoration:underline;color:var(--ink)}
+:focus-visible{outline:2px solid #254b78;outline-offset:4px}
+input:focus-visible{outline:0}
+.feedback{margin:14px 0 0;font-size:12px;line-height:1.6;color:#913c33;overflow-wrap:anywhere}
+.feedback:empty{display:none}
+.mfa-hint{font-size:12px;line-height:1.6;color:var(--muted);margin:14px 0 0}
+.mfa input{font-size:22px;letter-spacing:8px;text-align:center}
+.success .feedback{color:#264e40}
+/* 01 — the Wiki's typographic language, softened just enough by the landscape. */
+.frost .glass{transform:translateY(-6px)}
+.frost .identity{justify-content:center;margin-bottom:27px}
+.frost h1{text-align:center;font-size:30px;margin-bottom:30px}
+.frost .mask{height:56px}
+/* 02 — an editorial margin; squared geometry and open, ruled fields. */
+.editorial .stage{justify-content:flex-start;padding-left:11vw}
+.editorial .glass{width:410px;padding:40px 42px 33px;border-radius:4px;background:rgba(253,252,248,.85);box-shadow:0 24px 70px -35px rgba(10,24,30,.5);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
+.editorial .identity{gap:14px;margin-bottom:38px}
+.editorial .mask{height:43px}
+.editorial .wordmark{font-size:23px}
+.editorial h1{font-size:42px;letter-spacing:-1.4px;margin-bottom:30px}
+.editorial .credentials{gap:26px}
+.editorial input{background:transparent;border:0;border-bottom:1px solid rgba(21,34,60,.4);border-radius:0;padding-left:0}
+.editorial input:focus{box-shadow:none;border-bottom-color:#173ea5;background:rgba(255,255,255,.26)}
+.editorial .field>span:first-child{font-size:12px;color:#465365}
+.editorial .primary{border-radius:2px;justify-content:space-between;margin-top:34px}
+.editorial .form-foot{justify-content:flex-start}
+/* 03 — a subtle lens edge, high diffusion, soft controls. */
+.liquid .stage{justify-content:flex-end;padding-right:11vw}
+.liquid .glass{width:408px;padding:37px 36px 29px;border-radius:32px;background:rgba(255,255,255,.69);border-color:rgba(255,255,255,.83);box-shadow:0 28px 90px -28px rgba(17,32,38,.4),inset 0 1px 1px #fff,inset 0 -1px 1px rgba(255,255,255,.45);-webkit-backdrop-filter:blur(44px) saturate(1.25);backdrop-filter:blur(44px) saturate(1.25)}
+.liquid .identity{justify-content:center;flex-direction:column;gap:14px;margin-bottom:25px}
+.liquid .mask{height:76px}
+.liquid .wordmark{font-size:22px}
+.liquid h1{text-align:center;font-size:31px;max-width:285px;margin:0 auto 28px}
+.liquid input{border-color:rgba(21,34,60,.18);background:rgba(255,255,255,.69);border-radius:13px;height:48px}
+.liquid .reveal{top:3px;right:3px;border-radius:10px}
+.liquid .primary{border-radius:13px;min-height:48px}
+/* 04 — one pane, two quiet columns. No second promotional block. */
+.gallery .glass{width:704px;display:grid;grid-template-columns:226px minmax(0,1fr);gap:36px;padding:40px;border-radius:12px;background:rgba(255,255,255,.79);-webkit-backdrop-filter:blur(32px);backdrop-filter:blur(32px)}
+.gallery .identity{flex-direction:column;justify-content:center;gap:23px;margin:0;border-right:1px solid rgba(21,34,60,.17);padding-right:35px}
+.gallery .mask{height:157px}
+.gallery .wordmark{font-size:29px}
+.gallery h1{font-size:36px;margin-bottom:25px}
+.gallery .primary{justify-content:space-between}
+.gallery .form-foot{margin-top:20px;justify-content:flex-start}
+/* 05 — almost paper. The typewriter is the ornament. */
+.typewriter .glass{width:354px;padding:30px 30px 24px;border-radius:3px;background:rgba(255,254,250,.86);box-shadow:0 18px 65px -30px rgba(17,32,38,.4);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
+.typewriter .identity{gap:12px;margin-bottom:27px}
+.typewriter .mask{height:39px}
+.typewriter .wordmark{font-size:21px;letter-spacing:-1px}
+.typewriter h1{font:700 31px/1.12 var(--serif);letter-spacing:-.5px;margin-bottom:25px}
+.typewriter input{border-radius:0;background:rgba(255,255,255,.43);height:43px;font-size:13px}
+.typewriter .field>span:first-child{font-size:12px}
+.typewriter .reveal{width:39px;height:39px}
+.typewriter .primary{border-radius:0;background:transparent;color:var(--ink);min-height:43px;justify-content:space-between;font-size:13px;margin-top:25px}
+/* Quiet Mono controls stay visually static on pointer hover/click. */
+.typewriter :is(input,button){transition:none}
+.typewriter input:is(:hover,:focus){border-color:var(--line);background:rgba(255,255,255,.43);box-shadow:none}
+.typewriter input[aria-invalid=true]{border-color:#9d3838}
+.typewriter .primary:active{color:var(--ink);transform:none}
+.typewriter .reveal:hover{color:#4d596b;background:transparent}
+.typewriter .reveal[aria-pressed=true] svg{opacity:1}
+.typewriter :is(.help,.back):hover{color:#465365;text-decoration:none}
+/* Keyboard-only orientation, not a pointer-focus glow. */
+.typewriter :focus-visible{outline:1px solid var(--ink);outline-offset:3px}
+/* Inputs deliberately have no extra focus frame, including keyboard focus. */
+.typewriter input:focus-visible{outline:none;outline-offset:0}
+.typewriter .form-foot{margin-top:19px;justify-content:flex-start}
+.typewriter .help{font-size:11px}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.glass{background:rgba(255,255,255,.96)!important}}
+@media(max-width:700px){
+ :root{--photo:url('assets/lake-960.webp')}
+ :root[data-scene=forest]{--photo:url('assets/forest-960.webp')}
+ .auth-page{background-attachment:scroll}
+ .stage,.editorial .stage,.liquid .stage{padding:28px 20px;justify-content:center}
+ .glass,.editorial .glass,.liquid .glass{max-width:408px;width:100%;padding:30px 27px 24px;transform:none}
+ .gallery .glass{width:100%;max-width:408px;display:block;padding:29px 27px 24px}
+ .gallery .identity{flex-direction:row;justify-content:flex-start;padding:0;border:0;gap:13px;margin-bottom:27px}
+ .gallery .mask{height:48px}
+ .gallery .wordmark{font-size:24px}
+ .gallery h1{font-size:32px}
+ .editorial h1{font-size:37px}
+ .liquid .mask{height:62px}
+ .typewriter .glass{max-width:354px;padding:28px 25px 23px}
+}
+@media(max-width:370px){.stage,.editorial .stage,.liquid .stage{padding:18px 14px}.glass,.editorial .glass,.liquid .glass,.gallery .glass{padding:26px 23px 22px}.frost h1,.liquid h1{font-size:28px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+@media(prefers-reduced-transparency:reduce){.glass{background:rgba(255,255,255,.98)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}}

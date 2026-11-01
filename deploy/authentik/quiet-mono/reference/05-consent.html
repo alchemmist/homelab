@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en" data-scene="lake">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; font-src 'self'; style-src 'self'; script-src 'self'; connect-src 'none'; form-action 'none'; base-uri 'none'">
+<meta name="color-scheme" content="light">
+<title>Redirecting to Argo CD — Socrat / prototype</title>
+<link rel="icon" type="image/svg+xml" href="assets/wiki-favicon.svg"><link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="assets/wiki-syntax.css">
+<link rel="stylesheet" href="quiet-mono.css">
+<script src="quiet-mono.js" defer></script>
+</head>
+<body class="auth-page typewriter consent-page" data-flow-page="consent">
+<nav class="flow-tools" aria-label="Page tools" data-i18n-label="Page tools">
+<div class="locale-picker">
+<button type="button" class="tool-button locale-trigger" aria-expanded="false" aria-controls="language-options" aria-label="Select language" data-i18n-label="Select language"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c5 5 5 13 0 18-5-5-5-13 0-18Z"/></svg><span class="current-language">English</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 10 4 4 4-4"/></svg></button>
+<div class="locale-options" id="language-options" role="group" aria-label="Language" data-i18n-label="Language" hidden>
+<button type="button" lang="en" data-locale="en" aria-pressed="true">English<span aria-hidden="true">✓</span></button>
+<button type="button" lang="ru" data-locale="ru" aria-pressed="false">Русский<span aria-hidden="true">✓</span></button>
+</div></div>
+<button type="button" class="tool-button inspector-trigger" aria-label="Open flow inspector" data-i18n-label="Open flow inspector" aria-expanded="false" aria-controls="flow-inspector"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5M8 10.5h5m-2.5-2.5v5"/></svg></button>
+</nav>
+<dialog class="flow-inspector" id="flow-inspector" aria-modal="false" aria-labelledby="inspector-title">
+<header class="inspector-header"><h2 id="inspector-title" data-i18n="Flow inspector">Flow inspector</h2><button type="button" class="icon-button inspector-close" aria-label="Close flow inspector" data-i18n-label="Close flow inspector"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></header>
+<div class="inspector-content">
+<p class="inspector-note" data-i18n="Prototype data. Not a live authentication flow.">Prototype data. Not a live authentication flow.</p>
+<section class="inspector-section"><h3 data-i18n="Next stage">Next stage</h3><dl class="stage-properties"><dt data-i18n="Stage name">Stage name</dt><dd id="inspector-stage-name"></dd><dt data-i18n="Stage kind">Stage kind</dt><dd><code id="inspector-stage-kind"></code></dd></dl><details><summary data-i18n="Stage object">Stage object</summary><div class="code-block hc-content"><div class="code-toolbar"><span>JSON</span><button type="button" data-copy-target="inspector-stage-object" data-i18n="Copy">Copy</button></div><pre class="chroma"><code id="inspector-stage-object"></code></pre></div></details></section>
+<section class="inspector-section"><h3 data-i18n="Plan history">Plan history</h3><ol id="plan-history" class="plan-history"></ol></section>
+<section class="inspector-section"><h3 data-i18n="Current plan context">Current plan context</h3><dl class="stage-properties"><dt data-i18n="Application">Application</dt><dd>Argo CD</dd><dt data-i18n="Session ID">Session ID</dt><dd><code>prototype-session</code></dd></dl><details><summary data-i18n="Show context">Show context</summary><div class="code-block hc-content"><div class="code-toolbar"><span>JSON</span><button type="button" data-copy-target="inspector-context" data-i18n="Copy">Copy</button></div><pre class="chroma"><code id="inspector-context"></code></pre></div></details></section>
+</div>
+</dialog>
+
+<main class="stage"><section class="glass" aria-labelledby="consent-title">
+<header class="identity"><img class="mask" src="assets/socrat-mask.webp" alt="" width="80" height="124"><span class="wordmark">Socrat</span></header>
+<div class="form-side">
+<h1 id="consent-title" data-i18n="Redirecting to Argo CD">Redirecting to Argo CD</h1>
+<div class="consent-identity"><span class="demo-user">demo-user</span><a class="quiet-link signin-link" href="05-typewriter.html" data-i18n="Not you?">Not you?</a></div>
+<div class="consent-content"><p class="consent-description" data-i18n="You’re about to sign in to Argo CD.">You’re about to sign in to Argo CD.</p>
+<p class="permissions-label" data-i18n="The application requests access to:">The application requests access to:</p>
+<ul class="permissions"><li><span data-i18n="Email address">Email address</span><code>email</code></li><li><span data-i18n="General profile information">General profile information</span><code>profile</code></li></ul></div>
+<p class="consent-result" role="status" hidden data-i18n="Prototype only. No permission was granted and no redirect was made.">Prototype only. No permission was granted and no redirect was made.</p>
+<button class="primary consent-continue" type="button"><span data-i18n="Continue">Continue</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15m-5-5 5 5-5 5"/></svg></button>
+<div class="form-foot"><a class="quiet-link signin-link" href="05-typewriter.html" data-i18n="Back to sign in">Back to sign in</a></div>
+</div></section></main>
+</body></html>

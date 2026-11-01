@@ -1,0 +1,112 @@
+/* Quiet Mono v5 — Authentik 2026.8.5 native components, no replacement login JS.
+   Render asset URL placeholders using the reviewed media manifest. Scope to flow components. */
+@font-face{font-family:QuietMono;src:url('__ASSET_COURIER__') format('woff2');font-weight:400;font-display:swap}
+@font-face{font-family:QuietSerif;src:url('__ASSET_SERIF__') format('woff2');font-weight:700;font-display:swap}
+@font-face{font-family:QuietCode;src:url('__ASSET_CODE__') format('woff2');font-weight:400;font-display:swap}
+:host(ak-flow-executor){--pf-global--FontFamily--sans-serif:QuietMono,'Courier New',monospace;--pf-global--FontFamily--heading--sans-serif:QuietSerif,Georgia,serif;--pf-global--FontFamily--monospace:QuietCode,monospace;--pf-global--Color--100:#15223c;--pf-global--Color--200:#4d596b;--pf-global--primary-color--100:#15223c;--ak-c-login__main--BackgroundColor:transparent;--ak-c-login--BackgroundColorOverlay:transparent;--ak-c-login__main-ColumnWidth:354px;color:#15223c;font-family:QuietMono,'Courier New',monospace}
+:host(ak-flow-executor) .pf-c-login{display:flex!important;flex-direction:column;align-items:center;justify-content:center;min-height:100svh!important;box-sizing:border-box!important;padding:48px 28px!important;background:transparent!important;gap:0;isolation:isolate}
+:host(ak-flow-executor) .pf-c-login::before,:host(ak-flow-executor) .pf-c-login::after{display:none!important}
+:host(ak-flow-executor) .pf-c-login__main{display:block!important;position:relative!important;align-self:center!important;grid-area:auto!important;width:354px!important;max-width:100%!important;padding:30px 30px 24px!important;margin:0!important;border:1px solid rgba(255,255,255,.78)!important;border-radius:3px!important;background:rgba(255,254,250,.86)!important;box-shadow:0 18px 65px -30px rgba(17,32,38,.4)!important;-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);color:#15223c!important}
+:host(ak-flow-executor) .pf-c-login__main-header.pf-c-brand{display:flex!important;align-items:center;justify-content:flex-start;gap:12px;padding:0!important;margin:0 0 27px!important;min-height:39px!important}
+:host(ak-flow-executor) .branding-logo{width:auto!important;height:39px!important;max-width:26px!important;margin:0!important;object-fit:contain}
+:host(ak-flow-executor) .pf-c-brand::after{content:'Socrat';font:400 21px/1 QuietMono,'Courier New',monospace;letter-spacing:-1px;color:#15223c}
+:host(ak-flow-executor) .pf-c-login__footer{display:none!important}
+:host(ak-flow-card) .pf-c-login__main-header{padding:0!important;margin:0 0 25px!important}
+:host(ak-flow-card) .pf-c-login__main-body{padding:0!important;margin:0!important}
+:host(ak-flow-card) h1{font:700 31px/1.12 QuietSerif,Georgia,serif!important;letter-spacing:-.5px!important;color:#15223c!important;margin:0!important;text-align:left!important;max-height:none!important;-webkit-line-clamp:unset!important;overflow:visible!important}
+:host([part='challenge']){color:#15223c;font-family:QuietMono,'Courier New',monospace;--pf-global--FontSize--md:13px;--pf-c-form-control--Height:43px;--pf-c-form-control--BorderColor:#b9c0c7;--pf-c-form-control--focus--BorderBottomColor:#b9c0c7;--pf-c-form-control--focus--BorderBottomWidth:1px;--pf-c-form-control--BackgroundColor:rgba(255,255,255,.43)}
+:host([part='challenge']) .pf-c-form{gap:20px!important}
+:host([part='challenge']) .pf-c-form__label{padding:0 0 8px!important;font:400 12px/1.4 QuietMono,monospace!important;color:#15223c}
+:host([part='challenge']) .pf-c-form__label-required{display:none}
+:host([part='challenge']) input.pf-c-form-control{height:43px!important;min-width:0;width:100%;padding:10px 12px!important;font:400 13px/1.5 QuietMono,monospace!important;color:#15223c!important;background:rgba(255,255,255,.43)!important;border:1px solid #b9c0c7!important;border-radius:0!important;box-shadow:none!important;outline:none!important;transition:none!important}
+:host([part='challenge']) input.pf-c-form-control:is(:hover,:focus,:focus-visible){border-color:#b9c0c7!important;box-shadow:none!important;outline:none!important}
+:host([part='challenge']) input.pf-c-form-control[aria-invalid='true']{border-color:#9d3838!important}
+:host([part='challenge']) input::placeholder{color:#657181!important;font-style:normal!important;opacity:1}
+:host([part='challenge']) .pf-c-form__group.pf-m-action{margin-top:5px!important}
+:host([part='challenge']) :is(button,a.pf-c-button).pf-m-primary{display:flex!important;align-items:center;justify-content:space-between;box-sizing:border-box;text-decoration:none!important;width:100%;min-height:43px;padding:10px 15px!important;border:1px solid #15223c!important;border-radius:0!important;background:transparent!important;color:#15223c!important;box-shadow:none!important;font:400 13px/1.5 QuietMono,monospace!important;transition:background-color 160ms ease!important;cursor:pointer}
+:host([part='challenge']) :is(button,a.pf-c-button).pf-m-primary::before{display:none!important}
+:host([part='challenge']) :is(button,a.pf-c-button).pf-m-primary::after{content:'→';display:block;position:static!important;inset:auto!important;width:auto!important;height:auto!important;border:0!important;font:20px/1 QuietMono,monospace;transform:translateX(0);transition:transform 160ms ease}
+:host([part='challenge']) :is(button,a.pf-c-button).pf-m-primary:disabled{opacity:.5;cursor:wait}
+:host([part='challenge']) .pf-c-button.pf-m-control{background:transparent;color:#4d596b;border-radius:0;box-shadow:none}
+:host([part='challenge']) a,:host([part='challenge']) .pf-c-button.pf-m-link{font:12px/1.7 QuietMono,monospace;color:#465365}
+@media(hover:hover) and (pointer:fine){:host([part='challenge']) :is(button,a.pf-c-button).pf-m-primary:hover{background:rgba(21,34,60,.045)!important}:host([part='challenge']) :is(button,a.pf-c-button).pf-m-primary:hover::after{transform:translateX(3px)}}
+/* Native locale and inspector toggle. Native labels/options/actions are retained. */
+:host(ak-flow-executor) [part='locale-select']{position:absolute!important;inset-inline-start:auto!important;inset-inline-end:76px!important;inset-block-start:24px!important;filter:none!important;opacity:1!important;--ak-c-locale-select--Opacity:1;--ak-c-locale-select--label--Color:#15223c!important;--ak-c-flow-executor__locale-select--Color:#15223c!important;--ak-global--BackgroundContrastFilter:none!important;color:#15223c!important;font:12px QuietMono,monospace}
+:host(ak-locale-select){width:max-content!important;max-width:240px!important;display:flex!important;align-items:center;gap:8px;padding:7px 10px;background:rgba(255,254,250,.86);border:1px solid rgba(255,255,255,.8);border-radius:3px;backdrop-filter:blur(18px)}
+:host(ak-locale-select) label{position:static!important;display:flex!important;align-items:center;width:17px!important;margin:0!important;padding:0!important;color:#15223c!important;filter:none!important;text-decoration:none!important;opacity:1!important}
+:host(ak-locale-select) select{position:static!important;width:auto!important;height:auto!important;padding:0!important;border:0!important;background:transparent!important;font:12px/1.4 QuietMono,monospace!important;color:#15223c!important;opacity:1!important;field-sizing:content}
+:host(ak-flow-inspector-button) button{width:39px;min-height:34px;padding:7px 10px;border:1px solid rgba(255,255,255,.8)!important;border-radius:3px!important;background:rgba(255,254,250,.86)!important;color:#15223c!important;box-shadow:none!important;backdrop-filter:blur(18px)}
+/* Keep the native non-modal drawer, API authorization, current/pending/success history. */
+ak-drawer#flow-drawer{--ak-v2-c-drawer__panel--FlexBasis:600px;--ak-v2-c-drawer__panel--BackgroundColor:#f7f8f5;--ak-v2-c-drawer__panel--TransitionDuration:180ms;--ak-v2-c-drawer__panel--TransitionTimingFunction:cubic-bezier(.2,.65,.3,1)}
+ak-drawer#flow-drawer::part(drawer-content){transition:flex-basis 180ms cubic-bezier(.2,.65,.3,1);background:transparent!important}
+:host(ak-flow-inspector){color:#15223c;font:14px/1.65 QuietMono,monospace;--pf-global--FontFamily--sans-serif:QuietMono,monospace;--pf-global--FontFamily--monospace:QuietCode,monospace;--pf-global--success-color--100:#287849;--pf-global--info-color--100:#245c97}
+:host(ak-flow-inspector) .pf-c-notification-drawer{background:#f7f8f5!important}
+:host(ak-flow-inspector) .pf-c-notification-drawer__header{padding:25px 28px 20px;background:#f7f8f5;border-bottom:1px solid #dce1dd;box-shadow:none}
+:host(ak-flow-inspector) h1{font:700 30px/1.2 QuietSerif,Georgia,serif!important;color:#15223c}
+:host(ak-flow-inspector) .pf-c-notification-drawer__body{padding:20px 28px 35px;background:#f7f8f5}
+:host(ak-flow-inspector) .pf-c-card{border:1px solid #dce2dd;border-radius:5px;background:#fff;box-shadow:none}
+:host(ak-flow-inspector) .pf-c-card__body{padding:20px}
+:host(ak-flow-inspector) .pf-c-card__title{font:16px/1.5 QuietMono,monospace;color:#172b28}
+:host(ak-flow-inspector) .pf-c-description-list__term{font:12px/1.6 QuietMono,monospace;color:#55625c}
+:host(ak-flow-inspector) .pf-c-description-list__description{font:14px/1.6 QuietMono,monospace;overflow-wrap:anywhere}
+:host(ak-flow-inspector) pre{font:14px/1.5 QuietCode,monospace!important;padding:14px 16px!important;background:rgba(0,0,0,.02);border-radius:5px;box-shadow:0 1px 4px rgba(0,0,0,.06);max-width:100%;overflow:auto;white-space:pre}
+:host(ak-flow-inspector) .pf-c-progress-stepper__step-title{font:14px/1.5 QuietMono,monospace}
+:host(ak-flow-inspector) .pf-c-progress-stepper__step-description{font:13px/1.6 QuietCode,monospace;overflow-wrap:anywhere}
+@media(max-width:700px){:host(ak-flow-executor) .pf-c-login{padding:76px 20px 44px!important}:host(ak-flow-executor) .pf-c-login__main{padding:28px 25px 23px!important}:host(ak-flow-executor) [part='locale-select']{inset-block-start:17px!important;inset-inline-end:72px!important}:host(ak-flow-inspector) .pf-c-notification-drawer__body{padding:18px}}
+@media(prefers-reduced-motion:reduce){:host([part='challenge']) :is(button,a.pf-c-button).pf-m-primary,:host([part='challenge']) :is(button,a.pf-c-button).pf-m-primary::after,ak-drawer#flow-drawer::part(drawer-content){transition:none!important}:host([part='challenge']) :is(button,a.pf-c-button).pf-m-primary:hover::after{transform:none}}
+@media(prefers-reduced-transparency:reduce){:host(ak-flow-executor) .pf-c-login__main{background:#fffefa!important;backdrop-filter:none}}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){:host(ak-flow-executor) .pf-c-login__main{background:#fffefa!important}}
+
+:host(ak-locale-select) label svg{width:17px!important;height:17px!important}
+/* Remove the native empty header's layout space without removing its controls. */
+:host(ak-flow-executor) .pf-c-login__header{position:absolute!important;inset:0 0 auto!important;height:0!important;min-height:0!important;padding:0!important}
+:host([part='challenge']) .pf-c-form__label-text::after{display:none!important}
+:host([part='challenge']) .pf-c-input-group{position:relative;display:block!important;width:100%}
+:host([part='challenge']) .pf-c-input-group input{width:100%!important;padding-right:46px!important}
+:host([part='challenge']) .pf-c-input-group button.pf-m-control{position:absolute!important;right:2px;top:2px;width:39px;height:39px;min-height:0;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;color:#4d596b!important;box-shadow:none!important}
+:host([part='challenge']) .pf-c-input-group button.pf-m-control::after,:host([part='challenge']) .pf-c-input-group button.pf-m-control::before{display:none!important}
+:host(ak-flow-executor) .pf-c-login__main:has(ak-stage-consent){width:388px!important}
+:host(ak-stage-consent) h3{font:400 13px/1.8 QuietMono,monospace!important;margin:0 0 23px!important}
+:host(ak-stage-consent) p{font:400 12px/1.8 QuietMono,monospace}
+:host(ak-stage-consent) .pf-c-list{list-style:none!important;padding:0!important;margin:12px 0 0}
+:host(ak-stage-consent) .pf-c-list>li{font:400 12px/1.7 QuietMono,monospace;padding:10px 0;border-top:1px solid rgba(21,34,60,.12);margin:0}
+/* Native drawer opens non-modally. Resize content together with the panel. */
+@media(min-width:1100px){
+ ak-drawer#flow-drawer::part(drawer-panel){flex-basis:600px!important;max-width:600px!important;width:600px;transition:transform 180ms cubic-bezier(.2,.65,.3,1)!important}
+ ak-drawer#flow-drawer[expanded]::part(drawer-content){flex-basis:calc(100% - 600px)!important}
+ ak-drawer#flow-drawer:not([expanded])::part(drawer-content){flex-basis:100%!important}
+}
+@media(max-width:1099px){
+ ak-drawer#flow-drawer::part(drawer-main){flex-direction:column;overflow:visible}
+ ak-drawer#flow-drawer::part(drawer-content){flex-basis:auto!important;width:100%}
+ ak-drawer#flow-drawer[expanded]::part(drawer-panel){position:relative!important;inset:auto!important;width:100%;max-width:100%!important;flex-basis:auto!important;max-height:none;transform:none!important}
+ ak-drawer#flow-drawer:not([expanded])::part(drawer-panel){display:none}
+}
+@media(prefers-reduced-motion:reduce){ak-drawer#flow-drawer::part(drawer-panel),ak-drawer#flow-drawer::part(drawer-content){transition:none!important}}
+
+/* ak-drawer is a plain LitElement, so use its exported parts from global Brand CSS. */
+ak-drawer#flow-drawer{min-height:100svh;background-image:url('__ASSET_LAKE__')!important;background-size:cover!important;background-position:center!important;background-attachment:fixed!important}
+@media(max-width:700px){ak-drawer#flow-drawer{background-image:url('__ASSET_LAKE_MOBILE__')!important;background-attachment:scroll!important}}
+
+/* Let the shared drawer background remain visible on native mobile layouts. */
+ak-drawer#flow-drawer::part(drawer-content),ak-drawer#flow-drawer::part(drawer-body){background:transparent!important}
+
+ak-drawer#flow-drawer{background-color:#68776f}
+:host([part=challenge]) .pf-c-input-group{background:transparent!important}
+
+/* Owner decision: English-only presentation; no language picker in flows. */
+:host(ak-flow-executor) [part='locale-select']{display:none!important}
+:host(ak-locale-select){display:none!important}
+
+/* Native debug toggle: stable viewport corner, square hit target, undistorted icon.
+   Keep the real button/aria labels/permissions; change only its presentation. */
+:host(ak-flow-executor) ak-flow-inspector-button{position:fixed!important;inset-inline-start:auto!important;inset-inline-end:24px!important;inset-block-start:24px!important;margin:0!important;z-index:100}
+:host(ak-flow-inspector-button){display:block;line-height:1}
+:host(ak-flow-inspector-button) button.inspector-toggle{display:flex!important;align-items:center;justify-content:center;box-sizing:border-box!important;width:39px!important;height:39px!important;min-height:39px!important;padding:0!important;line-height:1!important;transform:none!important}
+:host(ak-flow-inspector-button) button.inspector-toggle::before,:host(ak-flow-inspector-button) button.inspector-toggle::after{display:none!important}
+:host(ak-flow-inspector-button) i.fa-search-plus{display:block!important;flex:0 0 18px;width:18px!important;height:18px!important;font-size:0!important;line-height:0!important;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5' fill='none' stroke='black' stroke-width='1.8'/%3E%3Cpath d='m15.5 15.5 5 5' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5' fill='none' stroke='black' stroke-width='1.8'/%3E%3Cpath d='m15.5 15.5 5 5' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E") center/contain no-repeat}
+:host(ak-flow-inspector-button) i.fa-search-plus::before{content:none!important}
+/* Native session snapshots are intentionally retained, not deduplicated or hidden. */
+:host(ak-flow-inspector) .pf-c-progress-stepper{max-block-size:22rem;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable;padding-inline-end:10px}
+:host(ak-flow-inspector) .pf-c-progress-stepper__step-title{font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+@media(max-width:700px){:host(ak-flow-executor) ak-flow-inspector-button{inset-inline-end:17px!important;inset-block-start:17px!important}:host(ak-flow-inspector) .pf-c-progress-stepper{max-block-size:18rem}}

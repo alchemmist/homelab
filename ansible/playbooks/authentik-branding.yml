@@ -1,0 +1,83 @@
+---
+- name: Reconcile the approved Quiet Mono theme without replacing Authentik
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  environment:
+    K3S_CONFIG_FILE: /dev/null
+  vars:
+    authentik_directory: /home/alchemmist/.cache/homelab-authentik
+    authentik_branding_action: prepare
+    authentik_branding_public_edge: 109.173.40.247
+    authentik_branding_backup: ''
+  tasks:
+    - name: Validate explicit operation
+      ansible.builtin.assert:
+        that:
+          - authentik_branding_action in ['prepare', 'apply', 'rollback']
+          - authentik_branding_action != 'rollback' or authentik_branding_backup | length > 0
+
+    - name: Create protected theme directory
+      ansible.builtin.file:
+        path: '{{ authentik_directory }}/quiet-mono'
+        state: directory
+        mode: '0700'
+
+    - name: Copy approved reference, checksums and native CSS
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/../../deploy/authentik/quiet-mono/'
+        dest: '{{ authentik_directory }}/quiet-mono/'
+        mode: '0600'
+        directory_mode: '0700'
+
+    - name: Copy narrow reconciliation tools
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/../roles/authentik/files/{{ item }}'
+        dest: '{{ authentik_directory }}/{{ item }}'
+        mode: '0600'
+      loop: [branding.py, branding_static.py, flow_titles.py]
+
+    - name: Render the static-only resource bundle
+      ansible.builtin.command:
+        argv: [python3, '{{ authentik_directory }}/branding_static.py', '{{ authentik_directory }}/quiet-mono']
+      register: authentik_static_bundle
+      changed_when: false
+      no_log: true
+      when: authentik_branding_action != 'rollback'
+
+    - name: Apply isolated static assets with server-side apply (no large last-applied annotation)
+      ansible.builtin.command:
+        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, apply, --server-side, --field-manager=quiet-mono-brand, -f, '-']
+        stdin: '{{ authentik_static_bundle.stdout }}'
+      changed_when: false
+      no_log: true
+      when: authentik_branding_action != 'rollback'
+
+    - name: Wait for the static server only (no IdP restart)
+      ansible.builtin.command:
+        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, -n, identity, rollout, status, deployment/socrat-authentik-theme, --timeout=180s]
+      changed_when: false
+      when: authentik_branding_action != 'rollback'
+
+    - name: Verify static assets and reconcile only the explicit branding action
+      ansible.builtin.command:
+        argv: >-
+          {{ ['python3', authentik_directory + '/branding.py', authentik_directory,
+              authentik_directory + '/quiet-mono', '--action', authentik_branding_action,
+              '--public-edge', authentik_branding_public_edge] +
+              (['--backup', authentik_branding_backup] if authentik_branding_action == 'rollback' else []) }}
+      register: authentik_branding_result
+      changed_when: "'Applied domain' in authentik_branding_result.stdout or 'restored' in authentik_branding_result.stdout"
+      no_log: true
+
+    - name: Reconcile neutral authorization transition titles
+      ansible.builtin.command:
+        argv: >-
+          {{ ['python3', authentik_directory + '/flow_titles.py', authentik_directory,
+              '--public-edge', authentik_branding_public_edge] +
+              (['--rollback'] if authentik_branding_action == 'rollback' else []) }}
+      register: authentik_title_result
+      changed_when: "'titles updated' in authentik_title_result.stdout"
+      no_log: true
+      when: authentik_branding_action in ['apply', 'rollback']
