@@ -91,3 +91,20 @@ entry in dry-run. Health checks are served in separate threads while a lock
 serializes analysis operations; slow inference no longer removes Service endpoints.
 No sticky notes are included. These tests do not establish durable delivery or
 complete automatic publication/link checks.
+
+### Model reliability (2026-11-02 diagnosis)
+
+Positive historical test exposed a schema rejection (execution 57) and inference
+timeout (execution 64). vLLM had one active request, queueing and approximately
+10 generated tokens/sec. A 110-second client timeout was insufficient for the old
+1500-token allowance plus queueing. Model responses now use strict JSON Schema,
+explicit non-thinking mode and a 1000-token output cap. Each inference call has a
+360-second timeout; n8n HTTP nodes allow 900 seconds, covering a bounded retry of
+invalid JSON/schema output. Persistent bad output still fails closed; transport
+errors are not silently swallowed. Controlled UnsafeInput errors include a reason.
+
+Positive signed historical push execution 69 succeeded through all four stages,
+returning the expected poem announcement with status dry_run. Thirteen local tests
+pass, including bounded schema retry. Writes remain disabled. Last real repository
+push preceded webhook recreation; lack of a subsequent real push is not evidence
+of broken delivery. Do not create production PRs just to test delivery.

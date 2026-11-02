@@ -57,7 +57,7 @@ def prepare(compare, updates):
 
 def validate_decision(raw, context):
     """Model chooses a description, never a path to write or arbitrary Markdown."""
-    if set(raw) != {'should_update', 'reason', 'entries'}:
+    if not isinstance(raw, dict) or set(raw) != {'should_update', 'reason', 'entries'}:
         raise UnsafeInput('Unexpected model schema')
     if type(raw['should_update']) is not bool or not isinstance(raw['reason'], str):
         raise UnsafeInput('Invalid decision types')
@@ -68,7 +68,7 @@ def validate_decision(raw, context):
         raise UnsafeInput('Inconsistent decision')
     paths = {f['filename'] for f in context['files']}
     for entry in entries:
-        if set(entry) != {'text', 'source_paths'}:
+        if not isinstance(entry, dict) or set(entry) != {'text', 'source_paths'}:
             raise UnsafeInput('Invalid entry schema')
         text = entry['text']
         if not isinstance(text, str) or not 1 <= len(text) <= 240:

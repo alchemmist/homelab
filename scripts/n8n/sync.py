@@ -30,7 +30,12 @@ def main():
         if not creds.get(kind, {}).get('id'):
             raise RuntimeError('Missing credential mapping: ' + kind)
     w = json.loads((BASE / 'docs/n8n/calendar-voice-reminder.json').read_text())
+    calendar_config = CONFIG / 'calendar-config.json'
+    calendar = json.loads(calendar_config.read_text()) if calendar_config.exists() else {}
     for n in w['nodes']:
+        if n['name'] == 'Select Calendars':
+            ids = calendar.get('calendar_ids', ['primary'])
+            n['parameters']['jsCode'] = 'return ' + json.dumps(ids) + '.map(calendarId => ({ json: { calendarId } }));'
         for kind in n.get('credentials', {}):
             n['credentials'][kind] = creds[kind]
     body = {k: w[k] for k in ['name', 'nodes', 'connections', 'settings']}

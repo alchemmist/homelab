@@ -147,3 +147,19 @@ Both public paths were checked with certificate verification enabled (200);
 the public API rejects requests without credentials (401).
 The voice service remains ClusterIP-only. Use strong n8n account passwords
 and keep n8n updated; public access includes the authenticated editor/API/MCP.
+
+### Calendar selection (2026-11-02 diagnosis)
+
+Primary calendar alone omitted the owner's work meeting: its explicit 10-minute
+popup reminder was in Y-team. `Select Calendars` now provides multiple calendar IDs
+before `Get Upcoming Events`; live selection includes primary and Y-team.
+`~/.config/n8n/calendar-config.json` (0600, outside git) provides `calendar_ids`
+to `scripts/n8n/sync.py`; absent configuration defaults to primary only.
+Do not assume that shared calendars are part of `primary`.
+
+An actual Y-team event produced exactly one match at its start-minus-10-minute
+instant in a read-only JavaScript test. Live execution 76 succeeded and returned
+four events across the two calendars. No test speech or retrospective reminder
+was emitted. The existing narrow due window does not replay an already missed
+reminder. Calendar defaults are still not expanded: only explicit popup overrides
+are currently supported.

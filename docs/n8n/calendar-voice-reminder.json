@@ -27,9 +27,8 @@
         "operation": "getAll",
         "calendar": {
           "__rl": true,
-          "value": "primary",
-          "mode": "list",
-          "cachedResultName": "Primary calendar"
+          "value": "={{ $json.calendarId }}",
+          "mode": "list"
         },
         "returnAll": true,
         "timeMin": "={{ $now.toISO() }}",
@@ -119,6 +118,19 @@
         880,
         0
       ]
+    },
+    {
+      "id": "fb452e7b-8744-4047-99d9-e22a3d4170a2",
+      "name": "Select Calendars",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -420,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// Configured by scripts/n8n/sync.py from local calendar-config.json.\nreturn ['primary'].map(calendarId => ({ json: { calendarId } }));"
+      }
     }
   ],
   "connections": {
@@ -126,7 +138,7 @@
       "main": [
         [
           {
-            "node": "Get Upcoming Events",
+            "node": "Select Calendars",
             "type": "main",
             "index": 0
           }
@@ -160,6 +172,17 @@
         [
           {
             "node": "Mark Announced",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Calendars": {
+      "main": [
+        [
+          {
+            "node": "Get Upcoming Events",
             "type": "main",
             "index": 0
           }

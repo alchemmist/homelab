@@ -53,7 +53,7 @@
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json.body) }}",
         "options": {
-          "timeout": 300000
+          "timeout": 900000
         }
       },
       "credentials": {
@@ -81,7 +81,7 @@
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json) }}",
         "options": {
-          "timeout": 300000
+          "timeout": 900000
         }
       },
       "credentials": {
@@ -109,7 +109,7 @@
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json) }}",
         "options": {
-          "timeout": 300000
+          "timeout": 900000
         }
       },
       "credentials": {
