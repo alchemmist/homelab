@@ -30,6 +30,8 @@ spec:
       {{- if $component.hostNetwork }}
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        kubernetes.io/hostname: socrat-2
       {{- end }}
       {{- if $component.serviceAccount }}
       serviceAccountName: {{ $component.serviceAccount }}
