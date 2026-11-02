@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "management_fqdn": null,
+  "management_node": null,
+  "tls_secret_name": null,
+  "ingress_class": null,
+  "stun_node_port": null,
+  "storage_class": null,
+  "overlay_cidr": null,
+  "authentik_issuer": "https://auth.socrat.alchemmist.xyz/application/o/netbird-pilot/",
+  "oidc_client_id": null,
+  "login_group": null,
+  "routing_peers": [],
+  "resources": [],
+  "review": {
+    "dns_tls_public_before_vpn": false,
+    "stun_udp_3478_to_nodeport": false,
+    "overlay_overlap_checked": false,
+    "dedicated_router_hosts_confirmed": false,
+    "both_routers_reach_every_resource": false,
+    "endpoint_ip_port_scope_reviewed": false
+  }
+}

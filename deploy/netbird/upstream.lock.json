@@ -1,0 +1,18 @@
+{
+  "checked_at": "2026-11-02",
+  "docs_commit": "f9fcde283a90733c38f701f1def05a6db68ebeb0",
+  "sources": {
+    "openapi": {
+      "url": "https://raw.githubusercontent.com/netbirdio/netbird/v0.82.0/shared/management/http/api/openapi.yml",
+      "sha256": "ed8792e57130fb81abbf9ca16efff785edad7cd9d662efcbc83f21cc43d5199a"
+    },
+    "combined_example": {
+      "url": "https://raw.githubusercontent.com/netbirdio/netbird/v0.82.0/combined/config.yaml.example",
+      "sha256": "e8c3af30417e4ee273cff1811d0fe4bd205b88311bc8fc90a92b91eb843c6037"
+    },
+    "installer_reference": {
+      "url": "https://raw.githubusercontent.com/netbirdio/netbird/v0.82.0/infrastructure_files/getting-started.sh",
+      "sha256": "0aee21c20f9731293bec6b0d1fc73cbbca29f03ef626636ed9d0c7d8261c92fc"
+    }
+  }
+}
