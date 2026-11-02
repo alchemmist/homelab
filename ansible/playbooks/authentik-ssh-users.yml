@@ -43,40 +43,68 @@
         - not ansible_check_mode
         - inventory_hostname in homelab_authentik_ssh_payload.required_hosts
       block:
-        - name: Refuse adoption of existing unbound Linux accounts before any writes
-          ansible.builtin.script:
-            cmd: "../files/verify_authentik_ssh_binding.py {{ item.name | quote }} {{ item.authentik_uuid | quote }}"
-            executable: python3
+        - name: Exclusively reserve this host for the whole imported apply
+          ansible.builtin.command:
+            argv: [mkdir, --mode=0700, /run/homelab-authentik-ssh-apply.lock]
           become: true
-          changed_when: false
-          loop: "{{ homelab_authentik_ssh_payload.by_host[inventory_hostname] }}"
-          loop_control:
-            label: "{{ item.name }}"
+          # Existing lock (including stale lock) is a hard failure, never skip/reuse it.
+          changed_when: true
 
-        - name: Ensure private root enrollment directory
-          ansible.builtin.file:
-            path: /var/lib/homelab-authentik-ssh-bindings
-            state: directory
-            owner: root
-            group: root
-            mode: '0700'
-          become: true
+        - name: Run preflight, enrollment, apply and exact verification under the same lock
+          block:
+            - name: Refuse adoption of existing unbound Linux accounts before any writes
+              ansible.builtin.script:
+                cmd: "../files/verify_authentik_ssh_binding.py {{ item.name | quote }} {{ item.authentik_uuid | quote }}"
+                executable: python3
+              become: true
+              changed_when: false
+              loop: "{{ homelab_authentik_ssh_payload.by_host[inventory_hostname] }}"
+              loop_control:
+                label: "{{ item.name }}"
 
-        - name: Reserve immutable host bindings before creating accounts
-          ansible.builtin.copy:
-            content: "{{ {'name': item.name, 'uuid': item.authentik_uuid} | to_json }}\n"
-            dest: "/var/lib/homelab-authentik-ssh-bindings/{{ item.name }}.json"
-            owner: root
-            group: root
-            mode: '0600'
-            force: false
-          become: true
-          loop: "{{ homelab_authentik_ssh_payload.by_host[inventory_hostname] }}"
-          loop_control:
-            label: "{{ item.name }}"
+            - name: Ensure private root enrollment directory
+              ansible.builtin.file:
+                path: /var/lib/homelab-authentik-ssh-bindings
+                state: directory
+                owner: root
+                group: root
+                mode: '0700'
+              become: true
 
-        - name: Apply through existing restricted users role and effective host verifier
-          ansible.builtin.include_role:
-            name: users
-          vars:
-            homelab_users: "{{ homelab_authentik_ssh_payload.by_host[inventory_hostname] }}"
+            - name: Reserve immutable host bindings before creating accounts
+              ansible.builtin.copy:
+                content: "{{ {'name': item.name, 'uuid': item.authentik_uuid} | to_json }}\n"
+                dest: "/var/lib/homelab-authentik-ssh-bindings/{{ item.name }}.json"
+                owner: root
+                group: root
+                mode: '0600'
+                force: false
+              become: true
+              loop: "{{ homelab_authentik_ssh_payload.by_host[inventory_hostname] }}"
+              loop_control:
+                label: "{{ item.name }}"
+
+            - name: Apply through existing restricted users role and effective host verifier
+              ansible.builtin.include_role:
+                name: users
+              vars:
+                homelab_authentik_ssh_scoped: true
+                homelab_users: "{{ homelab_authentik_ssh_payload.by_host[inventory_hostname] }}"
+
+            - name: Require exact effective key fingerprints or zero keys for disabled identities
+              ansible.builtin.script:
+                cmd: >-
+                  ../files/verify_authentik_ssh_binding.py {{ item.name | quote }} {{ item.authentik_uuid | quote }}
+                  --state {{ item.state | quote }} --expected-fingerprints {{ item.key_fingerprints | to_json | quote }}
+                executable: python3
+              become: true
+              changed_when: false
+              loop: "{{ homelab_authentik_ssh_payload.by_host[inventory_hostname] }}"
+              loop_control:
+                label: "{{ item.name }}"
+          always:
+            - name: Release only the lock acquired by this apply
+              ansible.builtin.command:
+                argv: [rmdir, /run/homelab-authentik-ssh-apply.lock]
+              become: true
+              changed_when: true

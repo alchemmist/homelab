@@ -81,6 +81,7 @@ class BindingTests(unittest.TestCase):
         self.assertNotIn('arbitrary', json.dumps(payload))
         self.assertNotIn('homelab-owner', json.dumps(payload))
         self.assertTrue(summary[0]['fingerprints'][0].startswith('SHA256:'))
+        self.assertEqual(entry['key_fingerprints'], summary[0]['fingerprints'])
 
     def test_policy_fields_hosts_and_uuid_fail_closed(self):
         for change in [lambda p: p['assignments'][0].pop('hosts'),
@@ -111,6 +112,7 @@ class BindingTests(unittest.TestCase):
         for entries in payload['by_host'].values():
             self.assertEqual(entries[0]['state'], 'disabled')
             self.assertEqual(entries[0]['authorized_keys'], [])
+            self.assertEqual(entries[0]['key_fingerprints'], [])
         payload, _ = plan(p=policy(revoked=['socrat-2']))
         self.assertEqual(payload['by_host']['socrat-2'][0]['state'], 'disabled')
         self.assertEqual(payload['by_host']['socrat-1'][0]['state'], 'present')
@@ -237,6 +239,11 @@ class ExportTests(unittest.TestCase):
 
 
 class HostBindingTests(unittest.TestCase):
+    def setUp(self):
+        self.real_location = self.host.verify_key_location
+        self.location = patch.object(self.host, 'verify_key_location', return_value=Path('/unused-test-key-path')).start()
+        self.addCleanup(patch.stopall)
+
     @classmethod
     def setUpClass(cls):
         spec = importlib.util.spec_from_file_location('host_binding', ROOT / 'ansible/files/verify_authentik_ssh_binding.py')
@@ -266,13 +273,108 @@ class HostBindingTests(unittest.TestCase):
             directory = Path(d) / 'bindings'; directory.mkdir(mode=0o700)
             marker = directory / 'guest.json'; marker.write_text(json.dumps({'name': 'guest', 'uuid': UUID}))
             marker.chmod(0o600)
-            with patch.object(Path, 'lstat', root_stat), patch.object(self.host.pwd, 'getpwnam', return_value=object()):
+            with patch.object(Path, 'lstat', root_stat), patch.object(self.host.pwd, 'getpwnam',
+                    return_value=SimpleNamespace(pw_dir='/home/guest', pw_shell='/bin/bash')):
                 self.assertTrue(self.host.verify('guest', UUID, directory)['bindingVerified'])
                 with self.assertRaisesRegex(ValueError, 'mismatch'): self.host.verify('guest', OTHER, directory)
                 marker.chmod(0o644)
                 with self.assertRaises(ValueError): self.host.verify('guest', UUID, directory)
                 marker.unlink(); marker.symlink_to(directory / 'absent')
                 with self.assertRaises(ValueError): self.host.verify('guest', UUID, directory)
+
+    def test_marked_nonstandard_home_rejected_before_key_writes(self):
+        from types import SimpleNamespace
+        with tempfile.TemporaryDirectory() as d:
+            directory = Path(d)
+            # Metadata is mocked only to allow a non-root offline test process.
+            original = Path.lstat
+            def root_stat(path):
+                info = original(path)
+                return SimpleNamespace(st_uid=0, st_mode=info.st_mode, st_size=info.st_size)
+            directory.chmod(0o700)
+            marker = directory / 'guest.json'
+            marker.write_text(json.dumps({'name': 'guest', 'uuid': UUID})); marker.chmod(0o600)
+            with patch.object(Path, 'lstat', root_stat), patch.object(self.host.pwd, 'getpwnam',
+                    return_value=SimpleNamespace(pw_dir='/srv/guest', pw_shell='/bin/bash')):
+                with self.assertRaisesRegex(ValueError, 'Nonstandard passwd home'):
+                    self.host.verify('guest', UUID, directory)
+                self.location.assert_not_called()
+
+    def test_effective_key_sources_and_contextual_configs_fail_closed(self):
+        settings = {'authorizedkeysfile': '.ssh/authorized_keys', 'authorizedkeyscommand': 'none',
+                    'trustedusercakeys': 'none', 'pubkeyauthentication': 'yes', 'passwordauthentication': 'no',
+                    'kbdinteractiveauthentication': 'no', 'hostbasedauthentication': 'no', 'gssapiauthentication': 'no',
+                    'kerberosauthentication': 'no'}
+        def response(values):
+            return subprocess.CompletedProcess([], 0, '\n'.join(k + ' ' + v for k, v in values.items()), '')
+        with tempfile.TemporaryDirectory() as d, patch.object(Path, 'is_symlink', return_value=False):
+            config = Path(d) / 'sshd_config'; config.write_text('# synthetic test config\n')
+            with patch.object(self.host.subprocess, 'run', return_value=response(settings)):
+                self.assertEqual(self.real_location('guest', config), Path('/home/guest/.ssh/authorized_keys'))
+            for field, value in [('authorizedkeysfile', '.ssh/authorized_keys .ssh/authorized_keys2'),
+                                 ('authorizedkeysfile', '/srv/keys/%u'), ('authorizedkeysfile', 'none'),
+                                 ('authorizedkeyscommand', '/opt/key-fetch'), ('trustedusercakeys', '/etc/ssh/ca.pub'),
+                                 ('passwordauthentication', 'yes'), ('kbdinteractiveauthentication', 'yes')]:
+                with self.subTest(field=field, value=value), patch.object(self.host.subprocess, 'run',
+                        return_value=response({**settings, field: value})), self.assertRaises(ValueError):
+                    self.real_location('guest', config)
+            included = Path(d) / 'extra.conf'; included.write_text('Match=Address 192.0.2.0/24\n AuthorizedKeysFile /srv/keys/%u\n')
+            config.write_text('Include=' + str(included) + '\n')
+            with self.assertRaisesRegex(ValueError, 'Contextual'):
+                self.real_location('guest', config)
+            config.write_text('# config\n')
+            with patch.object(self.host.subprocess, 'run', return_value=response(settings)), \
+                    patch.object(Path, 'is_symlink', return_value=True), self.assertRaisesRegex(ValueError, 'Symlink'):
+                self.real_location('guest', config)
+
+    def test_exact_fingerprints_rotation_and_disabled_zero_keys(self):
+        from types import SimpleNamespace
+        _, expected = ssh.public_keys([KEY])
+        with tempfile.TemporaryDirectory() as d:
+            keyfile = Path(d) / 'authorized_keys'
+            self.location.return_value = keyfile
+            with patch.object(self.host, 'verify', return_value={'accountExists': True}), \
+                    patch.object(self.host.pwd, 'getpwnam', return_value=SimpleNamespace(pw_shell='/usr/sbin/nologin')):
+                keyfile.write_text(KEY + '\n')
+                self.assertEqual(self.host.verify_keys('guest', UUID, 'present', expected)['keyCount'], 1)
+                # Rotation cannot pass while an old extra effective key remains.
+                keyfile.write_text('\n'.join(TIM['authorized_keys']) + '\n')
+                with self.assertRaisesRegex(ValueError, 'fingerprints differ'):
+                    self.host.verify_keys('guest', UUID, 'present', expected)
+                keyfile.write_text(KEY + '\n')
+                with self.assertRaisesRegex(ValueError, 'fingerprints differ'):
+                    self.host.verify_keys('guest', UUID, 'disabled', [])
+                keyfile.write_text('')
+                self.assertEqual(self.host.verify_keys('guest', UUID, 'disabled', [])['keyCount'], 0)
+                keyfile.write_text('command="id" ' + KEY + '\n')
+                with self.assertRaises(ValueError):
+                    self.host.verify_keys('guest', UUID, 'present', expected)
+
+    def test_apply_lock_is_exclusive_and_spans_preflight_to_exact_verification(self):
+        play = yaml.safe_load((ROOT / 'ansible/playbooks/authentik-ssh-users.yml').read_text())[0]
+        outer = play['tasks'][-1]['block']
+        acquire, protected = outer
+        self.assertEqual(acquire['ansible.builtin.command']['argv'][0], 'mkdir')
+        self.assertNotIn('creates', acquire['ansible.builtin.command'])
+        self.assertNotIn('ignore_errors', acquire)
+        tasks = protected['block']
+        self.assertIn('Refuse adoption', tasks[0]['name'])
+        self.assertIn('exact effective key', tasks[-1]['name'])
+        role = next(t for t in tasks if 'ansible.builtin.include_role' in t)
+        self.assertTrue(role['vars']['homelab_authentik_ssh_scoped'])
+        user_tasks = yaml.safe_load((ROOT / 'ansible/roles/users/tasks/main.yml').read_text())
+        home = next(t['ansible.builtin.user']['home'] for t in user_tasks if 'ansible.builtin.user' in t)
+        self.assertIn('homelab_authentik_ssh_scoped | default(false)', home)
+        self.assertIn('else omit', home)  # manual users keep the previous home behavior
+        self.assertEqual(protected['always'][0]['ansible.builtin.command']['argv'][0], 'rmdir')
+        # Exercise the actual lock primitives without remote/root writes. A competing
+        # writer must fail, not skip acquisition and proceed with another UUID.
+        with tempfile.TemporaryDirectory() as d:
+            lock = Path(d) / 'apply.lock'
+            first = subprocess.run(['mkdir', '-m', '0700', str(lock)], capture_output=True)
+            second = subprocess.run(['mkdir', '-m', '0700', str(lock)], capture_output=True)
+            self.assertEqual(first.returncode, 0); self.assertNotEqual(second.returncode, 0)
+            subprocess.run(['rmdir', str(lock)], check=True)
 
 
 @unittest.skipUnless(shutil.which('ansible-playbook'), 'ansible-playbook unavailable')

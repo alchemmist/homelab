@@ -241,7 +241,8 @@ def build_plan(bindings, policy, get_user):
             effective = 'disabled' if host in row['revoked_hosts'] else state
             by_host.setdefault(host, []).append({'name': bindings[ident], 'authentik_uuid': ident, 'state': effective,
                 'hosts': [host], 'shell': '/bin/bash', 'sudo': False, 'groups': [],
-                'authorized_keys': keys if effective == 'present' else []})
+                'authorized_keys': keys if effective == 'present' else [],
+                'key_fingerprints': fingerprints if effective == 'present' else []})
         summary.append({'uuid': ident, 'name': bindings[ident], 'state': state,
                         'hosts': row['hosts'], 'revoked_hosts': row['revoked_hosts'],
                         'fingerprints': fingerprints})

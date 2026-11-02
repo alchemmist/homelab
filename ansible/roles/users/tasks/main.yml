@@ -45,6 +45,8 @@
     name: "{{ item.name }}"
     state: present
     create_home: true
+    # Only the opt-in Authentik integration pins home; legacy users retain OS defaults.
+    home: "{{ '/home/' + item.name if homelab_authentik_ssh_scoped | default(false) | bool else omit }}"
     shell: "{{ '/usr/sbin/nologin' if item.state | default('present') == 'disabled' else item.shell | default('/bin/bash') }}"
     groups: "{{ item.groups | default([]) | join(',') }}"
     append: false

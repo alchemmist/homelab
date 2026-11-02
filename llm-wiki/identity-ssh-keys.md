@@ -155,14 +155,37 @@ ansible-playbook -i inventory/hosts.yml -i inventory/socrat-3.yml \
 ```
 
 Нужны **оба** apply/approval flags; `--check` всё равно остаётся read-only.
-Перед первыми изменениями root preflight на всех целевых hosts проверяет binding:
+Перед account/key изменениями root preflight на всех целевых hosts проверяет binding:
 
 - existing Linux account без root enrollment marker → остановка, не auto merge;
 - marker с другим UUID/name, symlink или небезопасными permissions → остановка;
 - для нового account сначала резервируется `/var/lib/homelab-authentik-ssh-bindings/<name>.json`
   (`root:root`, directory 0700/file 0600), затем вызывается users role;
 - marker не перезаписывается, остаётся после disable; частичный apply можно
-  повторить с той же binding. Ничего не удалять ради обхода mismatch.
+  повторить с той же binding. Ничего не удалять ради обхода mismatch;
+- даже с правильным marker passwd home обязан быть `/home/<name>`. Symlink в
+  `/home`, home, `.ssh` или `authorized_keys` запрещён. Нестандартный home не
+  мигрируется и старые effective keys не оставляются за пределами managed path;
+- проверяется настоящий `sshd -T`: **единственный** AuthorizedKeysFile должен быть
+  `.ssh/authorized_keys`, `%h/.ssh/authorized_keys` или точный `/home/<name>/.ssh/authorized_keys`;
+  второй файл (включая default `authorized_keys2`), AuthorizedKeysCommand и
+  TrustedUserCAKeys запрещены. Требуется pubkey=yes, password/kbd-interactive/
+  hostbased/GSSAPI/Kerberos=no. Отсутствие требуемых effective полей — отказ;
+- все `Match` directives, в том числе через recursive `Include`, сейчас **unsupported**:
+  один `sshd -T -C` не доказывает отсутствие alternate key source для других клиентов.
+  Preflight ничего не переписывает в sshd и не меняет auth policy owner/Tim. Если
+  действующий sshd запущен с другим `-f`/CLI overrides, STOP: этот режим не поддержан,
+  перед пилотом подтвердить стандартный `/etc/ssh/sshd_config` и отсутствие overrides.
+
+Весь host apply (preflight → marker reservation → users role → exact-key postflight)
+сериализован exclusive `mkdir /run/homelab-authentik-ssh-apply.lock` от root.
+Второй writer **отказывает**, не ждёт и не переиспользует чужой lock; marker/name/UUID
+проверяется уже под lock. `always` удаляет только lock успешно начатого apply.
+Crash/unreachable host или ошибка другого host может оставить stale lock: сначала
+проверить отсутствие работающего apply, marker/account/effective keys и только потом
+отдельно согласовать удаление lock. Не автоматизировать lock stealing/TTL.
+Manual user-management/adoption вне этого playbook тоже требует операционной
+сериализации; lock не защищает от произвольного другого root writer.
 
 `any_errors_fatal` останавливает остальные hosts при preflight error; Ansible не
 транзакционен: поздняя ошибка может оставить частичный результат. Исправить
@@ -178,11 +201,17 @@ root marker и перенести account из manual inventory. Не созда
 ради тестирования интеграции.
 
 Apply управляет **только импортированными accounts**, не пересобирает manual users.
-Используется неизменённая `users` role: exact authorized_keys replacement,
+Используется существующая `users` role: exact authorized_keys replacement,
 password_lock, отсутствие sudo/root-equivalent groups, private .ssh permissions,
 удаление legacy direct sudoers grant и effective SSH/PAM/sudo/kubeconfig verifier.
-После apply отдельно проверить host fingerprints, permissions, effective policy,
-а человеку — войти с собственного устройства. Verifier не доказывает наличие
+Единственное scoped расширение role — explicit `/home/<name>` при создании
+импортированного account; default/manual users сохраняют прежний OS home behavior.
+После role отдельный scoped verifier повторяет binding/home/sshd checks, разбирает
+**каждую** effective key строку настоящим `ssh-keygen`, требует exact fingerprints
+из reviewed export (без лишних/duplicate/invalid keys). Для disabled требуется
+**ноль effective keys** и nologin; одного nologin недостаточно для отзыва forwarding.
+Эти проверки не добавлены к manual Tim/owner path. Отдельно проверить permissions,
+effective forwarding policy и войти с собственного устройства. Verifier не доказывает наличие
 private key у человека. Без реального apply/login acceptance этого не обещать.
 
 ## Отзыв и removed-host workflow
@@ -228,4 +257,13 @@ ansible-playbook -i inventory/hosts.yml -i inventory/socrat-3.yml \
 
 Тесты используют fake HTTPS, настоящий parser публичных ключей, временный local
 inventory и **только default/--check Ansible**, без remote writes, реальных tokens
-или private key fixtures. SSH CA остаётся отдельной будущей альтернативой.
+или private key fixtures. SSH CA не реализуется.
+
+**До production всё ещё нужны disposable Linux real-apply acceptance**, не на Tim/owner:
+creation → login; rotation (old key denied/new key allowed); disabled и removed-host
+(old keys denied, включая `ssh -N`/new forwards); корректный marker и отказ при
+другом UUID/unbound account; nonstandard home/alternate key file/Match отказ **до**
+account/key writes; competing writers и crash/stale-lock recovery. Также проверить
+реально запущенный sshd command line, fresh login с разных client addresses,
+уже установленные sessions/forwards, недоступный host и повтор partial apply.
+Эти действия здесь не выполнялись. Без них нельзя объявлять revocation работающим.
