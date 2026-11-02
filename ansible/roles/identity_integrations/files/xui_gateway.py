@@ -5,7 +5,6 @@ An existing provider/application requires the protected UUID/PK journal; never
 silently adopt by name. Initial creation needs private xui-panel-launch.json.
 """
 import argparse
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -53,7 +52,7 @@ def main():
     owner=unique('core/groups/','name',config['ownerGroup'])
     if not owner: raise RuntimeError('Reviewed owner group is missing')
     bindings=[] if not app else [b for b in api('GET','policies/bindings/?page_size=1000')['results'] if b['target']==app['pk']]
-    if any(b.get('group')!=owner['pk'] or b.get('user') or b.get('policy') or not b['enabled'] for b in bindings):
+    if len(bindings)>1 or any(b.get('group')!=owner['pk'] or b.get('user') or b.get('policy') or b.get('negate') or b.get('failure_result') or not b['enabled'] for b in bindings):
         raise RuntimeError('Unexpected app admission binding; do not silently remove or adopt it')
     launch=json.loads((args.root/'xui-panel-launch.json').read_text())['url']
     parsed=urllib.parse.urlparse(launch)
@@ -67,6 +66,12 @@ def main():
         'authorization_flow':flows['default-provider-authorization-implicit-consent'],
         'invalidation_flow':flows['default-provider-invalidation-flow'],
         'access_token_validity':config['accessValidity'],'refresh_token_validity':config['refreshValidity']}
+    scopes=api('GET','propertymappings/provider/scope/?page_size=100')['results']
+    offline=[s['pk'] for s in scopes if s['managed']=='goauthentik.io/providers/oauth2/scope-offline_access']
+    if len(offline)!=1: raise RuntimeError('Reviewed offline-access mapping missing')
+    defaults={'ak_proxy','email','entitlements','openid','profile'}
+    mappings=provider['property_mappings'] if provider else [s['pk'] for s in scopes if s['scope_name'] in defaults]
+    desired['property_mappings']=list(dict.fromkeys(mappings+offline))
     icon=config['iconSha256'][:12]
     app_fields={'name':config['name'],'slug':config['slug'],'meta_launch_url':launch,
         'meta_icon':'https://vpn.alchemmist.xyz/-/xui-brand/'+icon+'.png',

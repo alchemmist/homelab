@@ -20,6 +20,8 @@ class XuiGatewayTests(unittest.TestCase):
         config=json.loads((ROOT/'deploy/identity/xui-panel.json').read_text())
         self.assertEqual(config['mode'],'forward_single')
         self.assertEqual(config['ownerGroup'],'homelab-owner')
+        self.assertEqual(config['accessValidity'],'minutes=5')
+        self.assertIn('scope-offline_access',source)
 
     def test_machine_path_is_not_an_unconditional_api_exception(self):
         conf=(ROOT/'deploy/xui-auth-gateway/nginx.conf').read_text()

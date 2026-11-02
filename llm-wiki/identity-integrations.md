@@ -296,3 +296,14 @@ runbook: [Argo CD refresh](../docs/identity/argocd-refresh.md). Старым с�
 один новый SSO authorization, чтобы получить refresh token. Остальные приложения
 этой настройкой не изменяются; 8h refresh validity само по себе не доказывает,
 что конкретный клиент получает/использует refresh token.
+
+
+## 3x-ui: owner MFA gateway (не native SSO)
+
+Публичная VPN-панель защищена Authentik forward-auth (`xui-panel`), только `homelab-owner`; после IdP остаётся native логин 3x-ui. Никакого account/email merge, подмены MFA или автоматического входа в native admin нет. Прямой public TCP 18082 закрыт persistent panel-only nft rule; private/loopback recovery — отдельная доверенная граница с native credentials.
+
+Подписки text/JSON и Trojan WebSocket сохраняют прежние backends и обходят только human gate, не собственную machine authorization. Native API exception требует Bearer и удаляет Cookie; неверный токен даёт 401, cookie-only browser API требует MFA. VPN/ingress не перезапускались; прошли реальные tunnel/subscription и оба public-edge MFA fixture tests.
+
+Bearer lifetime — 5 минут; offline-access/8h refresh настроены только новому proxy provider. Но expiry-тест выявил native browser roundtrip к IdP, а не бесшовный refresh; возможен reload панели при истёкшем proxy cookie. Не переносить на этот шлюз утверждение о silent refresh, доказанное для Argo CD. Личная owner recovery/native-login и valid API token acceptance остаются отдельными.
+
+Источники, инсталляция host rule, воспроизводимая приёмка, limits и rollback: [docs/identity/xui-gateway.md](../docs/identity/xui-gateway.md). Узкий controller `xui_gateway.py` не replay foundation и не изменяет пользователей/базу панели.
