@@ -2,9 +2,9 @@ replicaCount: 2
 
 image:
   repository: ghcr.io/alchemmist/cats
-  tag: 3b9c55f8fc0d415f13f33348270adcfbe35af49a
+  tag: a6ccd41f6a071648c09603084957184325ca843d
   # Verified digest of the existing healthy replica; prewarm new nodes before rollout.
-  digest: sha256:0c7fc2ad41c5f4435c33d84c1c93b1ea518f566c2df8a8704b0c06c6fd333bf5
+  digest: sha256:4e336ca9aa01c2c85527f096177bdaca7154e5a8ff01ae1d8396650766aaa5c8
   pullPolicy: IfNotPresent
   fallback: alchemmist/cats:latest
 
