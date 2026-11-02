@@ -264,6 +264,40 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual(required, ['email', 'password', 'name'])
         self.assertEqual(set(body), set(required))
 
+    @unittest.skipUnless(
+        Path('/tmp/netbird-0.82.0/shared/management/http/api/openapi.yml').is_file()
+        and Path('/tmp/netbird-v082-repo/management/server/user.go').is_file(),
+        'pinned source not present')
+    def test_native_owner_transfer_updates_an_existing_subject(self):
+        """PUT /api/users/{userId} can move owner to an existing subject. It does not rewrite user IDs."""
+        import hashlib
+        source = Path('/tmp/netbird-v082-repo/management/server/user.go').read_text().splitlines()
+        self.assertIn(
+            'initiatorUser.Role == types.UserRoleOwner && initiatorUser.Id != update.Id && update.Role == types.UserRoleOwner',
+            source[914])
+        self.assertIn(
+            'initiatorUser.Role != types.UserRoleOwner && oldUser.Role == types.UserRoleOwner && update.Role != oldUser.Role',
+            source[969])
+        joined = '\n'.join(source)
+        self.assertIn('return am.SaveOrAddUser(ctx, accountID, initiatorUserID, update, false)', joined)
+        self.assertIn('updatedUser := oldUser.Copy()', joined)
+        self.assertIn('updatedUser.Role = update.Role', joined)
+        self.assertNotIn('updatedUser.Id = update.Id', joined)
+        self.assertIn('func (am *DefaultAccountManager) GetOrCreateAccountByUser', joined)
+        schema_path = Path('/tmp/netbird-0.82.0/shared/management/http/api/openapi.yml')
+        lock = json.loads((ROOT / 'deploy/netbird/upstream.lock.json').read_text())
+        self.assertEqual(hashlib.sha256(schema_path.read_bytes()).hexdigest(), lock['sources']['openapi']['sha256'])
+        schema = yaml.safe_load(schema_path.read_text())
+        operation = schema['paths']['/api/users/{userId}']['put']
+        self.assertEqual(operation['requestBody']['content']['application/json']['schema']['$ref'],
+                         '#/components/schemas/UserRequest')
+        user_request = schema['components']['schemas']['UserRequest']
+        self.assertEqual(user_request['required'], ['role', 'auto_groups', 'is_blocked'])
+        self.assertNotIn('id', user_request['properties'])
+        # Personal owner first login creates the account. The Authentik subject must already
+        # exist because SaveUser refuses addIfNotExists. This test does not perform that login.
+        self.assertIn('false means do not create user', joined)
+
 
 class BackupTests(unittest.TestCase):
     def test_plan_is_quiesced_readonly_and_does_not_call_kubectl(self):
