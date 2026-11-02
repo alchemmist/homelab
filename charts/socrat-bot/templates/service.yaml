@@ -20,5 +20,5 @@ spec:
   ports:
     - name: http
       port: {{ $.Values.service.port }}
-      targetPort: http
+      targetPort: {{ $component.port }}
 {{- end }}

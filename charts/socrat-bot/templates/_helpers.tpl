@@ -18,18 +18,24 @@ items:
     container: socrat-bot
     serviceAccount: ""
     extraEnv: true
+    port: 8080
+    hostNetwork: true
   - name: socrat-bot-xui-updater
     component: updater
     module: socrat_bot.updater
     container: xui-updater
     serviceAccount: socrat-bot-xui-updater
     extraEnv: false
+    port: 8080
+    hostNetwork: false
   - name: socrat-bot-sudo-broker
     component: broker
     module: socrat_bot.broker
     container: sudo-broker
     serviceAccount: ""
     extraEnv: false
+    port: 8081
+    hostNetwork: true
 {{- end -}}
 
 {{- define "socrat-bot.secretEnv" -}}

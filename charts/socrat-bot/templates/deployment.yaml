@@ -27,6 +27,10 @@ spec:
         app.kubernetes.io/instance: {{ $.Release.Name }}
         app.kubernetes.io/component: {{ $component.component }}
     spec:
+      {{- if $component.hostNetwork }}
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      {{- end }}
       {{- if $component.serviceAccount }}
       serviceAccountName: {{ $component.serviceAccount }}
       {{- else }}
@@ -45,8 +49,10 @@ spec:
           command: ["python", "-m", {{ $component.module | quote }}]
           ports:
             - name: http
-              containerPort: {{ $.Values.service.port }}
+              containerPort: {{ $component.port }}
           env:
+            - name: PORT
+              value: {{ $component.port | quote }}
             {{- include "socrat-bot.secretEnv" $ | nindent 12 }}
             {{- if $component.extraEnv }}
             - name: ALERTMANAGER_URL
