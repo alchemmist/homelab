@@ -78,6 +78,19 @@ harbor.socrat.alchemmist.xyz/homelab/<app>:<git-sha>
 
 Harbor: push-учётка в секретах CI (`HARBOR_USERNAME`, `HARBOR_PASSWORD`). Pull в namespace — Secret `kubernetes.io/dockerconfigjson` и `imagePullSecrets`. У блога это `blog-harbor-pull`.
 
+
+## Иконка на плитке и внешние Helm-репозитории
+
+Срез **2 ноября 2026**. Иконка на плитке Application — тип первого источника, а не то, что лежит внутри чарта. У `cats`, `format-quorum` и `blog` первый источник — git `alchemmist/homelab` (`charts/<app>`), поэтому Git. У `cert-manager`, `authentik` и `harbor` первый источник — внешний Helm-чарт (`chart:`), git с values подключён вторым (`ref: values`), поэтому Helm.
+
+`ComparisonError` / `failed to generate manifest for source 1 of 2` / `context deadline exceeded` на этих Helm-приложениях — это не падение подов. Repo-server не успевает за 90 секунд выполнить `helm pull` с `charts.goauthentik.io` и `helm.goharbor.io`. Кэш манифеста при промахе качается заново. Пока pull не проходит, sync остаётся `Unknown`, уже запущенные поды не останавливаются. У authentik на этот момент server, worker и postgres были `Healthy`.
+
+## Локальный API-аккаунт для агента
+
+В `deploy/platform/argo-cd/values.yaml` заведён локальный пользователь `accounts.mcp: apiKey` (в UI паролем не входит). RBAC по умолчанию `role:readonly`, плюс одна строка `p, mcp, applications, sync, */*, allow`. Создавать и удалять Application этот аккаунт не может. Токен выпускается через API Argo CD и хранится только на машине агента (`~/.pi/agent/argocd-mcp-token`). Клиент — stdio-сервер `argocd-mcp` в пользовательском `mcp.json`, URL `https://argocd.socrat.alchemmist.xyz`. Браузерный вход через Authentik от этого не меняется.
+
+Пока Application `argo-cd` не может скачать свой чарт с `argoproj.github.io`, self-heal не подтянет этот values. До успешного sync аккаунт живёт ещё и прямой правкой `argocd-cm` / `argocd-rbac-cm`. Следующий успешный sync с `main` без этого коммита аккаунт сотрёт.
+
 ## Как устроен Argo CD
 
 Argo CD стоит на socrat-0. UI: `https://argocd.socrat.alchemmist.xyz`. TLS cert-manager HTTP-01, ingress Traefik, в том числе через VPS edge. Браузер входит через Authentik OIDC. Значения: `deploy/argocd/values.yaml`, playbook `ansible/playbooks/argocd.yml`.

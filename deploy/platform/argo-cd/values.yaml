@@ -20,6 +20,7 @@ configs:
         groups:
           essential: true
     url: https://argocd.socrat.alchemmist.xyz
+    accounts.mcp: apiKey
   params:
     server.insecure: false
   rbac:
@@ -28,6 +29,7 @@ configs:
       g, homelab-platform-operator, role:admin
       g, homelab-project-maintainer, role:readonly
       g, homelab-observer, role:readonly
+      p, mcp, applications, sync, */*, allow
     policy.default: role:readonly
     scopes: '[groups]'
 controller:
