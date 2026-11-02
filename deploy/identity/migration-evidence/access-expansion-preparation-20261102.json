@@ -1,0 +1,39 @@
+{
+  "date": "2026-11-02",
+  "phase": "implementation-and-readonly-planning",
+  "productionWrites": false,
+  "pushPerformed": false,
+  "validation": {
+    "testsPassed": 118,
+    "subtestsPassed": 188,
+    "skips": 0,
+    "netbirdPinnedOpenApiUsed": true,
+    "actualOpenSshIncludeRegressionPassed": true,
+    "diffCheckPassed": true,
+    "redactedDiffSecretScanPassed": true
+  },
+  "liveReadOnlyPreparation": {
+    "result": "PASS",
+    "stage": "groups-only",
+    "plannedEmptyGroupCreates": 9,
+    "writes": 0,
+    "planSha256": "13bcf7c45c6af2fdc71d769c0e931378f390e48550b6261fd01ac074ace40f2a",
+    "approval": false,
+    "note": "Historical GET-only plan, not an apply approval; fresh plan and recovery/backup evidence required before writes."
+  },
+  "remainingAcceptance": [
+    "Fresh protected backup/recovery evidence and writer coordination before bounded IAM apply",
+    "Review and deploy native role mappings separately; actual positive/negative browser login acceptance",
+    "NetBird private-resource scope, dedicated web boundary, two independent router placements, management exposure and overlay allocation",
+    "Real NetBird OIDC group propagation/removal, routing, failover, control-plane outage and recovery acceptance",
+    "Disposable-host SSH create/rotate/disable/remove-host real apply and effective forwarding checks",
+    "Future users require actual identities, reviewed assignments and independently verified public key fingerprints"
+  ],
+  "limits": {
+    "netbirdDeployed": false,
+    "sshImportEnabled": false,
+    "newHumanGrantsAssigned": false,
+    "nativeSessionsRevoked": false,
+    "fullDisasterRecoveryTested": false
+  }
+}
