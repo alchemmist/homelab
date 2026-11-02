@@ -87,6 +87,37 @@ try:
   assert proxy and all(c['secure'] and c['httpOnly'] for c in proxy),'Proxy cookies must be Secure and HttpOnly'
   assert page.locator('input[type=password]').count(),'Test must remain at native login screen'
   print('PASS: admitted fixture reached separate native 3x-ui password screen; proxy cookies Secure/HttpOnly',flush=True)
+  # Exercise native CSRF + POST parsing without a real native username/password.
+  transport=page.evaluate("""async base=>{
+   const c=await fetch(base+'csrf-token',{credentials:'same-origin'});const token=(await c.json()).obj;
+   const r=await fetch(base+'login',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRF-Token':token,'X-Requested-With':'XMLHttpRequest'},body:'username=&password='});
+   return {csrf:c.status,status:r.status,redirected:r.redirected,json:(r.headers.get('content-type')||'').includes('json')};
+  }""",launch)
+  assert transport=={'csrf':200,'status':200,'redirected':False,'json':True}
+  print('PASS: native CSRF + safe empty-login POST returns native JSON, no redirect',flush=True)
+  # Missing proxy cookie models the exact expired-session branch, no forged JWT.
+  context.clear_cookies(name=__import__('re').compile('^authentik_proxy'))
+  missing=page.evaluate("""async base=>{
+   const r=await fetch(base+'login',{method:'POST',credentials:'same-origin',headers:{'X-Requested-With':'XMLHttpRequest','Content-Type':'application/x-www-form-urlencoded'},body:'username=&password='});
+   return {status:r.status,redirected:r.redirected,origin:new URL(r.url).origin};
+  }""",launch)
+  assert missing=={'status':401,'redirected':False,'origin':'https://vpn.alchemmist.xyz'}
+  print('PASS: missing/expired gateway session returns same-origin 401, not Failed to fetch',flush=True)
+  # The real native login UI handles that 401 itself with top-level navigation.
+  page.locator('input[autocomplete=username]').fill('gateway-recovery-nonexistent-fixture')
+  page.locator('input[type=password]').fill(secrets.token_urlsafe(24))
+  if page.locator('input[autocomplete=one-time-code]').count():page.locator('input[autocomplete=one-time-code]').fill('000000')
+  rejected=[]
+  page.on('response',lambda r:rejected.append(r.status) if r.request.method=='POST' and urllib.parse.urlparse(r.url).path==urllib.parse.urlparse(launch).path+'login' else None)
+  page.locator('button[type=submit]').click()
+  for attempt in range(100):
+   page.wait_for_timeout(200)
+   proxy=[c for c in context.cookies('https://vpn.alchemmist.xyz') if c['name'].startswith('authentik_proxy')]
+   if 401 in rejected and proxy and page.url==launch and page.locator('input[type=password]').count():break
+  else:raise AssertionError('Native UI did not recover missing gateway session')
+  assert 200 not in rejected,'Synthetic native credentials must never reach the backend'
+  print('PASS: actual native login submit handles 401 and returns via top-level SSO; no native password attempted',flush=True)
+
   response=context.request.get(launch+'panel/api/server/status',headers={'Authorization':'Bearer deliberately-invalid-probe'},max_redirects=0)
   assert response.status==401
   print('PASS: invalid machine Bearer returns native 401 even with authenticated gateway browser cookies')

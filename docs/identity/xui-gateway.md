@@ -62,3 +62,29 @@ python3 -m unittest discover -s tests -p test_xui_auth_gateway.py
 Сохранить private native recovery и текущий firewall. Сначала согласовать явное снятие MFA-гейта с human route (возвращает native-only публичный HTTPS вход); не затрагивать public VPN routes/backends. Только затем убрать provider из **текущего** списка embedded outpost, сохраняя чужие concurrent additions, и удалить только journal-owned application/provider/binding. Не восстанавливать весь старый outpost snapshot вслепую. Не удалять native DB/credentials и не сбрасывать MFA.
 
 Не удалять firewall как побочный эффект rollback. Для его сознательного удаления owner отдельно отключает только `homelab-xui-panel-auth.service`, удаляет только таблицу `inet homelab_xui_panel_auth` и managed unit/rules; никакого `flush ruleset` или восстановления всех node firewall правил.
+
+
+## Login Failed to fetch: expired gateway XHR correction
+
+Reproduced the reported error without real panel credentials: a fresh gateway
+session accepted native CSRF + empty-login POST (200 JSON), whereas removing only
+the fixture proxy cookie caused cross-origin OAuth redirects and browser
+TypeError: Failed to fetch. This is the same unauthenticated branch reached after
+proxy expiry, not evidence of a wrong native password.
+
+Named auth-login now returns **401 without redirect** for native XMLHttpRequest,
+fetch cors/same-origin, websocket, and unsafe methods. Only normal safe browser
+navigation starts OAuth. Native 3x-ui3.11 already handles401 by top-level
+location.replace; no custom login JS, POST replay, CSRF bypass or auth exemption.
+After idle, a page reauthorization/reload can still occur and inputs may need
+re-entry. Five-minute token lifetime and owner MFA/admission remain unchanged;
+this does not claim silent proxy refresh.
+
+Both public edges passed: fresh native CSRF/empty-login JSON; missing-cookie
+fetch401 same-origin without redirect; **actual native login button** triggering
+401 then recovering via top-level SSO. Synthetic form credentials never reached
+the backend (response401 asserted); no owner password/OTP was read or reset.
+Temporary observer/admission fixtures removed. Earlier selector-harness timeouts
+were corrected to native autocomplete attributes and are not counted as passes.
+Bearer-invalid401 and spoofed-header denial remain; VPN/public subscriptions,
+Traefik and native x-ui were not changed/restarted. Only gateway rolled.
