@@ -202,22 +202,12 @@ class TrafficLightQueriesTest(unittest.TestCase):
         self.assertEqual(steps[1], {'color': '#A85D08', 'value': 3})
         self.assertEqual(steps[2], {'color': '#26783D', 'value': 4})
 
-    def test_vpn_active_counter_tile(self):
-        panel = panel_by_id(self.dashboard, 910)
-        self.assertEqual(panel['gridPos']['x'], 14)
-        self.assertEqual(panel['gridPos']['h'], 1)
-        disk = panel_by_id(self.dashboard, 23)
-        self.assertEqual(disk['gridPos']['h'], 7)
-        self.assertEqual(panel['targets'][0]['expr'], 'socrat_vpn_active_clients')
-        self.assertEqual(panel['targets'][0]['legendFormat'], 'VPN:')
-        self.assertTrue(panel['transparent'])
-        self.assertEqual(panel['options']['textMode'], 'value_and_name')
-        sibling = panel_by_id(self.dashboard, 911)
-        self.assertEqual(sibling['targets'][0]['expr'], 'socrat_vpn_registered_clients')
-        self.assertEqual(sibling['targets'][0]['legendFormat'], '/')
-        self.assertEqual(sibling['gridPos'], {'x': 17, 'y': 14, 'w': 2, 'h': 1})
-        for tile in (panel, sibling):
-            self.assertEqual(tile['options']['text'], {'titleSize': 30, 'valueSize': 30})
+    def test_vpn_fraction_tiles_are_removed(self):
+        ids = {panel['id'] for panel in self.dashboard['panels']}
+        self.assertNotIn(910, ids)
+        self.assertNotIn(911, ids)
+        names = {item.get('name') for item in self.dashboard.get('templating', {}).get('list', [])}
+        self.assertNotIn('vpn_now', names)
 
     def test_new_panels_have_an_english_description(self):
         for panel in self.dashboard['panels']:
