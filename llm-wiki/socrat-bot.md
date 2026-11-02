@@ -1,59 +1,38 @@
 # Socrat bot
 
-Контракт выкатки тот же, что в [cluster-deploy.md](cluster-deploy.md): образ в Harbor, версия в Git, Argo CD синкает сам. CI не вызывает `helm upgrade` и не пишет Helm parameters.
+Release contract matches [cluster-deploy.md](cluster-deploy.md): the image lives in Harbor, the version lives in Git, and Argo CD syncs on its own. CI does not call `helm upgrade` and does not write Helm parameters.
 
-## Границы слоёв
+## Layers
 
-Три слоя. Секреты через git не ходят.
+Three layers. Secrets do not go through Git.
 
-1. **Репозиторий бота** собирает один образ `harbor.socrat.alchemmist.xyz/homelab/socrat-bot`. В нём три процесса: `python -m socrat_bot`, `python -m socrat_bot.updater`, `python -m socrat_bot.broker`. Токен Telegram, пароль Postgres и `INTERNAL_TOKEN` живут только в Secret кластера `socrat-bot-env`. Его заполняет оператор. Чарт пароль не придумывает и через `lookup` сохраняет уже записанные ключи, а не затирает их пустым рендером.
+1. **Bot repository** `alchemmist/socrat-bot` builds one image, `harbor.socrat.alchemmist.xyz/homelab/socrat-bot`. Three processes share it: `python -m socrat_bot`, `python -m socrat_bot.updater`, and `python -m socrat_bot.broker`. The Telegram token, Postgres password, and `INTERNAL_TOKEN` live only in the cluster Secret `socrat-bot-env`. The chart does not render that Secret.
+2. **Homelab** holds the chart, values, and Application. `deploy-to-socrat` changes only root `image.tag` and `image.digest`. Postgres stays under `postgres.image` (`postgres:17`).
+3. **n8n** receives the Alertmanager webhook and calls internal `POST /v1/messages`. The bot token is not stored in Grafana. `X-Internal-Token` is the n8n credential `Socrat bot internal`.
 
-2. **Homelab** держит чарт, values и Application. `deploy-to-socrat` меняет только корневые `image.tag` и `image.digest` в `deploy/socrat-bot/values.yaml` и `charts/socrat-bot/values.yaml`. Образ Postgres — отдельный ключ `postgres.image` (`postgres:17`). Под корневой `image` он не вложен, action его не переписывает. До первого релиза `image.tag` равен `bootstrap`, `image.digest` — пустая строка: шаблон берёт `repository:tag`, а когда digest непустой — `repository@digest`.
+## Addresses
 
-3. **n8n** принимает webhook Alertmanager и зовёт внутренний `/v1/messages`. Токен бота в Grafana не вводится. В конфиге Alertmanager нет учёток, только URL. `X-Internal-Token` остаётся credential n8n.
+- Public Telegram webhook: `https://bot.socrat.alchemmist.xyz/telegram/webhook`. Ingress exposes only `/telegram`.
+- Internal API: `http://socrat-bot.socrat-bot.svc:8080`.
+- The bot and sudo-broker use the host network on `socrat-2` (host ports 8082 and 8081) because pod egress from `socrat-3` cannot reach `api.telegram.org`. Services still publish port 8080.
+- xui-updater stays on the pod network and probes the 3X-UI Service on port 2053.
 
-## Адреса
+## Where it lives
 
-- Публичный webhook Telegram: `https://bot.socrat.alchemmist.xyz/telegram/webhook`. Ingress пускает только префикс `/telegram`. Маршрута `/v1` снаружи нет.
-- Внутренний API: `http://socrat-bot.socrat-bot.svc:8080`.
-- Updater: `http://socrat-bot-xui-updater.socrat-bot.svc:8080`.
-- Broker: `http://socrat-bot-sudo-broker.socrat-bot.svc:8080`.
-- Alertmanager → n8n: `https://n8n.socrat.alchemmist.xyz/webhook/socrat-alerts`.
-
-Все три процесса бота слушают порт 8080 и отвечают на `GET /healthz`. У каждого по одной реплике.
-
-## Где лежит
-
-| Что | Путь |
+| What | Path |
 | --- | --- |
-| Чарт | `charts/socrat-bot` |
-| Values релиза | `deploy/socrat-bot/values.yaml` |
+| Chart | `charts/socrat-bot` |
+| Release values | `deploy/socrat-bot/values.yaml` |
 | Application | `deploy/argocd/apps/socrat-bot.yaml` |
-| Приёмник Alertmanager | `deploy/platform/kube-prometheus-stack/values.yaml` |
+| Alertmanager receiver | `deploy/platform/kube-prometheus-stack/values.yaml` |
 | Workflow | `docs/n8n/socrat-bot/workflow.json` |
-| Импорт | `docs/n8n/socrat-bot/setup.md` |
-| Клиент sudo | `ansible/files/socrat-sudo`, `ansible/files/socrat_sudo`, playbook `ansible/playbooks/socrat-sudo.yml` |
+| Import notes | `docs/n8n/socrat-bot/setup.md` |
+| sudo client | `ansible/files/socrat-sudo`, `ansible/files/socrat_sudo`, `ansible/playbooks/socrat-sudo.yml` |
 
-Application: проект `default`, namespace `socrat-bot`, `parameters: []`, `prune: false`, `selfHeal: true`, `CreateNamespace=true`, finalizer `resources-finalizer.argocd.argoproj.io`. Каталог `deploy/argocd/apps` подхватывает `root`, отдельно создавать Application в UI не нужно.
+Application: project `default`, namespace `socrat-bot`, `parameters: []`, `prune: false`, `selfHeal: true`. Pull secret `socrat-bot-harbor-pull` is created by the operator.
 
-Pull Secret `socrat-bot-harbor-pull` чарт не создаёт: в нём учётка Harbor, её кладёт оператор, как `blog-harbor-pull`.
+## sudo-broker
 
-## Postgres
+The broker stores a request and does not run the command. `socrat-sudo` posts `user`, `node`, and `argv` with `X-Internal-Token`. After Allow, the client runs `sudo` with that argv once. Deny and timeout do not exec. `/etc/socrat-sudo.env` on `socrat-2` is mode `0640`. The playbook does not write the token and does not change sudoers.
 
-StatefulSet `socrat-bot-postgres`, одна реплика, образ `postgres:17`, диск 5Gi. StorageClass `socrat-bot-retain`: provisioner `rancher.io/local-path`, `reclaimPolicy: Retain`, привязка тома `WaitForFirstConsumer`. На PVC аннотация `helm.sh/resource-policy: keep`.
-
-Пароль берётся из ключа `POSTGRES_PASSWORD`. Пользователь и база — `socrat`, хост — `socrat-bot-postgres:5432`. Ключ `DATABASE_URL` оператор записывает сам (драйвер `postgresql+psycopg`). Чарт URL из пароля не собирает.
-
-Остальные ключи Secret, без значений: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `TELEGRAM_OWNER_ID`, `INTERNAL_TOKEN`.
-
-## Updater и x-ui
-
-ServiceAccount `socrat-bot-xui-updater` в namespace `socrat-bot`. Role с тем же именем в namespace `x-ui`: `get`/`patch`/`update` на `deployments` с `resourceNames: [x-ui]`, плюс `get`/`list`/`watch` на pods. RoleBinding в `x-ui` смотрит на этот ServiceAccount. Wildcard на запись манифестов нет.
-
-На контейнере бота заданы `ALERTMANAGER_URL` (`http://kube-prometheus-stack-alertmanager.cattle-monitoring-system.svc:9093`) и `XUI_UPDATER_URL` (`http://socrat-bot-xui-updater.socrat-bot.svc:8080`).
-
-## sudo
-
-Пакет ещё не публикуется, поэтому playbook копирует `/usr/local/bin/socrat-sudo` и модуль в `/usr/local/lib/socrat_sudo`. Команда читает `BROKER_URL` и `INTERNAL_TOKEN` из `/etc/socrat-sudo.env` режима 0600. Playbook этот файл с токеном не создаёт и sudoers не меняет.
-
-Клиент шлёт `POST /v1/sudo` с `user_name`, `node`, `argv` и заголовком `X-Internal-Token`, затем `GET /v1/sudo/{id}`, пока `status` не станет `approved`, `denied` или `expired`. После `approved` процесс заменяется на исходный argv от имени текущего пользователя. Прав это не повышает.
+`TELEGRAM_OWNER_ID` has to be set before buttons, broadcasts, and sudo approvals work.
