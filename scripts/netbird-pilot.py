@@ -289,7 +289,10 @@ def manifests(c, publication='internal', port_forward_cidrs=None):
                                            {'name': 'data', 'mountPath': '/var/lib/netbird'}],
                              readinessProbe={'httpGet': {'path': '/health', 'port': HEALTH_PORT},
                                              'initialDelaySeconds': 5, 'periodSeconds': 10},
-                             livenessProbe={'httpGet': {'path': '/health', 'port': HEALTH_PORT},
+                             # /health is the relay checker. Before a relay certificate exists it
+                             # returns 503, so it stays the readiness signal and does not restart the
+                             # management process. Liveness only checks that the port is accepting.
+                             livenessProbe={'tcpSocket': {'port': HEALTH_PORT},
                                             'initialDelaySeconds': 20, 'periodSeconds': 20})
             container['ports'] += [{'name': 'stun', 'containerPort': STUN_PORT, 'protocol': 'UDP'},
                                    {'name': 'health', 'containerPort': HEALTH_PORT},

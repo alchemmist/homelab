@@ -157,7 +157,8 @@ class PilotTests(unittest.TestCase):
         server = next(doc for doc in docs if doc['metadata']['name'] == 'server')
         container = server['spec']['template']['spec']['containers'][0]
         self.assertEqual(container['readinessProbe']['httpGet'], {'path': '/health', 'port': 9000})
-        self.assertEqual(container['livenessProbe']['httpGet']['path'], '/health')
+        self.assertEqual(container['livenessProbe']['tcpSocket'], {'port': 9000})
+        self.assertNotIn('httpGet', container['livenessProbe'])
         secret = server['spec']['template']['spec']['volumes'][0]['secret']
         self.assertEqual(secret['items'], [{'key': 'config.yaml', 'path': 'config.yaml'}])
         policy = docs[-1]
