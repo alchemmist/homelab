@@ -16,6 +16,8 @@ ingress:
 envSecret: socrat-bot-env
 alertmanagerUrl: http://kube-prometheus-stack-alertmanager.cattle-monitoring-system.svc:9093
 xuiUpdaterUrl: http://socrat-bot-xui-updater.socrat-bot.svc:8080
+xuiPanelPort: "2053"
+xuiHealthPath: /
 postgres:
   image: postgres:17
   storage: 5Gi

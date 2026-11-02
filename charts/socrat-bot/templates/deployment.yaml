@@ -54,6 +54,12 @@ spec:
             - name: XUI_UPDATER_URL
               value: {{ $.Values.xuiUpdaterUrl | quote }}
             {{- end }}
+            {{- if eq $component.component "updater" }}
+            - name: XUI_PANEL_PORT
+              value: {{ $.Values.xuiPanelPort | quote }}
+            - name: XUI_HEALTH_PATH
+              value: {{ $.Values.xuiHealthPath | quote }}
+            {{- end }}
           {{- include "socrat-bot.probes" $ | nindent 10 }}
           {{- with $.Values.resources }}
           resources:
