@@ -1,5 +1,10 @@
 # NetBird private stage3 — 2026-11-02
 
+Historical stage3 snapshot. [Stage4](netbird-stage4-record.md) subsequently
+investigated the pinned combined health defect, established actual management
+readiness and disabled local auth after connector/PAT proof **before** publishing
+the OIDC-only TLS entry. Actual personal owner login/transfer is still separate.
+
 ## Actual result
 
 The dedicated Authentik application **and the native NetBird identity-provider

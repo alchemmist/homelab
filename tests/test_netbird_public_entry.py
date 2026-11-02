@@ -28,6 +28,9 @@ class PublicEntryTests(unittest.TestCase):
         deny=dynamic['http']['routers']['deny-setup']['rule']
         for path in ['/api/setup','/api/users/invites','/oauth2/auth/local','/oauth2/signup']:
             self.assertIn(path,deny)
+        self.assertIn('Path(`/api/setup`)',deny)
+        self.assertIn('PathPrefix(`/api/setup/`)',deny)
+        self.assertNotIn('PathPrefix(`/api/setup`)',deny)
         for d in docs:
             if d['kind']=='Service':
                 self.assertNotIn('NodePort',str(d));self.assertNotIn('3478',str(d))

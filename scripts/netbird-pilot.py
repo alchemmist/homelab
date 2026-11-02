@@ -344,7 +344,11 @@ def forwarder_files(c):
         'providers': {'file': {'filename': '/etc/traefik/dynamic.yaml'}},
         'ping': {'entryPoint': 'ping'},
         'log': {'level': 'INFO'}}
-    deny = ' || '.join('PathPrefix(`' + path + '`)' for path in DENY_PREFIXES)
+    # /api/setup-keys is an authenticated management API, not initial signup.
+    # Deny the setup route and descendants without a prefix collision.
+    deny = ' || '.join(
+        'Path(`/api/setup`) || PathPrefix(`/api/setup/`)' if path == '/api/setup'
+        else 'PathPrefix(`' + path + '`)' for path in DENY_PREFIXES)
     dynamic = {'http': {
         'middlewares': {'deny-unclaimed-setup': {'ipAllowList': {'sourceRange': ['127.0.0.1/32']}}},
         'serversTransports': {'http1': {'disableHTTP2': True}, 'h2c': {'disableHTTP2': False}},

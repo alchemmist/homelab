@@ -52,11 +52,15 @@ def main():
     a=p.parse_args()
     if a.subject!=subject():raise ValueError('wrong encoded raw UUID/connector')
     token=json.loads((ROOT/'bootstrap.json').read_text())['personal_access_token']
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, headers, newurl):
+            return None  # Never forward a private PAT to a redirect destination.
+    opener=urllib.request.build_opener(NoRedirect)
     def api(path, body=None):
         request=urllib.request.Request(BASE+path,headers={'Authorization':'Token '+token,'Content-Type':'application/json'},
             data=None if body is None else json.dumps(body).encode(),method='GET' if body is None else 'PUT')
         # Standard trusted TLS, no certificate bypass, redirect or mutation retries.
-        with urllib.request.urlopen(request,timeout=20) as r:return json.load(r)
+        with opener.open(request,timeout=20) as r:return json.load(r)
     accounts=api('accounts')
     if len(accounts)!=1 or not accounts[0]['settings']['local_auth_disabled']:raise ValueError('account/local-auth guard failed')
     if accounts[0]['id']!=json.loads((ROOT/'bootstrap-complete.json').read_text())['account_id']:raise ValueError('wrong account')
@@ -79,6 +83,11 @@ def main():
     after=api('users')
     if [u['id'] for u in after if u['role']=='owner']!=[target['id']]:raise ValueError('post-transfer owner mismatch; stop')
     if next(u for u in after if u['id']==TECHNICAL)['role']!='admin':raise ValueError('technical owner was not demoted')
+    expected_roles={u['id']:u['role'] for u in users}
+    expected_roles.update({target['id']:'owner',TECHNICAL:'admin'})
+    if {u['id']:u['role'] for u in after}!=expected_roles:raise ValueError('unexpected other user/role change')
+    for name in ['peers','setup-keys','policies']:
+        if api(name)!=[]:raise ValueError('unexpected post-transfer network grants')
     print('Native owner transfer verified. Technical PAT remains private; no peers/setupkeys/policy or other human role granted.')
 
 
