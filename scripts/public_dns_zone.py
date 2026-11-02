@@ -19,6 +19,7 @@ FAILOVER = [
     "3.socrat",
     "argocd.socrat",
     "auth.socrat",
+    "bot.socrat",
     "cats",
     "chat",
     "fq",
