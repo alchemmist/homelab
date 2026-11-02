@@ -38,13 +38,18 @@ class TrafficLightLayoutTest(unittest.TestCase):
         states = defaults['mappings'][0]['options']
         self.assertEqual(states['0'], {'text': 'K3s', 'color': '#26783D'})
         self.assertEqual(states['1'], {'text': 'Fallback', 'color': '#A85D08'})
-        self.assertEqual(states['-2'], {'text': 'Unknown', 'color': '#555555'})
+        self.assertEqual(states['2'], {'text': 'Off', 'color': '#B42332'})
         expr = panel['targets'][0]['expr']
         self.assertIn('socrat_vpn_fallback_active', expr)
         self.assertIn('timestamp(', expr)
         self.assertIn('< 30', expr)
-        self.assertIn('or vector(-2)', expr)
+        self.assertIn('or vector(2)', expr)
         self.assertTrue(panel['targets'][0]['instant'])
+        ids = {item['id'] for item in self.dashboard['panels']}
+        self.assertNotIn(325, ids)
+        self.assertNotIn(326, ids)
+        self.assertEqual(panel_by_id(self.dashboard, 327)['gridPos']['x'], 6)
+        self.assertEqual(panel_by_id(self.dashboard, 328)['gridPos']['x'], 8)
 
     def test_panels_use_the_integer_tv_grid(self):
         for panel in self.dashboard['panels']:

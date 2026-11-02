@@ -170,7 +170,7 @@
     "type": "prometheus",
     "uid": "prometheus"
    },
-   "description": "VPN execution mode on the VPS. Green K3s means fallback is not latched; amber Fallback means native systemd mode is latched, not necessarily healthy. Gray Unknown means no fresh mode telemetry. The SocratVPNFallbackActive warning tracks this mode.",
+   "description": "VPN execution mode on the VPS. Green K3s means 3xUI is running as the Kubernetes service. Amber Fallback means native systemd mode is latched after Kubernetes stopped serving it. Red Off means the mode metric from socrat-2 is missing or stale, so the VPN host is not reporting a running mode.",
    "fieldConfig": {
     "defaults": {
      "color": {
@@ -181,10 +181,6 @@
      "mappings": [
       {
        "options": {
-        "-2": {
-         "color": "#555555",
-         "text": "Unknown"
-        },
         "0": {
          "color": "#26783D",
          "text": "K3s"
@@ -192,19 +188,19 @@
         "1": {
          "color": "#A85D08",
          "text": "Fallback"
+        },
+        "2": {
+         "color": "#B42332",
+         "text": "Off"
         }
        },
        "type": "value"
       }
      ],
-     "noValue": "Unknown",
+     "noValue": "Off",
      "thresholds": {
       "mode": "absolute",
       "steps": [
-       {
-        "color": "#555555",
-        "value": 0
-       },
        {
         "color": "#26783D",
         "value": 0
@@ -212,6 +208,10 @@
        {
         "color": "#A85D08",
         "value": 1
+       },
+       {
+        "color": "#B42332",
+        "value": 2
        }
       ]
      },
@@ -253,7 +253,7 @@
       "type": "prometheus",
       "uid": "prometheus"
      },
-     "expr": "max(socrat_vpn_fallback_active{job=\"node-exporter\"} and (time() - timestamp(socrat_vpn_fallback_active{job=\"node-exporter\"}) < 30)) or vector(-2)",
+     "expr": "max(socrat_vpn_fallback_active{job=\"node-exporter\"} and (time() - timestamp(socrat_vpn_fallback_active{job=\"node-exporter\"}) < 30)) or vector(2)",
      "format": "time_series",
      "instant": true,
      "refId": "A"
@@ -3473,200 +3473,6 @@
     "type": "prometheus",
     "uid": "prometheus"
    },
-   "description": "VPN: tcp_connect probe of traefik-edge-trojan.traefik-edge.svc.cluster.local:32087 every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
-   "fieldConfig": {
-    "defaults": {
-     "displayName": "VPN",
-     "mappings": [
-      {
-       "options": {
-        "-2": {
-         "color": "#555555",
-         "text": "No telemetry"
-        },
-        "0": {
-         "color": "#26783D",
-         "text": "Healthy"
-        },
-        "1": {
-         "color": "#A85D08",
-         "text": "Pending"
-        },
-        "2": {
-         "color": "#B42332",
-         "text": "Firing"
-        }
-       },
-       "type": "value"
-      }
-     ],
-     "noValue": "No telemetry",
-     "thresholds": {
-      "mode": "absolute",
-      "steps": [
-       {
-        "color": "#26783D",
-        "value": 0
-       },
-       {
-        "color": "#A85D08",
-        "value": 1
-       },
-       {
-        "color": "#B42332",
-        "value": 2
-       }
-      ]
-     },
-     "unit": "short"
-    }
-   },
-   "gridPos": {
-    "h": 2,
-    "w": 2,
-    "x": 6,
-    "y": 8
-   },
-   "id": 325,
-   "options": {
-    "colorMode": "background_solid",
-    "graphMode": "none",
-    "justifyMode": "center",
-    "orientation": "horizontal",
-    "percentChangeColorMode": "standard",
-    "reduceOptions": {
-     "calcs": [
-      "lastNotNull"
-     ],
-     "fields": "",
-     "values": false
-    },
-    "showPercentChange": false,
-    "text": {
-     "titleSize": 14
-    },
-    "textMode": "name",
-    "wideLayout": false
-   },
-   "pluginVersion": "13.2.4",
-   "targets": [
-    {
-     "datasource": {
-      "type": "prometheus",
-      "uid": "prometheus"
-     },
-     "expr": "(max(2 * ALERTS{alertname=\"SocratServiceVpnUnavailable\",service_id=\"vpn\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceVpnUnavailable\",service_id=\"vpn\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"vpn\"})) and on() ((max(up{job=\"service-probes\",service_id=\"vpn\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"vpn\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"vpn\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
-     "format": "time_series",
-     "instant": true,
-     "range": false,
-     "refId": "A"
-    }
-   ],
-   "title": "",
-   "type": "stat"
-  },
-  {
-   "datasource": {
-    "type": "prometheus",
-    "uid": "prometheus"
-   },
-   "description": "3xUI: tcp_connect probe of x-ui.x-ui.svc.cluster.local:2053 every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
-   "fieldConfig": {
-    "defaults": {
-     "displayName": "3xUI",
-     "mappings": [
-      {
-       "options": {
-        "-2": {
-         "color": "#555555",
-         "text": "No telemetry"
-        },
-        "0": {
-         "color": "#26783D",
-         "text": "Healthy"
-        },
-        "1": {
-         "color": "#A85D08",
-         "text": "Pending"
-        },
-        "2": {
-         "color": "#B42332",
-         "text": "Firing"
-        }
-       },
-       "type": "value"
-      }
-     ],
-     "noValue": "No telemetry",
-     "thresholds": {
-      "mode": "absolute",
-      "steps": [
-       {
-        "color": "#26783D",
-        "value": 0
-       },
-       {
-        "color": "#A85D08",
-        "value": 1
-       },
-       {
-        "color": "#B42332",
-        "value": 2
-       }
-      ]
-     },
-     "unit": "short"
-    }
-   },
-   "gridPos": {
-    "h": 2,
-    "w": 2,
-    "x": 8,
-    "y": 8
-   },
-   "id": 326,
-   "options": {
-    "colorMode": "background_solid",
-    "graphMode": "none",
-    "justifyMode": "center",
-    "orientation": "horizontal",
-    "percentChangeColorMode": "standard",
-    "reduceOptions": {
-     "calcs": [
-      "lastNotNull"
-     ],
-     "fields": "",
-     "values": false
-    },
-    "showPercentChange": false,
-    "text": {
-     "titleSize": 14
-    },
-    "textMode": "name",
-    "wideLayout": false
-   },
-   "pluginVersion": "13.2.4",
-   "targets": [
-    {
-     "datasource": {
-      "type": "prometheus",
-      "uid": "prometheus"
-     },
-     "expr": "(max(2 * ALERTS{alertname=\"SocratServiceXUiUnavailable\",service_id=\"x-ui\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceXUiUnavailable\",service_id=\"x-ui\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"x-ui\"})) and on() ((max(up{job=\"service-probes\",service_id=\"x-ui\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"x-ui\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"x-ui\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
-     "format": "time_series",
-     "instant": true,
-     "range": false,
-     "refId": "A"
-    }
-   ],
-   "title": "",
-   "type": "stat"
-  },
-  {
-   "datasource": {
-    "type": "prometheus",
-    "uid": "prometheus"
-   },
    "description": "LiteLLM DB: tcp_connect probe of litellm-postgres.llm.svc.cluster.local:5432 every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
    "fieldConfig": {
     "defaults": {
@@ -3718,7 +3524,7 @@
    "gridPos": {
     "h": 2,
     "w": 2,
-    "x": 10,
+    "x": 6,
     "y": 8
    },
    "id": 327,
@@ -3815,7 +3621,7 @@
    "gridPos": {
     "h": 2,
     "w": 2,
-    "x": 12,
+    "x": 8,
     "y": 8
    },
    "id": 328,
