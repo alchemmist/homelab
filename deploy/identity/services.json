@@ -172,7 +172,8 @@
     "redirect": "https://lms.alchemmist.xyz/auth/callback",
     "groups": [
       "homelab-owner",
-      "lms-students"
+      "lms-students",
+      "lms-teachers"
     ],
     "groupsScope": true,
     "subMode": "user_uuid",
@@ -181,7 +182,7 @@
     "admission": "native-oidc",
     "appRoles": {
       "student": {
-        "nativeRole": "student; deployed image accepts only lms-students",
+        "nativeRole": "student; group lms-students. Teachers use lms-teachers.",
         "assignable": false
       }
     }
