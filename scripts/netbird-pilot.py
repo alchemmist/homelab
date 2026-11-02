@@ -287,11 +287,12 @@ def manifests(c, publication='internal', port_forward_cidrs=None):
             container.update(args=['--config', '/etc/netbird/config.yaml'],
                              volumeMounts=[{'name': 'config', 'mountPath': '/etc/netbird', 'readOnly': True},
                                            {'name': 'data', 'mountPath': '/var/lib/netbird'}],
-                             readinessProbe={'httpGet': {'path': '/health', 'port': HEALTH_PORT},
+                             readinessProbe={'httpGet': {'path': '/oauth2/.well-known/openid-configuration', 'port': 80},
                                              'initialDelaySeconds': 5, 'periodSeconds': 10},
-                             # /health is the relay checker. Before a relay certificate exists it
-                             # returns 503, so it stays the readiness signal and does not restart the
-                             # management process. Liveness only checks that the port is accepting.
+                             # Combined v0.82.0 never calls relay Server.Listen: its generic
+                             # relay checker permanently sees no listeners. Discovery tests actual
+                             # management + embedded IdP readiness, NOT relay/STUN health. Those
+                             # require separate end-to-end acceptance before VPN use.
                              livenessProbe={'tcpSocket': {'port': HEALTH_PORT},
                                             'initialDelaySeconds': 20, 'periodSeconds': 20})
             container['ports'] += [{'name': 'stun', 'containerPort': STUN_PORT, 'protocol': 'UDP'},

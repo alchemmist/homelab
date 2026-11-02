@@ -109,7 +109,7 @@ class ControlPlaneTests(unittest.TestCase):
             self.assertNotIn('kind: Secret', text)
             self.assertNotIn('kind: Service', text)
             self.assertNotIn('kind: Ingress', text)
-            self.assertIn('/health', text)
+            self.assertIn('/oauth2/.well-known/openid-configuration', text)
 
     def test_cleared_audit_cannot_hide_the_unpatched_chart(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -156,7 +156,8 @@ class PilotTests(unittest.TestCase):
         self.assertNotIn('nodePort', text)
         server = next(doc for doc in docs if doc['metadata']['name'] == 'server')
         container = server['spec']['template']['spec']['containers'][0]
-        self.assertEqual(container['readinessProbe']['httpGet'], {'path': '/health', 'port': 9000})
+        self.assertEqual(container['readinessProbe']['httpGet'],
+                         {'path': '/oauth2/.well-known/openid-configuration', 'port': 80})
         self.assertEqual(container['livenessProbe']['tcpSocket'], {'port': 9000})
         self.assertNotIn('httpGet', container['livenessProbe'])
         secret = server['spec']['template']['spec']['volumes'][0]['secret']
