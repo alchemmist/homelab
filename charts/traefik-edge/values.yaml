@@ -20,6 +20,7 @@ watchNamespaces:
   - monori
   - pr-agent
   - remark42
+  - socrat-bot
   - socrat-home
   - syncthing
   - umami
