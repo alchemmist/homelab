@@ -3,7 +3,7 @@ from urllib.parse import urlencode
 
 LEGACY_GROUPS = ['homelab-owner', 'homelab-platform-operator',
                  'homelab-project-maintainer', 'homelab-observer',
-                 'homelab-machine-owner', 'lms-students']
+                 'homelab-machine-owner', 'lms-students', 'lms-teachers']
 
 
 def app_groups(services):

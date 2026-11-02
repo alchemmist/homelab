@@ -59,6 +59,15 @@ class AppIAMTests(unittest.TestCase):
     def plan(self):
         return lifecycle.build_plan(self.api, self.services, self.manifest, self.reviewed)
 
+    def test_legacy_catalog_groups_are_known_without_human_grants(self):
+        declared = set(app_iam.LEGACY_GROUPS) | set(app_iam.app_groups(self.services))
+        for slug, service in self.services.items():
+            self.assertLessEqual(set(app_iam.admission_groups(slug, service)), declared)
+        teacher = next(g for g in self.fake.data['core/groups/'] if g['name'] == 'lms-teachers')
+        self.assertFalse(teacher['is_superuser'])
+        self.assertFalse(teacher.get('users', []))
+        self.assertEqual(self.plan()['operations'], [])
+
     def test_default_manifest_has_no_grants_and_no_writes(self):
         self.assertEqual(self.plan()['operations'], [])
         self.assertEqual(self.api.writes, [])
