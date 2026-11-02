@@ -201,3 +201,8 @@ serviceProbes:
     url: http://argo-cd-argocd-server.argocd.svc.cluster.local:80/healthz
     module: http_3xx
     alertName: SocratServiceArgocdUnavailable
+  - id: socrat-bot
+    title: Socrat Bot
+    url: http://socrat-bot.socrat-bot.svc.cluster.local:8080/healthz
+    module: http_2xx
+    alertName: SocratServiceSocratBotUnavailable

@@ -213,6 +213,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
             336: ('authentik', 'SocratServiceAuthentikUnavailable', {'x': 12, 'y': 8, 'w': 2, 'h': 1}),
             337: ('harbor', 'SocratServiceHarborUnavailable', {'x': 10, 'y': 9, 'w': 2, 'h': 1}),
             338: ('argocd', 'SocratServiceArgocdUnavailable', {'x': 12, 'y': 9, 'w': 2, 'h': 1}),
+            339: ('socrat-bot', 'SocratServiceSocratBotUnavailable', {'x': 0, 'y': 6, 'w': 2, 'h': 2}),
         }
         for panel_id, (service_id, alert, grid) in expected.items():
             panel = panel_by_id(self.dashboard, panel_id)
