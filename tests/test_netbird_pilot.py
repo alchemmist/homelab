@@ -45,10 +45,11 @@ def bindings():
 
 def snapshot():
     b = bindings()
-    return {'policies': [], 'routes': [], 'networks': [{'id': b['network_id'], 'name': 'netbird-pilot'}],
+    return {'policies': [], 'routes': [], 'networks': [{'id': b['network_id'], 'name': 'netbird-pilot',
+            'routers': [], 'resources': [], 'policies': [], 'routing_peers_count': 0}],
             'groups': [{'id': value, 'name': name, 'issued': 'jwt', 'peers': [], 'resources': []}
                        for name, value in b['source_groups'].items()] +
-                      [{'id': value, 'name': 'pilot-resource-' + name, 'peers': [], 'resources': []}
+                      [{'id': value, 'name': 'pilot-resource-' + name, 'issued': 'api', 'peers': [], 'resources': []}
                        for name, value in b['resource_groups'].items()],
             'peers': [{'id': value, 'name': name} for name, value in b['peer_ids'].items()]}
 
@@ -186,6 +187,36 @@ class PilotTests(unittest.TestCase):
         b = bindings()
         b['peer_ids']['router-b'] = b['peer_ids']['router-a']
         with self.assertRaises(ValueError): nb.access_requests(inputs(), b, snapshot())
+
+    def test_network_current_schema_empty_required_no_partial_replay(self):
+        for field in ['routers', 'resources', 'policies', 'routing_peers_count']:
+            for value in [None, 'missing', False, {}, '', ['existing-id'], 1]:
+                s = snapshot()
+                if value == 'missing':
+                    s['networks'][0].pop(field)
+                else:
+                    s['networks'][0][field] = value
+                with self.subTest(field=field, value=value), self.assertRaisesRegex(ValueError, 'complete current API'):
+                    nb.access_requests(inputs(), bindings(), s)
+
+    def test_destination_group_propagation_and_incomplete_responses_refused(self):
+        self.assertTrue(nb.account_settings(inputs())['groups_propagation_enabled'])
+        for field, values in [('issued', ['missing', None, 'jwt', 'integration', '']),
+                              ('peers', ['missing', None, {}, ['propagated-user-peer']]),
+                              ('resources', ['missing', None, {}, ['previous-resource']])]:
+            for value in values:
+                s = snapshot()
+                if value == 'missing':
+                    s['groups'][2].pop(field)
+                else:
+                    s['groups'][2][field] = value
+                with self.subTest(field=field, value=value), self.assertRaises(ValueError):
+                    nb.access_requests(inputs(), bindings(), s)
+        # A second JWT group with the destination name is unsafe even if the bound ID is API-issued.
+        s = snapshot()
+        s['groups'].append({**s['groups'][2], 'id': 'duplicate0001', 'issued': 'jwt'})
+        with self.assertRaisesRegex(ValueError, 'group ID/name mismatch'):
+            nb.access_requests(inputs(), bindings(), s)
 
     def test_settings_group_propagation_expiry_expose_and_ipv6(self):
         s = nb.account_settings(inputs())

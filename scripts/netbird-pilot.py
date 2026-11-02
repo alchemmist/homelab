@@ -234,19 +234,25 @@ def access_requests(c, bindings, snapshot):
     require(all(text(v) and re.fullmatch(r'[a-z0-9]{10,64}', v) for v in values),
             'real API IDs required, no placeholders')
     require(len(values) == len(set(values)), 'IDs must be distinct; never bind All/shared resource groups')
-    require(len(snapshot['networks']) == 1 and snapshot['networks'][0]['id'] == bindings['network_id'] and
-            snapshot['networks'][0]['name'] == 'netbird-pilot', 'dedicated empty pilot Network required')
+    require(len(snapshot['networks']) == 1, 'dedicated empty pilot Network required')
+    pilot = snapshot['networks'][0]
+    require(pilot.get('id') == bindings['network_id'] and pilot.get('name') == 'netbird-pilot' and
+            all(type(pilot.get(k)) is list and pilot[k] == [] for k in ['routers', 'resources', 'policies']) and
+            type(pilot.get('routing_peers_count')) is int and pilot['routing_peers_count'] == 0,
+            'complete current API response for an empty pilot Network required; no replay/partial deployment')
     for key, names in [('source_groups', groups), ('resource_groups', [r['name'] for r in c['resources']])]:
         for name in names:
             found = [g for g in snapshot['groups'] if g['id'] == bindings[key][name]]
             expected = name if key == 'source_groups' else 'pilot-resource-' + name
-            require(len(found) == 1 and found[0]['name'] == expected and expected != 'All',
+            require(len(found) == 1 and found[0]['name'] == expected and expected != 'All' and
+                    len([g for g in snapshot['groups'] if g.get('name') == expected]) == 1,
                     'group ID/name mismatch; All/shared groups forbidden')
             if key == 'source_groups':
                 require(found[0].get('issued') == 'jwt', 'source groups must originate from JWT, not matching API names')
             if key == 'resource_groups':
-                require(not found[0].get('peers') and not found[0].get('resources'),
-                        'destination groups must be empty dedicated resource groups')
+                require(found[0].get('issued') == 'api' and
+                        all(type(found[0].get(k)) is list and found[0][k] == [] for k in ['peers', 'resources']),
+                        'destination groups must be complete, API-issued empty dedicated resource groups')
     for peer in c['routing_peers']:
         found = [p for p in snapshot['peers'] if p['id'] == bindings['peer_ids'][peer['name']]]
         require(len(found) == 1 and found[0]['name'] == peer['name'], 'routing peer ID/name mismatch')
