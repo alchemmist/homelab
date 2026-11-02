@@ -37,8 +37,8 @@ def control_inputs():
 
 def cleared_audit():
     audit = json.loads((ROOT / 'deploy/netbird/runtime-audit.json').read_text())
-    audit.update(kubectl_api_read=True, udp_3478_listening=True, traefik_watches_netbird_edge=True,
-                 traefik_watches_netbird_pilot=False)
+    audit.update(kubectl_api_read=True, udp_3478_listening=False, traefik_watches_netbird_edge=True,
+                 traefik_watches_netbird_pilot=False, port_forward_cidrs=['203.0.113.10/32'])
     return audit
 
 
@@ -58,7 +58,11 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertFalse(report['scope']['netbird_pilot_watched'])
         self.assertEqual(report['scope']['crd_namespaces'], ['argocd'])
         blockers = '\n'.join(report['apply_blockers'] + report['network_blockers'])
-        self.assertIn('UDP 3478', blockers)
+        self.assertNotIn('is not listening', blockers)
+        self.assertFalse(report['udp_3478_preexisting'])
+        self.assertFalse(report['udp_3478_required_before_internal_apply'])
+        self.assertFalse(report['internal_apply_allowed'])
+        self.assertFalse(report['edge_apply_allowed'])
         self.assertIn('netbird-edge', blockers)
         self.assertIn('password', blockers)
         self.assertIn('shared private web frontend', blockers)
@@ -121,6 +125,24 @@ class ControlPlaneTests(unittest.TestCase):
             self.assertEqual(result.returncode, 2)
             self.assertIn('BLOCKED', result.stderr)
             self.assertFalse(out.exists())
+
+    def test_internal_stage_does_not_wait_for_edge_or_a_listening_udp_port(self):
+        audit = cleared_audit()
+        audit.update(traefik_watches_netbird_edge=False, udp_3478_listening=False,
+                     port_forward_cidrs=['203.0.113.10/32', '10.42.0.1/32'])
+        chart = yaml.safe_load((ROOT / 'charts/traefik-edge/values.yaml').read_text())
+        candidates = json.loads((ROOT / 'deploy/netbird/candidates.json').read_text())
+        delta = json.loads((ROOT / 'deploy/netbird/traefik-scope-delta.json').read_text())
+        status = deploy.report(control_inputs(), candidates, audit, chart, delta)
+        self.assertTrue(status['internal_apply_allowed'])
+        self.assertFalse(status['edge_apply_allowed'])
+        self.assertFalse(status['udp_3478_preexisting'])
+        self.assertFalse(any('is not listening' in item for item in status['apply_blockers']))
+        audit['udp_3478_listening'] = True
+        blocked = deploy.report(control_inputs(), candidates, audit, chart, delta)
+        self.assertTrue(blocked['internal_apply_allowed'])
+        self.assertFalse(blocked['edge_apply_allowed'])
+        self.assertTrue(any('preexisting listener' in item for item in blocked['edge_blockers']))
 
     def test_in_memory_scope_can_clear_only_after_the_watch_exists(self):
         chart = yaml.safe_load((ROOT / 'charts/traefik-edge/values.yaml').read_text())

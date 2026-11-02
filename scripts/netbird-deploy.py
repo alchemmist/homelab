@@ -64,28 +64,49 @@ def scope_matches_chart(chart, delta):
 
 
 def report(inputs, candidates, audit, chart, delta):
+    """Internal bootstrap and edge publication are separate gates.
+
+    UDP 3478 not listening is the preexisting state. Requiring it before apply is
+    circular, because nothing is published to bind it. A listener that is already
+    present blocks edge publication only.
+    """
     assert_candidates(candidates)
     scope = scope_matches_chart(chart, delta)
-    apply_blockers = []
+    internal_blockers = []
+    edge_blockers = []
+    try:
+        nb.validate_internal(inputs)
+    except ValueError as exc:
+        internal_blockers.append(str(exc))
     try:
         nb.validate_control_plane(inputs)
     except ValueError as exc:
-        apply_blockers.append(str(exc))
-    if audit['kubectl_api_read'] is not True:
-        apply_blockers.append('kubectl API was not read: ' + audit['kubectl_blocker'])
-    if audit['udp_3478_listening'] is not True:
-        apply_blockers.append(
-            'UDP 3478 is not listening. v0.82.0 advertises stun:<fqdn>:3478 to clients; '
-            'the NodePort is only the in-cluster target and is not that advertisement')
-    if audit['traefik_watches_netbird_edge'] is not True or scope['netbird_edge_watched'] is not True:
-        apply_blockers.append(
+        edge_blockers.append(str(exc))
+    if audit.get('kubectl_api_read') is not True:
+        message = 'kubectl API was not read: ' + str(audit.get('kubectl_blocker') or 'no read')
+        internal_blockers.append(message)
+        edge_blockers.append(message)
+    try:
+        nb.port_forward_sources(audit.get('port_forward_cidrs'))
+    except ValueError as exc:
+        internal_blockers.append(str(exc))
+    udp_listening = audit.get('udp_3478_listening') is True
+    if udp_listening:
+        edge_blockers.append(
+            'UDP 3478 already has a preexisting listener. Edge publication must not bind STUN on top of it')
+    if audit.get('traefik_watches_netbird_edge') is not True or scope['netbird_edge_watched'] is not True:
+        edge_blockers.append(
             'Traefik ingress watch does not include netbird-edge, so the rendered Ingress is inert')
-    if audit['traefik_watches_netbird_pilot'] is True or scope['netbird_pilot_watched'] is True:
-        apply_blockers.append('Traefik must not watch netbird-pilot; that Role can read the runtime secret')
-    if audit['traefik_allow_cross_namespace'] is not False or audit['traefik_allow_external_name'] is not False:
-        apply_blockers.append('Traefik cross-namespace or ExternalName bypass is enabled')
-    if delta['applied'] is not False or delta['verified'] is not False:
-        apply_blockers.append('Traefik scope delta must stay unapplied and unverified in git')
+    if audit.get('traefik_watches_netbird_pilot') is True or scope['netbird_pilot_watched'] is True:
+        message = 'Traefik must not watch netbird-pilot; that Role can read the runtime secret'
+        internal_blockers.append(message)
+        edge_blockers.append(message)
+    if audit.get('traefik_allow_cross_namespace') is not False or audit.get('traefik_allow_external_name') is not False:
+        message = 'Traefik cross-namespace or ExternalName bypass is enabled'
+        internal_blockers.append(message)
+        edge_blockers.append(message)
+    if delta.get('applied') is not False or delta.get('verified') is not False:
+        edge_blockers.append('Traefik scope delta must stay unapplied and unverified in git')
     network_blockers = [
         candidates['resources']['private_grafana']['reason'],
         candidates['resources']['socrat_2_openssh']['reason'],
@@ -95,12 +116,18 @@ def report(inputs, candidates, audit, chart, delta):
         'v0.82.0 simplified config cannot disable the Default allow-all policy. Delete it before any enrollment.',
         'Owner signup password is not reachable on the public forwarder. /api/setup stays denied except loopback.',
     ]
-    return {'apply_allowed': not apply_blockers,
+    return {'apply_allowed': not edge_blockers,
+            'internal_apply_allowed': not internal_blockers,
+            'edge_apply_allowed': not edge_blockers,
             'network_grant_allowed': False,
             'approved_fqdn': candidates['management_fqdn']['value'],
             'pilot_users': candidates['pilot_users'],
             'management_ha': False,
-            'apply_blockers': apply_blockers,
+            'udp_3478_preexisting': udp_listening,
+            'udp_3478_required_before_internal_apply': False,
+            'apply_blockers': internal_blockers + edge_blockers,
+            'internal_blockers': internal_blockers,
+            'edge_blockers': edge_blockers,
             'network_blockers': network_blockers,
             'scope': scope}
 
@@ -153,12 +180,22 @@ def plan_document(manifest):
                         '--field-manager', 'netbird-control-plane', '-f', manifest.name]}
 
 
-def apply_argv(manifest, context):
+def render_publication(inputs, out, stage, audit):
+    if stage == 'internal':
+        nb.render_control_plane(inputs, out, nb.port_forward_sources(audit.get('port_forward_cidrs')))
+        return
+    nb.validate_control_plane(inputs)
+    out.mkdir(mode=0o700, parents=True, exist_ok=False)
+    with (out / 'management.yaml').open('w') as handle:
+        yaml.safe_dump_all(nb.manifests(inputs, 'edge'), handle, sort_keys=False)
+
+
+def apply_argv(manifest, context, publication='internal'):
     nb.require(nb.text(context) and context not in {'', 'current', 'default'}, 'explicit kubectl context required')
     nb.require(manifest.is_file(), 'rendered manifest required')
     nb.require(not manifest.resolve().is_relative_to(ROOT), 'manifest must stay outside the worktree')
     docs = list(yaml.safe_load_all(manifest.read_text()))
-    assert_safe_manifests(docs, 'internal')
+    assert_safe_manifests(docs, publication)
     return ['kubectl', '--context', context, 'apply', '--server-side',
             '--field-manager', 'netbird-control-plane', '-f', str(manifest)]
 
@@ -170,6 +207,7 @@ def main():
     p.add_argument('--candidates', type=Path, default=ROOT / 'deploy/netbird/candidates.json')
     p.add_argument('--audit', type=Path, default=ROOT / 'deploy/netbird/runtime-audit.json')
     p.add_argument('--out', type=Path)
+    p.add_argument('--stage', choices=['internal', 'edge'])
     p.add_argument('--context')
     p.add_argument('--confirm-apply', default='')
     p.add_argument('--print-only', action='store_true')
@@ -186,20 +224,23 @@ def main():
     status = report(inputs, candidates, audit, chart, delta)
     if a.command == 'check':
         print(json.dumps(status, indent=2))
-        if not status['apply_allowed']:
+        allowed = {'internal': status['internal_apply_allowed'], 'edge': status['edge_apply_allowed']}.get(a.stage)
+        if allowed is not True:
             raise ValueError('control plane apply is blocked')
         return
-    nb.require(status['apply_allowed'], 'control plane apply is blocked')
+    nb.require(a.stage in ('internal', 'edge'), 'stage required')
+    nb.require(status['internal_apply_allowed' if a.stage == 'internal' else 'edge_apply_allowed'],
+               a.stage + ' apply is blocked')
     nb.require(a.out is not None, '--out required')
     nb.require(not a.out.resolve().is_relative_to(ROOT), '--out must be outside the Git worktree')
-    nb.render_control_plane(inputs, a.out)
+    render_publication(inputs, a.out, a.stage, audit)
     manifest = a.out / 'management.yaml'
     nb.dump(a.out / 'plan.json', plan_document(manifest))
     if a.command == 'plan':
         print('Plan written; kubectl was not run and Argo was not synced')
         return
     nb.require(a.confirm_apply == CONFIRM, 'apply confirmation phrase mismatch')
-    argv = apply_argv(manifest, a.context)
+    argv = apply_argv(manifest, a.context, a.stage)
     if a.print_only:
         print(json.dumps({'argv': argv, 'executed': False}))
         return
