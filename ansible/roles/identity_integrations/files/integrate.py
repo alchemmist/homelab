@@ -214,4 +214,8 @@ elif service=='wiki':
             kubectl(['-n','wiki','rollout','restart','deployment/wiki-runtime-wiki'])
             kubectl(['-n','wiki','rollout','status','deployment/wiki-runtime-wiki','--timeout=600s'])
     print('Wiki OIDC Secret reconciled; exact reviewed subjects, owner-only local fallback; no password reset')
+elif service=='lms':
+    kubectl(['apply','-f','-'],{'apiVersion':'v1','kind':'Secret','metadata':{'name':'socrat-authentik-lms','namespace':'lms'},
+        'type':'Opaque','stringData':{'client-id':clients['lms']['client_id'],'client-secret':clients['lms']['client_secret']}})
+    print('LMS OIDC secret reconciled; Authentik remains the only identity provider')
 else:raise SystemExit('Unsupported integration')

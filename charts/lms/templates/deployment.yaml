@@ -40,6 +40,18 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.database.secretName }}
                   key: LMS_DATABASE_URL
+            - name: LMS_OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: socrat-authentik-lms
+                  key: client-id
+                  optional: true
+            - name: LMS_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: socrat-authentik-lms
+                  key: client-secret
+                  optional: true
           readinessProbe:
             httpGet:
               path: /healthz

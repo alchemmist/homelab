@@ -104,5 +104,19 @@
       "homelab-litellm-reviewed-identity"
     ],
     "icon": "service-icons/litellm-69eaed389008.svg"
+  },
+  "lms": {
+    "name": "LMS",
+    "url": "https://lms.alchemmist.xyz/",
+    "description": "Student course. Authentik is the only sign-in.",
+    "redirect": "https://lms.alchemmist.xyz/auth/callback",
+    "groups": [
+      "homelab-owner",
+      "lms-students"
+    ],
+    "groupsScope": true,
+    "subMode": "user_uuid",
+    "migration": "native-oidc-no-local-accounts",
+    "icon": "service-icons/lms-733ef8f848f3.svg"
   }
 }

@@ -28,7 +28,7 @@ def unique(path, field, value):
     return exact[0] if exact else None
 
 groups={}
-for name in ['homelab-owner','homelab-platform-operator','homelab-project-maintainer','homelab-observer','homelab-machine-owner']:
+for name in ['homelab-owner','homelab-platform-operator','homelab-project-maintainer','homelab-observer','homelab-machine-owner','lms-students']:
     group=unique('core/groups/','name',name)
     if group is None:group=api('POST','core/groups/',{'name':name,'is_superuser':False})
     groups[name]=group['pk']
@@ -92,6 +92,11 @@ cert=unique('crypto/certificatekeypairs/','name','authentik Self-signed Certific
 scopes=api('GET','propertymappings/provider/scope/?page_size=100')['results']
 mapping=[x['pk'] for x in scopes if x['scope_name'] in ['openid','profile','email']]
 if len(mapping)!=3 or not cert:raise RuntimeError('OIDC defaults missing')
+groups_scope=unique('propertymappings/provider/scope/','name','homelab-groups')
+if not groups_scope:
+    groups_scope=api('POST','propertymappings/provider/scope/',{
+        'name':'homelab-groups','scope_name':'groups',
+        'expression':'return [group.name for group in request.user.ak_groups.all()]'})
 services=json.loads((root/'services.json').read_text())
 clients_path=root/'oidc-clients.json'
 clients=json.loads(clients_path.read_text()) if clients_path.exists() else {}
@@ -129,6 +134,8 @@ for slug,service in services.items():
                 break
             service_mapping.append(custom_mapping['pk'])
         if service_mapping is None:continue
+        if service.get('groupsScope'):
+            service_mapping.append(groups_scope['pk'])
         settings={'name':'homelab-'+slug,'client_type':'confidential',**clients[slug],
             'grant_types':['authorization_code','refresh_token'],
             'authentication_flow':flow['default-authentication-flow'],
