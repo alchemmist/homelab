@@ -1,4 +1,9 @@
-# NetBird peers on the existing nodes
+# NetBird peers on the existing nodes (historical router proposal)
+
+> **Superseded for the live pilot:** use [Kubernetes machine peers](netbird-kubernetes-machine-peers.md).
+> The current architecture is two ordinary own-overlay-address peers, no SSH
+> route via socrat-0, no Docker/systemd deployment or SNAT/FORWARD plan. The
+> historical facts and blockers below are not the current live state.
 
 `scripts/netbird-host-router.py` plans peers for **socrat-0** (home) and **socrat-2** (VPS). It does not create VMs, enroll peers, or edit `wg-socrat`, K3s routes, or OpenSSH keys. `check` and `plan` are render-only. `apply` copies the reviewed files into a root you name, and only after the plan has no blockers.
 

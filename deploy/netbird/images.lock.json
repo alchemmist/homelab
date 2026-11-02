@@ -33,6 +33,14 @@
       "app_version": "3.7.13",
       "skip_registry_verify": true,
       "note": "Same immutable reference as the existing edge chart. Platform manifest digests were not re-fetched, so this is not a new registry verification."
+    },
+    "stun": {
+      "repository": "coturn/coturn",
+      "tag": "4.7.0",
+      "digest": "sha256:a00afb5b4890de4df22bbe70379c6b316685dffee297d53cac1271dcb91fab93",
+      "linux_amd64": "sha256:94f732f319463c94769b30b5cca1c02baa2d106fe3d3210159840c1372b162de",
+      "checked_at": "2026-11-02",
+      "verification": "Docker-Content-Digest header equals SHA256 of fetched multi-platform index; official coturn/coturn namespace, not publisher signature verification"
     }
   }
 }

@@ -1,4 +1,12 @@
-# NetBird control plane — blocked until reviewed apply
+# NetBird control plane and staged machine peers
+
+**Live continuation:** [STUN + Kubernetes machine peers](../../docs/netbird-kubernetes-machine-peers.md),
+[`machine-stage5.json`](machine-stage5.json). Control plane is installed and
+OIDC-only. STUN-only coturn on existing socrat-2 is externally and host-origin
+Binding-tested; machine enrollment remains blocked on genuine JWT groups.
+`netbird-stun.py` renders the bounded live STUN listener; `netbird-host-peer.py`
+renders **zero-replica** direct-overlay peers, not routed Networks. The legacy
+proposal/gates below remain historical inputs, not a live-state assertion.
 
 [Русский runbook, blockers и acceptance](../../docs/netbird-user-access-pilot.md).
 
