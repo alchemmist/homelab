@@ -1,8 +1,8 @@
 replicaCount: 1
 image:
   repository: ghcr.io/alchemmist/lms
-  tag: da5219ac6800d3536ee4318e0639466f4ae22227
-  digest: sha256:6d52a2ab84c26d771dab0219242e26aa78062f532fadecfdb03a5f033b85b874
+  tag: 3ba3508e5d81077c40134f88096a102bd05ea933
+  digest: sha256:7d7575adf20d2a8c8feecdfe8aa1f9728e71b097de13736f91ed10371c440974
   pullPolicy: IfNotPresent
 service:
   port: 80
