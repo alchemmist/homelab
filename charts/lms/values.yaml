@@ -20,7 +20,7 @@ env:
   LMS_AUTH_MODE: oidc
   LMS_PUBLIC_URL: https://lms.alchemmist.xyz
   LMS_OIDC_ISSUER: https://auth.socrat.alchemmist.xyz/application/o/lms/
-  LMS_OIDC_ALLOWED_GROUP: lms-students
+  LMS_OIDC_ALLOWED_GROUP: lms-students,homelab-owner
 resources:
   requests: { cpu: 50m, memory: 128Mi }
   limits: { memory: 512Mi }
