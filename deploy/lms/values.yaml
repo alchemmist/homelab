@@ -1,5 +1,5 @@
 image:
-  repository: ghcr.io/alchemmist/homelab-lms
+  repository: ghcr.io/alchemmist/lms
   tag: 0ebf7f222dac64999a20523ee323c4cb6367ad16
   digest: sha256:72eb7df5944072bc614346e017a3ad45cace143d8bcabe78eb5f3629cdd11426
   pullPolicy: IfNotPresent

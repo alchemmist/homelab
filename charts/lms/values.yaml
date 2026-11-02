@@ -17,10 +17,17 @@ persistence:
   size: 5Gi
   mountPath: /data
 env:
-  LMS_DATABASE_URL: sqlite:////data/lms.db
+  LMS_PUBLIC_URL: https://lms.alchemmist.xyz
 resources:
   requests: { cpu: 50m, memory: 128Mi }
   limits: { memory: 512Mi }
 
 imagePullSecrets:
   - ghcr-pull
+
+database:
+  image: postgres:17-bookworm
+  user: lms
+  name: lms
+  secretName: lms-db
+  size: 5Gi

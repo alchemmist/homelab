@@ -35,6 +35,17 @@ spec:
             - name: {{ $k }}
               value: {{ $v | quote }}
 {{- end }}
+            - name: LMS_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.secretName }}
+                  key: LMS_DATABASE_URL
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: {{ .Values.service.targetPort }}
+            periodSeconds: 10
+            failureThreshold: 6
           volumeMounts:
             - name: data
               mountPath: {{ .Values.persistence.mountPath }}
