@@ -88,7 +88,7 @@ Primary action CSS covers both `<button>` and native `<a class="pf-c-button
 pf-m-primary">`; this includes Follow redirect when the real inspector pauses
 navigation. The native magnifier is fixed at the viewport corner and uses a
 centered CSS SVG mask; the real button, labels and handlers remain. Full native
-session history is retained in a bounded scroll region, not deduplicated.
+session history retains its natural height with no internal scrollbar, not deduplicated.
 
 Read-only live control/layout check, no identity fixtures or owner session:
 `python3 scripts/identity-branding-controls-check.py --run` (also supports

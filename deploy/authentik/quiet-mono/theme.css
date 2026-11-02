@@ -109,9 +109,9 @@ ak-drawer#flow-drawer::part(drawer-content),ak-drawer#flow-drawer::part(drawer-b
 :host(ak-flow-inspector-button) button.inspector-toggle::before,:host(ak-flow-inspector-button) button.inspector-toggle::after{display:none!important}
 :host(ak-flow-inspector-button) i.fa-search-plus{display:block!important;flex:0 0 18px;width:18px!important;height:18px!important;font-size:0!important;line-height:0!important;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5' fill='none' stroke='black' stroke-width='1.8'/%3E%3Cpath d='m15.5 15.5 5 5' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5' fill='none' stroke='black' stroke-width='1.8'/%3E%3Cpath d='m15.5 15.5 5 5' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E") center/contain no-repeat}
 :host(ak-flow-inspector-button) i.fa-search-plus::before{content:none!important}
-/* Native session snapshots are intentionally retained, not deduplicated or hidden. */
-:host(ak-flow-inspector) .pf-c-progress-stepper{max-block-size:22rem;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable;padding-inline-end:10px}
+/* Native session snapshots retain natural height; scroll only the inspector. */
+:host(ak-flow-inspector) .pf-c-progress-stepper{max-block-size:none!important;max-height:none!important;overflow:visible!important}
 :host(ak-flow-inspector) .pf-c-progress-stepper__step-title{font-size:13px;line-height:1.5;overflow-wrap:anywhere}
-@media(max-width:700px){:host(ak-flow-executor) ak-flow-inspector-button{inset-inline-end:17px!important;inset-block-start:17px!important}:host(ak-flow-inspector) .pf-c-progress-stepper{max-block-size:18rem}}
+@media(max-width:700px){:host(ak-flow-executor) ak-flow-inspector-button{inset-inline-end:17px!important;inset-block-start:17px!important}}
 
 :host(ak-flow-inspector-button) button.inspector-toggle:focus-visible{outline:1px solid #15223c!important;outline-offset:3px}

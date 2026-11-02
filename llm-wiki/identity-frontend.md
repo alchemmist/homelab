@@ -386,3 +386,14 @@ CSS/background**, не providers/policies/MFA. Перезапускался то
 Нулевая задержка до первого сетевого ответа не обещается; остаётся нейтральный
 fallback на случай сетевой ошибки. Rollback — guarded непосредственно pre-performance
 Brand backup, не initial baseline. Не удалять старые immutable CMs при откате.
+
+
+## 16. Plan History без вложенной прокрутки
+
+По запросу owner сняты ограничения22rem/18rem у native progress-stepper.
+`max-block-size:none;max-height:none;overflow:visible`: список занимает естественную
+высоту на desktop/mobile, прокрутка остаётся у инспектора, не внутри Plan History.
+Это отменяет прежнее presentation-решение о bounded history scroll, но не меняет
+данные, порядок, повторы и права доступа. Оба public edges проверены на1440/390px
+через local empty layout box в native компоненте; настоящая owner history не
+подменялась и не извлекалась. Изменён только CSS Brand, без рестартов.

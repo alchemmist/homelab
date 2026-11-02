@@ -135,3 +135,14 @@ image.info before encoding, matching metadata-free WebP/preview RGB behavior.
 All60 final AVIF outputs were inspected for nonempty EXIF/XMP/ICC and passed;
 builder now checks this invariant before writing each output. No EXIF/XMP was
 found in the preceding AVIF iteration; the removed blocks were color profiles.
+
+
+## Plan History natural-height revision
+
+Owner request: remove the nested Plan History scrollbar. The native progress-stepper
+now has max-block-size/max-height:none and overflow:visible on desktop and mobile.
+No history data, order, snapshot retention, permissions or outer inspector behavior
+was changed. Both public edges passed desktop1440/mobile390 CSS/layout probes.
+The probe uses an explicitly local empty 1000px layout box in the actual native
+component and removes it; it does not fabricate native history entries or claim
+owner inspection acceptance. No IdP/static/ingress restart was required.

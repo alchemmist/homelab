@@ -93,7 +93,9 @@ class AuthentikBrandingTests(unittest.TestCase):
         self.assertIn('ak-flow-inspector-button{position:fixed!important', css)
         self.assertIn('width:39px!important;height:39px!important', css)
         self.assertIn('i.fa-search-plus', css)
-        self.assertIn('max-block-size:22rem;overflow-y:auto', css)
+        self.assertIn('.pf-c-progress-stepper{max-block-size:none!important;max-height:none!important;overflow:visible!important}', css)
+        self.assertNotIn('max-block-size:22rem', css)
+        self.assertNotIn('max-block-size:18rem', css)
         self.assertNotIn('nth-child', css)
         self.assertNotIn('column-reverse', css)
 

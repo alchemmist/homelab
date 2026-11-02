@@ -35,6 +35,18 @@ with sync_playwright() as p:
   print('PASS: actual native magnifier, square hit target, centered 18px icon and viewport offset',width)
  page.set_viewport_size({'width':1440,'height':960});toggle.click();page.wait_for_timeout(1000)
  assert statuses and statuses[-1] in [403,404]
+ # Empty local layout box only: no native snapshots/history entries are forged.
+ for width in [1440,390]:
+  page.set_viewport_size({'width':width,'height':960})
+  result=page.locator('ak-flow-inspector').evaluate("""e=>{
+   const box=document.createElement('ol');box.className='pf-c-progress-stepper';box.style.height='1000px';
+   e.shadowRoot.append(box);
+   try{const s=getComputedStyle(box);return {max:s.maxBlockSize,overflow:s.overflowY,height:box.getBoundingClientRect().height}}
+   finally{box.remove()}
+  }""")
+  assert result['max']=='none' and result['overflow']=='visible' and result['height']==1000
+  print('PASS: Plan History natural height, no internal scrolling',width)
+ page.set_viewport_size({'width':1440,'height':960})
  # Local-only native component probe, not an authentication response or permission grant.
  target='https://example.invalid/quiet-mono-native-control-probe';attempts=[]
  page.route('https://example.invalid/**',lambda r:(attempts.append(True),r.abort()))
