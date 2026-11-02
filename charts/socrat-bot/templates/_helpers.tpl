@@ -18,7 +18,7 @@ items:
     container: socrat-bot
     serviceAccount: ""
     extraEnv: true
-    port: 8080
+    port: 8082
     hostNetwork: true
   - name: socrat-bot-xui-updater
     component: updater
