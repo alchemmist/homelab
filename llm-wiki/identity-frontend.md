@@ -290,3 +290,99 @@ review; source diff native components/parts/locale/redirect/inspector; staging/c
 оба edges, 320/390/desktop, password eye, invalid input, Tab, MFA, consent, anchor,
 inspector denial, reduced motion и owner existing-session check. Не снимать version
 guard прежде этой проверки. После push отдельно проверить фактический rollout.
+
+
+## 14. Случайные фоны из dotfiles Nature
+
+На 2026-11-01 owner предоставил `~/code/dotfiles/wallpapers/nature/images`:
+30 JPEG (~40MiB, ширина до 5120px). Репозиторий-источник не изменяется; фактические
+SHA256 каждого оригинала, Git revision и версия Pillow записаны в
+`deploy/authentik/quiet-mono/nature.json`. Это provenance, не передача авторских
+прав на исходные фотографии. Production использует только производные WebP.
+
+```sh
+python3 scripts/build-authentik-nature.py --source ~/code/dotfiles
+```
+
+Нужен Pillow с WebP. Метаданные EXIF/ICC не переносятся. Desktop long edge <=1920,
+mobile <=960; quality обычно 80, при превышении file budget понижается до 68.
+Локальная сборка не деплоит. `assets.json` содержит digest всех 67 assets:
+7 исходных reference assets и 60 Nature derivatives. `reference/` остаётся frozen.
+
+Nginx `split_clients "$request_id"` почти равновероятно выбирает один из 30 ID.
+`/-/quiet-mono/v1/nature/desktop` и `/mobile` возвращают **сам WebP, HTTP200**:
+только GET/HEAD, `Content-Type: image/webp`, `Cache-Control: no-store`, `nosniff`.
+`X-Quiet-Mono-Scene` — публичный ID фото для проверки, не user/session identifier.
+Это exact locations с alias из закрытого manifest map: никакого произвольного path,
+JS, внешнего CDN, user cookie, IP-based tracking или auth logic. Обычные hash URLs
+по-прежнему immutable. CSS переключает mobile endpoint при width <=700px.
+
+Во время одного SPA flow нет таймера/смены видимого фона. Новая загрузка документа
+выбирает заново (повторы возможны). При смене desktop/mobile breakpoint также
+может выбираться другое фото. Native initial background и drawer могут вызывать
+отдельные image requests; это не обещание одного HTTP-запроса на весь документ.
+
+Статика раскладывается на content-hashed immutable ConfigMaps, каждый <950KB
+serialized; Pod видит один read-only projected volume. Общий reviewed budget 16MB.
+Playbook передаёт source одним временным tar (owner-only unpack), не десятками
+SSH/stat операций, и рендерит отдельные resource documents в защищённый remote
+file, не огромную Ansible stdout/stdin переменную. Server-side apply и strict
+validation сохраняются. Перезапускается только static Deployment при новом
+content digest; Authentik и shared ingress не перезапускаются.
+
+Применение — стандартный `authentik-branding.yml` с явным `apply`. Сохранён
+protected pre-Nature snapshot `nature-before-20261101.json`; штатный Brand journal
+содержит применимый guarded pre-change backup. Возврат к предыдущей lake CSS —
+через этот backup, не через initial pre-branding baseline (тот отменяет всю тему).
+Не печатать snapshot/journal, не удалять старые ConfigMaps во время rollback.
+
+Проверки: 30 original/60 derivative hashes, bounded objects, nginx syntax, full
+playbook apply; live desktop1440/mobile390 на обоих edges, reviewed response bytes,
+no-store, стабильность после загрузки, zero JS errors. В 12 выборках каждого edge
+получилось по 11 разных сцен — это evidence, не гарантия отсутствия повторов.
+`python3 scripts/identity-nature-smoke.py --run` повторяет anonymous live checks без
+пароля/MFA/fixtures, screenshots и сохранённых session данных. Actual owner MFA
+roundtrip в этом изменении не проводился. API comparison показал изменение только
+Brand CSS/background; OAuth providers, policy/flow bindings и MFA validate settings
+остались прежними. Argo refresh/VPS rollout этим playbook не затрагивается.
+
+
+
+
+## 15. Оптимизация Nature: preview → резкое фото (2026-11-02)
+
+Предыдущий §14 описывает **историческую первую реализацию**. Актуальная схема
+устраняет два разных полных background-запроса и не кеширует только выбор сцены,
+а не сами большие фото.
+
+- Ранний `@import /-/quiet-mono/v1/nature/scene.css`, `no-store`, выбирает один из
+  30 reviewed ID через nginx request_id. Никакого user cookie/IP tracking/JS.
+- Ответ <=2481B содержит inline WebP preview124–300B **той же фотографии** и
+  ссылки на SHA-pinned AVIF/WebP. CSS layered background рисует preview под HQ.
+  Никакой отдельной загрузки миниатюры, чужого случайного кадра или ожидания HQ
+  для native login. После загрузки фон неподвижен; breakpoint меняет размер,
+  но не photo ID.
+- AVIF <=1920/960: медиана78,403B desktop /22,623B mobile вместо
+  WebP159,250B /49,560B. Сохранены все30 originals и60 WebP fallback; добавлены
+  60 AVIF и30 checksum-pinned scene CSS. Старые source/derivative hashes сохранены.
+- Большие фото `public,max-age=31536000,immutable`; повторная выбранная картинка
+  отдаётся из browser cache (проверено transferSize=0). Новый документ снова
+  выбирает сцену; повтор допустим. Compatibility `/nature/desktop|mobile` теперь
+  no-store302 на immutable asset, Accept/AVIF negotiation и GET/HEAD403 guard.
+- Единственный фон — native `body::before`, drawer прозрачен. Native default
+  background-prefetch указывает на прозрачный62B immutable SVG, не второе фото.
+  Это presentation field, не подмена flow/authentication code.
+
+В обоих public edges desktop1440/mobile390 проверены ровно один scene stylesheet
+и один HQ image, правильный размер, same-photo preview, кеш, hashes, random sampling,
+POST403, WebP fallback, native login и отсутствие JS errors/slideshow. HQ задержан
+в отдельном browser-only тесте на5секунд: preview видим, поля native login доступны.
+Фото и метаданные подготовлены офлайн; Pillow/libavif version в `nature.json`.
+
+Тест: `python3 scripts/identity-nature-smoke.py --run`. Реальный owner login/recovery
+не имитировался. Protected API comparison подтвердил изменения **только Brand
+CSS/background**, не providers/policies/MFA. Перезапускался только static Deployment,
+несколько раз при проверке подхода; Authentik/ingress/DNS/WireGuard не менялись.
+Нулевая задержка до первого сетевого ответа не обещается; остаётся нейтральный
+fallback на случай сетевой ошибки. Rollback — guarded непосредственно pre-performance
+Brand backup, не initial baseline. Не удалять старые immutable CMs при откате.

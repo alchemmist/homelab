@@ -1,0 +1,971 @@
+{
+  "repository": "https://github.com/alchemmist/dotfiles",
+  "revision": "802c805a4df6eba7f1984881c48f187c2d16727b",
+  "sourceDirectory": "wallpapers/nature/images",
+  "pillowVersion": "13.0.0",
+  "libwebpVersion": "1.6.0",
+  "libavifVersion": "1.4.2",
+  "rights": "Owner-requested existing wallpaper collection; upstream photo rights are not reassigned.",
+  "photos": [
+    {
+      "id": "43bb24739d83",
+      "source": "wallpapers/nature/images/antarktida-more-aisbergi-ldiny.jpg",
+      "sourceSha256": "43bb24739d832a868cfa02203a58fa5ce853fdf4ce079df100da655469467c9f",
+      "sourceDimensions": [
+        2000,
+        1333
+      ],
+      "desktop": "NATURE_43BB24739D83_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1280
+      ],
+      "desktopBytes": 78230,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_43BB24739D83_DESKTOP_AVIF",
+      "desktopAvifBytes": 41873,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_43BB24739D83_MOBILE",
+      "mobileDimensions": [
+        960,
+        640
+      ],
+      "mobileBytes": 25870,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_43BB24739D83_MOBILE_AVIF",
+      "mobileAvifBytes": 13964,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_43BB24739D83_CSS",
+      "previewBytes": 180,
+      "sceneCssBytes": 1841
+    },
+    {
+      "id": "ea4d373324d4",
+      "source": "wallpapers/nature/images/bled-bled-slovenia-sloveniia-alpy-ostrovok-tserkov-ozero-les.jpg",
+      "sourceSha256": "ea4d373324d4eecf0c7a5ec329bbdefa6282cb768e027b9f683bb75834dd1e23",
+      "sourceDimensions": [
+        2048,
+        1365
+      ],
+      "desktop": "NATURE_EA4D373324D4_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1280
+      ],
+      "desktopBytes": 151826,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_EA4D373324D4_DESKTOP_AVIF",
+      "desktopAvifBytes": 78800,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_EA4D373324D4_MOBILE",
+      "mobileDimensions": [
+        960,
+        640
+      ],
+      "mobileBytes": 50166,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_EA4D373324D4_MOBILE_AVIF",
+      "mobileAvifBytes": 24598,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_EA4D373324D4_CSS",
+      "previewBytes": 210,
+      "sceneCssBytes": 2001
+    },
+    {
+      "id": "2016b071a149",
+      "source": "wallpapers/nature/images/brijesh-reddy-r-iZARJozPY-unsplash.jpg",
+      "sourceSha256": "2016b071a1490259b98ee04a2b9eac22d2eda1e3d29aa6b4f568f036c8851feb",
+      "sourceDimensions": [
+        5031,
+        3144
+      ],
+      "desktop": "NATURE_2016B071A149_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1200
+      ],
+      "desktopBytes": 78542,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_2016B071A149_DESKTOP_AVIF",
+      "desktopAvifBytes": 45012,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_2016B071A149_MOBILE",
+      "mobileDimensions": [
+        960,
+        600
+      ],
+      "mobileBytes": 21000,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_2016B071A149_MOBILE_AVIF",
+      "mobileAvifBytes": 16040,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_2016B071A149_CSS",
+      "previewBytes": 124,
+      "sceneCssBytes": 1553
+    },
+    {
+      "id": "d40711d33058",
+      "source": "wallpapers/nature/images/buzz-andersen-E4944K_4SvI-unsplash.jpg",
+      "sourceSha256": "d40711d330586502bd945953a09c64356bf7b5ae0195789f986dbf3cc8e37fca",
+      "sourceDimensions": [
+        4368,
+        2893
+      ],
+      "desktop": "NATURE_D40711D33058_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1272
+      ],
+      "desktopBytes": 178516,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_D40711D33058_DESKTOP_AVIF",
+      "desktopAvifBytes": 84746,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_D40711D33058_MOBILE",
+      "mobileDimensions": [
+        960,
+        636
+      ],
+      "mobileBytes": 59854,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_D40711D33058_MOBILE_AVIF",
+      "mobileAvifBytes": 29211,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_D40711D33058_CSS",
+      "previewBytes": 254,
+      "sceneCssBytes": 2241
+    },
+    {
+      "id": "569883e0ab7a",
+      "source": "wallpapers/nature/images/comet-mountains-trees-rocks-stars-trail-astronomy-lights-lon.jpg",
+      "sourceSha256": "569883e0ab7aae65a8aa6a49cd3712f33ef50506e2fe6e87e1f9a662fc350f73",
+      "sourceDimensions": [
+        2400,
+        1500
+      ],
+      "desktop": "NATURE_569883E0AB7A_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1200
+      ],
+      "desktopBytes": 72970,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_569883E0AB7A_DESKTOP_AVIF",
+      "desktopAvifBytes": 46276,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_569883E0AB7A_MOBILE",
+      "mobileDimensions": [
+        960,
+        600
+      ],
+      "mobileBytes": 23048,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_569883E0AB7A_MOBILE_AVIF",
+      "mobileAvifBytes": 14070,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_569883E0AB7A_CSS",
+      "previewBytes": 156,
+      "sceneCssBytes": 1713
+    },
+    {
+      "id": "d1498035a6a1",
+      "source": "wallpapers/nature/images/cristina-gottardi-CSpjU6hYo_0-unsplash.jpg",
+      "sourceSha256": "d1498035a6a1061655943b5b910545592f8d7b4ca9e8a5d62e0282c2266dae11",
+      "sourceDimensions": [
+        4896,
+        3264
+      ],
+      "desktop": "NATURE_D1498035A6A1_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1280
+      ],
+      "desktopBytes": 176516,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_D1498035A6A1_DESKTOP_AVIF",
+      "desktopAvifBytes": 81891,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_D1498035A6A1_MOBILE",
+      "mobileDimensions": [
+        960,
+        640
+      ],
+      "mobileBytes": 48954,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_D1498035A6A1_MOBILE_AVIF",
+      "mobileAvifBytes": 25489,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_D1498035A6A1_CSS",
+      "previewBytes": 186,
+      "sceneCssBytes": 1873
+    },
+    {
+      "id": "12ff84557aee",
+      "source": "wallpapers/nature/images/forest-trees-road-lights-winter-snow-snowy-snowy-landscape-m.jpg",
+      "sourceSha256": "12ff84557aee8e9dc3e60231c81c0fd985dc50555c02a520a4cfb7c5a81e8719",
+      "sourceDimensions": [
+        2400,
+        1500
+      ],
+      "desktop": "NATURE_12FF84557AEE_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1200
+      ],
+      "desktopBytes": 486532,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_12FF84557AEE_DESKTOP_AVIF",
+      "desktopAvifBytes": 184069,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_12FF84557AEE_MOBILE",
+      "mobileDimensions": [
+        960,
+        600
+      ],
+      "mobileBytes": 140432,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_12FF84557AEE_MOBILE_AVIF",
+      "mobileAvifBytes": 50998,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_12FF84557AEE_CSS",
+      "previewBytes": 252,
+      "sceneCssBytes": 2225
+    },
+    {
+      "id": "a380dc40051e",
+      "source": "wallpapers/nature/images/frantsiia-alpy-rassvet-zima-sneg-gory-skaly-nebo-derevia.jpg",
+      "sourceSha256": "a380dc40051e1aae7d9c14cc318381dbc8971784f644d748097b966894f2f467",
+      "sourceDimensions": [
+        2400,
+        1500
+      ],
+      "desktop": "NATURE_A380DC40051E_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1200
+      ],
+      "desktopBytes": 171032,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_A380DC40051E_DESKTOP_AVIF",
+      "desktopAvifBytes": 81779,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_A380DC40051E_MOBILE",
+      "mobileDimensions": [
+        960,
+        600
+      ],
+      "mobileBytes": 60278,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_A380DC40051E_MOBILE_AVIF",
+      "mobileAvifBytes": 26905,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_A380DC40051E_CSS",
+      "previewBytes": 254,
+      "sceneCssBytes": 2241
+    },
+    {
+      "id": "7ce614ce806a",
+      "source": "wallpapers/nature/images/gory-liod-zima-vodoem-bereg-nebo-vershiny-zamerzshii.jpg",
+      "sourceSha256": "7ce614ce806ace5da4535f35f70d31227ea577e4c16c223005b8095f5a83a139",
+      "sourceDimensions": [
+        1920,
+        1200
+      ],
+      "desktop": "NATURE_7CE614CE806A_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1200
+      ],
+      "desktopBytes": 316028,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_7CE614CE806A_DESKTOP_AVIF",
+      "desktopAvifBytes": 120873,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_7CE614CE806A_MOBILE",
+      "mobileDimensions": [
+        960,
+        600
+      ],
+      "mobileBytes": 79370,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_7CE614CE806A_MOBILE_AVIF",
+      "mobileAvifBytes": 32210,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_7CE614CE806A_CSS",
+      "previewBytes": 300,
+      "sceneCssBytes": 2481
+    },
+    {
+      "id": "2ee99105c0d0",
+      "source": "wallpapers/nature/images/gory-ozero-otrazhenie-ostrov.jpg",
+      "sourceSha256": "2ee99105c0d0ad86de10a8948103a194318bffe634085b081dc8b71799a53e09",
+      "sourceDimensions": [
+        2048,
+        1365
+      ],
+      "desktop": "NATURE_2EE99105C0D0_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1280
+      ],
+      "desktopBytes": 63554,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_2EE99105C0D0_DESKTOP_AVIF",
+      "desktopAvifBytes": 35874,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_2EE99105C0D0_MOBILE",
+      "mobileDimensions": [
+        960,
+        640
+      ],
+      "mobileBytes": 21456,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_2EE99105C0D0_MOBILE_AVIF",
+      "mobileAvifBytes": 12310,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_2EE99105C0D0_CSS",
+      "previewBytes": 172,
+      "sceneCssBytes": 1809
+    },
+    {
+      "id": "57d596333352",
+      "source": "wallpapers/nature/images/gory-reka-dom-peyzazh-priroda.jpg",
+      "sourceSha256": "57d596333352c6e341272e09a63212ac08b3718bcaa55bcf8e87a04c2901cbc2",
+      "sourceDimensions": [
+        1920,
+        1200
+      ],
+      "desktop": "NATURE_57D596333352_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1200
+      ],
+      "desktopBytes": 477814,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_57D596333352_DESKTOP_AVIF",
+      "desktopAvifBytes": 191918,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_57D596333352_MOBILE",
+      "mobileDimensions": [
+        960,
+        600
+      ],
+      "mobileBytes": 145062,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_57D596333352_MOBILE_AVIF",
+      "mobileAvifBytes": 55292,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_57D596333352_CSS",
+      "previewBytes": 266,
+      "sceneCssBytes": 2305
+    },
+    {
+      "id": "4794c636f4be",
+      "source": "wallpapers/nature/images/grenlandiia-liod-aisberg-ldiny-zakat-aisbergi-sneg-zima-vodo.jpg",
+      "sourceSha256": "4794c636f4be9c651b8fe245efe94c42e1a55747d955055678660745ea0ef1f8",
+      "sourceDimensions": [
+        2400,
+        1500
+      ],
+      "desktop": "NATURE_4794C636F4BE_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1200
+      ],
+      "desktopBytes": 152870,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_4794C636F4BE_DESKTOP_AVIF",
+      "desktopAvifBytes": 64334,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_4794C636F4BE_MOBILE",
+      "mobileDimensions": [
+        960,
+        600
+      ],
+      "mobileBytes": 46064,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_4794C636F4BE_MOBILE_AVIF",
+      "mobileAvifBytes": 20219,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_4794C636F4BE_CSS",
+      "previewBytes": 186,
+      "sceneCssBytes": 1873
+    },
+    {
+      "id": "2e846276b41e",
+      "source": "wallpapers/nature/images/italiya-gavan-more-rassvet.jpg",
+      "sourceSha256": "2e846276b41eeb793acf6a0621f9a96f173373ae9999334a8e781b82c1143dfa",
+      "sourceDimensions": [
+        1897,
+        1200
+      ],
+      "desktop": "NATURE_2E846276B41E_DESKTOP",
+      "desktopDimensions": [
+        1897,
+        1200
+      ],
+      "desktopBytes": 221234,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_2E846276B41E_DESKTOP_AVIF",
+      "desktopAvifBytes": 88710,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_2E846276B41E_MOBILE",
+      "mobileDimensions": [
+        960,
+        607
+      ],
+      "mobileBytes": 58252,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_2E846276B41E_MOBILE_AVIF",
+      "mobileAvifBytes": 26506,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_2E846276B41E_CSS",
+      "previewBytes": 256,
+      "sceneCssBytes": 2257
+    },
+    {
+      "id": "d24065dbcc5e",
+      "source": "wallpapers/nature/images/italiya-italy-cinque-terre.jpg",
+      "sourceSha256": "d24065dbcc5e58d42195132ee5bcdb86fb42cd81405fb31449459bbc04d1d85c",
+      "sourceDimensions": [
+        1920,
+        1080
+      ],
+      "desktop": "NATURE_D24065DBCC5E_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1080
+      ],
+      "desktopBytes": 110854,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_D24065DBCC5E_DESKTOP_AVIF",
+      "desktopAvifBytes": 59222,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_D24065DBCC5E_MOBILE",
+      "mobileDimensions": [
+        960,
+        540
+      ],
+      "mobileBytes": 34462,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_D24065DBCC5E_MOBILE_AVIF",
+      "mobileAvifBytes": 17974,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_D24065DBCC5E_CSS",
+      "previewBytes": 134,
+      "sceneCssBytes": 1601
+    },
+    {
+      "id": "f42b2689fde4",
+      "source": "wallpapers/nature/images/lake-bled-slovenia-julian-alps-bled-island-church-mountain-1.jpg",
+      "sourceSha256": "f42b2689fde44ceb2fd6b021bc3495b8bc710effcce636bb639c8adc16490a7c",
+      "sourceDimensions": [
+        2048,
+        1152
+      ],
+      "desktop": "NATURE_F42B2689FDE4_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1080
+      ],
+      "desktopBytes": 84782,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_F42B2689FDE4_DESKTOP_AVIF",
+      "desktopAvifBytes": 49522,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_F42B2689FDE4_MOBILE",
+      "mobileDimensions": [
+        960,
+        540
+      ],
+      "mobileBytes": 29140,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_F42B2689FDE4_MOBILE_AVIF",
+      "mobileAvifBytes": 16679,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_F42B2689FDE4_CSS",
+      "previewBytes": 186,
+      "sceneCssBytes": 1873
+    },
+    {
+      "id": "85090df55462",
+      "source": "wallpapers/nature/images/les-luchi-derevia-vetki-listva-sosny-bor-sosnovyi-bor-sosnov.jpg",
+      "sourceSha256": "85090df55462e3a059a73fd77fbae475d7776c7f8e01ecc873f872b8dd431c63",
+      "sourceDimensions": [
+        1920,
+        1241
+      ],
+      "desktop": "NATURE_85090DF55462_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1241
+      ],
+      "desktopBytes": 598022,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_85090DF55462_DESKTOP_AVIF",
+      "desktopAvifBytes": 184556,
+      "desktopAvifQuality": 42,
+      "mobile": "NATURE_85090DF55462_MOBILE",
+      "mobileDimensions": [
+        960,
+        621
+      ],
+      "mobileBytes": 153810,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_85090DF55462_MOBILE_AVIF",
+      "mobileAvifBytes": 57293,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_85090DF55462_CSS",
+      "previewBytes": 218,
+      "sceneCssBytes": 2049
+    },
+    {
+      "id": "32f2ca87880a",
+      "source": "wallpapers/nature/images/les-svet-otrazhenie-vodoem-bereg.jpg",
+      "sourceSha256": "32f2ca87880a3e33f929392b421d629ea32767f2634801ee1d8fe1bd961474fe",
+      "sourceDimensions": [
+        1920,
+        1200
+      ],
+      "desktop": "NATURE_32F2CA87880A_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1200
+      ],
+      "desktopBytes": 313392,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_32F2CA87880A_DESKTOP_AVIF",
+      "desktopAvifBytes": 128179,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_32F2CA87880A_MOBILE",
+      "mobileDimensions": [
+        960,
+        600
+      ],
+      "mobileBytes": 90952,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_32F2CA87880A_MOBILE_AVIF",
+      "mobileAvifBytes": 36083,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_32F2CA87880A_CSS",
+      "previewBytes": 218,
+      "sceneCssBytes": 2049
+    },
+    {
+      "id": "726bc10b1c65",
+      "source": "wallpapers/nature/images/liod-nebo-ldiny-grenlandiia-surovaia-krasota-ldy-priroda-sne.jpg",
+      "sourceSha256": "726bc10b1c659b24664ac361a4773465b24c8f511d7b060805949005055b32db",
+      "sourceDimensions": [
+        1920,
+        1200
+      ],
+      "desktop": "NATURE_726BC10B1C65_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1200
+      ],
+      "desktopBytes": 115062,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_726BC10B1C65_DESKTOP_AVIF",
+      "desktopAvifBytes": 61709,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_726BC10B1C65_MOBILE",
+      "mobileDimensions": [
+        960,
+        600
+      ],
+      "mobileBytes": 37834,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_726BC10B1C65_MOBILE_AVIF",
+      "mobileAvifBytes": 19529,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_726BC10B1C65_CSS",
+      "previewBytes": 162,
+      "sceneCssBytes": 1745
+    },
+    {
+      "id": "ee25596bfb12",
+      "source": "wallpapers/nature/images/lofoten-air-norway-88.jpg",
+      "sourceSha256": "ee25596bfb12ea0bb444d01907d9672ff20c24ce7dbebd5fd2801b3011da8cc8",
+      "sourceDimensions": [
+        1920,
+        1200
+      ],
+      "desktop": "NATURE_EE25596BFB12_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1200
+      ],
+      "desktopBytes": 144622,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_EE25596BFB12_DESKTOP_AVIF",
+      "desktopAvifBytes": 68068,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_EE25596BFB12_MOBILE",
+      "mobileDimensions": [
+        960,
+        600
+      ],
+      "mobileBytes": 47568,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_EE25596BFB12_MOBILE_AVIF",
+      "mobileAvifBytes": 22246,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_EE25596BFB12_CSS",
+      "previewBytes": 218,
+      "sceneCssBytes": 2049
+    },
+    {
+      "id": "ba53505e8ae6",
+      "source": "wallpapers/nature/images/more-skaly-bereg-volny-shtorm-zakat-nebo-kamni.jpg",
+      "sourceSha256": "ba53505e8ae6773bdd0934123537d5881e66e6173f7dcfcc02bdcad3fba8ab8d",
+      "sourceDimensions": [
+        2600,
+        1463
+      ],
+      "desktop": "NATURE_BA53505E8AE6_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1080
+      ],
+      "desktopBytes": 134730,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_BA53505E8AE6_DESKTOP_AVIF",
+      "desktopAvifBytes": 67831,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_BA53505E8AE6_MOBILE",
+      "mobileDimensions": [
+        960,
+        540
+      ],
+      "mobileBytes": 40318,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_BA53505E8AE6_MOBILE_AVIF",
+      "mobileAvifBytes": 20133,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_BA53505E8AE6_CSS",
+      "previewBytes": 222,
+      "sceneCssBytes": 2065
+    },
+    {
+      "id": "831a534a6d0b",
+      "source": "wallpapers/nature/images/nature-sunset-cloud.jpg",
+      "sourceSha256": "831a534a6d0ba2da169529f9d3023d402059e90a77e41aa63999fd14063011d3",
+      "sourceDimensions": [
+        1920,
+        1200
+      ],
+      "desktop": "NATURE_831A534A6D0B_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1200
+      ],
+      "desktopBytes": 44428,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_831A534A6D0B_DESKTOP_AVIF",
+      "desktopAvifBytes": 24088,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_831A534A6D0B_MOBILE",
+      "mobileDimensions": [
+        960,
+        600
+      ],
+      "mobileBytes": 13842,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_831A534A6D0B_MOBILE_AVIF",
+      "mobileAvifBytes": 7733,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_831A534A6D0B_CSS",
+      "previewBytes": 146,
+      "sceneCssBytes": 1665
+    },
+    {
+      "id": "75028cae5fa4",
+      "source": "wallpapers/nature/images/nebo-oblaka-peizazh-vetrogeneratory-11.jpg",
+      "sourceSha256": "75028cae5fa4830ae0d12d2ce89b670c801a53b9d4d795fd44c364cfce098640",
+      "sourceDimensions": [
+        2000,
+        1333
+      ],
+      "desktop": "NATURE_75028CAE5FA4_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1280
+      ],
+      "desktopBytes": 241496,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_75028CAE5FA4_DESKTOP_AVIF",
+      "desktopAvifBytes": 106427,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_75028CAE5FA4_MOBILE",
+      "mobileDimensions": [
+        960,
+        640
+      ],
+      "mobileBytes": 54286,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_75028CAE5FA4_MOBILE_AVIF",
+      "mobileAvifBytes": 23000,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_75028CAE5FA4_CSS",
+      "previewBytes": 174,
+      "sceneCssBytes": 1809
+    },
+    {
+      "id": "6dee25ed7b00",
+      "source": "wallpapers/nature/images/new-zealand-river-mountains.jpg",
+      "sourceSha256": "6dee25ed7b00be85172d3e309075310e5795907b05d4696727ccec0d33041cac",
+      "sourceDimensions": [
+        1920,
+        1200
+      ],
+      "desktop": "NATURE_6DEE25ED7B00_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1200
+      ],
+      "desktopBytes": 72652,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_6DEE25ED7B00_DESKTOP_AVIF",
+      "desktopAvifBytes": 35950,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_6DEE25ED7B00_MOBILE",
+      "mobileDimensions": [
+        960,
+        600
+      ],
+      "mobileBytes": 19010,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_6DEE25ED7B00_MOBILE_AVIF",
+      "mobileAvifBytes": 9815,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_6DEE25ED7B00_CSS",
+      "previewBytes": 172,
+      "sceneCssBytes": 1809
+    },
+    {
+      "id": "1415011f0eb3",
+      "source": "wallpapers/nature/images/peizazh-ozero-prichal-noch.jpg",
+      "sourceSha256": "1415011f0eb3545ca6b8ed903ece6fd4ba993f9380338d8ddaef92efa934b9d4",
+      "sourceDimensions": [
+        1920,
+        1200
+      ],
+      "desktop": "NATURE_1415011F0EB3_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1200
+      ],
+      "desktopBytes": 58702,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_1415011F0EB3_DESKTOP_AVIF",
+      "desktopAvifBytes": 32178,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_1415011F0EB3_MOBILE",
+      "mobileDimensions": [
+        960,
+        600
+      ],
+      "mobileBytes": 21488,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_1415011F0EB3_MOBILE_AVIF",
+      "mobileAvifBytes": 10904,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_1415011F0EB3_CSS",
+      "previewBytes": 230,
+      "sceneCssBytes": 2113
+    },
+    {
+      "id": "f5f1afb983fb",
+      "source": "wallpapers/nature/images/priroda-skaly-gory-sneg-zima-tuman.jpg",
+      "sourceSha256": "f5f1afb983fbbdee2f78551b78f2881cf44dcdeb296a33eef5860df04304dd68",
+      "sourceDimensions": [
+        1920,
+        1282
+      ],
+      "desktop": "NATURE_F5F1AFB983FB_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1282
+      ],
+      "desktopBytes": 318652,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_F5F1AFB983FB_DESKTOP_AVIF",
+      "desktopAvifBytes": 135989,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_F5F1AFB983FB_MOBILE",
+      "mobileDimensions": [
+        960,
+        641
+      ],
+      "mobileBytes": 82394,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_F5F1AFB983FB_MOBILE_AVIF",
+      "mobileAvifBytes": 34182,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_F5F1AFB983FB_CSS",
+      "previewBytes": 210,
+      "sceneCssBytes": 2001
+    },
+    {
+      "id": "13afb1543532",
+      "source": "wallpapers/nature/images/rene-unger-priroda-peizazh-bavariia-gory-alpy-kholmy-doroga.jpg",
+      "sourceSha256": "13afb15435323da61c4912f6e725f797c38e3edfc452c145959efc12a4b4ac29",
+      "sourceDimensions": [
+        1920,
+        1280
+      ],
+      "desktop": "NATURE_13AFB1543532_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1280
+      ],
+      "desktopBytes": 386068,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_13AFB1543532_DESKTOP_AVIF",
+      "desktopAvifBytes": 161544,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_13AFB1543532_MOBILE",
+      "mobileDimensions": [
+        960,
+        640
+      ],
+      "mobileBytes": 99174,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_13AFB1543532_MOBILE_AVIF",
+      "mobileAvifBytes": 41614,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_13AFB1543532_CSS",
+      "previewBytes": 266,
+      "sceneCssBytes": 2305
+    },
+    {
+      "id": "b33a636b2f6b",
+      "source": "wallpapers/nature/images/ssha-aliaska-dzhuno-juneau-alaska-gorod-reka-most-doma-ogni.jpg",
+      "sourceSha256": "b33a636b2f6b9b05024e9070d629b92d799bc8bb08caef29c6c85de7d4418479",
+      "sourceDimensions": [
+        1920,
+        1200
+      ],
+      "desktop": "NATURE_B33A636B2F6B_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1200
+      ],
+      "desktopBytes": 165630,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_B33A636B2F6B_DESKTOP_AVIF",
+      "desktopAvifBytes": 78006,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_B33A636B2F6B_MOBILE",
+      "mobileDimensions": [
+        960,
+        600
+      ],
+      "mobileBytes": 51664,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_B33A636B2F6B_MOBILE_AVIF",
+      "mobileAvifBytes": 23514,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_B33A636B2F6B_CSS",
+      "previewBytes": 190,
+      "sceneCssBytes": 1905
+    },
+    {
+      "id": "26ddbe9dba85",
+      "source": "wallpapers/nature/images/staffal-aosta-valley-italy.jpg",
+      "sourceSha256": "26ddbe9dba85780c4662154839ab94e1d873f7bd010103550f2537295d884519",
+      "sourceDimensions": [
+        1920,
+        1200
+      ],
+      "desktop": "NATURE_26DDBE9DBA85_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1200
+      ],
+      "desktopBytes": 301020,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_26DDBE9DBA85_DESKTOP_AVIF",
+      "desktopAvifBytes": 86375,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_26DDBE9DBA85_MOBILE",
+      "mobileDimensions": [
+        960,
+        600
+      ],
+      "mobileBytes": 50714,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_26DDBE9DBA85_MOBILE_AVIF",
+      "mobileAvifBytes": 20893,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_26DDBE9DBA85_CSS",
+      "previewBytes": 204,
+      "sceneCssBytes": 1969
+    },
+    {
+      "id": "ffa6c75646b0",
+      "source": "wallpapers/nature/images/wallhaven-7p8783.jpg",
+      "sourceSha256": "ffa6c75646b0a44558df9e3d88951d962c9c308f39c07d5c5b35d7429774e8be",
+      "sourceDimensions": [
+        5120,
+        2880
+      ],
+      "desktop": "NATURE_FFA6C75646B0_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1080
+      ],
+      "desktopBytes": 333206,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_FFA6C75646B0_DESKTOP_AVIF",
+      "desktopAvifBytes": 145193,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_FFA6C75646B0_MOBILE",
+      "mobileDimensions": [
+        960,
+        540
+      ],
+      "mobileBytes": 90606,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_FFA6C75646B0_MOBILE_AVIF",
+      "mobileAvifBytes": 39908,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_FFA6C75646B0_CSS",
+      "previewBytes": 142,
+      "sceneCssBytes": 1649
+    },
+    {
+      "id": "7f9527e12857",
+      "source": "wallpapers/nature/images/wallhaven-je8725.jpg",
+      "sourceSha256": "7f9527e12857a3859f06ca643a6dea76bd6437ec1e0fb7b6591d19019f9f7d0c",
+      "sourceDimensions": [
+        4954,
+        2825
+      ],
+      "desktop": "NATURE_7F9527E12857_DESKTOP",
+      "desktopDimensions": [
+        1920,
+        1095
+      ],
+      "desktopBytes": 111412,
+      "desktopQuality": 80,
+      "desktopAvif": "NATURE_7F9527E12857_DESKTOP_AVIF",
+      "desktopAvifBytes": 57117,
+      "desktopAvifQuality": 45,
+      "mobile": "NATURE_7F9527E12857_MOBILE",
+      "mobileDimensions": [
+        960,
+        547
+      ],
+      "mobileBytes": 34830,
+      "mobileQuality": 80,
+      "mobileAvif": "NATURE_7F9527E12857_MOBILE_AVIF",
+      "mobileAvifBytes": 17939,
+      "mobileAvifQuality": 45,
+      "sceneCss": "NATURE_7F9527E12857_CSS",
+      "previewBytes": 174,
+      "sceneCssBytes": 1809
+    }
+  ]
+}

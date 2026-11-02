@@ -1,5 +1,6 @@
 /* Quiet Mono v5 — Authentik 2026.8.5 native components, no replacement login JS.
    Render asset URL placeholders using the reviewed media manifest. Scope to flow components. */
+@import url('__ASSET_NATURE_SCENE__');
 @font-face{font-family:QuietMono;src:url('__ASSET_COURIER__') format('woff2');font-weight:400;font-display:swap}
 @font-face{font-family:QuietSerif;src:url('__ASSET_SERIF__') format('woff2');font-weight:700;font-display:swap}
 @font-face{font-family:QuietCode;src:url('__ASSET_CODE__') format('woff2');font-weight:400;font-display:swap}
@@ -85,13 +86,15 @@ ak-drawer#flow-drawer::part(drawer-content){transition:flex-basis 180ms cubic-be
 @media(prefers-reduced-motion:reduce){ak-drawer#flow-drawer::part(drawer-panel),ak-drawer#flow-drawer::part(drawer-content){transition:none!important}}
 
 /* ak-drawer is a plain LitElement, so use its exported parts from global Brand CSS. */
-ak-drawer#flow-drawer{min-height:100svh;background-image:url('__ASSET_LAKE__')!important;background-size:cover!important;background-position:center!important;background-attachment:fixed!important}
-@media(max-width:700px){ak-drawer#flow-drawer{background-image:url('__ASSET_LAKE_MOBILE__')!important;background-attachment:scroll!important}}
+/* One early native body layer: no second random photo on the late-created drawer. */
+body::before{background-color:#68776f;background-size:cover!important;background-position:center!important}
+ak-drawer#flow-drawer{min-height:100svh;background:transparent!important}
+
 
 /* Let the shared drawer background remain visible on native mobile layouts. */
 ak-drawer#flow-drawer::part(drawer-content),ak-drawer#flow-drawer::part(drawer-body){background:transparent!important}
 
-ak-drawer#flow-drawer{background-color:#68776f}
+
 :host([part=challenge]) .pf-c-input-group{background:transparent!important}
 
 /* Owner decision: English-only presentation; no language picker in flows. */

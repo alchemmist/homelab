@@ -26,5 +26,609 @@
   "LAKE_MOBILE": {
     "path": "reference/assets/lake-960.webp",
     "sha256": "4c0abf672d19c170332252da5b62f9c90e3f7a468327682bc4dc50e98d85dbb2"
+  },
+  "CLEAR_BACKGROUND": {
+    "path": "clear-background.svg",
+    "sha256": "ffc9f5e4fdeea83920c171e2bd17577127c5d1a2c3c76f07440e10d387132280"
+  },
+  "NATURE_43BB24739D83_DESKTOP": {
+    "path": "nature/nature-43bb24739d83-1920.webp",
+    "sha256": "90aeee268b2da916b267079d6480200785934a3ff6456b7d6a2a0545358526e3"
+  },
+  "NATURE_43BB24739D83_DESKTOP_AVIF": {
+    "path": "nature/nature-43bb24739d83-1920.avif",
+    "sha256": "85a72daaa1220247fb8040b776cba1014a514fbe765c37156efc55549800207e"
+  },
+  "NATURE_43BB24739D83_MOBILE": {
+    "path": "nature/nature-43bb24739d83-960.webp",
+    "sha256": "ddfa25ad9242c1a7006d7ec02d80c2db04f2cb38a60fb2bce3e05c4f09215a1f"
+  },
+  "NATURE_43BB24739D83_MOBILE_AVIF": {
+    "path": "nature/nature-43bb24739d83-960.avif",
+    "sha256": "73cf0d989e18e37967e6e00b36e177694181ac52fa8635813d7d25f9cdbc24bd"
+  },
+  "NATURE_43BB24739D83_CSS": {
+    "path": "nature/nature-43bb24739d83.css",
+    "sha256": "6556755f705fc20183f7958ac5135427a8167ec061181a0f66722e4d40dbbc0e"
+  },
+  "NATURE_EA4D373324D4_DESKTOP": {
+    "path": "nature/nature-ea4d373324d4-1920.webp",
+    "sha256": "58730144200ac52417ff7572d577b43f82d4d50c219bb9859cca3f1df8c97750"
+  },
+  "NATURE_EA4D373324D4_DESKTOP_AVIF": {
+    "path": "nature/nature-ea4d373324d4-1920.avif",
+    "sha256": "204aa09cf2bfc053a1965af36cbb90c1fc695185163d0ab0e4aa0ed783962960"
+  },
+  "NATURE_EA4D373324D4_MOBILE": {
+    "path": "nature/nature-ea4d373324d4-960.webp",
+    "sha256": "c8ec12409c1b499aeaca6ce322e0e2b969532b04fc02b622ff47c41d1accac6d"
+  },
+  "NATURE_EA4D373324D4_MOBILE_AVIF": {
+    "path": "nature/nature-ea4d373324d4-960.avif",
+    "sha256": "cd6f1b73d8770cdb4a99cc025aaa0b35ca186c6c7e16803955143bb5562ded8e"
+  },
+  "NATURE_EA4D373324D4_CSS": {
+    "path": "nature/nature-ea4d373324d4.css",
+    "sha256": "3f8f4570069d6b142d372234b040e21edb13a1f47e80768f36baf6d1524c355b"
+  },
+  "NATURE_2016B071A149_DESKTOP": {
+    "path": "nature/nature-2016b071a149-1920.webp",
+    "sha256": "d5b5b7ee5500321a00c5f52919266c90a6637e62b5b8b9063816223983610ee9"
+  },
+  "NATURE_2016B071A149_DESKTOP_AVIF": {
+    "path": "nature/nature-2016b071a149-1920.avif",
+    "sha256": "058c999abc7ebce0bc67a7b49446e497827742f12b4cc6749f94d93039277c67"
+  },
+  "NATURE_2016B071A149_MOBILE": {
+    "path": "nature/nature-2016b071a149-960.webp",
+    "sha256": "7aec839720081a18b32fed2fb631e6c3e1ab1e5e82f32d4bc624b0a435f751bd"
+  },
+  "NATURE_2016B071A149_MOBILE_AVIF": {
+    "path": "nature/nature-2016b071a149-960.avif",
+    "sha256": "63e9bc6a8302df63eee18ed07c1ec5aebbaa0b4df244eaa686af629594f65452"
+  },
+  "NATURE_2016B071A149_CSS": {
+    "path": "nature/nature-2016b071a149.css",
+    "sha256": "4a642e8cea7a74b368f63f1014973499e1713798aa0212b7b2fdeb8a9450a4be"
+  },
+  "NATURE_D40711D33058_DESKTOP": {
+    "path": "nature/nature-d40711d33058-1920.webp",
+    "sha256": "bef6132e1cbc1cd9082b6f42c6c2d40448ff116d484d207a11c85570afd91498"
+  },
+  "NATURE_D40711D33058_DESKTOP_AVIF": {
+    "path": "nature/nature-d40711d33058-1920.avif",
+    "sha256": "b4fe7194202a26ac2c682358c65fde4b05fe8729b8a20e08cefa7865e88d8ffe"
+  },
+  "NATURE_D40711D33058_MOBILE": {
+    "path": "nature/nature-d40711d33058-960.webp",
+    "sha256": "b1a39d5bf16cf389574ca143d4dec4c0ce01f78e042e0fba6d777ec8c627891e"
+  },
+  "NATURE_D40711D33058_MOBILE_AVIF": {
+    "path": "nature/nature-d40711d33058-960.avif",
+    "sha256": "704cabaed170b70ca7d56c57d3eaeeb82e78460df9ee9a278ebaa6cd0ad7ce7b"
+  },
+  "NATURE_D40711D33058_CSS": {
+    "path": "nature/nature-d40711d33058.css",
+    "sha256": "fca20f295ea27c7d3a70ff2b404a048ae88ff11ed402bab3cbadb6024d5720e6"
+  },
+  "NATURE_569883E0AB7A_DESKTOP": {
+    "path": "nature/nature-569883e0ab7a-1920.webp",
+    "sha256": "4b0f1714efe18cfe7d7ddc96aaa0c4da5539528738fff0e6c26a20026e9e36e4"
+  },
+  "NATURE_569883E0AB7A_DESKTOP_AVIF": {
+    "path": "nature/nature-569883e0ab7a-1920.avif",
+    "sha256": "c46c08f3030d1e3ffe8dedc1a2b2cba63aee42e7eece4e8c360e06e6834237f3"
+  },
+  "NATURE_569883E0AB7A_MOBILE": {
+    "path": "nature/nature-569883e0ab7a-960.webp",
+    "sha256": "da6b7c669a100c694d95421661e1cab27451b765cbfd3d8490e6dca990296233"
+  },
+  "NATURE_569883E0AB7A_MOBILE_AVIF": {
+    "path": "nature/nature-569883e0ab7a-960.avif",
+    "sha256": "fd554e649ccff5c5b9879fc21905e9247bc88db65270d41ba87a2873cd852571"
+  },
+  "NATURE_569883E0AB7A_CSS": {
+    "path": "nature/nature-569883e0ab7a.css",
+    "sha256": "fc4273ba9d7a514525141a7f6d62ea04ec1de90a2601b96f5638099294f5b956"
+  },
+  "NATURE_D1498035A6A1_DESKTOP": {
+    "path": "nature/nature-d1498035a6a1-1920.webp",
+    "sha256": "066eae82236061c6719a62f23327b1b9f84f78a3331debb6d385b9354d503fc0"
+  },
+  "NATURE_D1498035A6A1_DESKTOP_AVIF": {
+    "path": "nature/nature-d1498035a6a1-1920.avif",
+    "sha256": "6e764a45ee95830efe6f346875b2315fb9a0e4c8a2af4b362b761ec1082729ee"
+  },
+  "NATURE_D1498035A6A1_MOBILE": {
+    "path": "nature/nature-d1498035a6a1-960.webp",
+    "sha256": "4e42a316f38b85a6cb9da353cda99e5a0520c4e6fc64480a8b9ab71c9077cb4f"
+  },
+  "NATURE_D1498035A6A1_MOBILE_AVIF": {
+    "path": "nature/nature-d1498035a6a1-960.avif",
+    "sha256": "efb59375206a52cdb582ba7c7e624c0a53f4f1844390aad37e78ee3324e01d90"
+  },
+  "NATURE_D1498035A6A1_CSS": {
+    "path": "nature/nature-d1498035a6a1.css",
+    "sha256": "8202d3c324b7fe7f5fd265786fcca6a8164656201607432b10210fb7d91a50cb"
+  },
+  "NATURE_12FF84557AEE_DESKTOP": {
+    "path": "nature/nature-12ff84557aee-1920.webp",
+    "sha256": "c5edfb064701cac681b715a4fa4cf577725bffb5dfddbfd8cb3e35b748ae164a"
+  },
+  "NATURE_12FF84557AEE_DESKTOP_AVIF": {
+    "path": "nature/nature-12ff84557aee-1920.avif",
+    "sha256": "bb79bd484f2d078779bccf020b6650a255d3360f4b1fb9e6f0c10eb80be4d359"
+  },
+  "NATURE_12FF84557AEE_MOBILE": {
+    "path": "nature/nature-12ff84557aee-960.webp",
+    "sha256": "ecc058a2e6f28d3b8038f59dcbdabe630e33d41647dfc3e92e90a3c587dc8ede"
+  },
+  "NATURE_12FF84557AEE_MOBILE_AVIF": {
+    "path": "nature/nature-12ff84557aee-960.avif",
+    "sha256": "d39f4163d1ed5c3eb648fa277c32129b8b094a0976ca5f06c677851c76467b4d"
+  },
+  "NATURE_12FF84557AEE_CSS": {
+    "path": "nature/nature-12ff84557aee.css",
+    "sha256": "09eb60256e5599972498e0e6677bc8fbde7494f56e9d14dff5bb58723cd78d47"
+  },
+  "NATURE_A380DC40051E_DESKTOP": {
+    "path": "nature/nature-a380dc40051e-1920.webp",
+    "sha256": "cf7b47441818ef3029f507ab5547677c6cb1f199db1e72537a5af7aaa89ff680"
+  },
+  "NATURE_A380DC40051E_DESKTOP_AVIF": {
+    "path": "nature/nature-a380dc40051e-1920.avif",
+    "sha256": "252270af4095e47b52e216590588f74316f7d702aabdcecc4f3dcdf27e424d55"
+  },
+  "NATURE_A380DC40051E_MOBILE": {
+    "path": "nature/nature-a380dc40051e-960.webp",
+    "sha256": "3f708c796a18df8d5ca5070bb5f54ded01cadd5e320ecc40ed49202e25db7097"
+  },
+  "NATURE_A380DC40051E_MOBILE_AVIF": {
+    "path": "nature/nature-a380dc40051e-960.avif",
+    "sha256": "19be3502ba5b6bda76fa22f88ebe529064614f92a78da577d8b13a976d1cd35e"
+  },
+  "NATURE_A380DC40051E_CSS": {
+    "path": "nature/nature-a380dc40051e.css",
+    "sha256": "da5fb06fecdb2f33ebe26925ba283718b44f216e9c88254e585f89754cf519b9"
+  },
+  "NATURE_7CE614CE806A_DESKTOP": {
+    "path": "nature/nature-7ce614ce806a-1920.webp",
+    "sha256": "080cc781794a04d7746c5c22f7c8d24e72012c51ad11ffb00157294b6310d20b"
+  },
+  "NATURE_7CE614CE806A_DESKTOP_AVIF": {
+    "path": "nature/nature-7ce614ce806a-1920.avif",
+    "sha256": "e0aea95562e2b18388581ae202aff206a3a8654af688db40ffbafce1942d3f1c"
+  },
+  "NATURE_7CE614CE806A_MOBILE": {
+    "path": "nature/nature-7ce614ce806a-960.webp",
+    "sha256": "76e00936ad98b612a122b9932422ac56d3f51ba98510f1a651cb76b0a3b1ee40"
+  },
+  "NATURE_7CE614CE806A_MOBILE_AVIF": {
+    "path": "nature/nature-7ce614ce806a-960.avif",
+    "sha256": "0194332d9ea82e7b12bf770ce066b9c413405a107cdab169e2ddfedd8206f0aa"
+  },
+  "NATURE_7CE614CE806A_CSS": {
+    "path": "nature/nature-7ce614ce806a.css",
+    "sha256": "5f4fa5d9b3ba0be70161570e165b86fc2a8da326681c4826e02d2c8b23b5b98c"
+  },
+  "NATURE_2EE99105C0D0_DESKTOP": {
+    "path": "nature/nature-2ee99105c0d0-1920.webp",
+    "sha256": "9c238a1459a3d36a0a1831d8c2f6ce52adbf4ddde40a44dcccee906ece908b83"
+  },
+  "NATURE_2EE99105C0D0_DESKTOP_AVIF": {
+    "path": "nature/nature-2ee99105c0d0-1920.avif",
+    "sha256": "d0fcf077c4e7f98946c3a5e711907df0e02d581b71b130ed08ff791e29fa6541"
+  },
+  "NATURE_2EE99105C0D0_MOBILE": {
+    "path": "nature/nature-2ee99105c0d0-960.webp",
+    "sha256": "15465b5b0368cb219b751e8ac7462406e95399a5d4fc25a10204fbf226f39dc5"
+  },
+  "NATURE_2EE99105C0D0_MOBILE_AVIF": {
+    "path": "nature/nature-2ee99105c0d0-960.avif",
+    "sha256": "1fd0212f9c921fceaf26d6b99160053347f760945b9f42a0b058f87b8ede0de6"
+  },
+  "NATURE_2EE99105C0D0_CSS": {
+    "path": "nature/nature-2ee99105c0d0.css",
+    "sha256": "c12716d53ea4aaed1134b5663fd7387b7b7d26a7cc342e93f8094dcc7d97fc8f"
+  },
+  "NATURE_57D596333352_DESKTOP": {
+    "path": "nature/nature-57d596333352-1920.webp",
+    "sha256": "d1c76fdb861e4897995a7ba3549d08836ff95b78a55162cef37b58927164791c"
+  },
+  "NATURE_57D596333352_DESKTOP_AVIF": {
+    "path": "nature/nature-57d596333352-1920.avif",
+    "sha256": "def9bd2bfb868bb6714074eb0decfc5f4fc9e9bce1cf10ddd45e6a6730e525b9"
+  },
+  "NATURE_57D596333352_MOBILE": {
+    "path": "nature/nature-57d596333352-960.webp",
+    "sha256": "2dd608aeb301be13c3764cf95df23b3413c7be305414a33abdd5a3de4477bfbe"
+  },
+  "NATURE_57D596333352_MOBILE_AVIF": {
+    "path": "nature/nature-57d596333352-960.avif",
+    "sha256": "29c0b9640386eedac710cd3cd1621c198c35f9dff99cb79d4da3c8494498464e"
+  },
+  "NATURE_57D596333352_CSS": {
+    "path": "nature/nature-57d596333352.css",
+    "sha256": "8623deeea93d4c8b0355f3ac7aac1fe7e542c0ecfe2cc35fd8ab57efbb61e788"
+  },
+  "NATURE_4794C636F4BE_DESKTOP": {
+    "path": "nature/nature-4794c636f4be-1920.webp",
+    "sha256": "f7e14cc96bf0fed26eba8da6c0d0ed89cc6fffc0376870a653c807b34f2dda1b"
+  },
+  "NATURE_4794C636F4BE_DESKTOP_AVIF": {
+    "path": "nature/nature-4794c636f4be-1920.avif",
+    "sha256": "9d8dd66dfab3c36d178f3889177b3bc5ac204d52f747951a78629947c69506a5"
+  },
+  "NATURE_4794C636F4BE_MOBILE": {
+    "path": "nature/nature-4794c636f4be-960.webp",
+    "sha256": "49a88ee9ef007e20cff7a90eb9cb8bdc4c26dfd855bff0cf5f25ef2b9e930c87"
+  },
+  "NATURE_4794C636F4BE_MOBILE_AVIF": {
+    "path": "nature/nature-4794c636f4be-960.avif",
+    "sha256": "8c1fa6e01f9d74f662e8412f4137b592cc59acc53e392406752252c080a93d8e"
+  },
+  "NATURE_4794C636F4BE_CSS": {
+    "path": "nature/nature-4794c636f4be.css",
+    "sha256": "8a666d132ef11ecc290f74a9ee99ab80726b6fb157da4f25a28dedc758f33bff"
+  },
+  "NATURE_2E846276B41E_DESKTOP": {
+    "path": "nature/nature-2e846276b41e-1920.webp",
+    "sha256": "9100115731b6c1280391ba52a9a40a8988c8f7d49a1215ca777537c8afb7c98f"
+  },
+  "NATURE_2E846276B41E_DESKTOP_AVIF": {
+    "path": "nature/nature-2e846276b41e-1920.avif",
+    "sha256": "b05e551592acb8943aa98826617aa4dc5278c30a21932609b3f4d932c2a16773"
+  },
+  "NATURE_2E846276B41E_MOBILE": {
+    "path": "nature/nature-2e846276b41e-960.webp",
+    "sha256": "c0880b0cde867aa777cdde54e5322f4af507e31f9b62220823567a0510142bce"
+  },
+  "NATURE_2E846276B41E_MOBILE_AVIF": {
+    "path": "nature/nature-2e846276b41e-960.avif",
+    "sha256": "8698a086876d984a0381054d3fcf5e4759b1a8913ab0d4dd5e93091f4cfa09ca"
+  },
+  "NATURE_2E846276B41E_CSS": {
+    "path": "nature/nature-2e846276b41e.css",
+    "sha256": "f5bfce8b44fbec549ba11f90d3c1de2730619b7b267ba0ba3bb8cdb5387d8cd4"
+  },
+  "NATURE_D24065DBCC5E_DESKTOP": {
+    "path": "nature/nature-d24065dbcc5e-1920.webp",
+    "sha256": "6d7a48d7b9232e7dff067d607db9eb94e7e5616f89e445592fe935a0697afb5a"
+  },
+  "NATURE_D24065DBCC5E_DESKTOP_AVIF": {
+    "path": "nature/nature-d24065dbcc5e-1920.avif",
+    "sha256": "d535dc554778ade9c3f5448ea8cceca08c5abb297ffb295f3459447cfb7378f3"
+  },
+  "NATURE_D24065DBCC5E_MOBILE": {
+    "path": "nature/nature-d24065dbcc5e-960.webp",
+    "sha256": "2e177922d89f4a310d35952acea6c6084fe297ea9f2b62508b319ea199ff8bbb"
+  },
+  "NATURE_D24065DBCC5E_MOBILE_AVIF": {
+    "path": "nature/nature-d24065dbcc5e-960.avif",
+    "sha256": "6f3180008a5612537e20ea71a080a7122128d415728343ee18e900d41c40bb1d"
+  },
+  "NATURE_D24065DBCC5E_CSS": {
+    "path": "nature/nature-d24065dbcc5e.css",
+    "sha256": "3d000daf2f87274328ec0db777814e1ce7e885096be52ca6a78d61b0734deaae"
+  },
+  "NATURE_F42B2689FDE4_DESKTOP": {
+    "path": "nature/nature-f42b2689fde4-1920.webp",
+    "sha256": "4072ea0f3268eaf6804724c4b308aed5b32cb373d355d05935f0042aa9c73b30"
+  },
+  "NATURE_F42B2689FDE4_DESKTOP_AVIF": {
+    "path": "nature/nature-f42b2689fde4-1920.avif",
+    "sha256": "317126ba30bdd02f881844e8ad901bc7679c542932fe93716eb45cef144e57c8"
+  },
+  "NATURE_F42B2689FDE4_MOBILE": {
+    "path": "nature/nature-f42b2689fde4-960.webp",
+    "sha256": "eee08638c6518c2ea9113568381d58b895d885b3c451a191fb745e02b90ed0a1"
+  },
+  "NATURE_F42B2689FDE4_MOBILE_AVIF": {
+    "path": "nature/nature-f42b2689fde4-960.avif",
+    "sha256": "9435453cf1cdc2e426b6918df537c40f50198fa67400043c84315a401370ac05"
+  },
+  "NATURE_F42B2689FDE4_CSS": {
+    "path": "nature/nature-f42b2689fde4.css",
+    "sha256": "96ccab55254ac1535f679d9a789b9378f49fbe9026668c8c8bf941bf3bafd967"
+  },
+  "NATURE_85090DF55462_DESKTOP": {
+    "path": "nature/nature-85090df55462-1920.webp",
+    "sha256": "0e819cddff5ce3b8c77604d14e90d83e84a9ee8b2900f504604da2d3e701d2fe"
+  },
+  "NATURE_85090DF55462_DESKTOP_AVIF": {
+    "path": "nature/nature-85090df55462-1920.avif",
+    "sha256": "cd01f1e193136618a81d1bcc31e99c08bc0a385d5c9c878eedb9057b623f5b82"
+  },
+  "NATURE_85090DF55462_MOBILE": {
+    "path": "nature/nature-85090df55462-960.webp",
+    "sha256": "18e13a2f06fbfe34d9cf191c06851cfacd52f88c2ef0288c5883bf8756ac9eb2"
+  },
+  "NATURE_85090DF55462_MOBILE_AVIF": {
+    "path": "nature/nature-85090df55462-960.avif",
+    "sha256": "9da7fb0956060439087a27eaa85b1e5a1ee8c42e04938602f437e5ed9e6e17c7"
+  },
+  "NATURE_85090DF55462_CSS": {
+    "path": "nature/nature-85090df55462.css",
+    "sha256": "3fde164a8ac0b2a5620934498c6ff8a2341449e77f868ca5a064473a75e52dc9"
+  },
+  "NATURE_32F2CA87880A_DESKTOP": {
+    "path": "nature/nature-32f2ca87880a-1920.webp",
+    "sha256": "af1cce9572d7d713378c4a51dab3be8983c0599b22082591a10b223182142ee6"
+  },
+  "NATURE_32F2CA87880A_DESKTOP_AVIF": {
+    "path": "nature/nature-32f2ca87880a-1920.avif",
+    "sha256": "dfb68543f9c68eace8fa00676cbfd00904d90a18f339bee3598be28ee94db047"
+  },
+  "NATURE_32F2CA87880A_MOBILE": {
+    "path": "nature/nature-32f2ca87880a-960.webp",
+    "sha256": "7f6007fe8cae20a9f00cf89e8b6ddc2d394948387614daf7d57ba1342f799a63"
+  },
+  "NATURE_32F2CA87880A_MOBILE_AVIF": {
+    "path": "nature/nature-32f2ca87880a-960.avif",
+    "sha256": "d29ac733df51f47a4af834ed111bac1e0fac8c865f4b7ecdc81a2e2676f7aadf"
+  },
+  "NATURE_32F2CA87880A_CSS": {
+    "path": "nature/nature-32f2ca87880a.css",
+    "sha256": "a5531678a74965c79d69452883f5b56c6253213c0b5e8c8b991188fe776b2cf7"
+  },
+  "NATURE_726BC10B1C65_DESKTOP": {
+    "path": "nature/nature-726bc10b1c65-1920.webp",
+    "sha256": "b95eb6e0934c09c8b40827bd11221e41e2f02da1dd83c553ce5c34ff6fa48678"
+  },
+  "NATURE_726BC10B1C65_DESKTOP_AVIF": {
+    "path": "nature/nature-726bc10b1c65-1920.avif",
+    "sha256": "a69b7159e4f9c82e6893aed5580cd8131f177eddc77af9f0ec7a68471fef342b"
+  },
+  "NATURE_726BC10B1C65_MOBILE": {
+    "path": "nature/nature-726bc10b1c65-960.webp",
+    "sha256": "0b761fe29db609d0447b935be70e0c61ae71e5235108db277733ce8faf6bb01e"
+  },
+  "NATURE_726BC10B1C65_MOBILE_AVIF": {
+    "path": "nature/nature-726bc10b1c65-960.avif",
+    "sha256": "3b36e3ff3c50059f4a9335eb67479722163d1f94c0a4ee3373329c89db8ed6d9"
+  },
+  "NATURE_726BC10B1C65_CSS": {
+    "path": "nature/nature-726bc10b1c65.css",
+    "sha256": "8d92064a39a69830ca6fcac3e2d2f2f51c1b491448fed122543f931e8a28bb38"
+  },
+  "NATURE_EE25596BFB12_DESKTOP": {
+    "path": "nature/nature-ee25596bfb12-1920.webp",
+    "sha256": "d6854309f429c3dca9055d7bb05ec264e29dab5cfe96cd77c41486144e1403d8"
+  },
+  "NATURE_EE25596BFB12_DESKTOP_AVIF": {
+    "path": "nature/nature-ee25596bfb12-1920.avif",
+    "sha256": "27e3ed7b613767fb7f68dee1810b176622a4b8012e58a2abfe2df6b3fc915ca2"
+  },
+  "NATURE_EE25596BFB12_MOBILE": {
+    "path": "nature/nature-ee25596bfb12-960.webp",
+    "sha256": "d38ce96adeb2494828b29b643d4a0c9a3087ad9065fbb9162d5fd2c48406bfff"
+  },
+  "NATURE_EE25596BFB12_MOBILE_AVIF": {
+    "path": "nature/nature-ee25596bfb12-960.avif",
+    "sha256": "3fb9d50d3346947fec761bb882f05b6403d298dc5329b6110cf8d99fbffb7620"
+  },
+  "NATURE_EE25596BFB12_CSS": {
+    "path": "nature/nature-ee25596bfb12.css",
+    "sha256": "53d2888a6fe9022fccff5ccaf6d487db7659d9f5c6841c485e5b7a8f1a76e4c8"
+  },
+  "NATURE_BA53505E8AE6_DESKTOP": {
+    "path": "nature/nature-ba53505e8ae6-1920.webp",
+    "sha256": "270b59cfbed94f6b86c4d0714d37b3b31d57079ed82f3c189bd6e78207905f65"
+  },
+  "NATURE_BA53505E8AE6_DESKTOP_AVIF": {
+    "path": "nature/nature-ba53505e8ae6-1920.avif",
+    "sha256": "ebb59e53f345970e32d56dfcad84ea6a94ce76c9a514221a446a3063b873aef6"
+  },
+  "NATURE_BA53505E8AE6_MOBILE": {
+    "path": "nature/nature-ba53505e8ae6-960.webp",
+    "sha256": "ebddacf4606aa1137e38dd67674cb63dba87636b0c9d61985c8a50f55161e0cb"
+  },
+  "NATURE_BA53505E8AE6_MOBILE_AVIF": {
+    "path": "nature/nature-ba53505e8ae6-960.avif",
+    "sha256": "4d6755393c9243076760b84dde4561193d8b762eda3eef74b9fee694b1cc9267"
+  },
+  "NATURE_BA53505E8AE6_CSS": {
+    "path": "nature/nature-ba53505e8ae6.css",
+    "sha256": "8c1902fa9c16d73ee73eb77f294ead5bc1f13a0279086256cde248b3a41fc487"
+  },
+  "NATURE_831A534A6D0B_DESKTOP": {
+    "path": "nature/nature-831a534a6d0b-1920.webp",
+    "sha256": "1cc9b029430f9e97fe82dcd52254e7aab4c24a9318642c62a5db2c6cb7def2a4"
+  },
+  "NATURE_831A534A6D0B_DESKTOP_AVIF": {
+    "path": "nature/nature-831a534a6d0b-1920.avif",
+    "sha256": "0b97fcca3ced76b3c8bca8acee79b30e10cc8b0bc926d0f8639ee2e1428b8f61"
+  },
+  "NATURE_831A534A6D0B_MOBILE": {
+    "path": "nature/nature-831a534a6d0b-960.webp",
+    "sha256": "5c20dc32c00a00c84243b60df95c3a4bc55e2dc20aa63a099bf763d9a54167ae"
+  },
+  "NATURE_831A534A6D0B_MOBILE_AVIF": {
+    "path": "nature/nature-831a534a6d0b-960.avif",
+    "sha256": "b7037d67286fd886a2738bd8c59effc4ee11d5afa4644f98cc270db2a6d889f1"
+  },
+  "NATURE_831A534A6D0B_CSS": {
+    "path": "nature/nature-831a534a6d0b.css",
+    "sha256": "ae11c9f4612f571989ef5d278244049b5d5b0dfdb21937facef87e0e773a02ed"
+  },
+  "NATURE_75028CAE5FA4_DESKTOP": {
+    "path": "nature/nature-75028cae5fa4-1920.webp",
+    "sha256": "ba7139dd4ef92f2972652e8c5ef6f2be1dc4381c73b167c4416ecbd61298cb90"
+  },
+  "NATURE_75028CAE5FA4_DESKTOP_AVIF": {
+    "path": "nature/nature-75028cae5fa4-1920.avif",
+    "sha256": "69cee0f83fd45a254f0622af54300ab100c949a243ee9d67371df81b933c75f1"
+  },
+  "NATURE_75028CAE5FA4_MOBILE": {
+    "path": "nature/nature-75028cae5fa4-960.webp",
+    "sha256": "7d6abca79d514082275884b9ab3b79016b724c0937e1b1ab3cefb4b0f0cdfdf0"
+  },
+  "NATURE_75028CAE5FA4_MOBILE_AVIF": {
+    "path": "nature/nature-75028cae5fa4-960.avif",
+    "sha256": "c9e523aec135f03b3e3bf8b54194f430880514d69c34f19467e4477f4542496a"
+  },
+  "NATURE_75028CAE5FA4_CSS": {
+    "path": "nature/nature-75028cae5fa4.css",
+    "sha256": "1a088c2ffe317bfd9617c592444fa244b3043ab9661e66ff82ce858189187210"
+  },
+  "NATURE_6DEE25ED7B00_DESKTOP": {
+    "path": "nature/nature-6dee25ed7b00-1920.webp",
+    "sha256": "275cd9962dc1fb5662d497eec8aff00c96c6e9d9854867a2a7fc7a95fa34a901"
+  },
+  "NATURE_6DEE25ED7B00_DESKTOP_AVIF": {
+    "path": "nature/nature-6dee25ed7b00-1920.avif",
+    "sha256": "929bcb2b660ff04887c8d3bb571ed5cafe8c870e12002500518c25c119784123"
+  },
+  "NATURE_6DEE25ED7B00_MOBILE": {
+    "path": "nature/nature-6dee25ed7b00-960.webp",
+    "sha256": "691846d57f1b6954caafa7b49c496e9870ec420cdecc84ac78c71c20ff4d246b"
+  },
+  "NATURE_6DEE25ED7B00_MOBILE_AVIF": {
+    "path": "nature/nature-6dee25ed7b00-960.avif",
+    "sha256": "0fda70730db1e56861eb41298c739e4b0dee3e15f6093ba067bcc1d3d6f76262"
+  },
+  "NATURE_6DEE25ED7B00_CSS": {
+    "path": "nature/nature-6dee25ed7b00.css",
+    "sha256": "897bcd8857274b0a109626be62fb952384008c125226d22a507bb8fdf2f7bb38"
+  },
+  "NATURE_1415011F0EB3_DESKTOP": {
+    "path": "nature/nature-1415011f0eb3-1920.webp",
+    "sha256": "845c1039f94833ba5500869ccfca652e60d809eb95859414661523801fb13f8f"
+  },
+  "NATURE_1415011F0EB3_DESKTOP_AVIF": {
+    "path": "nature/nature-1415011f0eb3-1920.avif",
+    "sha256": "c784677029239655d20d5836ac533cf1307ad787dfaa0a9e94a194d10aeb7d46"
+  },
+  "NATURE_1415011F0EB3_MOBILE": {
+    "path": "nature/nature-1415011f0eb3-960.webp",
+    "sha256": "140743d74063bc7cf1673358b0c728433e23f7d4dd898d0e4b410d8eca30ad76"
+  },
+  "NATURE_1415011F0EB3_MOBILE_AVIF": {
+    "path": "nature/nature-1415011f0eb3-960.avif",
+    "sha256": "f570d2857344cdb6040d61ec17508eab4e8c80ff2b80298cde57008863517000"
+  },
+  "NATURE_1415011F0EB3_CSS": {
+    "path": "nature/nature-1415011f0eb3.css",
+    "sha256": "56f3c398a8977f5e9fbe5cf246735d6740e0e3742cb0350de89392411109dca1"
+  },
+  "NATURE_F5F1AFB983FB_DESKTOP": {
+    "path": "nature/nature-f5f1afb983fb-1920.webp",
+    "sha256": "43d25af06489373940b63189bbbdf216f57600c1efcf3a95afee7759913da3ba"
+  },
+  "NATURE_F5F1AFB983FB_DESKTOP_AVIF": {
+    "path": "nature/nature-f5f1afb983fb-1920.avif",
+    "sha256": "e04a1bbad9a4ad6460c88504e6bc3682dbbbaf36b6fa9f12c7891b7c42a45737"
+  },
+  "NATURE_F5F1AFB983FB_MOBILE": {
+    "path": "nature/nature-f5f1afb983fb-960.webp",
+    "sha256": "8b3dbb6f2716d66d446f96c1d43a9e974c3a1e1e40696797b4ef84026b4bace3"
+  },
+  "NATURE_F5F1AFB983FB_MOBILE_AVIF": {
+    "path": "nature/nature-f5f1afb983fb-960.avif",
+    "sha256": "ccf5b4936ed0a16aeea1fe435474b6f8f789a3989edc543e3a0aaff83c1ee09f"
+  },
+  "NATURE_F5F1AFB983FB_CSS": {
+    "path": "nature/nature-f5f1afb983fb.css",
+    "sha256": "8a6b2e494d791bc2390bb0e086be86b59043e0010db24900695bab348790c621"
+  },
+  "NATURE_13AFB1543532_DESKTOP": {
+    "path": "nature/nature-13afb1543532-1920.webp",
+    "sha256": "f36fb41fc18dac15d0021e4b345fb6edf08cbc27aef1596ca390db1dae107bbc"
+  },
+  "NATURE_13AFB1543532_DESKTOP_AVIF": {
+    "path": "nature/nature-13afb1543532-1920.avif",
+    "sha256": "79acc662aaddade8a7166cb0711e7a70c2c275163ee6c88aac1bf96640443669"
+  },
+  "NATURE_13AFB1543532_MOBILE": {
+    "path": "nature/nature-13afb1543532-960.webp",
+    "sha256": "b946665f4317b97ccc1235dc71c7166fadf9d105b98e93ac975c4b933465d8fa"
+  },
+  "NATURE_13AFB1543532_MOBILE_AVIF": {
+    "path": "nature/nature-13afb1543532-960.avif",
+    "sha256": "ad8d39e5cf9067c2dd44e3ba6131256d1d4a6b5024346b0f55c36ff8b7866560"
+  },
+  "NATURE_13AFB1543532_CSS": {
+    "path": "nature/nature-13afb1543532.css",
+    "sha256": "efdc106eae15e83772af9899205aabfbc0f9e57a5a2e24fe7c240a68eb3d7015"
+  },
+  "NATURE_B33A636B2F6B_DESKTOP": {
+    "path": "nature/nature-b33a636b2f6b-1920.webp",
+    "sha256": "96c0510f072db8645a552f9261f8dcfd2a999f512d7288a9a979d98733ab24f9"
+  },
+  "NATURE_B33A636B2F6B_DESKTOP_AVIF": {
+    "path": "nature/nature-b33a636b2f6b-1920.avif",
+    "sha256": "95d70408174fe789d68f4c1cca66a99544f59752e77411500c2011ec929b4239"
+  },
+  "NATURE_B33A636B2F6B_MOBILE": {
+    "path": "nature/nature-b33a636b2f6b-960.webp",
+    "sha256": "b5da86b66b4516d0cc8be8088a056626aa9d8b1759f96c2075a2b5164a89db6b"
+  },
+  "NATURE_B33A636B2F6B_MOBILE_AVIF": {
+    "path": "nature/nature-b33a636b2f6b-960.avif",
+    "sha256": "23555816d110f37b33e0fc54aad5ab105c930ba4f62aad635fd533552365c128"
+  },
+  "NATURE_B33A636B2F6B_CSS": {
+    "path": "nature/nature-b33a636b2f6b.css",
+    "sha256": "cd8676a83879163480c20870cf30ec989e99b4b059f6ece5e298f7fc1838ee9a"
+  },
+  "NATURE_26DDBE9DBA85_DESKTOP": {
+    "path": "nature/nature-26ddbe9dba85-1920.webp",
+    "sha256": "e57a4f9a7f855fb33dbff119f4494bc8c7668100a933787c1f80bd6afdf88db1"
+  },
+  "NATURE_26DDBE9DBA85_DESKTOP_AVIF": {
+    "path": "nature/nature-26ddbe9dba85-1920.avif",
+    "sha256": "7bacf4ada488c66a63a550311e23d1dfcfe2eb8a9bce7c828a9bfa664dcc8841"
+  },
+  "NATURE_26DDBE9DBA85_MOBILE": {
+    "path": "nature/nature-26ddbe9dba85-960.webp",
+    "sha256": "25a1f68763ff881619fb1a105dde2796bf71091820097000f4d37f224582a534"
+  },
+  "NATURE_26DDBE9DBA85_MOBILE_AVIF": {
+    "path": "nature/nature-26ddbe9dba85-960.avif",
+    "sha256": "817623bee8647ac818d52c6a39422d1fc060ef005fe030d235dee162bc38ec96"
+  },
+  "NATURE_26DDBE9DBA85_CSS": {
+    "path": "nature/nature-26ddbe9dba85.css",
+    "sha256": "e2f0ffe2922aad5758d3fcd49bd4176f66d5d55f8f6afb6c80b74c374dada1fd"
+  },
+  "NATURE_FFA6C75646B0_DESKTOP": {
+    "path": "nature/nature-ffa6c75646b0-1920.webp",
+    "sha256": "8144464a18d1f14770ea267b9be538c954cfefec2ea948c37ad11a2b9d73698b"
+  },
+  "NATURE_FFA6C75646B0_DESKTOP_AVIF": {
+    "path": "nature/nature-ffa6c75646b0-1920.avif",
+    "sha256": "da4761160593792d695c116ad74ce63ff1c606f0e1e11abf7966b540da66c2bf"
+  },
+  "NATURE_FFA6C75646B0_MOBILE": {
+    "path": "nature/nature-ffa6c75646b0-960.webp",
+    "sha256": "2a975f3b1851928fa26f76e986de00103a1adc3aef3d51404338a2bc68596af9"
+  },
+  "NATURE_FFA6C75646B0_MOBILE_AVIF": {
+    "path": "nature/nature-ffa6c75646b0-960.avif",
+    "sha256": "c2cf4f1f5abeaf4284d90c46a389653e5348ebe3dc1afb3cdd4dcecb1a6c9c4b"
+  },
+  "NATURE_FFA6C75646B0_CSS": {
+    "path": "nature/nature-ffa6c75646b0.css",
+    "sha256": "daad1fe1c7b1a022fc303a569e0933433cfa7c9b8d47ba3a6d91a63a868ea290"
+  },
+  "NATURE_7F9527E12857_DESKTOP": {
+    "path": "nature/nature-7f9527e12857-1920.webp",
+    "sha256": "fae2c824f03b0219571a31be8a19406b607fd3ec8cddf3408678705b671da85b"
+  },
+  "NATURE_7F9527E12857_DESKTOP_AVIF": {
+    "path": "nature/nature-7f9527e12857-1920.avif",
+    "sha256": "9ffc5b9354b39ffd0a9a0b5a07c90eea1aaf3a06d150a8f7fbbe4554d76a09ac"
+  },
+  "NATURE_7F9527E12857_MOBILE": {
+    "path": "nature/nature-7f9527e12857-960.webp",
+    "sha256": "83b4d9d2a04b61290feebdb39d7b4a0aca2f7974b408fa1d91cbc85018f62e58"
+  },
+  "NATURE_7F9527E12857_MOBILE_AVIF": {
+    "path": "nature/nature-7f9527e12857-960.avif",
+    "sha256": "1a4b0ae3bd45b4d8b0cbe0a8c053fe80c0a9c83d245793bdb15d37af2b39ad35"
+  },
+  "NATURE_7F9527E12857_CSS": {
+    "path": "nature/nature-7f9527e12857.css",
+    "sha256": "f2f568b23caa7ee6be3a722b4b3c8b0ba8536fa237349491d9f3e29ea3e51dde"
   }
 }

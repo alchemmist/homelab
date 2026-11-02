@@ -35,7 +35,7 @@ Implemented through a domain-specific Brand, native presentation settings and a 
 - [ ] Native JSON syntax highlighting and Copy equivalent to Wiki. Current native JSON gets the Wiki code font/surface, but remains plain JSON; CSS cannot tokenize text or add functioning Copy controls. Needs separately reviewed component work if still desired.
 - [ ] Exact wording/glyph parity: native `Log in`, `Email or Username`, password placeholder, native locale/eye glyphs and recovery controls are retained rather than hidden/replaced with inaccessible CSS text.
 - [ ] Native inspector toggle/close/Escape and responsive history acceptance by the real owner; no access-control bypass was added to test it anonymously.
-- [ ] Random photo collection/selection. Production uses the approved sample lake photo; the owner's final collection is not yet supplied.
+- [x] Owner Nature collection: all 30 dotfiles photos, desktop/mobile WebP, server-side random selection without new JS/cookies; both-edge 1440/390 checks and stable loaded page passed. Frozen reference retained.
 
 ## Scope and rollout boundaries
 
@@ -102,3 +102,30 @@ API remains denied to the anonymous probe. Actual magnifier visual inspection
 found no distortion or CSP image-policy violation. No owner session was acquired
 or permissions granted for those checks. Owner separately confirmed real LiteLLM
 SSO success; this does not assert an owner recovery-password test.
+
+
+## Nature performance revision — 2026-11-02
+
+Both public edges (109.173.40.247 and 176.98.185.59), desktop1440/mobile390:
+exactly one reviewed no-store scene stylesheet and one HQ AVIF; inline same-photo
+preview; no desktop image on mobile; pinned response hashes; immutable HQ and
+browser-cache reuse with transferSize=0; native login visible, zero JS errors,
+no timed photo changes. Sampling returned 12/12 and 10/12 distinct scenes;
+POST403 and pinned WebP compatibility fallback passed. Full collection has
+30 photos, 120 HQ derivatives and 30 scene stylesheets; original reference untouched.
+
+Median AVIF sizes: desktop 78,403B, mobile 22,623B. Preview124–300B; scene CSS
+max2,481B. In a deliberately delayed HQ test (5 seconds), native login was usable
+with the correct preview before HQ completion; actual anonymous screenshots were
+visually reviewed. This is not a global network latency/SLA or owner MFA claim.
+
+One cold probe: scene CSS completed at659ms, first paint712ms, HQ completed918ms;
+other both-edge samples took119–287ms for HQ transfer after request start. Timings
+are samples, not a claim every original/optimized random photo is comparable.
+
+API before/after comparison: only Brand CSS/default background changed, not
+providers, policy bindings or authenticator validation. IdP and shared ingress
+were not restarted. Several static-only rollouts were used while refining the
+single-background approach. Empty native background was rejected by the API
+(and safely rolled back); a checksum-pinned transparent SVG is used instead.
+Read-only native control tests also passed. No new authentication JavaScript.

@@ -24,12 +24,42 @@
         state: directory
         mode: '0700'
 
-    - name: Copy approved reference, checksums and native CSS
-      ansible.builtin.copy:
-        src: '{{ playbook_dir }}/../../deploy/authentik/quiet-mono/'
-        dest: '{{ authentik_directory }}/quiet-mono/'
-        mode: '0600'
-        directory_mode: '0700'
+    # One archive transfer avoids per-file SSH/stat roundtrips for the photo set.
+    - name: Transfer the reviewed public theme bundle in one operation
+      block:
+        - name: Allocate local theme archive
+          ansible.builtin.tempfile:
+            state: file
+            suffix: .tar
+          delegate_to: localhost
+          register: authentik_theme_archive
+
+        - name: Pack only the reviewed theme source directory
+          ansible.builtin.command:
+            argv:
+              - tar
+              - -cf
+              - '{{ authentik_theme_archive.path }}'
+              - -C
+              - '{{ playbook_dir }}/../../deploy/authentik/quiet-mono'
+              - .
+          environment:
+            COPYFILE_DISABLE: '1'
+          delegate_to: localhost
+          changed_when: false
+
+        - name: Unpack theme assets with owner-only permissions
+          ansible.builtin.unarchive:
+            src: '{{ authentik_theme_archive.path }}'
+            dest: '{{ authentik_directory }}/quiet-mono/'
+            mode: 'u=rwX,go='
+      always:
+        - name: Remove only the generated local transfer archive
+          ansible.builtin.file:
+            path: '{{ authentik_theme_archive.path }}'
+            state: absent
+          delegate_to: localhost
+          when: authentik_theme_archive is defined and authentik_theme_archive.path is defined
 
     - name: Copy narrow reconciliation tools
       ansible.builtin.copy:
@@ -39,17 +69,18 @@
       loop: [branding.py, branding_static.py, flow_titles.py]
 
     - name: Render the static-only resource bundle
-      ansible.builtin.command:
-        argv: [python3, '{{ authentik_directory }}/branding_static.py', '{{ authentik_directory }}/quiet-mono']
-      register: authentik_static_bundle
+      ansible.builtin.shell:
+        cmd: >-
+          umask 077; python3 {{ (authentik_directory + '/branding_static.py') | quote }}
+          {{ (authentik_directory + '/quiet-mono') | quote }}
+          > {{ (authentik_directory + '/quiet-mono-static.yaml') | quote }}
       changed_when: false
       no_log: true
       when: authentik_branding_action != 'rollback'
 
     - name: Apply isolated static assets with server-side apply (no large last-applied annotation)
       ansible.builtin.command:
-        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, apply, --server-side, --field-manager=quiet-mono-brand, -f, '-']
-        stdin: '{{ authentik_static_bundle.stdout }}'
+        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, apply, --server-side, --field-manager=quiet-mono-brand, -f, '{{ authentik_directory }}/quiet-mono-static.yaml']
       changed_when: false
       no_log: true
       when: authentik_branding_action != 'rollback'

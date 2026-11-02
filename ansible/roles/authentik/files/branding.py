@@ -101,6 +101,22 @@ def main():
             if hashlib.sha256(response.read()).hexdigest() != digest:
                 raise RuntimeError('Public static asset verification failed: ' + key)
         urls[key] = url
+    if (args.theme / 'nature.json').exists():
+        for variant in ['desktop', 'mobile']:
+            url = BASE + '/-/quiet-mono/v1/nature/' + variant
+            with urllib.request.urlopen(url, timeout=60) as response:
+                digest = hashlib.sha256(response.read()).hexdigest()
+                allowed = {assets[p[variant]]['sha256'] for p in json.loads((args.theme / 'nature.json').read_text())['photos']}
+                if digest not in allowed or 'immutable' not in response.headers.get('Cache-Control', ''):
+                    raise RuntimeError('Random Nature response failed verification')
+            urls['NATURE_RANDOM_' + variant.upper()] = url
+    if (args.theme / 'nature.json').exists():
+        scene_url = BASE + '/-/quiet-mono/v1/nature/scene.css'
+        with urllib.request.urlopen(scene_url,timeout=60) as response:
+            allowed_css={assets[p['sceneCss']]['sha256'] for p in json.loads((args.theme/'nature.json').read_text())['photos']}
+            if hashlib.sha256(response.read()).hexdigest() not in allowed_css or response.headers.get('Cache-Control')!='no-store':
+                raise RuntimeError('Random scene CSS verification failed')
+        urls['NATURE_SCENE']=scene_url
     css = (args.theme / 'theme.css').read_text()
     for key, url in urls.items():
         css = css.replace('__ASSET_' + key + '__', url)
@@ -137,7 +153,7 @@ def main():
     attributes['settings'] = {**attributes.get('settings', {}), 'locale': 'en', 'theme': 'light'}
     payload.update(domain=HOST, default=False, branding_title='Socrat',
         branding_logo=urls['MASK'], branding_favicon=urls['FAVICON'],
-        branding_default_flow_background=urls['LAKE'], branding_custom_css=css,
+        branding_default_flow_background=urls['CLEAR_BACKGROUND'] if 'NATURE_RANDOM_DESKTOP' in urls else urls['LAKE'], branding_custom_css=css,
         attributes=attributes)
     if current and all(current.get(key) == value for key, value in payload.items()) and flow['title'] == 'Sign in' and ident.get('password_stage') == password['pk'] and password.get('allow_show_password'):
         print('Quiet Mono Brand already reconciled; no changes')

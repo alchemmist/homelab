@@ -7,9 +7,9 @@ Production target: **Authentik 2026.8.5**, **https://auth.socrat.alchemmist.xyz/
 ## Implementation
 
 - `theme.css`: native Brand CSS, injected through Authentik's own mechanism. Uses supported drawer parts plus version-specific shadow-root selectors. The latter must be reviewed on upgrade; reconciliation refuses an unreviewed version.
-- `assets.json`: seven checksum-pinned public images/fonts from the approved reference. No session data or credentials.
+- `assets.json`: 67 checksum-pinned assets: seven reference images/fonts and 60 Nature WebP derivatives. No session data or credentials.
 - `static-image.json`: digest-pinned non-root nginx image provenance.
-- `ansible/roles/authentik/files/branding_static.py`: deterministic ConfigMap/Deployment/Service/Ingress renderer. CLI emits separate YAML documents (JSON is a YAML subset), preserving kubectl Strict OpenAPI-v3 validation instead of a `List` wrapper's OpenAPI-v2 fallback. Use server-side apply: client-side last-applied annotations exceed the annotation-size limit for this asset bundle.
+- `ansible/roles/authentik/files/branding_static.py`: deterministic sharded immutable ConfigMap/Deployment/Service/Ingress renderer. CLI emits separate YAML documents (JSON is a YAML subset), preserving kubectl Strict OpenAPI-v3 validation instead of a `List` wrapper's OpenAPI-v2 fallback. Use server-side apply: client-side last-applied annotations exceed the annotation-size limit for this asset bundle.
 - `ansible/roles/authentik/files/branding.py`: prepare/apply/rollback with asset digest checks over verified HTTPS, domain-specific Brand, protected pre-change backups and identity guards. Native combined identification/password and eye settings are the only stage presentation changes.
 - `ansible/playbooks/authentik-branding.yml`: explicit separate rollout, defaulting to `prepare`. It does not restart/upgrade Authentik, alter DNS/WireGuard or modify application OIDC providers.
 
@@ -94,3 +94,51 @@ Read-only live control/layout check, no identity fixtures or owner session:
 `python3 scripts/identity-branding-controls-check.py --run` (also supports
 `--public-edge 176.98.185.59`). This is a native-component CSS test with a local-only
 blocked redirect challenge, not an authenticated flow acceptance test.
+
+
+## Owner Nature collection (2026-11-01)
+
+All 30 photos from `dotfiles/wallpapers/nature/images` are retained, without
+modifying dotfiles or the frozen reference. `nature.json` records source hashes,
+Pillow/libwebp/libavif versions and derivative budgets. Build with Pillow AVIF support:
+
+```sh
+python3 scripts/build-authentik-nature.py --source ~/code/dotfiles
+```
+
+Current rendering (performance revision):
+
+- An early CSS `@import` fetches `/-/quiet-mono/v1/nature/scene.css` (no-store).
+  nginx split_clients/request_id picks one reviewed scene, not an identity/IP.
+- Its tiny inline WebP preview is of **that same photo** (124–300 bytes decoded).
+  A layered `body::before` paints it while the HQ image loads; no separate preview
+  request, timer, authentication JS, image load gate, cookie or external CDN.
+- CSS `image-set` chooses AVIF, falling back to WebP on unsupported browsers.
+  Desktop <=1920, mobile <=960. Mobile downloads only its own size. Breakpoint
+  changes retain the same scene. The late native drawer is transparent.
+- 60 AVIF derivatives total 3,395,360 bytes; original 60 WebP fallback derivatives
+  remain 7,892,292 bytes. Median desktop AVIF 78,403 bytes vs WebP 159,250;
+  median mobile AVIF 22,623 vs WebP 49,560. No resolution reduction was needed.
+- HQ URLs are SHA-pinned and immutable (one-year browser cache). The stylesheet
+  remains no-store for fresh document selection. Repeats are legitimate, no slideshow.
+- Authentik's native default-background prefetch points to a 62-byte transparent
+  immutable SVG, not a second full random photograph. This avoids double downloads
+  and an unrelated background flashing behind the drawer. A network failure can
+  still show the conservative fallback; zero latency before the first response is
+  not promised. Native login never waits for HQ completion.
+- Compatibility `/nature/desktop` and `/mobile` now return no-store **relative 302**
+  to a reviewed immutable AVIF/WebP, negotiated with Vary: Accept. They do not drive
+  current page rendering. All exact selectors and public assets are GET/HEAD only.
+
+The 16MB total budget is split into <=650000-byte decoded ConfigMap shards,
+projected read-only into nginx. Each serialized object is tested <950000 bytes.
+The playbook bulk-transfers an owner-only source archive, cleans up its local temp
+archive and applies a protected remote resource file to avoid huge module payloads.
+Full repeat apply passed; Brand was already reconciled (temporary archive and
+source unpack tasks can report changed). No IdP/shared-ingress restart.
+
+Read-only acceptance, both edges by default:
+`python3 scripts/identity-nature-smoke.py --run` (Playwright/Chromium required).
+See [Russian operator details](../../../llm-wiki/identity-frontend.md#14-случайные-фоны-из-dotfiles-nature).
+For lake-only rollback use the guarded **immediately pre-Nature** backup from the
+private Brand journal, not the original baseline that undoes the entire theme.
