@@ -1,4 +1,4 @@
 image:
   repository: ghcr.io/alchemmist/yandex-voice
-  tag: v0.1.2
-  digest: sha256:29e598ce6bb9a26292cbe09caf73dfcb388bac1734f8a9cd8fa0b53e25373e3a
+  tag: 5fb58dc4abdfd1335d6964fe901180da8b2e2859
+  digest: sha256:a79371d8688d036c5a5757ef7704868c068a98e432eec179203b74c0269ebd19
