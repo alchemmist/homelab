@@ -267,3 +267,19 @@ account/key writes; competing writers и crash/stale-lock recovery. Также �
 реально запущенный sshd command line, fresh login с разных client addresses,
 уже установленные sessions/forwards, недоступный host и повтор partial apply.
 Эти действия здесь не выполнялись. Без них нельзя объявлять revocation работающим.
+
+### Ограниченный синтаксис OpenSSH Include
+
+Импорт намеренно принимает только простые `Include` paths/globs из букв, цифр,
+`_ . / - * ? [ ]`, без кавычек, escape-последовательностей, `#`, `~` и `%`.
+Комментарии поддерживаются отдельными строками. Остальные формы могут быть
+валидными для OpenSSH, но importer останавливается до изменения accounts/keys:
+он не должен интерпретировать конфигурацию иначе, чем sshd. Любой `Match`
+в основном или включённом файле остаётся блокирующим условием. Не упрощать
+рабочую SSH-политику ради прохождения importer; использовать существующий
+reviewed manual Ansible path либо отдельно расширять verifier с реальными
+OpenSSH regression tests.
+
+Регрессия использует настоящий `sshd -T` и `-T -C` с временным host key:
+Include filename с буквальным `#` может скрыть `Match` от shell-парсера, но
+теперь отвергается preflight. Это offline test, не приёмка SSH на нодах.

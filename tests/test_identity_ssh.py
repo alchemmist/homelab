@@ -327,6 +327,43 @@ class HostBindingTests(unittest.TestCase):
                     patch.object(Path, 'is_symlink', return_value=True), self.assertRaisesRegex(ValueError, 'Symlink'):
                 self.real_location('guest', config)
 
+    @unittest.skipUnless(shutil.which('sshd'), 'actual OpenSSH sshd required')
+    def test_real_openssh_hash_include_cannot_hide_match(self):
+        # Real daemon parsing demonstrates why shell comments are not adequate.
+        with tempfile.TemporaryDirectory() as d:
+            directory = Path(d)
+            key = directory / 'host_key'
+            subprocess.run(['ssh-keygen', '-q', '-t', 'ed25519', '-N', '', '-f', str(key)],
+                           check=True, capture_output=True)
+            included = directory / 'extra#context.conf'
+            included.write_text('Match User guest\n AuthorizedKeysFile /srv/old/%u.keys\n')
+            config = directory / 'sshd_config'
+            prefix = 'HostKey ' + str(key) + '\nAuthorizedKeysFile .ssh/authorized_keys\n'
+            config.write_text(prefix + 'Include ' + str(included) + '\n')
+            command = [shutil.which('sshd'), '-T', '-f', str(config)]
+            normal = subprocess.run(command, capture_output=True, text=True, check=True).stdout
+            matched = subprocess.run(command + ['-C', 'user=guest,host=localhost,addr=127.0.0.1'],
+                                     capture_output=True, text=True, check=True).stdout
+            self.assertIn('authorizedkeysfile .ssh/authorized_keys\n', normal)
+            self.assertIn('authorizedkeysfile /srv/old/%u.keys\n', matched)
+            with self.assertRaisesRegex(ValueError, 'Unsupported SSH Include'):
+                self.host.reject_contextual_config(config)
+            # Quoted hash, escaped hash and trailing-comment variants are also
+            # outside our documented strict subset, never silently truncated.
+            for argument in ['"' + str(included) + '"', str(included).replace('#', '\\#'),
+                             str(directory / 'plain.conf') + ' # comment']:
+                config.write_text(prefix + 'Include ' + argument + '\n')
+                with self.subTest(argument=argument), self.assertRaises(ValueError):
+                    self.host.reject_contextual_config(config)
+            plain = directory / 'plain.conf'
+            plain.write_text('# supported full-line comment\nPasswordAuthentication no\n')
+            config.write_text(prefix + 'Include=' + str(plain) + '\n')
+            self.host.reject_contextual_config(config)
+            subprocess.run(command, capture_output=True, check=True)
+            plain.write_text('Match User guest\n AuthorizedKeysFile /srv/old/%u.keys\n')
+            with self.assertRaisesRegex(ValueError, 'Contextual'):
+                self.host.reject_contextual_config(config)
+
     def test_exact_fingerprints_rotation_and_disabled_zero_keys(self):
         from types import SimpleNamespace
         _, expected = ssh.public_keys([KEY])

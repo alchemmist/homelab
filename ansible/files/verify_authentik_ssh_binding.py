@@ -10,7 +10,6 @@ import os
 from pathlib import Path
 import pwd
 import re
-import shlex
 import shutil
 import stat
 import subprocess
@@ -33,17 +32,25 @@ def reject_contextual_config(path=CONFIG, seen=None):
         raise ValueError('Recursive/oversized SSH configuration unsupported')
     seen.add(path)
     for line in path.read_text().splitlines():
-        # OpenSSH accepts Keyword=value as well as Keyword value.
-        line = re.sub(r'^(\s*[A-Za-z]+)\s*=\s*', r'\1 ', line)
-        words = shlex.split(line, comments=True)
-        if not words:
+        # Deliberately accept a strict subset rather than emulate OpenSSH with
+        # shell tokenization: an unquoted # may be literal in an Include path.
+        stripped = line.strip()
+        if not stripped or stripped.startswith('#'):
             continue
-        if words[0].lower() == 'match':
+        directive = re.fullmatch(r'([A-Za-z][A-Za-z0-9]*)(?:\s*=\s*|\s+)(.*)', stripped)
+        if directive is None:
+            raise ValueError('Unsupported SSH directive syntax')
+        keyword, arguments = directive.groups()
+        if keyword.lower() == 'match':
             raise ValueError('Contextual SSH configuration unsupported')
-        if words[0].lower() == 'include':
-            if len(words) < 2:
-                raise ValueError('Incomplete SSH Include')
-            for pattern in words[1:]:
+        if keyword.lower() == 'include':
+            # No quotes, escapes, hash, tilde, percent expansions or comments.
+            # Administrators may use those with sshd, but this importer refuses
+            # them instead of possibly checking a different effective key file.
+            patterns = arguments.split()
+            if not patterns or any(not re.fullmatch(r'[A-Za-z0-9_./*?\[\]-]+', p) for p in patterns):
+                raise ValueError('Unsupported SSH Include syntax')
+            for pattern in patterns:
                 if not pattern.startswith('/'):
                     pattern = '/etc/ssh/' + pattern
                 for included in sorted(glob.glob(pattern)):
