@@ -32,7 +32,8 @@ EDGE = 'netbird-edge'
 GRPC_PREFIXES = ('/management.ManagementService/', '/signalexchange.SignalExchange/')
 WS_PATHS = ('/ws-proxy/management', '/ws-proxy/signal', '/relay')
 # Unauthenticated on the server. Public edge must not be able to claim the instance.
-DENY_PREFIXES = ('/api/setup', '/api/users/invites')
+DENY_PREFIXES = ('/api/setup', '/api/users/invites', '/oauth2/auth/local',
+                 '/oauth2/register', '/oauth2/signup')
 STUN_PORT = 3478
 HEALTH_PORT = 9000
 
@@ -337,7 +338,7 @@ def forwarder_files(c):
     static = {
         'entryPoints': {
             'web': {'address': ':8080', 'transport': {'respondingTimeouts': {'readTimeout': '0s'}}},
-            'h2c': {'address': ':8082', 'http2': {},
+            'h2c': {'address': ':8082',
                     'transport': {'respondingTimeouts': {'readTimeout': '0s'}}},
             'ping': {'address': ':8081'}},
         'providers': {'file': {'filename': '/etc/traefik/dynamic.yaml'}},
