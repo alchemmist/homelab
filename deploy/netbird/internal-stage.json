@@ -1,0 +1,45 @@
+{
+  "observed_at": "2026-11-02",
+  "stage": "internal",
+  "namespace": "netbird-pilot",
+  "node": "socrat-0",
+  "external_exposure": false,
+  "services": [],
+  "ingresses": [],
+  "peers_enrolled": false,
+  "setup_keys_created": false,
+  "setup_required": true,
+  "authentik_writes": false,
+  "store_db_edited": false,
+  "wireguard_changed": false,
+  "server_image": "netbirdio/netbird-server:0.82.0@sha256:7b5b53b2dc8bc25639f791cf72d47cf86911894ff3f8a97cb79bab9be958109c",
+  "resources": {
+    "Namespace/netbird-pilot": "0933b181-1409-4394-a2c6-87d90cb97949",
+    "PersistentVolumeClaim/server-data": "735b3d61-3618-43c5-a41f-25bfe19a9b0b",
+    "Secret/netbird-runtime": "046b8d28-c0b2-4f13-9bce-a5d262c06848",
+    "Deployment/server": "5acdd79c-9e12-48cd-86cb-9fa924212509",
+    "Deployment/dashboard": "899d82e6-46e0-4f96-850a-f75e3afdc2f9",
+    "NetworkPolicy/deny-cluster-signup": "fc669ae7-9166-465e-a6d5-7e5fe40404e2",
+    "Pod/server-559df5769-5jgsh": "525741ee-dd00-42fd-ac58-4a0f9192346b",
+    "Pod/dashboard-67bd8cfbc6-548r5": "e6d848a1-80ea-495c-a328-a5781cd036c6"
+  },
+  "pvc_phase": "Bound",
+  "readiness": {
+    "server_ready": false,
+    "server_restarts": 0,
+    "server_health_http": 503,
+    "server_health_status": "unhealthy",
+    "server_health_certificate_valid": false,
+    "server_health_listeners_empty": true,
+    "management_api_http": 200,
+    "dashboard_ready": true,
+    "dashboard_restarts": 0
+  },
+  "checks": {
+    "port_forward_api_instance": "200 setup_required true",
+    "port_forward_health": 503,
+    "other_pod_port_80": "connection refused",
+    "other_pod_port_9000": "open"
+  },
+  "acceptance_gate": "The personal owner has not logged in. Native owner transfer is PUT /api/users/{userId} after that exact Authentik subject already exists. This stage did not call it and did not edit store.db."
+}
