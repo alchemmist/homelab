@@ -7,16 +7,14 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
-  sources:
-    - repoURL: https://charts.goauthentik.io
-      chart: authentik
-      targetRevision: 2026.8.5
-      helm:
-        valueFiles:
-          - $values/deploy/platform/authentik/values.yaml
-    - repoURL: https://github.com/alchemmist/homelab.git
-      targetRevision: main
-      ref: values
+  source:
+    repoURL: https://github.com/alchemmist/homelab.git
+    targetRevision: main
+    path: charts/authentik
+    helm:
+      releaseName: authentik
+      valueFiles:
+        - ../../deploy/platform/authentik/values.yaml
   destination:
     namespace: identity
     server: https://kubernetes.default.svc
