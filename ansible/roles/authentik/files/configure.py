@@ -136,6 +136,10 @@ for slug,service in services.items():
         if service_mapping is None:continue
         if service.get('groupsScope'):
             service_mapping.append(groups_scope['pk'])
+        if slug=='grafana':
+            offline=next((x for x in scopes if x.get('scope_name')=='offline_access'), None)
+            if not offline:raise RuntimeError('offline_access scope missing')
+            service_mapping.append(offline['pk'])
         settings={'name':'homelab-'+slug,'client_type':'confidential',**clients[slug],
             'grant_types':['authorization_code','refresh_token'],
             'authentication_flow':flow['default-authentication-flow'],

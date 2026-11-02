@@ -23,7 +23,7 @@ class FakeAuthentik:
                 'default-authentication-flow','default-provider-authorization-explicit-consent',
                 'default-provider-invalidation-flow','default-provider-authorization-implicit-consent']],
             'crypto/certificatekeypairs/':[{'pk':'cert','name':'authentik Self-signed Certificate'}],
-            'propertymappings/provider/scope/':[{'pk':s,'scope_name':s} for s in ['openid','profile','email']]}
+            'propertymappings/provider/scope/':[{'pk':s,'scope_name':s} for s in ['openid','profile','email','offline_access']]}
         self.requests=[]
 
     def __call__(self,req,timeout=60):
@@ -73,6 +73,8 @@ class IdentityTests(unittest.TestCase):
             self.assertEqual(api.data['stages/authenticator/validate/'][0]['not_configured_action'],'configure')
             for provider in api.data['providers/oauth2/']:
                 self.assertEqual(provider['grant_types'],['authorization_code','refresh_token'])
+            grafana=next(p for p in api.data['providers/oauth2/'] if p['name']=='homelab-grafana')
+            self.assertIn('offline_access', grafana['property_mappings'])
             self.assertEqual(len(api.data['core/applications/']),8)
             self.assertEqual(len(api.data['policies/bindings/']),sum(len(service.get('groups',['homelab-owner'])) for slug,service in json.loads((root/'services.json').read_text()).items() if slug!='litellm'))
             for method,path,body,query in api.requests:
@@ -192,6 +194,9 @@ class RolloutRegressionTests(unittest.TestCase):
         self.assertEqual(env['GF_AUTH_GENERIC_OAUTH_ALLOW_ASSIGN_GRAFANA_ADMIN'],'true')
         self.assertEqual(env['GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH'],
             "contains(groups[*], 'homelab-owner') && 'GrafanaAdmin' || 'Viewer'")
+        self.assertIn('offline_access', env['GF_AUTH_GENERIC_OAUTH_SCOPES'].split())
+        self.assertEqual(env['GF_AUTH_GENERIC_OAUTH_USE_REFRESH_TOKEN'], 'true')
+        self.assertEqual(env['GF_AUTH_LOGIN_MAXIMUM_LIFETIME_DURATION'], '8h')
         webui=json.loads((ROOT/'deploy/identity/open-webui-env.json').read_text())
         self.assertEqual(webui['OAUTH_MERGE_ACCOUNTS_BY_EMAIL'],'False')
         self.assertEqual(webui['OAUTH_ADMIN_ROLES'],'homelab-owner')
