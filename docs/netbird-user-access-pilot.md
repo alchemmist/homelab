@@ -1,11 +1,15 @@
 # NetBird: пилот пользовательского доступа (не транспорт кластера)
 
-**Статус на 2026-11-02: исходники подготовлены; развёртывание BLOCKED.**
+**Статус на 2026-11-02: control plane можно планировать отдельно; apply и сеть BLOCKED.**
 Ни один NetBird-компонент не установлен, политики/IdP/DNS/маршруты не изменены.
-Это не отчёт об успешной production acceptance. Основа: чистый `f976677`.
-Нет Application в Argo CD, автоматической синхронизации, Ansible deployment playbook,
-API apply или автоматического создания пользователей. Скрипты компилируют локальные
-артефакты; `verify-images` читает только публичный registry.
+Это не отчёт об успешной production acceptance и не HA Management.
+Утверждённый FQDN `netbird.socrat.alchemmist.xyz` и Authentik OIDC записаны.
+DNS/TLS, нода, StorageClass, ingress scope и STUN не помечены выполненными.
+Кандидаты репозитория `ingressClass=traefik` и `storageClass=local-path` остаются `verified: false`.
+Пилот — только owner и tim. Новые машины не утверждены. Режим router на существующих нодах допустим только после явного review; размещение не выбрано и этот компилятор его не генерирует. Management планируется без routers.
+Нет Argo Application для NetBird и нет автоматической синхронизации.
+`ansible/playbooks/netbird-control-plane.yml` по умолчанию выполняет только `check` на localhost, без `become`.
+Он не входит в `site.yml` и не меняет WG, маршруты или K3s transport.
 
 ## Границы и архитектура
 
@@ -16,12 +20,13 @@ API apply или автоматического создания пользов�
 - Community combined server (Management + Signal + Relay + STUN) — **один экземпляр**,
   SQLite/PVC, `Recreate`, закрепление на выбранной ноде. Dashboard тоже один.
   Это SPOF; PVC local-path не превращается в HA при пересоздании pod.
-- **Ровно два routing peer на новых выделенных Linux VM/хостах**, не на socrat-0…3.
-  Host networking/NET_ADMIN/SYS_ADMIN/SYS_RESOURCE разрешены только внутри этих VM.
-  Интерфейс `nb-pilot0`, UDP 51840. Не устанавливать этот Compose на K3s-ноды!
+- **Ровно два routing peer.** Новые машины не утверждены. Peer на существующей ноде
+  `socrat-0`…`socrat-3` допустим только при `existing_node_router_mode_reviewed: true`.
+  Этот компилятор не пишет host-router unit и не вызывает `router_compose` для таких peer.
+  Не устанавливать routing-peer Compose на K3s-ноды. Placement в git не reviewed.
   Каждый peer должен самостоятельно достигать **каждого** выбранного backend.
-  Две VM на разных физических хостах одной LAN защищают от отказа VM/хоста,
-  но не от отказа домашнего роутера, питания, коммутатора или WAN.
+  Два peer на разных существующих нодах не доказаны как независимые failure domain:
+  отказ питания, коммутатора или WAN по-прежнему общий.
 - Используем **Networks**, не legacy Network Routes: deny по умолчанию, ресурсы
   только IPv4 `/32`, TCP 443 (web) и TCP 2222 (существующий OpenSSH).
   Отдельная destination group на каждый ресурс, source groups только из JWT.
@@ -67,6 +72,17 @@ ssh -o BatchMode=yes socrat-2-direct 'hostname; ip -4 route'
 `109.173.40.247` — override только для обследования SSH, не утверждение о новом DNS,
 Ingress или STUN endpoint. Существующий Authentik FQDN взят из repo values, доступность
 с внешнего клиента в этой работе не проверена.
+
+Повторный read-only SSH `socrat-2-direct` 2026-11-02, без sudo и без чтения секретов:
+
+- Процесс Traefik совпадает с чартом: ingress namespaces без NetBird, CRD только `argocd`,
+  label `homelab.alchemmist.xyz/edge-transport=argocd`, `allowcrossnamespace=false`,
+  `allowexternalnameservices=false`. UDP 443 занят HTTP/3.
+- UDP 3478 не слушается. Слушаются TCP 22, TCP 2222 и TCP 443; `sshd_config` содержит
+  `Port 22` и `Port 2222`. UDP 51830 — существующий WG и не меняется.
+- `kubectl` через `/etc/rancher/k3s/k3s.yaml` недоступен: файл root `0600`, `sudo -n`
+  требует пароль. Node Ready и live StorageClass этим заходом не прочитаны.
+  `local-path` остаётся только кандидатом из других манифестов репозитория.
 
 ## Release, security, license: официальные источники
 
@@ -124,39 +140,48 @@ Upstream installer использован только как reference, **не 
 `deploy/netbird/pilot.inputs.json` намеренно не deployable. Заполнить в отдельном
 reviewed локальном файле (не подставлять тестовые fixtures):
 
-1. `management_fqdn`: утверждённый публичный FQDN, A/AAAA, внешний TCP 443,
-   TLS secret/certificate (`tls_secret_name`, namespace `netbird-pilot`), renewal,
-   `ingress_class`, Traefik CRD/HTTP2 h2c/WebSocket forwarding. Не направлять неработающий AAAA.
-   **Repo `charts/traefik-edge/values.yaml` сейчас не watches `netbird-pilot`, а CRD
-   provider ограничен namespace `argocd` и edge-transport label selector.** Поэтому
-   отрендеренный IngressRoute сам по себе не создаёт публичный endpoint. Нужен отдельный
-   reviewed ingress plan: выделенный controller с точным namespace/class scope либо
-   узкое расширение текущего scope без отключения guardrails для остальных CRD.
-   Автоматическое изменение существующего edge в этот commit намеренно не включено.
-   Bootstrap Authentik и Management/Dashboard **доступен до установки VPN**.
-   Private-only Authentik/Management создаёт circular bootstrap и запрещён.
+1. `management_fqdn`: утверждён `netbird.socrat.alchemmist.xyz`. DNS, A/AAAA и внешний
+   TLS для этого имени ещё не проверены; `dns_tls_public_before_vpn` остаётся false.
+   TLS secret живёт в namespace `netbird-edge`, не рядом с runtime secret.
+   Живой Traefik на socrat-2 смотрит только уже перечисленные namespaces и CRD только
+   `argocd` с label `homelab.alchemmist.xyz/edge-transport=argocd`; cross-namespace и ExternalName
+   выключены. Поэтому control plane рендерит обычный Ingress в `netbird-edge` и
+   локальный forwarder на том же digest, что уже закреплён в `charts/traefik-edge`.
+   Forwarder сам ходит в ClusterIP `netbird-pilot` по DNS. Чарт не изменён:
+   Argo application `traefik-edge` имеет automated self-heal, а Role на watched namespace
+   читает Secrets. Добавление только `netbird-edge` в `watchNamespaces` описано в
+   `deploy/netbird/traefik-scope-delta.json` и не применено. `netbird-pilot` в watch не добавлять.
+   Пока этого нет, отрендеренный Ingress не создаёт публичный endpoint.
+   Bootstrap Authentik и Management/Dashboard должен быть доступен до VPN, но не через
+   публичный `/api/setup`. Private-only Authentik по-прежнему запрещён.
 2. `management_node`, `storage_class`: реальная нода, свободные CPU/RAM/disk,
-   storage locality, PVC backup/restore, release-compatible K3s/Traefik. `stun_node_port`:
-   свободный UDP NodePort, внешний UDP **3478 → выбранная нода:NodePort**, firewall/NAT,
-   сохранение mapping после restart, внешний STUN test. Другим нодам этот NodePort
-   не forward-ить: `externalTrafficPolicy=Local`.
+   storage locality, PVC backup/restore, release-compatible K3s/Traefik. Кандидат
+   `local-path` не подтверждён live API. `stun_node_port`: свободный UDP NodePort,
+   внешний UDP **3478 → выбранная нода:NodePort**, firewall/NAT, сохранение mapping
+   после restart, внешний STUN test. Upstream `autoConfigureClientSettings` объявляет
+   клиентам `stun:<fqdn>:3478`, а не номер NodePort. На socrat-2 UDP 3478 сейчас закрыт.
+   Другим нодам этот NodePort не forward-ить: `externalTrafficPolicy=Local`.
 3. `overlay_cidr`: отдельный IPv4 `/16…/24`; проверить все routes клиента, LAN,
    CGNAT, другие VPN, Docker, Kubernetes. Встроенный запрет известных CIDR — не полная
    inventory проверка. Настроить account range **до** enrollment любых peers.
-4. `routing_peers`: ровно два `{name, host, failure_domain, metric}`. Утвердить реальные
-   DNS/IP размещения, разные физические failure domains, recovery SSH/console, Linux
-   kernel/netfilter/TUN/Docker Compose, endpoint reachability, target SNAT/firewall,
-   независимый путь обоих peers. Не переносить эти функции на существующие узлы.
+4. `routing_peers`: ровно два `{name, host, failure_domain, metric}`. Размещение
+   **не выбрано**. Утвердить реальные DNS/IP, разные физические failure domains,
+   recovery SSH/console, Linux kernel/netfilter/TUN/Docker Compose, endpoint reachability,
+   target SNAT/firewall и независимый путь обоих peers. Не переносить эти функции на
+   существующие узлы. Control-plane `plan`/`apply` не рендерит Compose и не выдаёт сеть.
 5. `oidc_client_id`, подтверждённый `authentik_issuer` (предзаполнен только repo-based
    candidate slug), `login_group`; точные source group names, pilot users/devices,
    owner/break-glass custody. Клиентский secret и setup keys — **не входной JSON**.
-6. `resources`: `{name, kind, address, ports, source_group, dns_name}` для каждого
-   утверждённого private `/32`, web `[443]`, ssh `[2222]`. Список пока пуст:
-   **не выбраны приложения, backend IP/listeners, SSH hosts и их группы**.
-   Нужны DNS records/split-DNS и TLS/SNI для выбранных FQDN без public wildcard fallback.
-   IP должен быть достижим с обеих VM; не app/pod ephemeral IP. Общий ingress VIP
-   без отдельного сетевого барьера запрещён (см. выше).
-7. Все шесть `review` gates должны явно стать `true` после фактической проверки.
+6. `resources` намеренно пуст. Private Grafana и существующий OpenSSH socrat-2
+   утверждены как цель пилота, но не как deployable `/32`. Grafana — один virtual host
+   общего private frontend `:443` вместе с другими приложениями; общий IP:443 не является
+   границей. OpenSSH socrat-2 уже слушает публичные `:22` и `:2222`; адрес `10.250.0.2`
+   принадлежит mesh и не используется как pilot destination. Отдельный listener/firewall
+   нужен до любой allow policy.
+7. Все review gates, включая `ingress_scope_reviewed`, `storage_locality_reviewed` и
+   `management_node_reviewed`, должны явно стать `true` только после фактической проверки.
+   Control-plane apply требует пять control-plane gates и не требует router gates.
+   Доступ к ресурсам по-прежнему требует все gates, пустой snapshot и два router ID.
    Нужны ответственные/окно изменений, вне-VPN recovery, SLA failover/revocation,
    rollback, внешний тестовый клиент и второй контрольный непривилегированный клиент.
 
@@ -168,12 +193,45 @@ reviewed локальном файле (не подставлять тестов
 
 ```sh
 PY=/tmp/homelab-iam-tests/bin/python
-$PY -m unittest discover -s tests -p 'test_netbird_pilot.py' -v
-$PY scripts/netbird-pilot.py validate             # ожидаемый BLOCKED с repo inputs
-# После заполнения /protected/pilot.inputs.json:
-$PY scripts/netbird-pilot.py validate --inputs /protected/pilot.inputs.json
-$PY scripts/netbird-pilot.py render --inputs /protected/pilot.inputs.json --out /tmp/netbird-reviewed
+$PY -m unittest discover -s tests -p 'test_netbird*.py' -v
+$PY scripts/netbird-deploy.py check          # ожидаемый BLOCKED: audit и пустые gates
+$PY scripts/netbird-pilot.py validate        # ожидаемый BLOCKED с repo inputs
+# После отдельного reviewed inputs и нового audit, где блокеры сняты:
+$PY scripts/netbird-deploy.py plan --inputs /protected/pilot.inputs.json --audit /protected/audit.json --out /tmp/netbird-reviewed
+# apply требует --context и фразу apply-netbird-control-plane. Argo sync не вызывается.
 ```
+
+## Control plane без выдачи сети
+
+`render-control-plane` пишет только namespace `netbird-pilot` и `netbird-edge`.
+Один Deployment server и один dashboard, стратегия `Recreate`. Это SPOF, не HA.
+Runtime secret `netbird-runtime` не создаётся манифестом. В git нет ключей.
+`runtime-config` пишет `0600` вне worktree. Bootstrap mode держит `localAuthDisabled: false`,
+потому что v0.82.0 `NewEmbeddedIdPManager` отказывается стартовать с `localAuthDisabled`,
+пока в Dex нет внешнего connector. Поле `auth.owner` не пишется: upstream кладёт YAML
+`password` в bcrypt `Hash` без хеширования. `NB_SETUP_PAT_ENABLED` не задаётся.
+Публичный forwarder отвечает отказом на `/api/setup` и `/api/users/invites`
+(`ipAllowList` только `127.0.0.1`, без доверия к `X-Forwarded-For`).
+`scripts/netbird-bootstrap.py` принимает только loopback origin от `kubectl port-forward`
+и печатает `user_id`/`email`. Пароль и PAT не печатаются. Тело соответствует
+`SetupRequest` v0.82.0: `email`, `password`, `name`, без `create_pat`.
+
+После появления внешнего connector отдельный witness `{"external_connectors": N}`
+и `--auth-mode idp-only` выключают локальный парольный login. Witness с секретом
+или с нулём connectors отвергается. Это не само создаёт Authentik application.
+
+Native gRPC идёт отдельным Ingress `scheme: h2c` на `/management.ManagementService/`
+и `/signalexchange.SignalExchange/`. WebSocket `/ws-proxy/management`,
+`/ws-proxy/signal` и `/relay` идут HTTP/1.1. STUN остаётся UDP 3478 контейнера,
+снаружи NodePort. Metrics 9090 не публикуются Service. Упрощённый YAML не загружает
+`disableDefaultPolicy`, поэтому первый account всё равно получает Default allow-all;
+компилятор доступа по-прежнему требует пустой список policies до enrollment.
+
+SQLite backup — `scripts/netbird-backup.py plan`. Он описывает остановку единственной
+реплики и read-only pod без runtime secret. `execute` требует фразу
+`quiesce-netbird-sqlite` и в этой работе не запускался. Те же store/cookie keys
+нужны для restore; новые keys делают старую базу нечитаемой. Это не HA и не online copy.
+
 
 Выходной каталог не должен существовать. Результат: management Kubernetes YAML,
 два отдельных router Compose, account settings **merge fragment**, OIDC public fields,
@@ -278,16 +336,13 @@ NETBIRD_OPENAPI_FILE=/tmp/netbird-v082-openapi.yml $PY -m unittest discover -s t
    Проверить owner входит в login group до сохранения allowlist (иначе lockout).
    Source groups **создаются sync из JWT**, не вручную с совпадающим именем:
    совпадающая API-created группа не становится автоматически JWT-synced.
-7. Только после deny/account settings: зарегистрировать две VM разными single-use
-   setup keys, usage_limit=1, short expiration, auto-group только routers, не user
-   access groups; revoke setup keys после enrollment. Файл setup key 0400/0600 из
-   secret manager, `NETBIRD_SETUP_KEY_FILE` указывает на него; Compose монтирует file
-   secret и использует `NB_SETUP_KEY_FILE`, без значения в environment/arguments.
-   Сначала проверить `docker compose config -q`/`docker-compose … config -q` с runtime
-   file path (не печатать полный config). Проверить reconnect после key expiry с
-   сохранённым state volume; router keys не должны создавать ephemeral peers. State
-   volume содержит private identity: backup защищать, не клонировать одну identity
-   на обе VM. Для canary установить проверенный клиент **0.82.0**, не `latest`,
+7. Только после deny/account settings и явного `existing_node_router_mode_reviewed`:
+   размещение двух peer на существующих нодах делает отдельный host-router артефакт.
+   Этот компилятор его не пишет и не применяет. Новые VM не используются.
+   Setup keys: usage_limit=1, short expiration, auto-group только routers, не user
+   access groups; revoke после enrollment. Файл setup key 0400/0600, не в git и не в environment.
+   Не ставить routing-peer Compose на socrat-ноды. Не клонировать одну peer identity.
+   Для canary установить проверенный клиент **0.82.0**, не `latest`,
    на отдельное внешнее устройство без одновременно активного административного WG
    (иначе /32 resource routes могут перехватить путь recovery). После approval:
    `netbird up --management-url "https://$REVIEWED_MANAGEMENT_FQDN" --allow-server-ssh=false --disable-dns`.
@@ -337,7 +392,7 @@ NETBIRD_OPENAPI_FILE=/tmp/netbird-v082-openapi.yml $PY -m unittest discover -s t
 
 Сохранять UTC timestamps, client/server versions, commit/input hash, topology,
 результаты и chosen routing peer ID; не токены/пароли/config backups. Все fault injections
-— только на новых VM/пилотных workload, в согласованное окно, не на WG/K3s/router production.
+— не на WG transport и не путём установки router Compose на production-ноды. Fault injection host router — отдельный reviewed change.
 
 Read-only probe запускается **на внешнем pilot client**, не на routing peer:
 
@@ -391,7 +446,7 @@ Peer login expiry=3600s уменьшает lifetime, но **не являетс�
 ## Rollback / эксплуатационные риски
 
 До rollout утвердить owner и recovery contact. При утечке/широком доступе сначала
-отключить pilot policies/peers или остановить **обе новые router VM**, не менять
+отключить pilot policies/peers или остановить **оба reviewed routing peer**, не менять
 `wg-socrat`/маршруты K3s. Удалить pilot profiles/split-DNS на клиентах; снять только
 новый edge/STUN mapping; остановить только pilot workloads, сохранить protected
 backup/PVC и keys для разбора. Не удалять cluster-wide Traefik/cert-manager и существующий

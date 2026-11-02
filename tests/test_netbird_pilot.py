@@ -86,6 +86,12 @@ class PilotTests(unittest.TestCase):
         for key in nb.REVIEWS:
             c = inputs()
             c['review'][key] = False
+            if key == 'existing_node_router_mode_reviewed':
+                nb.validate(c)
+                c['routing_peers'][0]['host'] = 'socrat-2'
+                with self.subTest(review=key), self.assertRaises(ValueError):
+                    nb.validate(c)
+                continue
             with self.subTest(review=key), self.assertRaises(ValueError):
                 nb.validate(c)
 
@@ -111,20 +117,33 @@ class PilotTests(unittest.TestCase):
             with self.subTest(network=network), self.assertRaises(ValueError):
                 nb.validate(c)
 
-    def test_two_independent_routers_not_existing_nodes(self):
-        for change in ['one', 'same-host', 'same-failure-domain', 'mesh-host']:
+    def test_two_independent_routers_allow_reviewed_existing_nodes(self):
+        for change in ['one', 'same-host', 'same-failure-domain']:
             c = inputs()
             if change == 'one': c['routing_peers'].pop()
             elif change == 'same-host': c['routing_peers'][1]['host'] = c['routing_peers'][0]['host']
-            elif change == 'same-failure-domain': c['routing_peers'][1]['failure_domain'] = c['routing_peers'][0]['failure_domain']
-            else: c['routing_peers'][0]['host'] = 'socrat-0.test'
+            else: c['routing_peers'][1]['failure_domain'] = c['routing_peers'][0]['failure_domain']
             with self.subTest(change=change), self.assertRaises(ValueError): nb.validate(c)
+        blocked = inputs()
+        blocked['review']['existing_node_router_mode_reviewed'] = False
+        blocked['routing_peers'][0]['host'] = 'socrat-2'
+        with self.assertRaises(ValueError):
+            nb.validate(blocked)
+        allowed = inputs()
+        allowed['routing_peers'][0]['host'] = 'socrat-2'
+        allowed['routing_peers'][1]['host'] = 'socrat-1'
+        nb.validate(allowed)
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaises(ValueError):
+                nb.render(allowed, Path(directory) / 'routers')
+        compose = nb.router_compose(allowed, allowed['routing_peers'][0])
+        self.assertEqual(set(compose['services']), {'routing-peer'})
 
     def test_manifest_pins_runtime_secret_singleton_no_argo(self):
         docs = nb.manifests(inputs())
-        self.assertFalse(any(x['kind'] in ['Secret', 'Application', 'DaemonSet'] for x in docs))
+        self.assertFalse(any(x['kind'] in ['Secret', 'Application', 'DaemonSet', 'IngressRoute'] for x in docs))
         deployments = [x for x in docs if x['kind'] == 'Deployment']
-        self.assertEqual(len(deployments), 2)
+        self.assertEqual(sorted(x['metadata']['name'] for x in deployments), ['dashboard', 'edge-forwarder', 'server'])
         for doc in deployments:
             self.assertEqual(doc['spec']['replicas'], 1)
             self.assertEqual(doc['spec']['strategy']['type'], 'Recreate')
@@ -136,10 +155,28 @@ class PilotTests(unittest.TestCase):
         self.assertIn('netbird-runtime', text)
         self.assertNotIn('wg-socrat', text)
         self.assertNotIn('syncPolicy', text)
-        ingress = next(x for x in docs if x['kind'] == 'IngressRoute')
-        self.assertEqual(ingress['spec']['routes'][0]['services'][0]['scheme'], 'h2c')
-        self.assertIn('/relay', text)
+        self.assertNotIn('NB_SETUP_PAT', text)
+        self.assertNotIn('client_secret', text)
+        grpc = next(x for x in docs if x['metadata'].get('name') == 'netbird-grpc')
+        self.assertEqual(grpc['metadata']['annotations']['traefik.ingress.kubernetes.io/service.serversscheme'], 'h2c')
+        self.assertEqual([p['path'] for p in grpc['spec']['rules'][0]['http']['paths']],
+                         ['/management.ManagementService/', '/signalexchange.SignalExchange/'])
+        http = next(x for x in docs if x['metadata'].get('name') == 'netbird-http')
+        self.assertNotIn('serversscheme', http['metadata']['annotations'])
+        config = yaml.safe_load(next(x for x in docs if x['kind'] == 'ConfigMap')['data']['dynamic.yaml'])
+        routers = config['http']['routers']
+        self.assertEqual(routers['grpc-management']['entryPoints'], ['h2c'])
+        self.assertEqual(routers['websocket-management']['entryPoints'], ['web'])
+        self.assertEqual(routers['relay']['entryPoints'], ['web'])
+        self.assertIn('/api/setup', routers['deny-setup']['rule'])
         self.assertIn('/oauth2/', text)
+        stun = next(x for x in docs if x['metadata']['name'] == 'stun')
+        self.assertEqual(stun['spec']['ports'][0]['protocol'], 'UDP')
+        self.assertEqual(stun['spec']['ports'][0]['port'], 3478)
+        self.assertTrue(all(port.get('port') != 9090 for doc in docs if doc['kind'] == 'Service'
+                            for port in doc['spec']['ports']))
+        self.assertEqual([doc['metadata'].get('namespace') for doc in docs if 'netbird-runtime' in yaml.safe_dump(doc)],
+                         ['netbird-pilot'])
 
     def test_router_runtime_key_file_and_separate_interface(self):
         c = inputs()

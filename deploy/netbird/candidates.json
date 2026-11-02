@@ -1,0 +1,45 @@
+{
+  "management_fqdn": {
+    "value": "netbird.socrat.alchemmist.xyz",
+    "approved": true,
+    "dns_tls_verified": false
+  },
+  "authentik_oidc": {
+    "approved": true,
+    "configured": false,
+    "groups_claim_verified": false,
+    "issuer_candidate": "https://auth.socrat.alchemmist.xyz/application/o/netbird-pilot/",
+    "note": "Approval is not an Authentik application. Connector setup is a separate change. The groups claim was not verified."
+  },
+  "pilot_users": ["owner", "tim"],
+  "ingress_class": {
+    "value": "traefik",
+    "source": "charts/traefik-edge/values.yaml",
+    "verified": false
+  },
+  "storage_class": {
+    "value": "local-path",
+    "source": "other repo manifests, not a live StorageClass read",
+    "verified": false
+  },
+  "resources": {
+    "private_grafana": {
+      "approved": true,
+      "deployable": false,
+      "reason": "grafana.socrat.alchemmist.xyz is one virtual host on the shared private web frontend :443. A shared IP:443 is not a private Grafana boundary."
+    },
+    "socrat_2_openssh": {
+      "approved": true,
+      "deployable": false,
+      "reason": "socrat-2 sshd already listens on 0.0.0.0:22 and 0.0.0.0:2222. 10.250.0.2 is the WG transport address and is not a pilot destination."
+    }
+  },
+  "routers": {
+    "required": 2,
+    "placement_resolved": false,
+    "mode": "existing-node",
+    "existing_node_router_mode_reviewed": false,
+    "new_machines_approved": false,
+    "note": "New machines were rejected. Existing-node mode is the approved class and is not a reviewed placement. Host-router generation is separate and is not produced here."
+  }
+}

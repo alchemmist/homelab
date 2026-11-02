@@ -25,6 +25,14 @@
       "digest": "sha256:eca5b274c635bfbb04ec6724a0712d1146190dd450eea199eeb83916fdd94965",
       "linux_amd64": "sha256:ea2982e68e6d4782e1e20adbefe1556f9c6a751c455b9be11850e809554b4d92",
       "linux_arm64": "sha256:745a46234495340d8eb2e8d8046b0fc67007e3d82183770de04cf095a6c92b98"
+    },
+    "edge_forwarder": {
+      "reference": "rancher/mirrored-library-traefik@sha256:f86a2cab1b5c649070c49f883c743dd32d8485a56e3368c5f93b9e91f1e91259",
+      "digest": "sha256:f86a2cab1b5c649070c49f883c743dd32d8485a56e3368c5f93b9e91f1e91259",
+      "source": "charts/traefik-edge/values.yaml",
+      "app_version": "3.7.13",
+      "skip_registry_verify": true,
+      "note": "Same immutable reference as the existing edge chart. Platform manifest digests were not re-fetched, so this is not a new registry verification."
     }
   }
 }

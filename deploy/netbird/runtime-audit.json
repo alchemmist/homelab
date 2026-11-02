@@ -1,0 +1,24 @@
+{
+  "observed_at": "2026-11-02",
+  "method": "ssh BatchMode alias socrat-2-direct; no sudo",
+  "host": "socrat-2",
+  "kubectl_api_read": false,
+  "kubectl_blocker": "/etc/rancher/k3s/k3s.yaml is root mode 0600 and sudo -n asks for a password",
+  "udp_3478_listening": false,
+  "tcp_listeners": [22, 2222, 443],
+  "udp_listeners": [51830, 443],
+  "sshd_config_ports": [22, 2222],
+  "traefik_watches_netbird_edge": false,
+  "traefik_watches_netbird_pilot": false,
+  "traefik_crd_namespaces": ["argocd"],
+  "traefik_crd_label": "homelab.alchemmist.xyz/edge-transport=argocd",
+  "traefik_allow_cross_namespace": false,
+  "traefik_allow_external_name": false,
+  "addresses": {
+    "public": "176.98.185.59/24",
+    "wg_socrat": "10.250.0.2/24",
+    "pod_cni": "10.42.0.1/24",
+    "flannel": "10.42.0.0/32",
+    "docker0": "172.17.0.1/16"
+  }
+}

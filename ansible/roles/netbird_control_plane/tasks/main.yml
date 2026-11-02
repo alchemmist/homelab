@@ -1,0 +1,55 @@
+---
+- name: Keep this role off routers, WireGuard, and K3s transport
+  ansible.builtin.assert:
+    that:
+      - netbird_action in ['check', 'plan', 'apply']
+      - not (netbird_deploy_routers | bool)
+      - not (netbird_touch_wireguard | bool)
+      - not (netbird_touch_k3s | bool)
+
+- name: Check the control plane and print blockers
+  ansible.builtin.command:
+    argv:
+      - "{{ netbird_python }}"
+      - scripts/netbird-deploy.py
+      - check
+      - --inputs
+      - "{{ netbird_inputs }}"
+  args:
+    chdir: "{{ netbird_repo_root }}"
+  register: netbird_check
+  changed_when: false
+  when: netbird_action == 'check'
+
+- name: Plan the control plane outside the worktree
+  ansible.builtin.command:
+    argv:
+      - "{{ netbird_python }}"
+      - scripts/netbird-deploy.py
+      - plan
+      - --inputs
+      - "{{ netbird_inputs }}"
+      - --out
+      - "{{ netbird_out }}"
+  args:
+    chdir: "{{ netbird_repo_root }}"
+  changed_when: false
+  when: netbird_action == 'plan'
+
+- name: Apply the control plane only with the explicit confirmation phrase
+  ansible.builtin.command:
+    argv:
+      - "{{ netbird_python }}"
+      - scripts/netbird-deploy.py
+      - apply
+      - --inputs
+      - "{{ netbird_inputs }}"
+      - --out
+      - "{{ netbird_out }}"
+      - --context
+      - "{{ netbird_context }}"
+      - --confirm-apply
+      - "{{ netbird_confirm }}"
+  args:
+    chdir: "{{ netbird_repo_root }}"
+  when: netbird_action == 'apply'

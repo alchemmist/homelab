@@ -17,8 +17,21 @@ ROOT = Path(__file__).resolve().parents[1]
 LOCK = ROOT / 'deploy/netbird/images.lock.json'
 REVIEWS = {'dns_tls_public_before_vpn', 'stun_udp_3478_to_nodeport',
            'overlay_overlap_checked', 'dedicated_router_hosts_confirmed',
-           'both_routers_reach_every_resource', 'endpoint_ip_port_scope_reviewed'}
+           'both_routers_reach_every_resource', 'endpoint_ip_port_scope_reviewed',
+           'ingress_scope_reviewed', 'storage_locality_reviewed', 'management_node_reviewed',
+           'existing_node_router_mode_reviewed', 'authentik_groups_claim_verified'}
+# Control-plane apply does not require router placement or an endpoint allowlist.
+CONTROL_REVIEWS = {'dns_tls_public_before_vpn', 'stun_udp_3478_to_nodeport',
+                   'ingress_scope_reviewed', 'storage_locality_reviewed',
+                   'management_node_reviewed'}
 NS = 'netbird-pilot'
+EDGE = 'netbird-edge'
+# v0.82.0 combined handler: native gRPC is HTTP/2; clients also use exact WebSocket paths.
+GRPC_PREFIXES = ('/management.ManagementService/', '/signalexchange.SignalExchange/')
+WS_PATHS = ('/ws-proxy/management', '/ws-proxy/signal', '/relay')
+# Unauthenticated on the server. Public edge must not be able to claim the instance.
+DENY_PREFIXES = ('/api/setup', '/api/users/invites')
+STUN_PORT = 3478
 
 
 def require(ok, message):
@@ -38,6 +51,18 @@ def hostname(value):
 
 def identifier(value):
     return text(value) and re.fullmatch(r'[a-z0-9][a-z0-9-]{0,62}', value)
+
+
+def existing_node_host(value):
+    """True for an existing socrat node name. This is not a placement approval."""
+    if not text(value):
+        return False
+    if re.fullmatch(r'socrat-[0-3]', value):
+        return True
+    labels = value.split('.')
+    if any(re.fullmatch(r'socrat-[0-3]', label) for label in labels):
+        return True
+    return len(labels) > 1 and labels[0] in {'0', '1', '2', '3'} and labels[1] == 'socrat'
 
 
 def validate(c):
@@ -65,15 +90,23 @@ def validate(c):
             'authentik_issuer: exact HTTPS application issuer required')
     require(text(c['oidc_client_id']), 'oidc_client_id required (not a secret)')
     require(text(c['login_group']) and c['login_group'] != 'All', 'dedicated login_group required')
-    require(isinstance(c['review'], dict) and set(c['review']) == REVIEWS and
-            all(v is True for v in c['review'].values()), 'all review gates must explicitly be true')
+    require(isinstance(c['review'], dict) and set(c['review']) == REVIEWS,
+            'review gates must match the compiler schema')
+    for key, value in c['review'].items():
+        if key == 'existing_node_router_mode_reviewed':
+            require(type(value) is bool, 'existing-node router review must be explicit')
+            continue
+        require(value is True, 'review gate must explicitly be true: ' + key)
     peers = c['routing_peers']
-    require(isinstance(peers, list) and len(peers) == 2, 'exactly TWO dedicated routing peers required')
+    require(isinstance(peers, list) and len(peers) == 2, 'exactly TWO routing peers required')
     for p in peers:
         require(set(p) == {'name', 'host', 'failure_domain', 'metric'}, 'routing peer keys invalid')
-        require(identifier(p['name']) and hostname(p['host']), 'routing peer name/host required')
-        require(not re.search(r'socrat-[0-3]|^[0-3]\.socrat', p['host']) and
-                p['host'] != c['management_node'], 'routing peers must NOT be existing K3s/mesh nodes')
+        require(identifier(p['name']), 'routing peer name required')
+        require(hostname(p['host']) or re.fullmatch(r'socrat-[0-3]', p['host']) is not None,
+                'routing peer host required')
+        if existing_node_host(p['host']):
+            require(c['review']['existing_node_router_mode_reviewed'] is True,
+                    'existing-node router mode requires explicit review')
         require(text(p['failure_domain']), 'routing peer failure_domain required')
         require(type(p['metric']) is int and 1 <= p['metric'] <= 9999, 'router metric invalid')
     for key in ['name', 'host', 'failure_domain', 'metric']:
@@ -109,26 +142,54 @@ def validate(c):
 
 def image(name):
     item = json.loads(LOCK.read_text())['images'][name]
+    if item.get('reference'):
+        return item['reference']
     return item['repository'] + ':' + item['tag'] + '@' + item['digest']
 
 
-def server_config(c, secrets):
-    return {'server': {
+def witness_ready(path):
+    """Proof that Dex already has an external connector. localAuthDisabled fails closed without one."""
+    data = json.loads(path.read_text())
+    require(set(data) == {'external_connectors'}, 'witness must contain only external_connectors')
+    require(type(data['external_connectors']) is int and data['external_connectors'] >= 1,
+            'external IdP connector required before local authentication can be disabled')
+
+
+def server_config(c, secrets, auth_mode='bootstrap'):
+    """Runtime config for v0.82.0 combined server.
+
+    Simplified YAML only exposes `server`. Management.DisableDefaultPolicy is not
+    loaded from this file (the management section is internal), so a new account
+    still receives the upstream Default allow-all policy until an operator deletes it.
+    auth.owner is intentionally absent: that field is stored as a bcrypt hash, not a
+    password, and a configured local owner would remain a password login.
+    localAuthDisabled cannot be true on the first boot: embedded Dex refuses to start
+    unless a non-local connector already exists.
+    """
+    require(auth_mode in ('bootstrap', 'idp-only'), 'auth mode invalid')
+    config = {'server': {
         'listenAddress': ':80', 'exposedAddress': 'https://' + c['management_fqdn'] + ':443',
-        'stunPorts': [3478], 'metricsPort': 9090, 'healthcheckAddress': ':9000',
+        'stunPorts': [STUN_PORT], 'metricsPort': 9090, 'healthcheckAddress': ':9000',
         'logLevel': 'info', 'logFile': 'console', 'dataDir': '/var/lib/netbird',
         'disableAnonymousMetrics': True, 'disableGeoliteUpdate': True,
         'authSecret': secrets['NB_RELAY_SECRET'],
         'auth': {'issuer': 'https://' + c['management_fqdn'] + '/oauth2',
+                 'localAuthDisabled': auth_mode == 'idp-only',
                  'signKeyRefreshEnabled': True,
                  'sessionCookieEncryptionKey': secrets['NB_COOKIE_KEY'],
                  'dashboardRedirectURIs': ['https://' + c['management_fqdn'] + x
                                           for x in ['/nb-auth', '/nb-silent-auth']],
                  'cliRedirectURIs': ['http://localhost:53000/']},
-        'store': {'engine': 'sqlite', 'encryptionKey': secrets['NB_STORE_KEY']}}}
+        'store': {'engine': 'sqlite', 'encryptionKey': secrets['NB_STORE_KEY']},
+        # Relative auth DB path is joined to dataDir by buildEmbeddedIdPConfig.
+        'authStore': {'engine': 'sqlite3', 'file': 'idp.db'}}}
+    require('owner' not in config['server']['auth'], 'local owner credentials are not part of runtime config')
+    return config
 
 
 def account_settings(c):
+    require(c['review'].get('authentik_groups_claim_verified') is True,
+            'Authentik groups claim is not verified')
     return {'network_range': c['overlay_cidr'], 'jwt_groups_enabled': True,
             'jwt_groups_claim_name': 'groups', 'jwt_allow_groups': [c['login_group']],
             'groups_propagation_enabled': True, 'peer_login_expiration_enabled': True,
@@ -140,12 +201,24 @@ def account_settings(c):
 
 
 def manifests(c):
-    def obj(kind, name, api='v1', **fields):
-        return {'apiVersion': api, 'kind': kind,
-                'metadata': {'name': name, 'namespace': NS}, **fields}
-    result = [obj('Namespace', NS)]
-    result[0]['metadata'].pop('namespace')
-    result.append(obj('PersistentVolumeClaim', 'server-data', spec={
+    """Control plane only. No router, policy, Secret, or Argo Application.
+
+    Ingress lives in netbird-edge so the existing Traefik Role, once that namespace
+    is explicitly added to watchNamespaces, can read only the TLS secret. The runtime
+    secret stays in netbird-pilot, which is not added to the Traefik watch list.
+    Cross-namespace services stay disabled; a chart-pinned Traefik forwarder in the
+    edge namespace dials the pilot ClusterIP by DNS.
+    """
+    def obj(kind, name, namespace, api='v1', **fields):
+        meta = {'name': name}
+        if namespace:
+            meta['namespace'] = namespace
+        return {'apiVersion': api, 'kind': kind, 'metadata': meta, **fields}
+
+    result = [obj('Namespace', NS, None), obj('Namespace', EDGE, None)]
+    for item in result:
+        item['metadata']['labels'] = {'homelab.alchemmist.xyz/netbird': 'control-plane'}
+    result.append(obj('PersistentVolumeClaim', 'server-data', NS, spec={
         'storageClassName': c['storage_class'], 'accessModes': ['ReadWriteOnce'],
         'resources': {'requests': {'storage': '5Gi'}}}))
     base = 'https://' + c['management_fqdn']
@@ -159,45 +232,148 @@ def manifests(c):
                      'resources': {'requests': {'cpu': '100m', 'memory': '128Mi'},
                                    'limits': {'cpu': '1', 'memory': '768Mi'}},
                      'ports': [{'name': 'http', 'containerPort': 80}]}
-        pod = {'automountServiceAccountToken': False,
+        pod = {'automountServiceAccountToken': False, 'enableServiceLinks': False,
                'nodeSelector': {'kubernetes.io/hostname': c['management_node']},
                'containers': [container]}
         if name == 'server':
+            pod['terminationGracePeriodSeconds'] = 60
             container.update(args=['--config', '/etc/netbird/config.yaml'],
                              volumeMounts=[{'name': 'config', 'mountPath': '/etc/netbird', 'readOnly': True},
                                            {'name': 'data', 'mountPath': '/var/lib/netbird'}],
-                             readinessProbe={'httpGet': {'path': '/oauth2/.well-known/openid-configuration', 'port': 80}, 'initialDelaySeconds': 10},
-                             livenessProbe={'tcpSocket': {'port': 80}, 'initialDelaySeconds': 60})
-            container['ports'] += [{'name': 'stun', 'containerPort': 3478, 'protocol': 'UDP'},
-                                   {'name': 'health', 'containerPort': 9000}]
+                             readinessProbe={'httpGet': {'path': '/oauth2/.well-known/openid-configuration', 'port': 80},
+                                             'initialDelaySeconds': 10},
+                             livenessProbe={'tcpSocket': {'port': 9000}, 'initialDelaySeconds': 30})
+            container['ports'] += [{'name': 'stun', 'containerPort': STUN_PORT, 'protocol': 'UDP'},
+                                   {'name': 'health', 'containerPort': 9000},
+                                   {'name': 'metrics', 'containerPort': 9090}]
             pod['volumes'] = [{'name': 'config', 'secret': {'secretName': 'netbird-runtime', 'defaultMode': 0o400}},
                               {'name': 'data', 'persistentVolumeClaim': {'claimName': 'server-data'}}]
         else:
             container['env'] = [{'name': k, 'value': v} for k, v in env.items()]
             container['readinessProbe'] = {'httpGet': {'path': '/', 'port': 80}}
-        result.append(obj('Deployment', name, 'apps/v1', spec={
+        result.append(obj('Deployment', name, NS, 'apps/v1', spec={
             'replicas': 1, 'strategy': {'type': 'Recreate'},
             'selector': {'matchLabels': {'app': 'netbird-' + name}},
             'template': {'metadata': {'labels': {'app': 'netbird-' + name}}, 'spec': pod}}))
-        result.append(obj('Service', name, spec={'selector': {'app': 'netbird-' + name},
-                                               'ports': [{'name': 'http', 'port': 80, 'targetPort': 'http'}]}))
-    result.append(obj('Service', 'stun', spec={
+        result.append(obj('Service', name, NS, spec={'selector': {'app': 'netbird-' + name},
+                                                    'ports': [{'name': 'http', 'port': 80, 'targetPort': 'http'}]}))
+    result.append(obj('Service', 'stun', NS, spec={
         'type': 'NodePort', 'externalTrafficPolicy': 'Local', 'selector': {'app': 'netbird-server'},
-        'ports': [{'name': 'stun', 'port': 3478, 'targetPort': 'stun',
+        'ports': [{'name': 'stun', 'port': STUN_PORT, 'targetPort': 'stun',
                    'protocol': 'UDP', 'nodePort': c['stun_node_port']}]}))
-    host = 'Host(`' + c['management_fqdn'] + '`)'
-    routes = []
-    for paths, name, scheme in [(['/signalexchange.SignalExchange/', '/management.ManagementService/'], 'server', 'h2c'),
-                                (['/api/', '/oauth2/', '/relay', '/ws-proxy/'], 'server', 'http')]:
-        routes.append({'kind': 'Rule', 'match': host + ' && (' + ' || '.join(
-            'PathPrefix(`' + p + '`)' for p in paths) + ')', 'priority': 100,
-                       'services': [{'name': name, 'port': 80, 'scheme': scheme}]})
-    routes.append({'kind': 'Rule', 'match': host, 'priority': 1,
-                   'services': [{'name': 'dashboard', 'port': 80}]})
-    result.append(obj('IngressRoute', 'netbird', 'traefik.io/v1alpha1', spec={
-        'entryPoints': ['websecure'], 'routes': routes, 'tls': {'secretName': c['tls_secret_name']}}))
-    result[-1]['metadata']['annotations'] = {'kubernetes.io/ingress.class': c['ingress_class']}
+    result.extend(edge_manifests(c))
     return result
+
+
+def forwarder_files(c):
+    """In-namespace proxy. ipAllowList uses the socket address, not X-Forwarded-For."""
+    server = 'server.' + NS + '.svc.cluster.local:80'
+    dashboard = 'dashboard.' + NS + '.svc.cluster.local:80'
+    static = {
+        'entryPoints': {
+            'web': {'address': ':8080', 'transport': {'respondingTimeouts': {'readTimeout': '0s'}}},
+            'h2c': {'address': ':8082', 'http2': {},
+                    'transport': {'respondingTimeouts': {'readTimeout': '0s'}}},
+            'ping': {'address': ':8081'}},
+        'providers': {'file': {'filename': '/etc/traefik/dynamic.yaml'}},
+        'ping': {'entryPoint': 'ping'},
+        'log': {'level': 'INFO'}}
+    deny = ' || '.join('PathPrefix(`' + path + '`)' for path in DENY_PREFIXES)
+    dynamic = {'http': {
+        'middlewares': {'deny-unclaimed-setup': {'ipAllowList': {'sourceRange': ['127.0.0.1/32']}}},
+        'serversTransports': {'http1': {'disableHTTP2': True}, 'h2c': {'disableHTTP2': False}},
+        'services': {
+            'management': {'loadBalancer': {'passHostHeader': True, 'serversTransport': 'http1',
+                                            'servers': [{'url': 'http://' + server}]}},
+            'management-h2c': {'loadBalancer': {'passHostHeader': True, 'serversTransport': 'h2c',
+                                                'servers': [{'url': 'h2c://' + server}]}},
+            'dashboard': {'loadBalancer': {'passHostHeader': True, 'serversTransport': 'http1',
+                                           'servers': [{'url': 'http://' + dashboard}]}}},
+        'routers': {
+            'deny-setup': {'entryPoints': ['web'], 'rule': deny, 'priority': 1000,
+                           'middlewares': ['deny-unclaimed-setup'], 'service': 'management'},
+            'grpc-management': {'entryPoints': ['h2c'], 'priority': 200, 'service': 'management-h2c',
+                                'rule': 'PathPrefix(`' + GRPC_PREFIXES[0] + '`)'},
+            'grpc-signal': {'entryPoints': ['h2c'], 'priority': 200, 'service': 'management-h2c',
+                            'rule': 'PathPrefix(`' + GRPC_PREFIXES[1] + '`)'},
+            'websocket-management': {'entryPoints': ['web'], 'priority': 200, 'service': 'management',
+                                     'rule': 'Path(`/ws-proxy/management`)'},
+            'websocket-signal': {'entryPoints': ['web'], 'priority': 200, 'service': 'management',
+                                 'rule': 'Path(`/ws-proxy/signal`)'},
+            'relay': {'entryPoints': ['web'], 'priority': 200, 'service': 'management',
+                      'rule': 'Path(`/relay`)'},
+            'api': {'entryPoints': ['web'], 'priority': 100, 'service': 'management',
+                    'rule': 'PathPrefix(`/api/`) || PathPrefix(`/oauth2/`)'},
+            'dashboard': {'entryPoints': ['web'], 'priority': 1, 'service': 'dashboard',
+                          'rule': 'PathPrefix(`/`)'}}}}
+    return {'static.yaml': yaml.safe_dump(static, sort_keys=False),
+            'dynamic.yaml': yaml.safe_dump(dynamic, sort_keys=False)}
+
+
+def edge_manifests(c):
+    files = forwarder_files(c)
+    labels = {'app': 'netbird-edge-forwarder'}
+    docs = [obj_edge('ConfigMap', 'edge-forwarder', data=files)]
+    docs.append(obj_edge('Deployment', 'edge-forwarder', 'apps/v1', spec={
+        'replicas': 1, 'strategy': {'type': 'Recreate'},
+        'selector': {'matchLabels': labels},
+        'template': {'metadata': {'labels': labels}, 'spec': {
+            'automountServiceAccountToken': False, 'enableServiceLinks': False,
+            'containers': [{
+                'name': 'forwarder', 'image': image('edge_forwarder'), 'imagePullPolicy': 'IfNotPresent',
+                'args': ['--configFile=/etc/traefik/static.yaml'],
+                'ports': [{'name': 'web', 'containerPort': 8080}, {'name': 'h2c', 'containerPort': 8082}],
+                'readinessProbe': {'httpGet': {'path': '/ping', 'port': 8081}},
+                'resources': {'requests': {'cpu': '20m', 'memory': '32Mi'},
+                              'limits': {'cpu': '200m', 'memory': '128Mi'}},
+                'volumeMounts': [{'name': 'config', 'mountPath': '/etc/traefik', 'readOnly': True}]}],
+            'volumes': [{'name': 'config', 'configMap': {'name': 'edge-forwarder'}}]}}}))
+    docs.append(obj_edge('Service', 'edge-forwarder', spec={
+        'selector': labels,
+        'ports': [{'name': 'web', 'port': 8080, 'targetPort': 'web'},
+                  {'name': 'h2c', 'port': 8082, 'targetPort': 'h2c'}]}))
+    # WebSocket and REST stay on HTTP/1.1. Native gRPC is a separate higher-priority h2c ingress.
+    docs.append(ingress(c, 'netbird-http', ['/ws-proxy/', '/relay', '/api/', '/oauth2/', '/'], 8080, None, '10'))
+    docs.append(ingress(c, 'netbird-grpc', list(GRPC_PREFIXES), 8082, 'h2c', '200'))
+    return docs
+
+
+def obj_edge(kind, name, api='v1', **fields):
+    return {'apiVersion': api, 'kind': kind,
+            'metadata': {'name': name, 'namespace': EDGE,
+                         'labels': {'homelab.alchemmist.xyz/netbird': 'control-plane'}},
+            **fields}
+
+
+def ingress(c, name, paths, port, scheme, priority):
+    annotations = {'traefik.ingress.kubernetes.io/router.entrypoints': 'websecure',
+                   'traefik.ingress.kubernetes.io/router.priority': priority}
+    if scheme:
+        annotations['traefik.ingress.kubernetes.io/service.serversscheme'] = scheme
+    body = obj_edge('Ingress', name, 'networking.k8s.io/v1', spec={
+        'ingressClassName': c['ingress_class'],
+        'tls': [{'hosts': [c['management_fqdn']], 'secretName': c['tls_secret_name']}],
+        'rules': [{'host': c['management_fqdn'], 'http': {'paths': [{
+            'path': path, 'pathType': 'Prefix',
+            'backend': {'service': {'name': 'edge-forwarder', 'port': {'number': port}}}}
+            for path in paths]}}]})
+    body['metadata']['annotations'] = annotations
+    return body
+
+
+def validate_control_plane(c):
+    """Structural control-plane inputs. Router placement and resource grants are not required."""
+    require(isinstance(c, dict) and c.get('schema_version') == 1, 'unsupported schema_version')
+    require(hostname(c.get('management_fqdn')), 'management_fqdn: approved public FQDN required')
+    for key in ['management_node', 'tls_secret_name', 'storage_class', 'ingress_class']:
+        require(identifier(c.get(key)), key + ': reviewed Kubernetes identifier required')
+    require(type(c.get('stun_node_port')) is int and 30000 <= c['stun_node_port'] <= 32767,
+            'stun_node_port: reviewed free UDP NodePort required')
+    reviews = c.get('review')
+    require(isinstance(reviews, dict), 'review gates required')
+    for key in CONTROL_REVIEWS:
+        require(reviews.get(key) is True, 'control-plane review not explicitly true: ' + key)
+    return c
 
 
 def router_compose(c, peer):
@@ -282,7 +458,18 @@ def dump(path, value, yaml_format=False, private=False):
         f.write(yaml.safe_dump(value, sort_keys=False) if yaml_format else json.dumps(value, indent=2) + '\n')
 
 
+def render_control_plane(c, out):
+    """Write workload manifests only. Does not write router Compose or access requests."""
+    validate_control_plane(c)
+    out.mkdir(mode=0o700, parents=True, exist_ok=False)
+    with (out / 'management.yaml').open('w') as f:
+        yaml.safe_dump_all(manifests(c), f, sort_keys=False)
+
+
 def render(c, out):
+    # Host-router generation is a separate artifact. router_compose stays the old interface.
+    require(not any(existing_node_host(p['host']) for p in c['routing_peers']),
+            'existing-node router artifacts are generated separately; this compiler does not write them')
     out.mkdir(mode=0o700, parents=True, exist_ok=False)
     with (out / 'management.yaml').open('w') as f:
         yaml.safe_dump_all(manifests(c), f, sort_keys=False)
@@ -297,6 +484,10 @@ def render(c, out):
 
 def verify_images():
     for name, item in json.loads(LOCK.read_text())['images'].items():
+        if item.get('skip_registry_verify'):
+            require(item.get('reference', '').endswith('@' + item['digest']), name + ': digest reference required')
+            print(name + ': chart reference pin, registry re-fetch skipped')
+            continue
         token_url = 'https://auth.docker.io/token?service=registry.docker.io&scope=repository:' + item['repository'] + ':pull'
         with urllib.request.urlopen(token_url, timeout=25) as r:
             token = json.load(r)['token']
@@ -316,16 +507,27 @@ def verify_images():
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('command', choices=['validate', 'render', 'runtime-config', 'compile-access', 'verify-images'])
+    p.add_argument('command', choices=['validate', 'render', 'render-control-plane', 'runtime-config',
+                                     'compile-access', 'verify-images'])
     p.add_argument('--inputs', type=Path, default=ROOT / 'deploy/netbird/pilot.inputs.json')
     p.add_argument('--out', type=Path)
     p.add_argument('--bindings', type=Path)
     p.add_argument('--snapshot', type=Path)
+    p.add_argument('--auth-mode', choices=['bootstrap', 'idp-only'], default='bootstrap')
+    p.add_argument('--connector-witness', type=Path)
     a = p.parse_args()
     if a.command == 'verify-images':
         verify_images()
         return
-    c = validate(json.loads(a.inputs.read_text()))
+    raw = json.loads(a.inputs.read_text())
+    if a.command == 'render-control-plane':
+        require(a.out is not None, '--out required')
+        require(not a.out.resolve().is_relative_to(ROOT),
+                '--out must be outside the Git worktree (including runtime secrets)')
+        render_control_plane(raw, a.out)
+        print('Local control-plane files written; nothing applied and no network granted')
+        return
+    c = validate(raw)
     if a.command == 'validate':
         print('Inputs valid; NOT evidence of deployment or acceptance')
         return
@@ -334,6 +536,9 @@ def main():
     if a.command == 'render':
         render(c, a.out)
     elif a.command == 'runtime-config':
+        if a.auth_mode == 'idp-only':
+            require(a.connector_witness is not None, 'connector witness required before disabling local auth')
+            witness_ready(a.connector_witness)
         secrets = {key: os.environ.get(key, '') for key in ['NB_RELAY_SECRET', 'NB_COOKIE_KEY', 'NB_STORE_KEY']}
         require(all(text(v) and len(v) >= 32 for v in secrets.values()), 'runtime secrets missing or too short')
         for key in ['NB_COOKIE_KEY', 'NB_STORE_KEY']:
@@ -343,7 +548,7 @@ def main():
                 decoded = b''
             require(len(decoded) == 32, key + ': base64-encoded 32 random bytes required')
         require(len(set(secrets.values())) == 3, 'runtime secrets must be distinct')
-        dump(a.out, server_config(c, secrets), yaml_format=True, private=True)
+        dump(a.out, server_config(c, secrets, a.auth_mode), yaml_format=True, private=True)
     else:
         require(a.bindings is not None and a.snapshot is not None,
                 '--bindings and --snapshot required; compiler never calls production APIs')
