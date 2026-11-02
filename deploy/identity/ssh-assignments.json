@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "public_key_attribute": "ssh_public_keys",
+  "assignments": []
+}

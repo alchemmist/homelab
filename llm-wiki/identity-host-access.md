@@ -10,6 +10,9 @@
 - `ansible/playbooks/identity-hosts.yml` — защита owner kubeconfig + users playbook.
 - Inventory/group/host vars `homelab_users` — реальные публичные ключи и assignments.
 - `deploy/identity/access-policy.yaml` — intent ролей, не самостоятельный enforcement.
+- [Опциональный Authentik public-key import](identity-ssh-keys.md) — отдельный
+  read-only plan/export и guarded Ansible play; сейчас пустой/выключенный, без
+  миграции Tim. Immutable UUID binding, explicit active/revoked hosts; не SSO/CA.
 - `deploy/identity/observer-role.yaml`, `identity-rbac.yml` — unbound observer definition.
 - K3s install/HA config templates также сохраняют kubeconfig mode/group.
 

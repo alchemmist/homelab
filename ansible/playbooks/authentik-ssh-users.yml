@@ -1,0 +1,82 @@
+---
+# Optional public-key import. Default and --check validate intent only, no host connection.
+# Existing users.yml and inventory remain independent and unchanged.
+- name: Review optional Authentik SSH user assignments
+  hosts: Socrat
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Require a reviewed public-only export
+      ansible.builtin.assert:
+        that:
+          - homelab_authentik_ssh_payload is defined
+          - homelab_authentik_ssh_review_sha256 is defined
+        fail_msg: Supply the guarded identity-ssh-plan.py export as an extra-vars file.
+
+    - name: Validate export integrity and complete host scope before any changes
+      ansible.builtin.assert:
+        that:
+          - homelab_authentik_ssh_payload.version == 1
+          - homelab_authentik_ssh_payload.required_hosts | length > 0
+          - homelab_authentik_ssh_payload.by_host.keys() | sort == homelab_authentik_ssh_payload.required_hosts | sort
+          - homelab_authentik_ssh_payload.required_hosts | difference(ansible_play_hosts_all) | length == 0
+          - (homelab_authentik_ssh_payload | to_json(sort_keys=True, ensure_ascii=True) | hash('sha256')) == homelab_authentik_ssh_review_sha256
+          - not (homelab_authentik_ssh_apply | default(false) | bool) or homelab_authentik_ssh_approval | default('') == homelab_authentik_ssh_review_sha256
+        fail_msg: Export changed, approval missing, unknown host, or --limit would skip an assignment/revocation.
+
+    - name: Reject automatic merge with existing manually managed accounts
+      ansible.builtin.assert:
+        that:
+          - (homelab_users | default([]) | map(attribute='name') | list) | intersect(homelab_authentik_ssh_payload.by_host[inventory_hostname] | default([]) | map(attribute='name') | list) | length == 0
+        fail_msg: Existing account overlaps import. Review an explicit migration; never merge by editable IdP names/email.
+
+    - name: Show intent without keys or remote writes
+      ansible.builtin.debug:
+        msg:
+          mode: "{{ 'explicit-apply' if homelab_authentik_ssh_apply | default(false) | bool and not ansible_check_mode else 'read-only-intent-check' }}"
+          review_sha256: "{{ homelab_authentik_ssh_review_sha256 }}"
+          assigned_names: "{{ homelab_authentik_ssh_payload.by_host[inventory_hostname] | default([]) | map(attribute='name') | list }}"
+
+    - name: Explicitly apply only imported identities, never other manual accounts
+      when:
+        - homelab_authentik_ssh_apply | default(false) | bool
+        - not ansible_check_mode
+        - inventory_hostname in homelab_authentik_ssh_payload.required_hosts
+      block:
+        - name: Refuse adoption of existing unbound Linux accounts before any writes
+          ansible.builtin.script:
+            cmd: "../files/verify_authentik_ssh_binding.py {{ item.name | quote }} {{ item.authentik_uuid | quote }}"
+            executable: python3
+          become: true
+          changed_when: false
+          loop: "{{ homelab_authentik_ssh_payload.by_host[inventory_hostname] }}"
+          loop_control:
+            label: "{{ item.name }}"
+
+        - name: Ensure private root enrollment directory
+          ansible.builtin.file:
+            path: /var/lib/homelab-authentik-ssh-bindings
+            state: directory
+            owner: root
+            group: root
+            mode: '0700'
+          become: true
+
+        - name: Reserve immutable host bindings before creating accounts
+          ansible.builtin.copy:
+            content: "{{ {'name': item.name, 'uuid': item.authentik_uuid} | to_json }}\n"
+            dest: "/var/lib/homelab-authentik-ssh-bindings/{{ item.name }}.json"
+            owner: root
+            group: root
+            mode: '0600'
+            force: false
+          become: true
+          loop: "{{ homelab_authentik_ssh_payload.by_host[inventory_hostname] }}"
+          loop_control:
+            label: "{{ item.name }}"
+
+        - name: Apply through existing restricted users role and effective host verifier
+          ansible.builtin.include_role:
+            name: users
+          vars:
+            homelab_users: "{{ homelab_authentik_ssh_payload.by_host[inventory_hostname] }}"
