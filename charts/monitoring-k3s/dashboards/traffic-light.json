@@ -4865,7 +4865,7 @@
     "type": "prometheus",
     "uid": "prometheus"
    },
-   "description": "Argo CD: http_2xx probe of http://argo-cd-argocd-server.argocd.svc.cluster.local:80/healthz every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
+   "description": "Argo CD: http_3xx probe of http://argo-cd-argocd-server.argocd.svc.cluster.local:80/healthz every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
    "fieldConfig": {
     "defaults": {
      "displayName": "Argo CD",

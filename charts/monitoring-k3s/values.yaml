@@ -199,5 +199,5 @@ serviceProbes:
   - id: argocd
     title: Argo CD
     url: http://argo-cd-argocd-server.argocd.svc.cluster.local:80/healthz
-    module: http_2xx
+    module: http_3xx
     alertName: SocratServiceArgocdUnavailable

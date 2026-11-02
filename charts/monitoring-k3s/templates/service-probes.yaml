@@ -13,6 +13,13 @@ data:
         http:
           preferred_ip_protocol: ip4
           follow_redirects: true
+      http_3xx:
+        prober: http
+        timeout: 3s
+        http:
+          preferred_ip_protocol: ip4
+          follow_redirects: false
+          valid_status_codes: [200, 302, 307]
       tcp_connect:
         prober: tcp
         timeout: 3s
