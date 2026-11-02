@@ -13,4 +13,7 @@ with tempfile.TemporaryDirectory(dir=root) as work:
  with tarfile.open(fileobj=sys.stdout.buffer,mode='w|') as tar:
   for name in ['credentials.json','oidc-clients.json','values.yaml','foundation.yaml','services.json','owner-login.json','tim-login.json','account-mappings.json']:
    tar.add(root/name,arcname=name)
+  # Include machine-identity journal and guarded rollback credentials when present.
+  for extra in [root/'automation-api.json',*root.glob('credentials-before-automation-*.json')]:
+   if extra.exists():tar.add(extra,arcname=extra.name)
   for name in ['database.dump','data.tar']:tar.add(p/name,arcname=name)

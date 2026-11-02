@@ -26,6 +26,16 @@ if not path.exists():
     fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)
     with os.fdopen(fd,'w') as f:json.dump(values,f)
 values=json.loads(path.read_text());path.chmod(0o600)
-manifest={'apiVersion':'v1','kind':'Secret','metadata':{'name':'authentik-runtime','namespace':'identity'},'type':'Opaque','stringData':values}
+# Existing API consumers retain the historical key as a compatibility alias.
+# Never inject that administrative machine token or old bootstrap password into pods.
+runtime_values=dict(values)
+automation_path=root/'automation-api.json'
+if automation_path.exists():
+    automation=json.loads(automation_path.read_text())
+    if automation.get('status')!='active' or automation.get('token')!=values['AUTHENTIK_BOOTSTRAP_TOKEN']:
+        raise SystemExit('Incomplete automation migration; refusing runtime credential update')
+    for key in ['AUTHENTIK_BOOTSTRAP_TOKEN','AUTHENTIK_BOOTSTRAP_PASSWORD']:
+        runtime_values.pop(key,None)
+manifest={'apiVersion':'v1','kind':'Secret','metadata':{'name':'authentik-runtime','namespace':'identity'},'type':'Opaque','stringData':runtime_values}
 subprocess.run(kube+['apply','-f','-'],input=json.dumps(manifest),text=True,stdout=subprocess.DEVNULL,check=True)
 print('Stable runtime credentials installed without displaying secrets')
