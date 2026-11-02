@@ -139,8 +139,39 @@ class PilotTests(unittest.TestCase):
         compose = nb.router_compose(allowed, allowed['routing_peers'][0])
         self.assertEqual(set(compose['services']), {'routing-peer'})
 
+    def test_internal_manifest_has_no_service_and_isolates_signup(self):
+        cidrs = ['203.0.113.10/32', '10.42.0.1/32']
+        docs = nb.manifests(inputs(), 'internal', cidrs)
+        self.assertEqual([doc['kind'] for doc in docs],
+                         ['Namespace', 'PersistentVolumeClaim', 'Deployment', 'Deployment', 'NetworkPolicy'])
+        self.assertEqual({doc['metadata']['namespace'] for doc in docs if doc['kind'] != 'Namespace'},
+                         {'netbird-pilot'})
+        text = yaml.safe_dump_all(docs)
+        self.assertNotIn('kind: Service', text)
+        self.assertNotIn('kind: Ingress', text)
+        self.assertNotIn('NodePort', text)
+        self.assertNotIn('nodePort', text)
+        server = next(doc for doc in docs if doc['metadata']['name'] == 'server')
+        container = server['spec']['template']['spec']['containers'][0]
+        self.assertEqual(container['readinessProbe']['httpGet'], {'path': '/health', 'port': 9000})
+        self.assertEqual(container['livenessProbe']['httpGet']['path'], '/health')
+        secret = server['spec']['template']['spec']['volumes'][0]['secret']
+        self.assertEqual(secret['items'], [{'key': 'config.yaml', 'path': 'config.yaml'}])
+        policy = docs[-1]
+        self.assertTrue(nb.ingress_allowed(policy, '203.0.113.10', 80))
+        self.assertTrue(nb.ingress_allowed(policy, '10.42.0.1', 80))
+        self.assertFalse(nb.ingress_allowed(policy, '10.42.0.20', 80))
+        self.assertFalse(nb.ingress_allowed(policy, '10.43.0.10', 80))
+        self.assertTrue(nb.ingress_allowed(policy, '10.42.0.20', 9000))
+        self.assertFalse(nb.ingress_allowed(policy, '10.42.0.20', 9090))
+        self.assertFalse(nb.ingress_allowed(policy, '203.0.113.10', 3478, 'UDP'))
+        with self.assertRaises(ValueError):
+            nb.manifests(inputs(), 'internal', ['10.43.0.1/32'])
+        with self.assertRaises(ValueError):
+            nb.manifests(inputs(), 'internal', None)
+
     def test_manifest_pins_runtime_secret_singleton_no_argo(self):
-        docs = nb.manifests(inputs())
+        docs = nb.manifests(inputs(), 'edge')
         self.assertFalse(any(x['kind'] in ['Secret', 'Application', 'DaemonSet', 'IngressRoute'] for x in docs))
         deployments = [x for x in docs if x['kind'] == 'Deployment']
         self.assertEqual(sorted(x['metadata']['name'] for x in deployments), ['dashboard', 'edge-forwarder', 'server'])

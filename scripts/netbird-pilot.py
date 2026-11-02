@@ -24,6 +24,8 @@ REVIEWS = {'dns_tls_public_before_vpn', 'stun_udp_3478_to_nodeport',
 CONTROL_REVIEWS = {'dns_tls_public_before_vpn', 'stun_udp_3478_to_nodeport',
                    'ingress_scope_reviewed', 'storage_locality_reviewed',
                    'management_node_reviewed'}
+# First apply does not publish DNS, STUN, or Ingress.
+INTERNAL_REVIEWS = {'storage_locality_reviewed', 'management_node_reviewed'}
 NS = 'netbird-pilot'
 EDGE = 'netbird-edge'
 # v0.82.0 combined handler: native gRPC is HTTP/2; clients also use exact WebSocket paths.
@@ -32,6 +34,7 @@ WS_PATHS = ('/ws-proxy/management', '/ws-proxy/signal', '/relay')
 # Unauthenticated on the server. Public edge must not be able to claim the instance.
 DENY_PREFIXES = ('/api/setup', '/api/users/invites')
 STUN_PORT = 3478
+HEALTH_PORT = 9000
 
 
 def require(ok, message):
@@ -200,22 +203,67 @@ def account_settings(c):
             'routing_peer_dns_resolution_enabled': False, 'ipv6_enabled_groups': []}
 
 
-def manifests(c):
-    """Control plane only. No router, policy, Secret, or Argo Application.
+def port_forward_sources(cidrs):
+    """Node and CNI-bridge addresses that may open a port-forward. Not pod or Service CIDRs."""
+    require(isinstance(cidrs, list) and 1 <= len(cidrs) <= 8, 'port-forward sources required')
+    cleaned = []
+    for cidr in cidrs:
+        network = ipaddress.ip_network(cidr, strict=True)
+        require(network.version == 4 and network.prefixlen == 32,
+                'port-forward source must be an IPv4 /32')
+        require(not network.overlaps(ipaddress.ip_network('10.43.0.0/16')),
+                'service CIDR is not a port-forward source')
+        cleaned.append(str(network))
+    require(len(cleaned) == len(set(cleaned)), 'duplicate port-forward source')
+    return cleaned
 
-    Ingress lives in netbird-edge so the existing Traefik Role, once that namespace
-    is explicitly added to watchNamespaces, can read only the TLS secret. The runtime
-    secret stays in netbird-pilot, which is not added to the Traefik watch list.
-    Cross-namespace services stay disabled; a chart-pinned Traefik forwarder in the
-    edge namespace dials the pilot ClusterIP by DNS.
+
+def ingress_allowed(policy, source, port, protocol='TCP'):
+    """True when one ingress rule matches. An empty ingress list denies every source."""
+    source_ip = ipaddress.ip_address(source)
+    for rule in policy['spec'].get('ingress') or []:
+        ports = rule.get('ports')
+        if ports and not any(item.get('port') == port and item.get('protocol', 'TCP') == protocol
+                             for item in ports):
+            continue
+        peers = rule.get('from')
+        if not peers:
+            return True
+        for peer in peers:
+            block = peer.get('ipBlock') or {}
+            if 'cidr' not in block:
+                continue
+            network = ipaddress.ip_network(block['cidr'], strict=False)
+            if source_ip not in network:
+                continue
+            if any(source_ip in ipaddress.ip_network(item, strict=False) for item in block.get('except') or []):
+                continue
+            return True
+    return False
+
+
+def manifests(c, publication='internal', port_forward_cidrs=None):
+    """Control plane only. No router, Secret, or Argo Application.
+
+    Internal publication is the first apply: namespace, data PVC, server and
+    dashboard Deployments, and a NetworkPolicy. No Service, Ingress, or NodePort.
+    Without a Service the pod IP is still reachable, so the policy denies cluster
+    ingress to port 80 and allows /health plus the audited port-forward sources.
+
+    Edge publication adds the STUN NodePort and the netbird-edge Ingress later.
+    The runtime secret stays in netbird-pilot and is not added to the Traefik watch list.
     """
+    require(publication in ('internal', 'edge'), 'publication invalid')
+
     def obj(kind, name, namespace, api='v1', **fields):
         meta = {'name': name}
         if namespace:
             meta['namespace'] = namespace
         return {'apiVersion': api, 'kind': kind, 'metadata': meta, **fields}
 
-    result = [obj('Namespace', NS, None), obj('Namespace', EDGE, None)]
+    result = [obj('Namespace', NS, None)]
+    if publication == 'edge':
+        result.append(obj('Namespace', EDGE, None))
     for item in result:
         item['metadata']['labels'] = {'homelab.alchemmist.xyz/netbird': 'control-plane'}
     result.append(obj('PersistentVolumeClaim', 'server-data', NS, spec={
@@ -240,13 +288,16 @@ def manifests(c):
             container.update(args=['--config', '/etc/netbird/config.yaml'],
                              volumeMounts=[{'name': 'config', 'mountPath': '/etc/netbird', 'readOnly': True},
                                            {'name': 'data', 'mountPath': '/var/lib/netbird'}],
-                             readinessProbe={'httpGet': {'path': '/oauth2/.well-known/openid-configuration', 'port': 80},
-                                             'initialDelaySeconds': 10},
-                             livenessProbe={'tcpSocket': {'port': 9000}, 'initialDelaySeconds': 30})
+                             readinessProbe={'httpGet': {'path': '/health', 'port': HEALTH_PORT},
+                                             'initialDelaySeconds': 5, 'periodSeconds': 10},
+                             livenessProbe={'httpGet': {'path': '/health', 'port': HEALTH_PORT},
+                                            'initialDelaySeconds': 20, 'periodSeconds': 20})
             container['ports'] += [{'name': 'stun', 'containerPort': STUN_PORT, 'protocol': 'UDP'},
-                                   {'name': 'health', 'containerPort': 9000},
+                                   {'name': 'health', 'containerPort': HEALTH_PORT},
                                    {'name': 'metrics', 'containerPort': 9090}]
-            pod['volumes'] = [{'name': 'config', 'secret': {'secretName': 'netbird-runtime', 'defaultMode': 0o400}},
+            pod['volumes'] = [{'name': 'config', 'secret': {
+                                  'secretName': 'netbird-runtime', 'defaultMode': 0o400,
+                                  'items': [{'key': 'config.yaml', 'path': 'config.yaml'}]}},
                               {'name': 'data', 'persistentVolumeClaim': {'claimName': 'server-data'}}]
         else:
             container['env'] = [{'name': k, 'value': v} for k, v in env.items()]
@@ -255,8 +306,19 @@ def manifests(c):
             'replicas': 1, 'strategy': {'type': 'Recreate'},
             'selector': {'matchLabels': {'app': 'netbird-' + name}},
             'template': {'metadata': {'labels': {'app': 'netbird-' + name}}, 'spec': pod}}))
-        result.append(obj('Service', name, NS, spec={'selector': {'app': 'netbird-' + name},
-                                                    'ports': [{'name': 'http', 'port': 80, 'targetPort': 'http'}]}))
+        if publication == 'edge':
+            result.append(obj('Service', name, NS, spec={'selector': {'app': 'netbird-' + name},
+                                                        'ports': [{'name': 'http', 'port': 80, 'targetPort': 'http'}]}))
+    if publication == 'internal':
+        sources = port_forward_sources(port_forward_cidrs)
+        result.append(obj('NetworkPolicy', 'deny-cluster-signup', NS, 'networking.k8s.io/v1', spec={
+            'podSelector': {}, 'policyTypes': ['Ingress'],
+            'ingress': [
+                {'ports': [{'protocol': 'TCP', 'port': HEALTH_PORT}]},
+                {'from': [{'ipBlock': {'cidr': cidr}} for cidr in sources],
+                 'ports': [{'protocol': 'TCP', 'port': 80}]},
+            ]}))
+        return result
     result.append(obj('Service', 'stun', NS, spec={
         'type': 'NodePort', 'externalTrafficPolicy': 'Local', 'selector': {'app': 'netbird-server'},
         'ports': [{'name': 'stun', 'port': STUN_PORT, 'targetPort': 'stun',
@@ -361,8 +423,21 @@ def ingress(c, name, paths, port, scheme, priority):
     return body
 
 
+def validate_internal(c):
+    """First-stage inputs. DNS, STUN, and Ingress reviews belong to edge publication."""
+    require(isinstance(c, dict) and c.get('schema_version') == 1, 'unsupported schema_version')
+    require(hostname(c.get('management_fqdn')), 'management_fqdn: approved public FQDN required')
+    for key in ['management_node', 'storage_class']:
+        require(identifier(c.get(key)), key + ': reviewed Kubernetes identifier required')
+    reviews = c.get('review')
+    require(isinstance(reviews, dict), 'review gates required')
+    for key in INTERNAL_REVIEWS:
+        require(reviews.get(key) is True, 'internal review not explicitly true: ' + key)
+    return c
+
+
 def validate_control_plane(c):
-    """Structural control-plane inputs. Router placement and resource grants are not required."""
+    """Edge publication inputs. Router placement and resource grants are not required."""
     require(isinstance(c, dict) and c.get('schema_version') == 1, 'unsupported schema_version')
     require(hostname(c.get('management_fqdn')), 'management_fqdn: approved public FQDN required')
     for key in ['management_node', 'tls_secret_name', 'storage_class', 'ingress_class']:
@@ -458,12 +533,12 @@ def dump(path, value, yaml_format=False, private=False):
         f.write(yaml.safe_dump(value, sort_keys=False) if yaml_format else json.dumps(value, indent=2) + '\n')
 
 
-def render_control_plane(c, out):
-    """Write workload manifests only. Does not write router Compose or access requests."""
-    validate_control_plane(c)
+def render_control_plane(c, out, port_forward_cidrs):
+    """Write the internal-only manifests. Does not write Services, Ingress, or routers."""
+    validate_internal(c)
     out.mkdir(mode=0o700, parents=True, exist_ok=False)
     with (out / 'management.yaml').open('w') as f:
-        yaml.safe_dump_all(manifests(c), f, sort_keys=False)
+        yaml.safe_dump_all(manifests(c, 'internal', port_forward_cidrs), f, sort_keys=False)
 
 
 def render(c, out):
@@ -472,7 +547,7 @@ def render(c, out):
             'existing-node router artifacts are generated separately; this compiler does not write them')
     out.mkdir(mode=0o700, parents=True, exist_ok=False)
     with (out / 'management.yaml').open('w') as f:
-        yaml.safe_dump_all(manifests(c), f, sort_keys=False)
+        yaml.safe_dump_all(manifests(c, 'edge'), f, sort_keys=False)
     dump(out / 'account-settings.merge.json', account_settings(c))
     dump(out / 'access-intent.json', {'network': 'netbird-pilot', 'routers': c['routing_peers'],
                                     'resources': c['resources']})
@@ -515,6 +590,7 @@ def main():
     p.add_argument('--snapshot', type=Path)
     p.add_argument('--auth-mode', choices=['bootstrap', 'idp-only'], default='bootstrap')
     p.add_argument('--connector-witness', type=Path)
+    p.add_argument('--port-forward-cidr', action='append')
     a = p.parse_args()
     if a.command == 'verify-images':
         verify_images()
@@ -522,10 +598,11 @@ def main():
     raw = json.loads(a.inputs.read_text())
     if a.command == 'render-control-plane':
         require(a.out is not None, '--out required')
+        require(a.port_forward_cidr, 'port-forward sources required')
         require(not a.out.resolve().is_relative_to(ROOT),
                 '--out must be outside the Git worktree (including runtime secrets)')
-        render_control_plane(raw, a.out)
-        print('Local control-plane files written; nothing applied and no network granted')
+        render_control_plane(raw, a.out, a.port_forward_cidr)
+        print('Local internal control-plane files written; nothing applied and no network granted')
         return
     c = validate(raw)
     if a.command == 'validate':

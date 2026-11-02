@@ -95,7 +95,7 @@ class ControlPlaneTests(unittest.TestCase):
             nb.validate(inputs)
         with tempfile.TemporaryDirectory() as directory:
             out = Path(directory) / 'rendered'
-            nb.render_control_plane(inputs, out)
+            nb.render_control_plane(inputs, out, ['203.0.113.10/32'])
             self.assertEqual(sorted(path.name for path in out.iterdir()), ['management.yaml'])
             docs = list(yaml.safe_load_all((out / 'management.yaml').read_text()))
             deploy.assert_safe_manifests(docs)
@@ -103,6 +103,9 @@ class ControlPlaneTests(unittest.TestCase):
             self.assertNotIn('routing-peer', text)
             self.assertNotIn('192.168.88.10', text)
             self.assertNotIn('kind: Secret', text)
+            self.assertNotIn('kind: Service', text)
+            self.assertNotIn('kind: Ingress', text)
+            self.assertIn('/health', text)
 
     def test_cleared_audit_cannot_hide_the_unpatched_chart(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -134,7 +137,7 @@ class ControlPlaneTests(unittest.TestCase):
     def test_apply_argv_is_explicit_and_rejects_default_context(self):
         with tempfile.TemporaryDirectory() as directory:
             out = Path(directory) / 'rendered'
-            nb.render_control_plane(control_inputs(), out)
+            nb.render_control_plane(control_inputs(), out, ['203.0.113.10/32'])
             manifest = out / 'management.yaml'
             argv = deploy.apply_argv(manifest, 'lab')
             self.assertEqual(argv[:4], ['kubectl', '--context', 'lab', 'apply'])

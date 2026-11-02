@@ -105,23 +105,37 @@ def report(inputs, candidates, audit, chart, delta):
             'scope': scope}
 
 
-def assert_safe_manifests(docs):
+def assert_safe_manifests(docs, publication='internal'):
+    """Internal publication has no Service, Ingress, or NodePort. Edge may add them."""
+    nb.require(publication in ('internal', 'edge'), 'publication invalid')
     namespaces = set()
     runtime_refs = []
+    kinds = set()
     for doc in docs:
-        nb.require(doc.get('kind') not in FORBIDDEN_KINDS, 'forbidden manifest kind')
+        kind = doc.get('kind')
+        kinds.add(kind)
+        nb.require(kind not in FORBIDDEN_KINDS, 'forbidden manifest kind')
+        if publication == 'internal':
+            nb.require(kind not in {'Service', 'Ingress'}, 'internal apply has no Service or Ingress')
         name = doc['metadata']['name']
         namespace = doc['metadata'].get('namespace')
-        if doc['kind'] == 'Namespace':
+        if kind == 'Namespace':
             namespaces.add(name)
         else:
-            nb.require(namespace in {nb.NS, nb.EDGE}, 'unexpected namespace')
+            allowed = {nb.NS} if publication == 'internal' else {nb.NS, nb.EDGE}
+            nb.require(namespace in allowed, 'unexpected namespace')
         blob = json.dumps(doc)
-        for banned in ['hostNetwork', 'NB_SETUP_PAT', 'client_secret', 'BEGIN ', 'wg-socrat', 'syncPolicy']:
+        for banned in ['hostNetwork', 'hostPort', 'NB_SETUP_PAT', 'client_secret', 'BEGIN ', 'wg-socrat', 'syncPolicy']:
             nb.require(banned not in blob, 'unsafe manifest field')
+        if publication == 'internal':
+            nb.require('NodePort' not in blob and 'nodePort' not in blob, 'NodePort is an edge publication')
         if 'netbird-runtime' in blob:
             runtime_refs.append(namespace)
-    nb.require(namespaces == {nb.NS, nb.EDGE}, 'control plane namespaces mismatch')
+    if publication == 'internal':
+        nb.require(namespaces == {nb.NS}, 'internal namespace mismatch')
+        nb.require('NetworkPolicy' in kinds, 'signup isolation required')
+    else:
+        nb.require(namespaces == {nb.NS, nb.EDGE}, 'control plane namespaces mismatch')
     nb.require(runtime_refs == [nb.NS], 'runtime secret reference must stay in netbird-pilot')
 
 
@@ -144,7 +158,7 @@ def apply_argv(manifest, context):
     nb.require(manifest.is_file(), 'rendered manifest required')
     nb.require(not manifest.resolve().is_relative_to(ROOT), 'manifest must stay outside the worktree')
     docs = list(yaml.safe_load_all(manifest.read_text()))
-    assert_safe_manifests(docs)
+    assert_safe_manifests(docs, 'internal')
     return ['kubectl', '--context', context, 'apply', '--server-side',
             '--field-manager', 'netbird-control-plane', '-f', str(manifest)]
 
