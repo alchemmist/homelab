@@ -230,3 +230,7 @@ account сохранён. Новый API key — broad/non-expiring deployment c
 Независимый node-admin recovery проверен на disposable admin, owner MFA не
 менялся. Full DR/личная owner recovery/off-site escrow всё ещё отдельны.
 Процедура/guards: [admin-automation.md](../docs/identity/admin-automation.md).
+
+## LMS — 2 ноября 2026
+
+Кабинет курса и Authentik: [lms.md](lms.md). Локальный фоновый генератор решений и тестов, он не на кластере: [lms-generation.md](lms-generation.md).
