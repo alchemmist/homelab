@@ -1,0 +1,29 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: otel-tls-backends
+  labels:
+    app.kubernetes.io/part-of: otel-backends
+spec:
+  secretName: otel-tls-backends
+  commonName: otel-backends
+  dnsNames:
+    - otel-loki.cattle-monitoring-system.svc
+    - otel-loki.cattle-monitoring-system.svc.cluster.local
+    - otel-tempo.cattle-monitoring-system.svc
+    - otel-tempo.cattle-monitoring-system.svc.cluster.local
+  ipAddresses:
+    - {{ .Values.externalIP | quote }}
+  duration: 2160h
+  renewBefore: 720h
+  issuerRef:
+    name: otel-ca
+    kind: Issuer
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  usages:
+    - digital signature
+    - server auth
+    - client auth
