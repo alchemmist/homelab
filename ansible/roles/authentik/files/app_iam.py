@@ -36,7 +36,12 @@ GROUP_MARKER = {'homelab_app_iam': 1}
 
 
 def validate_group(group):
-    if group.get('is_superuser') or group.get('parent') or group.get('roles'):
+    # Authentik 2026.8.5 uses plural parents (M2M), not legacy parent.
+    # Missing/null/reduced responses are not evidence of absence of privilege.
+    if (group.get('is_superuser') is not False or
+            type(group.get('parents')) is not list or group['parents'] != [] or
+            type(group.get('roles')) is not list or group['roles'] != [] or
+            group.get('parent') is not None):
         raise RuntimeError('App group must be non-superuser without inheritance/RBAC: ' + group['name'])
     if group.get('attributes') != GROUP_MARKER:
         raise RuntimeError('Refusing adoption of unmarked app group: ' + group['name'])

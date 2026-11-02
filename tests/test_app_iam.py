@@ -123,11 +123,33 @@ class AppIAMTests(unittest.TestCase):
 
     def test_app_group_inheritance_or_superuser_refused(self):
         group = next(g for g in self.fake.data['core/groups/'] if g['name'] == 'app-grafana-viewer')
-        for field, value in [('parent', 'owner-group'), ('is_superuser', True)]:
+        owner = next(g for g in self.fake.data['core/groups/'] if g['name'] == 'homelab-owner')
+        rbac = {'pk': 'rbac-ancestor', 'name': 'rbac-ancestor', 'is_superuser': False,
+                'parents': [], 'roles': ['admin-role'], 'attributes': {}, 'users': []}
+        self.fake.data['core/groups/'].append(rbac)
+        self.manifest['users']['tim']['appGroups'] = ['app-grafana-viewer']
+        for field, value in [('parents', [owner['pk']]), ('parents', [rbac['pk']]),
+                             ('is_superuser', True), ('roles', ['admin-role'])]:
             old = copy.deepcopy(group); group[field] = value
             with self.assertRaisesRegex(RuntimeError, 'non-superuser'):
                 self.plan()
+            self.assertEqual(self.api.writes, [])
             group.clear(); group.update(old)
+
+    def test_incomplete_current_group_schema_refused_before_assignment(self):
+        group = next(g for g in self.fake.data['core/groups/'] if g['name'] == 'app-grafana-viewer')
+        self.manifest['users']['tim']['appGroups'] = ['app-grafana-viewer']
+        for field in ['parents', 'roles', 'is_superuser']:
+            for value in ['missing', None, {}, '', 0]:
+                old = copy.deepcopy(group)
+                if value == 'missing':
+                    group.pop(field)
+                else:
+                    group[field] = value
+                with self.subTest(field=field, value=value), self.assertRaisesRegex(RuntimeError, 'non-superuser'):
+                    self.plan()
+                self.assertEqual(self.api.writes, [])
+                group.clear(); group.update(old)
 
     def test_binding_drift_is_not_silently_reset(self):
         binding = self.fake.data['policies/bindings/'][0]

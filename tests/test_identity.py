@@ -41,7 +41,11 @@ class FakeAuthentik:
         if path.endswith('/set_password/'):return io.BytesIO(b'{}')
         if method=='POST':
             row={'pk':len(self.data[path])+1,**payload}
-            if path=='core/groups/':row['pk']='group-'+str(row['pk']);row['users']=[]
+            if path=='core/groups/':
+                # Current 2026.8.5 GroupSerializer defaults, including M2M parents.
+                row={'attributes':{},'is_superuser':False,'parents':[],'roles':[],
+                     'users':[],**row}
+                row['pk']='group-'+str(row['pk'])
             if path=='core/users/':
                 known=json.loads((ROOT/'deploy/identity/account-mappings.json').read_text())
                 row['uuid']=known.get(row['username'],{}).get('idpUserUuid','test-new-subject')
