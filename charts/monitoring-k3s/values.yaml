@@ -181,3 +181,23 @@ serviceProbes:
     url: 192.168.0.23:2049
     module: tcp_connect
     alertName: SocratServiceNfsUnavailable
+  - id: n8n
+    title: n8n
+    url: http://n8n.automation.svc.cluster.local:80/healthz
+    module: http_2xx
+    alertName: SocratServiceN8nUnavailable
+  - id: authentik
+    title: Authentik
+    url: http://authentik-server.identity.svc.cluster.local:80/-/health/live/
+    module: http_2xx
+    alertName: SocratServiceAuthentikUnavailable
+  - id: harbor
+    title: Harbor
+    url: http://harbor-core.harbor.svc.cluster.local:80/api/v2.0/ping
+    module: http_2xx
+    alertName: SocratServiceHarborUnavailable
+  - id: argocd
+    title: Argo CD
+    url: http://argo-cd-argocd-server.argocd.svc.cluster.local:80/healthz
+    module: http_2xx
+    alertName: SocratServiceArgocdUnavailable

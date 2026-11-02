@@ -207,6 +207,20 @@ class TrafficLightQueriesTest(unittest.TestCase):
         self.assertEqual(steps[1], {'color': '#A85D08', 'value': 3})
         self.assertEqual(steps[2], {'color': '#26783D', 'value': 4})
 
+    def test_platform_tiles_fill_the_gap_under_grafana(self):
+        expected = {
+            335: ('n8n', 'SocratServiceN8nUnavailable', {'x': 10, 'y': 8, 'w': 2, 'h': 1}),
+            336: ('authentik', 'SocratServiceAuthentikUnavailable', {'x': 12, 'y': 8, 'w': 2, 'h': 1}),
+            337: ('harbor', 'SocratServiceHarborUnavailable', {'x': 10, 'y': 9, 'w': 2, 'h': 1}),
+            338: ('argocd', 'SocratServiceArgocdUnavailable', {'x': 12, 'y': 9, 'w': 2, 'h': 1}),
+        }
+        for panel_id, (service_id, alert, grid) in expected.items():
+            panel = panel_by_id(self.dashboard, panel_id)
+            expr = panel['targets'][0]['expr']
+            self.assertIn(f'service_id="{service_id}"', expr)
+            self.assertIn(alert, expr)
+            self.assertEqual(panel['gridPos'], grid)
+
     def test_vpn_fraction_tiles_are_removed(self):
         ids = {panel['id'] for panel in self.dashboard['panels']}
         self.assertNotIn(910, ids)

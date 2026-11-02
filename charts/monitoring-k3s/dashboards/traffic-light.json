@@ -4568,6 +4568,394 @@
    "title": "",
    "transparent": false,
    "type": "stat"
+  },
+  {
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "description": "n8n: http_2xx probe of http://n8n.automation.svc.cluster.local:80/healthz every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
+   "fieldConfig": {
+    "defaults": {
+     "displayName": "n8n",
+     "mappings": [
+      {
+       "options": {
+        "-2": {
+         "color": "#555555",
+         "text": "No telemetry"
+        },
+        "0": {
+         "color": "#26783D",
+         "text": "Healthy"
+        },
+        "1": {
+         "color": "#A85D08",
+         "text": "Pending"
+        },
+        "2": {
+         "color": "#B42332",
+         "text": "Firing"
+        }
+       },
+       "type": "value"
+      }
+     ],
+     "noValue": "No telemetry",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#26783D",
+        "value": 0
+       },
+       {
+        "color": "#A85D08",
+        "value": 1
+       },
+       {
+        "color": "#B42332",
+        "value": 2
+       }
+      ]
+     },
+     "unit": "short"
+    }
+   },
+   "gridPos": {
+    "h": 1,
+    "w": 2,
+    "x": 10,
+    "y": 8
+   },
+   "id": 335,
+   "options": {
+    "colorMode": "background_solid",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "orientation": "horizontal",
+    "percentChangeColorMode": "standard",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "showPercentChange": false,
+    "text": {
+     "titleSize": 14
+    },
+    "textMode": "name",
+    "wideLayout": false
+   },
+   "pluginVersion": "13.2.4",
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "(max(2 * ALERTS{alertname=\"SocratServiceN8nUnavailable\",service_id=\"n8n\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceN8nUnavailable\",service_id=\"n8n\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"n8n\"})) and on() ((max(up{job=\"service-probes\",service_id=\"n8n\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"n8n\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"n8n\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+     "format": "time_series",
+     "instant": true,
+     "range": false,
+     "refId": "A"
+    }
+   ],
+   "title": "",
+   "type": "stat"
+  },
+  {
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "description": "Authentik: http_2xx probe of http://authentik-server.identity.svc.cluster.local:80/-/health/live/ every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
+   "fieldConfig": {
+    "defaults": {
+     "displayName": "Authentik",
+     "mappings": [
+      {
+       "options": {
+        "-2": {
+         "color": "#555555",
+         "text": "No telemetry"
+        },
+        "0": {
+         "color": "#26783D",
+         "text": "Healthy"
+        },
+        "1": {
+         "color": "#A85D08",
+         "text": "Pending"
+        },
+        "2": {
+         "color": "#B42332",
+         "text": "Firing"
+        }
+       },
+       "type": "value"
+      }
+     ],
+     "noValue": "No telemetry",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#26783D",
+        "value": 0
+       },
+       {
+        "color": "#A85D08",
+        "value": 1
+       },
+       {
+        "color": "#B42332",
+        "value": 2
+       }
+      ]
+     },
+     "unit": "short"
+    }
+   },
+   "gridPos": {
+    "h": 1,
+    "w": 2,
+    "x": 12,
+    "y": 8
+   },
+   "id": 336,
+   "options": {
+    "colorMode": "background_solid",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "orientation": "horizontal",
+    "percentChangeColorMode": "standard",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "showPercentChange": false,
+    "text": {
+     "titleSize": 14
+    },
+    "textMode": "name",
+    "wideLayout": false
+   },
+   "pluginVersion": "13.2.4",
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "(max(2 * ALERTS{alertname=\"SocratServiceAuthentikUnavailable\",service_id=\"authentik\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceAuthentikUnavailable\",service_id=\"authentik\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"authentik\"})) and on() ((max(up{job=\"service-probes\",service_id=\"authentik\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"authentik\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"authentik\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+     "format": "time_series",
+     "instant": true,
+     "range": false,
+     "refId": "A"
+    }
+   ],
+   "title": "",
+   "type": "stat"
+  },
+  {
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "description": "Harbor: http_2xx probe of http://harbor-core.harbor.svc.cluster.local:80/api/v2.0/ping every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
+   "fieldConfig": {
+    "defaults": {
+     "displayName": "Harbor",
+     "mappings": [
+      {
+       "options": {
+        "-2": {
+         "color": "#555555",
+         "text": "No telemetry"
+        },
+        "0": {
+         "color": "#26783D",
+         "text": "Healthy"
+        },
+        "1": {
+         "color": "#A85D08",
+         "text": "Pending"
+        },
+        "2": {
+         "color": "#B42332",
+         "text": "Firing"
+        }
+       },
+       "type": "value"
+      }
+     ],
+     "noValue": "No telemetry",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#26783D",
+        "value": 0
+       },
+       {
+        "color": "#A85D08",
+        "value": 1
+       },
+       {
+        "color": "#B42332",
+        "value": 2
+       }
+      ]
+     },
+     "unit": "short"
+    }
+   },
+   "gridPos": {
+    "h": 1,
+    "w": 2,
+    "x": 10,
+    "y": 9
+   },
+   "id": 337,
+   "options": {
+    "colorMode": "background_solid",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "orientation": "horizontal",
+    "percentChangeColorMode": "standard",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "showPercentChange": false,
+    "text": {
+     "titleSize": 14
+    },
+    "textMode": "name",
+    "wideLayout": false
+   },
+   "pluginVersion": "13.2.4",
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "(max(2 * ALERTS{alertname=\"SocratServiceHarborUnavailable\",service_id=\"harbor\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceHarborUnavailable\",service_id=\"harbor\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"harbor\"})) and on() ((max(up{job=\"service-probes\",service_id=\"harbor\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"harbor\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"harbor\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+     "format": "time_series",
+     "instant": true,
+     "range": false,
+     "refId": "A"
+    }
+   ],
+   "title": "",
+   "type": "stat"
+  },
+  {
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "description": "Argo CD: http_2xx probe of http://argo-cd-argocd-server.argocd.svc.cluster.local:80/healthz every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
+   "fieldConfig": {
+    "defaults": {
+     "displayName": "Argo CD",
+     "mappings": [
+      {
+       "options": {
+        "-2": {
+         "color": "#555555",
+         "text": "No telemetry"
+        },
+        "0": {
+         "color": "#26783D",
+         "text": "Healthy"
+        },
+        "1": {
+         "color": "#A85D08",
+         "text": "Pending"
+        },
+        "2": {
+         "color": "#B42332",
+         "text": "Firing"
+        }
+       },
+       "type": "value"
+      }
+     ],
+     "noValue": "No telemetry",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#26783D",
+        "value": 0
+       },
+       {
+        "color": "#A85D08",
+        "value": 1
+       },
+       {
+        "color": "#B42332",
+        "value": 2
+       }
+      ]
+     },
+     "unit": "short"
+    }
+   },
+   "gridPos": {
+    "h": 1,
+    "w": 2,
+    "x": 12,
+    "y": 9
+   },
+   "id": 338,
+   "options": {
+    "colorMode": "background_solid",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "orientation": "horizontal",
+    "percentChangeColorMode": "standard",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "showPercentChange": false,
+    "text": {
+     "titleSize": 14
+    },
+    "textMode": "name",
+    "wideLayout": false
+   },
+   "pluginVersion": "13.2.4",
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "(max(2 * ALERTS{alertname=\"SocratServiceArgocdUnavailable\",service_id=\"argocd\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceArgocdUnavailable\",service_id=\"argocd\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"argocd\"})) and on() ((max(up{job=\"service-probes\",service_id=\"argocd\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"argocd\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"argocd\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+     "format": "time_series",
+     "instant": true,
+     "range": false,
+     "refId": "A"
+    }
+   ],
+   "title": "",
+   "type": "stat"
   }
  ],
  "timepicker": {
