@@ -1,5 +1,7 @@
 # Role intent. No new human grants until owner approves exact assignments.
-# Existing sources of truth remain homelab_users and wg_socrat_admin_clients.
+# Host/network sources remain homelab_users and wg_socrat_admin_clients.
+# App admission/roles: services.json; exact existing IdP lifecycle: lifecycle.json.
+# No app memberships are granted by this migration.
 version: 1
 roles:
   owner:
@@ -14,14 +16,31 @@ roles:
     description: Root on an owned machine is not authorization for other nodes or workloads.
 existingIdentities:
   owner:
+    authentikUuid: 9e33877a-3eaa-4541-98eb-8cdc10088ef6  # gitleaks:allow -- public reviewed subject UUID, not a credential
     linux: alchemmist
     rancher: user-zc7lw
     migration: preserve-local-break-glass
   tim:
+    authentikUuid: 0d2c194a-dee7-4226-b599-0a44ce2f2b76  # gitleaks:allow -- public reviewed subject UUID, not a credential
     linux: tim
     rancher: u-22wv2
     vpnDevices: [tim-phone]
     migration: preserve-existing-grants-pending-explicit-review
+applicationIAM:
+  catalog: deploy/identity/services.json
+  lifecycle: deploy/identity/lifecycle.json
+  reviewedSubjectLinks: deploy/identity/account-mappings.json
+  groupPattern: app-<service>-<role>
+  legacyGroups: preserve-no-automatic-migration
+  admission: additive-any-group-bindings-not-native-rbac
+  nativeRoles: explicit-per-service-no-implicit-admin
+  humanCreation: manual-native-enrollment-then-pin-uuid
+  emailMerging: forbidden
+  removalFromManifest: not-revocation-use-explicit-disabled
+  owner: protected-no-state-or-membership-change-by-lifecycle
+  apply: explicit-plan-sha256-no-scheduled-apply
+  controllerBoundary: docs/identity/application-iam.md
+  revocation: idp-disable-is-not-native-session-or-api-key-revocation
 network:
   mode: existing-wireguard-direct-peers
   nodeIPs: [10.250.0.1, 10.250.0.3, 10.250.0.2, 10.250.0.5]

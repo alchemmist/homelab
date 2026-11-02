@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "users": {
+    "alchemmist": {
+      "uuid": "9e33877a-3eaa-4541-98eb-8cdc10088ef6",
+      "state": "preserve",
+      "appGroups": []
+    },
+    "tim": {
+      "uuid": "0d2c194a-dee7-4226-b599-0a44ce2f2b76",
+      "state": "preserve",
+      "appGroups": []
+    }
+  }
+}

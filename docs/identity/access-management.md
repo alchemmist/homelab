@@ -2,6 +2,11 @@
 
 Comprehensive Russian operator manual and session consolidation: [llm-wiki identity](../../llm-wiki/identity.md).
 
+Additive granular app IAM, controller ownership and guarded onboarding/offboarding
+(implementation prepared, **not deployed**): [русский runbook](application-iam.md).
+The 2026-11-02 GET-only audit preserved the reviewed owner/Tim UUIDs and grants;
+no new app memberships were assigned.
+
 Live status: **2026-11-01**. Authentik is the identity provider for the core
 administrative services. **Not every application has native SSO.** The distinctions
 below are security boundaries, not merely UI details. NetBird remains deferred.

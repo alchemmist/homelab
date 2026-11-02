@@ -4,12 +4,15 @@ import json
 from pathlib import Path
 import runpy
 import tempfile
+import sys
 import unittest
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlparse
 import yaml
 
 ROOT=Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT/'ansible/roles/authentik/files'))
+from app_iam import admission_groups
 
 class FakeAuthentik:
     def __init__(self):
@@ -40,6 +43,9 @@ class FakeAuthentik:
             row={'pk':len(self.data[path])+1,**payload}
             if path=='core/groups/':row['pk']='group-'+str(row['pk']);row['users']=[]
             if path=='core/users/':
+                known=json.loads((ROOT/'deploy/identity/account-mappings.json').read_text())
+                row['uuid']=known.get(row['username'],{}).get('idpUserUuid','test-new-subject')
+                row['is_superuser']=False
                 for g in self.data['core/groups/']:
                     if g['pk'] in payload.get('groups',[]):g['users'].append(row['pk'])
             self.data[path].append(row)
@@ -57,6 +63,19 @@ class IdentityTests(unittest.TestCase):
     def setup_root(self,root):
         (root/'credentials.json').write_text(json.dumps({'AUTHENTIK_BOOTSTRAP_TOKEN':'fake-test-token'}))
         (root/'services.json').write_text((ROOT/'deploy/identity/services.json').read_text())
+
+    def setup_reviewed(self,root,api):
+        # Restored current identities, not speculative/future users.
+        self.configure(root,api)
+        accounts=json.loads((ROOT/'deploy/identity/account-mappings.json').read_text())
+        observer=next(g for g in api.data['core/groups/'] if g['name']=='homelab-observer')
+        api.data['core/users/'].append({'pk':6,'uuid':accounts['tim']['idpUserUuid'],
+            'username':'tim','email':accounts['tim']['email'],'is_active':True,
+            'is_superuser':False,'groups':[observer['pk']]})
+        observer['users'].append(6)
+        (root/'tim-login.json').write_text(json.dumps({'initialized':True}))
+        (root/'tim-login.json').chmod(0o600)
+        (root/'account-mappings.json').write_text(json.dumps(accounts))
 
     def test_configuration_idempotent_and_mfa_required(self):
         with tempfile.TemporaryDirectory() as d:
@@ -76,7 +95,7 @@ class IdentityTests(unittest.TestCase):
             grafana=next(p for p in api.data['providers/oauth2/'] if p['name']=='homelab-grafana')
             self.assertIn('offline_access', grafana['property_mappings'])
             self.assertEqual(len(api.data['core/applications/']),8)
-            self.assertEqual(len(api.data['policies/bindings/']),sum(len(service.get('groups',['homelab-owner'])) for slug,service in json.loads((root/'services.json').read_text()).items() if slug!='litellm'))
+            self.assertEqual(len(api.data['policies/bindings/']),sum(len(admission_groups(slug,service)) for slug,service in json.loads((root/'services.json').read_text()).items() if slug!='litellm'))
             for method,path,body,query in api.requests:
                 if method=='GET' and path=='core/applications/':
                     self.assertEqual(query['superuser_full_list'],['true'])
@@ -160,10 +179,10 @@ class RolloutRegressionTests(unittest.TestCase):
                 self.assertNotIn(node.tag.split('}')[-1],['script','foreignObject'])
                 self.assertFalse(any(k.lower().startswith('on') for k in node.attrib))
 
-    def test_explicit_human_bootstrap_keeps_tim_non_privileged(self):
+    def test_reviewed_human_reconciliation_keeps_tim_non_privileged(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d);helper=IdentityTests();helper.setup_root(root);api=FakeAuthentik()
-            (root/'account-mappings.json').write_text((ROOT/'deploy/identity/account-mappings.json').read_text())
+            helper.setup_reviewed(root,api)
             helper.configure(root,api);helper.configure(root,api)
             self.assertEqual(len(api.data['core/users/']),2)
             owner_group=next(g for g in api.data['core/groups/'] if g['name']=='homelab-owner')
@@ -193,7 +212,7 @@ class RolloutRegressionTests(unittest.TestCase):
         env=yaml.safe_load((ROOT/'deploy/identity/grafana-oidc-values.yaml').read_text())['grafana']['env']
         self.assertEqual(env['GF_AUTH_GENERIC_OAUTH_ALLOW_ASSIGN_GRAFANA_ADMIN'],'true')
         self.assertEqual(env['GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH'],
-            "contains(groups[*], 'homelab-owner') && 'GrafanaAdmin' || 'Viewer'")
+            "contains(groups[*], 'homelab-owner') && 'GrafanaAdmin' || contains(groups[*], 'app-grafana-editor') && 'Editor' || 'Viewer'")
         self.assertIn('offline_access', env['GF_AUTH_GENERIC_OAUTH_SCOPES'].split())
         self.assertEqual(env['GF_AUTH_GENERIC_OAUTH_USE_REFRESH_TOKEN'], 'true')
         self.assertEqual(env['GF_AUTH_LOGIN_MAXIMUM_LIFETIME_DURATION'], '8h')

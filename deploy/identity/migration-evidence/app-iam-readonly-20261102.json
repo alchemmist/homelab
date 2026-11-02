@@ -1,0 +1,46 @@
+{
+  "observedAt": "2026-11-02T13:23:14Z",
+  "mode": "read-only existing verified SSH helper; Authentik GET and kubectl get only",
+  "productionWrites": false,
+  "nativeBrowserAcceptance": false,
+  "identities": {
+    "alchemmist": {
+      "uuid": "9e33877a-3eaa-4541-98eb-8cdc10088ef6",
+      "active": true,
+      "superuser": true,
+      "groups": ["homelab-owner", "lms-students"]
+    },
+    "tim": {
+      "uuid": "0d2c194a-dee7-4226-b599-0a44ce2f2b76",
+      "active": true,
+      "superuser": false,
+      "groups": ["homelab-observer"]
+    }
+  },
+  "appGroupsPresentBeforeMigration": false,
+  "legacyFoundationBindingsMatchCatalog": true,
+  "foundationApplicationModes": "any",
+  "mandatoryMfaConfigure": true,
+  "nativeOAuthExplicitConsent": true,
+  "nativeOAuthAccessValidity": "minutes=5",
+  "nativeOAuthRefreshValidity": "hours=8",
+  "n8nProxyAuthorization": "default-provider-authorization-implicit-consent",
+  "n8nProxyAccessValidity": "hours=1",
+  "n8nProxyRefreshValidity": "days=30",
+  "rancherExactReviewedPrincipals": true,
+  "wikiExactReviewedLinks": true,
+  "wikiExactReviewedRoles": true,
+  "wikiReviewedTimRole": "editor",
+  "liveGrafanaRoles": "homelab-owner => GrafanaAdmin; other admitted legacy groups => Viewer",
+  "liveWebuiRoles": "homelab-owner => admin; homelab-observer => user",
+  "liveLmsAllowedGroup": "lms-students",
+  "workloadHelmLabelsObserved": ["authentik", "kube-prometheus-stack", "harbor", "open-webui", "wiki-runtime", "argo-cd", "lms"],
+  "ownershipCaveat": "Ordinary kubectl responses omitted managedFields. Controller ownership is inferred from repository sources and Helm labels, not proof of exclusive ownership.",
+  "uninspected": [
+    "all native application sessions and API tokens",
+    "all human authentication endpoints outside the catalog",
+    "new granular app-role browser flows (not deployed)",
+    "WebUI database link state (no exec or DB writes performed)"
+  ],
+  "secretsPublished": false
+}

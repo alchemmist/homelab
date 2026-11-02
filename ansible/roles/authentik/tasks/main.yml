@@ -40,6 +40,9 @@
     - {src: '{{ playbook_dir }}/../../deploy/authentik/foundation.yaml', name: foundation.yaml}
     - {src: bootstrap.py, name: bootstrap.py}
     - {src: configure.py, name: configure.py}
+    - {src: app_iam.py, name: app_iam.py}
+    - {src: lifecycle.py, name: lifecycle.py}
+    - {src: '{{ playbook_dir }}/../../deploy/identity/lifecycle.json', name: lifecycle.json}
     - {src: icons.py, name: icons.py}
     - {src: '{{ playbook_dir }}/../../deploy/identity/services.json', name: services.json}
     - {src: '{{ playbook_dir }}/../../deploy/identity/n8n-gateway.yaml', name: n8n-gateway.yaml}
@@ -85,7 +88,7 @@
   no_log: true
   changed_when: false
 
-- name: Configure empty role groups and safe application providers
+- name: Configure additive empty app groups and reviewed legacy application providers
   ansible.builtin.command:
     argv: [python3, '{{ authentik_directory }}/configure.py', '{{ authentik_directory }}']
   no_log: true

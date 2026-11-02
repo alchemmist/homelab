@@ -11,7 +11,19 @@
       "homelab-project-maintainer"
     ],
     "migration": "native-oidc-candidate",
-    "icon": "service-icons/grafana-8f32897073ee.svg"
+    "icon": "service-icons/grafana-8f32897073ee.svg",
+    "admission": "native-oidc",
+    "appRoles": {
+      "viewer": {
+        "nativeRole": "Viewer",
+        "assignable": true
+      },
+      "editor": {
+        "nativeRole": "Editor",
+        "assignable": true
+      }
+    },
+    "groupsScope": true
   },
   "harbor": {
     "name": "Harbor",
@@ -24,7 +36,15 @@
       "homelab-project-maintainer"
     ],
     "migration": "native-oidc-candidate",
-    "icon": "service-icons/harbor-51ef5dd74fab.svg"
+    "icon": "service-icons/harbor-51ef5dd74fab.svg",
+    "admission": "native-oidc",
+    "appRoles": {
+      "user": {
+        "nativeRole": "project membership managed in Harbor",
+        "assignable": true
+      }
+    },
+    "groupsScope": true
   },
   "rancher": {
     "name": "Rancher",
@@ -37,7 +57,15 @@
     "groups": [
       "homelab-owner",
       "homelab-observer"
-    ]
+    ],
+    "admission": "native-oidc",
+    "appRoles": {
+      "user": {
+        "nativeRole": "reviewed Rancher principal and scoped bindings required",
+        "assignable": false
+      }
+    },
+    "groupsScope": true
   },
   "open-webui": {
     "name": "Open WebUI",
@@ -53,7 +81,15 @@
     "subMode": "user_uuid",
     "extraRedirects": [
       "https://llm.socrat.alchemmist.xyz/oauth/oidc/callback"
-    ]
+    ],
+    "admission": "native-oidc",
+    "appRoles": {
+      "user": {
+        "nativeRole": "user",
+        "assignable": true
+      }
+    },
+    "groupsScope": true
   },
   "n8n": {
     "name": "n8n",
@@ -67,7 +103,14 @@
     },
     "groups": [
       "homelab-owner"
-    ]
+    ],
+    "admission": "ui-gate",
+    "appRoles": {
+      "user": {
+        "nativeRole": "UI gate only; native account permissions unchanged",
+        "assignable": true
+      }
+    }
   },
   "wiki": {
     "name": "Wiki",
@@ -81,14 +124,28 @@
       "homelab-observer",
       "homelab-project-maintainer"
     ],
-    "subMode": "user_uuid"
+    "subMode": "user_uuid",
+    "admission": "native-oidc",
+    "appRoles": {
+      "reader": {
+        "nativeRole": "reader",
+        "assignable": true
+      },
+      "editor": {
+        "nativeRole": "editor",
+        "assignable": true
+      }
+    },
+    "groupsScope": true
   },
   "uptime-kuma": {
     "name": "Uptime Kuma",
     "url": "https://status.alchemmist.xyz/",
     "description": "Uptime checks and status pages; public status is not an administrative interface.",
     "migration": "verify-native-sso-or-admin-only-proxy-without-breaking-public-status",
-    "icon": "service-icons/uptime-kuma-f3caa8a8bac2.svg"
+    "icon": "service-icons/uptime-kuma-f3caa8a8bac2.svg",
+    "admission": "portal-only",
+    "appRoles": {}
   },
   "litellm": {
     "name": "LiteLLM",
@@ -103,7 +160,10 @@
     "extraScopeMappings": [
       "homelab-litellm-reviewed-identity"
     ],
-    "icon": "service-icons/litellm-69eaed389008.svg"
+    "icon": "service-icons/litellm-69eaed389008.svg",
+    "admission": "reviewed-subject-only",
+    "appRoles": {},
+    "groupsScope": true
   },
   "lms": {
     "name": "LMS",
@@ -117,6 +177,13 @@
     "groupsScope": true,
     "subMode": "user_uuid",
     "migration": "native-oidc-no-local-accounts",
-    "icon": "service-icons/lms-733ef8f848f3.svg"
+    "icon": "service-icons/lms-733ef8f848f3.svg",
+    "admission": "native-oidc",
+    "appRoles": {
+      "student": {
+        "nativeRole": "student; deployed image accepts only lms-students",
+        "assignable": false
+      }
+    }
   }
 }

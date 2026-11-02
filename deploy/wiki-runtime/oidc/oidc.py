@@ -95,7 +95,7 @@ def install_oidc(app, store, origin, prefix, cookie_path, session_seconds):
     client = oauth.register('wiki', client_id=os.environ['WIKI_OIDC_CLIENT_ID'],
         client_secret=os.environ['WIKI_OIDC_CLIENT_SECRET'],
         server_metadata_url=issuer.rstrip('/')+'/.well-known/openid-configuration',
-        client_kwargs={'scope':'openid profile email','code_challenge_method':'S256'})
+        client_kwargs={'scope':'openid profile email groups','code_challenge_method':'S256'})
     app.add_middleware(SessionMiddleware, secret_key=secret, session_cookie='wiki_oidc_state',
         max_age=600, same_site='lax', https_only=True, path=cookie_path)
 

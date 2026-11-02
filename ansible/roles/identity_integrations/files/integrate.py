@@ -30,6 +30,14 @@ def idp(method,path,payload=None):
     with urllib.request.urlopen(request,timeout=60) as response:
         data=response.read();return json.loads(data) if data else None
 
+def reviewed_user(username, account):
+    from urllib.parse import urlencode
+    users=idp('GET','core/users/?'+urlencode({'username':username}))['results']
+    exact=[u for u in users if u['username']==username]
+    if len(exact)!=1 or exact[0]['uuid']!=account.get('idpUserUuid'):
+        raise RuntimeError('Reviewed Authentik subject mismatch; no relinking allowed')
+    return exact[0]
+
 if service=='harbor':
     # Harbor's supported CONFIG_OVERWRITE_JSON is authoritative configuration.
     # It avoids resetting a human admin password merely to migrate authentication.
@@ -45,7 +53,7 @@ if service=='harbor':
         'oidc_endpoint':'https://auth.socrat.alchemmist.xyz/application/o/harbor/',
         'oidc_client_id':clients['harbor']['client_id'],
         'oidc_client_secret':clients['harbor']['client_secret'],
-        'oidc_scope':'openid,profile,email','oidc_user_claim':'preferred_username',
+        'oidc_scope':'openid,profile,email,groups','oidc_user_claim':'preferred_username',
         'oidc_groups_claim':'groups','oidc_admin_group':'homelab-owner',
         'oidc_verify_cert':True,'oidc_auto_onboard':True}
     secret={'apiVersion':'v1','kind':'Secret','metadata':{'name':'socrat-authentik-harbor','namespace':'harbor'},
@@ -85,14 +93,11 @@ elif service=='grafana':
     kubectl(['-n','cattle-monitoring-system','rollout','status','deployment/'+deployment,'--timeout=300s'])
     print('Grafana OIDC button configured without removing local/anonymous access; browser validation pending')
 elif service=='open-webui':
-    from urllib.parse import urlencode
     accounts=json.loads((root/'account-mappings.json').read_text())
     links=[]
     for username,account in accounts.items():
-        rows=idp('GET','core/users/?'+urlencode({'username':username}))['results']
-        users=[u for u in rows if u['username']==username]
-        if len(users)!=1:raise RuntimeError('Ambiguous Authentik user')
-        links.append({'id':account['openWebuiUserId'],'email':account['email'],'sub':users[0]['uuid']})
+        user=reviewed_user(username,account)
+        links.append({'id':account['openWebuiUserId'],'email':account['email'],'sub':user['uuid']})
     # Use the application's own model method for reviewed, exact-ID linking.
     code="""import asyncio,json,sys
 from open_webui.models.users import Users
@@ -119,17 +124,14 @@ asyncio.run(main())"""
     kubectl(['-n','llm','rollout','status','deployment/open-webui','--timeout=600s'])
     print('Open WebUI native OIDC configured; exact UUID links preserve users/chats; no email-based merging')
 elif service=='rancher':
-    from urllib.parse import urlencode
     accounts=json.loads((root/'account-mappings.json').read_text())
     original=json.loads(kubectl(['get','authconfigs.management.cattle.io','genericoidc','-o','json']))
     private_save(root/'rancher-authconfig-before-oidc.json',original)
     all_users=json.loads(kubectl(['get','users.management.cattle.io','-o','json']))['items']
     allowed=[]
     for username,account in accounts.items():
-        matches=idp('GET','core/users/?'+urlencode({'username':username}))['results']
-        exact=[u for u in matches if u['username']==username]
-        if len(exact)!=1:raise RuntimeError('Ambiguous mapped Authentik identity')
-        principal='genericoidc_user://'+exact[0]['uuid']
+        user=reviewed_user(username,account)
+        principal='genericoidc_user://'+user['uuid']
         user_id=account['rancherUserId']
         # Rancher's webhook correctly makes existing principalIds immutable.
         # Do not bypass it: create a separate external identity and mirror ONLY
@@ -193,9 +195,8 @@ elif service=='wiki':
     links={};roles={}
     for name,account in accounts.items():
         if 'wikiUserId' not in account:continue
-        users=idp('GET','core/users/?username='+name)['results']
-        if len(users)!=1 or users[0]['username']!=name:raise RuntimeError('Ambiguous wiki principal')
-        subject=users[0]['uuid'];links[subject]=account['wikiUserId'];roles[subject]=account['wikiRole']
+        user=reviewed_user(name,account)
+        subject=user['uuid'];links[subject]=account['wikiUserId'];roles[subject]=account['wikiRole']
     previous=kubectl(['-n','wiki','get','secret','socrat-authentik-wiki','--ignore-not-found','-o','json'])
     existing=json.loads(previous) if previous.strip() else None
     if existing:
@@ -204,7 +205,7 @@ elif service=='wiki':
     data={'UVICORN_ACCESS_LOG':'false','WIKI_OIDC_ISSUER':'https://auth.socrat.alchemmist.xyz/application/o/wiki/',
         'WIKI_OIDC_CLIENT_ID':clients['wiki']['client_id'],'WIKI_OIDC_CLIENT_SECRET':clients['wiki']['client_secret'],
         'WIKI_OIDC_SESSION_SECRET':state_key,'WIKI_OIDC_LOCAL_OWNER_IDS':json.dumps([accounts['alchemmist']['wikiUserId']]),
-        'WIKI_OIDC_GROUP_ROLES':json.dumps({'homelab-owner':'admin','homelab-project-maintainer':'editor','homelab-observer':'reader'}),
+        'WIKI_OIDC_GROUP_ROLES':json.dumps({'homelab-owner':'admin','homelab-project-maintainer':'editor','homelab-observer':'reader','app-wiki-reader':'reader','app-wiki-editor':'editor'}),
         'WIKI_OIDC_LINKS':json.dumps(links),'WIKI_OIDC_SUBJECT_ROLES':json.dumps(roles)}
     kubectl(['apply','-f','-'],{'apiVersion':'v1','kind':'Secret','metadata':{'name':'socrat-authentik-wiki','namespace':'wiki'},'type':'Opaque','stringData':data})
     old_data={k:base64.b64decode(v).decode() for k,v in existing.get('data',{}).items()} if existing else {}

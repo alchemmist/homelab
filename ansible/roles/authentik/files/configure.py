@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import sys
 import urllib.request
+from app_iam import LEGACY_GROUPS, GROUP_MARKER, app_groups, admission_groups, rows, validate_group, validate_bindings
 
 root=Path(sys.argv[1])
 credentials=json.loads((root/'credentials.json').read_text())
@@ -27,10 +28,26 @@ def unique(path, field, value):
     if len(exact)>1:raise RuntimeError('Ambiguous identity/configuration: '+value)
     return exact[0] if exact else None
 
+services=json.loads((root/'services.json').read_text())
+account_path=root/'account-mappings.json'
+accounts=json.loads(account_path.read_text()) if account_path.exists() else {}
+# Check pinned identities BEFORE any write, including email/link reconciliation.
+for username,account in accounts.items():
+    existing=unique('core/users/','username',username)
+    if not existing:
+        raise RuntimeError('Reviewed identity missing; restore/review instead of recreating: '+username)
+    if existing.get('uuid')!=account.get('idpUserUuid'):
+        raise RuntimeError('Reviewed Authentik UUID mismatch: '+username)
+
+managed_app_groups=app_groups(services)
 groups={}
-for name in ['homelab-owner','homelab-platform-operator','homelab-project-maintainer','homelab-observer','homelab-machine-owner','lms-students']:
+for name in LEGACY_GROUPS+list(managed_app_groups):
     group=unique('core/groups/','name',name)
-    if group is None:group=api('POST','core/groups/',{'name':name,'is_superuser':False})
+    if group is None:
+        settings={'name':name,'is_superuser':False}
+        if name in managed_app_groups:settings['attributes']=GROUP_MARKER
+        group=api('POST','core/groups/',settings)
+    if name in managed_app_groups:validate_group(group)
     groups[name]=group['pk']
 
 # Bootstrap a personal owner account; never auto-link or import another service's
@@ -56,9 +73,7 @@ if set(owner_group.get('users',[]))-set([owner['pk']]):
 api('PATCH','core/groups/'+groups['homelab-owner']+'/',{'is_superuser':True})
 
 # Explicitly reviewed existing identities; no general email-based account merging.
-account_path=root/'account-mappings.json'
 if account_path.exists():
-    accounts=json.loads(account_path.read_text())
     for username,account in accounts.items():
         if username!='alchemmist' and 'homelab-owner' in account['groups']:
             raise RuntimeError('Only the declared owner may receive owner membership')
@@ -93,11 +108,12 @@ scopes=api('GET','propertymappings/provider/scope/?page_size=100')['results']
 mapping=[x['pk'] for x in scopes if x['scope_name'] in ['openid','profile','email']]
 if len(mapping)!=3 or not cert:raise RuntimeError('OIDC defaults missing')
 groups_scope=unique('propertymappings/provider/scope/','name','homelab-groups')
+groups_settings={'name':'homelab-groups','scope_name':'groups',
+    'expression':'return {"groups": [group.name for group in request.user.ak_groups.all()]}'}
 if not groups_scope:
-    groups_scope=api('POST','propertymappings/provider/scope/',{
-        'name':'homelab-groups','scope_name':'groups',
-        'expression':'return [group.name for group in request.user.ak_groups.all()]'})
-services=json.loads((root/'services.json').read_text())
+    groups_scope=api('POST','propertymappings/provider/scope/',groups_settings)
+elif groups_scope.get('expression')!=groups_settings['expression']:
+    groups_scope=api('PATCH','propertymappings/provider/scope/'+str(groups_scope['pk'])+'/',groups_settings)
 clients_path=root/'oidc-clients.json'
 clients=json.loads(clients_path.read_text()) if clients_path.exists() else {}
 proxy_ids=[]
@@ -157,11 +173,17 @@ for slug,service in services.items():
     settings={'name':service['name'],'slug':slug,'provider':provider['pk'] if provider else None,
         'meta_launch_url':service['url'],'meta_description':service['description'],
         'policy_engine_mode':'any','group':'Socrat','meta_icon':service.get('icon','')}
-    if application:application=api('PATCH','core/applications/'+slug+'/',settings)
+    allowed=admission_groups(slug,service)
+    bindings=[]
+    if application:
+        if application.get('policy_engine_mode')!='any':
+            raise RuntimeError('Application policy mode drift: '+slug)
+        bindings=rows(api,'policies/bindings/?target='+str(application['pk']))
+        validate_bindings(bindings,{groups[name] for name in allowed})
+        application=api('PATCH','core/applications/'+slug+'/',settings)
     else:application=api('POST','core/applications/',settings)
-    # Deny by default: explicit application bindings to approved role groups.
-    bindings=api('GET','policies/bindings/?target='+str(application['pk'])+'&page_size=100')['results']
-    for order,name in enumerate(service.get('groups',['homelab-owner'])):
+    # Additive bindings only. Unknown/disabled/negated UI policy is a blocker.
+    for order,name in enumerate(allowed):
         if not any(b.get('group')==groups[name] for b in bindings):
             api('POST','policies/bindings/',{'target':application['pk'],'group':groups[name],
                 'order':order,'enabled':True,'failure_result':False})
