@@ -23,3 +23,15 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - RespectIgnoreDifferences=true
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      name: vllm
+      jsonPointers:
+        - /spec/template/metadata/annotations
+        - /spec/template/spec/terminationGracePeriodSeconds
+        - /spec/template/spec/volumes
+        - /spec/template/spec/containers/0/args
+        - /spec/template/spec/containers/0/env
+        - /spec/template/spec/containers/0/volumeMounts
