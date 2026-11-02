@@ -1,16 +1,21 @@
-# Additive higher-priority UI gateway. Existing Fleet ingress and certificate stay
-# intact for immediate rollback and independent certificate renewal.
+# Higher-priority UI gateway. Own a TLS certificate independently of the app
+# ingress so app recreation does not remove HTTPS for UI and machine routes.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: n8n-authentik-ui
   namespace: identity
   annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-http01
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: 'true'
     traefik.ingress.kubernetes.io/router.priority: '100'
 spec:
   ingressClassName: traefik
+  tls:
+    - hosts:
+        - n8n.socrat.alchemmist.xyz
+      secretName: n8n-authentik-tls
   rules:
     - host: n8n.socrat.alchemmist.xyz
       http:

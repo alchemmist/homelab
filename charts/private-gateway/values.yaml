@@ -103,14 +103,14 @@ extraVirtualHosts:
       - 10.250.0.0/24
       - 10.42.0.0/16
     responseStyle: '.dashboard.outlet .tabbed-container:has(#cluster-events) { min-width: 0; width: 100%; } .dashboard.outlet #cluster-events table.sortable-table td { overflow-wrap: anywhere; }'
-  # uncomment after n8n-private-tls certificate is issued
-  # - name: n8n
-  #   host: n8n.socrat.alchemmist.xyz
-  #   nodeName: socrat-0
-  #   upstream: http://n8n.automation.svc.cluster.local:5678
-  #   tlsSecret: n8n-private-tls
-  #   resolver: 10.43.0.10
-  #   clearAuthorization: false
+  - name: n8n
+    host: n8n.socrat.alchemmist.xyz
+    nodeName: socrat-0
+    # Reuse public routing so Authentik and machine endpoint policies are identical.
+    upstream: https://traefik.kube-system.svc.cluster.local:443
+    tlsSecret: n8n-private-tls
+    resolver: 10.43.0.10
+    clearAuthorization: false
 
 resources:
   requests:
