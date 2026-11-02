@@ -4,7 +4,7 @@ metadata:
   name: xui-auth-gateway
   namespace: traefik-edge
 data:
-  nginx.conf: "worker_processes 1;\npid /tmp/nginx.pid;\nerror_log /dev/stderr warn;\n\
+  nginx.conf: "worker_processes 1;\npid /tmp/nginx.pid;\nerror_log /dev/stderr crit;\n\
     events { worker_connections 256; }\nhttp {\n access_log off;\n server_tokens off;\n\
     \ client_body_temp_path /tmp/client_temp;\n proxy_temp_path /tmp/proxy_temp;\n\
     \ fastcgi_temp_path /tmp/fastcgi_temp;\n uwsgi_temp_path /tmp/uwsgi_temp;\n scgi_temp_path\
@@ -30,7 +30,7 @@ data:
     \ off;\n   proxy_set_header Content-Length \"\";\n   proxy_set_header X-Original-URL\
     \ https://vpn.alchemmist.xyz$request_uri;\n  }\n  location /outpost.goauthentik.io/\
     \ { proxy_pass $authentik_backend$request_uri; }\n  location @auth_login {\n \
-    \  add_header Set-Cookie $auth_cookie always;\n   return 302 /outpost.goauthentik.io/start?rd=https://vpn.alchemmist.xyz$request_uri;\n\
+    \  add_header Set-Cookie $auth_cookie always;\n   return 302 https://vpn.alchemmist.xyz/outpost.goauthentik.io/start?rd=https://vpn.alchemmist.xyz$request_uri;\n\
     \  }\n  location @machine {\n   # Invalid Bearer must NEVER fall back to a valid\
     \ native browser cookie.\n   proxy_set_header Host vpn.alchemmist.xyz;\n   proxy_set_header\
     \ X-Forwarded-Host vpn.alchemmist.xyz;\n   proxy_set_header X-Forwarded-Proto\
@@ -56,7 +56,7 @@ spec:
     metadata:
       labels: *id001
       annotations:
-        checksum/config: 0ed576b7533e16e76d47c3fd9d3f23df6c2ce9cdcd58a44b3a284bef0464e487
+        checksum/config: 397817d6f03d5365b26280259f66662b3fed3d794549d289f80cad9a6765010b
     spec:
       automountServiceAccountToken: false
       nodeSelector:

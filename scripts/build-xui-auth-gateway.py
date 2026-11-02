@@ -10,7 +10,7 @@ icon=Path('deploy/xui-auth-gateway/xui-icon.png').read_bytes()
 icon_name=__import__('hashlib').sha256(icon).hexdigest()[:12]+'.png'
 config='''worker_processes 1;
 pid /tmp/nginx.pid;
-error_log /dev/stderr warn;
+error_log /dev/stderr crit;
 events { worker_connections 256; }
 http {
  access_log off;
@@ -65,7 +65,7 @@ http {
   location /outpost.goauthentik.io/ { proxy_pass $authentik_backend$request_uri; }
   location @auth_login {
    add_header Set-Cookie $auth_cookie always;
-   return 302 /outpost.goauthentik.io/start?rd=https://vpn.alchemmist.xyz$request_uri;
+   return 302 https://vpn.alchemmist.xyz/outpost.goauthentik.io/start?rd=https://vpn.alchemmist.xyz$request_uri;
   }
   location @machine {
    # Invalid Bearer must NEVER fall back to a valid native browser cookie.

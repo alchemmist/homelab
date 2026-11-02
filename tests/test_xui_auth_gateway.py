@@ -33,6 +33,7 @@ class XuiGatewayTests(unittest.TestCase):
         self.assertIn('location = /__ak_auth {\n   internal;',conf)
         self.assertIn('proxy_cookie_flags ~ secure;',conf)
         self.assertIn('access_log off;',conf)
+        self.assertIn('return 302 https://vpn.alchemmist.xyz/outpost.goauthentik.io/start?',conf)
 
     def test_backend_manifest_is_tokenless_sandboxed_and_pinned(self):
         resources=list(yaml.safe_load_all((ROOT/'deploy/xui-auth-gateway/resources.yaml').read_text()))
