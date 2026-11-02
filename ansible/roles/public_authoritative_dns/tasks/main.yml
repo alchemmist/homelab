@@ -1,0 +1,72 @@
+---
+- name: Require a known authoritative listener
+  ansible.builtin.assert:
+    that:
+      - inventory_hostname in public_dns_listen
+      - inventory_hostname in public_dns_local_probe or inventory_hostname == 'socrat-2'
+
+- name: Install Knot DNS on Debian
+  ansible.builtin.apt:
+    name:
+      - knot
+      - python3
+    state: present
+    update_cache: true
+  when: ansible_os_family == 'Debian'
+
+- name: Install Knot DNS on Arch
+  community.general.pacman:
+    name:
+      - knot
+      - python
+    state: present
+    update_cache: false
+  when: ansible_os_family == 'Archlinux'
+
+- name: Install the zone renderer
+  ansible.builtin.copy:
+    src: "{{ public_dns_zone_source }}"
+    dest: /usr/local/libexec/public_dns_zone.py
+    mode: "0755"
+
+- name: Install the refresh script
+  ansible.builtin.template:
+    src: public-dns-refresh.sh.j2
+    dest: /usr/local/libexec/public-dns-refresh
+    mode: "0755"
+
+- name: Configure Knot
+  ansible.builtin.template:
+    src: knot.conf.j2
+    dest: /etc/knot/knot.conf
+    owner: root
+    group: knot
+    mode: "0640"
+  notify: Reload Knot
+
+- name: Render the zone before Knot starts
+  ansible.builtin.command: /usr/local/libexec/public-dns-refresh
+  changed_when: true
+
+- name: Enable Knot
+  ansible.builtin.systemd:
+    name: knot
+    enabled: true
+    state: started
+
+- name: Install the refresh timer
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: "0644"
+  loop:
+    - {src: public-dns-refresh.service.j2, dest: /etc/systemd/system/public-dns-refresh.service}
+    - {src: public-dns-refresh.timer.j2, dest: /etc/systemd/system/public-dns-refresh.timer}
+  notify: Reload systemd
+
+- name: Enable DNS refresh
+  ansible.builtin.systemd:
+    name: public-dns-refresh.timer
+    enabled: true
+    state: started
+    daemon_reload: true

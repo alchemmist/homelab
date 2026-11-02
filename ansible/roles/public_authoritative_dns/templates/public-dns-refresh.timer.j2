@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh authoritative DNS every half minute
+
+[Timer]
+OnBootSec=20
+OnUnitActiveSec=30
+AccuracySec=5
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,19 @@
+server:
+  rundir: "/run/knot"
+  user: knot:knot
+{% for address in public_dns_listen[inventory_hostname] %}
+  listen: {{ address }}
+{% endfor %}
+
+log:
+  - target: syslog
+    any: info
+
+template:
+  - id: default
+    storage: "/var/lib/knot"
+    file: "%s.zone"
+
+zone:
+  - domain: alchemmist.xyz
+    template: default

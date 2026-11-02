@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+serial=$(date -u +%s)
+out=/var/lib/knot/alchemmist.xyz.zone
+python3 /usr/local/libexec/public_dns_zone.py \
+  --serial "$serial" \
+  --output "$out" \
+  --home-target {{ public_dns_local_probe[inventory_hostname] if inventory_hostname in ['socrat-0', 'socrat-1'] else public_dns_home_address }} \
+  --vps-target {{ '127.0.0.1' if inventory_hostname == 'socrat-2' else public_dns_vps_address }}
+chown knot:knot "$out"
+chmod 0644 "$out"
+if knotc status >/dev/null 2>&1; then
+  knotc zone-reload alchemmist.xyz || knotc reload
+fi

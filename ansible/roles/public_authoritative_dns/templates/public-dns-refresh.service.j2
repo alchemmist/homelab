@@ -1,0 +1,7 @@
+[Unit]
+Description=Refresh alchemmist.xyz from ingress health
+After=network-online.target knot.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/public-dns-refresh

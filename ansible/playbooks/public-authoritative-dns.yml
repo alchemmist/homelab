@@ -1,0 +1,10 @@
+---
+- name: Serve alchemmist.xyz from the hosts, outside Kubernetes
+  hosts: socrat-0:socrat-1:socrat-2
+  order: sorted
+  serial: 1
+  gather_facts: true
+  become: true
+  any_errors_fatal: true
+  roles:
+    - public_authoritative_dns
