@@ -12,8 +12,9 @@ data:
     \ close; }\n # Only canonical Bearer API calls may avoid interactive authentication.\n\
     \ map \"$uri|$http_authorization\" $machine_api {\n  default 0;\n  ~^/[^/]+/panel/api/[^|]*\\\
     |Bearer\\ [A-Za-z0-9._~+/-]+=*$ 1;\n }\n upstream panel { server 10.250.0.2:18082;\
-    \ }\n upstream authentik { server authentik-server.identity.svc.cluster.local:80;\
-    \ }\n server {\n  listen 8080;\n  server_name vpn.alchemmist.xyz;\n  client_max_body_size\
+    \ }\n resolver 10.43.0.10 valid=30s ipv6=off;\n resolver_timeout 5s;\n server\
+    \ {\n  listen 8080;\n  server_name vpn.alchemmist.xyz;\n  set $authentik_backend\
+    \ http://authentik-server.identity.svc.cluster.local:80;\n  client_max_body_size\
     \ 32m;\n  proxy_http_version 1.1;\n  proxy_set_header Host vpn.alchemmist.xyz;\n\
     \  proxy_set_header X-Forwarded-Host vpn.alchemmist.xyz;\n  proxy_set_header X-Forwarded-Proto\
     \ https;\n  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n  proxy_set_header\
@@ -23,13 +24,13 @@ data:
     \   default_type image/png;\n   add_header Cache-Control \"public, max-age=31536000,\
     \ immutable\";\n   add_header X-Content-Type-Options nosniff always;\n   limit_except\
     \ GET HEAD { deny all; }\n  }\n  location = /healthz { return 200 \"ok\\n\"; }\n\
-    \  location = /__ak_auth {\n   internal;\n   proxy_pass http://authentik/outpost.goauthentik.io/auth/nginx;\n\
+    \  location = /__ak_auth {\n   internal;\n   proxy_pass $authentik_backend/outpost.goauthentik.io/auth/nginx;\n\
     \   proxy_set_header Host vpn.alchemmist.xyz;\n   proxy_set_header X-Forwarded-Host\
     \ vpn.alchemmist.xyz;\n   proxy_set_header X-Forwarded-Proto https;\n   proxy_pass_request_body\
     \ off;\n   proxy_set_header Content-Length \"\";\n   proxy_set_header X-Original-URL\
     \ https://vpn.alchemmist.xyz$request_uri;\n  }\n  location /outpost.goauthentik.io/\
-    \ { proxy_pass http://authentik; }\n  location @auth_login {\n   add_header Set-Cookie\
-    \ $auth_cookie always;\n   return 302 /outpost.goauthentik.io/start?rd=https://vpn.alchemmist.xyz$request_uri;\n\
+    \ { proxy_pass $authentik_backend$request_uri; }\n  location @auth_login {\n \
+    \  add_header Set-Cookie $auth_cookie always;\n   return 302 /outpost.goauthentik.io/start?rd=https://vpn.alchemmist.xyz$request_uri;\n\
     \  }\n  location @machine {\n   # Invalid Bearer must NEVER fall back to a valid\
     \ native browser cookie.\n   proxy_set_header Host vpn.alchemmist.xyz;\n   proxy_set_header\
     \ X-Forwarded-Host vpn.alchemmist.xyz;\n   proxy_set_header X-Forwarded-Proto\
@@ -55,7 +56,7 @@ spec:
     metadata:
       labels: *id001
       annotations:
-        checksum/config: 882abd0c53820adb9b7fe980036847e3bf39d2fa8f5cc965cbff18cea9f3d94a
+        checksum/config: 0ed576b7533e16e76d47c3fd9d3f23df6c2ce9cdcd58a44b3a284bef0464e487
     spec:
       automountServiceAccountToken: false
       nodeSelector:
