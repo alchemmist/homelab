@@ -172,6 +172,8 @@ class FakeAuthentik(threading.Thread):
         if method == 'POST' and path == '/api/v3/propertymappings/provider/scope/':
             self._seq += 1
             created = dict(payload)
+            # Match Authentik's trim_whitespace serializer behavior.
+            created['expression'] = created['expression'].strip()
             created['pk'] = 'map-' + str(self._seq)
             created['managed'] = None
             self.scopes.append(created)
@@ -295,6 +297,8 @@ class NetBirdOIDCTests(unittest.TestCase):
 
     def test_profile_expression_is_allowlisted_and_not_a_groups_scope(self):
         expression = oidc.profile_expression()
+        self.assertEqual(expression, expression.strip(),
+                         'Expression must survive Authentik serializer round-trip')
         self.assertIn('request.user.ak_groups.all()', expression)
         self.assertNotIn('request.user.groups.all()', expression)
         self.assertNotIn('request.user.email', expression)

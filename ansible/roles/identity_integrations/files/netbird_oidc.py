@@ -116,7 +116,8 @@ def profile_expression():
         'approved = (' + approved + ',)\n'
         'names = sorted({group.name for group in request.user.ak_groups.all() if group.name in approved})\n'
         'return {"name": request.user.name, "preferred_username": request.user.username,\n'
-        ' "nickname": request.user.username, "groups": names}\n'
+        # Authentik's expression serializer trims boundary whitespace on save.
+        ' "nickname": request.user.username, "groups": names}'
     )
 
 
