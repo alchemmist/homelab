@@ -185,13 +185,13 @@ prometheus:
         - llm
     podMonitorSelector:
       matchLabels:
-        release: kube-prometheus-stack
+        homelab.alchemmist.xyz/scrape-owner: retired-legacy-prometheus
     probeNamespaceSelector:
       matchLabels:
         kubernetes.io/metadata.name: cattle-monitoring-system
     probeSelector:
       matchLabels:
-        release: kube-prometheus-stack
+        homelab.alchemmist.xyz/scrape-owner: retired-legacy-prometheus
     replicas: 1
     resources:
       limits:
@@ -211,7 +211,7 @@ prometheus:
         kubernetes.io/metadata.name: cattle-monitoring-system
     scrapeConfigSelector:
       matchLabels:
-        release: kube-prometheus-stack
+        homelab.alchemmist.xyz/scrape-owner: retired-legacy-prometheus
     scrapeInterval: 5s
     scrapeTimeout: 4s
     serviceMonitorNamespaceSelector:
@@ -219,7 +219,7 @@ prometheus:
         kubernetes.io/metadata.name: cattle-monitoring-system
     serviceMonitorSelector:
       matchLabels:
-        release: kube-prometheus-stack
+        homelab.alchemmist.xyz/scrape-owner: retired-legacy-prometheus
     storageSpec:
       volumeClaimTemplate:
         spec:

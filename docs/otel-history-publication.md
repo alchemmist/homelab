@@ -1,3 +1,19 @@
+# Historical publication — closed without a second copy
+
+The serving history is the original Thanos raw bucket. It still answers queries
+older than Prometheus retention. Replacing those blocks with OTLP round-trips is
+cancelled. New samples are in that same store only after the cluster collector
+scrapes them and writes OTLP into Prometheus.
+
+Done means both of these, and nothing further:
+
+- Prometheus has the OTLP receiver on and does not scrape. The collector is the
+  only scraper.
+- A Thanos query older than local retention still returns node metrics.
+
+The conversion workspaces, frozen archives and staged candidates are disposable
+once those two checks pass. They are not a second copy of the served history.
+
 # Historical publication preparation — no production changes
 
 This is a **preparation/runbook**, not an execution authorization. The offline
