@@ -165,6 +165,7 @@ components:
       - --retention.resolution-1h=0d
       - --delete-delay=1h
       - --consistency-delay=30m
+      - --compact.enable-vertical-compaction
       - --wait
       - --http-address=0.0.0.0:10902
     resources:
