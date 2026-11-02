@@ -1,0 +1,11 @@
+# Only the panel TCP listener. No VPN, SSH, forwarding, NAT or WireGuard rule changes.
+add table inet homelab_xui_panel_auth
+flush table inet homelab_xui_panel_auth
+table inet homelab_xui_panel_auth {
+ chain input {
+  type filter hook input priority -150; policy accept;
+  tcp dport 18082 ip daddr { 127.0.0.1, 10.250.0.2 } iifname { "lo", "wg-socrat", "cni0", "flannel.1" } accept
+  tcp dport 18082 ip6 daddr ::1 iifname "lo" accept
+  tcp dport 18082 reject with tcp reset
+ }
+}

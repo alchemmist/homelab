@@ -1,0 +1,23 @@
+[Unit]
+Description=Close public direct 3x-ui panel listener (Authentik gateway boundary)
+DefaultDependencies=no
+After=local-fs.target
+Before=network-pre.target k3s.service k3s-agent.service homelab-vpn-primary.service homelab-vpn-legacy.service
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStartPre=/usr/sbin/nft --check --file /etc/xui-panel-auth/rules.nft
+ExecStart=/usr/sbin/nft --file /etc/xui-panel-auth/rules.nft
+ExecReload=/usr/sbin/nft --file /etc/xui-panel-auth/rules.nft
+User=root
+NoNewPrivileges=yes
+CapabilityBoundingSet=CAP_NET_ADMIN
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+RestrictAddressFamilies=AF_NETLINK AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

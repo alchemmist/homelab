@@ -1,0 +1,11 @@
+{
+  "slug": "xui-panel",
+  "providerName": "homelab-xui-panel",
+  "name": "3x-ui VPN panel",
+  "externalHost": "https://vpn.alchemmist.xyz",
+  "ownerGroup": "homelab-owner",
+  "mode": "forward_single",
+  "accessValidity": "hours=1",
+  "refreshValidity": "hours=8",
+  "iconSha256": "0c57d75732c8b7c5da87c25f9da320f25639beac113a4a5e1e96b085febff29b"
+}
