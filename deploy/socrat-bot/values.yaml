@@ -1,0 +1,36 @@
+replicaCount: 1
+image:
+  repository: harbor.socrat.alchemmist.xyz/homelab/socrat-bot
+  tag: bootstrap
+  digest: ""
+  pullPolicy: IfNotPresent
+imagePullSecrets:
+  - socrat-bot-harbor-pull
+service:
+  port: 8080
+ingress:
+  host: bot.socrat.alchemmist.xyz
+  className: traefik
+  clusterIssuer: letsencrypt-http01
+  tlsSecretName: socrat-bot-tls
+envSecret: socrat-bot-env
+alertmanagerUrl: http://kube-prometheus-stack-alertmanager.cattle-monitoring-system.svc:9093
+xuiUpdaterUrl: http://socrat-bot-xui-updater.socrat-bot.svc:8080
+postgres:
+  image: postgres:17
+  storage: 5Gi
+  replicaCount: 1
+  user: socrat
+  database: socrat
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 512Mi
+resources:
+  requests:
+    cpu: 20m
+    memory: 64Mi
+  limits:
+    memory: 256Mi

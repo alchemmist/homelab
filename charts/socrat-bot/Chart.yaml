@@ -1,0 +1,6 @@
+apiVersion: v2
+name: socrat-bot
+description: Telegram control plane for the Socrat homelab
+version: 0.1.0
+appVersion: bootstrap
+type: application

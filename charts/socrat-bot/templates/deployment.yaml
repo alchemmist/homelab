@@ -1,0 +1,62 @@
+{{- $components := (include "socrat-bot.components" . | fromYaml).items }}
+{{- range $i, $component := $components }}
+{{- if $i }}
+---
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $component.name }}
+  labels:
+    app.kubernetes.io/name: {{ $component.name }}
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+    app.kubernetes.io/component: {{ $component.component }}
+spec:
+  replicas: {{ $.Values.replicaCount }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $component.name }}
+      app.kubernetes.io/instance: {{ $.Release.Name }}
+      app.kubernetes.io/component: {{ $component.component }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ $component.name }}
+        app.kubernetes.io/instance: {{ $.Release.Name }}
+        app.kubernetes.io/component: {{ $component.component }}
+    spec:
+      {{- if $component.serviceAccount }}
+      serviceAccountName: {{ $component.serviceAccount }}
+      {{- else }}
+      automountServiceAccountToken: false
+      {{- end }}
+      {{- with $.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- range . }}
+        - name: {{ . | quote }}
+        {{- end }}
+      {{- end }}
+      containers:
+        - name: {{ $component.container }}
+          image: {{ include "socrat-bot.image" $ | quote }}
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          command: ["python", "-m", {{ $component.module | quote }}]
+          ports:
+            - name: http
+              containerPort: {{ $.Values.service.port }}
+          env:
+            {{- include "socrat-bot.secretEnv" $ | nindent 12 }}
+            {{- if $component.extraEnv }}
+            - name: ALERTMANAGER_URL
+              value: {{ $.Values.alertmanagerUrl | quote }}
+            - name: XUI_UPDATER_URL
+              value: {{ $.Values.xuiUpdaterUrl | quote }}
+            {{- end }}
+          {{- include "socrat-bot.probes" $ | nindent 10 }}
+          {{- with $.Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }}

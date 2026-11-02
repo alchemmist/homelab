@@ -1,0 +1,4 @@
+#!/bin/sh
+# The module is vendored at /usr/local/lib/socrat_sudo, not installed as a package.
+export PYTHONPATH="/usr/local/lib${PYTHONPATH:+:$PYTHONPATH}"
+exec python3 -m socrat_sudo "$@"

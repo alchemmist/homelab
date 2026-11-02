@@ -1,0 +1,24 @@
+{{- $components := (include "socrat-bot.components" . | fromYaml).items }}
+{{- range $i, $component := $components }}
+{{- if $i }}
+---
+{{- end }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $component.name }}
+  labels:
+    app.kubernetes.io/name: {{ $component.name }}
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+    app.kubernetes.io/component: {{ $component.component }}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: {{ $component.name }}
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+    app.kubernetes.io/component: {{ $component.component }}
+  ports:
+    - name: http
+      port: {{ $.Values.service.port }}
+      targetPort: http
+{{- end }}

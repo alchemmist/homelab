@@ -1,0 +1,93 @@
+{
+  "name": "Socrat Alerts",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "socrat-alerts",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "c0ffee00-0001-4000-8000-000000000001",
+      "name": "Alertmanager Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "socrat-alerts"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = items[0].json;\nconst payload = raw.body && (Array.isArray(raw.body.alerts) || raw.body.status) ? raw.body : raw;\nconst alerts = Array.isArray(payload.alerts) ? payload.alerts : [];\n\nfunction labelText(labels) {\n  const source = labels || {};\n  const where = [source.namespace, source.pod || source.node || source.instance].filter(Boolean);\n  return where.length ? ' (' + where.join('/') + ')' : '';\n}\n\nfunction describe(alert) {\n  const labels = alert.labels || {};\n  const name = labels.alertname || 'alert';\n  const annotations = alert.annotations || {};\n  const summary = annotations.summary || annotations.description || '';\n  const head = name + labelText(labels);\n  return summary ? head + ': ' + summary : head;\n}\n\nconst firing = alerts.filter(function (alert) { return alert.status === 'firing'; });\nconst resolved = alerts.filter(function (alert) { return alert.status === 'resolved'; });\nconst sections = [];\nif (firing.length) sections.push('Firing:\\n' + firing.map(describe).join('\\n'));\nif (resolved.length) sections.push('Resolved:\\n' + resolved.map(describe).join('\\n'));\nif (!sections.length) return [];\n\nconst seen = {};\nconst fingerprints = [];\nalerts.forEach(function (alert) {\n  if (!alert.fingerprint || seen[alert.fingerprint]) return;\n  seen[alert.fingerprint] = true;\n  fingerprints.push(alert.fingerprint);\n});\nfingerprints.sort();\nconst idempotencyKey = fingerprints.length ? fingerprints.join(',') : String(payload.groupKey || 'alert');\n\nconst common = payload.commonLabels || {};\nconst firstAlert = firing[0] || alerts[0] || {};\nconst firstLabels = firstAlert.labels || {};\nconst labelSource = Object.keys(common).length ? common : firstLabels;\nconst matchers = Object.keys(labelSource).map(function (name) {\n  return {\n    name: name,\n    value: String(labelSource[name]),\n    isRegex: false,\n    isEqual: true,\n  };\n});\nif (!matchers.length) return [];\n\nreturn [{\n  json: {\n    text: sections.join('\\n\\n'),\n    matchers: matchers,\n    idempotencyKey: idempotencyKey,\n  },\n}];\n"
+      },
+      "id": "c0ffee00-0002-4000-8000-000000000002",
+      "name": "Group Firing and Resolved",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://socrat-bot.socrat-bot.svc:8080/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Internal-Token",
+              "value": "={{ $credentials.socratBot.internalToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: Number($credentials.socratBot.ownerChatId), text: $json.text, actions: [{ type: 'alert.silence', label: 'Silence for 1h', payload: { matchers: $json.matchers }, idempotency_key: $json.idempotencyKey }] }) }}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "c0ffee00-0003-4000-8000-000000000003",
+      "name": "Post Telegram Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        520,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Alertmanager Webhook": {
+      "main": [
+        [
+          {
+            "node": "Group Firing and Resolved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Group Firing and Resolved": {
+      "main": [
+        [
+          {
+            "node": "Post Telegram Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Moscow"
+  },
+  "pinData": {}
+}

@@ -1,0 +1,23 @@
+---
+# Installs the console entry only. Does not write /etc/socrat-sudo.env and does not change sudoers.
+- name: Install the socrat-sudo console entry
+  hosts: Socrat
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Install the socrat_sudo module
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../files/socrat_sudo/"
+        dest: /usr/local/lib/socrat_sudo
+        owner: root
+        group: root
+        mode: "0644"
+        directory_mode: "0755"
+
+    - name: Install the socrat-sudo command
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../files/socrat-sudo"
+        dest: /usr/local/bin/socrat-sudo
+        owner: root
+        group: root
+        mode: "0755"
