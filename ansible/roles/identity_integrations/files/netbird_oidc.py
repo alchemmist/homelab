@@ -519,6 +519,9 @@ def execute_apply(api, root, issuer, approved):
     if approved != plan['sha256']:
         raise RuntimeError('Plan digest mismatch; review a fresh plan')
     if not journal.get('marker'):
+        if journal:
+            raise RuntimeError(
+                'Refusing to replace a markerless journal before generating a client secret')
         journal = {'version': 1, 'marker': secrets.token_hex(16), 'status': 'preparing',
                    'groups': {}, 'pilot_users': {row['username']: {'pk': row['pk'], 'uuid': row['uuid']}
                                                  for row in plan['pilot_users']}}

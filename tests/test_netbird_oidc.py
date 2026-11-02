@@ -487,6 +487,21 @@ class NetBirdOIDCTests(unittest.TestCase):
         self.assertEqual(self.fake.writes(), [])
         self.assertEqual(outside.read_text(), '{"client_secret": "nope"}\n')
 
+    def test_markerless_nonempty_journal_is_not_replaced_or_used_to_mint_a_secret(self):
+        approved = self.plan()
+        write_json(self.root / oidc.JOURNAL_NAME, {
+            'provider_pk': 77,
+            'groups': {oidc.ADMISSION_GROUP: {'pk': 'owned-group', 'num_pk': 9}},
+        })
+        before = (self.root / oidc.JOURNAL_NAME).read_text()
+        code, out, err = self.run_tool('apply', '--approve-sha256', approved['sha256'],
+                                       '--netbird-config', str(self.config))
+        self.assertEqual(code, 1)
+        self.assertIn('markerless journal', err)
+        self.assertEqual((self.root / oidc.JOURNAL_NAME).read_text(), before)
+        self.assertFalse((self.root / oidc.RUNTIME_NAME).exists())
+        self.assertEqual(self.fake.writes(), [])
+
     def test_pinned_connector_source_matches_when_present(self):
         repo = Path(os.environ.get('NETBIRD_V082_SRC', '/tmp/netbird-v082-repo'))
         connector = repo / 'idp/dex/connector.go'
