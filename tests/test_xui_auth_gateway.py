@@ -79,3 +79,29 @@ class XuiGatewayTests(unittest.TestCase):
 
 
 if __name__=='__main__':unittest.main()
+
+
+class XuiPublicRoutingTests(unittest.TestCase):
+    def render(self, enabled):
+        data=subprocess.check_output(['helm','template','traefik-edge',str(ROOT/'charts/traefik-edge'),'-n','traefik-edge','--set','panelGateway.enabled='+str(enabled).lower()],text=True)
+        return [r for r in yaml.safe_load_all(data) if r]
+
+    def test_public_vpn_routes_keep_exact_backends_and_do_not_use_gateway(self):
+        resources=self.render(True)
+        ingress=next(r for r in resources if r['kind']=='Ingress' and r['metadata']['name']=='traefik-edge-vpn')
+        paths=ingress['spec']['rules'][0]['http']['paths']
+        expected=[r for r in yaml.safe_load((ROOT/'charts/traefik-edge/values.yaml').read_text())['routes'] if r['name']!='panel']
+        self.assertEqual(len(paths),len(expected))
+        for actual,original in zip(paths,expected):
+            self.assertEqual(actual['path'],original['path'])
+            self.assertEqual(actual['pathType'],original['pathType'])
+            self.assertEqual(actual['backend']['service'],{'name':'traefik-edge-'+original['name'],'port':{'number':original['port']}})
+        self.assertEqual(ingress['metadata']['annotations']['traefik.ingress.kubernetes.io/router.priority'],'200')
+        panel=next(r for r in resources if r['kind']=='Ingress' and r['metadata']['name']=='traefik-edge-panel-auth')
+        self.assertEqual(panel['metadata']['annotations']['traefik.ingress.kubernetes.io/router.priority'],'100')
+        self.assertEqual(panel['spec']['rules'][0]['http']['paths'][0]['backend']['service']['name'],'xui-auth-gateway')
+
+    def test_activation_does_not_change_ingress_pod_template_or_listeners(self):
+        before=next(r for r in self.render(False) if r['kind']=='Deployment')
+        after=next(r for r in self.render(True) if r['kind']=='Deployment')
+        self.assertEqual(before,after)

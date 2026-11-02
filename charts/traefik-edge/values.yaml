@@ -64,3 +64,8 @@ kubernetesCRD:
   enabled: true
   namespaces: [argocd]
   labelSelector: homelab.alchemmist.xyz/edge-transport=argocd
+
+# Human panel is gated; public VPN transports/subscriptions keep their old backends.
+panelGateway:
+  enabled: true
+  serviceName: xui-auth-gateway

@@ -12,6 +12,9 @@ kind: Ingress
 metadata:
   name: {{ .Release.Name }}-vpn
   annotations:
+{{- if .Values.panelGateway.enabled }}
+    traefik.ingress.kubernetes.io/router.priority: '200'
+{{- end }}
     kubernetes.io/ingress.class: {{ .Values.ingressClass }}
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
@@ -26,6 +29,7 @@ spec:
       http:
         paths:
 {{- range .Values.routes }}
+{{- if or (not $.Values.panelGateway.enabled) (ne .name "panel") }}
           - path: {{ .path }}
             pathType: {{ .pathType }}
             backend:
@@ -33,4 +37,32 @@ spec:
                 name: {{ $.Release.Name }}-{{ .name }}
                 port:
                   number: {{ .port }}
+{{- end }}
+
+{{- end }}
+{{- if .Values.panelGateway.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-panel-auth
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: 'true'
+    traefik.ingress.kubernetes.io/router.priority: '100'
+spec:
+  ingressClassName: {{ .Values.ingressClass }}
+  tls:
+    - hosts: [{{ .Values.host | quote }}]
+      secretName: {{ .Values.certificate.secretName }}
+  rules:
+    - host: {{ .Values.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.panelGateway.serviceName }}
+                port: {number: 80}
 {{- end }}
