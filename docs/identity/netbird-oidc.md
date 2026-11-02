@@ -5,6 +5,11 @@
 `netbird.socrat.alchemmist.xyz`. Новых VM, платных сервисов и отдельного IdP нет.
 Полный `configure.py` не запускать и не импортировать: у него чужие side effects.
 
+Live private stage3 выполнен 2026-11-02: dedicated Authentik application и
+native NetBird connector созданы и прочитаны обратно. См.
+[фактический отчёт](netbird-stage3-record.md). Это **не** личный OIDC-вход
+владельца, перенос ownership или публичное включение; bootstrap не повторять.
+
 ## Что закрепляет код
 
 Проверено по дереву NetBird **v0.82.0** (`idp/dex/connector.go`, SHA256

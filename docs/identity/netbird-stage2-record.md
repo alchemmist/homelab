@@ -1,5 +1,10 @@
 # NetBird private stage2 recovery — 2026-11-02
 
+Historical stage2 record. Its Authentik mapping stop gate was subsequently
+resolved and the **actual private OIDC connector created** in
+[stage3](netbird-stage3-record.md). The pre-existing Ready=false and personal
+owner-login/transfer gates remain; do not replay bootstrap.
+
 ## Applied and read back
 
 - Recovered from source `669b572`; no namespace or deployment recreation.
