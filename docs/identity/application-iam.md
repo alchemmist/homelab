@@ -22,6 +22,12 @@
 
 `configure.py` создаёт пустые app-группы без superuser/родителя/RBAC-ролей и с
 маркером `attributes: {homelab_app_iam: 1}`. Чужая одноимённая группа не усыновляется.
+Для pinned Authentik **2026.8.5** проверяются явные `is_superuser: false`,
+**`parents: []`** (M2M, не устаревший singular `parent`) и `roles: []`.
+Missing/null/incomplete responses запрещены; **любое** наследование, включая
+owner-superuser или RBAC ancestor, блокируется **до** assignment, не после grant.
+Тесты fake API учитывают текущие поля; это не замена GET-аудиту и реальному MFA/
+consent browser acceptance владельца/Tim. До него новые live assignments запрещены.
 Существующие app-членства не переписываются foundation-контроллером. Владельцу
 не добавляется ещё одна административная группа: его прежний `homelab-owner`
 остаётся единственным источником административного сопоставления.

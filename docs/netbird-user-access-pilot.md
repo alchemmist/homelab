@@ -256,13 +256,24 @@ NETBIRD_OPENAPI_FILE=/tmp/netbird-v082-openapi.yml $PY -m unittest discover -s t
    callback, не regex/wildcard. Опциональный strict logout callback брать из UI/docs.
    Dashboard использует embedded issuer `/oauth2`; Authentik — upstream connector,
    не подменять dashboard authority на Authentik.
-6. Проверить profile/groups scope mappings и `Include claims in id_token`.
-   Если стандартный profile не выдаёт корректный array group names, отдельный mapping
-   для NetBird, например filtered allowlist `{"groups": [g.name for g in request.user.ak_groups.all() if g.name in APPROVED_NAMES]}`
-   (APPROVED_NAMES заменить reviewed значениями). В UI выбрать существующие scopes
-   `openid profile email groups` при наличии mapping; проверить реальные access token
-   claims, а не только id_token. Не логировать сами токены. Если embedded connector
-   не переносит groups в выдаваемый NetBird access JWT — **STOP**, доступ не открывать.
+6. **OIDC/group sync остаётся STOP, не доказана работающая конфигурация.** Проверен
+   pinned upstream [v0.82.0 `idp/dex/connector.go`, `buildOIDCConnectorConfig`](https://github.com/netbirdio/netbird/blob/v0.82.0/idp/dex/connector.go):
+   generic OIDC (и ветка `authentik`) запрашивает у upstream **только `openid profile email`**,
+   с `insecureEnableGroups=true`. Только специальные ветки okta/pocketid добавляют groups.
+   Dashboard `AUTH_SUPPORTED_SCOPES=... groups` относится к embedded issuer и **не**
+   расширяет этот upstream запрос. Repo `homelab-groups` с `scope_name=groups` сам по
+   себе поэтому недостаточен; не менять shared mappings других приложений.
+   Проверить реальный authorization request без записи code/token/secret в logs.
+   Для отдельного NetBird Authentik provider может потребоваться отдельный mapping,
+   привязанный к **запрашиваемому `profile` scope**, например filtered allowlist
+   `{"groups": [g.name for g in request.user.ak_groups.all() if g.name in APPROVED_NAMES]}`
+   (APPROVED_NAMES — reviewed значения), и `Include claims in id_token`. Это гипотеза
+   для отдельного acceptance, **не применённая/проверенная настройка**. Не менять
+   глобальный default profile и не подменять connector type ради запроса scope.
+   До любого allow policy доказать upstream claims, resulting embedded NetBird
+   access JWT `groups`, JWT-issued membership и propagation/removal на **каждом**
+   устройстве. Не сохранять/печатать токены. Нет корректных groups хотя бы в одном
+   звене, свежем login или removal — **STOP**, доступ не открывать.
    JWT group sync=`groups`, propagation=true, JWT allow groups=`login_group`.
    Проверить owner входит в login group до сохранения allowlist (иначе lockout).
    Source groups **создаются sync из JWT**, не вручную с совпадающим именем:
@@ -283,8 +294,18 @@ NETBIRD_OPENAPI_FILE=/tmp/netbird-v082-openapi.yml $PY -m unittest discover -s t
    Это сохраняет системный DNS; selected names должны разрешаться утверждёнными
    public-private-A или split records до enrollment. Единичный пользовательский canary
    может войти для materialization JWT groups, пока политик **ноль**: доступа к ресурсам нет.
-8. Создать **пустой** Network `netbird-pilot` и пустые API destination groups
-   `pilot-resource-<resource.name>` (без peers/resources). Собрать в защищённый local
+8. Создать **пустой** Network `netbird-pilot` и пустые **`issued=api`**, уникально
+   именованные destination groups `pilot-resource-<resource.name>` (без peers/resources).
+   JWT/integration-issued destination groups запрещены: propagation могла бы позже
+   добавить user peers в destinations вместо только approved resource `/32`.
+   Network response обязан содержать текущие API поля `routers=[]`, `resources=[]`,
+   `policies=[]`, `routing_peers_count=0`; missing/null/partial response не считается
+   пустым. Group response обязан явно содержать `issued`, `peers=[]`, `resources=[]`.
+   Компилятор отвергает partial deployment/replay; старый snapshot не является
+   разрешением повторного apply. После любой записи взять новый snapshot и сделать
+   independent current-state diff перед следующим reviewed действием; offline
+   compiler не делает atomic transaction с server и не обнаружит stale-file drift.
+   Собрать в защищённый local
    JSON snapshot ответы GET `/api/policies`, `/api/routes`, `/api/groups`, `/api/peers`,
    `/api/networks` как keys `policies`, `routes`, `groups`, `peers`, `networks`.
    Токен API read-only на чтение, не печатать auth headers; snapshot может содержать PII.
