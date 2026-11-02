@@ -17,7 +17,7 @@ PREFLIGHT = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(PREFLIGHT)
 NAMESPACE = 'cattle-monitoring-system'
 CLUSTER_JOBS = {
-    'cattle-monitoring-system/thanos', 'litellm', 'llm-switcher', 'vllm',
+    'cattle-monitoring-system/thanos', 'litellm', 'vllm',
     'kube-prometheus-stack-alertmanager', 'apiserver', 'coredns',
     'kube-prometheus-stack-grafana', 'kube-state-metrics', 'kubelet',
     'kube-prometheus-stack-operator', 'kube-prometheus-stack-prometheus',

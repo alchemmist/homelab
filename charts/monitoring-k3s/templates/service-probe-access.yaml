@@ -9,7 +9,7 @@ spec:
     matchExpressions:
       - key: app
         operator: In
-        values: [open-terminal, vllm, llm-switcher]
+        values: [open-terminal, vllm]
   policyTypes: [Ingress]
   ingress:
     - from:

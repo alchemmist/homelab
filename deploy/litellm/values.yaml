@@ -142,7 +142,7 @@ proxy_config:
         model: openai/qwen3.8-27b
         timeout: 7200
         stream_timeout: 7200
-        api_base: http://llm-switcher.llm.svc.cluster.local:8000/v1
+        api_base: http://vllm.llm.svc.cluster.local:8000/v1
         api_key: os.environ/VLLM_API_KEY
       model_info:
         max_input_tokens: 114688

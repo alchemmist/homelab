@@ -1,4 +1,4 @@
-{{- range $monitor := list (dict "name" "vllm" "labels" (dict "app" "vllm") "port" "http") (dict "name" "litellm" "labels" (dict "app.kubernetes.io/instance" "litellm" "app.kubernetes.io/name" "litellm") "port" "http") (dict "name" "llm-switcher" "labels" (dict "app" "monitoring-llm-status") "port" "metrics") }}
+{{- range $monitor := list (dict "name" "vllm" "labels" (dict "app" "vllm") "port" "http") (dict "name" "litellm" "labels" (dict "app.kubernetes.io/instance" "litellm" "app.kubernetes.io/name" "litellm") "port" "http") }}
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor

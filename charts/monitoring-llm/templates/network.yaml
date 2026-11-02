@@ -21,21 +21,3 @@ spec:
         - protocol: TCP
           port: {{ $target.port }}
 {{- end }}
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: llm-switcher-monitoring
-spec:
-  podSelector:
-    matchLabels:
-      app: llm-switcher
-  policyTypes: [Ingress]
-  ingress:
-    - from:
-        - podSelector:
-            matchLabels:
-              app: monitoring-llm-status
-      ports:
-        - protocol: TCP
-          port: 8000

@@ -10,7 +10,7 @@ SPEC = importlib.util.spec_from_file_location('monitoring_checks', ROOT / 'scrip
 MONITORING = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MONITORING)
 HOST = 'socrat-0'
-JOBS = {'vllm', 'litellm', 'llm-switcher'}
+JOBS = {'vllm', 'litellm'}
 
 
 def main():
@@ -22,20 +22,18 @@ def main():
         if time.monotonic() >= deadline:
             raise RuntimeError('LLM scrape targets are missing or unhealthy')
         time.sleep(5)
-    print('PASS: authenticated LiteLLM, vLLM and switcher scrape targets are UP')
+    print('PASS: authenticated LiteLLM and vLLM scrape targets are UP')
     for expression in [
         'socrat_gpu_temperature_celsius', 'socrat_gpu_utilization_ratio',
         'socrat_gpu_memory_used_bytes', 'socrat_gpu_memory_total_bytes',
         'socrat_gpu_power_watts', 'socrat_gpu_fan_speed_ratio',
         'vllm:num_requests_running{job="vllm"}', 'vllm:num_requests_waiting{job="vllm"}',
-        'vllm:kv_cache_usage_perc{job="vllm"}', 'llm_switcher_requests_waiting',
-        'llm_switcher_requests_running', 'litellm_in_flight_requests{job="litellm"}',
+        'vllm:kv_cache_usage_perc{job="vllm"}', 'litellm_in_flight_requests{job="litellm"}',
     ]:
         values = MONITORING.query(HOST, expression)
         MONITORING.require(bool(values) and all(math.isfinite(float(x['value'][1])) for x in values), expression + ' is available')
     for expression in [
         'socrat_gpu_collection_success * on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < bool 60)',
-        'llm_switcher_scrape_success',
     ]:
         values = MONITORING.query(HOST, expression)
         MONITORING.require(bool(values) and all(float(x['value'][1]) == 1 for x in values), expression + ' is healthy')

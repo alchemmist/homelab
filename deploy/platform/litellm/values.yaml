@@ -71,7 +71,7 @@ proxy_config:
     require_auth_for_metrics_endpoint: true
   model_list:
   - litellm_params:
-      api_base: http://llm-switcher.llm.svc.cluster.local:8000/v1
+      api_base: http://vllm.llm.svc.cluster.local:8000/v1
       api_key: os.environ/VLLM_API_KEY
       model: openai/qwen3.8-27b
       stream_timeout: 7200

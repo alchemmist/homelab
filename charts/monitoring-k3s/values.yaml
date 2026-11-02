@@ -89,11 +89,6 @@ serviceProbes:
     url: http://litellm.llm.svc.cluster.local:4000/health/readiness
     module: http_2xx
     alertName: SocratServiceLitellmUnavailable
-  - id: model-switcher
-    title: Model Switcher
-    url: http://llm-switcher.llm.svc.cluster.local:8000/health
-    module: http_2xx
-    alertName: SocratServiceModelSwitcherUnavailable
   - id: open-terminal
     title: Open Terminal
     url: http://open-terminal.llm.svc.cluster.local:8000/health

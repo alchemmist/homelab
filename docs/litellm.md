@@ -1,6 +1,6 @@
 # LiteLLM gateway
 
-The official `oci://ghcr.io/berriai/litellm-helm` chart is pinned to 1.105.1. A single CPU-only proxy on socrat-0 forwards `qwen3.8-27b` through the internal `llm-switcher` service to one vLLM engine. See [model switching](model-switching.md). Open WebUI connects through a dedicated `open-webui` virtual key restricted to Qwen. The credential is stored in Secret `llm/open-webui-litellm`. A NetworkPolicy permits vLLM ingress only from LiteLLM pods; node traffic remains governed by Kubernetes host networking semantics.
+The official `oci://ghcr.io/berriai/litellm-helm` chart is pinned to 1.105.1. A single CPU-only proxy on socrat-0 forwards `qwen3.8-27b` directly to the vLLM Service. Open WebUI connects through a dedicated `open-webui` virtual key restricted to Qwen. The credential is stored in Secret `llm/open-webui-litellm`. A NetworkPolicy permits vLLM ingress only from LiteLLM pods; node traffic remains governed by Kubernetes host networking semantics.
 
 - Admin UI: https://llm.alchemmist.xyz/ui/
 - OpenAI API base: https://llm.alchemmist.xyz/v1

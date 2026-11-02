@@ -36,15 +36,12 @@ vision configuration. Desktop GPU usage can change the available budget.
 
 ## Deployment
 
-The backend values, standalone profile and gateway profile must agree:
+The backend values and the standalone profile must agree:
 
 - `charts/vllm/values.yaml`
 - `deploy/vllm/profiles/qwen3.8-27b.yaml`
-- `charts/llm-switcher/files/profiles.json`
 
-The gateway compares live backend arguments against its profile on every
-admitted request. Updating only the backend would therefore be reverted.
-LiteLLM's advertised context must also match in `deploy/litellm/values.yaml`.
+LiteLLM calls vLLM directly. Its advertised context must match in `deploy/litellm/values.yaml` and `deploy/platform/litellm/values.yaml`.
 
 From `ansible/`, use `ansible-playbook -i inventory/hosts.yml playbooks/llm-vision.yml`.
 This requires the existing deployed vLLM, model gateway and LiteLLM releases. It

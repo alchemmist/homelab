@@ -94,7 +94,7 @@
       "source": "https://github.com/open-webui/open-webui/blob/v0.12.3/backend/open_webui/env.py",
       "notes": [
         "ENABLE_OTEL and ENABLE_OTEL_TRACES exist; installed SDK/exporters observed in the running slim image.",
-        "Do not infer support for custom llm-switcher/status workloads from their shared Open WebUI base image.",
+        "Do not infer support for custom status workloads from their shared Open WebUI base image.",
         "Keep metrics and SDK log exporters off unless independently approved; preserve existing scrape/log ownership.",
         "Installed Instrumentor serializes Redis command arguments into db.statement, full outbound URLs into span names, and raw aiohttp exceptions. Do not enable as-is or rely on downstream attr redaction; source-safe instrumentation profile and negative tests required."
       ],
