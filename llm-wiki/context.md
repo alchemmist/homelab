@@ -202,3 +202,18 @@ Quiet Mono/shadow DOM/native inspector, backup/DR/diagnostics. Эта ссылк
 разрозненные старые пометки о readiness авторизации, но не сведения о других
 подсистемах этого файла. LiteLLM SSO подтверждён владельцем; n8n gateway/Kuma gap,
 owner recovery, Tim acceptance, strict locale и independent DR не скрыты.
+
+
+## Identity: уточнения 2 ноября 2026
+
+- n8n: **открытое сообщение владельца о login/session**, точный симптом пока не
+  получен. Anonymous checks обоих edges прошли (Auth redirect, health200, API401),
+  но owner login/editor/idle-session не проверены; конфигурация не менялась.
+- n8n/3x-ui gateways не являются native SSO: после MFA может оставаться пароль
+  приложения. 3x-ui Failed to fetch воспроизведён при missing proxy-cookie и
+  исправлен native401/top-level reauthorization, без удлинения bearer/обхода CSRF.
+- Argo offline_access consent — разрешение refresh, не новая admin-роль.
+- Nature: same-photo inline preview + один кешируемый HQ image. Plan History:
+  естественная высота без вложенной прокрутки, никакой подмены native записей.
+- Актуальные статусы, доказанные проверки и оставшиеся ограничения:
+  [identity-gateway-troubleshooting.md](identity-gateway-troubleshooting.md).

@@ -5,12 +5,15 @@ inspector/redirect controls.** Это консолидированное опи�
 устроены вход, MFA, права, интеграции, фронтенд, deployment и recovery. Не содержит
 паролей, токенов, MFA seeds, browser sessions или приватных сохранённых HTML.
 
+**Дополнено 2 ноября 2026:** ограничения gateway/SSO, исправление 3x-ui Login, открытая диагностика n8n и актуальный frontend. Предварительные проверки n8n не означают, что сообщение владельца закрыто.
+
 ## Читать по задаче
 
 | Вопрос | Раздел |
 |---|---|
 | Как устроен Authentik, OIDC, сессии и границы доверия | [Архитектура](identity-architecture.md) |
 | Как войти, добавить человека, выдать/отозвать права, работать с MFA | [Ежедневные операции](identity-operations.md) |
+| Двойной логин, consent offline_access, Failed to fetch, открытая проблема n8n | [Диагностика SSO и gateway](identity-gateway-troubleshooting.md) |
 | Что сделано для каждого сервиса и как подключать следующий | [Интеграции](identity-integrations.md) |
 | Как отдельно устроены Linux/SSH, sudo, kubeconfig и Kubernetes RBAC | [Host access](identity-host-access.md) |
 | Где frontend/CSS, shadow DOM, фото/шрифты/иконки, inspector, rollback | [Quiet Mono frontend](identity-frontend.md) |

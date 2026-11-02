@@ -184,6 +184,13 @@ callbacks обходят browser gate по reviewed route boundary. Это не 
 webhook -> 404. Исходный Fleet ingress/cert сохранялись. Нельзя wildcard-защитой
 `/` заставить robots и callbacks получать HTML login вместо protocol response.
 
+**Открыто, 2 ноября 2026:** owner сообщил о проблеме n8n login/session. Оба edges
+прошли anonymous redirect в native Authentik, health200, keyless API401 и проверку
+Running/Ready pods. Это не owner/native-login/editor-after-idle acceptance;
+конкретный симптом пока не уточнён. Настройки не менялись. Не переносить fix
+nginx forward-auth3x-ui на n8n proxy-mode без воспроизведения. См.
+[журнал диагностики](identity-gateway-troubleshooting.md#4-n8n-открытое-сообщение-владельца-не-исправленная-проблема).
+
 **Uptime Kuma 2.5.7:** native OIDC не внедрён. Public status/badges/push endpoints
 и administrative/shared Socket.IO traffic требуют безопасного разделения;
 простое закрытие общего socket за browser proxy может сломать status и collectors.
@@ -307,3 +314,16 @@ runbook: [Argo CD refresh](../docs/identity/argocd-refresh.md). Старым с�
 Bearer lifetime — 5 минут; offline-access/8h refresh настроены только новому proxy provider. Но expiry-тест выявил native browser roundtrip к IdP, а не бесшовный refresh; возможен reload панели при истёкшем proxy cookie. Не переносить на этот шлюз утверждение о silent refresh, доказанное для Argo CD. Личная owner recovery/native-login и valid API token acceptance остаются отдельными.
 
 Источники, инсталляция host rule, воспроизводимая приёмка, limits и rollback: [docs/identity/xui-gateway.md](../docs/identity/xui-gateway.md). Узкий controller `xui_gateway.py` не replay foundation и не изменяет пользователей/базу панели.
+
+
+### 3x-ui: исправление Login Failed to fetch
+
+При отсутствующей gateway-cookie фоновый POST раньше уходил в cross-origin
+OAuth redirect и давал TypeError: Failed to fetch. Теперь XHR/fetch и unsafe
+methods получают same-origin401; native 3x-ui3.11 самостоятельно запускает
+обычную top-level навигацию. CSRF, MFA, native пароль и machine Bearer policy
+не обходятся. Проверены оба edges: native CSRF/empty-login JSON200, missing-cookie
+401 без redirect и **реальная native кнопка Login →401 → возврат через SSO**.
+Тестовые credentials до native backend не дошли, fixture users/bindings удалены.
+Owner native-password acceptance остаётся личной. Бесшовный refresh не обещан.
+Подробности: [диагностика gateway](identity-gateway-troubleshooting.md#3-3x-ui-исправленный-failed-to-fetch-на-login).
