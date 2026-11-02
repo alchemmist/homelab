@@ -13,6 +13,8 @@ spec:
     path: charts/monori
     helm:
       releaseName: monori
+      valueFiles:
+        - ../../deploy/monori/values.yaml
       parameters: []
   destination:
     namespace: monori

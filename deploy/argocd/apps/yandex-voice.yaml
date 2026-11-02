@@ -13,6 +13,8 @@ spec:
     path: charts/yandex-voice
     helm:
       releaseName: yandex-voice
+      valueFiles:
+        - ../../deploy/yandex-voice/values.yaml
       parameters: []
   destination:
     namespace: voice

@@ -1,5 +1,5 @@
 image:
-  repository: alchemmist/cats
+  repository: ghcr.io/alchemmist/cats
   tag: latest
-  digest: sha256:a85ce9a2ade6edad537e920303b171c8a7dd5c60ce072edf981ff2fe4b52b4b8
+  digest: ""
   pullPolicy: IfNotPresent

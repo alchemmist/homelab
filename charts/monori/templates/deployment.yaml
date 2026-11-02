@@ -1,3 +1,10 @@
+{{- define "monori.image" -}}
+{{- if .digest -}}
+{{ .repository }}@{{ .digest }}
+{{- else -}}
+{{ .fallback }}
+{{- end -}}
+{{- end -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata: { name: monori-sync }
@@ -16,7 +23,7 @@ spec:
       nodeSelector: { kubernetes.io/hostname: socrat-0 }
       containers:
       - name: sync
-        image: {{ .Values.images.sync }}
+        image: {{ include "monori.image" .Values.images.sync }}
         imagePullPolicy: IfNotPresent
         env: [{ name: MONORI_CONNECTOR_DEBUG, value: "1" }]
         ports: [{ name: http, containerPort: 8010 }]
@@ -41,7 +48,7 @@ spec:
       nodeSelector: { kubernetes.io/hostname: socrat-0 }
       containers:
       - name: back
-        image: {{ .Values.images.back }}
+        image: {{ include "monori.image" .Values.images.back }}
         imagePullPolicy: IfNotPresent
         envFrom: [{ secretRef: { name: {{ .Values.secretName }} } }]
         env:
@@ -69,6 +76,6 @@ spec:
       nodeSelector: { kubernetes.io/hostname: socrat-0 }
       containers:
       - name: front
-        image: {{ .Values.images.front }}
+        image: {{ include "monori.image" .Values.images.front }}
         imagePullPolicy: IfNotPresent
         ports: [{ name: http, containerPort: 8000 }]

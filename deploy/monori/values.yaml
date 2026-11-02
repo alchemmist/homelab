@@ -1,0 +1,17 @@
+images:
+  front:
+    repository: ghcr.io/alchemmist/monori
+    tag: latest
+    digest: ""
+    fallback: ghcr.io/alchemmist/homelab-monori-front:latest
+  back:
+    repository: ghcr.io/alchemmist/monori
+    tag: latest
+    digest: ""
+    fallback: ghcr.io/alchemmist/homelab-monori-back:latest
+  sync:
+    repository: ghcr.io/alchemmist/monori
+    tag: latest
+    digest: ""
+    fallback: ghcr.io/alchemmist/homelab-monori-sync:latest
+
