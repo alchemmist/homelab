@@ -116,9 +116,9 @@ Current rendering (performance revision):
 - CSS `image-set` chooses AVIF, falling back to WebP on unsupported browsers.
   Desktop <=1920, mobile <=960. Mobile downloads only its own size. Breakpoint
   changes retain the same scene. The late native drawer is transparent.
-- 60 AVIF derivatives total 3,395,360 bytes; original 60 WebP fallback derivatives
-  remain 7,892,292 bytes. Median desktop AVIF 78,403 bytes vs WebP 159,250;
-  median mobile AVIF 22,623 vs WebP 49,560. No resolution reduction was needed.
+- 60 AVIF derivatives total 3,370,104 bytes; original 60 WebP fallback derivatives
+  remain 7,892,292 bytes. Median desktop AVIF 78,370 bytes vs WebP 159,250;
+  median mobile AVIF 22,289 vs WebP 49,560. No resolution reduction was needed.
 - HQ URLs are SHA-pinned and immutable (one-year browser cache). The stylesheet
   remains no-store for fresh document selection. Repeats are legitimate, no slideshow.
 - Authentik's native default-background prefetch points to a 62-byte transparent

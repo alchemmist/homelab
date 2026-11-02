@@ -362,7 +362,7 @@ Brand CSS/background; OAuth providers, policy/flow bindings и MFA validate sett
   Никакой отдельной загрузки миниатюры, чужого случайного кадра или ожидания HQ
   для native login. После загрузки фон неподвижен; breakpoint меняет размер,
   но не photo ID.
-- AVIF <=1920/960: медиана78,403B desktop /22,623B mobile вместо
+- AVIF <=1920/960: медиана78,370B desktop /22,289B mobile вместо
   WebP159,250B /49,560B. Сохранены все30 originals и60 WebP fallback; добавлены
   60 AVIF и30 checksum-pinned scene CSS. Старые source/derivative hashes сохранены.
 - Большие фото `public,max-age=31536000,immutable`; повторная выбранная картинка

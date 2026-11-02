@@ -40,6 +40,9 @@ def build(source, output):
             if getattr(image, 'n_frames', 1) != 1:
                 raise ValueError('Animated images are not allowed')
             image = ImageOps.exif_transpose(image).convert('RGB')
+            # AVIF inherits ICC from im.info by default; WebP does not. Strip all
+            # metadata explicitly so both formats/preview share the same RGB data.
+            image.info.clear()
             record = {'id': ident, 'source': str(path.relative_to(source)), 'sourceSha256': source_hash,
                       'sourceDimensions': list(image.size)}
             for label, width, cap in [('desktop', 1920, 600000), ('mobile', 960, 220000)]:
@@ -70,6 +73,9 @@ def build(source, output):
                         break
                 else:
                     raise ValueError('AVIF derivative exceeds transfer budget')
+                with Image.open(io.BytesIO(avif_content)) as decoded:
+                    if any(decoded.info.get(k) for k in ['exif', 'xmp', 'icc_profile']):
+                        raise ValueError('AVIF output must not inherit source metadata')
                 avif_name = f'nature-{ident}-{width}.avif'
                 (dest / avif_name).write_bytes(avif_content)
                 avif_key = key + '_AVIF'

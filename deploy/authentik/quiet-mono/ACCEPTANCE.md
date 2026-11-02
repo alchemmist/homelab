@@ -114,7 +114,7 @@ no timed photo changes. Sampling returned 12/12 and 10/12 distinct scenes;
 POST403 and pinned WebP compatibility fallback passed. Full collection has
 30 photos, 120 HQ derivatives and 30 scene stylesheets; original reference untouched.
 
-Median AVIF sizes: desktop 78,403B, mobile 22,623B. Preview124–300B; scene CSS
+Median AVIF sizes: desktop 78,370B, mobile 22,289B. Preview124–300B; scene CSS
 max2,481B. In a deliberately delayed HQ test (5 seconds), native login was usable
 with the correct preview before HQ completion; actual anonymous screenshots were
 visually reviewed. This is not a global network latency/SLA or owner MFA claim.
@@ -129,3 +129,9 @@ were not restarted. Several static-only rollouts were used while refining the
 single-background approach. Empty native background was rejected by the API
 (and safely rolled back); a checksum-pinned transparent SVG is used instead.
 Read-only native control tests also passed. No new authentication JavaScript.
+
+AVIF encoder inherits source ICC by default: final QA explicitly stripped
+image.info before encoding, matching metadata-free WebP/preview RGB behavior.
+All60 final AVIF outputs were inspected for nonempty EXIF/XMP/ICC and passed;
+builder now checks this invariant before writing each output. No EXIF/XMP was
+found in the preceding AVIF iteration; the removed blocks were color profiles.

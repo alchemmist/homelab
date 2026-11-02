@@ -77,7 +77,7 @@
   },
   "NATURE_2016B071A149_DESKTOP_AVIF": {
     "path": "nature/nature-2016b071a149-1920.avif",
-    "sha256": "058c999abc7ebce0bc67a7b49446e497827742f12b4cc6749f94d93039277c67"
+    "sha256": "5e948fb82dc550f0c02b8b245eface60eab84cdf19e2134c2c1ea087850398f0"
   },
   "NATURE_2016B071A149_MOBILE": {
     "path": "nature/nature-2016b071a149-960.webp",
@@ -85,11 +85,11 @@
   },
   "NATURE_2016B071A149_MOBILE_AVIF": {
     "path": "nature/nature-2016b071a149-960.avif",
-    "sha256": "63e9bc6a8302df63eee18ed07c1ec5aebbaa0b4df244eaa686af629594f65452"
+    "sha256": "198d6f814fd9a4bd7159ef9c12bef145192224d40d512bb4b93133d3cc809549"
   },
   "NATURE_2016B071A149_CSS": {
     "path": "nature/nature-2016b071a149.css",
-    "sha256": "4a642e8cea7a74b368f63f1014973499e1713798aa0212b7b2fdeb8a9450a4be"
+    "sha256": "d9bfe5919d43730973890b42f355a0f436b5235ae90f8f7245dff9876990d162"
   },
   "NATURE_D40711D33058_DESKTOP": {
     "path": "nature/nature-d40711d33058-1920.webp",
@@ -97,7 +97,7 @@
   },
   "NATURE_D40711D33058_DESKTOP_AVIF": {
     "path": "nature/nature-d40711d33058-1920.avif",
-    "sha256": "b4fe7194202a26ac2c682358c65fde4b05fe8729b8a20e08cefa7865e88d8ffe"
+    "sha256": "8cc1b5e4455c0f328154052dc1085109ae455f07a0961173a269bf19b66ab785"
   },
   "NATURE_D40711D33058_MOBILE": {
     "path": "nature/nature-d40711d33058-960.webp",
@@ -105,11 +105,11 @@
   },
   "NATURE_D40711D33058_MOBILE_AVIF": {
     "path": "nature/nature-d40711d33058-960.avif",
-    "sha256": "704cabaed170b70ca7d56c57d3eaeeb82e78460df9ee9a278ebaa6cd0ad7ce7b"
+    "sha256": "a377e40427797231501f420dd21fdb550c7905d0f843591439f0dc2fa8ae6e56"
   },
   "NATURE_D40711D33058_CSS": {
     "path": "nature/nature-d40711d33058.css",
-    "sha256": "fca20f295ea27c7d3a70ff2b404a048ae88ff11ed402bab3cbadb6024d5720e6"
+    "sha256": "9b620f96ccbaa4325f4188a48e8de2573c1db074d033d7289fce21b329b42479"
   },
   "NATURE_569883E0AB7A_DESKTOP": {
     "path": "nature/nature-569883e0ab7a-1920.webp",
@@ -137,7 +137,7 @@
   },
   "NATURE_D1498035A6A1_DESKTOP_AVIF": {
     "path": "nature/nature-d1498035a6a1-1920.avif",
-    "sha256": "6e764a45ee95830efe6f346875b2315fb9a0e4c8a2af4b362b761ec1082729ee"
+    "sha256": "522376f5458641283a7b4290c621d66eef839f91c5cdff37acd570632f23d2aa"
   },
   "NATURE_D1498035A6A1_MOBILE": {
     "path": "nature/nature-d1498035a6a1-960.webp",
@@ -145,11 +145,11 @@
   },
   "NATURE_D1498035A6A1_MOBILE_AVIF": {
     "path": "nature/nature-d1498035a6a1-960.avif",
-    "sha256": "efb59375206a52cdb582ba7c7e624c0a53f4f1844390aad37e78ee3324e01d90"
+    "sha256": "9841e5e63211b5090d09020acc70f2ad83d5f378644d486be3f9dfcb23524c6b"
   },
   "NATURE_D1498035A6A1_CSS": {
     "path": "nature/nature-d1498035a6a1.css",
-    "sha256": "8202d3c324b7fe7f5fd265786fcca6a8164656201607432b10210fb7d91a50cb"
+    "sha256": "a992a392056549c7bb84898d69f8b1b607b742141c25285397a79bac886e0d73"
   },
   "NATURE_12FF84557AEE_DESKTOP": {
     "path": "nature/nature-12ff84557aee-1920.webp",
@@ -597,7 +597,7 @@
   },
   "NATURE_FFA6C75646B0_DESKTOP_AVIF": {
     "path": "nature/nature-ffa6c75646b0-1920.avif",
-    "sha256": "da4761160593792d695c116ad74ce63ff1c606f0e1e11abf7966b540da66c2bf"
+    "sha256": "a98433e44e0604b18e0acc1b84cea6f93ee93b49c965f999be6a35707c5425ff"
   },
   "NATURE_FFA6C75646B0_MOBILE": {
     "path": "nature/nature-ffa6c75646b0-960.webp",
@@ -605,11 +605,11 @@
   },
   "NATURE_FFA6C75646B0_MOBILE_AVIF": {
     "path": "nature/nature-ffa6c75646b0-960.avif",
-    "sha256": "c2cf4f1f5abeaf4284d90c46a389653e5348ebe3dc1afb3cdd4dcecb1a6c9c4b"
+    "sha256": "dfb8a555ffbb431da4867e3a5b875ede82011d43c01a6e36fda08492d0c6fb6b"
   },
   "NATURE_FFA6C75646B0_CSS": {
     "path": "nature/nature-ffa6c75646b0.css",
-    "sha256": "daad1fe1c7b1a022fc303a569e0933433cfa7c9b8d47ba3a6d91a63a868ea290"
+    "sha256": "31431373c1111ab30104112b9bc8e4bcadc6f2b1971634fe557a2861d038002c"
   },
   "NATURE_7F9527E12857_DESKTOP": {
     "path": "nature/nature-7f9527e12857-1920.webp",
