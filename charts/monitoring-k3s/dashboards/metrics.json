@@ -41,7 +41,7 @@
     },
     {
       "title": "Cascade Job",
-      "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/cronjob/cattle-monitoring-system/thanos-cascade",
+      "url": "https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/batch.cronjob/cattle-monitoring-system/thanos-cascade#jobs",
       "type": "link",
       "targetBlank": true,
       "icon": "external link",
