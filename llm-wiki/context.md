@@ -217,3 +217,16 @@ owner recovery, Tim acceptance, strict locale и independent DR не скрыт�
   естественная высота без вложенной прокрутки, никакой подмены native записей.
 - Актуальные статусы, доказанные проверки и оставшиеся ограничения:
   [identity-gateway-troubleshooting.md](identity-gateway-troubleshooting.md).
+
+
+## Identity admin automation — 2 ноября 2026
+
+`akadmin` и его старый bootstrap token удалены после переноса API на
+`homelab-identity-automation` (service_account, отдельная admin group, пароль
+непригоден для входа). Human users остаются `alchemmist`/`tim`; Outpost service
+account сохранён. Новый API key — broad/non-expiring deployment credential,
+не пятиминутный OIDC bearer. Legacy private key name AUTHENTIK_BOOTSTRAP_TOKEN
+теперь alias нового token; runtime bootstrap.py исключает admin bootstrap env.
+Независимый node-admin recovery проверен на disposable admin, owner MFA не
+менялся. Full DR/личная owner recovery/off-site escrow всё ещё отдельны.
+Процедура/guards: [admin-automation.md](../docs/identity/admin-automation.md).

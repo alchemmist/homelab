@@ -191,5 +191,6 @@ Harbor обеспечивает приватные images/robots для workload
   recovery-приёмка отдельно от подтверждённого owner SSO.
 - Tim должен получить credential безопасно и зарегистрировать личный фактор;
   fixture TOTP не доказывает его личную готовность. SSH private-key acceptance — тоже отдельно.
-- Scheduled independent backups, key escrow, full DR и bootstrap-token retirement
-  не реализованы фактом наличия manual backup scripts.
+- Scheduled independent backups, key escrow и full DR не реализованы фактом
+  наличия manual backup scripts. Старый bootstrap token retired; новый machine
+  API пока broad, его scoped RBAC/rotation — отдельная задача.

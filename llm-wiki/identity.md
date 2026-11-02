@@ -30,7 +30,9 @@ runtime Authentik/app state; подробная карта файлов есть
 - Portal: **https://auth.socrat.alchemmist.xyz/**, Authentik **2026.8.5**,
   server/worker/PG17.11 на `socrat-0`, retained PVC. **Не HA**.
 - Owner `alchemmist` — личная MFA identity, единственный в `homelab-owner`.
-  `akadmin` — break-glass, не общий ежедневный логин.
+  `akadmin` выведен из эксплуатации после отдельной миграции API; recovery — node-admin.
+  Машинные учётки Outpost и identity automation не являются людьми.
+  См. [admin automation](../docs/identity/admin-automation.md).
 - Tim — отдельная observer identity, с сохранением reviewed старых app IDs.
   Личная доставка credential/TOTP и реальная private-key SSH-проверка отдельно.
 - Native SSO: Grafana, Harbor, Rancher, Open WebUI, Wiki, LiteLLM; Argo CD имеет
@@ -194,7 +196,7 @@ header. Архивы encrypted; не копировать plaintext credentials 
 Открыто: Kuma integration, owner-only legacy fallback в остальных apps, n8n native license decision, owner/Tim browser
 acceptance других apps, координированное onboarding/offboarding и revocation сессий,
 API keys/SSH/VPN, scheduled independent backups/key escrow/full restore,
-bootstrap admin token retirement, историческая kubeconfig exposure/rotation.
+scoped RBAC/rotation нового machine admin API, историческая kubeconfig exposure/rotation.
 IdP disable не отзывает автоматически уже выданные app/API/SSH credentials.
 
 WG keys/routes/firewall не меняли. Не назначать одну подсеть нескольким direct WG

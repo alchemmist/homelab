@@ -72,7 +72,7 @@ def migrate(root, action):
         if path.stat().st_mode & 0o077: raise RuntimeError('Journal is not private')
         verify(journal['token'], journal)
         if old != journal['token']: raise RuntimeError('Consumer credential alias drift')
-        print('PASS: dedicated machine API identity and consumer alias verified; akadmin untouched')
+        print('PASS: dedicated machine API identity and consumer alias verified; read-only check')
         return
     if action == 'check':
         print('NOT MIGRATED: no active machine API journal'); return

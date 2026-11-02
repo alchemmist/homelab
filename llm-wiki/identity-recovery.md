@@ -9,7 +9,8 @@
 | Место | Что там / граница |
 |---|---|
 | `socrat-0:~/.cache/homelab-authentik/` | Private runtime deployment root, directory 0700/files 0600 |
-| `credentials.json` в этом root | Bootstrap/admin/DB/installation secret material; broad privilege |
+| `credentials.json` в этом root | DB/installation secret material и legacy API-key alias нового machine admin; broad privilege |
+| `automation-api.json`, `credentials-before-automation-*.json` | Secret-bearing exact-identity migration journal и pre-change rollback; не публиковать |
 | `owner-login.json`, `tim-login.json` | Initial credentials + bootstrap markers; могут быть stale |
 | `oidc-clients.json` | Stable confidential OAuth clients; не пересоздавать при потере файла |
 | private integration journals/snapshots | Old config, exact identity bindings, потенциальные secrets |
@@ -111,9 +112,10 @@ PG16 `pg_restore` отвергал archive format 1.16; более подход�
    owner личный MFA, машинные keys; обоснованно отозвать потенциально скомпрометированные
    sessions/tokens. Наличие backup не отменяет последствий компрометации.
 
-Bootstrap API token всё ещё broad и должен быть retired/scoped после устройства
-безопасного автоматизированного доступа. Не отзывать его до inventory dependent
-reconcilers: они пока его используют. Это долг, а не скрытая гарантия least privilege.
+Старый bootstrap API token retired вместе с akadmin после переноса consumers
+на отдельный machine admin. Новый token пока тоже broad: scoped RBAC и rotation
+остаются долгом, не скрытой гарантией least privilege. Legacy имя credential key
+не означает, что старый bootstrap token ещё используется.
 
 ## 5. Rollback интеграции без уничтожения данных
 
@@ -219,6 +221,23 @@ Cluster-wide human-auth inventory; Kuma safe boundary; n8n license/native SSO;
 legacy local sessions/old-password bypass audit кроме уже проверенного Wiki;
 strict English enforcement для старых overrides; Native inspector JSON highlight/
 Copy, grouping/filtering history; owner photo collection; independent backup
-schedule/escrow/full DR; bootstrap token retirement; historic kubeconfig exposure/
+schedule/escrow/full DR; scoped machine admin API/rotation; historic kubeconfig exposure/
 credential rotation; distributed Authentik/Harbor HA. Не закрывать эти пункты
 по факту красивой login page или наличия encrypted archive.
+
+
+## 10. Default Admin заменён машинной автоматизацией
+
+`akadmin` и его bootstrap token удалены после guarded checks; daily human users —
+`alchemmist` и `tim`. Outpost account оставлен. Новый `homelab-identity-automation`
+имеет service_account type, непригодный для входа пароль и **широкие** admin API
+права отдельной группы — не выдавать это за completed least-privilege RBAC.
+Исторический ключ AUTHENTIK_BOOTSTRAP_TOKEN в private credentials теперь alias
+этого token. Он не попадает в runtime Secret/pods через bootstrap.py.
+
+Независимый node-admin recovery проверен официальной recovery-ссылкой на
+временном admin, не на владельце; exact fixture cleanup завершён. Личный owner
+recovery и full DR остаются отдельной приёмкой. Старые backup credentials после
+retirement не восстановят API к текущей DB; сначала проверить journal/backup
+consistency. Процедура, guards и доказанные ограничения:
+[admin-automation.md](../docs/identity/admin-automation.md).

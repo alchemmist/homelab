@@ -327,3 +327,14 @@ methods получают same-origin401; native 3x-ui3.11 самостоятел
 Тестовые credentials до native backend не дошли, fixture users/bindings удалены.
 Owner native-password acceptance остаётся личной. Бесшовный refresh не обещан.
 Подробности: [диагностика gateway](identity-gateway-troubleshooting.md#3-3x-ui-исправленный-failed-to-fetch-на-login).
+
+
+## Машинный admin API: не Default Admin
+
+Для identity controllers выделен `homelab-identity-automation` (service account),
+а Outpost сохраняет свою отдельную техническую идентичность. `akadmin` удалён
+после переноса token и recovery drill. Human IDs/links/roles не переносились.
+Legacy credential key AUTHENTIK_BOOTSTRAP_TOKEN сохранён как alias нового key,
+так что текущие consumers совместимы; runtime Secret исключает admin bootstrap
+env. Детали и широкие privilege boundaries:
+[admin-automation.md](../docs/identity/admin-automation.md).

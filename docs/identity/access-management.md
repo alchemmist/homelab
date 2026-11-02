@@ -20,7 +20,7 @@ that local bypasses or pre-existing human sessions have been closed.
 
 | Service | Live authorization | Important limits |
 |---|---|---|
-| Authentik | Personal users, password + mandatory MFA | Single-node on socrat-0; local akadmin break-glass |
+| Authentik | Personal users, password + mandatory MFA | Single-node on socrat-0; independent node-admin recovery (see admin-automation.md) |
 | Grafana | Native OIDC + PKCE; owner → Grafana server admin, other admitted groups → Viewer | Local emergency login and intentionally existing anonymous Viewer preserved |
 | Harbor | Native OIDC, owner group → system admin | Local admin retained; project-scoped robots remain independent |
 | Rancher | Native Generic OIDC + PKCE, restricted to the reviewed identities | Separate external identities mirror existing Rancher grants; local identities preserved for emergency/transition |
@@ -63,7 +63,7 @@ On socrat-0, `~/.cache/homelab-authentik/` is 0700; credential files are 0600:
 
 - `owner-login.json`: **initial** personal owner password, potentially stale after change;
 - `tim-login.json`: Tim's initial password; deliver through an independent secure channel;
-- `credentials.json`: akadmin initial password, secret key, bootstrap API token and PG password;
+- `credentials.json`: installation/signing/PG material and the legacy API-token alias; after migration this alias belongs to the machine automation account, not akadmin;
 - `oidc-clients.json`: confidential OAuth clients;
 - private pre-migration rollback snapshots.
 
@@ -79,9 +79,9 @@ ssh -o Hostname=109.173.40.247 \
 ```
 
 Tim logs in as `tim`, enrolls his own TOTP and changes the initial password.
-`akadmin` is emergency administration, not a shared daily identity. Keep an
+`akadmin` was the initial emergency administrator; after the guarded migration it is retired. Current machine API and independent node-admin recovery: [admin-automation.md](admin-automation.md). Do not rely on the retired password/token. Keep an
 independent emergency access path and securely escrow MFA recovery codes.
-SMTP invitations/reset mail and bootstrap-token retirement remain follow-up work.
+SMTP invitations/reset mail, independent escrow and finer-grained automation RBAC remain follow-up work; the old bootstrap token is retired.
 
 ## Grafana incident and acceptance
 
