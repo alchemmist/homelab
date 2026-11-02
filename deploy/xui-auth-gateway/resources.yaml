@@ -30,7 +30,12 @@ data:
     \ off;\n   proxy_set_header Content-Length \"\";\n   proxy_set_header X-Original-URL\
     \ https://vpn.alchemmist.xyz$request_uri;\n  }\n  location /outpost.goauthentik.io/\
     \ { proxy_pass $authentik_backend$request_uri; }\n  location @auth_login {\n \
-    \  add_header Set-Cookie $auth_cookie always;\n   return 302 https://vpn.alchemmist.xyz/outpost.goauthentik.io/start?rd=https://vpn.alchemmist.xyz$request_uri;\n\
+    \  # Native 3x-ui handles HTTP 401 by top-level navigation. Never redirect\n \
+    \  # fetch/XHR or an unsafe POST through the cross-origin OAuth flow.\n   if ($http_x_requested_with\
+    \ = XMLHttpRequest) { return 401; }\n   if ($http_sec_fetch_mode = cors) { return\
+    \ 401; }\n   if ($http_sec_fetch_mode = same-origin) { return 401; }\n   if ($http_sec_fetch_mode\
+    \ = websocket) { return 401; }\n   if ($request_method !~ ^(GET|HEAD)$) { return\
+    \ 401; }\n   add_header Set-Cookie $auth_cookie always;\n   return 302 https://vpn.alchemmist.xyz/outpost.goauthentik.io/start?rd=https://vpn.alchemmist.xyz$request_uri;\n\
     \  }\n  location @machine {\n   # Invalid Bearer must NEVER fall back to a valid\
     \ native browser cookie.\n   proxy_set_header Host vpn.alchemmist.xyz;\n   proxy_set_header\
     \ X-Forwarded-Host vpn.alchemmist.xyz;\n   proxy_set_header X-Forwarded-Proto\
@@ -56,7 +61,7 @@ spec:
     metadata:
       labels: *id001
       annotations:
-        checksum/config: 397817d6f03d5365b26280259f66662b3fed3d794549d289f80cad9a6765010b
+        checksum/config: 56cfce7adf62e85a968be2de0df9b08d7f045d92c92dda206581fbd741342d90
     spec:
       automountServiceAccountToken: false
       nodeSelector:

@@ -36,6 +36,10 @@ class XuiGatewayTests(unittest.TestCase):
         self.assertIn('proxy_cookie_flags ~ secure;',conf)
         self.assertIn('access_log off;',conf)
         self.assertIn('return 302 https://vpn.alchemmist.xyz/outpost.goauthentik.io/start?',conf)
+        auth=conf.split('location @auth_login {',1)[1].split('location @machine',1)[0]
+        self.assertIn('$http_x_requested_with = XMLHttpRequest',auth)
+        self.assertIn('$http_sec_fetch_mode = cors',auth)
+        self.assertIn('$request_method !~ ^(GET|HEAD)$',auth)
 
     def test_backend_manifest_is_tokenless_sandboxed_and_pinned(self):
         resources=list(yaml.safe_load_all((ROOT/'deploy/xui-auth-gateway/resources.yaml').read_text()))

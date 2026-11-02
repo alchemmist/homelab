@@ -64,6 +64,13 @@ http {
   }
   location /outpost.goauthentik.io/ { proxy_pass $authentik_backend$request_uri; }
   location @auth_login {
+   # Native 3x-ui handles HTTP 401 by top-level navigation. Never redirect
+   # fetch/XHR or an unsafe POST through the cross-origin OAuth flow.
+   if ($http_x_requested_with = XMLHttpRequest) { return 401; }
+   if ($http_sec_fetch_mode = cors) { return 401; }
+   if ($http_sec_fetch_mode = same-origin) { return 401; }
+   if ($http_sec_fetch_mode = websocket) { return 401; }
+   if ($request_method !~ ^(GET|HEAD)$) { return 401; }
    add_header Set-Cookie $auth_cookie always;
    return 302 https://vpn.alchemmist.xyz/outpost.goauthentik.io/start?rd=https://vpn.alchemmist.xyz$request_uri;
   }
