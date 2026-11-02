@@ -27,8 +27,7 @@ def inputs():
             'authentik_issuer': 'https://auth.test.invalid.test/application/o/pilot/',
             'oidc_client_id': 'test-client', 'login_group': 'pilot-login',
             'routing_peers': [
-                {'name': 'router-a', 'host': 'router-a.test.invalid.test', 'failure_domain': 'test-host-a', 'metric': 100},
-                {'name': 'router-b', 'host': 'router-b.test.invalid.test', 'failure_domain': 'test-host-b', 'metric': 200}],
+                {'name': 'router-a', 'host': 'router-a.test.invalid.test', 'failure_domain': 'test-host-a', 'metric': 100}],
             'resources': [
                 {'name': 'web', 'kind': 'web', 'address': '192.168.88.10/32', 'ports': [443],
                  'source_group': 'pilot-web', 'dns_name': 'web.test.invalid.test'},
@@ -40,7 +39,7 @@ def inputs():
 def bindings():
     return {'network_id': 'network00001', 'source_groups': {'pilot-web': 'source000001', 'pilot-ssh': 'source000002'},
             'resource_groups': {'web': 'resource0001', 'ssh': 'resource0002'},
-            'peer_ids': {'router-a': 'peer00000001', 'router-b': 'peer00000002'}}
+            'peer_ids': {'router-a': 'peer00000001'}}
 
 
 def snapshot():
@@ -117,21 +116,25 @@ class PilotTests(unittest.TestCase):
             with self.subTest(network=network), self.assertRaises(ValueError):
                 nb.validate(c)
 
-    def test_two_independent_routers_allow_reviewed_existing_nodes(self):
-        for change in ['one', 'same-host', 'same-failure-domain']:
-            c = inputs()
-            if change == 'one': c['routing_peers'].pop()
-            elif change == 'same-host': c['routing_peers'][1]['host'] = c['routing_peers'][0]['host']
-            else: c['routing_peers'][1]['failure_domain'] = c['routing_peers'][0]['failure_domain']
-            with self.subTest(change=change), self.assertRaises(ValueError): nb.validate(c)
+    def test_one_ssh_router_is_not_a_second_ha_peer(self):
+        empty = inputs()
+        empty['routing_peers'] = []
+        with self.assertRaises(ValueError):
+            nb.validate(empty)
+        doubled = inputs()
+        doubled['routing_peers'].append({
+            'name': 'router-b', 'host': 'router-b.test.invalid.test',
+            'failure_domain': 'test-host-b', 'metric': 200})
+        with self.assertRaises(ValueError):
+            nb.validate(doubled)
         blocked = inputs()
         blocked['review']['existing_node_router_mode_reviewed'] = False
         blocked['routing_peers'][0]['host'] = 'socrat-2'
         with self.assertRaises(ValueError):
             nb.validate(blocked)
         allowed = inputs()
-        allowed['routing_peers'][0]['host'] = 'socrat-2'
-        allowed['routing_peers'][1]['host'] = 'socrat-1'
+        allowed['routing_peers'][0]['host'] = 'socrat-0'
+        allowed['review']['existing_node_router_mode_reviewed'] = True
         nb.validate(allowed)
         with tempfile.TemporaryDirectory() as directory:
             with self.assertRaises(ValueError):
@@ -225,8 +228,8 @@ class PilotTests(unittest.TestCase):
     def test_policy_compiler_defaults_deny_specific_tcp_only(self):
         requests = nb.access_requests(inputs(), bindings(), snapshot())
         routers = [x for x in requests if x['path'].endswith('/routers')]
-        self.assertEqual(len(routers), 2)
-        self.assertEqual([x['body']['metric'] for x in routers], [100, 200])
+        self.assertEqual(len(routers), 1)
+        self.assertEqual([x['body']['metric'] for x in routers], [100])
         self.assertTrue(all(x['body']['masquerade'] for x in routers))
         policies = [x['body'] for x in requests if x['path'] == '/api/policies']
         for policy in policies:

@@ -42,7 +42,11 @@ def assert_candidates(candidates):
     nb.require(candidates['resources']['socrat_2_openssh']['deployable'] is False, 'socrat-2 SSH must not be deployable')
     nb.require(candidates['pilot_users'] == ['owner', 'tim'], 'pilot users must stay owner and tim')
     routers = candidates['routers']
-    nb.require(routers['required'] == 2, 'two routing peers remain required')
+    nb.require(routers['required'] == 1, 'SSH has one routing peer')
+    nb.require(routers.get('ha') is False, 'route HA is false')
+    nb.require(routers.get('ssh_routing_peer') == 'socrat-0', 'SSH routing peer must be socrat-0')
+    nb.require(routers.get('socrat_2_is_router') is False, 'socrat-2 is not a routing peer')
+    nb.require(routers.get('grafana_route_ha') is False, 'Grafana listeners are not route HA')
     nb.require(routers['placement_resolved'] is False, 'router placement is unresolved')
     nb.require(routers['mode'] == 'existing-node', 'router mode must stay the existing-node candidate')
     nb.require(routers['existing_node_router_mode_reviewed'] is False,
@@ -110,7 +114,7 @@ def report(inputs, candidates, audit, chart, delta):
     network_blockers = [
         candidates['resources']['private_grafana']['reason'],
         candidates['resources']['socrat_2_openssh']['reason'],
-        'Existing-node router placement is unresolved. This control plane does not generate host routers.',
+        'SSH has one routing peer, socrat-0. socrat-2 is not a second router and Grafana is not route HA. Existing-node placement is unresolved and this control plane does not generate host routers.',
         'Authentik OIDC is approved and not configured. localAuthDisabled cannot be true on first boot.',
         'Authentik groups claim is not verified.',
         'v0.82.0 simplified config cannot disable the Default allow-all policy. Delete it before any enrollment.',

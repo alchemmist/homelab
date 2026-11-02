@@ -101,7 +101,8 @@ def validate(c):
             continue
         require(value is True, 'review gate must explicitly be true: ' + key)
     peers = c['routing_peers']
-    require(isinstance(peers, list) and len(peers) == 2, 'exactly TWO routing peers required')
+    require(isinstance(peers, list) and len(peers) == 1,
+            'exactly one SSH routing peer; a second peer would claim route HA')
     for p in peers:
         require(set(p) == {'name', 'host', 'failure_domain', 'metric'}, 'routing peer keys invalid')
         require(identifier(p['name']), 'routing peer name required')
@@ -112,8 +113,6 @@ def validate(c):
                     'existing-node router mode requires explicit review')
         require(text(p['failure_domain']), 'routing peer failure_domain required')
         require(type(p['metric']) is int and 1 <= p['metric'] <= 9999, 'router metric invalid')
-    for key in ['name', 'host', 'failure_domain', 'metric']:
-        require(len({p[key] for p in peers}) == 2, 'routing peers need distinct ' + key)
     resources = c['resources']
     require(isinstance(resources, list) and bool(resources), 'explicit resource allowlist required')
     require(len({r['name'] for r in resources}) == len(resources), 'duplicate resource names')
@@ -479,7 +478,7 @@ def access_requests(c, bindings, snapshot):
     require(set(bindings['resource_groups']) == {r['name'] for r in c['resources']},
             'exact resource group bindings required')
     require(set(bindings['peer_ids']) == {p['name'] for p in c['routing_peers']},
-            'exact two peer ID bindings required')
+            'exact one SSH routing peer ID binding required')
     values = [bindings['network_id']] + [v for key in ['source_groups', 'resource_groups', 'peer_ids']
                                         for v in bindings[key].values()]
     require(all(text(v) and re.fullmatch(r'[a-z0-9]{10,64}', v) for v in values),

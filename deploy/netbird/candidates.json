@@ -35,11 +35,15 @@
     }
   },
   "routers": {
-    "required": 2,
+    "required": 1,
+    "ha": false,
+    "ssh_routing_peer": "socrat-0",
+    "socrat_2_is_router": false,
+    "grafana_route_ha": false,
     "placement_resolved": false,
     "mode": "existing-node",
     "existing_node_router_mode_reviewed": false,
     "new_machines_approved": false,
-    "note": "New machines were rejected. Existing-node mode is the approved class and is not a reviewed placement. Host-router generation is separate and is not produced here."
+    "note": "One SSH routing peer: socrat-0 forwards to 10.250.0.2. socrat-2 is the SSH destination, not a second router. Grafana is two overlay TCP 8443 listeners, not route HA. The peer is not installed from this control plane."
   }
 }
