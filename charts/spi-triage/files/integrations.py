@@ -140,6 +140,12 @@ class Model:
             try:
                 value=json.loads(response['choices'][0]['message']['content']);validate(value,schema)
                 if clean(value)!=value: raise Failure('UNSAFE_MODEL_OUTPUT')
+                context=data.get('evidence',{}).get('artifact_context') if isinstance(data,dict) else None
+                if schema is REPORT_SCHEMA and context:
+                    ids={x['id']for x in context.get('index',[])}
+                    for fact in value['facts']:
+                        refs=set(re.findall(r'\bE[0-9]{3}\b',fact))
+                        if not refs or not refs<=ids:raise Failure('INVALID_EVIDENCE_REFERENCE')
                 return value
             except (KeyError,IndexError,TypeError,ValueError,Failure) as exc:
                 last=exc.code if isinstance(exc,Failure) else 'INVALID_MODEL_SCHEMA'
@@ -169,7 +175,7 @@ class Model:
         if bundle:evidence['artifact_context']=bundle['model_context']
         evidence['queries']=[{**q,'result':metric_summary(q.get('result',{}))} if q.get('source') in ('prometheus_metrics','loki_error_frequency','host_log_error_frequency','loki_rule_metric') else q for q in evidence.get('queries',[])]
         evidence['rule_definitions']=[{k:v for k,v in r.items() if k!='alerts'} for r in evidence.get('rule_definitions',[])]
-        report=self.call('Write an evidence-grounded SPI report. Revalidate preliminary matching using diagnostics; choose 0 if a distinct cause is supported. Assess alert noise and actionable tuning separately from service defects. Include safe evidence references in facts; never fabricate a source path or threshold. Scrape exporter pods are not necessarily affected workloads: use job_name or systemd unit when present. Zero error counts or absent series never confirm no service degradation; Use artifact IDs when citing collected logs, traces, deployment metadata and metric samples. Explain excerpt/collection limits; never claim all stored bytes were reviewed. Missing logs do not prove health. OCI revision labels are build claims, not reproducible-build proof; main-branch runbooks are not deployed code.',
+        report=self.call('Write an evidence-grounded SPI report. Revalidate preliminary matching using diagnostics; choose 0 if a distinct cause is supported. Assess alert noise and actionable tuning separately from service defects. Include safe evidence references in facts; never fabricate a source path or threshold. Scrape exporter pods are not necessarily affected workloads: use job_name or systemd unit when present. Zero error counts or absent series never confirm no service degradation; Every verified fact MUST cite at least one existing artifact ID such as [E003]; never invent an evidence ID. Use artifact IDs when citing collected logs, traces, deployment metadata and metric samples. Explain excerpt/collection limits; never claim all stored bytes were reviewed. Missing logs do not prove health. OCI revision labels are build claims, not reproducible-build proof; main-branch runbooks are not deployed code.',
                          {'alert':event,'preliminary_match':match,'evidence':evidence},REPORT_SCHEMA,time.monotonic()+780)
         if report['issue_number'] not in {0,*[x['number']for x in match['candidates']]}: raise Failure('INVALID_MATCH_TARGET')
         return report

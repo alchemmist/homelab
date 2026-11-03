@@ -57,9 +57,20 @@ class DeploymentCollector:
                 record['owner_chain']=chain;records.append(record)
             result['artifacts'].append({'id':'deployment','name':'deployed-workload.json','media_type':'application/json','content':{'collected_at':int(time.time()),'namespace':namespace,'workloads':records,
                 'limitations':['Observed now, not a historical snapshot. A pod may have changed since the incident.','Image IDs establish running image digest. Tags and revision labels alone do not verify source commit.']},'source':{'kind':'Kubernetes read-only API','namespace':namespace,'pod':pod,'job_name':job}})
+            image_proofs=0;seen_images=set()
             for record in records:
+                uid=record.get('uid','')
+                if re.fullmatch(r'[0-9a-f-]{36}',uid or ''):
+                    events=self.get(root+'/events?limit=50&fieldSelector=involvedObject.uid%3D'+uid)
+                    timeline=[{k:x.get(k)for k in ('eventTime','firstTimestamp','lastTimestamp','reason','type','count','message')}for x in events.get('items',[])[:50]]
+                    result['artifacts'].append({'name':'pod-events-'+record['name']+'.json','content':{'events':timeline,'truncated':bool(events.get('metadata',{}).get('continue')),'limitation':'Current retained event API records, not a complete historical archive.'},'source':{'pod_uid':uid,'collected_at':int(time.time())}})
                 for container in record.get('containers',[]):
-                    proof=self.image_source(container)
+                    identity=container.get('imageID')
+                    if not identity or identity in seen_images:continue
+                    seen_images.add(identity)
+                    if image_proofs>=2:
+                        result['missing'].append({'source':'image_provenance','reason':'IMAGE_PROOF_BUDGET_TWO'});continue
+                    image_proofs+=1;proof=self.image_source(container)
                     if proof:result['artifacts'].append(proof)
             if not records:result['missing'].append({'source':'deployed_source','reason':'NO_CURRENT_PODS_FOR_INCIDENT'})
             result['missing'].append({'source':'deployed_source','reason':'SOURCE_UNVERIFIED_UNLESS_OCI_PROOF_PRESENT'})
@@ -74,6 +85,7 @@ class DeploymentCollector:
         return {'kind':obj.get('kind'),'name':meta.get('name'),'uid':meta.get('uid'),'created_at':meta.get('creationTimestamp'),'labels':labels,'phase':status.get('phase'),
             'deployment_revision':meta.get('annotations',{}).get('deployment.kubernetes.io/revision'),
             'containers':[{'name':c.get('name'),'image':c.get('image'),'imageID':statuses.get(c.get('name'),{}).get('imageID'),'restartCount':statuses.get(c.get('name'),{}).get('restartCount'),
+              'lastState':{k:{x:v for x,v in details.items()if x in ('reason','exitCode','startedAt','finishedAt','signal')}for k,details in statuses.get(c.get('name'),{}).get('lastState',{}).items()if isinstance(details,dict)},
               'state':{k:{x:v for x,v in details.items()if x in ('reason','exitCode','startedAt','finishedAt','signal')}for k,details in statuses.get(c.get('name'),{}).get('state',{}).items()if isinstance(details,dict)}}for c in containers[:10]]}
     def image_source(self,container):
         if not self.http:return None
@@ -100,6 +112,7 @@ class DeploymentCollector:
             # Registry JSON reserialization is not byte-identical: record registry claim, not cryptographic binary/source equivalence.
             labels=raw.get('config',{}).get('Labels')or{};revision=labels.get('org.opencontainers.image.revision','');url=labels.get('org.opencontainers.image.source','')
             proof={'imageID':identity,'config_digest':config,'oci_revision':revision if re.fullmatch(r'[a-f0-9]{40}',revision)else None,
+                'source_commit_url':url+'/tree/'+revision if re.fullmatch(r'https://github.com/alchemmist/[A-Za-z0-9_.-]+',url)and re.fullmatch(r'[a-f0-9]{40}',revision)else None,
                 'source_repository':url if re.fullmatch(r'https://github.com/alchemmist/[A-Za-z0-9_.-]+',url)else None,
                 'association':'OCI metadata from digest-addressed deployed image','source_equivalence_proven':False,
                 'limitation':'OCI labels attest a build claim, not reproducible-build proof. Source commit is unknown if labels are absent.'}
