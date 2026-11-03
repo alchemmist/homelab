@@ -8,7 +8,7 @@ from unittest.mock import Mock
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'charts/spi-triage/files'))
 from core import Failure, Store, REPORT_SCHEMA, clean, normalize, render, validate
-from integrations import GitHub, Model, Evidence
+from integrations import GitHub, Model, Evidence, metric_summary
 from service import Engine
 
 def event(status='firing',start='2026-11-03T13:00:00Z'):
@@ -94,6 +94,13 @@ class AdapterTests(unittest.TestCase):
         self.assertEqual(http.request.call_count,2)
 
 class EvidenceTests(unittest.TestCase):
+    def test_metric_summary_preserves_transient_peak_and_empty_data(self):
+        data={'data':{'resultType':'matrix','result':[{'metric':{'name':'example'},'values':[[1,'0'],[2,'7'],[3,'0']]}]}}
+        result=metric_summary(data);self.assertEqual(result['series'][0]['maximum'],7);self.assertEqual(result['series'][0]['last']['value'],0)
+        self.assertNotIn('values',result['series'][0]);self.assertIn('do not establish',result['limitation'])
+    def test_http_200_observability_error_is_not_evidence(self):
+        http=Mock();http.request.return_value={'status':'error','error':'not secret'}
+        with self.assertRaisesRegex(Failure,'OBSERVABILITY_QUERY_ERROR'):Evidence(http,'fake','http://grafana').get('/api/test')
     def test_host_profile_and_no_raw_trace_attributes(self):
         http=Mock()
         def request(method,url,*args,**kwargs):
