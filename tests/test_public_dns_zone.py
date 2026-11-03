@@ -23,5 +23,15 @@ def test_home_failure_leaves_only_the_vps_on_failover_names():
     assert "sync IN A %s" % zone.HOME in text
 
 
+def test_netbird_and_existing_bot_survive_renderer_deploys_and_follow_health():
+    for home_up, vps_up in [(True, True), (False, True), (True, False), (False, False)]:
+        text = zone.render(3, home_up, vps_up)
+        expected = zone.healthy_addresses(home_up, vps_up)
+        for name in ["netbird.socrat", "bot.socrat"]:
+            for address in [zone.HOME, zone.VPS]:
+                assert (f"{name} IN A {address}" in text) == (address in expected)
+    assert zone.FAILOVER.count("netbird.socrat") == 1
+
+
 def test_total_probe_failure_keeps_both_addresses():
     assert zone.healthy_addresses(False, False) == [zone.HOME, zone.VPS]

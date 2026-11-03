@@ -33,6 +33,7 @@ FAILOVER = [
     "lms",
     "monori",
     "n8n.socrat",
+    "netbird.socrat",
     "pr-agent.socrat",
     "rancher.socrat",
     "remark42",
