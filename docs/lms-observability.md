@@ -168,3 +168,13 @@ trace. A genuinely empty historical interval or expired data cannot be filled
 with invented spans: choose a recent/wider interval to investigate current
 traffic. Dashboard auto-selection is one available trace, not a claim to sort
 high-cardinality tag values chronologically.
+
+
+2026-11-03 regression evidence:
+- `deploy/monitoring/migration-evidence/lms-dashboard-default-selection-20261103.json`
+  verifies the full 39-span browser/backend trace plus bare-dashboard auto-selection;
+- `deploy/monitoring/migration-evidence/lms-dashboard-entry-scenarios-20261103.json`
+  verifies the bare URL, an invalid trace URL, and `now-5m`.
+
+Log assertions are scoped to the correlated panel itself: matching lines in the
+independent recent-log panel cannot accidentally make this check pass.

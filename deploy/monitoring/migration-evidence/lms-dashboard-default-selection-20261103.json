@@ -1,0 +1,50 @@
+{
+  "verifiedAt": "2026-11-03T07:45:21.663264+00:00",
+  "success": true,
+  "traceId": "7400f34ad130f72e4661fcc6c8c804e9",
+  "browser": {
+    "pageStatus": 200,
+    "pageTrace": "00-7400f34ad130f72e4661fcc6c8c804e9-c63c53f65947675f-01",
+    "apiContext": "00-7400f34ad130f72e4661fcc6c8c804e9-b34962ebe7d110d4-01",
+    "apiStatus": 404,
+    "intakeStatus": 204,
+    "browserErrors": []
+  },
+  "spanCount": 39,
+  "operationNames": [
+    "GET",
+    "GET /{path:path}",
+    "ReverseProxy",
+    "browser.api",
+    "browser.page",
+    "browser.resource",
+    "content.navigation",
+    "content.read_render",
+    "db.connect",
+    "db.transaction"
+  ],
+  "waterfallParentIdsVerified": true,
+  "intermediateProxySpans": [
+    "ReverseProxy",
+    "GET"
+  ],
+  "spanTimingsNonnegative": true,
+  "correlatedLokiLines": 2,
+  "dashboardUrl": "https://grafana.socrat.alchemmist.xyz/d/lms-performance/lms-c2b7-performance-and-distributed-traces?var-trace_id=7400f34ad130f72e4661fcc6c8c804e9",
+  "dashboardBrowser": {
+    "defaultDashboardAutoSelected": true,
+    "defaultTraceId": "2391ba3b81cc9bf2e65d0668e1b81f3a",
+    "defaultCorrelatedLogsRendered": true,
+    "recentLogsRendered": true,
+    "waterfallRendered": true,
+    "databaseAndBrowserOperationsVisible": true,
+    "correlatedLogsRendered": true,
+    "browserExceptions": [],
+    "datasourceHttpFailures": []
+  },
+  "lokiToTempoLinkVerified": true,
+  "productionMtlsDeliveryVerified": true,
+  "secretsSaved": false,
+  "syntheticProfileDeleted": true,
+  "authentikLoginTested": false
+}

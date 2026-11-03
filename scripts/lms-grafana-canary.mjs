@@ -23,10 +23,10 @@ try {
   if (!selectedId) throw new Error('Default dashboard has no automatic trace selection');
   const automaticLogs = page.getByRole('region').filter({ hasText: 'Correlated Loki logs' }).first();
   await automaticLogs.scrollIntoViewIfNeeded();
-  await page.waitForFunction(id => document.body.innerText.includes('http trace_id=' + id), selectedId, { timeout: 45000 });
+  await automaticLogs.getByText('http trace_id=' + selectedId, { exact: false }).first().waitFor({ state: 'visible', timeout: 45000 });
   const recent = page.getByRole('region').filter({ hasText: 'Recent LMS application logs' }).first();
   await recent.scrollIntoViewIfNeeded();
-  await page.waitForFunction(() => document.body.innerText.includes('http trace_id='), null, { timeout: 45000 });
+  await recent.getByText('http trace_id=', { exact: false }).first().waitFor({ state: 'visible', timeout: 45000 });
   await page.goto(process.env.LMS_DASHBOARD_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
   const waterfall = page.getByRole('region').filter({ hasText: 'Distributed waterfall' }).first();
   await waterfall.waitFor({ state: 'visible', timeout: 45000 });
@@ -36,7 +36,7 @@ try {
   if (!waterfallText.includes('browser.page') || !waterfallText.includes('db.transaction')) throw new Error('Waterfall operations missing');
   const logs = page.getByRole('region').filter({ hasText: 'Correlated Loki logs' }).first();
   await logs.scrollIntoViewIfNeeded();
-  await page.waitForFunction(id => document.body.innerText.includes('http trace_id=' + id), process.env.LMS_TRACE_ID, { timeout: 45000 });
+  await logs.getByText('http trace_id=' + process.env.LMS_TRACE_ID, { exact: false }).first().waitFor({ state: 'visible', timeout: 45000 });
   if (errors.length || queryFailures.length) throw new Error(JSON.stringify({ errors, queryFailures }));
   console.log(JSON.stringify({ defaultDashboardAutoSelected: true, defaultTraceId: selectedId, defaultCorrelatedLogsRendered: true, recentLogsRendered: true, waterfallRendered: true, databaseAndBrowserOperationsVisible: true,
     correlatedLogsRendered: true, browserExceptions: errors, datasourceHttpFailures: queryFailures }));

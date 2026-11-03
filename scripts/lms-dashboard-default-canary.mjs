@@ -17,7 +17,7 @@ try {
     if (!id || id === '00000000000000000000000000000001') throw new Error('Invalid or empty trace selection');
     const logs = page.getByRole('region').filter({ hasText: 'Correlated Loki logs' }).first();
     await logs.scrollIntoViewIfNeeded();
-    await page.waitForFunction(id => document.body.innerText.includes('http trace_id=' + id), id, { timeout: 45000 });
+    await logs.getByText('http trace_id=' + id, { exact: false }).first().waitFor({ state: 'visible', timeout: 45000 });
     outcomes.push({ entry: suffix || 'bare-dashboard', traceId: id, waterfallRendered: true, correlatedLogsRendered: true });
   }
   console.log(JSON.stringify({ success: true, scenarios: outcomes }, null, 2));

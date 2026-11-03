@@ -1,0 +1,23 @@
+{
+  "success": true,
+  "scenarios": [
+    {
+      "entry": "bare-dashboard",
+      "traceId": "03967f405937f60e7120329273614449",
+      "waterfallRendered": true,
+      "correlatedLogsRendered": true
+    },
+    {
+      "entry": "?var-trace_id=00000000000000000000000000000001",
+      "traceId": "03967f405937f60e7120329273614449",
+      "waterfallRendered": true,
+      "correlatedLogsRendered": true
+    },
+    {
+      "entry": "?from=now-5m&to=now",
+      "traceId": "03967f405937f60e7120329273614449",
+      "waterfallRendered": true,
+      "correlatedLogsRendered": true
+    }
+  ]
+}
