@@ -119,3 +119,12 @@ def test_selected_trace_logs_cover_tempo_retention_not_only_narrow_dashboard_ran
     assert logs['targets'][0]['expr']=='{k8s_namespace_name="lms"} |= "http trace_id=${trace_id}"'
     recent = next(panel for panel in dashboard['panels'] if panel['id']==5)
     assert 'timeFrom' not in recent
+
+
+def test_waterfall_is_the_primary_panel_before_trace_table():
+    dashboard = json.loads((ROOT/'charts/lms/files/lms-performance.json').read_text())
+    waterfall = next(p for p in dashboard['panels'] if p['id']==3)
+    table = next(p for p in dashboard['panels'] if p['id']==2)
+    assert waterfall['gridPos']['y'] < table['gridPos']['y']
+    assert waterfall['gridPos']['h'] >= 20
+    assert waterfall['gridPos']['w'] == 24
