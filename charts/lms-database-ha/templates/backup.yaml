@@ -18,6 +18,14 @@ spec:
         spec:
           restartPolicy: Never
           automountServiceAccountToken: false
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: kubernetes.io/hostname
+                        operator: In
+                        values: [socrat-0, socrat-1]
           securityContext:
             runAsUser: 999
             runAsGroup: 999

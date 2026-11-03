@@ -1,0 +1,20 @@
+{
+  "verifiedAt": "2026-11-03T10:10:22.867024+00:00",
+  "actualNodeLossObserved": true,
+  "failedNode": "socrat-3",
+  "nodeReadyStatus": "Unknown",
+  "nodeNotReadyAt": "2026-11-03T10:06:18Z",
+  "replacementWebPod": "lms-6dc5598954-2jnst",
+  "replacementNode": "socrat-1",
+  "replacementReadyAt": "2026-11-03T10:07:29Z",
+  "notReadyToReplacementReadySeconds": 71.0,
+  "totalHttpOutageMeasured": false,
+  "primaryDuringNodeLoss": "lms-ha-2",
+  "databaseWriteDuringNodeLossAcknowledged": true,
+  "acknowledgedMarkerReadAfterRecovery": true,
+  "temporaryProbeSchemaDropped": true,
+  "browserLessonStatus": 200,
+  "browserEvidence": "lms-ha-real-node-loss-browser-20261103.json",
+  "manualPodRelocationUsed": false,
+  "readyDatabaseInstancesAtObservation": 2
+}

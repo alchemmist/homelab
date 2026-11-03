@@ -30,6 +30,8 @@
   "secretsSaved": false,
   "rawProfilesSaved": false,
   "fullTrafficCanaryCompleted": false,
-  "lastCanaryCleanupPending": true,
-  "blocker": "socrat-3 became NotReady during traffic/cleanup verification; LMS and PostgreSQL are on this node. Cause not established. Synthetic session expires in 5 minutes; identity cleanup must follow node recovery."
+  "lastCanaryCleanupPending": false,
+  "cleanupResolvedAt": "2026-11-03T10:11:54.601999+00:00",
+  "temporaryCpuCanaryIdentityDeleted": true,
+  "historicalBlocker": "socrat-3 became NotReady during traffic/cleanup verification; LMS and PostgreSQL are on this node. Cause not established. Synthetic session expires in 5 minutes; identity cleanup must follow node recovery."
 }

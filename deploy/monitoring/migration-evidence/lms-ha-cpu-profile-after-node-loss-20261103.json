@@ -1,0 +1,26 @@
+{
+  "verifiedAt": "2026-11-03T10:18:53.627490+00:00",
+  "success": true,
+  "service": "lms-backend",
+  "profileTypeId": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+  "cpuProfileTotalNanoseconds": 326530608,
+  "functionCount": 52,
+  "stackDepth": 34,
+  "applicationFrames": [
+    "create_app.<locals>.static",
+    "create_app.<locals>.static.<locals>.decorate",
+    "render_navigation",
+    "render_navigation.<locals>.navigation",
+    "render_navigation.<locals>.navigation.<locals>.link"
+  ],
+  "realLessonRequests": 42,
+  "requestLatencyMedianMs": 434.82,
+  "dashboardUrl": "https://grafana.socrat.alchemmist.xyz/d/service-cpu-profiling",
+  "selectedIntervalUrl": "https://grafana.socrat.alchemmist.xyz/d/service-cpu-profiling?var-service=lms-backend&from=1793701093269&to=1793701133481",
+  "sampling": "49 Hz GIL-held on-CPU Python stacks",
+  "boundedCanary": "20 seconds, at most 10 requests/second, sequential, no retries on HTTP errors",
+  "secretsSaved": false,
+  "rawProfilesSaved": false,
+  "authentikLoginTested": false,
+  "syntheticProfileDeleted": true
+}

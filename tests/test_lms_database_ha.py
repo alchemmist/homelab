@@ -30,6 +30,7 @@ def test_backups_are_encrypted_and_not_shared_plaintext_files():
     assert cron['spec']['concurrencyPolicy']=='Forbid'
     spec=cron['spec']['jobTemplate']['spec']['template']['spec']
     assert spec['automountServiceAccountToken'] is False
+    assert spec['affinity']['nodeAffinity']['requiredDuringSchedulingIgnoredDuringExecution']['nodeSelectorTerms'][0]['matchExpressions'][0]['values']==['socrat-0','socrat-1']
     cmd=spec['containers'][0]['args'][0]
     assert 'umask 077' in cmd and '--symmetric --cipher-algo AES256' in cmd
     assert '--passphrase-file /backup-key/passphrase' in cmd
@@ -80,3 +81,26 @@ def test_production_web_does_not_depend_on_legacy_nfs_and_legacy_db_is_stopped()
     assert any(d['kind']=='PersistentVolumeClaim' and d['metadata']['name']=='lms-data' for d in docs)
     old=next(d for d in docs if d['kind']=='Deployment' and d['metadata']['name']=='lms-postgres')
     assert old['spec']['replicas']==0
+
+
+def test_operator_canary_avoids_stale_ready_pod_on_unreachable_node():
+    import importlib.util
+    import pytest
+    spec=importlib.util.spec_from_file_location('verify',ROOT/'scripts/lms-observability-verify.py')
+    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+    def pod(name,node,deleting=False):
+        return {'metadata':{'name':name,**({'deletionTimestamp':'now'} if deleting else {})},'spec':{'nodeName':node},'status':{'phase':'Running','conditions':[{'type':'Ready','status':'True'}]}}
+    nodes={'items':[{'metadata':{'name':n},'status':{'conditions':[{'type':'Ready','status':ready}]}} for n,ready in [('socrat-3','Unknown'),('socrat-1','True')]]}
+    assert module.ready_canary_pod({'items':[pod('old','socrat-3',True),pod('new','socrat-1')]},nodes)=='new'
+    with pytest.raises(RuntimeError):module.ready_canary_pod({'items':[pod('old','socrat-3')]},nodes)
+
+
+def test_remote_canary_programs_are_valid_python_including_finally_cleanup():
+    import ast
+    for filename in ['lms-cpu-profile-verify.py','lms-observability-verify.py']:
+        tree=ast.parse((ROOT/'scripts'/filename).read_text())
+        snippets=[n for n in ast.walk(tree) if isinstance(n,ast.JoinedStr) and any(isinstance(v,ast.Constant) and 'from app.config import Settings' in str(v.value) for v in n.values)]
+        assert snippets
+        for node in snippets:
+            program=''.join(v.value if isinstance(v,ast.Constant) else repr('synthetic-canary') for v in node.values)
+            ast.parse(program)

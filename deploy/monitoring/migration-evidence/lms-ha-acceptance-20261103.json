@@ -1,0 +1,65 @@
+{
+  "verifiedAt": "2026-11-03T10:11:54.590367+00:00",
+  "productionCutoverVerified": true,
+  "instancesConfigured": 3,
+  "instancesReadyAtFinalObservation": 2,
+  "placement": {
+    "lms-ha-1": "socrat-3",
+    "lms-ha-2": "socrat-1",
+    "lms-ha-3": "socrat-0"
+  },
+  "currentPrimary": "lms-ha-2",
+  "synchronous": {
+    "dataDurability": "required",
+    "failoverQuorum": true,
+    "method": "any",
+    "number": 1
+  },
+  "webAvailableReplicas": 1,
+  "webNodeEvictionTolerationSeconds": 60,
+  "webHasNoNfsOrOtherDataPVC": true,
+  "legacyDatabaseReplicas": 0,
+  "retainedVolumePolicies": {
+    "lms-postgres": "Retain",
+    "lms-ha-3": "Retain",
+    "lms-ha-1": "Retain",
+    "lms-ha-2": "Retain"
+  },
+  "encryptedBackupJob": "lms-database-backup-final-20261103",
+  "encryptedBackupVerified": true,
+  "encryptedBackupSHA256": "f84cb1feb1ade6d2f7b658c53717b40d80f4673cc1977ccf16aea553e75522f4",
+  "logicalDataFingerprintMatched": true,
+  "tlsMode": "verify-full",
+  "observedConnectionTls": "TLSv1.3",
+  "syntheticBrowserCheck": "lms-ha-post-cutover-browser-20261103.json",
+  "stagedFailoverSeconds": 43.65,
+  "stagedAcknowledgedMarkerPreserved": true,
+  "alerts": [
+    {
+      "name": "LMSDatabaseBackupOverdue",
+      "health": "ok",
+      "state": "inactive"
+    },
+    {
+      "name": "LMSDatabaseQuorumAtRisk",
+      "health": "ok",
+      "state": "inactive"
+    },
+    {
+      "name": "LMSDatabaseRedundancyDegraded",
+      "health": "ok",
+      "state": "firing"
+    },
+    {
+      "name": "LMSWebUnavailable",
+      "health": "ok",
+      "state": "inactive"
+    }
+  ],
+  "actualUnplannedNodeLossObserved": true,
+  "realNodeLossEvidence": "lms-ha-real-node-loss-20261103.json",
+  "nodePowerOffOrPartitionIntentionallyTriggered": false,
+  "fullHttpOutageRtoMeasured": false,
+  "offsiteBackupAndKeyEscrowConfigured": false,
+  "secretsSaved": false
+}

@@ -189,3 +189,6 @@ Selected-trace log lookup covers the last **7 days**, matching Tempo retention
 range can offer an older retained trace. Its matching logs must not be cut off
 by that narrow dashboard interval. The independent recent-log panel continues
 to follow the selected dashboard interval.
+
+
+LMS now uses synchronous multi-node PostgreSQL; see [database HA and recovery](lms-database-ha.md) for availability boundaries, encrypted backups and the verified migration.

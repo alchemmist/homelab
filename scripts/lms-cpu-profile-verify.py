@@ -93,8 +93,8 @@ from app.store import Store
 import json
 store=Store(Settings.from_env().database_url)
 with store.connect() as db:
-db.execute('DELETE FROM users WHERE issuer=%s AND subject=%s', ({issuer!r}, {subject!r}))
-remaining=db.execute('SELECT count(*) AS n FROM users WHERE issuer=%s AND subject=%s', ({issuer!r}, {subject!r})).fetchone()['n']
+    db.execute('DELETE FROM users WHERE issuer=%s AND subject=%s', ({issuer!r}, {subject!r}))
+    remaining=db.execute('SELECT count(*) AS n FROM users WHERE issuer=%s AND subject=%s', ({issuer!r}, {subject!r})).fetchone()['n']
 print(json.dumps(dict(deleted=remaining==0)))
 ''')
         if not cleanup['deleted']:

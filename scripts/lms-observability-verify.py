@@ -20,9 +20,31 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def ready_canary_pod(pods, nodes):
+    ready_nodes = {node['metadata']['name'] for node in nodes['items']
+                   if any(c['type']=='Ready' and c['status']=='True' for c in node['status'].get('conditions', []))}
+    candidates = [pod for pod in pods['items']
+                  if not pod['metadata'].get('deletionTimestamp')
+                  and pod['spec'].get('nodeName') in ready_nodes
+                  and pod['status'].get('phase')=='Running'
+                  and any(c['type']=='Ready' and c['status']=='True' for c in pod['status'].get('conditions', []))]
+    if not candidates:
+        raise RuntimeError('No active ready LMS pod available for canary')
+    return max(candidates, key=lambda pod: pod['metadata'].get('creationTimestamp', ''))['metadata']['name']
+
+
 def kubepython(code):
+    def inspect(command):
+        result = subprocess.run(['ssh', '-o', 'BatchMode=yes', 'socrat-0', command],
+                                text=True, capture_output=True, timeout=30)
+        if result.returncode:
+            raise RuntimeError('Canary pod discovery failed; sensitive output suppressed')
+        return json.loads(result.stdout)
+    # exec deploy/lms can select a stale Ready/Terminating pod on a lost node.
+    pod = ready_canary_pod(inspect('kubectl -n lms get pods -l app.kubernetes.io/name=lms -o json'),
+                           inspect('kubectl get nodes -o json'))
     command = ['ssh', '-o', 'BatchMode=yes', 'socrat-0',
-               'kubectl -n lms exec -i deploy/lms -- python -']
+               'kubectl -n lms exec -i ' + pod + ' -- python -']
     result = subprocess.run(command, input=code, text=True, capture_output=True, timeout=60)
     if result.returncode:
         raise RuntimeError('LMS canary operation failed; sensitive output suppressed')
