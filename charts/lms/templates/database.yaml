@@ -3,10 +3,7 @@ kind: Secret
 metadata:
   name: {{ .Values.database.secretName }}
 type: Opaque
-{{- $existing := lookup "v1" "Secret" .Release.Namespace .Values.database.secretName }}
-{{- if $existing }}
-data: {{ toYaml $existing.data | nindent 2 }}
-{{- end }}
+# Credential data is runtime-managed; Argo respects its /data ignore rule.
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
