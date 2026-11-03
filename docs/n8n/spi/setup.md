@@ -184,7 +184,7 @@ traffic. Never erase pending/ambiguous-publication state to clear an alert.
 
 ## Verified acceptance
 
-- 95 local tests: 62 SPI Python, five native ingress, nine Yandex client, six calendar,
+- 96 local tests: 63 SPI Python, five native ingress, nine Yandex client, six calendar,
   thirteen blog. Helm templates render with the pinned images.
 - Authenticated ingress execution **1927** persisted its group and the bot returned
   a message record. No ingress/worker/GitHub token appeared in its execution data.

@@ -113,11 +113,12 @@ class GitHub:
                                  'updated_at':x['updated_at'],'recent_comments':[c.get('body','')[:1200] for c in comments[-3:]]}))
         return result
     def reconcile(self,marker,number=0):
+        from evidence_bundle import trusted_comment
         if number:
-            return number if any(marker in (c.get('body') or '') for c in self.comments(number)) else 0
+            return number if any(trusted_comment(c) and marker in (c.get('body') or '') for c in self.comments(number)) else 0
         # Closed issues are considered ONLY to reconcile an ambiguous previous write,
         # never for semantic matching a new incident.
-        return next((x['number'] for x in self.issues('all') if marker in (x.get('body') or '')),0)
+        return next((x['number'] for x in self.issues('all') if trusted_comment(x) and marker in (x.get('body') or '')),0)
 
 class Model:
     def __init__(self,http,key,base='http://litellm.llm.svc.cluster.local:4000/v1',min_interval=21):

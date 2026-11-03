@@ -117,7 +117,6 @@ class ProvenanceTests(unittest.TestCase):
         with patch('provenance.ROOT',Path('/nonexistent')):r=DeploymentCollector().collect(e)
         self.assertEqual(r['missing'][0]['reason'],'KUBERNETES_READ_IDENTITY_MISSING')
 
-if __name__=='__main__':unittest.main()
 
 class EngineArtifactTests(unittest.TestCase):
     def test_primary_is_not_repeated_after_artifact_timeout(self):
@@ -165,3 +164,13 @@ class ModelEvidenceTests(unittest.TestCase):
         h=Mock();h.request.side_effect=[{'choices':[{'message':{'content':json.dumps(bad)}}]},{'choices':[{'message':{'content':json.dumps(good)}}]}]
         value=Model(h,'fake',min_interval=0).call('analyze',{'evidence':{'artifact_context':{'index':[{'id':'E001'}]}}},REPORT_SCHEMA,time.monotonic()+20)
         self.assertEqual(value['facts'],good['facts']);self.assertEqual(h.request.call_count,2)
+
+class PrimaryReconciliationTests(unittest.TestCase):
+    def test_primary_marker_requires_actual_app_author(self):
+        from integrations import GitHub
+        g=GitHub(Mock(),'/unused');g.comments=Mock(return_value=[{'body':'marker','user':{'type':'User'}}])
+        self.assertEqual(g.reconcile('marker',9),0)
+        g.comments.return_value=[{'body':'marker','user':{'type':'Bot'},'performed_via_github_app':{'id':5569869}}]
+        self.assertEqual(g.reconcile('marker',9),9)
+
+if __name__=='__main__':unittest.main()

@@ -78,7 +78,7 @@ Socrat Alerts сохранён по ID, native trigger авторизует и �
 publish. SPI-публикация включена после проверенного dry-run; **блог по-прежнему
 WRITE_ENABLED=false**. Не путать эти политики. Код: `charts/spi-triage/`, runbook:
 `docs/n8n/spi/setup.md`. Проверены живые dry-run, Telegram, auth401, дубликаты,
-перезапуск/очередь, refresh scoped App token; после v2 — 95 тестов. Evidence v2
+перезапуск/очередь, refresh scoped App token; после v2 — 96 тестов. Evidence v2
 сохраняет текстовые артефакты прямо в комментариях, добавляет абсолютные Grafana-ссылки,
 Loki stack/context, поиск Tempo traces, pod/events и привязку к image/release revision.
 Поддерживаемые stack paths дают source excerpts на immutable commit. Manifest содержит
