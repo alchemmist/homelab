@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""GET-only admin network plan; explicit hash-approved apply after real OIDC refresh.
+"""Historical first-activation plan; hash-approved apply after real OIDC refresh.
+
+Not a replay/reconciliation command after the single-gateway migration. Existing
+policy/state drift is deliberately rejected rather than overwritten.
 
 Run on socrat-0 with private bootstrap PAT/journal. Never invent a JWT group or
 modify human accounts, WireGuard, SSH, setup keys, router identities, or defaults.

@@ -16,20 +16,31 @@ oidc = load('net_oidc', 'ansible/roles/identity_integrations/files/netbird_oidc.
 
 
 class InternalNetworkTests(unittest.TestCase):
-    def test_no_own_address_routing_no_unreviewed_subnets(self):
+    def test_single_gateway_exact_resources_and_separate_local_input_gate(self):
         expected = {'10.250.0.1/32', '10.250.0.2/32', '10.250.0.3/32', '10.250.0.5/32'}
         actual = {a for _, addresses in net.NETWORKS.values() for a in addresses}
         self.assertEqual(actual, expected)
-        for host, own in [('socrat-0', '10.250.0.1/32'), ('socrat-2', '10.250.0.2/32')]:
-            self.assertNotIn(own, net.NETWORKS[host][1])
-            with self.assertRaises(ValueError):
-                net.resource_body(host, own)
+        self.assertEqual(set(net.NETWORKS), {'socrat-0'})
+        with self.assertRaises(ValueError):
+            net.resource_body('socrat-0', '10.250.0.1/32')
+        self.assertEqual(net.resource_body('socrat-0', '10.250.0.1/32',
+                                          local_input_authorized=True)['name'], 'wg-socrat-0')
+        with self.assertRaises(ValueError):
+            net.resource_body('socrat-2', '10.250.0.2/32')
+        rule = net.gateway_input_policy('real-admin-jwt', 'exact-gateway-api')['rules'][0]
+        self.assertEqual(rule['sources'], ['real-admin-jwt'])
+        self.assertEqual(rule['destinations'], ['exact-gateway-api'])
+        self.assertFalse(rule['bidirectional'])
+        self.assertNotIn('destinationResource', rule)
         for address in ['0.0.0.0/0', '10.250.0.0/24', '10.42.0.0/16', '192.168.0.0/24']:
             with self.assertRaises(ValueError):
                 net.resource_body('socrat-0', address)
 
     def test_clients_do_not_import_routes_but_serve_explicit_networks(self):
-        for obj in net.peers():
+        docs = net.peers()
+        self.assertEqual([o['metadata']['name'] for o in docs if o['kind'] == 'Deployment'],
+                         ['machine-socrat-0'])
+        for obj in docs:
             if obj['kind'] != 'Deployment':
                 continue
             self.assertEqual(obj['spec']['replicas'], 0)

@@ -2,8 +2,8 @@
 """Offline compiler: administrative access to existing WireGuard node /32s.
 
 No apply, enrollment, secret creation, WG config/AllowedIPs or host route edits.
-Two existing-node NetBird routing peers; never route a host's own WG address
-through itself (that would traverse INPUT rather than the routed FORWARD ACL).
+One existing-node NetBird gateway. Its own WG address uses a separate native
+admin peer INPUT policy; remote WG addresses use resource FORWARD policies.
 """
 import importlib.util
 import json
@@ -14,9 +14,11 @@ ROOT = Path(__file__).resolve().parents[1]
 ADMIN_GROUP = 'netbird-internal-admins'
 NS = 'netbird-host-peers'
 NETWORKS = {
-    'socrat-0': ('wg-remote-nodes', ('10.250.0.2/32', '10.250.0.3/32', '10.250.0.5/32')),
-    'socrat-2': ('wg-home-control-node', ('10.250.0.1/32',)),
+    'socrat-0': ('wireguard-internal', ('10.250.0.1/32', '10.250.0.2/32',
+                                      '10.250.0.3/32', '10.250.0.5/32')),
 }
+NODE_NAMES = {'10.250.0.1/32': 'socrat-0', '10.250.0.2/32': 'socrat-2',
+              '10.250.0.3/32': 'socrat-1', '10.250.0.5/32': 'socrat-3'}
 
 
 def peers():
@@ -42,10 +44,12 @@ def router_body(peer_id):
     return {'peer': peer_id, 'enabled': True, 'masquerade': True, 'metric': 100}
 
 
-def resource_body(host, address):
+def resource_body(host, address, *, local_input_authorized=False):
     if host not in NETWORKS or address not in NETWORKS[host][1]:
-        raise ValueError('only reviewed remote WG node /32 destinations allowed')
-    return {'name': 'wg-node-' + address.split('/')[0].split('.')[-1],
+        raise ValueError('only reviewed WG node /32 destinations allowed')
+    if address == '10.250.0.1/32' and not local_input_authorized:
+        raise ValueError('gateway own address requires separately verified native admin INPUT policy')
+    return {'name': 'wg-' + NODE_NAMES[address],
             'description': 'Existing wg-socrat node address; no LAN/pod/service/default routes',
             'address': address, 'enabled': True, 'groups': []}
 
@@ -58,6 +62,16 @@ def policy_body(source_group, resource_id):
             'rules': [{'name': 'admin-to-wg-node', 'enabled': True, 'action': 'accept',
                        'protocol': 'all', 'bidirectional': False, 'sources': [source_group],
                        'destinationResource': {'id': resource_id, 'type': 'host'}}]}
+
+
+def gateway_input_policy(source_group, gateway_destination_group):
+    if not source_group or not gateway_destination_group or source_group == gateway_destination_group:
+        raise ValueError('distinct genuine admin source and exact gateway destination required')
+    return {'name': 'admin-gateway-local-input', 'enabled': True,
+            'description': 'Native peer INPUT ACL for gateway own WG/local addresses; no observer grant',
+            'rules': [{'name': 'admin-local-input', 'enabled': True, 'action': 'accept',
+                       'protocol': 'all', 'bidirectional': False, 'sources': [source_group],
+                       'destinations': [gateway_destination_group]}]}
 
 
 def genuine_admin_group(groups):

@@ -1,5 +1,9 @@
 # Existing WireGuard + administrative NetBird ingress
 
+> Historical initial two-gateway rollout. The live architecture is now
+> [one NetBird gateway](../netbird-single-gateway.md); that migration removed the
+> second agent/peer and consolidated the Network after actual INPUT/FORWARD tests.
+
 2026-11-03. Actual deployment and Mac administrative routing/SSH checks passed.
 Personal user acceptance, non-admin client and outage/HA acceptance remain separate.
 Supersedes the two-application-only target for the new user-authorized admin scope.
