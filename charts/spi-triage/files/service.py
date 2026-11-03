@@ -7,6 +7,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from core import Failure, Store, digest, normalize, render
 from integrations import Evidence, GitHub, HTTP, Model, REQUEST_DEADLINE
+from evidence_bundle import index_markdown, publish_parts
 
 class Engine:
     def __init__(self,store,github,model,evidence,write=False):
@@ -39,7 +40,7 @@ class Engine:
                 issues=self.github.snapshot();r['open_signature']=digest([(x['number'],x['updated_at']) for x in issues])
                 r['match']=self.model.match(event,issues)
         elif name=='collect':
-            if not resolved:r['evidence']=self.evidence.collect(event)
+            if not resolved or r.get('resolved_issue'):r['evidence']=self.evidence.collect(event)
         elif name=='analyze':
             if not resolved:
                 r['report']=self.model.analyze(event,r['match'],r['evidence']);render(r['report'],event)
@@ -50,9 +51,10 @@ class Engine:
             # Reconcile BEFORE checking open candidates: the previous write may itself
             # have changed that snapshot, or a human may have closed the created issue.
             if job['intent']:
-                intent=json.loads(job['intent']);number=self.github.reconcile(marker,intent['number'])
+                intent=json.loads(job['intent'])
+                number=intent['number'] if intent.get('primary_done') else self.github.reconcile(marker,intent['number'])
                 if not number:raise Failure('WRITE_NEEDS_REVIEW')
-                self.store.save(key,4,r,state='complete',issue=number,intent=None)
+                self.finish_evidence(key,r,number)
                 return {'job_id':key,'status':'reconciled','issue_number':number}
             if resolved:
                 number=r['resolved_issue']
@@ -65,6 +67,7 @@ class Engine:
                     self.store.save(key,0,{},state='processing');raise Failure('OPEN_SPI_CHANGED')
                 title,body=render(r['report'],event);number=r['report']['issue_number']
                 if number not in {0,*[x['number']for x in r['match']['candidates']]}:raise Failure('INVALID_MATCH_TARGET')
+            body+=index_markdown(r.get('evidence',{}).get('bundle'))
             self.store.save(key,3,r,intent=json.dumps({'number':number}))
             try:
                 if number:
@@ -77,11 +80,20 @@ class Engine:
                 if e.code.startswith('HTTP_4'):
                     self.store.save(key,3,r,intent=None)
                 raise
-            self.store.save(key,4,r,state='complete',issue=number,intent=None)
+            self.finish_evidence(key,r,number)
             print(json.dumps({'component':'spi-triage','event':'publication_ok','issue_number':number}),flush=True)
             return {'job_id':key,'status':'published','issue_number':number}
         self.store.save(key,wanted,r)
         return {'job_id':key,'status':'processing','stage':wanted}
+
+
+    def finish_evidence(self,key,result,number):
+        intent=json.dumps({'number':number,'primary_done':True})
+        progress=result.setdefault('artifact_publication',{})
+        def save():self.store.save(key,3,result,intent=intent)
+        save()
+        publish_parts(self.github,number,result.get('evidence',{}).get('bundle'),progress,save)
+        self.store.save(key,4,result,state='complete',issue=number,intent=None)
 
 
 def serve():

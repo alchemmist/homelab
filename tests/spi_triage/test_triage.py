@@ -112,7 +112,7 @@ class EvidenceTests(unittest.TestCase):
         data=Evidence(http,'fake','http://grafana').collect(e)
         sources=[q['source']for q in data['queries']]
         self.assertIn('node_identity',sources);self.assertIn('host_log_error_frequency',sources);self.assertIn('tempo_trace_summary',sources)
-        self.assertNotIn('do-not-publish',json.dumps(data));self.assertNotIn('attributes',json.dumps(data))
+        self.assertNotIn('do-not-publish',json.dumps(data));self.assertNotIn('attributes',json.dumps(data['queries']))
     def test_repository_reference_is_not_deployed_proof(self):
         import base64
         http=Mock();http.request.return_value={'encoding':'base64','content':base64.b64encode(b'# Safe runbook').decode(),'sha':'abc','size':14}

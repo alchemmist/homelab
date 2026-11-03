@@ -108,7 +108,7 @@ class GitHub:
         # Title, root analysis and bounded latest comments: never silently drop an issue.
         result=[]
         for x in issues:
-            comments=self.comments(x['number']) if x.get('comments',0) else []
+            comments=[c for c in self.comments(x['number']) if '<!-- socrat-spi-artifact:' not in (c.get('body') or '') and '<!-- socrat-spi-evidence-index:' not in (c.get('body') or '')] if x.get('comments',0) else []
             result.append(clean({'number':x['number'],'title':x['title'],'body':(x.get('body') or '')[:6000], 'body_truncated':len(x.get('body') or '')>6000,
                                  'updated_at':x['updated_at'],'recent_comments':[c.get('body','')[:1200] for c in comments[-3:]]}))
         return result
@@ -165,9 +165,11 @@ class Model:
         return {'decision':result,'candidates':candidates,'reviewed_numbers':[x['number']for x in issues]}
     def analyze(self,event,match,evidence):
         evidence=dict(evidence)
+        bundle=evidence.pop('bundle',None)
+        if bundle:evidence['artifact_context']=bundle['model_context']
         evidence['queries']=[{**q,'result':metric_summary(q.get('result',{}))} if q.get('source') in ('prometheus_metrics','loki_error_frequency','host_log_error_frequency','loki_rule_metric') else q for q in evidence.get('queries',[])]
         evidence['rule_definitions']=[{k:v for k,v in r.items() if k!='alerts'} for r in evidence.get('rule_definitions',[])]
-        report=self.call('Write an evidence-grounded SPI report. Revalidate preliminary matching using diagnostics; choose 0 if a distinct cause is supported. Assess alert noise and actionable tuning separately from service defects. Include safe evidence references in facts; never fabricate a source path or threshold. Scrape exporter pods are not necessarily affected workloads: use job_name or systemd unit when present. Zero error counts or absent series never confirm no service degradation; raw logs were not read, so do not claim logs were inspected or unavailable. Main-branch runbooks are not proof of deployed code.',
+        report=self.call('Write an evidence-grounded SPI report. Revalidate preliminary matching using diagnostics; choose 0 if a distinct cause is supported. Assess alert noise and actionable tuning separately from service defects. Include safe evidence references in facts; never fabricate a source path or threshold. Scrape exporter pods are not necessarily affected workloads: use job_name or systemd unit when present. Zero error counts or absent series never confirm no service degradation; Use artifact IDs when citing collected logs, traces, deployment metadata and metric samples. Explain excerpt/collection limits; never claim all stored bytes were reviewed. Missing logs do not prove health. OCI revision labels are build claims, not reproducible-build proof; main-branch runbooks are not deployed code.',
                          {'alert':event,'preliminary_match':match,'evidence':evidence},REPORT_SCHEMA,time.monotonic()+780)
         if report['issue_number'] not in {0,*[x['number']for x in match['candidates']]}: raise Failure('INVALID_MATCH_TARGET')
         return report
@@ -182,13 +184,14 @@ class Evidence:
         if isinstance(value,dict) and value.get('status')=='error':raise Failure('OBSERVABILITY_QUERY_ERROR')
         return clean(value)
     def collect(self,event):
-        result={'queries':[],'missing':[],'rule_definitions':[]}
+        result={'queries':[],'missing':[],'rule_definitions':[]};raw_samples=[]
         labels=event['labels'];name=labels['alertname'];start=datetime.fromisoformat(event['startsAt'].replace('Z','+00:00')).timestamp()
         now=time.time();start=max(now-86400,min(start,now));lo=int(start-900);hi=int(min(now,start+900))
         def fetch(kind,path,params=None):
             if len(result['queries'])>=8:return None
             try:
                 value=self.get(path,params)
+                if kind in ('prometheus_metrics','loki_error_frequency','host_log_error_frequency','loki_rule_metric'):raw_samples.append({'source':kind,'parameters':params,'path':path,'response':value,'adapter_limits':{'max_list_items':500,'max_string_chars':12000}})
                 compact=metric_summary(value) if kind in ('prometheus_metrics','loki_error_frequency','host_log_error_frequency','loki_rule_metric') else value
                 result['queries'].append({'source':kind,'path':path,'parameters':params or {},'result':compact});return value
             except Failure as e: result['missing'].append({'source':kind,'reason':e.code});return None
@@ -263,7 +266,29 @@ class Evidence:
             try:reference=self.github.source_reference(event.get('annotations',{}).get('runbook_url',''))
             except Failure as e:result['missing'].append({'source':'repository_reference','reason':e.code})
         if reference:result['repository_reference']=reference
-        result['missing'] += [{'source':'repository','reason':'DEPLOYED_SOURCE_CORRELATION_NOT_IMPLEMENTED'},
-                              {'source':'raw_logs','reason':'RAW_LOG_PUBLICATION_DISABLED'}]
         if not result['rule_definitions']:result['missing'].append({'source':'alert_rule','reason':'RULE_NOT_FOUND'})
+        from telemetry import TelemetryCollector
+        from provenance import DeploymentCollector
+        from evidence_bundle import prepare_bundle, redact
+        deployed=DeploymentCollector(self.http,self.github).collect(event)
+        if labels.get('job_name'):
+            for artifact in deployed['artifacts']:
+                workloads=artifact.get('content',{}).get('workloads',[])
+                if workloads:
+                    target=next((x for x in workloads if x.get('phase')=='Failed'),workloads[0])
+                    result['verified_workload_pod']=target.get('name')
+                    result['verified_workload_service']=target.get('labels',{}).get('app.kubernetes.io/name')or target.get('labels',{}).get('app')
+                    break
+        extra=TelemetryCollector(self.http,self.base,self.token).collect(event,result)
+        result['missing']+=extra['missing']+deployed['missing']
+        artifacts=[{'name':'alert-event.json','content':event,'source':{'kind':'authenticated alert ingress'}},
+                   {'name':'rule-definitions.json','content':result['rule_definitions'],'source':{'kind':'rule API','collected_at':int(now)}},
+                   {'name':'metric-samples.json','content':raw_samples,'source':{'kind':'query_range','window':result['window']}},
+                   {'name':'collection-context.json','content':dict(result),'source':{'kind':'collector','collected_at':int(time.time())}}]+extra['artifacts']+deployed['artifacts']
+        known=[self.token,os.environ.get('WORKER_TOKEN'),os.environ.get('LITELLM_KEY')]
+        if self.github:
+            try:known.append(Path(self.github.token_file).read_text().strip())
+            except (OSError,AttributeError):pass
+        bundle=prepare_bundle(event,result,artifacts,extra['links'],known)
+        result=redact(result,known);result['bundle']=bundle
         return result
