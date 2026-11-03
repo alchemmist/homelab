@@ -44,6 +44,12 @@ def render_workflow(template, creds, calendar, cloud):
             n['credentials'][kind] = creds[kind]
     return w
 
+def require_public_yandex_api(workflow):
+    for node in workflow['nodes']:
+        url = node.get('parameters', {}).get('url', '')
+        if 'iot.quasar.yandex.ru' in url or 'quasar.yandex.net' in url or 'yandex-voice.voice' in url:
+            raise RuntimeError('Internal Yandex API is forbidden; calendar is paused. See docs/n8n/yandex-public-api-assessment.md')
+
 def main():
     mapping = CONFIG / 'calendar-credentials.json'
     if not mapping.exists():
@@ -53,6 +59,7 @@ def main():
     calendar = json.loads(calendar_config.read_text()) if calendar_config.exists() else {}
     cloud = json.loads((CONFIG / 'yandex-cloud-config.json').read_text())
     template = json.loads((BASE / 'docs/n8n/calendar-voice-reminder.json').read_text())
+    require_public_yandex_api(template)
     w = render_workflow(template, creds, calendar, cloud)
     body = {k: w[k] for k in ['name', 'nodes', 'connections', 'settings']}
     existing = [x for x in api('GET', 'workflows?limit=250')['data'] if x['name'] == w['name']]

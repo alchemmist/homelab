@@ -19,6 +19,11 @@ class CalendarTests(unittest.TestCase):
         self.assertEqual(w['connections']['Mark Announced']['main'][0][0]['node'],'Each Reminder')
         self.assertLess(w['settings']['executionTimeout'],60)
         self.assertIn('REPLACE_WITH_',json.dumps(self.template))
+    def test_internal_deployment_forbidden(self):
+        with self.assertRaisesRegex(RuntimeError,'Internal Yandex API is forbidden'):
+            sync.require_public_yandex_api(self.template)
+        sync.require_public_yandex_api({'nodes':[{'parameters':{'url':'https://api.iot.yandex.net/v1.0/scenarios/example/actions'}}]})
+
     def test_missing_auth_rejected(self):
         with self.assertRaises(RuntimeError):sync.render_workflow(self.template,{}, {}, {})
     def test_missing_or_unsafe_cloud_rejected(self):

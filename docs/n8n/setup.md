@@ -1,5 +1,10 @@
 # n8n: Calendar → Yandex Station reminders
 
+> **Superseded later on 2026-11-03:** the user forbids internal Yandex APIs.
+> Calendar is now inactive. The implementation below is historical, not approved
+> for deployment; sync.py blocks it. See [public API assessment](yandex-public-api-assessment.md)
+> for real request results and the supported fixed-scenario alternative.
+
 ## Current architecture (2026-11-03)
 
 n8n calls Yandex directly. There is no voice microservice, local WebSocket client,
