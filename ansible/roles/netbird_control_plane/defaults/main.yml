@@ -1,0 +1,11 @@
+---
+netbird_python: python3
+netbird_repo_root: "{{ playbook_dir }}/../.."
+netbird_action: check
+netbird_inputs: "{{ netbird_repo_root }}/deploy/netbird/pilot.inputs.json"
+netbird_out: ""
+netbird_context: ""
+netbird_confirm: ""
+netbird_deploy_routers: false
+netbird_touch_wireguard: false
+netbird_touch_k3s: false

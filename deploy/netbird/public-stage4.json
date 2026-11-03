@@ -1,0 +1,124 @@
+{
+  "observed_at": "2026-11-02T18:22:38.127310+00:00",
+  "published_host": "netbird.socrat.alchemmist.xyz",
+  "entrances": {
+    "109.173.40.247": {
+      "TLS_verify_result": 0,
+      "netbird_HTTP_statuses": {
+        "GET /": 200,
+        "GET /oauth2/.well-known/openid-configuration": 200,
+        "GET /api/instance": 200,
+        "GET /api/setup": 403,
+        "GET /api/setup/": 403,
+        "GET /api/setup?x=1": 403,
+        "GET /oauth2/auth/local/login": 403,
+        "GET /oauth2/register": 403,
+        "GET /oauth2/signup": 403,
+        "GET /api/users/invites": 403,
+        "GET /api/setup-keys": 401,
+        "POST /api/setup spoofed-XFF": 403,
+        "POST /api/setup/ spoofed-XFF": 403,
+        "POST /api/users/invites spoofed-XFF": 403
+      },
+      "old_app_anonymous_health": {
+        "auth.socrat.alchemmist.xyz/": 302,
+        "grafana.socrat.alchemmist.xyz/api/health": {
+          "exception": {
+            "curl_exit": 60,
+            "HTTP_status": 0,
+            "TLS_verify_result": 20
+          },
+          "verdict": "NOT_PASS",
+          "evidence": "No Grafana Ingress exists; shared Traefik pods unchanged; no demonstrated link to NetBird delta",
+          "supervisor_decision": "Preserve privacy state; do not recreate routing or blanket rollback"
+        },
+        "argocd.socrat.alchemmist.xyz/healthz": 200
+      }
+    },
+    "176.98.185.59": {
+      "TLS_verify_result": 0,
+      "netbird_HTTP_statuses": {
+        "GET /": 200,
+        "GET /oauth2/.well-known/openid-configuration": 200,
+        "GET /api/instance": 200,
+        "GET /api/setup": 403,
+        "GET /api/setup/": 403,
+        "GET /api/setup?x=1": 403,
+        "GET /oauth2/auth/local/login": 403,
+        "GET /oauth2/register": 403,
+        "GET /oauth2/signup": 403,
+        "GET /api/users/invites": 403,
+        "GET /api/setup-keys": 401,
+        "POST /api/setup spoofed-XFF": 403,
+        "POST /api/setup/ spoofed-XFF": 403,
+        "POST /api/users/invites spoofed-XFF": 403
+      },
+      "old_app_anonymous_health": {
+        "auth.socrat.alchemmist.xyz/": 302,
+        "grafana.socrat.alchemmist.xyz/api/health": {
+          "exception": {
+            "curl_exit": 60,
+            "HTTP_status": 0,
+            "TLS_verify_result": 20
+          },
+          "verdict": "NOT_PASS",
+          "evidence": "No Grafana Ingress exists; shared Traefik pods unchanged; no demonstrated link to NetBird delta",
+          "supervisor_decision": "Preserve privacy state; do not recreate routing or blanket rollback"
+        },
+        "argocd.socrat.alchemmist.xyz/healthz": 200
+      }
+    }
+  },
+  "browser": {
+    "trusted_TLS": true,
+    "fresh_anonymous_context": true,
+    "navigation_without_queries": [
+      "https://netbird.socrat.alchemmist.xyz/",
+      "https://netbird.socrat.alchemmist.xyz/oauth2/auth",
+      "https://netbird.socrat.alchemmist.xyz/oauth2/auth/authentik-dbkcr0p119kc73917k1g",
+      "https://auth.socrat.alchemmist.xyz/application/o/authorize/",
+      "https://auth.socrat.alchemmist.xyz/if/flow/default-authentication-flow/"
+    ],
+    "final_host": "auth.socrat.alchemmist.xyz",
+    "final_path": "/if/flow/default-authentication-flow/",
+    "callback_exact": true,
+    "client_id": "socrat-netbird",
+    "buttons": [
+      "Log in"
+    ],
+    "links": [],
+    "input_types": [
+      "text",
+      "text",
+      "text",
+      "password"
+    ],
+    "failed_requests": [],
+    "credentials_entered": false,
+    "personal_owner_login": false
+  },
+  "personal_owner_login": false,
+  "native_owner_transfer": false,
+  "human_role_grants": false,
+  "peers": 0,
+  "setup_keys": 0,
+  "policies": 0,
+  "local_auth_disabled": true,
+  "public_PAT_API_all_seven_200": true,
+  "existing_identity_objects_uid_spec_data_unchanged": 88,
+  "management_ready": true,
+  "generic_relay_health": {
+    "status": 503,
+    "listeners": null,
+    "certificate_valid": true
+  },
+  "independent_transport": {
+    "trusted_TLS": true,
+    "relay_both_entrances_authenticated": true,
+    "relay_bidirectional_cross_entrance_payload": true,
+    "relay_transient_sessions_closed": true,
+    "management_enrollment": false,
+    "stun_both_entrances": "not-available",
+    "usable_VPN_accepted": false
+  }
+}

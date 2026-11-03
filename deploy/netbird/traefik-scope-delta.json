@@ -1,0 +1,17 @@
+{
+  "chart": "charts/traefik-edge/values.yaml",
+  "argo_application": "deploy/argocd/apps/traefik-edge.yaml",
+  "argo_automated_self_heal": true,
+  "applied": false,
+  "verified": false,
+  "add_watch_namespace": "netbird-edge",
+  "do_not_add": ["netbird-pilot"],
+  "do_not_change": [
+    "kubernetesCRD.namespaces",
+    "kubernetesCRD.labelSelector",
+    "providers.kubernetescrd.allowcrossnamespace",
+    "providers.kubernetescrd.allowexternalnameservices",
+    "providers.kubernetescrd.disableclusterscoperesources"
+  ],
+  "reason": "The rendered Kubernetes Ingress is inert until watchNamespaces includes netbird-edge. That watch grants the existing per-namespace Role get/list/watch on secrets, so netbird-edge may hold only the TLS secret and the forwarder ConfigMap. The runtime secret stays in unwatched netbird-pilot. The CRD provider stays limited to argocd and its label. This tooling does not edit the chart, because the Argo application has automated self-heal."
+}

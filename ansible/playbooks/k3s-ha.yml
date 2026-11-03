@@ -124,3 +124,10 @@
         tasks_from: verify
 
 - ansible.builtin.import_playbook: k3s-ha-dependencies.yml
+
+- name: Reconcile administrative ingress after Kubernetes membership is ready
+  hosts: Socrat
+  gather_facts: false
+  become: true
+  roles:
+    - netbird_node

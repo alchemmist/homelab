@@ -1,0 +1,11 @@
+---
+# Connection-only alias, deliberately NOT a member of Socrat. The shared public
+# DNS name resolves to two different SSH servers; never select a controller by it.
+all:
+  hosts:
+    netbird-controller:
+      ansible_host: 109.173.40.247
+      ansible_port: 2222
+      ansible_user: alchemmist
+      ansible_ssh_private_key_file: ~/.ssh/socrat-master
+      ansible_ssh_common_args: "-o HostKeyAlias=[socrat.alchemmist.xyz]:2222 -o StrictHostKeyChecking=yes -o ProxyJump=none"

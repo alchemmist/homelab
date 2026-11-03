@@ -1,0 +1,12 @@
+---
+# Explicit control-plane check. Not imported by site.yml.
+# Default action is check. plan and apply require extra vars and still pass
+# through scripts/netbird-deploy.py, which refuses repo inputs, Argo sync,
+# router manifests, and the Traefik chart.
+- name: Check the NetBird control plane without granting network
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+  roles:
+    - netbird_control_plane

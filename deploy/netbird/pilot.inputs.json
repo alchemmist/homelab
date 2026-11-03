@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "management_fqdn": null,
+  "management_fqdn": "netbird.socrat.alchemmist.xyz",
   "management_node": null,
   "tls_secret_name": null,
   "ingress_class": null,
@@ -18,6 +18,11 @@
     "overlay_overlap_checked": false,
     "dedicated_router_hosts_confirmed": false,
     "both_routers_reach_every_resource": false,
-    "endpoint_ip_port_scope_reviewed": false
+    "endpoint_ip_port_scope_reviewed": false,
+    "ingress_scope_reviewed": false,
+    "storage_locality_reviewed": false,
+    "management_node_reviewed": false,
+    "existing_node_router_mode_reviewed": false,
+    "authentik_groups_claim_verified": false
   }
 }

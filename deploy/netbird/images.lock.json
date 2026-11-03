@@ -25,6 +25,29 @@
       "digest": "sha256:eca5b274c635bfbb04ec6724a0712d1146190dd450eea199eeb83916fdd94965",
       "linux_amd64": "sha256:ea2982e68e6d4782e1e20adbefe1556f9c6a751c455b9be11850e809554b4d92",
       "linux_arm64": "sha256:745a46234495340d8eb2e8d8046b0fc67007e3d82183770de04cf095a6c92b98"
+    },
+    "edge_forwarder": {
+      "reference": "rancher/mirrored-library-traefik@sha256:f86a2cab1b5c649070c49f883c743dd32d8485a56e3368c5f93b9e91f1e91259",
+      "digest": "sha256:f86a2cab1b5c649070c49f883c743dd32d8485a56e3368c5f93b9e91f1e91259",
+      "source": "charts/traefik-edge/values.yaml",
+      "app_version": "3.7.13",
+      "skip_registry_verify": true,
+      "note": "Same immutable reference as the existing edge chart. Platform manifest digests were not re-fetched, so this is not a new registry verification."
+    },
+    "stun": {
+      "repository": "coturn/coturn",
+      "tag": "4.7.0",
+      "digest": "sha256:a00afb5b4890de4df22bbe70379c6b316685dffee297d53cac1271dcb91fab93",
+      "linux_amd64": "sha256:94f732f319463c94769b30b5cca1c02baa2d106fe3d3210159840c1372b162de",
+      "checked_at": "2026-11-02",
+      "verification": "Docker-Content-Digest header equals SHA256 of fetched multi-platform index; official coturn/coturn namespace, not publisher signature verification"
+    },
+    "relay": {
+      "repository": "netbirdio/relay",
+      "tag": "0.82.0",
+      "digest": "sha256:8f6b9e4193653ede89e83dd4aa4e2cf2562579b3e2481dcf259a7ab28bcd5fa1",
+      "checked_at": "2026-11-03",
+      "verification": "Docker-Content-Digest equals SHA256 of downloaded official multi-platform manifest bytes"
     }
   }
 }

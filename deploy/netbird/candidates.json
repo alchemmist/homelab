@@ -1,0 +1,49 @@
+{
+  "management_fqdn": {
+    "value": "netbird.socrat.alchemmist.xyz",
+    "approved": true,
+    "dns_tls_verified": false
+  },
+  "authentik_oidc": {
+    "approved": true,
+    "configured": false,
+    "groups_claim_verified": false,
+    "issuer_candidate": "https://auth.socrat.alchemmist.xyz/application/o/netbird-pilot/",
+    "note": "Approval is not an Authentik application. Connector setup is a separate change. The groups claim was not verified."
+  },
+  "pilot_users": ["owner", "tim"],
+  "ingress_class": {
+    "value": "traefik",
+    "source": "charts/traefik-edge/values.yaml",
+    "verified": false
+  },
+  "storage_class": {
+    "value": "local-path",
+    "source": "other repo manifests, not a live StorageClass read",
+    "verified": false
+  },
+  "resources": {
+    "private_grafana": {
+      "approved": true,
+      "deployable": false,
+      "reason": "grafana.socrat.alchemmist.xyz is one virtual host on the shared private web frontend :443. A shared IP:443 is not a private Grafana boundary."
+    },
+    "socrat_2_openssh": {
+      "approved": true,
+      "deployable": false,
+      "reason": "socrat-2 sshd already listens on 0.0.0.0:22 and 0.0.0.0:2222. 10.250.0.2 is the WG transport address and is not a pilot destination."
+    }
+  },
+  "routers": {
+    "required": 1,
+    "ha": false,
+    "ssh_routing_peer": "socrat-0",
+    "socrat_2_is_router": false,
+    "grafana_route_ha": false,
+    "placement_resolved": false,
+    "mode": "existing-node",
+    "existing_node_router_mode_reviewed": false,
+    "new_machines_approved": false,
+    "note": "One SSH routing peer: socrat-0 forwards to 10.250.0.2. socrat-2 is the SSH destination, not a second router. Grafana is two overlay TCP 8443 listeners, not route HA. The peer is not installed from this control plane."
+  }
+}
