@@ -62,3 +62,21 @@ def test_copy_tool_refuses_live_ha_overwrite_and_final_restore_without_freeze():
     assert '--single-transaction' in copy and 'PGSSLMODE=verify-full' in copy
     assert 'COLLATE "C"' in copy
     assert 'fingerprintMismatch=true; exit 1' in copy
+
+
+def test_runtime_credentials_are_preserved_across_argo_sync():
+    app=yaml.safe_load((ROOT/'deploy/argocd/apps/lms.yaml').read_text())
+    assert 'RespectIgnoreDifferences=true' in app['spec']['syncPolicy']['syncOptions']
+    assert any(rule.get('kind')=='Secret' and rule.get('name')=='lms-db' and rule.get('jsonPointers')==['/data'] for rule in app['spec']['ignoreDifferences'])
+    secret=next(d for d in rendered('lms') if d['kind']=='Secret' and d['metadata']['name']=='lms-db')
+    assert 'data' not in secret
+    assert 'lookup' not in (ROOT/'charts/lms/templates/database.yaml').read_text()
+
+
+def test_production_web_does_not_depend_on_legacy_nfs_and_legacy_db_is_stopped():
+    docs=rendered('lms','-f',str(ROOT/'deploy/lms/values.yaml'))
+    web=next(d for d in docs if d['kind']=='Deployment' and d['metadata']['name']=='lms')
+    assert not any('persistentVolumeClaim' in volume for volume in web['spec']['template']['spec']['volumes'])
+    assert any(d['kind']=='PersistentVolumeClaim' and d['metadata']['name']=='lms-data' for d in docs)
+    old=next(d for d in docs if d['kind']=='Deployment' and d['metadata']['name']=='lms-postgres')
+    assert old['spec']['replicas']==0

@@ -17,6 +17,14 @@ spec:
         app.kubernetes.io/name: {{ .Chart.Name }}
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values: [socrat-0, socrat-1, socrat-3]
       terminationGracePeriodSeconds: 45
       tolerations:
         - key: node.kubernetes.io/not-ready
@@ -99,8 +107,10 @@ spec:
             periodSeconds: 10
             failureThreshold: 6
           volumeMounts:
+{{- if .Values.persistence.mountInApp }}
             - name: data
               mountPath: {{ .Values.persistence.mountPath }}
+{{- end }}
 {{- if .Values.database.ha.enabled }}
             - name: postgres-ca
               mountPath: /etc/postgres-ca
@@ -114,9 +124,11 @@ spec:
           resources:
 {{ toYaml .Values.resources | indent 12 }}
       volumes:
+{{- if .Values.persistence.mountInApp }}
         - name: data
           persistentVolumeClaim:
             claimName: {{ .Release.Name }}-data
+{{- end }}
 
 {{- if .Values.tracing.enabled }}
         - name: otel-client

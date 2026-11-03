@@ -13,6 +13,7 @@ ingress:
   tlsSecretName: lms-tls
   clusterIssuer: letsencrypt-http01
 persistence:
+  mountInApp: true
   enabled: true
   size: 5Gi
   mountPath: /data

@@ -31,7 +31,7 @@ spec:
             summary: LMS PostgreSQL has lost a replica.
             description: Service may remain writable, but another failure could remove its synchronous quorum.
         - alert: LMSDatabaseBackupOverdue
-          expr: time() - (kube_cronjob_status_last_successful_time{namespace="lms",cronjob="lms-database-backup"} or on(namespace,cronjob) kube_cronjob_created{namespace="lms",cronjob="lms-database-backup"}) > 28800
+          expr: time() - ((kube_cronjob_status_last_successful_time{namespace="lms",cronjob="lms-database-backup"} > 0) or on(namespace,cronjob) kube_cronjob_created{namespace="lms",cronjob="lms-database-backup"}) > 28800
           for: 15m
           labels: {severity: warning, service: lms}
           annotations:

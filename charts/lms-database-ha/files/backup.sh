@@ -1,6 +1,7 @@
 #!/bin/sh
 set -eu
 umask 077
+trap 'rm -f /tmp/database.dump /tmp/checked.dump' EXIT
 export PGUSER=lms PGDATABASE=lms PGHOST=lms-ha-rw.lms.svc.cluster.local PGSSLMODE=verify-full PGSSLROOTCERT=/etc/postgres-ca/ca.crt PGCONNECT_TIMEOUT=5
 export GNUPGHOME=/tmp/gnupg
 mkdir -m 700 "$GNUPGHOME"

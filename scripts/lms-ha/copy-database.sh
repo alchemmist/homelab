@@ -2,6 +2,7 @@
 # Only the isolated HA target is overwritten; legacy production is read-only.
 set -eu
 umask 077
+trap 'rm -f /tmp/source.dump /tmp/recovered.dump /tmp/source.fingerprint /tmp/target.fingerprint /tmp/restore.stderr' EXIT
 : "${BACKUP_ID:?}" "${SOURCE_PASSWORD:?}" "${TARGET_PASSWORD:?}"
 case "$BACKUP_ID" in *[!a-zA-Z0-9_-]*|'') exit 64;; esac
 mkdir -p /backups/lms
