@@ -2,7 +2,7 @@
   "uid": "lms-performance",
   "title": "LMS \u00b7 Performance & distributed traces",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "tags": [
     "lms",
     "performance",
@@ -36,21 +36,25 @@
       },
       {
         "name": "trace_id",
-        "type": "textbox",
-        "label": "Trace ID (paste from search)",
-        "current": {
-          "text": "",
-          "value": ""
-        }
-      },
-      {
-        "name": "log_selector",
-        "type": "textbox",
-        "label": "Loki stream selector (adapt to deployment labels)",
-        "current": {
-          "text": "{k8s_namespace_name=\"lms\"}",
-          "value": "{k8s_namespace_name=\"lms\"}"
-        }
+        "type": "query",
+        "label": "Trace ID (auto-selected from available traces)",
+        "datasource": {
+          "type": "tempo",
+          "uid": "${tempo}"
+        },
+        "query": {
+          "type": 1,
+          "label": "lms.trace_id",
+          "refId": "TempoTraceIds"
+        },
+        "definition": "Label values: lms.trace_id",
+        "refresh": 2,
+        "sort": 0,
+        "multi": false,
+        "includeAll": false,
+        "allowCustomValue": false,
+        "options": [],
+        "current": {}
       }
     ]
   },
@@ -63,11 +67,11 @@
         "x": 0,
         "y": 0,
         "w": 24,
-        "h": 3
+        "h": 4
       },
       "options": {
         "mode": "markdown",
-        "content": "Search sampled traces below. Open a trace in Explore, or paste its ID into **Trace ID** to show the waterfall. `browser.page` \u2192 `browser.api` / `browser.material` \u2192 backend HTTP \u2192 `db.connect`, `db.transaction`, `content.read_render`. `browser.resource` measures full network transfer; fetch spans measure time to response headers. Adjust the Loki stream selector to your actual labels. This is a span waterfall, not a CPU profile."
+        "content": "The dashboard automatically selects a retained LMS trace from the chosen time range. Use **Trace ID** to select another, or click a trace in the search table to open Explore. The waterfall shows browser, Traefik, LMS and database operations. Selected-trace logs use the real LMS namespace; recent application logs below work independently of trace selection. If the selected time range has no retained traces, choose a recent/wider range. Old trace links may expire according to Tempo retention; this is not a collector failure."
       }
     },
     {
@@ -80,7 +84,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 3,
+        "y": 4,
         "w": 24,
         "h": 7
       },
@@ -107,7 +111,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 10,
+        "y": 11,
         "w": 24,
         "h": 15
       },
@@ -122,29 +126,60 @@
     {
       "id": 4,
       "type": "logs",
-      "title": "Correlated Loki logs (configure stream labels)",
+      "title": "Correlated Loki logs \u00b7 selected trace",
       "datasource": {
         "type": "loki",
         "uid": "${loki}"
       },
       "gridPos": {
         "x": 0,
-        "y": 25,
+        "y": 26,
         "w": 24,
         "h": 8
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "${log_selector:raw} |= \"${trace_id}\"",
-          "queryType": "range"
+          "expr": "{k8s_namespace_name=\"lms\"} |= \"http trace_id=\" |~ \"${trace_id:regex}\"",
+          "queryType": "range",
+          "maxLines": 100
         }
       ],
       "options": {
         "showTime": true,
         "wrapLogMessage": true,
         "sortOrder": "Descending"
-      }
+      },
+      "description": "Matches the selected retained trace in the dashboard time range. Trace and log retention are independent; use recent application logs below when investigating old or unavailable IDs."
+    },
+    {
+      "id": 5,
+      "type": "logs",
+      "title": "Recent LMS application logs \u00b7 all requests",
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 34,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{k8s_namespace_name=\"lms\"} |= \"http trace_id=\"",
+          "queryType": "range",
+          "maxLines": 100
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "sortOrder": "Descending"
+      },
+      "description": "Independent of trace selection. Ensures current collection can be checked even when an old selected trace has expired."
     }
   ]
 }

@@ -35,8 +35,14 @@ def test_dashboard_is_gitops_provisioned_and_uses_real_log_labels():
     dashboard = json.loads(cm['data']['lms-performance.json'])
     assert dashboard['uid']=='lms-performance'
     assert any(p['type']=='traces' for p in dashboard['panels'])
-    variable = next(x for x in dashboard['templating']['list'] if x['name']=='log_selector')
-    assert variable['current']['value']=='{k8s_namespace_name="lms"}'
+    variable = next(x for x in dashboard['templating']['list'] if x['name']=='trace_id')
+    assert variable['type']=='query' and variable['refresh']==2
+    assert variable['query']['label']=='lms.trace_id'
+    assert variable['current']=={} and variable['allowCustomValue'] is False
+    logs = next(p for p in dashboard['panels'] if p['id']==4)
+    assert '{k8s_namespace_name="lms"}' in logs['targets'][0]['expr']
+    recent = next(p for p in dashboard['panels'] if p['id']==5)
+    assert 'trace_id:regex' not in recent['targets'][0]['expr']
 
 
 def test_disabled_chart_does_not_mount_credentials():

@@ -87,7 +87,7 @@ maintained refresher above.
 ## Using the dashboard
 
 1. Open the dashboard in the administrative network.
-2. Search recent traces; paste an ID into **Trace ID** to populate the waterfall.
+2. **Trace ID** is a query-backed selector: the dashboard automatically selects an available retained trace in the chosen time range. Choose another ID from the dropdown, or use the search table/Explore.
 3. Expand `browser.page`, `browser.api`, the Traefik `GET`/`ReverseProxy` spans,
    backend HTTP, `content.read_render`, `content.navigation`, `db.connect`, and
    `db.transaction`.
@@ -147,3 +147,24 @@ credential mount; the application defaults to tracing off. Do not delete shared
 OTel backends, global PKI, log shipping or other applications' credentials.
 To remove the dashboard too, set `tracing.grafanaDashboard: false` and explicitly
 review deletion (the existing Argo app does not auto-prune).
+
+
+## Empty-panel regression fixed
+
+The first dashboard revision required a manually supplied ID. Opening its bare
+URL left the waterfall query empty; old diagnostic links could also filter logs
+outside the current time range. A successful test of a prefilled link did not
+cover that normal entry path.
+
+The production dashboard now uses a native Tempo query variable (label values
+`lms.trace_id`, refreshed on time-range changes), with no blank textbox default.
+LMS records its current W3C trace ID as this non-sensitive span attribute, so the
+selector gets **retained** IDs from Tempo rather than all potentially unsampled
+IDs from Loki. The correlated panel uses the fixed, verified namespace selector;
+an independent recent-application-logs panel does not depend on any trace ID.
+
+The browser canary checks both the bare dashboard and a supplied full distributed
+trace. A genuinely empty historical interval or expired data cannot be filled
+with invented spans: choose a recent/wider interval to investigate current
+traffic. Dashboard auto-selection is one available trace, not a claim to sort
+high-cardinality tag values chronologically.
