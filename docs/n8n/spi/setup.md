@@ -126,7 +126,8 @@ Progress and the pending marker are saved before each comment POST. Repeated del
 or restart reconciles published parts rather than duplicating them. Unobservable
 ambiguous writes require operator review; do not erase the intent or blindly retry.
 Comment authors are checked by immutable GitHub App ID **5569869**, not its renameable
-slug. Human marker text must never count as a confirmed App write.
+slug. Issue API responses may omit App metadata; their immutable Bot user ID
+351189559 is the verified fallback. Human marker text must never count as a confirmed App write.
 
 ### Download and verify a stored episode
 
@@ -184,7 +185,7 @@ traffic. Never erase pending/ambiguous-publication state to clear an alert.
 
 ## Verified acceptance
 
-- 97 local tests: 64 SPI Python, five native ingress, nine Yandex client, six calendar,
+- 98 local tests: 65 SPI Python, five native ingress, nine Yandex client, six calendar,
   thirteen blog. Helm templates render with the pinned images.
 - Authenticated ingress execution **1927** persisted its group and the bot returned
   a message record. No ingress/worker/GitHub token appeared in its execution data.

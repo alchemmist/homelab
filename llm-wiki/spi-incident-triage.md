@@ -107,7 +107,7 @@ SPI publication is **enabled after live dry-run** (SPI writeEnabled=true).
 Blog WRITE_ENABLED remains false. Do not transfer one worker's rollout policy to
 another. Historical dry-run reports are not replayed or posted as test issues.
 
-97 local tests pass: 64 SPI Python + five ingress + nine Yandex + six calendar +
+98 local tests pass: 65 SPI Python + five ingress + nine Yandex + six calendar +
 thirteen blog. Live authenticated ingress/Telegram execution 1927, full real-alert
 dry-run execution 1976, HTTP401 rejection, scheduled App-token refresh, duplicate
 suppression and worker restart recovery verified. Both workflows are active and

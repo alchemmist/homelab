@@ -11,7 +11,8 @@ from pathlib import Path
 def reconstruct(comments,event_key):
     grouped={}
     for comment in comments:
-        if comment.get('user',{}).get('type')!='Bot' or (comment.get('performed_via_github_app')or{}).get('id')!=5569869:continue
+        actor=comment.get('user',{});app=comment.get('performed_via_github_app')or{}
+        if actor.get('type')!='Bot' or (app.get('id')!=5569869 if app.get('id')is not None else actor.get('id')!=351189559):continue
         body=comment.get('body')or''
         if '<!-- socrat-spi-artifact:'+event_key+':' not in body:continue
         header=re.match(r'## Evidence ([A-Z0-9]+) — ([A-Za-z0-9_.-]+) \(part ([0-9]+)/([0-9]+)\)\n\nSHA-256: `([a-f0-9]{64})`',body)

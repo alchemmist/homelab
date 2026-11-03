@@ -166,6 +166,11 @@ class ModelEvidenceTests(unittest.TestCase):
         self.assertEqual(value['facts'],good['facts']);self.assertEqual(h.request.call_count,2)
 
 class PrimaryReconciliationTests(unittest.TestCase):
+    def test_issue_without_app_metadata_uses_immutable_bot_id(self):
+        from evidence_bundle import trusted_comment
+        self.assertTrue(trusted_comment({'user':{'id':351189559,'type':'Bot','login':'renamed'}}))
+        self.assertFalse(trusted_comment({'user':{'id':123,'type':'Bot','login':'socrat-bot[bot]'}}))
+
     def test_primary_marker_requires_actual_app_author(self):
         from integrations import GitHub
         g=GitHub(Mock(),'/unused');g.comments=Mock(return_value=[{'body':'marker','user':{'type':'User'}}])

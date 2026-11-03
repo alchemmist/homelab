@@ -81,7 +81,11 @@ def index_marker(bundle):
     return '<!-- socrat-spi-evidence-index:'+bundle['manifest']['event_key']+':'+hashlib.sha256(encoded(bundle['manifest']).encode()).hexdigest()[:20]+' -->'
 
 def trusted_comment(comment):
-    return comment.get('user',{}).get('type')=='Bot' and (comment.get('performed_via_github_app')or{}).get('id')==int(os.environ.get('GITHUB_APP_ID','5569869'))
+    user=comment.get('user',{});app=comment.get('performed_via_github_app')or{}
+    if user.get('type')!='Bot':return False
+    if app.get('id')is not None:return app['id']==int(os.environ.get('GITHUB_APP_ID','5569869'))
+    # Issue responses may omit performed_via_github_app; bot user IDs are immutable too.
+    return user.get('id')==int(os.environ.get('GITHUB_BOT_USER_ID','351189559'))
 
 def publish_parts(github,number,bundle,progress,save):
     """Persist before each POST; an unobservable ambiguous write requires review."""
