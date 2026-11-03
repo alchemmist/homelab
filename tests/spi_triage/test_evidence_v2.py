@@ -5,7 +5,7 @@ from unittest.mock import Mock,patch
 from pathlib import Path
 from urllib.parse import urlsplit,parse_qs
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'charts/spi-triage/files'))
-from evidence_bundle import redact,prepare_bundle,publish_parts,index_markdown,PART_SIZE
+from evidence_bundle import redact,prepare_bundle,publish_parts,index_markdown,index_marker,PART_SIZE
 from provenance import DeploymentCollector
 from telemetry import TelemetryCollector,absolute_window,grafana_explore_url
 from core import Failure
@@ -38,8 +38,15 @@ class ArtifactTests(unittest.TestCase):
         with self.assertRaisesRegex(Failure,'WRITE_NEEDS_REVIEW'):publish_parts(g,9,b,state,save)
         self.assertEqual(g.request.call_count,1)
     def test_index_ambiguous_reconciles(self):
-        b=self.bundle();state={'done':{p['marker']:'url' for p in b['parts']},'index_pending':True};g=Mock();g.comments.return_value=[{'user':{'login':'socrat-pr-agent[bot]'},'body':'<!-- socrat-spi-evidence-index:'+event()['event_key']+' -->'}]
+        b=self.bundle();state={'done':{p['marker']:'url' for p in b['parts']},'index_pending':True};g=Mock();g.comments.return_value=[{'user':{'login':'socrat-pr-agent[bot]'},'body':index_marker(b)}]
         publish_parts(g,9,b,state,Mock());g.request.assert_not_called()
+    def test_rate_limit_is_retryable_without_ambiguous_intent(self):
+        g=Mock();g.comments.return_value=[];g.request.side_effect=Failure('HTTP_429');progress={}
+        with self.assertRaises(Failure):publish_parts(g,9,self.bundle(),progress,Mock())
+        self.assertNotIn('pending',progress)
+    def test_untrusted_marker_cannot_hide_missing_artifact(self):
+        b=self.bundle();g=Mock();g.comments.return_value=[{'body':b['parts'][0]['marker'],'user':{'login':'unknown'}}];g.request.return_value={}
+        publish_parts(g,9,b,{},Mock());self.assertEqual(g.request.call_count,len(b['parts'])+1)
     def test_fence_injection_remains_data(self):
         b=self.bundle('```\nmalicious\n````');g=Mock();g.comments.return_value=[];g.request.return_value={};publish_parts(g,9,b,{},Mock());self.assertIn('````text',g.request.call_args_list[1].args[2]['body']);self.assertIn('\\u0060',g.request.call_args_list[1].args[2]['body'])
 

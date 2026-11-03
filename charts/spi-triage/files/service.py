@@ -77,7 +77,7 @@ class Engine:
             except Failure as e:
                 # 4xx are definitive rejections. Network errors/5xx can hide a
                 # successful write: keep intent and never blindly repeat the POST.
-                if e.code.startswith('HTTP_4'):
+                if e.code.startswith('HTTP_4') and e.code!='HTTP_408':
                     self.store.save(key,3,r,intent=None)
                 raise
             self.finish_evidence(key,r,number)

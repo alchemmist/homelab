@@ -73,6 +73,9 @@ def index_markdown(bundle):
     lines+=['- '+x['id']+': `'+x['name']+'`'+(' (TRUNCATED)' if x['truncated'] else '') for x in m['artifacts']]
     return '\n'.join(lines)
 
+def index_marker(bundle):
+    return '<!-- socrat-spi-evidence-index:'+bundle['manifest']['event_key']+':'+hashlib.sha256(encoded(bundle['manifest']).encode()).hexdigest()[:20]+' -->'
+
 def publish_parts(github,number,bundle,progress,save):
     """Persist before each POST; an unobservable ambiguous write requires review."""
     if not bundle:return
@@ -89,11 +92,11 @@ def publish_parts(github,number,bundle,progress,save):
         body='## Evidence '+part['id']+' — '+part['name']+' (part '+str(part['part'])+'/'+str(part['total'])+')\n\nSHA-256: `'+part['sha256']+'`\n\n'+fence+'text\n'+part['text']+'\n'+fence+'\n\n'+marker
         try:response=github.request('POST','/issues/'+str(number)+'/comments',{'body':body})
         except Failure as exc:
-            if exc.code.startswith('HTTP_4') and exc.code not in ('HTTP_408','HTTP_429'):progress.pop('pending',None);save()
+            if exc.code.startswith('HTTP_4') and exc.code!='HTTP_408':progress.pop('pending',None);save()
             raise
         progress.setdefault('done',{})[marker]=response.get('html_url','');progress.pop('pending',None);save()
     # A deterministic index comment provides direct navigation without editing human text.
-    links=progress.get('done',{});marker='<!-- socrat-spi-evidence-index:'+bundle['manifest']['event_key']+' -->'
+    links=progress.get('done',{});marker=index_marker(bundle)
     if any(marker in (c.get('body')or'')for c in comments) or progress.get('index_done'):return
     if progress.get('index_pending'):raise Failure('WRITE_NEEDS_REVIEW')
     lines=['## Evidence artifact index', 'Event: `'+bundle['manifest']['event_key']+'`']
@@ -103,6 +106,6 @@ def publish_parts(github,number,bundle,progress,save):
     progress['index_pending']=True;save()
     try:github.request('POST','/issues/'+str(number)+'/comments',{'body':index_markdown(bundle)+'\n\n'+'\n'.join(lines)+'\n\n'+marker})
     except Failure as exc:
-        if exc.code.startswith('HTTP_4') and exc.code not in ('HTTP_408','HTTP_429'):progress.pop('index_pending',None);save()
+        if exc.code.startswith('HTTP_4') and exc.code!='HTTP_408':progress.pop('index_pending',None);save()
         raise
     progress['index_done']=True;progress.pop('index_pending',None);save()
