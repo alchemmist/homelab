@@ -43,12 +43,27 @@ def target_user(users, expected):
     return u
 
 
+def network_snapshot(api, allow_owner_device=False):
+    for name in ['setup-keys', 'policies', 'networks']:
+        if api(name) != []:
+            raise ValueError('unexpected network grants; stop')
+    peers = api('peers')
+    if not peers:
+        return []
+    if (not allow_owner_device or len(peers) != 1 or peers[0].get('user_id') != subject()
+        or peers[0].get('approval_required') is not False or peers[0].get('login_expired') is not False):
+        raise ValueError('only one exact-owner approved personal device may preexist')
+    return [{'id': peers[0]['id'], 'user_id': peers[0]['user_id'],
+             'approval_required': False, 'login_expired': False}]
+
+
 def main():
     os.umask(0o077)
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--subject', required=True)
     p.add_argument('--apply', action='store_true')
     p.add_argument('--confirm-personal-login-and-native-transfer', action='store_true')
+    p.add_argument('--allow-existing-owner-device', action='store_true')
     a=p.parse_args()
     if a.subject!=subject():raise ValueError('wrong encoded raw UUID/connector')
     token=json.loads((ROOT/'bootstrap.json').read_text())['personal_access_token']
@@ -64,8 +79,7 @@ def main():
     accounts=api('accounts')
     if len(accounts)!=1 or not accounts[0]['settings']['local_auth_disabled']:raise ValueError('account/local-auth guard failed')
     if accounts[0]['id']!=json.loads((ROOT/'bootstrap-complete.json').read_text())['account_id']:raise ValueError('wrong account')
-    for name in ['peers','setup-keys','policies']:
-        if api(name)!=[]:raise ValueError('unexpected network grants; stop')
+    network_before = network_snapshot(api, a.allow_existing_owner_device)
     users=api('users');target=target_user(users,a.subject)
     owners=[u for u in users if u['role']=='owner']
     if len(owners)!=1 or owners[0]['id']!=TECHNICAL or owners[0]['email']!='netbird-bootstrap@internal.invalid':
@@ -86,9 +100,9 @@ def main():
     expected_roles={u['id']:u['role'] for u in users}
     expected_roles.update({target['id']:'owner',TECHNICAL:'admin'})
     if {u['id']:u['role'] for u in after}!=expected_roles:raise ValueError('unexpected other user/role change')
-    for name in ['peers','setup-keys','policies']:
-        if api(name)!=[]:raise ValueError('unexpected post-transfer network grants')
-    print('Native owner transfer verified. Technical PAT remains private; no peers/setupkeys/policy or other human role granted.')
+    if network_snapshot(api, a.allow_existing_owner_device) != network_before:
+        raise ValueError('unexpected post-transfer network grants/device identity change')
+    print('Native owner transfer verified. Technical PAT remains private; existing owner device preserved; no network or other human role granted.')
 
 
 if __name__=='__main__':

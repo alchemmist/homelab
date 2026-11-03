@@ -49,6 +49,9 @@ GROUP_NAMES = (
     'netbird-pilot-grafana',
     'netbird-pilot-ssh-socrat-2',
 )
+# Admission/pilot groups may include observers; full WG administration MUST NOT.
+ADMIN_NETWORK_GROUP = 'netbird-internal-admins'
+PROFILE_GROUP_NAMES = GROUP_NAMES + (ADMIN_NETWORK_GROUP,)
 ADMISSION_GROUP = 'netbird-pilot-login'
 UPSTREAM_SCOPES = ('openid', 'profile', 'email')
 OPENID_MANAGED = 'goauthentik.io/providers/oauth2/scope-openid'
@@ -111,7 +114,7 @@ def issuer_from_netbird_config(path):
 
 
 def profile_expression():
-    approved = ', '.join(repr(name) for name in GROUP_NAMES)
+    approved = ', '.join(repr(name) for name in PROFILE_GROUP_NAMES)
     return (
         'approved = (' + approved + ',)\n'
         'names = sorted({group.name for group in request.user.ak_groups.all() if group.name in approved})\n'
