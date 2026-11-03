@@ -42,7 +42,7 @@
       "type": "n8n-nodes-base.googleCalendar",
       "typeVersion": 1.3,
       "position": [
-        220,
+        480,
         0
       ],
       "credentials": {
@@ -61,31 +61,16 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        440,
+        720,
         0
       ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "http://yandex-voice.voice.svc.cluster.local/say",
+        "url": "={{ $json.status === 'ok' ? 'https://iot.quasar.yandex.ru/m/user/scenarios/REPLACE_WITH_YANDEX_SCENARIO_ID/actions' : (() => { throw new Error('Yandex scenario update failed'); })() }}",
         "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendBody": true,
-        "contentType": "json",
-        "specifyBody": "keypair",
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "text",
-              "value": "={{ $json.text }}"
-            },
-            {
-              "name": "volume",
-              "value": "={{ 0.5 }}"
-            }
-          ]
-        },
+        "genericAuthType": "httpCustomAuth",
         "options": {
           "timeout": 10000
         }
@@ -94,28 +79,27 @@
       "name": "Announce via Yandex Station",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "onError": "continueRegularOutput",
       "position": [
-        660,
+        1440,
         0
       ],
       "credentials": {
-        "httpHeaderAuth": {
+        "httpCustomAuth": {
           "id": "REPLACE_WITH_CREDENTIAL_ID",
-          "name": "yandex-voice-token"
+          "name": "Yandex Smart Home Session"
         }
       }
     },
     {
       "parameters": {
-        "jsCode": "const data = $getWorkflowStaticData('global');\ndata.voiced ??= {};\nfor (let i = 0; i < items.length; i++) {\n  if (items[i].json.status !== 'ok') continue;\n  const source = $('Match Due Reminders').itemMatching(i).json;\n  if (source.dedupKey) data.voiced[source.dedupKey] = Date.now();\n}\nreturn items;\n"
+        "jsCode": "const data = $getWorkflowStaticData('global');\ndata.voiced ??= {};\nfor (let i = 0; i < items.length; i++) {\n  if (items[i].json.status !== 'ok') throw new Error('Yandex announcement was not accepted');\n  const source = $('Match Due Reminders').itemMatching(i).json;\n  if (source.dedupKey) data.voiced[source.dedupKey] = Date.now();\n}\nreturn items;\n"
       },
       "id": "a1b2c3d4-0005-4000-8000-000000000005",
       "name": "Mark Announced",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        880,
+        1680,
         0
       ]
     },
@@ -125,11 +109,53 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -420,
+        240,
         0
       ],
       "parameters": {
         "jsCode": "// Configured by scripts/n8n/sync.py from local calendar-config.json.\nreturn ['primary'].map(calendarId => ({ json: { calendarId } }));"
+      }
+    },
+    {
+      "id": "607734ae-28f0-49eb-bda8-a1af4deff225",
+      "name": "Prepare Yandex Announcement",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        0
+      ],
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Yandex Smart Home Session"
+        }
+      },
+      "parameters": {
+        "method": "PUT",
+        "url": "https://iot.quasar.yandex.ru/m/v4/user/scenarios/REPLACE_WITH_YANDEX_SCENARIO_ID",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\"name\": \"Calendar reminders\", \"icon\": \"home\", \"triggers\": [{\"trigger\": {\"type\": \"scenario.trigger.voice\", \"value\": \"календарные напоминания из автоматики\"}}], \"steps\": [{\"type\": \"scenarios.steps.actions.v2\", \"parameters\": {\"items\": [{\"id\": \"REPLACE_WITH_YANDEX_DEVICE_ID\", \"type\": \"step.action.item.device\", \"value\": {\"id\": \"REPLACE_WITH_YANDEX_DEVICE_ID\", \"item_type\": \"device\", \"capabilities\": [{\"type\": \"devices.capabilities.quasar\", \"state\": {\"instance\": \"volume\", \"value\": {\"value\": 5}}}, {\"type\": \"devices.capabilities.quasar\", \"state\": {\"instance\": \"tts\", \"value\": {\"text\": $json.text, \"whisper\": false, \"lang\": \"ru\"}}}]}}]}}]}) }}",
+        "options": {
+          "timeout": 10000
+        }
+      }
+    },
+    {
+      "id": "f4f93425-8b29-4535-979c-e9c83a39dd3f",
+      "name": "Each Reminder",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        960,
+        0
+      ],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
       }
     }
   ],
@@ -160,7 +186,7 @@
       "main": [
         [
           {
-            "node": "Announce via Yandex Station",
+            "node": "Each Reminder",
             "type": "main",
             "index": 0
           }
@@ -188,11 +214,46 @@
           }
         ]
       ]
+    },
+    "Each Reminder": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Prepare Yandex Announcement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Yandex Announcement": {
+      "main": [
+        [
+          {
+            "node": "Announce via Yandex Station",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Announced": {
+      "main": [
+        [
+          {
+            "node": "Each Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
     "executionOrder": "v1",
-    "timezone": "Europe/Moscow"
+    "timezone": "Europe/Moscow",
+    "executionTimeout": 55
   },
   "pinData": {}
 }

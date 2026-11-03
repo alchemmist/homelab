@@ -1,9 +1,0 @@
-defaultNamespace: voice
-createNamespace: true
-paused: false
-helm:
-  releaseName: yandex-voice
-  repo: oci://ghcr.io/alchemmist/charts/yandex-voice
-  version: 0.1.2
-  valuesFiles:
-    - values.yaml

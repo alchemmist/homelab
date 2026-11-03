@@ -1,165 +1,118 @@
-# n8n: Calendar -> Yandex Station Voice Reminder
+# n8n: Calendar → Yandex Station reminders
 
-Runbook for deploying and operating the self-hosted n8n workflow that polls the
-user's Google Calendar and makes the Yandex Station speak each event's own
-popup reminders.
+## Current architecture (2026-11-03)
 
-- n8n runs in Kubernetes namespace `automation`, host `n8n.socrat.alchemmist.xyz`
-  (private access via the private gateway).
-- The companion `yandex-voice` microservice runs in namespace `voice` and is
-  reachable in-cluster at
-  `http://yandex-voice.voice.svc.cluster.local/say` (POST `{"text": str}`,
-  header `X-Voice-Token`).
-- Workflow definition (source of truth copy): `docs/n8n/calendar-voice-reminder.json`.
+n8n calls Yandex directly. There is no voice microservice, local WebSocket client,
+or Home Assistant in the production reminder path.
 
-## 1. Google Cloud Console
+`Every Minute → Select Calendars → Get Upcoming Events → Match Due Reminders`
 
-1. Open <https://console.cloud.google.com/> and create (or select) a project for this integration.
-2. **APIs & Services -> Library**: enable the **Google Calendar API**.
-3. **APIs & Services -> OAuth consent screen**: choose External, fill in the
-   app name and support email. Add the target Google account (the one whose
-   calendar will be polled) as a **test user**.
-4. **APIs & Services -> Credentials -> Create Credentials -> OAuth client ID**:
-   - Application type: **Web application**
-   - Authorized redirect URI:
-     `https://n8n.socrat.alchemmist.xyz/rest/oauth2-credential/callback`
-5. Create the client, then copy the **Client ID** and **Client Secret**.
+Due items enter `Each Reminder` (batch size 1):
 
-## 2. First n8n login
+`Prepare Yandex Announcement → Announce via Yandex Station → Mark Announced → Each Reminder`
 
-n8n is already deployed behind the private gateway.
+The first HTTP request updates the dedicated **Calendar reminders** cloud scenario
+with a volume action and the event text; the second runs it. Updating all items
+before running the scenario would overwrite earlier texts, so retain the loop.
+Scenario mutations and execution use the **internal** `iot.quasar.yandex.ru` API,
+not the documented public `api.iot.yandex.net` device-action API. A direct TTS
+POST to the internal device-actions endpoint returned INTERNAL_ERROR; the scenario
+route was verified successfully. Do not claim this is one documented IoT request.
 
-1. Open `https://n8n.socrat.alchemmist.xyz` from a machine with private access.
-2. On first run n8n shows the owner-account setup page: enter your email and a
-   password to create the local owner account.
+Volume is `devices.capabilities.quasar`, instance `volume`, value `{"value":5}`
+(on the 0–10 scale, 50%). TTS uses instance `tts` and a text object. JSON.stringify
+encodes the event text; never construct JSON by concatenating event titles.
+There is no restoration of the previous volume.
 
-## 3. Create credentials in n8n
+## Access and credentials
 
-### Google Calendar OAuth2
+- n8n: `https://n8n.socrat.alchemmist.xyz`; public HTTPS and WireGuard paths exist.
+- Authentik is an outer UI gate, not native n8n SSO. Use the recovered existing
+  n8n account. If Setup unexpectedly appears, investigate storage; do not create
+  a replacement owner or import over an empty database.
+- Google credential: native **Google Calendar OAuth2 API**. Enable Calendar API
+  and configure OAuth callback
+  `https://n8n.socrat.alchemmist.xyz/rest/oauth2-credential/callback`.
+  Interactive consent may require the user; never request tokens in chat.
+- Yandex credential: native **Custom Auth**, named **Yandex Smart Home Session**.
+  Its encrypted JSON contains a headers object with `Cookie` and `x-csrf-token`.
+  Attach it to both HTTP nodes. Do not add secret headers to node parameters.
+- Session cookies are password-equivalent. Listing devices with old cookies can
+  succeed while action requests fail 403. During migration, a fresh web session
+  obtained through Yandex's x-token session exchange resolved that mismatch.
+- These are session credentials, **not auto-refreshing OAuth credentials**.
+  Expired/revoked sessions or an internal API change require controlled renewal.
+  Generate a fresh matching cookie/CSRF pair and replace the native credential;
+  validate authenticated access before switching references. Never report an
+  HTTP 200 alone as successful TTS: inspect the JSON `status` too.
 
-1. n8n UI -> **Credentials -> New -> Google Calendar OAuth2 API**.
-2. Paste the Client ID and Client Secret from step 1.
-3. Click **Sign in with Google**, approve access for the test user added above.
-4. Save, e.g. as `Google Calendar - socrat`.
+## Workflow as code
 
-### Header Auth for yandex-voice
+Source: `docs/n8n/calendar-voice-reminder.json`.
+Use `python3 scripts/n8n/sync.py` for an **inactive** workflow only. The script
+refuses active-workflow changes and duplicate names. Preserve the existing workflow
+ID and static data when updating; don't replace the recovered workflow with a new
+one. Check activity and dedup state after any change; deactivation is not a reason
+to deliberately clear existing dedup records.
 
-1. Get the token from the cluster secret:
+Local files, all outside git; files 0600 and containing directory 0700:
 
-   ```sh
-   kubectl -n voice get secret yandex-voice-secrets -o jsonpath={.data.voice-token} | base64 -d
-   ```
+- `~/.config/n8n/api-key`: n8n public API key.
+- `~/.config/n8n/calendar-credentials.json`: `googleCalendarOAuth2Api` and
+  `httpCustomAuth`, each mapping to `{"id":"instance credential ID","name":"credential name"}`.
+- `~/.config/n8n/calendar-config.json`: `calendar_ids` list. Production includes
+  primary and Y-team. Missing file defaults to primary only, not all calendars.
+- `~/.config/n8n/yandex-cloud-config.json`: `device_id`, `scenario_id` for the
+  dedicated announcement scenario. Device IDs are not interchangeable with local
+  Glagol hardware IDs. Git has placeholders, not personal account identifiers.
 
-2. n8n UI -> **Credentials -> New -> Header Auth**, name it
-   `yandex-voice-token`:
-   - Name: `X-Voice-Token`
-   - Value: `<token from the command above>`
+Importing the raw JSON without rendering these mappings is not a completed deploy.
+Do not deploy a second cron implementation or recreate the retired voice workload.
 
-## 4. Import and activate the workflow
+## Reminder semantics and failure handling
 
-1. n8n UI -> **Workflows -> Import from File**, select
-   `docs/n8n/calendar-voice-reminder.json`.
-2. Open the imported workflow and assign credentials:
-   - **Get Upcoming Events** (Google Calendar node) -> `Google Calendar - socrat`
-   - **Announce via Yandex Station** (HTTP Request node) -> `yandex-voice-token`
-3. Save, then toggle the workflow **Active**.
+- Poll every minute, read upcoming events over 48 hours in each selected calendar.
+- Use **explicit event popup overrides only** (`useDefault=false`); calendar
+  defaults are not expanded. Primary does not include shared/work calendars.
+- Due window: 15 seconds before to 75 seconds after start-minus-reminder-offset.
+  An already missed reminder is not replayed later.
+- Dedup key: `event ID|start ISO|minutes`; prune older than 48 hours.
+- Mark only after the scenario execution API returns `status=ok`. Update failure
+  prevents execution; execution failure must fail the workflow, not look green.
+- The 55-second workflow timeout bounds a poll below its one-minute interval.
+  Both HTTP requests have 10-second timeouts. The loop serializes items in a poll,
+  not a distributed queue or transactional lock across independent invocations.
+- API acceptance is not proof of sound reaching a listener. Dedup remains
+  best-effort, not exactly-once: late responses or persistence failures can cause
+  repeats, and there is no durable outage replay.
 
-## 5. Testing
+## Verification
 
-1. Create a test calendar event a few minutes in the future. In its reminder
-   settings, turn **off** "Use default reminders" and add a **notification
-   (popup)** *2 minutes before*.
-2. Within a minute of the reminder being due (eventStart - 2 min), the Yandex
-   Station should announce it exactly once.
-3. Wait for the next minute's poll and confirm there is **no duplicate**
-   announcement - dedup via workflow static data must suppress it.
-4. Check the execution list in n8n (all runs should be green; the HTTP node is
-   configured to continue on error, so a voice-service failure will not mark
-   the run as failed) and, if needed, `kubectl -n automation logs deploy/n8n`.
+1. Check a scheduled execution actually reads the intended calendars; a green
+   execution with zero due items does not test the speaker.
+2. Read-only matcher tests may use the real event at its due instant, without speech.
+3. A real voice test requires an announced, short phrase; don't speak repeatedly
+   while the user is in a meeting. User confirmed both audible TTS and 50% volume
+   on 2026-11-03 during migration.
+4. Temporary authenticated check execution **1470** processed two items through
+   the real HTTP nodes and loop, validating both dedup keys. Its cloud actions were
+   **volume-only**, no TTS. The temporary workflow was deactivated and deleted.
+5. `python3 -m unittest discover -s tests/n8n -v` checks mapping, safe JSON encoding,
+   loop connections, failed-update gating, and missing configuration rejection.
+   Blog's separate 13 tests must remain green.
 
-### Troubleshooting
+For troubleshooting inspect the n8n execution and sanitized error, not retired
+voice pod logs. Check Google OAuth, actual calendar selection, explicit overrides,
+clock/timezone, Yandex session/CSRF, Station connectivity and Do Not Disturb.
+Do not bypass TLS or dump credentials/HTTP auth headers into diagnostics.
 
-- **Voice service 401**: `X-Voice-Token` value in the n8n Header Auth
-  credential does not match the token in the k8s secret. Re-run the
-  `kubectl ... base64 -d` command and update the credential.
-- **Google 401 / auth errors on the Calendar node**: the OAuth credential
-  expired or the test-user grant was revoked. Open the credential and
-  **Sign in with Google** again (reconnect).
-- **No speech at all**:
-  - Confirm the Yandex Station is powered on and online.
-  - Do Not Disturb on the station silences announcements at night
-    (by default **23:00 - 09:00**) - test outside that window.
-  - Check the voice service: `kubectl -n voice logs deploy/yandex-voice`.
-- **Missed or repeated announcements**: check clock skew between the n8n pod
-  and the node (`kubectl -n automation exec deploy/n8n -- date -u`); the trigger
-  window is based on the n8n pod's clock.
+## Historical incidents
 
-## 6. Ops notes
-
-- Logs: `kubectl -n automation logs deploy/n8n`.
-- Workflow static data (used for dedup) is **reset when the workflow is
-  deactivated and reactivated**. After a re-activation, a reminder whose window
-  is still open may be announced one extra time - this is expected.
-- **git is the source of truth**: after any edit made in the n8n UI, export the
-  workflow (n8n UI -> Save/Download) and update
-  `docs/n8n/calendar-voice-reminder.json` in this repo, then commit.
-
-## Git-managed workflow synchronization
-
-The workflow source is `docs/n8n/calendar-voice-reminder.json`.
-Run `python3 scripts/n8n/sync.py` to create or update an **inactive** workflow.
-The script refuses to modify an active workflow; deactivation and reactivation
-are explicit operations. It currently targets this homelab over WireGuard.
-
-Local files (never commit):
-- `~/.config/n8n/api-key`: public API key, mode 0600.
-- `~/.config/n8n/calendar-credentials.json`: mapping of credential type to
-  `{ "id": "instance credential ID", "name": "credential name" }`, using
-  keys `googleCalendarOAuth2Api` and `httpHeaderAuth`.
-
-Google OAuth consent must be completed in the n8n UI. Workflow JSON contains
-placeholders, not OAuth tokens or the voice service token.
-
-### Validation, 2026-10-30
-
-- Production Calendar node successfully read the primary calendar through OAuth.
-- Repeated scheduled production executions succeeded.
-- An isolated temporary workflow injected a synthetic event with an explicit
-  popup reminder through the same matching, HTTP and dedup nodes.
-- First scheduled execution returned `{"status":"ok"}` from the real voice
-  service; second execution emitted zero reminders, verifying persisted dedup.
-- Temporary workflow was deactivated and deleted; no Google event was created.
-
-This is best-effort deduplication, not transactional exactly-once delivery:
-if speech succeeds but workflow static-data persistence fails, a retry can
-repeat speech. Reminders use explicit popup overrides only; default reminders
-are not expanded. The polling horizon is 48 hours.
-
-## Public HTTPS access (2026-10-30)
-
-`https://n8n.socrat.alchemmist.xyz` is now publicly reachable through both
-109.173.40.247 (home Traefik) and 176.98.185.59 (VPS edge Traefik).
-The `automation` namespace is watched by edge Traefik. The public Ingress
-uses `n8n-public-tls` in `automation`, issued by `letsencrypt-http01`.
-Private WG gateway access remains available at the same hostname.
-Secure cookies are enabled. Google OAuth callback URL is unchanged.
-Both public paths were checked with certificate verification enabled (200);
-the public API rejects requests without credentials (401).
-The voice service remains ClusterIP-only. Use strong n8n account passwords
-and keep n8n updated; public access includes the authenticated editor/API/MCP.
-
-### Calendar selection (2026-11-02 diagnosis)
-
-Primary calendar alone omitted the owner's work meeting: its explicit 10-minute
-popup reminder was in Y-team. `Select Calendars` now provides multiple calendar IDs
-before `Get Upcoming Events`; live selection includes primary and Y-team.
-`~/.config/n8n/calendar-config.json` (0600, outside git) provides `calendar_ids`
-to `scripts/n8n/sync.py`; absent configuration defaults to primary only.
-Do not assume that shared calendars are part of `primary`.
-
-An actual Y-team event produced exactly one match at its start-minus-10-minute
-instant in a read-only JavaScript test. Live execution 76 succeeded and returned
-four events across the two calendars. No test speech or retrospective reminder
-was emitted. The existing narrow due window does not replay an already missed
-reminder. Calendar defaults are still not expanded: only explicit popup overrides
-are currently supported.
+- 2026-11-02: a 14:00 meeting with a 10-minute popup was in Y-team while only
+  primary was polled. Selection was corrected to include both calendars.
+- Storage recovery details: `docs/n8n/recovery-2026-11-02.md`. The recovered
+  database is reconstructed state, not a complete historical point-in-time restore.
+  Retain/keep annotations are not recurring off-node backups.
+- The former voice service used Glagol WebSocket, not a one-request IoT proxy.
+  It was retired after the direct cloud-scenario path was verified. Older recovery
+  notes describe the architecture at the time; they are not deployment instructions.
