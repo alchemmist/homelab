@@ -32,7 +32,7 @@
       ],
       "parameters": {
         "operation": "check",
-        "forceRefresh": true
+        "forceRefresh": false
       },
       "credentials": {
         "yandexStationApi": {

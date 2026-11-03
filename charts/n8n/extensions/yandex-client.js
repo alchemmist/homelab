@@ -47,7 +47,7 @@ async function fresh(credentials,signal,transport){
  const page=await request('https://yandex.ru/iot',{},jar,signal,transport),match=page.text.match(/"csrfToken2":"([^"\n]+)"/);
  if(page.status!==200||!match)throw new YandexError('CSRF_NOT_AVAILABLE');
  let csrf;try{csrf=JSON.parse('"'+match[1]+'"');}catch{throw new YandexError('CSRF_NOT_AVAILABLE');}
- return {jar,csrf,until:Date.now()+25*60*1000};
+ return {jar,csrf,until:Date.now()+6*60*60*1000};
 }
 function payload(credentials,text){return {name:'Calendar reminders',icon:'home',triggers:[{trigger:{type:'scenario.trigger.voice',value:'календарные напоминания из автоматики'}}],steps:[{type:'scenarios.steps.actions.v2',parameters:{items:[{id:credentials.deviceId,type:'step.action.item.device',value:{id:credentials.deviceId,item_type:'device',capabilities:[{type:'devices.capabilities.quasar',state:{instance:'volume',value:{value:5}}},{type:'devices.capabilities.quasar',state:{instance:'tts',value:{text,whisper:false,lang:'ru'}}}]}}]}}]};}
 async function operation(credentials,{text='',check=false,forceRefresh=false,dedupKey='',signal,transport=fetch}={}){

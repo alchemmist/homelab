@@ -3,25 +3,41 @@
 Контракт для агентов и оператора. Актуализировано: **3 ноября 2026**.
 Связанный документ: [архитектура автоматизаций умного дома](smart-home-automation.md).
 
-## Текущий календарь: публичный API и фиксированный сценарий
+## Текущий календарь: динамический TTS и автоматическая сессия
 
-Пользователь согласовал публичный вариант. Календарный workflow **активен**:
-`Every Minute → Select Calendars → Get Upcoming Events → Match Due Reminders → Run Fixed Yandex Scenario → Mark Announced`.
-Один POST `https://api.iot.yandex.net/v1.0/scenarios/{id}/actions`, native Header
-Auth **Yandex IoT Bearer Token**, `Authorization: Bearer …`. Cookie/CSRF credential
-удалён; внутренний API, Glagol и voice proxy запрещены. `sync.py` проверяет URL.
+Пользователь **разрешил исключение для внутреннего API именно для календарной
+озвучки**, при условии автоматического обновления сессии. Старое public-only
+ограничение не распространять на эту конкретную native-ноду; другие интеграции
+по-прежнему делать публичным API, где это возможно. Отдельный voice-сервис не
+возвращать.
 
-Сценарий произносит **фиксированную**, не событийную фразу. Сейчас сохранено
-«Напоминания из календаря настроены»; поменять текст можно один раз в официальном
-приложении, не публичным API. Громкость 50% — действие самого сценария.
-Реальные тесты прямого volume, TTS и audio_player через public POST получили 400,
-PUT сценария — 404. Готовый сценарий запустился, пользователь подтвердил звук.
-Native n8n execution **1587** успешно прошёл POST и dedup. Временный workflow
-удалён. Шесть календарных и тринадцать блоговых тестов проходят.
+Активный календарь: `Every Minute → Select Calendars → Get Upcoming Events → Match Due Reminders → Announce via Yandex Station → Mark Announced`.
+Последняя интеграционная нода — **CUSTOM.yandexStation**, получает динамический
+`$json.text`. Credential **Yandex Station Auto Session** (`yandexStationApi`):
+зашифрованные xToken/deviceId/scenarioId. Промежуточные cookies/CSRF только в памяти,
+не в outputs, HTTP headers нод, логах и git. Код: `charts/n8n/extensions/`.
 
-Полный протокол: `docs/n8n/yandex-public-api-assessment.md`; runbook —
-`docs/n8n/setup.md`. Публичный вариант не произносит название встречи; не скрывать
-эту разницу. При истечении OAuth-токена нужна ротация, автоматического refresh нет.
+Сессия создаётся из x-token при первом вызове/рестарте, обновляется через максимум
+6 часов и после 401/403 подготовки. Сценарий: 50% и динамическая фраза, без возврата
+старой громкости. Потерянный ответ запуска не ретраить: речь могла прозвучать.
+Задачи по credential сериализуются; есть in-process защита от параллельного повтора
+уже подтверждённого dedupKey. Не обещать exactly-once.
+
+Активный **Yandex Session Maintenance** проверяет действие каждые 15 минут, без
+запуска речи. Не создавать новую веб-сессию каждые 15 минут принудительно: здоровая
+используется повторно. Grafana **Automation / Yandex calendar**: ошибка за 20 минут
+и отсутствие успешной проверки 40 минут. Явный receiver — Socrat Alerts → Telegram;
+глобальный Grafana receiver не менялся. Доставка зависит от n8n, но не от Яндекс
+credential: полный отказ n8n может задержать сообщение, хотя Grafana покажет alert.
+
+X-token тоже может быть отозван. Тогда `X_TOKEN_REJECTED`, алерт и контролируемая
+повторная авторизация/замена native credential в **обоих** workflow. Секреты не
+просить в чат, SQLite не править. Runbook: `docs/n8n/setup.md`.
+
+Проверены live 1804 (свежая сессия без звука), 1809 (динамическая речь и dedup),
+1817 (плановый maintenance), Grafana contact test 200 и доставка Socrat Alerts 1819.
+28 тестов: 9 JS-клиент, 6 календарь, 13 блог. JSON обоих workflow и alert rules
+хранятся в git; `sync.py` / `sync_yandex_session.py` меняют только inactive records.
 
 ## Обязательные правила
 
@@ -165,15 +181,15 @@ Contents read/write, Pull requests read/write, Webhooks read/write, Metadata rea
   читал primary. После исправления live execution 76 получил четыре события из
   двух календарей. Read-only тест реального события на момент start−10 минут
   дал один match. Это не тест физической озвучки: тестовый голос не запускался.
-- Озвучка теперь — запуск заранее настроенного сценария публичным API, без
-  изменения его текста. Громкость и фраза хранятся в сценарии приложения Яндекса.
-- `calendar-credentials.json`: Google OAuth + httpHeaderAuth для IoT Bearer.
-  `yandex-cloud-config.json`: scenario_id. Все instance mappings вне git.
-- Один HTTP POST на item, никакого loop/PUT. Ошибка HTTP или JSON status!=ok
-  должна прерывать выполнение, а не отмечать уведомление. Timeout календаря
-  55 секунд, HTTP — 10 секунд. Это не durable queue и не exactly-once.
-- `tests/n8n/` проверяет public-only URL, mapping, matcher и dedup; старый voice
-  deployment и внутренний Quasar не восстанавливать.
+- Озвучка динамическая через native CUSTOM.yandexStation, с автоматическим
+  x-token login/renewal. Credential `yandexStationApi`, никакого ручного Cookie/CSRF.
+- `calendar-credentials.json`: Google OAuth + yandexStationApi; календари primary
+  и Y-team — отдельный приватный mapping. Device/scenario IDs внутри credential.
+- Ошибки не отмечают dedup. Workflow timeout 110 секунд покрывает cold login;
+  сериализация и in-process cache защищают от параллельных подтверждённых повторов.
+  Выполнение не transactional и не durable replay.
+- Maintenance каждые 15 минут проверяет реальные права на PUT без звука, алерты
+  различают ошибки и исчезновение успешных проверок. Подробный runbook обязателен.
 
 ## Безопасность модельных этапов
 

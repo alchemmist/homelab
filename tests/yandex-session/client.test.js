@@ -45,3 +45,7 @@ test('cookie jar respects domain, path and expiration',()=>{
 test('overlapping polls do not replay an acknowledged dedup key',async()=>{
  const f=fixture();const r=await Promise.all([1,2].map(()=>operation(f.credentials,{text:'Meeting',dedupKey:'same-event',transport:f.transport})));assert.equal(f.calls.filter(c=>new URL(c.url).pathname.endsWith('/actions')).length,1);assert.equal(r[1].alreadyAnnounced,true);
 });
+
+test('healthy maintenance checks do not create a new web session every 15 minutes',async()=>{
+ const f=fixture();await operation(f.credentials,{check:true,transport:f.transport});await operation(f.credentials,{check:true,transport:f.transport});assert.equal(f.calls.filter(c=>new URL(c.url).hostname==='mobileproxy.passport.yandex.net').length,1);assert.equal(f.calls.filter(c=>c.opts.method==='PUT').length,2);
+});

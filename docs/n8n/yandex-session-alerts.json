@@ -1,0 +1,192 @@
+{
+  "contactPoint": {
+    "uid": "yandex-calendar-webhook",
+    "name": "Yandex calendar via Socrat Alerts",
+    "type": "webhook",
+    "settings": {
+      "url": "https://n8n.socrat.alchemmist.xyz/webhook/socrat-alerts",
+      "httpMethod": "POST"
+    },
+    "disableResolveMessage": false
+  },
+  "rules": [
+    {
+      "uid": "yandex-session-failure",
+      "orgID": 1,
+      "folderUID": "automation",
+      "ruleGroup": "Yandex calendar",
+      "title": "Yandex calendar session or announcement failed",
+      "condition": "C",
+      "for": "1m",
+      "noDataState": "Alerting",
+      "execErrState": "Alerting",
+      "isPaused": false,
+      "labels": {
+        "namespace": "automation",
+        "component": "yandex-calendar",
+        "severity": "warning"
+      },
+      "annotations": {
+        "summary": "Yandex calendar session or announcement failed",
+        "description": "Automatic session renewal or speech delivery failed. Inspect Yandex Session Maintenance and the failed calendar execution; follow docs/n8n/setup.md. Never paste tokens in chat."
+      },
+      "notification_settings": {
+        "receiver": "Yandex calendar via Socrat Alerts",
+        "group_by": [
+          "alertname"
+        ],
+        "group_wait": "30s",
+        "group_interval": "5m",
+        "repeat_interval": "4h"
+      },
+      "data": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "relativeTimeRange": {
+            "from": 2400,
+            "to": 0
+          },
+          "datasourceUid": "loki",
+          "model": {
+            "datasource": {
+              "type": "loki",
+              "uid": "loki"
+            },
+            "editorMode": "code",
+            "expr": "sum(count_over_time({k8s_namespace_name=\"automation\"} |= \"yandex-calendar\" | json | event=~\"session_check_failed|announcement_failed\" [20m])) or vector(0)",
+            "queryType": "instant",
+            "refId": "A",
+            "intervalMs": 1000,
+            "maxDataPoints": 43200
+          }
+        },
+        {
+          "refId": "C",
+          "relativeTimeRange": {
+            "from": 0,
+            "to": 0
+          },
+          "datasourceUid": "__expr__",
+          "model": {
+            "refId": "C",
+            "type": "threshold",
+            "expression": "A",
+            "conditions": [
+              {
+                "evaluator": {
+                  "params": [
+                    0
+                  ],
+                  "type": "gt"
+                },
+                "operator": {
+                  "type": "and"
+                },
+                "query": {
+                  "params": [
+                    "C"
+                  ]
+                },
+                "reducer": {
+                  "params": [],
+                  "type": "last"
+                },
+                "type": "query"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "uid": "yandex-session-missing",
+      "orgID": 1,
+      "folderUID": "automation",
+      "ruleGroup": "Yandex calendar",
+      "title": "Yandex session maintenance heartbeat missing",
+      "condition": "C",
+      "for": "2m",
+      "noDataState": "Alerting",
+      "execErrState": "Alerting",
+      "isPaused": false,
+      "labels": {
+        "namespace": "automation",
+        "component": "yandex-calendar",
+        "severity": "warning"
+      },
+      "annotations": {
+        "summary": "Yandex session maintenance heartbeat missing",
+        "description": "No successful silent session renewal check for 40 minutes. Check n8n, maintenance activation and log ingestion; follow docs/n8n/setup.md."
+      },
+      "notification_settings": {
+        "receiver": "Yandex calendar via Socrat Alerts",
+        "group_by": [
+          "alertname"
+        ],
+        "group_wait": "30s",
+        "group_interval": "5m",
+        "repeat_interval": "4h"
+      },
+      "data": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "relativeTimeRange": {
+            "from": 2400,
+            "to": 0
+          },
+          "datasourceUid": "loki",
+          "model": {
+            "datasource": {
+              "type": "loki",
+              "uid": "loki"
+            },
+            "editorMode": "code",
+            "expr": "sum(count_over_time({k8s_namespace_name=\"automation\"} |= \"yandex-calendar\" | json | event=\"session_check_ok\" [40m])) or vector(0)",
+            "queryType": "instant",
+            "refId": "A",
+            "intervalMs": 1000,
+            "maxDataPoints": 43200
+          }
+        },
+        {
+          "refId": "C",
+          "relativeTimeRange": {
+            "from": 0,
+            "to": 0
+          },
+          "datasourceUid": "__expr__",
+          "model": {
+            "refId": "C",
+            "type": "threshold",
+            "expression": "A",
+            "conditions": [
+              {
+                "evaluator": {
+                  "params": [
+                    1
+                  ],
+                  "type": "lt"
+                },
+                "operator": {
+                  "type": "and"
+                },
+                "query": {
+                  "params": [
+                    "C"
+                  ]
+                },
+                "reducer": {
+                  "params": [],
+                  "type": "last"
+                },
+                "type": "query"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

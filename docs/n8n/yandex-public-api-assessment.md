@@ -1,14 +1,13 @@
 # Yandex Station Midi: public API assessment (2026-11-03)
 
-## Decision and current state
+## Historical assessment and subsequent exception
 
-User requires **only `https://api.iot.yandex.net` with OAuth**. Internal Quasar
-HTTP APIs, Cookie/CSRF, Glagol and voice proxy fallbacks are not permitted.
-The assessment initially paused the calendar. The user subsequently agreed to
-the fixed-scenario replacement: the workflow is now **active**, with a single
-public scenario-launch POST and native bearer credentials. Old internal nodes and
-Cookie/CSRF credentials were removed. `sync.py` enforces the public-only route.
-See `setup.md`; do not restore the superseded internal implementation.
+This records the verified public API limitation, not the current production
+architecture. The fixed-scenario public replacement worked but did not speak event
+titles. The user subsequently **allowed an internal API exception for calendar
+voice, with automatic session renewal**. Current native CUSTOM.yandexStation,
+maintenance and alerting are documented in `setup.md`. Public API remains preferred
+for other integrations; do not generalize this exception or restore a voice proxy.
 
 ## Evidence
 

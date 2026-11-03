@@ -24,7 +24,7 @@ class CalendarTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):sync.render_workflow(self.template,{}, {})
     def test_maintenance_renews_without_speech(self):
         t=json.loads((BASE/'docs/n8n/yandex-session-maintenance.json').read_text());w=sync.render_workflow(t,self.creds,{})
-        n=next(n for n in w['nodes']if n['type']=='CUSTOM.yandexStation');self.assertEqual(n['parameters']['operation'],'check');self.assertTrue(n['parameters']['forceRefresh'])
+        n=next(n for n in w['nodes']if n['type']=='CUSTOM.yandexStation');self.assertEqual(n['parameters']['operation'],'check');self.assertFalse(n['parameters']['forceRefresh'])
     def test_failed_call_does_not_mark(self):
         code=next(n for n in self.render()['nodes']if n['name']=='Mark Announced')['parameters']['jsCode']
         script='const s={};const f=new Function("items","$getWorkflowStaticData","$",'+json.dumps(code)+');try{f([{json:{status:"error"}}],()=>s,()=>({itemMatching:()=>({json:{dedupKey:"a"}})}));process.exit(1)}catch(e){};if(s.voiced.a)process.exit(2);f([{json:{status:"ok"}}],()=>s,()=>({itemMatching:()=>({json:{dedupKey:"a"}})}));if(!s.voiced.a)process.exit(3);'
