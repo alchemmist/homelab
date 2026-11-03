@@ -36,7 +36,7 @@ metadata:
   namespace: pr-agent
 spec:
   schedule: "*/20 * * * *"
-  suspend: true
+  suspend: false
   concurrencyPolicy: Forbid
   startingDeadlineSeconds: 600
   successfulJobsHistoryLimit: 1
@@ -132,7 +132,7 @@ spec:
             - name: PYTHONPATH
               value: /tmp/py
             - name: WRITE_ENABLED
-              value: "false"
+              value: "true"
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

@@ -67,7 +67,7 @@ def stage(name, payload, bot=None, homelab=None, call_model=None, write=False):
     if not candidates:
         return [payload]
     call_model = call_model or model
-    prompt = ('You close stale GitHub pull requests. Every candidate was opened by socrat-pr-agent '
+    prompt = ('You close stale GitHub pull requests. Every candidate was opened by socrat-bot '
               'to refresh the Socrat Bot wiki page from openapi.yaml. Close a candidate only when it is '
               'that same kind of refresh and is older or redundant relative to the survivor. '
               'Never invent numbers. Return JSON {"close": [numbers]}.')

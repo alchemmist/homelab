@@ -102,7 +102,7 @@ class Homelab:
             for pr in batch:
                 if pr.get('number') == keep:
                     continue
-                if MARKER in (pr.get('body') or '') and pr.get('user', {}).get('login') == 'socrat-pr-agent[bot]':
+                if MARKER in (pr.get('body') or '') and pr.get('user', {}).get('login') == 'socrat-bot[bot]':
                     found.append({'number': pr['number'], 'title': pr['title'],
                                   'body': (pr.get('body') or '')[:800], 'url': pr['html_url']})
             if len(batch) < 50:
