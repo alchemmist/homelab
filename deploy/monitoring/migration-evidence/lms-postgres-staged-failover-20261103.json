@@ -1,0 +1,13 @@
+{
+  "verifiedAt": "2026-11-03T09:34:09.508928+00:00",
+  "success": true,
+  "test": "staging primary pod deletion while its node is cordoned",
+  "oldPrimary": "lms-ha-1",
+  "newPrimary": "lms-ha-2",
+  "oldPrimaryNode": "socrat-3",
+  "failoverAndWriteProbeSeconds": 43.65,
+  "acknowledgedMarkerPreserved": true,
+  "newPrimaryWriteSucceeded": true,
+  "nodeUncordoned": true,
+  "powerLossOrNetworkPartitionTested": false
+}

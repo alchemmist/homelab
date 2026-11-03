@@ -1,0 +1,77 @@
+{{- if .Values.backup.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: lms-database-backup
+spec:
+  schedule: {{ .Values.backup.schedule | quote }}
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 300
+      template:
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsUser: 999
+            runAsGroup: 999
+            fsGroup: 999
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: backup
+              image: {{ .Values.backup.image }}
+              command: [sh, -c]
+              args:
+                - |
+{{ .Files.Get "files/backup.sh" | indent 18 }}
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: lms-ha-app
+                      key: password
+              resources:
+                requests: {cpu: 50m, memory: 64Mi}
+                limits: {memory: 256Mi}
+              securityContext:
+                readOnlyRootFilesystem: true
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: [ALL]
+              volumeMounts:
+                - name: backups
+                  mountPath: /backups
+                - name: ca
+                  mountPath: /etc/postgres-ca
+                  readOnly: true
+                - name: backup-key
+                  mountPath: /backup-key
+                  readOnly: true
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: backups
+              persistentVolumeClaim:
+                claimName: lms-database-backups
+            - name: ca
+              secret:
+                secretName: lms-ha-ca
+                items:
+                  - key: ca.crt
+                    path: ca.crt
+            - name: backup-key
+              secret:
+                secretName: lms-backup-key
+                defaultMode: 288
+            - name: tmp
+              emptyDir:
+                medium: Memory
+                sizeLimit: 128Mi
+{{- end }}

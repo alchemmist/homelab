@@ -1,20 +1,27 @@
 #!/usr/bin/env python3
 """Run a private pg_dump/restore Job; never fetch credentials or dump data."""
 import argparse
+import base64
+from urllib.parse import urlsplit
 import json
 from pathlib import Path
 import subprocess
+import shlex
 from datetime import datetime, timezone
 ROOT=Path(__file__).resolve().parents[1]
 
 
 def kube(*args, document=None):
-    r=subprocess.run(['ssh','-o','BatchMode=yes','socrat-0','kubectl',*args],input=json.dumps(document) if document else None,capture_output=True,text=True,timeout=180)
+    r=subprocess.run(['ssh','-o','BatchMode=yes','socrat-0',shlex.join(['kubectl',*args])],input=json.dumps(document) if document else None,capture_output=True,text=True,timeout=180)
     if r.returncode:raise RuntimeError('Kubernetes operation failed: '+r.stderr[-1500:])
     return r.stdout
 
 
 def run(args):
+    secret=json.loads(kube('-n','lms','get','secret','lms-db','-o','json'))
+    host=urlsplit(base64.b64decode(secret['data']['LMS_DATABASE_URL']).decode()).hostname
+    if host not in {'lms-postgres','lms-postgres.lms.svc.cluster.local'}:
+        raise ValueError('Refusing to overwrite HA database: application no longer uses legacy DB')
     if not args.rehearsal and not args.confirm_web_stopped:
         raise ValueError('Final copy requires --confirm-web-stopped')
     if not args.rehearsal:
