@@ -15,6 +15,7 @@ inspector/redirect controls.** Это консолидированное опи�
 | Как войти, добавить человека, выдать/отозвать права, работать с MFA | [Ежедневные операции](identity-operations.md) |
 | Двойной логин, consent offline_access, Failed to fetch, открытая проблема n8n | [Диагностика SSO и gateway](identity-gateway-troubleshooting.md) |
 | Что сделано для каждого сервиса и как подключать следующий | [Интеграции](identity-integrations.md) |
+| Как добавить username + публичный SSH-ключ на ноды одним Ansible playbook | [SSH: короткая инструкция](ssh-user.md) |
 | Как отдельно устроены Linux/SSH, sudo, kubeconfig и Kubernetes RBAC | [Host access](identity-host-access.md) |
 | Где frontend/CSS, shadow DOM, фото/шрифты/иконки, inspector, rollback | [Quiet Mono frontend](identity-frontend.md) |
 | Backups, restore checks, аварии, диагностика, tests и безопасный push | [Восстановление и сопровождение](identity-recovery.md) |

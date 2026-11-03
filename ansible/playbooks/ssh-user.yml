@@ -1,0 +1,9 @@
+---
+- name: Ensure one personal non-sudo SSH account and public key on cluster nodes
+  hosts: Socrat
+  gather_facts: false
+  become: true
+  strategy: linear
+  any_errors_fatal: true
+  roles:
+    - ssh_user

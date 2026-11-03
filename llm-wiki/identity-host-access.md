@@ -6,7 +6,9 @@
 ## 1. Источники
 
 - `ansible/roles/users/tasks/main.yml`, `files/verify.py` — restricted personal users.
-- `ansible/playbooks/users.yml` — применение личных host accounts.
+- `ansible/playbooks/ssh-user.yml`, роль `ssh_user` — ручной username + один public key,
+  добавление без удаления остальных ключей: [короткая инструкция](ssh-user.md).
+- `ansible/playbooks/users.yml` — точный декларативный key set из inventory.
 - `ansible/playbooks/identity-hosts.yml` — защита owner kubeconfig + users playbook.
 - Inventory/group/host vars `homelab_users` — реальные публичные ключи и assignments.
 - `deploy/identity/access-policy.yaml` — intent ролей, не самостоятельный enforcement.
@@ -41,6 +43,13 @@ disk/lxd/incus/kvm/libvirt. Но чужие sudoers rules не угадывае�
 нужен именно потому, что привилегия может прийти не из одного файла/группы.
 
 ## 3. Как добавить Linux-доступ
+
+**Обычный ручной сценарий:** [username + `.pub` → `ssh-user.yml`](ssh-user.md).
+Authentik и workflow не нужны. Этот отдельный play добавляет один ключ, проверяет
+каждую выбранную ноду и не удаляет другие ключи. Дальше описан другой,
+декларативный путь через `homelab_users` с **полной заменой** key set.
+Не путать семантику двух playbooks. Если account уже в inventory, новый public
+key сначала должен быть одобрен и добавлен туда — ручной play это проверяет.
 
 Сначала отдельно согласовать **какие hosts**, зачем shell, срок и конкретные
 public keys. Личность/ключ fingerprint подтвердить через независимый канал.

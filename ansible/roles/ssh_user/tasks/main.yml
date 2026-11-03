@@ -1,0 +1,141 @@
+---
+- name: Require an explicit username and controller-side public key file
+  ansible.builtin.assert:
+    that:
+      - ssh_username is defined
+      - ssh_public_key_file is defined
+      - ssh_username != (ansible_user | default('alchemmist'))
+    fail_msg: Supply ssh_username and ssh_public_key_file; never target the existing transport/owner account.
+
+- name: Validate the public key with the real OpenSSH parser before any remote changes
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_playbook_python }}"
+      - "{{ role_path }}/files/check.py"
+      - validate
+      - --username
+      - "{{ ssh_username }}"
+    stdin: "{{ lookup('ansible.builtin.file', ssh_public_key_file, rstrip=false) }}"
+    stdin_add_newline: false
+  delegate_to: localhost
+  become: false
+  check_mode: false
+  changed_when: false
+  register: ssh_user_validated
+  no_log: true
+
+- name: Retain only validated public material
+  ansible.builtin.set_fact:
+    ssh_user_key: "{{ ssh_user_validated.stdout | from_json }}"
+  no_log: true
+
+- name: Respect existing inventory ownership and disabled assignments
+  ansible.builtin.assert:
+    that:
+      - item.state | default('present') == 'present'
+      - item.hosts is not defined or inventory_hostname in item.hosts
+      - ssh_user_key.public_key in (item.authorized_keys | map('regex_search', '^[^ ]+ [^ ]+') | list)
+    fail_msg: This account is managed by homelab_users. Review its host/state/key set in inventory first; users.yml would otherwise undo this addition.
+  loop: "{{ homelab_users | default([]) | selectattr('name', 'equalto', ssh_username) | list }}"
+  loop_control:
+    label: "{{ ssh_username }}"
+
+- name: Preflight account identity, SSH policy, existing keys and privilege isolation on every node
+  ansible.builtin.script:
+    cmd: "{{ role_path }}/files/check.py inspect --username {{ ssh_user_key.username }} --fingerprint {{ ssh_user_key.fingerprint }}"
+    executable: python3
+  check_mode: false
+  changed_when: false
+  register: ssh_user_before_raw
+
+- name: Parse account preflight
+  ansible.builtin.set_fact:
+    ssh_user_before: >-
+      {{ ssh_user_before_raw.stdout | regex_search('(?m)[{]"username":.*[}]') | from_json }}
+
+- name: Report requested state without exposing public key contents
+  ansible.builtin.debug:
+    msg:
+      node: "{{ inventory_hostname }}"
+      username: "{{ ssh_user_key.username }}"
+      fingerprint: "{{ ssh_user_key.fingerprint }}"
+      account_exists: "{{ ssh_user_before.exists }}"
+      key_present: "{{ ssh_user_before.has_requested_key }}"
+      check_mode: "{{ ansible_check_mode }}"
+
+- name: Ensure a local password-locked account without adding or removing supplementary groups
+  ansible.builtin.user:
+    name: "{{ ssh_user_key.username }}"
+    state: present
+    create_home: true
+    home: "/home/{{ ssh_user_key.username }}"
+    shell: "{{ omit if ssh_user_before.exists else '/bin/bash' }}"
+    password_lock: true
+    groups: "{{ omit if ssh_user_before.exists else '' }}"
+    append: false
+
+- name: Verify the created account is still non-privileged before granting a key
+  ansible.builtin.script:
+    cmd: "{{ role_path }}/files/check.py inspect --username {{ ssh_user_key.username }} --fingerprint {{ ssh_user_key.fingerprint }}"
+    executable: python3
+  check_mode: false
+  changed_when: false
+  register: ssh_user_account_raw
+  when: not ansible_check_mode
+
+- name: Parse confirmed account identity
+  ansible.builtin.set_fact:
+    ssh_user_account: >-
+      {{ ssh_user_account_raw.stdout | regex_search('(?m)[{]"username":.*[}]') | from_json }}
+  when: not ansible_check_mode
+
+- name: Require target-user execution before any SSH path writes
+  become_user: "{{ ssh_user_key.username }}"
+  ansible.builtin.script:
+    cmd: "{{ role_path }}/files/check.py as-user --username {{ ssh_user_key.username }}"
+    executable: python3
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Ensure the private SSH directory
+  become_user: "{{ ssh_user_key.username }}"
+  ansible.builtin.file:
+    path: "/home/{{ ssh_user_key.username }}/.ssh"
+    state: directory
+    owner: "{{ ssh_user_key.username }}"
+    group: "{{ ssh_user_account.group }}"
+    mode: "0700"
+    follow: false
+  when: not ansible_check_mode
+
+- name: Add only the missing public key without replacing others or weakening existing key options
+  become_user: "{{ ssh_user_key.username }}"
+  ansible.posix.authorized_key:
+    user: "{{ ssh_user_key.username }}"
+    key: "{{ ssh_user_key.public_key }}"
+    state: present
+    exclusive: false
+    manage_dir: false
+    follow: false
+  when:
+    - not ansible_check_mode
+    - not ssh_user_account.has_requested_key
+  no_log: true
+
+- name: Ensure private authorized_keys permissions
+  become_user: "{{ ssh_user_key.username }}"
+  ansible.builtin.file:
+    path: "/home/{{ ssh_user_key.username }}/.ssh/authorized_keys"
+    state: file
+    owner: "{{ ssh_user_key.username }}"
+    group: "{{ ssh_user_account.group }}"
+    mode: "0600"
+    follow: false
+  when: not ansible_check_mode
+
+- name: Require the requested key, password lock, safe permissions and no privileges after apply
+  ansible.builtin.script:
+    cmd: "{{ role_path }}/files/check.py inspect --username {{ ssh_user_key.username }} --fingerprint {{ ssh_user_key.fingerprint }} --enforce"
+    executable: python3
+  changed_when: false
+  when: not ansible_check_mode

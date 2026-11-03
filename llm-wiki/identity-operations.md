@@ -183,6 +183,11 @@ fallback/old sessions: это часть оставшегося cluster-wide lif
 
 ## 7. SSH и доступ администратора к операциям
 
+Для нового личного Linux-аккаунта без sudo достаточно
+[ручного `ssh-user.yml`: username + публичный `.pub`](ssh-user.md).
+Authentik/n8n для этого не нужны; NetBird, роли приложений и Kubernetes выдаются
+отдельно. Старый `users.yml` ниже остаётся exact-key inventory management.
+
 Отдельный [host-access runbook](identity-host-access.md) описывает точные assignments,
 key replacement, disabled state, sudo verification и отзыв на прежних хостах.
 
