@@ -182,3 +182,9 @@ independent recent-log panel cannot accidentally make this check pass.
 
 The dashboard pins the existing datasource UIDs `tempo` and `loki` directly.
 There are no datasource-selection variables; only the trace selector is shown.
+
+Selected-trace log lookup covers the last **7 days**, matching Tempo retention
+(Loki retains 14 days). Tempo tag discovery is block-granular: a narrow `now-5m`
+range can offer an older retained trace. Its matching logs must not be cut off
+by that narrow dashboard interval. The independent recent-log panel continues
+to follow the selected dashboard interval.

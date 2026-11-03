@@ -110,3 +110,12 @@ def test_dashboard_pins_existing_datasources_without_redundant_selectors():
             assert panel['datasource'] == {'type':expected,'uid':expected}
     assert '${tempo}' not in json.dumps(dashboard)
     assert '${loki}' not in json.dumps(dashboard)
+
+
+def test_selected_trace_logs_cover_tempo_retention_not_only_narrow_dashboard_range():
+    dashboard = json.loads((ROOT/'charts/lms/files/lms-performance.json').read_text())
+    logs = next(panel for panel in dashboard['panels'] if panel['id']==4)
+    assert logs['timeFrom']=='7d'
+    assert logs['targets'][0]['expr']=='{k8s_namespace_name="lms"} |= "http trace_id=${trace_id}"'
+    recent = next(panel for panel in dashboard['panels'] if panel['id']==5)
+    assert 'timeFrom' not in recent

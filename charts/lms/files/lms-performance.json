@@ -2,7 +2,7 @@
   "uid": "lms-performance",
   "title": "LMS \u00b7 Performance & distributed traces",
   "schemaVersion": 39,
-  "version": 3,
+  "version": 4,
   "tags": [
     "lms",
     "performance",
@@ -53,7 +53,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "The dashboard automatically selects a retained LMS trace from the chosen time range. Use **Trace ID** to select another, or click a trace in the search table to open Explore. The waterfall shows browser, Traefik, LMS and database operations. Selected-trace logs use the real LMS namespace; recent application logs below work independently of trace selection. If the selected time range has no retained traces, choose a recent/wider range. Old trace links may expire according to Tempo retention; this is not a collector failure."
+        "content": "The dashboard automatically selects a retained LMS trace from the chosen time range. Use **Trace ID** to select another, or click a trace in the search table to open Explore. The waterfall shows browser, Traefik, LMS and database operations. Selected-trace logs search the 7-day trace-retention window; recent application logs below follow the dashboard time range independently of trace selection. If the selected time range has no retained traces, choose a recent/wider range. Old trace links may expire according to Tempo retention; this is not a collector failure."
       }
     },
     {
@@ -108,7 +108,7 @@
     {
       "id": 4,
       "type": "logs",
-      "title": "Correlated Loki logs \u00b7 selected trace",
+      "title": "Correlated Loki logs \u00b7 selected trace (7-day lookup)",
       "datasource": {
         "type": "loki",
         "uid": "loki"
@@ -122,7 +122,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "{k8s_namespace_name=\"lms\"} |= \"http trace_id=\" |~ \"${trace_id:regex}\"",
+          "expr": "{k8s_namespace_name=\"lms\"} |= \"http trace_id=${trace_id}\"",
           "queryType": "range",
           "maxLines": 100
         }
@@ -132,7 +132,8 @@
         "wrapLogMessage": true,
         "sortOrder": "Descending"
       },
-      "description": "Matches the selected retained trace in the dashboard time range. Trace and log retention are independent; use recent application logs below when investigating old or unavailable IDs."
+      "description": "Searches the last 7 days, matching Tempo retention, independently of a narrow dashboard range. Tempo tag discovery is block-granular and may offer an older retained trace. Recent application logs below still follow the dashboard range.",
+      "timeFrom": "7d"
     },
     {
       "id": 5,
