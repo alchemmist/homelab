@@ -8,9 +8,11 @@ identity rather than just alert-name equality. Closed issues do not prevent a ne
 incident issue. Distinguish service impact from monitoring quality; a brief or
 self-resolved incident is not automatically a false positive.
 
-Initial deployment is **dry-run** (`charts/spi-triage/values.yaml: writeEnabled: false`).
-No production issue/comment is posted until a deliberate write-enabled rollout.
-Deployment and live validation evidence are added after verification, not assumed.
+Deployment was first verified in **dry-run**, then SPI publication was enabled
+(`charts/spi-triage/values.yaml: writeEnabled: true`) within the operator-authorized
+implementation. The independent blog worker remains write-disabled. Historical
+dry-run jobs are not replayed. Set SPI writeEnabled=false to pause publication
+without changing Telegram delivery or the blog policy.
 Operator progress checklist: `/tmp/socrat-spi-implementation-plan.md` on the agent host.
 
 ## Architecture
@@ -106,7 +108,30 @@ not a raw live file copy. PVC keep/Prune=false is not a backup schedule. Complet
 job/evidence retention is not automated yet; monitor disk usage before expanding
 traffic. Never erase pending/ambiguous-publication state to clear an alert.
 
-Before enabling writes verify: real model dry-run, semantic same/different issue
-fixtures, English output, duplicate and resolved handling, webhook auth rejection,
-Telegram delivery, worker restart recovery, token renewal, live/source equality,
-and observability. Dry-run historical jobs are not automatically replayed on rollout.
+## Verified acceptance
+
+- 62 local tests: 29 SPI Python, five native ingress, nine Yandex client, six calendar,
+  thirteen blog. Helm templates render with the pinned images.
+- Authenticated ingress execution **1927** persisted its group and the bot returned
+  a message record. No ingress/worker/GitHub token appeared in its execution data.
+- Unauthorized webhook returned **401**. Both Grafana receivers and live Alertmanager
+  use the dedicated ingress credential; migration mode is disabled.
+- Synthetic report and real KubeJobFailed report completed in dry-run. Execution
+  **1976** completed all seven triage nodes; reports rendered English `[SPI]` titles.
+- Identical delivery increased the existing terminal job's delivery counter without
+  creating a new analysis. SQLite online backup copied off-node and integrity checked.
+- Real worker rollout preserved queued/done jobs and recovered one interrupted job.
+- Scheduled GitHub broker refresh succeeded; installation token repository inventory
+  contained only `alchemmist/homelab`. Current 20-minute schedule allows renewal margin.
+- Original Socrat Alerts **b2TlucyOTiZP9CzN** and SPI Incident Triage
+  **J9akzlydrf9XZiID** are active and rendered parameters/connections match live.
+- All four Grafana SPI rules evaluated inactive/health=ok after provisioning.
+
+Shared local inference can take minutes. Triage is asynchronous, not a promise of
+instant diagnosis; 3 RPM pacing, deadlines and pending-age alert make contention
+visible. Review early report quality: a plausible hypothesis is not established
+root cause. Publication create/comment and ambiguous-write recovery are covered
+by tests. Real publication verified: [SPI #9](https://github.com/alchemmist/homelab/issues/9),
+authored by `socrat-pr-agent[bot]`, English title/body, matching event marker, no
+known worker/model/Grafana/GitHub token values. The post-publication off-node
+state backup includes its completed job. Historical synthetic reports were not posted.

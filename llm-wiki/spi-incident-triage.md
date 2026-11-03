@@ -30,12 +30,21 @@ one-hour repo-scoped tokens every 20 minutes without PR write and patches only a
 Worker uses Viewer Grafana access and a separate capped LiteLLM qwen3.8-27b key.
 Dedicated SQLite PVC is NOT the n8n database; never modify n8n SQLite for this feature.
 
-## Initial acceptance status
+## Deployment and acceptance status
 
-Implementation is initially **dry-run**, GitHub writes disabled. Unit coverage:
-29 Python tests and five authenticated webhook tests. Real deployment/model,
-Telegram regression and token rotation require live verification before claiming
-completion. Consult the runbook and current operator checklist for later evidence.
+SPI publication is **enabled after live dry-run** (SPI writeEnabled=true).
+Blog WRITE_ENABLED remains false. Do not transfer one worker's rollout policy to
+another. Historical dry-run reports are not replayed or posted as test issues.
+
+62 local tests pass: 29 SPI Python + five ingress + nine Yandex + six calendar +
+thirteen blog. Live authenticated ingress/Telegram execution 1927, full real-alert
+dry-run execution 1976, HTTP401 rejection, scheduled App-token refresh, duplicate
+suppression and worker restart recovery verified. Both workflows are active and
+rendered parameters/connections match live. Four Grafana SPI rules evaluated healthy.
+Known secrets were absent from ingress execution data; consistent SPI off-node
+backup integrity checked. First real issue: [SPI #9](https://github.com/alchemmist/homelab/issues/9),
+authored by socrat-pr-agent[bot], English title/body and marker verified. Post-publication
+queue state has a verified off-node copy. See the runbook for exact IDs.
 
 Do not bypass the ingress auth rollout. Legacy migration mode permits Telegram
 only; unauthenticated requests must never enqueue SPI. Queue failure returns 503
