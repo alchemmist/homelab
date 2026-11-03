@@ -178,3 +178,7 @@ high-cardinality tag values chronologically.
 
 Log assertions are scoped to the correlated panel itself: matching lines in the
 independent recent-log panel cannot accidentally make this check pass.
+
+
+The dashboard pins the existing datasource UIDs `tempo` and `loki` directly.
+There are no datasource-selection variables; only the trace selector is shown.

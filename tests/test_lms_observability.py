@@ -98,3 +98,15 @@ def test_correlations_preserve_credentials_and_survive_refresh():
         source = (ROOT/'scripts'/script).read_text()
         assert 'trace_id=([0-9a-f]{32})' in source
         assert '$${__value.raw}' in source
+
+
+def test_dashboard_pins_existing_datasources_without_redundant_selectors():
+    dashboard = json.loads((ROOT/'charts/lms/files/lms-performance.json').read_text())
+    assert [variable['name'] for variable in dashboard['templating']['list']] == ['trace_id']
+    assert dashboard['templating']['list'][0]['datasource'] == {'type':'tempo','uid':'tempo'}
+    for panel in dashboard['panels']:
+        if 'datasource' in panel:
+            expected = 'loki' if panel['type']=='logs' else 'tempo'
+            assert panel['datasource'] == {'type':expected,'uid':expected}
+    assert '${tempo}' not in json.dumps(dashboard)
+    assert '${loki}' not in json.dumps(dashboard)

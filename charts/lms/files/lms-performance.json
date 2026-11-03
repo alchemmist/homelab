@@ -2,7 +2,7 @@
   "uid": "lms-performance",
   "title": "LMS \u00b7 Performance & distributed traces",
   "schemaVersion": 39,
-  "version": 2,
+  "version": 3,
   "tags": [
     "lms",
     "performance",
@@ -17,30 +17,12 @@
   "templating": {
     "list": [
       {
-        "name": "tempo",
-        "type": "datasource",
-        "query": "tempo",
-        "current": {
-          "text": "Tempo",
-          "value": "tempo"
-        }
-      },
-      {
-        "name": "loki",
-        "type": "datasource",
-        "query": "loki",
-        "current": {
-          "text": "Loki",
-          "value": "loki"
-        }
-      },
-      {
         "name": "trace_id",
         "type": "query",
         "label": "Trace ID (auto-selected from available traces)",
         "datasource": {
           "type": "tempo",
-          "uid": "${tempo}"
+          "uid": "tempo"
         },
         "query": {
           "type": 1,
@@ -80,7 +62,7 @@
       "title": "Recent LMS traces (TraceQL)",
       "datasource": {
         "type": "tempo",
-        "uid": "${tempo}"
+        "uid": "tempo"
       },
       "gridPos": {
         "x": 0,
@@ -107,7 +89,7 @@
       "title": "Distributed waterfall \u00b7 $trace_id",
       "datasource": {
         "type": "tempo",
-        "uid": "${tempo}"
+        "uid": "tempo"
       },
       "gridPos": {
         "x": 0,
@@ -129,7 +111,7 @@
       "title": "Correlated Loki logs \u00b7 selected trace",
       "datasource": {
         "type": "loki",
-        "uid": "${loki}"
+        "uid": "loki"
       },
       "gridPos": {
         "x": 0,
@@ -158,7 +140,7 @@
       "title": "Recent LMS application logs \u00b7 all requests",
       "datasource": {
         "type": "loki",
-        "uid": "${loki}"
+        "uid": "loki"
       },
       "gridPos": {
         "x": 0,

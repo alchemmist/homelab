@@ -11,6 +11,7 @@ try {
     await page.goto('https://grafana.socrat.alchemmist.xyz/d/lms-performance' + suffix, { waitUntil: 'domcontentloaded' });
     const waterfall = page.getByRole('region').filter({ hasText: 'Distributed waterfall' }).first();
     await waterfall.waitFor({ state: 'visible', timeout: 45000 });
+    if (await page.getByRole('combobox', { name: /^(tempo|loki)$/i }).count()) throw new Error('Redundant datasource selector is still visible');
     await waterfall.scrollIntoViewIfNeeded();
     await page.waitForFunction(() => document.body.innerText.includes('Service & Operation'), null, { timeout: 45000 });
     const id = (await waterfall.innerText()).match(/[0-9a-f]{32}/)?.[0];
