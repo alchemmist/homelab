@@ -2,7 +2,7 @@
   "uid": "lms-performance",
   "title": "LMS \u00b7 Performance & distributed traces",
   "schemaVersion": 39,
-  "version": 6,
+  "version": 7,
   "tags": [
     "lms",
     "performance",
@@ -149,6 +149,14 @@
         "sortOrder": "Descending"
       },
       "description": "Independent of trace selection. Ensures current collection can be checked even when an old selected trace has expired."
+    }
+  ],
+  "links": [
+    {
+      "title": "CPU flame graphs",
+      "type": "link",
+      "url": "/d/service-cpu-profiling",
+      "targetBlank": false
     }
   ]
 }

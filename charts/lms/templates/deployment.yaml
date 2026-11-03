@@ -57,6 +57,12 @@ spec:
                   name: socrat-authentik-lms
                   key: client-secret
                   optional: true
+{{- if .Values.profiling.enabled }}
+            - name: LMS_PROFILING_ENABLED
+              value: "1"
+            - name: LMS_PROFILING_ENDPOINT
+              value: {{ .Values.profiling.endpoint | quote }}
+{{- end }}
 {{- if .Values.tracing.enabled }}
             - name: LMS_TRACING_ENABLED
               value: "1"

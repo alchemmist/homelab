@@ -41,3 +41,7 @@ tracing:
   endpoint: https://10.250.0.3:44318/v1/traces
   secretName: otel-app-tls-lms
   grafanaDashboard: true
+
+profiling:
+  enabled: false
+  endpoint: http://pyroscope.cattle-monitoring-system.svc.cluster.local:4040
