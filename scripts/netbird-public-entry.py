@@ -24,8 +24,9 @@ def manifests():
     docs = nb.edge_manifests(c)
     for d in docs:
         d['metadata']['namespace'] = 'identity'
-        if d['metadata']['name'] == 'edge-forwarder':
-            d['metadata']['name'] = NAME
+        names = {'edge-forwarder': NAME, 'edge-forwarder-grpc': NAME+'-grpc'}
+        if d['metadata']['name'] in names:
+            d['metadata']['name'] = names[d['metadata']['name']]
         if d['kind'] == 'Deployment':
             pod = d['spec']['template']['spec']
             pod['volumes'][0]['configMap']['name'] = NAME
@@ -33,7 +34,8 @@ def manifests():
         if d['kind'] == 'Ingress':
             for rule in d['spec']['rules']:
                 for path in rule['http']['paths']:
-                    path['backend']['service']['name'] = NAME
+                    service = path['backend']['service']
+                    service['name'] = names[service['name']]
     # Only management HTTP Services: no NodePort, UDP/STUN, runtime secret exposure.
     for app in ['server', 'dashboard']:
         docs.append({'apiVersion': 'v1', 'kind': 'Service', 'metadata': {

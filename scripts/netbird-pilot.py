@@ -402,6 +402,15 @@ def edge_manifests(c):
         'selector': labels,
         'ports': [{'name': 'web', 'port': 8080, 'targetPort': 'web'},
                   {'name': 'h2c', 'port': 8082, 'targetPort': 'h2c'}]}))
+    # Traefik reads backend scheme from Service annotations, NOT Ingress annotations.
+    # A separate Service keeps REST/WebSocket HTTP/1.1 while preserving native gRPC
+    # bidirectional streams (Signal sends response headers before any request DATA).
+    grpc_service = obj_edge('Service', 'edge-forwarder-grpc', spec={
+        'selector': labels,
+        'ports': [{'name': 'h2c', 'port': 8082, 'targetPort': 'h2c'}]})
+    grpc_service['metadata']['annotations'] = {
+        'traefik.ingress.kubernetes.io/service.serversscheme': 'h2c'}
+    docs.append(grpc_service)
     # WebSocket and REST stay on HTTP/1.1. Native gRPC is a separate higher-priority h2c ingress.
     docs.append(ingress(c, 'netbird-http', ['/ws-proxy/', '/relay', '/api/', '/oauth2/', '/'], 8080, None, '10'))
     docs.append(ingress(c, 'netbird-grpc', list(GRPC_PREFIXES), 8082, 'h2c', '200'))
@@ -418,14 +427,14 @@ def obj_edge(kind, name, api='v1', **fields):
 def ingress(c, name, paths, port, scheme, priority):
     annotations = {'traefik.ingress.kubernetes.io/router.entrypoints': 'websecure',
                    'traefik.ingress.kubernetes.io/router.priority': priority}
-    if scheme:
-        annotations['traefik.ingress.kubernetes.io/service.serversscheme'] = scheme
+    require(scheme in (None, 'h2c'), 'unsupported edge backend scheme')
+    backend = 'edge-forwarder-grpc' if scheme == 'h2c' else 'edge-forwarder'
     body = obj_edge('Ingress', name, 'networking.k8s.io/v1', spec={
         'ingressClassName': c['ingress_class'],
         'tls': [{'hosts': [c['management_fqdn']], 'secretName': c['tls_secret_name']}],
         'rules': [{'host': c['management_fqdn'], 'http': {'paths': [{
             'path': path, 'pathType': 'Prefix',
-            'backend': {'service': {'name': 'edge-forwarder', 'port': {'number': port}}}}
+            'backend': {'service': {'name': backend, 'port': {'number': port}}}}
             for path in paths]}}]})
     body['metadata']['annotations'] = annotations
     return body

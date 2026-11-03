@@ -43,6 +43,23 @@ class PublicEntryTests(unittest.TestCase):
         self.assertEqual(rule['from'][0]['namespaceSelector']['matchLabels'],{'kubernetes.io/metadata.name':'identity'})
         self.assertEqual(rule['from'][0]['podSelector']['matchLabels'],{'app':'netbird-edge-forwarder'})
 
+    def test_grpc_scheme_is_on_dedicated_service_not_ingress(self):
+        docs=entry.manifests()
+        by_name={(d['kind'],d['metadata']['name']):d for d in docs}
+        key='traefik.ingress.kubernetes.io/service.serversscheme'
+        grpc=by_name['Service','netbird-edge-forwarder-grpc']
+        web=by_name['Service','netbird-edge-forwarder']
+        self.assertEqual(grpc['metadata']['annotations'][key],'h2c')
+        self.assertEqual(grpc['spec']['selector'],web['spec']['selector'])
+        self.assertEqual(grpc['spec']['ports'],[{'name':'h2c','port':8082,'targetPort':'h2c'}])
+        self.assertNotIn(key,web['metadata'].get('annotations',{}))
+        for name,target in [('netbird-grpc','netbird-edge-forwarder-grpc'),
+                            ('netbird-http','netbird-edge-forwarder')]:
+            ingress=by_name['Ingress',name]
+            self.assertNotIn(key,ingress['metadata']['annotations'])
+            self.assertTrue(all(p['backend']['service']['name']==target
+                                for p in ingress['spec']['rules'][0]['http']['paths']))
+
     def fixture(self):
         return {'id':owner.subject(),'email':owner.EMAIL,'idp_id':owner.CONNECTOR,
                 'is_service_user':False,'is_blocked':False,'pending_approval':False,'status':'active',

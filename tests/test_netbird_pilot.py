@@ -194,7 +194,18 @@ class PilotTests(unittest.TestCase):
         self.assertNotIn('NB_SETUP_PAT', text)
         self.assertNotIn('client_secret', text)
         grpc = next(x for x in docs if x['metadata'].get('name') == 'netbird-grpc')
-        self.assertEqual(grpc['metadata']['annotations']['traefik.ingress.kubernetes.io/service.serversscheme'], 'h2c')
+        scheme_key = 'traefik.ingress.kubernetes.io/service.serversscheme'
+        self.assertNotIn(scheme_key, grpc['metadata']['annotations'])
+        grpc_service = next(x for x in docs if x['kind'] == 'Service' and
+                            x['metadata']['name'] == 'edge-forwarder-grpc')
+        self.assertEqual(grpc_service['metadata']['annotations'][scheme_key], 'h2c')
+        self.assertEqual(grpc_service['spec']['ports'],
+                         [{'name': 'h2c', 'port': 8082, 'targetPort': 'h2c'}])
+        self.assertTrue(all(p['backend']['service']['name'] == 'edge-forwarder-grpc'
+                            for p in grpc['spec']['rules'][0]['http']['paths']))
+        web_service = next(x for x in docs if x['kind'] == 'Service' and
+                           x['metadata']['name'] == 'edge-forwarder')
+        self.assertNotIn(scheme_key, web_service['metadata'].get('annotations', {}))
         self.assertEqual([p['path'] for p in grpc['spec']['rules'][0]['http']['paths']],
                          ['/management.ManagementService/', '/signalexchange.SignalExchange/'])
         http = next(x for x in docs if x['metadata'].get('name') == 'netbird-http')
