@@ -104,3 +104,28 @@ def test_remote_canary_programs_are_valid_python_including_finally_cleanup():
         for node in snippets:
             program=''.join(v.value if isinstance(v,ast.Constant) else repr('synthetic-canary') for v in node.values)
             ast.parse(program)
+
+
+def test_copy_refuses_live_ha_or_unknown_endpoint_before_creating_job(monkeypatch):
+    import base64
+    import importlib.util
+    import json
+    from types import SimpleNamespace
+    import pytest
+    spec=importlib.util.spec_from_file_location('ha_copy',ROOT/'scripts/lms-ha-copy.py')
+    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+    for data in [
+        {'LMS_DATABASE_URL':base64.b64encode(b'postgresql://example@lms-ha-rw.lms.svc.cluster.local/lms').decode()},
+        {},
+        {'LMS_DATABASE_URL':'invalid-base64!'},
+        {'LMS_DATABASE_URL':base64.b64encode(b'').decode()},
+    ]:
+        calls=[]
+        def kube(*args, **kwargs):
+            calls.append(args)
+            assert args==('-n','lms','get','secret','lms-db','-o','json')
+            return json.dumps({'data':data})
+        monkeypatch.setattr(module,'kube',kube)
+        with pytest.raises(ValueError,match='Refusing'):
+            module.run(SimpleNamespace(rehearsal=True,confirm_web_stopped=True))
+        assert len(calls)==1

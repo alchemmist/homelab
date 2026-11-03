@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run a private pg_dump/restore Job; never fetch credentials or dump data."""
+"""Run a guarded private pg_dump/restore Job; never print credentials or dump data."""
 import argparse
 import base64
 from urllib.parse import urlsplit
@@ -19,7 +19,10 @@ def kube(*args, document=None):
 
 def run(args):
     secret=json.loads(kube('-n','lms','get','secret','lms-db','-o','json'))
-    host=urlsplit(base64.b64decode(secret['data']['LMS_DATABASE_URL']).decode()).hostname
+    try:
+        host=urlsplit(base64.b64decode(secret['data']['LMS_DATABASE_URL'], validate=True).decode()).hostname
+    except (KeyError, ValueError, UnicodeError):
+        raise ValueError('Refusing restore: application database endpoint cannot be verified') from None
     if host not in {'lms-postgres','lms-postgres.lms.svc.cluster.local'}:
         raise ValueError('Refusing to overwrite HA database: application no longer uses legacy DB')
     if not args.rehearsal and not args.confirm_web_stopped:
