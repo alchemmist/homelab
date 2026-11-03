@@ -1,0 +1,39 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: lms-availability
+  namespace: cattle-monitoring-system
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: lms.availability
+      rules:
+        - alert: LMSWebUnavailable
+          expr: kube_deployment_status_replicas_available{namespace="lms",deployment="lms"} < 1
+          for: 1m
+          labels: {severity: critical, service: lms}
+          annotations:
+            summary: LMS has no available web worker.
+            description: Check the database primary endpoint, app startup and node readiness. Do not create a blank database to restore availability.
+        - alert: LMSDatabaseQuorumAtRisk
+          expr: (sum(max by (pod) (kube_pod_status_ready{namespace="lms",condition="true",pod=~"lms-ha-[0-9]+"})) or vector(0)) < 2
+          for: 2m
+          labels: {severity: critical, service: lms}
+          annotations:
+            summary: LMS has fewer than two ready PostgreSQL instances.
+            description: Required synchronous writes need a primary and a standby; investigate before changing durability or fencing settings.
+        - alert: LMSDatabaseRedundancyDegraded
+          expr: (sum(max by (pod) (kube_pod_status_ready{namespace="lms",condition="true",pod=~"lms-ha-[0-9]+"})) or vector(0)) < 3
+          for: 5m
+          labels: {severity: warning, service: lms}
+          annotations:
+            summary: LMS PostgreSQL has lost a replica.
+            description: Service may remain writable, but another failure could remove its synchronous quorum.
+        - alert: LMSDatabaseBackupOverdue
+          expr: time() - (kube_cronjob_status_last_successful_time{namespace="lms",cronjob="lms-database-backup"} or on(namespace,cronjob) kube_cronjob_created{namespace="lms",cronjob="lms-database-backup"}) > 28800
+          for: 15m
+          labels: {severity: warning, service: lms}
+          annotations:
+            summary: LMS encrypted database backup is overdue.
+            description: Inspect backup Job status and storage without printing credentials or dump contents. Replicas are not backups.
