@@ -278,7 +278,7 @@ class Evidence:
         from evidence_bundle import prepare_bundle, redact
         deployment_collector=DeploymentCollector(self.http,self.github)
         deployed=deployment_collector.collect(event)
-        if labels.get('job_name'):
+        if labels.get('job_name') or (pod and not unit):
             for artifact in deployed['artifacts']:
                 workloads=artifact.get('content',{}).get('workloads',[])
                 if workloads:
