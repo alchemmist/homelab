@@ -1,0 +1,7 @@
+backupSHA256=e54bcf1cd89ec3d5a3f157c54b58d8edf39adab41434698b8cc070b1391c8451
+sourceFingerprintSHA256=80a16f17bc94a6d196206b1967d5047193f548edae9f678e7726e25ee64e670c
+targetFingerprintSHA256=80a16f17bc94a6d196206b1967d5047193f548edae9f678e7726e25ee64e670c
+logicalDataFingerprintMatched=true
+targetFingerprintSHA256=80a16f17bc94a6d196206b1967d5047193f548edae9f678e7726e25ee64e670c
+tlsVerified=true
+{"job": "lms-ha-copy-20261103094940", "rehearsal": false, "backupPath": "/backups/lms/lms-ha-copy-20261103094940.dump.gpg", "secretsPrinted": false}

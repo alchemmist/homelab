@@ -1,10 +1,9 @@
-# Separate staging cluster; creating this chart NEVER switches the application's DSN.
 imageName: ghcr.io/cloudnative-pg/postgresql:17.11-system-trixie@sha256:03a1c6a62b27e8ad31cae5c085131b5ac706b09403d6fcb6c58d16c8daa257cd
 instances: 3
 storage:
   size: 5Gi
   storageClass: lms-db-retain
 backup:
-  enabled: false
-  schedule: "0 */6 * * *"
+  enabled: true
+  schedule: 0 */6 * * *
   image: docker.io/library/postgres@sha256:839fbb5a4942a7758dd93e18b42ea5649807491a0545b5eeeb8f0b8bb11857a5

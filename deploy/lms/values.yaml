@@ -14,4 +14,4 @@ profiling:
 database:
   ha:
     enabled: true
-replicaCount: 0
+replicaCount: 1
