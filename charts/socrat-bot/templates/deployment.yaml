@@ -67,6 +67,8 @@ spec:
               value: {{ $.Values.telegram.webhookURL | quote }}
             - name: TELEGRAM_WEBHOOK_IP
               value: {{ $.Values.telegram.webhookIP | quote }}
+            - name: ACTION_WEBHOOK_URL
+              value: {{ $.Values.actionWebhookURL | default "" | quote }}
             {{- end }}
             {{- if eq $component.component "updater" }}
             - name: XUI_PANEL_PORT
