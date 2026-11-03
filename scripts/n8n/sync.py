@@ -5,6 +5,7 @@ import re
 import json
 from pathlib import Path
 import subprocess
+from urllib.parse import urlsplit
 
 BASE = Path(__file__).resolve().parents[2]
 CONFIG = Path.home() / '.config/n8n'
@@ -24,10 +25,10 @@ def api(method, path, body=None):
     return json.loads(r.stdout) if r.stdout else {}
 
 def render_workflow(template, creds, calendar, cloud):
-    for kind in ('googleCalendarOAuth2Api', 'httpCustomAuth'):
+    for kind in ('googleCalendarOAuth2Api', 'httpHeaderAuth'):
         if not creds.get(kind, {}).get('id'):
             raise RuntimeError('Missing credential mapping: ' + kind)
-    for key in ('device_id', 'scenario_id'):
+    for key in ('scenario_id',):
         if not isinstance(cloud.get(key), str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', cloud[key]):
             raise RuntimeError('Missing or invalid Yandex cloud configuration: ' + key)
     ids = calendar.get('calendar_ids', ['primary'])
@@ -39,16 +40,25 @@ def render_workflow(template, creds, calendar, cloud):
             n['parameters']['jsCode'] = 'return ' + json.dumps(ids) + '.map(calendarId => ({ json: { calendarId } }));'
         for key, value in n['parameters'].items():
             if isinstance(value, str):
-                n['parameters'][key] = value.replace('REPLACE_WITH_YANDEX_SCENARIO_ID', cloud['scenario_id']).replace('REPLACE_WITH_YANDEX_DEVICE_ID', cloud['device_id'])
+                n['parameters'][key] = value.replace('REPLACE_WITH_YANDEX_SCENARIO_ID', cloud['scenario_id'])
         for kind in n.get('credentials', {}):
             n['credentials'][kind] = creds[kind]
+    require_public_yandex_api(w)
     return w
 
 def require_public_yandex_api(workflow):
     for node in workflow['nodes']:
-        url = node.get('parameters', {}).get('url', '')
-        if 'iot.quasar.yandex.ru' in url or 'quasar.yandex.net' in url or 'yandex-voice.voice' in url:
-            raise RuntimeError('Internal Yandex API is forbidden; calendar is paused. See docs/n8n/yandex-public-api-assessment.md')
+        if node['type'] != 'n8n-nodes-base.httpRequest':
+            continue
+        params = node.get('parameters', {})
+        url = urlsplit(params.get('url', ''))
+        if (url.scheme != 'https' or url.netloc != 'api.iot.yandex.net'
+                or params.get('genericAuthType') != 'httpHeaderAuth'
+                or params.get('method') != 'POST'
+                or not re.fullmatch(r'/v1[.]0/scenarios/[A-Za-z0-9_-]+/actions', url.path)
+                or url.query or url.fragment):
+            raise RuntimeError('Only public Yandex scenario execution with token credentials is allowed')
+
 
 def main():
     mapping = CONFIG / 'calendar-credentials.json'

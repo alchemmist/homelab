@@ -1,137 +1,94 @@
-# n8n: Calendar → Yandex Station reminders
+# Calendar reminders → Yandex Station: public API only
 
-> **Superseded later on 2026-11-03:** the user forbids internal Yandex APIs.
-> Calendar is now inactive. The implementation below is historical, not approved
-> for deployment; sync.py blocks it. See [public API assessment](yandex-public-api-assessment.md)
-> for real request results and the supported fixed-scenario alternative.
+## Current behavior
 
-## Current architecture (2026-11-03)
+The calendar workflow is active and runs the **existing, fixed Yandex scenario**.
+It does not send event titles or dynamically change speech/volume. The user agreed
+to the public-only replacement after the API assessment.
 
-n8n calls Yandex directly. There is no voice microservice, local WebSocket client,
-or Home Assistant in the production reminder path.
+`Every Minute → Select Calendars → Get Upcoming Events → Match Due Reminders → Run Fixed Yandex Scenario → Mark Announced`
 
-`Every Minute → Select Calendars → Get Upcoming Events → Match Due Reminders`
+The single HTTP node calls:
 
-Due items enter `Each Reminder` (batch size 1):
+`POST https://api.iot.yandex.net/v1.0/scenarios/{scenario_id}/actions`
 
-`Prepare Yandex Announcement → Announce via Yandex Station → Mark Announced → Each Reminder`
+Authorization is `Bearer <IoT OAuth token>` stored in native **Header Auth**
+credentials, named **Yandex IoT Bearer Token**, header name `Authorization`.
+No body, Cookie, CSRF, internal API, local Glagol, extra loop or voice service is
+required. The old Custom Auth session credential was deleted.
 
-The first HTTP request updates the dedicated **Calendar reminders** cloud scenario
-with a volume action and the event text; the second runs it. Updating all items
-before running the scenario would overwrite earlier texts, so retain the loop.
-Scenario mutations and execution use the **internal** `iot.quasar.yandex.ru` API,
-not the documented public `api.iot.yandex.net` device-action API. A direct TTS
-POST to the internal device-actions endpoint returned INTERNAL_ERROR; the scenario
-route was verified successfully. Do not claim this is one documented IoT request.
+The scenario currently says **«Напоминания из календаря настроены»**, and contains
+the previously configured 50% volume action. To use **«Скоро встреча, проверь
+календарь»**, change its phrase once in the official **Дом с Алисой** app, scenario
+**Calendar reminders**. Public API cannot edit the phrase. No internal API calls
+were made to change it for this migration. Public launch executes stored actions;
+it does not directly expose Station volume control.
 
-Volume is `devices.capabilities.quasar`, instance `volume`, value `{"value":5}`
-(on the 0–10 scale, 50%). TTS uses instance `tts` and a text object. JSON.stringify
-encodes the event text; never construct JSON by concatenating event titles.
-There is no restoration of the previous volume.
+## Native credentials and local mappings
 
-## Access and credentials
-
-- n8n: `https://n8n.socrat.alchemmist.xyz`; public HTTPS and WireGuard paths exist.
-- Authentik is an outer UI gate, not native n8n SSO. Use the recovered existing
-  n8n account. If Setup unexpectedly appears, investigate storage; do not create
-  a replacement owner or import over an empty database.
-- Google credential: native **Google Calendar OAuth2 API**. Enable Calendar API
-  and configure OAuth callback
+- Google Calendar OAuth2 API: existing recovered credential. Google Calendar API
+  enabled; OAuth redirect URI:
   `https://n8n.socrat.alchemmist.xyz/rest/oauth2-credential/callback`.
-  Interactive consent may require the user; never request tokens in chat.
-- Yandex credential: native **Custom Auth**, named **Yandex Smart Home Session**.
-  Its encrypted JSON contains a headers object with `Cookie` and `x-csrf-token`.
-  Attach it to both HTTP nodes. Do not add secret headers to node parameters.
-- Session cookies are password-equivalent. Listing devices with old cookies can
-  succeed while action requests fail 403. During migration, a fresh web session
-  obtained through Yandex's x-token session exchange resolved that mismatch.
-- These are session credentials, **not auto-refreshing OAuth credentials**.
-  Expired/revoked sessions or an internal API change require controlled renewal.
-  Generate a fresh matching cookie/CSRF pair and replace the native credential;
-  validate authenticated access before switching references. Never report an
-  HTTP 200 alone as successful TTS: inspect the JSON `status` too.
+- Yandex: existing IoT token with `iot:view` / `iot:control`, not music/x-token.
+  Bearer Header Auth is encrypted at rest by n8n. It is not an automatically
+  refreshing OAuth2 credential; rotate expired/revoked tokens explicitly.
+- Never place tokens in node parameters, code, git, reports or execution output.
 
-## Workflow as code
-
-Source: `docs/n8n/calendar-voice-reminder.json`.
-Use `python3 scripts/n8n/sync.py` for an **inactive** workflow only. The script
-refuses active-workflow changes and duplicate names. Preserve the existing workflow
-ID and static data when updating; don't replace the recovered workflow with a new
-one. Check activity and dedup state after any change; deactivation is not a reason
-to deliberately clear existing dedup records.
-
-Local files, all outside git; files 0600 and containing directory 0700:
+Files outside git (0600, directory 0700):
 
 - `~/.config/n8n/api-key`: n8n public API key.
-- `~/.config/n8n/calendar-credentials.json`: `googleCalendarOAuth2Api` and
-  `httpCustomAuth`, each mapping to `{"id":"instance credential ID","name":"credential name"}`.
-- `~/.config/n8n/calendar-config.json`: `calendar_ids` list. Production includes
-  primary and Y-team. Missing file defaults to primary only, not all calendars.
-- `~/.config/n8n/yandex-cloud-config.json`: `device_id`, `scenario_id` for the
-  dedicated announcement scenario. Device IDs are not interchangeable with local
-  Glagol hardware IDs. Git has placeholders, not personal account identifiers.
+- `~/.config/n8n/calendar-credentials.json`: keys `googleCalendarOAuth2Api` and
+  `httpHeaderAuth`, each mapping to `{"id":"instance credential ID","name":"credential name"}`.
+- `~/.config/n8n/calendar-config.json`: `calendar_ids`, live primary and Y-team.
+- `~/.config/n8n/yandex-cloud-config.json`: `scenario_id` for **Calendar reminders**.
+  Historical `device_id` may remain for diagnostics but is not required by renderer.
 
-Importing the raw JSON without rendering these mappings is not a completed deploy.
-Do not deploy a second cron implementation or recreate the retired voice workload.
+Source: `docs/n8n/calendar-voice-reminder.json`. `python3 scripts/n8n/sync.py`
+renders local mappings and updates only an **inactive** workflow. It rejects
+ambiguous names, missing mappings, unsafe scenario IDs and non-public HTTP routes.
+Preserve existing workflow ID, Google credential, project and static data; do not
+create a replacement owner/workflow. JSON placeholders alone are not a deployment.
 
-## Reminder semantics and failure handling
+## Reminder and failure semantics
 
-- Poll every minute, read upcoming events over 48 hours in each selected calendar.
-- Use **explicit event popup overrides only** (`useDefault=false`); calendar
-  defaults are not expanded. Primary does not include shared/work calendars.
-- Due window: 15 seconds before to 75 seconds after start-minus-reminder-offset.
-  An already missed reminder is not replayed later.
-- Dedup key: `event ID|start ISO|minutes`; prune older than 48 hours.
-- Mark only after the scenario execution API returns `status=ok`. Update failure
-  prevents execution; execution failure must fail the workflow, not look green.
-- The 55-second workflow timeout bounds a poll below its one-minute interval.
-  Both HTTP requests have 10-second timeouts. The loop serializes items in a poll,
-  not a distributed queue or transactional lock across independent invocations.
-- API acceptance is not proof of sound reaching a listener. Dedup remains
-  best-effort, not exactly-once: late responses or persistence failures can cause
-  repeats, and there is no durable outage replay.
+- Poll every minute over the next 48 hours in both selected calendars.
+- Only explicit popup overrides (`useDefault=false`); calendar default reminders
+  are not expanded. Primary is not an aggregate of all calendars.
+- Due window: 15 seconds before to 75 seconds after event-start minus offset.
+- An already missed reminder is not replayed later.
+- Dedup key `event ID|start ISO|minutes`, records pruned after 48 hours.
+- HTTP failure stops execution. HTTP 200 with JSON `status!=ok` must throw in
+  `Mark Announced`; record a dedup key only after successful public API acceptance.
+- One scenario launch per matched reminder. Two events can yield two identical
+  fixed announcements; no text is overwritten because there is no scenario PUT.
+- Workflow timeout 55 seconds, HTTP timeout 10 seconds. Dedup remains best-effort,
+  not transactional exactly-once or durable replay. Failed final persistence can
+  cause a repeat after audible success. API acceptance alone is not proof of sound.
 
-## Verification
+## Verification and operation
 
-1. Check a scheduled execution actually reads the intended calendars; a green
-   execution with zero due items does not test the speaker.
-2. Read-only matcher tests may use the real event at its due instant, without speech.
-3. A real voice test requires an announced, short phrase; don't speak repeatedly
-   while the user is in a meeting. User confirmed both audible TTS and 50% volume
-   on 2026-11-03 during migration.
-4. Temporary authenticated check execution **1470** processed two items through
-   the real HTTP nodes and loop, validating both dedup keys. Its cloud actions were
-   **volume-only**, no TTS. The temporary workflow was deactivated and deleted.
-5. `python3 -m unittest discover -s tests/n8n -v` checks mapping, safe JSON encoding,
-   loop connections, failed-update gating, and missing configuration rejection.
-   Blog's separate 13 tests must remain green.
+- Real public API checks: [assessment](yandex-public-api-assessment.md).
+- User confirmed the fixed phrase from the public scenario-launch request.
+- Native n8n check execution **1587** successfully ran the actual public HTTP node
+  with encrypted bearer credentials and `Mark Announced`. Temporary scheduled
+  workflow was deactivated/deleted. Original workflow then activated.
+- `python3 -m unittest discover -s tests/n8n -v`: six tests, covering public-only
+  route enforcement, mappings, input validation, due matching/dedup and rejection
+  of unsuccessful JSON responses. Blog's thirteen tests remain green.
+- Don't repeatedly speak test phrases or change volume without warning.
+- Diagnose n8n executions: intended calendar, explicit popup, clock/timezone,
+  OAuth/token validity, scenario availability, Station connectivity and DND.
+- Retired yandex-voice Deployment/Service/Argo/Fleet/chart must not be restored.
+  Repository archived after GitHub denied DELETE scope; private source archive
+  preserved uncommitted work. No new capability proxy is needed.
 
-For troubleshooting inspect the n8n execution and sanitized error, not retired
-voice pod logs. Check Google OAuth, actual calendar selection, explicit overrides,
-clock/timezone, Yandex session/CSRF, Station connectivity and Do Not Disturb.
-Do not bypass TLS or dump credentials/HTTP auth headers into diagnostics.
+## Access and storage safety
 
-## Historical incidents
+n8n has public HTTPS and private WireGuard routes. Authentik is an outer UI gate,
+not native SSO. Use the recovered account. Unexpected Setup means investigate
+PVC/PV identity and data; never initialize a new owner over lost storage.
 
-- 2026-11-02: a 14:00 meeting with a 10-minute popup was in Y-team while only
-  primary was polled. Selection was corrected to include both calendars.
-- Storage recovery details: `docs/n8n/recovery-2026-11-02.md`. The recovered
-  database is reconstructed state, not a complete historical point-in-time restore.
-  Retain/keep annotations are not recurring off-node backups.
-- The former voice service used Glagol WebSocket, not a one-request IoT proxy.
-  It was retired after the direct cloud-scenario path was verified. Older recovery
-  notes describe the architecture at the time; they are not deployment instructions.
-
-### Retirement completed, 2026-11-03
-
-- Homelab migration commit: `9954e3d`. Argo Application, Deployment, Service,
-  legacy Fleet definitions and chart were removed. Old Kubernetes voice Secret
-  and unused n8n Header Auth credential were deleted after a private backup.
-- Scheduled execution 1478 succeeded after retirement. Both calendar selections
-  and the original Google credential/workflow ID were preserved.
-- Five calendar tests and thirteen blog tests pass. A fresh off-node SQLite
-  backup includes the new encrypted credential; integrity/foreign-key checks pass.
-- `alchemmist/yandex-voice` is **archived**, not deleted: GitHub DELETE returned
-  403; the available CLI token lacks delete_repo scope despite account admin
-  permission. Do not claim successful permanent deletion. Local original source
-  and its uncommitted changes were preserved in a private archive.
+Recovery: `docs/n8n/recovery-2026-11-02.md`. Retain/keep annotations are not backups.
+Keep a consistent off-node SQLite backup with the encryption key; recurring verified
+backups still require separate implementation. Historical internal-API experiments
+are not permission to bypass the public-only policy.

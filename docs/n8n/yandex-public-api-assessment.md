@@ -4,10 +4,11 @@
 
 User requires **only `https://api.iot.yandex.net` with OAuth**. Internal Quasar
 HTTP APIs, Cookie/CSRF, Glagol and voice proxy fallbacks are not permitted.
-The calendar workflow is **inactive** pending a supported replacement. Its prior
-JSON is retained for migration reference, not as an approved deployable design;
-`sync.py` refuses to deploy its internal Yandex URLs. Do not reactivate the old
-workflow or describe the earlier internal implementation as current production.
+The assessment initially paused the calendar. The user subsequently agreed to
+the fixed-scenario replacement: the workflow is now **active**, with a single
+public scenario-launch POST and native bearer credentials. Old internal nodes and
+Cookie/CSRF credentials were removed. `sync.py` enforces the public-only route.
+See `setup.md`; do not restore the superseded internal implementation.
 
 ## Evidence
 
@@ -63,3 +64,11 @@ in the official app; do not secretly edit it through internal API calls.
 - [API protocol and complete documented endpoint list](https://yandex.ru/dev/dialogs/smart-home/doc/ru/concepts/platform-protocol)
 - [Capability types](https://yandex.ru/dev/dialogs/smart-home/doc/ru/concepts/capability-types)
 - [Range instances, including volume](https://yandex.ru/dev/dialogs/smart-home/doc/ru/concepts/range-instance)
+
+## Replacement verification
+
+Native n8n execution **1587** ran the public POST with its encrypted bearer
+credential and marked the test reminder successfully. The temporary scheduled
+workflow was removed and the original calendar activated. The stored fixed phrase
+is still «Напоминания из календаря настроены»; changing it requires the official
+app, not an internal API. Six calendar tests and thirteen blog tests pass.

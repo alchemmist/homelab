@@ -68,25 +68,25 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ $json.status === 'ok' ? 'https://iot.quasar.yandex.ru/m/user/scenarios/REPLACE_WITH_YANDEX_SCENARIO_ID/actions' : (() => { throw new Error('Yandex scenario update failed'); })() }}",
+        "url": "https://api.iot.yandex.net/v1.0/scenarios/REPLACE_WITH_YANDEX_SCENARIO_ID/actions",
         "authentication": "genericCredentialType",
-        "genericAuthType": "httpCustomAuth",
+        "genericAuthType": "httpHeaderAuth",
         "options": {
           "timeout": 10000
         }
       },
       "id": "a1b2c3d4-0004-4000-8000-000000000004",
-      "name": "Announce via Yandex Station",
+      "name": "Run Fixed Yandex Scenario",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1440,
+        960,
         0
       ],
       "credentials": {
-        "httpCustomAuth": {
+        "httpHeaderAuth": {
           "id": "REPLACE_WITH_CREDENTIAL_ID",
-          "name": "Yandex Smart Home Session"
+          "name": "Yandex IoT Bearer Token"
         }
       }
     },
@@ -99,7 +99,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1680,
+        1200,
         0
       ]
     },
@@ -115,48 +115,6 @@
       "parameters": {
         "jsCode": "// Configured by scripts/n8n/sync.py from local calendar-config.json.\nreturn ['primary'].map(calendarId => ({ json: { calendarId } }));"
       }
-    },
-    {
-      "id": "607734ae-28f0-49eb-bda8-a1af4deff225",
-      "name": "Prepare Yandex Announcement",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        1200,
-        0
-      ],
-      "credentials": {
-        "httpCustomAuth": {
-          "id": "REPLACE_WITH_CREDENTIAL_ID",
-          "name": "Yandex Smart Home Session"
-        }
-      },
-      "parameters": {
-        "method": "PUT",
-        "url": "https://iot.quasar.yandex.ru/m/v4/user/scenarios/REPLACE_WITH_YANDEX_SCENARIO_ID",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpCustomAuth",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\"name\": \"Calendar reminders\", \"icon\": \"home\", \"triggers\": [{\"trigger\": {\"type\": \"scenario.trigger.voice\", \"value\": \"календарные напоминания из автоматики\"}}], \"steps\": [{\"type\": \"scenarios.steps.actions.v2\", \"parameters\": {\"items\": [{\"id\": \"REPLACE_WITH_YANDEX_DEVICE_ID\", \"type\": \"step.action.item.device\", \"value\": {\"id\": \"REPLACE_WITH_YANDEX_DEVICE_ID\", \"item_type\": \"device\", \"capabilities\": [{\"type\": \"devices.capabilities.quasar\", \"state\": {\"instance\": \"volume\", \"value\": {\"value\": 5}}}, {\"type\": \"devices.capabilities.quasar\", \"state\": {\"instance\": \"tts\", \"value\": {\"text\": $json.text, \"whisper\": false, \"lang\": \"ru\"}}}]}}]}}]}) }}",
-        "options": {
-          "timeout": 10000
-        }
-      }
-    },
-    {
-      "id": "f4f93425-8b29-4535-979c-e9c83a39dd3f",
-      "name": "Each Reminder",
-      "type": "n8n-nodes-base.splitInBatches",
-      "typeVersion": 3,
-      "position": [
-        960,
-        0
-      ],
-      "parameters": {
-        "batchSize": 1,
-        "options": {}
-      }
     }
   ],
   "connections": {
@@ -165,6 +123,17 @@
         [
           {
             "node": "Select Calendars",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Calendars": {
+      "main": [
+        [
+          {
+            "node": "Get Upcoming Events",
             "type": "main",
             "index": 0
           }
@@ -186,63 +155,18 @@
       "main": [
         [
           {
-            "node": "Each Reminder",
+            "node": "Run Fixed Yandex Scenario",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Announce via Yandex Station": {
+    "Run Fixed Yandex Scenario": {
       "main": [
         [
           {
             "node": "Mark Announced",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Select Calendars": {
-      "main": [
-        [
-          {
-            "node": "Get Upcoming Events",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Each Reminder": {
-      "main": [
-        [],
-        [
-          {
-            "node": "Prepare Yandex Announcement",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Prepare Yandex Announcement": {
-      "main": [
-        [
-          {
-            "node": "Announce via Yandex Station",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Mark Announced": {
-      "main": [
-        [
-          {
-            "node": "Each Reminder",
             "type": "main",
             "index": 0
           }
