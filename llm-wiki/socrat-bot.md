@@ -36,3 +36,21 @@ Application: project `default`, namespace `socrat-bot`, `parameters: []`, `prune
 The broker stores a request and does not run the command. `socrat-sudo` posts `user`, `node`, and `argv` with `X-Internal-Token`. After Allow, the client runs `sudo` with that argv once. Deny and timeout do not exec. `/etc/socrat-sudo.env` on `socrat-2` is mode `0640`. The playbook does not write the token and does not change sudoers.
 
 `TELEGRAM_OWNER_ID` has to be set before buttons, broadcasts, and sudo approvals work.
+
+## SPI incident triage alongside Telegram
+
+The original **Socrat Alerts** workflow now uses an authenticated native trigger
+that persists triage jobs before acknowledging the group and excludes request
+headers from execution data. Telegram delivery remains the fast path. A worker
+handoff failure requests retry with HTTP503 without preventing Telegram processing.
+Unauthenticated requests return HTTP401; legacy migration mode must stay disabled.
+
+Slow diagnosis and GitHub publication run in the separate **SPI Incident Triage**
+workflow. The bot itself does not need the model key or GitHub App private key.
+All generated `[SPI]` titles, descriptions and comments MUST be English. SPI writes
+are enabled after acceptance; the unrelated blog remains write-disabled.
+
+Architecture, limits, exact IDs, real issue/comment evidence and recovery:
+[spi-incident-triage.md](spi-incident-triage.md). This GitHub-token broker is distinct
+from the Telegram sudo-broker described above; do not conflate their credentials,
+permissions or approval mechanisms.
