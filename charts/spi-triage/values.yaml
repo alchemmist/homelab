@@ -1,7 +1,7 @@
 image: python:3.13-alpine@sha256:7984cf56ceaddebe4fefeb75d64000b9f45d8b77b11a09b24524da6cdc3af0c8
 brokerImage: pragent/pr-agent:0.49.0-github_app@sha256:b57649785c4366eed39aab698f6d0fe944fa21cb7c2312ddc9bc8e4db2192a60
 nodeName: socrat-1
-writeEnabled: false
+writeEnabled: true
 storageSize: 2Gi
 secretName: spi-triage
 appSecretName: pr-agent

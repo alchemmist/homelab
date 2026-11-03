@@ -118,7 +118,10 @@ def render(report, event):
     lines += ['', '## Alert quality', '**Classification:** '+report['alert_quality'], report['alert_assessment'],
               '', '## Incident correlation', report['match_reason'], '', '## Provenance',
               '- Started: '+event['startsAt'], '- Analysis is automated and read-only; recommendations require review.',
-              '- Raw logs and credentials are intentionally not published.', '', '<!-- socrat-spi:'+event['event_key']+' -->']
+              '- V1 uses bounded metric observations and log-frequency counts, not raw log messages.',
+              '- Missing series or zero matching errors do not establish service health or exclude an incident.',
+              '- Trace summaries and repository-main references, when available, do not prove deployed source or root cause.',
+              '- Credentials and raw sensitive data are intentionally not published.', '', '<!-- socrat-spi:'+event['event_key']+' -->']
     body = '\n'.join(lines)
     # Redaction changing model output is a contract failure, not silent publication.
     if clean(title) != title or clean(body) != body: raise Failure('UNSAFE_MODEL_OUTPUT')

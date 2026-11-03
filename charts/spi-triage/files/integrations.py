@@ -135,7 +135,7 @@ class Model:
         else: result=decisions[-1]
         return {'decision':result,'candidates':candidates,'reviewed_numbers':[x['number']for x in issues]}
     def analyze(self,event,match,evidence):
-        report=self.call('Write an evidence-grounded SPI report. Revalidate preliminary matching using diagnostics; choose 0 if a distinct cause is supported. Assess alert noise and actionable tuning separately from service defects. Include safe evidence references in facts; never fabricate a source path or threshold.',
+        report=self.call('Write an evidence-grounded SPI report. Revalidate preliminary matching using diagnostics; choose 0 if a distinct cause is supported. Assess alert noise and actionable tuning separately from service defects. Include safe evidence references in facts; never fabricate a source path or threshold. Scrape exporter pods are not necessarily affected workloads: use job_name or systemd unit when present. Zero error counts or absent series never confirm no service degradation; raw logs were not read, so do not claim logs were inspected or unavailable. Main-branch runbooks are not proof of deployed code.',
                          {'alert':event,'preliminary_match':match,'evidence':evidence},REPORT_SCHEMA,time.monotonic()+780)
         if report['issue_number'] not in {0,*[x['number']for x in match['candidates']]}: raise Failure('INVALID_MATCH_TARGET')
         return report
@@ -192,8 +192,10 @@ class Evidence:
                 fetch('host_log_error_frequency','/api/datasources/proxy/uid/loki/loki/api/v1/query_range',{'query':'sum(count_over_time({host_name='+json.dumps(host)+'} |~ "(?i)error|exception|failed" [1m]))','start':lo,'end':hi,'step':60})
             else:result['missing'].append({'source':'host_logs','reason':'NODE_IDENTITY_NOT_FOUND'})
         namespace=labels.get('namespace') or labels.get('k8s_namespace_name')
-        pod=labels.get('pod') or labels.get('k8s_pod_name')
-        if namespace and re.fullmatch(r'[a-z0-9-]{1,63}',namespace):
+        pod=None if labels.get('job_name') or unit else (labels.get('pod') or labels.get('k8s_pod_name'))
+        result['scope']={'namespace':namespace,'pod':pod,'job_name':labels.get('job_name'),'unit':unit,
+                         'limitations':'Rule-wide matches can include unrelated targets. Namespace aggregates do not prove individual service health. Scrape labels may identify exporters rather than affected workloads.'}
+        if namespace and not unit and re.fullmatch(r'[a-z0-9-]{1,63}',namespace):
             selector='namespace='+json.dumps(namespace)
             if pod and re.fullmatch(r'[a-z0-9.-]{1,253}',pod): selector+=',pod='+json.dumps(pod)
             job=labels.get('job_name')
