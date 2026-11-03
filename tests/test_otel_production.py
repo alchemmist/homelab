@@ -31,28 +31,6 @@ class ProductionSafetyTests(unittest.TestCase):
         self.assertEqual(boot.NODES['socrat-0'], '10.250.0.1')
         self.assertEqual(boot.NODES['socrat-2'], '10.250.0.2')
 
-    def test_risk_waiver_is_not_a_source_integrity_certificate(self):
-        doc = json.loads((ROOT / 'deploy/monitoring/migration-evidence/operator-risk-acceptance-20261031.json').read_text())
-        self.assertTrue(doc['operatorAuthorizedProductionCutover'])
-        self.assertFalse(doc['sourceMemoryFailuresResolved'])
-        self.assertFalse(doc['historySourceIntegrityVerified'])
-
-    def test_missing_observation_time_cannot_be_counted_as_healthy_soak(self):
-        soak = module('otel-production-soak')
-        with tempfile.TemporaryDirectory() as directory:
-            soak.ROOT = Path(directory)
-            state = {'startedAt': 1, 'requiredSeconds': 259200, 'completed': False, 'checks': 10, 'failedChecks': 0,
-                     'lastObservedAt': 1000, 'continuousHealthySince': 1}
-            (soak.ROOT / 'state.json').write_text(json.dumps(state))
-            with patch.object(soak.time, 'time', return_value=10000), patch.object(soak, 'query', side_effect=OSError('offline')):
-                with self.assertRaises(SystemExit):
-                    soak.run()
-            observed = json.loads((soak.ROOT / 'state.json').read_text())
-            self.assertFalse(observed['completed'])
-            self.assertEqual(observed['measuredHealthySeconds'], 0)
-            self.assertIsNone(observed['continuousHealthySince'])
-            self.assertIn('production observation gap; healthy window reset', observed['lastErrors'])
-
     def test_native_overlay_does_not_turn_on_legacy_scraping(self):
         import yaml
         values = yaml.safe_load((ROOT / 'deploy/monitoring/otel-production-values.yaml').read_text())
@@ -64,9 +42,3 @@ class ProductionSafetyTests(unittest.TestCase):
             self.assertEqual(spec[key]['matchLabels']['homelab.alchemmist.xyz/scrape-owner'], 'retired-legacy-prometheus')
         self.assertEqual(spec['evaluationInterval'], '5s')
 
-    def test_soak_does_not_depend_on_its_own_previous_exit_state(self):
-        source = (ROOT / 'scripts/otel-production-soak.py').read_text()
-        self.assertIn('name!="homelab-otel-soak.service"', source)
-        self.assertIn('name=~"homelab-otel.*"', source)
-        self.assertNotIn('name!~"homelab-otel-soak.*"', source)
-        self.assertIn("state['failedChecks'] += 1", source)

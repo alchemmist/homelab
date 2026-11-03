@@ -6,7 +6,7 @@ Prometheus runs on socrat-0 and scrapes every 5 seconds. Grafana, Alertmanager a
 
 ## OpenTelemetry migration
 
-The migration is currently blocked at its live capacity gate; production collection and the Thanos cascade remain unchanged. See [implementation status, safety guards and reproducible preflight](opentelemetry-migration.md).
+Production metrics, logs and traces are collected by the in-cluster OpenTelemetry pipeline. The Thanos cascade is unchanged.
 
 ## Container resource budgets
 

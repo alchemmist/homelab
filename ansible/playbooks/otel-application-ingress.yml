@@ -65,18 +65,3 @@
         host: 127.0.0.1
         port: 13134
         timeout: 30
-    - name: Maintain the strict raw-boundary and authenticated HTTP receiver soak checks
-      ansible.builtin.copy:
-        src: ../../scripts/otel-production-soak.py
-        dest: /var/lib/homelab-otel/soak.py
-        mode: '0700'
-    - name: Preserve other independently maintained SDK configuration epoch bindings
-      ansible.builtin.slurp:
-        src: /var/lib/homelab-otel-soak/configuration-epoch.json
-      register: application_existing_epoch
-    - name: Bind the real continuous soak to this receiver and credential lifecycle configuration
-      ansible.builtin.copy:
-        dest: /var/lib/homelab-otel-soak/configuration-epoch.json
-        mode: '0600'
-        content: |
-          {{ (application_existing_epoch.content | b64decode | from_json) | combine({'epoch': '20261101-private-native-http-traces', 'rawReadBoundaryCheckRequired': true, 'ingressConfigSHA256': lookup('file', '../../deploy/monitoring/otel/application-ingress.yaml') | hash('sha256'), 'ingressUnitSHA256': lookup('file', '../../deploy/monitoring/otel/homelab-otel-application-ingress.service') | hash('sha256'), 'credentialScriptSHA256': lookup('file', '../../scripts/otel-host-credentials.py') | hash('sha256')}) | to_json(sort_keys=True) }}

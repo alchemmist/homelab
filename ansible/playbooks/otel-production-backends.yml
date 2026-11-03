@@ -1,96 +1,23 @@
 ---
-- name: Install persistent native Loki and Tempo with private authenticated TLS
+- name: Keep retired host Loki and Tempo units absent
   hosts: socrat-1
   gather_facts: false
   become: true
-  any_errors_fatal: true
   tasks:
-    - name: Prepare immutable native executable directory
-      ansible.builtin.file:
-        path: /usr/local/lib/homelab-otel
-        state: directory
-        owner: root
-        group: root
-        mode: '0755'
-    - name: Prepare native configuration directory
-      ansible.builtin.file:
-        path: /etc/homelab-otel
-        state: directory
-        owner: root
-        group: root
-        mode: '0755'
-    - name: Install hash-verified pinned upstream backend executables
-      ansible.builtin.unarchive:
-        src: '{{ otel_production_artifacts }}/backend.tar.gz'
-        dest: /usr/local/lib/homelab-otel
-        owner: root
-        group: root
-        mode: '0755'
-    - name: Verify executable SHA256 against extracted upstream image receipts
-      ansible.builtin.command: 'sha256sum /usr/local/lib/homelab-otel/{{ item.name }}'
-      loop:
-        - name: loki
-          sha: cfcaf9b519b514584d010791d7f2dd06472a62f0ba1bf922e619031db03f3464
-        - name: tempo
-          sha: 465af41aeac81580ccb802b0f98b2c07ab69e1895190b8583a785a834944666e
-      register: backend_hashes
-      failed_when: item.sha not in backend_hashes.stdout
-      changed_when: false
-    - name: Install native retention configurations
-      ansible.builtin.copy:
-        src: '{{ playbook_dir }}/../../deploy/monitoring/otel/{{ item }}.yaml'
-        dest: '/etc/homelab-otel/{{ item }}.yaml'
-        mode: '0644'
-      loop: [loki, tempo]
-    - name: Install private persistent native backend services
-      ansible.builtin.copy:
-        dest: '/etc/systemd/system/homelab-otel-{{ item }}.service'
-        mode: '0644'
-        content: |
-          [Unit]
-          Description=Native OTLP {{ item }} backend
-          After=network-online.target homelab-otel-credentials.service
-          Wants=network-online.target
-          [Service]
-          DynamicUser=yes
-          StateDirectory=homelab-otel-{{ item }}
-          StateDirectoryMode=0700
-          Environment=OTEL_BIND_IP=10.250.0.3
-          Environment=OTEL_STORAGE_DIR=/var/lib/homelab-otel-{{ item }}
-          Environment=OTEL_TLS_DIR=%d
-          Environment=GOMEMLIMIT=1536MiB
-          Environment=GOMAXPROCS=2
-          {% for file in ['ca.crt', 'server.crt', 'server.key', 'client.crt', 'client.key'] %}
-          LoadCredential={{ file }}:/var/lib/homelab-otel/tls/{{ file }}
-          {% endfor %}
-          ExecStart=/usr/local/lib/homelab-otel/{{ item }} {{ '-config.file=/etc/homelab-otel/loki.yaml -config.expand-env=true' if item == 'loki' else '-config.file=/etc/homelab-otel/tempo.yaml -config.expand-env=true' }}
-          Restart=on-failure
-          RestartSec=5
-          TimeoutStopSec=90
-          MemoryMax=2147483648
-          MemorySwapMax=0
-          NoNewPrivileges=yes
-          ProtectSystem=strict
-          ProtectHome=yes
-          PrivateTmp=yes
-          PrivateDevices=yes
-          UMask=0077
-          [Install]
-          WantedBy=multi-user.target
-      loop: [loki, tempo]
-    - name: Enable persistent native backends without changing source ownership
+    - name: Stop and disable retired native backend units
       ansible.builtin.systemd_service:
         name: 'homelab-otel-{{ item }}.service'
-        daemon_reload: true
-        enabled: true
-        state: started
+        enabled: false
+        state: stopped
+      failed_when: false
       loop: [loki, tempo]
-    - name: Require authenticated native backend readiness
-      ansible.builtin.command:
-        argv: [curl, --fail, --silent, --cacert, /var/lib/homelab-otel/tls/ca.crt, --cert, /var/lib/homelab-otel/tls/client.crt, --key, /var/lib/homelab-otel/tls/client.key, 'https://10.250.0.3:{{ item }}/ready']
-      loop: [3100, 3200]
-      changed_when: false
-      register: backend_ready
-      retries: 30
-      delay: 3
-      until: backend_ready.rc == 0
+    - name: Remove retired native backend unit files
+      ansible.builtin.file:
+        path: '/etc/systemd/system/homelab-otel-{{ item }}.service'
+        state: absent
+      loop: [loki, tempo]
+      notify: Reload systemd
+  handlers:
+    - name: Reload systemd
+      ansible.builtin.systemd_service:
+        daemon_reload: true
