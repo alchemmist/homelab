@@ -64,6 +64,7 @@ class Engine:
                 if digest([(x['number'],x['updated_at']) for x in issues])!=r['open_signature']:
                     self.store.save(key,0,{},state='processing');raise Failure('OPEN_SPI_CHANGED')
                 title,body=render(r['report'],event);number=r['report']['issue_number']
+                if number not in {0,*[x['number']for x in r['match']['candidates']]}:raise Failure('INVALID_MATCH_TARGET')
             self.store.save(key,3,r,intent=json.dumps({'number':number}))
             try:
                 if number:
@@ -86,6 +87,8 @@ class Engine:
 def serve():
     os.umask(0o077)
     http=HTTP();store=Store(os.environ.get('SPI_DATABASE','/data/spi.sqlite'))
+    recovered=store.recover_on_start()
+    print(json.dumps({'component':'spi-triage','event':'worker_started','recovered_jobs':recovered}),flush=True)
     engine=Engine(store,GitHub(http,os.environ.get('GITHUB_TOKEN_FILE','/github/token')),
                   Model(http,os.environ['LITELLM_KEY']),Evidence(http,os.environ['GRAFANA_TOKEN'],os.environ['GRAFANA_URL']),
                   write=os.environ.get('WRITE_ENABLED')=='true')

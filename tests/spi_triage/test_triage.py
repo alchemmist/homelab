@@ -39,6 +39,16 @@ class CoreTests(unittest.TestCase):
         self.store.enqueue(event());first=self.store.claim()
         with self.store.db() as c:c.execute('UPDATE jobs SET lease=0')
         self.assertEqual(first,self.store.claim())
+    def test_process_restart_releases_claim_but_preserves_progress(self):
+        self.store.enqueue(event());key=self.store.claim()['job_id'];self.store.save(key,1,{'match':{'candidates':[]}})
+        restored=Store(self.store.path);self.assertEqual(restored.recover_on_start(),1)
+        self.assertEqual(restored.claim()['job_id'],key);self.assertEqual(restored.get(key)['stage'],1)
+    def test_group_insert_rolls_back_atomically(self):
+        first=event();second=event(start='2026-11-03T14:00:00Z');second.pop('episode')
+        with self.assertRaises(KeyError):self.store.enqueue_many([first,second])
+        self.assertEqual(self.store.health()['counts'],{})
+    def test_invalid_annotations_rejected_before_storage(self):
+        with self.assertRaises(Failure):normalize({'alert':{'status':'firing','startsAt':'2026-11-03T13:00:00Z','labels':{'alertname':'Test'},'annotations':[]}})
     def test_bad_timestamp_is_rejected(self):
         with self.assertRaises(Failure):event(start='not a time')
     def test_redaction_precedes_model(self):
@@ -100,7 +110,7 @@ class EngineTests(unittest.TestCase):
         self.engine.write=True;self.github.request.return_value={'number':7};key=self.process()
         self.assertEqual(self.store.get(key)['issue'],7);self.assertEqual(self.github.request.call_args.args[1],'/issues')
     def test_existing_issue_adds_comment(self):
-        self.engine.write=True;self.model.analyze.return_value=report(7);key=self.process()
+        self.engine.write=True;self.model.match.return_value={'candidates':[{'number':7}]};self.model.analyze.return_value=report(7);key=self.process()
         self.assertEqual(self.github.request.call_args.args[1],'/issues/7/comments')
     def test_ambiguous_write_is_reconciled_not_repeated(self):
         self.engine.write=True;key=self.process(through=3);self.github.request.side_effect=Failure('UPSTREAM_NETWORK_ERROR')

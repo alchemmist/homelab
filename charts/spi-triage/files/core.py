@@ -50,6 +50,11 @@ def normalize(payload):
         raise Failure('INVALID_ALERT_LABELS')
     if any(not isinstance(k, str) or not isinstance(v, str) or len(v) > 1024 for k,v in labels.items()):
         raise Failure('INVALID_ALERT_LABELS')
+    annotations=raw.get('annotations',{})
+    if not isinstance(annotations,dict) or len(annotations)>64 or any(not isinstance(v,str) or len(v)>16000 for v in annotations.values()):
+        raise Failure('INVALID_ALERT_ANNOTATIONS')
+    if not isinstance(raw.get('fingerprint',''),str) or len(raw.get('fingerprint',''))>256:
+        raise Failure('INVALID_ALERT_FINGERPRINT')
     started = timestamp(raw.get('startsAt'))
     source = str(payload.get('source', 'socrat-alerts'))[:256]
     episode = digest([source, raw.get('fingerprint') or digest(labels), started])
@@ -146,6 +151,12 @@ class Store:
         except BaseException:
             c.rollback(); raise
         finally: c.close()
+    def recover_on_start(self):
+        # Called only by the sole Recreate worker, never by ordinary connections.
+        # The previous process cannot still publish once its replacement starts.
+        now=time.time()
+        with self.db() as c:
+            return c.execute("UPDATE jobs SET state='retry',lease=0,available=?,updated=? WHERE state='processing'",(now,now)).rowcount
     def enqueue(self, event):
         return self.enqueue_many([event])[0]
     def enqueue_many(self, events):

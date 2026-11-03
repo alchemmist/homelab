@@ -30,7 +30,7 @@ it must be disabled after migrating both Grafana and Alertmanager authorization.
 Only opaque job IDs/status travel between stages. Evidence, drafts and progress
 live in a dedicated private SQLite PVC owned by the worker, **not n8n's database**.
 Single replica + Recreate, atomic claim and expiring leases prevent concurrent
-publication. A restart resumes saved stages. Stages have bounded request budgets;
+publication. A single-worker cold start releases interrupted claims and resumes saved stages. Stages have bounded request budgets;
 transient failures back off, eight claims exhaust the retry budget. Dead jobs
 require review. A resolved event comments on its known open SPI; it never opens an
 orphan issue, reopens a closed one or automatically closes the incident issue.
@@ -90,7 +90,7 @@ pending age for future scrape integration. Do not assume a ServiceMonitor is
 scraped: this cluster has retired legacy Prometheus selectors.
 
 Queue polling emits sanitized `queue_health`; final failures emit `stage_failed`.
-Grafana/Loki definitions in `alerts.json` monitor failures, missing polling and dead
+Grafana/Loki definitions in `alerts.json` monitor failures (including ingress handoff), missing polling, stale work and dead
 jobs through a dedicated Socrat Alerts contact point. Provision via
 `python3 scripts/n8n/provision_yandex_alerts.py docs/n8n/spi/alerts.json` after activation.
 No global notification policy changes. Delivery depends on n8n, not on the model;

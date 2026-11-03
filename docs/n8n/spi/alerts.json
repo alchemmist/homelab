@@ -56,7 +56,7 @@
               "uid": "loki"
             },
             "editorMode": "code",
-            "expr": "sum(count_over_time({k8s_namespace_name=\"automation\"} |= \"spi-triage\" | json | event=\"stage_failed\" [20m])) or vector(0)",
+            "expr": "sum(count_over_time({k8s_namespace_name=\"automation\"} |= \"spi-triage\" | json | event=~\"stage_failed|handoff_failed\" [20m])) or vector(0)",
             "queryType": "instant",
             "refId": "A",
             "intervalMs": 1000,
@@ -259,6 +259,96 @@
                 "evaluator": {
                   "params": [
                     0
+                  ],
+                  "type": "gt"
+                },
+                "operator": {
+                  "type": "and"
+                },
+                "query": {
+                  "params": [
+                    "C"
+                  ]
+                },
+                "reducer": {
+                  "params": [],
+                  "type": "last"
+                },
+                "type": "query"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "uid": "spi-triage-stale",
+      "orgID": 1,
+      "folderUID": "automation",
+      "ruleGroup": "SPI triage",
+      "title": "SPI triage queue is stale",
+      "condition": "C",
+      "for": "2m",
+      "noDataState": "Alerting",
+      "execErrState": "Alerting",
+      "isPaused": false,
+      "labels": {
+        "namespace": "automation",
+        "component": "spi-triage",
+        "severity": "warning"
+      },
+      "annotations": {
+        "summary": "SPI triage queue is stale",
+        "description": "Work is older than 45 minutes. Inspect inference contention, retries and scheduling.",
+        "runbook_url": "https://github.com/alchemmist/homelab/blob/main/docs/n8n/spi/setup.md"
+      },
+      "notification_settings": {
+        "receiver": "SPI triage via Socrat Alerts",
+        "group_by": [
+          "alertname"
+        ],
+        "group_wait": "30s",
+        "group_interval": "5m",
+        "repeat_interval": "4h"
+      },
+      "data": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "relativeTimeRange": {
+            "from": 2400,
+            "to": 0
+          },
+          "datasourceUid": "loki",
+          "model": {
+            "datasource": {
+              "type": "loki",
+              "uid": "loki"
+            },
+            "editorMode": "code",
+            "expr": "max(max_over_time({k8s_namespace_name=\"automation\"} |= \"spi-triage\" | json | event=\"queue_health\" | unwrap oldest_pending_seconds [10m])) or vector(0)",
+            "queryType": "instant",
+            "refId": "A",
+            "intervalMs": 1000,
+            "maxDataPoints": 43200
+          }
+        },
+        {
+          "refId": "C",
+          "relativeTimeRange": {
+            "from": 0,
+            "to": 0
+          },
+          "datasourceUid": "__expr__",
+          "model": {
+            "refId": "C",
+            "type": "threshold",
+            "expression": "A",
+            "conditions": [
+              {
+                "evaluator": {
+                  "params": [
+                    2700
                   ],
                   "type": "gt"
                 },
