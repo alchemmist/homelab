@@ -206,6 +206,8 @@ def grafana_explore_url(public_base, datasource_uid, query_text, start, end, que
     }
     if datasource_uid in ('loki', 'prometheus'):
         query['queryType'] = 'range'
+        query['editorMode']='code'
+        if datasource_uid=='prometheus':query.update(range=True,instant=False)
     elif datasource_uid == 'tempo':
         query['queryType'] = 'traceId' if re.fullmatch(r'[a-f0-9]{32}', query_text) else 'traceql'
     pane = {

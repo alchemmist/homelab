@@ -92,6 +92,26 @@ class ProvenanceTests(unittest.TestCase):
         reader=Mock();e=event();e['labels']['namespace']='../secrets';r=DeploymentCollector(reader=reader).collect(e);reader.assert_not_called();self.assertEqual(r['missing'][0]['reason'],'INVALID_WORKLOAD_SCOPE')
     def test_systemd_not_exporter_pod(self):
         reader=Mock();e=event();e['labels']['name']='otel.service';DeploymentCollector(reader=reader).collect(e);reader.assert_not_called()
+    def test_immutable_gitops_digest_mapping(self):
+        import base64
+        digest='sha256:'+'b'*64;revision='c'*40;ref='d'*40
+        text='image:\n  repository: harbor.socrat.alchemmist.xyz/homelab/socrat-bot\n  tag: '+revision+'\n  digest: '+digest+'\n'
+        g=Mock();g.request.side_effect=[[{'sha':ref}],{'encoding':'base64','size':len(text),'content':base64.b64encode(text.encode()).decode()}]
+        h=Mock();h.request.return_value={'sha':revision}
+        r=DeploymentCollector(h,g).gitops_source('homelab/socrat-bot',{'image':'harbor.socrat.alchemmist.xyz/homelab/socrat-bot@'+digest,'imageID':'child-digest'})
+        self.assertEqual(r['content']['declared_source_revision'],revision);self.assertFalse(r['content']['source_equivalence_proven']);self.assertIn(ref,r['content']['release_manifest_url'])
+    def test_different_digest_cannot_claim_main_is_deployed(self):
+        import base64
+        text='image:\n  repository: harbor.socrat.alchemmist.xyz/homelab/socrat-bot\n  tag: '+'c'*40+'\n  digest: sha256:'+'d'*64+'\n'
+        g=Mock();g.request.side_effect=[[{'sha':'e'*40}],{'encoding':'base64','size':len(text),'content':base64.b64encode(text.encode()).decode()}]
+        h=Mock();r=DeploymentCollector(h,g).gitops_source('homelab/socrat-bot',{'image':'harbor.socrat.alchemmist.xyz/homelab/socrat-bot@sha256:'+'b'*64})
+        self.assertIsNone(r);h.request.assert_not_called()
+    def test_source_excerpt_is_pinned_and_traversal_rejected(self):
+        import base64
+        ref='c'*40;h=Mock();h.request.return_value={'encoding':'base64','size':20,'content':base64.b64encode(b'line one\nline two').decode(),'sha':'blob'}
+        proof={'artifacts':[{'name':'deployed-source-gitops.json','content':{'declared_source_revision':ref,'source_commit_url':'https://github.com/alchemmist/socrat-bot/tree/'+ref}}]}
+        r=DeploymentCollector(h).source_fragments(proof,{'artifacts':[{'content':'File /app/socrat_bot/main.py, line 2; socrat_bot/../secret.py'}]})
+        self.assertEqual(h.request.call_count,1);self.assertIn('?ref='+ref,h.request.call_args.args[1]);self.assertIn('line two',r['artifacts'][0]['content']['excerpt'])
     def test_absent_identity_explicit(self):
         e=event();e['labels']['pod']='app'
         with patch('provenance.ROOT',Path('/nonexistent')):r=DeploymentCollector().collect(e)

@@ -276,7 +276,8 @@ class Evidence:
         from telemetry import TelemetryCollector
         from provenance import DeploymentCollector
         from evidence_bundle import prepare_bundle, redact
-        deployed=DeploymentCollector(self.http,self.github).collect(event)
+        deployment_collector=DeploymentCollector(self.http,self.github)
+        deployed=deployment_collector.collect(event)
         if labels.get('job_name'):
             for artifact in deployed['artifacts']:
                 workloads=artifact.get('content',{}).get('workloads',[])
@@ -286,11 +287,12 @@ class Evidence:
                     result['verified_workload_service']=target.get('labels',{}).get('app.kubernetes.io/name')or target.get('labels',{}).get('app')
                     break
         extra=TelemetryCollector(self.http,self.base,self.token).collect(event,result)
-        result['missing']+=extra['missing']+deployed['missing']
+        source=deployment_collector.source_fragments(deployed,extra)
+        result['missing']+=extra['missing']+deployed['missing']+source['missing']
         artifacts=[{'name':'alert-event.json','content':event,'source':{'kind':'authenticated alert ingress'}},
                    {'name':'rule-definitions.json','content':result['rule_definitions'],'source':{'kind':'rule API','collected_at':int(now)}},
                    {'name':'metric-samples.json','content':raw_samples,'source':{'kind':'query_range','window':result['window']}},
-                   {'name':'collection-context.json','content':dict(result),'source':{'kind':'collector','collected_at':int(time.time())}}]+extra['artifacts']+deployed['artifacts']
+                   {'name':'collection-context.json','content':dict(result),'source':{'kind':'collector','collected_at':int(time.time())}}]+extra['artifacts']+deployed['artifacts']+source['artifacts']
         known=[self.token,os.environ.get('WORKER_TOKEN'),os.environ.get('LITELLM_KEY')]
         if self.github:
             try:known.append(Path(self.github.token_file).read_text().strip())
