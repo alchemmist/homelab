@@ -4,11 +4,15 @@ metadata:
   name: n8n
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: n8n
   template:
     metadata:
+      annotations:
+        checksum/yandex-extension: {{ include (print $.Template.BasePath "/yandex-extension.yaml") . | sha256sum }}
       labels:
         app: n8n
     spec:
@@ -27,6 +31,8 @@ spec:
         - name: n8n
           image: {{ .Values.image | quote }}
           env:
+            - name: N8N_CUSTOM_EXTENSIONS
+              value: /opt/n8n/yandex-extension
             - name: N8N_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
@@ -68,9 +74,15 @@ spec:
               port: http
             initialDelaySeconds: 30
           volumeMounts:
+            - name: yandex-extension
+              mountPath: /opt/n8n/yandex-extension
+              readOnly: true
             - name: data
               mountPath: /home/node/.n8n
       volumes:
+        - name: yandex-extension
+          configMap:
+            name: n8n-yandex-extension
         - name: data
           persistentVolumeClaim:
             claimName: n8n

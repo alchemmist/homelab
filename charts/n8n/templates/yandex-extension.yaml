@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: n8n-yandex-extension
+data:
+{{- range $path, $_ := .Files.Glob "extensions/*.js" }}
+  {{ base $path }}: |
+{{ $.Files.Get $path | indent 4 }}
+{{- end }}
