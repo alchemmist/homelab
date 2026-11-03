@@ -1,0 +1,35 @@
+{
+  "verifiedAt": "2026-11-03T09:03:38.301894+00:00",
+  "cpuProfileAndGrafanaVerified": true,
+  "service": "lms-backend",
+  "profileTypeId": "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+  "sampledCpuNanoseconds": 8183673363,
+  "functionCount": 337,
+  "stackDepth": 87,
+  "applicationFrames": [
+    "create_app.<locals>.static",
+    "Site.response",
+    "create_app.<locals>.static.<locals>.decorate",
+    "render_navigation",
+    "render_navigation.<locals>.navigation",
+    "render_navigation.<locals>.navigation.<locals>.link",
+    "create_app.<locals>.static.<locals>.decorate.<locals>.<lambda>"
+  ],
+  "browser": {
+    "success": true,
+    "selectedService": "lms-backend",
+    "nativeProfileRows": 519,
+    "flameGraphRendered": true,
+    "topTableRendered": true,
+    "applicationFunctionVisible": "render_navigation",
+    "cpuTimelineRendered": true,
+    "browserExceptions": [],
+    "datasourceFailures": []
+  },
+  "selectedIntervalUrl": "https://grafana.socrat.alchemmist.xyz/d/service-cpu-profiling?var-service=lms-backend&from=1793694818037&to=1793696618037",
+  "secretsSaved": false,
+  "rawProfilesSaved": false,
+  "fullTrafficCanaryCompleted": false,
+  "lastCanaryCleanupPending": true,
+  "blocker": "socrat-3 became NotReady during traffic/cleanup verification; LMS and PostgreSQL are on this node. Cause not established. Synthetic session expires in 5 minutes; identity cleanup must follow node recovery."
+}
