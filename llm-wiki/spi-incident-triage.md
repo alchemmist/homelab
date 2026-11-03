@@ -107,7 +107,7 @@ SPI publication is **enabled after live dry-run** (SPI writeEnabled=true).
 Blog WRITE_ENABLED remains false. Do not transfer one worker's rollout policy to
 another. Historical dry-run reports are not replayed or posted as test issues.
 
-64 local tests pass: 31 SPI Python + five ingress + nine Yandex + six calendar +
+96 local tests pass: 63 SPI Python + five ingress + nine Yandex + six calendar +
 thirteen blog. Live authenticated ingress/Telegram execution 1927, full real-alert
 dry-run execution 1976, HTTP401 rejection, scheduled App-token refresh, duplicate
 suppression and worker restart recovery verified. Both workflows are active and
@@ -123,11 +123,39 @@ Do not bypass the ingress auth rollout. Legacy migration mode permits Telegram
 only; unauthenticated requests must never enqueue SPI. Queue failure returns 503
 for sender retry while still allowing Telegram. Headers never enter execution data.
 
-V1 evidence: rule definitions, historical metrics, pod/job and systemd profiles,
-scoped Loki error frequency, safe Tempo span/error counts when trace_id is provided,
-and allowlisted runbook excerpts from main (not proof of the deployed version).
-Raw log publication, automatic trace discovery and deployed-source correlation
-remain explicit gaps.
-Never describe those future capabilities as implemented. No automatic remediation,
-alert suppression, issue closure or dry-run replay. Ambiguous writes require marker
-reconciliation, not blind POST retries. Retain/keep is not a recurring backup.
+## Evidence v2 (3 November 2026)
+
+The former raw-log/discovery/provenance gaps are now covered by bounded collectors.
+Full operational contract: `docs/n8n/spi/setup.md`, Evidence v2 section.
+
+- Text artifacts live directly in issue comments: MANIFEST, alert/rules, preserved
+  metric samples, scoped error/stack/context logs, discovered traces and deployment
+  metadata. No binary upload, extra GitHub permission or evidence branch.
+- Grafana Explore links have exact absolute times, datasource and query. Stored
+  samples survive datasource retention; empty reads and clipping are explicit.
+- Tempo IDs come from logs or service/time search. Bounded spans include exception
+  events, parent IDs and resource service/version context when available.
+- Kubernetes read-only projection includes owner chain, current/prior termination,
+  image IDs and retained events, never env or Secrets. Job pods are verified before
+  treating them as log targets. Exporter labels are not affected workload identity.
+- Digest-addressed OCI metadata and supported immutable GitOps release mappings
+  provide source/version references. Socrat bot mapping was verified live. Matching
+  stack paths can yield numbered code excerpts pinned to that exact revision.
+  Collection-time deployment is not proof of incident-time version or binary/source
+  reproducibility. Unsupported repositories and host versions remain explicit gaps.
+- Artifacts: 90k characters each / 360k total plus manifest, 40k/comment part;
+  redaction and SHA-256 are recorded. Model excerpts are bounded to 24k characters;
+  all verified facts must cite existing evidence IDs. No claim that every byte was read.
+- Saved pending markers protect each publication step across restarts. Match bot
+  identity by immutable App ID 5569869, not a renameable login. Never blindly retry
+  an ambiguous POST or discard intent merely to make the job succeed.
+
+Real evidence supplement and roundtrip verification:
+[issue #9 artifact index](https://github.com/alchemmist/homelab/issues/9#issuecomment-6610936449).
+Nine artifact parts reconstructed into eight verified files. A fresh-state replay
+performed no additional writes. Downloader: `scripts/n8n/download_spi_evidence.py`.
+The source mapping and pod/event read probes were separate read-only validations,
+not invented incidents. Raw log/trace searches for this episode were empty, not health.
+
+No automatic remediation, suppression, issue closure, historic dry-run replay or
+credential publication. Retain/keep and one-off snapshots are not recurring backups.

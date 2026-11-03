@@ -9,7 +9,7 @@ metadata:
   name: spi-evidence-reader
 rules:
   - apiGroups: ['']
-    resources: [pods]
+    resources: [pods, events]
     verbs: [get, list]
   - apiGroups: [apps]
     resources: [replicasets, deployments, statefulsets, daemonsets]

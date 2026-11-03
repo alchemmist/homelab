@@ -92,12 +92,31 @@ class ProvenanceTests(unittest.TestCase):
         reader=Mock();e=event();e['labels']['namespace']='../secrets';r=DeploymentCollector(reader=reader).collect(e);reader.assert_not_called();self.assertEqual(r['missing'][0]['reason'],'INVALID_WORKLOAD_SCOPE')
     def test_systemd_not_exporter_pod(self):
         reader=Mock();e=event();e['labels']['name']='otel.service';DeploymentCollector(reader=reader).collect(e);reader.assert_not_called()
+    def test_immutable_gitops_digest_mapping(self):
+        import base64
+        digest='sha256:'+'b'*64;revision='c'*40;ref='d'*40
+        text='image:\n  repository: harbor.socrat.alchemmist.xyz/homelab/socrat-bot\n  tag: '+revision+'\n  digest: '+digest+'\n'
+        g=Mock();g.request.side_effect=[[{'sha':ref}],{'encoding':'base64','size':len(text),'content':base64.b64encode(text.encode()).decode()}]
+        h=Mock();h.request.return_value={'sha':revision}
+        r=DeploymentCollector(h,g).gitops_source('homelab/socrat-bot',{'image':'harbor.socrat.alchemmist.xyz/homelab/socrat-bot@'+digest,'imageID':'child-digest'})
+        self.assertEqual(r['content']['declared_source_revision'],revision);self.assertFalse(r['content']['source_equivalence_proven']);self.assertIn(ref,r['content']['release_manifest_url'])
+    def test_different_digest_cannot_claim_main_is_deployed(self):
+        import base64
+        text='image:\n  repository: harbor.socrat.alchemmist.xyz/homelab/socrat-bot\n  tag: '+'c'*40+'\n  digest: sha256:'+'d'*64+'\n'
+        g=Mock();g.request.side_effect=[[{'sha':'e'*40}],{'encoding':'base64','size':len(text),'content':base64.b64encode(text.encode()).decode()}]
+        h=Mock();r=DeploymentCollector(h,g).gitops_source('homelab/socrat-bot',{'image':'harbor.socrat.alchemmist.xyz/homelab/socrat-bot@sha256:'+'b'*64})
+        self.assertIsNone(r);h.request.assert_not_called()
+    def test_source_excerpt_is_pinned_and_traversal_rejected(self):
+        import base64
+        ref='c'*40;h=Mock();h.request.return_value={'encoding':'base64','size':20,'content':base64.b64encode(b'line one\nline two').decode(),'sha':'blob'}
+        proof={'artifacts':[{'name':'deployed-source-gitops.json','content':{'declared_source_revision':ref,'source_commit_url':'https://github.com/alchemmist/socrat-bot/tree/'+ref}}]}
+        r=DeploymentCollector(h).source_fragments(proof,{'artifacts':[{'content':'File /app/socrat_bot/main.py, line 2; socrat_bot/../secret.py'}]})
+        self.assertEqual(h.request.call_count,1);self.assertIn('?ref='+ref,h.request.call_args.args[1]);self.assertIn('line two',r['artifacts'][0]['content']['excerpt'])
     def test_absent_identity_explicit(self):
         e=event();e['labels']['pod']='app'
         with patch('provenance.ROOT',Path('/nonexistent')):r=DeploymentCollector().collect(e)
         self.assertEqual(r['missing'][0]['reason'],'KUBERNETES_READ_IDENTITY_MISSING')
 
-if __name__=='__main__':unittest.main()
 
 class EngineArtifactTests(unittest.TestCase):
     def test_primary_is_not_repeated_after_artifact_timeout(self):
@@ -134,3 +153,24 @@ class DownloadTests(unittest.TestCase):
     def test_primary_and_all_parts_have_bounded_bodies(self):
         bundle=prepare_bundle(event(),{},[{'name':'test.json','content':'`'*100000}]);g=Mock();g.comments.return_value=[];g.request.return_value={};publish_parts(g,9,bundle,{},Mock())
         self.assertTrue(all(len(x.args[2]['body'])<65536 for x in g.request.call_args_list))
+
+class ModelEvidenceTests(unittest.TestCase):
+    def test_facts_require_valid_existing_evidence_ids(self):
+        from integrations import Model
+        from core import REPORT_SCHEMA
+        from test_triage import report
+        import time
+        bad=report();bad['facts']=['A guessed fact [E999]'];good=report();good['facts']=['An alert fired [E001]']
+        h=Mock();h.request.side_effect=[{'choices':[{'message':{'content':json.dumps(bad)}}]},{'choices':[{'message':{'content':json.dumps(good)}}]}]
+        value=Model(h,'fake',min_interval=0).call('analyze',{'evidence':{'artifact_context':{'index':[{'id':'E001'}]}}},REPORT_SCHEMA,time.monotonic()+20)
+        self.assertEqual(value['facts'],good['facts']);self.assertEqual(h.request.call_count,2)
+
+class PrimaryReconciliationTests(unittest.TestCase):
+    def test_primary_marker_requires_actual_app_author(self):
+        from integrations import GitHub
+        g=GitHub(Mock(),'/unused');g.comments=Mock(return_value=[{'body':'marker','user':{'type':'User'}}])
+        self.assertEqual(g.reconcile('marker',9),0)
+        g.comments.return_value=[{'body':'marker','user':{'type':'Bot'},'performed_via_github_app':{'id':5569869}}]
+        self.assertEqual(g.reconcile('marker',9),9)
+
+if __name__=='__main__':unittest.main()

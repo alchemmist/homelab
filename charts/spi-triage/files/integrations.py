@@ -113,11 +113,12 @@ class GitHub:
                                  'updated_at':x['updated_at'],'recent_comments':[c.get('body','')[:1200] for c in comments[-3:]]}))
         return result
     def reconcile(self,marker,number=0):
+        from evidence_bundle import trusted_comment
         if number:
-            return number if any(marker in (c.get('body') or '') for c in self.comments(number)) else 0
+            return number if any(trusted_comment(c) and marker in (c.get('body') or '') for c in self.comments(number)) else 0
         # Closed issues are considered ONLY to reconcile an ambiguous previous write,
         # never for semantic matching a new incident.
-        return next((x['number'] for x in self.issues('all') if marker in (x.get('body') or '')),0)
+        return next((x['number'] for x in self.issues('all') if trusted_comment(x) and marker in (x.get('body') or '')),0)
 
 class Model:
     def __init__(self,http,key,base='http://litellm.llm.svc.cluster.local:4000/v1',min_interval=21):
@@ -140,6 +141,12 @@ class Model:
             try:
                 value=json.loads(response['choices'][0]['message']['content']);validate(value,schema)
                 if clean(value)!=value: raise Failure('UNSAFE_MODEL_OUTPUT')
+                context=data.get('evidence',{}).get('artifact_context') if isinstance(data,dict) else None
+                if schema is REPORT_SCHEMA and context:
+                    ids={x['id']for x in context.get('index',[])}
+                    for fact in value['facts']:
+                        refs=set(re.findall(r'\bE[0-9]{3}\b',fact))
+                        if not refs or not refs<=ids:raise Failure('INVALID_EVIDENCE_REFERENCE')
                 return value
             except (KeyError,IndexError,TypeError,ValueError,Failure) as exc:
                 last=exc.code if isinstance(exc,Failure) else 'INVALID_MODEL_SCHEMA'
@@ -169,7 +176,7 @@ class Model:
         if bundle:evidence['artifact_context']=bundle['model_context']
         evidence['queries']=[{**q,'result':metric_summary(q.get('result',{}))} if q.get('source') in ('prometheus_metrics','loki_error_frequency','host_log_error_frequency','loki_rule_metric') else q for q in evidence.get('queries',[])]
         evidence['rule_definitions']=[{k:v for k,v in r.items() if k!='alerts'} for r in evidence.get('rule_definitions',[])]
-        report=self.call('Write an evidence-grounded SPI report. Revalidate preliminary matching using diagnostics; choose 0 if a distinct cause is supported. Assess alert noise and actionable tuning separately from service defects. Include safe evidence references in facts; never fabricate a source path or threshold. Scrape exporter pods are not necessarily affected workloads: use job_name or systemd unit when present. Zero error counts or absent series never confirm no service degradation; Use artifact IDs when citing collected logs, traces, deployment metadata and metric samples. Explain excerpt/collection limits; never claim all stored bytes were reviewed. Missing logs do not prove health. OCI revision labels are build claims, not reproducible-build proof; main-branch runbooks are not deployed code.',
+        report=self.call('Write an evidence-grounded SPI report. Revalidate preliminary matching using diagnostics; choose 0 if a distinct cause is supported. Assess alert noise and actionable tuning separately from service defects. Include safe evidence references in facts; never fabricate a source path or threshold. Scrape exporter pods are not necessarily affected workloads: use job_name or systemd unit when present. Zero error counts or absent series never confirm no service degradation; Every verified fact MUST cite at least one existing artifact ID such as [E003]; never invent an evidence ID. Use artifact IDs when citing collected logs, traces, deployment metadata and metric samples. Explain excerpt/collection limits; never claim all stored bytes were reviewed. Missing logs do not prove health. OCI revision labels are build claims, not reproducible-build proof; main-branch runbooks are not deployed code.',
                          {'alert':event,'preliminary_match':match,'evidence':evidence},REPORT_SCHEMA,time.monotonic()+780)
         if report['issue_number'] not in {0,*[x['number']for x in match['candidates']]}: raise Failure('INVALID_MATCH_TARGET')
         return report
@@ -270,8 +277,9 @@ class Evidence:
         from telemetry import TelemetryCollector
         from provenance import DeploymentCollector
         from evidence_bundle import prepare_bundle, redact
-        deployed=DeploymentCollector(self.http,self.github).collect(event)
-        if labels.get('job_name'):
+        deployment_collector=DeploymentCollector(self.http,self.github)
+        deployed=deployment_collector.collect(event)
+        if labels.get('job_name') or (pod and not unit):
             for artifact in deployed['artifacts']:
                 workloads=artifact.get('content',{}).get('workloads',[])
                 if workloads:
@@ -280,11 +288,12 @@ class Evidence:
                     result['verified_workload_service']=target.get('labels',{}).get('app.kubernetes.io/name')or target.get('labels',{}).get('app')
                     break
         extra=TelemetryCollector(self.http,self.base,self.token).collect(event,result)
-        result['missing']+=extra['missing']+deployed['missing']
+        source=deployment_collector.source_fragments(deployed,extra)
+        result['missing']+=extra['missing']+deployed['missing']+source['missing']
         artifacts=[{'name':'alert-event.json','content':event,'source':{'kind':'authenticated alert ingress'}},
                    {'name':'rule-definitions.json','content':result['rule_definitions'],'source':{'kind':'rule API','collected_at':int(now)}},
                    {'name':'metric-samples.json','content':raw_samples,'source':{'kind':'query_range','window':result['window']}},
-                   {'name':'collection-context.json','content':dict(result),'source':{'kind':'collector','collected_at':int(time.time())}}]+extra['artifacts']+deployed['artifacts']
+                   {'name':'collection-context.json','content':dict(result),'source':{'kind':'collector','collected_at':int(time.time())}}]+extra['artifacts']+deployed['artifacts']+source['artifacts']
         known=[self.token,os.environ.get('WORKER_TOKEN'),os.environ.get('LITELLM_KEY')]
         if self.github:
             try:known.append(Path(self.github.token_file).read_text().strip())

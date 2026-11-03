@@ -206,6 +206,8 @@ def grafana_explore_url(public_base, datasource_uid, query_text, start, end, que
     }
     if datasource_uid in ('loki', 'prometheus'):
         query['queryType'] = 'range'
+        query['editorMode']='code'
+        if datasource_uid=='prometheus':query.update(range=True,instant=False)
     elif datasource_uid == 'tempo':
         query['queryType'] = 'traceId' if re.fullmatch(r'[a-f0-9]{32}', query_text) else 'traceql'
     pane = {
@@ -608,7 +610,7 @@ class TelemetryCollector:
         unit = _one_label(labels, ('name', 'systemd_unit', 'unit'), UNIT_RE, 'unit', rejected)
         host = _one_label(labels, ('host_name', 'hostname', 'nodename', 'host', 'node'), HOST_RE, 'host', rejected)
         if unit:
-            namespace=None;pod=None;container=None
+            namespace=None;pod=None;container=None;service=None
         elif labels.get('job_name'):
             pod=evidence.get('verified_workload_pod')
             service=evidence.get('verified_workload_service')
@@ -653,6 +655,9 @@ class TelemetryCollector:
                     'A host-wide sample does not prove unit health.')
             plans.append({'kind': 'host', 'selector': selector, 'host': host_name, 'unit': unit,
                           'host_source': host_source, 'scope_note': note})
+        if evidence.get('verified_workload_service') and not unit:
+            candidate=evidence['verified_workload_service']
+            service=candidate if SERVICE_RE.fullmatch(candidate) else None
         service_rejected = any(
             item['label'] in ('service', 'service_name', 'app', 'deployment', 'k8s_deployment_name')
             for item in rejected)

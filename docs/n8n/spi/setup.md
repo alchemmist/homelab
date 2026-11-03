@@ -74,20 +74,94 @@ service prevention, monitoring improvements and missing evidence. Non-English
 scripts/schema violations trigger at most one model-output retry; transport
 failures remain failures. Alerts/issues/tool results are untrusted prompt data.
 
-## Evidence v1 and explicit gaps
+## Evidence v2: reproducible incident artifacts
 
-Read-only Grafana datasource proxy accesses rule definitions, historical metric
-windows, scoped Kubernetes job/pod series, systemd unit state/restart series and
-namespace or host Loki error frequency. Host identity comes from node_uname_info.
-When a valid trace_id is supplied, Tempo contributes span/error counts only; raw
-span attributes are never passed to the model. An allowlisted GitHub runbook on
-main can be included with its SHA and an explicit deployed_version_verified=false.
-Requests are bounded by time, response size and namespace selectors. Whole rule
-catalogues and arbitrary raw log lines are not passed to the model or GitHub.
-Raw log publication, automatic trace discovery and deployed-source correlation
-are not implemented. Missing trace IDs and unverified deployment versions are
-explicit gaps, not evidence of health. Do not claim a
-confirmed root cause without supporting observations or invent thresholds/paths.
+Text evidence is published directly to the issue/comments, not an evidence branch,
+GitHub release or binary attachment. No extra GitHub Contents permission is needed;
+the triage token remains Issues:write + Contents:read, scoped to homelab.
+
+Collection freezes a sanitized bundle in durable job state before analysis. Reports
+link absolute-time Grafana Explore queries; subsequent comments contain the actual
+text artifacts and a final clickable index. Each artifact has an evidence ID,
+source/query/window, stored-character count, truncation/redaction flags and SHA-256.
+The manifest records gaps and limits. Parts concatenate in order without code fences;
+checksums refer to stored ASCII JSON, not the pre-redaction source.
+
+Included when available:
+- The authenticated alert event, matching rule definition, range-query samples,
+  compact observations, exact parameters and collection timestamps.
+- Scoped Loki error/stack lines and nearby context around up to three error anchors.
+  Job targets use Kubernetes-verified job pods, not kube-state-metrics exporter pods.
+  Systemd alerts use resolved host/unit scope, not exporter namespace logs.
+- Tempo discovery from log trace IDs and validated service/time searches, followed by
+  bounded spans, parent links, status, exception events and service-version attributes.
+- Read-only pod/workload owner chain, image/imageID, rollout revision, current and
+  previous termination, retained Kubernetes event timeline. No env/Secret contents.
+- OCI source/version claims for accessible digest-addressed Harbor images. If OCI
+  access is unavailable, Socrat bot can use an immutable GitOps release manifest whose
+  image digest matches the observed pod image, resolve the full source commit and
+  link that exact revision. Stack-referenced Socrat bot Python files can contribute
+  up to two numbered excerpts from that revision, never arbitrary URLs or `main`.
+
+Version evidence describes observed deployment at collection time, not automatically
+at incident onset. OCI labels and GitOps release mappings are not reproducible-build
+attestations. Unsupported source repositories, host installed versions, inaccessible
+registries and expired telemetry remain explicit gaps, never guessed versions.
+
+### Bounds and publication recovery
+
+Metrics retain their original query windows. Raw telemetry has a six-hour lookback,
+a one-hour maximum window with five-minute padding, at most ten new telemetry reads,
+40 error + 40 stack lines per scope, 20 context lines per query, five trace search
+hits and two fetched traces (20 stored spans each). Artifact-local windows/limits
+are authoritative; long incidents can be clipped. No hits do not establish health.
+
+Artifacts are capped at 90,000 ASCII characters each / 360,000 in aggregate (plus
+manifest). Comment payload parts are at most 40,000 characters. The model gets the
+full index, compact metric observations and up to 24,000 characters of prioritized
+new diagnostic excerpts. Every verified fact must cite a valid evidence ID; the
+model must not claim to have reviewed every stored byte.
+
+Progress and the pending marker are saved before each comment POST. Repeated delivery
+or restart reconciles published parts rather than duplicating them. Unobservable
+ambiguous writes require operator review; do not erase the intent or blindly retry.
+Comment authors are checked by immutable GitHub App ID **5569869**, not its renameable
+slug. Human marker text must never count as a confirmed App write.
+
+### Download and verify a stored episode
+
+Use the event key shown in the evidence index, not just the alert fingerprint:
+
+```sh
+python3 scripts/n8n/download_spi_evidence.py \
+  --issue 9 \
+  --event a0d1f3574290e2c681f95266b695db62b9afc08b9401b471bfdb8fe0ce3a29f3 \
+  --output /private/path/spi-9-evidence
+```
+
+The helper uses existing `gh` authentication, paginates comments, checks App identity,
+reassembles parts, verifies all checksums against the manifest and writes private
+files. It refuses missing/conflicting/tampered parts and unsafe output overwrites.
+No tokens, cookies, private keys or credential databases are valid attachments.
+Internal IPs, hostnames, stack traces and deployment metadata are approved diagnostic
+content; credential values and emails are redacted before persistence/publication.
+
+### Live v2 acceptance
+
+- [Real SPI #9 evidence index](https://github.com/alchemmist/homelab/issues/9#issuecomment-6610936449):
+  nine artifact parts / eight reconstructed files, including MANIFEST, with eight
+  absolute-time Explore links. This is a supplement to a real episode, not a fabricated alert.
+- Downloaded all files from GitHub and verified their SHA-256 locally. Repeating
+  publication from fresh local progress reconciled all parts without any POST.
+- Pod/owner/event reads worked using the worker identity; Secrets, exec subresource
+  and deployment patches were denied. The role cannot read credential stores.
+- Socrat bot's running pinned image was matched to immutable release manifest
+  `701da1e70d0ab817b0a6db82b3f440b1e29883b8`, resolving source revision
+  `a90a8915f620f594a01cd1668aab60509e6f4f0f`. Harbor anonymous OCI reads returned
+  HTTP401; no registry/admin credential was added to the worker. GitOps fallback
+  supplied the verified release association instead.
+- Live log/trace searches for the supplemented systemd episode returned no matching
+  lines/traces. This is recorded as missing evidence, not successful root-cause proof.
 
 ## Operations
 
@@ -110,7 +184,7 @@ traffic. Never erase pending/ambiguous-publication state to clear an alert.
 
 ## Verified acceptance
 
-- 64 local tests: 31 SPI Python, five native ingress, nine Yandex client, six calendar,
+- 96 local tests: 63 SPI Python, five native ingress, nine Yandex client, six calendar,
   thirteen blog. Helm templates render with the pinned images.
 - Authenticated ingress execution **1927** persisted its group and the bot returned
   a message record. No ingress/worker/GitHub token appeared in its execution data.

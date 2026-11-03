@@ -78,9 +78,15 @@ Socrat Alerts сохранён по ID, native trigger авторизует и �
 publish. SPI-публикация включена после проверенного dry-run; **блог по-прежнему
 WRITE_ENABLED=false**. Не путать эти политики. Код: `charts/spi-triage/`, runbook:
 `docs/n8n/spi/setup.md`. Проверены живые dry-run, Telegram, auth401, дубликаты,
-перезапуск/очередь, refresh scoped App token; 64 теста. Данные ограничены:
-raw logs и полная корреляция deployed source отсутствуют, модель не заменяет
-доказательство первопричины. Автоматически менять алерты или инфраструктуру нельзя.
+перезапуск/очередь, refresh scoped App token; после v2 — 96 тестов. Evidence v2
+сохраняет текстовые артефакты прямо в комментариях, добавляет абсолютные Grafana-ссылки,
+Loki stack/context, поиск Tempo traces, pod/events и привязку к image/release revision.
+Поддерживаемые stack paths дают source excerpts на immutable commit. Manifest содержит
+SHA-256, усечения и пробелы. Восстановление файлов: `scripts/n8n/download_spi_evidence.py`.
+Проверены реальные артефакты SPI #9 и roundtrip всех файлов. Версия, наблюдаемая сейчас,
+не доказывает версию в момент старого инцидента; неизвестные host/source versions нельзя
+выдумывать. Модель не заменяет доказательство причины. Автоматически менять алерты
+или инфраструктуру нельзя.
 
 ## Обязательные правила
 
