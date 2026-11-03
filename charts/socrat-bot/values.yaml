@@ -1,8 +1,8 @@
 replicaCount: 1
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/socrat-bot
-  tag: 00ce45b630e1560c48cf515f27c731aa4d8f8dbd
-  digest: sha256:6e5c461bc382ce825ae5c071639f97294ecbf492e6f5b6863a8aa31bc8f0ac87
+  tag: fda04bc9cba33d68938906c95a4ab480d56eb348
+  digest: sha256:de2d0ed7154f4208535ddaeca176eb01c8a4ed22331ce5c62a35bd5f556bb4d6
   pullPolicy: IfNotPresent
 imagePullSecrets:
   - socrat-bot-harbor-pull
