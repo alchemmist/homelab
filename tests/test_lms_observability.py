@@ -128,3 +128,10 @@ def test_waterfall_is_the_primary_panel_before_trace_table():
     assert waterfall['gridPos']['y'] < table['gridPos']['y']
     assert waterfall['gridPos']['h'] >= 20
     assert waterfall['gridPos']['w'] == 24
+
+
+def test_dashboard_starts_with_waterfall_without_instruction_text_panel():
+    dashboard = json.loads((ROOT/'charts/lms/files/lms-performance.json').read_text())
+    assert not any(panel['type']=='text' or panel['id']==1 for panel in dashboard['panels'])
+    first = min(dashboard['panels'], key=lambda panel: panel['gridPos']['y'])
+    assert first['id']==3 and first['gridPos']['y']==0

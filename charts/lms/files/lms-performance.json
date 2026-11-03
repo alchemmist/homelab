@@ -2,7 +2,7 @@
   "uid": "lms-performance",
   "title": "LMS \u00b7 Performance & distributed traces",
   "schemaVersion": 39,
-  "version": 5,
+  "version": 6,
   "tags": [
     "lms",
     "performance",
@@ -42,21 +42,6 @@
   },
   "panels": [
     {
-      "id": 1,
-      "type": "text",
-      "title": "How to investigate",
-      "gridPos": {
-        "x": 0,
-        "y": 0,
-        "w": 24,
-        "h": 3
-      },
-      "options": {
-        "mode": "markdown",
-        "content": "The dashboard automatically selects a retained LMS trace from the chosen time range. Use **Trace ID** to select another, or click a trace in the search table to open Explore. The waterfall shows browser, Traefik, LMS and database operations. Selected-trace logs search the 7-day trace-retention window; recent application logs below follow the dashboard time range independently of trace selection. If the selected time range has no retained traces, choose a recent/wider range. Old trace links may expire according to Tempo retention; this is not a collector failure."
-      }
-    },
-    {
       "id": 3,
       "type": "traces",
       "title": "Distributed waterfall \u00b7 $trace_id",
@@ -66,7 +51,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 3,
+        "y": 0,
         "w": 24,
         "h": 21
       },
@@ -89,7 +74,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 24,
+        "y": 21,
         "w": 24,
         "h": 7
       },
@@ -116,7 +101,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 31,
+        "y": 28,
         "w": 24,
         "h": 8
       },
@@ -146,7 +131,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 39,
+        "y": 36,
         "w": 24,
         "h": 8
       },
