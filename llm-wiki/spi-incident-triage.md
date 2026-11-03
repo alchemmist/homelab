@@ -44,7 +44,9 @@ rendered parameters/connections match live. Four Grafana SPI rules evaluated hea
 Known secrets were absent from ingress execution data; consistent SPI off-node
 backup integrity checked. First real issue: [SPI #9](https://github.com/alchemmist/homelab/issues/9),
 authored by socrat-pr-agent[bot], English title/body and marker verified. Post-publication
-queue state has a verified off-node copy. See the runbook for exact IDs.
+queue state has a verified off-node copy. A natural subsequent incident was matched
+to #9 by the model and appended as English comment `6608101252`, verifying both
+publication paths live. See the runbook for exact IDs.
 
 Do not bypass the ingress auth rollout. Legacy migration mode permits Telegram
 only; unauthenticated requests must never enqueue SPI. Queue failure returns 503

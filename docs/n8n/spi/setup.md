@@ -147,7 +147,7 @@ unrelated active-alert catalogues are not needed in the prompt.
 
 This does not add GPU capacity or preempt PR review. The durable queue may lag
 under shared-model contention; backlog/failure alerts are meaningful operational
-signals. A first natural repeat was semantically matched to open SPI #9 by the
-model; its subsequent analysis/comment may still be waiting for inference. Do not
-claim that all pending incidents have been diagnosed or that a comment was posted
-until the corresponding completed job and GitHub object are checked.
+signals. A subsequent natural incident was semantically matched to open SPI #9 by the
+model and [appended as an English bot comment](https://github.com/alchemmist/homelab/issues/9#issuecomment-6608101252).
+Both create-new and append-existing paths are therefore verified live, not only
+mocked. Other queued incidents may still be waiting; do not claim the queue is drained.
