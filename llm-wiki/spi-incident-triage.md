@@ -159,3 +159,14 @@ not invented incidents. Raw log/trace searches for this episode were empty, not 
 
 No automatic remediation, suppression, issue closure, historic dry-run replay or
 credential publication. Retain/keep and one-off snapshots are not recurring backups.
+
+### Startup hardening checkpoint
+
+Larger queue recovery exposed SQLITE_IOERR_GETTEMPPATH (6410), not corruption:
+read-only root prevented a SQLite statement spill temporary file. Exact recovery
+was reproduced, then fixed by per-connection temp_store=MEMORY plus bounded /tmp
+memory emptyDir. Keep root read-only; do not reset the queue. Worker healthy,
+native write/integrity verified and at least 50 jobs preserved in final off-node
+backup. Emergency Argo skip and storage probe removed; scheduler active. Failure
+lookback/backlog alerts can remain active after recovery. Bot user ID351189559 is
+the immutable fallback for issue responses that omit App metadata.

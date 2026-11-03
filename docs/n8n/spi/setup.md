@@ -242,3 +242,10 @@ Do not solve this by resetting SQLite, deleting dedup state or enabling a writab
 container root. During repair, the worker was stopped and a private physical copy
 was retained; the supported recovery update succeeded with memory temp storage.
 No n8n database changes or old-snapshot rollback were involved.
+
+Recovery acceptance: worker returned Synced/Healthy; Store integrity check and a
+native duplicate-delivery write passed with memory temp-store. At least 50 jobs
+were retained in the final verified consistent off-node snapshot. The temporary
+storage probe was removed and Argo reconciliation and SPI scheduling restored.
+Monitoring can remain firing for recent failures and pending for backlog after
+recovery; healthy rule evaluation is not the same as all alerts being Normal.
