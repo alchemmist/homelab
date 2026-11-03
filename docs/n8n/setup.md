@@ -116,3 +116,17 @@ Do not bypass TLS or dump credentials/HTTP auth headers into diagnostics.
 - The former voice service used Glagol WebSocket, not a one-request IoT proxy.
   It was retired after the direct cloud-scenario path was verified. Older recovery
   notes describe the architecture at the time; they are not deployment instructions.
+
+### Retirement completed, 2026-11-03
+
+- Homelab migration commit: `9954e3d`. Argo Application, Deployment, Service,
+  legacy Fleet definitions and chart were removed. Old Kubernetes voice Secret
+  and unused n8n Header Auth credential were deleted after a private backup.
+- Scheduled execution 1478 succeeded after retirement. Both calendar selections
+  and the original Google credential/workflow ID were preserved.
+- Five calendar tests and thirteen blog tests pass. A fresh off-node SQLite
+  backup includes the new encrypted credential; integrity/foreign-key checks pass.
+- `alchemmist/yandex-voice` is **archived**, not deleted: GitHub DELETE returned
+  403; the available CLI token lacks delete_repo scope despite account admin
+  permission. Do not claim successful permanent deletion. Local original source
+  and its uncommitted changes were preserved in a private archive.
