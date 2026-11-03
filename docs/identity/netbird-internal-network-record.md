@@ -1,6 +1,7 @@
 # Existing WireGuard + administrative NetBird ingress
 
-2026-11-03. Actual staged deployment, **not yet full administrative VPN acceptance**.
+2026-11-03. Actual deployment and Mac administrative routing/SSH checks passed.
+Personal user acceptance, non-admin client and outage/HA acceptance remain separate.
 Supersedes the two-application-only target for the new user-authorized admin scope.
 
 ## Intended separation
@@ -62,19 +63,23 @@ Supersedes the two-application-only target for the new user-authorized admin sco
    existing `alchemmist` user to socrat-2 with strict preexisting host-key checking.
    This is automated actual-key acceptance, not a personal GUI usability claim.
 
-## Current deliberate gate
+## Initial deliberate gate (subsequently passed below)
 
 A default GET-only execution of `netbird-internal-activate.py` **correctly refused**
 activation because no genuine `netbird-internal-admins` JWT group has arrived yet.
-The user was asked to perform `netbird up --force-reauth` and finish personal OIDC.
+The initially suggested `netbird up --force-reauth` was incorrect: that flag is
+not supported by the installed 0.82.0 CLI. Verified replacement:
+`netbird login --extend`. Its regular browser SSO forwards a fresh JWT to native
+ExtendAuthSession; server validateToken invokes SyncUserJWTGroups. It preserves
+the existing tunnel and device identity, unlike logout/re-enrollment.
 No fake API source group, impersonation, cached-password login, or automatic
 unrelated user/device grant was substituted.
 
-Resources/routers exist, but **no full internal-network admin policy has been
-created**. The one pilot directed SSH policy is not full internal access.
-Do not tell the user their old VPN can be removed yet.
+At that staged checkpoint, resources/routers existed but no full internal-network
+admin policy had been created. The one pilot directed SSH policy alone was not
+full internal access. Activation was deferred until the real owner refresh.
 
-## Continue after the human step
+## Guarded activation procedure
 
 Installed private remote scripts mirror source `netbird-internal-network.py` and
 `netbird-internal-activate.py`. The latter is GET-only by default, validates genuine
@@ -85,11 +90,38 @@ uncertain writes stop without retry. It creates four directed resource policies,
 not All-device/default/subnet-wide grants. All protocols are intentional **only
 for the explicitly administered four nodes**, matching the new full-admin scope.
 
-After apply, verify from Mac that all four WG routes actually use NetBird (not the
-still-running legacy VPN), then TCP/native SSH and verified-TLS private Grafana
-positive tests, correct SNAT return paths, forbidden non-admin access, group and
-session/device revocation, restart/outage behavior. Preserve old client VPN until
-real acceptance. A missing Tim test client is a real acceptance gap, not a pass.
+### Actual activation and Mac checks after personal `login --extend`
+
+The owner reported successful personal renewal. A genuine JWT-issued admin group
+appeared with exactly one admitted owner device. GET-only plan produced four
+exact /32 destinations; explicit current-hash apply created and read back four
+admin-only directed resource policies. The preexisting pilot SSH policy remains
+separate. No All-device policy, API substitute source or other human grant.
+
+- Mac `route -n get` selects **utun100** for all four WG node addresses, not the
+  legacy VPN interface. Mac daemon, management and Signal are connected; both
+  routing peers connected.
+- All four addresses answer actual ICMP and native SSH2222 banners.
+- Actual native SSH to **every node** succeeded as existing `alchemmist`, with
+  existing key and strict preexisting host-key validation. ProxyJump was disabled
+  for these checks, so they were direct through the new private routes.
+- SSH-reported source verifies the intended SNAT/return paths: socrat-0 sees
+  `10.250.0.2`; socrat-1/2/3 see `10.250.0.1`.
+- Verified-TLS HTTPS to private Grafana at `10.250.0.3:443`, retaining correct
+  Grafana Host/SNI via curl `--resolve`, returned 200. This does not claim client
+  DNS was changed or public Grafana was recreated.
+- A bounded revocation test disabled **only** socrat-3's exact resource policy,
+  under native policy identity/source/destination checks and private before
+  journal. Its Mac route withdrew from NetBird to legacy **utun4**. Restoring only
+  that policy brought **utun100** back. The old VPN can still provide fallback;
+  withdrawal must not be misreported as total denial while it remains running.
+- Latest actual router memory ~25Mi/26Mi within96Mi caps; no cap increase.
+
+Core existing-WG/admin-NetBird ingress is now operational. Old user VPN configuration
+is retained pending personal switch-off/usability acceptance. A separate genuine
+non-admin/Tim client test, Authentik-group/session/device revocation timing and
+outage/recovery acceptance remain outstanding; no claim of route/control-plane
+HA, immediate upstream-group removal enforcement or complete disaster recovery.
 
 Source tests: 79 passed, 1 skipped, 97 subtests after this stage. Native private
 before/complete journals are recovery evidence, not publishable API snapshots.
