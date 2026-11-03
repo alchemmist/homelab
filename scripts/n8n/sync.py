@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Upsert inactive calendar workflow. Secrets remain outside git."""
 import copy
+import os
 import re
 import json
 from pathlib import Path
@@ -11,8 +12,8 @@ BASE = Path(__file__).resolve().parents[2]
 CONFIG = Path.home() / '.config/n8n'
 
 def api(method, path, body=None):
-    cmd = ['curl', '--fail-with-body', '-sS', '--resolve',
-           'n8n.socrat.alchemmist.xyz:443:10.250.0.1',
+    cmd = ['curl', '--fail-with-body', '-sS', '--connect-timeout', '5', '--max-time', '30', '--resolve',
+           'n8n.socrat.alchemmist.xyz:443:' + os.environ.get('N8N_API_RESOLVE_ADDRESS', '10.250.0.1'),
            '-X', method, '-H', 'X-N8N-API-KEY: ' + (CONFIG / 'api-key').read_text().strip(),
            '-H', 'Content-Type: application/json',
            'https://n8n.socrat.alchemmist.xyz/api/v1/' + path]
@@ -24,13 +25,10 @@ def api(method, path, body=None):
         raise RuntimeError('API request failed: ' + method + ' ' + path)
     return json.loads(r.stdout) if r.stdout else {}
 
-def render_workflow(template, creds, calendar, cloud):
-    for kind in ('googleCalendarOAuth2Api', 'httpHeaderAuth'):
+def render_workflow(template, creds, calendar, cloud=None):
+    for kind in {k for n in template['nodes'] for k in n.get('credentials', {})}:
         if not creds.get(kind, {}).get('id'):
             raise RuntimeError('Missing credential mapping: ' + kind)
-    for key in ('scenario_id',):
-        if not isinstance(cloud.get(key), str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', cloud[key]):
-            raise RuntimeError('Missing or invalid Yandex cloud configuration: ' + key)
     ids = calendar.get('calendar_ids', ['primary'])
     if not isinstance(ids, list) or not ids or not all(isinstance(x, str) and x for x in ids):
         raise RuntimeError('calendar_ids must be a nonempty list of calendar IDs')
@@ -38,16 +36,16 @@ def render_workflow(template, creds, calendar, cloud):
     for n in w['nodes']:
         if n['name'] == 'Select Calendars':
             n['parameters']['jsCode'] = 'return ' + json.dumps(ids) + '.map(calendarId => ({ json: { calendarId } }));'
-        for key, value in n['parameters'].items():
-            if isinstance(value, str):
-                n['parameters'][key] = value.replace('REPLACE_WITH_YANDEX_SCENARIO_ID', cloud['scenario_id'])
         for kind in n.get('credentials', {}):
             n['credentials'][kind] = creds[kind]
-    require_public_yandex_api(w)
+    require_yandex_policy(w)
     return w
 
-def require_public_yandex_api(workflow):
+def require_yandex_policy(workflow):
     for node in workflow['nodes']:
+        if node['type'] == 'CUSTOM.yandexStation':
+            if set(node.get('credentials', {})) != {'yandexStationApi'}:
+                raise RuntimeError('Automatic Yandex node requires encrypted x-token credentials')
         if node['type'] != 'n8n-nodes-base.httpRequest':
             continue
         params = node.get('parameters', {})
@@ -67,10 +65,9 @@ def main():
     creds = json.loads(mapping.read_text())
     calendar_config = CONFIG / 'calendar-config.json'
     calendar = json.loads(calendar_config.read_text()) if calendar_config.exists() else {}
-    cloud = json.loads((CONFIG / 'yandex-cloud-config.json').read_text())
     template = json.loads((BASE / 'docs/n8n/calendar-voice-reminder.json').read_text())
-    require_public_yandex_api(template)
-    w = render_workflow(template, creds, calendar, cloud)
+    require_yandex_policy(template)
+    w = render_workflow(template, creds, calendar)
     body = {k: w[k] for k in ['name', 'nodes', 'connections', 'settings']}
     existing = [x for x in api('GET', 'workflows?limit=250')['data'] if x['name'] == w['name']]
     if len(existing) > 1:

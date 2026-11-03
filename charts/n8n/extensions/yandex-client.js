@@ -1,6 +1,6 @@
 'use strict';
 const {createHash}=require('crypto');
-const sessions=new Map(), locks=new Map();
+const sessions=new Map(), locks=new Map(), announced=new Map();
 class YandexError extends Error { constructor(code){super(code);this.code=code;} }
 class CookieJar {
  constructor(){this.values=new Map();}
@@ -50,7 +50,7 @@ async function fresh(credentials,signal,transport){
  return {jar,csrf,until:Date.now()+25*60*1000};
 }
 function payload(credentials,text){return {name:'Calendar reminders',icon:'home',triggers:[{trigger:{type:'scenario.trigger.voice',value:'календарные напоминания из автоматики'}}],steps:[{type:'scenarios.steps.actions.v2',parameters:{items:[{id:credentials.deviceId,type:'step.action.item.device',value:{id:credentials.deviceId,item_type:'device',capabilities:[{type:'devices.capabilities.quasar',state:{instance:'volume',value:{value:5}}},{type:'devices.capabilities.quasar',state:{instance:'tts',value:{text,whisper:false,lang:'ru'}}}]}}]}}]};}
-async function operation(credentials,{text='',check=false,forceRefresh=false,signal,transport=fetch}={}){
+async function operation(credentials,{text='',check=false,forceRefresh=false,dedupKey='',signal,transport=fetch}={}){
  if(typeof credentials.xToken!=='string'||!credentials.xToken)throw new YandexError('MISSING_X_TOKEN');
  for(const field of ['deviceId','scenarioId'])if(!/^[a-zA-Z0-9_-]{1,128}$/.test(credentials[field]||''))throw new YandexError('INVALID_DEVICE_CONFIGURATION');
  if(!check&&(typeof text!=='string'||!text.trim()||text.length>2000))throw new YandexError('INVALID_ANNOUNCEMENT_TEXT');
@@ -58,6 +58,8 @@ async function operation(credentials,{text='',check=false,forceRefresh=false,sig
  const previous=locks.get(key)||Promise.resolve();
  const run=previous.catch(()=>{}).then(async()=>{
   if(signal?.aborted)throw new YandexError('CANCELLED');
+  const announcementKey=key+'|'+dedupKey;
+  if(!check&&dedupKey&&announced.get(announcementKey)>Date.now()-48*60*60*1000)return {status:'ok',operation:'announce',alreadyAnnounced:true,sessionRefreshed:false};
   let session=sessions.get(key),refreshed=false;
   if(forceRefresh||!session||session.until<=Date.now()){session=await fresh(credentials,signal,transport);sessions.set(key,session);refreshed=true;}
   const put=()=>request('https://iot.quasar.yandex.ru/m/v4/user/scenarios/'+credentials.scenarioId,{method:'PUT',headers:{'x-csrf-token':session.csrf,'Content-Type':'application/json'},body:JSON.stringify(payload(credentials,check?'Напоминания календаря готовы.':text))},session.jar,signal,transport);
@@ -71,6 +73,9 @@ async function operation(credentials,{text='',check=false,forceRefresh=false,sig
   const played=await request('https://iot.quasar.yandex.ru/m/user/scenarios/'+credentials.scenarioId+'/actions',{method:'POST',headers:{'x-csrf-token':session.csrf}},session.jar,signal,transport);
   if([401,403].includes(played.status))sessions.delete(key);
   ok(played,'ANNOUNCEMENT_NOT_CONFIRMED');
+  if(dedupKey)announced.set(announcementKey,Date.now());
+  for(const[k,when]of announced)if(when<Date.now()-48*60*60*1000)announced.delete(k);
+  while(announced.size>10000)announced.delete(announced.keys().next().value);
   return {status:'ok',operation:'announce',sessionRefreshed:refreshed};
  });
  locks.set(key,run);

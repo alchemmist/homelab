@@ -1,0 +1,66 @@
+{
+  "name": "Yandex Session Maintenance",
+  "nodes": [
+    {
+      "id": "5af42fb1-30d7-4403-aef5-d175e51e2c3a",
+      "name": "Every 15 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d9097dc7-abe5-4d72-adf4-e3169d0d9e73",
+      "name": "Refresh Yandex Session",
+      "type": "CUSTOM.yandexStation",
+      "typeVersion": 1,
+      "position": [
+        250,
+        0
+      ],
+      "parameters": {
+        "operation": "check",
+        "forceRefresh": true
+      },
+      "credentials": {
+        "yandexStationApi": {
+          "id": "REPLACE_WITH_CREDENTIAL_ID",
+          "name": "Yandex Station Auto Session"
+        }
+      },
+      "retryOnFail": false
+    }
+  ],
+  "connections": {
+    "Every 15 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Refresh Yandex Session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Moscow",
+    "executionTimeout": 110,
+    "saveDataSuccessExecution": "all",
+    "saveDataErrorExecution": "all"
+  }
+}

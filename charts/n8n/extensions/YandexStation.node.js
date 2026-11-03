@@ -7,7 +7,7 @@ class YandexStation {
   for(let i=0;i<items.length;i++){
    const check=this.getNodeParameter('operation',i)==='check';
    try{
-    const result=await operation(credentials,{check,text:check?'':this.getNodeParameter('text',i),forceRefresh:this.getNodeParameter('forceRefresh',i),signal:this.getExecutionCancelSignal?.()});
+    const result=await operation(credentials,{check,dedupKey:check?'':String(items[i].json.dedupKey||''),text:check?'':this.getNodeParameter('text',i),forceRefresh:this.getNodeParameter('forceRefresh',i),signal:this.getExecutionCancelSignal?.()});
     console.log(JSON.stringify({component:'yandex-calendar',event:check?'session_check_ok':'announcement_ok',sessionRefreshed:result.sessionRefreshed}));
     out.push({json:result,pairedItem:{item:i}});
    }catch(e){

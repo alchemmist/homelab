@@ -67,28 +67,25 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "https://api.iot.yandex.net/v1.0/scenarios/REPLACE_WITH_YANDEX_SCENARIO_ID/actions",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "options": {
-          "timeout": 10000
-        }
+        "operation": "announce",
+        "text": "={{ $json.text }}",
+        "forceRefresh": false
       },
       "id": "a1b2c3d4-0004-4000-8000-000000000004",
-      "name": "Run Fixed Yandex Scenario",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "name": "Announce via Yandex Station",
+      "type": "CUSTOM.yandexStation",
+      "typeVersion": 1,
       "position": [
         960,
         0
       ],
       "credentials": {
-        "httpHeaderAuth": {
+        "yandexStationApi": {
           "id": "REPLACE_WITH_CREDENTIAL_ID",
-          "name": "Yandex IoT Bearer Token"
+          "name": "Yandex Station Auto Session"
         }
-      }
+      },
+      "retryOnFail": false
     },
     {
       "parameters": {
@@ -155,14 +152,14 @@
       "main": [
         [
           {
-            "node": "Run Fixed Yandex Scenario",
+            "node": "Announce via Yandex Station",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Run Fixed Yandex Scenario": {
+    "Announce via Yandex Station": {
       "main": [
         [
           {
@@ -177,7 +174,7 @@
   "settings": {
     "executionOrder": "v1",
     "timezone": "Europe/Moscow",
-    "executionTimeout": 55
+    "executionTimeout": 110
   },
   "pinData": {}
 }

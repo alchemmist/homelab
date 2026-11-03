@@ -41,3 +41,7 @@ test('cancelled execution never performs requests',async()=>{
 test('cookie jar respects domain, path and expiration',()=>{
  const j=new CookieJar();j.accept('https://passport.yandex.ru/auth/session/',new Headers({'set-cookie':'Session_id=test; Domain=.yandex.ru; Path=/; Secure'}));assert.match(j.header('https://iot.quasar.yandex.ru/m/user'),/Session_id=test/);assert.equal(j.header('https://evil.test/'),'');j.accept('https://passport.yandex.ru/',new Headers({'set-cookie':'Session_id=gone; Domain=.yandex.ru; Path=/; Max-Age=0'}));assert.equal(j.header('https://iot.quasar.yandex.ru/'),'');
 });
+
+test('overlapping polls do not replay an acknowledged dedup key',async()=>{
+ const f=fixture();const r=await Promise.all([1,2].map(()=>operation(f.credentials,{text:'Meeting',dedupKey:'same-event',transport:f.transport})));assert.equal(f.calls.filter(c=>new URL(c.url).pathname.endsWith('/actions')).length,1);assert.equal(r[1].alreadyAnnounced,true);
+});
