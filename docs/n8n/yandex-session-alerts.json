@@ -28,7 +28,8 @@
       },
       "annotations": {
         "summary": "Yandex calendar session or announcement failed",
-        "description": "Automatic session renewal or speech delivery failed. Inspect Yandex Session Maintenance and the failed calendar execution; follow docs/n8n/setup.md. Never paste tokens in chat."
+        "description": "Automatic session renewal or speech delivery failed. Inspect Yandex Session Maintenance and the failed calendar execution; follow docs/n8n/setup.md. Never paste tokens in chat.",
+        "runbook_url": "https://github.com/alchemmist/homelab/blob/main/docs/n8n/setup.md"
       },
       "notification_settings": {
         "receiver": "Yandex calendar via Socrat Alerts",
@@ -117,7 +118,8 @@
       },
       "annotations": {
         "summary": "Yandex session maintenance heartbeat missing",
-        "description": "No successful silent session renewal check for 40 minutes. Check n8n, maintenance activation and log ingestion; follow docs/n8n/setup.md."
+        "description": "No successful silent session renewal check for 40 minutes. Check n8n, maintenance activation and log ingestion; follow docs/n8n/setup.md.",
+        "runbook_url": "https://github.com/alchemmist/homelab/blob/main/docs/n8n/setup.md"
       },
       "notification_settings": {
         "receiver": "Yandex calendar via Socrat Alerts",

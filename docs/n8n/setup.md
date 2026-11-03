@@ -134,6 +134,8 @@ backups and encryption key; Retain/keep annotations are not recurring backups.
 ## Evidence
 
 - Native fresh-session check **1804**: success, sessionRefreshed=true, no speech.
+- Post-rollout cold-start check **1832**: success, new session regenerated from
+  encrypted x-token after the final pod restart; no browser login or speech.
 - Dynamic voice check **1809**: matcher → fresh auth → event-specific TTS → dedup,
   success. Temporary workflows deleted; original calendar active.
 - Scheduled maintenance **1817**: success.
