@@ -78,7 +78,7 @@ Socrat Alerts сохранён по ID, native trigger авторизует и �
 publish. SPI-публикация включена после проверенного dry-run; **блог по-прежнему
 WRITE_ENABLED=false**. Не путать эти политики. Код: `charts/spi-triage/`, runbook:
 `docs/n8n/spi/setup.md`. Проверены живые dry-run, Telegram, auth401, дубликаты,
-перезапуск/очередь, refresh scoped App token; 62 теста. Данные ограничены:
+перезапуск/очередь, refresh scoped App token; 64 теста. Данные ограничены:
 raw logs и полная корреляция deployed source отсутствуют, модель не заменяет
 доказательство первопричины. Автоматически менять алерты или инфраструктуру нельзя.
 

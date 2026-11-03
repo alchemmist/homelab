@@ -110,7 +110,7 @@ traffic. Never erase pending/ambiguous-publication state to clear an alert.
 
 ## Verified acceptance
 
-- 62 local tests: 29 SPI Python, five native ingress, nine Yandex client, six calendar,
+- 64 local tests: 31 SPI Python, five native ingress, nine Yandex client, six calendar,
   thirteen blog. Helm templates render with the pinned images.
 - Authenticated ingress execution **1927** persisted its group and the bot returned
   a message record. No ingress/worker/GitHub token appeared in its execution data.
@@ -135,3 +135,19 @@ by tests. Real publication verified: [SPI #9](https://github.com/alchemmist/home
 authored by `socrat-pr-agent[bot]`, English title/body, matching event marker, no
 known worker/model/Grafana/GitHub token values. The post-publication off-node
 state backup includes its completed job. Historical synthetic reports were not posted.
+
+## Shared inference latency
+
+Observed six-minute inference timeouts during the initial rollout. Calls now allow
+up to 600 seconds within the 780-second stage budget, with explicit timeout error
+codes and paced requests. Matrix/vector samples are reduced to verified extrema,
+first/last values and counts before inference; original queries/windows remain
+attached. Existing saved evidence is compacted on retry too. Raw sample arrays and
+unrelated active-alert catalogues are not needed in the prompt.
+
+This does not add GPU capacity or preempt PR review. The durable queue may lag
+under shared-model contention; backlog/failure alerts are meaningful operational
+signals. A first natural repeat was semantically matched to open SPI #9 by the
+model; its subsequent analysis/comment may still be waiting for inference. Do not
+claim that all pending incidents have been diagnosed or that a comment was posted
+until the corresponding completed job and GitHub object are checked.
