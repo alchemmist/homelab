@@ -26,14 +26,14 @@ context must be explicit. Never fabricate root cause or automatically change rul
 
 GitHub App `socrat-pr-agent` already has Issues:write and an installation on homelab.
 Do not put its private key in the triage worker. Namespace-local broker issues
-one-hour repo-scoped tokens without PR write and patches only a named Secret.
+one-hour repo-scoped tokens every 20 minutes without PR write and patches only a named Secret.
 Worker uses Viewer Grafana access and a separate capped LiteLLM qwen3.8-27b key.
 Dedicated SQLite PVC is NOT the n8n database; never modify n8n SQLite for this feature.
 
 ## Initial acceptance status
 
 Implementation is initially **dry-run**, GitHub writes disabled. Unit coverage:
-24 Python tests and four authenticated webhook tests. Real deployment/model,
+29 Python tests and five authenticated webhook tests. Real deployment/model,
 Telegram regression and token rotation require live verification before claiming
 completion. Consult the runbook and current operator checklist for later evidence.
 
@@ -41,8 +41,11 @@ Do not bypass the ingress auth rollout. Legacy migration mode permits Telegram
 only; unauthenticated requests must never enqueue SPI. Queue failure returns 503
 for sender retry while still allowing Telegram. Headers never enter execution data.
 
-V1 evidence: rule definitions, historical metrics and scoped Loki error frequency.
-Raw log publication, traces and deployed-source correlation are explicit gaps.
+V1 evidence: rule definitions, historical metrics, pod/job and systemd profiles,
+scoped Loki error frequency, safe Tempo span/error counts when trace_id is provided,
+and allowlisted runbook excerpts from main (not proof of the deployed version).
+Raw log publication, automatic trace discovery and deployed-source correlation
+remain explicit gaps.
 Never describe those future capabilities as implemented. No automatic remediation,
 alert suppression, issue closure or dry-run replay. Ambiguous writes require marker
 reconciliation, not blind POST retries. Retain/keep is not a recurring backup.

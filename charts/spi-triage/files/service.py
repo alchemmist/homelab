@@ -90,7 +90,7 @@ def serve():
     recovered=store.recover_on_start()
     print(json.dumps({'component':'spi-triage','event':'worker_started','recovered_jobs':recovered}),flush=True)
     engine=Engine(store,GitHub(http,os.environ.get('GITHUB_TOKEN_FILE','/github/token')),
-                  Model(http,os.environ['LITELLM_KEY']),Evidence(http,os.environ['GRAFANA_TOKEN'],os.environ['GRAFANA_URL']),
+                  Model(http,os.environ['LITELLM_KEY']),Evidence(http,os.environ['GRAFANA_TOKEN'],os.environ['GRAFANA_URL'],github=GitHub(http,os.environ.get('GITHUB_TOKEN_FILE','/github/token'))),
                   write=os.environ.get('WRITE_ENABLED')=='true')
     class Handler(BaseHTTPRequestHandler):
         def log_message(self,*args):pass

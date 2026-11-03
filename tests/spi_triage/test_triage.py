@@ -8,7 +8,7 @@ from unittest.mock import Mock
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'charts/spi-triage/files'))
 from core import Failure, Store, REPORT_SCHEMA, clean, normalize, render, validate
-from integrations import GitHub, Model
+from integrations import GitHub, Model, Evidence
 from service import Engine
 
 def event(status='firing',start='2026-11-03T13:00:00Z'):
@@ -92,6 +92,28 @@ class AdapterTests(unittest.TestCase):
         model=Model(http,'fake')
         with self.assertRaises(Failure):model.match(event(),[])
         self.assertEqual(http.request.call_count,2)
+
+class EvidenceTests(unittest.TestCase):
+    def test_host_profile_and_no_raw_trace_attributes(self):
+        http=Mock()
+        def request(method,url,*args,**kwargs):
+            if '/api/v1/query?' in url:return {'data':{'result':[{'metric':{'nodename':'socrat-0'}}]}}
+            if '/api/traces/' in url:return {'resourceSpans':[{'scopeSpans':[{'spans':[{'status':{'code':2},'attributes':[{'key':'password','value':'do-not-publish'}]}]}]}]}
+            return {'data':{}}
+        http.request.side_effect=request
+        e=event();e['labels'].update(instance='test:9100',name='example.service',trace_id='a'*32)
+        data=Evidence(http,'fake','http://grafana').collect(e)
+        sources=[q['source']for q in data['queries']]
+        self.assertIn('node_identity',sources);self.assertIn('host_log_error_frequency',sources);self.assertIn('tempo_trace_summary',sources)
+        self.assertNotIn('do-not-publish',json.dumps(data));self.assertNotIn('attributes',json.dumps(data))
+    def test_repository_reference_is_not_deployed_proof(self):
+        import base64
+        http=Mock();http.request.return_value={'encoding':'base64','content':base64.b64encode(b'# Safe runbook').decode(),'sha':'abc','size':14}
+        with tempfile.NamedTemporaryFile(mode='w') as f:
+            f.write('fake');f.flush();g=GitHub(http,f.name)
+            self.assertIsNone(g.source_reference('https://evil.example/secret'))
+            reference=g.source_reference('https://github.com/alchemmist/homelab/blob/main/docs/n8n/spi/setup.md')
+        self.assertFalse(reference['deployed_version_verified']);self.assertEqual(reference['ref'],'main')
 
 class EngineTests(unittest.TestCase):
     def setUp(self):

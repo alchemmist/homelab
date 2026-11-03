@@ -38,7 +38,7 @@ orphan issue, reopens a closed one or automatically closes the incident issue.
 ## Credentials and scope
 
 - Existing GitHub App: `socrat-pr-agent`. App key remains in namespace `pr-agent`.
-- Broker CronJob every 30 minutes issues a one-hour installation token limited to
+- Broker CronJob every 20 minutes issues a one-hour installation token limited to
   repository `homelab`, Issues:write, Contents:read and Metadata:read; no PR write.
 - Its service account can only patch the precreated `automation/spi-github-installation`
   Secret. Worker reads refreshed token from a projected file, not cached env.
@@ -75,11 +75,16 @@ failures remain failures. Alerts/issues/tool results are untrusted prompt data.
 ## Evidence v1 and explicit gaps
 
 Read-only Grafana datasource proxy accesses rule definitions, historical metric
-windows, scoped Kubernetes restart/termination series and Loki error frequency.
+windows, scoped Kubernetes job/pod series, systemd unit state/restart series and
+namespace or host Loki error frequency. Host identity comes from node_uname_info.
+When a valid trace_id is supplied, Tempo contributes span/error counts only; raw
+span attributes are never passed to the model. An allowlisted GitHub runbook on
+main can be included with its SHA and an explicit deployed_version_verified=false.
 Requests are bounded by time, response size and namespace selectors. Whole rule
 catalogues and arbitrary raw log lines are not passed to the model or GitHub.
-Raw log publication, trace correlation and deployed-source correlation are not
-implemented yet and are explicitly listed as missing evidence. Do not claim a
+Raw log publication, automatic trace discovery and deployed-source correlation
+are not implemented. Missing trace IDs and unverified deployment versions are
+explicit gaps, not evidence of health. Do not claim a
 confirmed root cause without supporting observations or invent thresholds/paths.
 
 ## Operations

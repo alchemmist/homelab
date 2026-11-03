@@ -1,6 +1,7 @@
 """Bounded HTTP adapters; tokens are never returned to n8n or the model."""
 from __future__ import annotations
 import json
+import base64
 import os
 import re
 import time
@@ -67,6 +68,16 @@ class GitHub:
         return [x for x in self.pages('/issues?state='+state+'&sort=created&direction=desc')
                 if 'pull_request' not in x and x.get('title','').startswith('[SPI]')]
     def comments(self,number): return list(self.pages('/issues/'+str(int(number))+'/comments'))
+    def source_reference(self,url):
+        parsed=urllib.parse.urlsplit(url)
+        prefix='/alchemmist/homelab/blob/main/'
+        if parsed.scheme!='https' or parsed.hostname!='github.com' or not parsed.path.startswith(prefix):return None
+        path=urllib.parse.unquote(parsed.path[len(prefix):])
+        if '..' in path or not path.startswith(('docs/','llm-wiki/','charts/')) or not path.endswith(('.md','.yaml','.json')):return None
+        data=self.request('GET','/contents/'+urllib.parse.quote(path,safe='/')+'?ref=main')
+        if data.get('encoding')!='base64' or data.get('size',0)>100000:return None
+        content=base64.b64decode(data['content'],validate=False).decode()
+        return clean({'path':path,'sha':data['sha'],'ref':'main','deployed_version_verified':False,'excerpt':content[:12000],'truncated':len(content)>12000})
     def snapshot(self):
         issues=self.issues()
         # Title, root analysis and bounded latest comments: never silently drop an issue.
@@ -130,11 +141,14 @@ class Model:
         return report
 
 class Evidence:
-    def __init__(self,http,token,base): self.http=http;self.token=token;self.base=base.rstrip('/')
+    def __init__(self,http,token,base,github=None):
+        self.http=http;self.token=token;self.base=base.rstrip('/');self.github=github
     def get(self,path,params=None):
         if not path.startswith('/api/') or '..' in path: raise Failure('INVALID_OBSERVABILITY_PATH')
         url=self.base+path+('?' + urllib.parse.urlencode(params) if params else '')
-        return clean(self.http.request('GET',url,{'Authorization':'Bearer '+self.token},timeout=20,limit=1_000_000))
+        value=self.http.request('GET',url,{'Authorization':'Bearer '+self.token},timeout=20,limit=1_000_000)
+        if isinstance(value,dict) and value.get('status')=='error':raise Failure('OBSERVABILITY_QUERY_ERROR')
+        return clean(value)
     def collect(self,event):
         result={'queries':[],'missing':[],'rule_definitions':[]}
         labels=event['labels'];name=labels['alertname'];start=datetime.fromisoformat(event['startsAt'].replace('Z','+00:00')).timestamp()
@@ -161,12 +175,32 @@ class Evidence:
                         if isinstance(rule.get('query'),str):exprs.append(rule['query'])
         # Avoid including unrelated rule catalogues in model context.
         result['queries']=[x for x in result['queries'] if x['source']not in ('grafana_rules','prometheus_rules')]
+        for rule in result['rule_definitions']:
+            for query in rule.get('grafana_alert',{}).get('data',[]):
+                uid=query.get('datasourceUid');expr=query.get('model',{}).get('expr','')
+                if uid=='loki' and isinstance(expr,str) and len(expr)<=4000 and re.match(r'^(sum|count|avg|max|min|rate|count_over_time|vector)\b',expr):
+                    fetch('loki_rule_metric','/api/datasources/proxy/uid/loki/loki/api/v1/query_range',{'query':expr,'start':lo,'end':hi,'step':60})
+                elif uid=='prometheus' and isinstance(expr,str) and expr:exprs.append(expr)
+        instance=labels.get('instance');unit=labels.get('name')
+        if instance and isinstance(unit,str) and unit.endswith(('.service','.timer','.socket')):
+            selector='instance='+json.dumps(instance)+',name='+json.dumps(unit)
+            exprs+=['node_systemd_unit_state{'+selector+'}', 'node_systemd_service_restart_total{'+selector+'}']
+            identity=fetch('node_identity','/api/datasources/proxy/uid/prometheus/api/v1/query',{'query':'node_uname_info{instance='+json.dumps(instance)+'}'})
+            records=identity.get('data',{}).get('result',[]) if isinstance(identity,dict) else []
+            host=records[0].get('metric',{}).get('nodename','') if len(records)==1 else ''
+            if re.fullmatch(r'[A-Za-z0-9.-]{1,253}',host):
+                fetch('host_log_error_frequency','/api/datasources/proxy/uid/loki/loki/api/v1/query_range',{'query':'sum(count_over_time({host_name='+json.dumps(host)+'} |~ "(?i)error|exception|failed" [1m]))','start':lo,'end':hi,'step':60})
+            else:result['missing'].append({'source':'host_logs','reason':'NODE_IDENTITY_NOT_FOUND'})
         namespace=labels.get('namespace') or labels.get('k8s_namespace_name')
         pod=labels.get('pod') or labels.get('k8s_pod_name')
         if namespace and re.fullmatch(r'[a-z0-9-]{1,63}',namespace):
             selector='namespace='+json.dumps(namespace)
             if pod and re.fullmatch(r'[a-z0-9.-]{1,253}',pod): selector+=',pod='+json.dumps(pod)
-            exprs+=['kube_pod_container_status_restarts_total{'+selector+'}', 'kube_pod_container_status_last_terminated_reason{'+selector+'}']
+            job=labels.get('job_name')
+            if job and re.fullmatch(r'[a-z0-9.-]{1,253}',job):
+                job_selector='namespace='+json.dumps(namespace)+',job_name='+json.dumps(job)
+                exprs+=['kube_job_status_failed{'+job_selector+'}','kube_job_owner{'+job_selector+'}']
+            else:exprs+=['kube_pod_container_status_restarts_total{'+selector+'}', 'kube_pod_container_status_last_terminated_reason{'+selector+'}']
             log_selector='{k8s_namespace_name='+json.dumps(namespace)+'}'
             if pod and re.fullmatch(r'[a-z0-9.-]{1,253}',pod):log_selector='{k8s_namespace_name='+json.dumps(namespace)+',k8s_pod_name='+json.dumps(pod)+'}'
             # Only counts/pattern frequency, never arbitrary raw log lines in v1.
@@ -175,8 +209,24 @@ class Evidence:
         for expr in exprs[:3]:
             if len(expr)<=4000:fetch('prometheus_metrics','/api/datasources/proxy/uid/prometheus/api/v1/query_range',{'query':expr,'start':lo,'end':hi,'step':60})
         result['window']={'start':lo,'end':hi,'collected_at':int(now)}
-        result['missing'] += [{'source':'traces','reason':'TRACE_CORRELATION_NOT_IMPLEMENTED'},
-                              {'source':'repository','reason':'DEPLOYED_SOURCE_CORRELATION_NOT_IMPLEMENTED'},
+        trace=labels.get('trace_id') or event.get('annotations',{}).get('trace_id','')
+        if isinstance(trace,str) and re.fullmatch(r'[a-fA-F0-9]{32}',trace):
+            path='/api/datasources/proxy/uid/tempo/api/traces/'+trace
+            try:
+                raw=self.get(path);spans=[]
+                for batch in raw.get('resourceSpans',raw.get('batches',[])):
+                    for scope in batch.get('scopeSpans',batch.get('instrumentationLibrarySpans',[])):spans+=scope.get('spans',[])
+                if not spans:raise Failure('TRACE_SPAN_FORMAT_UNSUPPORTED')
+                summary={'span_count':len(spans),'error_span_count':sum(str(x.get('status',{}).get('code')) in ('2','STATUS_CODE_ERROR') for x in spans)}
+                result['queries'].append({'source':'tempo_trace_summary','path':path,'result':summary})
+            except Failure as e:result['missing'].append({'source':'traces','reason':e.code})
+        else:result['missing'].append({'source':'traces','reason':'TRACE_ID_NOT_AVAILABLE'})
+        reference=None
+        if self.github:
+            try:reference=self.github.source_reference(event.get('annotations',{}).get('runbook_url',''))
+            except Failure as e:result['missing'].append({'source':'repository_reference','reason':e.code})
+        if reference:result['repository_reference']=reference
+        result['missing'] += [{'source':'repository','reason':'DEPLOYED_SOURCE_CORRELATION_NOT_IMPLEMENTED'},
                               {'source':'raw_logs','reason':'RAW_LOG_PUBLICATION_DISABLED'}]
         if not result['rule_definitions']:result['missing'].append({'source':'alert_rule','reason':'RULE_NOT_FOUND'})
         return result

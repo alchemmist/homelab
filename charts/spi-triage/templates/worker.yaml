@@ -28,7 +28,7 @@ spec:
       labels:
         app: spi-triage
       annotations:
-        checksum/code: {{ include (print $.Template.BasePath "/code.yaml") . | sha256sum }}
+        checksum/code: {{ printf "%s%s%s" (.Files.Get "files/core.py") (.Files.Get "files/integrations.py") (.Files.Get "files/service.py") | sha256sum }}
     spec:
       automountServiceAccountToken: false
       enableServiceLinks: false

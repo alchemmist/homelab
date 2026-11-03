@@ -33,7 +33,7 @@ metadata:
   name: spi-github-broker
   namespace: {{ .Values.brokerNamespace }}
 spec:
-  schedule: '*/30 * * * *'
+  schedule: '*/20 * * * *'
   concurrencyPolicy: Forbid
   startingDeadlineSeconds: 600
   successfulJobsHistoryLimit: 1
