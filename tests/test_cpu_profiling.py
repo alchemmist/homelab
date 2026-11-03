@@ -49,6 +49,7 @@ def test_flamegraph_is_native_pyroscope_not_a_span_waterfall():
         assert panel['datasource']['uid']=='pyroscope'
         assert panel['targets'][0]['profileTypeId']=='process_cpu:cpu:nanoseconds:cpu:nanoseconds'
     assert d['templating']['list'][0]['query']['labelName']=='service_name'
+    assert d['templating']['list'][0]['query']['profileTypeId']=='process_cpu:cpu:nanoseconds:cpu:nanoseconds'
     source=next(x for x in docs if x['metadata']['name']=='pyroscope-grafana-datasource')
     ds=yaml.safe_load(source['data']['pyroscope-datasource.yaml'])['datasources'][0]
     assert ds['uid']=='pyroscope' and ds['editable'] is False
