@@ -99,3 +99,35 @@ Rollback is a new Git commit restoring a reviewed configuration, not a direct
 `kubectl apply` of old pilot output. Do not automatically delete/recreate claims
 or reissue enrollment keys on an ambiguous failure. Argo CD availability does not
 fix the confirmed NetBird/Authentik singleton and cold-client startup limitations.
+
+## Completed live adoption acceptance
+
+Implementation commit `b613b1a`, published together with the preserved concurrent
+main history as `d1874f0`. Root discovered/created the child automatically; no
+manual Application creation, root patch or manual Sync was used. Actual child
+status: **Synced / Healthy**, automatic operation **Succeeded**, 33 tracked
+resources. Root tracks it as `root:argoproj.io/Application:argocd/netbird`.
+
+Private before/after readbacks confirmed:
+
+- All pre-existing Kubernetes object/PVC and dedicated namespace UIDs unchanged.
+- All non-dashboard pod UIDs unchanged; only the canonical same-digest UI image
+  reference required a new dashboard pod. All ten Deployments are available.
+- Five connected peers, identical native identities, human roles, group membership,
+  networks, routers, four exact resources and seven policies before/after.
+- Five referenced runtime/relay/TLS Secrets have identical UID/resourceVersion;
+  no Secret values were exported or changed.
+- Both public trusted-TLS entries: dashboard 200, authenticated invite list 200,
+  anonymous invite list 401. Native Signal stream headers passed both entrances.
+- Existing Mac remains connected to all four agents. Strict SSH passed to all
+  four WG aliases and all four explicit NetBird IP addresses.
+- Helm lint, exact rendered/live desired-field comparison, inventory-generation
+  check and Ansible syntax check passed; Python: 121 passed, 1 skipped, 122 subtests.
+
+Fresh anonymous browser automation was unavailable in the validation environment;
+no personal browser session was copied or impersonated. Physical fifth-node and
+real PAT expiry-boundary acceptance remain pending as described above.
+
+Root's aggregate status can still show unrelated drift for `rancher` / `remark42`;
+NetBird's own child/resource entry is Synced. Those other applications were not
+modified to make this migration appear globally clean.

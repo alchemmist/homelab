@@ -339,7 +339,8 @@ class AnsibleGuardTests(unittest.TestCase):
         self.assertIn('netbird_action: check', text)
         self.assertNotIn('become: true', text)
         self.assertNotIn('wg-quick', text)
-        self.assertNotIn('argocd', text.lower())
+        self.assertIn('root-managed Argo CD', text)
+        self.assertNotIn("when: netbird_action == 'apply'", text)
         self.assertNotIn('site.yml', (ROOT / 'ansible/playbooks/site.yml').read_text())
 
 

@@ -6,6 +6,7 @@
       - not (netbird_deploy_routers | bool)
       - not (netbird_touch_wireguard | bool)
       - not (netbird_touch_k3s | bool)
+    fail_msg: Deployment is exclusively root-managed Argo CD; this legacy role supports check/plan only.
 
 - name: Check the control plane and print blockers
   ansible.builtin.command:
@@ -35,21 +36,3 @@
     chdir: "{{ netbird_repo_root }}"
   changed_when: false
   when: netbird_action == 'plan'
-
-- name: Apply the control plane only with the explicit confirmation phrase
-  ansible.builtin.command:
-    argv:
-      - "{{ netbird_python }}"
-      - scripts/netbird-deploy.py
-      - apply
-      - --inputs
-      - "{{ netbird_inputs }}"
-      - --out
-      - "{{ netbird_out }}"
-      - --context
-      - "{{ netbird_context }}"
-      - --confirm-apply
-      - "{{ netbird_confirm }}"
-  args:
-    chdir: "{{ netbird_repo_root }}"
-  when: netbird_action == 'apply'
