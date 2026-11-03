@@ -33,11 +33,18 @@ def run(args):
     script=(ROOT/'scripts/lms-ha/copy-database.sh').read_text()
     job={'apiVersion':'batch/v1','kind':'Job','metadata':{'name':name,'namespace':'lms'},'spec':{'backoffLimit':0,'activeDeadlineSeconds':180,'ttlSecondsAfterFinished':86400,'template':{'metadata':{'labels':{'app.kubernetes.io/name':'lms-ha-copy'}},'spec':{'restartPolicy':'Never','automountServiceAccountToken':False,'securityContext':{'runAsUser':999,'runAsGroup':999,'fsGroup':999},'containers':[{'name':'copy','image':'docker.io/library/postgres@sha256:839fbb5a4942a7758dd93e18b42ea5649807491a0545b5eeeb8f0b8bb11857a5','command':['sh','-c',script],'env':[{'name':'SOURCE_PASSWORD','valueFrom':{'secretKeyRef':{'name':'lms-db','key':'POSTGRES_PASSWORD'}}},{'name':'TARGET_PASSWORD','valueFrom':{'secretKeyRef':{'name':'lms-ha-app','key':'password'}}},{'name':'BACKUP_ID','value':name},{'name':'REQUIRE_EXACT_MATCH','value':'0' if args.rehearsal else '1'}],'resources':{'requests':{'cpu':'50m','memory':'64Mi'},'limits':{'memory':'256Mi'}},'securityContext':{'allowPrivilegeEscalation':False,'readOnlyRootFilesystem':True,'capabilities':{'drop':['ALL']}},'volumeMounts':[{'name':'backups','mountPath':'/backups'},{'name':'ca','mountPath':'/etc/postgres-ca','readOnly':True},{'name':'tmp','mountPath':'/tmp'},{'name':'backup-key','mountPath':'/backup-key','readOnly':True}]}],'volumes':[{'name':'backups','persistentVolumeClaim':{'claimName':'lms-database-backups'}},{'name':'ca','secret':{'secretName':'lms-ha-ca','items':[{'key':'ca.crt','path':'ca.crt'}]}},{'name':'tmp','emptyDir':{'medium':'Memory','sizeLimit':'128Mi'}},{'name':'backup-key','secret':{'secretName':'lms-backup-key','defaultMode':288}}]}}}}
     kube('create','-f','-',document=job)
-    try:kube('-n','lms','wait','--for=condition=complete','job/'+name,'--timeout=170s')
+    import time
+    try:
+        for attempt in range(60):
+            status=json.loads(kube('-n','lms','get','job',name,'-o','json')).get('status',{})
+            if status.get('succeeded'):break
+            if status.get('failed'):raise RuntimeError('Copy job failed; production endpoint not changed')
+            time.sleep(2)
+        else:raise RuntimeError('Copy job timed out')
     finally:
         logs=kube('-n','lms','logs','job/'+name)
         for line in logs.splitlines():
-            if line.startswith(('backupSHA256=','logicalDataFingerprintMatched=','rehearsalRestoreCompleted=','targetFingerprintSHA256=','tlsVerified=','restoreFailed=')): print(line)
+            if line.startswith(('fingerprintDifferenceTable=','sourceFingerprintSHA256=','fingerprintMismatch=','backupSHA256=','logicalDataFingerprintMatched=','rehearsalRestoreCompleted=','targetFingerprintSHA256=','tlsVerified=','restoreFailed=')): print(line)
     print(json.dumps({'job':name,'rehearsal':args.rehearsal,'backupPath':'/backups/lms/'+name+'.dump.gpg','secretsPrinted':False}))
 
 

@@ -20,18 +20,21 @@ cmp /tmp/source.dump /tmp/recovered.dump
 rm /tmp/source.dump
 sha256sum "$file" | awk '{print "backupSHA256=" $1}'
 cat > /tmp/fingerprint.sql <<'SQL'
-SELECT format('SELECT %L,count(*)::text,md5(coalesce(string_agg(to_jsonb(t)::text,E''\n'' ORDER BY to_jsonb(t)::text),'''')) FROM %I.%I t;',table_name,table_schema,table_name)
-FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' ORDER BY table_name;
+SELECT format('SELECT %L,count(*)::text,md5(coalesce(string_agg(to_jsonb(t)::text,E''\n'' ORDER BY to_jsonb(t)::text COLLATE "C"),'''')) FROM %I.%I t;',table_name,table_schema,table_name)
+FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' ORDER BY table_name COLLATE "C"
 \gexec
 SQL
 # -q suppresses query command tags; no row values leave the database except digests.
-psql -X -qAt -f /tmp/fingerprint.sql > /tmp/source.fingerprint
+psql -X -qAt -v ON_ERROR_STOP=1 -f /tmp/fingerprint.sql > /tmp/source.fingerprint
+sha256sum /tmp/source.fingerprint | awk '{print "sourceFingerprintSHA256=" $1}'
 export PGPASSWORD="$TARGET_PASSWORD" PGHOST=lms-ha-rw.lms.svc.cluster.local PGSSLMODE=verify-full PGSSLROOTCERT=/etc/postgres-ca/ca.crt
 pg_restore --clean --if-exists --no-owner --no-acl --exit-on-error --single-transaction --dbname=lms /tmp/recovered.dump 2>/tmp/restore.stderr || { echo restoreFailed=true; exit 1; }
-psql -X -qAt -f /tmp/fingerprint.sql > /tmp/target.fingerprint
+psql -X -qAt -v ON_ERROR_STOP=1 -f /tmp/fingerprint.sql > /tmp/target.fingerprint
+sha256sum /tmp/target.fingerprint | awk '{print "targetFingerprintSHA256=" $1}'
+LC_ALL=C join -t '|' /tmp/source.fingerprint /tmp/target.fingerprint | awk -F'|' '$2 != $4 || $3 != $5 {print "fingerprintDifferenceTable=" $1 ",sourceRows=" $2 ",targetRows=" $4}'
 # The final copy requires a write freeze. Staging may have concurrent source writes.
 if [ "${REQUIRE_EXACT_MATCH:-1}" = 1 ]; then
-  cmp /tmp/source.fingerprint /tmp/target.fingerprint >/dev/null
+  cmp /tmp/source.fingerprint /tmp/target.fingerprint >/dev/null || { echo fingerprintMismatch=true; exit 1; }
   echo logicalDataFingerprintMatched=true
 else
   echo rehearsalRestoreCompleted=true

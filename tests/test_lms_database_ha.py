@@ -60,3 +60,5 @@ def test_copy_tool_refuses_live_ha_overwrite_and_final_restore_without_freeze():
     assert 'cmp /tmp/source.dump /tmp/recovered.dump' in copy
     assert 'cmp /tmp/source.fingerprint /tmp/target.fingerprint' in copy
     assert '--single-transaction' in copy and 'PGSSLMODE=verify-full' in copy
+    assert 'COLLATE "C"' in copy
+    assert 'fingerprintMismatch=true; exit 1' in copy
