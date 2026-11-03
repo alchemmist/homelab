@@ -4,6 +4,7 @@ import json
 import re
 import os
 from core import Failure, SECRET_KEY, SECRET_VALUE, ASSIGNMENT
+from grafana_links import repair_markdown_links
 
 MAX_ARTIFACT=90000
 MAX_BUNDLE=360000
@@ -66,7 +67,8 @@ def prepare_bundle(event,evidence,artifacts,links=(),known=()):
 def index_markdown(bundle):
     if not bundle:return ''
     m=bundle['manifest'];lines=['','## Reproducible evidence','Incident: '+m['incident_start']+' to '+(m.get('incident_end') or 'collection time')+'.',
-      'Text artifacts and checksums follow in linked comments. Parts concatenate in order; SHA-256 covers the stored ASCII JSON text, without code fences. Truncation/redaction and failed reads are recorded in MANIFEST.']
+      'Text artifacts and checksums follow in linked comments. Parts concatenate in order; SHA-256 covers the stored ASCII JSON text, without code fences. Truncation/redaction and failed reads are recorded in MANIFEST.',
+      'Grafana Explore links request sign-in and require Explore permission (Editor/Admin here); anonymous dashboard access is not sufficient.']
     link_budget=24000
     for link in m.get('links',[])[:18]:
         # Only generated Grafana origin links, never alert-supplied arbitrary URLs.
@@ -75,7 +77,8 @@ def index_markdown(bundle):
             link_budget-=len(link['url'])
             lines.append('- ['+link['title'].replace('[','').replace(']','')+']('+link['url']+')')
     lines+=['- '+x['id']+': `'+x['name']+'`'+(' (TRUNCATED)' if x['truncated'] else '') for x in m['artifacts']]
-    return '\n'.join(lines)
+    # Also fix bundles collected/saved before the generator login correction.
+    return repair_markdown_links('\n'.join(lines))
 
 def index_marker(bundle):
     return '<!-- socrat-spi-evidence-index:'+bundle['manifest']['event_key']+':'+hashlib.sha256(encoded(bundle['manifest']).encode()).hexdigest()[:20]+' -->'

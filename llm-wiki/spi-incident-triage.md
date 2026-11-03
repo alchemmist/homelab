@@ -170,3 +170,18 @@ native write/integrity verified and at least 50 jobs preserved in final off-node
 backup. Emergency Argo skip and storage probe removed; scheduler active. Failure
 lookback/backlog alerts can remain active after recovery. Bot user ID351189559 is
 the immutable fallback for issue responses that omit App metadata.
+
+### Grafana deep-link correction
+
+Anonymous dashboard access is not Explore access. Without `forceLogin=true`,
+Grafana 13.2.4 redirects `/explore` to its default home dashboard (Last 3 hours).
+SPI links now use the native login return flow, preserve absolute pane ranges and
+queries, and require an existing identity with Explore permission (Editor/Admin).
+Anonymous and existing user permissions are unchanged. Cached rendered indexes
+are repaired without mutating checksummed artifacts. All eight real issue9 links
+were checked in a browser against their actual time picker and query editor.
+See the runbook for the read-only Playwright regression and its private state.
+
+The operator rejected multi-comment artifact storage as noisy. S3 product choice,
+deployment and migration are the next separate step; do not claim S3 is deployed
+or delete the retained comments before a verified migration.

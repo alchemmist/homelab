@@ -219,6 +219,8 @@ def grafana_explore_url(public_base, datasource_uid, query_text, start, end, que
         ('orgId', '1'),
         ('schemaVersion', '1'),
         ('panes', json.dumps({'spi': pane}, separators=(',', ':'), sort_keys=True)),
+        # Anonymous Viewer otherwise silently lands on the home dashboard.
+        ('forceLogin', 'true'),
     ])
     return public_base.rstrip('/') + '/explore?' + encoded
 

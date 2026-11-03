@@ -189,3 +189,36 @@ class SQLiteTempStoreTests(unittest.TestCase):
             self.assertEqual(store.health()['counts'].get('retry'),1)
 
 if __name__=='__main__':unittest.main()
+
+class GrafanaLoginLinkTests(unittest.TestCase):
+    def test_generator_requests_native_login_and_keeps_absolute_state(self):
+        for uid,field,query in [('prometheus','expr','up{job="x"}'),('loki','expr','{unit="a.service"} |= "error"'),('tempo','query','{resource.service.name="socrat-bot"}')]:
+            url=grafana_explore_url('https://grafana.socrat.alchemmist.xyz',uid,query,10,20,field)
+            params=parse_qs(urlsplit(url).query)
+            self.assertEqual(params['forceLogin'],['true'])
+            self.assertTrue(url.endswith('&forceLogin=true'))
+            pane=json.loads(params['panes'][0])['spi']
+            self.assertEqual(pane['queries'][0][field],query)
+            self.assertEqual(pane['range'],{'from':'10000','to':'20000'})
+    def test_cached_manifest_is_not_mutated(self):
+        b=ArtifactTests().bundle()
+        old=grafana_explore_url('https://grafana.socrat.alchemmist.xyz','tempo','a'*32,10,20,'query').replace('&forceLogin=true','')
+        b['manifest']['links']=[{'title':'Trace','url':old}]
+        from copy import deepcopy
+        snapshot=deepcopy(b)
+        self.assertIn('forceLogin=true',index_markdown(b))
+        self.assertEqual(b,snapshot)
+    def test_repair_is_idempotent_and_does_not_touch_artifact_json(self):
+        from grafana_links import repair_markdown_links
+        url=grafana_explore_url('https://grafana.socrat.alchemmist.xyz','loki','{pod="test"}',10,20,'expr').replace('&forceLogin=true','')
+        body='[Logs]('+url+')\n```json\n'+json.dumps({'original_url':url})+'\n```'
+        repaired=repair_markdown_links(body)
+        self.assertEqual(repaired,repair_markdown_links(repaired))
+        self.assertIn(json.dumps({'original_url':url}),repaired)
+        self.assertIn('[Logs]('+url+'&forceLogin=true)',repaired)
+    def test_external_origin_unchanged_and_duplicate_flags_removed(self):
+        from grafana_links import require_explore_login
+        evil='https://grafana.socrat.alchemmist.xyz.evil.example/explore?forceLogin=false'
+        self.assertEqual(require_explore_login(evil),evil)
+        url='https://grafana.socrat.alchemmist.xyz/explore?orgId=1&forceLogin=false&forceLogin=true'
+        self.assertEqual(parse_qs(urlsplit(require_explore_login(url)).query)['forceLogin'],['true'])

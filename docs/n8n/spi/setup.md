@@ -249,3 +249,35 @@ were retained in the final verified consistent off-node snapshot. The temporary
 storage probe was removed and Argo reconciliation and SPI scheduling restored.
 Monitoring can remain firing for recent failures and pending for backlog after
 recovery; healthy rule evaluation is not the same as all alerts being Normal.
+
+### Explore links and anonymous dashboard access
+
+Grafana 13.2.4 with anonymous Viewer redirects unqualified `/explore` links to
+`/d/default-home-dashboard/home`, losing the visible query/time context. Set
+`forceLogin=true` as the last query parameter. Native Grafana redirects a missing
+session to `/login?redirectTo=...`, preserving the encoded panes and absolute
+milliseconds; authenticated users go directly to Explore. Do not enable anonymous
+Explore or promote existing users to solve this. Explore requires Editor/Admin in
+this installation; sign in with the existing appropriate Authentik identity.
+
+The generator, rendered cached-bundle index, and outgoing narrative Markdown
+normalize these links. Retained JSON/manifest checksums must not be rewritten.
+Historical bot-authored rendered links can be patched in place, without adding
+comments or deleting diagnostic history.
+
+Read-only browser regression: install/use Playwright outside the worker; set
+`SPI_GRAFANA_CHECK_DIR` to a private directory with `links.json` (array of
+`[title,url]`) and `browser-state.json` (existing native Editor/Admin session), then
+run `node scripts/n8n/check_spi_grafana_links.cjs`. Optional
+`SPI_GRAFANA_TEST_UPSTREAM=http://127.0.0.1:PORT` routes only the fixed Grafana origin
+through a trusted SSH tunnel for environments without the private route. No TLS
+verification is disabled and no users/permissions are created by the checker.
+Keep session state private and remove it after testing. The checker verifies actual
+Explore navigation, datasource, time-picker UTC boundaries, exact query in the
+editor or executed request, and query parsing errors. JSON browser results are
+written privately to `browser-all.json`.
+
+Acceptance: all eight real index links from SPI #9 passed browser checks. A native
+temporary Editor session verified login return and authenticated navigation; it
+was removed afterwards. This does not claim a full human Authentik login was
+performed. Anonymous redirect behavior was reproduced before and after the fix.

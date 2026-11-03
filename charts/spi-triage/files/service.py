@@ -8,6 +8,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from core import Failure, Store, digest, normalize, render
 from integrations import Evidence, GitHub, HTTP, Model, REQUEST_DEADLINE
 from evidence_bundle import index_markdown, publish_parts
+from grafana_links import repair_markdown_links
 
 class Engine:
     def __init__(self,store,github,model,evidence,write=False):
@@ -67,7 +68,7 @@ class Engine:
                     self.store.save(key,0,{},state='processing');raise Failure('OPEN_SPI_CHANGED')
                 title,body=render(r['report'],event);number=r['report']['issue_number']
                 if number not in {0,*[x['number']for x in r['match']['candidates']]}:raise Failure('INVALID_MATCH_TARGET')
-            body+=index_markdown(r.get('evidence',{}).get('bundle'))
+            body=repair_markdown_links(body+index_markdown(r.get('evidence',{}).get('bundle')))
             self.store.save(key,3,r,intent=json.dumps({'number':number}))
             try:
                 if number:
