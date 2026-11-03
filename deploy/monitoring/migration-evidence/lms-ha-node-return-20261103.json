@@ -1,0 +1,13 @@
+{
+  "observedAt": "2026-11-03T13:24:38+03:00",
+  "evidenceSource": "last successful strict-host-key-verified SSH kubectl output",
+  "nodeRecovered": "socrat-3",
+  "nodeReady": true,
+  "databaseInstancesReady": 3,
+  "currentPrimary": "lms-ha-2",
+  "webAvailableReplicas": 1,
+  "manualDatabaseRestorePerformedByThisRun": false,
+  "subsequentSshVerificationBlockedByHostKeyChange": true,
+  "hostKeyVerificationBypassed": false,
+  "knownHostsModified": false
+}

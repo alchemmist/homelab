@@ -170,7 +170,7 @@ was read successfully and its temporary schema dropped. See
 `lms-ha-real-node-loss-20261103.json` and
 `lms-ha-real-node-loss-browser-20261103.json` in the migration-evidence directory.
 
-At final acceptance the cluster was **degraded but serving with two DB members**;
+At the first post-failure acceptance snapshot the cluster was **degraded but serving with two DB members**;
 its configured third member is still on socrat-3. The node's recurring outage
 root cause is not established by this work. The 44-second primary failover test
 was staged; the subsequent real incident lost a standby and the old web node,
@@ -183,3 +183,17 @@ identity deleted. See `lms-ha-cpu-profile-after-node-loss-20261103.json`.
 Canary administration now selects a non-terminating Ready pod on a Ready node,
 not blindly `exec deployment/lms` while an unreachable old pod is terminating.
 Remote Python cleanup programs have syntax regression tests as well.
+
+
+Subsequent recovery was observed at **13:24:38 MSK** using the then-successful
+strict-host-key-verified SSH/kubectl channel: socrat-3 was Ready, PostgreSQL was
+back to **3/3 ready**, primary remained `lms-ha-2`, and LMS had one available
+worker. This run performed no manual database restore or failback. See
+`lms-ha-node-return-20261103.json`.
+
+The next administrative SSH connection through the `socrat-0` alias reported a
+changed ED25519 host key for `[socrat.alchemmist.xyz]:2222`. Further SSH checks
+were stopped. No known_hosts entry was removed and strict checking was not
+bypassed. Independently verify the endpoint and fingerprint before further
+administration; a changed SSH route is possible but not established by this run.
+The 13:24 observation is not a claim that later unverified SSH access succeeded.
