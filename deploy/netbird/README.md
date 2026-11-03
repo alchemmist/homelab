@@ -1,6 +1,13 @@
-# NetBird control plane and staged machine peers
+# NetBird control plane and machine peers
 
-**Live continuation:** [STUN + Kubernetes machine peers](../../docs/netbird-kubernetes-machine-peers.md),
+**Current deployment and failure-test limits:**
+[four routing peers and independent relays](../../docs/netbird-independent-access.md).
+Five peers (owner + four existing nodes), genuine owner-only admin JWT source,
+no All grants. Existing-client data-plane service-outage tests passed; restarting
+the client without management failed. Do not claim full HA or retire legacy WG.
+The staged gates and machine-stage5 state below are historical inputs.
+
+**Historical continuation:** [STUN + Kubernetes machine peers](../../docs/netbird-kubernetes-machine-peers.md),
 [`machine-stage5.json`](machine-stage5.json). Control plane is installed and
 OIDC-only. STUN-only coturn on existing socrat-2 is externally and host-origin
 Binding-tested; machine enrollment remains blocked on genuine JWT groups.

@@ -1,4 +1,8 @@
-# Current access architecture: one NetBird gateway, existing WireGuard mesh
+# Historical access architecture: one NetBird gateway, existing WireGuard mesh
+
+> Superseded by [four routing peers and independent relays](netbird-independent-access.md).
+> The single-gateway counts and checks below describe the earlier migration,
+> not the current deployment or an accepted failure-resilient replacement.
 
 Live migration: 2026-11-03. Supersedes the initial two-gateway admin ingress.
 User explicitly requested simplifying the working deployment to one gateway.

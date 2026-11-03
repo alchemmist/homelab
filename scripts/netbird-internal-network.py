@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Offline compiler: administrative access to existing WireGuard node /32s.
+"""Historical single-gateway compiler; current topology: netbird-redundant-access.py.
 
+Retained for reviewed earlier migration fixtures, not a current reconciliation.
 No apply, enrollment, secret creation, WG config/AllowedIPs or host route edits.
 One existing-node NetBird gateway. Its own WG address uses a separate native
 admin peer INPUT policy; remote WG addresses use resource FORWARD policies.

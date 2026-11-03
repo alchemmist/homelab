@@ -41,6 +41,13 @@
       "linux_amd64": "sha256:94f732f319463c94769b30b5cca1c02baa2d106fe3d3210159840c1372b162de",
       "checked_at": "2026-11-02",
       "verification": "Docker-Content-Digest header equals SHA256 of fetched multi-platform index; official coturn/coturn namespace, not publisher signature verification"
+    },
+    "relay": {
+      "repository": "netbirdio/relay",
+      "tag": "0.82.0",
+      "digest": "sha256:8f6b9e4193653ede89e83dd4aa4e2cf2562579b3e2481dcf259a7ab28bcd5fa1",
+      "checked_at": "2026-11-03",
+      "verification": "Docker-Content-Digest equals SHA256 of downloaded official multi-platform manifest bytes"
     }
   }
 }

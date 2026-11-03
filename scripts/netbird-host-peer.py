@@ -68,8 +68,9 @@ def policies(source_ids, destination_ids):
             for name, src, dst, port in zip(('pilot-grafana', 'pilot-ssh-socrat-2'), source_ids, destination_ids, (8443, 2222))]
 
 
-def peer(host):
-    require(host in HOSTS, 'unapproved host')
+def peer(host, *, admin_mesh=False):
+    reviewed = ('socrat-0', 'socrat-1', 'socrat-2', 'socrat-3') if admin_mesh else HOSTS
+    require(host in reviewed, 'unapproved host')
     name = 'machine-' + host
     labels = {'app': name}
     env = {'NB_MANAGEMENT_URL': 'https://netbird.socrat.alchemmist.xyz',
