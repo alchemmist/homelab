@@ -28,3 +28,4 @@
       when: homelab_desktop_autologin | default(false)
     - role: desktop_environment
       when: homelab_desktop_autologin | default(false)
+    - netbird_node

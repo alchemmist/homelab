@@ -7,6 +7,12 @@
       - ansible_facts.os_family == 'Debian'
       - ansible_facts.architecture == 'x86_64'
       - wg_socrat_nodes[inventory_hostname].address == k3s_worker_ip
+      - wg_socrat_admin_clients is defined
+      - k3s_worker_ip is match('^10[.]250[.]0[.][0-9]{1,3}$')
+      - k3s_worker_ip.split('.')[-1] | int > 0
+      - k3s_worker_ip.split('.')[-1] | int < 255
+      - k3s_worker_ip not in (wg_socrat_admin_clients.values() | map(attribute='address') | list)
+      - (wg_socrat_nodes.values() | map(attribute='address') | list | length) == (wg_socrat_nodes.values() | map(attribute='address') | unique | list | length)
 
 - name: Inspect existing server datastore
   ansible.builtin.stat:

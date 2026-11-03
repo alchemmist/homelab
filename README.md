@@ -11,6 +11,11 @@ Authentik/MFA, users and grants, each service integration, adding new services,
 Quiet Mono frontend/CSS, native inspector, backup/recovery and current limitations.
 The compact implementation matrix is in [access management](docs/identity/access-management.md).
 
+New Ready cluster nodes receive persistent NetBird peers and exact admin-network
+resources through the normal baseline/worker playbooks; no Mac VPN edit is needed.
+See [inventory-driven node onboarding](docs/netbird-node-onboarding.md) for WG/SSH
+prerequisites, idempotency, credentials and the still-singleton control-plane limit.
+
 ## Layout
 
 ```text

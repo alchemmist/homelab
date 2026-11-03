@@ -77,6 +77,14 @@ Do not pass `-e ansible_port=...` to the SSH server migration playbook: extra va
 
 `site.yml` configures host settings, shared users, Starship, Syncthing host policy, and workload policy. It does not allocate VPN addresses or automatically join Kubernetes. Update the host aliases in the base role, `wg_socrat_nodes`, and the topology in the `k3s_ha` role, then run the corresponding networking and Kubernetes playbooks. Review storage and application placement for the new node separately.
 
+NetBird onboarding is now included in `base.yml`, `site.yml`, `k3s-worker.yml`
+and `k3s-ha.yml`. Before Kubernetes Ready it reports deferred; after the WG mesh
+and Kubernetes membership are ready it registers the persistent machine peer and
+adds the exact administrative resource without a Mac VPN change. The default
+inventory now also loads the socrat-3 overlay and a strict connection-only
+controller alias. See [automatic NetBird onboarding](netbird-node-onboarding.md)
+for the generic worker command, prerequisites, opt-out and actual acceptance limits.
+
 Removing a node also requires removing its router mapping and any relay socket explicitly; reconciliation never deletes unrelated mappings or infers removals from an unreachable node.
 
 ## Verify

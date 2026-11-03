@@ -123,6 +123,13 @@ Its profile address `.7` maps to `tim-phone` in inventory, while the owner Mac i
 No `.7` peer was silently removed or relabeled, no unrelated key was rotated,
 and legacy access was not removed based only on successful connectivity tests.
 
+## Inventory-driven continuation
+
+[Automatic node onboarding](netbird-node-onboarding.md) now hooks the normal
+baseline and worker/HA playbooks. Existing four identities were bound without
+changing access; repeat execution was no-op. A real fifth-node enrollment and
+control-plane HA are not claimed from that adoption test.
+
 ## Durable source and private evidence
 
 - `scripts/netbird-redundant-access.py`: offline four-node opt-in manifests,

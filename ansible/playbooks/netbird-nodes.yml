@@ -1,0 +1,7 @@
+---
+- name: Reconcile inventory-backed machine identities and admin ingress
+  hosts: Socrat
+  gather_facts: false
+  become: true
+  roles:
+    - netbird_node

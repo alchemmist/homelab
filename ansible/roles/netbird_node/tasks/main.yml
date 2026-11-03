@@ -1,0 +1,128 @@
+---
+- name: Reconcile inventory-backed NetBird node on the trusted controller
+  when: netbird_node_enabled | bool
+  delegate_to: "{{ netbird_node_controller }}"
+  become: true
+  block:
+    - name: Validate explicit inventory admission and WG address
+      ansible.builtin.assert:
+        that:
+          - inventory_hostname in groups['Socrat']
+          - inventory_hostname in wg_socrat_nodes
+          - inventory_hostname is match('^socrat-[0-9]+$')
+        fail_msg: Add the server and its unique WireGuard address to inventory first.
+
+    - name: Create private controller state directory
+      ansible.builtin.file:
+        path: "{{ netbird_node_state_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+
+    - name: Install secret-free controller programs
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../../scripts/{{ item }}"
+        dest: "{{ netbird_node_state_dir }}/{{ item }}"
+        owner: root
+        group: root
+        mode: "0700"
+      loop:
+        - netbird-node-reconcile.py
+        - netbird-node-credential.py
+
+    - name: Render complete inventory scope independent of --limit
+      ansible.builtin.copy:
+        dest: "{{ netbird_node_state_dir }}/inventory.json"
+        owner: root
+        group: root
+        mode: "0600"
+        content: >-
+          {% set ns = namespace(nodes={}) %}
+          {% for h in groups['Socrat'] | sort %}
+          {% if hostvars[h].netbird_node_enabled | default(true) | bool %}
+          {% set _ = ns.nodes.update({h: wg_socrat_nodes[h].address}) %}
+          {% endif %}
+          {% endfor %}
+          {% set image = (lookup('file', playbook_dir + '/../../deploy/netbird/images.lock.json') | from_json).images.client %}
+          {{ {'nodes': ns.nodes,
+              'reserved_addresses': wg_socrat_admin_clients.values() | map(attribute='address') | list,
+              'image': image.repository + ':' + image.tag + '@' + image.digest} | to_nice_json }}
+
+    - name: Establish or maintain dedicated service credential without exposing output
+      ansible.builtin.command:
+        argv: >-
+          {{ ['python3', netbird_node_state_dir + '/netbird-node-credential.py',
+              '--state-dir', netbird_node_state_dir, '--config', netbird_node_state_dir + '/inventory.json']
+             + (['--bootstrap-token-file', netbird_node_bootstrap_token_file]
+                if netbird_node_bootstrap_token_file | length > 0 else []) }}
+      register: netbird_node_credential
+      no_log: true
+      changed_when: (netbird_node_credential.stdout | from_json).changed
+      when: netbird_node_apply | bool and not ansible_check_mode
+
+    - name: Install bounded daily service-token renewal
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/homelab-netbird-credential.service
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Renew bound NetBird onboarding service credential
+          After=network-online.target
+          Wants=network-online.target
+          [Service]
+          Type=oneshot
+          UMask=0077
+          ExecStart=/usr/bin/python3 {{ netbird_node_state_dir }}/netbird-node-credential.py --state-dir {{ netbird_node_state_dir }} --config {{ netbird_node_state_dir }}/inventory.json
+          NoNewPrivileges=yes
+          ProtectSystem=strict
+          ProtectHome=yes
+          PrivateTmp=yes
+          ReadWritePaths={{ netbird_node_state_dir }}
+      register: netbird_node_renew_service
+      when: netbird_node_apply | bool
+
+    - name: Install daily renewal timer
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/homelab-netbird-credential.timer
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Check NetBird onboarding credential daily
+          [Timer]
+          OnCalendar=daily
+          Persistent=true
+          RandomizedDelaySec=1h
+          [Install]
+          WantedBy=timers.target
+      register: netbird_node_renew_timer
+      when: netbird_node_apply | bool
+
+    - name: Enable credential maintenance without recurring permission reconciliation
+      ansible.builtin.systemd_service:
+        name: homelab-netbird-credential.timer
+        enabled: true
+        state: started
+        daemon_reload: "{{ netbird_node_renew_service.changed or netbird_node_renew_timer.changed }}"
+      when: netbird_node_apply | bool
+
+    - name: Reconcile selected node under an exclusive controller lock
+      ansible.builtin.command:
+        argv: >-
+          {{ ['python3', netbird_node_state_dir + '/netbird-node-reconcile.py',
+              '--state-dir', netbird_node_state_dir, '--config', netbird_node_state_dir + '/inventory.json',
+              '--node', inventory_hostname]
+             + (['--apply'] if netbird_node_apply | bool else [])
+             + (['--adopt-state', netbird_node_adopt_state] if netbird_node_adopt_state | length > 0 else []) }}
+      register: netbird_node_reconcile
+      changed_when: (netbird_node_reconcile.stdout | from_json).changed | default(false)
+      when: not ansible_check_mode
+
+    - name: Report only secret-free onboarding result
+      ansible.builtin.debug:
+        msg: "{{ netbird_node_reconcile.stdout | from_json }}"
+      when: not ansible_check_mode
