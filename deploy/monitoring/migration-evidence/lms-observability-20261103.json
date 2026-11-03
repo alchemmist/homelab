@@ -1,0 +1,38 @@
+{
+  "verifiedAt": "2026-11-03T06:40:03.572153+00:00",
+  "success": true,
+  "traceId": "69277c7f78961dcad071d2d0819092e1",
+  "browser": {
+    "pageStatus": 200,
+    "pageTrace": "00-69277c7f78961dcad071d2d0819092e1-e46821a7f6ce1b8f-01",
+    "apiContext": "00-69277c7f78961dcad071d2d0819092e1-9265ac6e82e3827b-01",
+    "apiStatus": 404,
+    "intakeStatus": 204,
+    "browserErrors": []
+  },
+  "spanCount": 39,
+  "operationNames": [
+    "GET",
+    "GET /{path:path}",
+    "ReverseProxy",
+    "browser.api",
+    "browser.page",
+    "browser.resource",
+    "content.navigation",
+    "content.read_render",
+    "db.connect",
+    "db.transaction"
+  ],
+  "waterfallParentIdsVerified": true,
+  "intermediateProxySpans": [
+    "ReverseProxy",
+    "GET"
+  ],
+  "spanTimingsNonnegative": true,
+  "correlatedLokiLines": 2,
+  "dashboardUrl": "https://grafana.socrat.alchemmist.xyz/d/lms-performance/lms-c2b7-performance-and-distributed-traces?var-trace_id=69277c7f78961dcad071d2d0819092e1",
+  "productionMtlsDeliveryVerified": true,
+  "secretsSaved": false,
+  "syntheticProfileDeleted": true,
+  "authentikLoginTested": false
+}
