@@ -81,9 +81,19 @@ Harbor: push-учётка в секретах CI (`HARBOR_USERNAME`, `HARBOR_PAS
 
 ## Иконка на плитке и внешние Helm-репозитории
 
-Срез **2 ноября 2026**. Иконка на плитке Application — тип первого источника, а не то, что лежит внутри чарта. У `cats`, `format-quorum` и `blog` первый источник — git `alchemmist/homelab` (`charts/<app>`), поэтому Git. У `cert-manager`, `authentik` и `harbor` первый источник — внешний Helm-чарт (`chart:`), git с values подключён вторым (`ref: values`), поэтому Helm.
+Срез **3 ноября 2026**. Иконка на плитке Application — тип первого источника, а не то, что лежит внутри чарта. У `cats`, `format-quorum`, `blog` и `authentik` первый источник — git `alchemmist/homelab` (`charts/<app>`), поэтому Git. У `cert-manager` и `harbor` первый источник — внешний Helm-чарт (`chart:`), git с values подключён вторым (`ref: values`), поэтому Helm.
 
-`ComparisonError` / `failed to generate manifest for source 1 of 2` / `context deadline exceeded` на этих Helm-приложениях — это не падение подов. Repo-server не успевает за 90 секунд выполнить `helm pull` с `charts.goauthentik.io` и `helm.goharbor.io`. Кэш манифеста при промахе качается заново. Пока pull не проходит, sync остаётся `Unknown`, уже запущенные поды не останавливаются. У authentik на этот момент server, worker и postgres были `Healthy`.
+`authentik` больше не качает `charts.goauthentik.io`. Чарт `2026.8.5` лежит в `charts/authentik`, Application читает `deploy/platform/authentik/values.yaml`. Условные субчарты PostgreSQL и `authentik-remote-cluster` в вендоренную копию не входят: в этом кластере оба выключены, а `helm dependency build` до них обрывался по таймауту. Живой Postgres — отдельный StatefulSet, не субчарт.
+
+`ComparisonError` / `failed to generate manifest for source 1 of 2` / `context deadline exceeded` на оставшихся внешних Helm-приложениях — это не падение подов. Repo-server не успевает за 90 секунд выполнить `helm pull`, в частности с `helm.goharbor.io`. Кэш манифеста при промахе качается заново. Пока pull не проходит, sync остаётся `Unknown`, уже запущенные поды не останавливаются.
+
+## Аннотации релизов на графиках Grafana
+
+Контроллер `argo-cd-argocd-notifications-controller` подписан на все Application, кроме `root`. Условие `on-deployed` в `deploy/platform/argo-cd/values.yaml`: sync `Succeeded`, здоровье `Healthy`, операция закончилась меньше 10 минут назад. `oncePer: app.status.sync.revision` не даёт повторную отметку на тот же коммит. Приложение без `operationState` условие пропускает.
+
+Срабатывание шлёт `POST /api/annotations` на Service `kube-prometheus-stack-grafana` в `cattle-monitoring-system`. Тело: `"<app> deployed <revision>"`, теги `deploy` и имя приложения. Токен сервисного аккаунта Grafana `argocd-deploys` (роль Editor) лежит только в Secret `argocd/argocd-notifications-secret`, ключ `grafana-api-key`. Helm этот Secret не создаёт.
+
+Дашборды `charts/monitoring-k3s/dashboards/` (Overview, Services, Nodes, Metrics, LLM, Traffic light) содержат слой **Deploys**: аннотации организации с тегом `deploy`. Отдельной отправки в каждый дашборд нет.
 
 ## Локальный API-аккаунт для агента
 

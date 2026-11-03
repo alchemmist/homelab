@@ -50,3 +50,9 @@
 ## Чего не коммитить вместе с LMS
 
 В рабочем дереве `lms` лежат сотни правок `statement.md`, незакоммиченный `migration/pipeline.py` и отдельный прототип `teacher/`. Это не сайт ученика и не образ, пока специально не закоммичено. Генератор описан в [lms-generation.md](lms-generation.md).
+
+## Копия базы в HA-кластер
+
+Продакшен-веб по-прежнему ходит в `lms-postgres`. Чарт умеет выключить этот Deployment через `database.legacyReplicas` и, когда `database.ha.enabled: true`, примонтировать CA `lms-ha-ca` в `/etc/postgres-ca`. По умолчанию HA выключена. Веб-Deployment катится стратегией Recreate: очередь сдачи работ живёт в процессе, два веб-пода одновременно нельзя.
+
+`scripts/lms-ha-copy.py` создаёт разовый Job `postgres:17`. Он читает пароли из Secret `lms-db` и `lms-ha-app`, снимает custom dump с `lms-postgres`, шифрует его на PVC `lms-database-backups` и восстанавливает в `lms-ha-rw` с `verify-full`. Репетиция (`--rehearsal`) не требует остановки веба и не сверяет отпечаток таблиц. Финальная копия требует `--confirm-web-stopped` и нулевые реплики Deployment `lms`. В лог Job попадают только SHA-256 и факт совпадения отпечатка, не строки таблиц.
