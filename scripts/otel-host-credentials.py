@@ -91,6 +91,7 @@ def run(verify_scope=False):
         sources = [{'name': name, 'uid': name.lower(), 'type': name.lower(), 'access': 'proxy', 'url': 'https://10.250.0.3:' + str(port),
                     'isDefault': False, 'editable': False, 'jsonData': {'tlsAuth': True, 'tlsAuthWithCACert': True, 'tlsSkipVerify': False}, 'secureJsonData': secure}
                    for name, port in [('Loki', 3100), ('Tempo', 3200)]]
+        sources[0]['jsonData']['derivedFields'] = [{'name': 'TraceID', 'matcherRegex': 'trace_id=([0-9a-f]{32})', 'datasourceUid': 'tempo', 'url': '$${__value.raw}'}]
         sources[1]['jsonData']['tracesToLogsV2'] = {'datasourceUid': 'loki', 'spanStartTimeShift': '-1m', 'spanEndTimeShift': '1m', 'filterByTraceID': True}
         data = {'otel-datasources.yaml': base64.b64encode(json.dumps({'apiVersion': 1, 'datasources': sources}).encode()).decode()}
         target = namespace + '/secrets/' + grafana['targetSecret']

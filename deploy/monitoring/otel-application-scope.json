@@ -111,6 +111,27 @@
       "individualPodContainerLogDeliveryVerified": true,
       "productionInferencePathVerified": false,
       "rollbackExerciseStillRequired": true
+    },
+    {
+      "namespace": "lms",
+      "workloads": [
+        "lms"
+      ],
+      "application": "lms",
+      "productionSdkEnabled": true,
+      "exportProtocol": "http/protobuf",
+      "dedicatedClientCertificate": "otel-app-tls-lms",
+      "renewalMirrorAndRolloutMaintained": true,
+      "productionBrowserBackendProxyWaterfallVerified": true,
+      "productionLogCorrelationVerified": true,
+      "grafanaDashboardBrowserVerified": true,
+      "authentikLoginTestedByCanary": false,
+      "evidence": "deploy/monitoring/migration-evidence/lms-observability-20261103.json",
+      "notes": [
+        "Existing shared mTLS ingress and single global tail sampler retained.",
+        "Live dashboard is Helm/Argo-managed; its authoritative JSON is charts/lms/files/lms-performance.json.",
+        "Synthetic teacher canary profile/session deleted; no real user/grant/solution changes."
+      ]
     }
   ],
   "requiredAcceptance": [

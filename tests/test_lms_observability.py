@@ -63,3 +63,32 @@ def test_renewal_scope_is_only_lms_leaf_and_lms_deployment():
     app = yaml.safe_load((ROOT/'deploy/argocd/apps/lms.yaml').read_text())
     assert 'RespectIgnoreDifferences=true' in app['spec']['syncPolicy']['syncOptions']
     assert app['spec']['ignoreDifferences'][0]['jsonPointers']==['/spec/template/metadata/annotations/homelab.alchemmist.xyz~1client-certificate-sha256']
+
+
+def test_trace_id_panel_uses_supported_traceql_id_query():
+    dashboard = json.loads((ROOT/'charts/lms/files/lms-performance.json').read_text())
+    panel = next(x for x in dashboard['panels'] if x['type']=='traces')
+    assert panel['targets'][0]['queryType']=='traceql'
+    assert panel['targets'][0]['query']=='${trace_id}'
+
+
+def test_correlations_preserve_credentials_and_survive_refresh():
+    spec = importlib.util.spec_from_file_location('correlations', ROOT/'scripts/lms-grafana-correlations.py')
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    document = {'datasources': [
+        {'uid': 'loki', 'jsonData': {'tlsAuth': True, 'derivedFields': [{'name':'Other','url':'other'}]},
+         'secureJsonData': {'tlsClientKey':'synthetic-private-key'}},
+        {'uid':'tempo', 'jsonData': {'tracesToLogsV2': {'datasourceUid':'loki'}}}]}
+    result = mod.configure(document)
+    assert result['datasources'][0]['secureJsonData']['tlsClientKey']=='synthetic-private-key'
+    assert result['datasources'][0]['jsonData']['tlsAuth'] is True
+    fields = result['datasources'][0]['jsonData']['derivedFields']
+    assert fields[0]['name']=='Other'
+    assert fields[-1]['url']=='$${__value.raw}'
+    mod.configure(document)
+    assert len(result['datasources'][0]['jsonData']['derivedFields'])==2
+    for script in ['otel-host-credentials.py', 'otel-production-grafana.py']:
+        source = (ROOT/'scripts'/script).read_text()
+        assert 'trace_id=([0-9a-f]{32})' in source
+        assert '$${__value.raw}' in source

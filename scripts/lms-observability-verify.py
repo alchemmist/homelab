@@ -123,12 +123,26 @@ print(json.dumps(dict(cookie=cookie)))
         dashboard = get_json(args.grafana_url + '/api/dashboards/uid/lms-performance')
         if dashboard['dashboard']['uid'] != 'lms-performance':
             raise ValueError('Dashboard not provisioned')
+        dashboard_url = args.grafana_url + dashboard['meta']['url'] + '?var-trace_id=' + trace_id
+        ui_env = {**os.environ, 'LMS_CHECKOUT': str(args.lms_checkout.resolve()),
+                  'LMS_DASHBOARD_URL': dashboard_url, 'LMS_TRACE_ID': trace_id, 'LMS_SPAN_COUNT': str(len(records))}
+        ui = subprocess.run(['node', str(ROOT/'scripts/lms-grafana-canary.mjs')],
+                            env=ui_env, text=True, capture_output=True, timeout=150)
+        if ui.returncode:
+            raise RuntimeError('Live Grafana browser verification failed: ' + ui.stderr[-2500:])
+        ui_proof = json.loads(ui.stdout)
+        loki = get_json(args.grafana_url + '/api/datasources/uid/loki')
+        derived = loki.get('jsonData', {}).get('derivedFields', [])
+        link_verified = any(field.get('name')=='TraceID' and field.get('datasourceUid')=='tempo'
+                            and field.get('url')=='${__value.raw}' for field in derived)
+        if not link_verified:
+            raise ValueError('Loki-to-Tempo derived link not provisioned')
         report = {'verifiedAt': datetime.now(timezone.utc).isoformat(), 'success': True,
                   'traceId': trace_id, 'browser': observation, 'spanCount': len(records),
                   'operationNames': sorted(names), 'waterfallParentIdsVerified': True, 'intermediateProxySpans': proxy_names,
                   'spanTimingsNonnegative': all(s['durationMs'] >= 0 for s in records),
                   'correlatedLokiLines': count,
-                  'dashboardUrl': args.grafana_url + dashboard['meta']['url'] + '?var-trace_id=' + trace_id,
+                  'dashboardUrl': dashboard_url, 'dashboardBrowser': ui_proof, 'lokiToTempoLinkVerified': link_verified,
                   'productionMtlsDeliveryVerified': True, 'secretsSaved': False,
                   'syntheticProfileDeleted': False, 'authentikLoginTested': False}
     finally:

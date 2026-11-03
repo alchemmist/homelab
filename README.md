@@ -220,3 +220,10 @@ Do not commit passwords or private keys. Use SSH keys and, later, `ansible-vault
 LiteLLM API gateway: [deployment and access](docs/litellm.md).
 
 Open Terminal workspace on socrat-1: [deployment and connection](docs/open-terminal.md).
+
+## LMS performance observability
+
+Live browser → Traefik → LMS/database traces, Grafana waterfall, Loki correlation,
+dedicated mTLS identity and maintained credential refresh are documented in
+[the LMS observability runbook](docs/lms-observability.md). The dashboard is
+managed by the LMS Helm chart/Argo application, not a one-off manual import.
