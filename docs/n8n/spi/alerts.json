@@ -1,0 +1,285 @@
+{
+  "contactPoint": {
+    "uid": "spi-alerts-webhook",
+    "name": "SPI triage via Socrat Alerts",
+    "type": "webhook",
+    "settings": {
+      "url": "https://n8n.socrat.alchemmist.xyz/webhook/socrat-alerts",
+      "httpMethod": "POST",
+      "authorization_scheme": "Bearer"
+    },
+    "disableResolveMessage": false
+  },
+  "rules": [
+    {
+      "uid": "spi-triage-failures",
+      "orgID": 1,
+      "folderUID": "automation",
+      "ruleGroup": "SPI triage",
+      "title": "SPI triage stage failures",
+      "condition": "C",
+      "for": "2m",
+      "noDataState": "Alerting",
+      "execErrState": "Alerting",
+      "isPaused": false,
+      "labels": {
+        "namespace": "automation",
+        "component": "spi-triage",
+        "severity": "warning"
+      },
+      "annotations": {
+        "summary": "SPI triage stage failures",
+        "description": "Inspect durable jobs and sanitized error codes; ambiguous GitHub writes require review.",
+        "runbook_url": "https://github.com/alchemmist/homelab/blob/main/docs/n8n/spi/setup.md"
+      },
+      "notification_settings": {
+        "receiver": "SPI triage via Socrat Alerts",
+        "group_by": [
+          "alertname"
+        ],
+        "group_wait": "30s",
+        "group_interval": "5m",
+        "repeat_interval": "4h"
+      },
+      "data": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "relativeTimeRange": {
+            "from": 2400,
+            "to": 0
+          },
+          "datasourceUid": "loki",
+          "model": {
+            "datasource": {
+              "type": "loki",
+              "uid": "loki"
+            },
+            "editorMode": "code",
+            "expr": "sum(count_over_time({k8s_namespace_name=\"automation\"} |= \"spi-triage\" | json | event=\"stage_failed\" [20m])) or vector(0)",
+            "queryType": "instant",
+            "refId": "A",
+            "intervalMs": 1000,
+            "maxDataPoints": 43200
+          }
+        },
+        {
+          "refId": "C",
+          "relativeTimeRange": {
+            "from": 0,
+            "to": 0
+          },
+          "datasourceUid": "__expr__",
+          "model": {
+            "refId": "C",
+            "type": "threshold",
+            "expression": "A",
+            "conditions": [
+              {
+                "evaluator": {
+                  "params": [
+                    0
+                  ],
+                  "type": "gt"
+                },
+                "operator": {
+                  "type": "and"
+                },
+                "query": {
+                  "params": [
+                    "C"
+                  ]
+                },
+                "reducer": {
+                  "params": [],
+                  "type": "last"
+                },
+                "type": "query"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "uid": "spi-triage-heartbeat",
+      "orgID": 1,
+      "folderUID": "automation",
+      "ruleGroup": "SPI triage",
+      "title": "SPI triage scheduling heartbeat missing",
+      "condition": "C",
+      "for": "2m",
+      "noDataState": "Alerting",
+      "execErrState": "Alerting",
+      "isPaused": false,
+      "labels": {
+        "namespace": "automation",
+        "component": "spi-triage",
+        "severity": "warning"
+      },
+      "annotations": {
+        "summary": "SPI triage scheduling heartbeat missing",
+        "description": "No queue checks for ten minutes. Inspect the SPI Incident Triage workflow and worker.",
+        "runbook_url": "https://github.com/alchemmist/homelab/blob/main/docs/n8n/spi/setup.md"
+      },
+      "notification_settings": {
+        "receiver": "SPI triage via Socrat Alerts",
+        "group_by": [
+          "alertname"
+        ],
+        "group_wait": "30s",
+        "group_interval": "5m",
+        "repeat_interval": "4h"
+      },
+      "data": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "relativeTimeRange": {
+            "from": 2400,
+            "to": 0
+          },
+          "datasourceUid": "loki",
+          "model": {
+            "datasource": {
+              "type": "loki",
+              "uid": "loki"
+            },
+            "editorMode": "code",
+            "expr": "sum(count_over_time({k8s_namespace_name=\"automation\"} |= \"spi-triage\" | json | event=\"queue_health\" [10m])) or vector(0)",
+            "queryType": "instant",
+            "refId": "A",
+            "intervalMs": 1000,
+            "maxDataPoints": 43200
+          }
+        },
+        {
+          "refId": "C",
+          "relativeTimeRange": {
+            "from": 0,
+            "to": 0
+          },
+          "datasourceUid": "__expr__",
+          "model": {
+            "refId": "C",
+            "type": "threshold",
+            "expression": "A",
+            "conditions": [
+              {
+                "evaluator": {
+                  "params": [
+                    1
+                  ],
+                  "type": "lt"
+                },
+                "operator": {
+                  "type": "and"
+                },
+                "query": {
+                  "params": [
+                    "C"
+                  ]
+                },
+                "reducer": {
+                  "params": [],
+                  "type": "last"
+                },
+                "type": "query"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "uid": "spi-triage-dead",
+      "orgID": 1,
+      "folderUID": "automation",
+      "ruleGroup": "SPI triage",
+      "title": "SPI triage jobs require operator review",
+      "condition": "C",
+      "for": "2m",
+      "noDataState": "Alerting",
+      "execErrState": "Alerting",
+      "isPaused": false,
+      "labels": {
+        "namespace": "automation",
+        "component": "spi-triage",
+        "severity": "warning"
+      },
+      "annotations": {
+        "summary": "SPI triage jobs require operator review",
+        "description": "Inspect dead jobs. Never blindly retry a publication with an ambiguous GitHub response.",
+        "runbook_url": "https://github.com/alchemmist/homelab/blob/main/docs/n8n/spi/setup.md"
+      },
+      "notification_settings": {
+        "receiver": "SPI triage via Socrat Alerts",
+        "group_by": [
+          "alertname"
+        ],
+        "group_wait": "30s",
+        "group_interval": "5m",
+        "repeat_interval": "4h"
+      },
+      "data": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "relativeTimeRange": {
+            "from": 2400,
+            "to": 0
+          },
+          "datasourceUid": "loki",
+          "model": {
+            "datasource": {
+              "type": "loki",
+              "uid": "loki"
+            },
+            "editorMode": "code",
+            "expr": "max(max_over_time({k8s_namespace_name=\"automation\"} |= \"spi-triage\" | json | event=\"queue_health\" | unwrap dead_jobs [10m])) or vector(0)",
+            "queryType": "instant",
+            "refId": "A",
+            "intervalMs": 1000,
+            "maxDataPoints": 43200
+          }
+        },
+        {
+          "refId": "C",
+          "relativeTimeRange": {
+            "from": 0,
+            "to": 0
+          },
+          "datasourceUid": "__expr__",
+          "model": {
+            "refId": "C",
+            "type": "threshold",
+            "expression": "A",
+            "conditions": [
+              {
+                "evaluator": {
+                  "params": [
+                    0
+                  ],
+                  "type": "gt"
+                },
+                "operator": {
+                  "type": "and"
+                },
+                "query": {
+                  "params": [
+                    "C"
+                  ]
+                },
+                "reducer": {
+                  "params": [],
+                  "type": "last"
+                },
+                "type": "query"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

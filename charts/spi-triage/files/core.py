@@ -1,0 +1,194 @@
+"""Durable SPI jobs and deliberately small, English-only publication contracts."""
+from __future__ import annotations
+import hashlib
+import json
+import re
+import sqlite3
+import time
+from contextlib import contextmanager, closing
+from datetime import datetime, timezone
+
+class Failure(Exception):
+    """Only fixed, non-sensitive codes may cross the worker API boundary."""
+    def __init__(self, code):
+        self.code = code
+        super().__init__(code)
+
+SECRET_KEY = re.compile(r'authorization|cookie|password|passwd|secret|api[_-]?key|access[_-]?token|refresh[_-]?token|x[_-]?token|private[_-]?key', re.I)
+SECRET_VALUE = re.compile(r'(?i)(?:bearer\s+\S+|(?:gh[pousr]_|github_pat_)[A-Za-z0-9_]+|sk-[A-Za-z0-9_-]{12,}|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|-----BEGIN[^\n]*PRIVATE KEY-----[\s\S]*?-----END[^\n]*PRIVATE KEY-----)')
+ASSIGNMENT = re.compile(r'(?i)((?:password|passwd|secret|token|api[_-]?key|cookie|authorization)\s*[=:]\s*)[^\s,;&]+')
+
+def clean(value):
+    if isinstance(value, dict):
+        return {str(k)[:128]: '[REDACTED]' if SECRET_KEY.search(str(k)) else clean(v) for k, v in list(value.items())[:100]}
+    if isinstance(value, list):
+        return [clean(v) for v in value[:500]]
+    if isinstance(value, str):
+        return ASSIGNMENT.sub(r'\1[REDACTED]', SECRET_VALUE.sub('[REDACTED]', value))[:12000]
+    return value
+
+def digest(value):
+    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+
+def timestamp(text):
+    try:
+        d = datetime.fromisoformat(text.replace('Z', '+00:00'))
+        if not d.tzinfo:
+            raise ValueError()
+        return d.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')
+    except (ValueError, TypeError, AttributeError):
+        raise Failure('INVALID_ALERT_TIMESTAMP') from None
+
+def normalize(payload):
+    if not isinstance(payload, dict) or not isinstance(payload.get('alert'), dict):
+        raise Failure('INVALID_ALERT')
+    raw = payload['alert']
+    if raw.get('status') not in ('firing', 'resolved'):
+        raise Failure('INVALID_ALERT_STATUS')
+    labels = raw.get('labels', {})
+    if not isinstance(labels, dict) or not labels.get('alertname') or len(labels) > 64:
+        raise Failure('INVALID_ALERT_LABELS')
+    if any(not isinstance(k, str) or not isinstance(v, str) or len(v) > 1024 for k,v in labels.items()):
+        raise Failure('INVALID_ALERT_LABELS')
+    started = timestamp(raw.get('startsAt'))
+    source = str(payload.get('source', 'socrat-alerts'))[:256]
+    episode = digest([source, raw.get('fingerprint') or digest(labels), started])
+    result = clean({'source': source, 'status': raw['status'], 'labels': labels,
+                    'annotations': raw.get('annotations', {}), 'startsAt': started,
+                    'endsAt': timestamp(raw['endsAt']) if raw.get('endsAt') and not raw['endsAt'].startswith('0001-') else None,
+                    'generatorURL': raw.get('generatorURL', '')})
+    # Episode identity is computed before redaction, but contains no reversible payload.
+    result['episode'] = episode
+    result['event_key'] = digest([episode, raw['status']])
+    return result
+
+MATCH_SCHEMA = {'type':'object','additionalProperties':False,'required':['issue_number','reason','confidence'],
+ 'properties':{'issue_number':{'type':'integer','minimum':0}, 'reason':{'type':'string'},
+               'confidence':{'type':'string','enum':['high','medium','low']}}}
+REPORT_SCHEMA = {'type':'object','additionalProperties':False,
+ 'properties':{
+ 'title':{'type':'string'}, 'summary':{'type':'string'},
+ 'severity':{'type':'string','enum':['critical','high','medium','low','unknown']},
+ 'confidence':{'type':'string','enum':['high','medium','low']},
+ 'issue_number':{'type':'integer','minimum':0}, 'match_reason':{'type':'string'},
+ 'impact':{'type':'string'}, 'facts':{'type':'array','items':{'type':'string'}},
+ 'hypotheses':{'type':'array','items':{'type':'string'}},
+ 'alert_quality':{'type':'string','enum':['actionable','likely_noisy','duplicate','insufficient_evidence']},
+ 'alert_assessment':{'type':'string'},
+ 'service_actions':{'type':'array','items':{'type':'string'}},
+ 'monitoring_actions':{'type':'array','items':{'type':'string'}},
+ 'missing_evidence':{'type':'array','items':{'type':'string'}}}}
+REPORT_SCHEMA['required'] = list(REPORT_SCHEMA['properties'])
+
+def validate(value, schema):
+    """Small strict validator for the intentionally restricted schemas above."""
+    typ = schema['type']
+    if typ == 'object':
+        if not isinstance(value, dict) or set(value) != set(schema['required']):
+            raise Failure('INVALID_MODEL_SCHEMA')
+        for k,s in schema['properties'].items(): validate(value[k], s)
+    elif typ == 'array':
+        if not isinstance(value, list) or len(value) > 30: raise Failure('INVALID_MODEL_SCHEMA')
+        for v in value: validate(v, schema['items'])
+    elif typ == 'string':
+        if not isinstance(value,str) or not value.strip() or len(value)>8000: raise Failure('INVALID_MODEL_SCHEMA')
+        # Fail closed on non-English scripts rather than publishing untranslated prose.
+        if any(ord(c)>127 and c.isalpha() for c in value): raise Failure('NON_ENGLISH_MODEL_OUTPUT')
+    elif typ == 'integer':
+        if type(value) is not int or value < schema.get('minimum', 0): raise Failure('INVALID_MODEL_SCHEMA')
+    if 'enum' in schema and value not in schema['enum']: raise Failure('INVALID_MODEL_SCHEMA')
+    return value
+
+def render(report, event):
+    validate(report, REPORT_SCHEMA)
+    title = report['title'].strip()
+    if not title.startswith('[SPI] '): title = '[SPI] ' + title
+    if len(title)>180 or '\n' in title: raise Failure('INVALID_ISSUE_TITLE')
+    lines = [report['summary'], '', f"**Severity:** {report['severity']} · **Confidence:** {report['confidence']}",
+             '', '## Observed impact', report['impact']]
+    for heading, field in [('Verified facts','facts'),('Hypotheses (not established root cause)','hypotheses'),
+                           ('Service recovery and prevention','service_actions'),('Monitoring improvements','monitoring_actions'),
+                           ('Missing evidence','missing_evidence')]:
+        lines += ['', '## '+heading] + ['- '+x for x in report[field]]
+    lines += ['', '## Alert quality', '**Classification:** '+report['alert_quality'], report['alert_assessment'],
+              '', '## Incident correlation', report['match_reason'], '', '## Provenance',
+              '- Started: '+event['startsAt'], '- Analysis is automated and read-only; recommendations require review.',
+              '- Raw logs and credentials are intentionally not published.', '', '<!-- socrat-spi:'+event['event_key']+' -->']
+    body = '\n'.join(lines)
+    # Redaction changing model output is a contract failure, not silent publication.
+    if clean(title) != title or clean(body) != body: raise Failure('UNSAFE_MODEL_OUTPUT')
+    return title, body
+
+class Store:
+    def __init__(self, path):
+        self.path = str(path)
+        with closing(sqlite3.connect(self.path)) as c:
+            c.execute('PRAGMA journal_mode=WAL')
+        with self.db() as c:
+            c.executescript('''
+            CREATE TABLE IF NOT EXISTS jobs (
+              id TEXT PRIMARY KEY, episode TEXT NOT NULL, event TEXT NOT NULL,
+              stage INTEGER NOT NULL DEFAULT 0, state TEXT NOT NULL DEFAULT 'queued',
+              created REAL NOT NULL, updated REAL NOT NULL, available REAL NOT NULL,
+              lease REAL NOT NULL DEFAULT 0, attempts INTEGER NOT NULL DEFAULT 0,
+              deliveries INTEGER NOT NULL DEFAULT 1, result TEXT NOT NULL DEFAULT '{}',
+              issue INTEGER NOT NULL DEFAULT 0, intent TEXT, error TEXT);
+            CREATE INDEX IF NOT EXISTS runnable ON jobs(state,available,lease);
+            CREATE INDEX IF NOT EXISTS episode ON jobs(episode);
+            ''')
+    @contextmanager
+    def db(self):
+        c = sqlite3.connect(self.path, timeout=15)
+        c.row_factory = sqlite3.Row
+        try:
+            c.execute('PRAGMA busy_timeout=15000'); c.execute('BEGIN IMMEDIATE')
+            yield c; c.commit()
+        except BaseException:
+            c.rollback(); raise
+        finally: c.close()
+    def enqueue(self, event):
+        return self.enqueue_many([event])[0]
+    def enqueue_many(self, events):
+        now=time.time();results=[]
+        with self.db() as c:
+            for event in events:
+                results.append(self._enqueue(c,event,now))
+        return results
+    def _enqueue(self,c,event,now):
+        key=event['event_key']
+        cur=c.execute('INSERT OR IGNORE INTO jobs(id,episode,event,created,updated,available) VALUES(?,?,?,?,?,?)',
+                      (key,event['episode'],json.dumps(event),now,now,now))
+        if cur.rowcount == 0: c.execute('UPDATE jobs SET deliveries=deliveries+1,updated=? WHERE id=?',(now,key))
+        return {'job_id':key,'duplicate':cur.rowcount == 0}
+    def get(self, key):
+        with self.db() as c: row=c.execute('SELECT * FROM jobs WHERE id=?',(key,)).fetchone()
+        if row is None: raise Failure('JOB_NOT_FOUND')
+        d=dict(row); d['event']=json.loads(d['event']); d['result']=json.loads(d['result']);return d
+    def claim(self):
+        now=time.time()
+        with self.db() as c:
+            if c.execute("SELECT 1 FROM jobs WHERE state='processing' AND lease>?",(now,)).fetchone(): return {'job_id':''}
+            row=c.execute("SELECT id FROM jobs WHERE state IN ('queued','retry','processing') AND available<=? AND lease<=? ORDER BY created,id LIMIT 1",(now,now)).fetchone()
+            if not row:return {'job_id':''}
+            c.execute("UPDATE jobs SET state='processing',lease=?,attempts=attempts+1,updated=? WHERE id=?",(now+1500,now,row['id']))
+            return {'job_id':row['id']}
+    def save(self,key,stage,result,**fields):
+        allowed={'state','issue','intent','error'}
+        if not set(fields)<=allowed: raise ValueError('Invalid job fields')
+        now=time.time()
+        with self.db() as c:
+            c.execute('UPDATE jobs SET stage=?,result=?,updated=?,lease=?'+''.join(','+k+'=?' for k in fields)+' WHERE id=?',
+                      [stage,json.dumps(result),now,now+1500,*fields.values(),key])
+    def fail(self,key,code):
+        job=self.get(key);now=time.time();dead=job['attempts']>=8 or code=='WRITE_NEEDS_REVIEW'
+        with self.db() as c:
+            c.execute('UPDATE jobs SET state=?,lease=0,available=?,updated=?,error=? WHERE id=?',
+                      ('dead' if dead else 'retry',now+min(3600,30*2**min(job['attempts'],7)),now,code,key))
+    def episode_issue(self,episode):
+        with self.db() as c: row=c.execute("SELECT issue FROM jobs WHERE episode=? AND issue>0 ORDER BY created LIMIT 1",(episode,)).fetchone()
+        return row['issue'] if row else 0
+    def health(self):
+        with self.db() as c:
+            counts={r['state']:r['n'] for r in c.execute('SELECT state,count(*) n FROM jobs GROUP BY state')}
+            oldest=c.execute("SELECT min(created) FROM jobs WHERE state IN ('queued','retry','processing')").fetchone()[0]
+        return {'counts':counts,'oldest_pending_seconds':max(0,int(time.time()-oldest)) if oldest else 0}

@@ -1,0 +1,28 @@
+#!/usr/bin/env python3
+"""Render SPI workflows. Active workflows require explicit operator deactivation."""
+import copy
+import json
+from pathlib import Path
+from sync import api, BASE, CONFIG
+
+def render(template,mapping):
+    w=copy.deepcopy(template)
+    aliases={'SPI_WORKER_CREDENTIAL_ID':'worker','ALERT_INGRESS_CREDENTIAL_ID':'ingress','SOCRAT_BOT_CREDENTIAL_ID':'bot'}
+    for n in w['nodes']:
+        for kind,c in list(n.get('credentials',{}).items()):
+            alias=aliases[c['id']]
+            if not mapping.get(alias,{}).get('id'):raise RuntimeError('Missing private SPI credential mapping: '+alias)
+            n['credentials'][kind]=mapping[alias]
+    return w
+
+def sync(relative):
+    mapping=json.loads((CONFIG/'spi-credentials.json').read_text());template=json.loads((BASE/relative).read_text());w=render(template,mapping)
+    matches=[x for x in api('GET','workflows?limit=250')['data']if x['name']==w['name']]
+    if len(matches)>1:raise RuntimeError('Ambiguous workflow name')
+    if matches and matches[0]['active']:raise RuntimeError('Deactivate explicitly before syncing')
+    result=api('PUT' if matches else 'POST','workflows/'+matches[0]['id'] if matches else 'workflows',{k:w[k]for k in ['name','nodes','connections','settings']})
+    print('Workflow synced inactive:',result['id'],result['name']);return result
+
+if __name__=='__main__':
+    import sys
+    sync('docs/n8n/spi/triage-workflow.json' if '--triage' in sys.argv else 'docs/n8n/socrat-bot/workflow.json')

@@ -1,0 +1,4 @@
+apiVersion: v2
+name: spi-triage
+version: 0.1.0
+description: Durable read-only incident triage and controlled SPI publication

@@ -1,0 +1,91 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: spi-github-broker
+  namespace: {{ .Values.brokerNamespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: spi-github-token-writer
+rules:
+  - apiGroups: ['']
+    resources: [secrets]
+    resourceNames: [spi-github-installation]
+    verbs: [patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: spi-github-token-writer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: spi-github-token-writer
+subjects:
+  - kind: ServiceAccount
+    name: spi-github-broker
+    namespace: {{ .Values.brokerNamespace }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: spi-github-broker
+  namespace: {{ .Values.brokerNamespace }}
+spec:
+  schedule: '*/30 * * * *'
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 600
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 120
+      backoffLimit: 2
+      template:
+        spec:
+          nodeSelector:
+            kubernetes.io/hostname: {{ .Values.nodeName | quote }}
+          serviceAccountName: spi-github-broker
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: broker
+              image: {{ .Values.brokerImage | quote }}
+              command: [python, -B, /app/spi/github_broker.py]
+              env:
+                - name: GITHUB_APP_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Values.appSecretName }}
+                      key: github-app-id
+                - name: GITHUB_PRIVATE_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Values.appSecretName }}
+                      key: github-private-key
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 64Mi
+                limits:
+                  cpu: 200m
+                  memory: 192Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: [ALL]
+              volumeMounts:
+                - name: code
+                  mountPath: /app/spi
+                  readOnly: true
+          volumes:
+            - name: code
+              configMap:
+                name: spi-github-broker-code

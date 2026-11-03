@@ -3,20 +3,28 @@
   "nodes": [
     {
       "parameters": {
-        "httpMethod": "POST",
         "path": "socrat-alerts",
-        "responseMode": "onReceived",
-        "options": {}
+        "requireAuth": true
       },
       "id": "c0ffee00-0001-4000-8000-000000000001",
       "name": "Alertmanager Webhook",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
+      "type": "CUSTOM.socratAlertWebhook",
+      "typeVersion": 1,
       "position": [
         0,
         0
       ],
-      "webhookId": "socrat-alerts"
+      "webhookId": "socrat-alerts",
+      "credentials": {
+        "socratAlertIngress": {
+          "id": "ALERT_INGRESS_CREDENTIAL_ID",
+          "name": "Socrat alert ingress"
+        },
+        "httpHeaderAuth": {
+          "id": "SPI_WORKER_CREDENTIAL_ID",
+          "name": "SPI worker internal"
+        }
+      }
     },
     {
       "parameters": {
@@ -35,21 +43,14 @@
       "parameters": {
         "method": "POST",
         "url": "http://socrat-bot.socrat-bot.svc:8080/v1/messages",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "X-Internal-Token",
-              "value": "={{ $credentials.socratBot.internalToken }}"
-            }
-          ]
-        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ chat_id: $json.ownerChatId, alert: $json.alert }) }}",
         "options": {
           "timeout": 20000
-        }
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
       },
       "id": "c0ffee00-0003-4000-8000-000000000003",
       "name": "Post Telegram Message",
@@ -58,7 +59,13 @@
       "position": [
         520,
         0
-      ]
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SOCRAT_BOT_CREDENTIAL_ID",
+          "name": "Socrat bot internal"
+        }
+      }
     }
   ],
   "connections": {
@@ -87,7 +94,10 @@
   },
   "settings": {
     "executionOrder": "v1",
-    "timezone": "Europe/Moscow"
+    "timezone": "Europe/Moscow",
+    "saveDataSuccessExecution": "all",
+    "saveDataErrorExecution": "all",
+    "saveExecutionProgress": false
   },
   "pinData": {}
 }

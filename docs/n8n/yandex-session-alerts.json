@@ -5,7 +5,8 @@
     "type": "webhook",
     "settings": {
       "url": "https://n8n.socrat.alchemmist.xyz/webhook/socrat-alerts",
-      "httpMethod": "POST"
+      "httpMethod": "POST",
+      "authorization_scheme": "Bearer"
     },
     "disableResolveMessage": false
   },

@@ -1,0 +1,252 @@
+{
+  "name": "SPI Incident Triage",
+  "nodes": [
+    {
+      "name": "Every Minute",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "position": [
+        0,
+        0
+      ],
+      "id": "9c393df1-a66f-41bf-acaf-b2b66f31a393"
+    },
+    {
+      "name": "Claim Triage Job",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://spi-triage.automation.svc:8080/claim",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({}) }}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SPI_WORKER_CREDENTIAL_ID",
+          "name": "SPI worker internal"
+        }
+      },
+      "id": "ace6035e-4fe4-4742-a2ac-e48d24fecf04"
+    },
+    {
+      "name": "Select Claimed Job",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return items.filter(item => Boolean(item.json.job_id));"
+      },
+      "position": [
+        390,
+        0
+      ],
+      "id": "e7d658f0-698a-4a49-b66c-2b5c3336b52c"
+    },
+    {
+      "name": "Match Open SPI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        520,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://spi-triage.automation.svc:8080/match",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({job_id: $json.job_id}) }}",
+        "options": {
+          "timeout": 900000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SPI_WORKER_CREDENTIAL_ID",
+          "name": "SPI worker internal"
+        }
+      },
+      "id": "1f4819ea-709f-4a56-8ffe-22f6396ac78b"
+    },
+    {
+      "name": "Collect Evidence",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        780,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://spi-triage.automation.svc:8080/collect",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({job_id: $json.job_id}) }}",
+        "options": {
+          "timeout": 900000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SPI_WORKER_CREDENTIAL_ID",
+          "name": "SPI worker internal"
+        }
+      },
+      "id": "0f300417-871e-4478-8af5-c067e051209b"
+    },
+    {
+      "name": "Analyze Incident",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1040,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://spi-triage.automation.svc:8080/analyze",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({job_id: $json.job_id}) }}",
+        "options": {
+          "timeout": 900000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SPI_WORKER_CREDENTIAL_ID",
+          "name": "SPI worker internal"
+        }
+      },
+      "id": "10869f3b-8aa7-4ba2-b185-3a35c921cabf"
+    },
+    {
+      "name": "Publish SPI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1300,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://spi-triage.automation.svc:8080/publish",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({job_id: $json.job_id}) }}",
+        "options": {
+          "timeout": 900000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SPI_WORKER_CREDENTIAL_ID",
+          "name": "SPI worker internal"
+        }
+      },
+      "id": "656d32a2-5cdd-475b-b9a4-53d6f289832b"
+    }
+  ],
+  "connections": {
+    "Every Minute": {
+      "main": [
+        [
+          {
+            "node": "Claim Triage Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claim Triage Job": {
+      "main": [
+        [
+          {
+            "node": "Select Claimed Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Claimed Job": {
+      "main": [
+        [
+          {
+            "node": "Match Open SPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Match Open SPI": {
+      "main": [
+        [
+          {
+            "node": "Collect Evidence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Evidence": {
+      "main": [
+        [
+          {
+            "node": "Analyze Incident",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Incident": {
+      "main": [
+        [
+          {
+            "node": "Publish SPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Moscow",
+    "executionTimeout": 3600,
+    "saveExecutionProgress": false
+  }
+}
