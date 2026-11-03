@@ -17,8 +17,8 @@
 зашифрованные xToken/deviceId/scenarioId. Промежуточные cookies/CSRF только в памяти,
 не в outputs, HTTP headers нод, логах и git. Код: `charts/n8n/extensions/`.
 
-Сессия создаётся из x-token при первом вызове/рестарте, обновляется через максимум
-6 часов и после 401/403 подготовки. Сценарий: 50% и динамическая фраза, без возврата
+Сессия создаётся из x-token при первом вызове/рестарте. После истечения 6-часового
+кэша следующий вызов создаёт новую; 401/403 подготовки также вызывает обновление. Сценарий: 50% и динамическая фраза, без возврата
 старой громкости. Потерянный ответ запуска не ретраить: речь могла прозвучать.
 Задачи по credential сериализуются; есть in-process защита от параллельного повтора
 уже подтверждённого dedupKey. Не обещать exactly-once.
@@ -35,9 +35,35 @@ X-token тоже может быть отозван. Тогда `X_TOKEN_REJECTE
 просить в чат, SQLite не править. Runbook: `docs/n8n/setup.md`.
 
 Проверены live 1804 (свежая сессия без звука), 1809 (динамическая речь и dedup),
-1817 (плановый maintenance), Grafana contact test 200 и доставка Socrat Alerts 1819.
+1817 (плановый maintenance), 1832 (новая сессия после финального рестарта без
+браузерного входа), Grafana contact test 200 и доставка Socrat Alerts 1819.
 28 тестов: 9 JS-клиент, 6 календарь, 13 блог. JSON обоих workflow и alert rules
 хранятся в git; `sync.py` / `sync_yandex_session.py` меняют только inactive records.
+
+## Эксплуатационные ориентиры для агентов
+
+- `docs/n8n/calendar-voice-reminder.json` — динамические календарные уведомления;
+  `docs/n8n/yandex-session-maintenance.json` — отдельная беззвучная проверка.
+- `charts/n8n/extensions/YandexStation.node.js` — native-нода;
+  `YandexStationApi.credentials.js` — credential; `yandex-client.js` — протокол,
+  сессионный кэш, сериализация и подтверждённый in-process dedup.
+- Mount/read-only ConfigMap и checksum находятся в `charts/n8n/templates/`.
+  Если нода не распознана после переноса, восстановить расширение и credential,
+  а не возвращать retired voice-сервис, raw Cookie/CSRF или фиксированную фразу.
+- Renderer `scripts/n8n/sync.py` и maintenance helper
+  `scripts/n8n/sync_yandex_session.py` требуют явной деактивации перед обновлением;
+  после проверки вернуть исходное active-состояние. Не терять ID/static data.
+- Alert UIDs: `yandex-session-failure`, `yandex-session-missing`.
+  Контакт и правила воспроизводятся из `docs/n8n/yandex-session-alerts.json`
+  через `scripts/n8n/provision_yandex_alerts.py`, без смены глобальной policy.
+- В текущей Grafana старый receivers/test API возвращает 410. Для повторного теста
+  использовать discovery `/apis/notifications.alerting.grafana.app/v1beta1/namespaces/default/receivers`,
+  затем POST `…/receivers/{metadata.name}/test` с `{integration, alert}`.
+  Тест вызывает реальное сообщение; предупредить пользователя. Не подменять
+  корректную проверку доставки искусственной поломкой рабочей Яндекс-сессии.
+- После credential-изменений сохранена новая согласованная off-node SQLite-копия
+  с проверкой integrity/foreign keys; encryption key сохранён отдельно приватно.
+  Это разовый backup, не реализованное расписание резервного копирования.
 
 ## Обязательные правила
 

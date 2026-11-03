@@ -40,7 +40,8 @@ Receiver **Yandex calendar via Socrat Alerts** → существующий Tele
 
 Источники: `docs/n8n/yandex-session-alerts.json` и
 `scripts/n8n/provision_yandex_alerts.py`. Глобальная notification policy не менялась.
-Live checks: 1804 auth, 1809 dynamic voice, 1817 maintenance, 1819 Socrat Alerts;
+Live checks: 1804 auth, 1809 dynamic voice, 1817 maintenance, 1819 Socrat Alerts,
+1832 повторная авторизация после финального рестарта без ручного входа;
 Grafana contact test 200, обе rule evaluations Normal/ok. 28 тестов проходят.
 
 ## Почему не public-only для речи
@@ -65,3 +66,12 @@ Grafana contact test 200, обе rule evaluations Normal/ok. 28 тестов п�
 - Старый repo yandex-voice архивирован, workloads/chart/Secret удалены. Приватный
   архив сохранил исходники с незакоммиченными изменениями; удалять его не нужно.
 - Полный runbook и ручное восстановление: `docs/n8n/setup.md`.
+
+## Перенос и восстановление
+
+Секреты и instance mappings не входят в git. При переносе нужны прежние n8n DB,
+encryption key, credential, кастомное расширение и оба workflow. Одного JSON
+недостаточно. Последняя согласованная off-node копия после настройки auto-session
+проверена на SQLite integrity и foreign keys; регулярный backup остаётся отдельной
+задачей. Существующий PVC и pinned image сохранять, Recreate не заменять на запуск
+двух writers. Не сбрасывать owner и не разворачивать пустую базу вместо восстановления.
