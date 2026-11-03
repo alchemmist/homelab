@@ -1,0 +1,100 @@
+{
+  "name": "Wiki OpenAPI — bot spec to homelab PR",
+  "settings": {"executionOrder": "v1", "timezone": "Europe/Moscow", "saveDataSuccessExecution": "all"},
+  "nodes": [
+    {
+      "id": "b1c0a6a0-7e2d-4a1e-9c11-0b0a6a0e7e2d",
+      "name": "Bot push",
+      "type": "n8n-nodes-base.githubTrigger",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "webhookId": "c4e1a1b2-6d30-4f4a-9a11-wiki0openapi01",
+      "parameters": {
+        "authentication": "accessToken",
+        "owner": {"__rl": true, "mode": "name", "value": "alchemmist"},
+        "repository": {"__rl": true, "mode": "name", "value": "socrat-bot"},
+        "events": ["push"],
+        "options": {}
+      },
+      "credentials": {"githubApi": {"id": "REPLACE_WITH_CREDENTIAL_ID", "name": "blog-updates GitHub"}}
+    },
+    {
+      "id": "b1c0a6a0-7e2d-4a1e-9c11-0b0a6a0e7e2e",
+      "name": "Spec changed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [280, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "http://wiki-openapi-worker.automation.svc.cluster.local:8080/check",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {"timeout": 60000}
+      },
+      "credentials": {"httpHeaderAuth": {"id": "REPLACE_WITH_CREDENTIAL_ID", "name": "wiki-openapi worker"}}
+    },
+    {
+      "id": "b1c0a6a0-7e2d-4a1e-9c11-0b0a6a0e7e2f",
+      "name": "Render wiki page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [560, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "http://wiki-openapi-worker.automation.svc.cluster.local:8080/render",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {"timeout": 60000}
+      },
+      "credentials": {"httpHeaderAuth": {"id": "REPLACE_WITH_CREDENTIAL_ID", "name": "wiki-openapi worker"}}
+    },
+    {
+      "id": "b1c0a6a0-7e2d-4a1e-9c11-0b0a6a0e7e30",
+      "name": "Create Pull Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [840, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "http://wiki-openapi-worker.automation.svc.cluster.local:8080/create-pr",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {"timeout": 60000}
+      },
+      "credentials": {"httpHeaderAuth": {"id": "REPLACE_WITH_CREDENTIAL_ID", "name": "wiki-openapi worker"}}
+    },
+    {
+      "id": "b1c0a6a0-7e2d-4a1e-9c11-0b0a6a0e7e31",
+      "name": "Close older proposals",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "http://wiki-openapi-worker.automation.svc.cluster.local:8080/close-older",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {"timeout": 900000}
+      },
+      "credentials": {"httpHeaderAuth": {"id": "REPLACE_WITH_CREDENTIAL_ID", "name": "wiki-openapi worker"}}
+    }
+  ],
+  "connections": {
+    "Bot push": {"main": [[{"node": "Spec changed", "type": "main", "index": 0}]]},
+    "Spec changed": {"main": [[{"node": "Render wiki page", "type": "main", "index": 0}]]},
+    "Render wiki page": {"main": [[{"node": "Create Pull Request", "type": "main", "index": 0}]]},
+    "Create Pull Request": {"main": [[{"node": "Close older proposals", "type": "main", "index": 0}]]}
+  }
+}

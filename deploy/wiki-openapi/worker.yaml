@@ -1,0 +1,183 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: wiki-openapi-broker
+  namespace: pr-agent
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: wiki-openapi-token-writer
+  namespace: automation
+rules:
+  - apiGroups: [""]
+    resources: [secrets]
+    resourceNames: [wiki-openapi-github]
+    verbs: [patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: wiki-openapi-token-writer
+  namespace: automation
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: wiki-openapi-token-writer
+subjects:
+  - kind: ServiceAccount
+    name: wiki-openapi-broker
+    namespace: pr-agent
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: wiki-openapi-broker
+  namespace: pr-agent
+spec:
+  schedule: "*/20 * * * *"
+  suspend: true
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 600
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 120
+      backoffLimit: 2
+      template:
+        spec:
+          nodeSelector:
+            kubernetes.io/hostname: socrat-1
+          serviceAccountName: wiki-openapi-broker
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: broker
+              image: pragent/pr-agent:0.49.0-github_app@sha256:b57649785c4366eed39aab698f6d0fe944fa21cb7c2312ddc9bc8e4db2192a60
+              command: [python, -B, /app/wiki_openapi/github_broker.py]
+              env:
+                - name: GITHUB_APP_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: pr-agent
+                      key: github-app-id
+                - name: GITHUB_PRIVATE_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: pr-agent
+                      key: github-private-key
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 64Mi
+                limits:
+                  cpu: 200m
+                  memory: 192Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: [ALL]
+              volumeMounts:
+                - name: code
+                  mountPath: /app/wiki_openapi
+                  readOnly: true
+          volumes:
+            - name: code
+              configMap:
+                name: wiki-openapi-broker-code
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wiki-openapi-worker
+  namespace: automation
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: wiki-openapi-worker
+  template:
+    metadata:
+      labels:
+        app: wiki-openapi-worker
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: socrat-1
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: worker
+          image: python:3.13-alpine@sha256:7984cf56ceaddebe4fefeb75d64000b9f45d8b77b11a09b24524da6cdc3af0c8
+          command: ["/bin/sh", "-c", "HOME=/tmp pip install --no-cache-dir -q -t /tmp/py pyyaml==6.0.3 && exec python -B /app/wiki_openapi/server.py"]
+          envFrom:
+            - secretRef:
+                name: wiki-openapi
+          env:
+            - name: GITHUB_TOKEN_FILE
+              value: /var/run/github/token
+            - name: PYTHONPATH
+              value: /tmp/py
+            - name: WRITE_ENABLED
+              value: "false"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: "1"
+              memory: 256Mi
+          volumeMounts:
+            - name: code
+              mountPath: /app/wiki_openapi
+              readOnly: true
+            - name: github
+              mountPath: /var/run/github
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: code
+          configMap:
+            name: wiki-openapi-code
+        - name: github
+          secret:
+            secretName: wiki-openapi-github
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wiki-openapi-worker
+  namespace: automation
+spec:
+  selector:
+    app: wiki-openapi-worker
+  ports:
+    - port: 8080
+      targetPort: 8080
