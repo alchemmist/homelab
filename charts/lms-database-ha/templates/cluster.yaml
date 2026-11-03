@@ -1,0 +1,48 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: lms-ha
+spec:
+  instances: {{ .Values.instances }}
+  imageName: {{ .Values.imageName }}
+  primaryUpdateStrategy: unsupervised
+  primaryUpdateMethod: switchover
+  failoverDelay: 30
+  enableSuperuserAccess: false
+  bootstrap:
+    initdb:
+      database: lms
+      owner: lms
+      dataChecksums: true
+      secret:
+        name: lms-ha-app
+  storage:
+    size: {{ .Values.storage.size }}
+    storageClass: {{ .Values.storage.storageClass }}
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {memory: 512Mi}
+  affinity:
+    enablePodAntiAffinity: true
+    podAntiAffinityType: required
+    topologyKey: kubernetes.io/hostname
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values: [socrat-0, socrat-1, socrat-3]
+  postgresql:
+    parameters:
+      shared_buffers: 64MB
+      work_mem: 2MB
+      max_connections: "60"
+      synchronous_commit: "on"
+    synchronous:
+      method: any
+      number: 1
+      dataDurability: required
+      failoverQuorum: true
+  monitoring:
+    enablePodMonitor: true
