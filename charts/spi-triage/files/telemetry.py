@@ -453,6 +453,24 @@ def _project_trace(payload, trace_id):
                     if value is None:
                         continue
                     attributes[key] = value
+                resource_context={}
+                for item in (resource.get('attributes') or [])[:40]:
+                    key=item.get('key','') if isinstance(item,dict)else ''
+                    if key in ('service.name','service.version','host.name','container.image.name','container.image.tag','deployment.environment.name') or key.startswith('k8s.'):
+                        resource_context[key]=_attr_scalar(item.get('value'))
+                events=[]
+                for item in (raw.get('events') or [])[:10]:
+                    if not isinstance(item,dict):continue
+                    event_attributes={}
+                    for attribute in (item.get('attributes')or[])[:16]:
+                        if not isinstance(attribute,dict):continue
+                        key=attribute.get('key','')
+                        if not isinstance(key,str)or SECRET_KEY.search(key):continue
+                        raw_value=attribute.get('value',{})
+                        value=raw_value.get('stringValue','')[:4000] if key=='exception.stacktrace' and isinstance(raw_value,dict) else _attr_scalar(raw_value)
+                        event_attributes[key[:128]]=value
+                    events.append({'name':str(item.get('name',''))[:180],'time_unix_nano':str(item.get('timeUnixNano',''))[:32],'attributes':event_attributes,
+                                   'attributes_truncated':len(item.get('attributes')or[])>16})
                 name = raw.get('name') if isinstance(raw.get('name'), str) else ''
                 spans.append({
                     'trace_id': trace_id,
@@ -460,6 +478,9 @@ def _project_trace(payload, trace_id):
                     'parent_span_id': raw.get('parentSpanId') if isinstance(raw.get('parentSpanId'), str) else '',
                     'name': name[:180],
                     'service': service,
+                    'resource_context':resource_context,
+                    'events':events,
+                    'events_truncated':len(raw.get('events')or[])>10,
                     'start_time_unix_nano': raw.get('startTimeUnixNano') if isinstance(raw.get('startTimeUnixNano'), str) else '',
                     'end_time_unix_nano': raw.get('endTimeUnixNano') if isinstance(raw.get('endTimeUnixNano'), str) else '',
                     'status_code': code,
@@ -481,7 +502,7 @@ def _project_trace(payload, trace_id):
         'span_count': len(spans),
         'stored_spans': len(stored),
         'error_span_count': sum(1 for item in spans if item['error']),
-        'truncated': len(spans) > len(stored) or scan_capped,
+        'truncated': len(spans) > len(stored) or scan_capped or any(x['events_truncated']or x['attributes_truncated']or any(e['attributes_truncated']for e in x['events'])for x in stored),
         'span_scan_capped': scan_capped,
         'spans': stored,
         'limitation': (

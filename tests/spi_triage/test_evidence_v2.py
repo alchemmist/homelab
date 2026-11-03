@@ -72,6 +72,10 @@ class TelemetryTests(unittest.TestCase):
         h=Mock();h.request.side_effect=Failure('HTTP_403')
         with patch('telemetry.time.time',return_value=1793711400):r=TelemetryCollector(h,'http://grafana','fake').collect(event(),{})
         self.assertTrue(any(x['reason']=='HTTP_403'for x in r['missing']))
+    def test_trace_exception_events_and_resource_version(self):
+        from telemetry import _project_trace
+        raw={'resourceSpans':[{'resource':{'attributes':[{'key':'service.version','value':{'stringValue':'v1.2'}}]},'scopeSpans':[{'spans':[{'traceId':'a'*32,'events':[{'name':'exception','attributes':[{'key':'exception.stacktrace','value':{'stringValue':'Traceback: real error'}},{'key':'password','value':{'stringValue':'hidden'}}]}]}]}]}]}
+        value=_project_trace(raw,'a'*32);self.assertEqual(value['spans'][0]['resource_context']['service.version'],'v1.2');self.assertIn('Traceback: real error',json.dumps(value));self.assertNotIn('hidden',json.dumps(value))
     def test_no_data_explicit(self):
         h=Mock();h.request.return_value={'status':'success','data':{'resultType':'streams','result':[]}}
         with patch('telemetry.time.time',return_value=1793711400):r=TelemetryCollector(h,'http://grafana','fake').collect(event(),{})
