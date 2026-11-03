@@ -62,6 +62,12 @@ spec:
             - name: XUI_UPDATER_URL
               value: {{ $.Values.xuiUpdaterUrl | quote }}
             {{- end }}
+            {{- if eq $component.component "bot" }}
+            - name: TELEGRAM_WEBHOOK_URL
+              value: {{ $.Values.telegram.webhookURL | quote }}
+            - name: TELEGRAM_WEBHOOK_IP
+              value: {{ $.Values.telegram.webhookIP | quote }}
+            {{- end }}
             {{- if eq $component.component "updater" }}
             - name: XUI_PANEL_PORT
               value: {{ $.Values.xuiPanelPort | quote }}

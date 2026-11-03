@@ -8,6 +8,9 @@ imagePullSecrets:
   - socrat-bot-harbor-pull
 service:
   port: 8080
+telegram:
+  webhookURL: https://bot.socrat.alchemmist.xyz/telegram/webhook
+  webhookIP: 176.98.185.59
 ingress:
   host: bot.socrat.alchemmist.xyz
   className: traefik

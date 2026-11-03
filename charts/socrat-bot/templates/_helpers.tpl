@@ -71,8 +71,14 @@ readinessProbe:
   httpGet:
     path: /healthz
     port: http
+  timeoutSeconds: 5
+  periodSeconds: 10
+  failureThreshold: 6
 livenessProbe:
   httpGet:
     path: /healthz
     port: http
+  timeoutSeconds: 5
+  periodSeconds: 10
+  failureThreshold: 6
 {{- end -}}
