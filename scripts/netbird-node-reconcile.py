@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inventory-driven existing-cluster NetBird onboarding. Plan by default; no deletes.
+"""Inventory-driven existing-cluster NetBird onboarding. Plan by default; workloads exclusively owned by Argo CD.
 
 Run on the trusted K3s controller. Never log API bodies, credentials or subprocess
 output. Persistent cluster/node/PVC/deployment/peer bindings prohibit replacement
@@ -159,11 +159,22 @@ class Runtime:
             b = response.read()
             return json.loads(b) if b else None
 
-    def kub(self, args, obj=None, optional=False):
+    def kub(self, args, obj=None, optional=False, stdin=None):
         args = list(args)
+        operation = args[2] if args[:1] == ['-n'] else args[0]
+        require(operation in ('get', 'exec', 'wait', 'rollout', 'delete'),
+                'Kubernetes deployment mutations are exclusive to Argo CD')
+        if operation == 'rollout':
+            require((args[2:] if args[:1] == ['-n'] else args)[1] == 'status',
+                    'only read-only rollout status is permitted')
+        if operation == 'delete':
+            require(args[:2] == ['delete', '--raw'] and args[2].startswith('/api/v1/namespaces/'+NS+'/pods/')
+                    and obj and obj.get('kind') == 'DeleteOptions'
+                    and obj.get('preconditions', {}).get('uid')
+                    and obj['preconditions'].get('resourceVersion'), 'only UID-bound operational pod restart is permitted')
         if optional:
             args += ['--ignore-not-found']
-        p = subprocess.run(self.k+args, input=None if obj is None else json.dumps(obj).encode(),
+        p = subprocess.run(self.k+args, input=stdin if stdin is not None else (None if obj is None else json.dumps(obj).encode()),
                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=180)
         require(p.returncode == 0, 'Kubernetes operation failed; inspect locally without dumping secrets')
         return p.stdout
@@ -184,14 +195,82 @@ class Runtime:
         del self.state['pending']; self.save(); self.changed = True
         return response
 
-    def create(self, obj):
-        self.state['pending'] = {'kubernetes_create': obj['kind'], 'name': obj['metadata']['name']}
+    @staticmethod
+    def require_argocd(obj):
+        meta = obj['metadata']
+        require(meta.get('annotations', {}).get('argocd.argoproj.io/tracking-id', '').startswith('netbird:')
+                or meta.get('labels', {}).get('app.kubernetes.io/instance') == 'netbird',
+                'workload/PVC must already be owned by the root-managed netbird Argo CD Application')
+
+    def restart_without_key(self, host, deployment):
+        # Operational acceptance restart only: never edit/create a workload spec.
+        pods = json.loads(self.kub(['-n', NS, 'get', 'pods', '-l', 'app=machine-'+host, '-o', 'json']))['items']
+        require(len(pods) == 1, 'ambiguous agent pod; no restart')
+        pod = pods[0]
+        owners = pod['metadata'].get('ownerReferences', [])
+        require(len(owners) == 1 and owners[0]['kind'] == 'ReplicaSet' and owners[0].get('controller'),
+                'unexpected agent pod owner')
+        rs = self.get('replicaset', owners[0]['name'])
+        require(rs['metadata']['uid'] == owners[0]['uid'] and any(
+            v['kind'] == 'Deployment' and v['uid'] == deployment['metadata']['uid'] and v.get('controller')
+            for v in rs['metadata'].get('ownerReferences', [])), 'pod/deployment UID binding changed')
+        self.kub(['delete', '--raw', '/api/v1/namespaces/'+NS+'/pods/'+pod['metadata']['name'], '-f', '-'],
+                 {'apiVersion': 'v1', 'kind': 'DeleteOptions', 'preconditions': {
+                     'uid': pod['metadata']['uid'], 'resourceVersion': pod['metadata']['resourceVersion']}})
+        self.kub(['-n', NS, 'wait', '--for=delete', 'pod/'+pod['metadata']['name'], '--timeout=90s'])
+        self.kub(['-n', NS, 'rollout', 'status', 'deployment/machine-'+host, '--timeout=120s'])
+        self.kub(['-n', NS, 'exec', 'deployment/machine-'+host, '--', 'sh', '-c',
+                  'timeout 45 netbird status --check ready'])
+
+    def enroll_argocd_agent(self, host, node, deployment, pvc):
+        self.require_argocd(deployment); self.require_argocd(pvc)
+        peers = self.api('GET', 'peers')
+        require(not any(p.get('hostname') == host or p.get('name') == 'machine-'+host for p in peers),
+                'orphan existing peer: no name adoption')
+        raw = json.loads(self.kub(['-n', NS, 'exec', 'deployment/machine-'+host,
+                                  '--', 'netbird', 'status', '--json']))
+        require(raw.get('daemonStatus') == 'NeedsLogin' and not raw.get('netbirdIp'),
+                'only a fresh unregistered Argo CD agent can be enrolled; never reset an identity')
+        if not self.apply:
+            return None
+        self.state['nodes'][host] = {'phase': 'enrolling', 'node_uid': node['metadata']['uid'],
+            'address': self.config['nodes'][host], 'deployment_uid': deployment['metadata']['uid'],
+            'pvc_uid': pvc['metadata']['uid']}
         self.save()
-        out = self.kub(['create', '-f', '-', '-o', 'json'], obj)
-        del self.state['pending']; self.save(); self.changed = True
-        return json.loads(out)
+        key = self.write('POST', 'setup-keys', {'name': 'inventory-'+host, 'type': 'one-off',
+            'expires_in': 600, 'usage_limit': 1, 'auto_groups': [], 'ephemeral': False,
+            'allow_extra_dns_labels': False})
+        self.state['nodes'][host]['setup_key_id'] = key['id']; self.save()
+        try:
+            # v0.82 reads --setup-key-file using os.ReadFile. Send bytes over the
+            # authenticated exec stdin stream, never argv, env, Git or a Secret.
+            self.kub(['-n', NS, 'exec', '-i', 'deployment/machine-'+host, '--',
+                      'netbird', 'up', '--setup-key-file', '/dev/stdin'], stdin=key['key'].encode())
+            self.kub(['-n', NS, 'exec', 'deployment/machine-'+host, '--', 'sh', '-c',
+                      'timeout 45 netbird status --check ready'])
+            peer, status = self.peer_for_status(host)
+        finally:
+            self.state['cleanup'] = {'setup_key_id': key['id'], 'node': host, 'revoked': False}; self.save()
+            retired = self.api('PUT', 'setup-keys/'+key['id'], {'revoked': True, 'auto_groups': []})
+            require(retired['revoked'], 'setup-key retirement failed')
+            self.state['cleanup']['revoked'] = True; self.save()
+        self.restart_without_key(host, deployment)
+        again, second = self.peer_for_status(host)
+        require(peer['id'] == again['id'] and status == second, 'identity changed on key-free restart')
+        require(self.get('deployment', 'machine-'+host)['metadata']['uid'] == deployment['metadata']['uid']
+                and self.get('pvc', 'machine-'+host)['metadata']['uid'] == pvc['metadata']['uid'],
+                'Argo CD workload or storage replaced during enrollment')
+        return peer, status
 
     def guard(self):
+        app = self.get('application', 'netbird', ns='argocd')
+        source = app['spec'].get('source', {})
+        require(app['spec']['project'] == 'default' and source.get('path') == 'charts/netbird'
+                and source.get('targetRevision') == 'main'
+                and source.get('repoURL') == 'https://github.com/alchemmist/homelab.git'
+                and (app['metadata'].get('annotations', {}).get('argocd.argoproj.io/tracking-id', '').startswith('root:')
+                     or app['metadata'].get('labels', {}).get('app.kubernetes.io/instance') == 'root'),
+                'root-managed GitOps Application required; do not create one manually')
         groups = self.api('GET', 'groups')
         self.admin = unique(groups, 'name', ADMIN)
         self.group = unique(groups, 'name', DEST)
@@ -267,57 +346,22 @@ class Runtime:
         pvc = self.get('pvc', 'machine-'+host, optional=True)
         if d or pvc:
             require(d is not None and pvc is not None, 'partial/missing identity storage: refuse replacement')
+            self.require_argocd(d); self.require_argocd(pvc)
             self.verify_deployment(host, d)
-            p, status = self.peer_for_status(host)
-            if not entry:
-                require(seed is not None and seed['nodes'].get(host, {}).get('id') == p['id'],
-                        'existing peer requires exact trusted migration binding, not name adoption')
+            if entry or (seed or {}).get('nodes', {}).get(host):
+                p, status = self.peer_for_status(host)
+                if not entry:
+                    require(seed['nodes'][host].get('id') == p['id'], 'trusted migration binding mismatch')
+            else:
+                enrolled = self.enroll_argocd_agent(host, node, d, pvc)
+                if enrolled is None:
+                    return {'changed': False, 'status': 'would-enroll-and-authorize', 'node': host}
+                p, status = enrolled
         else:
             require(entry is None and not (seed or {}).get('nodes', {}).get(host), 'lost identity storage: no re-enrollment')
             require(not any(p.get('hostname') == host or p.get('name') == 'machine-'+host
                             for p in self.api('GET', 'peers')), 'orphan existing peer: no name adoption')
-            if not self.apply:
-                return {'changed': False, 'status': 'would-enroll-and-authorize', 'node': host}
-            self.state['nodes'][host] = {'phase': 'enrolling', 'node_uid': node['metadata']['uid'], 'address': address}
-            self.save()
-            pvc_doc, deploy_doc = manifests(host, self.config['image'], enrollment=True)
-            self.kub(['create', '--dry-run=server', '-f', '-'], pvc_doc)
-            self.kub(['create', '--dry-run=server', '-f', '-'], deploy_doc)
-            key = self.write('POST', 'setup-keys', {'name': 'inventory-'+host, 'type': 'one-off',
-                'expires_in': 600, 'usage_limit': 1, 'auto_groups': [], 'ephemeral': False,
-                'allow_extra_dns_labels': False})
-            self.state['nodes'][host]['setup_key_id'] = key['id']; self.save()
-            try:
-                self.create({'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {
-                    'name': 'machine-'+host+'-enrollment', 'namespace': NS},
-                    'type': 'Opaque', 'stringData': {'setup-key': key['key']}})
-                pvc = self.create(pvc_doc); self.create(deploy_doc)
-                self.kub(['-n', NS, 'rollout', 'status', 'deployment/machine-'+host, '--timeout=120s'])
-                self.kub(['-n', NS, 'exec', 'deployment/machine-'+host, '--', 'sh', '-c',
-                          'timeout 45 netbird status --check ready'])
-                p, status = self.peer_for_status(host)
-                d = self.get('deployment', 'machine-'+host)
-                d['spec']['template']['spec']['containers'][0]['env'] = [
-                    e for e in d['spec']['template']['spec']['containers'][0]['env'] if e['name'] != 'NB_SETUP_KEY']
-                self.kub(['replace', '-f', '-', '-o', 'name'], d)
-                self.kub(['-n', NS, 'rollout', 'status', 'deployment/machine-'+host, '--timeout=120s'])
-                self.kub(['-n', NS, 'exec', 'deployment/machine-'+host, '--', 'sh', '-c',
-                          'timeout 45 netbird status --check ready'])
-                again, second = self.peer_for_status(host)
-                require(p['id'] == again['id'] and status == second, 'identity changed on key-free restart')
-            finally:
-                # Revoke even when deployment fails; never leave an unattended usable key.
-                self.state['cleanup'] = {'setup_key_id': key['id'], 'node': host, 'revoked': False}
-                self.save()
-                retired = self.api('PUT', 'setup-keys/'+key['id'], {'revoked': True, 'auto_groups': []})
-                require(retired['revoked'], 'setup-key retirement failed')
-                self.state['cleanup']['revoked'] = True; self.save()
-                secret = self.get('secret', 'machine-'+host+'-enrollment', optional=True)
-                if secret:
-                    self.kub(['delete', '--raw', '/api/v1/namespaces/'+NS+'/secrets/'+secret['metadata']['name'], '-f', '-'],
-                             {'apiVersion': 'v1', 'kind': 'DeleteOptions', 'preconditions': {
-                                 'uid': secret['metadata']['uid'], 'resourceVersion': secret['metadata']['resourceVersion']}})
-            d = self.get('deployment', 'machine-'+host)
+            return {'changed': False, 'status': 'awaiting-argocd-workloads', 'node': host}
         binding = {'phase': 'ready', 'node_uid': node['metadata']['uid'], 'address': address,
                    'deployment_uid': d['metadata']['uid'], 'pvc_uid': pvc['metadata']['uid'],
                    'peer_id': p['id'], 'ip': status['ip'], 'public_key': status['key']}

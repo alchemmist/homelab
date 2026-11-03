@@ -4,6 +4,17 @@
   delegate_to: "{{ netbird_node_controller }}"
   become: true
   block:
+    - name: Require Git-owned Argo CD admission before touching the host controller
+      delegate_to: localhost
+      become: false
+      vars:
+        netbird_gitops_values: "{{ lookup('file', playbook_dir + '/../../deploy/netbird/values.yaml') | from_yaml }}"
+      ansible.builtin.assert:
+        that:
+          - inventory_hostname in netbird_gitops_values.nodes
+          - netbird_gitops_values.nodes[inventory_hostname] == wg_socrat_nodes[inventory_hostname].address
+        fail_msg: Run scripts/netbird-gitops-nodes.py, commit inventory and values, and let root/Argo CD deploy the agent first.
+
     - name: Validate explicit inventory admission and WG address
       ansible.builtin.assert:
         that:

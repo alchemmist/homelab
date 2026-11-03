@@ -216,6 +216,7 @@ def main():
     p.add_argument('--confirm-apply', default='')
     p.add_argument('--print-only', action='store_true')
     a = p.parse_args()
+    nb.require(a.command != 'apply', 'Deployments are exclusively managed by root -> netbird Argo CD; commit chart/values instead')
     candidates = load_json(a.candidates)
     audit = load_json(a.audit)
     chart = yaml.safe_load((ROOT / 'charts/traefik-edge/values.yaml').read_text())

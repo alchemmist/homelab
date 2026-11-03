@@ -1,5 +1,10 @@
 # NetBird control plane and machine peers
 
+**Deployment owner: `root -> netbird` Argo CD**, chart `charts/netbird`, values
+[`values.yaml`](values.yaml), application `deploy/argocd/apps/netbird.yaml`.
+The old direct-apply stages below are historical, not a supported deployment path.
+[GitOps ownership and adoption](../../docs/netbird-argocd.md).
+
 **Current deployment and failure-test limits:**
 [four routing peers and independent relays](../../docs/netbird-independent-access.md).
 Five peers (owner + four existing nodes), genuine owner-only admin JWT source,
@@ -30,9 +35,8 @@ proposal/gates below remain historical inputs, not a live-state assertion.
   for the edge forwarder. The forwarder digest was not re-verified at the registry.
 - `../../scripts/netbird-pilot.py` compiles manifests and runtime config. It does
   not apply them.
-- `../../scripts/netbird-deploy.py` is `check`, `plan`, and `apply`. Apply needs
-  an explicit context and the confirmation phrase, never calls Argo, and refuses
-  the current repo inputs.
+- `../../scripts/netbird-deploy.py` retains historical check/plan rendering;
+  imperative `apply` is disabled. Use the root-managed Argo CD Application.
 - `../../scripts/netbird-bootstrap.py` claims `/api/setup` only on loopback.
 - `../../scripts/netbird-backup.py` plans a quiesced SQLite copy. It is not HA.
 

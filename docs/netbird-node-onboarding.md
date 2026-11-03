@@ -4,6 +4,14 @@
 without changing existing peers, addresses, policies, network or group membership.
 A real fifth node has **not** been provisioned for this acceptance.
 
+## GitOps deployment boundary
+
+Kubernetes resources are exclusively deployed by `root -> netbird` Argo CD.
+Ansible installs the host-side API controller and performs machine enrollment and
+NetBird grants; it never creates or replaces Kubernetes workloads or identity PVCs.
+The old temporary enrollment Secret/Deployment replacement sequence is retired.
+See [GitOps ownership](netbird-argocd.md).
+
 ## Normal operator workflow
 
 Prerequisites: the existing NetBird control plane and genuine Authentik JWT admin
@@ -17,10 +25,15 @@ network/OS by itself.
    SSH connection information. Add its unique server address/public key to
    `wg_socrat_nodes` using the existing WG provisioning procedure. Human/device
    addresses in `wg_socrat_admin_clients` are reserved and cannot be reused.
-2. Apply the baseline, then provision/join the node to Kubernetes. `base.yml` and
+2. From the repository root, run `python3 scripts/netbird-gitops-nodes.py`
+   (Python PyYAML and `ansible-inventory` required). Commit and publish the inventory
+   and generated `deploy/netbird/values.yaml` together. `root` creates/maintains the
+   Application; Argo CD alone creates the node Deployment/PVC. No manual Sync or
+   `kubectl apply`. The new pod can wait for its missing node.
+3. Apply the baseline, then provision/join the node to Kubernetes. `base.yml` and
    `site.yml` run NetBird onboarding automatically. If the node is not yet in
    Kubernetes or is not Ready, it reports **deferred**, not successful enrollment.
-3. `k3s-worker.yml` and `k3s-ha.yml` invoke onboarding after membership is ready.
+4. `k3s-worker.yml` and `k3s-ha.yml` invoke onboarding after membership is ready.
    Worker host/name/IP are inventory-driven rather than fixed to socrat-3:
 
    ```sh
@@ -34,7 +47,7 @@ network/OS by itself.
    Both commands use normal Linux sudo authorization. Existing worker OS/version,
    primary datastore and management-interface checks remain. Control-plane nodes
    cannot be converted into workers by changing the name variable.
-4. No additional NetBird command is normally needed. If a node joined Kubernetes
+5. No additional NetBird command is normally needed. If a node joined Kubernetes
    through a different workflow, run the dedicated reconciliation play:
 
    ```sh
@@ -55,13 +68,19 @@ future node, and sync/route convergence is not guaranteed instantaneous.
 - Existing API router, network, native admin INPUT policy and **genuine JWT**
   `netbird-internal-admins` must already exist. The controller never creates JWT
   source groups, changes human membership, impersonates a user or repairs roles.
-- New Ready nodes get a hostNetwork Deployment and persistent 64Mi identity PVC,
+- Git/Argo CD declares a hostNetwork Deployment and persistent 64Mi identity PVC,
   pinned client 0.82.0, 96Mi cap, client routes/DNS/NetBird SSH disabled. Only the
   reviewed bootstrap NoSchedule taint is tolerated, preserving workload admission.
-- One-use key, 600 seconds, empty auto-groups; start the agent without grants.
+- Only an already Argo-owned, fresh `NeedsLogin` agent on a Ready node may enroll.
+  Missing workload/PVC returns `awaiting-argocd-workloads`, not imperative creation.
+- One-use key, 600 seconds, empty auto-groups; enroll the agent without grants.
+  Send key bytes over authenticated exec stdin to `--setup-key-file /dev/stdin`;
+  no key in Git, Deployment env, argv, Kubernetes Secret or logs.
 - Match the actual official client's status/IP/public key with the API peer and
-  Kubernetes placement. Restart without the setup-key env and verify the same
-  identity. Known keys are revoked and temporary Secrets deleted even on failure.
+  Kubernetes placement. Revoke the key even on failure. After revocation, perform
+  a UID/precondition-guarded operational pod restart through the existing
+  ReplicaSet, without modifying any Deployment/PVC spec, and verify the same
+  identity. Enrollment failures remain blocked for explicit inspection.
 - Verify the actual WG address and reachability of Ready inventory WG targets
   before admitting a new routing peer.
 - Add only that exact peer to `netbird-node-agents`; existing admin INPUT policy

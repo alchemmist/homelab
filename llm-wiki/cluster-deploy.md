@@ -105,11 +105,12 @@ Harbor: push-учётка в секретах CI (`HARBOR_USERNAME`, `HARBOR_PAS
 
 Argo CD стоит на socrat-0. UI: `https://argocd.socrat.alchemmist.xyz`. TLS cert-manager HTTP-01, ingress Traefik, в том числе через VPS edge. Браузер входит через Authentik OIDC. Значения: `deploy/argocd/values.yaml`, playbook `ansible/playbooks/argocd.yml`.
 
-Два Application:
+Базовая схема и NetBird:
 
 | Имя | Откуда | Что делает |
 | --- | --- | --- |
 | `root` | `deploy/argocd/root.yaml`, применён один раз | Смотрит каталог `deploy/argocd/apps` и держит там Application. `prune: true`, `selfHeal: true`. Самого себя в каталоге нет. |
+| `netbird` | `deploy/argocd/apps/netbird.yaml` | Чарт `charts/netbird`, values `deploy/netbird/values.yaml`. Весь NetBird Kubernetes stack, включая management/dashboard, edge, relays, STUN и machine agents; `prune: false`, `selfHeal: true`. PVC/собственные namespaces защищены `Prune=false,Delete=false`; секреты остаются private bootstrap dependencies. |
 | `blog` | `deploy/argocd/apps/blog.yaml` | Чарт `charts/blog`, values `deploy/blog/values.yaml`, namespace `blog`. `prune: false`, `selfHeal: true`, `CreateNamespace=true`. |
 
 `root` — обычный вариант схемы app of apps без ApplicationSet. Удалил Application `blog` — `root` создаст его снова из Git. Удалил файл из `deploy/argocd/apps` — `root` удалит и Application. У блога стоит finalizer `resources-finalizer.argocd.argoproj.io`, поэтому удаление Application сносит и его ресурсы. У `root` finalizer нет: удаление самого `root` дочерние Application не стирает. Вернуть `root` можно только повторным `kubectl apply -f deploy/argocd/root.yaml`.
@@ -148,3 +149,13 @@ Action умеет один образ на приложение и только 
 6. Живой HTTP сервиса отвечает.
 
 Если Git уже новый, а кластер старый, это ожидание опроса, а не повод вызывать Sync из CI. Принудительный refresh из UI допустим, когда нужно посмотреть результат сразу.
+
+### NetBird: переход существующего сервиса под Argo CD
+
+NetBird больше не исключение: Application создаёт `root` из каталога apps, не
+ручной apply/UI. Подробнее: [netbird-argocd.md](../docs/netbird-argocd.md). Сохраняются
+существующие версии upstream-образов по digest; миграция не обновляет образы и
+не переиздаёт идентичности/секреты. Значения секретов и содержимое PVC не в Git.
+Для нового узла: inventory → `scripts/netbird-gitops-nodes.py` → commit inventory
+и values → Argo CD → обычный Ansible machine enrollment/API grants. Ansible не
+создаёт Kubernetes Deployment/PVC и не конкурирует с selfHeal.

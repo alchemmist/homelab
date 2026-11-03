@@ -37,6 +37,7 @@ class Fake(n.Runtime):
         self.pvc, self.dep = n.manifests('socrat-4', IMAGE)
         self.pvc['metadata']['uid'] = 'pvc4'
         self.dep['metadata']['uid'] = 'dep4'
+        for obj in [self.dep, self.pvc]:obj['metadata']['labels'] = {'app.kubernetes.io/instance': 'netbird'}
         self.existing = existing
         self.enrolled = existing
         self.fail_restart = False
@@ -68,6 +69,9 @@ class Fake(n.Runtime):
         raise AssertionError(path)
 
     def get(self, kind, name, ns=n.NS, optional=False):
+        if kind == 'application':return {'metadata': {'labels': {'app.kubernetes.io/instance': 'root'}},
+            'spec': {'project': 'default', 'source': {'path': 'charts/netbird', 'targetRevision': 'main',
+                     'repoURL': 'https://github.com/alchemmist/homelab.git'}}}
         if kind == 'namespace': return {'metadata': {'uid': name}}
         if kind == 'node': return self.cluster_node
         if kind == 'deployment': return copy.deepcopy(self.dep) if self.existing else None
@@ -75,21 +79,19 @@ class Fake(n.Runtime):
         if kind == 'secret': return {'metadata': {'name': name, 'uid': 'secret4', 'resourceVersion': '1'}}
         raise AssertionError(kind)
 
-    def create(self, obj):
-        if obj['kind'] == 'Deployment':
-            self.existing = self.enrolled = True
-            self.dep = copy.deepcopy(obj); self.dep['metadata']['uid'] = 'dep4'
-        self.changed = True
-        if obj['kind'] == 'PersistentVolumeClaim':return self.pvc
-        return obj
-
     def status(self, host):
         return {'ip': self.peer['ip'], 'key': 'fixture-public-key'}
 
-    def kub(self, args, obj=None, optional=False):
-        if args[0] == 'replace':
-            if self.fail_restart: raise ValueError('simulated restart failure')
-            self.dep = copy.deepcopy(obj)
+    def restart_without_key(self, host, deployment):
+        if self.fail_restart:raise ValueError('simulated restart failure')
+
+    def kub(self, args, obj=None, optional=False, stdin=None):
+        if stdin is not None:
+            assert args[-4:] == ['netbird', 'up', '--setup-key-file', '/dev/stdin']
+            self.enrolled = True
+        if args[-3:] == ['netbird', 'status', '--json']:
+            return json.dumps({'daemonStatus': 'Connected' if self.enrolled else 'NeedsLogin', 'netbirdIp': self.peer['ip'] if self.enrolled else ''}).encode()
+        assert not any(a in args for a in ['create', 'apply', 'replace', 'patch']), 'controller must not deploy workloads'
         if 'address' in args:
             return json.dumps([{'addr_info': [{'local': '10.250.0.9'}]}]).encode()
         if args[:2] == ['get', 'nodes']:
@@ -134,7 +136,22 @@ class ReconcileTest(unittest.TestCase):
 
     def test_plan_never_enrolls_or_writes(self):
         f = Fake(apply=False, existing=False)
+        self.assertEqual(f.reconcile('socrat-4')['status'], 'awaiting-argocd-workloads')
+        self.assertEqual(f.writes, [])
+
+    def test_missing_git_workloads_are_deferred_without_kubernetes_or_api_writes(self):
+        f = Fake(existing=False)
+        self.assertEqual(f.reconcile('socrat-4')['status'], 'awaiting-argocd-workloads')
+        self.assertEqual(f.writes, [])
+
+    def test_fresh_argocd_agent_plan_has_no_setup_key(self):
+        f = Fake(apply=False); f.enrolled = False
         self.assertEqual(f.reconcile('socrat-4')['status'], 'would-enroll-and-authorize')
+        self.assertEqual(f.writes, [])
+
+    def test_unmanaged_workloads_cannot_be_adopted_by_controller(self):
+        f = Fake(); f.dep['metadata'].pop('labels')
+        with self.assertRaises(ValueError):f.reconcile('socrat-4', self.seed())
         self.assertEqual(f.writes, [])
 
     def test_missing_not_ready_node_is_deferred(self):
@@ -143,7 +160,7 @@ class ReconcileTest(unittest.TestCase):
         self.assertEqual(f.writes, [])
 
     def test_simulated_new_node_flow_retires_key_and_second_run_no_writes(self):
-        f = Fake(existing=False)
+        f = Fake(); f.enrolled = False
         self.assertTrue(f.reconcile('socrat-4')['changed'])
         self.assertEqual(f.state['cleanup']['revoked'], True)
         self.assertEqual(f.state['nodes']['socrat-4']['phase'], 'ready')
@@ -153,7 +170,7 @@ class ReconcileTest(unittest.TestCase):
         self.assertEqual(len(f.writes), writes)
 
     def test_failed_enrollment_revokes_known_key_and_never_auto_reissues(self):
-        f = Fake(existing=False); f.fail_restart = True
+        f = Fake(); f.enrolled = False; f.fail_restart = True
         with self.assertRaises(ValueError):f.reconcile('socrat-4')
         self.assertTrue(f.state['cleanup']['revoked'])
         self.assertNotEqual(f.state['nodes']['socrat-4']['phase'], 'ready')

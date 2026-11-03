@@ -4,6 +4,13 @@ Live continuation: 2026-11-03. Supersedes the historical
 [single-gateway deployment](netbird-single-gateway.md).
 **Data-plane redundancy is deployed; full WireGuard-replacement/HA acceptance is not complete.**
 
+## Deployment ownership
+
+All Kubernetes NetBird workloads, public entry, relays, STUN and machine-agent
+PVCs are declared by the root-managed `netbird` Argo CD Application.
+See [GitOps source and adoption](netbird-argocd.md). Historical manual publication
+scripts are not the deployment path. Identity data and secret values stay private.
+
 ## Actual topology
 
 - Five approved connected peers: one existing owner Mac and four persistent

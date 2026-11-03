@@ -90,7 +90,7 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertEqual(candidates['ingress_class']['value'], 'traefik')
         self.assertEqual(candidates['storage_class']['value'], 'local-path')
         self.assertEqual(nb.image('edge_forwarder'), chart['image'])
-        self.assertFalse((ROOT / 'deploy/argocd/apps').joinpath('netbird.yaml').exists())
+        self.assertTrue((ROOT / 'deploy/argocd/apps').joinpath('netbird.yaml').exists())
 
     def test_control_plane_does_not_require_routers_or_grant_resources(self):
         inputs = control_inputs()

@@ -1,0 +1,1412 @@
+# Adopted existing objects; no Secret values or PVC contents. Change through Git only.
+image:
+  repository: netbirdio/dashboard
+  tag: v2.96.0
+  digest: sha256:340b13c00b84349572a2acc5605e907cb09250a9e6461c757097eabdb8e02f2c
+nodes:
+  socrat-0: 10.250.0.1
+  socrat-1: 10.250.0.3
+  socrat-2: 10.250.0.2
+  socrat-3: 10.250.0.5
+resources:
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: dashboard
+    namespace: netbird-pilot
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: netbird-dashboard
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        labels:
+          app: netbird-dashboard
+      spec:
+        automountServiceAccountToken: false
+        containers:
+        - env:
+          - name: NETBIRD_MGMT_API_ENDPOINT
+            value: https://netbird.socrat.alchemmist.xyz
+          - name: NETBIRD_MGMT_GRPC_API_ENDPOINT
+            value: https://netbird.socrat.alchemmist.xyz
+          - name: AUTH_AUDIENCE
+            value: netbird-dashboard
+          - name: AUTH_CLIENT_ID
+            value: netbird-dashboard
+          - name: AUTH_AUTHORITY
+            value: https://netbird.socrat.alchemmist.xyz/oauth2
+          - name: USE_AUTH0
+            value: 'false'
+          - name: AUTH_SUPPORTED_SCOPES
+            value: openid profile email groups
+          - name: AUTH_REDIRECT_URI
+            value: /nb-auth
+          - name: AUTH_SILENT_REDIRECT_URI
+            value: /nb-silent-auth
+          - name: LETSENCRYPT_DOMAIN
+            value: none
+          imagePullPolicy: IfNotPresent
+          name: dashboard
+          ports:
+          - containerPort: 80
+            name: http
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: 80
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: '1'
+              memory: 768Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        enableServiceLinks: false
+        nodeSelector:
+          kubernetes.io/hostname: socrat-0
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: server
+    namespace: netbird-pilot
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: netbird-server
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: '2026-11-03T15:17:16+03:00'
+        labels:
+          app: netbird-server
+      spec:
+        automountServiceAccountToken: false
+        containers:
+        - args:
+          - --config
+          - /etc/netbird/config.yaml
+          env:
+          - name: NB_SETUP_PAT_ENABLED
+            value: 'false'
+          image: netbirdio/netbird-server:0.82.0@sha256:7b5b53b2dc8bc25639f791cf72d47cf86911894ff3f8a97cb79bab9be958109c
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            successThreshold: 1
+            tcpSocket:
+              port: 9000
+            timeoutSeconds: 1
+          name: server
+          ports:
+          - containerPort: 80
+            name: http
+            protocol: TCP
+          - containerPort: 3478
+            name: stun
+            protocol: UDP
+          - containerPort: 9000
+            name: health
+            protocol: TCP
+          - containerPort: 9090
+            name: metrics
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /oauth2/.well-known/openid-configuration
+              port: 80
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: '1'
+              memory: 768Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /etc/netbird
+            name: config
+            readOnly: true
+          - mountPath: /var/lib/netbird
+            name: data
+        dnsPolicy: ClusterFirst
+        enableServiceLinks: false
+        nodeSelector:
+          kubernetes.io/hostname: socrat-0
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 60
+        volumes:
+        - name: config
+          secret:
+            defaultMode: 256
+            items:
+            - key: config.yaml
+              path: config.yaml
+            secretName: netbird-runtime
+        - name: data
+          persistentVolumeClaim:
+            claimName: server-data
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: stun
+    namespace: netbird-pilot
+    annotations:
+      field.cattle.io/publicEndpoints: '[{"nodeName":":socrat-2","addresses":["10.250.0.2"],"port":3478,"protocol":"UDP","podName":"netbird-pilot:stun-58f868c496-bjcgs","allNodes":false}]'
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: netbird-stun
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        labels:
+          app: netbird-stun
+      spec:
+        automountServiceAccountToken: false
+        containers:
+        - args:
+          - -n
+          - --stun-only
+          - --no-auth
+          - --no-tcp
+          - --no-tls
+          - --no-dtls
+          - --no-cli
+          - --no-tcp-relay
+          - --relay-threads=1
+          - --listening-port=3478
+          - --listening-ip=176.98.185.59
+          - --no-software-attribute
+          - --log-file=stdout
+          - --simple-log
+          - --pidfile=/tmp/turnserver.pid
+          command:
+          - /usr/bin/turnserver
+          image: coturn/coturn:4.7.0@sha256:a00afb5b4890de4df22bbe70379c6b316685dffee297d53cac1271dcb91fab93
+          imagePullPolicy: IfNotPresent
+          name: stun
+          ports:
+          - containerPort: 3478
+            name: stun
+            protocol: UDP
+          resources:
+            limits:
+              cpu: 100m
+              memory: 32Mi
+            requests:
+              cpu: 5m
+              memory: 8Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              add:
+              - NET_BIND_SERVICE
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /tmp
+            name: tmp
+        dnsPolicy: ClusterFirstWithHostNet
+        hostNetwork: true
+        nodeSelector:
+          kubernetes.io/hostname: socrat-2
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext:
+          runAsGroup: 65534
+          runAsNonRoot: true
+          runAsUser: 65534
+          seccompProfile:
+            type: RuntimeDefault
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - emptyDir:
+            medium: Memory
+            sizeLimit: 1Mi
+          name: tmp
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: dashboard
+    namespace: netbird-pilot
+  spec:
+    ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: http
+    selector:
+      app: netbird-dashboard
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: server
+    namespace: netbird-pilot
+  spec:
+    ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: http
+    selector:
+      app: netbird-server
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    name: server-data
+    namespace: netbird-pilot
+    annotations:
+      volume.beta.kubernetes.io/storage-provisioner: rancher.io/local-path
+      argocd.argoproj.io/sync-options: Prune=false,Delete=false
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    resources:
+      requests:
+        storage: 5Gi
+    storageClassName: local-path
+    volumeMode: Filesystem
+- apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    name: deny-cluster-signup
+    namespace: netbird-pilot
+  spec:
+    ingress:
+    - from:
+      - ipBlock:
+          cidr: 192.168.0.23/32
+      - ipBlock:
+          cidr: 10.42.2.0/32
+      - ipBlock:
+          cidr: 10.42.2.1/32
+      ports:
+      - port: 80
+        protocol: TCP
+      - port: 9000
+        protocol: TCP
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: identity
+        podSelector:
+          matchLabels:
+            app: netbird-edge-forwarder
+      ports:
+      - port: 80
+        protocol: TCP
+    podSelector: {}
+    policyTypes:
+    - Ingress
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: machine-socrat-0
+    namespace: netbird-host-peers
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: machine-socrat-0
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        labels:
+          app: machine-socrat-0
+      spec:
+        automountServiceAccountToken: false
+        containers:
+        - env:
+          - name: NB_MANAGEMENT_URL
+            value: https://netbird.socrat.alchemmist.xyz
+          - name: NB_HOSTNAME
+            value: machine-socrat-0
+          - name: NB_INTERFACE_NAME
+            value: nb-host
+          - name: NB_WIREGUARD_PORT
+            value: '51871'
+          - name: NB_DISABLE_CLIENT_ROUTES
+            value: 'true'
+          - name: NB_DISABLE_SERVER_ROUTES
+            value: 'false'
+          - name: NB_DISABLE_DNS
+            value: 'true'
+          - name: NB_DISABLE_IPV6
+            value: 'true'
+          - name: NB_DISABLE_FIREWALL
+            value: 'false'
+          - name: NB_ALLOW_SERVER_SSH
+            value: 'false'
+          - name: NB_CONFIG
+            value: /etc/netbird/config.json
+          - name: NB_LOG_LEVEL
+            value: warn
+          - name: NB_LOG_FILE
+            value: /dev/null
+          - name: NB_ENABLE_CAPTURE
+            value: 'false'
+          image: netbirdio/netbird:0.82.0@sha256:eca5b274c635bfbb04ec6724a0712d1146190dd450eea199eeb83916fdd94965
+          imagePullPolicy: IfNotPresent
+          name: peer
+          resources:
+            limits:
+              cpu: 500m
+              memory: 96Mi
+            requests:
+              cpu: 10m
+              memory: 32Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              add:
+              - NET_ADMIN
+              - NET_RAW
+              - BPF
+              drop:
+              - ALL
+            runAsUser: 0
+            seccompProfile:
+              type: RuntimeDefault
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /etc/netbird
+            name: state
+          - mountPath: /dev/net/tun
+            name: tun
+        dnsPolicy: ClusterFirstWithHostNet
+        hostNetwork: true
+        nodeSelector:
+          kubernetes.io/hostname: socrat-0
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - name: state
+          persistentVolumeClaim:
+            claimName: machine-socrat-0
+        - hostPath:
+            path: /dev/net/tun
+            type: CharDevice
+          name: tun
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: machine-socrat-1
+    namespace: netbird-host-peers
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: machine-socrat-1
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        labels:
+          app: machine-socrat-1
+      spec:
+        automountServiceAccountToken: false
+        containers:
+        - env:
+          - name: NB_MANAGEMENT_URL
+            value: https://netbird.socrat.alchemmist.xyz
+          - name: NB_HOSTNAME
+            value: machine-socrat-1
+          - name: NB_INTERFACE_NAME
+            value: nb-host
+          - name: NB_WIREGUARD_PORT
+            value: '51871'
+          - name: NB_DISABLE_CLIENT_ROUTES
+            value: 'true'
+          - name: NB_DISABLE_SERVER_ROUTES
+            value: 'false'
+          - name: NB_DISABLE_DNS
+            value: 'true'
+          - name: NB_DISABLE_IPV6
+            value: 'true'
+          - name: NB_DISABLE_FIREWALL
+            value: 'false'
+          - name: NB_ALLOW_SERVER_SSH
+            value: 'false'
+          - name: NB_CONFIG
+            value: /etc/netbird/config.json
+          - name: NB_LOG_LEVEL
+            value: warn
+          - name: NB_LOG_FILE
+            value: /dev/null
+          - name: NB_ENABLE_CAPTURE
+            value: 'false'
+          image: netbirdio/netbird:0.82.0@sha256:eca5b274c635bfbb04ec6724a0712d1146190dd450eea199eeb83916fdd94965
+          imagePullPolicy: IfNotPresent
+          name: peer
+          resources:
+            limits:
+              cpu: 500m
+              memory: 96Mi
+            requests:
+              cpu: 10m
+              memory: 32Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              add:
+              - NET_ADMIN
+              - NET_RAW
+              - BPF
+              drop:
+              - ALL
+            runAsUser: 0
+            seccompProfile:
+              type: RuntimeDefault
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /etc/netbird
+            name: state
+          - mountPath: /dev/net/tun
+            name: tun
+        dnsPolicy: ClusterFirstWithHostNet
+        hostNetwork: true
+        nodeSelector:
+          kubernetes.io/hostname: socrat-1
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - name: state
+          persistentVolumeClaim:
+            claimName: machine-socrat-1
+        - hostPath:
+            path: /dev/net/tun
+            type: CharDevice
+          name: tun
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: machine-socrat-2
+    namespace: netbird-host-peers
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: machine-socrat-2
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        labels:
+          app: machine-socrat-2
+      spec:
+        automountServiceAccountToken: false
+        containers:
+        - env:
+          - name: NB_MANAGEMENT_URL
+            value: https://netbird.socrat.alchemmist.xyz
+          - name: NB_HOSTNAME
+            value: machine-socrat-2
+          - name: NB_INTERFACE_NAME
+            value: nb-host
+          - name: NB_WIREGUARD_PORT
+            value: '51871'
+          - name: NB_DISABLE_CLIENT_ROUTES
+            value: 'true'
+          - name: NB_DISABLE_SERVER_ROUTES
+            value: 'false'
+          - name: NB_DISABLE_DNS
+            value: 'true'
+          - name: NB_DISABLE_IPV6
+            value: 'true'
+          - name: NB_DISABLE_FIREWALL
+            value: 'false'
+          - name: NB_ALLOW_SERVER_SSH
+            value: 'false'
+          - name: NB_CONFIG
+            value: /etc/netbird/config.json
+          - name: NB_LOG_LEVEL
+            value: warn
+          - name: NB_LOG_FILE
+            value: /dev/null
+          - name: NB_ENABLE_CAPTURE
+            value: 'false'
+          image: netbirdio/netbird:0.82.0@sha256:eca5b274c635bfbb04ec6724a0712d1146190dd450eea199eeb83916fdd94965
+          imagePullPolicy: IfNotPresent
+          name: peer
+          resources:
+            limits:
+              cpu: 500m
+              memory: 96Mi
+            requests:
+              cpu: 10m
+              memory: 32Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              add:
+              - NET_ADMIN
+              - NET_RAW
+              - BPF
+              drop:
+              - ALL
+            runAsUser: 0
+            seccompProfile:
+              type: RuntimeDefault
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /etc/netbird
+            name: state
+          - mountPath: /dev/net/tun
+            name: tun
+        dnsPolicy: ClusterFirstWithHostNet
+        hostNetwork: true
+        nodeSelector:
+          kubernetes.io/hostname: socrat-2
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - name: state
+          persistentVolumeClaim:
+            claimName: machine-socrat-2
+        - hostPath:
+            path: /dev/net/tun
+            type: CharDevice
+          name: tun
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: machine-socrat-3
+    namespace: netbird-host-peers
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: machine-socrat-3
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        labels:
+          app: machine-socrat-3
+      spec:
+        automountServiceAccountToken: false
+        containers:
+        - env:
+          - name: NB_MANAGEMENT_URL
+            value: https://netbird.socrat.alchemmist.xyz
+          - name: NB_HOSTNAME
+            value: machine-socrat-3
+          - name: NB_INTERFACE_NAME
+            value: nb-host
+          - name: NB_WIREGUARD_PORT
+            value: '51871'
+          - name: NB_DISABLE_CLIENT_ROUTES
+            value: 'true'
+          - name: NB_DISABLE_SERVER_ROUTES
+            value: 'false'
+          - name: NB_DISABLE_DNS
+            value: 'true'
+          - name: NB_DISABLE_IPV6
+            value: 'true'
+          - name: NB_DISABLE_FIREWALL
+            value: 'false'
+          - name: NB_ALLOW_SERVER_SSH
+            value: 'false'
+          - name: NB_CONFIG
+            value: /etc/netbird/config.json
+          - name: NB_LOG_LEVEL
+            value: warn
+          - name: NB_LOG_FILE
+            value: /dev/null
+          - name: NB_ENABLE_CAPTURE
+            value: 'false'
+          image: netbirdio/netbird:0.82.0@sha256:eca5b274c635bfbb04ec6724a0712d1146190dd450eea199eeb83916fdd94965
+          imagePullPolicy: IfNotPresent
+          name: peer
+          resources:
+            limits:
+              cpu: 500m
+              memory: 96Mi
+            requests:
+              cpu: 10m
+              memory: 32Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              add:
+              - NET_ADMIN
+              - NET_RAW
+              - BPF
+              drop:
+              - ALL
+            runAsUser: 0
+            seccompProfile:
+              type: RuntimeDefault
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /etc/netbird
+            name: state
+          - mountPath: /dev/net/tun
+            name: tun
+        dnsPolicy: ClusterFirstWithHostNet
+        hostNetwork: true
+        nodeSelector:
+          kubernetes.io/hostname: socrat-3
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - name: state
+          persistentVolumeClaim:
+            claimName: machine-socrat-3
+        - hostPath:
+            path: /dev/net/tun
+            type: CharDevice
+          name: tun
+- apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    name: machine-socrat-0
+    namespace: netbird-host-peers
+    annotations:
+      volume.beta.kubernetes.io/storage-provisioner: rancher.io/local-path
+      argocd.argoproj.io/sync-options: Prune=false,Delete=false
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    resources:
+      requests:
+        storage: 64Mi
+    storageClassName: local-path
+    volumeMode: Filesystem
+- apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    name: machine-socrat-1
+    namespace: netbird-host-peers
+    annotations:
+      volume.beta.kubernetes.io/storage-provisioner: rancher.io/local-path
+      argocd.argoproj.io/sync-options: Prune=false,Delete=false
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    resources:
+      requests:
+        storage: 64Mi
+    storageClassName: local-path
+    volumeMode: Filesystem
+- apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    name: machine-socrat-2
+    namespace: netbird-host-peers
+    annotations:
+      volume.beta.kubernetes.io/storage-provisioner: rancher.io/local-path
+      argocd.argoproj.io/sync-options: Prune=false,Delete=false
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    resources:
+      requests:
+        storage: 64Mi
+    storageClassName: local-path
+    volumeMode: Filesystem
+- apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    name: machine-socrat-3
+    namespace: netbird-host-peers
+    annotations:
+      volume.beta.kubernetes.io/storage-provisioner: rancher.io/local-path
+      argocd.argoproj.io/sync-options: Prune=false,Delete=false
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    resources:
+      requests:
+        storage: 64Mi
+    storageClassName: local-path
+    volumeMode: Filesystem
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: netbird-edge-forwarder
+    namespace: identity
+    labels:
+      homelab.alchemmist.xyz/netbird: control-plane
+    annotations:
+      field.cattle.io/publicEndpoints: '[{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-edge-forwarder","ingressName":"identity:netbird-http","hostname":"netbird.socrat.alchemmist.xyz","path":"/ws-proxy/","allNodes":false},{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-edge-forwarder","ingressName":"identity:netbird-http","hostname":"netbird.socrat.alchemmist.xyz","path":"/relay","allNodes":false},{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-edge-forwarder","ingressName":"identity:netbird-http","hostname":"netbird.socrat.alchemmist.xyz","path":"/api/","allNodes":false},{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-edge-forwarder","ingressName":"identity:netbird-http","hostname":"netbird.socrat.alchemmist.xyz","path":"/oauth2/","allNodes":false},{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-edge-forwarder","ingressName":"identity:netbird-http","hostname":"netbird.socrat.alchemmist.xyz","path":"/","allNodes":false},{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-edge-forwarder-grpc","ingressName":"identity:netbird-grpc","hostname":"netbird.socrat.alchemmist.xyz","path":"/management.ManagementService/","allNodes":false},{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-edge-forwarder-grpc","ingressName":"identity:netbird-grpc","hostname":"netbird.socrat.alchemmist.xyz","path":"/signalexchange.SignalExchange/","allNodes":false}]'
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: netbird-edge-forwarder
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: '2026-11-02T21:19:25+03:00'
+        labels:
+          app: netbird-edge-forwarder
+      spec:
+        automountServiceAccountToken: false
+        containers:
+        - args:
+          - --configFile=/etc/traefik/static.yaml
+          image: rancher/mirrored-library-traefik@sha256:f86a2cab1b5c649070c49f883c743dd32d8485a56e3368c5f93b9e91f1e91259
+          imagePullPolicy: IfNotPresent
+          name: forwarder
+          ports:
+          - containerPort: 8080
+            name: web
+            protocol: TCP
+          - containerPort: 8082
+            name: h2c
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /ping
+              port: 8081
+              scheme: HTTP
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 20m
+              memory: 32Mi
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /etc/traefik
+            name: config
+            readOnly: true
+        dnsPolicy: ClusterFirst
+        enableServiceLinks: false
+        nodeSelector:
+          kubernetes.io/hostname: socrat-0
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - configMap:
+            defaultMode: 420
+            name: netbird-edge-forwarder
+          name: config
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: netbird-relay-home
+    namespace: identity
+    annotations:
+      field.cattle.io/publicEndpoints: '[{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-relay-home","ingressName":"identity:netbird-relay-home","hostname":"netbird.socrat.alchemmist.xyz","path":"/relay","allNodes":false}]'
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: netbird-relay-home
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        labels:
+          app: netbird-relay-home
+      spec:
+        automountServiceAccountToken: false
+        containers:
+        - env:
+          - name: NB_LISTEN_ADDRESS
+            value: :33080
+          - name: NB_EXPOSED_ADDRESS
+            value: rels://netbird.socrat.alchemmist.xyz:443
+          - name: NB_HEALTH_LISTEN_ADDRESS
+            value: :9000
+          - name: NB_METRICS_PORT
+            value: '9090'
+          - name: NB_ENABLE_STUN
+            value: 'false'
+          - name: NB_LOG_LEVEL
+            value: warn
+          - name: NB_LOG_FILE
+            value: console
+          - name: NB_AUTH_SECRET
+            valueFrom:
+              secretKeyRef:
+                key: auth-secret
+                name: netbird-relay-home-auth
+          image: netbirdio/relay:0.82.0@sha256:8f6b9e4193653ede89e83dd4aa4e2cf2562579b3e2481dcf259a7ab28bcd5fa1
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            successThreshold: 1
+            tcpSocket:
+              port: 9000
+            timeoutSeconds: 1
+          name: relay
+          ports:
+          - containerPort: 33080
+            name: relay
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /health
+              port: 9000
+              scheme: HTTP
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: 200m
+              memory: 64Mi
+            requests:
+              cpu: 5m
+              memory: 16Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
+            seccompProfile:
+              type: RuntimeDefault
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        enableServiceLinks: false
+        nodeSelector:
+          kubernetes.io/hostname: socrat-0
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: netbird-relay-vps
+    namespace: identity
+    annotations:
+      field.cattle.io/publicEndpoints: '[{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-relay-vps","ingressName":"identity:netbird-relay-vps","hostname":"netbird-relay-vps.socrat.alchemmist.xyz","path":"/relay","allNodes":false}]'
+  spec:
+    progressDeadlineSeconds: 600
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: netbird-relay-vps
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        labels:
+          app: netbird-relay-vps
+      spec:
+        automountServiceAccountToken: false
+        containers:
+        - env:
+          - name: NB_LISTEN_ADDRESS
+            value: :33080
+          - name: NB_EXPOSED_ADDRESS
+            value: rels://netbird-relay-vps.socrat.alchemmist.xyz:443
+          - name: NB_HEALTH_LISTEN_ADDRESS
+            value: :9000
+          - name: NB_METRICS_PORT
+            value: '9090'
+          - name: NB_ENABLE_STUN
+            value: 'false'
+          - name: NB_LOG_LEVEL
+            value: warn
+          - name: NB_LOG_FILE
+            value: console
+          - name: NB_AUTH_SECRET
+            valueFrom:
+              secretKeyRef:
+                key: auth-secret
+                name: netbird-relay-vps-auth
+          image: netbirdio/relay:0.82.0@sha256:8f6b9e4193653ede89e83dd4aa4e2cf2562579b3e2481dcf259a7ab28bcd5fa1
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            successThreshold: 1
+            tcpSocket:
+              port: 9000
+            timeoutSeconds: 1
+          name: relay
+          ports:
+          - containerPort: 33080
+            name: relay
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /health
+              port: 9000
+              scheme: HTTP
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            limits:
+              cpu: 200m
+              memory: 64Mi
+            requests:
+              cpu: 5m
+              memory: 16Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
+            seccompProfile:
+              type: RuntimeDefault
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        dnsPolicy: ClusterFirst
+        enableServiceLinks: false
+        nodeSelector:
+          kubernetes.io/hostname: socrat-2
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: netbird-edge-forwarder
+    namespace: identity
+    labels:
+      homelab.alchemmist.xyz/netbird: control-plane
+  spec:
+    ports:
+    - name: web
+      port: 8080
+      protocol: TCP
+      targetPort: web
+    - name: h2c
+      port: 8082
+      protocol: TCP
+      targetPort: h2c
+    selector:
+      app: netbird-edge-forwarder
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: netbird-edge-forwarder-grpc
+    namespace: identity
+    annotations:
+      traefik.ingress.kubernetes.io/service.serversscheme: h2c
+  spec:
+    ports:
+    - name: h2c
+      port: 8082
+      protocol: TCP
+      targetPort: h2c
+    selector:
+      app: netbird-edge-forwarder
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: netbird-relay-home
+    namespace: identity
+    annotations:
+      traefik.ingress.kubernetes.io/service.nativelb: 'true'
+  spec:
+    ports:
+    - name: relay
+      port: 33080
+      protocol: TCP
+      targetPort: relay
+    publishNotReadyAddresses: true
+    selector:
+      app: netbird-relay-home
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: netbird-relay-vps
+    namespace: identity
+    annotations:
+      traefik.ingress.kubernetes.io/service.nativelb: 'true'
+  spec:
+    ports:
+    - name: relay
+      port: 33080
+      protocol: TCP
+      targetPort: relay
+    publishNotReadyAddresses: true
+    selector:
+      app: netbird-relay-vps
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: netbird-edge-forwarder
+    namespace: identity
+    labels:
+      homelab.alchemmist.xyz/netbird: control-plane
+  data:
+    dynamic.yaml: "http:\n  middlewares:\n    deny-unclaimed-setup:\n      ipAllowList:\n        sourceRange:\n\
+      \        - 127.0.0.1/32\n  serversTransports:\n    http1:\n      disableHTTP2: true\n    h2c:\n      disableHTTP2:\
+      \ false\n  services:\n    management:\n      loadBalancer:\n        passHostHeader: true\n        serversTransport:\
+      \ http1\n        servers:\n        - url: http://server.netbird-pilot.svc.cluster.local:80\n    management-h2c:\n\
+      \      loadBalancer:\n        passHostHeader: true\n        serversTransport: h2c\n        servers:\n    \
+      \    - url: h2c://server.netbird-pilot.svc.cluster.local:80\n    dashboard:\n      loadBalancer:\n       \
+      \ passHostHeader: true\n        serversTransport: http1\n        servers:\n        - url: http://dashboard.netbird-pilot.svc.cluster.local:80\n\
+      \  routers:\n    deny-setup:\n      entryPoints:\n      - web\n      rule: Path(`/api/setup`) || PathPrefix(`/api/setup/`)\
+      \ || (PathPrefix(`/api/users/invites`)\n        && !(Path(`/api/users/invites`) && Method(`GET`))) || PathPrefix(`/oauth2/auth/local`)\n\
+      \        || PathPrefix(`/oauth2/register`) || PathPrefix(`/oauth2/signup`)\n      priority: 1000\n      middlewares:\n\
+      \      - deny-unclaimed-setup\n      service: management\n    grpc-management:\n      entryPoints:\n     \
+      \ - h2c\n      priority: 200\n      service: management-h2c\n      rule: PathPrefix(`/management.ManagementService/`)\n\
+      \    grpc-signal:\n      entryPoints:\n      - h2c\n      priority: 200\n      service: management-h2c\n \
+      \     rule: PathPrefix(`/signalexchange.SignalExchange/`)\n    websocket-management:\n      entryPoints:\n\
+      \      - web\n      priority: 200\n      service: management\n      rule: Path(`/ws-proxy/management`)\n \
+      \   websocket-signal:\n      entryPoints:\n      - web\n      priority: 200\n      service: management\n \
+      \     rule: Path(`/ws-proxy/signal`)\n    relay:\n      entryPoints:\n      - web\n      priority: 200\n \
+      \     service: management\n      rule: Path(`/relay`)\n    api:\n      entryPoints:\n      - web\n      priority:\
+      \ 100\n      service: management\n      rule: PathPrefix(`/api/`) || PathPrefix(`/oauth2/`)\n    dashboard:\n\
+      \      entryPoints:\n      - web\n      priority: 1\n      service: dashboard\n      rule: PathPrefix(`/`)\n"
+    static.yaml: "entryPoints:\n  web:\n    address: :8080\n    transport:\n      respondingTimeouts:\n        readTimeout:\
+      \ 0s\n  h2c:\n    address: :8082\n    transport:\n      respondingTimeouts:\n        readTimeout: 0s\n  ping:\n\
+      \    address: :8081\nproviders:\n  file:\n    filename: /etc/traefik/dynamic.yaml\nping:\n  entryPoint: ping\n\
+      log:\n  level: INFO\n"
+- apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    name: netbird-relay-home
+    namespace: identity
+  spec:
+    ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: kube-system
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/name: traefik
+      - ipBlock:
+          cidr: 176.98.185.59/32
+      - ipBlock:
+          cidr: 10.250.0.2/32
+      - ipBlock:
+          cidr: 10.42.0.1/32
+      - ipBlock:
+          cidr: 192.168.0.23/32
+      - ipBlock:
+          cidr: 10.250.0.1/32
+      - ipBlock:
+          cidr: 10.42.2.1/32
+      - ipBlock:
+          cidr: 192.168.0.24/32
+      - ipBlock:
+          cidr: 10.250.0.3/32
+      - ipBlock:
+          cidr: 10.42.1.1/32
+      ports:
+      - port: 33080
+        protocol: TCP
+    podSelector:
+      matchLabels:
+        app: netbird-relay-home
+    policyTypes:
+    - Ingress
+- apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    name: netbird-relay-vps
+    namespace: identity
+  spec:
+    ingress:
+    - from:
+      - ipBlock:
+          cidr: 176.98.185.59/32
+      - ipBlock:
+          cidr: 10.250.0.2/32
+      - ipBlock:
+          cidr: 10.42.0.0/32
+      - ipBlock:
+          cidr: 10.42.0.1/32
+      ports:
+      - port: 33080
+        protocol: TCP
+    podSelector:
+      matchLabels:
+        app: netbird-relay-vps
+    policyTypes:
+    - Ingress
+- apiVersion: networking.k8s.io/v1
+  kind: Ingress
+  metadata:
+    name: netbird-grpc
+    namespace: identity
+    labels:
+      homelab.alchemmist.xyz/netbird: control-plane
+    annotations:
+      field.cattle.io/publicEndpoints: '[{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-edge-forwarder-grpc","ingressName":"identity:netbird-grpc","hostname":"netbird.socrat.alchemmist.xyz","path":"/management.ManagementService/","allNodes":false},{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-edge-forwarder-grpc","ingressName":"identity:netbird-grpc","hostname":"netbird.socrat.alchemmist.xyz","path":"/signalexchange.SignalExchange/","allNodes":false}]'
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      traefik.ingress.kubernetes.io/router.priority: '200'
+  spec:
+    ingressClassName: traefik
+    rules:
+    - host: netbird.socrat.alchemmist.xyz
+      http:
+        paths:
+        - backend:
+            service:
+              name: netbird-edge-forwarder-grpc
+              port:
+                number: 8082
+          path: /management.ManagementService/
+          pathType: Prefix
+        - backend:
+            service:
+              name: netbird-edge-forwarder-grpc
+              port:
+                number: 8082
+          path: /signalexchange.SignalExchange/
+          pathType: Prefix
+    tls:
+    - hosts:
+      - netbird.socrat.alchemmist.xyz
+      secretName: netbird-pilot-tls
+- apiVersion: networking.k8s.io/v1
+  kind: Ingress
+  metadata:
+    name: netbird-http
+    namespace: identity
+    labels:
+      homelab.alchemmist.xyz/netbird: control-plane
+    annotations:
+      field.cattle.io/publicEndpoints: '[{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-edge-forwarder","ingressName":"identity:netbird-http","hostname":"netbird.socrat.alchemmist.xyz","path":"/ws-proxy/","allNodes":false},{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-edge-forwarder","ingressName":"identity:netbird-http","hostname":"netbird.socrat.alchemmist.xyz","path":"/relay","allNodes":false},{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-edge-forwarder","ingressName":"identity:netbird-http","hostname":"netbird.socrat.alchemmist.xyz","path":"/api/","allNodes":false},{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-edge-forwarder","ingressName":"identity:netbird-http","hostname":"netbird.socrat.alchemmist.xyz","path":"/oauth2/","allNodes":false},{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-edge-forwarder","ingressName":"identity:netbird-http","hostname":"netbird.socrat.alchemmist.xyz","path":"/","allNodes":false}]'
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      traefik.ingress.kubernetes.io/router.priority: '10'
+  spec:
+    ingressClassName: traefik
+    rules:
+    - host: netbird.socrat.alchemmist.xyz
+      http:
+        paths:
+        - backend:
+            service:
+              name: netbird-edge-forwarder
+              port:
+                number: 8080
+          path: /ws-proxy/
+          pathType: Prefix
+        - backend:
+            service:
+              name: netbird-edge-forwarder
+              port:
+                number: 8080
+          path: /relay
+          pathType: Prefix
+        - backend:
+            service:
+              name: netbird-edge-forwarder
+              port:
+                number: 8080
+          path: /api/
+          pathType: Prefix
+        - backend:
+            service:
+              name: netbird-edge-forwarder
+              port:
+                number: 8080
+          path: /oauth2/
+          pathType: Prefix
+        - backend:
+            service:
+              name: netbird-edge-forwarder
+              port:
+                number: 8080
+          path: /
+          pathType: Prefix
+    tls:
+    - hosts:
+      - netbird.socrat.alchemmist.xyz
+      secretName: netbird-pilot-tls
+- apiVersion: networking.k8s.io/v1
+  kind: Ingress
+  metadata:
+    name: netbird-relay-home
+    namespace: identity
+    annotations:
+      field.cattle.io/publicEndpoints: '[{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-relay-home","ingressName":"identity:netbird-relay-home","hostname":"netbird.socrat.alchemmist.xyz","path":"/relay","allNodes":false}]'
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      traefik.ingress.kubernetes.io/router.priority: '200'
+  spec:
+    ingressClassName: traefik
+    rules:
+    - host: netbird.socrat.alchemmist.xyz
+      http:
+        paths:
+        - backend:
+            service:
+              name: netbird-relay-home
+              port:
+                number: 33080
+          path: /relay
+          pathType: Exact
+    tls:
+    - hosts:
+      - netbird.socrat.alchemmist.xyz
+      secretName: netbird-pilot-tls
+- apiVersion: networking.k8s.io/v1
+  kind: Ingress
+  metadata:
+    name: netbird-relay-vps
+    namespace: identity
+    annotations:
+      field.cattle.io/publicEndpoints: '[{"addresses":["192.168.0.23","192.168.0.24"],"port":443,"protocol":"HTTPS","serviceName":"identity:netbird-relay-vps","ingressName":"identity:netbird-relay-vps","hostname":"netbird-relay-vps.socrat.alchemmist.xyz","path":"/relay","allNodes":false}]'
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      traefik.ingress.kubernetes.io/router.priority: '200'
+  spec:
+    ingressClassName: traefik
+    rules:
+    - host: netbird-relay-vps.socrat.alchemmist.xyz
+      http:
+        paths:
+        - backend:
+            service:
+              name: netbird-relay-vps
+              port:
+                number: 33080
+          path: /relay
+          pathType: Exact
+    tls:
+    - hosts:
+      - netbird-relay-vps.socrat.alchemmist.xyz
+      secretName: netbird-relay-vps-tls
+- apiVersion: cert-manager.io/v1
+  kind: Certificate
+  metadata:
+    name: netbird-pilot-tls
+    namespace: identity
+  spec:
+    dnsNames:
+    - netbird.socrat.alchemmist.xyz
+    issuerRef:
+      kind: ClusterIssuer
+      name: letsencrypt-http01
+    secretName: netbird-pilot-tls
+- apiVersion: cert-manager.io/v1
+  kind: Certificate
+  metadata:
+    name: netbird-relay-vps-tls
+    namespace: identity
+  spec:
+    dnsNames:
+    - netbird-relay-vps.socrat.alchemmist.xyz
+    issuerRef:
+      kind: ClusterIssuer
+      name: letsencrypt-http01
+    secretName: netbird-relay-vps-tls
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    name: netbird-pilot
+    labels:
+      homelab.alchemmist.xyz/netbird: control-plane
+      kubernetes.io/metadata.name: netbird-pilot
+    annotations:
+      cattle.io/status: '{"Conditions":[{"Type":"ResourceQuotaInit","Status":"True","Message":"","LastUpdateTime":"2026-11-02T17:12:16Z"},{"Type":"InitialRolesPopulated","Status":"True","Message":"","LastUpdateTime":"2026-11-02T17:12:16Z"}]}'
+      lifecycle.cattle.io/create.namespace-auth: 'true'
+      argocd.argoproj.io/sync-options: Prune=false,Delete=false
+- apiVersion: v1
+  kind: Namespace
+  metadata:
+    name: netbird-host-peers
+    labels:
+      kubernetes.io/metadata.name: netbird-host-peers
+    annotations:
+      cattle.io/status: '{"Conditions":[{"Type":"ResourceQuotaInit","Status":"True","Message":"","LastUpdateTime":"2026-11-03T09:37:33Z"},{"Type":"InitialRolesPopulated","Status":"True","Message":"","LastUpdateTime":"2026-11-03T09:37:33Z"}]}'
+      lifecycle.cattle.io/create.namespace-auth: 'true'
+      argocd.argoproj.io/sync-options: Prune=false,Delete=false

@@ -2,7 +2,7 @@
 - name: Keep this role off routers, WireGuard, and K3s transport
   ansible.builtin.assert:
     that:
-      - netbird_action in ['check', 'plan', 'apply']
+      - netbird_action in ['check', 'plan']
       - not (netbird_deploy_routers | bool)
       - not (netbird_touch_wireguard | bool)
       - not (netbird_touch_k3s | bool)
