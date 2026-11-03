@@ -15,22 +15,22 @@
 :host(ak-flow-card) .pf-c-login__main-header{padding:0!important;margin:0 0 25px!important}
 :host(ak-flow-card) .pf-c-login__main-body{padding:0!important;margin:0!important}
 :host(ak-flow-card) h1{font:700 31px/1.12 QuietSerif,Georgia,serif!important;letter-spacing:-.5px!important;color:#15223c!important;margin:0!important;text-align:left!important;max-height:none!important;-webkit-line-clamp:unset!important;overflow:visible!important}
-:host([part='challenge']){color:#15223c;font-family:QuietMono,'Courier New',monospace;--pf-global--FontSize--md:13px;--pf-c-form-control--Height:43px;--pf-c-form-control--BorderColor:#b9c0c7;--pf-c-form-control--focus--BorderBottomColor:#b9c0c7;--pf-c-form-control--focus--BorderBottomWidth:1px;--pf-c-form-control--BackgroundColor:rgba(255,255,255,.43)}
-:host([part='challenge']) .pf-c-form{gap:20px!important}
-:host([part='challenge']) .pf-c-form__label{padding:0 0 8px!important;font:400 12px/1.4 QuietMono,monospace!important;color:#15223c}
-:host([part='challenge']) .pf-c-form__label-required{display:none}
-:host([part='challenge']) input.pf-c-form-control{height:43px!important;min-width:0;width:100%;padding:10px 12px!important;font:400 13px/1.5 QuietMono,monospace!important;color:#15223c!important;background:rgba(255,255,255,.43)!important;border:1px solid #b9c0c7!important;border-radius:0!important;box-shadow:none!important;outline:none!important;transition:none!important}
-:host([part='challenge']) input.pf-c-form-control:is(:hover,:focus,:focus-visible){border-color:#b9c0c7!important;box-shadow:none!important;outline:none!important}
-:host([part='challenge']) input.pf-c-form-control[aria-invalid='true']{border-color:#9d3838!important}
-:host([part='challenge']) input::placeholder{color:#657181!important;font-style:normal!important;opacity:1}
-:host([part='challenge']) .pf-c-form__group.pf-m-action{margin-top:5px!important}
-:host([part='challenge']) :is(button,a.pf-c-button).pf-m-primary{display:flex!important;align-items:center;justify-content:space-between;box-sizing:border-box;text-decoration:none!important;width:100%;min-height:43px;padding:10px 15px!important;border:1px solid #15223c!important;border-radius:0!important;background:transparent!important;color:#15223c!important;box-shadow:none!important;font:400 13px/1.5 QuietMono,monospace!important;transition:background-color 160ms ease!important;cursor:pointer}
-:host([part='challenge']) :is(button,a.pf-c-button).pf-m-primary::before{display:none!important}
-:host([part='challenge']) :is(button,a.pf-c-button).pf-m-primary::after{content:'→';display:block;position:static!important;inset:auto!important;width:auto!important;height:auto!important;border:0!important;font:20px/1 QuietMono,monospace;transform:translateX(0);transition:transform 160ms ease}
-:host([part='challenge']) :is(button,a.pf-c-button).pf-m-primary:disabled{opacity:.5;cursor:wait}
-:host([part='challenge']) .pf-c-button.pf-m-control{background:transparent;color:#4d596b;border-radius:0;box-shadow:none}
-:host([part='challenge']) a,:host([part='challenge']) .pf-c-button.pf-m-link{font:12px/1.7 QuietMono,monospace;color:#465365}
-@media(hover:hover) and (pointer:fine){:host([part='challenge']) :is(button,a.pf-c-button).pf-m-primary:hover{background:rgba(21,34,60,.045)!important}:host([part='challenge']) :is(button,a.pf-c-button).pf-m-primary:hover::after{transform:translateX(3px)}}
+:host(:is([part='challenge'],ak-stage-authenticator-validate-code)){color:#15223c;font-family:QuietMono,'Courier New',monospace;--pf-global--FontSize--md:13px;--pf-c-form-control--Height:43px;--pf-c-form-control--BorderColor:#b9c0c7;--pf-c-form-control--focus--BorderBottomColor:#b9c0c7;--pf-c-form-control--focus--BorderBottomWidth:1px;--pf-c-form-control--BackgroundColor:rgba(255,255,255,.43)}
+:host(:is([part='challenge'],ak-stage-authenticator-validate-code)) .pf-c-form{gap:20px!important}
+:host(:is([part='challenge'],ak-stage-authenticator-validate-code)) .pf-c-form__label{padding:0 0 8px!important;font:400 12px/1.4 QuietMono,monospace!important;color:#15223c}
+:host(:is([part='challenge'],ak-stage-authenticator-validate-code)) .pf-c-form__label-required{display:none}
+:host(:is([part='challenge'],ak-stage-authenticator-validate-code)) input.pf-c-form-control{height:43px!important;min-width:0;width:100%;padding:10px 12px!important;font:400 13px/1.5 QuietMono,monospace!important;color:#15223c!important;background:rgba(255,255,255,.43)!important;border:1px solid #b9c0c7!important;border-radius:0!important;box-shadow:none!important;outline:none!important;transition:none!important}
+:host(:is([part='challenge'],ak-stage-authenticator-validate-code)) input.pf-c-form-control:is(:hover,:focus,:focus-visible){border-color:#b9c0c7!important;box-shadow:none!important;outline:none!important}
+:host(:is([part='challenge'],ak-stage-authenticator-validate-code)) input.pf-c-form-control[aria-invalid='true']{border-color:#9d3838!important}
+:host(:is([part='challenge'],ak-stage-authenticator-validate-code)) input::placeholder{color:#657181!important;font-style:normal!important;opacity:1}
+:host(:is([part='challenge'],ak-stage-authenticator-validate-code)) .pf-c-form__group.pf-m-action{margin-top:5px!important}
+:host(:is([part='challenge'],ak-stage-authenticator-validate-code)) :is(button,a.pf-c-button).pf-m-primary{display:flex!important;align-items:center;justify-content:space-between;box-sizing:border-box;text-decoration:none!important;width:100%;min-height:43px;padding:10px 15px!important;border:1px solid #15223c!important;border-radius:0!important;background:transparent!important;color:#15223c!important;box-shadow:none!important;font:400 13px/1.5 QuietMono,monospace!important;transition:background-color 160ms ease!important;cursor:pointer}
+:host(:is([part='challenge'],ak-stage-authenticator-validate-code)) :is(button,a.pf-c-button).pf-m-primary::before{display:none!important}
+:host(:is([part='challenge'],ak-stage-authenticator-validate-code)) :is(button,a.pf-c-button).pf-m-primary::after{content:'→';display:block;position:static!important;inset:auto!important;width:auto!important;height:auto!important;border:0!important;font:20px/1 QuietMono,monospace;transform:translateX(0);transition:transform 160ms ease}
+:host(:is([part='challenge'],ak-stage-authenticator-validate-code)) :is(button,a.pf-c-button).pf-m-primary:disabled{opacity:.5;cursor:wait}
+:host(:is([part='challenge'],ak-stage-authenticator-validate-code)) .pf-c-button.pf-m-control{background:transparent;color:#4d596b;border-radius:0;box-shadow:none}
+:host(:is([part='challenge'],ak-stage-authenticator-validate-code)) a,:host(:is([part='challenge'],ak-stage-authenticator-validate-code)) .pf-c-button.pf-m-link{font:12px/1.7 QuietMono,monospace;color:#465365}
+@media(hover:hover) and (pointer:fine){:host(:is([part='challenge'],ak-stage-authenticator-validate-code)) :is(button,a.pf-c-button).pf-m-primary:hover{background:rgba(21,34,60,.045)!important}:host(:is([part='challenge'],ak-stage-authenticator-validate-code)) :is(button,a.pf-c-button).pf-m-primary:hover::after{transform:translateX(3px)}}
 /* Native locale and inspector toggle. Native labels/options/actions are retained. */
 :host(ak-flow-executor) [part='locale-select']{position:absolute!important;inset-inline-start:auto!important;inset-inline-end:76px!important;inset-block-start:24px!important;filter:none!important;opacity:1!important;--ak-c-locale-select--Opacity:1;--ak-c-locale-select--label--Color:#15223c!important;--ak-c-flow-executor__locale-select--Color:#15223c!important;--ak-global--BackgroundContrastFilter:none!important;color:#15223c!important;font:12px QuietMono,monospace}
 :host(ak-locale-select){width:max-content!important;max-width:240px!important;display:flex!important;align-items:center;gap:8px;padding:7px 10px;background:rgba(255,254,250,.86);border:1px solid rgba(255,255,255,.8);border-radius:3px;backdrop-filter:blur(18px)}
@@ -54,18 +54,18 @@ ak-drawer#flow-drawer::part(drawer-content){transition:flex-basis 180ms cubic-be
 :host(ak-flow-inspector) .pf-c-progress-stepper__step-title{font:14px/1.5 QuietMono,monospace}
 :host(ak-flow-inspector) .pf-c-progress-stepper__step-description{font:13px/1.6 QuietCode,monospace;overflow-wrap:anywhere}
 @media(max-width:700px){:host(ak-flow-executor) .pf-c-login{padding:76px 20px 44px!important}:host(ak-flow-executor) .pf-c-login__main{padding:28px 25px 23px!important}:host(ak-flow-executor) [part='locale-select']{inset-block-start:17px!important;inset-inline-end:72px!important}:host(ak-flow-inspector) .pf-c-notification-drawer__body{padding:18px}}
-@media(prefers-reduced-motion:reduce){:host([part='challenge']) :is(button,a.pf-c-button).pf-m-primary,:host([part='challenge']) :is(button,a.pf-c-button).pf-m-primary::after,ak-drawer#flow-drawer::part(drawer-content){transition:none!important}:host([part='challenge']) :is(button,a.pf-c-button).pf-m-primary:hover::after{transform:none}}
+@media(prefers-reduced-motion:reduce){:host(:is([part='challenge'],ak-stage-authenticator-validate-code)) :is(button,a.pf-c-button).pf-m-primary,:host(:is([part='challenge'],ak-stage-authenticator-validate-code)) :is(button,a.pf-c-button).pf-m-primary::after,ak-drawer#flow-drawer::part(drawer-content){transition:none!important}:host(:is([part='challenge'],ak-stage-authenticator-validate-code)) :is(button,a.pf-c-button).pf-m-primary:hover::after{transform:none}}
 @media(prefers-reduced-transparency:reduce){:host(ak-flow-executor) .pf-c-login__main{background:#fffefa!important;backdrop-filter:none}}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){:host(ak-flow-executor) .pf-c-login__main{background:#fffefa!important}}
 
 :host(ak-locale-select) label svg{width:17px!important;height:17px!important}
 /* Remove the native empty header's layout space without removing its controls. */
 :host(ak-flow-executor) .pf-c-login__header{position:absolute!important;inset:0 0 auto!important;height:0!important;min-height:0!important;padding:0!important}
-:host([part='challenge']) .pf-c-form__label-text::after{display:none!important}
-:host([part='challenge']) .pf-c-input-group{position:relative;display:block!important;width:100%}
-:host([part='challenge']) .pf-c-input-group input{width:100%!important;padding-right:46px!important}
-:host([part='challenge']) .pf-c-input-group button.pf-m-control{position:absolute!important;right:2px;top:2px;width:39px;height:39px;min-height:0;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;color:#4d596b!important;box-shadow:none!important}
-:host([part='challenge']) .pf-c-input-group button.pf-m-control::after,:host([part='challenge']) .pf-c-input-group button.pf-m-control::before{display:none!important}
+:host(:is([part='challenge'],ak-stage-authenticator-validate-code)) .pf-c-form__label-text::after{display:none!important}
+:host(:is([part='challenge'],ak-stage-authenticator-validate-code)) .pf-c-input-group{position:relative;display:block!important;width:100%}
+:host(:is([part='challenge'],ak-stage-authenticator-validate-code)) .pf-c-input-group input{width:100%!important;padding-right:46px!important}
+:host(:is([part='challenge'],ak-stage-authenticator-validate-code)) .pf-c-input-group button.pf-m-control{position:absolute!important;right:2px;top:2px;width:39px;height:39px;min-height:0;padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;color:#4d596b!important;box-shadow:none!important}
+:host(:is([part='challenge'],ak-stage-authenticator-validate-code)) .pf-c-input-group button.pf-m-control::after,:host(:is([part='challenge'],ak-stage-authenticator-validate-code)) .pf-c-input-group button.pf-m-control::before{display:none!important}
 :host(ak-flow-executor) .pf-c-login__main:has(ak-stage-consent){width:388px!important}
 :host(ak-stage-consent) h3{font:400 13px/1.8 QuietMono,monospace!important;margin:0 0 23px!important}
 :host(ak-stage-consent) p{font:400 12px/1.8 QuietMono,monospace}
@@ -115,3 +115,35 @@ ak-drawer#flow-drawer::part(drawer-content),ak-drawer#flow-drawer::part(drawer-b
 @media(max-width:700px){:host(ak-flow-executor) ak-flow-inspector-button{inset-inline-end:17px!important;inset-block-start:17px!important}}
 
 :host(ak-flow-inspector-button) button.inspector-toggle:focus-visible{outline:1px solid #15223c!important;outline-offset:3px}
+
+/* Django login/base_full.html (permission denied/errors) is light DOM, not
+   ak-flow-executor. Keep native messages, identity, links and access checks. */
+body:has(.pf-c-page__drawer .pf-c-login){color:#15223c;font-family:QuietMono,'Courier New',monospace;--pf-global--primary-color--100:#15223c;isolation:isolate}
+body:has(.pf-c-page__drawer .pf-c-login)::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none}
+.pf-c-page__drawer .pf-c-drawer__content,.pf-c-page__drawer .pf-c-drawer__body{background:transparent!important}
+.pf-c-page__drawer .pf-c-login{display:flex!important;flex-direction:column;align-items:center;justify-content:center;min-height:100svh!important;box-sizing:border-box;padding:48px 28px!important;background:transparent!important}
+.pf-c-page__drawer .pf-c-login::before,.pf-c-page__drawer .pf-c-login::after{display:none!important}
+.pf-c-page__drawer .pf-c-login__main{display:block!important;align-self:center!important;grid-area:auto!important;box-sizing:border-box;width:388px!important;max-width:100%!important;padding:30px 30px 24px!important;margin:0!important;border:1px solid rgba(255,255,255,.78)!important;border-radius:3px!important;background:rgba(255,254,250,.86)!important;box-shadow:0 18px 65px -30px rgba(17,32,38,.4)!important;-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);color:#15223c!important}
+.pf-c-page__drawer .pf-c-login__main-header{padding:0!important;margin:0 0 25px!important}
+.pf-c-page__drawer .pf-c-login__main-header.pf-c-brand{display:flex;align-items:center;justify-content:flex-start!important;gap:12px;min-height:39px}
+.pf-c-page__drawer .branding-logo{width:auto!important;height:39px!important;max-width:26px!important;margin:0!important;object-fit:contain}
+.pf-c-page__drawer .pf-c-brand::after{content:'Socrat';font:400 21px/1 QuietMono,'Courier New',monospace;letter-spacing:-1px;color:#15223c}
+.pf-c-page__drawer .pf-c-login__main-body{padding:0!important;margin:0!important}
+.pf-c-page__drawer .pf-c-title.pf-m-3xl{font:700 31px/1.12 QuietSerif,Georgia,serif!important;letter-spacing:-.5px;color:#15223c!important;margin:0!important;overflow-wrap:anywhere}
+.pf-c-page__drawer .pf-c-form{gap:20px!important;font:400 13px/1.65 QuietMono,monospace;color:#15223c}
+.pf-c-page__drawer .pf-c-title.pf-m-lg{font:400 14px/1.6 QuietMono,monospace!important;color:#9d3838;display:flex;align-items:baseline;gap:10px}
+.pf-c-page__drawer .ak-c-form-static{background:rgba(255,255,255,.35)!important;border:1px solid #d4d8d9;border-radius:0!important;padding:10px 12px!important;gap:12px;flex-wrap:wrap}
+.pf-c-page__drawer .ak-c-form-static .primary-content{display:flex;align-items:center;gap:10px;min-width:0}
+.pf-c-page__drawer .ak-c-form-static .username{overflow-wrap:anywhere;min-width:0}
+.pf-c-page__drawer .pf-c-avatar{width:28px;height:28px}
+.pf-c-page__drawer .pf-c-login a:not(.pf-m-primary){font:12px/1.7 QuietMono,monospace;color:#465365}
+.pf-c-page__drawer .pf-c-login .pf-c-button.pf-m-primary{display:flex!important;align-items:center;justify-content:space-between;box-sizing:border-box;text-decoration:none!important;width:100%;min-height:43px;padding:10px 15px!important;border:1px solid #15223c!important;border-radius:0!important;background:transparent!important;color:#15223c!important;box-shadow:none!important;font:400 13px/1.5 QuietMono,monospace!important;transition:background-color 160ms ease;cursor:pointer}
+.pf-c-page__drawer .pf-c-login .pf-c-button.pf-m-primary::before{display:none!important}
+.pf-c-page__drawer .pf-c-login .pf-c-button.pf-m-primary::after{content:'→';display:block;position:static!important;inset:auto!important;width:auto!important;height:auto!important;border:0!important;font:20px/1 QuietMono,monospace;transform:translateX(0);transition:transform 160ms ease}
+.pf-c-page__drawer .pf-c-login .pf-c-button.pf-m-primary:focus-visible,:host(ak-stage-authenticator-validate-code) .pf-c-button:focus-visible{outline:1px solid #15223c!important;outline-offset:3px!important}
+.pf-c-page__drawer .pf-c-login__footer{display:none!important}
+@media(hover:hover) and (pointer:fine){.pf-c-page__drawer .pf-c-login .pf-c-button.pf-m-primary:hover{background:rgba(21,34,60,.045)!important}.pf-c-page__drawer .pf-c-login .pf-c-button.pf-m-primary:hover::after{transform:translateX(3px)}}
+@media(max-width:700px){.pf-c-page__drawer .pf-c-login{padding:48px 20px!important}.pf-c-page__drawer .pf-c-login__main{padding:28px 25px 23px!important}}
+@media(prefers-reduced-motion:reduce){.pf-c-page__drawer .pf-c-login .pf-c-button.pf-m-primary,.pf-c-page__drawer .pf-c-login .pf-c-button.pf-m-primary::after{transition:none!important}.pf-c-page__drawer .pf-c-login .pf-c-button.pf-m-primary:hover::after{transform:none}}
+@media(prefers-reduced-transparency:reduce){.pf-c-page__drawer .pf-c-login__main{background:#fffefa!important;backdrop-filter:none}}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.pf-c-page__drawer .pf-c-login__main{background:#fffefa!important}}

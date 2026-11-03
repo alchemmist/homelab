@@ -146,3 +146,26 @@ was changed. Both public edges passed desktop1440/mobile390 CSS/layout probes.
 The probe uses an explicitly local empty 1000px layout box in the actual native
 component and removes it; it does not fabricate native history entries or claim
 owner inspection acceptance. No IdP/static/ingress restart was required.
+
+## 2026-11-03 — nested MFA and server-rendered denial/error pages
+
+- Fixed `ak-stage-authenticator-validate-code`, whose nested shadow root has no
+  `part="challenge"`: Continue and the code field now reuse Quiet Mono controls.
+  Required/one-time-code attributes, submit handler and device selection unchanged.
+- Added light-DOM-only login/base_full.html rules for Permission denied and native
+  errors: Nature layer, centered glass card, typography, native identity/error
+  content and outlined Go home action. No template/JS replacement or hidden error.
+- Applied **only** Brand `branding_custom_css`, verified all other returned Brand
+  fields equal; saved private CSS/Brand backups. No IdP/static workload restart,
+  flow/stage/provider/user/session or policy writes.
+- Both public entrances passed anonymous desktop 1440/mobile 390 checks through
+  `scripts/identity-branding-error-mfa-check.py --run --public-edge IP`.
+  MFA check instantiates the **actual native child** locally and never submits it;
+  this is layout/focus/validation-attribute acceptance, not real MFA authentication.
+  Native invalid-client response is a genuine expected HTTP 400 using the same
+  server template as policy denial, not an actual owner permission decision.
+- The private saved denial HTML was inspected locally for structure only; its
+  user/session data was not used as a test fixture, copied or published.
+- 18 branding unit tests passed. Existing native redirect, magnifier, inspector
+  denial, natural Plan History and reduced-motion controls passed on both edges.
+- Desktop/mobile screenshots of the anonymous native error were visually reviewed.

@@ -83,10 +83,25 @@ class AuthentikBrandingTests(unittest.TestCase):
 
     def test_primary_action_style_also_covers_native_redirect_anchor(self):
         css = (THEME / 'theme.css').read_text()
-        self.assertNotIn('button.pf-m-primary', css)
+        self.assertNotRegex(css, r'(?<![\w-])button\.pf-m-primary')
         self.assertIn(':is(button,a.pf-c-button).pf-m-primary', css)
         self.assertIn(':is(button,a.pf-c-button).pf-m-primary:hover::after', css)
         self.assertIn('box-sizing:border-box;text-decoration:none!important', css)
+
+    def test_nested_mfa_child_without_challenge_part_is_covered(self):
+        css = (THEME / 'theme.css').read_text()
+        self.assertIn(":host(:is([part='challenge'],ak-stage-authenticator-validate-code))", css)
+        self.assertIn(':host(ak-stage-authenticator-validate-code) .pf-c-button:focus-visible', css)
+        self.assertNotIn('ak-stage-authenticator-validate-code{display:none', css)
+
+    def test_server_denial_template_is_scoped_and_centered(self):
+        css = (THEME / 'theme.css').read_text()
+        self.assertIn('body:has(.pf-c-page__drawer .pf-c-login)', css)
+        self.assertIn('.pf-c-page__drawer .pf-c-login__main{display:block!important;align-self:center!important;', css)
+        self.assertIn('.pf-c-page__drawer .pf-c-login .pf-c-button.pf-m-primary', css)
+        self.assertIn('.pf-c-page__drawer .ak-c-form-static .username{overflow-wrap:anywhere', css)
+        self.assertNotIn('ak-back-home{display:none', css)
+        self.assertNotIn('pf-icon-error-circle-o{display:none', css)
 
     def test_inspector_toggle_and_history_are_presentation_only(self):
         css = (THEME / 'theme.css').read_text()
