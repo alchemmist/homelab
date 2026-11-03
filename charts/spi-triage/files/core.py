@@ -131,6 +131,7 @@ class Store:
     def __init__(self, path):
         self.path = str(path)
         with closing(sqlite3.connect(self.path)) as c:
+            c.execute('PRAGMA temp_store=MEMORY')
             c.execute('PRAGMA journal_mode=WAL')
         with self.db() as c:
             c.executescript('''
@@ -149,7 +150,7 @@ class Store:
         c = sqlite3.connect(self.path, timeout=15)
         c.row_factory = sqlite3.Row
         try:
-            c.execute('PRAGMA busy_timeout=15000'); c.execute('BEGIN IMMEDIATE')
+            c.execute('PRAGMA busy_timeout=15000'); c.execute('PRAGMA temp_store=MEMORY'); c.execute('BEGIN IMMEDIATE')
             yield c; c.commit()
         except BaseException:
             c.rollback(); raise

@@ -184,7 +184,7 @@ traffic. Never erase pending/ambiguous-publication state to clear an alert.
 
 ## Verified acceptance
 
-- 96 local tests: 63 SPI Python, five native ingress, nine Yandex client, six calendar,
+- 97 local tests: 64 SPI Python, five native ingress, nine Yandex client, six calendar,
   thirteen blog. Helm templates render with the pinned images.
 - Authenticated ingress execution **1927** persisted its group and the bot returned
   a message record. No ingress/worker/GitHub token appeared in its execution data.
@@ -225,3 +225,19 @@ signals. A subsequent natural incident was semantically matched to open SPI #9 b
 model and [appended as an English bot comment](https://github.com/alchemmist/homelab/issues/9#issuecomment-6608101252).
 Both create-new and append-existing paths are therefore verified live, not only
 mocked. Other queued incidents may still be waiting; do not claim the queue is drained.
+
+## Read-only root filesystem and SQLite temporary storage
+
+The final large-queue startup probe exposed `SQLITE_IOERR_GETTEMPPATH` (6410):
+SQLite needed a statement temporary file while updating an interrupted job, but
+root filesystem `/tmp` was read-only. The database itself passed integrity checks;
+node disk and inodes were available. A no-content-change update did NOT reproduce
+this failure; the exact startup recovery statement did.
+
+Every Store connection now sets `PRAGMA temp_store=MEMORY`. A bounded 64Mi memory
+emptyDir is mounted at `/tmp` with SQLITE_TMPDIR set, retaining readOnlyRootFilesystem.
+A regression test checks per-connection temp mode and interrupted-job recovery.
+Do not solve this by resetting SQLite, deleting dedup state or enabling a writable
+container root. During repair, the worker was stopped and a private physical copy
+was retained; the supported recovery update succeeded with memory temp storage.
+No n8n database changes or old-snapshot rollback were involved.

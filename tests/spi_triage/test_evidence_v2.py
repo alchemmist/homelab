@@ -173,4 +173,14 @@ class PrimaryReconciliationTests(unittest.TestCase):
         g.comments.return_value=[{'body':'marker','user':{'type':'Bot'},'performed_via_github_app':{'id':5569869}}]
         self.assertEqual(g.reconcile('marker',9),9)
 
+class SQLiteTempStoreTests(unittest.TestCase):
+    def test_all_connections_use_memory_temp_store(self):
+        import tempfile
+        from core import Store
+        with tempfile.TemporaryDirectory()as d:
+            store=Store(Path(d)/'db')
+            with store.db()as c:self.assertEqual(c.execute('pragma temp_store').fetchone()[0],2)
+            store.enqueue(event());store.claim();self.assertEqual(store.recover_on_start(),1)
+            self.assertEqual(store.health()['counts'].get('retry'),1)
+
 if __name__=='__main__':unittest.main()

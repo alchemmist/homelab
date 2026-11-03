@@ -54,6 +54,8 @@ spec:
               value: {{ .Values.writeEnabled | quote }}
             - name: GRAFANA_URL
               value: {{ .Values.grafanaUrl | quote }}
+            - name: SQLITE_TMPDIR
+              value: /tmp
             - name: GITHUB_TOKEN_FILE
               value: /github/token
           securityContext:
@@ -83,12 +85,18 @@ spec:
             - name: code
               mountPath: /app
               readOnly: true
+            - name: tmp
+              mountPath: /tmp
             - name: data
               mountPath: /data
             - name: github
               mountPath: /github
               readOnly: true
       volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 64Mi
         - name: code
           configMap:
             name: spi-triage-code
