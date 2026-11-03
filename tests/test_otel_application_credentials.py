@@ -36,13 +36,13 @@ class ApplicationCredentialTests(unittest.TestCase):
         config = next(resource for resource in resources if resource['kind'] == 'ConfigMap')
         self.assertEqual(config['data']['mirror.py'], (ROOT / 'scripts/otel-application-credentials.py').read_text())
         for destination in json.loads(config['data']['destinations.json']):
-            self.assertEqual(destination['reloadDeployments'], [])
+            self.assertEqual(destination['reloadDeployments'], ['lms'] if destination['application'] == 'lms' else [])
         for role in (resource for resource in resources if resource['kind'] == 'Role'):
             for rule in role['rules']:
-                self.assertEqual(rule['resources'], ['secrets'])
+                self.assertIn(rule['resources'], [['secrets'], ['deployments']])
                 self.assertEqual(set(rule['verbs']), {'get', 'patch'})
                 self.assertTrue(rule['resourceNames'])
-                self.assertTrue(all(name.startswith('otel-app-tls-') for name in rule['resourceNames']))
+                self.assertTrue(all(name.startswith('otel-app-tls-') for name in rule['resourceNames']) if rule['resources'] == ['secrets'] else role['metadata']['namespace'] == 'lms' and rule['resourceNames'] == ['lms'])
 
     def test_native_ingress_has_no_second_sampler_or_other_signal_owner(self):
         config = yaml.safe_load((ROOT / 'deploy/monitoring/otel/application-ingress.yaml').read_text())

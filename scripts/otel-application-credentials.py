@@ -16,7 +16,7 @@ import urllib.parse
 import urllib.request
 
 SOURCE_NS = 'cattle-monitoring-system'
-DESTINATIONS = {'harbor': 'harbor', 'litellm': 'llm', 'vllm': 'llm', 'open-webui': 'llm'}
+DESTINATIONS = {'harbor': 'harbor', 'litellm': 'llm', 'vllm': 'llm', 'open-webui': 'llm', 'lms': 'lms'}
 OBSERVED_PHASE = {'stage': 'bootstrap', 'application': None}
 
 
@@ -25,7 +25,7 @@ def validate_destination(entry):
     if app not in DESTINATIONS or entry['namespace'] != DESTINATIONS[app] or entry['secret'] != 'otel-app-tls-' + app:
         raise ValueError('Unexpected application leaf destination')
     approved = {'harbor': {'harbor-core', 'harbor-jobservice', 'harbor-registry'},
-                'litellm': {'litellm'}, 'vllm': {'vllm'}, 'open-webui': {'open-webui'}}
+                'litellm': {'litellm'}, 'vllm': {'vllm'}, 'open-webui': {'open-webui'}, 'lms': {'lms'}}
     if not set(entry.get('reloadDeployments', [])) <= approved[app]:
         raise ValueError('Unexpected application reload target')
 
@@ -36,8 +36,8 @@ def run():
     context = ssl.create_default_context(cafile=str(token_root / 'ca.crt'))
     endpoint = 'https://' + os.environ['KUBERNETES_SERVICE_HOST'] + ':' + os.environ.get('KUBERNETES_SERVICE_PORT_HTTPS', '443')
     entries = json.loads(Path('/etc/otel-applications/destinations.json').read_text())
-    if len(entries) != 4 or len({entry['application'] for entry in entries}) != 4:
-        raise ValueError('Exactly four dedicated application client leaves required')
+    if len(entries) != len(DESTINATIONS) or {entry['application'] for entry in entries} != set(DESTINATIONS):
+        raise ValueError('Exactly the registered dedicated application client leaves required')
 
     def api(namespace, resource, name, patch=None):
         path = '/api/v1/namespaces/' if resource == 'secrets' else '/apis/apps/v1/namespaces/'

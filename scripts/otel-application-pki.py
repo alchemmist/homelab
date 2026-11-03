@@ -17,7 +17,7 @@ BOOTSTRAP = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(BOOTSTRAP)
 NS = 'cattle-monitoring-system'
 SA = 'otel-application-credentials'
-APPS = ['harbor', 'litellm', 'vllm', 'open-webui']
+APPS = ['harbor', 'litellm', 'vllm', 'open-webui', 'lms']
 
 
 def resources():

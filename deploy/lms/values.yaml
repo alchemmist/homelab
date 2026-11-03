@@ -3,3 +3,11 @@ image:
   tag: cab752eca53f3a5920056b0e49dd72d2dd45e75b
   digest: sha256:c13492c2df44bfb8bf09a078275c21d090102c94b7a149f11b16f73e0b5aceef
   pullPolicy: IfNotPresent
+
+tracing:
+  enabled: true
+  # The shared tail sampler owns retention; sample all at the SDK source.
+  sampleRatio: "1"
+  endpoint: https://10.250.0.3:44318/v1/traces
+  secretName: otel-app-tls-lms
+  grafanaDashboard: true

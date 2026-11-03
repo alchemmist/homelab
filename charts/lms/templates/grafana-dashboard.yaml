@@ -1,0 +1,14 @@
+{{- if .Values.tracing.grafanaDashboard }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lms-performance-dashboard
+  labels:
+    grafana_dashboard: "1"
+    app.kubernetes.io/part-of: lms
+  annotations:
+    grafana_folder: /tmp/dashboards/LMS
+data:
+  lms-performance.json: |
+{{ .Files.Get "files/lms-performance.json" | indent 4 }}
+{{- end }}

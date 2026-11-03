@@ -94,6 +94,30 @@ spec:
     name: otel-ca
     kind: Issuer
 ---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: otel-app-tls-lms
+  namespace: cattle-monitoring-system
+  labels:
+    app.kubernetes.io/part-of: homelab-otel
+    homelab-otel-role: application-client
+spec:
+  secretName: otel-app-tls-lms
+  commonName: otel-app-lms
+  duration: 2160h
+  renewBefore: 720h
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+    rotationPolicy: Always
+  usages:
+  - digital signature
+  - client auth
+  issuerRef:
+    name: otel-ca
+    kind: Issuer
+---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -122,6 +146,7 @@ rules:
   - otel-app-tls-litellm
   - otel-app-tls-vllm
   - otel-app-tls-open-webui
+  - otel-app-tls-lms
   verbs:
   - get
 ---

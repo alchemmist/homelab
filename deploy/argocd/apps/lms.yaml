@@ -4,7 +4,7 @@ metadata:
   name: lms
   namespace: argocd
   finalizers:
-    - resources-finalizer.argocd.argoproj.io
+  - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
@@ -14,7 +14,7 @@ spec:
     helm:
       releaseName: lms
       valueFiles:
-        - ../../deploy/lms/values.yaml
+      - ../../deploy/lms/values.yaml
       parameters: []
   destination:
     namespace: lms
@@ -24,4 +24,12 @@ spec:
       prune: false
       selfHeal: true
     syncOptions:
-      - CreateNamespace=true
+    - CreateNamespace=true
+    - RespectIgnoreDifferences=true
+  ignoreDifferences:
+  - group: apps
+    kind: Deployment
+    name: lms
+    namespace: lms
+    jsonPointers:
+    - /spec/template/metadata/annotations/homelab.alchemmist.xyz~1client-certificate-sha256

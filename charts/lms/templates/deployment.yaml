@@ -20,6 +20,11 @@ spec:
         - name: {{ . }}
         {{- end }}
       {{- end }}
+      {{- if .Values.tracing.enabled }}
+      securityContext:
+        fsGroup: 10001
+        fsGroupChangePolicy: OnRootMismatch
+      {{- end }}
       containers:
         - name: lms
           {{- $image := printf "%s:%s" .Values.image.repository .Values.image.tag -}}
@@ -52,6 +57,22 @@ spec:
                   name: socrat-authentik-lms
                   key: client-secret
                   optional: true
+{{- if .Values.tracing.enabled }}
+            - name: LMS_TRACING_ENABLED
+              value: "1"
+            - name: LMS_TRACE_SAMPLE_RATIO
+              value: {{ .Values.tracing.sampleRatio | quote }}
+            - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+              value: {{ .Values.tracing.endpoint | quote }}
+            - name: OTEL_EXPORTER_OTLP_TRACES_CERTIFICATE
+              value: /etc/otel-client/ca.crt
+            - name: OTEL_EXPORTER_OTLP_TRACES_CLIENT_CERTIFICATE
+              value: /etc/otel-client/tls.crt
+            - name: OTEL_EXPORTER_OTLP_TRACES_CLIENT_KEY
+              value: /etc/otel-client/tls.key
+            - name: OTEL_EXPORTER_OTLP_TRACES_HEADERS
+              value: Connection=close
+{{- end }}
           readinessProbe:
             httpGet:
               path: /healthz
@@ -61,9 +82,21 @@ spec:
           volumeMounts:
             - name: data
               mountPath: {{ .Values.persistence.mountPath }}
+{{- if .Values.tracing.enabled }}
+            - name: otel-client
+              mountPath: /etc/otel-client
+              readOnly: true
+{{- end }}
           resources:
 {{ toYaml .Values.resources | indent 12 }}
       volumes:
         - name: data
           persistentVolumeClaim:
             claimName: {{ .Release.Name }}-data
+
+{{- if .Values.tracing.enabled }}
+        - name: otel-client
+          secret:
+            secretName: {{ .Values.tracing.secretName }}
+            defaultMode: 288
+{{- end }}
