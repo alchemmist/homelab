@@ -19,7 +19,6 @@ FAILOVER = [
     "3.socrat",
     "argocd.socrat",
     "auth.socrat",
-    "bot.socrat",
     "cats",
     "chat",
     "fq",
@@ -47,6 +46,9 @@ FAILOVER = [
 
 # Names that have a single published address and must not move.
 STATIC_A = {
+    # Telegram cannot open the home address and then sticks to it.
+    "bot.socrat": [VPS],
+    "tg.socrat": [VPS],
     "devsyringe": [HOME],
     "mail": [HOME],
     "rooms": [HOME],

@@ -9,7 +9,7 @@ imagePullSecrets:
 service:
   port: 8080
 ingress:
-  host: bot.socrat.alchemmist.xyz
+  host: tg.socrat.alchemmist.xyz
   className: traefik
   clusterIssuer: letsencrypt-http01
   tlsSecretName: socrat-bot-tls
