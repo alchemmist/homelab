@@ -52,10 +52,13 @@ def prepare_bundle(event,evidence,artifacts,links=(),known=()):
     for part in allparts:
         identity=hashlib.sha256(encoded(part).encode()).hexdigest()[:20]
         part['marker']='<!-- socrat-spi-artifact:'+event['event_key']+':'+identity+' -->'
-    excerpts=[];budget=18000
+    excerpts=[];budget=24000;seen_ids=set()
+    base_names={'alert-event.json','rule-definitions.json','metric-samples.json','collection-context.json'}
     for part in parts:
         if budget<=0:break
-        text=part['text'][:min(2400,budget)];budget-=len(text)
+        if part['id'] in seen_ids or part['name'] in base_names:continue
+        seen_ids.add(part['id'])
+        text=part['text'][:min(4000,budget)];budget-=len(text)
         excerpts.append({'id':part['id'],'part':part['part'],'excerpt':text,'excerpt_truncated':len(text)<len(part['text'])})
     return {'manifest':manifest,'parts':allparts,'model_context':{'index':records,'excerpts':excerpts,
         'limitation':'Excerpts are bounded. Use evidence IDs in facts. Not every stored byte was reviewed by the model.'}}

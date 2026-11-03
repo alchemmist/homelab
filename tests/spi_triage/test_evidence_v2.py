@@ -134,3 +134,14 @@ class DownloadTests(unittest.TestCase):
     def test_primary_and_all_parts_have_bounded_bodies(self):
         bundle=prepare_bundle(event(),{},[{'name':'test.json','content':'`'*100000}]);g=Mock();g.comments.return_value=[];g.request.return_value={};publish_parts(g,9,bundle,{},Mock())
         self.assertTrue(all(len(x.args[2]['body'])<65536 for x in g.request.call_args_list))
+
+class ModelEvidenceTests(unittest.TestCase):
+    def test_facts_require_valid_existing_evidence_ids(self):
+        from integrations import Model
+        from core import REPORT_SCHEMA
+        from test_triage import report
+        import time
+        bad=report();bad['facts']=['A guessed fact [E999]'];good=report();good['facts']=['An alert fired [E001]']
+        h=Mock();h.request.side_effect=[{'choices':[{'message':{'content':json.dumps(bad)}}]},{'choices':[{'message':{'content':json.dumps(good)}}]}]
+        value=Model(h,'fake',min_interval=0).call('analyze',{'evidence':{'artifact_context':{'index':[{'id':'E001'}]}}},REPORT_SCHEMA,time.monotonic()+20)
+        self.assertEqual(value['facts'],good['facts']);self.assertEqual(h.request.call_count,2)
