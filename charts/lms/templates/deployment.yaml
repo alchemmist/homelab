@@ -4,6 +4,9 @@ metadata:
   name: {{ .Release.Name }}
 spec:
   replicas: {{ .Values.replicaCount }}
+  # In-process submission queue permits only one active web worker.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ .Chart.Name }}
@@ -14,13 +17,23 @@ spec:
         app.kubernetes.io/name: {{ .Chart.Name }}
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
+      terminationGracePeriodSeconds: 45
+      tolerations:
+        - key: node.kubernetes.io/not-ready
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 60
+        - key: node.kubernetes.io/unreachable
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 60
       {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- range .Values.imagePullSecrets }}
         - name: {{ . }}
         {{- end }}
       {{- end }}
-      {{- if .Values.tracing.enabled }}
+      {{- if or .Values.tracing.enabled .Values.database.ha.enabled }}
       securityContext:
         fsGroup: 10001
         fsGroupChangePolicy: OnRootMismatch
@@ -88,6 +101,11 @@ spec:
           volumeMounts:
             - name: data
               mountPath: {{ .Values.persistence.mountPath }}
+{{- if .Values.database.ha.enabled }}
+            - name: postgres-ca
+              mountPath: /etc/postgres-ca
+              readOnly: true
+{{- end }}
 {{- if .Values.tracing.enabled }}
             - name: otel-client
               mountPath: /etc/otel-client
@@ -105,4 +123,14 @@ spec:
           secret:
             secretName: {{ .Values.tracing.secretName }}
             defaultMode: 288
+{{- end }}
+
+{{- if .Values.database.ha.enabled }}
+        - name: postgres-ca
+          secret:
+            secretName: {{ .Values.database.ha.caSecretName }}
+            defaultMode: 288
+            items:
+              - key: ca.crt
+                path: ca.crt
 {{- end }}

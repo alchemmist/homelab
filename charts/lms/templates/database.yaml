@@ -37,7 +37,7 @@ kind: Deployment
 metadata:
   name: {{ .Release.Name }}-postgres
 spec:
-  replicas: 1
+  replicas: {{ .Values.database.legacyReplicas }}
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ .Chart.Name }}-postgres
