@@ -89,7 +89,7 @@ class AdapterTests(unittest.TestCase):
         with self.assertRaisesRegex(Failure,'INVALID_MATCH_TARGET'):model.match(event(),[{'number':1}])
     def test_schema_retry_is_bounded(self):
         http=Mock();http.request.return_value={'choices':[{'message':{'content':'not json'}}]}
-        model=Model(http,'fake')
+        model=Model(http,'fake',min_interval=0)
         with self.assertRaises(Failure):model.match(event(),[])
         self.assertEqual(http.request.call_count,2)
 

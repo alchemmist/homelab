@@ -95,11 +95,15 @@ class GitHub:
         return next((x['number'] for x in self.issues('all') if marker in (x.get('body') or '')),0)
 
 class Model:
-    def __init__(self,http,key,base='http://litellm.llm.svc.cluster.local:4000/v1'):
-        self.http=http;self.key=key;self.base=base
+    def __init__(self,http,key,base='http://litellm.llm.svc.cluster.local:4000/v1',min_interval=21):
+        self.http=http;self.key=key;self.base=base;self.min_interval=min_interval;self.last_request=0
     def call(self,task,data,schema,deadline):
         last='INVALID_MODEL_SCHEMA'
         for attempt in range(2):
+            pause=max(0,self.min_interval-(time.monotonic()-self.last_request))
+            if time.monotonic()+pause+10>deadline:raise Failure('MODEL_STAGE_BUDGET_EXCEEDED')
+            if pause:time.sleep(pause)
+            self.last_request=time.monotonic()
             remaining=deadline-time.monotonic()
             if remaining<10: raise Failure('MODEL_STAGE_BUDGET_EXCEEDED')
             response=self.http.request('POST',self.base+'/chat/completions',{'Authorization':'Bearer '+self.key},
