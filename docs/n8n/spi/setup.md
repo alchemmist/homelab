@@ -39,7 +39,7 @@ orphan issue, reopens a closed one or automatically closes the incident issue.
 
 ## Credentials and scope
 
-- Existing GitHub App: `socrat-bot`. App key remains in namespace `pr-agent`.
+- Existing GitHub App: `socrat-steward`. App key remains in namespace `pr-agent`.
 - Broker CronJob every 20 minutes issues a one-hour installation token limited to
   repository `homelab`, Issues:write, Contents:read and Metadata:read; no PR write.
 - Its service account can only patch the precreated `automation/spi-github-installation`
@@ -207,7 +207,7 @@ instant diagnosis; 3 RPM pacing, deadlines and pending-age alert make contention
 visible. Review early report quality: a plausible hypothesis is not established
 root cause. Publication create/comment and ambiguous-write recovery are covered
 by tests. Real publication verified: [SPI #9](https://github.com/alchemmist/homelab/issues/9),
-authored by `socrat-bot[bot]`, English title/body, matching event marker, no
+authored by `socrat-steward[bot]`, English title/body, matching event marker, no
 known worker/model/Grafana/GitHub token values. The post-publication off-node
 state backup includes its completed job. Historical synthetic reports were not posted.
 

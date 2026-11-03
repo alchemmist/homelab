@@ -27,7 +27,7 @@ context must be explicit. Never fabricate root cause or automatically change rul
 - Private mapping: `~/.config/n8n/spi-credentials.json`.
 - Operator checklist: `/tmp/socrat-spi-implementation-plan.md` (local, not a secret).
 
-GitHub App `socrat-bot` already has Issues:write and an installation on homelab.
+GitHub App `socrat-steward` already has Issues:write and an installation on homelab.
 Do not put its private key in the triage worker. Namespace-local broker issues
 one-hour repo-scoped tokens every 20 minutes without PR write and patches only a named Secret.
 Worker uses Viewer Grafana access and a separate capped LiteLLM qwen3.8-27b key.
@@ -114,7 +114,7 @@ suppression and worker restart recovery verified. Both workflows are active and
 rendered parameters/connections match live. Four Grafana SPI rules evaluated healthy.
 Known secrets were absent from ingress execution data; consistent SPI off-node
 backup integrity checked. First real issue: [SPI #9](https://github.com/alchemmist/homelab/issues/9),
-authored by socrat-bot[bot], English title/body and marker verified. Post-publication
+authored by socrat-steward[bot], English title/body and marker verified. Post-publication
 queue state has a verified off-node copy. A natural subsequent incident was matched
 to #9 by the model and appended as English comment `6608101252`, verifying both
 publication paths live. See the runbook for exact IDs.
