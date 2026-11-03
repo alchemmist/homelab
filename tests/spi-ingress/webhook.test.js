@@ -23,3 +23,7 @@ test('legacy migration mode cannot enqueue unauthenticated incidents',async()=>{
  const old=global.fetch;global.fetch=async()=>{throw new Error('Must not call');};
  try{const r=await new SocratAlertWebhook().webhook(context('',false));assert.equal(r.webhookResponse.status,'legacy_telegram_only');assert(r.workflowData);}finally{global.fetch=old;}
 });
+
+test('supports the installed n8n custom-node bound-context calling convention',async()=>{
+ const c=context('');const r=await new SocratAlertWebhook().webhook.call(c);assert.equal(c.response.code,401);assert.equal(r.workflowData,undefined);
+});

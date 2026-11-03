@@ -19,6 +19,7 @@ class SocratAlertWebhook {
   properties:[{displayName:'Path',name:'path',type:'string',default:'socrat-alerts'},
    {displayName:'Require Authorization',name:'requireAuth',type:'boolean',default:true,description:'Disable only during controlled notifier migration; unauthenticated calls never enqueue triage'}]};}
  async webhook(context){
+  context=context||this; // Custom-node loader in n8n 1.123 binds the webhook context as this.
   const req=context.getRequestObject(),res=context.getResponseObject();
   const ingress=await context.getCredentials('socratAlertIngress'),worker=await context.getCredentials('httpHeaderAuth');
   if(!ingress.token||worker.name!=='X-Worker-Token'||!worker.value)throw new Error('Socrat alert credentials are not configured');
