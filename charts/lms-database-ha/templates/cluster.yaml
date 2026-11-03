@@ -2,6 +2,8 @@ apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
   name: lms-ha
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   instances: {{ .Values.instances }}
   imageName: {{ .Values.imageName }}
