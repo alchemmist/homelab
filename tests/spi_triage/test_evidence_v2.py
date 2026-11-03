@@ -30,7 +30,7 @@ class ArtifactTests(unittest.TestCase):
     def test_lost_response_reconciles(self):
         g=Mock();g.comments.return_value=[];g.request.side_effect=Failure('UPSTREAM_TIMEOUT');b=self.bundle();state={};save=Mock()
         with self.assertRaises(Failure):publish_parts(g,9,b,state,save)
-        marker=state['pending'];g.comments.return_value=[{'body':marker,'user':{'login':'socrat-pr-agent[bot]'},'html_url':'https://github.com/test'}];g.request.side_effect=None;g.request.return_value={'html_url':'https://github.com/test'}
+        marker=state['pending'];g.comments.return_value=[{'body':marker,'user':{'login':'renamed-socrat[bot]','type':'Bot'},'performed_via_github_app':{'id':5569869},'html_url':'https://github.com/test'}];g.request.side_effect=None;g.request.return_value={'html_url':'https://github.com/test'}
         publish_parts(g,9,b,state,save);self.assertTrue(state['index_done']);self.assertEqual(g.request.call_count,len(b['parts'])+1)
     def test_ambiguous_not_blindly_retried(self):
         g=Mock();g.comments.return_value=[];g.request.side_effect=Failure('HTTP_500');b=self.bundle();state={};save=Mock()
@@ -38,7 +38,7 @@ class ArtifactTests(unittest.TestCase):
         with self.assertRaisesRegex(Failure,'WRITE_NEEDS_REVIEW'):publish_parts(g,9,b,state,save)
         self.assertEqual(g.request.call_count,1)
     def test_index_ambiguous_reconciles(self):
-        b=self.bundle();state={'done':{p['marker']:'url' for p in b['parts']},'index_pending':True};g=Mock();g.comments.return_value=[{'user':{'login':'socrat-pr-agent[bot]'},'body':index_marker(b)}]
+        b=self.bundle();state={'done':{p['marker']:'url' for p in b['parts']},'index_pending':True};g=Mock();g.comments.return_value=[{'user':{'login':'renamed-socrat[bot]','type':'Bot'},'performed_via_github_app':{'id':5569869},'body':index_marker(b)}]
         publish_parts(g,9,b,state,Mock());g.request.assert_not_called()
     def test_rate_limit_is_retryable_without_ambiguous_intent(self):
         g=Mock();g.comments.return_value=[];g.request.side_effect=Failure('HTTP_429');progress={}
@@ -111,7 +111,7 @@ class EngineArtifactTests(unittest.TestCase):
             with self.assertRaises(Failure):engine.run('publish',key)
             saved=store.get(key);marker=saved['result']['artifact_publication']['pending']
             self.assertTrue(json.loads(saved['intent'])['primary_done'])
-            g.comments.return_value=[{'body':marker,'user':{'login':'socrat-pr-agent[bot]'},'html_url':'https://github.com/comment'}]
+            g.comments.return_value=[{'body':marker,'user':{'login':'renamed-socrat[bot]','type':'Bot'},'performed_via_github_app':{'id':5569869},'html_url':'https://github.com/comment'}]
             g.request.side_effect=None;g.request.return_value={'html_url':'https://github.com/comment'}
             with store.db()as c:c.execute('UPDATE jobs SET available=0,lease=0')
             store.claim();engine.run('publish',key)
@@ -123,7 +123,7 @@ class DownloadTests(unittest.TestCase):
         import importlib.util
         path=Path(__file__).resolve().parents[2]/'scripts/n8n/download_spi_evidence.py';spec=importlib.util.spec_from_file_location('spi_download',path);module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
         e=event();bundle=prepare_bundle(e,{},[{'name':'logs.json','content':'line one\nline two ` data'}]);g=Mock();g.comments.return_value=[];g.request.return_value={'html_url':'https://github.com/comment'}
-        publish_parts(g,9,bundle,{},Mock());comments=[{'body':x.args[2]['body'],'user':{'login':'socrat-pr-agent[bot]'}}for x in g.request.call_args_list]
+        publish_parts(g,9,bundle,{},Mock());comments=[{'body':x.args[2]['body'],'user':{'login':'renamed-socrat[bot]','type':'Bot'},'performed_via_github_app':{'id':5569869}}for x in g.request.call_args_list]
         files=module.reconstruct(comments,e['event_key']);self.assertEqual(json.loads(files['E001-logs.json']),'line one\nline two ` data')
         comments[1]['body']=comments[1]['body'].replace('line one','tampered')
         with self.assertRaisesRegex(ValueError,'CHECKSUM'):module.reconstruct(comments,e['event_key'])

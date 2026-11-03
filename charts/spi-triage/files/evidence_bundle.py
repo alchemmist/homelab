@@ -2,6 +2,7 @@
 import hashlib
 import json
 import re
+import os
 from core import Failure, SECRET_KEY, SECRET_VALUE, ASSIGNMENT
 
 MAX_ARTIFACT=90000
@@ -76,10 +77,13 @@ def index_markdown(bundle):
 def index_marker(bundle):
     return '<!-- socrat-spi-evidence-index:'+bundle['manifest']['event_key']+':'+hashlib.sha256(encoded(bundle['manifest']).encode()).hexdigest()[:20]+' -->'
 
+def trusted_comment(comment):
+    return comment.get('user',{}).get('type')=='Bot' and (comment.get('performed_via_github_app')or{}).get('id')==int(os.environ.get('GITHUB_APP_ID','5569869'))
+
 def publish_parts(github,number,bundle,progress,save):
     """Persist before each POST; an unobservable ambiguous write requires review."""
     if not bundle:return
-    comments=[c for c in github.comments(number) if c.get('user',{}).get('login')=='socrat-pr-agent[bot]']
+    comments=[c for c in github.comments(number) if trusted_comment(c)]
     for part in bundle['parts']:
         marker=part['marker'];found=next((c for c in comments if marker in (c.get('body') or '')),None)
         if marker in progress.get('done',{}):continue
