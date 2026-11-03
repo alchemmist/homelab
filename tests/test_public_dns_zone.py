@@ -33,5 +33,12 @@ def test_netbird_and_existing_bot_survive_renderer_deploys_and_follow_health():
     assert zone.FAILOVER.count("netbird.socrat") == 1
 
 
+def test_independent_vps_relay_never_points_to_home():
+    for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
+        text = zone.render(4, home, vps)
+        assert f"netbird-relay-vps.socrat IN A {zone.VPS}" in text
+        assert f"netbird-relay-vps.socrat IN A {zone.HOME}" not in text
+
+
 def test_total_probe_failure_keeps_both_addresses():
     assert zone.healthy_addresses(False, False) == [zone.HOME, zone.VPS]

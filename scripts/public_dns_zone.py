@@ -48,6 +48,7 @@ FAILOVER = [
 
 # Names that have a single published address and must not move.
 STATIC_A = {
+    "netbird-relay-vps.socrat": [VPS],
     "devsyringe": [HOME],
     "mail": [HOME],
     "rooms": [HOME],
