@@ -133,7 +133,9 @@ and legacy access was not removed based only on successful connectivity tests.
   bounded manifests and native advertised relay settings; never creates secrets.
 - `scripts/netbird-host-peer.py`: historical two-host default preserved; admitting
   other reviewed existing nodes requires explicit `admin_mesh=True`.
-- DNS durable commits `0eb93c9` and `847518c` are separate narrow main changes.
+- DNS durable patches were authored as `0eb93c9` and `847518c`; concurrent main
+  integrated the relay patch as `f372b0f`. Exact DNS source/test content was checked
+  before integration; the original commit hash need not be an ancestor.
 - `tests/test_netbird_redundant_access.py`: pinning, scope, default deny, INPUT
   separation, TLS/self-health bootstrap and control-DNS regression coverage.
 - Private remote journal `~/.local/state/netbird-internal-stage/journal/` includes
