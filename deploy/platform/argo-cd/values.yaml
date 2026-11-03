@@ -78,7 +78,7 @@ notifications:
       - description: Annotate Grafana once per synced revision after the app is healthy.
         oncePer: app.status.sync.revision
         send: [app-deployed]
-        when: app.status.operationState.phase in ['Succeeded'] and app.status.health.status == 'Healthy' and app.metadata.name != 'root' and time.Now().Sub(time.Parse(app.status.operationState.finishedAt)).Minutes() < 10
+        when: app.status.operationState != nil && app.status.operationState.phase in ['Succeeded'] && app.status.health.status == 'Healthy' && app.metadata.name != 'root' && time.Now().Sub(time.Parse(app.status.operationState.finishedAt)).Minutes() < 10
   subscriptions:
     - recipients:
         - grafana
