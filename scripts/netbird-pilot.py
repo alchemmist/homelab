@@ -31,7 +31,8 @@ EDGE = 'netbird-edge'
 # v0.82.0 combined handler: native gRPC is HTTP/2; clients also use exact WebSocket paths.
 GRPC_PREFIXES = ('/management.ManagementService/', '/signalexchange.SignalExchange/')
 WS_PATHS = ('/ws-proxy/management', '/ws-proxy/signal', '/relay')
-# Unauthenticated on the server. Public edge must not be able to claim the instance.
+# Setup/public invite acceptance/local authentication stay blocked at the edge.
+# The exact authenticated GET invite list is dashboard metadata, not signup.
 DENY_PREFIXES = ('/api/setup', '/api/users/invites', '/oauth2/auth/local',
                  '/oauth2/register', '/oauth2/signup')
 STUN_PORT = 3478
@@ -348,6 +349,8 @@ def forwarder_files(c):
     # Deny the setup route and descendants without a prefix collision.
     deny = ' || '.join(
         'Path(`/api/setup`) || PathPrefix(`/api/setup/`)' if path == '/api/setup'
+        else '(PathPrefix(`/api/users/invites`) && !(Path(`/api/users/invites`) && Method(`GET`)))'
+        if path == '/api/users/invites'
         else 'PathPrefix(`' + path + '`)' for path in DENY_PREFIXES)
     dynamic = {'http': {
         'middlewares': {'deny-unclaimed-setup': {'ipAllowList': {'sourceRange': ['127.0.0.1/32']}}},

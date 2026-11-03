@@ -43,6 +43,19 @@ class PublicEntryTests(unittest.TestCase):
         self.assertEqual(rule['from'][0]['namespaceSelector']['matchLabels'],{'kubernetes.io/metadata.name':'identity'})
         self.assertEqual(rule['from'][0]['podSelector']['matchLabels'],{'app':'netbird-edge-forwarder'})
 
+    def test_invite_list_read_does_not_enable_local_signup(self):
+        cm=next(d for d in entry.manifests() if d['kind']=='ConfigMap')
+        dynamic=yaml.safe_load(cm['data']['dynamic.yaml'])
+        deny=dynamic['http']['routers']['deny-setup']
+        self.assertIn('(PathPrefix(`/api/users/invites`) && !(Path(`/api/users/invites`) && Method(`GET`)))',deny['rule'])
+        self.assertEqual(deny['priority'],1000)
+        self.assertEqual(deny['middlewares'],['deny-unclaimed-setup'])
+        self.assertEqual(dynamic['http']['routers']['api']['service'],'management')
+        self.assertIn('PathPrefix(`/api/`)',dynamic['http']['routers']['api']['rule'])
+        # No synthetic response or separate unauthenticated read router: the
+        # existing native API middleware still checks bearer identity and role.
+        self.assertNotIn('invite-list',dynamic['http']['routers'])
+
     def test_grpc_scheme_is_on_dedicated_service_not_ingress(self):
         docs=entry.manifests()
         by_name={(d['kind'],d['metadata']['name']):d for d in docs}
