@@ -5,6 +5,7 @@ import base64
 import os
 import re
 import time
+import math
 import threading
 import urllib.error
 import urllib.parse
@@ -25,6 +26,27 @@ Return only JSON satisfying the supplied schema. Never invent metrics, code loca
 
 REQUEST_DEADLINE = threading.local()
 
+def metric_summary(value):
+    """Keep observed extrema/trend without sending repetitive sample arrays to LLM."""
+    data=value.get('data',{}) if isinstance(value,dict) else {}
+    if data.get('resultType') not in ('matrix','vector'):return value
+    series=[]
+    for row in data.get('result',[])[:100]:
+        samples=row.get('values') or ([row['value']] if row.get('value') else [])
+        points=[]
+        for sample in samples:
+            try:
+                number=float(sample[1])
+                if math.isfinite(number):points.append({'time':sample[0],'value':number})
+            except (ValueError,TypeError,IndexError):continue
+        series.append({'labels':row.get('metric',{}),'sample_count':len(samples),'finite_count':len(points),
+                       'first':points[0] if points else None,'last':points[-1] if points else None,
+                       'minimum':min((p['value'] for p in points),default=None),
+                       'maximum':max((p['value'] for p in points),default=None),
+                       'nonzero_samples':sum(p['value']!=0 for p in points)})
+    return {'format':'observed_metric_summary_v1','series':series,'truncated_series':max(0,len(data.get('result',[]))-100),
+            'limitation':'No matching series or zero values do not establish service health.'}
+
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self,*args,**kwargs): raise Failure('HTTP_REDIRECT_FORBIDDEN')
 
@@ -43,7 +65,10 @@ class HTTP:
                 return json.loads(raw) if raw else {}
         except urllib.error.HTTPError as e:
             raise Failure('HTTP_'+str(e.code)) from None
-        except (OSError,TimeoutError): raise Failure('UPSTREAM_NETWORK_ERROR') from None
+        except urllib.error.URLError as e:
+            raise Failure('UPSTREAM_TIMEOUT' if isinstance(e.reason,TimeoutError) else 'UPSTREAM_NETWORK_ERROR') from None
+        except TimeoutError: raise Failure('UPSTREAM_TIMEOUT') from None
+        except OSError: raise Failure('UPSTREAM_NETWORK_ERROR') from None
         except (ValueError,UnicodeError): raise Failure('INVALID_UPSTREAM_JSON') from None
 
 class GitHub:
@@ -111,7 +136,7 @@ class Model:
                   {'role':'user','content':task+'\nUNTRUSTED EVIDENCE JSON:\n'+json.dumps(clean(data),ensure_ascii=True)}],
                  'temperature':0.1,'max_tokens':2500,'chat_template_kwargs':{'enable_thinking':False},
                  'response_format':{'type':'json_schema','json_schema':{'name':'spi_result','strict':True,'schema':schema}}},
-                 timeout=min(360,remaining),limit=250_000)
+                 timeout=min(600,remaining),limit=250_000)
             try:
                 value=json.loads(response['choices'][0]['message']['content']);validate(value,schema)
                 if clean(value)!=value: raise Failure('UNSAFE_MODEL_OUTPUT')
@@ -139,6 +164,9 @@ class Model:
         else: result=decisions[-1]
         return {'decision':result,'candidates':candidates,'reviewed_numbers':[x['number']for x in issues]}
     def analyze(self,event,match,evidence):
+        evidence=dict(evidence)
+        evidence['queries']=[{**q,'result':metric_summary(q.get('result',{}))} if q.get('source') in ('prometheus_metrics','loki_error_frequency','host_log_error_frequency','loki_rule_metric') else q for q in evidence.get('queries',[])]
+        evidence['rule_definitions']=[{k:v for k,v in r.items() if k!='alerts'} for r in evidence.get('rule_definitions',[])]
         report=self.call('Write an evidence-grounded SPI report. Revalidate preliminary matching using diagnostics; choose 0 if a distinct cause is supported. Assess alert noise and actionable tuning separately from service defects. Include safe evidence references in facts; never fabricate a source path or threshold. Scrape exporter pods are not necessarily affected workloads: use job_name or systemd unit when present. Zero error counts or absent series never confirm no service degradation; raw logs were not read, so do not claim logs were inspected or unavailable. Main-branch runbooks are not proof of deployed code.',
                          {'alert':event,'preliminary_match':match,'evidence':evidence},REPORT_SCHEMA,time.monotonic()+780)
         if report['issue_number'] not in {0,*[x['number']for x in match['candidates']]}: raise Failure('INVALID_MATCH_TARGET')
@@ -160,7 +188,9 @@ class Evidence:
         def fetch(kind,path,params=None):
             if len(result['queries'])>=8:return None
             try:
-                value=self.get(path,params);result['queries'].append({'source':kind,'path':path,'parameters':params or {},'result':value});return value
+                value=self.get(path,params)
+                compact=metric_summary(value) if kind in ('prometheus_metrics','loki_error_frequency','host_log_error_frequency','loki_rule_metric') else value
+                result['queries'].append({'source':kind,'path':path,'parameters':params or {},'result':compact});return value
             except Failure as e: result['missing'].append({'source':kind,'reason':e.code});return None
         rules=fetch('grafana_rules','/api/prometheus/grafana/api/v1/rules')
         if isinstance(rules,dict):
@@ -214,6 +244,7 @@ class Evidence:
                   {'query':'sum(count_over_time('+log_selector+' |~ "(?i)error|exception|failed" [1m]))','start':lo,'end':hi,'step':60})
         for expr in exprs[:3]:
             if len(expr)<=4000:fetch('prometheus_metrics','/api/datasources/proxy/uid/prometheus/api/v1/query_range',{'query':expr,'start':lo,'end':hi,'step':60})
+        result['rule_definitions']=[{k:v for k,v in r.items() if k in ('name','query','duration','keepFiringFor','labels','annotations','uid','type','folderUid','state','health','grafana_alert')} for r in result['rule_definitions']]
         result['window']={'start':lo,'end':hi,'collected_at':int(now)}
         trace=labels.get('trace_id') or event.get('annotations',{}).get('trace_id','')
         if isinstance(trace,str) and re.fullmatch(r'[a-fA-F0-9]{32}',trace):
