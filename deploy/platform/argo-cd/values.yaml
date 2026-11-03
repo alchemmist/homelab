@@ -46,7 +46,44 @@ global:
   nodeSelector:
     kubernetes.io/hostname: socrat-0
 notifications:
-  enabled: false
+  enabled: true
+  argocdUrl: https://argocd.socrat.alchemmist.xyz
+  secret:
+    create: false
+    name: argocd-notifications-secret
+  resources:
+    requests:
+      cpu: 20m
+      memory: 64Mi
+    limits:
+      memory: 128Mi
+  notifiers:
+    service.webhook.grafana: |
+      url: http://kube-prometheus-stack-grafana.cattle-monitoring-system.svc.cluster.local/api/annotations
+      headers:
+      - name: Authorization
+        value: Bearer $grafana-api-key
+      - name: Content-Type
+        value: application/json
+  templates:
+    template.app-deployed: |
+      message: deployed
+      webhook:
+        grafana:
+          method: POST
+          body: |
+            {"text":"{{.app.metadata.name}} deployed {{.app.status.sync.revision}}","tags":["deploy","{{.app.metadata.name}}"]}
+  triggers:
+    trigger.on-deployed: |
+      - description: Annotate Grafana once per synced revision after the app is healthy.
+        oncePer: app.status.sync.revision
+        send: [app-deployed]
+        when: app.status.operationState.phase in ['Succeeded'] and app.status.health.status == 'Healthy' and app.metadata.name != 'root' and time.Now().Sub(time.Parse(app.status.operationState.finishedAt)).Minutes() < 10
+  subscriptions:
+    - recipients:
+        - grafana
+      triggers:
+        - on-deployed
 redis:
   image:
     repository: docker.io/library/redis
