@@ -93,7 +93,7 @@ Harbor: push-учётка в секретах CI (`HARBOR_USERNAME`, `HARBOR_PAS
 
 Срабатывание шлёт `POST /api/annotations` на Service `kube-prometheus-stack-grafana` в `cattle-monitoring-system`. Тело: `"<app> deployed <revision>"`, теги `deploy` и имя приложения. Токен сервисного аккаунта Grafana `argocd-deploys` (роль Editor) лежит только в Secret `argocd/argocd-notifications-secret`, ключ `grafana-api-key`. Helm этот Secret не создаёт.
 
-Дашборды `charts/monitoring-k3s/dashboards/` (Overview, Services, Nodes, Metrics, LLM) содержат слой **Deploys**. На Traffic light этого слоя нет: аннотации организации с тегом `deploy`. Отдельной отправки в каждый дашборд нет.
+На Overview, Services, Nodes, Metrics и LLM переменная `deploy` — выпадающий список имён Application. Прочерк `-` не совпадает ни с одним тегом, поэтому линии скрыты. Выбор сервиса оставляет аннотации, у которых есть оба тега: `deploy` и имя этого сервиса. Переключателя «показать все» на дашборде нет. На Traffic light слоя нет. Отдельной отправки в каждый дашборд нет.
 
 ## Локальный API-аккаунт для агента
 

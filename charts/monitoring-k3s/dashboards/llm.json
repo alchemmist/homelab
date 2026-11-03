@@ -72,6 +72,227 @@
           "text": "All",
           "value": "$__all"
         }
+      },
+      {
+        "name": "deploy",
+        "label": "deploy",
+        "type": "custom",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "query": "-,argo-cd,authentik,blog,cats,cert-manager,cnpg-operator,format-quorum,grafana-mcp,harbor,img-proxy,kube-prometheus-stack,litellm,litellm-infra,lms,lms-database-ha,monitoring-k3s,monitoring-llm,monori,n8n,nvidia-device-plugin,open-terminal,open-webui,otel-backends,pr-agent,private-gateway,profiling,rancher,remark42,searxng,socrat-bot,socrat-home,syncthing,thanos,traefik-edge,umami,uptime-kuma,vllm,wiki-runtime,x-ui,xui-auth-gateway",
+        "options": [
+          {
+            "selected": true,
+            "text": "-",
+            "value": "-"
+          },
+          {
+            "selected": false,
+            "text": "argo-cd",
+            "value": "argo-cd"
+          },
+          {
+            "selected": false,
+            "text": "authentik",
+            "value": "authentik"
+          },
+          {
+            "selected": false,
+            "text": "blog",
+            "value": "blog"
+          },
+          {
+            "selected": false,
+            "text": "cats",
+            "value": "cats"
+          },
+          {
+            "selected": false,
+            "text": "cert-manager",
+            "value": "cert-manager"
+          },
+          {
+            "selected": false,
+            "text": "cnpg-operator",
+            "value": "cnpg-operator"
+          },
+          {
+            "selected": false,
+            "text": "format-quorum",
+            "value": "format-quorum"
+          },
+          {
+            "selected": false,
+            "text": "grafana-mcp",
+            "value": "grafana-mcp"
+          },
+          {
+            "selected": false,
+            "text": "harbor",
+            "value": "harbor"
+          },
+          {
+            "selected": false,
+            "text": "img-proxy",
+            "value": "img-proxy"
+          },
+          {
+            "selected": false,
+            "text": "kube-prometheus-stack",
+            "value": "kube-prometheus-stack"
+          },
+          {
+            "selected": false,
+            "text": "litellm",
+            "value": "litellm"
+          },
+          {
+            "selected": false,
+            "text": "litellm-infra",
+            "value": "litellm-infra"
+          },
+          {
+            "selected": false,
+            "text": "lms",
+            "value": "lms"
+          },
+          {
+            "selected": false,
+            "text": "lms-database-ha",
+            "value": "lms-database-ha"
+          },
+          {
+            "selected": false,
+            "text": "monitoring-k3s",
+            "value": "monitoring-k3s"
+          },
+          {
+            "selected": false,
+            "text": "monitoring-llm",
+            "value": "monitoring-llm"
+          },
+          {
+            "selected": false,
+            "text": "monori",
+            "value": "monori"
+          },
+          {
+            "selected": false,
+            "text": "n8n",
+            "value": "n8n"
+          },
+          {
+            "selected": false,
+            "text": "nvidia-device-plugin",
+            "value": "nvidia-device-plugin"
+          },
+          {
+            "selected": false,
+            "text": "open-terminal",
+            "value": "open-terminal"
+          },
+          {
+            "selected": false,
+            "text": "open-webui",
+            "value": "open-webui"
+          },
+          {
+            "selected": false,
+            "text": "otel-backends",
+            "value": "otel-backends"
+          },
+          {
+            "selected": false,
+            "text": "pr-agent",
+            "value": "pr-agent"
+          },
+          {
+            "selected": false,
+            "text": "private-gateway",
+            "value": "private-gateway"
+          },
+          {
+            "selected": false,
+            "text": "profiling",
+            "value": "profiling"
+          },
+          {
+            "selected": false,
+            "text": "rancher",
+            "value": "rancher"
+          },
+          {
+            "selected": false,
+            "text": "remark42",
+            "value": "remark42"
+          },
+          {
+            "selected": false,
+            "text": "searxng",
+            "value": "searxng"
+          },
+          {
+            "selected": false,
+            "text": "socrat-bot",
+            "value": "socrat-bot"
+          },
+          {
+            "selected": false,
+            "text": "socrat-home",
+            "value": "socrat-home"
+          },
+          {
+            "selected": false,
+            "text": "syncthing",
+            "value": "syncthing"
+          },
+          {
+            "selected": false,
+            "text": "thanos",
+            "value": "thanos"
+          },
+          {
+            "selected": false,
+            "text": "traefik-edge",
+            "value": "traefik-edge"
+          },
+          {
+            "selected": false,
+            "text": "umami",
+            "value": "umami"
+          },
+          {
+            "selected": false,
+            "text": "uptime-kuma",
+            "value": "uptime-kuma"
+          },
+          {
+            "selected": false,
+            "text": "vllm",
+            "value": "vllm"
+          },
+          {
+            "selected": false,
+            "text": "wiki-runtime",
+            "value": "wiki-runtime"
+          },
+          {
+            "selected": false,
+            "text": "x-ui",
+            "value": "x-ui"
+          },
+          {
+            "selected": false,
+            "text": "xui-auth-gateway",
+            "value": "xui-auth-gateway"
+          }
+        ],
+        "current": {
+          "selected": true,
+          "text": "-",
+          "value": "-"
+        }
       }
     ]
   },
@@ -2741,14 +2962,15 @@
           "uid": "-- Grafana --"
         },
         "enable": true,
-        "hide": false,
+        "hide": true,
         "iconColor": "rgba(255, 96, 96, 1)",
-        "name": "Deploys",
+        "name": "deploy",
         "target": {
           "limit": 100,
           "matchAny": false,
           "tags": [
-            "deploy"
+            "deploy",
+            "$deploy"
           ],
           "type": "tags"
         }
