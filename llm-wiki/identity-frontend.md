@@ -351,12 +351,13 @@ Brand CSS/background; OAuth providers, policy/flow bindings и MFA validate sett
 
 ## 15. Оптимизация Nature: preview → резкое фото (2026-11-02)
 
-Предыдущий §14 описывает **историческую первую реализацию**. Актуальная схема
+Предыдущий §14 описывает **историческую первую реализацию**. Схема на момент этого этапа
 устраняет два разных полных background-запроса и не кеширует только выбор сцены,
 а не сами большие фото.
 
 - Ранний `@import /-/quiet-mono/v1/nature/scene.css`, `no-store`, выбирает один из
-  30 reviewed ID через nginx request_id. Никакого user cookie/IP tracking/JS.
+  30 reviewed ID через nginx request_id (исторически; выбор исправлен в §16).
+  IP tracking и authentication JS не добавлялись.
 - Ответ <=2481B содержит inline WebP preview124–300B **той же фотографии** и
   ссылки на SHA-pinned AVIF/WebP. CSS layered background рисует preview под HQ.
   Никакой отдельной загрузки миниатюры, чужого случайного кадра или ожидания HQ
@@ -397,3 +398,55 @@ Brand backup, не initial baseline. Не удалять старые immutable 
 данные, порядок, повторы и права доступа. Оба public edges проверены на1440/390px
 через local empty layout box в native компоненте; настоящая owner history не
 подменялась и не извлекалась. Изменён только CSS Brand, без рестартов.
+
+
+## 16. Стабильный фон на весь OIDC-проход (2026-11-03)
+
+Причина редких скачков: `split_clients "$request_id"` выбирал новое фото при
+каждом импорте `scene.css`. Внутри SPA всё выглядело стабильно, но полноценный
+redirect/reload создавал новый документ и новый случайный выбор. Два одинаковых
+анонимных flow URL с неизменным `next` воспроизвели смену фото.
+
+Теперь выбор — не на документ:
+
+- Только same-origin Referer `/if/flow/.../?next=...` с OIDC `state` даёт seed.
+  Пока encoded `next` неизменён, `split_clients` возвращает тот же ID независимо
+  от request_id, slug стадии/flow, смены native auth session, cookie и reload.
+  Новый OIDC state заново выбирает из всех30 фото; независимые выборы могут
+  совпасть. OIDC state не меняем: это только read-only presentation selection.
+- На серверных ошибках и переходах без `next` берётся прежний ID из отдельной
+  host-only `__Secure-qm_nature`. Только30 allowlisted ID, никакого произвольного
+  пути. Secure/HttpOnly/SameSite=Lax; Path=/-/quiet-mono/v1/; Max-Age=1800.
+  Cookie обновляется только ответами selector endpoints, не immutable картинками.
+  Содержимое — публичный ID фото, не user UUID, callback, bearer или session token.
+- Для direct/native входа без уникального OIDC контекста либо при удалённом
+  Referer static-only endpoint **не видит точную границу login/logout**.
+  Здесь честный fallback —30минут с последнего selector request, а не обещание
+  нового фото на каждый клик Login. Приоритет — не менять фон в текущем проходе.
+  Разные вкладки с разными OIDC next имеют независимый устойчивый seed; fallback
+  без next разделяет cosmetic cookie браузера. Cookie не является механизмом auth.
+- Никакого custom authentication JS, HTML injection, IP/UA fingerprinting,
+  смены Authentik cookie, политик, времени жизни токенов или MFA. Сырые next/state
+  не сохраняются в новых cookies/headers/journal; access_log статики выключен.
+- По-прежнему один same-photo inline preview + один кешируемый HQ, без slideshow.
+  `scene.css` no-store; Vary: Cookie, Referer. Legacy selectors также сохраняют ID.
+
+Применение ограничено новым immutable nginx ConfigMap и guarded заменой только
+`Deployment/socrat-authentik-theme.spec.template.spec.volumes[config].configMap.name`.
+Старый ConfigMap сохранён; приватный backup0600 содержит прежний Deployment/config.
+UID/resourceVersion/old config проверены до PATCH. Остальные identity Deployment
+specs и UID Authentik pods до/после совпали. Authentik API writes:0.
+Откат — guarded возврат **этого config volume** на прежний ConfigMap из private
+backup; не общий rollback Authentik/Traefik и не старый pre-Nature Brand rollback.
+Для воспроизводимого reconcile использовать branding playbook с action=prepare:
+обновляется только public static bundle, без Brand/flow/provider/MFA API writes.
+
+`identity-nature-smoke.py --run` на обоих входах, desktop1440/mobile390:
+native login reload×3 → native server error400 → возврат в тот же flow; соседняя
+OIDC-вкладка не меняет первую; повторные CSS requests и смена flow slug устойчивы;
+новые synthetic OIDC journeys дают разнообразие. Это анонимные layout/network
+проверки, не выдача себя за владельца и не личная end-to-end MFA acceptance.
+Также проверены scoped cookie, GET/HEAD, POST403, WebP fallback, hashes, image cache
+transferSize=0; preview-only login доступен при удержании HQ на5секунд. Изолированный
+unexposed canary перед production проверил nginx syntax, absent/foreign referrer
+и отсутствие ротации на десяти одинаковых запросах; собственный canary удалён.

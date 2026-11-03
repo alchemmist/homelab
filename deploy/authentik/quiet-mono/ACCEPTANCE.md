@@ -35,7 +35,7 @@ Implemented through a domain-specific Brand, native presentation settings and a 
 - [ ] Native JSON syntax highlighting and Copy equivalent to Wiki. Current native JSON gets the Wiki code font/surface, but remains plain JSON; CSS cannot tokenize text or add functioning Copy controls. Needs separately reviewed component work if still desired.
 - [ ] Exact wording/glyph parity: native `Log in`, `Email or Username`, password placeholder, native locale/eye glyphs and recovery controls are retained rather than hidden/replaced with inaccessible CSS text.
 - [ ] Native inspector toggle/close/Escape and responsive history acceptance by the real owner; no access-control bypass was added to test it anonymously.
-- [x] Owner Nature collection: all 30 dotfiles photos, desktop/mobile WebP, server-side random selection without new JS/cookies; both-edge 1440/390 checks and stable loaded page passed. Frozen reference retained.
+- [x] Owner Nature collection: all 30 dotfiles photos, desktop/mobile WebP, initial server-side random selection without new JS/cookies (historical; see stable-journey revision below); both-edge 1440/390 checks and stable loaded page passed. Frozen reference retained.
 
 ## Scope and rollout boundaries
 
@@ -169,3 +169,28 @@ owner inspection acceptance. No IdP/static/ingress restart was required.
 - 18 branding unit tests passed. Existing native redirect, magnifier, inspector
   denial, natural Plan History and reduced-motion controls passed on both edges.
 - Desktop/mobile screenshots of the anonymous native error were visually reviewed.
+
+
+## 2026-11-03 — stable Nature authorization journeys
+
+Supersedes per-document/request random selection above. Same-origin OIDC next
+(with state) seeds the scene; reloads and changed flow slugs retain the photo.
+A scoped Secure/HttpOnly/SameSite=Lax photo-only cookie bridges native/error pages
+without next (30-minute idle fallback). No auth cookie, MFA, flow, policy or API
+writes. Without a distinct OIDC context the static-only endpoint cannot identify
+an exact new login boundary; it preserves the old ID until fallback expiry.
+Independent new journeys resample and can legitimately select the same photo.
+
+- Isolated unexposed nginx canary: config parsed; same journey10×, alternate slug,
+  absent/foreign referrer, allowlisted cookie,15 new journeys all checked; removed.
+- Guarded production delta: **one static Deployment config volume reference**;
+  fresh immutable ConfigMap; private0600 backup; unchanged other identity
+  Deployment specs and Authentik pod UIDs. No Authentik/Traefik restart.
+- Both public entrances desktop1440/mobile390: actual full-document login reload×3,
+  native error400, return to login, concurrent OIDC journey; same original photo.
+- Fresh synthetic journeys show diversity; fallback repeated CSS fetches stable;
+  cookies scoped correctly; hashes/POST403/WebP/one HQ/cache transfer0 all pass.
+- Both-edge preview-only native login usable while HQ held5seconds.
+- These are anonymous layout/network tests, not owner/password/MFA impersonation.
+- 19 branding unit tests passed. See Russian frontend runbook §16 for limits and
+  narrow rollback, not a global Brand or shared routing rollback.

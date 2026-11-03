@@ -106,13 +106,16 @@ Pillow/libwebp/libavif versions and derivative budgets. Build with Pillow AVIF s
 python3 scripts/build-authentik-nature.py --source ~/code/dotfiles
 ```
 
-Current rendering (performance revision):
+Current rendering (performance + stable-journey revision):
 
 - An early CSS `@import` fetches `/-/quiet-mono/v1/nature/scene.css` (no-store).
-  nginx split_clients/request_id picks one reviewed scene, not an identity/IP.
+  A same-origin native flow's encoded OIDC `next` containing `state` seeds
+  `split_clients`: identical authorization context gives the same reviewed ID,
+  even across full document loads. Raw next/state is not echoed, saved or logged.
+  Do not key selection on a new HTTP request or on the Authentik session cookie.
 - Its tiny inline WebP preview is of **that same photo** (124–300 bytes decoded).
   A layered `body::before` paints it while the HQ image loads; no separate preview
-  request, timer, authentication JS, image load gate, cookie or external CDN.
+  request, timer, authentication JS, image load gate or external CDN.
 - CSS `image-set` chooses AVIF, falling back to WebP on unsupported browsers.
   Desktop <=1920, mobile <=960. Mobile downloads only its own size. Breakpoint
   changes retain the same scene. The late native drawer is transparent.
@@ -120,14 +123,23 @@ Current rendering (performance revision):
   remain 7,892,292 bytes. Median desktop AVIF 78,370 bytes vs WebP 159,250;
   median mobile AVIF 22,289 vs WebP 49,560. No resolution reduction was needed.
 - HQ URLs are SHA-pinned and immutable (one-year browser cache). The stylesheet
-  remains no-store for fresh document selection. Repeats are legitimate, no slideshow.
+  remains no-store, but reload is **not** a new random draw within an OIDC journey.
+  A fresh OIDC state resamples the collection; independent draws may repeat.
+- Native/error pages without OIDC context reuse a host-only cosmetic
+  `__Secure-qm_nature` cookie: only an allowlisted photo ID, Secure, HttpOnly,
+  SameSite=Lax, Path `/-/quiet-mono/v1/`, 30-minute idle fallback. It is not an
+  identity/session token and changes no authentication cookies. With referrer
+  suppressed, bare direct login or an otherwise unidentifiable new visit, the
+  static endpoint cannot observe exact login/logout boundaries: reuse that ID
+  until fallback expiry rather than risk a mid-journey change. No timer runs in
+  an open document. OIDC seed remains stable even if this cookie is cleared.
 - Authentik's native default-background prefetch points to a 62-byte transparent
   immutable SVG, not a second full random photograph. This avoids double downloads
   and an unrelated background flashing behind the drawer. A network failure can
   still show the conservative fallback; zero latency before the first response is
   not promised. Native login never waits for HQ completion.
 - Compatibility `/nature/desktop` and `/mobile` now return no-store **relative 302**
-  to a reviewed immutable AVIF/WebP, negotiated with Vary: Accept. They do not drive
+  to a reviewed immutable AVIF/WebP, negotiated with Vary: Accept/Cookie/Referer. They do not drive
   current page rendering. All exact selectors and public assets are GET/HEAD only.
 
 The 16MB total budget is split into <=650000-byte decoded ConfigMap shards,

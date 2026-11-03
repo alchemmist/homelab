@@ -159,15 +159,38 @@ class NatureBackgroundTests(unittest.TestCase):
                 self.assertTrue(manifest[photo[variant]]['path'].startswith('nature/'))
         items = load('branding_static').render(THEME)['items']
         conf = items[0]['data']['nginx.conf']
-        self.assertIn('split_clients "$request_id" $nature_scene', conf)
+        self.assertIn('split_clients "$nature_seed" $nature_draw', conf)
         self.assertEqual(conf.count('Cache-Control "no-store"'), 3)
         self.assertIn('~*image/avif avif', conf)
         self.assertEqual(conf.count('absolute_redirect off'), 2)
-        self.assertNotIn('Set-Cookie', conf)
+        self.assertEqual(conf.count('add_header Set-Cookie'), 3)
+        self.assertIn('Max-Age=1800; Secure; HttpOnly; SameSite=Lax', conf)
+        self.assertIn('Path=/-/quiet-mono/v1/', conf)
+        self.assertNotIn('Domain=', conf)
+        self.assertNotIn('authentik_session', conf)
+        self.assertNotIn('$remote_addr', conf)
+        self.assertNotIn('$http_user_agent', conf)
         self.assertNotIn('javascript', conf)
         for variant in ['desktop', 'mobile']:
             self.assertIn('location = /-/quiet-mono/v1/nature/' + variant, conf)
             self.assertIn('return 302 /-/quiet-mono/v1/$nature_' + variant, conf)
+
+    def test_scene_journey_uses_opaque_same_origin_next_not_new_request_id(self):
+        conf = load('branding_static').render(THEME)['items'][0]['data']['nginx.conf']
+        self.assertIn('map $http_referer $nature_next', conf)
+        self.assertIn('https://auth[.]socrat[.]alchemmist[.]xyz/if/flow/', conf)
+        self.assertIn('state%3d', conf)
+        self.assertIn('map $nature_flow_seed $nature_scene', conf)
+        self.assertIn('default $nature_draw;', conf)
+        self.assertIn('"" $nature_fallback;', conf)
+        self.assertIn('default $nature_previous;', conf)
+        self.assertIn('map $http_cookie $nature_previous', conf)
+        self.assertIn('default "";', conf)
+        for photo in json.loads((THEME / 'nature.json').read_text())['photos']:
+            self.assertIn(photo['id'], conf)
+        self.assertNotIn('add_header X-Quiet-Mono-Flow', conf)
+        self.assertNotIn('Set-Cookie "$nature_flow_seed', conf)
+        self.assertIn('access_log off;', conf)
 
     def test_early_single_layer_and_avif_transfer_budget(self):
         css=(THEME/'theme.css').read_text()

@@ -55,7 +55,39 @@ def render(root):
         base, remainder = divmod(10000, len(photos))
         weights = [f" {(base + (i < remainder)) / 100:.2f}% {p['id']};" for i, p in enumerate(photos[:-1])]
         weights.append(f" * {photos[-1]['id']};")
-        random_config = 'split_clients "$request_id" $nature_scene {\n' + '\n'.join(weights) + '\n}\n'
+        # A document/request is NOT an authorization journey. Native full-page
+        # redirects import CSS again. OIDC's unchanged encoded next (with state)
+        # identifies that journey, without storing/logging/echoing its contents.
+        # For native/error pages without next, reuse only an allowlisted cosmetic
+        # photo ID. This cookie is unrelated to authentik_session and grants no
+        # identity/access. No IP/UA/session-token hashing or application JS.
+        random_config = r'''map $http_referer $nature_next {
+ default "";
+ ~^https://auth[.]socrat[.]alchemmist[.]xyz/if/flow/[^?]+[?](?:[^\s]*&)?next=(?<qm_next>[^&]+) $qm_next;
+}
+map $nature_next $nature_flow_seed {
+ default "";
+ ~*(?:%26|%3f)state%3d.+ $nature_next;
+}
+map $nature_flow_seed $nature_seed {
+ "" $request_id;
+ default $nature_flow_seed;
+}
+'''
+        random_config += 'split_clients "$nature_seed" $nature_draw {\n' + '\n'.join(weights) + '\n}\n'
+        cookie_ids = '|'.join(p['id'] for p in photos)
+        # $cookie_* does not normalize hyphens in cookie names like $http_*.
+        random_config += ('map $http_cookie $nature_previous {\n default "";\n'
+                          ' "~(?:^|;[ ]*)__Secure-qm_nature=(?<qm_cookie>' + cookie_ids + ')(?:;|$)" $qm_cookie;\n}\n')
+        random_config += '''map $nature_previous $nature_fallback {
+ "" $nature_draw;
+ default $nature_previous;
+}
+map $nature_flow_seed $nature_scene {
+ "" $nature_fallback;
+ default $nature_draw;
+}
+'''
         css_rows=[f" {p['id']} {names[p['sceneCss']]};" for p in photos]
         random_config += 'map $nature_scene $nature_css {\n'+'\n'.join(css_rows)+'\n}\n'
         random_locations += '''
@@ -65,6 +97,8 @@ def render(root):
    add_header Cache-Control "no-store" always;
    add_header X-Content-Type-Options nosniff always;
    add_header X-Quiet-Mono-Scene $nature_scene always;
+   add_header Set-Cookie "__Secure-qm_nature=$nature_scene; Path=/-/quiet-mono/v1/; Max-Age=1800; Secure; HttpOnly; SameSite=Lax";
+   add_header Vary "Cookie, Referer" always;
    limit_except GET HEAD { deny all; }
   }
 '''
@@ -80,7 +114,8 @@ def render(root):
    return 302 /-/quiet-mono/v1/$nature_{variant};
    add_header Cache-Control "no-store" always;
    add_header X-Content-Type-Options nosniff always;
-   add_header Vary Accept always;
+   add_header Vary "Accept, Cookie, Referer" always;
+   add_header Set-Cookie "__Secure-qm_nature=$nature_scene; Path=/-/quiet-mono/v1/; Max-Age=1800; Secure; HttpOnly; SameSite=Lax";
    add_header X-Quiet-Mono-Scene $nature_scene always;
    limit_except GET HEAD {{ deny all; }}
   }}

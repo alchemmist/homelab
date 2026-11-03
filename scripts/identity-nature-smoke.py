@@ -24,7 +24,7 @@ with sync_playwright() as p:
    page.on('response',lambda r:responses.append(r) if '/-/quiet-mono/v1/' in r.url else None)
    page.on('pageerror',lambda e:errors.append(True))
    page.goto(BASE+'/if/flow/default-authentication-flow/');page.locator('input[name=uidField]').wait_for();page.wait_for_timeout(600)
-   scenes=[r for r in responses if r.url.endswith('/nature/scene.css')];assert len(scenes)==1,'One random CSS selection per document'
+   scenes=[r for r in responses if r.url.endswith('/nature/scene.css')];assert len(scenes)==1,'One journey CSS response per document'
    scene=scenes[0];assert scene.status==200 and scene.headers['cache-control']=='no-store'
    assert hashlib.sha256(scene.body()).hexdigest() in css_hashes
    photo=next(p for p in photos if p['id']==scene.headers['x-quiet-mono-scene'])
@@ -45,13 +45,45 @@ with sync_playwright() as p:
    count=len(responses);page.wait_for_timeout(1200);assert len(responses)==count,'No slideshow/background rotation'
    assert not errors
    print('PASS',edge,variant,'one scene CSS + one AVIF; same-photo inline preview; warm image transfer 0 bytes;',timing,flush=True)
+   # Real full-document transitions, not just fetching the CSS endpoint.
+   # Use synthetic local test state; never submit a password or MFA challenge.
+   journey=BASE+'/if/flow/default-authentication-flow/?next=%2Fapplication%2Fo%2Fauthorize%2F%3Fclient_id%3Dlayout-only%26state%3Dread-only-journey'
+   def current_scene():
+    page.wait_for_function("getComputedStyle(document.body,'::before').getPropertyValue('--qm-scene').trim().length===12")
+    return page.evaluate("getComputedStyle(document.body,'::before').getPropertyValue('--qm-scene').trim()")
+   page.goto(journey);page.locator('input[name=uidField]').wait_for();chosen=current_scene()
+   for attempt in range(3):
+    page.reload();page.locator('input[name=uidField]').wait_for();assert current_scene()==chosen
+   error=page.goto(BASE+'/application/o/authorize/?client_id=quiet-mono-layout-probe&response_type=code')
+   assert error.status==400 and current_scene()==chosen
+   page.goto(journey);page.locator('input[name=uidField]').wait_for();assert current_scene()==chosen
+   # Independent concurrent OIDC journeys must not replace the first one's seed.
+   other=context.new_page();other.goto(journey+'-other');other.locator('input[name=uidField]').wait_for()
+   page.reload();page.locator('input[name=uidField]').wait_for();assert current_scene()==chosen
+   other.close()
+   print('PASS',edge,variant,'native login reload x3 -> native server error -> login; concurrent journey does not rotate first flow',flush=True)
    context.close()
   context=browser.new_context();page=context.new_page();scenes=set()
   for i in range(12):
    r=page.goto(BASE+'/-/quiet-mono/v1/nature/scene.css')
    assert r.status==200 and hashlib.sha256(r.body()).hexdigest() in css_hashes
    scenes.add(r.headers['x-quiet-mono-scene'])
-  assert len(scenes)>=3
+  assert len(scenes)==1,'Repeated CSS requests must not rotate a working-session background'
+  chosen=next(iter(scenes))
+  cookie=next(c for c in context.cookies(BASE+'/-/quiet-mono/v1/nature/scene.css') if c['name']=='__Secure-qm_nature')
+  assert cookie['value']==chosen and cookie['secure'] and cookie['httpOnly'] and cookie['sameSite']=='Lax'
+  assert cookie['path']=='/-/quiet-mono/v1/'
+  for i in range(12):
+   # Synthetic public test identifiers, not real callback/session artifacts.
+   ref=BASE+'/if/flow/default-authentication-flow/?next=%2Fapplication%2Fo%2Fauthorize%2F%3Fclient_id%3Dlayout-only%26state%3Djourney-'+str(i)
+   r=context.request.get(BASE+'/-/quiet-mono/v1/nature/scene.css',headers={'Referer':ref})
+   scene=r.headers['x-quiet-mono-scene'];scenes.add(scene)
+   for slug in ['default-authentication-flow','default-provider-authorization-implicit-consent']:
+    repeated=context.request.get(BASE+'/-/quiet-mono/v1/nature/scene.css',headers={'Referer':ref.replace('default-authentication-flow',slug)})
+    assert repeated.headers['x-quiet-mono-scene']==scene
+   fallback=context.request.get(BASE+'/-/quiet-mono/v1/nature/scene.css')
+   assert fallback.headers['x-quiet-mono-scene']==scene
+  assert len(scenes)>=4,'New OIDC journeys resample the full collection'
   for path in ['scene.css','desktop','mobile']:
    assert context.request.post(BASE+'/-/quiet-mono/v1/nature/'+path).status==403
   # Backward-compatible non-AVIF native clients receive the original pinned WebP.
@@ -60,7 +92,7 @@ with sync_playwright() as p:
   fallback=context.request.get(BASE+r.headers['location'])
   assert fallback.status==200 and fallback.headers['content-type']=='image/webp'
   assert hashlib.sha256(fallback.body()).hexdigest() in {assets[p['mobile']]['sha256'] for p in photos}
-  print('PASS',edge,'random scenes:',len(scenes),'/12; POST denied; pinned WebP fallback',flush=True)
+  print('PASS',edge,'stable journeys; new-journey choices:',len(scenes),'/12; scoped cookie; POST denied; pinned WebP fallback',flush=True)
   context.close();browser.close()
 
 
