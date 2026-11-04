@@ -9,4 +9,4 @@ brokerNamespace: pr-agent
 grafanaUrl: http://kube-prometheus-stack-grafana.cattle-monitoring-system.svc.cluster.local
 
 # Activate only after the existing SPI event webhook is registered.
-dispatchEnabled: false
+dispatchEnabled: true
