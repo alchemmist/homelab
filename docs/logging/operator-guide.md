@@ -25,3 +25,8 @@ On actual Grafana13.2.4, `meta.provisioned:false` with provider `allowUiUpdates:
 ## Known open work
 
 The report preserves exact unmatched journal candidates, external app source-level logging/deployment gaps and unrelated rollout health exceptions. Re-run counts in a fresh aligned window before acting. Source-silent exclusions and best-effort vendor normalization are not blanket all-service logging acceptance.
+
+
+## Updated retention/journal operations
+Loki-only writable scratch /tmp1Gi is required with RO root. Verify actual successful retention timestamps/counters after restart; do not compare counters across process resets. Production deletion delay2h is unchanged; isolated fixture expiry proves implementation, not production sweeper timing or disk approval. Cache/index lifecycle can retain query visibility after physical deletion. Retention failure/stale/missing-metrics rules installed, but authenticated scrape remains unverified and missing-series alert must not be silenced as success. Per-service policy remains empty;3/7/14d severity,14d unlabelled fallback.
+Journal identity must be staged per log then split by groupbyattrs before resource promotion: never assign resource.service.name from each record body within a shared batch. Current serial rollout preserves cursor state, TLS and all nonlogs components. Use unique logging_private_dir for EVERY attempt; rollback backup derives that basename and must match fetched current preimage, not stale original force:false backup. Require natural-source aligned receipts after activation; synthetic fixtures/heartbeat do not prove unrelated units.
