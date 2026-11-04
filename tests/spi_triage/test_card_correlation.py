@@ -50,9 +50,10 @@ class CorrelationTests(unittest.TestCase):
         handoff = nodes['Record Telegram Receipt']
         self.assertEqual(handoff['credentials']['httpHeaderAuth']['id'], 'SPI_WORKER_CREDENTIAL_ID')
         self.assertEqual(handoff['parameters']['options']['timeout'], 5000)
-        self.assertIn("$('One item per alert').item", handoff['parameters']['jsonBody'])
+        self.assertIn("$('One item per alert').itemMatching(index)", nodes['Prepare Telegram Receipt']['parameters']['jsCode'])
         self.assertNotIn('.first()', handoff['parameters']['jsonBody'])
-        self.assertEqual(w['connections']['Post Telegram Message']['main'][0][0]['node'], 'Record Telegram Receipt')
+        self.assertEqual(w['connections']['Post Telegram Message']['main'][0][0]['node'], 'Prepare Telegram Receipt')
+        self.assertEqual(w['connections']['Prepare Telegram Receipt']['main'][0][0]['node'],'Record Telegram Receipt')
         self.assertEqual(nodes['Post Telegram Message']['onError'], 'continueRegularOutput')
         script = nodes['One item per alert']['parameters']['jsCode']
         alert = self.payload['alert'];alert['endsAt'] = '2026-01-01T01:00:00Z'

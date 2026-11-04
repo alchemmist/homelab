@@ -69,6 +69,20 @@
       "onError": "continueRegularOutput"
     },
     {
+      "id": "ce9363ac-bd94-4af0-a47f-01f2874eacee",
+      "name": "Prepare Telegram Receipt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        300
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "jsCode": "return items.map((item,index)=>{const source=$('One item per alert').itemMatching(index).json;return {json:{version:1,source:source.source,alert:source.alert,receipt:item.json},pairedItem:{item:index}};});"
+      }
+    },
+    {
       "parameters": {
         "method": "POST",
         "url": "http://spi-triage.automation.svc:8080/telegram-receipt",
@@ -76,7 +90,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ version: 1, source: $('One item per alert').item.json.source, alert: $('One item per alert').item.json.alert, receipt: $json }) }}",
+        "jsonBody": "={{ JSON.stringify($json) }}",
         "options": {
           "timeout": 5000
         }
@@ -122,6 +136,17 @@
       ]
     },
     "Post Telegram Message": {
+      "main": [
+        [
+          {
+            "node": "Prepare Telegram Receipt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Telegram Receipt": {
       "main": [
         [
           {
