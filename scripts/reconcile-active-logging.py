@@ -41,7 +41,7 @@ for r in rows:
             if source['status']=='ok' and not r['fresh']:
                 r['cause']='stdout-emission-without-receipt-investigate' if source['count'] else 'no-heartbeat-exclusion-no-stdout-in-window'
         if (r['namespace']=='cattle-monitoring-system' and r['pod'].startswith('prometheus-kube-prometheus-stack-prometheus-') and r['container']=='otel-cluster' and not r['fresh']):
-            r['cause']='agent-self-logs-explicitly-excluded' 
+            r['cause']='agent-self-logs-explicitly-excluded'
     if r['kind']=='host' and r['journalVisibleCount600']>0 and not r['fresh']: r['cause']='journal-emission-without-fresh-matched-receipt-investigate-labels-checkpoint'
 result=dict(observedAtUnix=metadata['observedAtUnix'],lokiLogBodiesFetched=False,logBodiesPersistedOrOutput=False,sourceEvidence='aligned stdout counts (transient process memory only), unprivileged journal metadata' if a.source_counts else 'journal metadata only',evaluationTimeFixed=metadata.get('evaluationTimeFixed',False),denominator='running regular non-Job containers plus running system services',excluded=dict(excluded),summary=dict(collections.Counter(r['cause'] for r in rows)),sources=rows)
 out=pathlib.Path(a.output); out.with_suffix('.json').write_text(json.dumps(result,indent=2)+'\n')
