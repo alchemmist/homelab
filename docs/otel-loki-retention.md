@@ -6,7 +6,7 @@ Scope: Loki only. This change does not touch Prometheus, Thanos, Tempo, applicat
 
 Edit `deploy/monitoring/otel/retention-policy.json`, run `python3 scripts/otel-loki-retention.py`, then `python3 scripts/otel-loki-retention.py --check`. Both static Loki config copies are generated identically. The Helm chart consumes its static copy; it does not introduce a second independent policy surface.
 
-Defaults: trace/debug 3d, info 7d, warn 30d, error/fatal 30d, unknown 14d. Missing, unrecognized or legacy severity labels fall through to global 14d. Explicit normalized `unknown` is also 14d. Collector preserves trace/debug/info/warn/error/fatal/unknown; unparsed records become unknown. Trace retains 3d and fatal retains the error policy by default. Loki does not infer these labels from log text for retention. `severity` must be an **indexed resource attribute** on each OTLP record's resource, not merely a log attribute or structured metadata. Resource indexing is explicitly allowlisted. Historical streams without this label retain the fallback; these rules do not retroactively label them.
+Staged defaults (no live rollout): trace/debug 3d, info 7d, warn/error/fatal **14d maximum**, unknown 14d. The desired debug3/info7/warn30/error30 profile is allowed only after measured projection/headroom approval; 30d is not implicitly approved. Missing, unrecognized or legacy severity labels fall through to global 14d. Explicit normalized `unknown` is also 14d. Collector preserves trace/debug/info/warn/error/fatal/unknown; unparsed records become unknown. Trace retains 3d and fatal retains the error policy by default. Loki does not infer these labels from log text for retention. `severity` must be an **indexed resource attribute** on each OTLP record's resource, not merely a log attribute or structured metadata. Resource indexing is explicitly allowlisted. Historical streams without this label retain the fallback; these rules do not retroactively label them.
 
 All service names use the same defaults automatically. Exact per-service/severity overrides are supported, for example:
 
@@ -14,7 +14,10 @@ All service names use the same defaults automatically. Exact per-service/severit
 "services": {"example-service": {"debug": 48, "error": 720}}
 ```
 
-Only listed severities are overridden. All defaults have priority 10; service+severity overrides have priority 100. No equal-priority overlaps are generated. Loki picks the **highest numeric priority**, and for equal priorities picks the **shortest period**, not the longest. If no selector matches, global retention applies. Policy validates integer 24h–8760h, and permits >720h only for error/fatal with an explicit measured `capacityApproval` containing `measuredAt`, `evidence`, `budgetBytes`, `projectedBytes`, `approvedBy`. This review record is not a substitute for measurement. No 365d default is justified today.
+Only listed severities are overridden. All defaults have priority 10; service+severity overrides have priority 100. No equal-priority overlaps are generated. Loki picks the **highest numeric priority**, and for equal priorities picks the **shortest period**, not the longest. If no selector matches, global retention applies. Policy validates integer 24h–8760h. **Every extension beyond legacy 336h**, including service overrides, requires `capacityApproval`; fallback and explicit unknown (including service overrides) must remain exactly 336h. Approval requires nonempty `measuredAt`, `evidence`, `approvedBy` and positive integer `budgetBytes`, `projectedBytes`, `measuredAllocatedBytes`, `filesystemCapacityBytes`, `filesystemAvailableBytes`, `otherWorkloadsReserveBytes`, `transientReserveBytes`, `dailyGrowthUpperBytes`, `sampleSeconds`.
+
+The renderer requires at least 604800 seconds (7 days) representative observation, and conservatively charges all growth at the longest requested retention (no severity discounts). Required projection is at least current allocated bytes + 2 × measured daily-growth upper bound × ceil(max retention hours / 24) + transient reserve. Projection must fit explicit budget, which must fit available filesystem bytes + current Loki allocation − 20% total filesystem capacity − other-workload reserve. The approved daily upper bound must include churn/deletions, not merely net `du` growth. The code checks arithmetic, not the truth or authority of submitted evidence: human review remains mandatory. A two-minute sample cannot authorize an extension. No hard quota is implemented.
+
 
 ## Read-only capacity evidence and limits
 
@@ -38,3 +41,7 @@ Before activation, obtain at least 7 representative days of per-severity/service
 - [Official OTLP ingestion mapping](https://grafana.com/docs/loki/latest/send-data/otel/): resource attributes to index labels, dots normalized to underscores, other attributes structured metadata.
 
 Image remains pinned to the existing Loki 3.7.9 digest; no image, schema or storage relocation is included.
+
+## Updated allocated-size evidence
+
+The authorized two-point read-only hostPath measurement is recorded in [capacity-evidence-2026-11-04.md](logging/capacity-evidence-2026-11-04.md). Actual allocation is now measured (535,891,968 bytes at 08:55:42Z), replacing the earlier unknown-size blocker. The 120-second sample is not representative and does **not** approve any extension: gross daily growth, transient reserve, workload reserve and human approval remain outstanding. Diagnostic pod cleanup was confirmed. No live retention change occurred.

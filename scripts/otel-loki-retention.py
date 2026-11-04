@@ -1,7 +1,7 @@
 """Render bounded, deterministic Loki retention; no cluster operations.
 
 Service keys are exact service_name values, not arbitrary LogQL selectors.
-Long error retention requires a reviewed measured capacity approval in the policy.
+ANY extension beyond legacy 14d requires measured capacity approval.
 """
 import argparse
 import json
@@ -21,18 +21,41 @@ def rules(policy):
     def hours(value, level):
         if type(value) is not int or not 24 <= value <= 8760:
             raise ValueError('Retention must be integer hours between 24h and 365d')
-        if value > 720:
+        if level == 'unknown' and value != 336:
+            raise ValueError('Unknown and fallback must preserve legacy 14d')
+        if value > 336:
             approval = policy.get('capacityApproval') or {}
-            if level not in ('error', 'fatal') or not all(approval.get(k) for k in (
-                    'measuredAt', 'evidence', 'budgetBytes', 'projectedBytes', 'approvedBy')):
-                raise ValueError('Only error/fatal may exceed 30d, with measured capacity approval')
-            if (type(approval['budgetBytes']) is not int or type(approval['projectedBytes']) is not int
-                    or not 0 < approval['projectedBytes'] <= approval['budgetBytes']):
-                raise ValueError('Projected disk must fit approved positive budget')
+            if not all(isinstance(approval.get(k), str) and approval[k].strip() for k in (
+                    'measuredAt', 'evidence', 'approvedBy')):
+                raise ValueError('Any extension beyond 14d requires measured capacity approval')
+            fields = ('budgetBytes', 'projectedBytes', 'measuredAllocatedBytes',
+                      'filesystemCapacityBytes', 'filesystemAvailableBytes',
+                      'otherWorkloadsReserveBytes', 'transientReserveBytes',
+                      'dailyGrowthUpperBytes', 'sampleSeconds')
+            if any(type(approval.get(k)) is not int or approval[k] <= 0 for k in fields):
+                raise ValueError('Capacity measurements and reserves must be positive integers')
+            # No severity discount without representative per-level measurements:
+            # charge all observed growth at the longest requested retention.
+            longest = max([fallback, *policy['severityHours'].values(),
+                           *(h for overrides in policy.get('services', {}).values() for h in overrides.values())])
+            minimum = (approval['measuredAllocatedBytes'] +
+                       2 * approval['dailyGrowthUpperBytes'] * ((longest + 23) // 24) +
+                       approval['transientReserveBytes'])
+            headroom = (approval['filesystemAvailableBytes'] + approval['measuredAllocatedBytes'] -
+                        (approval['filesystemCapacityBytes'] + 4) // 5 -
+                        approval['otherWorkloadsReserveBytes'])
+            if (approval['sampleSeconds'] < 604800 or
+                    approval['filesystemAvailableBytes'] > approval['filesystemCapacityBytes'] or
+                    not minimum <= approval['projectedBytes'] <= approval['budgetBytes'] <= headroom):
+                raise ValueError('Need representative 7d evidence, conservative projection and 20% filesystem reserve')
         return value
-    hours(fallback, 'unknown')
     if set(policy['severityHours']) != LEVELS:
         raise ValueError('All seven normalized severity policies are required')
+    candidates = [fallback, *policy['severityHours'].values(),
+                  *(h for overrides in policy.get('services', {}).values() for h in overrides.values())]
+    if any(type(h) is not int or not 24 <= h <= 8760 for h in candidates):
+        raise ValueError('Retention must be integer hours between 24h and 365d')
+    hours(fallback, 'unknown')
     result = []
     for level, value in sorted(policy['severityHours'].items()):
         result.append((10, '{severity=' + json.dumps(level) + '}', hours(value, level)))

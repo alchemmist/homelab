@@ -4,11 +4,11 @@
   "severityHours": {
     "debug": 72,
     "info": 168,
-    "warn": 720,
-    "error": 720,
+    "warn": 336,
+    "error": 336,
     "unknown": 336,
     "trace": 72,
-    "fatal": 720
+    "fatal": 336
   },
   "services": {},
   "capacityApproval": null
