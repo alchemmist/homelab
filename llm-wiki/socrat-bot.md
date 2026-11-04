@@ -257,3 +257,26 @@ progress verified.114 Python+9JS+29bot tests passed. Pending-link Grafana rule
 provisioned. Queue is NOT drained; legacy unprovable cards and inference429 remain
 visible pending/error, not false success. Private consistent snapshots retained.
 RustFS SELECTED for a later S3 phase, not deployed; issue evidence comments remain.
+
+### Follow-up: unsubscribe and one-time approval (pending release)
+
+The pending bot implementation now includes `/unsubscribe` and an **Unsubscribe**
+button in `/start` and alert settings. This supersedes the earlier statement that
+an opted-out non-owner must request approval again. `alerts_approved` permanently
+records owner approval; `alerts_enabled` controls current delivery. `/start` alone
+never re-enables delivery. **Subscribe to alerts** or `/alerts on` re-enables an
+already-approved subscriber without messaging the owner or replaying active alerts.
+Unapproved users still need the original owner approval. A repeated old Approve
+button cannot undo a later unsubscribe. Settings remain private-chat-only; VPN
+opt-in, admin tier and receive tier are unchanged. New cards and escalation notices
+are suppressed after opt-out (including prepared work rechecked before HTTP);
+already-delivered cards continue to receive state/resolution edits. An HTTP send
+already in flight cannot be recalled.
+
+Migration `0012_alerts_approval` follows `0011_delivery_ownership`. Backfill retains
+current subscribers and owners, and recovers historical approvals from
+`audit.event='alerts.approve'` whose actor is the target Telegram ID. VPN membership
+alone does not grant approval. Owner approval remains required only the first time.
+Final combined verification: PostgreSQL17 **128 passed, 15 conditional skips**;
+scoped Ruff, compileall, diff checks and deterministic wiki rendering passed.
+This is local implementation/test evidence, not a production rollout claim.
