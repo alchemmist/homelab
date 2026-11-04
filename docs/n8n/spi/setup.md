@@ -25,9 +25,33 @@ sanitized workflow data for Telegram**. Sender retries are deduplicated. Legacy
 migration mode accepts unauthenticated Telegram-only delivery, never SPI jobs;
 it must be disabled after migrating both Grafana and Alertmanager authorization.
 
-`SPI Incident Triage` runs each minute:
+`SPI Incident Triage` uses an authenticated native Webhook, not an n8n Schedule Trigger:
 
-`Every Minute → Claim Triage Job → Select Claimed Job → Match Open SPI → Collect Evidence → Analyze Incident → Publish SPI`
+`Dispatch Webhook → Claim Triage Job → Select Claimed Job → Match Open SPI → Collect Evidence → Analyze Incident → Publish SPI`
+
+Authenticated `/enqueue` and `/enqueue-group` commit to the existing durable SQLite
+queue before signaling the background dispatcher. The queue remains authoritative;
+there is no Redis/Postgres migration. Execute-subworkflow is not required: native
+ingress commits the queue and the worker coalesces and sends event wakes.
+
+With `SPI_DISPATCH_ENABLED` (default **false**) enabled, the dispatcher POSTs `{}`
+to the fixed internal URL
+`http://n8n.automation.svc.cluster.local/webhook/spi-incident-triage-dispatch`.
+`X-Worker-Token` uses the existing `WORKER_TOKEN`; the native Webhook uses
+`headerAuth` and the same `SPI_WORKER_CREDENTIAL_ID` / `httpHeaderAuth` mapping
+already used by `/claim`. Response mode is immediate `onReceived`. Alert payloads
+cannot supply a callback target. One execution claims one job; subsequent stages
+remain unchanged. Empty queues must not generate n8n executions.
+
+Enqueue and stage completion/failure (including unexpected errors where appropriate)
+signal the dispatcher. It starts the next job only when due and no active processing
+lease exists. Durable dispatch reservation/backoff covers ambiguous wake responses,
+slow or unavailable n8n and the claim callback race; `/claim` acknowledges the
+reservation. Duplicate wakes are coalesced. Startup recovers interrupted jobs and
+dispatches due work. The worker's internal timer waits for the next retry, lease or
+reservation deadline, recovering lost wakes without an every-minute n8n execution.
+No SQLite transaction or dispatcher lock is held across network or model calls.
+This is not an exactly-once delivery or guaranteed model-success contract.
 
 Only opaque job IDs/status travel between stages. Evidence, drafts and progress
 live in a dedicated private SQLite PVC owned by the worker, **not n8n's database**.
@@ -147,7 +171,7 @@ No tokens, cookies, private keys or credential databases are valid attachments.
 Internal IPs, hostnames, stack traces and deployment metadata are approved diagnostic
 content; credential values and emails are redacted before persistence/publication.
 
-### Live v2 acceptance
+### Historical live v2 acceptance
 
 - [Real SPI #9 evidence index](https://github.com/alchemmist/homelab/issues/9#issuecomment-6610936449):
   nine artifact parts / eight reconstructed files, including MANIFEST, with eight
@@ -171,8 +195,8 @@ responses are separate acceptance checks. `/metrics` exposes job-state counts an
 pending age for future scrape integration. Do not assume a ServiceMonitor is
 scraped: this cluster has retired legacy Prometheus selectors.
 
-Queue polling emits sanitized `queue_health`; final failures emit `stage_failed`.
-Grafana/Loki definitions in `alerts.json` monitor failures (including ingress handoff), missing polling, stale work and dead
+Worker queue health emits sanitized `queue_health`; final failures emit `stage_failed`.
+Grafana/Loki definitions in `alerts.json` monitor failures (including ingress handoff), missing worker heartbeat, stale work and dead
 jobs through a dedicated Socrat Alerts contact point. Provision via
 `python3 scripts/n8n/provision_yandex_alerts.py docs/n8n/spi/alerts.json` after activation.
 No global notification policy changes. Delivery depends on n8n, not on the model;
@@ -183,7 +207,7 @@ not a raw live file copy. PVC keep/Prune=false is not a backup schedule. Complet
 job/evidence retention is not automated yet; monitor disk usage before expanding
 traffic. Never erase pending/ambiguous-publication state to clear an alert.
 
-## Verified acceptance
+## Historical acceptance before event-driven migration
 
 - 98 local tests: 65 SPI Python, five native ingress, nine Yandex client, six calendar,
   thirteen blog. Helm templates render with the pinned images.
@@ -281,3 +305,30 @@ Acceptance: all eight real index links from SPI #9 passed browser checks. A nati
 temporary Editor session verified login return and authenticated navigation; it
 was removed afterwards. This does not claim a full human Authentik login was
 performed. Anonymous redirect behavior was reproduced before and after the fix.
+
+## Event-driven rollout and acceptance — PENDING
+
+Historical evidence above does not verify the event-driven rollout. Parent/operator
+owns deployment and must verify each item; this documentation makes no claim that
+this migration has been deployed or tested.
+
+- [ ] Preserve n8n identity, both workflow IDs, existing credentials, encryption key,
+  n8n PVC, worker SQLite PVC and the original Telegram path.
+- [ ] Deploy with `SPI_DISPATCH_ENABLED=false`; retain queue and saved stages.
+- [ ] Activate the authenticated event workflow, with no Schedule Trigger, before
+  enabling the dispatcher. Verify the existing header credential mapping privately.
+- [ ] Enable dispatch only after activation; verify commit-before-wake, one job per
+  execution, empty-queue silence, duplicate-wake coalescing and lease exclusivity.
+- [ ] Verify unavailable/slow n8n, ambiguous responses, claim callback races, retry
+  deadlines and restart/lost-wake recovery without publishing test incidents or
+  sending Telegram tests. Do not assume model success from webhook acceptance.
+- [ ] Review backlog age, due/retrying jobs, active lease and dispatch reservation
+  deadlines alongside n8n executions and sanitized worker errors. Allow backoff to
+  recover missing wakes; never bypass leases or delete queue state to force progress.
+- [ ] For `WRITE_NEEDS_REVIEW`, reconcile existing GitHub intent/markers manually;
+  no blind GitHub retries. Preserve consistent SQLite backups before intervention.
+
+Disabling dispatch pauses new wakes, not already-running executions or publication.
+SPI publication policy and the separate blog dry-run policy remain independent.
+Current text artifacts remain in issue comments; multi-comment storage is noisy.
+S3 storage is not deployed, and artifact-storage migration is separate work.

@@ -54,3 +54,32 @@ Architecture, limits, exact IDs, real issue/comment evidence and recovery:
 [spi-incident-triage.md](spi-incident-triage.md). This GitHub-token broker is distinct
 from the Telegram sudo-broker described above; do not conflate their credentials,
 permissions or approval mechanisms.
+
+
+### Event-driven SPI migration — PENDING
+
+SPI triage is designed to wake through an authenticated native n8n Webhook, not an
+every-minute Schedule Trigger. Native ingress commits `/enqueue-group` to the
+existing durable worker SQLite queue before signaling; no execute-subworkflow or
+Redis/Postgres migration is needed. This does not change the bot's own Postgres.
+The worker coalesces wakes and POSTs `{}` to the fixed internal URL
+`http://n8n.automation.svc.cluster.local/webhook/spi-incident-triage-dispatch` with
+`X-Worker-Token` = existing `WORKER_TOKEN`. Webhook `headerAuth` reuses the
+`SPI_WORKER_CREDENTIAL_ID` / `httpHeaderAuth` mapping used by `/claim`, with immediate
+`onReceived`; no alert-supplied network target. Each execution claims one job.
+
+Durable reservations/backoff, `/claim` acknowledgment and exclusive processing
+leases handle lost/ambiguous wakes. Startup recovery and the worker's internal
+retry/lease/reservation timer resume due work; an empty queue creates no n8n
+executions. Completion/failure signals the next due job. This is not exactly-once
+publication or guaranteed diagnosis; ambiguous GitHub writes require review, not
+blind retries. See the triage runbook for backlog recovery.
+
+- [ ] Parent deploys with `SPI_DISPATCH_ENABLED=false` (default), preserving n8n
+  identity, workflow IDs, credentials, encryption key/PVC, SQLite and Telegram path.
+- [ ] Parent activates the event workflow before enabling dispatch, then verifies
+  lease exclusivity, empty-queue silence, backoff and lost-wake recovery.
+
+These are pending checks, not deployment/test claims. Do not publish test incidents
+or send Telegram tests. The blog remains separately write-disabled. SPI text
+artifacts currently remain in issue comments; S3 storage is not deployed.

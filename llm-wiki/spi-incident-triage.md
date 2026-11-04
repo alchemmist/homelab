@@ -45,7 +45,7 @@ Socrat Alerts:
 Alertmanager Webhook → One item per alert → Post Telegram Message
 
 SPI Incident Triage:
-Every Minute → Claim Triage Job → Select Claimed Job → Match Open SPI
+Dispatch Webhook → Claim Triage Job → Select Claimed Job → Match Open SPI
              → Collect Evidence → Analyze Incident → Publish SPI
 ```
 
@@ -90,18 +90,18 @@ Grafana folder **Automation**, group **SPI triage**, receiver **SPI triage via S
 | UID | Signal |
 | --- | --- |
 | `spi-triage-failures` | Final stage or authenticated handoff failures |
-| `spi-triage-heartbeat` | No queue polling heartbeat for ten minutes |
+| `spi-triage-heartbeat` | No worker queue-health heartbeat for ten minutes |
 | `spi-triage-dead` | Jobs require operator review |
 | `spi-triage-stale` | Pending work older than 45 minutes |
 
-On trouble, distinguish an unavailable worker, absent scheduling, model latency,
+On trouble, distinguish an unavailable worker, dispatch reservation/lease delays, model latency,
 read-only evidence gaps and GitHub authorization/write ambiguity. Inspect sanitized
 codes and saved stage before intervening. Check current App-token refresh separately
 from inference health. Do not suppress alerts automatically or erase pending jobs
 to obtain a green dashboard. Telegram delivery is independent of the model but still
 depends on n8n; a full n8n outage can delay delivery while Grafana displays the alert.
 
-## Deployment and acceptance status
+## Historical deployment and acceptance status (before event-driven migration)
 
 SPI publication is **enabled after live dry-run** (SPI writeEnabled=true).
 Blog WRITE_ENABLED remains false. Do not transfer one worker's rollout policy to
@@ -185,3 +185,39 @@ See the runbook for the read-only Playwright regression and its private state.
 The operator rejected multi-comment artifact storage as noisy. S3 product choice,
 deployment and migration are the next separate step; do not claim S3 is deployed
 or delete the retained comments before a verified migration.
+
+## Event-driven orchestration — rollout and acceptance PENDING
+
+No n8n Schedule Trigger or every-minute execution is used. Authenticated `/enqueue`
+and `/enqueue-group` commit jobs to the existing SQLite queue before signaling a
+background dispatcher. Native ingress already owns durable handoff, so an
+execute-subworkflow node is not required. No Redis/Postgres queue migration.
+
+`SPI_DISPATCH_ENABLED` defaults false. When enabled, the worker coalesces wakes and
+POSTs `{}` only to the fixed internal endpoint
+`http://n8n.automation.svc.cluster.local/webhook/spi-incident-triage-dispatch`, with
+`X-Worker-Token` from existing `WORKER_TOKEN`. The native Webhook uses `headerAuth`
+with the same `SPI_WORKER_CREDENTIAL_ID` / `httpHeaderAuth` mapping as `/claim`,
+and immediate `onReceived`. No alert-supplied callback URL is allowed.
+
+One execution claims one job; match/collect/analyze/publish stay unchanged. Enqueue,
+stage completion and failure signal dispatch. Only due work with no active processing
+lease starts. Durable reservation/backoff handles ambiguous responses, slow/missing
+n8n and claim callback races; `/claim` acknowledges the reservation. Startup recovery
+and an internal worker timer for retry/lease/reservation deadlines recover lost wakes.
+Empty queues generate no n8n executions. Never hold a SQLite transaction or dispatcher
+lock during network/model calls. This does not promise exactly-once or model success.
+
+- [ ] Parent deploys disabled, preserves original workflow IDs, credentials, n8n
+  encryption key/PVC, worker SQLite and Telegram path, then activates event workflow.
+- [ ] Parent enables dispatcher only after activation and verifies empty-queue
+  silence, coalescing, due retries, lost-wake recovery and exclusive job leases.
+- [ ] Parent verifies unavailable/slow n8n and callback races without publishing test
+  incidents or sending Telegram tests. Migration deployment/acceptance remain pending.
+
+For backlog, inspect due time, saved stage, active processing lease, reservation
+expiry and worker health before intervening. An accepted webhook is not completed
+analysis. Do not clear queue state or bypass leases; reconcile ambiguous GitHub
+writes rather than blindly retrying. Disabling dispatch does not cancel in-flight
+executions. Keep the independent blog dry-run and existing artifact limitations:
+text artifacts are in issue comments; S3 is not deployed and is separate work.
