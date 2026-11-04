@@ -1,7 +1,7 @@
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/cats
-  tag: a6ccd41f6a071648c09603084957184325ca843d
-  digest: sha256:4e336ca9aa01c2c85527f096177bdaca7154e5a8ff01ae1d8396650766aaa5c8
+  tag: 84cf901ac1421e8b795bd6fe6840502b7fd8ce9d
+  digest: sha256:ffef7edb39d622190b6ba88642bc35f7a8b159943532517889a3ff8d795ed179
   pullPolicy: IfNotPresent
 
 imagePullSecrets:
