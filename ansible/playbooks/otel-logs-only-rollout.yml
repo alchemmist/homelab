@@ -1,0 +1,76 @@
+---
+- name: Scoped log-only host Collector rollout with stop-on-failure gates
+  hosts: socrat-0:socrat-1:socrat-2:socrat-3
+  serial: 1
+  any_errors_fatal: true
+  gather_facts: false
+  become: true
+  vars:
+    logging_private_dir: /tmp/logging-rollout-private
+  tasks:
+    - name: Require explicit one-host canary limit and private controller directory
+      ansible.builtin.assert:
+        that:
+          - ansible_limit is defined
+          - ansible_limit == inventory_hostname
+    - name: Read exact live preimage privately
+      ansible.builtin.fetch:
+        src: /etc/homelab-otel/agent.yaml
+        dest: '{{ logging_private_dir }}/{{ inventory_hostname }}.yaml'
+        flat: true
+      no_log: true
+    - name: Merge only log components and assert nonlog equality
+      ansible.builtin.command:
+        argv:
+          - python3
+          - '{{ playbook_dir }}/../../scripts/otel-logs-only-config.py'
+          - '{{ logging_private_dir }}/{{ inventory_hostname }}.yaml'
+          - '{{ playbook_dir }}/../../deploy/monitoring/otel/agent.yaml'
+          - '{{ logging_private_dir }}/{{ inventory_hostname }}-candidate.yaml'
+      delegate_to: localhost
+      become: false
+      changed_when: false
+      no_log: true
+    - name: Install gate helper without changing service units
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/../../scripts/otel-logs-rollout-gate.py'
+        dest: /var/tmp/otel-logs-rollout-gate.py
+        mode: '0700'
+    - name: Stage private candidate beside live config
+      ansible.builtin.copy:
+        src: '{{ logging_private_dir }}/{{ inventory_hostname }}-candidate.yaml'
+        dest: /etc/homelab-otel/agent-logs-candidate.yaml
+        mode: '0600'
+      no_log: true
+    - name: Validate candidate with pinned installed Collector and live environment
+      ansible.builtin.command: python3 /var/tmp/otel-logs-rollout-gate.py validate /etc/homelab-otel/agent-logs-candidate.yaml
+      changed_when: false
+    - name: Prove metrics endpoint fresh before mutation
+      ansible.builtin.command: python3 /var/tmp/otel-logs-rollout-gate.py baseline /var/tmp/otel-logs-preimage-metrics.json
+      changed_when: false
+    - name: Preserve exact live configuration for explicit recovery
+      ansible.builtin.copy:
+        src: /etc/homelab-otel/agent.yaml
+        dest: /etc/homelab-otel/agent-pre-logs-rollout.yaml
+        remote_src: true
+        force: false
+        mode: '0600'
+      no_log: true
+    - name: Install validated logging-only candidate
+      ansible.builtin.copy:
+        src: /etc/homelab-otel/agent-logs-candidate.yaml
+        dest: /etc/homelab-otel/agent.yaml
+        remote_src: true
+        mode: '0644'
+      no_log: true
+    - name: Restart only the owned Collector without touching cursors or units
+      ansible.builtin.systemd_service:
+        name: homelab-otel-agent.service
+        state: restarted
+    - name: Require fresh metrics healthy export and bounded queue before next node
+      ansible.builtin.command: python3 /var/tmp/otel-logs-rollout-gate.py health
+      register: logging_gate
+      changed_when: false
+    - name: Report only aggregate delivery health
+      ansible.builtin.debug:
+        var: logging_gate.stdout
