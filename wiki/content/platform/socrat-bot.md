@@ -205,6 +205,7 @@ username без символа @. Его может не быть, тогда о
 - `labels`: object
 - `annotations`: object
 - `fingerprint`: string
+- `spi_episode`: string — Authoritative SPI episode digest. Creates an immutable episode-specific card key; firing/resolved share it, later firings use a new key.
 
 ### Card
 
@@ -223,11 +224,13 @@ username без символа @. Его может не быть, тогда о
 - `label`: string
 - `key`: string — Ключ карточки, если он уже известен.
 - `alert`: Alert
+- `expected_copies`: список object — Optional atomic guard: all listed chat/message identities must still belong to this card, otherwise409.
 
 ### CardLinkResult
 
 - `key`: string
 - `updated`: список object
+- `pending`: список object — Copies not acknowledged by Telegram; retry even on HTTP200.
 
 ### SentMessage
 
@@ -236,6 +239,8 @@ username без символа @. Его может не быть, тогда о
 - `replayed`: boolean
 - `key`: string — Ключ карточки. Для обычного сообщения нет.
 - `copies`: список object — Каждая отправленная копия.
+- `episode`: string
+- `immutable_key`: boolean
 
 ### CardNote
 
