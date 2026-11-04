@@ -1,7 +1,7 @@
 replicaCount: 2
 
 image:
-  repository: ghcr.io/alchemmist/cats
+  repository: harbor.socrat.alchemmist.xyz/homelab/cats
   tag: a6ccd41f6a071648c09603084957184325ca843d
   # Verified digest of the existing healthy replica; prewarm new nodes before rollout.
   digest: sha256:4e336ca9aa01c2c85527f096177bdaca7154e5a8ff01ae1d8396650766aaa5c8
@@ -34,3 +34,6 @@ topologySpreadConstraints:
 nodeAffinity:
   excludeHostnames:
     - socrat-2
+
+imagePullSecrets:
+  - cats-harbor-pull

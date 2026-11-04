@@ -1,17 +1,20 @@
 images:
   front:
-    repository: ghcr.io/alchemmist/monori
+    repository: harbor.socrat.alchemmist.xyz/homelab/monori
     tag: 1a4b1f127e5dd571649bae8c4ed89b5bdcb89549
     digest: sha256:f16c16469d72aac30ff1012ed6860446dc6a136e20b59829b35b6421359e8a1f
     fallback: ghcr.io/alchemmist/homelab-monori-front:latest
   back:
-    repository: ghcr.io/alchemmist/monori
+    repository: harbor.socrat.alchemmist.xyz/homelab/monori
     tag: 1a4b1f127e5dd571649bae8c4ed89b5bdcb89549
     digest: sha256:a5adcc45173ee7e02d7c6899b77b7a97091839db2dca16cbca27ed96eec51657
     fallback: ghcr.io/alchemmist/homelab-monori-back:latest
   sync:
-    repository: ghcr.io/alchemmist/monori
+    repository: harbor.socrat.alchemmist.xyz/homelab/monori
     tag: 1a4b1f127e5dd571649bae8c4ed89b5bdcb89549
     digest: sha256:0d1c51dfdea823b2981e4721bee9380e2fe881bdc841066a369b4f6dc8979205
     fallback: ghcr.io/alchemmist/homelab-monori-sync:latest
 
+
+imagePullSecrets:
+  - monori-harbor-pull

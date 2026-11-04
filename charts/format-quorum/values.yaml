@@ -2,7 +2,7 @@ replicaCount: 1
 nodeSelector:
   kubernetes.io/hostname: socrat-1
 image:
-  repository: ghcr.io/alchemmist/format-quorum
+  repository: harbor.socrat.alchemmist.xyz/homelab/format-quorum
   tag: 191034df24aa66a08f54ba868e6e6c2f85378517
   digest: sha256:9915d3e3ba314c6a91f6baa236f34b937bbc96196d0feb658296ddba298b6792
   pullPolicy: IfNotPresent
@@ -35,4 +35,5 @@ resources:
   limits: { memory: 1Gi }
 
 imagePullSecrets:
+  - format-quorum-harbor-pull
   - ghcr-pull

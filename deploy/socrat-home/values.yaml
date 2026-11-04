@@ -1,5 +1,8 @@
 image:
-  repository: ghcr.io/alchemmist/homelab-socrat-home
+  repository: harbor.socrat.alchemmist.xyz/homelab/socrat-home
   tag: latest
-  digest: ""
+  digest: sha256:41e26b089357b32fc7caefc21dc2bc1dfcb12c7e8f90373fb11dfefb152c734f
   pullPolicy: IfNotPresent
+
+imagePullSecrets:
+  - socrat-home-harbor-pull
