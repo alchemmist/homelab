@@ -27,10 +27,9 @@ class EventWorkflowTests(unittest.TestCase):
         self.assertFalse(any('schedule' in n['type'].lower() for n in w['nodes']))
         trigger = nodes['Dispatch Triage Job']
         self.assertEqual(trigger['id'], '9c393df1-a66f-41bf-acaf-b2b66f31a393')
-        self.assertEqual(trigger['type'], 'n8n-nodes-base.webhook')
+        self.assertEqual(trigger['type'], 'CUSTOM.socratSpiDispatchWebhook')
         self.assertEqual(trigger['parameters'], {
-            'httpMethod': 'POST', 'path': 'spi-incident-triage-dispatch',
-            'authentication': 'headerAuth', 'responseMode': 'onReceived', 'options': {}})
+            'path': 'spi-incident-triage-dispatch'})
         chain = ['Dispatch Triage Job', 'Claim Triage Job', 'Select Claimed Job',
                  'Match Open SPI', 'Collect Evidence', 'Analyze Incident', 'Publish SPI']
         self.assertEqual(set(nodes), set(chain))
@@ -60,12 +59,8 @@ class EventWorkflowTests(unittest.TestCase):
                                         'saveDataErrorExecution': 'none',
                                         'saveManualExecutions': False})
 
-    def test_native_webhook_input_must_not_be_persisted(self):
-        """Native Webhook includes authentication headers in transient output.
-
-        Header authentication does not redact those headers. Disable all workflow
-        execution persistence; this does not hide live editor/transient output.
-        """
+    def test_dispatch_execution_persistence_defense_in_depth(self):
+        """Custom trigger strips headers; persistence is additionally disabled."""
         settings = self.workflow['settings']
         for key in ('saveDataSuccessExecution', 'saveDataErrorExecution'):
             self.assertEqual(settings[key], 'none')

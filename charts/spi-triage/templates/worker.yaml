@@ -50,6 +50,8 @@ spec:
             - secretRef:
                 name: {{ .Values.secretName }}
           env:
+            - name: SPI_DISPATCH_ENABLED
+              value: {{ .Values.dispatchEnabled | quote }}
             - name: WRITE_ENABLED
               value: {{ .Values.writeEnabled | quote }}
             - name: GRAFANA_URL
@@ -151,6 +153,16 @@ spec:
           protocol: UDP
         - port: 53
           protocol: TCP
+    # Service port80 is DNATed to the selected n8n pod port5678.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: automation
+          podSelector:
+            matchLabels:
+              app: n8n
+      ports:
+        - port: 5678
     - to:
         - namespaceSelector:
             matchLabels:

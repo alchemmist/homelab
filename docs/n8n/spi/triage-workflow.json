@@ -3,14 +3,10 @@
   "nodes": [
     {
       "name": "Dispatch Triage Job",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
+      "type": "CUSTOM.socratSpiDispatchWebhook",
+      "typeVersion": 1,
       "parameters": {
-        "httpMethod": "POST",
-        "path": "spi-incident-triage-dispatch",
-        "authentication": "headerAuth",
-        "responseMode": "onReceived",
-        "options": {}
+        "path": "spi-incident-triage-dispatch"
       },
       "position": [
         0,

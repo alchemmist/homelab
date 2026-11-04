@@ -332,3 +332,9 @@ Disabling dispatch pauses new wakes, not already-running executions or publicati
 SPI publication policy and the separate blog dry-run policy remain independent.
 Current text artifacts remain in issue comments; multi-comment storage is noisy.
 S3 storage is not deployed, and artifact-storage migration is separate work.
+
+Security integration: dispatch uses CUSTOM.socratSpiDispatchWebhook with the
+existing httpHeaderAuth credential, not the built-in Webhook (which emits incoming
+authentication headers). Only `{dispatch:true}` enters execution data. Credential
+comparison occurs in the trigger; POST acknowledgement is immediate. Worker egress
+is restricted to automation/app=n8n pod TCP5678 for the fixed callback.

@@ -83,3 +83,9 @@ blind retries. See the triage runbook for backlog recovery.
 These are pending checks, not deployment/test claims. Do not publish test incidents
 or send Telegram tests. The blog remains separately write-disabled. SPI text
 artifacts currently remain in issue comments; S3 storage is not deployed.
+
+Security integration: dispatch uses CUSTOM.socratSpiDispatchWebhook with the
+existing httpHeaderAuth credential, not the built-in Webhook (which emits incoming
+authentication headers). Only `{dispatch:true}` enters execution data. Credential
+comparison occurs in the trigger; POST acknowledgement is immediate. Worker egress
+is restricted to automation/app=n8n pod TCP5678 for the fixed callback.

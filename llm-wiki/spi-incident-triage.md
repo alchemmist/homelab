@@ -221,3 +221,9 @@ analysis. Do not clear queue state or bypass leases; reconcile ambiguous GitHub
 writes rather than blindly retrying. Disabling dispatch does not cancel in-flight
 executions. Keep the independent blog dry-run and existing artifact limitations:
 text artifacts are in issue comments; S3 is not deployed and is separate work.
+
+Security integration: dispatch uses CUSTOM.socratSpiDispatchWebhook with the
+existing httpHeaderAuth credential, not the built-in Webhook (which emits incoming
+authentication headers). Only `{dispatch:true}` enters execution data. Credential
+comparison occurs in the trigger; POST acknowledgement is immediate. Worker egress
+is restricted to automation/app=n8n pod TCP5678 for the fixed callback.

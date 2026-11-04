@@ -1,0 +1,8 @@
+'use strict';
+const test=require('node:test'),assert=require('node:assert/strict');
+const {SocratSpiDispatchWebhook}=require('../../charts/n8n/extensions/SocratSpiDispatchWebhook.node.js');
+function context(headers){const response={status:null,writeHead(n){this.status=n;},end(){}};return {response,getRequestObject:()=>({headers,body:{token:'must-not-appear'}}),getResponseObject:()=>response,getCredentials:async()=>({name:'X-Worker-Token',value:'private-worker-secret'})};}
+test('valid dispatch never emits authentication headers or request payload',async()=>{const c=context({'x-worker-token':'private-worker-secret',cookie:'private-cookie'});const r=await new SocratSpiDispatchWebhook().webhook(c);assert.deepEqual(r.workflowData,[[{json:{dispatch:true}}]]);assert(!JSON.stringify(r).includes('private-'));assert.equal(r.webhookResponse.status,'accepted');});
+test('missing wrong and array-valued dispatch credentials fail closed',async()=>{for(const v of [undefined,'incorrect',['private-worker-secret']]){const c=context({'x-worker-token':v});const r=await new SocratSpiDispatchWebhook().webhook(c);assert.equal(c.response.status,401);assert.equal(r.noWebhookResponse,true);assert(!r.workflowData);}});
+test('installed bound-context convention is supported',async()=>{const c=context({'x-worker-token':'private-worker-secret'});const r=await SocratSpiDispatchWebhook.prototype.webhook.call(c);assert.equal(r.workflowData[0][0].json.dispatch,true);});
+test('dispatch trigger is POST with immediate acknowledgement and same credential',()=>{const d=new SocratSpiDispatchWebhook().description;assert.equal(d.webhooks[0].httpMethod,'POST');assert.equal(d.webhooks[0].responseMode,'onReceived');assert.equal(d.credentials[0].name,'httpHeaderAuth');});
