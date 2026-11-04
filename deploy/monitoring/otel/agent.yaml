@@ -45,6 +45,15 @@ processors:
     - key: host.name
       action: upsert
       value: ${env:OTEL_NODE_NAME}
+  transform/journal-identity:
+    error_mode: propagate
+    log_statements:
+    - context: log
+      statements:
+      - set(attributes["service.name"], body["_SYSTEMD_UNIT"]) where IsMap(body) and body["_SYSTEMD_UNIT"] != nil
+  groupbyattrs/journal-identity:
+    keys:
+    - service.name
   transform/journal:
     error_mode: propagate
     log_statements:
@@ -55,7 +64,6 @@ processors:
       - set(severity_number, SEVERITY_NUMBER_WARN) where IsMap(body) and String(body["PRIORITY"]) == "4"
       - set(severity_number, SEVERITY_NUMBER_INFO) where IsMap(body) and IsMatch(String(body["PRIORITY"]), "^[56]$")
       - set(severity_number, SEVERITY_NUMBER_DEBUG) where IsMap(body) and String(body["PRIORITY"]) == "7"
-      - set(resource.attributes["service.name"], body["_SYSTEMD_UNIT"]) where IsMap(body) and body["_SYSTEMD_UNIT"] != nil
       - set(body, body["MESSAGE"]) where IsMap(body) and body["MESSAGE"] != nil
   batch/metrics:
     timeout: 1s
@@ -175,6 +183,8 @@ service:
       - memory_limiter
       - filter/log-ingestion-cut
       - resource
+      - transform/journal-identity
+      - groupbyattrs/journal-identity
       - transform/journal
       - transform/log-identity
       - groupbyattrs/log-severity

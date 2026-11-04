@@ -51,7 +51,7 @@
     - name: Preserve exact live configuration for explicit recovery
       ansible.builtin.copy:
         src: /etc/homelab-otel/agent.yaml
-        dest: /etc/homelab-otel/agent-pre-logs-rollout.yaml
+        dest: '/etc/homelab-otel/agent-pre-logs-{{ logging_private_dir | basename }}.yaml'
         remote_src: true
         force: false
         mode: '0600'

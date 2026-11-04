@@ -54,6 +54,17 @@ class AgentLoggingTests(unittest.TestCase):
         self.assertIn('PRIORITY', str(self.agent['processors']['transform/journal']))
         self.assertIn('host.name', str(self.agent['processors']['resource']))
 
+    def test_journal_identity_is_split_before_shared_resource_promotion(self):
+        processors = self.agent['processors']
+        identity = str(processors['transform/journal-identity'])
+        self.assertIn('set(attributes["service.name"], body["_SYSTEMD_UNIT"])', identity)
+        self.assertNotIn('resource.attributes', identity)
+        self.assertEqual(processors['groupbyattrs/journal-identity']['keys'], ['service.name'])
+        self.assertNotIn('service.name', str(processors['transform/journal']))
+        chain = self.agent['service']['pipelines']['logs']['processors']
+        self.assertLess(chain.index('transform/journal-identity'), chain.index('groupbyattrs/journal-identity'))
+        self.assertLess(chain.index('groupbyattrs/journal-identity'), chain.index('transform/journal'))
+
     def test_serial_rollout_validates_before_handler_flush(self):
         play = yaml.safe_load((ROOT / 'ansible/playbooks/otel-production-agents.yml').read_text())[0]
         self.assertEqual(play['serial'], 1)
