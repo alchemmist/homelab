@@ -10,15 +10,23 @@ receivers:
     trim_metric_suffixes: false
     config: ${file:${env:OTEL_SCRAPE_CONFIG}}
   filelog:
-    include: [/var/log/pods/*/*/*.log]
-    exclude: [/var/log/pods/*_otel-*_*/*/*.log]
+    include:
+    - /var/log/pods/*/*/*.log
+    exclude:
+    - /var/log/pods/*_otel-*_*/*/*.log
     start_at: beginning
     storage: file_storage
     include_file_path: true
     max_log_size: 1MiB
     operators:
-      - type: container
-        id: container-parser
+    - type: container
+      id: container-parser
+    retry_on_failure:
+      enabled: true
+      initial_interval: 1s
+      max_interval: 30s
+      max_elapsed_time: 0s
+    poll_interval: 200ms
   journald:
     storage: file_storage
     start_at: end
@@ -27,31 +35,69 @@ processors:
     error_mode: propagate
     logs:
       log_record:
-        - 'time_unix_nano == 0 or time_unix_nano < ${env:OTEL_LOG_INGESTION_START_NS}'
+      - time_unix_nano == 0 or time_unix_nano < ${env:OTEL_LOG_INGESTION_START_NS}
   memory_limiter:
     check_interval: 1s
     limit_mib: 208
     spike_limit_mib: 48
   resource:
     attributes:
-      - key: host.name
-        action: upsert
-        value: ${env:OTEL_NODE_NAME}
+    - key: host.name
+      action: upsert
+      value: ${env:OTEL_NODE_NAME}
   transform/journal:
     error_mode: propagate
     log_statements:
-      - context: log
-        statements:
-          - set(resource.attributes["service.name"], body["_SYSTEMD_UNIT"]) where IsMap(body) and body["_SYSTEMD_UNIT"] != nil
-          - set(body, body["MESSAGE"]) where IsMap(body) and body["MESSAGE"] != nil
+    - context: log
+      statements:
+      - set(severity_number, SEVERITY_NUMBER_ERROR) where IsMap(body) and body["PRIORITY"] != nil and IsMatch(String(body["PRIORITY"]),
+        "^[0-3]$")
+      - set(severity_number, SEVERITY_NUMBER_WARN) where IsMap(body) and String(body["PRIORITY"]) == "4"
+      - set(severity_number, SEVERITY_NUMBER_INFO) where IsMap(body) and IsMatch(String(body["PRIORITY"]), "^[56]$")
+      - set(severity_number, SEVERITY_NUMBER_DEBUG) where IsMap(body) and String(body["PRIORITY"]) == "7"
+      - set(resource.attributes["service.name"], body["_SYSTEMD_UNIT"]) where IsMap(body) and body["_SYSTEMD_UNIT"] != nil
+      - set(body, body["MESSAGE"]) where IsMap(body) and body["MESSAGE"] != nil
   batch/metrics:
     timeout: 1s
     send_batch_size: 1000
     send_batch_max_size: 2000
-  batch/logs:
-    timeout: 1s
-    send_batch_size: 8
-    send_batch_max_size: 8
+  transform/log-identity:
+    error_mode: propagate
+    log_statements:
+    - context: log
+      statements:
+      - set(resource.attributes["service.name"], resource.attributes["k8s.container.name"]) where resource.attributes["service.name"]
+        == nil and resource.attributes["k8s.container.name"] != nil
+      - set(resource.attributes["service.name"], "host-journal") where resource.attributes["service.name"] == nil
+      - set(resource.attributes["k8s.namespace.name"], "host") where resource.attributes["k8s.namespace.name"] == nil
+      - set(severity_text, "unknown")
+      - set(severity_text, "trace") where severity_number >= 1 and severity_number < 5
+      - set(severity_text, "debug") where severity_number >= 5 and severity_number < 9
+      - set(severity_text, "info") where severity_number >= 9 and severity_number < 13
+      - set(severity_text, "warn") where severity_number >= 13 and severity_number < 17
+      - set(severity_text, "error") where severity_number >= 17 and severity_number < 21
+      - set(severity_text, "fatal") where severity_number >= 21
+      - set(severity_text, "debug") where severity_number == 0 and IsString(body) and IsMatch(body, "(?i)\bdebug\b")
+      - set(severity_text, "info") where severity_number == 0 and IsString(body) and IsMatch(body, "(?i)\binfo\b")
+      - set(severity_text, "warn") where severity_number == 0 and IsString(body) and IsMatch(body, "(?i)\bwarn(ing)?\b")
+      - set(severity_text, "error") where severity_number == 0 and IsString(body) and IsMatch(body, "(?i)\b(error|exception)\b")
+      - set(severity_text, "fatal") where severity_number == 0 and IsString(body) and IsMatch(body, "(?i)\b(fatal|panic)\b")
+      - set(attributes["severity"], severity_text)
+  transform/log-privacy:
+    error_mode: propagate
+    log_statements:
+    - context: resource
+      statements:
+      - delete_matching_keys(attributes, "(?i).*(authorization|password|secret|token|cookie|prompt|completion|request.body|response.body).*")
+    - context: log
+      statements:
+      - set(body, String(body)) where not IsString(body)
+      - delete_matching_keys(attributes, "(?i).*(authorization|password|secret|token|cookie|prompt|completion|request.body|response.body).*")
+      - replace_pattern(body, "(?i)Bearer[ \\t]+[A-Za-z0-9._~+/=-]+", "Bearer <redacted>") where IsString(body)
+      - replace_pattern(body, "(?i)(password|secret|token|api[_-]?key|authorization)[\\\"' \\t:=]+[^ \\t,;\\\"']+", "credential=<redacted>")
+        where IsString(body)
+      - replace_pattern(body, "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}", "<redacted-email>") where IsString(body)
+      - replace_pattern(body, "\\?[^ \\t\\\"]+", "?<redacted-query>") where IsString(body)
 exporters:
   otlp:
     endpoint: ${env:OTEL_CLUSTER_ENDPOINT}
@@ -68,22 +114,54 @@ exporters:
     retry_on_failure:
       enabled: true
       max_elapsed_time: 0s
+  otlp/logs:
+    endpoint: ${env:OTEL_CLUSTER_ENDPOINT}
+    tls:
+      ca_file: ${env:OTEL_TLS_DIR}/ca.crt
+      cert_file: ${env:OTEL_TLS_DIR}/client.crt
+      key_file: ${env:OTEL_TLS_DIR}/client.key
+      server_name_override: ${env:OTEL_CLUSTER_TLS_NAME}
+    sending_queue:
+      storage: file_storage
+      sizer: bytes
+      queue_size: 134217728
+      num_consumers: 2
+      block_on_overflow: true
+    retry_on_failure:
+      enabled: true
+      max_elapsed_time: 0s
 service:
-  extensions: [file_storage, health_check]
+  extensions:
+  - file_storage
+  - health_check
   telemetry:
     metrics:
       readers:
-        - pull:
-            exporter:
-              prometheus:
-                host: 127.0.0.1
-                port: 8888
+      - pull:
+          exporter:
+            prometheus:
+              host: 127.0.0.1
+              port: 8888
   pipelines:
     metrics:
-      receivers: [prometheus]
-      processors: [memory_limiter, resource, batch/metrics]
-      exporters: [otlp]
+      receivers:
+      - prometheus
+      processors:
+      - memory_limiter
+      - resource
+      - batch/metrics
+      exporters:
+      - otlp
     logs:
-      receivers: [filelog, journald]
-      processors: [memory_limiter, filter/log-ingestion-cut, resource, transform/journal, batch/logs]
-      exporters: [otlp]
+      receivers:
+      - filelog
+      - journald
+      processors:
+      - memory_limiter
+      - filter/log-ingestion-cut
+      - resource
+      - transform/journal
+      - transform/log-identity
+      - transform/log-privacy
+      exporters:
+      - otlp/logs

@@ -2,10 +2,17 @@
 - name: Install persistent native host agents and trace gateway
   hosts: socrat-0:socrat-1:socrat-2:socrat-3
   gather_facts: false
+  serial: 1
   become: true
   any_errors_fatal: true
   vars:
     native_files: [ca.crt, client.crt, client.key, server.crt, server.key]
+  handlers:
+    - name: Restart validated host agent
+      ansible.builtin.systemd_service:
+        name: homelab-otel-agent.service
+        daemon_reload: true
+        state: restarted
   tasks:
     - name: Prepare immutable upstream executable and configuration locations
       ansible.builtin.file:
@@ -40,6 +47,7 @@
         src: '{{ otel_production_artifacts }}/{{ inventory_hostname }}-agent.yaml'
         dest: /etc/homelab-otel/agent.yaml
         mode: '0644'
+      notify: Restart validated host agent
     - name: Install frozen alias source for independent exporter
       ansible.builtin.copy:
         src: '{{ otel_production_bundle }}/{{ inventory_hostname }}.yaml'
@@ -104,6 +112,24 @@
           UMask=0077
           [Install]
           WantedBy=multi-user.target
+      notify: Restart validated host agent
+    - name: Validate installed host agent configuration before restart
+      ansible.builtin.command:
+        argv:
+          - /usr/local/lib/homelab-otel/otelcol-contrib
+          - validate
+          - --config=/etc/homelab-otel/agent.yaml
+      environment:
+        OTEL_NODE_NAME: '{{ inventory_hostname }}'
+        OTEL_STORAGE_DIR: /var/lib/homelab-otel-agent
+        OTEL_TLS_DIR: /var/lib/homelab-otel/tls
+        OTEL_SCRAPE_CONFIG: /etc/homelab-otel/scrape.yaml
+        OTEL_CLUSTER_ENDPOINT: 10.250.0.1:4317
+        OTEL_CLUSTER_TLS_NAME: kube-prometheus-stack-prometheus.cattle-monitoring-system.svc
+        OTEL_LOG_INGESTION_START_NS: '{{ otel_production_boundary }}'
+      changed_when: false
+    - name: Apply validated agent changes before advancing serial rollout
+      ansible.builtin.meta: flush_handlers
     - name: Enable production native sources and full logs agent
       ansible.builtin.systemd_service:
         name: '{{ item }}'
