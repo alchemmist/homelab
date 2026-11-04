@@ -142,6 +142,7 @@ class Store:
               lease REAL NOT NULL DEFAULT 0, attempts INTEGER NOT NULL DEFAULT 0,
               deliveries INTEGER NOT NULL DEFAULT 1, result TEXT NOT NULL DEFAULT '{}',
               issue INTEGER NOT NULL DEFAULT 0, intent TEXT, error TEXT);
+            CREATE TABLE IF NOT EXISTS dispatch (singleton INTEGER PRIMARY KEY CHECK(singleton=1), token TEXT NOT NULL, deadline REAL NOT NULL, attempts INTEGER NOT NULL);
             CREATE INDEX IF NOT EXISTS runnable ON jobs(state,available,lease);
             CREATE INDEX IF NOT EXISTS episode ON jobs(episode);
             ''')
@@ -182,6 +183,7 @@ class Store:
     def claim(self):
         now=time.time()
         with self.db() as c:
+            c.execute('DELETE FROM dispatch WHERE singleton=1')
             if c.execute("SELECT 1 FROM jobs WHERE state='processing' AND lease>?",(now,)).fetchone(): return {'job_id':''}
             row=c.execute("SELECT id FROM jobs WHERE state IN ('queued','retry','processing') AND available<=? AND lease<=? ORDER BY created,id LIMIT 1",(now,now)).fetchone()
             if not row:return {'job_id':''}
@@ -193,7 +195,7 @@ class Store:
         now=time.time()
         with self.db() as c:
             c.execute('UPDATE jobs SET stage=?,result=?,updated=?,lease=?'+''.join(','+k+'=?' for k in fields)+' WHERE id=?',
-                      [stage,json.dumps(result),now,now+1500,*fields.values(),key])
+                      [stage,json.dumps(result),now,0 if fields.get('state') in ('complete','dry_run','dead') else now+1500,*fields.values(),key])
     def fail(self,key,code):
         job=self.get(key);now=time.time();dead=job['attempts']>=8 or code=='WRITE_NEEDS_REVIEW'
         with self.db() as c:
@@ -207,3 +209,27 @@ class Store:
             counts={r['state']:r['n'] for r in c.execute('SELECT state,count(*) n FROM jobs GROUP BY state')}
             oldest=c.execute("SELECT min(created) FROM jobs WHERE state IN ('queued','retry','processing')").fetchone()[0]
         return {'counts':counts,'oldest_pending_seconds':max(0,int(time.time()-oldest)) if oldest else 0}
+
+    def reserve_dispatch(self, now=None):
+        """Reserve one wake durably; return (reservation id, next deadline)."""
+        now=time.time() if now is None else now
+        with self.db() as c:
+            active=c.execute("SELECT max(lease) FROM jobs WHERE state='processing' AND lease>?",(now,)).fetchone()[0]
+            if active:return None,active
+            due=c.execute("SELECT min(max(available,lease)) FROM jobs WHERE state IN ('queued','retry','processing')").fetchone()[0]
+            if due is None:return None,None
+            r=c.execute('SELECT * FROM dispatch WHERE singleton=1').fetchone()
+            deadline=max(due,r['deadline'] if r else 0)
+            if deadline>now:return None,deadline
+            import uuid
+            token=uuid.uuid4().hex
+            attempts=(r['attempts'] if r else 0)+1
+            # Both successful and ambiguous responses await callback acknowledgement.
+            deadline=now+min(300,30*2**min(attempts-1,4))
+            c.execute('INSERT OR REPLACE INTO dispatch VALUES(1,?,?,?)',(token,deadline,attempts))
+            return token,deadline
+
+    def dispatch_status(self):
+        with self.db() as c:
+            row=c.execute('SELECT deadline,attempts FROM dispatch WHERE singleton=1').fetchone()
+            return dict(row) if row else {'deadline':0,'attempts':0}

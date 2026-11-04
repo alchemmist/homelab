@@ -5,6 +5,7 @@ import os
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from dispatcher import Dispatcher
 from core import Failure, Store, digest, normalize, render
 from integrations import Evidence, GitHub, HTTP, Model, REQUEST_DEADLINE
 from evidence_bundle import index_markdown, publish_parts
@@ -105,6 +106,8 @@ def serve():
     engine=Engine(store,GitHub(http,os.environ.get('GITHUB_TOKEN_FILE','/github/token')),
                   Model(http,os.environ['LITELLM_KEY']),Evidence(http,os.environ['GRAFANA_TOKEN'],os.environ['GRAFANA_URL'],github=GitHub(http,os.environ.get('GITHUB_TOKEN_FILE','/github/token'))),
                   write=os.environ.get('WRITE_ENABLED')=='true')
+    dispatcher=Dispatcher(store,os.environ['WORKER_TOKEN'],enabled=os.environ.get('SPI_DISPATCH_ENABLED','false')=='true')
+    dispatcher.start()
     class Handler(BaseHTTPRequestHandler):
         def log_message(self,*args):pass
         def send(self,status,body,content_type='application/json'):
@@ -119,6 +122,8 @@ def serve():
                 for state in ['queued','retry','processing','complete','dry_run','dead']:
                     lines.append('socrat_spi_jobs{state="'+state+'"} '+str(h['counts'].get(state,0)))
                 lines+=['# TYPE socrat_spi_oldest_pending_seconds gauge','socrat_spi_oldest_pending_seconds '+str(h['oldest_pending_seconds'])]
+                d=store.dispatch_status()
+                lines+=['socrat_spi_dispatch_enabled '+str(int(dispatcher.enabled)), 'socrat_spi_dispatch_attempts '+str(d['attempts'])]
                 return self.send(200,'\n'.join(lines)+'\n','text/plain; version=0.0.4')
             return self.send(404,{'code':'NOT_FOUND'})
         def do_POST(self):
@@ -145,6 +150,7 @@ def serve():
             except Failure as e:return self.send(422,{'code':e.code})
             except (ValueError,TypeError,AttributeError):return self.send(400,{'code':'INVALID_REQUEST'})
             except Exception:return self.send(500,{'code':'INTERNAL_ERROR'})
+            finally:dispatcher.signal()
     ThreadingHTTPServer(('0.0.0.0',8080),Handler).serve_forever()
 
 if __name__=='__main__':serve()
