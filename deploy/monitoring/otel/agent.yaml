@@ -83,6 +83,8 @@ processors:
       - set(severity_text, "error") where severity_number == 0 and IsString(body) and IsMatch(body, "(?i)\b(error|exception)\b")
       - set(severity_text, "fatal") where severity_number == 0 and IsString(body) and IsMatch(body, "(?i)\b(fatal|panic)\b")
       - set(attributes["severity"], severity_text)
+  groupbyattrs/log-severity:
+    keys: [severity]
   transform/log-privacy:
     error_mode: propagate
     log_statements:
@@ -162,6 +164,7 @@ service:
       - resource
       - transform/journal
       - transform/log-identity
+      - groupbyattrs/log-severity
       - transform/log-privacy
       exporters:
       - otlp/logs

@@ -35,6 +35,8 @@ class AgentLoggingTests(unittest.TestCase):
         identity = str(self.agent['processors']['transform/log-identity'])
         for field in ['service.name', 'k8s.namespace.name', 'severity', 'unknown']:
             self.assertIn(field, identity)
+        self.assertEqual(self.agent['processors']['groupbyattrs/log-severity']['keys'], ['severity'])
+        self.assertIn('groupbyattrs/log-severity', self.agent['service']['pipelines']['logs']['processors'])
         self.assertIn('PRIORITY', str(self.agent['processors']['transform/journal']))
         self.assertIn('host.name', str(self.agent['processors']['resource']))
 
