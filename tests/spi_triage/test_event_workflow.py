@@ -27,6 +27,7 @@ class EventWorkflowTests(unittest.TestCase):
         self.assertFalse(any('schedule' in n['type'].lower() for n in w['nodes']))
         trigger = nodes['Dispatch Triage Job']
         self.assertEqual(trigger['id'], '9c393df1-a66f-41bf-acaf-b2b66f31a393')
+        self.assertEqual(trigger['webhookId'],trigger['id']) # n8n otherwise reports active but registers no production hook
         self.assertEqual(trigger['type'], 'CUSTOM.socratSpiDispatchWebhook')
         self.assertEqual(trigger['parameters'], {
             'path': 'spi-incident-triage-dispatch'})

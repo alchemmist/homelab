@@ -18,7 +18,8 @@
           "id": "SPI_WORKER_CREDENTIAL_ID",
           "name": "SPI worker internal"
         }
-      }
+      },
+      "webhookId": "9c393df1-a66f-41bf-acaf-b2b66f31a393"
     },
     {
       "name": "Claim Triage Job",
