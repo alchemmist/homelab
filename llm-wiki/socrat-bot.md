@@ -75,7 +75,7 @@ executions. Completion/failure signals the next due job. This is not exactly-onc
 publication or guaranteed diagnosis; ambiguous GitHub writes require review, not
 blind retries. See the triage runbook for backlog recovery.
 
-- [ ] Parent deploys with `SPI_DISPATCH_ENABLED=false` (default), preserving n8n
+- [ ] Parent deploys with `SPI_DISPATCH_ENABLED=false` during staging, preserving n8n
   identity, workflow IDs, credentials, encryption key/PVC, SQLite and Telegram path.
 - [ ] Parent activates the event workflow before enabling dispatch, then verifies
   lease exclusivity, empty-queue silence, backoff and lost-wake recovery.

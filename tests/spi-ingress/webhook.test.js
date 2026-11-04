@@ -17,7 +17,7 @@ test('authenticated request is queued and auth never enters execution data',asyn
 });
 test('queue failure returns retryable 503 but still triggers Telegram',async()=>{
  const old=global.fetch;global.fetch=async()=>{throw new Error('test');};
- try{const c=context(),r=await new SocratAlertWebhook().webhook(c);assert.equal(c.response.code,503);assert(r.workflowData);assert(r.noWebhookResponse);assert.equal(r.workflowData[0][0].json.triageQueued,false);}finally{global.fetch=old;}
+ try{const c=context(),r=await new SocratAlertWebhook().webhook(c);assert.equal(c.response.code,503);assert(r.workflowData);assert(r.noWebhookResponse);assert.equal(r.workflowData[0][0].json.triageQueued,false);assert.match(r.workflowData[0][0].json.triageEvents[0].episode,/^[a-f0-9]{64}$/);}finally{global.fetch=old;}
 });
 test('legacy migration mode cannot enqueue unauthenticated incidents',async()=>{
  const old=global.fetch;global.fetch=async()=>{throw new Error('Must not call');};

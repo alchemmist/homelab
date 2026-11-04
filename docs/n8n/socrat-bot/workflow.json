@@ -28,7 +28,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const raw = items[0].json;\nconst payload = raw.body && (Array.isArray(raw.body.alerts) || raw.body.status) ? raw.body : raw;\nconst alerts = Array.isArray(payload.alerts) ? payload.alerts : [];\nif (!alerts.length) return [];\n\nreturn alerts.map(function (alert) {\n  return {\n    json: {\n      ownerChatId: 891074228,\n      source: payload.externalURL || 'socrat-alerts',\n      alert: {\n        status: alert.status || 'firing',\n        fingerprint: alert.fingerprint || '',\n        startsAt: alert.startsAt,\n        endsAt: alert.endsAt,\n        generatorURL: alert.generatorURL || '',\n        labels: alert.labels || {},\n        annotations: alert.annotations || {},\n      },\n    },\n  };\n});\n"
+        "jsCode": "const raw = items[0].json;\nconst payload = raw.body && (Array.isArray(raw.body.alerts) || raw.body.status) ? raw.body : raw;\nconst alerts = Array.isArray(payload.alerts) ? payload.alerts : [];\nif (!alerts.length) return [];\n\nreturn alerts.map(function (alert, index) {\n  return {\n    json: {\n      ownerChatId: 891074228,\n      source: payload.externalURL || 'socrat-alerts',\n      alert: {\n        status: alert.status || 'firing',\n        ...(raw.triageEvents && raw.triageEvents[index] ? {spi_episode: raw.triageEvents[index].episode} : {}),\n        fingerprint: alert.fingerprint || '',\n        startsAt: alert.startsAt,\n        endsAt: alert.endsAt,\n        generatorURL: alert.generatorURL || '',\n        labels: alert.labels || {},\n        annotations: alert.annotations || {},\n      },\n    },\n  };\n});\n"
       },
       "id": "c0ffee00-0002-4000-8000-000000000002",
       "name": "One item per alert",

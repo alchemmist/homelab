@@ -338,3 +338,54 @@ existing httpHeaderAuth credential, not the built-in Webhook (which emits incomi
 authentication headers). Only `{dispatch:true}` enters execution data. Credential
 comparison occurs in the trigger; POST acknowledgement is immediate. Worker egress
 is restricted to automation/app=n8n pod TCP5678 for the fixed callback.
+
+## SPI links on original Telegram cards
+
+Implementation uses the native bot API documented in the human wiki
+`wiki/content/platform/socrat-bot.md`, not text patching or replacement messages.
+A primary GitHub receipt (issue root for a newly created issue, exact primary
+narrative comment permalink for a match) is committed atomically with a desired
+link outbox row. Artifact/index comments are never the Telegram target.
+
+The ingress carries the authoritative SPI episode into `alert.spi_episode`.
+On a queue503 it computes the identical bounded canonical digest so an upstream
+retry does not orphan the Telegram card. Native bot keys retain `/spi/<episode>`;
+firing/resolved share a card, a later episode has another key, and a delayed firing
+cannot regress a resolved episode. Raw headers never enter n8n output. The bot
+response supplies immutable key and acknowledged copy IDs; n8n posts a bounded
+receipt callback. If that callback is lost, an independent discovery loop finds
+retained cards via `/v1/cards?status=all&episode=<digest>`. Completed pre-migration
+SPI jobs are associated only through trusted GitHub markers, without reposting.
+
+Bot `/v1/cards/links` receives `key,url,label=SPI,expected_copies,revision`.
+The bot commits highest accepted desired revision/URL BEFORE editing, separately
+from per-copy applied revision. PartialHTTP200 remains pending. Retries re-edit
+failed copies; native 'message is not modified' is an acknowledgement, cached
+spi_url/GET metadata is not. The shared native per-key lock protects alert/link/
+note/mute operations; deployment remains one serving bot process with Recreate.
+No SQLite transaction spans network/model calls. Independent delivery and
+per-episode-backoff discovery loops do not block the model queue or each other.
+Applied desired links are reasserted every6h to converge after ambiguous remote
+completion. All retry rows survive restart; no retry republishes GitHub.
+
+A resolved event without a prior SPI now receives semantic analysis rather than
+being silently dropped when link tracking is active. It is analyzed as a recovery
+observation, not an invented firing. A closed associated issue is NOT reopened,
+and no fake new primary receipt/root target replaces its previous exact link.
+
+Provisioning copies only native `INTERNAL_TOKEN` into existing worker Secret as
+`BOT_INTERNAL_TOKEN`, never Telegram token/DB credentials. `telegramLinksEnabled`
+remains false during staging, then enabled only after bot migration0009, callback
+workflow and review are verified. Egress is limited to the native bot API8080.
+Worker emits internal queue health every60s for existing monitoring, not an n8n
+Schedule execution. `spi-triage-telegram-links` alerts on pending link backlog.
+
+Guarantee scope: durably accepted alerts and explicitly acknowledged native card
+copies are retried until linked while dependencies remain available. Ambiguous
+initial Telegram sendMessage cannot be claimed exactly-once. Historical replaced
+legacy messages have no trustworthy episode identity and are not guessed. Missing
+associations and permanently failing external services remain visible, not false
+success. Native deleted/inaccessible messages require operator intervention.
+
+Acceptance PENDING until the parent records actual rollout/card acknowledgements;
+offline test results do not establish Telegram receipt.

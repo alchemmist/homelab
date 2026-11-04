@@ -12,11 +12,14 @@ from core import Failure, Store, digest, normalize, render
 from integrations import Evidence, GitHub, HTTP, Model, REQUEST_DEADLINE
 from evidence_bundle import index_markdown, publish_parts
 from grafana_links import repair_markdown_links
+from telegram_delivery import Delivery
+from telegram_links import primary_url
+from card_correlation import record_receipt
 
 
 def log_event(event, level='info', **fields):
     # Only operational counters and bounded machine codes, never evidence or IDs.
-    allowed = {'stage', 'code', 'phase', 'recovered_jobs', 'oldest_pending_seconds', 'dead_jobs'}
+    allowed = {'stage', 'code', 'phase', 'recovered_jobs', 'oldest_pending_seconds', 'dead_jobs', 'telegram_links_pending'}
     record = {k: v for k, v in fields.items() if k in allowed}
     for key in ('stage', 'phase', 'code'):
         if key in record:
@@ -29,9 +32,9 @@ def log_event(event, level='info', **fields):
     print(json.dumps(record, separators=(',', ':')), flush=True)
 
 class Engine:
-    def __init__(self,store,github,model,evidence,write=False):
+    def __init__(self,store,github,model,evidence,write=False,delivery=None):
         self.store=store;self.github=github;self.model=model;self.evidence=evidence;self.write=write
-        self.lock=threading.Lock()
+        self.lock=threading.Lock();self.delivery=delivery
     def claim(self):
         # A socket call may outlive the durable lease. Never reclaim while this
         # process still owns a stage, including its final save/failure handling.
@@ -62,13 +65,14 @@ class Engine:
         if name=='match':
             if resolved:
                 r['resolved_issue']=self.store.episode_issue(event['episode'])
-            else:
+                if self.delivery and not r['resolved_issue']:r['analyze_recovery']=True
+            if not resolved or r.get('analyze_recovery'):
                 issues=self.github.snapshot();r['open_signature']=digest([(x['number'],x['updated_at']) for x in issues])
                 r['match']=self.model.match(event,issues)
         elif name=='collect':
-            if not resolved or r.get('resolved_issue'):r['evidence']=self.evidence.collect(event)
+            if not resolved or r.get('resolved_issue') or r.get('analyze_recovery'):r['evidence']=self.evidence.collect(event)
         elif name=='analyze':
-            if not resolved:
+            if not resolved or r.get('analyze_recovery'):
                 r['report']=self.model.analyze(event,r['match'],r['evidence']);render(r['report'],event)
         elif name=='publish':
             if not self.write:
@@ -80,12 +84,15 @@ class Engine:
                 intent=json.loads(job['intent'])
                 number=intent['number'] if intent.get('primary_done') else self.github.reconcile(marker,intent['number'])
                 if not number:raise Failure('WRITE_NEEDS_REVIEW')
+                if self.delivery and not r.get('primary_publication'):
+                    self.save_primary(key,r,event,self.github.primary_reference(marker,number))
                 self.finish_evidence(key,r,number)
                 return {'job_id':key,'status':'reconciled','issue_number':number}
-            if resolved:
+            if resolved and not r.get('analyze_recovery'):
                 number=r['resolved_issue']
-                if not number or self.github.request('GET','/issues/'+str(number)).get('state')!='open':
-                    self.store.save(key,4,r,state='complete');return {'job_id':key,'status':'resolved_without_open_spi'}
+                existing=self.github.request('GET','/issues/'+str(number)) if number else None
+                if not number or existing.get('state')!='open':
+                    self.store.save(key,4,r,state='complete',issue=number or 0);return {'job_id':key,'status':'resolved_without_open_spi'}
                 title='';body='## Incident resolved\n\nObserved recovery at '+(event['endsAt'] or 'an unspecified time')+'.\n\nResolution does not establish root-cause remediation; this issue remains open.\n\n'+marker
             else:
                 issues=self.github.snapshot()
@@ -97,21 +104,33 @@ class Engine:
             self.store.save(key,3,r,intent=json.dumps({'number':number}))
             try:
                 if number:
-                    self.github.request('POST','/issues/'+str(number)+'/comments',{'body':body})
+                    posted=self.github.request('POST','/issues/'+str(number)+'/comments',{'body':body})
+                    kind='comment'
                 else:
-                    number=self.github.request('POST','/issues',{'title':title,'body':body})['number']
+                    posted=self.github.request('POST','/issues',{'title':title,'body':body});number=posted['number'];kind='issue'
             except Failure as e:
                 # 4xx are definitive rejections. Network errors/5xx can hide a
                 # successful write: keep intent and never blindly repeat the POST.
                 if e.code.startswith('HTTP_4') and e.code!='HTTP_408':
                     self.store.save(key,3,r,intent=None)
                 raise
+            if self.delivery:
+                publication={'kind':kind,'issue_number':number,'id':posted.get('id'),'html_url':posted.get('html_url'),'role':'primary'}
+                self.save_primary(key,r,event,publication)
             self.finish_evidence(key,r,number)
             log_event('publication_ok')
             return {'job_id':key,'status':'published','issue_number':number}
         self.store.save(key,wanted,r)
         return {'job_id':key,'status':'processing','stage':wanted}
 
+
+    def save_primary(self,key,result,event,publication):
+        try:primary_url(publication)
+        except ValueError:raise Failure('INVALID_PRIMARY_REFERENCE')from None
+        result['primary_publication']=publication
+        def queue(c):self.delivery.links.record_primary_publication(key,event['episode'],2 if event['status']=='resolved'else 1,publication,connection=c)
+        self.store.save(key,3,result,intent=json.dumps({'number':publication['issue_number'],'primary_done':True}),on_save=queue)
+        self.delivery.signal()
 
     def finish_evidence(self,key,result,number):
         intent=json.dumps({'number':number,'primary_done':True})
@@ -150,11 +169,22 @@ def serve():
     http=HTTP();store=Store(os.environ.get('SPI_DATABASE','/data/spi.sqlite'))
     recovered=store.recover_on_start()
     log_event('worker_started', recovered_jobs=recovered)
+    delivery=Delivery(store,os.environ.get('BOT_INTERNAL_TOKEN',''),enabled=os.environ.get('SPI_TELEGRAM_LINKS_ENABLED','false')=='true')
     engine=Engine(store,GitHub(http,os.environ.get('GITHUB_TOKEN_FILE','/github/token')),
                   Model(http,os.environ['LITELLM_KEY']),Evidence(http,os.environ['GRAFANA_TOKEN'],os.environ['GRAFANA_URL'],github=GitHub(http,os.environ.get('GITHUB_TOKEN_FILE','/github/token'))),
-                  write=os.environ.get('WRITE_ENABLED')=='true')
+                  write=os.environ.get('WRITE_ENABLED')=='true',delivery=delivery)
+    delivery.github=engine.github
     dispatcher=Dispatcher(store,os.environ['WORKER_TOKEN'],enabled=os.environ.get('SPI_DISPATCH_ENABLED','false')=='true',busy=engine.lock.locked)
-    dispatcher.start()
+    dispatcher.start();delivery.start()
+    def heartbeat():
+        while True:
+            try:
+                h=store.health()
+                with store.db()as c:pending=c.execute("SELECT count(*)FROM spi_links WHERE state!='applied'").fetchone()[0]
+                log_event('queue_health',oldest_pending_seconds=h['oldest_pending_seconds'],dead_jobs=h['counts'].get('dead',0),telegram_links_pending=pending)
+            except Exception:log_event('health_read_failed','error')
+            time.sleep(60)
+    threading.Thread(target=heartbeat,name='spi-health',daemon=True).start()
     class Handler(BaseHTTPRequestHandler):
         def log_message(self,*args):pass
         def send(self,status,body,content_type='application/json'):
@@ -169,6 +199,9 @@ def serve():
                 for state in ['queued','retry','processing','complete','dry_run','dead']:
                     lines.append('socrat_spi_jobs{state="'+state+'"} '+str(h['counts'].get(state,0)))
                 lines+=['# TYPE socrat_spi_oldest_pending_seconds gauge','socrat_spi_oldest_pending_seconds '+str(h['oldest_pending_seconds'])]
+                with store.db()as c:
+                    pending=c.execute("SELECT count(*)FROM spi_links WHERE state!='applied'").fetchone()[0]
+                lines+=['socrat_spi_telegram_links_pending '+str(pending),'socrat_spi_telegram_links_enabled '+str(int(delivery.enabled))]
                 d=store.dispatch_status()
                 lines+=['socrat_spi_dispatch_enabled '+str(int(dispatcher.enabled)), 'socrat_spi_dispatch_attempts '+str(d['attempts'])]
                 return self.send(200,'\n'.join(lines)+'\n','text/plain; version=0.0.4')
@@ -182,7 +215,12 @@ def serve():
                     alerts=data.get('alerts')
                     if not isinstance(alerts,list) or not 0<len(alerts)<=200:raise Failure('INVALID_ALERT_GROUP')
                     events=[normalize({'source':data.get('externalURL','socrat-alerts'),'alert':a})for a in alerts]
-                    result={'accepted':len(store.enqueue_many(events))}
+                    result={'accepted':len(store.enqueue_many(events)),'events':[{'event_key':e['event_key'],'episode':e['episode']}for e in events]}
+                elif self.path=='/telegram-receipt':
+                    result=record_receipt(store,data)
+                    receipt=data.get('receipt')
+                    if isinstance(receipt,dict) and not receipt.get('error'):
+                        delivery.receipt({'episode':result['episode']},receipt)
                 elif self.path=='/claim':
                     result=engine.claim();h=store.health()
                     log_event('queue_health', oldest_pending_seconds=h['oldest_pending_seconds'], dead_jobs=h['counts'].get('dead',0))

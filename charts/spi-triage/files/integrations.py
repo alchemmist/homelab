@@ -81,12 +81,12 @@ class GitHub:
         if not token: raise Failure('GITHUB_TOKEN_UNAVAILABLE')
         return self.http.request(method,self.root+path,{'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'},body)
     def pages(self,path):
-        page=1
+        page=1;page_size=20
         while True:
-            data=self.request('GET',path+('&' if '?' in path else '?')+'per_page=100&page='+str(page))
+            data=self.request('GET',path+('&' if '?' in path else '?')+'per_page='+str(page_size)+'&page='+str(page))
             if not isinstance(data,list): raise Failure('INVALID_GITHUB_PAGE')
             yield from data
-            if len(data)<100: break
+            if len(data)<page_size: break
             page+=1
             if page>100: raise Failure('GITHUB_PAGINATION_BUDGET_EXCEEDED')
     def issues(self,state='open'):
@@ -112,6 +112,24 @@ class GitHub:
             result.append(clean({'number':x['number'],'title':x['title'],'body':(x.get('body') or '')[:6000], 'body_truncated':len(x.get('body') or '')>6000,
                                  'updated_at':x['updated_at'],'recent_comments':[c.get('body','')[:1200] for c in comments[-3:]]}))
         return result
+    def primary_reference(self,marker,number=0):
+        from evidence_bundle import trusted_comment
+        from telegram_links import primary_url
+        matches=[]
+        issues=[self.request('GET','/issues/'+str(number))] if number else self.issues('all')
+        for issue in issues:
+            n=issue['number']
+            if trusted_comment(issue) and marker in (issue.get('body')or''):
+                matches.append({'kind':'issue','issue_number':n,'id':issue['id'],'html_url':issue['html_url'],'role':'primary'})
+            if number:
+                for c in self.comments(n):
+                    if trusted_comment(c) and marker in(c.get('body')or''):
+                        matches.append({'kind':'comment','issue_number':n,'id':c['id'],'html_url':c['html_url'],'role':'primary'})
+        if len(matches)!=1:raise Failure('WRITE_NEEDS_REVIEW')
+        try:primary_url(matches[0])
+        except ValueError:raise Failure('INVALID_PRIMARY_REFERENCE')from None
+        return matches[0]
+
     def reconcile(self,marker,number=0):
         from evidence_bundle import trusted_comment
         if number:

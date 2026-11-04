@@ -1,6 +1,7 @@
 'use strict';
 const {logEvent}=require('./event-log');
 const {createHash,timingSafeEqual}=require('node:crypto');
+const {identity}=require('./SpiEventIdentity');
 const sensitive=/authorization|cookie|password|secret|api[_-]?key|access[_-]?token|refresh[_-]?token|x[_-]?token|private[_-]?key/i;
 function sanitize(value,secrets){
  if(typeof value==='string'){
@@ -35,18 +36,24 @@ class SocratAlertWebhook {
   }
   const safe={externalURL:String(body.externalURL||'socrat-alerts'),alerts:body.alerts.map(a=>Object.fromEntries(['status','fingerprint','labels','annotations','startsAt','endsAt','generatorURL'].filter(k=>a[k]!==undefined).map(k=>[k,a[k]])))};
   const payload=sanitize(safe,[String(ingress.token),String(worker.value)]);
-  let queued=false;
+  let queued=false,triageEvents=[];
+  if(authenticated){
+   try{triageEvents=payload.alerts.map(alert=>identity(payload.externalURL,alert));}
+   catch{res.writeHead(400);res.end('Invalid alert identity');return {noWebhookResponse:true};}
+  }
   if(authenticated){
    try{
     const r=await fetch('http://spi-triage.automation.svc:8080/enqueue-group',{method:'POST',headers:{'Content-Type':'application/json','X-Worker-Token':worker.value},body:JSON.stringify(payload),signal:AbortSignal.timeout(8000)});
-    if(!r.ok||(await r.json()).accepted!==payload.alerts.length)throw new Error('Queue unavailable');queued=true;
+    const acknowledgement=await r.json();
+    if(!r.ok||acknowledgement.accepted!==payload.alerts.length)throw new Error('Queue unavailable');
+    if(Array.isArray(acknowledgement.events))triageEvents=acknowledgement.events;queued=true;
    }catch{
     // Upstream retries recover the durable handoff; Telegram still runs now.
     res.writeHead(503);res.end('Triage queue unavailable; retry delivery');
     logEvent('spi-triage','handoff_failed');
    }
   }
-  const result={workflowData:[[{json:{body:payload,triageQueued:queued}}]]};
+  const result={workflowData:[[{json:{body:payload,triageQueued:queued,triageEvents}}]]};
   if(authenticated&&!queued)return{...result,noWebhookResponse:true};
   return{...result,webhookResponse:{status:queued?'accepted':'legacy_telegram_only'}};
  }

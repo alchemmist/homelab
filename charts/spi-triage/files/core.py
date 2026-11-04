@@ -189,13 +189,14 @@ class Store:
             if not row:return {'job_id':''}
             c.execute("UPDATE jobs SET state='processing',lease=?,attempts=attempts+1,updated=? WHERE id=?",(now+1500,now,row['id']))
             return {'job_id':row['id']}
-    def save(self,key,stage,result,**fields):
+    def save(self,key,stage,result,on_save=None,**fields):
         allowed={'state','issue','intent','error'}
         if not set(fields)<=allowed: raise ValueError('Invalid job fields')
         now=time.time()
         with self.db() as c:
             c.execute('UPDATE jobs SET stage=?,result=?,updated=?,lease=?'+''.join(','+k+'=?' for k in fields)+' WHERE id=?',
                       [stage,json.dumps(result),now,0 if fields.get('state') in ('complete','dry_run','dead') else now+1500,*fields.values(),key])
+            if on_save is not None:on_save(c)
     def fail(self,key,code):
         job=self.get(key);now=time.time();dead=job['attempts']>=8 or code=='WRITE_NEEDS_REVIEW'
         with self.db() as c:

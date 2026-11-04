@@ -74,11 +74,11 @@ class CoreTests(unittest.TestCase):
 class AdapterTests(unittest.TestCase):
     def test_github_paginates_all_open_and_excludes_pr(self):
         http=Mock();http.request.side_effect=[[
-            {'number':i,'title':'[SPI] Test','state':'open'} for i in range(100)],
+            {'number':i,'title':'[SPI] Test','state':'open'} for i in range(20)],
             [{'number':101,'title':'[SPI] Last'},{'number':102,'title':'[SPI] PR','pull_request':{}}]]
         with tempfile.NamedTemporaryFile(mode='w') as f:
             f.write('fake-token');f.flush();items=GitHub(http,f.name).issues()
-        self.assertEqual(len(items),101)
+        self.assertEqual(len(items),21)
         self.assertIn('state=open',http.request.call_args_list[0].args[1]);self.assertIn('page=2',http.request.call_args_list[1].args[1])
     def test_model_matches_every_batch(self):
         model=Model(Mock(),'fake');model.call=Mock(return_value={'issue_number':0,'reason':'Different','confidence':'low'})

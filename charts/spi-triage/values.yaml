@@ -10,3 +10,6 @@ grafanaUrl: http://kube-prometheus-stack-grafana.cattle-monitoring-system.svc.cl
 
 # Activate only after the existing SPI event webhook is registered.
 dispatchEnabled: true
+
+# Enable after reviewed native bot episode/copy/revision API rollout.
+telegramLinksEnabled: false

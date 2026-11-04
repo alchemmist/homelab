@@ -34,6 +34,10 @@ if worker is None:
  with urllib.request.urlopen(urllib.request.Request(url,data=json.dumps(body).encode(),headers={'Authorization':'Bearer '+master,'Content-Type':'application/json'}),timeout=30)as r:key=json.load(r)['key']
  worker={'WORKER_TOKEN':secrets.token_urlsafe(40),'LITELLM_KEY':key,'GRAFANA_TOKEN':get('cattle-monitoring-system','grafana-mcp-credentials')['grafana-token']}
  put('automation','spi-triage',worker)
+# Reuse only the native internal bot API token, never its Telegram token/DB URL.
+if 'BOT_INTERNAL_TOKEN' not in worker:
+ worker['BOT_INTERNAL_TOKEN']=get('socrat-bot','socrat-bot-env')['INTERNAL_TOKEN']
+ put('automation','spi-triage',worker)
 if get('automation','spi-github-installation',True)is None:put('automation','spi-github-installation',{'token':''})
 print(json.dumps({'worker':worker['WORKER_TOKEN'],'ingress':ingress['token']}))
 '''

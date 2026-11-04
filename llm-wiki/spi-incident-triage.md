@@ -227,3 +227,23 @@ existing httpHeaderAuth credential, not the built-in Webhook (which emits incomi
 authentication headers). Only `{dispatch:true}` enters execution data. Credential
 comparison occurs in the trigger; POST acknowledgement is immediate. Worker egress
 is restricted to automation/app=n8n pod TCP5678 for the fixed callback.
+
+### Original Telegram card SPI target (staging)
+
+Human API contract: `wiki/content/platform/socrat-bot.md`. Primary GitHub receipt
+and desired target commit atomically. New issue -> its root URL; match -> exact
+new narrative comment URL, never artifact/index or last comment guessed by order.
+Independent persistent link outbox uses native `/v1/cards/links`, labelSPI,
+expected copy IDs and monotonic revision. Acknowledgements cover all copies;
+partialHTTP200 and ambiguous transport retry without model/GitHub publication.
+Native desired revision is committed before network editing, separately from
+applied copy revision. Immutable episode keys preserve flaps/history; resolved
+status cannot regress on delayed duplicate firing. Lost receipt callbacks recover
+through native episode lookup; pre-migration primary URLs recover by trusted
+marker only. Discovery has independent thread/backoff and cannot stall delivery.
+Six-hour desired-state reassertion addresses eventual ambiguous-write convergence.
+
+Activation remains PENDING. Preserve native one-process/Recreate assumption,
+Bot schema0009 and existing n8n IDs/credentials/PVC. Legacy unaddressable messages
+or deleted Telegram copies are not fabricated successes. See runbook for explicit
+limits and pending-link monitoring. S3 remains a separate unimplemented step.

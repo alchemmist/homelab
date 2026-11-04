@@ -55,10 +55,18 @@ class Links:
         def save(c):
             previous = c.execute('SELECT receipt FROM spi_card_receipts WHERE episode=?', (episode,)).fetchone()
             encoded = json.dumps(safe, sort_keys=True)
-            if previous and previous[0] != encoded:
-                raise ValueError('RECEIPT_CONFLICT')
-            c.execute('INSERT OR IGNORE INTO spi_card_receipts VALUES (?,?)', (episode, encoded))
-            c.execute("UPDATE spi_links SET available=0 WHERE episode=? AND state!='applied'", (episode,))
+            if previous:
+                old=json.loads(previous[0])
+                if old.get('key')!=safe.get('key') or old.get('episode')!=safe.get('episode'):
+                    raise ValueError('RECEIPT_CONFLICT')
+                merged={(x['chat_id'],x['message_id'])for x in old.get('copies',[])}
+                merged.update((x['chat_id'],x['message_id'])for x in safe.get('copies',[]))
+                safe['copies']=[{'chat_id':chat,'message_id':message}for chat,message in sorted(merged)]
+                safe['immutable_key']=old.get('immutable_key') is True or safe.get('immutable_key') is True
+            encoded=json.dumps(safe,sort_keys=True)
+            c.execute('INSERT INTO spi_card_receipts VALUES (?,?) ON CONFLICT(episode) DO UPDATE SET receipt=excluded.receipt',(episode,encoded))
+            if not previous or previous[0]!=encoded:
+                c.execute("UPDATE spi_links SET state='pending',available=0 WHERE episode=?",(episode,))
         if connection is not None:
             save(connection)
         else:
@@ -118,7 +126,7 @@ class Links:
                     # immutable_key is trusted ingress attestation of the reviewed
                     # bot's timestamp-derived episode key, never legacy key inference.
                     expected = {(x['chat_id'], x['message_id']) for x in receipt['copies']}
-                    payload = dict(key=receipt['key'], url=row['url'], label='SPI',
+                    payload = dict(key=receipt['key'], url=row['url'], label='SPI',revision=row['revision'],
                                    expected_copies=receipt['copies'])
                     status, result = self.request('POST', '/v1/cards/links', json=payload)
                     error = 'CARD_NOT_READY' if status in (404, 409) else 'BOT_HTTP_ERROR'
@@ -137,7 +145,7 @@ class Links:
             c.execute('''UPDATE spi_links SET state=?,error=?,acknowledgement=?,
               available=?,lease=0,owner=NULL WHERE episode=? AND revision=? AND owner=?''',
                       ('applied' if applied else 'pending', error, json.dumps(ack),
-                       self.clock()+delay, row['episode'], row['revision'], owner))
+                       self.clock()+(21600 if applied else delay), row['episode'], row['revision'], owner))
             # New desired revision keeps the active lease until old request exits.
             # Its completion must not acknowledge the newer URL, only unblock it.
             c.execute("UPDATE spi_links SET lease=0,owner=NULL WHERE episode=? AND owner=? AND revision!=?",

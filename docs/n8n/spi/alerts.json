@@ -370,6 +370,96 @@
           }
         }
       ]
+    },
+    {
+      "uid": "spi-triage-telegram-links",
+      "orgID": 1,
+      "folderUID": "automation",
+      "ruleGroup": "SPI triage",
+      "title": "SPI Telegram links pending",
+      "condition": "C",
+      "for": "15m",
+      "noDataState": "Alerting",
+      "execErrState": "Alerting",
+      "isPaused": false,
+      "labels": {
+        "namespace": "automation",
+        "component": "spi-triage",
+        "severity": "warning"
+      },
+      "annotations": {
+        "summary": "SPI Telegram links pending",
+        "description": "GitHub analysis is published but native Telegram copy acknowledgements are pending. Inspect durable link outbox, immutable card association, bot API health and authentication; never rerun GitHub publication for this.",
+        "runbook_url": "https://github.com/alchemmist/homelab/blob/main/docs/n8n/spi/setup.md"
+      },
+      "notification_settings": {
+        "receiver": "SPI triage via Socrat Alerts",
+        "group_by": [
+          "alertname"
+        ],
+        "group_wait": "30s",
+        "group_interval": "5m",
+        "repeat_interval": "4h"
+      },
+      "data": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "relativeTimeRange": {
+            "from": 2400,
+            "to": 0
+          },
+          "datasourceUid": "loki",
+          "model": {
+            "datasource": {
+              "type": "loki",
+              "uid": "loki"
+            },
+            "editorMode": "code",
+            "expr": "max(max_over_time({k8s_namespace_name=\"automation\"} |= \"spi-triage\" | json | event=\"queue_health\" | unwrap telegram_links_pending [5m])) or vector(0)",
+            "queryType": "instant",
+            "refId": "A",
+            "intervalMs": 1000,
+            "maxDataPoints": 43200
+          }
+        },
+        {
+          "refId": "C",
+          "relativeTimeRange": {
+            "from": 0,
+            "to": 0
+          },
+          "datasourceUid": "__expr__",
+          "model": {
+            "refId": "C",
+            "type": "threshold",
+            "expression": "A",
+            "conditions": [
+              {
+                "evaluator": {
+                  "params": [
+                    0
+                  ],
+                  "type": "gt"
+                },
+                "operator": {
+                  "type": "and"
+                },
+                "query": {
+                  "params": [
+                    "C"
+                  ]
+                },
+                "reducer": {
+                  "params": [],
+                  "type": "last"
+                },
+                "type": "query"
+              }
+            ]
+          }
+        }
+      ]
     }
   ]
 }

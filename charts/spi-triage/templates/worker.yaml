@@ -50,6 +50,8 @@ spec:
             - secretRef:
                 name: {{ .Values.secretName }}
           env:
+            - name: SPI_TELEGRAM_LINKS_ENABLED
+              value: {{ .Values.telegramLinksEnabled | quote }}
             - name: SPI_DISPATCH_ENABLED
               value: {{ .Values.dispatchEnabled | quote }}
             - name: WRITE_ENABLED
@@ -182,6 +184,19 @@ spec:
             except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 127.0.0.0/8]
       ports:
         - port: 443
+
+    # Native bot hostNetwork is pinned to socrat-2; allow only its internal API port.
+    - to:
+        - ipBlock: {cidr: 10.250.0.2/32}
+      ports: [{port: 8080}]
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: socrat-bot
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/component: bot
+      ports: [{port: 8080}]
 
     # K3s API service and observed control-plane endpoints, not arbitrary cluster egress.
     - to:
