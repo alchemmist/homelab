@@ -19,6 +19,12 @@
 - name: Define home Traefik placement values
   ansible.builtin.set_fact:
     home_ingress_ha_traefik_values:
+      # Large registry uploads must not hit Traefik's default 60s request-body deadline.
+      # This is the k3s home ingress, distinct from the public traefik-edge process.
+      additionalArguments: >-
+        {{ (((home_ingress_ha_chart_config.stdout | from_json).spec.valuesContent | from_yaml).additionalArguments | default([])) |
+           union(['--entryPoints.websecure.transport.respondingTimeouts.readTimeout=0s',
+                  '--entryPoints.web.transport.respondingTimeouts.readTimeout=0s']) }}
       deployment:
         replicas: 2
       nodeSelector: {}
