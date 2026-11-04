@@ -2,6 +2,7 @@
 
 Часть [общего справочника](identity.md). Authentik SSO не заменяет эти контуры и
 не выдаёт SSH/root/kubectl автоматически. WireGuard/NetBird topology здесь не менять.
+Сетевой вход и полный сценарий нового админа: [NetBird](netbird.md).
 
 ## 1. Источники
 

@@ -15,6 +15,7 @@ inspector/redirect controls.** Это консолидированное опи�
 | Как войти, добавить человека, выдать/отозвать права, работать с MFA | [Ежедневные операции](identity-operations.md) |
 | Двойной логин, consent offline_access, Failed to fetch, открытая проблема n8n | [Диагностика SSO и gateway](identity-gateway-troubleshooting.md) |
 | Что сделано для каждого сервиса и как подключать следующий | [Интеграции](identity-integrations.md) |
+| Как устроен NetBird, добавить админа/ноду, что с отказоустойчивостью | [NetBird: актуальный справочник](netbird.md) |
 | Как добавить username + публичный SSH-ключ на ноды одним Ansible playbook | [SSH: короткая инструкция](ssh-user.md) |
 | Как отдельно устроены Linux/SSH, sudo, kubeconfig и Kubernetes RBAC | [Host access](identity-host-access.md) |
 | Где frontend/CSS, shadow DOM, фото/шрифты/иконки, inspector, rollback | [Quiet Mono frontend](identity-frontend.md) |
@@ -49,7 +50,9 @@ runtime Authentik/app state; подробная карта файлов есть
 - Language picker скрыт, default English/light; старые URL/session locale overrides
   пока не принуждаются к English. Native JSON highlighting/Copy — отдельный backlog.
 - Machine APIs/MCP/robots/webhooks не переводятся на browser redirects.
-  WireGuard не менялся, NetBird отложен. Полный cluster-wide human-auth inventory,
+  Межнодовый WireGuard сохранён; NetBird внедрён как human ingress под Argo CD.
+  [Текущая схема и добавление админа](netbird.md); legacy recovery WG не отключать.
+  Полный cluster-wide human-auth inventory,
   offboarding/old-session enforcement, independent backups/DR и HA ещё не завершены.
 
 ## Быстрый ориентир в исходниках
@@ -71,7 +74,9 @@ fixture smoke и restore check изменяют тестовые ресурсы,
 
 **1 ноября 2026, после второго rollout.** Пользователь подтвердил работу под
 `alchemmist`, сообщил об отказе Grafana и разрешил sudo-применение/дальнейшую
-миграцию. **NetBird не внедрять.** Посторонние OTel/VPN изменения сохранять.
+миграцию. **На том этапе NetBird был исключён из scope; этот запрет впоследствии
+снят отдельной задачей. Текущее состояние: [NetBird внедрён](netbird.md).**
+Посторонние OTel/VPN изменения сохранять.
 
 ## Что работает
 
@@ -202,7 +207,8 @@ IdP disable не отзывает автоматически уже выданн
 
 WG keys/routes/firewall не меняли. Не назначать одну подсеть нескольким direct WG
 peers: нужен gateway+ACL/failover. Root на чужой ноде = доверие к workloads/secrets
-на ней; SSO/taints/NetworkPolicy не устраняют эту границу. NetBird обсуждать позже.
+на ней; SSO/taints/NetworkPolicy не устраняют эту границу. На том этапе NetBird
+ещё не был внедрён; последующее внедрение и ограничения описаны в [актуальном справочнике](netbird.md).
 
 ### Wiki implementation / latest acceptance
 

@@ -177,7 +177,12 @@ Root внешней ноды — trust boundary для workloads/secrets это�
 изменения DNS или WireGuard. Grafana/Rancher сохраняют private-network ограничения.
 Текущий private WG gateway имел отдельную проблему TLS/virtual hosts; нельзя
 «лечить» её `verify=False`, публикацией private admin UI или изменением VPN в branding.
-NetBird отложен; WireGuard этой миграцией не заменялся.
+**Актуализация 3 ноября:** NetBird внедрён как управляемый человеческий вход
+(Authentik/MFA, device approval, genuine JWT policies), деплой `root → netbird`
+Argo CD. Межнодовый WG не заменён, независимый administrative WG сохраняется.
+Четыре persistent routing agents и два relay дают проверенную ограниченную
+data-plane избыточность, но management/Signal и Authentik не HA: холодный запуск
+клиента без management провалился. [Текущая схема и onboarding](netbird.md).
 
 Harbor обеспечивает приватные images/robots для workload delivery, но его OIDC
 не заменяет registry robot passwords. HA Harbor тоже отложена; см. [harbor.md](harbor.md).

@@ -184,7 +184,12 @@ Harbor сейчас single-node на socrat-0; существующие GHCR dep
 на четырёх нодах. n8n UI защищён MFA-gate (не native account SSO), machine endpoints
 отдельно. Wiki native OIDC + owner-only local fallback уже live; Tim сохраняет editor role.
 Kuma НЕ мигрирована; публичное чтение/status сохранены. Wiki WG-TLS gap записан отдельно.
-NetBird отложен; WG topology не изменена. Подробные ограничения и acceptance в wiki.
+**Обновление 3 ноября 2026:** NetBird внедрён как human ingress через Authentik/MFA
+и управляется `root → netbird` Argo CD. Межнодовый WG сохранён; legacy
+административный WG не отключать из-за подтверждённого cold-start failure без
+management. Сценарий нового админа, четыре agents/два relay, GitOps onboarding
+нод и честные границы acceptance: [netbird.md](netbird.md). Для Linux-аккаунта
+без sudo достаточно [ssh-user.yml](ssh-user.md), Authentik attributes/n8n не нужны.
 
 
 ## Стол socrat-3 — 1 ноября 2026
