@@ -60,6 +60,10 @@ defaultRules:
       rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/{{
         $labels.namespace }}/{{ $labels.pod }}
   disabled:
+    # Stock rule requires every workload to survive loss of the largest node.
+    # socrat-0 holds most of the RAM; its loss sheds noncritical workloads.
+    # The replacement rule alerts only when requests exceed all nodes together.
+    KubeMemoryOvercommit: true
     KubeNodeNotReady: true
     KubeNodePressure: true
     KubeletClientCertificateExpiration: true
@@ -76,6 +80,23 @@ defaultRules:
     kubeSchedulerAlerting: false
     kubeSchedulerRecording: false
     windows: false
+additionalPrometheusRulesMap:
+  homelab-memory-overcommit:
+    groups:
+      - name: homelab-memory-overcommit
+        rules:
+          - alert: KubeMemoryOvercommit
+            annotations:
+              description: Cluster memory requests exceed the allocatable memory of all nodes by {{ $value | humanize }} bytes. Pods will stay Pending. Loss of socrat-0 is an accepted hardware limit and is not part of this check.
+              summary: Cluster memory requests exceed total allocatable memory.
+              rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer
+              runbook_url: https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubememoryovercommit
+            expr: |
+              sum(namespace_memory:kube_pod_container_resource_requests:sum{})
+              - sum(kube_node_status_allocatable{job="kube-state-metrics",resource="memory"}) > 0
+            for: 10m
+            labels:
+              severity: warning
 grafana:
   admin:
     existingSecret: socrat-grafana-admin
