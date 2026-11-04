@@ -22,6 +22,13 @@ class HarborGitopsRuntimeTests(unittest.TestCase):
         # Trivy's connection config is deterministic, not a generated runtime key.
         self.assertEqual(secrets, {'harbor-trivy'})
 
+    def test_home_ingress_disables_request_body_deadline_preserving_arguments(self):
+        role = (ROOT / 'ansible/roles/home_ingress_ha/tasks/traefik.yml').read_text()
+        for entrypoint in ('websecure', 'web'):
+            self.assertIn(f'--entryPoints.{entrypoint}.transport.respondingTimeouts.readTimeout=0s', role)
+        self.assertIn('.additionalArguments | default([])', role)
+        self.assertIn('union([', role)
+
     def test_oidc_config_uses_existing_secret(self):
         values = yaml.safe_load((ROOT / 'deploy/platform/harbor/values.yaml').read_text())
         env = next(e for e in values['core']['extraEnvVars'] if e['name'] == 'CONFIG_OVERWRITE_JSON')
