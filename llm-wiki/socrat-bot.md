@@ -123,3 +123,118 @@ Never infer associations for historical legacy messages lacking immutable proof;
 never republish GitHub/model reports to retry a Telegram link. Service8080 targets
 native hostNetwork API8082. Preserve the isolated bot checkout and unrelated dirty
 operator checkout. Blog stays write-disabled; S3 migration remains separate.
+
+## Manual alert escalation — implementation ready, release BLOCKED (2026-11-04)
+
+This section describes the implemented **pending release**, not the running bot.
+Bot checkout `/Users/antonmoss/code/socrat-bot` has two local commits based on
+upstream `fe67913`: `4d86ad5` (escalation/durable delivery) and `784b0a3`
+(SPI integration and PostgreSQL CI). At the last verified publication attempt,
+remote bot `main` was still `fe67913`; neither pending commit had been pushed.
+No new image, production escalation migration, or live escalation acceptance is
+claimed. Recheck GitHub/Argo/schema before continuing; another session may deploy.
+
+### Approved behavior
+
+- Explicit configured tiers `ALERT_LEVELS=10,20`; smaller numbers mean higher
+  responsibility. Tiers are not inferred from the current user population.
+- Assigned `admin_level` is independent of personal `receive_level`. The owner
+  starts at admin 10 / receive 20; other existing users at 20 / 20. Existing
+  `alerts_enabled` approval flags are preserved. Newly approved users normally
+  start at the configured lowest-authority tier.
+- A new incident starts at the maximum tier. An enabled approved subscriber gets
+  it when `receive_level >= incident.level`. A receive setting may select only
+  an existing tier numerically >= the assigned admin tier. Changing settings
+  **does not replay active incidents**. Delivered copies continue updating through
+  resolution; original pending delivery intents remain retryable. No eligible
+  recipient means no send, never fallback to an arbitrary caller `chat_id`.
+- Full-width **Escalate** sits below the Mute row. It advances exactly one tier,
+  globally, and rejects an empty next assigned admin tier. Actor must own a
+  delivered current-generation copy, be an enabled subscriber, and have assigned
+  admin level <= the current stage. Expected stage/generation plus transactional
+  compare-and-swap prevent concurrent taps from skipping a tier. Lower-authority
+  copies lose Escalate after advancement; final-tier copies have no Escalate.
+- New destination recipients get a full card. Existing destination-assigned
+  admins get an extra short notification linking their existing card, except
+  the actor. Editing alone would not create a fresh Telegram notification.
+- Ordinary firing repeats retain escalation. Resolved updates all delivered
+  copies and removes buttons; a new non-SPI incident generation resets to the
+  initial tier. Old callbacks, including delayed Mute completion, cannot mutate
+  new-generation cards. Terminal immutable SPI episodes never refire.
+- Mute remains a global Alertmanager silence, independent of escalation; muted
+  cards retain the existing no-buttons policy. Notes and desired SPI links survive
+  escalation and ordinary updates. No timer-based escalation or severity routing.
+
+### Commands and internal API
+
+Private chat only:
+
+- `/alerts`: current subscription, assigned tier, receive tier and allowed buttons.
+- `/alerts level 10`: owner receives only final-tier escalations.
+- `/alerts level 20`: owner receives the full initial stream again, without backlog.
+- `/alerts off` / `/alerts on`: existing approval rules remain; disabled non-owner
+  requests owner approval again through `/start`.
+- Owner-only `/alertlevel TELEGRAM_ID N`: assign an existing user's admin tier;
+  clamp an incompatible receive tier, without approving or replaying incidents.
+
+`GET /v1/audience` adds `admin_level` and `receive_level`. Card metadata adds
+`generation`, `level`, and `escalation_history`. Internal token and cluster-only
+exposure remain unchanged. Runtime API remains handwritten; `openapi.yaml` and
+`scripts/render_wiki.py` generate the ordinary public wiki through the existing
+reviewable-PR automation, not this LLM wiki.
+
+### Delivery, migrations, SPI compatibility
+
+`incidents` stores common generation/stage/history. Initial original-recipient
+intents and content commit atomically with incident creation; conflict-safe insert
+and row locking support simultaneous first webhooks. Escalation audit and outbox
+jobs commit in the same transition transaction. All card writers use the durable
+`CardDelivery` dispatcher: per-card/recipient leases, ownership fencing and content
+revisions serialize successful sends/persistence across processes and repair newer
+content received during HTTP. Delivery transactions close before Telegram HTTP.
+A background worker retries durable work after restart. Telegram acceptance followed
+by timeout or crash before persistence can still duplicate a send: **at least once,
+not exactly once**.
+
+Pending migration chain, preserving upstream SPI migrations:
+
+`0007_card_note → 0008_spi_link_revision → 0009_spi_desired_revision → 0010_escalation → 0011_delivery_ownership`.
+
+0011 adopts existing cards and preserves accepted desired versus applied SPI link
+revisions, including unfinished-link recovery. `expected_copies`, monotonic
+`revision`, desired fences committed before HTTP, and accurate `updated`/`pending`
+acks remain supported. Bot and sudo broker serialize schema startup with the same
+PostgreSQL advisory lock; CLI Alembic uses that lock too. Old binaries must not
+run concurrently with new lease-aware card writers. Current chart uses
+`strategy: Recreate`, `replicaCount: 1` for each component.
+
+### Verification and completion checklist
+
+- Parent independently ran final PostgreSQL 17 suite: **118 passed, 15 conditional
+  skips**. Coverage includes concurrent taps/first webhooks, recipient ownership,
+  failed initial sends/restart, same-stage content races, immutable SPI episodes,
+  revision fences, populated migrations, and concurrent schema startup.
+- Scoped Ruff checks, runtime correctness lint, compileall and diff checks passed.
+  Legacy whole-repository broad lint findings were not silently treated as clean.
+- Independent final review: no remaining release blocker found in reviewed code.
+- Pending CI change runs PostgreSQL 17 tests on every release before the existing
+  Harbor → deploy-to-socrat → GitOps chain. No manual Argo sync or image patch.
+- Protected pre-migration DB backups exist under
+  `~/.local/state/socrat-backups/` outside Git. Never commit dumps or secrets.
+
+Publication was blocked by intermittent GitHub SSH authorization failures, then
+server `commit_refs`/HTTP500 failures during a GitHub-reported outage; subsequent
+bounded SSH-over-443 attempts again failed `Permission denied (publickey)`.
+Existing `gh` HTTPS OAuth credential lacks `workflow` scope needed to publish
+`.github/workflows/ci.yaml`. Do not silently widen credentials or drop CI changes.
+
+To finish: restore authorized push, verify upstream ancestry, push both commits,
+require successful exact-SHA CI, inspect GitOps image digest and all three component
+rollouts, verify live schema0011 and grouped user defaults without printing private
+identities, then run safe release-image smoke. Prepared smoke script
+`/tmp/socrat-escalation-live-smoke.py` uses a fresh isolated SQLite DB, a simulated
+lower-line actor, real Telegram sends **only to the owner**, and deletes only its
+own marked test messages. It must be reviewed/recreated if the temporary artifact
+is absent. Never send a synthetic production `/v1/messages` assuming `chat_id`
+isolates fanout; never create real silences for acceptance. No production data or
+Telegram messages were changed during the pending release verification.

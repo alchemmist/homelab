@@ -271,3 +271,13 @@ SSH connection settings оставлены в inventory: перенос в host_
 13 failures, 29 errors, 12 skipped; все имена упавших проверок после изменения
 также падают на baseline. Это не зелёный общий suite и не live acceptance.
 Новые локальные контракты находятся в `tests/test_inventory.py`.
+
+## Socrat bot escalation handoff — 4 November 2026
+
+The approved tiered manual escalation feature is implemented/tested locally, but
+publication and live acceptance were blocked by GitHub push authorization/server
+failures. Do not infer deployment from local commits or existing Healthy status.
+Commands, exact pending commits, migration chain after SPI0009, delivery guarantees,
+verification evidence, and safe completion steps: [socrat-bot.md](socrat-bot.md),
+“Manual alert escalation — implementation ready, release BLOCKED”. Check live
+GitHub/Argo/schema state before resuming this historical handoff.
