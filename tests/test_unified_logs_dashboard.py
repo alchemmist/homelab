@@ -23,13 +23,14 @@ class UnifiedLogsDashboardTest(unittest.TestCase):
         for variable in variables:
             self.assertTrue(variable['multi'])
             self.assertEqual(variable['allValue'], '.+' if variable['name'] == 'service' else '.*')
-        for panel in self.dashboard['panels'][1:]:
+        for panel in self.dashboard['panels']:
             self.assertEqual(panel['datasource']['uid'], 'loki')
             expression = panel['targets'][0]['expr']
             for name in ['service', 'namespace', 'node', 'severity']:
                 self.assertIn('${' + name + ':regex}', expression)
             self.assertNotIn('| json', expression)
-        self.assertIn('No data is not zero', self.dashboard['panels'][0]['options']['content'])
+        self.assertFalse(any(p['type'] == 'text' for p in self.dashboard['panels']))
+        self.assertEqual(min(p['gridPos']['y'] for p in self.dashboard['panels']), 0)
 
     def test_explore_preserves_queries_and_time(self):
         url = self.dashboard['links'][0]['url']
