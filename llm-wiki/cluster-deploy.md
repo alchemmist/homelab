@@ -162,3 +162,9 @@ NetBird больше не исключение: Application создаёт `root
 Для нового узла: inventory → `scripts/netbird-gitops-nodes.py` → commit inventory
 и values → Argo CD → обычный Ansible machine enrollment/API grants. Ansible не
 создаёт Kubernetes Deployment/PVC и не конкурирует с selfHeal.
+
+### Release transport recovery — 2026-11-04
+
+`deploy-to-socrat@v1` (56037a9) uses an isolated temporary 0600 deploy key, pinned official GitHub host keys, SSH-over-443, bounded retries and rebases the same commit when concurrent `main` updates cause either non-fast-forward or remote ref-lock rejection. It remains one composite step; no Argo API calls. Static shell tests plus eight image/component unit tests pass.
+
+The GitHub Git Operations incident has cleared. Local SSH authentication and `git ls-remote` work again. End-to-end LMS run **41811725828** succeeded on the final retry: robot commit **76e9902** recorded `sha256:9890519389652cdd8c8436a76f81be6bc81131174a728144ab268c4150a80167`; live Deployment uses that GHCR digest and its rollout completed. Earlier failed attempts are not successful releases. LMS remains on GHCR intentionally during HA ownership work.
