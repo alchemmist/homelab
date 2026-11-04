@@ -306,7 +306,7 @@ temporary Editor session verified login return and authenticated navigation; it
 was removed afterwards. This does not claim a full human Authentik login was
 performed. Anonymous redirect behavior was reproduced before and after the fix.
 
-## Event-driven rollout and acceptance — PENDING
+## Historical event-driven staging checklist (see current acceptance)
 
 Historical evidence above does not verify the event-driven rollout. Parent/operator
 owns deployment and must verify each item; this documentation makes no claim that
@@ -387,5 +387,63 @@ legacy messages have no trustworthy episode identity and are not guessed. Missin
 associations and permanently failing external services remain visible, not false
 success. Native deleted/inaccessible messages require operator intervention.
 
-Acceptance PENDING until the parent records actual rollout/card acknowledgements;
-offline test results do not establish Telegram receipt.
+Production original-card acceptance is recorded below; offline tests alone do not establish Telegram receipt.
+
+
+## Current Telegram SPI acceptance — 4 November 2026, 10:49 UTC
+
+**ENABLED and verified on real original cards.** This supersedes historical
+staging/push-blocker checkpoints below. RustFS was selected for the later S3
+artifact-storage phase; nothing S3-related is deployed or migrated yet.
+
+- Activation and LLM-wiki commits were pushed; original SPI workflow
+  `J9akzlydrf9XZiID` and Socrat Alerts `b2TlucyOTiZP9CzN` remain active, IDs and
+  credentials preserved. Runtime `SPI_TELEGRAM_LINKS_ENABLED=true` verified.
+- Fixed a LIVE registration defect: an active custom n8n trigger without
+  `webhookId` returned404 and accumulated a backlog. The trigger now retains
+  stable webhookId `9c393df1-a66f-41bf-acaf-b2b66f31a393`; original graph was
+  updated/reactivated in place. Authenticated callback returned202; real jobs
+  progressed. Regression assertion is in test_event_workflow.py.
+- Real episode `b5d05ddf28dd8eae8a2d1c5fde19a007bc34507b43c36ea6708d5e5c7a4e237b`:
+  firing primary created https://github.com/alchemmist/homelab/issues/26;
+  revision1 applied to2 expected original copies,2 acknowledged. It applied
+  while artifact publication was still stage3, demonstrating separate delivery.
+- Its ALREADY QUEUED real resolved observation published the exact primary
+  recovery comment:
+  https://github.com/alchemmist/homelab/issues/26#issuecomment-6628732862 .
+  Revision2 applied to the SAME2 original copy IDs,2 acknowledged, no pending
+  copies. Native rows both remain resolved, generation1, desired/applied
+  revision2 and exactly ONE SPI anchor with that permalink.
+- GitHub readback confirmed the exact resolved-event marker and immutable bot
+  authorID351189559. Link is the narrative, not artifact/index comment.
+- LIVE stale revision1/root request rejected409. LIVE idempotent revision2
+  reassertion returned200 with both copies acknowledged and no pending copies.
+  No test Telegram send, synthetic alert, fabricated incident or model bypass.
+- Acceptance selected two already queued real jobs via temporary availability
+  deferral of OTHER queued jobs, with maximum600s expiry. Active leases, event
+  timestamps, creation times and attempts were not bypassed/reset. Normal
+  exclusive claims selected targets; ALL holds restored immediately afterward.
+- Prepared Grafana pending-link rule `spi-triage-telegram-links` provisioned201.
+  Parent suites passed:114 Python,9 ingress JS,29 bot tests. No controlled
+  production Telegram outage was injected; failure/restart cases remain covered
+  by offline regressions, not a claim of a live outage drill.
+- Three Argo applications were Synced/Healthy at revisionf4ad594 (descendant
+  including trigger fix0304a6d). Native live schema0009 verified. Source bot
+  commitfe67913 already deployed. Check current GitOps revision during incidents;
+  concurrent unrelated changes advance main.
+
+Private backups: pre-enable SQLite83jobs; accepted-final SQLite7,131,136bytes,
+109jobs, verified SQLite header/integrity/foreign keys; schema9 pre-acceptance native PG dump
+67,536bytes, pg_restore listing checked; active original workflow JSON snapshots.
+Paths under `~/.config/n8n/diagnostics/spi-telegram/`; no private copy IDs/credentials
+are published here. These are snapshots, not a recurring backup/restore drill.
+
+**Remaining operational state, not a completed/drained queue claim:** final
+snapshot66complete,2dry_run,1processing,38queued,2retry;2applied episode targets,
+3pending. Historical unaddressable legacy episodes retain visible WAIT_RECEIPT;
+do not invent immutable proof or attach their results to reused keys. Shared
+inference429/backoff and accumulated backlog delay new results. External outages
+and dead/inaccessible copies still require monitoring/operator intervention.
+Blog remains write-disabled, Yandex/calendar unchanged, no issue auto-closure,
+repair or suppression. Historical evidence comments remain until the separate
+RustFS design/migration task is approved and implemented.

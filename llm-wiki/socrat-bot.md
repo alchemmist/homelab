@@ -91,7 +91,7 @@ comparison occurs in the trigger; POST acknowledgement is immediate. Worker egre
 is restricted to automation/app=n8n pod TCP5678 for the fixed callback.
 
 
-### SPI original-card link integration status — 2026-11-04
+### Historical SPI link pre-activation checkpoint — 2026-11-04 09:52 UTC
 
 Historical event-dispatch staging checklists above are superseded by deployed,
 enabled event dispatch; their individual acceptance scenarios are not all claimed
@@ -238,3 +238,22 @@ own marked test messages. It must be reviewed/recreated if the temporary artifac
 is absent. Never send a synthetic production `/v1/messages` assuming `chat_id`
 isolates fanout; never create real silences for acceptance. No production data or
 Telegram messages were changed during the pending release verification.
+
+
+### Current SPI original-card acceptance — 2026-11-04 10:49 UTC
+
+Links now ENABLED in production; this supersedes the historical disabled/push
+blocker above. Full evidence: `llm-wiki/spi-incident-triage.md`, current acceptance.
+Real SPI26 firing root link revision1 and its exact primary resolved comment
+https://github.com/alchemmist/homelab/issues/26#issuecomment-6628732862 revision2
+were acknowledged on BOTH original copies. Same copy IDs, generation1, resolved
+status, desired/applied2, exactly one SPI anchor. Stale revision1 rejected409;
+idempotent revision2 reassertion acknowledged both copies. No test messages sent.
+Native schema0009 and Argo Synced/Healthy verified. Original workflows preserved.
+
+Also repaired missing SPI trigger webhookId: n8n showed active but returned404;
+stable ID added in source and original stored graph, callback202 and real queue
+progress verified.114 Python+9JS+29bot tests passed. Pending-link Grafana rule
+provisioned. Queue is NOT drained; legacy unprovable cards and inference429 remain
+visible pending/error, not false success. Private consistent snapshots retained.
+RustFS SELECTED for a later S3 phase, not deployed; issue evidence comments remain.
