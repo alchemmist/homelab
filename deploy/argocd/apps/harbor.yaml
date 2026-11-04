@@ -7,16 +7,14 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
-  sources:
-    - repoURL: https://helm.goharbor.io
-      chart: harbor
-      targetRevision: 1.19.4
-      helm:
-        valueFiles:
-          - $values/deploy/platform/harbor/values.yaml
-    - repoURL: https://github.com/alchemmist/homelab.git
-      targetRevision: main
-      ref: values
+  source:
+    repoURL: https://github.com/alchemmist/homelab.git
+    targetRevision: main
+    path: charts/harbor
+    helm:
+      releaseName: harbor
+      valueFiles:
+        - ../../deploy/platform/harbor/values.yaml
   destination:
     namespace: harbor
     server: https://kubernetes.default.svc

@@ -1,0 +1,25 @@
+# Vendored from https://helm.goharbor.io chart harbor 1.19.4 so Argo CD
+# does not helm-pull this chart on refresh. This chart has no subchart
+# dependencies; database and Redis are inlined templates.
+apiVersion: v1
+appVersion: 2.15.4
+description: An open source trusted cloud native registry that stores, signs, and
+  scans content
+home: https://goharbor.io
+icon: https://raw.githubusercontent.com/goharbor/website/main/static/img/logos/harbor-icon-color.png
+keywords:
+- docker
+- registry
+- harbor
+maintainers:
+- email: yan-yw.wang@broadcom.com
+  name: Yan Wang
+- email: stone.zhang@broadcom.com
+  name: Stone Zhang
+- email: miner.yang@broadcom.com
+  name: Miner Yang
+name: harbor
+sources:
+- https://github.com/goharbor/harbor
+- https://github.com/goharbor/harbor-helm
+version: 1.19.4
