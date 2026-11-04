@@ -1,5 +1,6 @@
 """Regression checks for Argo's offline Helm render of Harbor."""
 import subprocess
+import json
 import unittest
 from pathlib import Path
 import yaml
@@ -28,6 +29,14 @@ class HarborGitopsRuntimeTests(unittest.TestCase):
             self.assertIn(f'--entryPoints.{entrypoint}.transport.respondingTimeouts.readTimeout=0s', role)
         self.assertIn('.additionalArguments | default([])', role)
         self.assertIn('union([', role)
+
+    def test_maintenance_policy_never_deletes_artifacts_or_tags(self):
+        policy = json.loads((ROOT / 'deploy/platform/harbor/maintenance-policy.json').read_text())
+        self.assertEqual(policy['gc']['schedule'], {'type': 'Weekly', 'cron': '0 0 3 * * 0'})
+        self.assertIs(policy['gc']['parameters']['delete_untagged'], False)
+        self.assertIs(policy['gc']['parameters']['delete_tag'], False)
+        self.assertEqual(policy['gc']['parameters']['workers'], 1)
+        self.assertEqual(policy['projects']['homelab']['auto_scan'], 'true')
 
     def test_oidc_config_uses_existing_secret(self):
         values = yaml.safe_load((ROOT / 'deploy/platform/harbor/values.yaml').read_text())

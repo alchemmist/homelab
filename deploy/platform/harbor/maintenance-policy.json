@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "homelab": {"auto_scan": "true"},
+    "library": {"auto_scan": "true"}
+  },
+  "gc": {
+    "schedule": {"type": "Weekly", "cron": "0 0 3 * * 0"},
+    "parameters": {
+      "delete_untagged": false,
+      "delete_tag": false,
+      "dry_run": false,
+      "workers": 1
+    }
+  }
+}

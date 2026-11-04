@@ -118,9 +118,14 @@ uncached pull even if the VPS ingress is alive. Existing running containers are
 not stopped by registry loss. Do not make Harbor's own bootstrap depend on itself:
 upstream Harbor images remain on Docker Hub.
 
-Trivy, automatic garbage collection and retention deletion are not enabled.
-Choose release/rollback retention before scheduling deletion; deleting a tag
-needed by a Deployment can break its next restart.
+Trivy and scan-on-push are enabled for `homelab` and `library` (verified
+2026-11-04). Weekly GC runs Sunday 03:00 UTC with one worker, explicitly
+`delete_untagged=false` and `delete_tag=false`. Artifact/tag retention deletion
+is **not** enabled: preserve every release, in-use and rollback artifact.
+The API-applied policy is recorded in
+`deploy/platform/harbor/maintenance-policy.json`; this file documents Harbor DB
+settings and is not automatically applied by Helm. A successful non-deleting
+dry-run preceded scheduling; its inventory of 60 artifacts / 62 tags was unchanged.
 
 **Scheduled independent backups are not configured yet.** Before relying on this
 registry as the sole image copy, establish and test off-node backups. Preserve:
@@ -166,3 +171,28 @@ be stale; do not reset it or rerun the old initializer just to change auth. A su
 Secret-backed CONFIG_OVERWRITE_JSON and conditional Helm identity overlay preserve
 OIDC configuration. See [identity/access-management.md](identity/access-management.md)
 for migration, backup/restore evidence and remaining browser acceptance.
+
+
+## Verified scanning and GC (2026-11-04)
+
+- Authenticated through the existing break-glass admin, without changing passwords,
+  OIDC, signing keys, or robot rights. Credentials are never tracked in Git.
+- Trivy v0.75.0 is the enabled default scanner. Cats manual scan completed Success.
+- Re-published the *identical* existing Socrat Home index at its existing tag;
+  automatic scan-on-push completed Success in 8 seconds. No tag target or image
+  changed. Its report found 216 vulnerabilities (3 Critical / 60 High); Cats found
+  53 (1 Critical / 5 High). Vulnerability remediation is separate work. Pull
+  blocking by severity was not enabled, so scans do not unexpectedly block releases.
+- GC execution 13: Success, dry-run true, deletion of untagged artifacts and tags
+  both false, one worker, server-enforced 2h safety window. No unreferenced artifacts,
+  0 purged blobs/manifests, 0 freed bytes. Full artifact/tag inventory unchanged.
+- Weekly schedule 3: `0 0 3 * * 0` UTC; first run 2026-11-08 03:00 UTC.
+  No artifact/tag retention policy was created. This conservative GC may reclaim
+  nothing when no artifacts have been explicitly removed; that is intentional.
+- Job logs currently use stdout only, so the Harbor GC log-download API returns
+  500. Dry-run parameters/results were verified in jobservice stdout and GC history;
+  this does not indicate a failed GC or jobservice restart.
+- LMS, Cats, Format Quorum and all three Monori CI releases are verified end-to-end.
+  Cats, Format Quorum, Monori and Socrat Home run from Harbor. GHCR originals are
+  retained, and LMS remains GHCR intentionally. All 42 Argo Applications were
+  Synced/Healthy; Harbor restart alerts resolved without disabling alert rules.
