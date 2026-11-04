@@ -15,6 +15,12 @@ class Engine:
     def __init__(self,store,github,model,evidence,write=False):
         self.store=store;self.github=github;self.model=model;self.evidence=evidence;self.write=write
         self.lock=threading.Lock()
+    def claim(self):
+        # A socket call may outlive the durable lease. Never reclaim while this
+        # process still owns a stage, including its final save/failure handling.
+        if not self.lock.acquire(blocking=False):return {'job_id':''}
+        try:return self.store.claim()
+        finally:self.lock.release()
     def run(self,name,key):
         with self.lock:
             REQUEST_DEADLINE.at=time.monotonic()+780
@@ -98,6 +104,29 @@ class Engine:
         self.store.save(key,4,result,state='complete',issue=number,intent=None)
 
 
+def read_request_body(handler, timeout=10):
+    """Bound partial/trickling bodies by a total elapsed-time deadline."""
+    try:length=int(handler.headers.get('Content-Length','0'))
+    except (ValueError,TypeError):raise Failure('INVALID_BODY_SIZE') from None
+    if not 0<length<=512_000:raise Failure('INVALID_BODY_SIZE')
+    deadline=time.monotonic()+timeout
+    previous=handler.connection.gettimeout()
+    chunks=[]
+    try:
+        while length:
+            remaining=deadline-time.monotonic()
+            if remaining<=0:raise TimeoutError()
+            handler.connection.settimeout(remaining)
+            chunk=handler.rfile.read1(length)
+            if not chunk:raise Failure('INCOMPLETE_BODY')
+            chunks.append(chunk);length-=len(chunk)
+        data=json.loads(b''.join(chunks))
+        if not isinstance(data,dict):raise Failure('INVALID_REQUEST')
+        return data
+    except TimeoutError:raise Failure('REQUEST_BODY_TIMEOUT') from None
+    finally:handler.connection.settimeout(previous)
+
+
 def serve():
     os.umask(0o077)
     http=HTTP();store=Store(os.environ.get('SPI_DATABASE','/data/spi.sqlite'))
@@ -106,7 +135,7 @@ def serve():
     engine=Engine(store,GitHub(http,os.environ.get('GITHUB_TOKEN_FILE','/github/token')),
                   Model(http,os.environ['LITELLM_KEY']),Evidence(http,os.environ['GRAFANA_TOKEN'],os.environ['GRAFANA_URL'],github=GitHub(http,os.environ.get('GITHUB_TOKEN_FILE','/github/token'))),
                   write=os.environ.get('WRITE_ENABLED')=='true')
-    dispatcher=Dispatcher(store,os.environ['WORKER_TOKEN'],enabled=os.environ.get('SPI_DISPATCH_ENABLED','false')=='true')
+    dispatcher=Dispatcher(store,os.environ['WORKER_TOKEN'],enabled=os.environ.get('SPI_DISPATCH_ENABLED','false')=='true',busy=engine.lock.locked)
     dispatcher.start()
     class Handler(BaseHTTPRequestHandler):
         def log_message(self,*args):pass
@@ -129,9 +158,7 @@ def serve():
         def do_POST(self):
             if not hmac.compare_digest(self.headers.get('X-Worker-Token',''),os.environ['WORKER_TOKEN']):return self.send(403,{'code':'FORBIDDEN'})
             try:
-                length=int(self.headers.get('Content-Length','0'))
-                if not 0<length<=512_000:raise Failure('INVALID_BODY_SIZE')
-                data=json.loads(self.rfile.read(length))
+                data=read_request_body(self)
                 if self.path=='/enqueue':result=store.enqueue(normalize(data))
                 elif self.path=='/enqueue-group':
                     alerts=data.get('alerts')
@@ -139,15 +166,17 @@ def serve():
                     events=[normalize({'source':data.get('externalURL','socrat-alerts'),'alert':a})for a in alerts]
                     result={'accepted':len(store.enqueue_many(events))}
                 elif self.path=='/claim':
-                    result=store.claim();h=store.health()
+                    result=engine.claim();h=store.health()
                     print(json.dumps({'component':'spi-triage','event':'queue_health','oldest_pending_seconds':h['oldest_pending_seconds'],'dead_jobs':h['counts'].get('dead',0)}),flush=True)
                 elif self.path in ['/match','/collect','/analyze','/publish']:
                     key=data.get('job_id','')
-                    if len(key)!=64 or any(c not in '0123456789abcdef'for c in key):raise Failure('INVALID_JOB_ID')
+                    if not isinstance(key,str) or len(key)!=64 or any(c not in '0123456789abcdef'for c in key):raise Failure('INVALID_JOB_ID')
                     result=engine.run(self.path[1:],key)
                 else:return self.send(404,{'code':'NOT_FOUND'})
                 return self.send(200,result)
-            except Failure as e:return self.send(422,{'code':e.code})
+            except Failure as e:
+                self.close_connection=True
+                return self.send(422,{'code':e.code})
             except (ValueError,TypeError,AttributeError):return self.send(400,{'code':'INVALID_REQUEST'})
             except Exception:return self.send(500,{'code':'INTERNAL_ERROR'})
             finally:dispatcher.signal()

@@ -1,34 +1,54 @@
 """Single durable wake reservation; never hold database locks during HTTP."""
 import json
 import threading
-import urllib.request
+import http.client
+import socket
+import time
 
 DISPATCH_URL = 'http://n8n.automation.svc.cluster.local/webhook/spi-incident-triage-dispatch'
 
 class Dispatcher:
-    def __init__(self, store, token, enabled=False, post=None):
+    def __init__(self, store, token, enabled=False, post=None, busy=None):
         self.store=store
         self.token=token
         self.enabled=enabled
         self.post=post or self._post
+        self.busy=busy or (lambda:False)
         self.wake=threading.Event()
         self.stopped=threading.Event()
         self.thread=None
 
     def _post(self):
-        request=urllib.request.Request(DISPATCH_URL, data=b'{}',
-            headers={'X-Worker-Token':self.token,'Content-Type':'application/json'}, method='POST')
-        # Do not follow redirects with worker credentials.
-        class NoRedirect(urllib.request.HTTPRedirectHandler):
-            def redirect_request(self, *args, **kwargs):return None
-        with urllib.request.build_opener(NoRedirect).open(request, timeout=10) as response:
-            if not 200 <= response.status < 300:raise OSError('Dispatch rejected')
+        # Fixed internal target, no redirects or proxy credential forwarding.
+        deadline=time.monotonic()+10
+        connection=http.client.HTTPConnection('n8n.automation.svc.cluster.local',80,timeout=10)
+        timer=None
+        try:
+            connection.connect()
+            remaining=deadline-time.monotonic()
+            if remaining<=0:raise TimeoutError('Dispatch deadline')
+            sock=connection.sock
+            def expire():
+                try:sock.shutdown(socket.SHUT_RDWR)
+                except OSError:pass
+            # Socket inactivity timeout alone does not stop trickling headers.
+            timer=threading.Timer(remaining,expire)
+            timer.daemon=True
+            timer.start()
+            connection.request('POST','/webhook/spi-incident-triage-dispatch',body=b'{}',
+                headers={'X-Worker-Token':self.token,'Content-Type':'application/json'})
+            response=connection.getresponse()
+            if time.monotonic()>=deadline:raise TimeoutError('Dispatch deadline')
+            if not 200<=response.status<300:raise OSError('Dispatch rejected')
+        finally:
+            if timer:timer.cancel()
+            connection.close()
 
     def signal(self):
         self.wake.set()
 
     def tick(self):
-        if not self.enabled:return None
+        if not self.enabled or self.busy():return None
         reservation, deadline=self.store.reserve_dispatch()
         if reservation:
             try:
