@@ -48,3 +48,44 @@ class CoverageTests(unittest.TestCase):
         self.assertEqual(M.assess([source], [point], [point])[0]['status'], 'unknown')
         point['count'] = 2
         self.assertEqual(M.assess([source], [point], [point])[0]['status'], 'verified')
+
+    def test_kubernetes_requires_host_and_all_source_identities(self):
+        source = {'kind': 'container', 'namespace': 'ns', 'pod': 'pod', 'container': 'app'}
+        labels = {'host_name': 'node', 'k8s_namespace_name': 'ns', 'audit_pod': 'pod',
+                  'audit_container': 'app', 'service_name': 'svc', 'severity': 'info'}
+        good = {'labels': labels, 'count': 1}
+        self.assertEqual(M.assess([source], [good], [good])[0]['status'], 'verified')
+        for key in labels:
+            with self.subTest(missing=key):
+                incomplete = {'labels': {k: v for k, v in labels.items() if k != key}, 'count': 1}
+                self.assertFalse(M.canonical_identity(source, incomplete['labels']))
+                row = M.assess([source], [incomplete], [incomplete])[0]
+                self.assertNotEqual(row['status'], 'verified')
+                self.assertFalse(row['canonical'])
+        incomplete = {'labels': {k: v for k, v in labels.items() if k != 'host_name'}, 'count': 1}
+        row = M.assess([source], [good, incomplete], [good, incomplete])[0]
+        self.assertEqual(row['status'], 'emits')
+        self.assertFalse(row['canonical'])
+        self.assertTrue(row['legacyObserved'])
+
+    def test_host_inventory_does_not_infer_emission_from_installed_or_running(self):
+        snapshots = [{'host': 'node', 'services': {
+            'running.service': {'source': 'systemd', 'state': 'running', 'status': 'enabled'},
+            'idle.service': {'source': 'systemd', 'state': 'stopped', 'status': 'disabled'},
+            'oneshot.service': {'source': 'systemd', 'state': 'stopped', 'status': 'enabled'},
+            'other': {'source': 'sysv', 'state': 'running'},
+        }}]
+        registry = M.host_registry(snapshots)
+        self.assertEqual(len(registry), 3)
+        self.assertTrue(all(r['exists'] is True and r['emission'] == 'unknown' for r in registry))
+        rows = M.assess(M.inventory({}, {}, registry), [], [])
+        self.assertTrue(all(r['status'] == 'unknown' and r['emits'] is None for r in rows))
+        with self.assertRaises(ValueError):
+            M.host_registry(snapshots + snapshots)
+
+    def test_host_canonical_requires_matching_host_and_unit(self):
+        source = {'kind': 'host', 'host': 'node', 'unit': 'unit.service'}
+        labels = {'host_name': 'node', 'audit_unit': 'unit.service', 'service_name': 'app', 'severity': 'info'}
+        self.assertTrue(M.canonical_identity(source, labels))
+        for key in labels:
+            self.assertFalse(M.canonical_identity(source, {k: v for k, v in labels.items() if k != key}))

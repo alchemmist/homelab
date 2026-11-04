@@ -56,10 +56,43 @@ def inventory(pods, workloads, hosts):
     for host in hosts:
         if set(host) - {'host', 'unit', 'exists', 'emission'} or not all(SAFE.fullmatch(host[k]) for k in ('host', 'unit')):
             raise ValueError('Invalid host registry')
+        if host.get('exists') is not None and type(host['exists']) is not bool:
+            raise ValueError('Invalid existence attestation')
         if host.get('emission', 'unknown') not in {'unknown', 'expected', 'silent'}:
             raise ValueError('Invalid emission expectation')
         sources.append(dict(host, kind='host', exists=host.get('exists', None), emission=host.get('emission', 'unknown')))
     return sources
+
+def host_registry(snapshots):
+    """Normalize reviewed Ansible service_facts snapshots, never infer emission.
+
+    Input: [{"host": canonical_host_name, "services": ansible_facts.services}].
+    State/status are deliberately not emission evidence, even for running units.
+    """
+    registry = []
+    seen = set()
+    for snapshot in snapshots:
+        host = snapshot['host']
+        if not isinstance(host, str) or not SAFE.fullmatch(host):
+            raise ValueError('Invalid inventory host')
+        for unit, facts in snapshot['services'].items():
+            if facts.get('source') != 'systemd' or not unit.endswith('.service'):
+                continue
+            if not SAFE.fullmatch(unit) or (host, unit) in seen:
+                raise ValueError('Invalid or duplicate inventory unit')
+            seen.add((host, unit))
+            registry.append({'host': host, 'unit': unit, 'exists': True, 'emission': 'unknown'})
+    return registry
+
+def canonical_identity(source, labels):
+    required = ('host_name', 'service_name')
+    if source['kind'] == 'container':
+        required += ('k8s_namespace_name', 'audit_pod', 'audit_container')
+    elif source['kind'] != 'host':
+        return False
+    # Host unit attribution may use structured systemd_unit or legacy service_name.
+    return (matches(source, labels) and all(labels.get(k) for k in required)
+            and labels.get('severity') in SEVERITIES)
 
 def matches(source, labels):
     if source['kind'] == 'container':
@@ -73,9 +106,9 @@ def assess(sources, recent, hour):
     for source in sources:
         fresh = [p for p in recent if p['count'] > 0 and matches(source, p['labels'])]
         older = [p for p in hour if p['count'] > 0 and matches(source, p['labels'])]
-        canonical = [p for p in fresh if p['labels'].get('service_name') and p['labels'].get('severity') in SEVERITIES]
+        canonical = [p for p in fresh if canonical_identity(source, p['labels'])]
         row = dict(source, emits=True if fresh else None, fresh=bool(fresh),
-                   deliveredInHour=bool(older), canonical=bool(canonical), legacyObserved=bool(fresh) and not bool(canonical))
+                   deliveredInHour=bool(older), canonical=bool(fresh) and len(canonical) == len(fresh), legacyObserved=len(canonical) < len(fresh))
         row['status'] = ('verified' if canonical and len(canonical) == len(fresh) else 'emits') if fresh else (
             'silent' if source.get('emission') == 'silent' else 'unknown')
         # No logs cannot prove silence, absence, or a broken collector.
@@ -101,7 +134,9 @@ def fetch(base, context, selector, window):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--hosts', type=Path, required=True, help='Explicit JSON host/unit expectations; [] means none inventoried')
+    hosts = parser.add_mutually_exclusive_group(required=True)
+    hosts.add_argument('--hosts', type=Path, help='Explicit JSON host/unit expectations; [] means none inventoried')
+    hosts.add_argument('--host-inventory', type=Path, help='Reviewed JSON host/service_facts snapshots; all emission expectations remain unknown')
     parser.add_argument('--tls-dir', type=Path, default=Path('/var/lib/homelab-otel/tls'))
     parser.add_argument('--loki', default='https://10.250.0.3:3100')
     parser.add_argument('--output', type=Path, required=True)
@@ -109,7 +144,9 @@ def main():
     if not re.fullmatch(r'https://[A-Za-z0-9.:-]+', args.loki):
         parser.error('Loki must be an HTTPS origin without credentials, path or query')
     try:
-        sources = inventory(kubectl('pods'), kubectl('deployments,statefulsets,daemonsets,jobs,cronjobs'), json.loads(args.hosts.read_text()))
+        registry = (json.loads(args.hosts.read_text()) if args.hosts else
+                    host_registry(json.loads(args.host_inventory.read_text())))
+        sources = inventory(kubectl('pods'), kubectl('deployments,statefulsets,daemonsets,jobs,cronjobs'), registry)
         context = ssl.create_default_context(cafile=str(args.tls_dir / 'ca.crt'))
         context.load_cert_chain(str(args.tls_dir / 'client.crt'), str(args.tls_dir / 'client.key'))
         # Exactly four bounded queries, at most two concurrent. No retries.

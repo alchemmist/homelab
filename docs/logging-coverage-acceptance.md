@@ -27,7 +27,37 @@ Create a private, independently reviewed host registry, for example:
 
 This is an example, **not** the homelab inventory. Build the real registry from
 all managed hosts' enabled/running service metadata and Ansible declarations,
-including non-Kubernetes machines. A host entry's `exists` is an operator
+including non-Kubernetes machines. Do **not** mark every installed, enabled or
+running unit as an expected emitter: installation/running state is not evidence
+that a unit writes logs in the observation window. Retain inactive units as
+`exists: true, emission: unknown`; do not silently remove them from inventory.
+`expected` needs a reviewed application-specific emission expectation.
+
+Alternatively pass `--host-inventory /private/path/service-facts.json` instead
+of `--hosts`. This accepts normalized, metadata-only Ansible `service_facts`
+snapshots (not full Ansible output):
+
+```json
+[
+  {"host":"node1","services":{
+    "k3s.service":{"source":"systemd","state":"running","status":"enabled"},
+    "idle.service":{"source":"systemd","state":"stopped","status":"disabled"}
+  }}
+]
+```
+
+Use the canonical `host_name` emitted by the collector, not an SSH inventory
+alias unless identical. Gather service facts on every managed systemd host using
+existing approved read-only inventory access; retain only the host identity and
+`ansible_facts.services` mapping, never full task output or credentials. This
+mode includes all inventoried systemd `.service` units (including inactive ones),
+marks existence true and **all emission expectations unknown**. It does not SSH,
+install software or mutate hosts. Non-systemd entries are excluded; supplement
+those sources through the explicit registry. Reconcile snapshot age, missing or
+unreachable hosts, transient units and application-specific expectations manually.
+Neither mode proves inventory completeness.
+
+A host entry's `exists` is an operator
 attestation, not an SSH probe. Omit or set null when unconfirmed. `silent` requires
 an independent documented reason; absence in Loki never establishes silence.
 An empty registry does not establish host coverage.
@@ -55,8 +85,9 @@ bound backend work. Run at a quiet enough cadence to avoid query load.
   ephemeral containers, including completed pods returned by the API.
 * `emits`: positive recent Loki count for the exact pod/container or host/unit;
   this proves delivery, not source-side logging completeness.
-* `verified`: every matching recent series has nonempty canonical `service_name`
-  and a valid `severity` (`trace/debug/info/warn/error/fatal/unknown`). Explicit
+* `verified`: every matching recent series has nonempty canonical `host_name`
+  and `service_name`, exact source identity (namespace/pod/container for Kubernetes;
+  host/unit for host sources), and a valid `severity` (`trace/debug/info/warn/error/fatal/unknown`). Explicit
   `unknown` is valid; missing severity is not silently interpreted as info.
 * `silent`: only an explicit registry emission expectation, with no recent count.
 * `unknown`: no recent matched evidence; includes one-hour-old delivery, stopped
@@ -65,7 +96,9 @@ bound backend work. Run at a quiet enough cadence to avoid query load.
 
 `fresh` means a positive count within ten minutes, not the Loki evaluation
  timestamp. `deliveredInHour` distinguishes stale evidence. `legacyObserved`
-means recent matching series exist but none satisfy the canonical contract.
+means at least one recent matching series fails the canonical contract, including
+mixed valid/incomplete series. `canonical` is true only when all matching positive
+recent series satisfy it, so a valid row cannot mask missing host metadata.
 Kubernetes pod/container and systemd identity are extracted from structured
 metadata into temporary aggregation labels; they need not be indexed labels.
 Legacy host `service_name == unit` remains accepted for matching. Older streams
