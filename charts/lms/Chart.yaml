@@ -4,3 +4,8 @@ description: lms app
 version: 0.1.0
 appVersion: latest
 type: application
+dependencies:
+  - name: lms-database-ha
+    version: 0.1.0
+    repository: file://../lms-database-ha
+    condition: database.ha.resources

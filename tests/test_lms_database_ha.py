@@ -71,6 +71,32 @@ def test_database_is_a_source_of_the_lms_application():
     assert app['spec']['source']['path']=='charts/lms'
     assert app['spec']['source']['helm']['releaseName']=='lms'
     assert not (ROOT/'deploy/argocd/apps/lms-database-ha.yaml').exists()
+    assert app['spec']['syncPolicy']['automated']['prune'] is False
+    ignored=[rule for rule in app['spec']['ignoreDifferences'] if rule.get('kind') in {'Cluster','CronJob','PersistentVolumeClaim','PrometheusRule','StorageClass'}]
+    assert ignored==[]
+    values=yaml.safe_load((ROOT/'deploy/lms/values.yaml').read_text())
+    assert values['image']['digest']=='sha256:9890519389652cdd8c8436a76f81be6bc81131174a728144ab268c4150a80167'
+    assert values['database']['ha']['enabled'] is False
+    assert values['database']['ha']['resources'] is True
+    docs=rendered('lms','-n','lms','-f',str(ROOT/'deploy/lms/values.yaml'))
+    owned={(d['kind'], d['metadata']['name'], d['metadata'].get('namespace')) for d in docs}
+    assert ('Cluster','lms-ha',None) in owned
+    assert ('CronJob','lms-database-backup',None) in owned
+    assert ('PersistentVolumeClaim','lms-database-backups',None) in owned
+    assert ('PrometheusRule','lms-availability','cattle-monitoring-system') in owned
+    assert ('StorageClass','lms-db-retain',None) in owned
+    cluster=next(d for d in docs if d['kind']=='Cluster')
+    assert cluster['spec']['instances']==3
+    assert cluster['spec']['imageName']=='ghcr.io/cloudnative-pg/postgresql:17.11-system-trixie@sha256:03a1c6a62b27e8ad31cae5c085131b5ac706b09403d6fcb6c58d16c8daa257cd'
+    assert cluster['metadata']['annotations']['argocd.argoproj.io/compare-options']=='ServerSideDiff=true'
+    assert cluster['metadata']['annotations']['argocd.argoproj.io/sync-options']=='ServerSideApply=true'
+    cron=next(d for d in docs if d['kind']=='CronJob' and d['metadata']['name']=='lms-database-backup')
+    assert cron['spec']['schedule']=='0 */6 * * *'
+    assert cron['spec']['jobTemplate']['spec']['template']['spec']['containers'][0]['image']=='docker.io/library/postgres@sha256:839fbb5a4942a7758dd93e18b42ea5649807491a0545b5eeeb8f0b8bb11857a5'
+    web=next(d for d in docs if d['kind']=='Deployment' and d['metadata']['name']=='lms')
+    assert web['spec']['template']['spec']['containers'][0]['image']=='ghcr.io/alchemmist/lms@sha256:9890519389652cdd8c8436a76f81be6bc81131174a728144ab268c4150a80167'
+    plain=rendered('lms','-n','lms')
+    assert not any(d['kind']=='Cluster' for d in plain)
 
 
 def test_runtime_credentials_are_preserved_across_argo_sync():

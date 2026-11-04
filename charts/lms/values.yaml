@@ -33,6 +33,7 @@ database:
   legacyReplicas: 1
   ha:
     enabled: false
+    resources: false
     caSecretName: lms-ha-ca
   image: postgres:17-bookworm
   user: lms

@@ -5,6 +5,9 @@ metadata:
   namespace: cattle-monitoring-system
   labels:
     release: kube-prometheus-stack
+  annotations:
+    argocd.argoproj.io/compare-options: ServerSideDiff=true
+    argocd.argoproj.io/sync-options: ServerSideApply=true
 spec:
   groups:
     - name: lms.availability
