@@ -384,3 +384,13 @@ or permanent failures can still require intervention: never promise unconditiona
 completion, never relax evidence validation or repeat ambiguous publication.
 Read runbook “Patient LLM client retries” for limits and legacy-counter semantics.
 This is SPI-only, not completion of an all-client retry audit.
+
+Retry rollout verification: commit2e363e6 deployed Synced/Healthy; runtime explicit
+LLM classification and independent failure-budget table verified. Links remained
+enabled; real dispatch202 resumed retained work.122 Python +9JS tests passed,
+including20 deferred LLM failures then ambiguous publication and successful
+reconciliation with ONLY ONE GitHub POST, plus independent8-failure cap and
+checkpoint/snapshot invalidation. These failures were simulated OFFLINE, not
+injected into production. Consistent before/after SQLite snapshots checked;
+all119 pre-rollout job IDs and original creation times retained. No pre-existing
+dead jobs required rescue; no terminal state was silently reopened.

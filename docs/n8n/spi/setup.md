@@ -490,3 +490,10 @@ Scope is SPI only. Calendar, blog and other inference clients still require a
 separate retry-contract audit; blog stays write-disabled. Telegram link retries
 remain independent of model/GitHub publication. No synthetic production incident
 or intentional inference outage is required to test these paths.
+
+Rollout verification (4 November2026):2e363e6 Synced/Healthy, new durable failure
+budget table present, Telegram links still enabled, real dispatch202.122 Python
+and9JS tests passed.20 busy-model errors followed by ambiguous GitHub publication
+and single-POST reconciliation were tested OFFLINE. Live inference outages were
+not injected. Verified private before/after snapshots preserve all119 prior job
+IDs and creation times; existing exact resolved Telegram target remains applied2.
