@@ -23,21 +23,21 @@ class OutboxTest(unittest.TestCase):
         self.outbox = links.Links(self.store,self.http,clock=lambda:self.now,guarded_protocol=True)
     def http(self, method, path, **kwargs):
         self.calls.append((method,path,kwargs))
-        return self.status, self.item if method == 'GET' else {'updated': []}
+        return self.status, self.item if method == 'GET' else dict(key='Alert/pod/ns/name',updated=[dict(chat_id=1,message_id=2)],pending=[])
     def publication(self, **changes):
         return dict(dict(kind='comment', role='primary',issue_number=42,id=7,
                          html_url='https://github.com/alchemmist/homelab/issues/42#issuecomment-7'), **changes)
     def enqueue(self):
         self.outbox.record_primary_publication('event','e',1,self.publication())
     def receipt(self):
-        self.outbox.record_card_receipt('e',dict(key='Alert/pod/ns/name',episode='e',generation=1,copies=[dict(chat_id=1,message_id=2)]))
+        self.outbox.record_card_receipt('e',dict(key='Alert/pod/ns/name',episode='e',immutable_key=True,copies=[dict(chat_id=1,message_id=2)]))
     def retry(self):
         self.now += 4000; self.outbox.once()
     def test_duplicate_and_all_copy_ack(self):
         self.enqueue(); self.enqueue(); self.receipt(); self.outbox.once()
         self.assertEqual(self.outbox.snapshot('e')['state'],'applied')
         self.assertFalse(self.outbox.once())
-        self.assertEqual(len(self.calls),3)
+        self.assertEqual(len(self.calls),1)
     def test_publication_before_card(self):
         self.enqueue(); self.outbox.once()
         self.assertEqual(self.outbox.snapshot('e')['error'],'WAIT_RECEIPT')
@@ -52,11 +52,11 @@ class OutboxTest(unittest.TestCase):
         self.status=200; self.retry()
         self.assertEqual(self.outbox.snapshot('e')['state'],'applied')
     def test_partial_readback_not_desired_state(self):
-        self.enqueue(); self.receipt(); self.item['spi_url']=self.publication()['html_url']
-        self.item['copies'][0]['delivery_state']='unknown'
+        self.enqueue(); self.receipt()
+        self.outbox.request=lambda *a,**kw: (200,dict(key='Alert/pod/ns/name',spi_url=self.publication()['html_url'],updated=[],pending=[dict(chat_id=1,message_id=2)]))
         self.outbox.once()
         self.assertEqual(self.outbox.snapshot('e')['error'],'COPIES_PENDING')
-        self.item['copies'][0]['delivery_state']='applied'; self.retry()
+        self.outbox.request=self.http; self.retry()
         self.assertEqual(self.outbox.snapshot('e')['state'],'applied')
     def test_timeout_secret_safe(self):
         self.enqueue(); self.receipt()
@@ -71,9 +71,10 @@ class OutboxTest(unittest.TestCase):
         self.assertFalse(self.outbox.once()); self.retry()
         self.assertEqual(self.outbox.snapshot('e')['state'],'applied')
     def test_episode_and_stale_revision(self):
-        self.enqueue(); self.receipt(); self.item['episode']='new-episode'
+        self.enqueue()
+        self.outbox.record_card_receipt('e',dict(key='legacy',copies=[dict(chat_id=1,message_id=2)]))
         self.outbox.once()
-        self.assertEqual(self.outbox.snapshot('e')['error'],'EPISODE_MISMATCH')
+        self.assertEqual(self.outbox.snapshot('e')['error'],'WAIT_IMMUTABLE_RECEIPT')
         self.assertFalse(any(c[0]=='POST' for c in self.calls))
         self.outbox.record_primary_publication('resolved','e',2,self.publication(id=8,html_url='https://github.com/alchemmist/homelab/issues/42#issuecomment-8'))
         self.enqueue()

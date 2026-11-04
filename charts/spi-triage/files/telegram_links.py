@@ -3,13 +3,12 @@
 Transport: request(method, path, json=None) -> (HTTP status, decoded dict).
 It owns credentials/timeouts and MUST NOT log headers or response bodies.
 The current legacy bot cannot safely deliver: guarded_protocol defaults False.
-Enable only against reviewed episode/revision + per-copy acknowledgement API.
+Enable only against reviewed immutable episode-key + per-copy acknowledgement API.
 """
 import json
 import re
 import time
 import uuid
-from urllib.parse import urlencode
 
 _URL = re.compile(r'https://github\.com/alchemmist/homelab/issues/([1-9][0-9]*)(?:#issuecomment-([1-9][0-9]*))?\Z')
 
@@ -48,7 +47,7 @@ class Links:
 
     def record_card_receipt(self, episode, receipt, connection=None):
         # Store only identity, never original alert text/credentials.
-        safe = {k: receipt[k] for k in ('key', 'episode', 'generation', 'copies') if k in receipt}
+        safe = {k: receipt[k] for k in ('key', 'episode', 'immutable_key', 'copies') if k in receipt}
         safe['copies'] = [{k: x[k] for k in ('chat_id', 'message_id') if k in x}
                           for x in safe.get('copies', [])]
         if safe.get('episode', episode) != episode:
@@ -78,7 +77,7 @@ class Links:
             c.execute('''INSERT INTO spi_links(episode,event_key,revision,url) VALUES(?,?,?,?)
               ON CONFLICT(episode) DO UPDATE SET event_key=excluded.event_key,
               revision=excluded.revision,url=excluded.url,state='pending',available=0,
-              lease=0,owner=NULL,attempts=0,error=NULL,acknowledgement='{}' ''',
+              attempts=0,error=NULL,acknowledgement='{}' ''',
                       (episode, event_key, revision, url))
         if connection is not None:
             save(connection)
@@ -93,10 +92,11 @@ class Links:
     def once(self):
         """One bounded attempt. Run on a dedicated thread, never the dispatch loop.
 
-        Extended bot contract: conditional POST atomically validates episode,
-        generation, copies and monotonic revision. GET must advertise
-        link_protocol=1 and expose per-copy applied_url/applied_revision;
-        DB desired spi_url alone is deliberately never considered success.
+        Reviewed bot contract: immutable timestamp-derived episode keys,
+        expected_copies atomic guard, retryable failed edits and explicit updated/
+        pending copy sets. Desired-state GET readback is never delivery evidence.
+        Serialize newer episode revisions in the caller; local CAS protects state
+        but cannot cancel an older in-flight remote edit.
         """
         now, owner = self.clock(), uuid.uuid4().hex
         with self.store.db() as c:
@@ -111,34 +111,24 @@ class Links:
             if receipt.get('key'):
                 if not self.guarded:
                     error = 'BOT_GUARD_REQUIRED'
-                elif not all(k in receipt for k in ('episode', 'generation', 'copies')) or not receipt['copies']:
+                elif (receipt.get('episode') != row['episode'] or
+                      receipt.get('immutable_key') is not True or not receipt.get('copies')):
                     error = 'WAIT_IMMUTABLE_RECEIPT'
                 else:
-                    path = '/v1/cards/item?' + urlencode({'key': receipt['key']})
-                    status, item = self.request('GET', path)
-                    if status != 200:
-                        error = 'CARD_NOT_READY' if status in (404,409) else 'BOT_HTTP_ERROR'
-                    elif item.get('link_protocol') != 1:
-                        error = 'BOT_GUARD_REQUIRED'
-                    elif any(item.get(k) != receipt[k] for k in ('episode','generation')):
-                        error = 'EPISODE_MISMATCH'
-                    else:
-                        payload = dict(receipt, url=row['url'], label='SPI', revision=row['revision'])
-                        status, _ = self.request('POST', '/v1/cards/links', json=payload)
-                        error = 'BOT_HTTP_ERROR'
-                        if status == 200:
-                            status, item = self.request('GET', path)
-                            expected = {(x['chat_id'],x['message_id']) for x in receipt['copies']}
-                            copies = item.get('copies', []) if status == 200 else []
-                            actual = {(x.get('chat_id'),x.get('message_id')) for x in copies}
-                            applied = (status == 200 and item.get('link_protocol') == 1
-                                       and all(item.get(k) == receipt[k] for k in ('episode','generation'))
-                                       and expected <= actual and bool(copies)
-                                       and all(x.get('applied_url') == row['url'] and
-                                               x.get('applied_revision') == row['revision'] and
-                                               x.get('delivery_state') == 'applied' for x in copies))
-                            ack = {'expected': len(expected), 'observed': len(actual), 'verified': applied}
-                            error = None if applied else 'COPIES_PENDING'
+                    # immutable_key is trusted ingress attestation of the reviewed
+                    # bot's timestamp-derived episode key, never legacy key inference.
+                    expected = {(x['chat_id'], x['message_id']) for x in receipt['copies']}
+                    payload = dict(key=receipt['key'], url=row['url'], label='SPI',
+                                   expected_copies=receipt['copies'])
+                    status, result = self.request('POST', '/v1/cards/links', json=payload)
+                    error = 'CARD_NOT_READY' if status in (404, 409) else 'BOT_HTTP_ERROR'
+                    if status == 200:
+                        updated = {(x.get('chat_id'), x.get('message_id'))
+                                   for x in result.get('updated', [])}
+                        applied = (result.get('key') == receipt['key'] and expected <= updated
+                                   and not result.get('pending', []))
+                        ack = {'expected': len(expected), 'observed': len(updated), 'verified': applied}
+                        error = None if applied else 'COPIES_PENDING'
         except Exception:
             # Ambiguous acceptance is retryable, never a fabricated receipt.
             error = 'DELIVERY_UNKNOWN'
@@ -148,4 +138,8 @@ class Links:
               available=?,lease=0,owner=NULL WHERE episode=? AND revision=? AND owner=?''',
                       ('applied' if applied else 'pending', error, json.dumps(ack),
                        self.clock()+delay, row['episode'], row['revision'], owner))
+            # New desired revision keeps the active lease until old request exits.
+            # Its completion must not acknowledge the newer URL, only unblock it.
+            c.execute("UPDATE spi_links SET lease=0,owner=NULL WHERE episode=? AND owner=? AND revision!=?",
+                      (row['episode'], owner, row['revision']))
         return True
