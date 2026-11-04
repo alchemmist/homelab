@@ -19,15 +19,15 @@ class RetentionTests(unittest.TestCase):
         self.assertEqual(text, m.render(text, self.policy))
         fallback, rules = m.rules(self.policy)
         self.assertEqual(fallback, 336)
-        self.assertIn((10, '{log_level="unknown"}', 336), rules)
-        self.assertIn((10, '{log_level="debug"}', 72), rules)
-        self.assertIn((10, '{log_level="warn"}', 720), rules)
-        self.assertIn('k8s.namespace.name, log_level]', text)
+        self.assertIn((10, '{severity="unknown"}', 336), rules)
+        self.assertIn((10, '{severity="debug"}', 72), rules)
+        self.assertIn((10, '{severity="warn"}', 720), rules)
+        self.assertIn('k8s.namespace.name, severity]', text)
 
     def test_service_beats_severity(self):
         self.policy['services'] = {'example': {'debug': 48, 'error': 720}}
         _, rules = m.rules(self.policy)
-        self.assertIn((100, '{service_name="example",log_level="debug"}', 48), rules)
+        self.assertIn((100, '{service_name="example",severity="debug"}', 48), rules)
         self.assertEqual(len({(p, s) for p, s, _ in rules}), len(rules))
 
     def test_reject_invalid_and_unmeasured_long_retention(self):

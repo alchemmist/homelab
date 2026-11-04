@@ -31,19 +31,25 @@ schema_config:
 limits_config:
   retention_period: 336h
   retention_stream:
-    - selector: '{log_level="debug"}'
+    - selector: '{severity="debug"}'
       priority: 10
       period: 72h
-    - selector: '{log_level="error"}'
+    - selector: '{severity="error"}'
       priority: 10
       period: 720h
-    - selector: '{log_level="info"}'
+    - selector: '{severity="fatal"}'
+      priority: 10
+      period: 720h
+    - selector: '{severity="info"}'
       priority: 10
       period: 168h
-    - selector: '{log_level="unknown"}'
+    - selector: '{severity="trace"}'
+      priority: 10
+      period: 72h
+    - selector: '{severity="unknown"}'
       priority: 10
       period: 336h
-    - selector: '{log_level="warn"}'
+    - selector: '{severity="warn"}'
       priority: 10
       period: 720h
   allow_structured_metadata: true
@@ -54,7 +60,7 @@ limits_config:
       ignore_defaults: true
       attributes_config:
         - action: index_label
-          attributes: [service.name, service.namespace, host.name, k8s.namespace.name, log_level]
+          attributes: [service.name, service.namespace, host.name, k8s.namespace.name, severity]
 compactor:
   working_directory: ${OTEL_STORAGE_DIR}/loki/compactor
   retention_enabled: true

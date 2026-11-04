@@ -6,7 +6,7 @@ Scope: Loki only. This change does not touch Prometheus, Thanos, Tempo, applicat
 
 Edit `deploy/monitoring/otel/retention-policy.json`, run `python3 scripts/otel-loki-retention.py`, then `python3 scripts/otel-loki-retention.py --check`. Both static Loki config copies are generated identically. The Helm chart consumes its static copy; it does not introduce a second independent policy surface.
 
-Defaults: debug 3d, info 7d, warn 30d, error 30d, unknown 14d. Missing, unrecognized or legacy severity labels fall through to global 14d. Explicit normalized `unknown` is also 14d. Trace should be normalized to debug, fatal/critical to error by the collector. Loki does not infer these labels from log text for retention. `log_level` must be an **indexed resource attribute** on each OTLP record's resource, not merely a log attribute or structured metadata. Resource indexing is explicitly allowlisted. Historical streams without this label retain the fallback; these rules do not retroactively label them.
+Defaults: trace/debug 3d, info 7d, warn 30d, error/fatal 30d, unknown 14d. Missing, unrecognized or legacy severity labels fall through to global 14d. Explicit normalized `unknown` is also 14d. Collector preserves trace/debug/info/warn/error/fatal/unknown; unparsed records become unknown. Trace retains 3d and fatal retains the error policy by default. Loki does not infer these labels from log text for retention. `severity` must be an **indexed resource attribute** on each OTLP record's resource, not merely a log attribute or structured metadata. Resource indexing is explicitly allowlisted. Historical streams without this label retain the fallback; these rules do not retroactively label them.
 
 All service names use the same defaults automatically. Exact per-service/severity overrides are supported, for example:
 
@@ -14,7 +14,7 @@ All service names use the same defaults automatically. Exact per-service/severit
 "services": {"example-service": {"debug": 48, "error": 720}}
 ```
 
-Only listed severities are overridden. All defaults have priority 10; service+severity overrides have priority 100. No equal-priority overlaps are generated. Loki picks the **highest numeric priority**, and for equal priorities picks the **shortest period**, not the longest. If no selector matches, global retention applies. Policy validates integer 24h–8760h, and permits >720h only for error with an explicit measured `capacityApproval` containing `measuredAt`, `evidence`, `budgetBytes`, `projectedBytes`, `approvedBy`. This review record is not a substitute for measurement. No 365d default is justified today.
+Only listed severities are overridden. All defaults have priority 10; service+severity overrides have priority 100. No equal-priority overlaps are generated. Loki picks the **highest numeric priority**, and for equal priorities picks the **shortest period**, not the longest. If no selector matches, global retention applies. Policy validates integer 24h–8760h, and permits >720h only for error/fatal with an explicit measured `capacityApproval` containing `measuredAt`, `evidence`, `budgetBytes`, `projectedBytes`, `approvedBy`. This review record is not a substitute for measurement. No 365d default is justified today.
 
 ## Read-only capacity evidence and limits
 
