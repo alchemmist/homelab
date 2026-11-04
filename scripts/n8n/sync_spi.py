@@ -2,7 +2,7 @@
 """Render SPI workflows. Active workflows require explicit operator deactivation."""
 import copy
 import json
-from pathlib import Path
+from urllib.parse import urlencode
 from sync import api, BASE, CONFIG
 
 def render(template,mapping):
@@ -17,7 +17,23 @@ def render(template,mapping):
 
 def sync(relative):
     mapping=json.loads((CONFIG/'spi-credentials.json').read_text());template=json.loads((BASE/relative).read_text());w=render(template,mapping)
-    matches=[x for x in api('GET','workflows?limit=250')['data']if x['name']==w['name']]
+    # Search every page before deciding to create: a missed existing workflow
+    # would allocate a new identity and could duplicate the production webhook.
+    matches=[]
+    cursor=None
+    seen=set()
+    while True:
+        query={'limit':250}
+        if cursor:
+            query['cursor']=cursor
+        page=api('GET','workflows?'+urlencode(query))
+        matches.extend(x for x in page['data'] if x['name']==w['name'])
+        cursor=page.get('nextCursor')
+        if not cursor:
+            break
+        if cursor in seen:
+            raise RuntimeError('Repeated workflow pagination cursor')
+        seen.add(cursor)
     if len(matches)>1:raise RuntimeError('Ambiguous workflow name')
     if matches and matches[0]['active']:raise RuntimeError('Deactivate explicitly before syncing')
     result=api('PUT' if matches else 'POST','workflows/'+matches[0]['id'] if matches else 'workflows',{k:w[k]for k in ['name','nodes','connections','settings']})

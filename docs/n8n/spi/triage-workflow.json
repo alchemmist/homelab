@@ -2,24 +2,27 @@
   "name": "SPI Incident Triage",
   "nodes": [
     {
-      "name": "Every Minute",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
+      "name": "Dispatch Triage Job",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
       "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "field": "minutes",
-              "minutesInterval": 1
-            }
-          ]
-        }
+        "httpMethod": "POST",
+        "path": "spi-incident-triage-dispatch",
+        "authentication": "headerAuth",
+        "responseMode": "onReceived",
+        "options": {}
       },
       "position": [
         0,
         0
       ],
-      "id": "9c393df1-a66f-41bf-acaf-b2b66f31a393"
+      "id": "9c393df1-a66f-41bf-acaf-b2b66f31a393",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SPI_WORKER_CREDENTIAL_ID",
+          "name": "SPI worker internal"
+        }
+      }
     },
     {
       "name": "Claim Triage Job",
@@ -176,7 +179,7 @@
     }
   ],
   "connections": {
-    "Every Minute": {
+    "Dispatch Triage Job": {
       "main": [
         [
           {
