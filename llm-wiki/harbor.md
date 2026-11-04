@@ -201,3 +201,14 @@ BusyBox manifest 200 с прежним digest. Browser owner login ещё тре
 - Corrected earlier timeout diagnosis: traefik-edge had no request-body deadline, but the separate k3s home Traefik still used its default 60s read timeout. This caused public Harbor large-layer PUT/PATCH HTTP 499. Updated the existing HelmChartConfig and Ansible home_ingress_ha role to preserve tracing/HA arguments and disable web/websecure body-read deadlines. Kept the bundled Rancher/k3s chart and verified deployed flags and 2/2 rollout.
 - Source CI commits: Cats `84cf901`, Format Quorum `74b7e85`, Monori `71cac39` publish to both Harbor and GHCR in the same build, then invoke the existing single-step deploy action. Removed the active legacy SSH deploy workflows in Format Quorum and Monori. Cats run `41831884179` succeeded; Format Quorum run `41831893923` succeeded after the home-ingress fix. Monori run `41831902224` is still being verified; front/back publish+record steps have succeeded.
 - Scan-on-push and GC remain blocked on working administrative Harbor access. Both the provisioned bootstrap password and original private Helm-release admin password return 401. Robot credentials support image push/pull, not global administration. No password/OIDC reset, DB credential changes, retention deletion or GC scheduling performed to bypass this. Trivy is Ready, but that alone does not prove a successful vulnerability scan.
+
+### Final verified checkpoint — 2026-11-04
+
+Monori CI **41831902224** completed successfully after the home-ingress timeout fix, including all three build/publish/record steps. Current Harbor indexes and all child manifests verified with the pull robot and matched to live Deployment images:
+
+- Cats: `sha256:ffef7edb39d622190b6ba88642bc35f7a8b159943532517889a3ff8d795ed179` (2 Ready).
+- Format Quorum: `sha256:2c7127c13aa1ea1efd1ab6e59d4f0a043d19a46ec70462d2ddf876dc351eb153` (1 Ready).
+- Monori front: `sha256:ef7def1d4eafdfa28cf4bd72f26fda1bceeb5c335510e26a56029a9f9b1b03c6`; back: `sha256:4543c95fe7f26b342878cee4cee0648918c6ed55f1f62584227661c3efe11ff6`; sync: `sha256:762c3b18504541e195b99ee2999fe723a466ff0bccb06211c87c75a038d33dbd` (each Ready; sync rollout completed).
+- Socrat Home: `sha256:41e26b089357b32fc7caefc21dc2bc1dfcb12c7e8f90373fb11dfefb152c734f` (2 Ready; source was already this exact live GHCR index). No separate upstream repository or CI invented.
+
+The only running own-service GHCR image is LMS, intentionally retained there. All temporary image-copy Pods and their credential Secret are removed. Remaining gate is administrative access for scan-on-push and GC: request a working existing admin credential/session through a private local channel; never paste credentials into issue/chat/Git. Until then neither GC dry-run/schedule nor scan-on-push is claimed enabled. No tag/artifact retention deletion performed.
