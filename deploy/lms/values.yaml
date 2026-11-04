@@ -13,8 +13,8 @@ profiling:
   enabled: true
 database:
   ha:
-    enabled: true
-  legacyReplicas: 0
+    enabled: false
+  legacyReplicas: 1
 replicaCount: 1
 persistence:
   mountInApp: false

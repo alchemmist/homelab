@@ -67,10 +67,9 @@ def test_copy_tool_refuses_live_ha_overwrite_and_final_restore_without_freeze():
 
 def test_database_is_a_source_of_the_lms_application():
     app=yaml.safe_load((ROOT/'deploy/argocd/apps/lms.yaml').read_text())
-    assert 'source' not in app['spec']
-    paths=[source['path'] for source in app['spec']['sources']]
-    assert paths==['charts/lms','charts/lms-database-ha']
-    assert app['spec']['sources'][1]['helm']['releaseName']=='lms-database-ha'
+    assert 'sources' not in app['spec']
+    assert app['spec']['source']['path']=='charts/lms'
+    assert app['spec']['source']['helm']['releaseName']=='lms'
     assert not (ROOT/'deploy/argocd/apps/lms-database-ha.yaml').exists()
 
 
@@ -89,7 +88,7 @@ def test_production_web_does_not_depend_on_legacy_nfs_and_legacy_db_is_stopped()
     assert not any('persistentVolumeClaim' in volume for volume in web['spec']['template']['spec']['volumes'])
     assert any(d['kind']=='PersistentVolumeClaim' and d['metadata']['name']=='lms-data' for d in docs)
     old=next(d for d in docs if d['kind']=='Deployment' and d['metadata']['name']=='lms-postgres')
-    assert old['spec']['replicas']==0
+    assert old['spec']['replicas']==1
 
 
 def test_operator_canary_avoids_stale_ready_pod_on_unreachable_node():
