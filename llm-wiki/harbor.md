@@ -182,3 +182,13 @@ BusyBox manifest 200 с прежним digest. Browser owner login ещё тре
 восстановлен в isolated PG18, три blob проверены SHA-256. Это не full Harbor DR.
 Не применять legacy bootstrap API с устаревшим initial password после активации OIDC.
 Другие детали/границы SSO: `llm-wiki/identity.md`.
+
+## Runtime repair — 2026-11-04
+
+- Argo rendering upstream `lookup`/random Secret defaults rotated internal core/jobservice tokens. A running core retained its original environment, causing jobservice internalconfig HTTP 401. Restored runtime token/password values privately, retained the original signing keypair from the private Helm release, and disabled rendering existing runtime Secrets with `externallyManagedRuntimeSecrets: true`. Existing Secrets remain in the cluster; their Argo tracking annotations were removed explicitly, without pruning or credential publication.
+- Core CONFIG_OVERWRITE_JSON now references `socrat-authentik-harbor/config-json`, preserving the deployed Authentik configuration rather than applying db_auth defaults.
+- Verified Harbor health API healthy; core/jobservice/database/registry Ready. Trivy enabled with CPU/memory limits and verified Ready. Scan-on-push and GC are NOT yet verified: bootstrap admin credential cannot authenticate to administrative GC API; do not reset OIDC/admin credentials or schedule destructive retention to bypass this.
+- Removed unused switcher monitoring objects and unused syncthing-private-nginx ConfigMap after confirming no pod references. No global prune enabled. Cert-manager selector drift and remark42 credential preservation corrected in Git.
+- Release action now pins GitHub host keys, uses an explicit private key without ssh-agent, bounds network calls/retries, uses SSH-over-443, and rebases the same commit on concurrent main updates including remote ref lock races. Static/unit checks pass; main and v1 published through 56037a9. LMS end-to-end verification remains pending.
+- GitHub status reports an active Git Operations incident (intermittent Git errors); observed SSH auth failures and HTTPS Internal Server Error. No proof of deploy-key expiration. Do not rotate all keys as an incident workaround.
+- Remaining: LMS HA ownership drift, scan-on-push/GC administrative access, exact-digest registry/CI migration. Backups/NFS remain outside this task.
