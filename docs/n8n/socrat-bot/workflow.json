@@ -28,7 +28,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const raw = items[0].json;\nconst payload = raw.body && (Array.isArray(raw.body.alerts) || raw.body.status) ? raw.body : raw;\nconst alerts = Array.isArray(payload.alerts) ? payload.alerts : [];\nif (!alerts.length) return [];\n\nreturn alerts.map(function (alert) {\n  return {\n    json: {\n      ownerChatId: 891074228,\n      alert: {\n        status: alert.status || 'firing',\n        fingerprint: alert.fingerprint || '',\n        labels: alert.labels || {},\n        annotations: alert.annotations || {},\n      },\n    },\n  };\n});\n"
+        "jsCode": "const raw = items[0].json;\nconst payload = raw.body && (Array.isArray(raw.body.alerts) || raw.body.status) ? raw.body : raw;\nconst alerts = Array.isArray(payload.alerts) ? payload.alerts : [];\nif (!alerts.length) return [];\n\nreturn alerts.map(function (alert) {\n  return {\n    json: {\n      ownerChatId: 891074228,\n      source: payload.externalURL || 'socrat-alerts',\n      alert: {\n        status: alert.status || 'firing',\n        fingerprint: alert.fingerprint || '',\n        startsAt: alert.startsAt,\n        endsAt: alert.endsAt,\n        generatorURL: alert.generatorURL || '',\n        labels: alert.labels || {},\n        annotations: alert.annotations || {},\n      },\n    },\n  };\n});\n"
       },
       "id": "c0ffee00-0002-4000-8000-000000000002",
       "name": "One item per alert",
@@ -65,6 +65,36 @@
           "id": "SOCRAT_BOT_CREDENTIAL_ID",
           "name": "Socrat bot internal"
         }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://spi-triage.automation.svc:8080/telegram-receipt",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ version: 1, source: $('One item per alert').item.json.source, alert: $('One item per alert').item.json.alert, receipt: $json }) }}",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "id": "c0ffee00-0004-4000-8000-000000000004",
+      "name": "Record Telegram Receipt",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        780,
+        0
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SPI_WORKER_CREDENTIAL_ID",
+          "name": "SPI worker internal"
+        }
       }
     }
   ],
@@ -85,6 +115,17 @@
         [
           {
             "node": "Post Telegram Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post Telegram Message": {
+      "main": [
+        [
+          {
+            "node": "Record Telegram Receipt",
             "type": "main",
             "index": 0
           }
