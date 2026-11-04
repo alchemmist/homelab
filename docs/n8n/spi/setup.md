@@ -376,7 +376,7 @@ and no fake new primary receipt/root target replaces its previous exact link.
 Provisioning copies only native `INTERNAL_TOKEN` into existing worker Secret as
 `BOT_INTERNAL_TOKEN`, never Telegram token/DB credentials. `telegramLinksEnabled`
 remains false during staging, then enabled only after bot migration0009, callback
-workflow and review are verified. Egress is limited to the native bot API8080.
+workflow and review are verified. Egress is limited to the native bot service8080 (hostNetwork target8082).
 Worker emits internal queue health every60s for existing monitoring, not an n8n
 Schedule execution. `spi-triage-telegram-links` alerts on pending link backlog.
 
