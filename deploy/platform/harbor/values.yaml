@@ -1,3 +1,5 @@
+# Runtime credentials and signing keys are preserved in existing cluster Secrets.
+externallyManagedRuntimeSecrets: true
 core:
   extraEnvVars:
   - name: CONFIG_OVERWRITE_JSON
