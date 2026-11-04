@@ -23,3 +23,11 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - RespectIgnoreDifferences=true
+  ignoreDifferences:
+    - group: ""
+      kind: Secret
+      name: remark42-env
+      namespace: remark42
+      jsonPointers:
+        - /data

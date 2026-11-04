@@ -35,8 +35,6 @@ cainjector:
             app.kubernetes.io/instance: cert-manager
             app.kubernetes.io/name: cainjector
         topologyKey: kubernetes.io/hostname
-  nodeSelector:
-    kubernetes.io/hostname: null
   replicaCount: 2
   resources:
     limits:
@@ -53,8 +51,6 @@ crds:
   enabled: true
 extraArgs:
 - --acme-http01-solver-nameservers=1.1.1.1:53,9.9.9.9:53
-nodeSelector:
-  kubernetes.io/hostname: null
 replicaCount: 2
 resources:
   limits:
@@ -93,8 +89,6 @@ webhook:
             app.kubernetes.io/instance: cert-manager
             app.kubernetes.io/name: webhook
         topologyKey: kubernetes.io/hostname
-  nodeSelector:
-    kubernetes.io/hostname: null
   replicaCount: 2
   resources:
     limits:
