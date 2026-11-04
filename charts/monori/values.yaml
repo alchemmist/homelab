@@ -16,8 +16,8 @@ images:
     fallback: ghcr.io/alchemmist/homelab-monori-back:latest
   sync:
     repository: harbor.socrat.alchemmist.xyz/homelab/monori
-    tag: 1a4b1f127e5dd571649bae8c4ed89b5bdcb89549
-    digest: sha256:0d1c51dfdea823b2981e4721bee9380e2fe881bdc841066a369b4f6dc8979205
+    tag: 71cac3911993a05ee7e532c99d5abfa50faaa173
+    digest: sha256:762c3b18504541e195b99ee2999fe723a466ff0bccb06211c87c75a038d33dbd
     fallback: ghcr.io/alchemmist/homelab-monori-sync:latest
 
 imagePullSecrets:
