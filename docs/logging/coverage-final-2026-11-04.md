@@ -1,6 +1,6 @@
 # Final active-source logging reconciliation — bounded, not full coverage
 
-Operator entry point: [logging operator guide](operator-guide.md). Prior [recovery acceptance](rollout-recovery-2026-11-04.md) remains intact.
+Operator entry point: [logging operator guide](operator-guide.md). Deployment blocker: [exact final handoff](deployment-blocker-2026-11-04.md). Prior [recovery acceptance](rollout-recovery-2026-11-04.md) remains intact.
 
 ## Exact window and denominator
 
@@ -58,4 +58,4 @@ Actual `/api/health`: Grafana **13.2.4**, commit `0e79aef9d91abf3bdadae9af157630
 
 ## Validation and ownership
 
-Reconciler now accepts optional aligned stdout count metadata, fails closed on mismatched query windows, labels no-heartbeat exclusions explicitly and only excludes the real Collector identity (not Loki/Tempo). Three regression tests cover these distinctions. Logging test discovery: **39 passed**. No runtime config fix was justified by remaining evidence. This report intentionally does not claim completion of full-service logging, retention enforcement, rotation/restart acceptance or UI validation.
+Reconciler now accepts optional aligned stdout count metadata, fails closed on mismatched query windows, labels no-heartbeat exclusions explicitly and only excludes the real Collector identity (not Loki/Tempo). Three regression tests cover these distinctions. Logging test discovery: **39 passed**. No Collector runtime config fix was justified by the remaining source evidence. A separate confirmed Loki retention runtime defect has a prepared, **not deployed** chart fix; see the blocker below. This report intentionally does not claim completion of full-service logging, retention enforcement, rotation/restart acceptance or UI validation.

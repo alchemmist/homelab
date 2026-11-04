@@ -232,6 +232,13 @@ LiteLLM API gateway: [deployment and access](docs/litellm.md).
 
 Open Terminal workspace on socrat-1: [deployment and connection](docs/open-terminal.md).
 
+## Unified logging operations
+
+See the [logging operator guide](docs/logging/operator-guide.md),
+[active-source coverage registry/report](docs/logging/coverage-final-2026-11-04.md),
+and [current deployment blocker handoff](docs/logging/deployment-blocker-2026-11-04.md).
+These distinguish observed delivery, source silence, explicit exclusions and unresolved retention/deployment gates; they do not claim universal coverage.
+
 ## LMS performance observability
 
 Live browser → Traefik → LMS/database traces, Grafana waterfall, Loki correlation,
