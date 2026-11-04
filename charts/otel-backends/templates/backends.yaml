@@ -15,6 +15,10 @@ spec:
     type: Recreate
   template:
     metadata:
+      {{- if eq $name "loki" }}
+      annotations:
+        checksum/loki-config: {{ $.Files.Get "files/loki.yaml" | sha256sum }}
+      {{- end }}
       labels:
         app: otel-{{ $name }}
         app.kubernetes.io/part-of: otel-backends

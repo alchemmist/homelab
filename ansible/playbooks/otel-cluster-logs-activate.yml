@@ -1,0 +1,50 @@
+---
+- name: Activate only the exact owned Collector container without replacing its pod
+  hosts: socrat-0
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - name: Require exact reviewed pod container image and projected candidate
+      ansible.builtin.assert:
+        that:
+          - otel_cluster_pod_uid is defined
+          - otel_cluster_container_id is defined
+          - otel_cluster_config_sha256 is defined
+          - otel_cluster_container_id is match('^[a-f0-9]{64}$')
+          - otel_cluster_pod_uid is match('^[a-f0-9-]{36}$')
+          - otel_cluster_config_sha256 is match('^[a-f0-9]{64}$')
+    - name: Verify kubelet projected configuration before any lifecycle action
+      ansible.builtin.command:
+        argv:
+          - sha256sum
+          - '/var/lib/kubelet/pods/{{ otel_cluster_pod_uid }}/volumes/kubernetes.io~configmap/otel-config/collector.yaml'
+      register: projected_config
+      changed_when: false
+      failed_when: otel_cluster_config_sha256 not in projected_config.stdout
+    - name: Inspect exact running container identity privately
+      ansible.builtin.command:
+        argv: [k3s, crictl, inspect, '{{ otel_cluster_container_id }}']
+      register: collector_identity
+      no_log: true
+      changed_when: false
+    - name: Refuse any identity drift
+      ansible.builtin.assert:
+        that:
+          - (collector_identity.stdout | from_json).status.metadata.name == 'otel-cluster'
+          - (collector_identity.stdout | from_json).status.state == 'CONTAINER_RUNNING'
+          - (collector_identity.stdout | from_json).status.labels['io.kubernetes.pod.uid'] == otel_cluster_pod_uid
+          - (collector_identity.stdout | from_json).status.imageRef == otel_cluster_actual_image_ref
+      no_log: true
+    - name: Verify full pinned binary receipt despite imported CRI image naming
+      ansible.builtin.command:
+        argv:
+          - sha256sum
+          - '/proc/{{ (collector_identity.stdout | from_json).info.pid }}/root/otelcol-contrib'
+      register: collector_binary
+      changed_when: false
+      failed_when: "'57911a9d902cfe2c287dac09fcee4b054630b4ec248fa190a3115d860a32f81f' not in collector_binary.stdout"
+    - name: Gracefully stop only the owned container for kubelet restart on same storage
+      ansible.builtin.command:
+        argv: [k3s, crictl, stop, '--timeout', '90', '{{ otel_cluster_container_id }}']
+      changed_when: true

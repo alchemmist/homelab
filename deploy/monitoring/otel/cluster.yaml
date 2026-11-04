@@ -40,6 +40,10 @@ processors:
     timeout: 1s
     send_batch_size: 1000
     send_batch_max_size: 2000
+  batch/logs:
+    timeout: 1s
+    send_batch_size: 8
+    send_batch_max_size: 8
   batch/traces:
     timeout: 1s
     send_batch_size: 256
@@ -49,21 +53,11 @@ processors:
     log_statements:
     - context: resource
       statements:
-      - flatten(attributes, resolveConflicts=true)
-      - delete_matching_keys(attributes, "(?i).*(authorization|password|secret|token|api[._-]?key|cookie|headers?|prompt|completion|request[._-]?body|response[._-]?body).*")
+      - delete_matching_keys(attributes, "(?i).*(authorization|password|secret|token|cookie|prompt|completion|request.body|response.body).*")
     - context: log
       statements:
-      # Parse JSON strings before sanitizing; flatten recursively includes array members.
-      - set(cache["privacy_body"], ParseJSON(body)) where IsString(body) and IsMatch(body, "^[ \\t]*(\\{|\\[[ \\t]*(\\{|\\[|\"))")
-      - set(body, cache["privacy_body"]) where cache["privacy_body"] != nil
-      - set(body, "<redacted-unstructured-array>") where IsList(body)
-      - flatten(body, resolveConflicts=true) where IsMap(body)
-      - delete_matching_keys(body, "(?i).*(authorization|password|secret|token|api[._-]?key|cookie|headers?|prompt|completion|request[._-]?body|response[._-]?body|(^|[.])body([.]|$)).*") where IsMap(body)
       - set(body, String(body)) where not IsString(body)
-      - flatten(attributes, resolveConflicts=true)
-      - delete_matching_keys(attributes, "(?i).*(authorization|password|secret|token|api[._-]?key|cookie|headers?|prompt|completion|request[._-]?body|response[._-]?body).*")
-      # Free-form labeled sensitive payloads: retain prefix, redact rest of line.
-      - replace_pattern(body, "(?is)(prompt|completion|request[._ -]?body|response[._ -]?body|cookie|headers?)[ \t:=]+.*", "sensitive-payload=<redacted>") where IsString(body)
+      - delete_matching_keys(attributes, "(?i).*(authorization|password|secret|token|cookie|prompt|completion|request.body|response.body).*")
       - replace_pattern(body, "(?i)Bearer[ \\t]+[A-Za-z0-9._~+/=-]+", "Bearer <redacted>")
         where IsString(body)
       - replace_pattern(body, "(?i)(password|secret|token|api[_-]?key|authorization)[\\\"'
@@ -101,7 +95,6 @@ exporters:
       sizer: bytes
       queue_size: 268435456
       num_consumers: 2
-      block_on_overflow: true
     retry_on_failure:
       enabled: true
       max_elapsed_time: 0s
@@ -149,6 +142,7 @@ service:
       - memory_limiter
       - filter/log-ingestion-cut
       - transform/log-privacy
+      - batch/logs
       exporters:
       - otlp_http/loki
     traces:
