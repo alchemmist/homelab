@@ -55,7 +55,22 @@ class EventWorkflowTests(unittest.TestCase):
             self.assertEqual(node['credentials'], trigger['credentials'])
             self.assertFalse(node.get('retryOnFail', False))
         self.assertEqual(w['settings'], {'executionOrder': 'v1', 'timezone': 'Europe/Moscow',
-                                        'executionTimeout': 3600, 'saveExecutionProgress': False})
+                                        'executionTimeout': 3600, 'saveExecutionProgress': False,
+                                        'saveDataSuccessExecution': 'none',
+                                        'saveDataErrorExecution': 'none',
+                                        'saveManualExecutions': False})
+
+    def test_native_webhook_input_must_not_be_persisted(self):
+        """Native Webhook includes authentication headers in transient output.
+
+        Header authentication does not redact those headers. Disable all workflow
+        execution persistence; this does not hide live editor/transient output.
+        """
+        settings = self.workflow['settings']
+        for key in ('saveDataSuccessExecution', 'saveDataErrorExecution'):
+            self.assertEqual(settings[key], 'none')
+        for key in ('saveManualExecutions', 'saveExecutionProgress'):
+            self.assertIs(settings[key], False)
 
     def test_render_reuses_worker_identity_without_mutating_template(self):
         original = copy.deepcopy(self.workflow)
@@ -94,6 +109,17 @@ class EventWorkflowTests(unittest.TestCase):
         ]:
             with self.subTest(entries=entries), self.assertRaises(RuntimeError):
                 self.run_sync([{'data': entries}])
+
+    def test_sync_refuses_missing_original_without_write(self):
+        with tempfile.TemporaryDirectory() as config:
+            Path(config, 'spi-credentials.json').write_text(json.dumps(self.mapping))
+            with patch.object(sync, 'CONFIG', Path(config)), patch.object(
+                    sync, 'api', side_effect=[{'data': [], 'nextCursor': 'next'},
+                                              {'data': []}]) as api:
+                with self.assertRaisesRegex(RuntimeError, 'refusing creation'):
+                    sync.sync(RELATIVE)
+                self.assertEqual(api.call_count, 2)
+                self.assertTrue(all(call.args[0] == 'GET' for call in api.call_args_list))
 
     def test_sync_refuses_duplicate_names_across_pages(self):
         entry = {'name': self.workflow['name'], 'id': 'original-id', 'active': False}

@@ -17,8 +17,8 @@ def render(template,mapping):
 
 def sync(relative):
     mapping=json.loads((CONFIG/'spi-credentials.json').read_text());template=json.loads((BASE/relative).read_text());w=render(template,mapping)
-    # Search every page before deciding to create: a missed existing workflow
-    # would allocate a new identity and could duplicate the production webhook.
+    # Search every page before resolving identity. SPI triage must never be
+    # recreated when its original workflow is missing or renamed.
     matches=[]
     cursor=None
     seen=set()
@@ -35,6 +35,8 @@ def sync(relative):
             raise RuntimeError('Repeated workflow pagination cursor')
         seen.add(cursor)
     if len(matches)>1:raise RuntimeError('Ambiguous workflow name')
+    if relative=='docs/n8n/spi/triage-workflow.json' and not matches:
+        raise RuntimeError('Existing SPI triage workflow not found; refusing creation')
     if matches and matches[0]['active']:raise RuntimeError('Deactivate explicitly before syncing')
     result=api('PUT' if matches else 'POST','workflows/'+matches[0]['id'] if matches else 'workflows',{k:w[k]for k in ['name','nodes','connections','settings']})
     print('Workflow synced inactive:',result['id'],result['name']);return result

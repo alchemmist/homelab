@@ -250,6 +250,9 @@
     "executionOrder": "v1",
     "timezone": "Europe/Moscow",
     "executionTimeout": 3600,
-    "saveExecutionProgress": false
+    "saveExecutionProgress": false,
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false
   }
 }
