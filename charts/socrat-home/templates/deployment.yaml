@@ -17,8 +17,9 @@ spec:
       app: {{ .Release.Name }}
   template:
     metadata:
-      {{- if .Values.homepageIndex.enabled }}
       annotations:
+        checksum/access-logging: {{ include (print $.Template.BasePath "/access-logging.yaml") . | sha256sum }}
+      {{- if .Values.homepageIndex.enabled }}
         checksum/homepage-index: {{ printf "%s:%s:%s" (.Files.Get "files/index.html" | sha256sum) (.Files.Get "files/wallpaper.webp" | sha256sum) (.Files.Get "files/favicon.svg" | sha256sum) | sha256sum }}
       {{- end }}
       labels:
@@ -50,8 +51,11 @@ spec:
             matchLabels:
               app: {{ .Release.Name }}
       {{- end }}
-      {{- if .Values.homepageIndex.enabled }}
       volumes:
+        - name: access-logging
+          configMap:
+            name: {{ .Release.Name }}-access-logging
+      {{- if .Values.homepageIndex.enabled }}
         - name: homepage-index
           configMap:
             name: {{ .Release.Name }}-index
@@ -66,8 +70,12 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.service.targetPort }}
-          {{- if .Values.homepageIndex.enabled }}
           volumeMounts:
+            - name: access-logging
+              mountPath: /etc/nginx/conf.d/00-access-logging.conf
+              subPath: 00-access-logging.conf
+              readOnly: true
+          {{- if .Values.homepageIndex.enabled }}
             - name: homepage-index
               mountPath: /usr/share/nginx/html/index.html
               subPath: index.html

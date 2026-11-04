@@ -7,6 +7,14 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name }}
 data:
   default.conf: |
+    # HTTP context only: never log query strings, headers or client addresses.
+    map $status $access_level {
+      default info;
+      ~^4 warn;
+      ~^5 error;
+    }
+    log_format safe_json escape=json '{"timestamp":"$time_iso8601","service":"img-proxy","level":"$access_level","method":"$request_method","path":"$uri","status":$status,"bytes_sent":$body_bytes_sent,"duration_seconds":$request_time}';
+    access_log /dev/stdout safe_json;
     server {
       listen 8080;
       server_name _;

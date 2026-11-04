@@ -21,7 +21,14 @@ data:
     http {
       include /etc/nginx/mime.types;
       default_type application/octet-stream;
-      access_log /dev/stdout;
+      # HTTP context only: never log query strings, headers or client addresses.
+      map $status $access_level {
+        default info;
+        ~^4 warn;
+        ~^5 error;
+      }
+      log_format safe_json escape=json '{"timestamp":"$time_iso8601","service":"litellm-branding","level":"$access_level","method":"$request_method","path":"$uri","status":$status,"bytes_sent":$body_bytes_sent,"duration_seconds":$request_time}';
+      access_log /dev/stdout safe_json;
       error_log /dev/stderr warn;
       client_body_temp_path /tmp/client;
       proxy_temp_path /tmp/proxy;
