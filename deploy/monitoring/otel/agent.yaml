@@ -77,11 +77,11 @@ processors:
       - set(severity_text, "warn") where severity_number >= 13 and severity_number < 17
       - set(severity_text, "error") where severity_number >= 17 and severity_number < 21
       - set(severity_text, "fatal") where severity_number >= 21
-      - set(severity_text, "debug") where severity_number == 0 and IsString(body) and IsMatch(body, "(?i)\bdebug\b")
-      - set(severity_text, "info") where severity_number == 0 and IsString(body) and IsMatch(body, "(?i)\binfo\b")
-      - set(severity_text, "warn") where severity_number == 0 and IsString(body) and IsMatch(body, "(?i)\bwarn(ing)?\b")
-      - set(severity_text, "error") where severity_number == 0 and IsString(body) and IsMatch(body, "(?i)\b(error|exception)\b")
-      - set(severity_text, "fatal") where severity_number == 0 and IsString(body) and IsMatch(body, "(?i)\b(fatal|panic)\b")
+      - set(severity_text, "debug") where severity_number == 0 and IsString(body) and IsMatch(body, "(?i)\\bdebug\\b")
+      - set(severity_text, "info") where severity_number == 0 and IsString(body) and IsMatch(body, "(?i)\\binfo\\b")
+      - set(severity_text, "warn") where severity_number == 0 and IsString(body) and IsMatch(body, "(?i)\\bwarn(ing)?\\b")
+      - set(severity_text, "error") where severity_number == 0 and IsString(body) and IsMatch(body, "(?i)\\b(error|exception)\\b")
+      - set(severity_text, "fatal") where severity_number == 0 and IsString(body) and IsMatch(body, "(?i)\\b(fatal|panic)\\b")
       - set(attributes["severity"], severity_text)
   groupbyattrs/log-severity:
     keys: [severity]
@@ -90,11 +90,21 @@ processors:
     log_statements:
     - context: resource
       statements:
-      - delete_matching_keys(attributes, "(?i).*(authorization|password|secret|token|cookie|prompt|completion|request.body|response.body).*")
+      - flatten(attributes, resolveConflicts=true)
+      - delete_matching_keys(attributes, "(?i).*(authorization|password|secret|token|api[._-]?key|cookie|headers?|prompt|completion|request[._-]?body|response[._-]?body).*")
     - context: log
       statements:
+      # Parse JSON strings before sanitizing; flatten recursively includes array members.
+      - set(cache["privacy_body"], ParseJSON(body)) where IsString(body) and IsMatch(body, "^[ \\t]*(\\{|\\[[ \\t]*(\\{|\\[|\"))")
+      - set(body, cache["privacy_body"]) where cache["privacy_body"] != nil
+      - set(body, "<redacted-unstructured-array>") where IsList(body)
+      - flatten(body, resolveConflicts=true) where IsMap(body)
+      - delete_matching_keys(body, "(?i).*(authorization|password|secret|token|api[._-]?key|cookie|headers?|prompt|completion|request[._-]?body|response[._-]?body|(^|[.])body([.]|$)).*") where IsMap(body)
       - set(body, String(body)) where not IsString(body)
-      - delete_matching_keys(attributes, "(?i).*(authorization|password|secret|token|cookie|prompt|completion|request.body|response.body).*")
+      - flatten(attributes, resolveConflicts=true)
+      - delete_matching_keys(attributes, "(?i).*(authorization|password|secret|token|api[._-]?key|cookie|headers?|prompt|completion|request[._-]?body|response[._-]?body).*")
+      # Free-form labeled sensitive payloads: retain prefix, redact rest of line.
+      - replace_pattern(body, "(?is)(prompt|completion|request[._ -]?body|response[._ -]?body|cookie|headers?)[ \t:=]+.*", "sensitive-payload=<redacted>") where IsString(body)
       - replace_pattern(body, "(?i)Bearer[ \\t]+[A-Za-z0-9._~+/=-]+", "Bearer <redacted>") where IsString(body)
       - replace_pattern(body, "(?i)(password|secret|token|api[_-]?key|authorization)[\\\"' \\t:=]+[^ \\t,;\\\"']+", "credential=<redacted>")
         where IsString(body)

@@ -27,3 +27,48 @@ Two agent queues total **256 MiB logical payload capacity**, not a filesystem qu
 5. Roll back agent config/unit and restart, preserving state/cursors and boundary. Drain the new `otlp/logs` queue before removing that exporter or queued records will be stranded. Do not delete the state directory. No metrics/backends/database rollback is needed.
 
 Offline validation evidence for this revision: Collector contrib 0.164.0 `validate` exit 0 in a local network-disabled container with generated disposable certificates and a dummy scrape target. This checks schema/OTTL parsing, not journal execution, file rotation, queue saturation or live delivery.
+
+## Reviewer-blocker runtime evidence (isolated, no rollout)
+
+`python3 scripts/test-otel-log-runtime.py` runs the Collector image by **index digest from
+`otel-images.lock.json`** (0.164.0), copying the production privacy processors and
+agent severity processor, without production endpoints, credentials or source data.
+It reports assertions/counts/IDs only. Docker/Podman and PyYAML are prerequisites.
+
+Privacy now parses JSON object/array strings before serialization, recursively
+flattens maps (including nested array members with collision resolution), removes
+sensitive field paths, then serializes. The same treatment applies to resource/log
+attributes. Nested headers are removed in full, since custom headers can carry
+secrets without recognizable credential names. Useful non-sensitive event/status
+fields remain. Top-level arrays have no field schema and are replaced with an
+explicit redaction marker. JSON-looking malformed input fails closed through
+`error_mode: propagate` rather than exporting an unsanitized payload. Ordinary
+bracket-prefixed plaintext is not treated as JSON. Free-form labeled prompt,
+completion, request/response body, header and cookie payloads are redacted through
+the remainder of the record (including newlines); unlabeled arbitrary personal
+text **cannot** be safely classified by these rules. Producers must suppress such
+content or use reviewed structured fields before broad collection; this is not a
+claim that all possible free-text PII is removed.
+
+Observed runtime results:
+- Agent and cluster: 8/8 records each, including native maps, JSON strings,
+  nested array/map fields, custom headers, top-level arrays and multiline labeled
+  free text. Synthetic sensitive sentinel absent; safe event/status values retained.
+  Nested attribute headers/prompts are covered on every test record.
+- Agent plain INFO/WARN/ERROR: 3/3 normalized correctly using escaped OTTL regex
+  word boundaries. Numeric structured severity mapping remains unchanged.
+- Isolated cluster-equivalent OTLP pipeline: persistent **two-request** queue,
+  one consumer, sink unavailable; 12 concurrent requests, 2 acknowledged and
+  10 blocked after four seconds. Forced Collector kill, restart with same state,
+  then sink recovery: all 12 IDs received, total 12 records in this run.
+  Client retries on interruption are required; duplicates remain permitted.
+  The test changes queue size/sizer/consumer count, retry timing and transport to
+  make saturation bounded and local. It is not a production byte-budget benchmark.
+
+Cluster Loki queue now blocks on overflow and the asynchronous log batch processor
+is removed, so queue pressure reaches the OTLP sender instead of a batch worker
+losing previously acknowledged records. Metrics and trace batching/exporters are
+unchanged. Runtime tests do not establish filesystem capacity, real Loki behavior,
+long-outage rotation survival, journal/file checkpoint recovery or production TLS
+health. Those remain release gates, as do measured disk reserve/retention approval
+and the separate coverage-verifier review items. No deployment was performed.
