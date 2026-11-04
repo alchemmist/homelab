@@ -447,3 +447,46 @@ and dead/inaccessible copies still require monitoring/operator intervention.
 Blog remains write-disabled, Yandex/calendar unchanged, no issue auto-closure,
 repair or suppression. Historical evidence comments remain until the separate
 RustFS design/migration task is approved and implemented.
+
+## Patient LLM client retries
+
+Busy inference is deferred work, not an exhausted task. SPI model transport
+failures are namespaced at the Model adapter boundary; the explicit allowlist
+covers429/408/425, selected transient5xx, network/timeouts, attempt-budget expiry,
+and malformed JSON/schema responses. These jobs remain `retry` regardless of
+number of claims. No arbitrary HTTP error or GitHub publication automatically
+receives this exemption. Auth/configuration errors and unsafe/invalid semantic
+output still have an independent finite failure budget; `WRITE_NEEDS_REVIEW`
+remains immediately terminal and visible.
+
+Total `jobs.attempts` counts claims for diagnostics, NOT the terminal budget.
+The separate durable `job_failure_budget.failures` increments only for capped
+failures. Thus20 busy-LLM deferrals cannot consume the allowance for the FIRST
+later ambiguous GitHub timeout. Intent persists and reconciliation runs before
+any repeat POST. Existing terminal jobs are not automatically reopened; audit
+cause/stage/intent first. On initial rollout no existing `dead` jobs were found.
+New budget rows start at zero; historical claim counts cannot reconstruct a
+trustworthy capped-failure history, and existing terminal states stay unchanged.
+
+Each attempt retains bounded request/stage budgets; failure clears its lease and
+schedules persisted `available` with exponential backoff, jitter, and an ordinary
+cap of1h. Valid numeric/HTTP-date Retry-After supplies a minimum delay (accepted
+hints bounded to24h). Long waits do not sleep inside an n8n execution or hold the
+Engine lock: independent dispatcher resumes due jobs after restart. The existing
+short intra-stage pacing and up to2 malformed-output attempts remain bounded.
+The global HTTP transport uses socket timeouts, not a general proven absolute
+wall-clock bound against trickling upstream responses; no subprocess transport
+redesign is claimed here.
+
+Each successful issue-comparison batch checkpoints validated decisions into
+`result.match_progress`. Identical full snapshot digest resumes remaining batches
+or final arbitration after retries/restarts. Snapshot changes invalidate cached
+decisions. Repeated changes or permanently unavailable upstreams can prevent
+completion: the promise is retained visible work and safe retries, NOT unconditional
+success. Model deferrals log safe `stage_deferred` warning codes, not request
+headers/body or ordinary `stage_failed`; queue age/backlog monitoring remains.
+
+Scope is SPI only. Calendar, blog and other inference clients still require a
+separate retry-contract audit; blog stays write-disabled. Telegram link retries
+remain independent of model/GitHub publication. No synthetic production incident
+or intentional inference outage is required to test these paths.

@@ -10,6 +10,7 @@ import threading
 import urllib.error
 import urllib.parse
 import urllib.request
+from email.utils import parsedate_to_datetime
 from datetime import datetime
 from pathlib import Path
 from core import Failure, MATCH_SCHEMA, REPORT_SCHEMA, clean, digest, validate
@@ -64,7 +65,15 @@ class HTTP:
                 if len(raw)>limit: raise Failure('UPSTREAM_RESPONSE_TOO_LARGE')
                 return json.loads(raw) if raw else {}
         except urllib.error.HTTPError as e:
-            raise Failure('HTTP_'+str(e.code)) from None
+            hint=None
+            try:
+                value=e.headers.get('Retry-After')
+                if value is not None:
+                    try:hint=float(value)
+                    except ValueError:hint=max(0,parsedate_to_datetime(value).timestamp()-time.time())
+            except (ValueError,TypeError,AttributeError,OverflowError):pass
+            e.close()
+            raise Failure('HTTP_'+str(e.code),retry_after=hint) from None
         except urllib.error.URLError as e:
             raise Failure('UPSTREAM_TIMEOUT' if isinstance(e.reason,TimeoutError) else 'UPSTREAM_NETWORK_ERROR') from None
         except TimeoutError: raise Failure('UPSTREAM_TIMEOUT') from None
@@ -145,17 +154,20 @@ class Model:
         last='INVALID_MODEL_SCHEMA'
         for attempt in range(2):
             pause=max(0,self.min_interval-(time.monotonic()-self.last_request))
-            if time.monotonic()+pause+10>deadline:raise Failure('MODEL_STAGE_BUDGET_EXCEEDED')
+            if time.monotonic()+pause+10>deadline:raise Failure('LLM_MODEL_STAGE_BUDGET_EXCEEDED')
             if pause:time.sleep(pause)
             self.last_request=time.monotonic()
             remaining=deadline-time.monotonic()
-            if remaining<10: raise Failure('MODEL_STAGE_BUDGET_EXCEEDED')
-            response=self.http.request('POST',self.base+'/chat/completions',{'Authorization':'Bearer '+self.key},
-                {'model':'qwen3.8-27b','messages':[{'role':'system','content':SYSTEM},
-                  {'role':'user','content':task+'\nUNTRUSTED EVIDENCE JSON:\n'+json.dumps(clean(data),ensure_ascii=True)}],
-                 'temperature':0.1,'max_tokens':2500,'chat_template_kwargs':{'enable_thinking':False},
-                 'response_format':{'type':'json_schema','json_schema':{'name':'spi_result','strict':True,'schema':schema}}},
-                 timeout=min(600,remaining),limit=250_000)
+            if remaining<10: raise Failure('LLM_MODEL_STAGE_BUDGET_EXCEEDED')
+            try:
+                response=self.http.request('POST',self.base+'/chat/completions',{'Authorization':'Bearer '+self.key},
+                    {'model':'qwen3.8-27b','messages':[{'role':'system','content':SYSTEM},
+                      {'role':'user','content':task+'\nUNTRUSTED EVIDENCE JSON:\n'+json.dumps(clean(data),ensure_ascii=True)}],
+                     'temperature':0.1,'max_tokens':2500,'chat_template_kwargs':{'enable_thinking':False},
+                     'response_format':{'type':'json_schema','json_schema':{'name':'spi_result','strict':True,'schema':schema}}},
+                     timeout=min(600,remaining),limit=250_000)
+            except Failure as e:
+                raise Failure('LLM_'+e.code,retry_after=e.retry_after) from None
             try:
                 value=json.loads(response['choices'][0]['message']['content']);validate(value,schema)
                 if clean(value)!=value: raise Failure('UNSAFE_MODEL_OUTPUT')
@@ -168,18 +180,27 @@ class Model:
                 return value
             except (KeyError,IndexError,TypeError,ValueError,Failure) as exc:
                 last=exc.code if isinstance(exc,Failure) else 'INVALID_MODEL_SCHEMA'
-        raise Failure(last)
-    def match(self,event,issues):
+        raise Failure('LLM_'+last)
+    def match(self,event,issues,progress=None,on_progress=None):
         deadline=time.monotonic()+780
         # Every issue is examined. Batches avoid a single unbounded prompt.
         if len(issues)>120: raise Failure('OPEN_SPI_REVIEW_BUDGET_EXCEEDED')
-        candidates=[];decisions=[]
-        for i in range(0,max(1,len(issues)),12):
+        signature=digest(issues)
+        decisions=list(progress.get('decisions',[]))if isinstance(progress,dict) and progress.get('signature')==signature else []
+        if len(decisions)>(max(1,len(issues))+11)//12:raise Failure('INVALID_MATCH_PROGRESS')
+        candidates=[]
+        for index,result in enumerate(decisions):
+            validate(result,MATCH_SCHEMA)
+            batch=issues[index*12:(index+1)*12]
+            if result['issue_number']not in {0,*[x['number']for x in batch]}:raise Failure('INVALID_MATCH_PROGRESS')
+            candidates.extend(x for x in batch if x['number']==result['issue_number'])
+        for i in range(len(decisions)*12,max(1,len(issues)),12):
             batch=issues[i:i+12]
             result=self.call('Choose the same underlying problem from these OPEN SPI issues, or issue_number=0. Explain ambiguity.',
                              {'alert':event,'open_issues':batch},MATCH_SCHEMA,deadline)
             if result['issue_number'] not in {0,*[x['number'] for x in batch]}: raise Failure('INVALID_MATCH_TARGET')
             decisions.append(result)
+            if on_progress:on_progress({'signature':signature,'decisions':list(decisions)})
             candidates.extend(x for x in batch if x['number']==result['issue_number'])
         if len(candidates)>1:
             result=self.call('Select the best matching OPEN issue, or 0. Different symptoms may share a cause; identical alert names may differ.',

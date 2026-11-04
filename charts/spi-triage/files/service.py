@@ -8,7 +8,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from dispatcher import Dispatcher
-from core import Failure, Store, digest, normalize, render
+from core import Failure, LLM_TRANSIENT, Store, digest, normalize, render
 from integrations import Evidence, GitHub, HTTP, Model, REQUEST_DEADLINE
 from evidence_bundle import index_markdown, publish_parts
 from grafana_links import repair_markdown_links
@@ -46,8 +46,8 @@ class Engine:
             REQUEST_DEADLINE.at=time.monotonic()+780
             try:return self._run(name,key)
             except Failure as e:
-                self.store.fail(key,e.code)
-                log_event('stage_failed', 'error', stage=name, code=e.code)
+                self.store.fail(key,e.code,retry_after=e.retry_after)
+                log_event('stage_deferred' if e.code in LLM_TRANSIENT else 'stage_failed', 'warning' if e.code in LLM_TRANSIENT else 'error', stage=name, code=e.code)
                 raise
             except Exception:
                 self.store.fail(key,'INTERNAL_ERROR')
@@ -68,7 +68,10 @@ class Engine:
                 if self.delivery and not r['resolved_issue']:r['analyze_recovery']=True
             if not resolved or r.get('analyze_recovery'):
                 issues=self.github.snapshot();r['open_signature']=digest([(x['number'],x['updated_at']) for x in issues])
-                r['match']=self.model.match(event,issues)
+                def checkpoint(progress):
+                    r['match_progress']=progress
+                    self.store.save(key,0,r)
+                r['match']=self.model.match(event,issues,progress=r.get('match_progress'),on_progress=checkpoint)
         elif name=='collect':
             if not resolved or r.get('resolved_issue') or r.get('analyze_recovery'):r['evidence']=self.evidence.collect(event)
         elif name=='analyze':

@@ -5,14 +5,24 @@ import json
 import re
 import sqlite3
 import time
+import math
+import random
 from contextlib import contextmanager, closing
 from datetime import datetime, timezone
 
 class Failure(Exception):
     """Only fixed, non-sensitive codes may cross the worker API boundary."""
-    def __init__(self, code):
+    def __init__(self, code, retry_after=None):
+        self.retry_after = min(86400,max(0,float(retry_after))) if type(retry_after) in (int,float) and math.isfinite(retry_after) else None
         self.code = code
         super().__init__(code)
+
+# Only explicitly classified safe-to-repeat failures escape the terminal budget.
+# GitHub publication ambiguity must NEVER acquire this classification.
+LLM_TRANSIENT = {'LLM_'+code for code in (
+    'HTTP_408','HTTP_425','HTTP_429','HTTP_500','HTTP_502','HTTP_503','HTTP_504',
+    'UPSTREAM_TIMEOUT','UPSTREAM_NETWORK_ERROR','REQUEST_BUDGET_EXCEEDED',
+    'MODEL_STAGE_BUDGET_EXCEEDED','INVALID_MODEL_SCHEMA','INVALID_UPSTREAM_JSON')}
 
 SECRET_KEY = re.compile(r'authorization|cookie|password|passwd|secret|api[_-]?key|access[_-]?token|refresh[_-]?token|x[_-]?token|private[_-]?key', re.I)
 SECRET_VALUE = re.compile(r'(?i)(?:bearer\s+\S+|(?:gh[pousr]_|github_pat_)[A-Za-z0-9_]+|sk-[A-Za-z0-9_-]{12,}|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|-----BEGIN[^\n]*PRIVATE KEY-----[\s\S]*?-----END[^\n]*PRIVATE KEY-----)')
@@ -143,6 +153,9 @@ class Store:
               deliveries INTEGER NOT NULL DEFAULT 1, result TEXT NOT NULL DEFAULT '{}',
               issue INTEGER NOT NULL DEFAULT 0, intent TEXT, error TEXT);
             CREATE TABLE IF NOT EXISTS dispatch (singleton INTEGER PRIMARY KEY CHECK(singleton=1), token TEXT NOT NULL, deadline REAL NOT NULL, attempts INTEGER NOT NULL);
+            CREATE TABLE IF NOT EXISTS job_failure_budget (
+              job_id TEXT PRIMARY KEY REFERENCES jobs(id) ON DELETE CASCADE,
+              failures INTEGER NOT NULL DEFAULT 0);
             CREATE INDEX IF NOT EXISTS runnable ON jobs(state,available,lease);
             CREATE INDEX IF NOT EXISTS episode ON jobs(episode);
             ''')
@@ -197,11 +210,20 @@ class Store:
             c.execute('UPDATE jobs SET stage=?,result=?,updated=?,lease=?'+''.join(','+k+'=?' for k in fields)+' WHERE id=?',
                       [stage,json.dumps(result),now,0 if fields.get('state') in ('complete','dry_run','dead') else now+1500,*fields.values(),key])
             if on_save is not None:on_save(c)
-    def fail(self,key,code):
-        job=self.get(key);now=time.time();dead=job['attempts']>=8 or code=='WRITE_NEEDS_REVIEW'
+    def fail(self,key,code,retry_after=None):
+        job=self.get(key);now=time.time()
         with self.db() as c:
+            # Total claims remain diagnostic. Busy LLM deferrals must not spend
+            # the independent recovery allowance of later stages/publication.
+            count=job['attempts']
+            if code not in LLM_TRANSIENT:
+                c.execute("INSERT INTO job_failure_budget VALUES(?,1) ON CONFLICT(job_id) DO UPDATE SET failures=failures+1",(key,))
+                count=c.execute('SELECT failures FROM job_failure_budget WHERE job_id=?',(key,)).fetchone()[0]
+            dead=(count>=8 and code not in LLM_TRANSIENT) or code=='WRITE_NEEDS_REVIEW'
+            delay=min(3600,30*2**min(count,7)*random.uniform(.8,1.2))
+            if code in LLM_TRANSIENT and retry_after is not None:delay=max(delay,Failure(code,retry_after).retry_after or 0)
             c.execute('UPDATE jobs SET state=?,lease=0,available=?,updated=?,error=? WHERE id=?',
-                      ('dead' if dead else 'retry',now+min(3600,30*2**min(job['attempts'],7)),now,code,key))
+                      ('dead' if dead else 'retry',now+delay,now,code,key))
     def episode_issue(self,episode):
         with self.db() as c: row=c.execute("SELECT issue FROM jobs WHERE episode=? AND issue>0 ORDER BY created LIMIT 1",(episode,)).fetchone()
         return row['issue'] if row else 0

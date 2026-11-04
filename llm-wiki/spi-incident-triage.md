@@ -364,3 +364,23 @@ proof. Deleted/inaccessible copies and unavailable external dependencies require
 visible pending/error state and operator attention, not unconditional success or
 exactly-once claims. Native API service port8080 targets hostNetwork port8082;
 worker NetworkPolicy must allow the actual target. S3 remains unimplemented.
+
+## Patient LLM retries — 4 November 2026
+
+SPI source now separates durable LLM deferrals from bounded failure handling.
+Explicit typed `LLM_*` transient429/timeouts/network/selected5xx and budget/JSON
+failures do not become dead after8 claims. Worker releases lease and records due
+time with jitter/backoff (normal cap1h), bounded Retry-After hints up to24h. Total
+claims remain diagnostic; independent `job_failure_budget` counts ONLY capped
+failures. After20 busy-LLM deferrals, a first ambiguous GitHub timeout still gets
+its reconciliation allowance. WRITE_NEEDS_REVIEW remains immediately terminal;
+no namespace-wide or blind GitHub POST exemption. Existing dead jobs are NOT
+silently reopened; readback before rollout found none.
+
+Matching checkpoints each completed batch in job.result, resumes only identical
+full snapshot digest, and revalidates cached schema/membership. Changed snapshots
+invalidate cache. Busy work logs stage_deferred warning. Repeated snapshot churn
+or permanent failures can still require intervention: never promise unconditional
+completion, never relax evidence validation or repeat ambiguous publication.
+Read runbook “Patient LLM client retries” for limits and legacy-counter semantics.
+This is SPI-only, not completion of an all-client retry audit.

@@ -39,7 +39,7 @@ class DispatchTests(unittest.TestCase):
         self.assertEqual(self.store.recover_on_start(),1)
         self.assertIsNotNone(self.store.reserve_dispatch()[0])
     def test_backoff_restart_and_due_retry(self):
-        with patch('core.time.time',return_value=100):
+        with patch('core.time.time',return_value=100),patch('core.random.uniform',return_value=1):
             self.enqueue();token,deadline=self.store.reserve_dispatch()
             self.assertEqual(deadline,130)
             reopened=Store(self.store.path)
