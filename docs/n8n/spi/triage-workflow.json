@@ -26,7 +26,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        260,
+        320,
         0
       ],
       "parameters": {
@@ -57,7 +57,7 @@
         "jsCode": "return items.filter(item => Boolean(item.json.job_id));"
       },
       "position": [
-        390,
+        640,
         0
       ],
       "id": "e7d658f0-698a-4a49-b66c-2b5c3336b52c"
@@ -67,7 +67,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        520,
+        960,
         0
       ],
       "parameters": {
@@ -95,7 +95,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        780,
+        1280,
         0
       ],
       "parameters": {
@@ -123,7 +123,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1040,
+        1600,
         0
       ],
       "parameters": {
@@ -151,7 +151,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1300,
+        1920,
         0
       ],
       "parameters": {
