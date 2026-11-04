@@ -1,0 +1,259 @@
+kind	host	unit	namespace	pod	container	node	count600	count3600	canonical	normalization	stdoutCount600	sourceCountStatus	journalVisibleCount600	cause
+container			argocd	argo-cd-argocd-application-controller-0	application-controller	socrat-0	7647.0	58727.0	True	canonical	7647	ok		canonical-receipt
+container			argocd	argo-cd-argocd-applicationset-controller-59f9457f9d-lxj72	applicationset-controller	socrat-0	1.0	6.0	True	canonical	1	ok		canonical-receipt
+container			argocd	argo-cd-argocd-notifications-controller-fd767b6cf-f6245	notifications-controller	socrat-0	4089.0	29460.0	True	canonical	4089	ok		canonical-receipt
+container			argocd	argo-cd-argocd-redis-64767b7b4f-gmc2g	redis	socrat-0	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			argocd	argo-cd-argocd-repo-server-6c9f497b84-7bslq	repo-server	socrat-0	3084.0	24271.0	True	canonical	3084	ok		canonical-receipt
+container			argocd	argo-cd-argocd-server-966697978-lm69t	server	socrat-0	172.0	1477.0	True	canonical	172	ok		canonical-receipt
+container			automation	blog-updates-worker-757655cb55-mn2kh	worker	socrat-1	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			automation	n8n-6c68f65f4-jhwq2	n8n	socrat-1	23.0	66.0	True	canonical	23	ok		canonical-receipt
+container			automation	spi-triage-7d958d7b68-2tsdn	worker	socrat-1	12.0	18.0	True	canonical	12	ok		canonical-receipt
+container			automation	wiki-openapi-worker-b56d58b9c-zxw5l	worker	socrat-1	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			blog	blog-f89688c-9lz8w	blog	socrat-2	65.0	404.0	True	canonical	65	ok		canonical-receipt
+container			blog	blog-f89688c-bffvj	blog	socrat-1	68.0	400.0	True	canonical	68	ok		canonical-receipt
+container			cats	cats-5cc8b6c77f-2dkbw	cats	socrat-0	61.0	374.0	True	canonical	61	ok		canonical-receipt
+container			cats	cats-5cc8b6c77f-zxzp5	cats	socrat-1	69.0	398.0	True	canonical	69	ok		canonical-receipt
+container			cattle-capi-system	capi-controller-manager-6c8f858cf7-hfrlz	manager	socrat-1	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-fleet-local-system	fleet-agent-9bb754f4c-ktn8h	fleet-agent	socrat-1	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-fleet-system	fleet-controller-b89cdf655-hdhpq	fleet-controller	socrat-1	0	8.0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-fleet-system	fleet-controller-b89cdf655-hdhpq	fleet-cleanup	socrat-1	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-fleet-system	fleet-controller-b89cdf655-hdhpq	fleet-agentmanagement	socrat-1	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-fleet-system	gitjob-77f8fc4cd-7hsj7	gitjob	socrat-1	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-fleet-system	helmops-798597dcfd-ctvlr	helmops	socrat-1	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-monitoring-system	alertmanager-kube-prometheus-stack-alertmanager-0	alertmanager	socrat-1	0	2.0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-monitoring-system	alertmanager-kube-prometheus-stack-alertmanager-0	config-reloader	socrat-1	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-monitoring-system	grafana-mcp-546d758d89-fdwx4	grafana-mcp	socrat-1	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-monitoring-system	kube-prometheus-stack-grafana-59f7d85f7d-wrzvb	grafana-sc-dashboard	socrat-1	160.0	948.0	True	canonical	160	ok		canonical-receipt
+container			cattle-monitoring-system	kube-prometheus-stack-grafana-59f7d85f7d-wrzvb	grafana-sc-datasources	socrat-1	20.0	120.0	True	canonical	20	ok		canonical-receipt
+container			cattle-monitoring-system	kube-prometheus-stack-grafana-59f7d85f7d-wrzvb	grafana	socrat-1	6380.0	37995.0	True	canonical	6380	ok		canonical-receipt
+container			cattle-monitoring-system	kube-prometheus-stack-kube-state-metrics-6b94698c5d-dbzgf	kube-state-metrics	socrat-1	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-monitoring-system	kube-prometheus-stack-operator-74c8d4b65-sxmpn	kube-prometheus-stack	socrat-1	6.0	55.0	True	canonical	6	ok		canonical-receipt
+container			cattle-monitoring-system	kube-prometheus-stack-prometheus-node-exporter-7h52b	node-exporter	socrat-3	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-monitoring-system	kube-prometheus-stack-prometheus-node-exporter-7tdsl	node-exporter	socrat-0	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-monitoring-system	kube-prometheus-stack-prometheus-node-exporter-fbx56	node-exporter	socrat-1	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-monitoring-system	kube-prometheus-stack-prometheus-node-exporter-wzldk	node-exporter	socrat-2	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-monitoring-system	monitoring-etcd-metrics-nth6l	proxy	socrat-0	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-monitoring-system	monitoring-etcd-metrics-sxwzj	proxy	socrat-2	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-monitoring-system	monitoring-etcd-metrics-xz5ts	proxy	socrat-1	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-monitoring-system	monitoring-service-probes-7bb5b75ccc-vtv9d	blackbox-exporter	socrat-1	960.0	5826.0	True	canonical	960	ok		canonical-receipt
+container			cattle-monitoring-system	otel-loki-58655fcd84-mvsbt	loki	socrat-1	973.0	5548.0	True	canonical	973	ok		canonical-receipt
+container			cattle-monitoring-system	otel-tempo-7b5d947c8b-gc9lj	tempo	socrat-1	223.0	1285.0	True	canonical	223	ok		canonical-receipt
+container			cattle-monitoring-system	prometheus-kube-prometheus-stack-prometheus-0	prometheus	socrat-0	0	2.0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-monitoring-system	prometheus-kube-prometheus-stack-prometheus-0	config-reloader	socrat-0	0	1.0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-monitoring-system	prometheus-kube-prometheus-stack-prometheus-0	thanos-sidecar	socrat-0	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-monitoring-system	prometheus-kube-prometheus-stack-prometheus-0	otel-cluster	socrat-0	0	1918.0	False	unobserved	6	ok		agent-self-logs-explicitly-excluded
+container			cattle-monitoring-system	pyroscope-647584666f-wmvf5	pyroscope	socrat-1	5.0	5.0	True	canonical	5	ok		canonical-receipt
+container			cattle-monitoring-system	rancher-monitoring-dashboards-monitoring-proxy-d9775db9f-5rpt7	nginx	socrat-1	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-monitoring-system	thanos-compactor-1h-649c9668c6-64pn9	thanos	socrat-3	40.0	240.0	True	canonical	40	ok		canonical-receipt
+container			cattle-monitoring-system	thanos-compactor-5m-86bfc99c77-l9f5q	thanos	socrat-1	40.0	241.0	True	canonical	40	ok		canonical-receipt
+container			cattle-monitoring-system	thanos-compactor-77fc75cdd8-8p22f	thanos	socrat-0	48.0	175.0	True	canonical	48	ok		canonical-receipt
+container			cattle-monitoring-system	thanos-disk-2jlhv	disk	socrat-0	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-monitoring-system	thanos-disk-9ljsv	disk	socrat-3	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-monitoring-system	thanos-disk-bplrb	disk	socrat-1	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-monitoring-system	thanos-query-8c7bb5f58-sq7qk	thanos	socrat-1	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-monitoring-system	thanos-shelf-1h-6fdfd6449-g2d9c	shelf	socrat-3	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-monitoring-system	thanos-shelf-5m-7757987658-7pqwv	shelf	socrat-1	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-monitoring-system	thanos-store-1h-c8cd86bff-hmhgb	thanos	socrat-3	1.0	4.0	True	canonical	1	ok		canonical-receipt
+container			cattle-monitoring-system	thanos-store-55554669b7-6x8tx	thanos	socrat-0	0	5.0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-monitoring-system	thanos-store-5m-859b86b7f6-w7dn4	thanos	socrat-1	1.0	4.0	True	canonical	1	ok		canonical-receipt
+container			cattle-system	rancher-6864d67b6b-7p6lx	rancher	socrat-1	14.0	109.0	True	canonical	14	ok		canonical-receipt
+container			cattle-system	rancher-6864d67b6b-hn2t2	rancher	socrat-0	4.0	23.0	True	canonical	4	ok		canonical-receipt
+container			cattle-system	rancher-webhook-7dcb669cc6-jrgg4	rancher-webhook	socrat-3	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-system	rancher-webhook-7dcb669cc6-vjnhd	rancher-webhook	socrat-0	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-system	system-upgrade-controller-5b6fd6b596-25fgt	system-upgrade-controller	socrat-0	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cattle-turtles-system	rancher-turtles-controller-manager-d88695588-f5w8z	manager	socrat-1	69.0	426.0	True	canonical	69	ok		canonical-receipt
+container			cert-manager	cert-manager-56f54b7bb-crsfx	cert-manager-controller	socrat-3	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cert-manager	cert-manager-56f54b7bb-g2pvd	cert-manager-controller	socrat-0	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cert-manager	cert-manager-cainjector-844c7dd695-9th74	cert-manager-cainjector	socrat-0	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cert-manager	cert-manager-cainjector-844c7dd695-wrjq6	cert-manager-cainjector	socrat-3	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cert-manager	cert-manager-webhook-964859b56-bksp6	cert-manager-webhook	socrat-0	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cert-manager	cert-manager-webhook-964859b56-qr6kw	cert-manager-webhook	socrat-3	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cnpg-system	cnpg-cloudnative-pg-fdd5c9cf-2krdb	manager	socrat-1	0	1.0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			cnpg-system	cnpg-cloudnative-pg-fdd5c9cf-lfhbq	manager	socrat-0	0	1.0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			format-quorum	format-quorum-67dff94fc6-ndq4m	format-quorum	socrat-1	130.0	774.0	True	canonical	130	ok		canonical-receipt
+container			harbor	harbor-core-594bb4c7d7-7rxfv	core	socrat-0	0	14.0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			harbor	harbor-database-0	database	socrat-0	0	27.0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			harbor	harbor-portal-648f9d555f-7wdtx	portal	socrat-0	180.0	1080.0	True	canonical	180	ok		canonical-receipt
+container			harbor	harbor-redis-0	redis	socrat-0	10.0	60.0	True	canonical	10	ok		canonical-receipt
+container			harbor	harbor-registry-7b9dd67ccb-9q7vb	registry	socrat-0	39.0	39.0	True	canonical	39	ok		canonical-receipt
+container			harbor	harbor-registry-7b9dd67ccb-9q7vb	registryctl	socrat-0	35.0	35.0	True	canonical	35	ok		canonical-receipt
+container			identity	authentik-postgres-0	postgres	socrat-0	4.0	24.0	True	canonical	4	ok		canonical-receipt
+container			identity	authentik-server-669498f4f-m5k67	server	socrat-0	567.0	3241.0	True	canonical	202	ok		canonical-receipt
+container			identity	authentik-worker-6b7855f5b-wvfx9	worker	socrat-0	120.0	720.0	True	canonical	120	ok		canonical-receipt
+container			identity	netbird-edge-forwarder-5576d4fc7d-mtgpl	forwarder	socrat-0	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			identity	netbird-relay-home-b897ffd57-5lpk2	relay	socrat-0	0	1.0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			identity	netbird-relay-vps-7669bd7865-w2pjv	relay	socrat-2	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			identity	socrat-authentik-theme-5f8578b9b5-q8rkn	static	socrat-0	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			img-proxy	img-proxy-6c996bf476-mp6pr	nginx	socrat-1	22.0	132.0	True	canonical	22	ok		canonical-receipt
+container			kube-system	coredns-c748c6bcb-pmgj9	coredns	socrat-2	17.0	98.0	True	canonical	17	ok		canonical-receipt
+container			kube-system	coredns-c748c6bcb-wz2kx	coredns	socrat-0	18.0	109.0	True	canonical	18	ok		canonical-receipt
+container			kube-system	local-path-provisioner-849978cd79-h44tk	local-path-provisioner	socrat-1	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			kube-system	metrics-server-fcf6cfb5b-kxz8c	metrics-server	socrat-1	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			kube-system	nvidia-device-plugin-xfx6g	nvidia-device-plugin	socrat-0	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			kube-system	svclb-traefik-80aba32c-2h2kw	lb-tcp-80	socrat-1	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			kube-system	svclb-traefik-80aba32c-2h2kw	lb-tcp-443	socrat-1	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			kube-system	svclb-traefik-80aba32c-x22lb	lb-tcp-80	socrat-0	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			kube-system	svclb-traefik-80aba32c-x22lb	lb-tcp-443	socrat-0	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			kube-system	traefik-569cfbbd64-g58jm	traefik	socrat-0	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			kube-system	traefik-569cfbbd64-hwh7t	traefik	socrat-1	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			llm	litellm-5c4695bbc9-hx6kp	litellm	socrat-0	749.0	4315.0	True	canonical	749	ok		canonical-receipt
+container			llm	litellm-branding-7dcf6b8f54-r6sth	nginx	socrat-0	180.0	1071.0	True	canonical	180	ok		canonical-receipt
+container			llm	litellm-postgres-5cbbfdc865-95hql	postgres	socrat-0	4.0	24.0	True	canonical	4	ok		canonical-receipt
+container			llm	open-terminal-849c55f79-5x5rs	open-terminal	socrat-1	120.0	633.0	True	canonical	120	ok		canonical-receipt
+container			llm	open-terminal-849c55f79-5x5rs	browser-cleanup	socrat-1	0	1.0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			llm	open-webui-5557d4ffcf-rxgdr	open-webui	socrat-0	10.0	60.0	True	canonical	10	ok		canonical-receipt
+container			llm	open-webui-gateway-5f5b67d778-zqds5	nginx	socrat-0	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			llm	searxng-77fc46b8bc-fvmng	searxng	socrat-1	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			llm	vllm-8598586798-jnz89	vllm	socrat-0	394.0	2330.0	True	canonical	394	ok		canonical-receipt
+container			lms	lms-596d8fd746-27t2h	lms	socrat-3	320.0	1904.0	True	canonical	320	ok		canonical-receipt
+container			lms	lms-ha-1	postgres	socrat-3	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			lms	lms-ha-2	postgres	socrat-1	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			lms	lms-ha-3	postgres	socrat-0	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			lms	lms-postgres-58cc9799f9-m8shv	postgres	socrat-3	4.0	24.0	True	canonical	4	ok		canonical-receipt
+container			monori	monori-6d4b4bcf45-mwlxl	front	socrat-0	130.0	772.0	True	canonical	130	ok		canonical-receipt
+container			monori	monori-back-78df44dd6f-jpf8z	back	socrat-0	120.0	715.0	True	canonical	120	ok		canonical-receipt
+container			monori	monori-sync-f6ddcb9c9-2kjwt	sync	socrat-0	120.0	712.0	True	canonical	120	ok		canonical-receipt
+container			netbird-host-peers	machine-socrat-0-7846975f58-58vhc	peer	socrat-0	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			netbird-host-peers	machine-socrat-1-68ff9d7c5b-8h2vr	peer	socrat-1	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			netbird-host-peers	machine-socrat-2-69d7fbd56b-c7f7z	peer	socrat-2	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			netbird-host-peers	machine-socrat-3-74855897b8-9brd9	peer	socrat-3	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			netbird-pilot	dashboard-5b78449795-b4bh2	dashboard	socrat-0	60.0	360.0	True	canonical	60	ok		canonical-receipt
+container			netbird-pilot	server-6d8699467c-bljdj	server	socrat-0	29.0	177.0	True	canonical	29	ok		canonical-receipt
+container			netbird-pilot	stun-58f868c496-bjcgs	stun	socrat-2	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			pr-agent	pr-agent-64bc6cc464-hpm65	pr-agent	socrat-1	103.0	350.0	True	canonical	103	ok		canonical-receipt
+container			remark42	remark42-6fc74cdd49-gnrpl	remark42	socrat-2	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			socrat-bot	socrat-bot-85c7dfffdc-vx5k9	socrat-bot	socrat-2	245.0	1014.0	True	canonical	245	ok		canonical-receipt
+container			socrat-bot	socrat-bot-postgres-0	postgres	socrat-2	4.0	24.0	True	canonical	4	ok		canonical-receipt
+container			socrat-bot	socrat-bot-sudo-broker-59c7f99b77-9rlc9	sudo-broker	socrat-2	120.0	451.0	True	canonical	120	ok		canonical-receipt
+container			socrat-bot	socrat-bot-xui-updater-5d5ddcc7b9-p4w4t	xui-updater	socrat-3	120.0	470.0	True	canonical	120	ok		canonical-receipt
+container			socrat-home	socrat-home-58cc6d64c5-l2gcq	nginx	socrat-3	118.0	589.0	True	canonical	118	ok		canonical-receipt
+container			socrat-home	socrat-home-58cc6d64c5-lhmd7	nginx	socrat-2	142.0	619.0	True	canonical	142	ok		canonical-receipt
+container			storage	nfs-subdir-external-provisioner-5f4d654d97-4rc7t	nfs-subdir-external-provisioner	socrat-2	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			syncthing	private-gateway-74ncc	private-gui	socrat-0	135.0	606.0	True	canonical	135	ok		canonical-receipt
+container			syncthing	private-gateway-xptz7	private-gui	socrat-1	6465.0	29182.0	True	canonical	6465	ok		canonical-receipt
+container			syncthing	syncthing-d6c6b689d-pw5d5	syncthing	socrat-0	1.0	1.0	True	canonical	1	ok		canonical-receipt
+container			traefik-edge	traefik-edge-644b6c559c-5bcpc	traefik	socrat-2	0	371.0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			traefik-edge	xui-auth-gateway-7897fb9cc6-kpffz	gateway	socrat-2	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			umami	umami-688f9945c5-dzxgs	umami	socrat-1	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			umami	umami-db-d4cff967b-r96bp	postgres	socrat-0	2.0	4.0	True	canonical	2	ok		canonical-receipt
+container			uptime-kuma	uptime-kuma-84988bff44-crjt4	uptime-kuma	socrat-1	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			uptime-kuma	uptime-kuma-db-57cf9546d5-pvrt5	mariadb	socrat-0	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			wiki	wiki-runtime-wiki-86bd745858-l48zj	wiki	socrat-0	0	0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+container			x-ui	x-ui-79787488f4-zf97l	primary	socrat-2	0	1.0	False	unobserved	0	ok		no-heartbeat-exclusion-no-stdout-in-window
+host	socrat-0	avahi-daemon.service					24.0	117.0	True	canonical			0	canonical-receipt
+host	socrat-0	cron.service					0	3.0	False	unobserved			0	hour-receipt-not-fresh
+host	socrat-0	dbus.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-0	fsidd.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-0	getty@tty1.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-0	happd.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-0	homelab-otel-agent.service					32.0	203.0	True	canonical			0	canonical-receipt
+host	socrat-0	homelab-otel-node-exporter.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-0	homelab-otel-traces.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-0	homelab-private-dns.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-0	iscsid.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-0	k3s.service					184.0	1972.0	True	canonical			0	canonical-receipt
+host	socrat-0	keepalived.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-0	knot.service					0	46.0	False	unobserved			0	hour-receipt-not-fresh
+host	socrat-0	low-memory-monitor.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-0	ModemManager.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-0	NetworkManager.service					0	41.0	False	unobserved			0	hour-receipt-not-fresh
+host	socrat-0	nfs-blkmap.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-0	nfs-idmapd.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-0	nfs-mountd.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-0	nfsdcld.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-0	nvidia-persistenced.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-0	polkit.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-0	rpc-statd.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-0	rpcbind.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-0	rtkit-daemon.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-0	smartmontools.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-0	ssh.service					6.0	31.0	True	canonical			0	canonical-receipt
+host	socrat-0	systemd-journald.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-0	systemd-logind.service					13.0	158.0	True	canonical			0	canonical-receipt
+host	socrat-0	systemd-timesyncd.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-0	systemd-udevd.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-0	user@1000.service					0	2.0	False	unobserved			1	journal-emission-without-fresh-matched-receipt-investigate-labels-checkpoint
+host	socrat-0	wpa_supplicant.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-1	bluetooth.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-1	cups.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-1	dbus-broker.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-1	dirmngr@etc-pacman.d-gnupg.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-1	getty@tty1.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-1	happd.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-1	homelab-otel-agent.service					9.0	192.0	True	canonical			3	canonical-receipt
+host	socrat-1	homelab-otel-application-ingress.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-1	homelab-otel-node-exporter.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-1	homelab-private-dns.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-1	iwd.service					0	0	False	unobserved			3	journal-emission-without-fresh-matched-receipt-investigate-labels-checkpoint
+host	socrat-1	k3s.service					128.0	818.0	True	canonical			111	canonical-receipt
+host	socrat-1	keepalived.service					902.0	5504.0	True	canonical			932	canonical-receipt
+host	socrat-1	knot.service					0	0	False	unobserved			80	journal-emission-without-fresh-matched-receipt-investigate-labels-checkpoint
+host	socrat-1	NetworkManager.service					14.0	51.0	True	canonical			6	canonical-receipt
+host	socrat-1	polkit.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-1	power-profiles-daemon.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-1	rpc-statd.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-1	rpcbind.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-1	rtkit-daemon.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-1	sshd.service					6.0	6.0	True	canonical			8	canonical-receipt
+host	socrat-1	systemd-journald.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-1	systemd-logind.service					0	43.0	False	unobserved			3	journal-emission-without-fresh-matched-receipt-investigate-labels-checkpoint
+host	socrat-1	systemd-timesyncd.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-1	systemd-udevd.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-1	systemd-userdbd.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-1	upower.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-1	user@1000.service					39.0	122.0	True	canonical			12	canonical-receipt
+host	socrat-1	wireguard-tcp-transport.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-2	containerd.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-2	cron.service					27.0	180.0	True	canonical			0	canonical-receipt
+host	socrat-2	dbus.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-2	docker.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-2	fail2ban.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-2	getty@tty1.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-2	homelab-otel-agent.service					0	178.0	False	unobserved			0	hour-receipt-not-fresh
+host	socrat-2	homelab-otel-node-exporter.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-2	homelab-private-dns.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-2	iscsid.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-2	k3s.service					41.0	309.0	True	canonical			0	canonical-receipt
+host	socrat-2	knot.service					42.0	167.0	True	canonical			0	canonical-receipt
+host	socrat-2	qemu-guest-agent.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-2	rpc-statd.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-2	rpcbind.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-2	ssh.service					8.0	28.0	True	canonical			0	canonical-receipt
+host	socrat-2	systemd-journald.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-2	systemd-logind.service					7.0	47.0	True	canonical			0	canonical-receipt
+host	socrat-2	systemd-timesyncd.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-2	systemd-udevd.service					0	8.0	False	unobserved			0	hour-receipt-not-fresh
+host	socrat-2	user@1003.service					20.0	79.0	True	canonical			31	canonical-receipt
+host	socrat-2	wireguard-tcp-transport.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-3	accounts-daemon.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-3	avahi-daemon.service					14.0	121.0	True	canonical			0	canonical-receipt
+host	socrat-3	bluetooth.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-3	chrony.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-3	cron.service					3.0	21.0	True	canonical			0	canonical-receipt
+host	socrat-3	cups-browsed.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-3	cups.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-3	dbus.service					0	4.0	False	unobserved			0	hour-receipt-not-fresh
+host	socrat-3	fwupd.service					0	2.0	False	unobserved			0	hour-receipt-not-fresh
+host	socrat-3	gdm.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-3	happd.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-3	homelab-otel-agent.service					3.0	124.0	True	canonical			0	canonical-receipt
+host	socrat-3	homelab-otel-node-exporter.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-3	k3s-agent.service					19.0	166.0	True	canonical			0	canonical-receipt
+host	socrat-3	low-memory-monitor.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-3	ModemManager.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-3	NetworkManager.service					8.0	67.0	True	canonical			0	canonical-receipt
+host	socrat-3	nfs-blkmap.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-3	polkit.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-3	power-profiles-daemon.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-3	rpcbind.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-3	rtkit-daemon.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-3	smartmontools.service					0	1.0	False	unobserved			0	hour-receipt-not-fresh
+host	socrat-3	ssh.service					0	12.0	False	unobserved			0	hour-receipt-not-fresh
+host	socrat-3	switcheroo-control.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-3	systemd-journald.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-3	systemd-logind.service					2.0	20.0	True	canonical			0	canonical-receipt
+host	socrat-3	systemd-udevd.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-3	udisks2.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-3	upower.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-3	user@1000.service					0	0	False	unobserved			0	no-receipt-emission-unproven
+host	socrat-3	wpa_supplicant.service					0	0	False	unobserved			0	no-receipt-emission-unproven

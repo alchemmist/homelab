@@ -82,7 +82,18 @@ spec:
               readOnly: true
             - name: data
               mountPath: /var/lib/otel
+            {{- if eq $name "loki" }}
+            # Loki 3.7.9 stages marker BoltDB files in os.TempDir(), then
+            # uploads completed markers to the persistent marker object store.
+            - name: marker-tmp
+              mountPath: /tmp
+            {{- end }}
       volumes:
+        {{- if eq $name "loki" }}
+        - name: marker-tmp
+          emptyDir:
+            sizeLimit: 1Gi
+        {{- end }}
         - name: config
           configMap:
             name: otel-backends
