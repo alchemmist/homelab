@@ -12,4 +12,4 @@ grafanaUrl: http://kube-prometheus-stack-grafana.cattle-monitoring-system.svc.cl
 dispatchEnabled: true
 
 # Enable after reviewed native bot episode/copy/revision API rollout.
-telegramLinksEnabled: false
+telegramLinksEnabled: true
