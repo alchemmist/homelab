@@ -21,6 +21,14 @@ def merge(live, desired):
                 # Keep cursor paths, ingestion bounds and live host adaptations.
                 if name not in live[section]:
                     raise ValueError('Missing live receiver: ' + name)
+                # Only migrate the known overbroad self-log exclusion. Preserve
+                # all cursor, include, parsing and host-specific receiver settings.
+                if name == 'filelog' and name not in shared:
+                    broad = '/var/log/pods/*_otel-*_*/*/*.log'
+                    narrow = '/var/log/pods/cattle-monitoring-system_prometheus-kube-prometheus-stack-prometheus-*_*/otel-cluster/*.log'
+                    if candidate.get('exclude') == [narrow]:
+                        existing = result[section][name].get('exclude', [])
+                        result[section][name]['exclude'] = [narrow if p == broad else p for p in existing]
                 continue
             if name in shared:
                 if candidate != live[section][name]:

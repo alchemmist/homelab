@@ -67,7 +67,10 @@ def ids(records):
 
 def main():
     agent = yaml.safe_load((ROOT / 'deploy/monitoring/otel/agent.yaml').read_text())
-    cluster = yaml.safe_load((ROOT / 'deploy/monitoring/otel/cluster.yaml').read_text())
+    cluster = yaml.safe_load((ROOT / 'deploy/monitoring/otel/cluster-logs-candidate.yaml').read_text())
+    active = yaml.safe_load((ROOT / 'deploy/monitoring/otel/cluster.yaml').read_text())
+    assert active['processors']['transform/log-privacy'] == cluster['processors']['transform/log-privacy'], 'promoted privacy differs from tested candidate'
+    assert active['service']['pipelines']['logs'] == cluster['service']['pipelines']['logs'], 'promoted logs pipeline differs from tested candidate'
     assert 'batch/logs' not in cluster['service']['pipelines']['logs']['processors']
     assert cluster['exporters']['otlp_http/loki']['sending_queue']['block_on_overflow']
     for source, source_config in [('agent', agent), ('cluster', cluster)]:
@@ -77,6 +80,7 @@ def main():
         for level in ['INFO', 'WARN', 'ERROR']:
             send(url, level, level + ' synthetic healthy operation')
         sensitive = {'event': 'safe-event', 'nested': {'prompt': 'PRIVATE_SENTINEL', 'headers': {'x-custom': 'PRIVATE_SENTINEL'}, 'request': {'body': 'PRIVATE_SENTINEL'}, 'response.body': 'PRIVATE_SENTINEL', 'ok': 'safe-value'}, 'items': [{'completion': 'PRIVATE_SENTINEL', 'status': 'safe-status'}]}
+        send(url, 'invalid-json', '{\"prompt\":\"PRIVATE_SENTINEL')
         send(url, 'map', sensitive)
         send(url, 'json', json.dumps(sensitive))
         send(url, 'json-array', json.dumps([sensitive]))
@@ -84,14 +88,14 @@ def main():
         send(url, 'freeform', 'INFO request.body: PRIVATE_SENTINEL\nPRIVATE_SENTINEL')
         time.sleep(1); docker('stop', '-t', '3', name)
         records = output(name)
-        assert len(records) == 8
+        assert len(records) == 9
         encoded = json.dumps(records)
         assert 'PRIVATE_SENTINEL' not in encoded
         assert encoded.count('safe-event') == 2 and encoded.count('safe-value') == 2
         if source == 'agent':
             actual = {next(a['value']['stringValue'] for a in r['attributes'] if a['key'] == 'test.id'): r['severityText'] for r in records}
             assert all(actual[level] == level.lower() for level in ['INFO', 'WARN', 'ERROR'])
-        print(source + ': privacy=8/8; severity=' + ('3/3' if source == 'agent' else 'agent-owned'))
+        print(source + ': privacy=9/9; severity=' + ('3/3' if source == 'agent' else 'agent-owned'))
     network = TAG + '-net'
     docker('network', 'create', '--internal', network)
     try:

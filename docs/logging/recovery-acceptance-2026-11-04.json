@@ -1,0 +1,127 @@
+{
+  "scope": "bounded logging recovery; not all-service coverage",
+  "clusterWindows": [
+    {
+      "interval": 1,
+      "seconds": 40,
+      "otelcol_exporter_sent_log_records": 5225.0,
+      "otelcol_exporter_sent_metric_points": 748780.0,
+      "otelcol_receiver_refused_log_records": 0.0,
+      "otelcol_exporter_send_failed_log_records": 0,
+      "otelcol_exporter_enqueue_failed_log_records": 0,
+      "queueStart": 0.0,
+      "queueEnd": 0.0,
+      "passed": true
+    },
+    {
+      "interval": 2,
+      "seconds": 40,
+      "otelcol_exporter_sent_log_records": 70886.0,
+      "otelcol_exporter_sent_metric_points": 750865.0,
+      "otelcol_receiver_refused_log_records": 0.0,
+      "otelcol_exporter_send_failed_log_records": 0,
+      "otelcol_exporter_enqueue_failed_log_records": 0,
+      "queueStart": 0.0,
+      "queueEnd": 34855.0,
+      "passed": true
+    },
+    {
+      "interval": 3,
+      "seconds": 40,
+      "otelcol_exporter_sent_log_records": 4235.0,
+      "otelcol_exporter_sent_metric_points": 736014.0,
+      "otelcol_receiver_refused_log_records": 0.0,
+      "otelcol_exporter_send_failed_log_records": 0,
+      "otelcol_exporter_enqueue_failed_log_records": 0,
+      "queueStart": 34855.0,
+      "queueEnd": 0.0,
+      "passed": true
+    }
+  ],
+  "receipts": {
+    "logBodiesFetchedOrSaved": false,
+    "hostIDs": {
+      "recovery-20261104-socrat-0-narrow-v2": 2.0,
+      "recovery-20261104-socrat-1-narrow-v2": 2.0,
+      "recovery-20261104-socrat-2-narrow-v2": 1.0,
+      "recovery-20261104-socrat-3-narrow-v2": 2.0
+    },
+    "backendCounts": {
+      "loki": 848.0,
+      "tempo": 226.0
+    }
+  },
+  "hosts": {
+    "socrat-0": {
+      "active": true,
+      "enqueueFailedLogsDelta": 0,
+      "failedLogsDelta": 0,
+      "freshMetrics": true,
+      "otelcol_exporter_sent_log_records_total": 4784.0,
+      "otelcol_exporter_sent_metric_points_total": 39041.0,
+      "passed": true,
+      "queueCapacity": 268435456.0,
+      "queueGrowth": 0.0,
+      "queueSize": 0.0,
+      "queueStart": 0.0,
+      "refusedLogsDelta": 0.0
+    },
+    "socrat-1": {
+      "active": true,
+      "enqueueFailedLogsDelta": 0,
+      "failedLogsDelta": 0,
+      "freshMetrics": true,
+      "otelcol_exporter_sent_log_records_total": 66846.0,
+      "otelcol_exporter_sent_metric_points_total": 31101.0,
+      "passed": true,
+      "queueCapacity": 268435456.0,
+      "queueGrowth": -1790249.0,
+      "queueSize": 0.0,
+      "queueStart": 1790249.0,
+      "refusedLogsDelta": 0.0
+    },
+    "socrat-2": {
+      "active": true,
+      "enqueueFailedLogsDelta": 0,
+      "failedLogsDelta": 0,
+      "freshMetrics": true,
+      "otelcol_exporter_sent_log_records_total": 89.0,
+      "otelcol_exporter_sent_metric_points_total": 15372.0,
+      "passed": true,
+      "queueCapacity": 268435456.0,
+      "queueGrowth": 620221.0,
+      "queueSize": 620221.0,
+      "queueStart": 0.0,
+      "refusedLogsDelta": 0.0
+    },
+    "socrat-3": {
+      "active": true,
+      "enqueueFailedLogsDelta": 0,
+      "failedLogsDelta": 0,
+      "freshMetrics": true,
+      "otelcol_exporter_sent_log_records_total": 37.0,
+      "otelcol_exporter_sent_metric_points_total": 19015.0,
+      "passed": true,
+      "queueCapacity": 268435456.0,
+      "queueGrowth": 0.0,
+      "queueSize": 0.0,
+      "queueStart": 0.0,
+      "refusedLogsDelta": 0.0
+    }
+  },
+  "protectedAdjacentContainersUnchanged": true,
+  "podUnchanged": true,
+  "collectorRestartsBefore": 2,
+  "collectorRestartsAfter": 3,
+  "scrapeGap": {
+    "nominalSeconds": 5,
+    "apiServerTargetsGapSeconds": [
+      14.997999906539917,
+      9.998999834060669
+    ],
+    "collectorStoppedAt": "2026-11-04T09:45:01Z",
+    "collectorStartedAt": "2026-11-04T09:45:02Z",
+    "window": "around activation, raw stored sample timestamp differences; not whole 30m maxima"
+  },
+  "logBodiesFetchedOrSaved": false
+}

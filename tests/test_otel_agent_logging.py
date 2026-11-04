@@ -10,6 +10,20 @@ class AgentLoggingTests(unittest.TestCase):
     def setUp(self):
         self.agent = yaml.safe_load((ROOT / 'deploy/monitoring/otel/agent.yaml').read_text())
 
+    def test_self_log_exclusion_does_not_drop_backends_or_adjacent_containers(self):
+        from fnmatch import fnmatchcase
+        patterns = self.agent['receivers']['filelog']['exclude']
+        def excluded(pod, container):
+            path = f'/var/log/pods/cattle-monitoring-system_{pod}_uid/{container}/0.log'
+            return any(fnmatchcase(path, pattern) for pattern in patterns)
+        self.assertTrue(excluded('prometheus-kube-prometheus-stack-prometheus-0', 'otel-cluster'))
+        for pod, container in [('otel-loki-58655fcd84-mvsbt', 'loki'),
+                               ('otel-tempo-7b5d947c8b-gc9lj', 'tempo'),
+                               ('prometheus-kube-prometheus-stack-prometheus-0', 'prometheus'),
+                               ('prometheus-kube-prometheus-stack-prometheus-0', 'thanos-sidecar'),
+                               ('otel-application', 'app')]:
+            self.assertFalse(excluded(pod, container), (pod, container))
+
     def test_rotation_and_restart_contract(self):
         receiver = self.agent['receivers']['filelog']
         self.assertEqual(receiver['operators'][0]['type'], 'container')

@@ -13,7 +13,7 @@ receivers:
     include:
     - /var/log/pods/*/*/*.log
     exclude:
-    - /var/log/pods/*_otel-*_*/*/*.log
+    - /var/log/pods/cattle-monitoring-system_prometheus-kube-prometheus-stack-prometheus-*_*/otel-cluster/*.log
     start_at: beginning
     storage: file_storage
     include_file_path: true
@@ -92,11 +92,14 @@ processors:
       statements:
       - flatten(attributes, resolveConflicts=true)
       - delete_matching_keys(attributes, "(?i).*(authorization|password|secret|token|api[._-]?key|cookie|headers?|prompt|completion|request[._-]?body|response[._-]?body).*")
+    # Parse failure is expected for truncated JSON-looking text. Never export it raw.
+    - context: log
+      error_mode: silent
+      statements:
+      - set(body, ParseJSON(body)) where IsString(body) and IsMatch(body, "^[ \\t]*(\\{|\\[[ \\t]*(\\{|\\[|\"))")
     - context: log
       statements:
-      # Parse JSON strings before sanitizing; flatten recursively includes array members.
-      - set(cache["privacy_body"], ParseJSON(body)) where IsString(body) and IsMatch(body, "^[ \\t]*(\\{|\\[[ \\t]*(\\{|\\[|\"))")
-      - set(body, cache["privacy_body"]) where cache["privacy_body"] != nil
+      - set(body, "<redacted-invalid-json>") where IsString(body) and IsMatch(body, "^[ \\t]*(\\{|\\[[ \\t]*(\\{|\\[|\"))")
       - set(body, "<redacted-unstructured-array>") where IsList(body)
       - flatten(body, resolveConflicts=true) where IsMap(body)
       - delete_matching_keys(body, "(?i).*(authorization|password|secret|token|api[._-]?key|cookie|headers?|prompt|completion|request[._-]?body|response[._-]?body|(^|[.])body([.]|$)).*") where IsMap(body)

@@ -26,6 +26,17 @@ class ScopedRolloutTests(unittest.TestCase):
         self.assertEqual(result['exporters']['otlp'], self.live['exporters']['otlp'])
         self.assertEqual(result['service']['pipelines']['metrics'], self.live['service']['pipelines']['metrics'])
 
+    def test_only_known_broad_exclusion_is_narrowed(self):
+        broad = '/var/log/pods/*_otel-*_*/*/*.log'
+        self.live['receivers']['filelog']['exclude'] = [broad, '/custom/exclusion']
+        before = copy.deepcopy(self.live)
+        result = m.merge(self.live, self.desired)
+        expected = copy.deepcopy(before['receivers'])
+        expected['filelog']['exclude'] = self.desired['receivers']['filelog']['exclude'] + ['/custom/exclusion']
+        self.assertEqual(result['receivers'], expected)
+        self.assertEqual(self.live, before)
+        self.assertEqual(result['extensions'], before['extensions'])
+
     def test_shared_mutation_refused(self):
         self.live['processors']['memory_limiter']['limit_mib'] = 987
         with self.assertRaises(ValueError):
