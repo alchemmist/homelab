@@ -52,7 +52,7 @@ class Delivery:
         # ONLY their trusted primary permalink; never rerun model/publication.
         if self.github is None:return False
         with self.store.db()as c:
-            row=c.execute("SELECT j.*,coalesce(b.attempts,0) backfill_attempts FROM jobs j JOIN spi_card_receipts r ON r.episode=j.episode LEFT JOIN spi_links l ON l.episode=j.episode LEFT JOIN spi_primary_backfill b ON b.job_id=j.id WHERE j.state='complete' AND j.issue>0 AND l.episode IS NULL AND coalesce(b.available,0)<=? ORDER BY coalesce(b.available,0),j.created DESC LIMIT 1",(time.time(),)).fetchone()
+            row=c.execute("SELECT j.*,coalesce(b.attempts,0) backfill_attempts FROM jobs j JOIN spi_card_receipts r ON r.episode=j.episode LEFT JOIN spi_links l ON l.episode=j.episode LEFT JOIN spi_primary_backfill b ON b.job_id=j.id WHERE j.state='complete' AND j.issue>0 AND coalesce(l.revision,0)<CASE json_extract(j.event,'$.status') WHEN 'resolved' THEN 2 ELSE 1 END AND coalesce(b.available,0)<=? ORDER BY coalesce(b.available,0),j.created DESC LIMIT 1",(time.time(),)).fetchone()
         if row is None:return False
         found=False
         try:

@@ -87,3 +87,41 @@ class DeliveryIntegrationTests(unittest.TestCase):
         d.github.primary_reference.return_value={'kind':'comment','role':'primary','issue_number':7,'id':99,'html_url':url}
         self.assertTrue(d.backfill());d.github.request.assert_not_called();self.assertEqual(d.links.snapshot(episode)['url'],url)
         self.assertEqual(self.store.get(key)['state'],'complete');self.assertEqual(self.store.get(key)['stage'],4)
+    def historical_pair(self):
+        d=Delivery(self.store,'test',enabled=True);d.github=Mock()
+        for status in ['firing','resolved']:
+            e=fixture.event(status);self.store.enqueue(e);self.store.save(e['event_key'],4,{},state='complete',issue=7)
+        e=fixture.event();d.receipt(e,{'key':'Test/spi/'+e['episode'],'episode':e['episode'],'immutable_key':True,'copies':[{'chat_id':1,'message_id':3}]})
+        return d,e
+    def test_historical_resolved_failure_then_firing_then_resolved_converges(self):
+        d,e=self.historical_pair()
+        def reference(marker,issue):
+            if fixture.event('resolved')['event_key']in marker:raise Failure('UPSTREAM_NETWORK_ERROR')
+            return {'kind':'comment','role':'primary','issue_number':7,'id':99,'html_url':'https://github.com/alchemmist/homelab/issues/7#issuecomment-99'}
+        # Force recovery order: resolved temporarily unavailable, then firing.
+        with self.store.db()as c:c.execute('UPDATE jobs SET created=created+10 WHERE id=?',(fixture.event('resolved')['event_key'],))
+        d.github.primary_reference.side_effect=reference;d.backfill();d.backfill()
+        self.assertEqual(d.links.snapshot(e['episode'])['revision'],1)
+        d.github.primary_reference.side_effect=None
+        url='https://github.com/alchemmist/homelab/issues/7#issuecomment-100'
+        d.github.primary_reference.return_value={'kind':'comment','role':'primary','issue_number':7,'id':100,'html_url':url}
+        with self.store.db()as c:c.execute('UPDATE spi_primary_backfill SET available=0')
+        d.backfill();self.assertEqual(d.links.snapshot(e['episode'])['revision'],2);self.assertEqual(d.links.snapshot(e['episode'])['url'],url)
+        self.assertFalse(d.backfill()) # late firing cannot downgrade revision2
+    def test_historical_resolved_becomes_complete_after_firing(self):
+        d,e=self.historical_pair();resolved=fixture.event('resolved')
+        with self.store.db()as c:c.execute("UPDATE jobs SET state='retry' WHERE id=?",(resolved['event_key'],))
+        d.github.primary_reference.return_value={'kind':'issue','role':'primary','issue_number':7,'id':7,'html_url':'https://github.com/alchemmist/homelab/issues/7'}
+        d.backfill();self.assertEqual(d.links.snapshot(e['episode'])['revision'],1)
+        with self.store.db()as c:c.execute("UPDATE jobs SET state='complete' WHERE id=?",(resolved['event_key'],))
+        url='https://github.com/alchemmist/homelab/issues/7#issuecomment-100'
+        d.github.primary_reference.return_value={'kind':'comment','role':'primary','issue_number':7,'id':100,'html_url':url}
+        d.backfill();self.assertEqual(d.links.snapshot(e['episode'])['url'],url);self.assertEqual(d.links.snapshot(e['episode'])['revision'],2)
+    def test_historical_resolved_without_publication_keeps_valid_firing(self):
+        d,e=self.historical_pair()
+        with self.store.db()as c:c.execute('UPDATE jobs SET created=created+10 WHERE id=?',(fixture.event('resolved')['event_key'],))
+        def reference(marker,issue):
+            if fixture.event('resolved')['event_key']in marker:raise Failure('PRIMARY_PUBLICATION_MISSING')
+            return {'kind':'issue','role':'primary','issue_number':7,'id':7,'html_url':'https://github.com/alchemmist/homelab/issues/7'}
+        d.github.primary_reference.side_effect=reference;d.backfill();d.backfill()
+        self.assertEqual(d.links.snapshot(e['episode'])['revision'],1)
