@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "fallbackHours": 336,
+  "severityHours": {"debug": 72, "info": 168, "warn": 720, "error": 720, "unknown": 336},
+  "services": {},
+  "capacityApproval": null
+}
