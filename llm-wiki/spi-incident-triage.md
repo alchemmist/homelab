@@ -228,7 +228,7 @@ authentication headers). Only `{dispatch:true}` enters execution data. Credentia
 comparison occurs in the trigger; POST acknowledgement is immediate. Worker egress
 is restricted to automation/app=n8n pod TCP5678 for the fixed callback.
 
-### Original Telegram card SPI target (staging)
+### Original Telegram card SPI target — implemented, activation pending
 
 Human API contract: `wiki/content/platform/socrat-bot.md`. Primary GitHub receipt
 and desired target commit atomically. New issue -> its root URL; match -> exact
@@ -247,3 +247,60 @@ Activation remains PENDING. Preserve native one-process/Recreate assumption,
 Bot schema0009 and existing n8n IDs/credentials/PVC. Legacy unaddressable messages
 or deleted Telegram copies are not fabricated successes. See runbook for explicit
 limits and pending-link monitoring. S3 remains a separate unimplemented step.
+
+
+### Verified status — 2026-11-04
+
+This status supersedes the historical staging checklists above; unchecked
+acceptance scenarios must not be inferred complete from deployment alone.
+Event-driven SPI dispatch is deployed and enabled. Original SPI workflow
+`J9akzlydrf9XZiID` remains active without a Schedule Trigger; original Socrat Alerts
+`b2TlucyOTiZP9CzN` remains active. Preserve original credentials, owner/project,
+encryption key, PVC and durable queue. Blog remains `WRITE_ENABLED=false`.
+
+Telegram link implementation is complete in source, but production acceptance is
+NOT complete. Latest verified deployed homelab revision is
+`cac95988ee3b757d7fdc526e67e2dc1b5e2233e8`; n8n, SPI triage and native bot Argo
+applications were Synced/Healthy. Runtime `SPI_TELEGRAM_LINKS_ENABLED=false`.
+Activation-only commit `49ad7451956a49c5056840f0950ee19cab776512` exists locally;
+GitHub rejected its pushes with Internal Server Error / fatal error in commit_refs.
+REST ref verification confirmed it was not published. Do not assume the local
+chart value means the running feature is enabled. No imperative activation bypass
+was applied; recheck remote main and runtime before continuing.
+
+Resolved review findings: no fabricated closed-issue root target; delayed firing
+cannot regress resolved native cards; discovery failures do not block delivery;
+native desired revision/URL commit before Telegram edits (schema0009), separate
+from applied revisions. Historical backfill compares deterministic candidate
+revision against desired revision, so a transient resolved-reference failure can
+recover firing first and later supersede it with the exact resolved comment.
+A resolved job without a publication never manufactures a target.
+
+Actual n8n HTTP expression evaluation failed despite earlier static tests. Fixed
+by `Prepare Telegram Receipt` Code using linked `itemMatching(index)`, followed by
+simple HTTP JSON serialization. Callback-only acceptance replayed four retained
+REAL bot responses: each recorded two observed copies, with native episode equality
+verified and four immutable receipts persisted. Temporary acceptance workflows
+were removed. This sent no Telegram messages, ran no model and published no
+GitHub content. It is NOT proof of the final SPI link edit.
+
+Parent-executed suites: 114 SPI Python, nine ingress JS and 29 native bot tests
+passed. Source review is not independent test execution. Consistent pre-enable
+snapshot: `~/.config/n8n/diagnostics/spi-telegram/pre-enable.sqlite`, 5,918,720 bytes,
+83 jobs; SQLite header, integrity and foreign keys checked. An earlier empty
+capture during rollout was invalid and was replaced; never accept integrity_check
+alone on an empty newly created database as backup proof.
+
+Remaining acceptance:
+1. After GitHub write recovery, fetch/rebase/push activation; verify deployed
+   revision and actual runtime flag, not only successful Git push.
+2. Confirm exact primary target in all original copies of a real immutable card,
+   native updated/pending acknowledgement, and durable independent retry state.
+3. Provision prepared `spi-triage-telegram-links` pending-backlog Grafana rule.
+4. Record final queue snapshot and update acceptance docs with actual evidence.
+
+Scope excludes historical replaced legacy messages without trustworthy episode
+proof. Deleted/inaccessible copies and unavailable external dependencies require
+visible pending/error state and operator attention, not unconditional success or
+exactly-once claims. Native API service port8080 targets hostNetwork port8082;
+worker NetworkPolicy must allow the actual target. S3 remains unimplemented.

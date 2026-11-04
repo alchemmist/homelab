@@ -89,3 +89,37 @@ existing httpHeaderAuth credential, not the built-in Webhook (which emits incomi
 authentication headers). Only `{dispatch:true}` enters execution data. Credential
 comparison occurs in the trigger; POST acknowledgement is immediate. Worker egress
 is restricted to automation/app=n8n pod TCP5678 for the fixed callback.
+
+
+### SPI original-card link integration status — 2026-11-04
+
+Historical event-dispatch staging checklists above are superseded by deployed,
+enabled event dispatch; their individual acceptance scenarios are not all claimed
+verified. Telegram SPI-link delivery is a separate feature and remains OFF in the
+last verified runtime. Full implementation and acceptance status:
+`llm-wiki/spi-incident-triage.md`, “Verified status — 2026-11-04”.
+
+Native bot implementation `fe67913` and live schema `0009_spi_desired_revision`
+provide immutable `/spi/<episode>` keys, firing/resolved monotonicity, shared
+per-key mutation locks, exact-copy guards, and accepted desired revision fences
+persisted BEFORE network edits, separate from applied-copy revisions. API contract
+is in the ordinary human wiki `wiki/content/platform/socrat-bot.md`.
+
+Original Socrat Alerts `b2TlucyOTiZP9CzN` was updated/reactivated in place. Receipt
+preparation now runs in Code via `itemMatching(index)`; cross-node HTTP JSON
+expressions had failed at runtime. Four real retained receipts were replayed
+without sending messages: each callback observed two copies; episode identity was
+verified. Do not confuse this with proof that SPI links have appeared in Telegram.
+Bot suite:29 tests passed; parent SPI suites:114 Python +9 JS passed.
+
+Homelab deployed revision was `cac9598`, all three applications Synced/Healthy,
+with links disabled. Local activation commit `49ad745` was rejected by GitHub
+server-side write failures and was confirmed absent remotely. Pending: activation,
+real exact-target/all-copy edit acceptance, pending-link Grafana rule, final backup
+and acceptance documentation. No new approval is implied or required merely to
+retry the already-authorized rollout after resolving the external blocker.
+
+Never infer associations for historical legacy messages lacking immutable proof;
+never republish GitHub/model reports to retry a Telegram link. Service8080 targets
+native hostNetwork API8082. Preserve the isolated bot checkout and unrelated dirty
+operator checkout. Blog stays write-disabled; S3 migration remains separate.
