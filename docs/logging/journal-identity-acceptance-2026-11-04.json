@@ -1,0 +1,253 @@
+{
+  "metadataOnly": true,
+  "priorityRange": "0..6",
+  "windowSeconds": 300,
+  "hosts": {
+    "socrat-0": {
+      "start": 1793788581,
+      "end": 1793788881,
+      "runningUnits": 34,
+      "emittedRunning": [
+        {
+          "unit": "avahi-daemon.service",
+          "source": 12,
+          "loki": 12.0
+        },
+        {
+          "unit": "homelab-otel-agent.service",
+          "source": 9,
+          "loki": 9.0
+        },
+        {
+          "unit": "k3s.service",
+          "source": 141,
+          "loki": 141.0
+        },
+        {
+          "unit": "knot.service",
+          "source": 40,
+          "loki": 40.0
+        },
+        {
+          "unit": "NetworkManager.service",
+          "source": 4,
+          "loki": 4.0
+        },
+        {
+          "unit": "ssh.service",
+          "source": 9,
+          "loki": 9.0
+        },
+        {
+          "unit": "systemd-logind.service",
+          "source": 10,
+          "loki": 10.0
+        }
+      ],
+      "focus": [
+        {
+          "unit": "iwd.service",
+          "source": 0,
+          "loki": 0
+        },
+        {
+          "unit": "knot.service",
+          "source": 40,
+          "loki": 40.0
+        },
+        {
+          "unit": "NetworkManager.service",
+          "source": 4,
+          "loki": 4.0
+        },
+        {
+          "unit": "sshd.service",
+          "source": 0,
+          "loki": 0
+        },
+        {
+          "unit": "ssh.service",
+          "source": 9,
+          "loki": 9.0
+        }
+      ]
+    },
+    "socrat-3": {
+      "start": 1793788583,
+      "end": 1793788883,
+      "runningUnits": 32,
+      "emittedRunning": [
+        {
+          "unit": "avahi-daemon.service",
+          "source": 12,
+          "loki": 12.0
+        },
+        {
+          "unit": "homelab-otel-agent.service",
+          "source": 1,
+          "loki": 1.0
+        },
+        {
+          "unit": "k3s-agent.service",
+          "source": 21,
+          "loki": 21.0
+        },
+        {
+          "unit": "NetworkManager.service",
+          "source": 4,
+          "loki": 4.0
+        }
+      ],
+      "focus": [
+        {
+          "unit": "iwd.service",
+          "source": 0,
+          "loki": 0
+        },
+        {
+          "unit": "knot.service",
+          "source": 0,
+          "loki": 0
+        },
+        {
+          "unit": "NetworkManager.service",
+          "source": 4,
+          "loki": 4.0
+        },
+        {
+          "unit": "sshd.service",
+          "source": 0,
+          "loki": 0
+        },
+        {
+          "unit": "ssh.service",
+          "source": 0,
+          "loki": 0
+        }
+      ]
+    },
+    "socrat-1": {
+      "start": 1793788581,
+      "end": 1793788881,
+      "runningUnits": 29,
+      "emittedRunning": [
+        {
+          "unit": "homelab-otel-agent.service",
+          "source": 2,
+          "loki": 2.0
+        },
+        {
+          "unit": "iwd.service",
+          "source": 2,
+          "loki": 2.0
+        },
+        {
+          "unit": "k3s.service",
+          "source": 42,
+          "loki": 42.0
+        },
+        {
+          "unit": "keepalived.service",
+          "source": 468,
+          "loki": 468.0
+        },
+        {
+          "unit": "knot.service",
+          "source": 40,
+          "loki": 40.0
+        },
+        {
+          "unit": "NetworkManager.service",
+          "source": 4,
+          "loki": 4.0
+        },
+        {
+          "unit": "user@1000.service",
+          "source": 6,
+          "loki": 6.0
+        }
+      ],
+      "focus": [
+        {
+          "unit": "iwd.service",
+          "source": 2,
+          "loki": 2.0
+        },
+        {
+          "unit": "knot.service",
+          "source": 40,
+          "loki": 40.0
+        },
+        {
+          "unit": "NetworkManager.service",
+          "source": 4,
+          "loki": 4.0
+        },
+        {
+          "unit": "sshd.service",
+          "source": 0,
+          "loki": 0
+        },
+        {
+          "unit": "ssh.service",
+          "source": 0,
+          "loki": 0
+        }
+      ]
+    },
+    "socrat-2": {
+      "start": 1793788585,
+      "end": 1793788885,
+      "runningUnits": 22,
+      "emittedRunning": [
+        {
+          "unit": "cron.service",
+          "source": 15,
+          "loki": 15.0
+        },
+        {
+          "unit": "k3s.service",
+          "source": 24,
+          "loki": 24.0
+        },
+        {
+          "unit": "knot.service",
+          "source": 40,
+          "loki": 40.0
+        },
+        {
+          "unit": "ssh.service",
+          "source": 6,
+          "loki": 6.0
+        }
+      ],
+      "focus": [
+        {
+          "unit": "iwd.service",
+          "source": 0,
+          "loki": 0
+        },
+        {
+          "unit": "knot.service",
+          "source": 40,
+          "loki": 40.0
+        },
+        {
+          "unit": "NetworkManager.service",
+          "source": 0,
+          "loki": 0
+        },
+        {
+          "unit": "sshd.service",
+          "source": 0,
+          "loki": 0
+        },
+        {
+          "unit": "ssh.service",
+          "source": 6,
+          "loki": 6.0
+        }
+      ]
+    }
+  }
+}
