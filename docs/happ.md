@@ -1,6 +1,6 @@
 # Happ on socrat-3
 
-Install the pinned client and desktop launcher with `ansible/playbooks/socrat-3-happ.yml`, using both the main inventory and `ansible/inventory/socrat-3.yml`.
+Install the pinned client and desktop launcher with `ansible/playbooks/socrat-3-happ.yml`, using the main inventory, `ansible/inventory/hosts.yml`.
 
 Import the private Socrat subscription in Happ. Subscription credentials are not stored in this repository.
 

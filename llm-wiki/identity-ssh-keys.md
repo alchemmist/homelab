@@ -134,7 +134,7 @@ unset AUTHENTIK_SSH_TOKEN
 
 ```sh
 cd ansible
-ansible-playbook -i inventory/hosts.yml -i inventory/socrat-3.yml \
+ansible-playbook -i inventory/hosts.yml \
   playbooks/authentik-ssh-users.yml -e @/tmp/reviewed-ssh-users.json --check
 # Без --check поведение тоже read-only, пока нет explicit apply flags.
 ```
@@ -153,7 +153,7 @@ Export нельзя редактировать после review: Ansible пер
 
 ```sh
 cd ansible
-ansible-playbook -i inventory/hosts.yml -i inventory/socrat-3.yml \
+ansible-playbook -i inventory/hosts.yml \
   playbooks/authentik-ssh-users.yml -e @/tmp/reviewed-ssh-users.json \
   -e homelab_authentik_ssh_apply=true \
   -e homelab_authentik_ssh_approval=REVIEWED_SHA256 --ask-become-pass
@@ -256,7 +256,7 @@ credentials. Не удалять home и не запускать глобаль�
 /tmp/homelab-iam-tests/bin/python -m unittest discover -s tests -p 'test_identity_ssh.py' -v
 /tmp/homelab-iam-tests/bin/python -m unittest discover -s tests -p 'test_identity.py' -v
 cd ansible
-ansible-playbook -i inventory/hosts.yml -i inventory/socrat-3.yml \
+ansible-playbook -i inventory/hosts.yml \
   playbooks/authentik-ssh-users.yml --syntax-check
 ```
 

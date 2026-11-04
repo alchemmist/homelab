@@ -48,7 +48,7 @@ The host inventory sets `homelab_laptop_desktop: sway`. From `ansible/`:
 
 ```bash
 ansible-playbook playbooks/debian-laptop.yml \
-  -i inventory/hosts.yml -i inventory/socrat-3.yml \
+  -i inventory/hosts.yml \
   --tags sway --ask-become-pass
 ```
 
@@ -74,7 +74,7 @@ To make GNOME the next session again:
 
 ```bash
 ansible-playbook playbooks/debian-laptop.yml \
-  -i inventory/hosts.yml -i inventory/socrat-3.yml \
+  -i inventory/hosts.yml \
   --tags gnome -e homelab_laptop_desktop=gnome --ask-become-pass
 ```
 

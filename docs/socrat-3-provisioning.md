@@ -3,7 +3,7 @@
 Since 2026-10-18 this machine also runs the K3s control plane and an etcd voter. Its existing workload runtime, resource reservations and desktop configuration were retained. Use [the current HA workflow](k3s-ha.md) for server-role maintenance; the worker bootstrap below describes its original enrollment and must not be used to demote the running server.
 
 The MSI CR61 3M (AMD A4-5000, approximately 3.3 GiB usable RAM) is managed
-through `ansible/inventory/socrat-3.yml`. The maintenance connection is wired
+through `ansible/inventory/hosts.yml`. The maintenance connection is wired
 Ethernet at `192.168.0.110:2222`; the account is `alchemmist`. Root escalation uses
 `su -l` during bootstrap. Passwords and the Wi-Fi PSK are not stored in Git.
 
@@ -12,7 +12,7 @@ still listening on port 22, migrate it before the laptop playbook:
 
 ```bash
 ansible-playbook playbooks/ssh.yml --limit socrat-3 \
-  -i inventory/hosts.yml -i inventory/socrat-3.yml \
+  -i inventory/hosts.yml \
   -e homelab_ssh_bootstrap_port=22 --ask-become-pass
 ```
 
@@ -23,7 +23,7 @@ From `ansible/`, apply the host setup using:
 
 ```bash
 ansible-playbook playbooks/debian-laptop.yml \
-  -i inventory/hosts.yml -i inventory/socrat-3.yml \
+  -i inventory/hosts.yml \
   --tags kernel_safety,utilities,gnome --ask-become-pass
 ```
 
@@ -117,7 +117,7 @@ Apply the enrollment workflows from `ansible/` in this order:
 4. `playbooks/syncthing-placement.yml`
 5. `playbooks/k3s-worker-admit.yml`
 
-Use both `-i inventory/hosts.yml -i inventory/socrat-3.yml`. Supply per-host
+Use `-i inventory/hosts.yml`. Supply per-host
 become credentials through a private inventory or Ansible Vault: old nodes
 use sudo and the new worker uses `su -l`, with different passwords. Do not use
 the old site's direct LAN inventory from the new site: both LANs overlap.

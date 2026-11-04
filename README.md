@@ -21,7 +21,11 @@ prerequisites, idempotency, credentials and the still-singleton control-plane li
 ```text
 ansible/
   ansible.cfg
-  inventory/hosts.yml
+  inventory/
+    hosts.yml              # all four Socrat nodes and SSH connections
+    host_vars/             # per-node configuration
+    group_vars/            # shared inventory settings
+    netbird-controller.yml # separate controller alias (not in Socrat)
   group_vars/
   playbooks/
     base.yml
@@ -37,6 +41,8 @@ ansible/
 charts/
   socrat-home/
 ```
+
+Inventory membership, variable ownership, maintenance overrides and safe inspection commands are explained in [the inventory guide](ansible/inventory/README.md). The default inventory includes all four Socrat nodes; use `--limit` to narrow a playbook run.
 
 ## Public SSH access
 

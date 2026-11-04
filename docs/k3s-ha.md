@@ -141,8 +141,8 @@ After restarting `socrat-0`, all three nodes were `Ready` and all three etcd vot
 Run from `ansible/` with the appropriate reachable inventory overlay:
 
 ```bash
-ansible-playbook -i inventory/hosts.yml -i inventory/socrat-3.yml playbooks/k3s-role-rebalance.yml --ask-become-pass
-ansible-playbook -i inventory/hosts.yml -i inventory/socrat-3.yml playbooks/k3s-ha-dependencies.yml --ask-become-pass
+ansible-playbook -i inventory/hosts.yml playbooks/k3s-role-rebalance.yml --ask-become-pass
+ansible-playbook -i inventory/hosts.yml playbooks/k3s-ha-dependencies.yml --ask-become-pass
 ansible-playbook playbooks/home-ingress-ha.yml --ask-become-pass
 ansible-playbook playbooks/rancher-placement.yml --ask-become-pass
 ```

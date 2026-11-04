@@ -10,7 +10,7 @@ Use both inventories so the node-exporter textfile directory is prepared on all
 four nodes. From `ansible/`:
 
 ```sh
-ansible-playbook -i inventory/hosts.yml -i inventory/socrat-3.yml playbooks/monitoring-llm.yml --ask-become-pass
+ansible-playbook -i inventory/hosts.yml playbooks/monitoring-llm.yml --ask-become-pass
 ansible-playbook playbooks/monitoring.yml --tags monitoring_base,monitoring_k3s
 ```
 

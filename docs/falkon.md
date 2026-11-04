@@ -2,7 +2,7 @@
 
 Falkon was rejected after this trial. `ansible/playbooks/socrat-3-browser.yml`
 now removes the Falkon package without autoremoving shared dependencies.
-Use the main inventory together with `ansible/inventory/socrat-3.yml`.
+Use the main inventory, `ansible/inventory/hosts.yml` (includes all four nodes).
 The playbook does not change the default browser, desktop shortcuts, or Happ.
 
 The trial used an explicit local Happ proxy:

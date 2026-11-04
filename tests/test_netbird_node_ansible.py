@@ -33,7 +33,7 @@ class NodeAnsibleTest(unittest.TestCase):
         self.assertIn('reserved_addresses', template)
         self.assertIn('wg_socrat_admin_clients', template)
         cfg = (ROOT/'ansible/ansible.cfg').read_text()
-        self.assertIn('inventory/socrat-3.yml', cfg)
+        self.assertIn('inventory/hosts.yml', cfg)
         self.assertIn('inventory/netbird-controller.yml', cfg)
 
     def test_token_timer_is_not_permission_replay(self):

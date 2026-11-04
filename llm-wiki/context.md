@@ -61,9 +61,9 @@
 Из `ansible/`:
 
 ```sh
-ansible-playbook -i inventory/hosts.yml -i inventory/socrat-3.yml playbooks/monitoring.yml --tags monitoring_k3s
-ansible-playbook -i inventory/hosts.yml -i inventory/socrat-3.yml playbooks/container-resources.yml
-ansible-playbook -i inventory/hosts.yml -i inventory/socrat-3.yml playbooks/socrat-2-offload.yml
+ansible-playbook -i inventory/hosts.yml playbooks/monitoring.yml --tags monitoring_k3s
+ansible-playbook -i inventory/hosts.yml playbooks/container-resources.yml
+ansible-playbook -i inventory/hosts.yml playbooks/socrat-2-offload.yml
 ```
 
 Для базового стека добавляем tag `monitoring_base`, для embedding — `monitoring_rancher`. Права sudo зависят от playbook; пароль передавать безопасно, не в репозитории. SSH через dual-address hostname может попасть не на тот вход: используем проверенные прямые inventory overrides с правильным HostKeyAlias. Для kubectl на socrat-0: `env K3S_CONFIG_FILE=/dev/null k3s kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml …`. Временные `/tmp`-файлы прошлой сессии не считать постоянными зависимостями.
@@ -241,3 +241,33 @@ account сохранён. Новый API key — broad/non-expiring deployment c
 ## LMS — 2 ноября 2026
 
 Кабинет курса и Authentik: [lms.md](lms.md). Локальный фоновый генератор решений и тестов, он не на кластере: [lms-generation.md](lms-generation.md).
+
+## Первый структурный рефакторинг: единый Ansible inventory
+
+Все четыре ноды `socrat-0`–`socrat-3` теперь объявлены в
+`ansible/inventory/hosts.yml`, в группе `Socrat`. Отдельный inventory
+`ansible/inventory/socrat-3.yml` удалён; больше не добавлять его в команды.
+Индивидуальные настройки нод перенесены в `inventory/host_vars/<node>.yml`.
+SSH connection settings оставлены в inventory: перенос в host_vars повысил бы
+их приоритет и сломал переопределения `direct.yml`/`lan.yml`.
+
+- `ansible.cfg` загружает `inventory/hosts.yml` и
+  `inventory/netbird-controller.yml`. Controller alias не входит в `Socrat`.
+- Не подключать весь каталог inventory: там находятся maintenance overrides.
+- Явный `-i inventory/hosts.yml` теперь включает **четыре** ноды. Для прежнего
+  подмножества использовать `--limit 'Socrat:!socrat-3'`.
+- Явные `-i` заменяют configured sources. Maintenance overrides подключать после
+  `hosts.yml`; controller inventory при необходимости добавлять отдельно.
+- Никаких изменений на нодах не применялось. До рефакторинга default config уже
+  включал socrat-3 через отдельный файл; default resolved inventory не расширен.
+
+Карта файлов, команды безопасного просмотра и порядок добавления ноды:
+[Ansible inventory guide](../ansible/inventory/README.md).
+
+Проверки: полное совпадение resolved inventory до/после для default/direct/LAN;
+8 профильных inventory/NetBird tests; Starship syntax-check и list-hosts (4 ноды);
+`git diff --check`. Полный Python unittest run: 849 tests, 12 failures,
+29 errors, 12 skipped. В отдельной копии исходного HEAD: 845 tests,
+13 failures, 29 errors, 12 skipped; все имена упавших проверок после изменения
+также падают на baseline. Это не зелёный общий suite и не live acceptance.
+Новые локальные контракты находятся в `tests/test_inventory.py`.

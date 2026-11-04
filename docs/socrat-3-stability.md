@@ -1,7 +1,7 @@
 # Socrat-3 idle and watchdog
 
-Apply `ansible/playbooks/socrat-3-stability.yml` with both the main inventory and
-`ansible/inventory/socrat-3.yml`. Supply the become password outside the repository.
+Apply `ansible/playbooks/socrat-3-stability.yml` with the main inventory,
+`ansible/inventory/hosts.yml`. Supply the become password outside the repository.
 
 The playbook is for the Kabini A4-5000 in socrat-3. It does not reboot the node,
 restart k3s, or change GRUB. The network-recovery check still requires

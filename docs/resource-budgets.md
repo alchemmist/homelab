@@ -47,8 +47,8 @@ socrat-2 is the tightest scheduling budget. socrat-3 had only about 419Mi physic
 Run from `ansible/`:
 
 ```sh
-ansible-playbook -i inventory/hosts.yml -i inventory/socrat-3.yml playbooks/container-resources.yml
-ansible-playbook -i inventory/hosts.yml -i inventory/socrat-3.yml playbooks/container-resources.yml -e container_resource_policy_reconcile=true
+ansible-playbook -i inventory/hosts.yml playbooks/container-resources.yml
+ansible-playbook -i inventory/hosts.yml playbooks/container-resources.yml -e container_resource_policy_reconcile=true
 ```
 
 Use the documented SSH inventory overrides when public multi-address DNS selects the wrong SSH entry point. The first command activates future-Pod admission but does not recreate running Pods. Existing binding means policy updates become active immediately. Server dry-run checks syntax before activation; synthetic Pod dry-runs validate behavior afterward and before evictions. Failed behavioral checks restore the previous admission configuration automatically. A dry-run never starts a workload.

@@ -1,7 +1,7 @@
 # Host swap on socrat-3
 
-Apply `ansible/playbooks/socrat-3-swap.yml` with both the main inventory and
-`ansible/inventory/socrat-3.yml`. Supply the become password outside the repository.
+Apply `ansible/playbooks/socrat-3-swap.yml` with the main inventory,
+`ansible/inventory/hosts.yml`. Supply the become password outside the repository.
 
 The playbook activates the existing 3.5 GiB swap partition identified by UUID
 `0e5b3741-8d54-40b5-b48e-cac14237ad36`. It checks the partition type and the live

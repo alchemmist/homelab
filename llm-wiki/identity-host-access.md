@@ -70,7 +70,7 @@ play.** Не оставлять поле случайно пустым при ж
 
 ```sh
 cd ansible
-ansible-playbook -i inventory/hosts.yml -i inventory/socrat-3.yml \
+ansible-playbook -i inventory/hosts.yml \
   playbooks/identity-hosts.yml --ask-become-pass
 ```
 

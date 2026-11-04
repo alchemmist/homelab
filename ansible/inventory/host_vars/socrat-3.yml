@@ -1,0 +1,15 @@
+---
+# Server/etcd was retired on 2026-11-01; boot the worker, not k3s.service.
+homelab_boot_k3s_service: k3s-agent.service
+k3s_worker_swap_enabled: true
+homelab_laptop_desktop: sway
+homelab_alacritty_transparent_background_colors: true
+homelab_wifi_interface: wlp1s0
+homelab_ethernet_interface: enp2s0
+homelab_wifi_ssid: SweetHome
+homelab_wifi_msi: true
+homelab_wifi_autoconnect: true
+wg_socrat_extra_allowed_peer_ips:
+  socrat-3:
+    socrat-0: [192.168.0.23/32]
+    socrat-1: [192.168.0.24/32]

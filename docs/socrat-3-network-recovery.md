@@ -46,7 +46,7 @@ From `ansible/`, with the private per-host escalation credentials available:
 
 ```bash
 ansible-playbook playbooks/socrat-3-network-recovery-stage.yml \
-  -i inventory/hosts.yml -i inventory/socrat-3.yml --ask-become-pass
+  -i inventory/hosts.yml --ask-become-pass
 ```
 
 The play is hardware- and kernel-gated to MS-16GP and6.12.111+deb13-amd64.
@@ -69,7 +69,7 @@ require coordinated console recovery. A one-time selection is:
 
 ```bash
 ansible-playbook playbooks/socrat-3-network-recovery-test.yml \
-  -i inventory/hosts.yml -i inventory/socrat-3.yml --ask-become-pass
+  -i inventory/hosts.yml --ask-become-pass
 ```
 
 The next ordinary boot returns to the normal default. If the candidate fails,

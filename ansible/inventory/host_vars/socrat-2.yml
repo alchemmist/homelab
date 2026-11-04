@@ -1,2 +1,13 @@
 ---
 vpn_failover_k3s_unit: k3s.service
+
+homelab_boot_k3s_service: k3s.service
+homelab_boot_services:
+- ssh.service
+- wg-quick@wg-socrat.service
+- wireguard-tcp-transport.service
+- k3s.service
+homelab_ssh_private_host: 10.250.0.2
+homelab_ssh_relay: true
+homelab_ssh_direct_host: 176.98.185.59
+homelab_ssh_direct_port: 22

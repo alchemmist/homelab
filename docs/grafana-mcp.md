@@ -13,7 +13,7 @@ The official `grafana/mcp-grafana:2.0.2` image is pinned by digest in `charts/gr
 Run from `ansible/`:
 
 ```sh
-ansible-playbook -i inventory/hosts.yml -i inventory/socrat-3.yml playbooks/grafana-mcp.yml --ask-become-pass
+ansible-playbook -i inventory/hosts.yml playbooks/grafana-mcp.yml --ask-become-pass
 ```
 
 The first run also requires `grafana_mcp_admin_user` and `grafana_mcp_admin_password` through a protected extra-vars file or Ansible Vault. Existing credentials are reused on subsequent runs without the administrator password. Sensitive bootstrap tasks use `no_log`; no token belongs in inventory. Secret resource-version changes trigger a deployment rollout when this playbook is reapplied, so environment-based credentials pick up rotations.

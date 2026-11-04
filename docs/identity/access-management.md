@@ -143,7 +143,7 @@ is issued to new users. Namespace scopes still require explicit review.
 From `ansible/`, use appropriate inventory and verified per-node SSH overrides:
 
 ```sh
-ansible-playbook -i inventory/hosts.yml -i inventory/socrat-3.yml \
+ansible-playbook -i inventory/hosts.yml \
   playbooks/identity-hosts.yml --ask-become-pass
 ```
 
