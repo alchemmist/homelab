@@ -1,8 +1,8 @@
 replicaCount: 2
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/blog
-  tag: bb3bb9771584bdc9dcf4d603b584dd172fc651ab
-  digest: sha256:546e37db9423eadbaee4eb58906cc29b57cf7b2f9a8db3ae100844f8f1807d6e
+  tag: 5c97fbd2de10ca49dd0a1e07bab2f51916f37ae5
+  digest: sha256:f9cb388d47c6fc7c2948a7e68e0b0368e80472623ababa809c7d8b13586741bc
   pullPolicy: IfNotPresent
 service:
   port: 80
