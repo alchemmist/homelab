@@ -7,15 +7,19 @@ metadata:
   - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
-  source:
-    repoURL: https://github.com/alchemmist/homelab.git
+  sources:
+  - repoURL: https://github.com/alchemmist/homelab.git
     targetRevision: main
     path: charts/lms
     helm:
       releaseName: lms
       valueFiles:
       - ../../deploy/lms/values.yaml
-      parameters: []
+  - repoURL: https://github.com/alchemmist/homelab.git
+    targetRevision: main
+    path: charts/lms-database-ha
+    helm:
+      releaseName: lms-database-ha
   destination:
     namespace: lms
     server: https://kubernetes.default.svc

@@ -65,6 +65,15 @@ def test_copy_tool_refuses_live_ha_overwrite_and_final_restore_without_freeze():
     assert 'fingerprintMismatch=true; exit 1' in copy
 
 
+def test_database_is_a_source_of_the_lms_application():
+    app=yaml.safe_load((ROOT/'deploy/argocd/apps/lms.yaml').read_text())
+    assert 'source' not in app['spec']
+    paths=[source['path'] for source in app['spec']['sources']]
+    assert paths==['charts/lms','charts/lms-database-ha']
+    assert app['spec']['sources'][1]['helm']['releaseName']=='lms-database-ha'
+    assert not (ROOT/'deploy/argocd/apps/lms-database-ha.yaml').exists()
+
+
 def test_runtime_credentials_are_preserved_across_argo_sync():
     app=yaml.safe_load((ROOT/'deploy/argocd/apps/lms.yaml').read_text())
     assert 'RespectIgnoreDifferences=true' in app['spec']['syncPolicy']['syncOptions']
