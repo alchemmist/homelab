@@ -1,9 +1,25 @@
+import json
+from datetime import datetime, timezone
 import logging
 import os
 import signal
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+
+
+class JsonFormatter(logging.Formatter):
+    def format(self, record):
+        # Do not render exception text/tracebacks: they can contain process arguments.
+        event = getattr(record, 'event', 'watchdog_error')
+        result = dict(ts=datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                      level={10: 'debug', 20: 'info', 30: 'warn'}.get(record.levelno, 'error'),
+                      service='open-terminal-browser-watchdog', msg=event, event=event)
+        for key in ('pid', 'age_seconds', 'processes', 'signal'):
+            value = getattr(record, key, None)
+            if isinstance(value, (int, float)):
+                result[key] = value
+        return json.dumps(result, separators=(',', ':'))
 
 
 @dataclass(frozen=True)
@@ -58,7 +74,7 @@ def signal_process(identity, sig):
     except ProcessLookupError:
         return False
     except PermissionError:
-        logging.warning('Permission denied opening browser process pid=%s', pid)
+        logging.warning('browser_open_denied', extra={'event': 'browser_open_denied', 'pid': pid})
         return False
     try:
         current = read_process(pid)
@@ -69,7 +85,7 @@ def signal_process(identity, sig):
     except ProcessLookupError:
         return False
     except PermissionError:
-        logging.warning('Permission denied signaling browser process pid=%s signal=%s', pid, sig)
+        logging.warning('browser_signal_denied', extra={'event': 'browser_signal_denied', 'pid': pid, 'signal': sig})
         return False
     finally:
         os.close(fd)
@@ -114,7 +130,7 @@ class Watchdog:
             if browser.terminated is None:
                 browser.terminated = now
                 sig = signal.SIGTERM
-                logging.warning('Expiring Playwright browser pid=%s age=%.1fs processes=%s', root[0], now - browser.started, len(browser.members))
+                logging.warning('browser_expired', extra={'event': 'browser_expired', 'pid': root[0], 'age_seconds': now - browser.started, 'processes': len(browser.members)})
             elif now - browser.terminated >= self.grace:
                 sig = signal.SIGKILL
             else:
@@ -131,12 +147,14 @@ def positive_setting(name, default):
 
 
 def main():
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+    handler = logging.StreamHandler()
+    handler.setFormatter(JsonFormatter())
+    logging.basicConfig(level=logging.INFO, handlers=[handler])
     lifetime = positive_setting('BROWSER_MAX_AGE_SECONDS', '900')
     interval = positive_setting('BROWSER_POLL_SECONDS', '15')
     grace = positive_setting('BROWSER_GRACE_SECONDS', '5')
     watchdog = Watchdog(lifetime, grace)
-    logging.info('Browser watchdog started max_age=%ss poll=%ss grace=%ss', lifetime, interval, grace)
+    logging.info('watchdog_started', extra={'event': 'watchdog_started'})
     while True:
         watchdog.step(snapshot(), time.clock_gettime(time.CLOCK_BOOTTIME))
         time.sleep(min(interval, grace) if any(b.terminated is not None for b in watchdog.browsers.values()) else interval)

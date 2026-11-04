@@ -1,6 +1,8 @@
 """Run next to the existing App secret; export ONLY a repo-scoped one-hour token."""
 import base64
 import json
+import re
+from datetime import datetime, timezone
 import os
 import ssl
 import time
@@ -8,6 +10,21 @@ import urllib.request
 import urllib.error
 from pathlib import Path
 import jwt
+
+
+def log_event(event, level='info', **fields):
+    # Only operational counters and bounded machine codes, never evidence or IDs.
+    allowed = {'stage', 'code', 'phase', 'recovered_jobs', 'oldest_pending_seconds', 'dead_jobs'}
+    record = {k: v for k, v in fields.items() if k in allowed}
+    for key in ('stage', 'phase', 'code'):
+        if key in record:
+            value = record[key]
+            valid = (isinstance(value, str) and bool(re.fullmatch(r'[A-Z][A-Z0-9_]{0,79}', value))) if key == 'code' else value in {'match', 'collect', 'analyze', 'publish', 'sign', 'installation', 'mint', 'publish_secret', 'bootstrap'}
+            if not valid:
+                record[key] = 'REDACTED'
+    record.update(ts=datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                  level=level, service='spi-triage', component='spi-token-broker', event=event, msg=event)
+    print(json.dumps(record, separators=(',', ':')), flush=True)
 
 PHASE='bootstrap'
 class BrokerFailure(Exception):pass
@@ -35,10 +52,10 @@ def main():
     PHASE='publish_secret'
     request('PATCH','https://kubernetes.default.svc/api/v1/namespaces/automation/secrets/spi-github-installation',(root/'token').read_text(),
             {'data':{'token':base64.b64encode(grant['token'].encode()).decode()},'metadata':{'annotations':{'socrat.alchemmist.xyz/expires-at':grant['expires_at']}}},context)
-    print(json.dumps({'component':'spi-token-broker','event':'refresh_ok'}))
+    log_event('refresh_ok')
 
 if __name__=='__main__':
     try:main()
     except Exception as e:
         code=str(e) if isinstance(e,BrokerFailure) else type(e).__name__
-        print(json.dumps({'component':'spi-token-broker','event':'refresh_failed','phase':PHASE,'code':code}));raise SystemExit(1)
+        log_event('refresh_failed', 'error', phase=PHASE, code=code);raise SystemExit(1)

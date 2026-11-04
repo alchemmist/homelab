@@ -1,4 +1,5 @@
 'use strict';
+const {logEvent}=require('./event-log');
 const {createHash,timingSafeEqual}=require('node:crypto');
 const sensitive=/authorization|cookie|password|secret|api[_-]?key|access[_-]?token|refresh[_-]?token|x[_-]?token|private[_-]?key/i;
 function sanitize(value,secrets){
@@ -42,7 +43,7 @@ class SocratAlertWebhook {
    }catch{
     // Upstream retries recover the durable handoff; Telegram still runs now.
     res.writeHead(503);res.end('Triage queue unavailable; retry delivery');
-    console.error(JSON.stringify({component:'spi-triage',event:'handoff_failed'}));
+    logEvent('spi-triage','handoff_failed');
    }
   }
   const result={workflowData:[[{json:{body:payload,triageQueued:queued}}]]};

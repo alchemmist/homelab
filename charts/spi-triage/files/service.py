@@ -1,6 +1,8 @@
 """Authenticated private stage API. Durable state is independent of n8n executions."""
 import hmac
 import json
+import re
+from datetime import datetime, timezone
 import os
 import threading
 import time
@@ -10,6 +12,21 @@ from core import Failure, Store, digest, normalize, render
 from integrations import Evidence, GitHub, HTTP, Model, REQUEST_DEADLINE
 from evidence_bundle import index_markdown, publish_parts
 from grafana_links import repair_markdown_links
+
+
+def log_event(event, level='info', **fields):
+    # Only operational counters and bounded machine codes, never evidence or IDs.
+    allowed = {'stage', 'code', 'phase', 'recovered_jobs', 'oldest_pending_seconds', 'dead_jobs'}
+    record = {k: v for k, v in fields.items() if k in allowed}
+    for key in ('stage', 'phase', 'code'):
+        if key in record:
+            value = record[key]
+            valid = (isinstance(value, str) and bool(re.fullmatch(r'[A-Z][A-Z0-9_]{0,79}', value))) if key == 'code' else value in {'match', 'collect', 'analyze', 'publish', 'sign', 'installation', 'mint', 'publish_secret', 'bootstrap'}
+            if not valid:
+                record[key] = 'REDACTED'
+    record.update(ts=datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                  level=level, service='spi-triage', component='spi-triage', event=event, msg=event)
+    print(json.dumps(record, separators=(',', ':')), flush=True)
 
 class Engine:
     def __init__(self,store,github,model,evidence,write=False):
@@ -27,10 +44,11 @@ class Engine:
             try:return self._run(name,key)
             except Failure as e:
                 self.store.fail(key,e.code)
-                print(json.dumps({'component':'spi-triage','event':'stage_failed','stage':name,'code':e.code}),flush=True)
+                log_event('stage_failed', 'error', stage=name, code=e.code)
                 raise
             except Exception:
                 self.store.fail(key,'INTERNAL_ERROR')
+                log_event('stage_failed', 'error', code='INTERNAL_ERROR')
                 raise Failure('INTERNAL_ERROR') from None
             finally:
                 del REQUEST_DEADLINE.at
@@ -89,7 +107,7 @@ class Engine:
                     self.store.save(key,3,r,intent=None)
                 raise
             self.finish_evidence(key,r,number)
-            print(json.dumps({'component':'spi-triage','event':'publication_ok','issue_number':number}),flush=True)
+            log_event('publication_ok')
             return {'job_id':key,'status':'published','issue_number':number}
         self.store.save(key,wanted,r)
         return {'job_id':key,'status':'processing','stage':wanted}
@@ -131,7 +149,7 @@ def serve():
     os.umask(0o077)
     http=HTTP();store=Store(os.environ.get('SPI_DATABASE','/data/spi.sqlite'))
     recovered=store.recover_on_start()
-    print(json.dumps({'component':'spi-triage','event':'worker_started','recovered_jobs':recovered}),flush=True)
+    log_event('worker_started', recovered_jobs=recovered)
     engine=Engine(store,GitHub(http,os.environ.get('GITHUB_TOKEN_FILE','/github/token')),
                   Model(http,os.environ['LITELLM_KEY']),Evidence(http,os.environ['GRAFANA_TOKEN'],os.environ['GRAFANA_URL'],github=GitHub(http,os.environ.get('GITHUB_TOKEN_FILE','/github/token'))),
                   write=os.environ.get('WRITE_ENABLED')=='true')
@@ -167,7 +185,7 @@ def serve():
                     result={'accepted':len(store.enqueue_many(events))}
                 elif self.path=='/claim':
                     result=engine.claim();h=store.health()
-                    print(json.dumps({'component':'spi-triage','event':'queue_health','oldest_pending_seconds':h['oldest_pending_seconds'],'dead_jobs':h['counts'].get('dead',0)}),flush=True)
+                    log_event('queue_health', oldest_pending_seconds=h['oldest_pending_seconds'], dead_jobs=h['counts'].get('dead',0))
                 elif self.path in ['/match','/collect','/analyze','/publish']:
                     key=data.get('job_id','')
                     if not isinstance(key,str) or len(key)!=64 or any(c not in '0123456789abcdef'for c in key):raise Failure('INVALID_JOB_ID')
