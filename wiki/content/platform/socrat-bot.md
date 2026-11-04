@@ -3,6 +3,10 @@ title: "Socrat Bot"
 weight: 35
 ---
 
+Команда `/unsubscribe` и кнопка **Unsubscribe** отключают алерты, сохраняя одобрение владельца.
+Через `/start` → **Subscribe to alerts** одобренный пользователь подписывается снова без нового запроса
+и без рассылки старых активных алертов. VPN-подписка и уровни при этом не меняются.
+
 Socrat Bot — это Telegram-бот кластера. Через него приходят карточки алертов,
 список людей на VPN и служебные ответы владельцу. Снаружи у бота открыт только
 вход от Telegram. Всё остальное — внутренний API внутри кластера. Страница
@@ -10,10 +14,23 @@ Socrat Bot — это Telegram-бот кластера. Через него пр
 где видно, как к нему обращаться.
 
 Алерт приходит одним запросом `POST /v1/messages`. Бот рисует карточку и
-отправляет копию каждому, кто подписан на алерты. Повтор того же алерта правит
+отправляет копию одобренным подписчикам с receive_level >= level инцидента. Повтор того же алерта правит
 ту же карточку, в том числе когда он закрылся. Кнопки Mute ставят одну тишину
 в Alertmanager и убирают кнопки у всех копий. Отдельный процесс может позже
 найти эту карточку и дописать ссылку SPI через `POST /v1/cards/links`.
+
+`ALERT_LEVELS=10,20`: инцидент начинает с максимального уровня. Escalate под Mute
+переводит его ровно на один уровень выше по полномочиям (к меньшему числу).
+Получение требует `receive_level >= level`, полномочия эскалации —
+`admin_level <= level`. `/alerts` показывает настройки в личном чате,
+`/alertlevel TELEGRAM_ID N` меняет admin tier только владельцем. Изменение
+receive mode не переигрывает существующие firing; новые получатели появляются
+лишь в новой generation или при явной эскалации. Уже доставленные копии
+продолжают обновляться, включая Resolved, независимо от receive mode.
+Начальная аудитория и delivery intents сохраняются атомарно до HTTP. Все обновления
+карточек используют общий DB lease и content revisions, включая SPI, notes и mute.
+Эскалация сохраняет actor/time и durable outbox; Telegram timeout может дать
+повтор доставки (at least once).
 
 ## Куда ходить
 
@@ -21,7 +38,7 @@ Socrat Bot — это Telegram-бот кластера. Через него пр
 `X-Internal-Token`. Публичный адрес `https://bot.socrat.alchemmist.xyz` принимает
 только `POST /telegram/webhook` и заголовок `X-Telegram-Bot-Api-Secret-Token`.
 
-Команды `/start`, `/mailing` и `/clients` в этот API не входят: их нажимают люди
+Команды `/start`, `/mailing`, `/clients`, `/alerts` и `/alertlevel` в этот API не входят: их нажимают люди
 в Telegram. Sudo и обновление 3X-UI живут в отдельных процессах и сюда тоже не входят.
 
 ## Методы
@@ -31,7 +48,17 @@ Socrat Bot — это Telegram-бот кластера. Через него пр
 Отправить сообщение или карточку алерта
 
 Этот метод вызывает workflow алертов. Один запрос — один алерт.
-Бот сам строит карточку и отправляет её копию каждому, у кого включены алерты.
+Новая firing generation отправляется одобренным подписчикам с receive_level >= level.
+Начальный level — максимум ALERT_LEVELS (по умолчанию 20); Escalate понижает на один tier.
+Повторы/Resolved обновляют только доставленные копии текущей generation, даже после disable.
+Изменение receive_level не переигрывает активные инциденты; эскалация явно допускает новых получателей.
+Начальный снимок получателей и delivery intents коммитятся вместе с инцидентом до Telegram HTTP.
+Ошибка первой отправки или restart не теряет исходных получателей; поздние подписчики не добавляются.
+Webhook, outbox, SPI, notes и mute используют общий DB lease на копию и content revisions;
+новые тексты/аннотации не теряются при запросе в полёте. DB transaction во время HTTP не удерживается.
+Без получателей возвращается copies: [], без fallback на chat_id.
+Если получатели есть, но доставка никому не завершена, возвращается 502 с durable retry.
+При частичном успехе copies содержит завершённые копии.
 Поле chat_id в этом случае не выбирает получателей.
 Повтор того же алерта правит уже отправленную карточку. Resolved дописывается
 в ту же строку, что и название. Следующее срабатывание после закрытия создаёт новое сообщение.
@@ -191,7 +218,7 @@ username без символа @. Его может не быть, тогда о
 
 ### Message
 
-- `chat_id`: integer, обязательно — Чат для обычного сообщения. Для алерта получатели берутся из подписки.
+- `chat_id`: integer, обязательно — Чат для обычного сообщения. Для алерта получатели определяются incident generation и receive_level; fallback нет.
 - `text`: string
 - `alert`: Alert
 - `alerts`: список Alert
@@ -205,6 +232,7 @@ username без символа @. Его может не быть, тогда о
 - `labels`: object
 - `annotations`: object
 - `fingerprint`: string
+- `spi_episode`: string — Authoritative SPI episode digest. Creates an immutable episode-specific card key; firing/resolved share it, later firings use a new key.
 
 ### Card
 
@@ -223,11 +251,14 @@ username без символа @. Его может не быть, тогда о
 - `label`: string
 - `key`: string — Ключ карточки, если он уже известен.
 - `alert`: Alert
+- `revision`: integer — Monotonic desired-link revision; stale revisions return409. Requires expected_copies.
+- `expected_copies`: список object — Optional atomic guard: all listed chat/message identities must still belong to this card, otherwise409.
 
 ### CardLinkResult
 
 - `key`: string
 - `updated`: список object
+- `pending`: список object — Copies not acknowledged by Telegram; retry even on HTTP200.
 
 ### SentMessage
 
@@ -235,7 +266,9 @@ username без символа @. Его может не быть, тогда о
 - `chat_id`: integer
 - `replayed`: boolean
 - `key`: string — Ключ карточки. Для обычного сообщения нет.
-- `copies`: список object — Каждая отправленная копия.
+- `copies`: список object — Завершённые копии. Пусто, если нет допустимых получателей; незавершённая доставка сохраняется для durable retry.
+- `episode`: string
+- `immutable_key`: boolean
 
 ### CardNote
 
@@ -246,6 +279,9 @@ username без символа @. Его может не быть, тогда о
 ### CardSummary
 
 - `key`: string, обязательно
+- `generation`: integer
+- `level`: integer
+- `escalation_history`: список object
 - `status`: string, обязательно
 - `text_stored`: boolean
 - `spi_url`: string
@@ -255,7 +291,7 @@ username без символа @. Его может не быть, тогда о
 
 ### CardList
 
-- `cards`: список object
+- `cards`: список CardSummary
 
 ### Audience
 
@@ -266,24 +302,5 @@ username без символа @. Его может не быть, тогда о
 
 - `telegram_id`: integer, обязательно
 - `username`: string
-
-## Связь карточки с разбором SPI
-
-Workflow передаёт `alert.spi_episode` — SHA-256 конкретного эпизода из очереди SPI.
-Бот возвращает `episode` и `immutable_key: true`: firing/resolved этого эпизода
-обновляют одну карточку, следующий эпизод сохраняется отдельно. Поздний повтор
-firing не возвращает уже закрытый эпизод в состояние firing.
-
-Для надёжного обновления ссылок `POST /v1/cards/links` дополнительно принимает:
-
-- `expected_copies`: пары `chat_id`/`message_id` из ответа отправки; при смене
-  идентичности ответ409, чужое или новое сообщение не редактируется;
-- `revision`: возрастающая ревизия желаемой ссылки. Она фиксируется до обращения
-  к Telegram, поэтому даже неудача всех копий не разрешает устаревшую ревизию;
-- ответ `pending`: копии без подтверждённого редактирования. Даже HTTP200 не
-  означает, что ссылка появилась в каждой копии; нужно повторять запрос.
-
-`GET /v1/cards?status=all&episode=<digest>` находит сохранённую карточку эпизода,
-если callback отправки потерялся. Поле `spi_url` в базе — не самостоятельное
-подтверждение ответа Telegram. Workflow хранит повторы отдельно от разбора
-моделью: сбой редактирования не создаёт повторное issue или комментарий.
+- `admin_level`: integer — Assigned authority tier; lower numbers have higher authority.
+- `receive_level`: integer — New firing delivery threshold, greater than or equal to admin_level.
