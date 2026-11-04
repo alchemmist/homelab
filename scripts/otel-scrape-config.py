@@ -91,6 +91,28 @@ def escape_literals(value):
     return value
 
 
+def add_logging_self_monitoring(scrape):
+    """Add only the native owner's authenticated Loki target, idempotently."""
+    result = copy.deepcopy(scrape)
+    job = {
+        'job_name': 'otel-logging/loki', 'scrape_interval': '5s', 'scrape_timeout': '4s',
+        'scheme': 'https', 'metrics_path': '/metrics',
+        'tls_config': {'ca_file': '/etc/otel/tls/ca.crt',
+                       'cert_file': '/etc/otel/tls/client.crt',
+                       'key_file': '/etc/otel/tls/client.key',
+                       'server_name': 'otel-loki.cattle-monitoring-system.svc',
+                       'insecure_skip_verify': False},
+        'static_configs': [{'targets': ['otel-loki.cattle-monitoring-system.svc:3100'],
+                            'labels': {'job': 'otel-loki', 'scrape_owner': 'otel-cluster'}}],
+    }
+    existing = [j for j in result['scrape_configs'] if j['job_name'] == job['job_name']]
+    if existing and existing != [job]:
+        raise ValueError('Conflicting Loki self-monitoring target')
+    if not existing:
+        result['scrape_configs'].append(job)
+    return result
+
+
 def compile_config(source, targets, monitors=None):
     monitors = {} if monitors is None else monitors
     active = targets['activeTargets']
@@ -167,6 +189,12 @@ def compile_config(source, targets, monitors=None):
         raise ValueError('Cluster source inventory is empty')
     contract['requiredFileMounts'] = sorted(mounts)
     contract['activeTargetCount'] = len(active)
+    contract['loggingSelfMonitoring'] = {
+        'job': 'otel-logging/loki', 'owner': 'cluster',
+        'usesExistingClusterTLSMount': True, 'additionalSecretKeys': [],
+        'intervalSeconds': 5, 'timeoutSeconds': 4,
+    }
+    outputs['cluster'] = add_logging_self_monitoring(outputs['cluster'])
     outputs = escape_literals(outputs)
     contract['dollarEscaping'] = 'literal Prometheus dollars escaped before Collector confmap resolution'
     contract['outputSHA256'] = {name: fingerprint(document) for name, document in outputs.items()}

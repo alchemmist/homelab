@@ -1,0 +1,153 @@
+{
+  "metadataOnly": true,
+  "acceptance": {
+    "at": 1793789430.068138,
+    "queries": {
+      "up{job=\"otel-loki\",scrape_owner=\"otel-cluster\"}": [
+        {
+          "metric": {
+            "__name__": "up",
+            "instance": "otel-loki.cattle-monitoring-system.svc:3100",
+            "job": "otel-loki",
+            "scrape_owner": "otel-cluster"
+          },
+          "value": [
+            1793789430.114,
+            "1"
+          ]
+        }
+      ],
+      "loki_compactor_apply_retention_last_successful_run_timestamp_seconds": [
+        {
+          "metric": {
+            "__name__": "loki_compactor_apply_retention_last_successful_run_timestamp_seconds",
+            "instance": "otel-loki.cattle-monitoring-system.svc:3100",
+            "job": "otel-loki",
+            "scrape_owner": "otel-cluster"
+          },
+          "value": [
+            1793789430.125,
+            "1793789411.3982496"
+          ]
+        }
+      ],
+      "loki_compactor_apply_retention_operation_total": [
+        {
+          "metric": {
+            "__name__": "loki_compactor_apply_retention_operation_total",
+            "instance": "otel-loki.cattle-monitoring-system.svc:3100",
+            "job": "otel-loki",
+            "scrape_owner": "otel-cluster",
+            "status": "success"
+          },
+          "value": [
+            1793789430.136,
+            "11"
+          ]
+        }
+      ],
+      "process_start_time_seconds{job=\"otel-loki\"}": [
+        {
+          "metric": {
+            "__name__": "process_start_time_seconds",
+            "instance": "otel-loki.cattle-monitoring-system.svc:3100",
+            "job": "otel-loki",
+            "scrape_owner": "otel-cluster"
+          },
+          "value": [
+            1793789430.15,
+            "1793787484.98"
+          ]
+        }
+      ]
+    },
+    "rules": [
+      {
+        "name": "LokiRetentionFailed",
+        "state": "inactive",
+        "health": "ok",
+        "lastError": null
+      },
+      {
+        "name": "LokiRetentionSuccessStale",
+        "state": "inactive",
+        "health": "ok",
+        "lastError": null
+      },
+      {
+        "name": "LokiRetentionMetricsMissing",
+        "state": "inactive",
+        "health": "ok",
+        "lastError": null
+      }
+    ]
+  },
+  "scrapeGap": [
+    {
+      "instance": "10.250.0.1:6443",
+      "activationSpanningGaps": [
+        {
+          "from": 1793789392.526,
+          "to": 1793789407.523,
+          "gapSeconds": 14.997
+        }
+      ],
+      "maxWindowGapSeconds": 14.996999979019165
+    },
+    {
+      "instance": "10.250.0.3:6443",
+      "activationSpanningGaps": [
+        {
+          "from": 1793789395.56,
+          "to": 1793789405.561,
+          "gapSeconds": 10.001
+        }
+      ],
+      "maxWindowGapSeconds": 10.001000165939331
+    }
+  ],
+  "UI": {
+    "dashboardUID": "socrat-unified-logs",
+    "datasourceHealth": "OK",
+    "panelCount": 4,
+    "exploreLinkPresent": true,
+    "priorPerServiceAPISelectionsPassed": 98,
+    "browser": "not validated; busy profile not terminated"
+  },
+  "configChange": {
+    "collectorYamlByteIdentical": true,
+    "existingScrapeJobsPreserved": 58,
+    "additiveTarget": "otel-logging/loki",
+    "interval": "5s",
+    "timeout": "4s",
+    "TLS": "verified server SAN+CA and existing cluster clientAuth cert"
+  },
+  "lifecycle": {
+    "samePod": true,
+    "collectorRestartCount": [
+      3,
+      4
+    ],
+    "collectorStopped": "2026-11-04T10:49:56Z",
+    "collectorRunning": "2026-11-04T10:49:57Z",
+    "adjacentContainerIDsUnchanged": [
+      "prometheus",
+      "config-reloader",
+      "thanos-sidecar"
+    ]
+  },
+  "postactivation40sGate": [
+    {
+      "interval": 1,
+      "seconds": 40,
+      "otelcol_exporter_sent_log_records": 2766.0,
+      "otelcol_exporter_sent_metric_points": 759100.0,
+      "otelcol_receiver_refused_log_records": 0.0,
+      "otelcol_exporter_send_failed_log_records": 0,
+      "otelcol_exporter_enqueue_failed_log_records": 0,
+      "queueStart": 0.0,
+      "queueEnd": 0.0,
+      "passed": true
+    }
+  ]
+}

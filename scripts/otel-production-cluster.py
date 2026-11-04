@@ -59,6 +59,11 @@ def configure(bundle, cutover):
             scrape['scrape_configs'][index] = {'job_name': job['job_name'], 'scrape_interval': '5s', 'scrape_timeout': '4s',
                 'static_configs': [{'targets': ['127.0.0.1:' + str(urlparse(self_targets[0]['scrapeUrl']).port)], 'labels': self_targets[0]['labels']}],
                 'honor_labels': job.get('honor_labels', False), 'metric_relabel_configs': job.get('metric_relabel_configs', [])}
+    # Old captured bundles must also retain the declarative logging monitor.
+    scrape_spec = importlib.util.spec_from_file_location('native_scrape', ROOT / 'scripts/otel-scrape-config.py')
+    native_scrape = importlib.util.module_from_spec(scrape_spec)
+    scrape_spec.loader.exec_module(native_scrape)
+    scrape = native_scrape.add_logging_self_monitoring(scrape)
     cm = bootstrap.resource('ConfigMap', 'otel-cluster-config', api='v1')
     cm['data'] = {'collector.yaml': yaml.safe_dump(config, sort_keys=False), 'scrape.yaml': yaml.safe_dump(scrape, sort_keys=False)}
     kube('apply', '-f', '-', '-o', 'json', document=cm)

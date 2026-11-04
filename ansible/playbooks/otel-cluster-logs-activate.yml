@@ -22,6 +22,15 @@
       register: projected_config
       changed_when: false
       failed_when: otel_cluster_config_sha256 not in projected_config.stdout
+    - name: Verify additive scrape candidate when explicitly supplied
+      ansible.builtin.command:
+        argv:
+          - sha256sum
+          - '/var/lib/kubelet/pods/{{ otel_cluster_pod_uid }}/volumes/kubernetes.io~configmap/otel-config/scrape.yaml'
+      register: projected_scrape
+      changed_when: false
+      failed_when: otel_cluster_scrape_sha256 not in projected_scrape.stdout
+      when: otel_cluster_scrape_sha256 is defined
     - name: Inspect exact running container identity privately
       ansible.builtin.command:
         argv: [k3s, crictl, inspect, '{{ otel_cluster_container_id }}']
