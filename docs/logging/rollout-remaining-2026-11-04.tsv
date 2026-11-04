@@ -1,0 +1,1777 @@
+kind	namespace_or_host	pod_or_unit_or_controller	container	status
+container	argocd	argo-cd-argocd-redis-64767b7b4f-gmc2g	redis	unknown
+container	argocd	argo-cd-argocd-repo-server-6c9f497b84-7bslq	copyutil	unknown
+container	automation	blog-updates-worker-757655cb55-mn2kh	worker	unknown
+container	automation	wiki-openapi-worker-b56d58b9c-zxw5l	worker	unknown
+container	cattle-capi-system	capi-controller-manager-6c8f858cf7-hfrlz	manager	unknown
+container	cattle-fleet-local-system	fleet-agent-9bb754f4c-ktn8h	fleet-agent	unknown
+container	cattle-fleet-system	fleet-controller-b89cdf655-hdhpq	fleet-cleanup	unknown
+container	cattle-fleet-system	fleet-controller-b89cdf655-hdhpq	fleet-agentmanagement	unknown
+container	cattle-fleet-system	gitjob-77f8fc4cd-7hsj7	gitjob	unknown
+container	cattle-fleet-system	helmops-798597dcfd-ctvlr	helmops	unknown
+container	cattle-monitoring-system	alertmanager-kube-prometheus-stack-alertmanager-0	config-reloader	unknown
+container	cattle-monitoring-system	alertmanager-kube-prometheus-stack-alertmanager-0	init-config-reloader	unknown
+container	cattle-monitoring-system	grafana-mcp-546d758d89-fdwx4	grafana-mcp	unknown
+container	cattle-monitoring-system	kube-prometheus-stack-grafana-59f7d85f7d-wrzvb	init-chown-data	unknown
+container	cattle-monitoring-system	kube-prometheus-stack-kube-state-metrics-6b94698c5d-dbzgf	kube-state-metrics	unknown
+container	cattle-monitoring-system	kube-prometheus-stack-prometheus-node-exporter-7h52b	node-exporter	unknown
+container	cattle-monitoring-system	kube-prometheus-stack-prometheus-node-exporter-7tdsl	node-exporter	unknown
+container	cattle-monitoring-system	kube-prometheus-stack-prometheus-node-exporter-fbx56	node-exporter	unknown
+container	cattle-monitoring-system	kube-prometheus-stack-prometheus-node-exporter-wzldk	node-exporter	unknown
+container	cattle-monitoring-system	monitoring-etcd-metrics-nth6l	proxy	unknown
+container	cattle-monitoring-system	monitoring-etcd-metrics-sxwzj	proxy	unknown
+container	cattle-monitoring-system	monitoring-etcd-metrics-xz5ts	proxy	unknown
+container	cattle-monitoring-system	otel-application-credentials-29896380-jxkxr	mirror	unknown
+container	cattle-monitoring-system	otel-loki-58655fcd84-mvsbt	loki	unknown
+container	cattle-monitoring-system	otel-tempo-7b5d947c8b-gc9lj	tempo	unknown
+container	cattle-monitoring-system	prometheus-kube-prometheus-stack-prometheus-0	thanos-sidecar	unknown
+container	cattle-monitoring-system	prometheus-kube-prometheus-stack-prometheus-0	init-config-reloader	unknown
+container	cattle-monitoring-system	pyroscope-647584666f-wmvf5	pyroscope	unknown
+container	cattle-monitoring-system	rancher-monitoring-dashboards-monitoring-proxy-d9775db9f-5rpt7	nginx	unknown
+container	cattle-monitoring-system	thanos-cascade-29896230-c2dsh	cascade	unknown
+container	cattle-monitoring-system	thanos-cascade-29896290-rtbmt	cascade	unknown
+container	cattle-monitoring-system	thanos-cascade-29896350-l8xsp	cascade	unknown
+container	cattle-monitoring-system	thanos-disk-2jlhv	disk	unknown
+container	cattle-monitoring-system	thanos-disk-9ljsv	disk	unknown
+container	cattle-monitoring-system	thanos-disk-bplrb	disk	unknown
+container	cattle-monitoring-system	thanos-query-8c7bb5f58-sq7qk	thanos	unknown
+container	cattle-monitoring-system	thanos-shelf-1h-6fdfd6449-g2d9c	shelf	unknown
+container	cattle-monitoring-system	thanos-shelf-5m-7757987658-7pqwv	shelf	unknown
+container	cattle-system	rancher-webhook-7dcb669cc6-jrgg4	rancher-webhook	unknown
+container	cattle-system	rancher-webhook-7dcb669cc6-vjnhd	rancher-webhook	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-25fgt	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-2klzw	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-2p9f9	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-2qdt2	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-2zmg6	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-46z92	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-4bvvg	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-4h67k	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-4rf2d	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-56vjx	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-5dxxv	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-5f7cv	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-5kp8x	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-5lg2g	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-5m5r4	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-5qhqs	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-5sr64	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-69m2g	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-6qxhm	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-6rt2c	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-7p9gr	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-7qprb	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-7t8jc	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-8b78b	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-8bbxn	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-8qzl7	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-9d67n	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-9wnfg	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-b4bwx	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-b4clk	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-b57f9	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-bbqjr	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-bdkmj	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-bdtcr	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-bg5fd	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-bjsxx	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-bm6rs	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-bqsmg	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-bvr9l	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-bxh4z	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-c7tsz	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-cbpmz	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-cmdbs	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-csqt6	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-d54mw	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-d6cdj	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-dcz6w	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-dgz4x	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-dhfpd	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-dsgkv	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-dxczb	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-dxsh2	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-fgclm	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-fhgxr	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-fkvcw	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-gpmm6	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-gtnpr	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-gvvlf	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-h26c4	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-hfrm9	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-hgjn2	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-hw42t	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-hxfcq	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-hzxzj	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-jjnp8	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-jk4v2	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-jrhmv	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-kkb4p	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-kknsz	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-kpwx5	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-l4mgk	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-lbl7k	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-lf7fg	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-lfq85	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-mlz2n	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-mrsr4	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-msqqc	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-nbz9h	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-nhshn	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-nln2g	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-nnk9d	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-pb5t2	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-pbhwl	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-pqbkd	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-ptt2z	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-q68m4	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-qqktm	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-qztqb	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-r4tpp	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-r7wcr	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-r8m47	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-rbw69	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-rm5vf	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-rrbj8	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-s4mht	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-s572f	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-s89ld	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-shlk6	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-srbsc	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-sxww7	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-t45jh	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-t9dgx	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-t9tjz	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-tgcbt	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-tjf2v	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-tvwxf	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-v86zc	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-vftjv	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-vjnf2	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-vrnng	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-vvkqx	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-w5595	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-w86rx	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-x2qdg	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-xb4vk	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-xbj9q	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-xd62t	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-xjc55	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-xrnln	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-xvw2w	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-z2fcx	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-zdssb	system-upgrade-controller	unknown
+container	cattle-system	system-upgrade-controller-5b6fd6b596-zlhf9	system-upgrade-controller	unknown
+container	cert-manager	cert-manager-56f54b7bb-crsfx	cert-manager-controller	unknown
+container	cert-manager	cert-manager-56f54b7bb-g2pvd	cert-manager-controller	unknown
+container	cert-manager	cert-manager-cainjector-844c7dd695-9th74	cert-manager-cainjector	unknown
+container	cert-manager	cert-manager-cainjector-844c7dd695-wrjq6	cert-manager-cainjector	unknown
+container	cert-manager	cert-manager-webhook-964859b56-bksp6	cert-manager-webhook	unknown
+container	cert-manager	cert-manager-webhook-964859b56-qr6kw	cert-manager-webhook	unknown
+container	fleet-local	rke2-machineconfig-cleanup-cronjob-29895665-qjqjg	rke2-machineconfig-cleanup-pod	unknown
+container	harbor	harbor-database-0	data-permissions-ensurer	unknown
+container	identity	netbird-edge-forwarder-5576d4fc7d-mtgpl	forwarder	unknown
+container	identity	netbird-relay-home-b897ffd57-5lpk2	relay	unknown
+container	identity	netbird-relay-vps-7669bd7865-w2pjv	relay	unknown
+container	identity	socrat-authentik-theme-5f8578b9b5-q8rkn	static	unknown
+container	kube-system	helm-install-traefik-stxxk	helm	unknown
+container	kube-system	local-path-provisioner-849978cd79-h44tk	local-path-provisioner	unknown
+container	kube-system	metrics-server-fcf6cfb5b-kxz8c	metrics-server	unknown
+container	kube-system	nvidia-device-plugin-xfx6g	nvidia-device-plugin	unknown
+container	kube-system	svclb-traefik-80aba32c-2h2kw	lb-tcp-80	unknown
+container	kube-system	svclb-traefik-80aba32c-2h2kw	lb-tcp-443	unknown
+container	kube-system	svclb-traefik-80aba32c-x22lb	lb-tcp-80	unknown
+container	kube-system	svclb-traefik-80aba32c-x22lb	lb-tcp-443	unknown
+container	kube-system	traefik-569cfbbd64-g58jm	traefik	unknown
+container	kube-system	traefik-569cfbbd64-hwh7t	traefik	unknown
+container	llm	open-terminal-849c55f79-5x5rs	browser-cleanup	unknown
+container	llm	open-webui-5557d4ffcf-rxgdr	prepare-tool-guard	unknown
+container	llm	open-webui-gateway-5f5b67d778-zqds5	nginx	unknown
+container	llm	searxng-77fc46b8bc-fvmng	searxng	unknown
+container	lms	lms-database-backup-29895840-v4nwm	backup	unknown
+container	lms	lms-database-backup-29896200-dsf4m	backup	unknown
+container	lms	lms-ha-1	postgres	unknown
+container	lms	lms-ha-1	bootstrap-controller	unknown
+container	lms	lms-ha-2	postgres	unknown
+container	lms	lms-ha-2	bootstrap-controller	unknown
+container	lms	lms-ha-3	postgres	unknown
+container	lms	lms-ha-3	bootstrap-controller	unknown
+container	netbird-host-peers	machine-socrat-0-7846975f58-58vhc	peer	unknown
+container	netbird-host-peers	machine-socrat-1-68ff9d7c5b-8h2vr	peer	unknown
+container	netbird-host-peers	machine-socrat-2-69d7fbd56b-c7f7z	peer	unknown
+container	netbird-host-peers	machine-socrat-3-74855897b8-9brd9	peer	unknown
+container	netbird-pilot	stun-58f868c496-bjcgs	stun	unknown
+container	remark42	remark42-6fc74cdd49-gnrpl	remark42	unknown
+container	storage	nfs-subdir-external-provisioner-5f4d654d97-4rc7t	nfs-subdir-external-provisioner	unknown
+container	syncthing	syncthing-d6c6b689d-pw5d5	syncthing	unknown
+container	traefik-edge	xui-auth-gateway-7897fb9cc6-kpffz	gateway	unknown
+container	umami	umami-688f9945c5-dzxgs	umami	unknown
+container	umami	umami-db-d4cff967b-r96bp	postgres	unknown
+container	uptime-kuma	uptime-kuma-84988bff44-crjt4	uptime-kuma	unknown
+container	uptime-kuma	uptime-kuma-db-57cf9546d5-pvrt5	mariadb	unknown
+container	wiki	wiki-runtime-wiki-86bd745858-l48zj	wiki	unknown
+container	x-ui	x-ui-79787488f4-zf97l	primary	unknown
+host	socrat-0	accounts-daemon.service		unknown
+host	socrat-0	alsa-restore.service		unknown
+host	socrat-0	alsa-state.service		unknown
+host	socrat-0	alsa-utils.service		unknown
+host	socrat-0	anacron.service		unknown
+host	socrat-0	apparmor.service		unknown
+host	socrat-0	apt-daily-upgrade.service		unknown
+host	socrat-0	apt-daily.service		unknown
+host	socrat-0	auth-rpcgss-module.service		unknown
+host	socrat-0	autovt@.service		unknown
+host	socrat-0	bluetooth.service		unknown
+host	socrat-0	caddy-api.service		unknown
+host	socrat-0	caddy.service		unknown
+host	socrat-0	capsule@.service		unknown
+host	socrat-0	colord.service		unknown
+host	socrat-0	console-getty.service		unknown
+host	socrat-0	console-setup.service		unknown
+host	socrat-0	container-getty@.service		unknown
+host	socrat-0	containerd.service		unknown
+host	socrat-0	cron.service		unknown
+host	socrat-0	cryptdisks-early.service		unknown
+host	socrat-0	cryptdisks.service		unknown
+host	socrat-0	dbus-fi.w1.wpa_supplicant1.service		unknown
+host	socrat-0	dbus-org.bluez.service		unknown
+host	socrat-0	dbus-org.freedesktop.Avahi.service		unknown
+host	socrat-0	dbus-org.freedesktop.hostname1.service		unknown
+host	socrat-0	dbus-org.freedesktop.locale1.service		unknown
+host	socrat-0	dbus-org.freedesktop.login1.service		unknown
+host	socrat-0	dbus-org.freedesktop.ModemManager1.service		unknown
+host	socrat-0	dbus-org.freedesktop.nm-dispatcher.service		unknown
+host	socrat-0	dbus-org.freedesktop.timedate1.service		unknown
+host	socrat-0	dbus-org.freedesktop.timesync1.service		unknown
+host	socrat-0	dbus.service		unknown
+host	socrat-0	debug-shell.service		unknown
+host	socrat-0	docker.service		unknown
+host	socrat-0	dpkg-db-backup.service		unknown
+host	socrat-0	e2scrub@.service		unknown
+host	socrat-0	e2scrub_all.service		unknown
+host	socrat-0	e2scrub_fail@.service		unknown
+host	socrat-0	e2scrub_reap.service		unknown
+host	socrat-0	emergency.service		unknown
+host	socrat-0	fsidd.service		unknown
+host	socrat-0	fstrim.service		unknown
+host	socrat-0	getty-static.service		unknown
+host	socrat-0	getty@.service		unknown
+host	socrat-0	grub-common.service		unknown
+host	socrat-0	happd.service		unknown
+host	socrat-0	homelab-netbird-credential.service		unknown
+host	socrat-0	homelab-otel-credentials.service		unknown
+host	socrat-0	homelab-otel-heartbeat.service		unknown
+host	socrat-0	homelab-otel-node-exporter.service		unknown
+host	socrat-0	homelab-otel-traces.service		unknown
+host	socrat-0	homelab-private-dns.service		unknown
+host	socrat-0	hwclock.service		unknown
+host	socrat-0	ifup@.service		unknown
+host	socrat-0	ifupdown-pre.service		unknown
+host	socrat-0	ifupdown-wait-online.service		unknown
+host	socrat-0	initrd-cleanup.service		unknown
+host	socrat-0	initrd-parse-etc.service		unknown
+host	socrat-0	initrd-switch-root.service		unknown
+host	socrat-0	initrd-udevadm-cleanup-db.service		unknown
+host	socrat-0	ipp-usb.service		unknown
+host	socrat-0	ipvsadm.service		unknown
+host	socrat-0	iscsi.service		unknown
+host	socrat-0	iscsid.service		unknown
+host	socrat-0	keepalived.service		unknown
+host	socrat-0	keyboard-setup.service		unknown
+host	socrat-0	kmod-static-nodes.service		unknown
+host	socrat-0	kmod.service		unknown
+host	socrat-0	knot.service		unknown
+host	socrat-0	ldconfig.service		unknown
+host	socrat-0	logrotate.service		unknown
+host	socrat-0	low-memory-monitor.service		unknown
+host	socrat-0	man-db.service		unknown
+host	socrat-0	ModemManager.service		unknown
+host	socrat-0	modprobe@.service		unknown
+host	socrat-0	monitoring-gpu.service		unknown
+host	socrat-0	networking.service		unknown
+host	socrat-0	NetworkManager-dispatcher.service		unknown
+host	socrat-0	NetworkManager-wait-online.service		unknown
+host	socrat-0	NetworkManager.service		unknown
+host	socrat-0	nfs-blkmap.service		unknown
+host	socrat-0	nfs-common.service		unknown
+host	socrat-0	nfs-idmapd.service		unknown
+host	socrat-0	nfs-kernel-server.service		unknown
+host	socrat-0	nfs-mountd.service		unknown
+host	socrat-0	nfs-server.service		unknown
+host	socrat-0	nfs-utils.service		unknown
+host	socrat-0	nfsdcld.service		unknown
+host	socrat-0	nftables.service		unknown
+host	socrat-0	nginx.service		unknown
+host	socrat-0	nm-priv-helper.service		unknown
+host	socrat-0	nvidia-cdi-refresh.service		unknown
+host	socrat-0	nvidia-persistenced.service		unknown
+host	socrat-0	nvidia-powerd.service		unknown
+host	socrat-0	nvmefc-boot-connections.service		unknown
+host	socrat-0	nvmf-autoconnect.service		unknown
+host	socrat-0	nvmf-connect-nbft.service		unknown
+host	socrat-0	nvmf-connect@.service		unknown
+host	socrat-0	open-iscsi.service		unknown
+host	socrat-0	pam_namespace.service		unknown
+host	socrat-0	plymouth-halt.service		unknown
+host	socrat-0	plymouth-kexec.service		unknown
+host	socrat-0	plymouth-log.service		unknown
+host	socrat-0	plymouth-poweroff.service		unknown
+host	socrat-0	plymouth-quit-wait.service		unknown
+host	socrat-0	plymouth-quit.service		unknown
+host	socrat-0	plymouth-read-write.service		unknown
+host	socrat-0	plymouth-reboot.service		unknown
+host	socrat-0	plymouth-start.service		unknown
+host	socrat-0	plymouth-switch-root-initramfs.service		unknown
+host	socrat-0	plymouth-switch-root.service		unknown
+host	socrat-0	plymouth.service		unknown
+host	socrat-0	polkit.service		unknown
+host	socrat-0	portmap.service		unknown
+host	socrat-0	ppp@.service		unknown
+host	socrat-0	procps.service		unknown
+host	socrat-0	quotaon-root.service		unknown
+host	socrat-0	quotaon@.service		unknown
+host	socrat-0	rc-local.service		unknown
+host	socrat-0	rescue.service		unknown
+host	socrat-0	rpc-gssd.service		unknown
+host	socrat-0	rpc-statd-notify.service		unknown
+host	socrat-0	rpc-statd.service		unknown
+host	socrat-0	rpc-svcgssd.service		unknown
+host	socrat-0	rpcbind.service		unknown
+host	socrat-0	rtkit-daemon.service		unknown
+host	socrat-0	saned.service		unknown
+host	socrat-0	saned@.service		unknown
+host	socrat-0	serial-getty@.service		unknown
+host	socrat-0	smartd.service		unknown
+host	socrat-0	smartmontools.service		unknown
+host	socrat-0	sshd-keygen.service		unknown
+host	socrat-0	sshd-unix-local@.service		unknown
+host	socrat-0	sshd.service		unknown
+host	socrat-0	sshd@.service		unknown
+host	socrat-0	sudo.service		unknown
+host	socrat-0	system-update-cleanup.service		unknown
+host	socrat-0	systemd-ask-password-console.service		unknown
+host	socrat-0	systemd-ask-password-plymouth.service		unknown
+host	socrat-0	systemd-ask-password-wall.service		unknown
+host	socrat-0	systemd-backlight@.service		unknown
+host	socrat-0	systemd-battery-check.service		unknown
+host	socrat-0	systemd-binfmt.service		unknown
+host	socrat-0	systemd-boot-check-no-failures.service		unknown
+host	socrat-0	systemd-bsod.service		unknown
+host	socrat-0	systemd-confext.service		unknown
+host	socrat-0	systemd-creds@.service		unknown
+host	socrat-0	systemd-exit.service		unknown
+host	socrat-0	systemd-firstboot.service		unknown
+host	socrat-0	systemd-fsck-root.service		unknown
+host	socrat-0	systemd-fsck@.service		unknown
+host	socrat-0	systemd-growfs-root.service		unknown
+host	socrat-0	systemd-growfs@.service		unknown
+host	socrat-0	systemd-halt.service		unknown
+host	socrat-0	systemd-hibernate-clear.service		unknown
+host	socrat-0	systemd-hibernate-resume.service		unknown
+host	socrat-0	systemd-hibernate.service		unknown
+host	socrat-0	systemd-hostnamed.service		unknown
+host	socrat-0	systemd-hwdb-update.service		unknown
+host	socrat-0	systemd-hybrid-sleep.service		unknown
+host	socrat-0	systemd-initctl.service		unknown
+host	socrat-0	systemd-journal-catalog-update.service		unknown
+host	socrat-0	systemd-journal-flush.service		unknown
+host	socrat-0	systemd-journald-sync@.service		unknown
+host	socrat-0	systemd-journald.service		unknown
+host	socrat-0	systemd-journald@.service		unknown
+host	socrat-0	systemd-kexec.service		unknown
+host	socrat-0	systemd-localed.service		unknown
+host	socrat-0	systemd-machine-id-commit.service		unknown
+host	socrat-0	systemd-modules-load.service		unknown
+host	socrat-0	systemd-network-generator.service		unknown
+host	socrat-0	systemd-networkd-persistent-storage.service		unknown
+host	socrat-0	systemd-networkd-wait-online.service		unknown
+host	socrat-0	systemd-networkd-wait-online@.service		unknown
+host	socrat-0	systemd-networkd.service		unknown
+host	socrat-0	systemd-pcrextend@.service		unknown
+host	socrat-0	systemd-pcrfs-root.service		unknown
+host	socrat-0	systemd-pcrfs@.service		unknown
+host	socrat-0	systemd-pcrlock-file-system.service		unknown
+host	socrat-0	systemd-pcrlock-firmware-code.service		unknown
+host	socrat-0	systemd-pcrlock-firmware-config.service		unknown
+host	socrat-0	systemd-pcrlock-machine-id.service		unknown
+host	socrat-0	systemd-pcrlock-make-policy.service		unknown
+host	socrat-0	systemd-pcrlock-secureboot-authority.service		unknown
+host	socrat-0	systemd-pcrlock-secureboot-policy.service		unknown
+host	socrat-0	systemd-pcrlock@.service		unknown
+host	socrat-0	systemd-pcrmachine.service		unknown
+host	socrat-0	systemd-pcrphase-initrd.service		unknown
+host	socrat-0	systemd-pcrphase-sysinit.service		unknown
+host	socrat-0	systemd-pcrphase.service		unknown
+host	socrat-0	systemd-poweroff.service		unknown
+host	socrat-0	systemd-pstore.service		unknown
+host	socrat-0	systemd-quotacheck-root.service		unknown
+host	socrat-0	systemd-quotacheck@.service		unknown
+host	socrat-0	systemd-random-seed.service		unknown
+host	socrat-0	systemd-reboot.service		unknown
+host	socrat-0	systemd-remount-fs.service		unknown
+host	socrat-0	systemd-rfkill.service		unknown
+host	socrat-0	systemd-soft-reboot.service		unknown
+host	socrat-0	systemd-storagetm.service		unknown
+host	socrat-0	systemd-suspend-then-hibernate.service		unknown
+host	socrat-0	systemd-suspend.service		unknown
+host	socrat-0	systemd-sysctl.service		unknown
+host	socrat-0	systemd-sysext.service		unknown
+host	socrat-0	systemd-sysext@.service		unknown
+host	socrat-0	systemd-sysusers.service		unknown
+host	socrat-0	systemd-time-wait-sync.service		unknown
+host	socrat-0	systemd-timedated.service		unknown
+host	socrat-0	systemd-timesyncd.service		unknown
+host	socrat-0	systemd-tmpfiles-clean.service		unknown
+host	socrat-0	systemd-tmpfiles-setup-dev-early.service		unknown
+host	socrat-0	systemd-tmpfiles-setup-dev.service		unknown
+host	socrat-0	systemd-tmpfiles-setup.service		unknown
+host	socrat-0	systemd-tpm2-setup-early.service		unknown
+host	socrat-0	systemd-tpm2-setup.service		unknown
+host	socrat-0	systemd-udev-load-credentials.service		unknown
+host	socrat-0	systemd-udev-settle.service		unknown
+host	socrat-0	systemd-udev-trigger.service		unknown
+host	socrat-0	systemd-udevd.service		unknown
+host	socrat-0	systemd-update-done.service		unknown
+host	socrat-0	systemd-user-sessions.service		unknown
+host	socrat-0	systemd-volatile-root.service		unknown
+host	socrat-0	udev.service		unknown
+host	socrat-0	udisks2.service		unknown
+host	socrat-0	upower.service		unknown
+host	socrat-0	usb_modeswitch@.service		unknown
+host	socrat-0	usbmuxd.service		unknown
+host	socrat-0	user-runtime-dir@.service		unknown
+host	socrat-0	user@.service		unknown
+host	socrat-0	uuidd.service		unknown
+host	socrat-0	wacom-inputattach@.service		unknown
+host	socrat-0	wg-quick@.service		unknown
+host	socrat-0	wg-socrat-admin-firewall.service		unknown
+host	socrat-0	wireguard-private-web.service		unknown
+host	socrat-0	wpa_supplicant-nl80211@.service		unknown
+host	socrat-0	wpa_supplicant-wired@.service		unknown
+host	socrat-0	wpa_supplicant.service		unknown
+host	socrat-0	wpa_supplicant@.service		unknown
+host	socrat-0	x11-common.service		unknown
+host	socrat-0	alsa-restore.service		unknown
+host	socrat-0	alsa-state.service		unknown
+host	socrat-0	anacron.service		unknown
+host	socrat-0	apparmor.service		unknown
+host	socrat-0	apt-daily-upgrade.service		unknown
+host	socrat-0	apt-daily.service		unknown
+host	socrat-0	auditd.service		unknown
+host	socrat-0	auth-rpcgss-module.service		unknown
+host	socrat-0	connman.service		unknown
+host	socrat-0	console-screen.service		unknown
+host	socrat-0	console-setup.service		unknown
+host	socrat-0	containerd.service		unknown
+host	socrat-0	crio.service		unknown
+host	socrat-0	cron.service		unknown
+host	socrat-0	dbus.service		unknown
+host	socrat-0	display-manager.service		unknown
+host	socrat-0	docker.service		unknown
+host	socrat-0	dpkg-db-backup.service		unknown
+host	socrat-0	dracut-shutdown.service		unknown
+host	socrat-0	e2scrub_all.service		unknown
+host	socrat-0	e2scrub_reap.service		unknown
+host	socrat-0	emergency.service		unknown
+host	socrat-0	firewalld.service		unknown
+host	socrat-0	fsidd.service		unknown
+host	socrat-0	fstrim.service		unknown
+host	socrat-0	getty-static.service		unknown
+host	socrat-0	getty@tty1.service		unknown
+host	socrat-0	grub-common.service		unknown
+host	socrat-0	gssproxy.service		unknown
+host	socrat-0	happd.service		unknown
+host	socrat-0	homelab-netbird-credential.service		unknown
+host	socrat-0	homelab-otel-credentials.service		unknown
+host	socrat-0	homelab-otel-heartbeat.service		unknown
+host	socrat-0	homelab-otel-node-exporter.service		unknown
+host	socrat-0	homelab-otel-traces.service		unknown
+host	socrat-0	homelab-private-dns.service		unknown
+host	socrat-0	ifupdown-pre.service		unknown
+host	socrat-0	initrd-cleanup.service		unknown
+host	socrat-0	initrd-parse-etc.service		unknown
+host	socrat-0	initrd-switch-root.service		unknown
+host	socrat-0	initrd-udevadm-cleanup-db.service		unknown
+host	socrat-0	ipvsadm.service		unknown
+host	socrat-0	iscsid.service		unknown
+host	socrat-0	kbd.service		unknown
+host	socrat-0	keepalived.service		unknown
+host	socrat-0	keyboard-setup.service		unknown
+host	socrat-0	kmod-static-nodes.service		unknown
+host	socrat-0	knot.service		unknown
+host	socrat-0	ldconfig.service		unknown
+host	socrat-0	logrotate.service		unknown
+host	socrat-0	low-memory-monitor.service		unknown
+host	socrat-0	man-db.service		unknown
+host	socrat-0	mkinitcpio-generate-shutdown-ramfs.service		unknown
+host	socrat-0	ModemManager.service		unknown
+host	socrat-0	modprobe@configfs.service		unknown
+host	socrat-0	modprobe@drm.service		unknown
+host	socrat-0	modprobe@efi_pstore.service		unknown
+host	socrat-0	modprobe@fuse.service		unknown
+host	socrat-0	modprobe@nvme_fabrics.service		unknown
+host	socrat-0	monitoring-gpu.service		unknown
+host	socrat-0	networking.service		unknown
+host	socrat-0	NetworkManager-wait-online.service		unknown
+host	socrat-0	NetworkManager.service		unknown
+host	socrat-0	nfs-blkmap.service		unknown
+host	socrat-0	nfs-idmapd.service		unknown
+host	socrat-0	nfs-mountd.service		unknown
+host	socrat-0	nfs-server.service		unknown
+host	socrat-0	nfs-utils.service		unknown
+host	socrat-0	nfsdcld.service		unknown
+host	socrat-0	nvidia-cdi-refresh.service		unknown
+host	socrat-0	nvidia-persistenced.service		unknown
+host	socrat-0	nvidia-powerd.service		unknown
+host	socrat-0	nvmefc-boot-connections.service		unknown
+host	socrat-0	nvmf-autoconnect.service		unknown
+host	socrat-0	open-iscsi.service		unknown
+host	socrat-0	plymouth-halt.service		unknown
+host	socrat-0	plymouth-kexec.service		unknown
+host	socrat-0	plymouth-poweroff.service		unknown
+host	socrat-0	plymouth-quit-wait.service		unknown
+host	socrat-0	plymouth-quit.service		unknown
+host	socrat-0	plymouth-read-write.service		unknown
+host	socrat-0	plymouth-reboot.service		unknown
+host	socrat-0	plymouth-start.service		unknown
+host	socrat-0	plymouth-switch-root-initramfs.service		unknown
+host	socrat-0	plymouth-switch-root.service		unknown
+host	socrat-0	polkit.service		unknown
+host	socrat-0	rc-local.service		unknown
+host	socrat-0	rescue.service		unknown
+host	socrat-0	rpc-gssd.service		unknown
+host	socrat-0	rpc-statd-notify.service		unknown
+host	socrat-0	rpc-statd.service		unknown
+host	socrat-0	rpc-svcgssd.service		unknown
+host	socrat-0	rpcbind.service		unknown
+host	socrat-0	rtkit-daemon.service		unknown
+host	socrat-0	smartmontools.service		unknown
+host	socrat-0	sshd-keygen.service		unknown
+host	socrat-0	sshd@sshd-keygen.service		unknown
+host	socrat-0	syslog.service		unknown
+host	socrat-0	systemd-ask-password-console.service		unknown
+host	socrat-0	systemd-ask-password-plymouth.service		unknown
+host	socrat-0	systemd-ask-password-wall.service		unknown
+host	socrat-0	systemd-battery-check.service		unknown
+host	socrat-0	systemd-binfmt.service		unknown
+host	socrat-0	systemd-bsod.service		unknown
+host	socrat-0	systemd-confext.service		unknown
+host	socrat-0	systemd-firstboot.service		unknown
+host	socrat-0	systemd-fsck-root.service		unknown
+host	socrat-0	systemd-halt.service		unknown
+host	socrat-0	systemd-hibernate-clear.service		unknown
+host	socrat-0	systemd-hibernate-resume.service		unknown
+host	socrat-0	systemd-hibernate.service		unknown
+host	socrat-0	systemd-hostnamed.service		unknown
+host	socrat-0	systemd-hwdb-update.service		unknown
+host	socrat-0	systemd-hybrid-sleep.service		unknown
+host	socrat-0	systemd-initctl.service		unknown
+host	socrat-0	systemd-journal-catalog-update.service		unknown
+host	socrat-0	systemd-journal-flush.service		unknown
+host	socrat-0	systemd-journald.service		unknown
+host	socrat-0	systemd-kexec.service		unknown
+host	socrat-0	systemd-machine-id-commit.service		unknown
+host	socrat-0	systemd-modules-load.service		unknown
+host	socrat-0	systemd-networkd-persistent-storage.service		unknown
+host	socrat-0	systemd-networkd.service		unknown
+host	socrat-0	systemd-oomd.service		unknown
+host	socrat-0	systemd-pcrmachine.service		unknown
+host	socrat-0	systemd-pcrphase-initrd.service		unknown
+host	socrat-0	systemd-pcrphase-sysinit.service		unknown
+host	socrat-0	systemd-pcrphase.service		unknown
+host	socrat-0	systemd-poweroff.service		unknown
+host	socrat-0	systemd-pstore.service		unknown
+host	socrat-0	systemd-quotacheck-root.service		unknown
+host	socrat-0	systemd-quotacheck.service		unknown
+host	socrat-0	systemd-random-seed.service		unknown
+host	socrat-0	systemd-reboot.service		unknown
+host	socrat-0	systemd-remount-fs.service		unknown
+host	socrat-0	systemd-rfkill.service		unknown
+host	socrat-0	systemd-soft-reboot.service		unknown
+host	socrat-0	systemd-suspend-then-hibernate.service		unknown
+host	socrat-0	systemd-suspend.service		unknown
+host	socrat-0	systemd-sysctl.service		unknown
+host	socrat-0	systemd-sysext.service		unknown
+host	socrat-0	systemd-sysusers.service		unknown
+host	socrat-0	systemd-timesyncd.service		unknown
+host	socrat-0	systemd-tmpfiles-clean.service		unknown
+host	socrat-0	systemd-tmpfiles-setup-dev-early.service		unknown
+host	socrat-0	systemd-tmpfiles-setup-dev.service		unknown
+host	socrat-0	systemd-tmpfiles-setup.service		unknown
+host	socrat-0	systemd-tpm2-setup-early.service		unknown
+host	socrat-0	systemd-tpm2-setup.service		unknown
+host	socrat-0	systemd-udev-load-credentials.service		unknown
+host	socrat-0	systemd-udev-settle.service		unknown
+host	socrat-0	systemd-udev-trigger.service		unknown
+host	socrat-0	systemd-udevd.service		unknown
+host	socrat-0	systemd-update-done.service		unknown
+host	socrat-0	systemd-user-sessions.service		unknown
+host	socrat-0	systemd-vconsole-setup.service		unknown
+host	socrat-0	user-runtime-dir@1000.service		unknown
+host	socrat-0	user@1000.service		unknown
+host	socrat-0	uuidd.service		unknown
+host	socrat-0	wg-quick@wg-socrat.service		unknown
+host	socrat-0	wg-socrat-admin-firewall.service		unknown
+host	socrat-0	wireguard-private-web.service		unknown
+host	socrat-0	wpa_supplicant.service		unknown
+host	socrat-1	alsa-card-wait@.service		unknown
+host	socrat-1	alsa-restore.service		unknown
+host	socrat-1	alsa-state.service		unknown
+host	socrat-1	anydesk.service		unknown
+host	socrat-1	archlinux-keyring-wkd-sync.service		unknown
+host	socrat-1	arptables.service		unknown
+host	socrat-1	audit-rules.service		unknown
+host	socrat-1	auditd.service		unknown
+host	socrat-1	auth-rpcgss-module.service		unknown
+host	socrat-1	autovt@.service		unknown
+host	socrat-1	avahi-daemon.service		unknown
+host	socrat-1	avahi-dnsconfd.service		unknown
+host	socrat-1	battery-charge-threshold.service		unknown
+host	socrat-1	blueman-mechanism.service		unknown
+host	socrat-1	bluetooth.service		unknown
+host	socrat-1	breakpoint-pre-basic.service		unknown
+host	socrat-1	breakpoint-pre-mount.service		unknown
+host	socrat-1	breakpoint-pre-switch-root.service		unknown
+host	socrat-1	breakpoint-pre-udev.service		unknown
+host	socrat-1	canberra-system-bootup.service		unknown
+host	socrat-1	canberra-system-shutdown-reboot.service		unknown
+host	socrat-1	canberra-system-shutdown.service		unknown
+host	socrat-1	capsule@.service		unknown
+host	socrat-1	cdm.service		unknown
+host	socrat-1	console-getty.service		unknown
+host	socrat-1	container-getty@.service		unknown
+host	socrat-1	containerd.service		unknown
+host	socrat-1	cups-lpd@.service		unknown
+host	socrat-1	cups.service		unknown
+host	socrat-1	dbus-broker.service		unknown
+host	socrat-1	dbus-org.bluez.service		unknown
+host	socrat-1	dbus-org.freedesktop.hostname1.service		unknown
+host	socrat-1	dbus-org.freedesktop.import1.service		unknown
+host	socrat-1	dbus-org.freedesktop.locale1.service		unknown
+host	socrat-1	dbus-org.freedesktop.login1.service		unknown
+host	socrat-1	dbus-org.freedesktop.machine1.service		unknown
+host	socrat-1	dbus-org.freedesktop.nm-dispatcher.service		unknown
+host	socrat-1	dbus-org.freedesktop.portable1.service		unknown
+host	socrat-1	dbus-org.freedesktop.sysupdate1.service		unknown
+host	socrat-1	dbus-org.freedesktop.timedate1.service		unknown
+host	socrat-1	dbus-org.freedesktop.timesync1.service		unknown
+host	socrat-1	dbus.service		unknown
+host	socrat-1	debug-shell.service		unknown
+host	socrat-1	dirmngr@.service		unknown
+host	socrat-1	disable-wakeup.service		unknown
+host	socrat-1	dm-event.service		unknown
+host	socrat-1	dnsmasq.service		unknown
+host	socrat-1	docker.service		unknown
+host	socrat-1	e2scrub@.service		unknown
+host	socrat-1	e2scrub_all.service		unknown
+host	socrat-1	e2scrub_fail@.service		unknown
+host	socrat-1	e2scrub_reap.service		unknown
+host	socrat-1	ead.service		unknown
+host	socrat-1	ebtables.service		unknown
+host	socrat-1	emergency.service		unknown
+host	socrat-1	fancontrol.service		unknown
+host	socrat-1	fprintd.service		unknown
+host	socrat-1	fsidd.service		unknown
+host	socrat-1	fstrim.service		unknown
+host	socrat-1	ftpd.service		unknown
+host	socrat-1	getty@.service		unknown
+host	socrat-1	git-daemon@.service		unknown
+host	socrat-1	gpg-agent@.service		unknown
+host	socrat-1	gpm.service		unknown
+host	socrat-1	gpsd.service		unknown
+host	socrat-1	gpsdctl@.service		unknown
+host	socrat-1	gssproxy.service		unknown
+host	socrat-1	happd.service		unknown
+host	socrat-1	healthd.service		unknown
+host	socrat-1	homelab-otel-application-ingress.service		unknown
+host	socrat-1	homelab-otel-credentials.service		unknown
+host	socrat-1	homelab-otel-heartbeat.service		unknown
+host	socrat-1	homelab-otel-node-exporter.service		unknown
+host	socrat-1	homelab-private-dns.service		unknown
+host	socrat-1	hostapd.service		unknown
+host	socrat-1	hostapd@.service		unknown
+host	socrat-1	initrd-cleanup.service		unknown
+host	socrat-1	initrd-parse-etc.service		unknown
+host	socrat-1	initrd-switch-root.service		unknown
+host	socrat-1	initrd-udevadm-cleanup-db.service		unknown
+host	socrat-1	ip6tables.service		unknown
+host	socrat-1	iptables.service		unknown
+host	socrat-1	iwd.service		unknown
+host	socrat-1	k3s-agent.service		unknown
+host	socrat-1	keyboxd@.service		unknown
+host	socrat-1	kmod-static-nodes.service		unknown
+host	socrat-1	knot.service		unknown
+host	socrat-1	krb5-kadmind.service		unknown
+host	socrat-1	krb5-kdc.service		unknown
+host	socrat-1	krb5-kpropd.service		unknown
+host	socrat-1	krb5-kpropd@.service		unknown
+host	socrat-1	lastlog2-import.service		unknown
+host	socrat-1	ldconfig.service		unknown
+host	socrat-1	lm_sensors.service		unknown
+host	socrat-1	man-db.service		unknown
+host	socrat-1	mdadm-grow-continue@.service		unknown
+host	socrat-1	mdadm-last-resort@.service		unknown
+host	socrat-1	mdcheck_continue.service		unknown
+host	socrat-1	mdcheck_start.service		unknown
+host	socrat-1	mdmon@.service		unknown
+host	socrat-1	mdmonitor-oneshot.service		unknown
+host	socrat-1	mdmonitor.service		unknown
+host	socrat-1	mkinitcpio-generate-shutdown-ramfs.service		unknown
+host	socrat-1	ModemManager.service		unknown
+host	socrat-1	modprobe@.service		unknown
+host	socrat-1	named.service		unknown
+host	socrat-1	netbird-management.service		unknown
+host	socrat-1	netbird-signal.service		unknown
+host	socrat-1	netbird.service		unknown
+host	socrat-1	netctl-auto@.service		unknown
+host	socrat-1	netctl-ifplugd@.service		unknown
+host	socrat-1	netctl-sleep.service		unknown
+host	socrat-1	netctl-wait-online.service		unknown
+host	socrat-1	netctl.service		unknown
+host	socrat-1	netctl@.service		unknown
+host	socrat-1	NetworkManager-config-initrd.service		unknown
+host	socrat-1	NetworkManager-dispatcher.service		unknown
+host	socrat-1	NetworkManager-initrd.service		unknown
+host	socrat-1	NetworkManager-wait-online-initrd.service		unknown
+host	socrat-1	NetworkManager-wait-online.service		unknown
+host	socrat-1	NetworkManager.service		unknown
+host	socrat-1	nfs-idmapd.service		unknown
+host	socrat-1	nfs-mountd.service		unknown
+host	socrat-1	nfs-server.service		unknown
+host	socrat-1	nfs-utils.service		unknown
+host	socrat-1	nfsdcld.service		unknown
+host	socrat-1	nfsv4-exportd.service		unknown
+host	socrat-1	nfsv4-server.service		unknown
+host	socrat-1	nftables.service		unknown
+host	socrat-1	nm-priv-helper.service		unknown
+host	socrat-1	openvpn-client@.service		unknown
+host	socrat-1	openvpn-server@.service		unknown
+host	socrat-1	paccache.service		unknown
+host	socrat-1	pacman-filesdb-refresh.service		unknown
+host	socrat-1	pacrunner.service		unknown
+host	socrat-1	pam_namespace.service		unknown
+host	socrat-1	pcscd.service		unknown
+host	socrat-1	polkit-agent-helper@.service		unknown
+host	socrat-1	polkit.service		unknown
+host	socrat-1	postgresql.service		unknown
+host	socrat-1	power-profiles-daemon.service		unknown
+host	socrat-1	ppp@.service		unknown
+host	socrat-1	quotaon-root.service		unknown
+host	socrat-1	quotaon@.service		unknown
+host	socrat-1	redis-sentinel.service		unknown
+host	socrat-1	redis.service		unknown
+host	socrat-1	reflector.service		unknown
+host	socrat-1	rescue.service		unknown
+host	socrat-1	rfkill-block@.service		unknown
+host	socrat-1	rfkill-unblock@.service		unknown
+host	socrat-1	rlogin@.service		unknown
+host	socrat-1	rpc-gssd.service		unknown
+host	socrat-1	rpc-statd-notify.service		unknown
+host	socrat-1	rpc-statd.service		unknown
+host	socrat-1	rpcbind.service		unknown
+host	socrat-1	rsh@.service		unknown
+host	socrat-1	rsyncd.service		unknown
+host	socrat-1	rsyncd@.service		unknown
+host	socrat-1	rtkit-daemon.service		unknown
+host	socrat-1	saned@.service		unknown
+host	socrat-1	seatd.service		unknown
+host	socrat-1	sensord.service		unknown
+host	socrat-1	serial-getty@.service		unknown
+host	socrat-1	shadow.service		unknown
+host	socrat-1	sndiod.service		unknown
+host	socrat-1	snmpd.service		unknown
+host	socrat-1	snmptrapd.service		unknown
+host	socrat-1	sshd-unix-local@.service		unknown
+host	socrat-1	sshd.service		unknown
+host	socrat-1	sshd@.service		unknown
+host	socrat-1	sshdgenkeys.service		unknown
+host	socrat-1	sudo_logsrvd.service		unknown
+host	socrat-1	svnserve.service		unknown
+host	socrat-1	syncthing@.service		unknown
+host	socrat-1	sysstat-collect.service		unknown
+host	socrat-1	sysstat-rotate.service		unknown
+host	socrat-1	sysstat-summary.service		unknown
+host	socrat-1	sysstat.service		unknown
+host	socrat-1	system-update-cleanup.service		unknown
+host	socrat-1	systemd-ask-password-console.service		unknown
+host	socrat-1	systemd-ask-password-wall.service		unknown
+host	socrat-1	systemd-ask-password@.service		unknown
+host	socrat-1	systemd-backlight@.service		unknown
+host	socrat-1	systemd-battery-check.service		unknown
+host	socrat-1	systemd-binfmt.service		unknown
+host	socrat-1	systemd-bless-boot.service		unknown
+host	socrat-1	systemd-boot-check-no-failures.service		unknown
+host	socrat-1	systemd-boot-clear-sysfail.service		unknown
+host	socrat-1	systemd-boot-random-seed.service		unknown
+host	socrat-1	systemd-boot-update.service		unknown
+host	socrat-1	systemd-bootctl@.service		unknown
+host	socrat-1	systemd-bsod.service		unknown
+host	socrat-1	systemd-confext-initrd.service		unknown
+host	socrat-1	systemd-confext-sysroot.service		unknown
+host	socrat-1	systemd-confext.service		unknown
+host	socrat-1	systemd-coredump-register.service		unknown
+host	socrat-1	systemd-coredump@.service		unknown
+host	socrat-1	systemd-coredumpd.service		unknown
+host	socrat-1	systemd-creds@.service		unknown
+host	socrat-1	systemd-cryptenroll-firstboot.service		unknown
+host	socrat-1	systemd-cryptenroll@.service		unknown
+host	socrat-1	systemd-exit.service		unknown
+host	socrat-1	systemd-factory-reset-complete.service		unknown
+host	socrat-1	systemd-factory-reset-reboot.service		unknown
+host	socrat-1	systemd-factory-reset-request.service		unknown
+host	socrat-1	systemd-factory-reset@.service		unknown
+host	socrat-1	systemd-firstboot.service		unknown
+host	socrat-1	systemd-fsck-root.service		unknown
+host	socrat-1	systemd-fsck@.service		unknown
+host	socrat-1	systemd-growfs-root.service		unknown
+host	socrat-1	systemd-growfs@.service		unknown
+host	socrat-1	systemd-halt.service		unknown
+host	socrat-1	systemd-hibernate-clear.service		unknown
+host	socrat-1	systemd-hibernate-resume.service		unknown
+host	socrat-1	systemd-hibernate.service		unknown
+host	socrat-1	systemd-homed-activate.service		unknown
+host	socrat-1	systemd-homed-firstboot.service		unknown
+host	socrat-1	systemd-homed.service		unknown
+host	socrat-1	systemd-hostnamed.service		unknown
+host	socrat-1	systemd-hwdb-update.service		unknown
+host	socrat-1	systemd-hybrid-sleep.service		unknown
+host	socrat-1	systemd-imds-early-network.service		unknown
+host	socrat-1	systemd-imds-import.service		unknown
+host	socrat-1	systemd-imds-metrics@.service		unknown
+host	socrat-1	systemd-imdsd@.service		unknown
+host	socrat-1	systemd-importd.service		unknown
+host	socrat-1	systemd-journal-catalog-update.service		unknown
+host	socrat-1	systemd-journal-flush.service		unknown
+host	socrat-1	systemd-journal-gatewayd.service		unknown
+host	socrat-1	systemd-journal-remote.service		unknown
+host	socrat-1	systemd-journal-upload.service		unknown
+host	socrat-1	systemd-journalctl-metrics@.service		unknown
+host	socrat-1	systemd-journalctl@.service		unknown
+host	socrat-1	systemd-journald-sync@.service		unknown
+host	socrat-1	systemd-journald.service		unknown
+host	socrat-1	systemd-journald@.service		unknown
+host	socrat-1	systemd-kexec.service		unknown
+host	socrat-1	systemd-localed.service		unknown
+host	socrat-1	systemd-logind.service		unknown
+host	socrat-1	systemd-loop@.service		unknown
+host	socrat-1	systemd-machine-id-commit.service		unknown
+host	socrat-1	systemd-machine-tag@.service		unknown
+host	socrat-1	systemd-machined.service		unknown
+host	socrat-1	systemd-modules-load.service		unknown
+host	socrat-1	systemd-mountfsd.service		unknown
+host	socrat-1	systemd-mute-console@.service		unknown
+host	socrat-1	systemd-network-generator.service		unknown
+host	socrat-1	systemd-networkd-persistent-storage.service		unknown
+host	socrat-1	systemd-networkd-wait-online.service		unknown
+host	socrat-1	systemd-networkd-wait-online@.service		unknown
+host	socrat-1	systemd-networkd.service		unknown
+host	socrat-1	systemd-nspawn@.service		unknown
+host	socrat-1	systemd-nsresourced.service		unknown
+host	socrat-1	systemd-oomd.service		unknown
+host	socrat-1	systemd-pcrextend@.service		unknown
+host	socrat-1	systemd-pcrfs-root.service		unknown
+host	socrat-1	systemd-pcrfs@.service		unknown
+host	socrat-1	systemd-pcrlock-file-system.service		unknown
+host	socrat-1	systemd-pcrlock-firmware-code.service		unknown
+host	socrat-1	systemd-pcrlock-firmware-config.service		unknown
+host	socrat-1	systemd-pcrlock-machine-id.service		unknown
+host	socrat-1	systemd-pcrlock-make-policy.service		unknown
+host	socrat-1	systemd-pcrlock-secureboot-authority.service		unknown
+host	socrat-1	systemd-pcrlock-secureboot-policy.service		unknown
+host	socrat-1	systemd-pcrlock@.service		unknown
+host	socrat-1	systemd-pcrlogin@.service		unknown
+host	socrat-1	systemd-pcrmachine.service		unknown
+host	socrat-1	systemd-pcrnvdone.service		unknown
+host	socrat-1	systemd-pcrosseparator.service		unknown
+host	socrat-1	systemd-pcrphase-factory-reset.service		unknown
+host	socrat-1	systemd-pcrphase-initrd.service		unknown
+host	socrat-1	systemd-pcrphase-storage-target-mode.service		unknown
+host	socrat-1	systemd-pcrphase-sysinit.service		unknown
+host	socrat-1	systemd-pcrphase.service		unknown
+host	socrat-1	systemd-pcrproduct.service		unknown
+host	socrat-1	systemd-portabled.service		unknown
+host	socrat-1	systemd-poweroff.service		unknown
+host	socrat-1	systemd-pstore.service		unknown
+host	socrat-1	systemd-quotacheck-root.service		unknown
+host	socrat-1	systemd-quotacheck@.service		unknown
+host	socrat-1	systemd-random-seed.service		unknown
+host	socrat-1	systemd-reboot.service		unknown
+host	socrat-1	systemd-remount-fs.service		unknown
+host	socrat-1	systemd-repart.service		unknown
+host	socrat-1	systemd-repart@.service		unknown
+host	socrat-1	systemd-report-basic@.service		unknown
+host	socrat-1	systemd-report-cgroup@.service		unknown
+host	socrat-1	systemd-report-files@.service		unknown
+host	socrat-1	systemd-report-sign-plain@.service		unknown
+host	socrat-1	systemd-report-sign-tpm2@.service		unknown
+host	socrat-1	systemd-report-sign-tsm@.service		unknown
+host	socrat-1	systemd-report@.service		unknown
+host	socrat-1	systemd-resolved.service		unknown
+host	socrat-1	systemd-rfkill.service		unknown
+host	socrat-1	systemd-soft-reboot.service		unknown
+host	socrat-1	systemd-storage-block@.service		unknown
+host	socrat-1	systemd-storage-fs@.service		unknown
+host	socrat-1	systemd-storagetm.service		unknown
+host	socrat-1	systemd-suspend-then-hibernate.service		unknown
+host	socrat-1	systemd-suspend.service		unknown
+host	socrat-1	systemd-sysctl.service		unknown
+host	socrat-1	systemd-sysext-initrd.service		unknown
+host	socrat-1	systemd-sysext-sysroot.service		unknown
+host	socrat-1	systemd-sysext.service		unknown
+host	socrat-1	systemd-sysext@.service		unknown
+host	socrat-1	systemd-sysinstall.service		unknown
+host	socrat-1	systemd-sysinstall@.service		unknown
+host	socrat-1	systemd-sysupdate-auto-enable.service		unknown
+host	socrat-1	systemd-sysupdate-notify-bootctl@.service		unknown
+host	socrat-1	systemd-sysupdate-notify-pcrlock@.service		unknown
+host	socrat-1	systemd-sysupdate-notify-sysext@.service		unknown
+host	socrat-1	systemd-sysupdate-reboot.service		unknown
+host	socrat-1	systemd-sysupdate-update.service		unknown
+host	socrat-1	systemd-sysupdate.service		unknown
+host	socrat-1	systemd-sysupdate@.service		unknown
+host	socrat-1	systemd-sysupdated.service		unknown
+host	socrat-1	systemd-sysusers.service		unknown
+host	socrat-1	systemd-time-wait-sync.service		unknown
+host	socrat-1	systemd-timedated.service		unknown
+host	socrat-1	systemd-timesyncd.service		unknown
+host	socrat-1	systemd-tmpfiles-clean.service		unknown
+host	socrat-1	systemd-tmpfiles-setup-dev-early.service		unknown
+host	socrat-1	systemd-tmpfiles-setup-dev.service		unknown
+host	socrat-1	systemd-tmpfiles-setup.service		unknown
+host	socrat-1	systemd-tpm2-clear.service		unknown
+host	socrat-1	systemd-tpm2-setup-early.service		unknown
+host	socrat-1	systemd-tpm2-setup.service		unknown
+host	socrat-1	systemd-tpm2-swtpm.service		unknown
+host	socrat-1	systemd-udev-load-credentials.service		unknown
+host	socrat-1	systemd-udev-settle.service		unknown
+host	socrat-1	systemd-udev-trigger.service		unknown
+host	socrat-1	systemd-udevd.service		unknown
+host	socrat-1	systemd-update-done.service		unknown
+host	socrat-1	systemd-update-utmp.service		unknown
+host	socrat-1	systemd-user-sessions.service		unknown
+host	socrat-1	systemd-userdb-load-credentials.service		unknown
+host	socrat-1	systemd-userdbd.service		unknown
+host	socrat-1	systemd-validatefs@.service		unknown
+host	socrat-1	systemd-vconsole-setup.service		unknown
+host	socrat-1	systemd-vmspawn@.service		unknown
+host	socrat-1	systemd-volatile-root.service		unknown
+host	socrat-1	talk.service		unknown
+host	socrat-1	teamd@.service		unknown
+host	socrat-1	telnet@.service		unknown
+host	socrat-1	udisks2.service		unknown
+host	socrat-1	upower.service		unknown
+host	socrat-1	usb_modeswitch@.service		unknown
+host	socrat-1	user-runtime-dir@.service		unknown
+host	socrat-1	user@.service		unknown
+host	socrat-1	uuidd.service		unknown
+host	socrat-1	valkey-sentinel.service		unknown
+host	socrat-1	valkey.service		unknown
+host	socrat-1	wacom-inputattach@.service		unknown
+host	socrat-1	wg-quick@.service		unknown
+host	socrat-1	wg-socrat-admin-firewall.service		unknown
+host	socrat-1	wireguard-private-web.service		unknown
+host	socrat-1	wireguard-tcp-transport-guard.service		unknown
+host	socrat-1	wireguard-tcp-transport-health.service		unknown
+host	socrat-1	wireguard-tcp-transport.service		unknown
+host	socrat-1	wpa_supplicant-nl80211@.service		unknown
+host	socrat-1	wpa_supplicant-wired@.service		unknown
+host	socrat-1	wpa_supplicant.service		unknown
+host	socrat-1	wpa_supplicant@.service		unknown
+host	socrat-1	alsa-restore.service		unknown
+host	socrat-1	alsa-state.service		unknown
+host	socrat-1	archlinux-keyring-wkd-sync.service		unknown
+host	socrat-1	audit-rules.service		unknown
+host	socrat-1	auditd.service		unknown
+host	socrat-1	auth-rpcgss-module.service		unknown
+host	socrat-1	auto-cpufreq.service		unknown
+host	socrat-1	battery-charge-threshold.service		unknown
+host	socrat-1	bluetooth.service		unknown
+host	socrat-1	cups.service		unknown
+host	socrat-1	dbus-broker.service		unknown
+host	socrat-1	dirmngr@etc-pacman.d-gnupg.service		unknown
+host	socrat-1	disable-wakeup.service		unknown
+host	socrat-1	display-manager.service		unknown
+host	socrat-1	dm-event.service		unknown
+host	socrat-1	emergency.service		unknown
+host	socrat-1	getty@tty1.service		unknown
+host	socrat-1	gpg-agent@etc-pacman.d-gnupg.service		unknown
+host	socrat-1	gssproxy.service		unknown
+host	socrat-1	happd.service		unknown
+host	socrat-1	homelab-otel-application-ingress.service		unknown
+host	socrat-1	homelab-otel-credentials.service		unknown
+host	socrat-1	homelab-otel-heartbeat.service		unknown
+host	socrat-1	homelab-otel-node-exporter.service		unknown
+host	socrat-1	homelab-private-dns.service		unknown
+host	socrat-1	initrd-cleanup.service		unknown
+host	socrat-1	initrd-parse-etc.service		unknown
+host	socrat-1	initrd-switch-root.service		unknown
+host	socrat-1	initrd-udevadm-cleanup-db.service		unknown
+host	socrat-1	iwd.service		unknown
+host	socrat-1	keyboxd@etc-pacman.d-gnupg.service		unknown
+host	socrat-1	kmod-static-nodes.service		unknown
+host	socrat-1	knot.service		unknown
+host	socrat-1	ldconfig.service		unknown
+host	socrat-1	man-db.service		unknown
+host	socrat-1	modprobe@configfs.service		unknown
+host	socrat-1	modprobe@dm_mod.service		unknown
+host	socrat-1	modprobe@drm.service		unknown
+host	socrat-1	modprobe@fuse.service		unknown
+host	socrat-1	modprobe@loop.service		unknown
+host	socrat-1	NetworkManager-wait-online.service		unknown
+host	socrat-1	NetworkManager.service		unknown
+host	socrat-1	nfs-idmapd.service		unknown
+host	socrat-1	nfs-mountd.service		unknown
+host	socrat-1	nfs-server.service		unknown
+host	socrat-1	nfs-utils.service		unknown
+host	socrat-1	nfsdcld.service		unknown
+host	socrat-1	nslcd.service		unknown
+host	socrat-1	plymouth-quit-wait.service		unknown
+host	socrat-1	plymouth-start.service		unknown
+host	socrat-1	polkit.service		unknown
+host	socrat-1	power-profiles-daemon.service		unknown
+host	socrat-1	rescue.service		unknown
+host	socrat-1	rpc-gssd.service		unknown
+host	socrat-1	rpc-statd-notify.service		unknown
+host	socrat-1	rpc-statd.service		unknown
+host	socrat-1	rpc-svcgssd.service		unknown
+host	socrat-1	rpcbind.service		unknown
+host	socrat-1	rtkit-daemon.service		unknown
+host	socrat-1	shadow.service		unknown
+host	socrat-1	sshd.service		unknown
+host	socrat-1	sshdgenkeys.service		unknown
+host	socrat-1	supergfxd.service		unknown
+host	socrat-1	syslog.service		unknown
+host	socrat-1	system76-power.service		unknown
+host	socrat-1	systemd-ask-password-console.service		unknown
+host	socrat-1	systemd-ask-password-wall.service		unknown
+host	socrat-1	systemd-backlight@backlight:amdgpu_bl1.service		unknown
+host	socrat-1	systemd-battery-check.service		unknown
+host	socrat-1	systemd-binfmt.service		unknown
+host	socrat-1	systemd-boot-random-seed.service		unknown
+host	socrat-1	systemd-bsod.service		unknown
+host	socrat-1	systemd-confext-initrd.service		unknown
+host	socrat-1	systemd-confext.service		unknown
+host	socrat-1	systemd-cryptenroll-firstboot.service		unknown
+host	socrat-1	systemd-factory-reset-complete.service		unknown
+host	socrat-1	systemd-firstboot.service		unknown
+host	socrat-1	systemd-fsck-root.service		unknown
+host	socrat-1	systemd-hibernate-clear.service		unknown
+host	socrat-1	systemd-hibernate-resume.service		unknown
+host	socrat-1	systemd-hostnamed.service		unknown
+host	socrat-1	systemd-hwdb-update.service		unknown
+host	socrat-1	systemd-importd.service		unknown
+host	socrat-1	systemd-journal-catalog-update.service		unknown
+host	socrat-1	systemd-journal-flush.service		unknown
+host	socrat-1	systemd-journald.service		unknown
+host	socrat-1	systemd-logind.service		unknown
+host	socrat-1	systemd-machine-id-commit.service		unknown
+host	socrat-1	systemd-machined.service		unknown
+host	socrat-1	systemd-modules-load.service		unknown
+host	socrat-1	systemd-oomd.service		unknown
+host	socrat-1	systemd-pcrlogin@1000.service		unknown
+host	socrat-1	systemd-pcrmachine.service		unknown
+host	socrat-1	systemd-pcrnvdone.service		unknown
+host	socrat-1	systemd-pcrosseparator.service		unknown
+host	socrat-1	systemd-pcrphase-initrd.service		unknown
+host	socrat-1	systemd-pcrphase-sysinit.service		unknown
+host	socrat-1	systemd-pcrphase.service		unknown
+host	socrat-1	systemd-pcrproduct.service		unknown
+host	socrat-1	systemd-quotacheck-root.service		unknown
+host	socrat-1	systemd-random-seed.service		unknown
+host	socrat-1	systemd-remount-fs.service		unknown
+host	socrat-1	systemd-repart.service		unknown
+host	socrat-1	systemd-resolved.service		unknown
+host	socrat-1	systemd-rfkill.service		unknown
+host	socrat-1	systemd-soft-reboot.service		unknown
+host	socrat-1	systemd-sysctl.service		unknown
+host	socrat-1	systemd-sysext-initrd.service		unknown
+host	socrat-1	systemd-sysext.service		unknown
+host	socrat-1	systemd-sysusers.service		unknown
+host	socrat-1	systemd-timesyncd.service		unknown
+host	socrat-1	systemd-tmpfiles-clean.service		unknown
+host	socrat-1	systemd-tmpfiles-setup-dev-early.service		unknown
+host	socrat-1	systemd-tmpfiles-setup-dev.service		unknown
+host	socrat-1	systemd-tmpfiles-setup.service		unknown
+host	socrat-1	systemd-tpm2-setup-early.service		unknown
+host	socrat-1	systemd-tpm2-setup.service		unknown
+host	socrat-1	systemd-udev-load-credentials.service		unknown
+host	socrat-1	systemd-udev-settle.service		unknown
+host	socrat-1	systemd-udev-trigger.service		unknown
+host	socrat-1	systemd-udevd.service		unknown
+host	socrat-1	systemd-update-done.service		unknown
+host	socrat-1	systemd-update-utmp.service		unknown
+host	socrat-1	systemd-user-sessions.service		unknown
+host	socrat-1	systemd-userdb-load-credentials.service		unknown
+host	socrat-1	systemd-userdbd.service		unknown
+host	socrat-1	systemd-vconsole-setup.service		unknown
+host	socrat-1	tlp.service		unknown
+host	socrat-1	tuned.service		unknown
+host	socrat-1	upower.service		unknown
+host	socrat-1	user-runtime-dir@1000.service		unknown
+host	socrat-1	wg-quick@wg-socrat.service		unknown
+host	socrat-1	wg-socrat-admin-firewall.service		unknown
+host	socrat-1	wireguard-private-web.service		unknown
+host	socrat-1	wireguard-tcp-transport-guard.service		unknown
+host	socrat-1	wireguard-tcp-transport-health.service		unknown
+host	socrat-1	wireguard-tcp-transport.service		unknown
+host	socrat-2	apparmor.service		unknown
+host	socrat-2	apt-daily-upgrade.service		unknown
+host	socrat-2	apt-daily.service		unknown
+host	socrat-2	auth-rpcgss-module.service		unknown
+host	socrat-2	autovt@.service		unknown
+host	socrat-2	cgroupfs-mount.service		unknown
+host	socrat-2	console-getty.service		unknown
+host	socrat-2	console-setup.service		unknown
+host	socrat-2	container-getty@.service		unknown
+host	socrat-2	containerd.service		unknown
+host	socrat-2	cryptdisks-early.service		unknown
+host	socrat-2	cryptdisks.service		unknown
+host	socrat-2	dbus-org.freedesktop.hostname1.service		unknown
+host	socrat-2	dbus-org.freedesktop.locale1.service		unknown
+host	socrat-2	dbus-org.freedesktop.login1.service		unknown
+host	socrat-2	dbus-org.freedesktop.timedate1.service		unknown
+host	socrat-2	dbus-org.freedesktop.timesync1.service		unknown
+host	socrat-2	dbus.service		unknown
+host	socrat-2	debug-shell.service		unknown
+host	socrat-2	docker-disk-gc.service		unknown
+host	socrat-2	docker.service		unknown
+host	socrat-2	dpkg-db-backup.service		unknown
+host	socrat-2	e2scrub@.service		unknown
+host	socrat-2	e2scrub_all.service		unknown
+host	socrat-2	e2scrub_fail@.service		unknown
+host	socrat-2	e2scrub_reap.service		unknown
+host	socrat-2	emergency.service		unknown
+host	socrat-2	fail2ban.service		unknown
+host	socrat-2	firstboot.service		unknown
+host	socrat-2	fstrim.service		unknown
+host	socrat-2	getty-static.service		unknown
+host	socrat-2	getty@.service		unknown
+host	socrat-2	homelab-otel-node-exporter.service		unknown
+host	socrat-2	homelab-private-dns.service		unknown
+host	socrat-2	homelab-vpn-caddy.service		unknown
+host	socrat-2	homelab-vpn-legacy.service		unknown
+host	socrat-2	homelab-vpn-primary.service		unknown
+host	socrat-2	homelab-xui-panel-auth.service		unknown
+host	socrat-2	hwclock.service		unknown
+host	socrat-2	ifup@.service		unknown
+host	socrat-2	ifupdown-pre.service		unknown
+host	socrat-2	ifupdown-wait-online.service		unknown
+host	socrat-2	initrd-cleanup.service		unknown
+host	socrat-2	initrd-parse-etc.service		unknown
+host	socrat-2	initrd-switch-root.service		unknown
+host	socrat-2	initrd-udevadm-cleanup-db.service		unknown
+host	socrat-2	iscsi.service		unknown
+host	socrat-2	iscsid.service		unknown
+host	socrat-2	k3s-agent.service		unknown
+host	socrat-2	keyboard-setup.service		unknown
+host	socrat-2	kmod-static-nodes.service		unknown
+host	socrat-2	kmod.service		unknown
+host	socrat-2	laba-update-notifier.service		unknown
+host	socrat-2	logrotate.service		unknown
+host	socrat-2	man-db.service		unknown
+host	socrat-2	modprobe@.service		unknown
+host	socrat-2	monitoring-vpn.service		unknown
+host	socrat-2	networking.service		unknown
+host	socrat-2	nfs-common.service		unknown
+host	socrat-2	nfs-idmapd.service		unknown
+host	socrat-2	nfs-utils.service		unknown
+host	socrat-2	nftables.service		unknown
+host	socrat-2	nginx.service		unknown
+host	socrat-2	open-iscsi.service		unknown
+host	socrat-2	pam_namespace.service		unknown
+host	socrat-2	portmap.service		unknown
+host	socrat-2	procps.service		unknown
+host	socrat-2	qemu-guest-agent.service		unknown
+host	socrat-2	quotaon.service		unknown
+host	socrat-2	rc-local.service		unknown
+host	socrat-2	rc.service		unknown
+host	socrat-2	rcS.service		unknown
+host	socrat-2	regenerate_ssh_host_keys.service		unknown
+host	socrat-2	rescue.service		unknown
+host	socrat-2	resolvconf-pull-resolved.service		unknown
+host	socrat-2	resolvconf.service		unknown
+host	socrat-2	rpc-gssd.service		unknown
+host	socrat-2	rpc-statd-notify.service		unknown
+host	socrat-2	rpc-statd.service		unknown
+host	socrat-2	rpc-svcgssd.service		unknown
+host	socrat-2	rpcbind.service		unknown
+host	socrat-2	serial-getty@.service		unknown
+host	socrat-2	sshd.service		unknown
+host	socrat-2	sudo.service		unknown
+host	socrat-2	syncthing@.service		unknown
+host	socrat-2	syncthing@www.service		unknown
+host	socrat-2	sysstat-collect.service		unknown
+host	socrat-2	sysstat-summary.service		unknown
+host	socrat-2	sysstat.service		unknown
+host	socrat-2	system-update-cleanup.service		unknown
+host	socrat-2	systemd-ask-password-console.service		unknown
+host	socrat-2	systemd-ask-password-wall.service		unknown
+host	socrat-2	systemd-backlight@.service		unknown
+host	socrat-2	systemd-binfmt.service		unknown
+host	socrat-2	systemd-boot-check-no-failures.service		unknown
+host	socrat-2	systemd-exit.service		unknown
+host	socrat-2	systemd-firstboot.service		unknown
+host	socrat-2	systemd-fsck-root.service		unknown
+host	socrat-2	systemd-fsck@.service		unknown
+host	socrat-2	systemd-fsckd.service		unknown
+host	socrat-2	systemd-halt.service		unknown
+host	socrat-2	systemd-hibernate-resume@.service		unknown
+host	socrat-2	systemd-hibernate.service		unknown
+host	socrat-2	systemd-hostnamed.service		unknown
+host	socrat-2	systemd-hybrid-sleep.service		unknown
+host	socrat-2	systemd-initctl.service		unknown
+host	socrat-2	systemd-journal-flush.service		unknown
+host	socrat-2	systemd-journald.service		unknown
+host	socrat-2	systemd-journald@.service		unknown
+host	socrat-2	systemd-kexec.service		unknown
+host	socrat-2	systemd-localed.service		unknown
+host	socrat-2	systemd-logind.service		unknown
+host	socrat-2	systemd-machine-id-commit.service		unknown
+host	socrat-2	systemd-modules-load.service		unknown
+host	socrat-2	systemd-network-generator.service		unknown
+host	socrat-2	systemd-networkd-wait-online.service		unknown
+host	socrat-2	systemd-networkd-wait-online@.service		unknown
+host	socrat-2	systemd-networkd.service		unknown
+host	socrat-2	systemd-pcrphase-initrd.service		unknown
+host	socrat-2	systemd-pcrphase-sysinit.service		unknown
+host	socrat-2	systemd-pcrphase.service		unknown
+host	socrat-2	systemd-poweroff.service		unknown
+host	socrat-2	systemd-pstore.service		unknown
+host	socrat-2	systemd-quotacheck.service		unknown
+host	socrat-2	systemd-random-seed.service		unknown
+host	socrat-2	systemd-reboot.service		unknown
+host	socrat-2	systemd-remount-fs.service		unknown
+host	socrat-2	systemd-repart.service		unknown
+host	socrat-2	systemd-rfkill.service		unknown
+host	socrat-2	systemd-suspend-then-hibernate.service		unknown
+host	socrat-2	systemd-suspend.service		unknown
+host	socrat-2	systemd-sysctl.service		unknown
+host	socrat-2	systemd-sysext.service		unknown
+host	socrat-2	systemd-sysusers.service		unknown
+host	socrat-2	systemd-time-wait-sync.service		unknown
+host	socrat-2	systemd-timedated.service		unknown
+host	socrat-2	systemd-timesyncd.service		unknown
+host	socrat-2	systemd-tmpfiles-clean.service		unknown
+host	socrat-2	systemd-tmpfiles-setup-dev.service		unknown
+host	socrat-2	systemd-tmpfiles-setup.service		unknown
+host	socrat-2	systemd-udev-settle.service		unknown
+host	socrat-2	systemd-udev-trigger.service		unknown
+host	socrat-2	systemd-udevd.service		unknown
+host	socrat-2	systemd-update-utmp-runlevel.service		unknown
+host	socrat-2	systemd-update-utmp.service		unknown
+host	socrat-2	systemd-user-sessions.service		unknown
+host	socrat-2	systemd-volatile-root.service		unknown
+host	socrat-2	udev.service		unknown
+host	socrat-2	user-runtime-dir@.service		unknown
+host	socrat-2	user@.service		unknown
+host	socrat-2	vpn-legacy-loopback.service		unknown
+host	socrat-2	wg-quick@.service		unknown
+host	socrat-2	wg-socrat-admin-firewall.service		unknown
+host	socrat-2	wireguard-private-web.service		unknown
+host	socrat-2	wireguard-tcp-transport.service		unknown
+host	socrat-2	x-ui.service		unknown
+host	socrat-2	x11-common.service		unknown
+host	socrat-2	apparmor.service		unknown
+host	socrat-2	auditd.service		unknown
+host	socrat-2	auth-rpcgss-module.service		unknown
+host	socrat-2	console-screen.service		unknown
+host	socrat-2	console-setup.service		unknown
+host	socrat-2	containerd.service		unknown
+host	socrat-2	dbus.service		unknown
+host	socrat-2	display-manager.service		unknown
+host	socrat-2	docker-disk-gc.service		unknown
+host	socrat-2	docker.service		unknown
+host	socrat-2	dpkg-db-backup.service		unknown
+host	socrat-2	e2scrub_all.service		unknown
+host	socrat-2	e2scrub_reap.service		unknown
+host	socrat-2	emergency.service		unknown
+host	socrat-2	fail2ban.service		unknown
+host	socrat-2	firewalld.service		unknown
+host	socrat-2	fstrim.service		unknown
+host	socrat-2	getty-static.service		unknown
+host	socrat-2	getty@tty1.service		unknown
+host	socrat-2	gssproxy.service		unknown
+host	socrat-2	homelab-otel-node-exporter.service		unknown
+host	socrat-2	homelab-private-dns.service		unknown
+host	socrat-2	homelab-vpn-legacy.service		unknown
+host	socrat-2	homelab-vpn-primary.service		unknown
+host	socrat-2	homelab-xui-panel-auth.service		unknown
+host	socrat-2	ifup@eth0.service		unknown
+host	socrat-2	ifupdown-pre.service		unknown
+host	socrat-2	initrd-cleanup.service		unknown
+host	socrat-2	initrd-parse-etc.service		unknown
+host	socrat-2	initrd-switch-root.service		unknown
+host	socrat-2	initrd-udevadm-cleanup-db.service		unknown
+host	socrat-2	ip6tables.service		unknown
+host	socrat-2	ipset.service		unknown
+host	socrat-2	iptables.service		unknown
+host	socrat-2	iscsid.service		unknown
+host	socrat-2	k3s-agent.service		unknown
+host	socrat-2	kbd.service		unknown
+host	socrat-2	keyboard-setup.service		unknown
+host	socrat-2	kmod-static-nodes.service		unknown
+host	socrat-2	logrotate.service		unknown
+host	socrat-2	man-db.service		unknown
+host	socrat-2	modprobe@configfs.service		unknown
+host	socrat-2	modprobe@dm_mod.service		unknown
+host	socrat-2	modprobe@drm.service		unknown
+host	socrat-2	modprobe@efi_pstore.service		unknown
+host	socrat-2	modprobe@fuse.service		unknown
+host	socrat-2	modprobe@loop.service		unknown
+host	socrat-2	monitoring-vpn.service		unknown
+host	socrat-2	networking.service		unknown
+host	socrat-2	nfs-server.service		unknown
+host	socrat-2	nfs-utils.service		unknown
+host	socrat-2	nftables.service		unknown
+host	socrat-2	open-iscsi.service		unknown
+host	socrat-2	plymouth-quit-wait.service		unknown
+host	socrat-2	plymouth-start.service		unknown
+host	socrat-2	postfix.service		unknown
+host	socrat-2	qemu-guest-agent.service		unknown
+host	socrat-2	rc-local.service		unknown
+host	socrat-2	rescue.service		unknown
+host	socrat-2	resolvconf.service		unknown
+host	socrat-2	rpc-gssd.service		unknown
+host	socrat-2	rpc-statd-notify.service		unknown
+host	socrat-2	rpc-statd.service		unknown
+host	socrat-2	rpc-svcgssd.service		unknown
+host	socrat-2	rpcbind.service		unknown
+host	socrat-2	syslog.service		unknown
+host	socrat-2	sysstat-collect.service		unknown
+host	socrat-2	sysstat-summary.service		unknown
+host	socrat-2	sysstat.service		unknown
+host	socrat-2	systemd-ask-password-console.service		unknown
+host	socrat-2	systemd-ask-password-wall.service		unknown
+host	socrat-2	systemd-binfmt.service		unknown
+host	socrat-2	systemd-firstboot.service		unknown
+host	socrat-2	systemd-fsck-root.service		unknown
+host	socrat-2	systemd-fsckd.service		unknown
+host	socrat-2	systemd-hwdb-update.service		unknown
+host	socrat-2	systemd-initctl.service		unknown
+host	socrat-2	systemd-journal-flush.service		unknown
+host	socrat-2	systemd-journald.service		unknown
+host	socrat-2	systemd-logind.service		unknown
+host	socrat-2	systemd-machine-id-commit.service		unknown
+host	socrat-2	systemd-modules-load.service		unknown
+host	socrat-2	systemd-oomd.service		unknown
+host	socrat-2	systemd-pcrphase-initrd.service		unknown
+host	socrat-2	systemd-pcrphase-sysinit.service		unknown
+host	socrat-2	systemd-pcrphase.service		unknown
+host	socrat-2	systemd-pstore.service		unknown
+host	socrat-2	systemd-random-seed.service		unknown
+host	socrat-2	systemd-remount-fs.service		unknown
+host	socrat-2	systemd-repart.service		unknown
+host	socrat-2	systemd-sysctl.service		unknown
+host	socrat-2	systemd-sysext.service		unknown
+host	socrat-2	systemd-sysusers.service		unknown
+host	socrat-2	systemd-timesyncd.service		unknown
+host	socrat-2	systemd-tmpfiles-clean.service		unknown
+host	socrat-2	systemd-tmpfiles-setup-dev.service		unknown
+host	socrat-2	systemd-tmpfiles-setup.service		unknown
+host	socrat-2	systemd-udev-settle.service		unknown
+host	socrat-2	systemd-udev-trigger.service		unknown
+host	socrat-2	systemd-udevd.service		unknown
+host	socrat-2	systemd-update-done.service		unknown
+host	socrat-2	systemd-update-utmp-runlevel.service		unknown
+host	socrat-2	systemd-update-utmp.service		unknown
+host	socrat-2	systemd-user-sessions.service		unknown
+host	socrat-2	systemd-vconsole-setup.service		unknown
+host	socrat-2	user-runtime-dir@1003.service		unknown
+host	socrat-2	user@1003.service		unknown
+host	socrat-2	vpn-legacy-loopback.service		unknown
+host	socrat-2	wg-quick@wg-socrat.service		unknown
+host	socrat-2	wg-socrat-admin-firewall.service		unknown
+host	socrat-2	wireguard-private-web.service		unknown
+host	socrat-2	wireguard-tcp-transport.service		unknown
+host	socrat-3	accounts-daemon.service		unknown
+host	socrat-3	apparmor.service		unknown
+host	socrat-3	apt-daily-upgrade.service		unknown
+host	socrat-3	apt-daily.service		unknown
+host	socrat-3	auth-rpcgss-module.service		unknown
+host	socrat-3	autovt@.service		unknown
+host	socrat-3	bluetooth.service		unknown
+host	socrat-3	bolt.service		unknown
+host	socrat-3	capsule@.service		unknown
+host	socrat-3	chrony-dnssrv@.service		unknown
+host	socrat-3	chrony-wait.service		unknown
+host	socrat-3	chrony.service		unknown
+host	socrat-3	chronyd-restricted.service		unknown
+host	socrat-3	chronyd.service		unknown
+host	socrat-3	colord.service		unknown
+host	socrat-3	configure-printer@.service		unknown
+host	socrat-3	console-getty.service		unknown
+host	socrat-3	console-setup.service		unknown
+host	socrat-3	container-getty@.service		unknown
+host	socrat-3	cryptdisks-early.service		unknown
+host	socrat-3	cryptdisks.service		unknown
+host	socrat-3	cups-browsed.service		unknown
+host	socrat-3	cups.service		unknown
+host	socrat-3	dbus-fi.w1.wpa_supplicant1.service		unknown
+host	socrat-3	dbus-org.bluez.service		unknown
+host	socrat-3	dbus-org.freedesktop.Avahi.service		unknown
+host	socrat-3	dbus-org.freedesktop.hostname1.service		unknown
+host	socrat-3	dbus-org.freedesktop.locale1.service		unknown
+host	socrat-3	dbus-org.freedesktop.login1.service		unknown
+host	socrat-3	dbus-org.freedesktop.ModemManager1.service		unknown
+host	socrat-3	dbus-org.freedesktop.nm-dispatcher.service		unknown
+host	socrat-3	dbus-org.freedesktop.timedate1.service		unknown
+host	socrat-3	dbus.service		unknown
+host	socrat-3	debug-shell.service		unknown
+host	socrat-3	display-manager.service		unknown
+host	socrat-3	dpkg-db-backup.service		unknown
+host	socrat-3	e2scrub@.service		unknown
+host	socrat-3	e2scrub_all.service		unknown
+host	socrat-3	e2scrub_fail@.service		unknown
+host	socrat-3	e2scrub_reap.service		unknown
+host	socrat-3	emergency.service		unknown
+host	socrat-3	fstrim.service		unknown
+host	socrat-3	fwupd-refresh.service		unknown
+host	socrat-3	fwupd.service		unknown
+host	socrat-3	gdm.service		unknown
+host	socrat-3	gdm3.service		unknown
+host	socrat-3	geoclue.service		unknown
+host	socrat-3	getty-static.service		unknown
+host	socrat-3	getty@.service		unknown
+host	socrat-3	gnome-remote-desktop-configuration.service		unknown
+host	socrat-3	gnome-remote-desktop.service		unknown
+host	socrat-3	grub-common.service		unknown
+host	socrat-3	happd.service		unknown
+host	socrat-3	homelab-disable-c2.service		unknown
+host	socrat-3	homelab-guarded-wifi.service		unknown
+host	socrat-3	homelab-otel-credentials.service		unknown
+host	socrat-3	homelab-otel-heartbeat.service		unknown
+host	socrat-3	homelab-otel-node-exporter.service		unknown
+host	socrat-3	hwclock.service		unknown
+host	socrat-3	ifup@.service		unknown
+host	socrat-3	ifupdown-pre.service		unknown
+host	socrat-3	ifupdown-wait-online.service		unknown
+host	socrat-3	iio-sensor-proxy.service		unknown
+host	socrat-3	initrd-cleanup.service		unknown
+host	socrat-3	initrd-parse-etc.service		unknown
+host	socrat-3	initrd-switch-root.service		unknown
+host	socrat-3	initrd-udevadm-cleanup-db.service		unknown
+host	socrat-3	ipp-usb.service		unknown
+host	socrat-3	iscsi.service		unknown
+host	socrat-3	iscsid.service		unknown
+host	socrat-3	k3s.service		unknown
+host	socrat-3	keyboard-setup.service		unknown
+host	socrat-3	kmod-static-nodes.service		unknown
+host	socrat-3	kmod.service		unknown
+host	socrat-3	ldconfig.service		unknown
+host	socrat-3	logrotate.service		unknown
+host	socrat-3	low-memory-monitor.service		unknown
+host	socrat-3	man-db.service		unknown
+host	socrat-3	ModemManager.service		unknown
+host	socrat-3	modprobe@.service		unknown
+host	socrat-3	networking.service		unknown
+host	socrat-3	NetworkManager-dispatcher.service		unknown
+host	socrat-3	NetworkManager-wait-online.service		unknown
+host	socrat-3	nfs-blkmap.service		unknown
+host	socrat-3	nfs-common.service		unknown
+host	socrat-3	nfs-idmapd.service		unknown
+host	socrat-3	nfs-utils.service		unknown
+host	socrat-3	nftables.service		unknown
+host	socrat-3	nm-priv-helper.service		unknown
+host	socrat-3	nvmefc-boot-connections.service		unknown
+host	socrat-3	nvmf-autoconnect.service		unknown
+host	socrat-3	nvmf-connect-nbft.service		unknown
+host	socrat-3	nvmf-connect@.service		unknown
+host	socrat-3	open-iscsi.service		unknown
+host	socrat-3	packagekit-offline-update.service		unknown
+host	socrat-3	packagekit.service		unknown
+host	socrat-3	pam_namespace.service		unknown
+host	socrat-3	plymouth-halt.service		unknown
+host	socrat-3	plymouth-kexec.service		unknown
+host	socrat-3	plymouth-log.service		unknown
+host	socrat-3	plymouth-poweroff.service		unknown
+host	socrat-3	plymouth-quit-wait.service		unknown
+host	socrat-3	plymouth-quit.service		unknown
+host	socrat-3	plymouth-read-write.service		unknown
+host	socrat-3	plymouth-reboot.service		unknown
+host	socrat-3	plymouth-start.service		unknown
+host	socrat-3	plymouth-switch-root-initramfs.service		unknown
+host	socrat-3	plymouth-switch-root.service		unknown
+host	socrat-3	plymouth.service		unknown
+host	socrat-3	polkit.service		unknown
+host	socrat-3	portmap.service		unknown
+host	socrat-3	power-profiles-daemon.service		unknown
+host	socrat-3	ppp@.service		unknown
+host	socrat-3	procps.service		unknown
+host	socrat-3	quotaon-root.service		unknown
+host	socrat-3	quotaon@.service		unknown
+host	socrat-3	rc-local.service		unknown
+host	socrat-3	realmd.service		unknown
+host	socrat-3	rescue.service		unknown
+host	socrat-3	resolvconf-pull-resolved.service		unknown
+host	socrat-3	resolvconf.service		unknown
+host	socrat-3	rpc-gssd.service		unknown
+host	socrat-3	rpc-statd-notify.service		unknown
+host	socrat-3	rpc-statd.service		unknown
+host	socrat-3	rpc-svcgssd.service		unknown
+host	socrat-3	rpcbind.service		unknown
+host	socrat-3	rsync.service		unknown
+host	socrat-3	rtkit-daemon.service		unknown
+host	socrat-3	saned.service		unknown
+host	socrat-3	saned@.service		unknown
+host	socrat-3	serial-getty@.service		unknown
+host	socrat-3	smartd.service		unknown
+host	socrat-3	smartmontools.service		unknown
+host	socrat-3	speech-dispatcher.service		unknown
+host	socrat-3	speech-dispatcherd.service		unknown
+host	socrat-3	ssh.service		unknown
+host	socrat-3	sshd-keygen.service		unknown
+host	socrat-3	sshd-unix-local@.service		unknown
+host	socrat-3	sshd.service		unknown
+host	socrat-3	sshd@.service		unknown
+host	socrat-3	sudo.service		unknown
+host	socrat-3	switcheroo-control.service		unknown
+host	socrat-3	sysstat-collect.service		unknown
+host	socrat-3	sysstat-rotate.service		unknown
+host	socrat-3	sysstat-summary.service		unknown
+host	socrat-3	sysstat.service		unknown
+host	socrat-3	system-update-cleanup.service		unknown
+host	socrat-3	systemd-ask-password-console.service		unknown
+host	socrat-3	systemd-ask-password-plymouth.service		unknown
+host	socrat-3	systemd-ask-password-wall.service		unknown
+host	socrat-3	systemd-backlight@.service		unknown
+host	socrat-3	systemd-battery-check.service		unknown
+host	socrat-3	systemd-binfmt.service		unknown
+host	socrat-3	systemd-boot-check-no-failures.service		unknown
+host	socrat-3	systemd-bsod.service		unknown
+host	socrat-3	systemd-confext.service		unknown
+host	socrat-3	systemd-creds@.service		unknown
+host	socrat-3	systemd-exit.service		unknown
+host	socrat-3	systemd-firstboot.service		unknown
+host	socrat-3	systemd-fsck-root.service		unknown
+host	socrat-3	systemd-fsck@.service		unknown
+host	socrat-3	systemd-growfs-root.service		unknown
+host	socrat-3	systemd-growfs@.service		unknown
+host	socrat-3	systemd-halt.service		unknown
+host	socrat-3	systemd-hibernate-clear.service		unknown
+host	socrat-3	systemd-hibernate-resume.service		unknown
+host	socrat-3	systemd-hibernate.service		unknown
+host	socrat-3	systemd-hostnamed.service		unknown
+host	socrat-3	systemd-hwdb-update.service		unknown
+host	socrat-3	systemd-hybrid-sleep.service		unknown
+host	socrat-3	systemd-initctl.service		unknown
+host	socrat-3	systemd-journal-catalog-update.service		unknown
+host	socrat-3	systemd-journal-flush.service		unknown
+host	socrat-3	systemd-journald-sync@.service		unknown
+host	socrat-3	systemd-journald.service		unknown
+host	socrat-3	systemd-journald@.service		unknown
+host	socrat-3	systemd-kexec.service		unknown
+host	socrat-3	systemd-localed.service		unknown
+host	socrat-3	systemd-logind.service		unknown
+host	socrat-3	systemd-machine-id-commit.service		unknown
+host	socrat-3	systemd-modules-load.service		unknown
+host	socrat-3	systemd-network-generator.service		unknown
+host	socrat-3	systemd-networkd-persistent-storage.service		unknown
+host	socrat-3	systemd-networkd-wait-online.service		unknown
+host	socrat-3	systemd-networkd-wait-online@.service		unknown
+host	socrat-3	systemd-networkd.service		unknown
+host	socrat-3	systemd-pcrextend@.service		unknown
+host	socrat-3	systemd-pcrfs-root.service		unknown
+host	socrat-3	systemd-pcrfs@.service		unknown
+host	socrat-3	systemd-pcrlock-file-system.service		unknown
+host	socrat-3	systemd-pcrlock-firmware-code.service		unknown
+host	socrat-3	systemd-pcrlock-firmware-config.service		unknown
+host	socrat-3	systemd-pcrlock-machine-id.service		unknown
+host	socrat-3	systemd-pcrlock-make-policy.service		unknown
+host	socrat-3	systemd-pcrlock-secureboot-authority.service		unknown
+host	socrat-3	systemd-pcrlock-secureboot-policy.service		unknown
+host	socrat-3	systemd-pcrlock@.service		unknown
+host	socrat-3	systemd-pcrmachine.service		unknown
+host	socrat-3	systemd-pcrphase-initrd.service		unknown
+host	socrat-3	systemd-pcrphase-sysinit.service		unknown
+host	socrat-3	systemd-pcrphase.service		unknown
+host	socrat-3	systemd-poweroff.service		unknown
+host	socrat-3	systemd-pstore.service		unknown
+host	socrat-3	systemd-quotacheck-root.service		unknown
+host	socrat-3	systemd-quotacheck@.service		unknown
+host	socrat-3	systemd-random-seed.service		unknown
+host	socrat-3	systemd-reboot.service		unknown
+host	socrat-3	systemd-remount-fs.service		unknown
+host	socrat-3	systemd-rfkill.service		unknown
+host	socrat-3	systemd-soft-reboot.service		unknown
+host	socrat-3	systemd-storagetm.service		unknown
+host	socrat-3	systemd-suspend-then-hibernate.service		unknown
+host	socrat-3	systemd-suspend.service		unknown
+host	socrat-3	systemd-sysctl.service		unknown
+host	socrat-3	systemd-sysext.service		unknown
+host	socrat-3	systemd-sysext@.service		unknown
+host	socrat-3	systemd-sysusers.service		unknown
+host	socrat-3	systemd-timedated.service		unknown
+host	socrat-3	systemd-tmpfiles-clean.service		unknown
+host	socrat-3	systemd-tmpfiles-setup-dev-early.service		unknown
+host	socrat-3	systemd-tmpfiles-setup-dev.service		unknown
+host	socrat-3	systemd-tmpfiles-setup.service		unknown
+host	socrat-3	systemd-tpm2-setup-early.service		unknown
+host	socrat-3	systemd-tpm2-setup.service		unknown
+host	socrat-3	systemd-udev-load-credentials.service		unknown
+host	socrat-3	systemd-udev-settle.service		unknown
+host	socrat-3	systemd-udev-trigger.service		unknown
+host	socrat-3	systemd-udevd.service		unknown
+host	socrat-3	systemd-update-done.service		unknown
+host	socrat-3	systemd-user-sessions.service		unknown
+host	socrat-3	systemd-volatile-root.service		unknown
+host	socrat-3	udev.service		unknown
+host	socrat-3	udisks2.service		unknown
+host	socrat-3	upower.service		unknown
+host	socrat-3	usb_modeswitch@.service		unknown
+host	socrat-3	usbmuxd.service		unknown
+host	socrat-3	user-runtime-dir@.service		unknown
+host	socrat-3	user@.service		unknown
+host	socrat-3	uuidd.service		unknown
+host	socrat-3	wacom-inputattach@.service		unknown
+host	socrat-3	wg-quick@.service		unknown
+host	socrat-3	wpa_supplicant-nl80211@.service		unknown
+host	socrat-3	wpa_supplicant-wired@.service		unknown
+host	socrat-3	wpa_supplicant.service		unknown
+host	socrat-3	wpa_supplicant@.service		unknown
+host	socrat-3	x11-common.service		unknown
+host	socrat-3	accounts-daemon.service		unknown
+host	socrat-3	alsa-restore.service		unknown
+host	socrat-3	alsa-state.service		unknown
+host	socrat-3	apparmor.service		unknown
+host	socrat-3	apt-daily-upgrade.service		unknown
+host	socrat-3	apt-daily.service		unknown
+host	socrat-3	auditd.service		unknown
+host	socrat-3	auth-rpcgss-module.service		unknown
+host	socrat-3	auto-cpufreq.service		unknown
+host	socrat-3	bluetooth.service		unknown
+host	socrat-3	chrony.service		unknown
+host	socrat-3	connman.service		unknown
+host	socrat-3	console-screen.service		unknown
+host	socrat-3	console-setup.service		unknown
+host	socrat-3	cups-browsed.service		unknown
+host	socrat-3	cups.service		unknown
+host	socrat-3	dbus.service		unknown
+host	socrat-3	dpkg-db-backup.service		unknown
+host	socrat-3	e2scrub_all.service		unknown
+host	socrat-3	e2scrub_reap.service		unknown
+host	socrat-3	emergency.service		unknown
+host	socrat-3	fstrim.service		unknown
+host	socrat-3	fwupd-refresh.service		unknown
+host	socrat-3	gdm.service		unknown
+host	socrat-3	getty-static.service		unknown
+host	socrat-3	getty@tty1.service		unknown
+host	socrat-3	grub-common.service		unknown
+host	socrat-3	gssproxy.service		unknown
+host	socrat-3	happd.service		unknown
+host	socrat-3	homelab-disable-c2.service		unknown
+host	socrat-3	homelab-guarded-wifi.service		unknown
+host	socrat-3	homelab-otel-credentials.service		unknown
+host	socrat-3	homelab-otel-heartbeat.service		unknown
+host	socrat-3	homelab-otel-node-exporter.service		unknown
+host	socrat-3	ifup@enp2s0.service		unknown
+host	socrat-3	ifupdown-pre.service		unknown
+host	socrat-3	initrd-cleanup.service		unknown
+host	socrat-3	initrd-parse-etc.service		unknown
+host	socrat-3	initrd-switch-root.service		unknown
+host	socrat-3	initrd-udevadm-cleanup-db.service		unknown
+host	socrat-3	iscsid.service		unknown
+host	socrat-3	kbd.service		unknown
+host	socrat-3	keyboard-setup.service		unknown
+host	socrat-3	kmod-static-nodes.service		unknown
+host	socrat-3	ldconfig.service		unknown
+host	socrat-3	logrotate.service		unknown
+host	socrat-3	low-memory-monitor.service		unknown
+host	socrat-3	man-db.service		unknown
+host	socrat-3	ModemManager.service		unknown
+host	socrat-3	modprobe@configfs.service		unknown
+host	socrat-3	modprobe@drm.service		unknown
+host	socrat-3	modprobe@efi_pstore.service		unknown
+host	socrat-3	modprobe@fuse.service		unknown
+host	socrat-3	modprobe@nvme_fabrics.service		unknown
+host	socrat-3	networking.service		unknown
+host	socrat-3	NetworkManager-wait-online.service		unknown
+host	socrat-3	nfs-blkmap.service		unknown
+host	socrat-3	nfs-server.service		unknown
+host	socrat-3	nfs-utils.service		unknown
+host	socrat-3	nslcd.service		unknown
+host	socrat-3	ntp.service		unknown
+host	socrat-3	ntpsec.service		unknown
+host	socrat-3	nvmefc-boot-connections.service		unknown
+host	socrat-3	nvmf-autoconnect.service		unknown
+host	socrat-3	open-iscsi.service		unknown
+host	socrat-3	openntpd.service		unknown
+host	socrat-3	plymouth-quit-wait.service		unknown
+host	socrat-3	plymouth-quit.service		unknown
+host	socrat-3	plymouth-read-write.service		unknown
+host	socrat-3	plymouth-start.service		unknown
+host	socrat-3	plymouth-switch-root.service		unknown
+host	socrat-3	polkit.service		unknown
+host	socrat-3	power-profiles-daemon.service		unknown
+host	socrat-3	rc-local.service		unknown
+host	socrat-3	rescue.service		unknown
+host	socrat-3	resolvconf.service		unknown
+host	socrat-3	rpc-gssd.service		unknown
+host	socrat-3	rpc-statd-notify.service		unknown
+host	socrat-3	rpc-svcgssd.service		unknown
+host	socrat-3	rpcbind.service		unknown
+host	socrat-3	rtkit-daemon.service		unknown
+host	socrat-3	smartmontools.service		unknown
+host	socrat-3	ssh.service		unknown
+host	socrat-3	sshd-keygen.service		unknown
+host	socrat-3	sshd@sshd-keygen.service		unknown
+host	socrat-3	switcheroo-control.service		unknown
+host	socrat-3	syslog.service		unknown
+host	socrat-3	system76-power.service		unknown
+host	socrat-3	systemd-ask-password-console.service		unknown
+host	socrat-3	systemd-ask-password-plymouth.service		unknown
+host	socrat-3	systemd-ask-password-wall.service		unknown
+host	socrat-3	systemd-battery-check.service		unknown
+host	socrat-3	systemd-binfmt.service		unknown
+host	socrat-3	systemd-bsod.service		unknown
+host	socrat-3	systemd-confext.service		unknown
+host	socrat-3	systemd-firstboot.service		unknown
+host	socrat-3	systemd-fsck-root.service		unknown
+host	socrat-3	systemd-hibernate-clear.service		unknown
+host	socrat-3	systemd-hibernate-resume.service		unknown
+host	socrat-3	systemd-hostnamed.service		unknown
+host	socrat-3	systemd-hwdb-update.service		unknown
+host	socrat-3	systemd-initctl.service		unknown
+host	socrat-3	systemd-journal-catalog-update.service		unknown
+host	socrat-3	systemd-journal-flush.service		unknown
+host	socrat-3	systemd-journald.service		unknown
+host	socrat-3	systemd-logind.service		unknown
+host	socrat-3	systemd-machine-id-commit.service		unknown
+host	socrat-3	systemd-modules-load.service		unknown
+host	socrat-3	systemd-networkd-persistent-storage.service		unknown
+host	socrat-3	systemd-networkd.service		unknown
+host	socrat-3	systemd-oomd.service		unknown
+host	socrat-3	systemd-pcrmachine.service		unknown
+host	socrat-3	systemd-pcrphase-initrd.service		unknown
+host	socrat-3	systemd-pcrphase-sysinit.service		unknown
+host	socrat-3	systemd-pcrphase.service		unknown
+host	socrat-3	systemd-pstore.service		unknown
+host	socrat-3	systemd-quotacheck-root.service		unknown
+host	socrat-3	systemd-random-seed.service		unknown
+host	socrat-3	systemd-remount-fs.service		unknown
+host	socrat-3	systemd-rfkill.service		unknown
+host	socrat-3	systemd-soft-reboot.service		unknown
+host	socrat-3	systemd-sysctl.service		unknown
+host	socrat-3	systemd-sysext.service		unknown
+host	socrat-3	systemd-sysusers.service		unknown
+host	socrat-3	systemd-tmpfiles-clean.service		unknown
+host	socrat-3	systemd-tmpfiles-setup-dev-early.service		unknown
+host	socrat-3	systemd-tmpfiles-setup-dev.service		unknown
+host	socrat-3	systemd-tmpfiles-setup.service		unknown
+host	socrat-3	systemd-tpm2-setup-early.service		unknown
+host	socrat-3	systemd-tpm2-setup.service		unknown
+host	socrat-3	systemd-udev-load-credentials.service		unknown
+host	socrat-3	systemd-udev-settle.service		unknown
+host	socrat-3	systemd-udev-trigger.service		unknown
+host	socrat-3	systemd-udevd.service		unknown
+host	socrat-3	systemd-update-done.service		unknown
+host	socrat-3	systemd-user-sessions.service		unknown
+host	socrat-3	systemd-vconsole-setup.service		unknown
+host	socrat-3	tlp.service		unknown
+host	socrat-3	tuned.service		unknown
+host	socrat-3	udisks2.service		unknown
+host	socrat-3	upower.service		unknown
+host	socrat-3	user-runtime-dir@1000.service		unknown
+host	socrat-3	user@1000.service		unknown
+host	socrat-3	uuidd.service		unknown
+host	socrat-3	wg-quick@wg-socrat.service		unknown
+host	socrat-3	wpa_supplicant.service		unknown
