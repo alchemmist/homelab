@@ -3,7 +3,10 @@ externallyManagedRuntimeSecrets: true
 core:
   extraEnvVars:
   - name: CONFIG_OVERWRITE_JSON
-    value: '{"auth_mode":"db_auth","self_registration":false,"project_creation_restriction":"adminonly"}'
+    valueFrom:
+      secretKeyRef:
+        name: socrat-authentik-harbor
+        key: config-json
   nodeSelector:
     kubernetes.io/hostname: socrat-0
   resources:
