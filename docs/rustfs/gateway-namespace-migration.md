@@ -91,3 +91,61 @@ and restore its exact S3 ingress peer BEFORE removing only the new identity read
 Deployment/Service/NetworkPolicy. Preserve Secrets pending deliberate cleanup;
 never delete shared identity resources or any retained storage. No edge rollback
 or restart is involved. Keep provenance, private credentials and fixture journal.
+
+## Actual private execution — 2026-11-05
+
+Reader relocation is now executed, not merely prepared. Reviewed image source
+`eba1d839ac2313d7694aa0d2e7be70269af9a01a`; activation commit
+`586109ae1803be25f02d8ef23338c89125b647ed`. Manual Argo sync explicitly used
+`prune:false`; after exact old-resource cleanup Argo independently reported
+Synced/Healthy/Succeeded at that revision. Browser routes remain false; SPI unchanged.
+
+Published linux/amd64 immutable full-source-SHA tag under
+`harbor.socrat.alchemmist.xyz/homelab/rustfs-gateway`. Pinned base remains
+`python:3.13-alpine@sha256:7984cf56ceaddebe4fefeb75d64000b9f45d8b77b11a09b24524da6cdc3af0c8`.
+Actual authenticated registry manifest, independently hashed from downloaded bytes:
+`sha256:9253d36e923e216cd34714a5baf9b57d1bb5577bf52c4671a4f8d302a27fef57`.
+Local digest `4766a5e0...` differed and was NOT deployed.
+
+Default AppProject allows both namespaces; controller create checks for exact
+Deployment/Service/NetworkPolicy passed, no RBAC edits. No target resource/Secret
+collisions. Only reader and dedicated pull-robot Secrets were reconstructed with
+fresh metadata in identity; exact types/key sets/private equality verified. Reader
+has no volumes and service-account-token automount is false. Capacity requests
+before migration: nodes 0/1/2/3 memory 98/79/62/76%; duplicate reader64Mi fits,
+reader placed socrat-2. Overcommitted limits/eviction risk remain.
+
+Exact old resources backed up privately in
+`~/.config/homelab/rustfs-foundation/reader-relocation/resources-before.json`
+(mode0600, directory0700). After functional checks and exact Argo tracking ownership
+verification, ONLY old rustfs gateway Deployment/Service/isolation NetworkPolicy
+were deleted. Storage Deployment spec and UID compare exactly unchanged; retained
+PVC remains Bound. Old Secrets/journals/fixtures preserved for rollback.
+
+Actual new reader mounted-key canonical DNS/SigV4 manifest+artifact read passed:
+45 bytes, SHA256 `973952a7d502a67bc652d5b67f104d0d6c1756bb4edb713e682e40f1b68e34f0`.
+Canonical S3 DNS resolved10.43.34.112. Verified-TLS Authentik discovery returned200
+(no trailing slash; trailing-slash request returned404, not an egress failure).
+Local HTTP unauthenticated GET/HEAD/PUT, forged owner headers, double-leading slash
+and traversal targets returned401. Local RustFS suite29 passed; Helm lint/render
+and diff checks passed. These do not substitute for human authenticated downloads.
+
+**New observed public-isolation blocker; no exception added:** k3s1.36.5+k3s1
+node metadata reports Flannel VXLAN. Reader Pod10.42.0.7 and Service10.43.7.71:8080
+are reachable from real VPS edge hostNetwork pod on socrat-2; route to reader
+reports `dev cni0 src10.42.0.1`. Both produce401, proving reachability ONLY, not
+network isolation or exact post-NAT source. Home Traefik likewise reaches reader.
+An own unprivileged unrelated identity probe on socrat-2 was denied reader Pod
+and Service (ConnectionRefused), but reached RustFS Service10.43.34.112:9000:
+HTTP GET /health returned200, source socket10.42.0.9. Earlier probe10.42.0.8 also
+connected. This contradicts intended unrelated-pod S3 denial despite exact
+combined namespace/pod ingress selectors. No packet capture, host privilege,
+network exception or policy broadening used. Probes removed. Parent review and
+bounded CNI/NAT enforcement investigation are required before public activation;
+no speculative CIDR fix is authorized. CNI binary/controller version and post-NAT
+source at S3 were not inspected, so no precise root-cause claim is made.
+
+DNS remains unapplied because secure sudo/become access is missing. TLS/SNI,
+both-entrance authenticated checks, human owner/platform/outsider OIDC/STS,
+logout/revocation and bounded authenticated slow-peer/hash tests remain gates.
+This is a successful PRIVATE relocation, NOT public acceptance or SPI activation.

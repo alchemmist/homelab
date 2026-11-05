@@ -81,3 +81,22 @@ Standalone socrat-0 20Gi Retain local-path is NOT HA/backup/quota. README stress
 hardware is not a vendor minimum. No publisher switch implemented: foundation must
 be up/tested FIRST. Preserve all n8n identities/credentials/PVC/encryption key,
 queues/leases/attempts, calendar/blog write-disabled policy and historical comments.
+
+## 2026-11-05 private reader relocation actually executed
+
+See `docs/rustfs/gateway-namespace-migration.md` actual execution section. Reviewed
+source eba1d839ac2313d7694aa0d2e7be70269af9a01a; activation/observed Argo revision
+586109ae1803be25f02d8ef23338c89125b647ed Synced/Healthy/Succeeded. Reader only now
+in identity; actual registry image sha256:9253d36e923e216cd34714a5baf9b57d1bb5577bf52c4671a4f8d302a27fef57.
+Private canonical DNS/SigV4 exact45-byte/hash read and Authentik HTTPS200 passed.
+Old gateway Deployment/Service/policy removed only after ownership/function checks.
+Storage spec+UID unchanged, PVC retained; only reader/pull credentials in identity.
+No shared-edge change, browserRoutes=false, no SPI switch.
+
+New public gate: actual VPS hostNetwork edge reaches reader via node route
+src10.42.0.1;401 is NOT network isolation. Own unrelated identity pod on socrat-2
+cannot reach reader but CAN GET RustFS Service /health200 (socket source10.42.0.9).
+No speculative allowance/fix added. Parent review/CNI-NAT investigation needed;
+post-NAT S3 source/root cause unknown. DNS still lacks sudo credential; TLS,
+human browser/native OIDC/STS/logout/revocation, authenticated bounded/slow-peer
+checks remain unperformed. Do not describe DNS as the only remaining gate.
