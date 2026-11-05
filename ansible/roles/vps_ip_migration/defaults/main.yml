@@ -1,0 +1,8 @@
+---
+# Audit is the default. Both old and new addresses must be supplied explicitly.
+vps_ip_migration_apply: false
+vps_ip_migration_allow_service_restarts: false
+vps_ip_migration_backup_root: /var/backups/homelab-vps-ip-migration
+vps_ip_migration_repository_backup_root: "{{ lookup('env', 'HOME') }}/Library/Application Support/homelab/vps-ip-migration"
+vps_ip_migration_script: "{{ playbook_dir }}/../../scripts/vps-ip-migration.py"
+vps_ip_migration_repository_root: "{{ playbook_dir }}/../.."

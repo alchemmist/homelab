@@ -1,0 +1,130 @@
+---
+- name: Validate controller inputs and audit owned repository references
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  vars_files: [../roles/vps_ip_migration/defaults/main.yml]
+  tasks:
+    - name: Require an explicit reviewed migration pair
+      ansible.builtin.assert:
+        that:
+          - vps_ip_migration_old_ip is defined
+          - vps_ip_migration_new_ip is defined
+          - vps_ip_migration_old_ip != vps_ip_migration_new_ip
+          - not (vps_ip_migration_apply | bool) or (vps_ip_migration_allow_service_restarts | bool)
+        fail_msg: Supply old/new IPv4; apply also requires explicit service-restart approval. Read the VPS migration skill first.
+    - name: Audit without writing repository files
+      ansible.builtin.command:
+        argv:
+          - "{{ ansible_playbook_python }}"
+          - "{{ vps_ip_migration_script }}"
+          - repository
+          - --old-ip
+          - "{{ vps_ip_migration_old_ip }}"
+          - --new-ip
+          - "{{ vps_ip_migration_new_ip }}"
+          - --root
+          - "{{ vps_ip_migration_repository_root }}"
+          - --backup-root
+          - "{{ vps_ip_migration_repository_backup_root }}"
+      changed_when: false
+      check_mode: false
+
+- name: Preflight every node before any production or source mutation
+  hosts: Socrat
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  vars_files: [../roles/vps_ip_migration/defaults/main.yml]
+  tasks:
+    - name: Refuse partial inventory execution
+      ansible.builtin.assert:
+        that:
+          - (ansible_play_hosts_all | sort) == ['socrat-0', 'socrat-1', 'socrat-2', 'socrat-3']
+        fail_msg: All four nodes must pass preflight; do not use --limit to bypass it.
+      run_once: true
+    - name: Audit host files database schemas and assigned VPS address
+      ansible.builtin.script:
+        cmd: >-
+          {{ vps_ip_migration_script | quote }} host
+          --old-ip {{ vps_ip_migration_old_ip | quote }}
+          --new-ip {{ vps_ip_migration_new_ip | quote }}
+          --host {{ inventory_hostname | quote }}
+          --require-assigned
+          --backup-root {{ vps_ip_migration_backup_root | quote }}
+        executable: /usr/bin/python3
+      changed_when: false
+      check_mode: false
+      vars:
+        ansible_ssh_use_tty: false
+
+- name: Retarget reviewed source files only after all host preflights passed
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  vars_files: [../roles/vps_ip_migration/defaults/main.yml]
+  tasks:
+    - name: Save external preimages and change owned repository references
+      ansible.builtin.command:
+        argv:
+          - "{{ ansible_playbook_python }}"
+          - "{{ vps_ip_migration_script }}"
+          - repository
+          - --old-ip
+          - "{{ vps_ip_migration_old_ip }}"
+          - --new-ip
+          - "{{ vps_ip_migration_new_ip }}"
+          - --root
+          - "{{ vps_ip_migration_repository_root }}"
+          - --backup-root
+          - "{{ vps_ip_migration_repository_backup_root }}"
+          - --apply
+      register: vps_ip_repository_result
+      changed_when: (vps_ip_repository_result.stdout | from_json).changed | bool
+      when: (vps_ip_migration_apply | bool) and not ansible_check_mode
+
+- name: Rebind the VPS first while retaining the current private access path
+  hosts: socrat-2
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  vars_files: [../roles/vps_ip_migration/defaults/main.yml]
+  tasks:
+    - name: Apply reviewed VPS host changes
+      ansible.builtin.include_role:
+        name: vps_ip_migration
+        tasks_from: apply
+      when: (vps_ip_migration_apply | bool) and not ansible_check_mode
+
+- name: Retarget home and worker endpoints serially without bouncing WireGuard
+  hosts: socrat-0:socrat-1:socrat-3
+  order: sorted
+  serial: 1
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  vars_files: [../roles/vps_ip_migration/defaults/main.yml]
+  tasks:
+    - name: Apply reviewed peer host changes
+      ansible.builtin.include_role:
+        name: vps_ip_migration
+        tasks_from: apply
+      when: (vps_ip_migration_apply | bool) and not ansible_check_mode
+
+- name: Report the explicit boundary of host automation
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+  tasks:
+    - name: Do not mistake a successful playbook for migration acceptance
+      ansible.builtin.debug:
+        msg: >-
+          Host/source phase finished. This is NOT whole-migration acceptance.
+          Follow .agents/skills/vps-ip-migration/SKILL.md for GitOps, 3x-ui reload,
+          Collector-only activation, NetBird secret/reload, webhook, registrar glue,
+          external tunnel tests, subscription checks and imported client profiles.

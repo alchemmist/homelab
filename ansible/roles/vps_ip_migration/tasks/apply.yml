@@ -1,0 +1,19 @@
+---
+- name: Apply only reviewed files and address fields with private preimages
+  ansible.builtin.script:
+    cmd: >-
+      {{ vps_ip_migration_script | quote }} host
+      --old-ip {{ vps_ip_migration_old_ip | quote }}
+      --new-ip {{ vps_ip_migration_new_ip | quote }}
+      --host {{ inventory_hostname | quote }}
+      --require-assigned
+      --backup-root {{ vps_ip_migration_backup_root | quote }}
+      --apply --allow-service-restarts
+    executable: /usr/bin/python3
+  register: vps_ip_host_result
+  changed_when: (vps_ip_host_result.stdout | from_json).changed | bool
+  # No diff of live configuration or database rows: these contain credentials.
+  diff: false
+
+  vars:
+    ansible_ssh_use_tty: false

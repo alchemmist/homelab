@@ -245,3 +245,12 @@ Live browser → Traefik → LMS/database traces, Grafana waterfall, Loki correl
 dedicated mTLS identity and maintained credential refresh are documented in
 [the LMS observability runbook](docs/lms-observability.md). The dashboard is
 managed by the LMS Helm chart/Argo application, not a one-off manual import.
+
+
+## VPS public IP migration
+
+Before replacing the public IPv4 of `socrat-2`, use the repository skill
+[`.agents/skills/vps-ip-migration/SKILL.md`](.agents/skills/vps-ip-migration/SKILL.md).
+It requires the audit-first [Ansible playbook](ansible/playbooks/vps-ip-migration.yml)
+and defines the separate registrar, Kubernetes, external delivery and client
+acceptance steps. A successful host playbook alone is not migration completion.
