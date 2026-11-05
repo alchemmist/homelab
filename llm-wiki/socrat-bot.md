@@ -280,3 +280,68 @@ alone does not grant approval. Owner approval remains required only the first ti
 Final combined verification: PostgreSQL17 **128 passed, 15 conditional skips**;
 scoped Ruff, compileall, diff checks and deterministic wiki rendering passed.
 This is local implementation/test evidence, not a production rollout claim.
+
+## Sent mailing edits — released and verified (2026-11-05)
+
+Bot commit `cacc304a9cd521c7aaf8514db3465e688d001d33` is deployed through the
+normal GitHub Actions → Harbor → GitOps path. Release run:
+https://github.com/alchemmist/socrat-bot/actions/runs/42078994256 . CI reported
+**149 passed, 15 conditional skips**. Live image digest:
+`sha256:8fcea4bc31d582c9f55f1ee2578d6ee099ae883261671ef81fc61fa449d431ff`.
+All three component rollouts completed, Argo was Synced/Healthy, healthz returned
+`{"ok":true}`, and production migration head is `0013_broadcast_copies`.
+This also confirms the earlier escalation/unsubscribe migrations are deployed;
+it does not by itself prove every live escalation scenario.
+
+### Usage
+
+Owner-only, private chat:
+
+- Reply to the bot's delivery summary with `/mailing_edit NEW_TEXT`.
+- Alternatively `/mailing_edit UUID NEW_TEXT`.
+- `/mailing_edit` alone lists owned sent mailings and marks entries with no saved
+  receipts unavailable. Delivery summaries include the mailing UUID.
+
+New text remains plain text; multiline/Unicode is preserved, with Telegram's
+4096 UTF-16-unit limit. The canonical command registry updates owner autocomplete;
+`/mailing_edit` was verified with Telegram `getMyCommands` for fallback/en/ru.
+No BotFather command-list maintenance is required.
+
+Immediate, scheduled, and legacy API/action delivery now persist each confirmed
+original `chat_id`/`message_id` in `broadcast_copies`. Edits address those copies,
+not the current VPN audience, and never send replacement messages. Per-copy
+applied text/error allows partial retry; Telegram "message is not modified" is
+success. Results distinguish updated/failed/skipped. Accepted sends whose receipt
+could not be persisted are reported as untracked with recovery details and an
+explicit **Do not resend** warning, not falsely counted as rejected sends.
+
+A durable five-minute edit lease serializes ordinary edits and fences persistence;
+no DB transaction is held through edit HTTP. Finite leases do not provide an
+exactly-once guarantee under arbitrary process suspension. Immediate/scheduler
+claims use compare-and-swap to avoid simultaneous sends. The normal legacy callback
+releases its transaction before HTTP; the direct `apply_action` legacy fallback
+explicitly commits before its network call.
+
+### Historical limitation and actual acceptance
+
+**Old mailings cannot be reconstructed from Bot API chat history.** This rollout
+found three historical sent mailings and zero saved original copies; no IDs were
+invented, scanned, or guessed. `messages.getHistory` is a user-only MTProto method,
+not available to a bot token. A recipient's reply can expose the original message
+ID, but a `/fix` recovery workflow was only discussed and is **not implemented**.
+The requested old VPN notice was not edited, and no correction broadcast was sent.
+New-send permission must not be inferred from permission to edit existing copies.
+
+Released-image live smoke used a fresh temporary SQLite DB (production DB read-only
+only to obtain the owner identity), with outgoing Telegram restricted to the owner:
+one explicitly marked test send, one in-place edit confirmed by Telegram with the
+same message ID, reply-to-summary command parsing, explicit-UUID retry without
+resend, and group/non-owner rejection. The single test message was then deleted.
+No other VPN subscriber received a test, no real mailing was edited, and no
+production mailing rows were written by the smoke. Production counts remained
+three old mailings / zero saved copies afterward.
+
+Local Kubernetes config still targeted an unreachable LAN API192.168.0.23 during
+this check. The existing NetBird endpoint worked with an explicit invocation:
+`kubectl --server=https://10.250.0.3:6443 ...`. No kubeconfig, credentials, or cluster
+network configuration was changed to perform verification.
