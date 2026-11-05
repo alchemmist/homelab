@@ -11,9 +11,10 @@ spec:
     path: charts/rustfs
     helm:
       releaseName: rustfs
+      valueFiles: [values-foundation-live.yaml]
   destination:
     namespace: rustfs
     server: https://kubernetes.default.svc
-  # Manual only; chart defaults render no resources.
+  # Manual sync only; explicit tracked foundation activation, browser routes off.
   syncPolicy:
     syncOptions: [CreateNamespace=true]

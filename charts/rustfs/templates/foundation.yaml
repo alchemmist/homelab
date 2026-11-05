@@ -122,8 +122,7 @@ spec:
             - {name: s3, containerPort: 9000}
             - {name: console, containerPort: 9001}
           resources:
-            requests: {cpu: 500m, memory: 4Gi}
-            limits: {cpu: '2', memory: 4Gi}
+            {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
             - {name: data, mountPath: /data}
             - {name: logs, mountPath: /logs}

@@ -1,0 +1,14 @@
+# Controlled foundation only. Browser admission must be complete before routing.
+enabled: true
+oidc:
+  enabled: false
+gateway:
+  enabled: false
+  image: harbor.socrat.alchemmist.xyz/homelab/rustfs-gateway@sha256:41fd2a15e4f0960f252e78649f51ee79d9102474730e194a304e04e25e28bf6d
+browserRoutes:
+  enabled: false
+# Explicit Burstable reservation; no reduction of 4Gi runtime bound.
+# socrat-0 allocatable 32545144Ki; existing requests 29392Mi.
+resources:
+  requests: {cpu: 500m, memory: 2Gi}
+  limits: {cpu: '2', memory: 4Gi}
