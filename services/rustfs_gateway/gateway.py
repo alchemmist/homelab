@@ -52,10 +52,23 @@ def watchdog(sock, seconds):
     return timer
 
 
+class DeadlineResponse(http.client.HTTPResponse):
+    def close(self):
+        try:
+            super().close()
+        finally:
+            timer = getattr(self, 'deadline_timer', None)
+            if timer is not None:
+                timer.cancel()
+
+
 class DeadlineConnection:
+    response_class = DeadlineResponse
+
     def connect(self):
         start = time.monotonic()
         self.deadline_expired = False
+        self.response_owns_deadline = False
         connected_socket = []
         def abort():
             self.deadline_expired = True
@@ -75,9 +88,26 @@ class DeadlineConnection:
             self.close()
             raise
 
+    def getresponse(self):
+        # HTTPConnection closes/detaches its socket before returning a response
+        # with Connection: close. The response's file still owns the descriptor:
+        # keep its watchdog alive until that response is explicitly closed.
+        self.transferring_response = True
+        try:
+            response = super().getresponse()
+            response.deadline_timer = self.deadline_timer
+            self.response_owns_deadline = True
+            return response
+        except BaseException:
+            self.deadline_timer.cancel()
+            raise
+        finally:
+            self.transferring_response = False
+
     def close(self):
         timer = getattr(self, 'deadline_timer', None)
-        if timer:
+        if timer and not (getattr(self, 'transferring_response', False) or
+                          getattr(self, 'response_owns_deadline', False)):
             timer.cancel()
         super().close()
 

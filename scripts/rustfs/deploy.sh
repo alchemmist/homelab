@@ -7,6 +7,10 @@ chart="$repo/charts/rustfs"
 if [[ -n $(git -C "$repo" status --porcelain --untracked-files=no) ]]; then
   echo 'Refusing dirty tracked source' >&2; exit 2
 fi
+if [[ -n $(git -C "$repo" ls-files --others --exclude-standard -- charts/rustfs) ||
+      -n $(git -C "$repo" ls-files --others --ignored --exclude-standard -- charts/rustfs) ]]; then
+  echo 'Refusing untracked or ignored chart inputs' >&2; exit 2
+fi
 if [[ $# != 3 || $1 != --apply || $2 != "$(git -C "$repo" rev-parse HEAD)" ]]; then
   echo 'Usage: deploy.sh --apply <independently-approved-HEAD> <private-runtime-values.yaml>' >&2; exit 2
 fi

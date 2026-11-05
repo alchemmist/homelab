@@ -54,6 +54,67 @@ class Deadlines(unittest.TestCase):
                 finally:
                     listener.close(); t.join(2)
 
+    def test_connection_close_body_deadline_and_worker_recovery(self):
+        for version in ('HTTP/1.1', 'HTTP/1.0'):
+            with self.subTest(version=version), patch.object(g, 'UPSTREAM_SECONDS', .25), patch.object(g, 'MAX_CONNECTIONS', 1):
+                listener = socket.socket(); listener.bind(('127.0.0.1', 0)); listener.listen()
+                url = 'http://127.0.0.1:%d/' % listener.getsockname()[1]
+                def peer():
+                    c, _ = listener.accept()
+                    with c:
+                        c.recv(4096)
+                        try:
+                            c.sendall((version + ' 200 OK\r\nConnection: close\r\nContent-Length: 30\r\n\r\n').encode())
+                            for _ in range(30):
+                                c.sendall(b'a'); time.sleep(.06)
+                        except OSError:
+                            pass
+                t = threading.Thread(target=peer, daemon=True); t.start()
+                class Reader:
+                    def authorized(self, cookie): return bool(cookie)
+                    def read(self, key):
+                        with g.opener().open(url, timeout=1) as response:
+                            return g.bounded(response)
+                server = g.Server(('127.0.0.1', 0), g.Handler); server.reader = Reader()
+                serving = threading.Thread(target=server.serve_forever, daemon=True); serving.start()
+                try:
+                    start = time.monotonic()
+                    with socket.create_connection(server.server_address) as c:
+                        c.settimeout(1)
+                        c.sendall(('GET /spi/v1/' + 'a'*64 + '/' + 'b'*64 + '/manifest.json HTTP/1.0\r\nCookie: fixture\r\n\r\n').encode())
+                        self.assertIn(b'502', c.recv(4096))
+                    self.assertLess(time.monotonic()-start, .9)
+                    # A second connection proves the bounded slot was returned,
+                    # not merely that a client-side watchdog closed a socket.
+                    until = time.monotonic() + .5
+                    while not server.slots.acquire(blocking=False):
+                        self.assertLess(time.monotonic(), until); time.sleep(.01)
+                    server.slots.release()
+                    with socket.create_connection(server.server_address) as c:
+                        c.settimeout(1); c.sendall(b'GET / HTTP/1.0\r\n\r\n')
+                        self.assertIn(b'401', c.recv(4096))
+                finally:
+                    listener.close(); t.join(2)
+                    server.shutdown(); server.server_close(); serving.join()
+
+    def test_response_close_cancels_upstream_timer(self):
+        listener = socket.socket(); listener.bind(('127.0.0.1', 0)); listener.listen()
+        def peer():
+            c, _ = listener.accept()
+            with c:
+                c.recv(4096)
+                c.sendall(b'HTTP/1.0 200 OK\r\nContent-Length: 1\r\n\r\na')
+        t = threading.Thread(target=peer, daemon=True); t.start()
+        try:
+            response = g.opener().open('http://127.0.0.1:%d/' % listener.getsockname()[1], timeout=1)
+            timer = response.deadline_timer
+            self.assertFalse(timer.finished.is_set())
+            self.assertEqual(g.bounded(response), b'a')
+            response.close()
+            self.assertTrue(timer.finished.is_set())
+        finally:
+            listener.close(); t.join(2)
+
     def test_response_write_deadline_releases_worker(self):
         class Handler(g.Handler):
             def setup(self):
