@@ -278,7 +278,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
         # Authentication precedes even validation/error responses; never trust X-auth headers.
         cookies = self.headers.get_all('Cookie', [])
         if len(cookies) != 1 or not self.server.reader.authorized(cookies[0]):
-            self.respond(401)
+            # Browser clicks must enter SSO and return to the exact file, not
+            # stop at an empty401. Never derive the origin from caller headers
+            # or inspect object existence before authentication.
+            location = None
+            if self.command == 'GET' and 'text/html' in self.headers.get('Accept', '').lower():
+                try:
+                    target = self.raw_requestline.split()[1].decode('ascii')
+                    if target != self.path:
+                        raise ValueError('normalized target denied')
+                    valid_key(target)
+                    location = ORIGIN + '/outpost.goauthentik.io/start?' + urllib.parse.urlencode({'rd': ORIGIN + target})
+                except (ValueError, IndexError):
+                    pass
+            self.respond(302 if location else 401, location=location)
             return
         if self.command not in ('GET', 'HEAD'):
             self.respond(405)
@@ -306,11 +319,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.close_connection = True
         self.respond(401)
 
-    def respond(self, status, body=b'', filename=None):
+    def respond(self, status, body=b'', filename=None, location=None):
         self.send_response(status)
         self.send_header('Content-Type', 'application/octet-stream')
         self.send_header('X-Content-Type-Options', 'nosniff')
         self.send_header('Cache-Control', 'no-store')
+        self.send_header('Vary', 'Accept')
+        if location is not None:
+            self.send_header('Location', location)
         self.send_header('Content-Security-Policy', "default-src 'none'; sandbox")
         self.send_header('Connection', 'close')
         self.send_header('Content-Length', str(len(body)))
