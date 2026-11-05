@@ -42,3 +42,17 @@ def test_independent_vps_relay_never_points_to_home():
 
 def test_total_probe_failure_keeps_both_addresses():
     assert zone.healthy_addresses(False, False) == [zone.HOME, zone.VPS]
+
+
+def test_rustfs_names_additive_without_changes_to_existing_records():
+    import subprocess
+    original = subprocess.check_output(['git', 'show', 'cde1027:scripts/public_dns_zone.py'], text=True)
+    prior = {}
+    exec(compile(original, 'prior_public_dns_zone.py', 'exec'), prior)
+    for home, vps in [(True, True), (False, True), (True, False), (False, False)]:
+        new = zone.render(123, home, vps).splitlines()
+        names = ('rustfs.socrat IN A ', 'spi-evidence.socrat IN A ')
+        assert [line for line in new if not line.startswith(names)] == prior['render'](123, home, vps).splitlines()
+        for name in ('rustfs.socrat', 'spi-evidence.socrat'):
+            for address in zone.healthy_addresses(home, vps):
+                assert new.count(f'{name} IN A {address}') == 1

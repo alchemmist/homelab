@@ -1,6 +1,9 @@
 # RustFS foundation — operator activation and rollback
 
-**SOURCE ONLY. Not deployed, no runtime gate passed in this source phase.**
+**Historical source checklist. Private foundation is now deployed; public browser acceptance remains pending.**
+See `live-foundation-20261105.md` for actual commits, machine/runtime evidence,
+private backup references and exact DNS/shared-edge/manual-browser gates.
+The default values below still describe source preparation, not current activation.
 All committed activation defaults remain false. No SPI publisher switch exists
 in this change. Independent review must resolve security findings before any
 operator follows the mutating instructions below. Do not run the broad existing

@@ -1,4 +1,42 @@
-# RustFS foundation — source implemented, all activation off
+# RustFS foundation — private foundation live, public acceptance pending
+
+Actual runtime continuation2026-11-05: read `docs/rustfs/live-foundation-20261105.md`
+FIRST. RustFS+gateway ArgoSynced/Healthy at cde102777245b1a20fb79d1c00ebf499af9427a5;
+explicit tracked values-foundation-live.yaml enable private storage/OIDC/reader,
+NOT browserRoutes. RustFS1.0.4 nonroot10001, Retain20Gi PVC on socrat-0 works;
+2Gi reservation/4Gi limit (parent-reviewed capacity adaptation), actual23–25Mi
+working set. Not enforced20Gi quota, HA or independent backup. Gateway approved
+sourcee3d379f built pinned Python base, actual published registry manifest
+sha256:0af2fdaaedf74c4ddbd0dc06fe48965ef609b4e4c211fcb72db3fceb9b72a0c7.
+Local OCI digest changed on registry push; use registry digest, NOT local41fd2a.
+
+Actual private bucket/bootstrap/PUT/GET exact bytes/eight403IAM denials pass;
+additional anonymous/other-bucket/list-all denials403. Restart retained fixture.
+Native OIDC provider+authorize302 exact callback/PKCES256 verified; dedicated
+owner/platform-only admission and additive outpost done. Identity tool fixed
+managed built-in scope selection, explicit callback type and exact dedicated app
+GET (launcher list is admission-filtered); twice-idempotent actual reconcile.
+Root only RustFS, reader only gateway; writer offline, never SPI. Private consistent
+SPI SQLite backup verified header/integrity/FK,17,879,040bytes, retained in
+~/.config/homelab/rustfs-foundation/20261105T133000Z/spi-pre-foundation.sqlite.
+No incident/queue repair/reset/lease bypass or original workload rollout.
+
+Actual gateway401/HTMLfixed302/Hostspoof/path negative tests and16.15s slow-header
+cutoff+recovery passed. CNI demonstrated reader->S3/AuthHTTPS allowed, arbitrary
+egress and unrelatedSPIworker->RustFS blocked. Local27RustFS+33Authentik tests
+separate from live acceptance. No human login/cookie/token/STS acceptance claim.
+
+Pending REAL prerequisites (not another source-scaffold/reapproval loop): DNS two
+records source-only pending secure existing sudo mechanism for Knot authorities;
+edge watches main automatically but Recreate1hostNetwork would briefly drop VPS
+entrance if namespace delta pushed. That delta NOT committed; exactdiff
+/tmp/rustfs-edge-namespace-handoff.diff for parent cutover/maintenance review.
+Browser routes absent until DNS, edge availability plan, TLS/SNI then real manual
+MFA/nativeSSO/STS/unaffiliated rejection/authenticateddownload+slowpeer tests.
+User asked foundationFIRST; SPI backend/publisher/source remain unchanged.
+
+---
+## Historical source-phase notes (superseded for actual activation status)
 
 Read `docs/rustfs/foundation-review.md`, `activation-checklist.md` and
 `docs/n8n/spi/rustfs-migration-plan.md`. Do NOT repeat release research or restart
