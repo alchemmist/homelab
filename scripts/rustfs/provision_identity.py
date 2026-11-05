@@ -47,7 +47,7 @@ def main():
     b.private(d/'credentials.json')
     token=json.loads((d/'credentials.json').read_text())['AUTHENTIK_API_TOKEN']
     http=urllib.request.build_opener(urllib.request.ProxyHandler({}),NoRedirect())
-    def api(method,path,body=None):
+    def api(method,path,body=None,allow_missing=False):
         if method!='GET' and not args.apply: raise ValueError('writes disabled')
         request=urllib.request.Request(BASE+path,method=method,
             headers={'Authorization':'Bearer '+token,'Content-Type':'application/json'},
@@ -58,7 +58,9 @@ def main():
                 if len(data)>2*1024*1024: raise ValueError('oversized inventory')
                 return json.loads(data)
         except urllib.error.HTTPError as e:
-            e.close(); raise ValueError('identity request failed') from None
+            code=e.code; e.close()
+            if allow_missing and code==404: return None
+            raise ValueError('identity request failed') from None
     def rows(path):
         result=[]
         for page in range(1,101):
@@ -68,6 +70,14 @@ def main():
             if type(nxt) is not int or nxt!=page+1: raise ValueError('pagination mismatch')
         raise ValueError('inventory too large')
     inventory={path:rows(path) for path in COLLECTIONS}
+    # Application list is admission-filtered, including for automation principals.
+    # Exact dedicated detail GET respects RBAC without requiring superuser listing.
+    inventory['core/applications/']=[]
+    for slug in ('spi-rustfs-native','spi-rustfs-console','spi-evidence'):
+        app=api('GET','core/applications/'+slug+'/',allow_missing=True)
+        if app is not None:
+            if app.get('slug')!=slug: raise ValueError('application detail identity mismatch')
+            inventory['core/applications/'].append(app)
     def one(path,key,value,required=False):
         found=[r for r in inventory[path] if r.get(key)==value]
         if len(found)>1 or required and not found: raise ValueError('missing/duplicate prerequisite')
@@ -113,7 +123,7 @@ def main():
         'authorization_flow':flow['default-provider-authorization-explicit-consent'],
         'invalidation_flow':flow['default-provider-invalidation-flow'],
         'property_mappings':mappings+[scope['pk']],'signing_key':cert,
-        'redirect_uris':[{'matching_mode':'strict','url':'https://rustfs.socrat.alchemmist.xyz/rustfs/admin/v3/oidc/callback/default'}],
+        'redirect_uris':[{'matching_mode':'strict','url':'https://rustfs.socrat.alchemmist.xyz/rustfs/admin/v3/oidc/callback/default','redirect_uri_type':'authorization'}],
         'include_claims_in_id_token':True,'sub_mode':'user_uuid',
         'access_token_validity':'minutes=5','refresh_token_validity':'hours=1'})
     providers=[]

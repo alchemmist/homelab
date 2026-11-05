@@ -9,6 +9,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 import urllib.parse
+import urllib.error
 
 ROOT=Path(__file__).resolve().parents[1]
 def module(name):
@@ -102,6 +103,7 @@ class Provisioning(unittest.TestCase):
 
     def test_identity_additive_idempotent(self):
         m=module('provision_identity');tables={x:[] for x in m.COLLECTIONS};writes=[]
+        detail_error=[None]
         tables['core/groups/']=[{'pk':'owner','name':'homelab-owner'},{'pk':'platform','name':'homelab-platform-operator'}]
         tables['flows/instances/']=[{'pk':s,'slug':s} for s in ('default-authentication-flow','default-provider-authorization-explicit-consent','default-provider-authorization-implicit-consent','default-provider-invalidation-flow')]
         tables['crypto/certificatekeypairs/']=[{'pk':'cert','name':'authentik Self-signed Certificate'}]
@@ -117,7 +119,15 @@ class Provisioning(unittest.TestCase):
             def open(self,request,timeout):
                 path=urllib.parse.urlsplit(request.full_url).path.removeprefix('/api/v3/')
                 method=request.get_method()
-                if method=='GET':return Response({'results':tables[path],'pagination':{'next':None}})
+                if method=='GET':
+                    if path.startswith('core/applications/') and path!='core/applications/':
+                        slug=path.split('/')[-2]
+                        if detail_error[0]:raise urllib.error.HTTPError(request.full_url,detail_error[0],'refused',{},io.BytesIO())
+                        matches=[x for x in tables['core/applications/'] if x['slug']==slug]
+                        if matches:return Response(matches[0])
+                        raise urllib.error.HTTPError(request.full_url,404,'not found',{},io.BytesIO())
+                    # Simulate policy-filtered launcher list hiding all dedicated apps.
+                    return Response({'results':[] if path=='core/applications/' else tables[path],'pagination':{'next':None}})
                 data=json.loads(request.data);writes.append((method,path,data))
                 if method=='PATCH':
                     self_outer.assertEqual(path,'outposts/instances/outpost/')
@@ -138,6 +148,17 @@ class Provisioning(unittest.TestCase):
             writes.clear()
             with patch('sys.argv',argv+['--apply']),patch.object(m.urllib.request,'build_opener',return_value=HTTP()),contextlib.redirect_stdout(io.StringIO()):m.main()
             self.assertEqual(writes,[])
+            for code in (401,403,500):
+                detail_error[0]=code
+                with patch('sys.argv',argv+['--apply']),patch.object(m.urllib.request,'build_opener',return_value=HTTP()),self.assertRaises(ValueError):m.main()
+                self.assertEqual(writes,[])
+            detail_error[0]=None
+            callback=tables['providers/oauth2/'][0]['redirect_uris'][0]
+            self.assertEqual(callback['redirect_uri_type'],'authorization')
+            for key,value in [('redirect_uri_type','logout'),('matching_mode','regex'),('url','https://attacker.invalid/')]:
+                previous=callback[key];callback[key]=value
+                with patch('sys.argv',argv+['--apply']),patch.object(m.urllib.request,'build_opener',return_value=HTTP()),self.assertRaises(ValueError):m.main()
+                callback[key]=previous
             tables['core/applications/'][0]['policy_engine_mode']='all'
             with patch('sys.argv',argv+['--apply']),patch.object(m.urllib.request,'build_opener',return_value=HTTP()),self.assertRaises(ValueError):m.main()
 
