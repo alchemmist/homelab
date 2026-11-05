@@ -1,3 +1,5 @@
+# Fleet must not be bootstrapped again: Argo CD is the only GitOps controller.
+features: "fleet=false,continuous-delivery=false"
 antiAffinity: required
 extraNodeSelectorTerms:
 - key: kubernetes.io/hostname
