@@ -145,3 +145,33 @@ and historical evidence. Keep source switches false and do not implement/activat
 SPI publishing until this foundation is independently reviewed, authorized up and
 actually tested. No unresolved operator authorization choice is invented here;
 the remaining deployment authorization is a deliberate phase boundary.
+
+## Source corrections after independent review
+
+The reader is a **bounded buffered verified download**, not progressive streaming,
+constant-space processing, or constant-time processing. It buffers a manifest and
+(up to 2 MiB) object before returning verified bytes; accepted artifacts are at
+most 90,000 ASCII bytes. HTTP Content-Length framing is not proof that a peer did
+not send trailing bytes; connections are not reused.
+
+Gateway admission is capped at eight connection workers (excess connections are
+closed). Absolute socket-shutdown watchdogs cover headers (15 seconds), the
+accepted connection including response writes (45 seconds), and each upstream
+connection including headers/body (10 seconds), in addition to inactivity limits.
+OS name resolution is not interruptible by these socket watchdogs; cluster DNS
+health remains an operational dependency. This is not a guarantee against all
+resource exhaustion. Traefik parses external headers first: its buffering and
+header/write timeout configuration and real slow-client/load tests remain
+mandatory before public exposure. Local regressions exercise actual trickled
+headers and upstream headers/bodies, not just mocked timeouts.
+
+The Dockerfile pins the public Docker Hub `library/python:3.13-alpine` OCI index
+at `sha256:7984cf56ceaddebe4fefeb75d64000b9f45d8b77b11a09b24524da6cdc3af0c8`.
+The registry manifest was retrieved read-only and its bytes independently SHA256
+checked against Docker-Content-Digest during correction. This verifies existence
+and content identity, not vulnerability freedom or a built gateway image. Record
+selected platform/base manifest, source commit, build inputs, scan and resulting
+private gateway digest before activation; no gateway image was built/published.
+Deployment anchors chart/repository paths to the script and refuses dirty tracked
+source and a nonmatching approved revision. Private runtime values are a separate
+reviewed input; this check does not itself grant deployment approval.

@@ -8,6 +8,11 @@ import hashlib
 import hmac
 import json
 import http.server
+import http.client
+import socket
+import threading
+import time
+import socketserver
 import os
 import re
 import urllib.error
@@ -26,9 +31,78 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         raise ValueError('redirect denied')
 
 
+# Absolute elapsed budgets, in addition to individual socket inactivity limits.
+HEADER_SECONDS = 15
+REQUEST_SECONDS = 45
+UPSTREAM_SECONDS = 10
+MAX_CONNECTIONS = 8
+
+
+def expire(sock):
+    try:
+        sock.shutdown(socket.SHUT_RDWR)
+    except OSError:
+        pass
+
+
+def watchdog(sock, seconds):
+    timer = threading.Timer(seconds, expire, (sock,))
+    timer.daemon = True
+    timer.start()
+    return timer
+
+
+class DeadlineConnection:
+    def connect(self):
+        start = time.monotonic()
+        self.deadline_expired = False
+        connected_socket = []
+        def abort():
+            self.deadline_expired = True
+            sock = self.sock if self.sock is not None else (connected_socket[0] if connected_socket else None)
+            if sock is not None:
+                expire(sock)
+        self.deadline_timer = threading.Timer(UPSTREAM_SECONDS, abort)
+        self.deadline_timer.daemon = True
+        self.deadline_timer.start()
+        try:
+            super().connect()
+            connected_socket.append(self.sock)
+            if self.deadline_expired or time.monotonic() - start >= UPSTREAM_SECONDS:
+                expire(self.sock)
+                raise TimeoutError('upstream deadline')
+        except BaseException:
+            self.close()
+            raise
+
+    def close(self):
+        timer = getattr(self, 'deadline_timer', None)
+        if timer:
+            timer.cancel()
+        super().close()
+
+
+class HTTPConnection(DeadlineConnection, http.client.HTTPConnection):
+    pass
+
+
+class HTTPSConnection(DeadlineConnection, http.client.HTTPSConnection):
+    pass
+
+
+class HTTPHandler(urllib.request.HTTPHandler):
+    def http_open(self, request):
+        return self.do_open(HTTPConnection, request)
+
+
+class HTTPSHandler(urllib.request.HTTPSHandler):
+    def https_open(self, request):
+        return self.do_open(HTTPSConnection, request, context=self._context)
+
+
 def opener():
     # Environment proxy settings must not redirect private S3/auth traffic.
-    return urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
+    return urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect(), HTTPHandler(), HTTPSHandler())
 
 
 def valid_key(path):
@@ -139,8 +213,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
     sys_version = ''
 
     def setup(self):
-        self.request.settimeout(15)
+        self.request.settimeout(HEADER_SECONDS)
+        self.header_timer = watchdog(self.request, HEADER_SECONDS)
+        self.request_timer = watchdog(self.request, REQUEST_SECONDS)
         super().setup()
+
+    def finish(self):
+        try:
+            super().finish()
+        finally:
+            self.header_timer.cancel()
+            self.request_timer.cancel()
 
     def log_message(self, *args):
         pass
@@ -161,6 +244,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def answer(self):
         self.close_connection = True
+        self.header_timer.cancel()
         # Authentication precedes even validation/error responses; never trust X-auth headers.
         cookies = self.headers.get_all('Cookie', [])
         if len(cookies) != 1 or not self.server.reader.authorized(cookies[0]):
@@ -209,15 +293,36 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(body)
 
 
-class Server(http.server.HTTPServer):
+class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
+    daemon_threads = True
+
+    def __init__(self, *args, **kwargs):
+        self.slots = threading.BoundedSemaphore(MAX_CONNECTIONS)
+        super().__init__(*args, **kwargs)
+
+    def process_request(self, request, client_address):
+        if not self.slots.acquire(blocking=False):
+            self.shutdown_request(request)
+            return
+        try:
+            super().process_request(request, client_address)
+        except BaseException:
+            self.slots.release()
+            raise
+
+    def process_request_thread(self, request, client_address):
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self.slots.release()
+
     def handle_error(self, request, client_address):
         # Network resets/timeouts must not emit request context or upstream errors.
         pass
 
 
 if __name__ == '__main__':
-    # Serial bounded-time server avoids unbounded thread/memory growth; replicas may scale later.
+    # Admission is bounded; excess connections are closed without spawning workers.
     server = Server(('0.0.0.0', 8080), Handler)
-    server.timeout = 15
     server.reader = Reader()
     server.serve_forever()
