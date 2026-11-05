@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rustfs
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/alchemmist/homelab.git
+    targetRevision: main
+    path: charts/rustfs
+    helm:
+      releaseName: rustfs
+  destination:
+    namespace: rustfs
+    server: https://kubernetes.default.svc
+  # Manual only; chart defaults render no resources.
+  syncPolicy:
+    syncOptions: [CreateNamespace=true]

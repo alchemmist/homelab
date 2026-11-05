@@ -1,0 +1,5 @@
+apiVersion: v2
+name: rustfs
+version: 0.1.0
+appVersion: "1.0.4"
+description: Inactive standalone RustFS foundation; no public routes
