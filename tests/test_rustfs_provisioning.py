@@ -105,7 +105,8 @@ class Provisioning(unittest.TestCase):
         tables['core/groups/']=[{'pk':'owner','name':'homelab-owner'},{'pk':'platform','name':'homelab-platform-operator'}]
         tables['flows/instances/']=[{'pk':s,'slug':s} for s in ('default-authentication-flow','default-provider-authorization-explicit-consent','default-provider-authorization-implicit-consent','default-provider-invalidation-flow')]
         tables['crypto/certificatekeypairs/']=[{'pk':'cert','name':'authentik Self-signed Certificate'}]
-        tables['propertymappings/provider/scope/']=[{'pk':n,'scope_name':n} for n in ('openid','profile','email')]
+        tables['propertymappings/provider/scope/']=[{'pk':n,'scope_name':n,'managed':'goauthentik.io/providers/oauth2/scope-'+n} for n in ('openid','profile','email')]
+        tables['propertymappings/provider/scope/'].append({'pk':'unrelated-netbird','scope_name':'profile','managed':None})
         tables['outposts/instances/']=[{'pk':'outpost','managed':'goauthentik.io/outposts/embedded','providers':[17]}]
         class Response:
             def __init__(self,data):self.data=data
@@ -139,3 +140,11 @@ class Provisioning(unittest.TestCase):
             self.assertEqual(writes,[])
             tables['core/applications/'][0]['policy_engine_mode']='all'
             with patch('sys.argv',argv+['--apply']),patch.object(m.urllib.request,'build_opener',return_value=HTTP()),self.assertRaises(ValueError):m.main()
+
+    def test_builtin_scope_exact_managed_identity(self):
+        m=module('provision_identity')
+        official={'pk':'official','scope_name':'profile','managed':'goauthentik.io/providers/oauth2/scope-profile'}
+        custom={'pk':'netbird','scope_name':'profile','managed':None}
+        self.assertEqual(m.builtin_scope([official,custom],'profile'),'official')
+        for rows in ([custom],[official,dict(official)], [dict(official,scope_name='groups')]):
+            with self.assertRaises(ValueError):m.builtin_scope(rows,'profile')

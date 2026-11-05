@@ -29,6 +29,13 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         raise ValueError('redirect refused')
 
 
+def builtin_scope(rows, name):
+    matches = [r for r in rows if r.get('managed') == 'goauthentik.io/providers/oauth2/scope-' + name]
+    if len(matches) != 1 or matches[0].get('scope_name') != name:
+        raise ValueError('missing/duplicate/mismatched builtin scope')
+    return matches[0]['pk']
+
+
 def main():
     p=argparse.ArgumentParser(); p.add_argument('--private-dir',type=Path,required=True)
     p.add_argument('--apply',action='store_true'); args=p.parse_args()
@@ -70,7 +77,7 @@ def main():
         'default-authentication-flow','default-provider-authorization-explicit-consent',
         'default-provider-authorization-implicit-consent','default-provider-invalidation-flow')}
     cert=one('crypto/certificatekeypairs/','name','authentik Self-signed Certificate',True)['pk']
-    mappings=[one('propertymappings/provider/scope/','scope_name',name,True)['pk'] for name in ('openid','profile','email')]
+    mappings=[builtin_scope(inventory['propertymappings/provider/scope/'],name) for name in ('openid','profile','email')]
     # Refuse unexplained pre-existing providers when the private journal is lost.
     client_path=d/'rustfs-client.json'
     if client_path.exists():
