@@ -352,7 +352,7 @@ Bot `2fe538df2d64298142a8ef323a48ae69c458d0b5`, release CI
 https://github.com/alchemmist/socrat-bot/actions/runs/42082500968 : **155 passed,
 15 conditional skips**. All three deployments use
 `sha256:4c3c04356e83c38c78ffde4e2e413488b27326b656659fb9e8e715c81e7d9edf`;
-Argo Synced/Healthy at observed homelab revision `ffcd440`. Live migration head
+Argo Synced/Healthy at observed homelab revision `9bef759`. Live migration head
 `0014_broadcast_copy_time`.
 
 `/mailing_edit` now lists only the owner's sent mailings that have saved original
@@ -376,8 +376,9 @@ Actual released-image UI smoke used isolated SQLite and one owner-only test pane
 Telegram confirmed three `pre` entities in the compact view, five after Show all,
 and three again after Latest 3. Both changes edited the same test-panel message;
 HTML/emoji rendering and private/owner restrictions passed. The single test panel
-was deleted afterward. No real mailing was edited or sent; production counts
-remained three historical mailings and zero saved copies.
+was deleted afterward. No real mailing was edited or sent by this smoke. A later
+read-only production check observed four mailings and six saved copies; these are
+production records, not smoke rows (the test used a separate temporary DB).
 
 Direct local NetBird API endpoints began refusing connections during acceptance;
 verification used the existing `ssh socrat-0 'kubectl ...'` path instead. The API
