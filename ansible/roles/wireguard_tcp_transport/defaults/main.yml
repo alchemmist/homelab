@@ -2,7 +2,7 @@
 wg_tcp_version: '3.3.0'
 wg_tcp_server: socrat-2
 wg_tcp_client: socrat-1
-wg_tcp_server_address: 176.98.185.59
+wg_tcp_server_address: 109.120.141.97
 wg_tcp_port: 51840
 wg_tcp_interface: wg-socrat
 wg_tcp_directory: /etc/wireguard-tcp-transport

@@ -14,7 +14,7 @@ import threading
 import time
 
 HOST = 'netbird.socrat.alchemmist.xyz'
-ENTRANCES = ('109.173.40.247', '176.98.185.59')
+ENTRANCES = ('109.173.40.247', '109.120.141.97')
 
 
 def probe(address, timeout=6, grpc_module=None):

@@ -24,7 +24,7 @@ class WireGuardTemplateTests(unittest.TestCase):
             'socrat-2': {
                 'address': '10.250.0.2',
                 'public_key': 'node2',
-                'endpoint': '176.98.185.59:51830',
+                'endpoint': '109.120.141.97:51830',
             },
         }
 

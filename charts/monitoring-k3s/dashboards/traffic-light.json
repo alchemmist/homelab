@@ -3667,7 +3667,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Public entrance availability cube. Home IP is the apartment connection (109.173.40.247), VPS IP is the cloud edge (176.98.185.59), both probed over TCP 443 by the blackbox exporter every minute. Green = the address answers; orange = probe failures pending alert; red = the SocratServiceEdge*Unavailable alert is firing; grey = No telemetry, probe or rule evaluation is stale. A red cube also means the entrance path is down even when specific service tiles stay green, because those are probed inside the cluster.",
+      "description": "Public entrance availability cube. Home IP is the apartment connection (109.173.40.247), VPS IP is the cloud edge (109.120.141.97), both probed over TCP 443 by the blackbox exporter every minute. Green = the address answers; orange = probe failures pending alert; red = the SocratServiceEdge*Unavailable alert is firing; grey = No telemetry, probe or rule evaluation is stale. A red cube also means the entrance path is down even when specific service tiles stay green, because those are probed inside the cluster.",
       "fieldConfig": {
         "defaults": {
           "displayName": "Home IP",
@@ -3764,7 +3764,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Public entrance availability cube. Home IP is the apartment connection (109.173.40.247), VPS IP is the cloud edge (176.98.185.59), both probed over TCP 443 by the blackbox exporter every minute. Green = the address answers; orange = probe failures pending alert; red = the SocratServiceEdge*Unavailable alert is firing; grey = No telemetry, probe or rule evaluation is stale. A red cube also means the entrance path is down even when specific service tiles stay green, because those are probed inside the cluster.",
+      "description": "Public entrance availability cube. Home IP is the apartment connection (109.173.40.247), VPS IP is the cloud edge (109.120.141.97), both probed over TCP 443 by the blackbox exporter every minute. Green = the address answers; orange = probe failures pending alert; red = the SocratServiceEdge*Unavailable alert is firing; grey = No telemetry, probe or rule evaluation is stale. A red cube also means the entrance path is down even when specific service tiles stay green, because those are probed inside the cluster.",
       "fieldConfig": {
         "defaults": {
           "displayName": "VPS IP",

@@ -10,7 +10,7 @@ from pathlib import Path
 import yaml
 
 NS = 'netbird-pilot'
-PUBLIC_IP = '176.98.185.59'
+PUBLIC_IP = '109.120.141.97'
 LOCK = Path(__file__).resolve().parents[1] / 'deploy/netbird/images.lock.json'
 PIN = 'sha256:a00afb5b4890de4df22bbe70379c6b316685dffee297d53cac1271dcb91fab93'
 

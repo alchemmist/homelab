@@ -91,6 +91,23 @@ def escape_literals(value):
     return value
 
 
+def refresh_public_edge_probe(scrape):
+    """Keep captured native scrape bundles aligned with the owned VPS probe."""
+    targets = yaml.safe_load((ROOT / 'charts/monitoring-k3s/values.yaml').read_text())['serviceProbes']['targets']
+    endpoint = next(target['url'] for target in targets if target['id'] == 'edge-vps')
+    result = copy.deepcopy(scrape)
+    for job in result.get('scrape_configs', []):
+        if not job.get('job_name', '').startswith('serviceMonitor/cattle-monitoring-system/monitoring-service-probes/'):
+            continue
+        identity = [rule.get('replacement') for rule in job.get('relabel_configs', [])
+                    if rule.get('target_label') == 'service_id']
+        if identity == ['edge-vps']:
+            if job.get('params', {}).get('module') != ['tcp_connect']:
+                raise ValueError('Unexpected VPS edge probe module')
+            job['params']['target'] = [endpoint]
+    return result
+
+
 def add_logging_self_monitoring(scrape):
     """Add only the native owner's authenticated Loki target, idempotently."""
     result = copy.deepcopy(scrape)
@@ -194,7 +211,7 @@ def compile_config(source, targets, monitors=None):
         'usesExistingClusterTLSMount': True, 'additionalSecretKeys': [],
         'intervalSeconds': 5, 'timeoutSeconds': 4,
     }
-    outputs['cluster'] = add_logging_self_monitoring(outputs['cluster'])
+    outputs['cluster'] = refresh_public_edge_probe(add_logging_self_monitoring(outputs['cluster']))
     outputs = escape_literals(outputs)
     contract['dollarEscaping'] = 'literal Prometheus dollars escaped before Collector confmap resolution'
     contract['outputSHA256'] = {name: fingerprint(document) for name, document in outputs.items()}

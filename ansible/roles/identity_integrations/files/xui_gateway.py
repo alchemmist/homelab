@@ -18,7 +18,7 @@ def main():
     parser.add_argument('root', type=Path)
     parser.add_argument('config', type=Path)
     parser.add_argument('--action', choices=['check', 'apply'], default='check')
-    parser.add_argument('--public-edge', choices=['109.173.40.247', '176.98.185.59'])
+    parser.add_argument('--public-edge', choices=['109.173.40.247', '109.120.141.97'])
     args = parser.parse_args()
     if args.public_edge:
         original = socket.getaddrinfo

@@ -214,7 +214,7 @@ resources:
           - --no-tcp-relay
           - --relay-threads=1
           - --listening-port=3478
-          - --listening-ip=176.98.185.59
+          - --listening-ip=109.120.141.97
           - --no-software-attribute
           - --log-file=stdout
           - --simple-log
@@ -1173,7 +1173,7 @@ resources:
           matchLabels:
             app.kubernetes.io/name: traefik
       - ipBlock:
-          cidr: 176.98.185.59/32
+          cidr: 109.120.141.97/32
       - ipBlock:
           cidr: 10.250.0.2/32
       - ipBlock:
@@ -1207,7 +1207,7 @@ resources:
     ingress:
     - from:
       - ipBlock:
-          cidr: 176.98.185.59/32
+          cidr: 109.120.141.97/32
       - ipBlock:
           cidr: 10.250.0.2/32
       - ipBlock:

@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 
 
-ADDRESSES = ("109.173.40.247", "176.98.185.59")
+ADDRESSES = ("109.173.40.247", "109.120.141.97")
 HOSTS = (
     "alchemmist.xyz",
     "www.alchemmist.xyz",

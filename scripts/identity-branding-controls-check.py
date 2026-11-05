@@ -10,7 +10,7 @@ import argparse
 from playwright.sync_api import sync_playwright
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--run',action='store_true')
-parser.add_argument('--public-edge',choices=['109.173.40.247','176.98.185.59'],default='109.173.40.247')
+parser.add_argument('--public-edge',choices=['109.173.40.247','109.120.141.97'],default='109.173.40.247')
 args=parser.parse_args()
 if not args.run:parser.error('--run is required for live read-only UI probes')
 BASE='https://auth.socrat.alchemmist.xyz'

@@ -6,7 +6,7 @@ import argparse
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--run',action='store_true')
 parser.add_argument('--delay-hq',action='store_true',help='Also hold HQ locally for 5s to verify usable preview-only login')
-parser.add_argument('--public-edge',choices=['109.173.40.247','176.98.185.59'])
+parser.add_argument('--public-edge',choices=['109.173.40.247','109.120.141.97'])
 args=parser.parse_args()
 if not args.run:parser.error('--run required')
 import hashlib,json
@@ -17,7 +17,7 @@ assets=json.loads((root/'assets.json').read_text());photos=json.loads((root/'nat
 css_hashes={assets[p['sceneCss']]['sha256'] for p in photos}
 BASE='https://auth.socrat.alchemmist.xyz'
 with sync_playwright() as p:
- for edge in ([args.public_edge] if args.public_edge else ['109.173.40.247','176.98.185.59']):
+ for edge in ([args.public_edge] if args.public_edge else ['109.173.40.247','109.120.141.97']):
   browser=p.chromium.launch(args=['--host-resolver-rules=MAP auth.socrat.alchemmist.xyz '+edge])
   for width,height,variant in [(1440,960,'desktop'),(390,844,'mobile')]:
    context=browser.new_context(viewport={'width':width,'height':height});page=context.new_page();responses=[];errors=[]
@@ -101,7 +101,7 @@ if args.delay_hq:
  from playwright.async_api import async_playwright
  async def preview_only():
   async with async_playwright() as p:
-   for edge in ([args.public_edge] if args.public_edge else ['109.173.40.247','176.98.185.59']):
+   for edge in ([args.public_edge] if args.public_edge else ['109.173.40.247','109.120.141.97']):
     browser=await p.chromium.launch(args=['--host-resolver-rules=MAP auth.socrat.alchemmist.xyz '+edge])
     for width in [1440,390]:
      page=await browser.new_page(viewport={'width':width,'height':960})

@@ -9,5 +9,5 @@ homelab_boot_services:
 - k3s.service
 homelab_ssh_private_host: 10.250.0.2
 homelab_ssh_relay: true
-homelab_ssh_direct_host: 176.98.185.59
+homelab_ssh_direct_host: 109.120.141.97
 homelab_ssh_direct_port: 22

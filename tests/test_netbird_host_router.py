@@ -112,7 +112,7 @@ class HostRouterTests(unittest.TestCase):
 
     def test_destination_host_cannot_be_a_second_router(self):
         facts = hr.default_facts()
-        facts["hosts"][1]["owned"] = ["176.98.185.59"]
+        facts["hosts"][1]["owned"] = ["109.120.141.97"]
         with self.assertRaisesRegex(ValueError, "own 10.250.0.2"):
             hr.validate(facts)
         self.assertEqual(hr.roles(hr.default_facts())["socrat-2"]["ssh_delivery"], "input")
@@ -142,7 +142,7 @@ class HostRouterTests(unittest.TestCase):
                          ssl.ALERT_DESCRIPTION_UNRECOGNIZED_NAME)
         self.assertIsNone(frontend["sni_callback"](type("S", (), {})(), "grafana.socrat.alchemmist.xyz", None))
         self.assertTrue(frontend["bind_allowed"]("100.96.0.8"))
-        for address in ("0.0.0.0", "176.98.185.59", "10.250.0.1", "10.250.0.2", "10.250.0.3", "192.168.0.23"):
+        for address in ("0.0.0.0", "109.120.141.97", "10.250.0.1", "10.250.0.2", "10.250.0.3", "192.168.0.23"):
             self.assertFalse(frontend["bind_allowed"](address), address)
 
     def test_client_unit_is_pinned_and_constrained(self):
@@ -237,7 +237,7 @@ class HostRouterTests(unittest.TestCase):
             self.assertFalse(list(root.rglob("*wg-socrat*")))
             public = subprocess.run([os.sys.executable, str(ROOT / "scripts/netbird-host-router.py"),
                                      "apply", "--plan", str(out), "--root", str(base / "public"),
-                                     "--host", "socrat-0", "--overlay-ip", "176.98.185.59"],
+                                     "--host", "socrat-0", "--overlay-ip", "109.120.141.97"],
                                     capture_output=True, text=True)
             self.assertEqual(public.returncode, 2)
             self.assertFalse((base / "public").exists())

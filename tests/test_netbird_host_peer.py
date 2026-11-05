@@ -94,7 +94,7 @@ class HostPeerTest(unittest.TestCase):
         self.assertFalse(http['serversTransports']['verified']['insecureSkipVerify'])
         self.assertEqual(http['serversTransports']['verified']['serverName'], peer.GRAFANA)
         self.assertEqual(http['services']['grafana']['loadBalancer']['servers'], [{'url': 'https://10.250.0.3:443'}])
-        for address in ['0.0.0.0', '176.98.185.59', '10.250.0.2', '100.96.1.2;evil']:
+        for address in ['0.0.0.0', '109.120.141.97', '10.250.0.2', '100.96.1.2;evil']:
             with self.assertRaises(ValueError):
                 peer.frontend_config(address)
         deployment = peer.frontend('socrat-0', '100.96.1.2')[1]
@@ -114,7 +114,7 @@ class StunTest(unittest.TestCase):
         self.assertTrue(spec['hostNetwork'])
         self.assertEqual(spec['nodeSelector']['kubernetes.io/hostname'], 'socrat-2')
         self.assertEqual(c['resources']['limits'], {'memory': '32Mi', 'cpu': '100m'})
-        for flag in ['--stun-only', '--no-tcp', '--no-tls', '--no-dtls', '--no-cli', '--listening-ip=176.98.185.59']:
+        for flag in ['--stun-only', '--no-tcp', '--no-tls', '--no-dtls', '--no-cli', '--listening-ip=109.120.141.97']:
             self.assertIn(flag, c['args'])
         self.assertNotIn('hostPath', yaml.safe_dump(spec))
         self.assertNotIn('privileged', yaml.safe_dump(spec))

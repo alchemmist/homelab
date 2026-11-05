@@ -15,7 +15,7 @@ class WireGuardAdminClientTests(unittest.TestCase):
         self.assertIn("{% for peer in wireguard_admin_peers %}", TEMPLATE)
         self.assertIn('AllowedIPs = {{ peer.address }}/32', TEMPLATE)
         self.assertIn('PersistentKeepalive = {{ wireguard_admin_keepalive }}', TEMPLATE)
-        for endpoint in ('109.173.40.247:51830', '109.173.40.247:51831', '176.98.185.59:51830'):
+        for endpoint in ('109.173.40.247:51830', '109.173.40.247:51831', '109.120.141.97:51830'):
             self.assertIn(endpoint, DEFAULTS)
 
     def test_profile_does_not_capture_dns(self):

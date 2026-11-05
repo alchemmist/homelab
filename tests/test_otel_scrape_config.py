@@ -29,6 +29,20 @@ def fixtures():
 
 
 class ScrapeConfigTests(unittest.TestCase):
+    def test_public_edge_refresh_is_narrow_and_preserves_original(self):
+        job = {'job_name': 'serviceMonitor/cattle-monitoring-system/monitoring-service-probes/26',
+               'params': {'module': ['tcp_connect'], 'target': ['192.0.2.1:443']},
+               'relabel_configs': [{'target_label': 'service_id', 'replacement': 'edge-vps'}]}
+        other = {'job_name': 'unrelated', 'params': {'target': ['192.0.2.1:443']}}
+        original = {'scrape_configs': [job, other]}
+        before = copy.deepcopy(original)
+        result = SCRAPE.refresh_public_edge_probe(original)
+        self.assertEqual(original, before)
+        self.assertEqual(result['scrape_configs'][0]['params']['target'], ['109.120.141.97:443'])
+        self.assertEqual(result['scrape_configs'][1], other)
+        self.assertEqual(SCRAPE.refresh_public_edge_probe(result), result)
+
+
     def test_ownership_discovery_labels_and_relabeling_are_preserved(self):
         source, targets = fixtures()
         before = copy.deepcopy(source)

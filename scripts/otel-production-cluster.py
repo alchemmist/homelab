@@ -63,7 +63,7 @@ def configure(bundle, cutover):
     scrape_spec = importlib.util.spec_from_file_location('native_scrape', ROOT / 'scripts/otel-scrape-config.py')
     native_scrape = importlib.util.module_from_spec(scrape_spec)
     scrape_spec.loader.exec_module(native_scrape)
-    scrape = native_scrape.add_logging_self_monitoring(scrape)
+    scrape = native_scrape.refresh_public_edge_probe(native_scrape.add_logging_self_monitoring(scrape))
     cm = bootstrap.resource('ConfigMap', 'otel-cluster-config', api='v1')
     cm['data'] = {'collector.yaml': yaml.safe_dump(config, sort_keys=False), 'scrape.yaml': yaml.safe_dump(scrape, sort_keys=False)}
     kube('apply', '-f', '-', '-o', 'json', document=cm)
