@@ -345,3 +345,40 @@ Local Kubernetes config still targeted an unreachable LAN API192.168.0.23 during
 this check. The existing NetBird endpoint worked with an explicit invocation:
 `kubectl --server=https://10.250.0.3:6443 ...`. No kubeconfig, credentials, or cluster
 network configuration was changed to perform verification.
+
+### Editable mailing history UI — released (2026-11-05)
+
+Bot `2fe538df2d64298142a8ef323a48ae69c458d0b5`, release CI
+https://github.com/alchemmist/socrat-bot/actions/runs/42082500968 : **155 passed,
+15 conditional skips**. All three deployments use
+`sha256:4c3c04356e83c38c78ffde4e2e413488b27326b656659fb9e8e715c81e7d9edf`;
+Argo Synced/Healthy at observed homelab revision `ffcd440`. Live migration head
+`0014_broadcast_copy_time`.
+
+`/mailing_edit` now lists only the owner's sent mailings that have saved original
+copies. Historical uneditable entries are hidden. The default view shows at most
+three newest, with UUIDs in inline code and escaped message previews in `<pre>`
+code blocks. **Show all** expands the available history; large histories use
+bounded Previous/Next pages, and **Latest 3** restores the compact view. Empty
+history shows a short message without unavailable IDs or a verbose usage dump.
+Long previews are visibly truncated; HTML entities and Unicode stay valid and
+panels remain below Telegram's message limit. Every list callback rechecks owner
+identity/private chat and always queries that owner's mailings.
+
+`BroadcastCopy.sent_at` records original receipt time; edits do not change it or
+move old mailings to the front. Migration0014 preserves copy identity/text and
+backfills preexisting tracked copies with migration time, since older releases
+had no receipt timestamps. Newly recorded copies have actual receipt timestamps.
+The PostgreSQL suite and populated SQLite upgrade/downgrade preserve existing
+IDs/text; multiple recipient copies produce one history entry.
+
+Actual released-image UI smoke used isolated SQLite and one owner-only test panel.
+Telegram confirmed three `pre` entities in the compact view, five after Show all,
+and three again after Latest 3. Both changes edited the same test-panel message;
+HTML/emoji rendering and private/owner restrictions passed. The single test panel
+was deleted afterward. No real mailing was edited or sent; production counts
+remained three historical mailings and zero saved copies.
+
+Direct local NetBird API endpoints began refusing connections during acceptance;
+verification used the existing `ssh socrat-0 'kubectl ...'` path instead. The API
+was healthy from that node; no network/credential/kubeconfig changes were made.
