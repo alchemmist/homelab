@@ -53,3 +53,24 @@ class Deadlines(unittest.TestCase):
                     self.assertLess(time.monotonic()-start, .9)
                 finally:
                     listener.close(); t.join(2)
+
+    def test_response_write_deadline_releases_worker(self):
+        class Handler(g.Handler):
+            def setup(self):
+                self.request.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1024)
+                super().setup()
+        class Reader:
+            def authorized(self, cookie): return True
+            def read(self, key): return b'x' * g.MAX_BYTES
+        with patch.object(g, 'REQUEST_SECONDS', .3), patch.object(g, 'MAX_CONNECTIONS', 1):
+            server = g.Server(('127.0.0.1', 0), Handler); server.reader = Reader()
+            t = threading.Thread(target=server.serve_forever, daemon=True); t.start()
+            c = socket.socket(); c.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1024)
+            try:
+                c.connect(server.server_address)
+                c.sendall(('GET /spi/v1/' + 'a'*64 + '/' + 'b'*64 + '/manifest.json HTTP/1.0\r\nCookie: valid\r\n\r\n').encode())
+                time.sleep(.6)
+                self.assertTrue(server.slots.acquire(blocking=False))
+                server.slots.release()
+            finally:
+                c.close(); server.shutdown(); server.server_close(); t.join()
