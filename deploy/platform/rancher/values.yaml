@@ -1,5 +1,6 @@
-# Fleet must not be bootstrapped again: Argo CD is the only GitOps controller.
-features: "fleet=false,continuous-delivery=false"
+# Disable Fleet GitOps; Rancher MCM currently requires Fleet itself (v2.15.2).
+# Full Fleet removal requires an explicit decision to disable Rancher MCM first.
+features: "continuous-delivery=false"
 antiAffinity: required
 extraNodeSelectorTerms:
 - key: kubernetes.io/hostname
