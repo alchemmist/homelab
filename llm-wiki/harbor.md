@@ -94,7 +94,7 @@ docker --config "$HOME/.config/homelab/harbor/docker" push \
 - Credentials не включать в открытые Helm values или Git. Argo CD читает Git; отдельных Fleet GitRepo в репозитории нет.
 - Insecure registry/TLS skip verify не нужны: HTTPS доверенный.
 
-**Существующие деплои с GHCR ещё не мигрировали.** Fleet image automation не подключать: GitOps-манифесты Fleet сняты, выкладка через Argo CD. CI push в Harbor подключается отдельно; наличие Harbor само по себе его не включает.
+**Миграция в Harbor уже выполнена для блога, Cats, Format Quorum, Monori и Socrat Home; LMS намеренно остаётся на GHCR.** Fleet image automation не подключать: GitOps-манифесты Fleet сняты, выкладка через Argo CD. Проверенные CI-прогоны и digest приведены в последующих датированных разделах.
 
 ## Как развёрнуто сейчас
 
