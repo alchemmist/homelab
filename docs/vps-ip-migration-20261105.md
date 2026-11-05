@@ -25,9 +25,9 @@ client identifiers and persistent application data remain unchanged.
 - Updated the generated Mac WireGuard profile file without changing keys.
   Updating a file is NOT evidence that the GUI-imported profile was updated.
 - REG.RU accepted ns2 glue address replacement with `109.120.141.97`; ns1 and
-  both nameserver names stayed unchanged. Parent `.xyz` publication remains a
-  separate acceptance check: during migration x.nic.xyz still returned the old glue.
-  Do not describe this pending publication as a completed global DNS migration.
+  both nameserver names stayed unchanged. Parent publication was initially
+  pending; final direct checks of x.nic.xyz and y.nic.xyz both returned the NEW
+  ns2 glue. Google DoH also returned the new ns2 A record.
 
 ## Verification
 
@@ -56,18 +56,29 @@ client identifiers and persistent application data remain unchanged.
   out. Loki self-monitoring still up=1. No alerts silenced or thresholds relaxed.
 - Focused initial tests: 53 run, 51 passed; two WireGuard-admin-client assertions
   already fail identically in the original checkout (DNS tag/template drift).
-  Native scrape tests 7/7 and redirect regressions 4/4 passed. No full-suite claim.
+  Final isolated pytest environment: **160 passed, 4 skipped, 128 subtests passed**
+  across the focused inventory, DNS, NetBird, native scrape and ingress suites.
+  The historical additive-DNS fixture normalizes only the approved VPS address
+  (including the static independent relay); all other records remain compared.
+  No full-suite claim.
 
 ## Remaining acceptance / client actions
 
-1. Confirm parent `.xyz` glue changed, then allow existing recursive caches to
-   expire (parent advertises 3600s; registrar warns up to 24h publication).
+1. Parent glue change is verified. Existing recursive caches may still need
+   their TTL to expire (parent advertises 3600s).
 2. Refresh phone subscriptions and reconnect. Existing imported literal-IP
    profiles cannot be remotely rewritten; manual configurations need the new IP.
 3. Verify GUI-imported Mac WireGuard endpoint, not only its generated file.
 4. Removed only the STUN Deployment's exported Rancher publicEndpoints annotation
    from desired values: it pinned an obsolete pod name and caused metadata drift.
-   Runtime listener uses the new IP; external STUN passed. No blanket prune.
+   Runtime listener uses the new IP; external STUN passed. NetBird is now
+   Synced/Healthy. No blanket prune.
+5. RustFS remains Healthy/OutOfSync for other resources; only the two relevant
+   egress NetworkPolicies were applied. Final live spec audit found ZERO old-IP
+   references in NetworkPolicies, Services, Deployments, StatefulSets, DaemonSets
+   and Ingresses. Do not blanket sync unrelated foundation changes.
+6. Direct SSH to new IP:22 passed with the existing pinned host key. Local
+   diagnostic alias updated, old host-key identity retained (no trust bypass).
 
 Completed emergency backups remain under the owner's private Mac Backups
 folder. The full rootfs stream was cancelled at operator request; its `.partial`

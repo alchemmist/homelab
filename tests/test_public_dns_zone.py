@@ -49,6 +49,10 @@ def test_rustfs_names_additive_without_changes_to_existing_records():
     original = subprocess.check_output(['git', 'show', 'cde1027:scripts/public_dns_zone.py'], text=True)
     prior = {}
     exec(compile(original, 'prior_public_dns_zone.py', 'exec'), prior)
+    # The additive-name contract is independent of the approved VPS IP migration.
+    # Normalize only that address in the historical fixture; compare all records.
+    prior['VPS'] = zone.VPS
+    prior['STATIC_A']['netbird-relay-vps.socrat'] = [zone.VPS]
     for home, vps in [(True, True), (False, True), (True, False), (False, False)]:
         new = zone.render(123, home, vps).splitlines()
         names = ('rustfs.socrat IN A ', 'spi-evidence.socrat IN A ')
@@ -56,3 +60,7 @@ def test_rustfs_names_additive_without_changes_to_existing_records():
         for name in ('rustfs.socrat', 'spi-evidence.socrat'):
             for address in zone.healthy_addresses(home, vps):
                 assert new.count(f'{name} IN A {address}') == 1
+
+
+def test_current_vps_address_after_provider_migration():
+    assert zone.VPS == "109.120.141.97"
