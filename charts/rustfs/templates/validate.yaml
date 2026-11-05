@@ -1,0 +1,10 @@
+{{- if and .Values.enabled (or .Values.oidc.enabled .Values.gateway.enabled) }}
+{{- if not .Values.authEgressCIDRs }}
+{{- fail "provide exact Authentik endpoint /32 or /128 egress addresses before activation" }}
+{{- end }}
+{{- range .Values.authEgressCIDRs }}
+{{- if not (regexMatch "^([0-9.]+/32|[0-9a-fA-F:]+/128)$" .) }}
+{{- fail "Auth endpoint egress must be exact /32 or /128, not broad CIDR" }}
+{{- end }}
+{{- end }}
+{{- end }}

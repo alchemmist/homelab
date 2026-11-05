@@ -76,3 +76,14 @@ verified historical migration. Never silently fall back to comment dumps on S3 f
 6. Preserve prior files/comments and rollback switch. Record actual commit/revision,
    tests independently run, monitoring, backup/HA limitations and remaining work in
    runbook + LLM-wiki. Recurring backup is not claimed unless deployed and verified.
+
+## Foundation source continuation (not activated)
+
+The disabled foundation source now includes private IAM/Secret/Authentik
+provisioning tools, protected read-only artifact gateway with SigV4/hash/security
+tests, verified health routes, optional TLS browser routing and explicit rollback.
+Read `docs/rustfs/foundation-review.md` for source evidence and
+`docs/rustfs/activation-checklist.md` for actual phased runtime gates.
+All committed activation switches remain OFF. Independent source review and real
+runtime bucket/IAM/SSO/TLS/download tests are still required. No publisher switch
+is implemented by this foundation change; foundation must be up and tested first.

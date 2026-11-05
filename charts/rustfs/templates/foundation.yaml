@@ -52,7 +52,43 @@ spec:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities: {drop: [ALL]}
+          startupProbe:
+            httpGet: {path: /health/live, port: s3}
+            failureThreshold: 60
+            periodSeconds: 5
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet: {path: /health/ready, port: s3}
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: {path: /health/live, port: s3}
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 6
           env:
+            - {name: RUSTFS_FTP_ENABLE, value: 'false'}
+            - {name: RUSTFS_WEBDAV_ENABLE, value: 'false'}
+            - {name: RUSTFS_SFTP_ENABLE, value: 'false'}
+            {{- if .Values.oidc.enabled }}
+            - {name: RUSTFS_IDENTITY_OPENID_ENABLE, value: 'on'}
+            - {name: RUSTFS_BROWSER_REDIRECT_URL, value: 'https://rustfs.socrat.alchemmist.xyz'}
+            - {name: RUSTFS_IDENTITY_OPENID_CONFIG_URL, value: {{ .Values.oidc.issuer | quote }}}
+            - {name: RUSTFS_OUTBOUND_ALLOW_ORIGINS, value: 'https://auth.socrat.alchemmist.xyz'}
+            - {name: RUSTFS_IDENTITY_OPENID_SCOPES, value: 'openid,profile,email,rustfs_policy'}
+            - {name: RUSTFS_IDENTITY_OPENID_CLAIM_NAME, value: rustfs_policy}
+            - {name: RUSTFS_IDENTITY_OPENID_GROUPS_CLAIM, value: rustfs_policy}
+            - {name: RUSTFS_IDENTITY_OPENID_ROLES_CLAIM, value: rustfs_policy}
+            - {name: RUSTFS_IDENTITY_OPENID_REDIRECT_URI_DYNAMIC, value: 'off'}
+            - {name: RUSTFS_IDENTITY_OPENID_REDIRECT_URI, value: 'https://rustfs.socrat.alchemmist.xyz/rustfs/admin/v3/oidc/callback/default'}
+            - name: RUSTFS_IDENTITY_OPENID_CLIENT_ID
+              valueFrom:
+                secretKeyRef: {name: {{ .Values.oidc.secret }}, key: client-id}
+            - name: RUSTFS_IDENTITY_OPENID_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef: {name: {{ .Values.oidc.secret }}, key: client-secret}
+            {{- end }}
             - name: RUSTFS_VOLUMES
               value: /data
             - name: RUSTFS_ACCESS_KEY
@@ -67,7 +103,7 @@ spec:
             - {name: s3, containerPort: 9000}
             - {name: console, containerPort: 9001}
           resources:
-            requests: {cpu: 500m, memory: 2Gi}
+            requests: {cpu: 500m, memory: 4Gi}
             limits: {cpu: '2', memory: 4Gi}
           volumeMounts:
             - {name: data, mountPath: /data}
@@ -81,7 +117,16 @@ spec:
         - name: tmp
           emptyDir: {sizeLimit: 256Mi}
 ---
-# No service or ingress yet: even the console stays unexposed during review.
+# ClusterIP only. Browser routes, when separately enabled, terminate at Authentik.
+apiVersion: v1
+kind: Service
+metadata: {name: rustfs}
+spec:
+  selector: {app: rustfs}
+  ports:
+    - {name: s3, port: 9000, targetPort: s3}
+    - {name: console, port: 9001, targetPort: console}
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -90,6 +135,32 @@ spec:
   podSelector:
     matchLabels: {app: rustfs}
   policyTypes: [Ingress, Egress]
-  ingress: []
+  ingress:
+    {{- if .Values.gateway.enabled }}
+    - from:
+        - podSelector: {matchLabels: {app: rustfs-gateway}}
+      ports: [{port: 9000, protocol: TCP}]
+    {{- end }}
+    {{- if .Values.browserRoutes.enabled }}
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: identity}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: authentik, app.kubernetes.io/component: server}}
+      ports: [{port: 9001, protocol: TCP}]
+    {{- end }}
+    {{- if not (or .Values.gateway.enabled .Values.browserRoutes.enabled) }}
+    []
+    {{- end }}
+  {{- if .Values.oidc.enabled }}
+  egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {k8s-app: kube-dns}}
+      ports: [{port: 53, protocol: UDP}, {port: 53, protocol: TCP}]
+    {{- range .Values.authEgressCIDRs }}
+    - to: [{ipBlock: {cidr: {{ . | quote }}}}]
+      ports: [{port: 443, protocol: TCP}]
+    {{- end }}
+  {{- else }}
   egress: []
+  {{- end }}
 {{- end }}

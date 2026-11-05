@@ -1,4 +1,4 @@
-"""Offline scaffold safety checks; not gateway/IAM/runtime acceptance."""
+"""Offline foundation safety checks; not runtime acceptance."""
 import pathlib
 import subprocess
 import unittest
@@ -27,13 +27,41 @@ class Foundation(unittest.TestCase):
     def test_no_exposure(self):
         text = self.render('--set', 'enabled=true')
         self.assertNotIn('kind: Ingress', text)
-        self.assertNotIn('kind: Service\n', text)
-        self.assertIn('ingress: []', text)
+        self.assertIn('kind: Service\n', text)
+        self.assertIn('ingress:\n    []', text)
         self.assertIn('egress: []', text)
         self.assertIn('automountServiceAccountToken: false', text)
         self.assertIn('runAsUser: 10001', text)
         self.assertIn('readOnlyRootFilesystem: true', text)
         self.assertIn('sha256:ed9210d6411d77ffceb70d94b964a3cb7d225983368bc25bebe01e995293dcc2', text)
+
+    def test_protected_routes_and_secret_boundaries(self):
+        text = self.render('--set', 'enabled=true', '--set', 'oidc.enabled=true',
+            '--set', 'gateway.enabled=true', '--set', 'browserRoutes.enabled=true',
+            '--set', 'authEgressCIDRs[0]=192.0.2.10/32', '--set',
+            'gateway.image=example.invalid/reader@sha256:' + 'a'*64)
+        self.assertIn('RUSTFS_IDENTITY_OPENID_REDIRECT_URI_DYNAMIC', text)
+        self.assertIn('RUSTFS_IDENTITY_OPENID_CLAIM_NAME, value: rustfs_policy', text)
+        self.assertNotIn('ROLE_POLICY', text)
+        self.assertNotIn('kind: Secret', text)
+        self.assertNotIn('kind: Role', text)
+        self.assertIn('service: {name: authentik-server', text)
+        self.assertIn('path: /outpost.goauthentik.io/', text)
+        self.assertNotIn('nodePort:', text)
+        self.assertNotIn('type: LoadBalancer', text)
+        # Root is referenced by storage only; gateway has its isolated reader Secret.
+        self.assertEqual(text.count('name: rustfs-root'), 2)
+        self.assertEqual(text.count('name: rustfs-reader'), 2)
+        self.assertNotIn('rustfs-writer', text)
+        self.assertIn('path: /health/ready', text)
+
+    def test_activation_guards(self):
+        for values in [ ['--set','gateway.enabled=true'],
+                        ['--set','browserRoutes.enabled=true'],
+                        ['--set','oidc.enabled=true','--set','authEgressCIDRs[0]=0.0.0.0/0'] ]:
+            result=subprocess.run(['helm','template','rustfs',str(ROOT/'charts/rustfs'),
+                '--set','enabled=true',*values],capture_output=True)
+            self.assertNotEqual(result.returncode,0)
 
     def test_manual_app(self):
         text = (ROOT / 'deploy/argocd/apps/rustfs.yaml').read_text()
