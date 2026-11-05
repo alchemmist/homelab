@@ -1,5 +1,7 @@
 # Публичный DNS alchemmist.xyz
 
+> Current VPS address since 2026-11-05: **109.120.141.97**. Earlier addresses and deployment descriptions below are historical. See `docs/vps-ip-migration-20261105.md` for the migration and verification boundary.
+
 Срез на **2 ноября 2026**. Делегирование уже переключено с REG.RU на свои NS. Это описание схемы и того, что проверено, не замена live-проверке.
 
 ## Зачем

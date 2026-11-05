@@ -185,8 +185,6 @@ resources:
   metadata:
     name: stun
     namespace: netbird-pilot
-    annotations:
-      field.cattle.io/publicEndpoints: '[{"nodeName":":socrat-2","addresses":["10.250.0.2"],"port":3478,"protocol":"UDP","podName":"netbird-pilot:stun-58f868c496-bjcgs","allNodes":false}]'
   spec:
     progressDeadlineSeconds: 600
     replicas: 1

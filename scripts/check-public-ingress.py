@@ -4,6 +4,7 @@ import json
 import subprocess
 import tempfile
 from pathlib import Path
+from urllib.parse import urlsplit
 
 
 ADDRESSES = ("109.173.40.247", "109.120.141.97")
@@ -29,8 +30,28 @@ PROBES = {
     "llm.alchemmist.xyz": ("/health/liveliness", 200, b"I'm alive!"),
     "remark42.alchemmist.xyz": ("/ping", 200, b"pong"),
     "status.alchemmist.xyz": ("/api/status-page/heartbeat/socrat", 200, b"heartbeatList"),
-    "vpn.alchemmist.xyz": ("/", 404, None),
+    "lms.alchemmist.xyz": ("/", 303, None),
+    "vpn.alchemmist.xyz": ("/", 302, None),
 }
+
+
+LOGIN_REDIRECTS = {
+    'lms.alchemmist.xyz': '/auth/login',
+    'vpn.alchemmist.xyz': '/outpost.goauthentik.io/start',
+}
+
+
+def redirect_matches(host, headers):
+    if host not in LOGIN_REDIRECTS:
+        return True
+    locations = [line.partition(':')[2].strip() for line in headers.splitlines()
+                 if line.lower().startswith('location:')]
+    if len(locations) != 1:
+        return False
+    target = urlsplit(locations[0])
+    return (target.path == LOGIN_REDIRECTS[host]
+            and target.scheme in ('', 'https')
+            and target.netloc in ('', host))
 
 
 def check_endpoint(item):
@@ -38,19 +59,21 @@ def check_endpoint(item):
     path, expected, marker = PROBES.get(host, ("/", 200, None))
     with tempfile.TemporaryDirectory(prefix="public-ingress-check-") as directory:
         body = Path(directory) / "body"
+        headers = Path(directory) / "headers"
         result = subprocess.run(
             [
                 "curl", "--noproxy", "*", "--silent", "--show-error",
                 "--connect-timeout", "5", "--max-time", "15",
                 "--resolve", f"{host}:443:{address}",
-                "--output", str(body), "--write-out", "%{http_code}",
+                "--output", str(body), "--dump-header", str(headers), "--write-out", "%{http_code}",
                 f"https://{host}{path}",
             ],
             capture_output=True, text=True, timeout=20,
         )
         code = result.stdout.strip()
         content = body.read_bytes() if body.exists() else b""
-    valid = result.returncode == 0 and code == str(expected)
+        redirect_ok = redirect_matches(host, headers.read_text() if headers.exists() else "")
+    valid = result.returncode == 0 and code == str(expected) and redirect_ok
     if marker is not None:
         valid = valid and marker in content
     if host == "status.alchemmist.xyz" and valid:
@@ -65,19 +88,22 @@ def check_endpoint(item):
 
 
 def check_dns(host):
-    result = subprocess.run(
-        ["dig", "@ns1.reg.ru", host, "A", "+short", "+time=3", "+tries=1"],
-        capture_output=True, text=True, timeout=10,
-    )
-    addresses = set(result.stdout.split())
-    valid = result.returncode == 0 and addresses == set(ADDRESSES)
-    print(f"DNS {host:25} {','.join(sorted(addresses)) or 'no answer'} {'ok' if valid else 'FAILED'}")
+    valid = True
+    for authority in ADDRESSES:
+        result = subprocess.run(
+            ["dig", "@" + authority, host, "A", "+short", "+time=3", "+tries=1"],
+            capture_output=True, text=True, timeout=10,
+        )
+        addresses = set(result.stdout.split())
+        good = result.returncode == 0 and addresses == set(ADDRESSES)
+        valid = good and valid
+        print(f"DNS {host:25} authority={authority} {','.join(sorted(addresses)) or 'no answer'} {'ok' if good else 'FAILED'}")
     return valid
 
 
 def main():
     parser = argparse.ArgumentParser(description="Check both public HTTPS entrances without depending on DNS propagation.")
-    parser.add_argument("--check-dns", action="store_true", help="Also require both A records on ns1.reg.ru.")
+    parser.add_argument("--check-dns", action="store_true", help="Also require both A records at both owned authoritative entrances.")
     args = parser.parse_args()
     endpoints = [(host, address) for host in HOSTS for address in ADDRESSES]
     try:

@@ -9,7 +9,7 @@ gateway:
   image: harbor.socrat.alchemmist.xyz/homelab/rustfs-gateway@sha256:9253d36e923e216cd34714a5baf9b57d1bb5577bf52c4671a4f8d302a27fef57
 browserRoutes:
   enabled: false
-authEgressCIDRs: [109.173.40.247/32, 176.98.185.59/32]
+authEgressCIDRs: [109.173.40.247/32, 109.120.141.97/32]
 # Explicit Burstable reservation; no reduction of 4Gi runtime bound.
 # socrat-0 allocatable 32545144Ki; existing requests 29392Mi.
 resources:
