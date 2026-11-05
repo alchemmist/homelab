@@ -156,7 +156,8 @@ spec:
   ingress:
     {{- if .Values.gateway.enabled }}
     - from:
-        - podSelector: {matchLabels: {app: rustfs-gateway}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: {{ .Values.gateway.namespace }}}}
+          podSelector: {matchLabels: {app: rustfs-gateway}}
       ports: [{port: 9000, protocol: TCP}]
     {{- end }}
     {{- if .Values.browserRoutes.enabled }}

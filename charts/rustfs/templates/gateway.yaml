@@ -4,7 +4,7 @@
 {{- end }}
 apiVersion: apps/v1
 kind: Deployment
-metadata: {name: rustfs-gateway}
+metadata: {name: rustfs-gateway, namespace: {{ .Values.gateway.namespace }}}
 spec:
   replicas: 1
   selector: {matchLabels: {app: rustfs-gateway}}
@@ -54,14 +54,14 @@ spec:
 ---
 apiVersion: v1
 kind: Service
-metadata: {name: rustfs-gateway}
+metadata: {name: rustfs-gateway, namespace: {{ .Values.gateway.namespace }}}
 spec:
   selector: {app: rustfs-gateway}
   ports: [{name: http, port: 8080, targetPort: http}]
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
-metadata: {name: rustfs-gateway-isolation}
+metadata: {name: rustfs-gateway-isolation, namespace: {{ .Values.gateway.namespace }}}
 spec:
   podSelector: {matchLabels: {app: rustfs-gateway}}
   policyTypes: [Ingress, Egress]
@@ -71,7 +71,9 @@ spec:
           podSelector: {matchLabels: {app.kubernetes.io/name: traefik}}
       ports: [{port: 8080, protocol: TCP}]
   egress:
-    - to: [{podSelector: {matchLabels: {app: rustfs}}}]
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: rustfs}}
+          podSelector: {matchLabels: {app: rustfs}}
       ports: [{port: 9000, protocol: TCP}]
     - to:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}

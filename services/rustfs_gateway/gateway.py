@@ -182,8 +182,8 @@ class Reader:
         self.auth = os.environ['AUTH_URL']
         if self.auth != ORIGIN + '/outpost.goauthentik.io/auth/nginx':
             raise ValueError('invalid auth endpoint')
-        self.s3 = os.environ.get('S3_ENDPOINT', 'http://rustfs:9000')
-        if self.s3 != 'http://rustfs:9000':
+        self.s3 = os.environ.get('S3_ENDPOINT', 'http://rustfs.rustfs.svc.cluster.local:9000')
+        if self.s3 != 'http://rustfs.rustfs.svc.cluster.local:9000':
             raise ValueError('fixed S3 service required')
         self.access = os.environ['S3_ACCESS_KEY']
         self.secret = os.environ['S3_SECRET_KEY']

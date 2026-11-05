@@ -1,3 +1,8 @@
+> Reader relocation supersedes the former shared-edge cutover prerequisite.
+> Follow [gateway namespace migration](gateway-namespace-migration.md); do not
+> apply the old edge watch-list diff or restart shared edge. Source-only until
+> explicit activation; DNS and public browser acceptance are still pending.
+
 # RustFS foundation — operator activation and rollback
 
 **Historical source checklist. Private foundation is now deployed; public browser acceptance remains pending.**

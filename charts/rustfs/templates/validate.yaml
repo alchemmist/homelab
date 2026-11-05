@@ -1,3 +1,6 @@
+{{- if not (has .Values.gateway.namespace (list "rustfs" "identity")) }}
+{{- fail "gateway.namespace must be rustfs or identity" }}
+{{- end }}
 {{- if and .Values.enabled (or .Values.oidc.enabled .Values.gateway.enabled) }}
 {{- if not .Values.authEgressCIDRs }}
 {{- fail "provide exact Authentik endpoint /32 or /128 egress addresses before activation" }}

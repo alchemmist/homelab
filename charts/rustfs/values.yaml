@@ -10,6 +10,8 @@ oidc:
   secret: rustfs-oidc
   issuer: https://auth.socrat.alchemmist.xyz/application/o/spi-rustfs-native/
 gateway:
+  # Only reviewed placements; activate identity separately after secret/image preparation.
+  namespace: rustfs
   enabled: false
   # Build services/rustfs_gateway; supply a reviewed digest before enabling.
   image: ""
