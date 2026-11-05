@@ -14,6 +14,7 @@ gateway:
   # Build services/rustfs_gateway; supply a reviewed digest before enabling.
   image: ""
   readerSecret: rustfs-reader
+  imagePullSecrets: []
   authUrl: https://spi-evidence.socrat.alchemmist.xyz/outpost.goauthentik.io/auth/nginx
 browserRoutes:
   enabled: false
