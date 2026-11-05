@@ -45,6 +45,21 @@ spec:
         runAsGroup: 10001
         fsGroup: 10001
         seccompProfile: {type: RuntimeDefault}
+      initContainers:
+        # A new PVC hides image-created /data directories. Create symlink targets
+        # as the runtime uid, never a privileged/chown repair container.
+        - name: data-directories
+          image: {{ .Values.image | quote }}
+          command: [/bin/sh, -ec, 'mkdir -p /data/.rustfs/events /data/.rustfs/audit']
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {cpu: 100m, memory: 32Mi}
+          volumeMounts:
+            - {name: data, mountPath: /data}
       containers:
         - name: rustfs
           image: {{ .Values.image | quote }}
@@ -68,6 +83,10 @@ spec:
             timeoutSeconds: 3
             failureThreshold: 6
           env:
+            # Override image-level wildcard console CORS; never allow arbitrary origins.
+            - {name: RUSTFS_CONSOLE_CORS_ALLOWED_ORIGINS, value: 'https://rustfs.socrat.alchemmist.xyz'}
+            - {name: RUSTFS_CORS_ALLOWED_ORIGINS, value: ''}
+            - {name: RUSTFS_OBS_LOGGER_LEVEL, value: warn}
             - {name: RUSTFS_FTP_ENABLE, value: 'false'}
             - {name: RUSTFS_WEBDAV_ENABLE, value: 'false'}
             - {name: RUSTFS_SFTP_ENABLE, value: 'false'}

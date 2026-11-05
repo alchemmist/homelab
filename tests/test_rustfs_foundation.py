@@ -43,6 +43,8 @@ class Foundation(unittest.TestCase):
         self.assertIn('RUSTFS_IDENTITY_OPENID_REDIRECT_URI_DYNAMIC', text)
         self.assertIn('RUSTFS_IDENTITY_OPENID_CLAIM_NAME, value: rustfs_policy', text)
         self.assertNotIn('ROLE_POLICY', text)
+        self.assertIn("RUSTFS_CONSOLE_CORS_ALLOWED_ORIGINS, value: 'https://rustfs.socrat.alchemmist.xyz'", text)
+        self.assertIn("RUSTFS_CORS_ALLOWED_ORIGINS, value: ''", text)
         self.assertNotIn('kind: Secret', text)
         self.assertNotIn('kind: Role', text)
         self.assertIn('service: {name: authentik-server', text)

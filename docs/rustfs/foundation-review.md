@@ -25,8 +25,13 @@ Fetched directly from official GitHub and Docker Hub during this source review:
   privilege escalation GHSA-5354-r3w2-34m8. Disable alternate listeners and retest IAM.
 - Official `1.0.4/Dockerfile` creates uid/gid 10001, writes `/data` and `/logs`,
   with events/audit symlinks under `/opt/rustfs` into `/data/.rustfs`.
-  Chart mounts writable data, logs, tmp and uses that nonroot identity. Actual
-  local-path filesystem permissions and read-only root operation remain untested.
+  Chart mounts writable data, logs, tmp and uses that nonroot identity. A same-uid
+  bounded init container creates `/data/.rustfs/events` and `audit` because a new
+  PVC hides image-created directory targets; it never runs root/chown. Pinned
+  entrypoint initializes data/log paths without requiring privileged writes to
+  root filesystem. Actual local-path permissions/read-only operation remain untested.
+  Image's wildcard console CORS default is explicitly overridden with the fixed
+  console origin; S3 generic CORS stays empty and logging stays warn.
 - Pinned `rustfs/src/server/prefix.rs` defines `/health/live` and `/health/ready`;
   `server/layer.rs:resolve_public_health_probe` maps GET/HEAD to liveness/readiness
   before S3 parsing. `server/health.rs` separates liveness from readiness. Chart
