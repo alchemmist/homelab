@@ -4,8 +4,9 @@ oidc:
   enabled: true
 gateway:
   enabled: true
+  namespace: identity
   imagePullSecrets: [{name: rustfs-harbor-pull}]
-  image: harbor.socrat.alchemmist.xyz/homelab/rustfs-gateway@sha256:0af2fdaaedf74c4ddbd0dc06fe48965ef609b4e4c211fcb72db3fceb9b72a0c7
+  image: harbor.socrat.alchemmist.xyz/homelab/rustfs-gateway@sha256:9253d36e923e216cd34714a5baf9b57d1bb5577bf52c4671a4f8d302a27fef57
 browserRoutes:
   enabled: false
 authEgressCIDRs: [109.173.40.247/32, 176.98.185.59/32]
