@@ -13,7 +13,7 @@ The migration utility requires Python 3.11+ and Git. It performs offline file co
 ## Offline rehearsal
 
 1. Select a shared runtime release by immutable image digest and chart version. Verify architecture support and its data-migration compatibility before using it with production data.
-2. Disable editing, stop the Git synchronization worker and every other data writer, then take a filesystem/PVC snapshot or copy from the stopped volume. Suspending a Fleet reconciliation alone does not stop a process. Draining the Git queue is preferred, but pending records may be preserved if the new runtime supports their schema.
+2. Disable editing, stop the Git synchronization worker and every other data writer, then take a filesystem/PVC snapshot or copy from the stopped volume. Suspending Argo CD or any other reconciler alone does not stop a process. Draining the Git queue is preferred, but pending records may be preserved if the new runtime supports their schema.
 3. Export from the offline volume copy. `--offline` is an operator assertion, not a distributed lock. Do not copy a running SQLite database or let the old writer resume while its files are being copied.
 
 ```sh
@@ -40,15 +40,15 @@ The tool rejects dirty repositories, a HEAD different from the active accepted p
 
 ## Production cutover
 
-Use a new Helm release/resource naming scope and a **new PVC**. The old PVC `wiki-editor-data` must remain intact. The current `wiki` and `wiki-editor` Fleet installations must not be repointed to a shared writable volume. Only one runtime process may write the new volume; do not scale it to multiple writers.
+Use a new Helm release/resource naming scope and a **new PVC**. The old PVC `wiki-editor-data` must remain intact. Historical constraint, already satisfied: the old `wiki` and `wiki-editor` Fleet installations must not be repointed to a shared writable volume. Only one runtime process may write the new volume; do not scale it to multiple writers.
 
 After rehearsal acceptance, schedule a short edit freeze and repeat the offline backup from the final production state. Restore onto the new PVC and repeat the startup, publication and administrator checks. Keep public routes on the old readers until the new runtime is ready. Keep remote Git sync disabled until the old worker has stopped permanently and the preserved queue has been checked.
 
-Manage the shared runtime with one declarative Fleet bundle consuming the versioned chart and immutable image. GitHub Actions builds and tests shared artifacts; Fleet deploys them. Socrat-specific configuration, content, branding and secret references remain in homelab. Record release identifiers, last accepted commit, outstanding queue entries, backup location and old resource names in the change record.
+**Retired Fleet instruction, do not execute.** The shared runtime is no longer a Fleet bundle. Argo CD Application `deploy/argocd/apps/wiki-runtime.yaml` consumes the vendored chart and immutable image. GitHub Actions builds and tests shared artifacts; Argo CD deploys them. Socrat-specific configuration, content, branding and secret references remain in homelab. Record release identifiers, last accepted commit, outstanding queue entries, backup location and old resource names in the change record.
 
 Switch both the public ingress and private WireGuard route to the new application. Confirm HTTPS, anonymous public reading and internet-accessible authenticated editing before enabling writes. Remove the legacy WG header authorization bypass. Verify a new accepted publication immediately after reload and its eventual remote Git synchronization.
 
-Retire the old two bundles and wiki-specific image/publish CI only after acceptance. Fleet deletion may uninstall managed resources, so first verify resource ownership and prevent deletion of the retained PVC or shared ingress resources. Do not let old workflows redeploy the previous implementation after cutover.
+**Retired and already completed.** The old two Fleet bundles and wiki-specific image/publish CI were removed after acceptance. Deleting a Fleet GitRepo can uninstall managed resources; that is not a step to repeat against the Argo CD Application. Keep the retained PVC and shared ingress resources. Do not let old workflows redeploy the previous implementation after cutover.
 
 ## Rollback
 
@@ -66,14 +66,16 @@ Tests use disposable local repositories and cover history/outbox/account/upload 
 
 ## Declarative deployment
 
-`deploy/wiki-runtime/fleet.yaml` and `values.yaml` define the active bundle. Its GitRepo declaration is `deploy/fleet/wiki-runtime.yaml`. The chart `0.2.2` and image `ghcr.io/alchemmist/hugo-docs-wiki:0.2.2` are public; the image is pinned to `sha256:80b5c52800290a036d0e2b6de91e9fdddb50d03def5ffb2677f13291de3baaf4`. No registry credentials are required. The declarations include background Git synchronization and the runtime-owned public ingress; check Fleet reconciliation when assessing their rollout.
+**Retired as an operational procedure.** `deploy/wiki-runtime/fleet.yaml` and `deploy/fleet/wiki-runtime.yaml` have been removed. The live deployer is the Argo CD Application `deploy/argocd/apps/wiki-runtime.yaml`, which renders `deploy/wiki-runtime/chart` with `deploy/wiki-runtime/values.yaml`. Do not resume a GitRepo or Bundle. The paragraphs below record the earlier Fleet declaration, including the public chart `0.2.2` pin, and are not the current release.
+
+`deploy/wiki-runtime/fleet.yaml` and `values.yaml` defined the Fleet bundle. Its GitRepo declaration was `deploy/fleet/wiki-runtime.yaml`. The chart `0.2.2` and image `ghcr.io/alchemmist/hugo-docs-wiki:0.2.2` are public; the image is pinned to `sha256:80b5c52800290a036d0e2b6de91e9fdddb50d03def5ffb2677f13291de3baaf4`. No registry credentials are required. The declarations include background Git synchronization and the runtime-owned public ingress; check Fleet reconciliation when assessing their rollout.
 
 Deployment invariants and checks:
 
 - Publish and accept the shared chart/runtime and pin its immutable image digest in values. `staticFiles` carries an exact copy of `wiki/static/images/socrat.svg`; `siteConfig` carries the Russian site configuration. A custom image is not required. Do not reuse the old editor image or copy the legacy `wiki/assets/wiki-editor.js`, `wiki/assets/wiki-editor.css`, or editor layout overrides: they shadow the new theme editor. Retain the packaged vendored module tree.
 - Create and restore the **new** `wiki-runtime-data` claim and `wiki-runtime-bootstrap` Secret (`token` key) in namespace `wiki`. Check volume ownership for UID/GID 1000. The skeleton never claims `wiki-editor-data`.
 - The installed Fleet v0.16.2 supports the OCI `helm.repo` field. The public chart is pulled anonymously; keep registry credentials used by the legacy images untouched. [Fleet chart-source reference](https://fleet.rancher.io/reference/ref-fleet-yaml#_chart_source).
-- Accept the isolated application and administrator login before changing `paused`, enabling ingress or attaching the bundle to a GitRepo. Do not enable a duplicate ingress for the production hostname while the old route remains active.
+- Historical Fleet step, do not execute: accept the isolated application and administrator login before changing `paused`, enabling ingress or attaching the bundle to a GitRepo. Do not enable a duplicate ingress for the production hostname while the old route remains active.
 - For cutover, configure Git repository `git@github.com:alchemmist/homelab.git`, branch `main`, and a new combined SSH Secret containing `id_ed25519` and `known_hosts`. The old installation uses separate secret/configmap mounts, so its secret cannot be referenced unchanged. Stop its sync worker first.
 - Retain existing TLS secret `wiki-tls`, configure the private WG route to the same service, and then retire the legacy authorization bypass and old bundles according to the runbook. Verify the Certificate is owned by the new ingress and remains Ready after the old ingress is removed; the TLS Secret alone does not establish future renewal.
 - Keep the chart-provided static files mounted with individual `subPath` entries. Hugo skips projected ConfigMap directories that are symlinks; chart 0.2.2 includes the tested mount layout.

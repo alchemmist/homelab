@@ -1,4 +1,4 @@
-- name: Bootstrap the shared wiki runtime Fleet deployment
+- name: Bootstrap the shared wiki runtime prerequisites for Argo CD
   hosts: socrat-0
   gather_facts: false
   become: true
@@ -18,22 +18,3 @@
         argv: "{{ ['python3', '/tmp/bootstrap-wiki-runtime.py'] + (['--skip-legacy-git'] if wiki_runtime_skip_legacy_git | bool else []) }}"
       register: wiki_runtime_bootstrap
       changed_when: "'created' in wiki_runtime_bootstrap.stdout"
-
-    - name: Copy runtime Fleet repository manifest
-      ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../../deploy/fleet/wiki-runtime.yaml"
-        dest: /tmp/wiki-runtime-fleet.yaml
-        owner: root
-        group: root
-        mode: '0600'
-
-    - name: Register runtime Fleet repository
-      ansible.builtin.command:
-        argv: [k3s, kubectl, apply, -f, /tmp/wiki-runtime-fleet.yaml]
-      register: wiki_runtime_fleet
-      changed_when: "'created' in wiki_runtime_fleet.stdout or 'configured' in wiki_runtime_fleet.stdout"
-
-    - name: Show runtime Fleet reconciliation status
-      ansible.builtin.command:
-        argv: [k3s, kubectl, -n, fleet-local, get, gitrepo, wiki-runtime]
-      changed_when: false

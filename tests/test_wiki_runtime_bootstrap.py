@@ -13,7 +13,6 @@ SPEC.loader.exec_module(BOOTSTRAP)
 class BootstrapTests(unittest.TestCase):
     def setUp(self):
         self.resources = {
-            ('clusters.fleet.cattle.io', 'local', 'fleet-local'): {'spec': {'agentNamespace': 'fleet-agent-local'}},
             ('secret', 'wiki-editor-git', 'wiki'): {'data': {'id_ed25519': BOOTSTRAP.encoded('private fixture')}},
             ('configmap', 'wiki-editor-hosts', 'wiki'): {'data': {'known_hosts': 'github.com fixture'}},
         }
@@ -23,13 +22,12 @@ class BootstrapTests(unittest.TestCase):
     def test_creates_only_isolated_resources_without_registry_credentials(self):
         messages = BOOTSTRAP.bootstrap(self.kube)
         all_created = [call.args[0] for call in self.kube.create.call_args_list]
-        self.assertEqual([item['kind'] for item in all_created[:4]], ['Namespace', 'ServiceAccount', 'Role', 'RoleBinding'])
-        self.assertEqual(all_created[3]['subjects'][0]['namespace'], 'fleet-agent-local')
-        created = all_created[4:]
-        self.assertEqual([item['metadata']['name'] for item in created], ['wiki-runtime-data', 'wiki-runtime-bootstrap', 'wiki-runtime-git'])
-        self.assertEqual(created[0]['metadata']['annotations']['helm.sh/resource-policy'], 'keep')
-        self.assertEqual(BOOTSTRAP.decoded(created[2]['data']['known_hosts']), 'github.com fixture')
-        self.assertFalse(any('ghcr-pull' in call.args or 'wiki-runtime-registry' in call.args for call in self.kube.get.call_args_list))
+        self.assertEqual([item['kind'] for item in all_created], ['Namespace', 'PersistentVolumeClaim', 'Secret', 'Secret'])
+        self.assertEqual([item['metadata']['name'] for item in all_created], ['wiki', 'wiki-runtime-data', 'wiki-runtime-bootstrap', 'wiki-runtime-git'])
+        self.assertEqual(all_created[1]['metadata']['annotations']['helm.sh/resource-policy'], 'keep')
+        self.assertEqual(BOOTSTRAP.decoded(all_created[3]['data']['known_hosts']), 'github.com fixture')
+        self.assertFalse(any(item['kind'] in {'ServiceAccount', 'Role', 'RoleBinding'} for item in all_created))
+        self.assertFalse(any('clusters.fleet.cattle.io' in call.args or 'ghcr-pull' in call.args or 'wiki-runtime-registry' in call.args for call in self.kube.get.call_args_list))
         self.assertNotIn('token:with:colons', str(messages))
 
     def test_repeated_run_never_rotates_bootstrap_or_existing_resources(self):

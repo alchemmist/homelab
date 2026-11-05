@@ -231,9 +231,9 @@ credentials remain enforced by n8n. No real production webhook was invoked to te
 
 Through both public IPs: UI and `/rest/settings` return an Authentik redirect,
 healthz 200, missing API key 401 and a nonexistent webhook 404 (not a login page).
-The original Fleet ingress/certificate stays intact for renewal and rollback.
+The original ingress and certificate stay intact for renewal and rollback. They were created while Fleet owned the route; that GitRepo is retired and must not be recreated to preserve them.
 Deleting the two identity-managed gateway ingresses restores the prior routing;
-do not delete the native app, database or Fleet objects.
+do not delete the native app, database, ingress, or certificate.
 
 ## WireGuard and trust
 

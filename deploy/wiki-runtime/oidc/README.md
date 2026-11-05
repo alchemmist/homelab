@@ -39,9 +39,9 @@ New node starts depend on Harbor unless the exact image is cached; this is not H
 and exact reviewed mappings into `socrat-authentik-wiki`, preserving state-signing
 key. It restarts only the Wiki deployment when an active Secret actually changes.
 First deployment requires the OIDC-enabled image/chart and this Secret together.
-Fleet declares the vendored chart + immutable image in this repository. Publishing
-changes to main can trigger reconciliation; check the bundle and running image after
-publishing. Keep subsequent changes in this source path, not a competing manual
+The Argo CD Application `wiki-runtime` declares the vendored chart and immutable image in this repository. Publishing
+changes to main can trigger reconciliation; check the Application and running image after
+publishing. Do not add a Fleet GitRepo beside it. Keep subsequent changes in this source path, not a competing manual
 release manager. Historical evidence captures the earlier pre-publication state;
 committing source is not itself proof of runtime acceptance.
 

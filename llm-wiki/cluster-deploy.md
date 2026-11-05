@@ -1,6 +1,8 @@
 # Выкатка на кластер Socrat
 
-Срез на **1 ноября 2026**. Это контракт релиза для сервисов, которые уже живут в Argo CD. Пилот — `blog`. Остальные workload ещё на Fleet/Helm и GHCR; этим документом их не переводить.
+Срез на **1 ноября 2026**. Это контракт релиза для сервисов, которые уже живут в Argo CD. Пилот — `blog`. На ту дату остальные workload ещё были на Fleet/Helm и GHCR; этот снимок сам по себе их не переводил.
+
+**Снятие GitOps Fleet.** В репозитории больше нет Fleet `GitRepo` и `deploy/**/fleet.yaml`. Выкладка приложений — только Argo CD (`deploy/argocd/apps`). Это не удаление контроллеров Fleet из кластера: Rancher v2.15.2 снова включает Feature Fleet, пока включён multi-cluster-management. Бюджеты `cattle-fleet-*`, размещение `gitjob`/`helmops` и описания исключённых Fleet-дашбордов поэтому оставлены. Не возвращать GitRepo и не считать multi-cluster-management выключенным. Образы на GHCR — отдельная миграция registry, не повод оставлять Fleet-бандл.
 
 Журнал первого пилота и registry: `docs/harbor.md`, `llm-wiki/harbor.md`.
 

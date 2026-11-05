@@ -50,23 +50,8 @@ def required_data(item, key):
     return value
 
 
-def prerequisites(kube):
-    cluster = kube.get('clusters.fleet.cattle.io', 'local', 'fleet-local')
-    agent_namespace = (cluster or {}).get('spec', {}).get('agentNamespace')
-    if not agent_namespace:
-        raise BootstrapError('Cannot discover the local Fleet agent namespace')
-    namespace = {'apiVersion': 'v1', 'kind': 'Namespace', 'metadata': {'name': 'wiki'}}
-    account = resource('ServiceAccount', 'wiki-deployer', agent_namespace)
-    role = resource('Role', 'wiki-deployer', 'wiki', rules=[
-        {'apiGroups': [''], 'resources': ['secrets', 'configmaps', 'services', 'persistentvolumeclaims'], 'verbs': ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete']},
-        {'apiGroups': [''], 'resources': ['pods', 'events'], 'verbs': ['get', 'list', 'watch']},
-        {'apiGroups': ['apps'], 'resources': ['deployments', 'replicasets'], 'verbs': ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete']},
-        {'apiGroups': ['networking.k8s.io'], 'resources': ['ingresses', 'networkpolicies'], 'verbs': ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete']},
-        {'apiGroups': ['policy'], 'resources': ['poddisruptionbudgets'], 'verbs': ['get', 'list', 'watch', 'create', 'update', 'patch', 'delete']},
-    ])
-    binding = resource('RoleBinding', 'wiki-deployer', 'wiki', roleRef={'apiGroup': 'rbac.authorization.k8s.io', 'kind': 'Role', 'name': 'wiki-deployer'}, subjects=[{'kind': 'ServiceAccount', 'name': 'wiki-deployer', 'namespace': agent_namespace}])
-    role['apiVersion'] = binding['apiVersion'] = 'rbac.authorization.k8s.io/v1'
-    return [namespace, account, role, binding]
+def prerequisites(_kube):
+    return [{'apiVersion': 'v1', 'kind': 'Namespace', 'metadata': {'name': 'wiki'}}]
 
 
 def bootstrap(kube, skip_legacy_git=False):

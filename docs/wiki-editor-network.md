@@ -10,7 +10,7 @@ Production public ingress and both private virtual hosts have switched to the sh
 
 The switch removes the separate editor upstream and legacy wiki authorization-header injection. It removes the editor secret mount when no other virtual host needs it. The private gateway still restricts socket peers to the administrative subnet; that network restriction does not grant application permissions. Preserve unrelated virtual hosts, existing gateway values and the private TLS certificate. Review the complete rendered gateway release before applying it.
 
-The new runtime is declared by `deploy/fleet/wiki-runtime.yaml` and `deploy/wiki-runtime`. Keep one writer on its new PVC. Public ingress and private routing must switch together after account login works; do not leave a private route pointing at the old writer. Bootstrap users in the new application, not through the old editor bootstrap playbook or shared gateway credentials.
+The new runtime is declared by `deploy/argocd/apps/wiki-runtime.yaml` and `deploy/wiki-runtime`. Keep one writer on its new PVC. Public ingress and private routing must switch together after account login works; do not leave a private route pointing at the old writer. Bootstrap users in the new application, not through the old editor bootstrap playbook or shared gateway credentials.
 
 ## macOS
 

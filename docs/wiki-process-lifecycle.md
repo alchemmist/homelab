@@ -57,5 +57,5 @@ included in the Wiki CI workflow.
 
 The upstream source fix does not itself publish a release;
 the production image pin is unchanged. Publish a normal reviewed release and
-update the Fleet chart/image pins separately when authorized. The current live
+update the chart and image pins in `deploy/wiki-runtime` separately when authorized. Argo CD applies that commit; do not pin a Fleet bundle. The current live
 mitigation is persistent in the existing PVC, not an unpublished patched image.

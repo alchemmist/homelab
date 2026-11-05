@@ -53,15 +53,17 @@ and was not repointed, deleted, or reused.
 
 The target PV uses Retain. Its declarative specification is in
 `ansible/files/wiki-runtime-storage-socrat-0.yaml`; it provisions no data and must
-not be used as a substitute for restoring a verified backup. Fleet values now
-select the new claim and node socrat-0.
+not be used as a substitute for restoring a verified backup. At that time, Fleet values
+selected the new claim and node socrat-0. Current selection is `deploy/wiki-runtime/values.yaml`, applied by the Argo CD Application.
 
 ## Fleet handoff — required before resuming reconciliation
+
+**Retired. Do not execute this handoff.** GitRepo `fleet-local/wiki-runtime` and Bundle `fleet-local/wiki-runtime-deploy-wiki-runtime` are no longer declared in this repository. Wiki reconciliation is the Argo CD Application `wiki-runtime`. The record below is the 2026-11-01 live pause that stopped old Git values from moving the volume back to socrat-3.
 
 At completion, **both GitRepo and Bundle remain paused live** to prevent the
 old remote Git values from moving Wiki back to socrat-3. The source values change
 is local and uncommitted. After reviewing, committing and pushing the new values
-and storage declaration:
+and storage declaration, the historical steps were:
 
 1. Resume GitRepo `fleet-local/wiki-runtime` and ensure it observes the new Git
    revision (do not resume against the old claim/node configuration).

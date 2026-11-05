@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import subprocess
 
+# gitjob and helmops are Rancher Fleet controllers. They stay while multi-cluster-management is enabled.
 TARGETS = [('cattle-fleet-system', 'gitjob'), ('cattle-fleet-system', 'helmops'),
            ('cattle-capi-system', 'capi-controller-manager'),
            ('cattle-turtles-system', 'rancher-turtles-controller-manager')]

@@ -10,6 +10,7 @@ Measured on 2026-10-20. Source of truth: `ansible/vars/container-resources.yml`,
 - The native admission policy overrides container budgets for matching namespace/controller/name profiles, including source-defined CPU caps where `removeCpuLimit: true`. Helm/operator templates retain their upstream values; effective Pod resources are intentionally managed by this catalog. Update the catalog when changing a budget, otherwise admission will override a chart-only change.
 - Unprofiled containers retain explicit settings; missing requests fall back to 10m CPU / 32Mi RAM / 16Mi ephemeral storage and missing memory/storage limits to 1Gi / 4Gi. CPU limits are not injected. Unknown workloads must be audited and added, not mistaken for measured sizing.
 - Host K3s/etcd and other system services are outside Pod admission. GPU extended resources are preserved. PVC/NFS/hostPath data is outside ephemeral-storage accounting.
+- Rows for `cattle-fleet-system` and `cattle-fleet-local-system` stay. They size Rancher Fleet controllers, which Rancher v2.15.2 turns back on while multi-cluster-management is enabled. They are not homelab GitRepo budgets.
 
 ## Evidence and sizing
 

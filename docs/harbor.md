@@ -63,7 +63,7 @@ CI should push immutable git-SHA tags and deploy by digest. Put the push robot
 in the CI secret store. Create a `kubernetes.io/dockerconfigjson` Secret with the
 pull robot in each consuming namespace and reference it in `imagePullSecrets`.
 No cluster-wide unauthenticated registry or insecure TLS exception is needed.
-Fleet image automation credentials are a separate integration, not yet configured.
+Fleet image automation was never configured. Homelab GitOps no longer uses Fleet GitRepos; image rollout is Argo CD. This pilot note is historical and is not an instruction to enable Fleet.
 
 ### Blog CI/CD pilot (2026-11-01)
 

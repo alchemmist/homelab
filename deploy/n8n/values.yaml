@@ -1,3 +1,5 @@
+# Not referenced by deploy/argocd/apps/n8n.yaml. That Application renders charts/n8n,
+# where ingress.enabled is false. This file remains only as the retired Fleet bundle's values.
 image: docker.io/n8nio/n8n@sha256:624a1f10f37119a73eca34c0cbd358668aebf0068d320ad5eae584f9d35aa314
 nodeName: socrat-1
 secretName: n8n-secrets

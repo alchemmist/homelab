@@ -236,8 +236,8 @@ peers: нужен gateway+ACL/failover. Root на чужой ноде = дове
 - Generic source and 9 regressions recorded in hugo-docs commit `c6ffb18`; no new
   tagged release. Homelab patch is self-contained/reproducible and source publication
   is organized separately from unrelated dirty work. Historical evidence records
-  the pre-publication state, not current Git status. After pushing main, check Fleet
-  bundle/running image rather than assuming a commit alone proves GitOps acceptance.
+  the pre-publication state, not current Git status. After pushing main, check the Argo CD Application
+  and running image rather than assuming a commit alone proves GitOps acceptance. Fleet GitRepo checks are retired.
 
 ### Уточнение владельца о полном объёме
 

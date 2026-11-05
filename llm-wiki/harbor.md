@@ -91,11 +91,10 @@ docker --config "$HOME/.config/homelab/harbor/docker" push \
 - Secret нужен **в каждом namespace**, где приложение скачивает приватные образы.
 - Ссылаться на него через Pod `imagePullSecrets` или специально выбранный
   ServiceAccount. Не менять глобально все ServiceAccount без необходимости.
-- Credentials не включать в открытые Helm values, Fleet GitRepo или Git.
+- Credentials не включать в открытые Helm values или Git. Argo CD читает Git; отдельных Fleet GitRepo в репозитории нет.
 - Insecure registry/TLS skip verify не нужны: HTTPS доверенный.
 
-**Существующие деплои с GHCR ещё не мигрировали.** Fleet image automation и CI push
-тоже нужно подключать отдельно; наличие Harbor само по себе их не переключает.
+**Существующие деплои с GHCR ещё не мигрировали.** Fleet image automation не подключать: GitOps-манифесты Fleet сняты, выкладка через Argo CD. CI push в Harbor подключается отдельно; наличие Harbor само по себе его не включает.
 
 ## Как развёрнуто сейчас
 

@@ -212,7 +212,7 @@ passwords, личного Tim MFA или полной offboarding готовно
    commit, рабочее дерево и реально настроенные CI checks; отсутствие workflow
    не называть зелёным pipeline.
 6. Push не равен deployment: branding/app controllers применяются отдельно,
-   running images/Fleet/Argo readiness проверяются после соответствующего rollout.
+   running images и готовность Argo CD Application проверяются после соответствующего rollout. Fleet GitRepo больше не является проверкой выкладки.
 
 ## 9. Оставшийся backlog
 

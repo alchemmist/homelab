@@ -1,8 +1,0 @@
-defaultNamespace: wiki
-createNamespace: false
-paused: false
-helm:
-  releaseName: wiki-runtime
-  chart: ./chart
-  valuesFiles:
-    - values.yaml
