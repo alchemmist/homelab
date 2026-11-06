@@ -199,3 +199,58 @@ HA or an independent backup. The observed Kubernetes context has four Ready
 nodes; no nodes/topology were added, removed or changed (a seven-node claim is not
 made). n8n identities/workflows/PVC/encryption, calendar/Yandex/blog WRITE_ENABLED,
 NetBird/Mac/VPN/DNS/shared edge and human IAM are outside this deployment change.
+
+## SPI S3 activation — 6 November 2026 (natural publication pending)
+
+Supersedes earlier OFF/not-deployed statements for SPI only. Approved source
+`7e1cd0a9ccccdb8322815a1d8b20bdd9060f502b` passed rereview; OFF/live readiness
+at `e7a23613ce3e5c62ed1635f27068109991724f2e` passed. Authorized minimal ON
+activation is `af9cbcdac8bd03a2ce2b0155b23193e8bad33938`, changing only
+`charts/spi-triage/values-off-live.yaml` enabled=true and explanatory comments.
+Both SPI and RustFS were Synced/Healthy there; actual worker loaded backend=s3,
+S3Evidence, with client SHA256
+`97604f85646d55ba1f36c384be4034becc786608a3ee39663a42d8e6b2d72c5c`.
+No image rebuild; ConfigMap source is unchanged from accepted OFF deployment.
+Fresh SQLite backup API checkpoint before activation: 23,404,544 bytes, SHA256
+`fa338ee2369fd5b021f8cc5de0d2f40c2109ed743f69a5862e236c97e0a65acb`;
+independent integrity/FK checks passed. A subsequent consistent snapshot passed
+those checks too (SHA256
+`81a4741781b58c38d81e5a51e505c20d85d35daf7cdc0b15c2fbabd398608a27`).
+Private checkpoints remain under ~/.config/homelab/spi-final-acceptance/.
+
+Bounded natural observation 12:39:14–12:42:15Z found **no S3-selected job**.
+Queue remained 100 queued, 11 retry, 1 processing, 170 complete, 5 dead,
+2 dry_run. No real S3 GitHub narrative/manifest/artifact link can yet be cited;
+Reader byte/hash/truncation/missing proof for a real publication is **pending**.
+Do not interpret ON/Healthy or prior benign storage fixtures as end-to-end proof.
+No forced claim/reselection, lease/budget reset, dead revival, synthetic alert,
+model call, GitHub test write or Telegram replay was used.
+
+289/289 original IDs/creation timestamps survive. All 177 original terminal
+states/results/intents are unchanged; one complete row naturally gained a
+redelivery timestamp/count. All 145 original effective legacy locks retain their
+results/intents (144 rows wholly unchanged). Legacy-only original continuation
+markers must remain as-is; they are not migrated by ON. Independent Telegram
+outbox remains 73 rows: 66 applied, 7 pending; URL/event/revision/state and
+acknowledgement unchanged, two pending rows advanced ordinary retry timing/count.
+393 Telegram receipts and 212 receipt events are byte-for-byte row-equivalent;
+no replay or outage injection. Exact-primary semantics are independent of S3.
+
+Tests: prior source rereview 151 SPI + 5 chart/helper + 29 RustFS passed;
+activation reran 5 chart/helper tests and both chart lints successfully. Prior
+OFF actual conditional 412/race/ambiguity/IAM denial gates remain accepted.
+Existing nativeOIDC human/download45B hash evidence remains accepted, not
+re-enacted; console GetOnly unchanged. No new human logout/outsider claim.
+A real-publication anonymous/forged-auth read and scoped Reader verification
+must still be recorded when a natural eligible job actually publishes.
+
+Backend-preserving rollback: set only enabled=false in the same live overlay;
+retain retainCredentials=true, dedicated writer Secret/mount and exact network
+grants while any S3-locked continuation exists. Fetch/rebase before scoped HTTPS
+push; never erase historical comments/files or reset job state. Standalone Retain
+storage is not HA, enforced quota or independent backup. Four Ready nodes were
+observed in the existing context, not seven; no topology change or seven-node
+verification is claimed. No n8n identities/workflows/credentials/PVC/encryption,
+calendar/Yandex/blog WRITE_ENABLED, NetBird/Mac/VPN/DNS/shared edge, human IAM or
+RBAC changes were made by activation. Final acceptance report:
+`/tmp/spi-s3-final-live-acceptance.md` (PENDING until real publication proof).
