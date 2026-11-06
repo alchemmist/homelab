@@ -621,3 +621,46 @@ changes, deployment or endpoint probes are part of this correction. See
 `docs/n8n/spi/token-admission.md` for bounds and runbook. Rollback only this
 scheduler delta on the v2-capable runtime; never reinterpret v2 checkpoints with
 a fixed-12 matcher. Later rollout requires review, fresh backup and fetch/rebase.
+
+
+## Completion-aware live rollout — 2026-11-06 (bounded, blocked acceptance)
+
+Reviewed scheduler `3309f505` deployed through ordinary SPI autoSync/Recreate;
+normalized ConfigMap matches source, pinned image/PVC/container specification
+unchanged, GitOps Healthy. Shared priority is write > analyze > collect > match;
+only proven local stage2 admission retry holds stage0, bounded664s, expiry
+proximity4s. Independent Telegram delivery and 3RPM/30000TPM/parallel1 remain.
+The pre-rollout active reservation expired naturally at17:05:18Z; restart quiet
+period was conservative crash recovery, not provider429 or scheduler starvation.
+
+Finished natural observation16:54:48–17:39:48Z. One genuine end-to-end report:
+https://github.com/alchemmist/homelab/issues/72#issuecomment-6690743660
+(job20e7; **not** any requested card). All13 permanent canonical manifest/artifact
+links checked in actual GitHub body; scoped Reader matched exact original bytes,
+sizes and SHA against stored verified receipts. Telegram revision1 applied the
+exact primary with verified expected2/observed2. This is publication proof,
+not merely batch counts. Reservations are not exact provider token usage.
+
+All four prepared jobs a16a/c93b/fa45/a92e naturally obtained analysis and reached
+stage3 with reports, then publication's mandatory global open-snapshot fence
+returned OPEN_SPI_CHANGED, resetting to stage0 and deleting all6 cached reviews
+of61 candidates each. First successful publication changed the open snapshot;
+this is a real throughput/cache-invalidation limitation, not generic queue wait.
+The four exact requested event jobs305b/8c6a/08ba/998b remained queued stage0,
+attempt0, with no primary; requested three cards remain unaccepted. One publish
+INVALID_UPSTREAM_JSON was a finite upstream JSON parse failure, not invalid model
+output; endpoint/status/content-type are not retained, so exact source unknown.
+
+No live fix or weakened fence. Source follow-up should retain validated progress
+at reset, reuse only exact candidate-ID/content + event/prompt-contract-bound
+unchanged batch proofs on a refreshed snapshot, invalidate changed/new/closed
+batches and final selection, and check signature cheaply before expensive analysis.
+Preserve primary-intent/S3 reconciliation and post-upload publication fences.
+This is a proposal requiring independent review, not deployed behavior.
+
+Fresh SQLite API backup before push passed header/integrity/FK/SHA checks.
+All316 original IDs/creation times and terminal results/intents preserved;
+119 cancelled whole rows identical. One old completed job received a natural
+duplicate delivery (only updated/deliveries changed). Outbox68->69 applied,
+7 pending unchanged. No forced claims/reset/revival/probe or unrelated changes.
+Observation ended; no ongoing monitoring promised. Rollback remains v2-capable.
