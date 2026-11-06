@@ -242,13 +242,16 @@ def read_request_body(handler, timeout=10):
 
 def serve():
     os.umask(0o077)
+    # Fail closed before store recovery, claims or dispatch.
     storage,storage_backend=load_storage()
+    model=Model(HTTP(),os.environ['LITELLM_KEY'])
     http=HTTP();store=Store(os.environ.get('SPI_DATABASE','/data/spi.sqlite'))
+    model.store=store
     recovered=store.recover_on_start()
     log_event('worker_started', recovered_jobs=recovered)
     delivery=Delivery(store,os.environ.get('BOT_INTERNAL_TOKEN',''),enabled=os.environ.get('SPI_TELEGRAM_LINKS_ENABLED','false')=='true')
     engine=Engine(store,GitHub(http,os.environ.get('GITHUB_TOKEN_FILE','/github/token')),
-                  Model(http,os.environ['LITELLM_KEY'],store=store),Evidence(http,os.environ['GRAFANA_TOKEN'],os.environ['GRAFANA_URL'],github=GitHub(http,os.environ.get('GITHUB_TOKEN_FILE','/github/token'))),
+                  model,Evidence(http,os.environ['GRAFANA_TOKEN'],os.environ['GRAFANA_URL'],github=GitHub(http,os.environ.get('GITHUB_TOKEN_FILE','/github/token'))),
                   write=os.environ.get('WRITE_ENABLED')=='true',delivery=delivery,
                   storage=storage,storage_backend=storage_backend)
     delivery.github=engine.github

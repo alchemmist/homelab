@@ -1,0 +1,11 @@
+# Source-only experimental local counter — BLOCKED
+
+Do not activate this image. The full offline local-mode regression process was OOM-killed at the unchanged 384Mi limit. Do not increase resources to work around this acceptance failure. Final pairwise selection is unchanged and deferred.
+
+Build locally: `sh services/spi-tokenizer/build-local.sh /tmp/spi-tokenizer-assets.YxjQRa`. No push is performed. Base Python 3.13 Alpine digest is pinned in Dockerfile. Wheel URL is pinned in wheel-url.txt; wheel SHA256 is checked before no-index/no-deps installation. Asset revision: https://huggingface.co/RedHatAI/Qwen3.8-27B-INT4/resolve/91bd022d5b49442a868bc35008f6c21e1860edfa/ . Asset hashes are in local_token_counter.py and checked during build and runtime. Build requires pre-fetched assets, not runtime internet. Assets and wheel are not tracked.
+
+Model card attribution is retained in MODEL-README.md and image README.md; it declares Apache-2.0. Official Apache text from https://www.apache.org/licenses/LICENSE-2.0.txt has SHA256 cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30. Wheel inspection found no LICENSE/NOTICE entries: legal packaging is NOT complete; manifest code retains any such files present but does not invent them.
+
+Default `tokenAccountingMode: byte-bound-v1` remains compatible. Experimental `local-qwen-v1` is explicit, fail-closed, offline and validates before store recovery. No chart activation is authorized. Remote alias remapping requires operator revalidation of the pinned tokenizer/template; local validation cannot verify remote configuration. Reservation uses rendered prompt tokens plus full response-format UTF-8 bytes, 256 framing allowance and explicit completion cap; this is reservation utilization, NOT exact provider usage. Existing durable charges remain untouched and actual-usage upward adjustment remains unchanged. Rollback selects byte-bound-v1 and original pinned base image; retain cache, database and budget ledger without refunds.
+
+Outstanding: singleton/lifecycle/resource analysis after the observed OOM; seven historic actual-payload AutoTokenizer oracles; adversarial oracles; complete license/NOTICE review; public-source fetch/rebuild script; helper/JS regressions; fake-clock tighter-cost acceptance. No production readiness or live throughput claim.

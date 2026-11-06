@@ -50,6 +50,12 @@ spec:
             - secretRef:
                 name: {{ .Values.secretName }}
           env:
+            - name: SPI_TOKEN_ACCOUNTING_MODE
+              value: {{ .Values.tokenAccountingMode | quote }}
+            - name: RAYON_NUM_THREADS
+              value: "1"
+            - name: TOKENIZERS_PARALLELISM
+              value: "false"
             - name: SPI_TELEGRAM_LINKS_ENABLED
               value: {{ .Values.telegramLinksEnabled | quote }}
             - name: SPI_DISPATCH_ENABLED

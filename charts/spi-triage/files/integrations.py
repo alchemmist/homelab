@@ -185,6 +185,8 @@ class Model:
         # Production explicitly passes the worker Store. Standalone instances share
         # the same configured PVC database, not an instance-local rate limiter.
         self.store=store
+        from local_token_counter import configured_counter
+        self.counter=configured_counter()
 
     def payload(self,task,data,schema):
         # Preserve identities and visible excerpt metadata. core.clean is an
@@ -244,7 +246,7 @@ class Model:
     def call(self,task,data,schema,deadline):
         last='INVALID_MODEL_SCHEMA'
         body=self.payload(task,data,schema)
-        tokens=self.reservation(body)
+        tokens=self.counter.reservation(body) if self.counter else self.reservation(body)
         if tokens>30000:raise Failure('LLM_REQUEST_TOO_LARGE')
         for attempt in range(2):
             remaining=deadline-time.monotonic()
