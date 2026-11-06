@@ -1,0 +1,8 @@
+---
+- name: Audit or explicitly reconcile human NetBird admission
+  hosts: socrat-0
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  roles:
+    - netbird_access

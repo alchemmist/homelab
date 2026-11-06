@@ -1,3 +1,9 @@
+> **Current human access:** [administrator onboarding](../../docs/netbird-administrator-onboarding.md)
+> and [NetBird alongside Tunnelblick](../../docs/netbird-tunnelblick-coexistence.md).
+> Use `ansible/playbooks/netbird-access.yml`, not historical pilot activation scripts.
+> Client DNS is disabled server-side for builtin All; only reviewed Authentik
+> groups are admitted, with MFA and no redundant per-user approval.
+
 # NetBird control plane and machine peers
 
 **Deployment owner: `root -> netbird` Argo CD**, chart `charts/netbird`, values

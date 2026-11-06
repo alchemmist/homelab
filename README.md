@@ -261,3 +261,13 @@ substitutes for fixing the internal client tunnel.
 
 Current primary Mac client: [NetBird alongside Tunnelblick](docs/netbird-tunnelblick-coexistence.md),
 with NetBird DNS disabled and only four selected internal host routes.
+
+
+## New internal-network administrators
+
+Use [Authentik → NetBird onboarding](docs/netbird-administrator-onboarding.md)
+and the [project skill](.agents/skills/netbird-administrator-onboarding/SKILL.md).
+One reviewed Authentik group grants network admission; users install the standard
+client and sign in with MFA. No personal VPN file or per-device policy is needed.
+Audit/reconcile/grant/revoke/offboard entrypoint:
+[`ansible/playbooks/netbird-access.yml`](ansible/playbooks/netbird-access.yml).

@@ -18,6 +18,14 @@ These resources are precisely `10.250.0.1/32`, `.3/32`, `.2/32`, `.5/32`.
 No exit node, default route or LAN-wide route is needed. Ordinary SSH aliases
 remain internal IPs on port 2222 with retained pinned keys and `ProxyJump none`.
 
+## New users: no special client flags required
+
+The 2026-11-06 cleanup also disabled DNS management **server-side** for builtin
+All, including future devices, and made admission depend on the reviewed Authentik
+group plus MFA rather than a second manual NetBird user approval. See
+[administrator onboarding](netbird-administrator-onboarding.md). Existing owner
+client flags below remain a local defense; they are not a per-user setup requirement.
+
 ## Why disable DNS
 
 The active Tunnelblick profile monitors DNS, restores primary DNS changes and

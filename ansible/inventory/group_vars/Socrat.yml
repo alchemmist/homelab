@@ -4,7 +4,6 @@ homelab_ssh_public_host: socrat.alchemmist.xyz
 homelab_ssh_port_base: 2222
 homelab_ssh_preserve_ports: [22]
 homelab_ssh_router_mapping_mode: static
-ansible_host: "{{ homelab_ssh_public_host }}"
 
 # Shared defaults for Socrat nodes.
 # Starship uses runtime `hostname`, so the same config works for every node:
@@ -26,9 +25,6 @@ wg_socrat_admin_clients:
   tim-phone:
     address: 10.250.0.7
     public_key: 9Xb/IL7jwM1Z5CLMGGPyIou89bW2vOijGyEbZS1OzCQ=
-  assistant:
-    address: 10.250.0.6
-    public_key: RdRir+QQhVg9aSwGNmBcvSKDak7gQyuaYfJx8KDgXB4=
   antonmoss-mac:
     address: 10.250.0.4
     public_key: wys2VBbZrDMU+a1w5Gjpu4QlEefD7ZhoJEcCT7mKgyA=

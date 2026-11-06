@@ -1,5 +1,10 @@
 # Current NetBird administrative access: four routing peers, two relays
 
+Human admission and cleanup continuation (2026-11-06):
+[canonical administrator onboarding](netbird-administrator-onboarding.md).
+The topology/failure evidence below remains historical evidence, not a claim
+that a fresh human MFA/device enrollment was tested by the later cleanup.
+
 Live continuation: 2026-11-03. Supersedes the historical
 [single-gateway deployment](netbird-single-gateway.md).
 **Data-plane redundancy is deployed; full WireGuard-replacement/HA acceptance is not complete.**

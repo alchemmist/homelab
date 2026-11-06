@@ -1,0 +1,31 @@
+---
+- name: Validate operation and explicit mutation approval
+  ansible.builtin.assert:
+    that:
+      - netbird_access_action in ['reconcile', 'grant', 'revoke', 'offboard']
+      - not (netbird_access_apply | bool) or (netbird_access_approve_plan_hash | length == 64)
+      - netbird_access_action == 'reconcile' or (netbird_access_username | length > 0 and netbird_access_expected_user_uuid | length > 0)
+    fail_msg: Read the NetBird administrator onboarding runbook. Audit first and approve its fresh hash.
+- name: Run guarded human admission helper using existing private controller credentials
+  ansible.builtin.script:
+    cmd: >-
+      {{ (playbook_dir + '/../../scripts/netbird-access.py') | quote }}
+      {{ netbird_access_action | quote }}
+      --state-dir {{ netbird_access_state_dir | quote }}
+      {% if netbird_access_action != 'reconcile' %}
+      --username {{ netbird_access_username | quote }}
+      --expected-user-uuid {{ netbird_access_expected_user_uuid | quote }}
+      {% endif %}
+      {% if (netbird_access_apply | bool) and not ansible_check_mode %}
+      --apply --approve-plan-hash {{ netbird_access_approve_plan_hash | quote }}
+      {% endif %}
+    executable: /usr/bin/python3
+  register: netbird_access_result
+  check_mode: false
+  changed_when: (netbird_access_result.stdout | from_json).changed | default(false) | bool
+  diff: false
+  vars:
+    ansible_ssh_use_tty: false
+- name: Show sanitized operation counts and approval hash
+  ansible.builtin.debug:
+    msg: "{{ netbird_access_result.stdout | from_json }}"

@@ -22,6 +22,15 @@ class InventoryStructureTests(unittest.TestCase):
             self.assertTrue(all(key.startswith('ansible_') for key in settings), host)
             self.assertTrue((ANSIBLE / 'inventory/host_vars' / f'{host}.yml').is_file())
 
+    def test_default_connections_are_internal_without_bastions(self):
+        hosts=yaml.safe_load((ANSIBLE / 'inventory/hosts.yml').read_text())['all']['children']['Socrat']['hosts']
+        addresses={'socrat-0':'10.250.0.1','socrat-1':'10.250.0.3','socrat-2':'10.250.0.2','socrat-3':'10.250.0.5'}
+        for name,address in addresses.items():
+            self.assertEqual(hosts[name]['ansible_host'],address)
+            self.assertEqual(hosts[name]['ansible_port'],2222)
+            self.assertIn('ProxyJump=none',hosts[name]['ansible_ssh_common_args'])
+            self.assertIn('HostKeyAlias=',hosts[name]['ansible_ssh_common_args'])
+
     def test_default_sources_are_explicit_not_the_whole_inventory_directory(self):
         config = configparser.ConfigParser()
         config.read(ANSIBLE / 'ansible.cfg')
