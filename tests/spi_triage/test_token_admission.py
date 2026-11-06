@@ -1,5 +1,6 @@
 """SPI-only synthetic payloads and deterministic ledger clocks; no live inference."""
-import json,tempfile,time,unittest
+import json,tempfile,time,unittest,os
+from unittest.mock import patch
 from unittest.mock import Mock
 import test_triage as f
 from core import Store,Failure,MATCH_SCHEMA,REPORT_SCHEMA
@@ -30,6 +31,7 @@ class AdmissionTests(unittest.TestCase):
         with self.assertRaises(Failure):self.store.reserve_llm(1,now=3)
         with self.assertRaises(Failure) as e:self.store.reserve_llm(30001,now=100)
         self.assertEqual(e.exception.code,'LLM_REQUEST_TOO_LARGE')
+    @patch.dict(os.environ, {'SPI_TOKEN_ACCOUNTING_MODE':'byte-bound-v1'})
     def test_serialized_schema_output_and_analysis(self):
         m=Model(Mock(),'fake',store=self.store)
         for schema,output in ((MATCH_SCHEMA,768),(REPORT_SCHEMA,2500)):
@@ -42,6 +44,48 @@ class AdmissionTests(unittest.TestCase):
             self.assertGreater(m.reservation(body),len(body['messages'][1]['content']))
         with self.assertRaises(Failure) as e:m.call('test',{'huge':['x'*12000]*5},REPORT_SCHEMA,time.monotonic()+20)
         self.assertEqual(e.exception.code,'LLM_REQUEST_TOO_LARGE');m.http.request.assert_not_called()
+    def test_local_compressible_and_incompressible_before_http(self):
+        if os.environ.get('SPI_TOKEN_ACCOUNTING_MODE') != 'local-qwen-v1':
+            return  # Local validation image exercises native path; host remains optional.
+        h=Mock();h.request.return_value={'choices':[{'message':{'content':json.dumps(GOOD)}}]}
+        m=Model(h,'fake',store=self.store)
+        self.assertEqual(m.call('test',{'huge':['x'*12000]*5},MATCH_SCHEMA,time.monotonic()+20),GOOD)
+        h.request.assert_called_once();h.reset_mock()
+        import random,string
+        rng=random.Random(419)
+        noise=''.join(rng.choice(string.ascii_letters+string.digits) for _ in range(60000))
+        with self.assertRaises(Failure) as e:
+            m.call('test',{'huge':noise},MATCH_SCHEMA,time.monotonic()+20)
+        self.assertEqual(e.exception.code,'LLM_REQUEST_TOO_LARGE');h.request.assert_not_called()
+
+    def test_local_computed_cost_durable_clock(self):
+        if os.environ.get('SPI_TOKEN_ACCOUNTING_MODE') != 'local-qwen-v1':
+            return
+        m=Model(Mock(),'fake',store=self.store)
+        bodies=[m.payload('test',{'text':'x'*16000+str(i)},MATCH_SCHEMA) for i in range(3)]
+        costs=[m.counter.reservation(b) for b in bodies]
+        with patch.dict(os.environ, {'SPI_TOKEN_ACCOUNTING_MODE':'byte-bound-v1'}):
+            legacy=Model(Mock(),'fake')
+        self.assertLessEqual(sum(costs),30000)
+        self.assertGreater(sum(legacy.reservation(b) for b in bodies),30000)
+        s=self.store
+        for i,cost in enumerate(costs):
+            now=100+i*2
+            r=s.reserve_llm(cost,now=now)
+            with self.assertRaises(Failure) as e:Store(s.path).reserve_llm(1,now=now+.1)
+            self.assertEqual(e.exception.code,'LLM_ADMISSION_DEFERRED')
+            s.finish_llm(r,actual=1,now=now+1)
+            s=Store(s.path)
+        with s.db() as db:
+            self.assertEqual([r[0] for r in db.execute('select tokens from llm_admission order by id')],costs)
+        with self.assertRaises(Failure):s.reserve_llm(1,now=161.999)
+        r=s.reserve_llm(costs[0],now=162)
+        s.finish_llm(r,actual=30000,now=163)
+        with Store(s.path).db() as db:
+            self.assertEqual(db.execute('select tokens from llm_admission where id=?',(r,)).fetchone()[0],30000)
+        with self.assertRaises(Failure):Store(s.path).reserve_llm(1,now=223.999)
+        Store(s.path).reserve_llm(1,now=224)
+
     def test_actual_call_uses_shared_admission(self):
         h=Mock();h.request.return_value={'choices':[{'message':{'content':json.dumps(GOOD)}}],'usage':{'total_tokens':50}}
         m=Model(h,'fake',store=self.store)

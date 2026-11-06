@@ -12,5 +12,6 @@ for name in tokenizer.json tokenizer_config.json chat_template.jinja README.md t
   cp "$src/$name" "$context/assets/"
 done
 cp "$here/LICENSE-2.0.txt" "$context/assets/"
+cp -R "$here/legal" "$context/assets/legal"
 echo 'cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30  '"$context/assets/LICENSE-2.0.txt" | shasum -a 256 -c -
 DOCKER_BUILDKIT=0 docker build --platform linux/amd64 -t spi-local-tokenizer-counter:source-only "$context"
