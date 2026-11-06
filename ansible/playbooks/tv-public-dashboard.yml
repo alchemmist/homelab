@@ -1,0 +1,119 @@
+---
+# URL-only closeout: deliberately does NOT run TV provisioning, install APKs,
+# import VPN profiles, touch DNS, change scale/fonts, remap keys or switch HDMI.
+- name: Audit or apply the approved public URL to the existing Fully installation
+  hosts: socrat-0
+  gather_facts: false
+  any_errors_fatal: true
+  vars:
+    tv_adb: 192.168.0.19:5555
+    tv_state: /var/lib/homelab-grafana-tv-public
+    tv_candidate: /home/alchemmist/.cache/homelab-tv/public-url-once-settings.json
+    tv_network_guard: "settings get global private_dns_mode; settings get secure always_on_vpn_app; settings get secure always_on_vpn_lockdown; dumpsys connectivity | grep 'NetworkAgentInfo.*VPN' || true"
+  tasks:
+    - name: Refuse an uncertain prior URL import
+      become: true
+      ansible.builtin.stat:
+        path: "{{ tv_state }}/tv-uncertain.json"
+      register: tv_uncertain
+    - ansible.builtin.assert:
+        that: not tv_uncertain.stat.exists
+        fail_msg: Inspect the private TV receipts before retrying an uncertain import.
+    - name: Read the owned native share URL
+      become: true
+      ansible.builtin.slurp:
+        src: "{{ tv_state }}/fully-url.json"
+      register: tv_url_file
+      no_log: true
+    - ansible.builtin.set_fact:
+        tv_start_url: "{{ ((tv_url_file.content | b64decode | from_json).startURL) | replace('https://grafana.socrat.alchemmist.xyz/', 'https://tv.alchemmist.xyz/') }}"
+      no_log: true
+    - ansible.builtin.assert:
+        that: tv_start_url is match('^https://tv\.alchemmist\.xyz/public-dashboards/[a-f0-9]{32}\?kiosk=1&hideLogo=1&autofitpanels=true&socratTv=1$')
+      no_log: true
+    - name: Verify the already-authorized TV (never reconnect or change VPN)
+      ansible.builtin.command:
+        argv: [adb, '-s', '{{ tv_adb }}', shell, getprop, ro.product.model]
+      register: tv_model
+      changed_when: false
+    - name: Require Fully already foreground; do not steal HDMI or another app
+      ansible.builtin.command:
+        argv: [adb, '-s', '{{ tv_adb }}', shell, 'dumpsys window | grep mCurrentFocus']
+      register: tv_focus
+      changed_when: false
+    - name: Refuse to replace any pending settings import
+      ansible.builtin.command:
+        argv: [adb, '-s', '{{ tv_adb }}', shell, 'test -e /sdcard/fully-once-settings.json && echo PENDING || echo EMPTY']
+      register: tv_pending
+      changed_when: false
+    - ansible.builtin.assert:
+        that:
+          - tv_model.stdout | trim == 'MiTV-MOOQ1'
+          - "'de.ozerov.fully/de.ozerov.fully.FullyActivity' in tv_focus.stdout"
+          - tv_pending.stdout | trim == 'EMPTY'
+    - name: Snapshot the unchanged DNS/VPN settings and active VPN network
+      ansible.builtin.command:
+        argv: [adb, '-s', '{{ tv_adb }}', shell, '{{ tv_network_guard }}']
+      register: tv_network_before
+      changed_when: false
+      no_log: true
+    - ansible.builtin.set_fact:
+        tv_plan_hash: "{{ ({'target':tv_adb,'url':tv_start_url,'model':tv_model.stdout,'focus':tv_focus.stdout,'network':tv_network_before.stdout} | to_json) | hash('sha256') }}"
+        tv_receipt_id: "{{ now(utc=true,fmt='%Y%m%dT%H%M%SZ') }}"
+      no_log: true
+    - ansible.builtin.debug:
+        msg: "URL-only operation=1, plan_hash={{ tv_plan_hash }}; existing Fully scale/fonts, APKs, keys, VPN, DNS and HDMI are not configured."
+    - ansible.builtin.assert:
+        that: tv_public_hash == tv_plan_hash
+      when: tv_public_apply | default(false) | bool
+    - name: Apply exactly one Fully preference, with uncertain-write stop
+      when: tv_public_apply | default(false) | bool
+      block:
+        - become: true
+          ansible.builtin.copy:
+            dest: "{{ tv_state }}/tv-before-{{ tv_receipt_id }}.json"
+            content: "{{ {'plan_hash':tv_plan_hash,'network':tv_network_before.stdout,'focus':tv_focus.stdout,'url_sha256':tv_start_url | hash('sha256')} | to_nice_json }}"
+            mode: '0600'
+          no_log: true
+        - become: true
+          ansible.builtin.copy:
+            dest: "{{ tv_state }}/tv-uncertain.json"
+            content: "{{ {'plan_hash':tv_plan_hash,'receipt':tv_receipt_id} | to_json }}"
+            mode: '0600'
+        - ansible.builtin.copy:
+            dest: "{{ tv_candidate }}"
+            content: "{{ {'startURL':tv_start_url} | to_json }}"
+            mode: '0600'
+          no_log: true
+        - ansible.builtin.command:
+            argv: [adb, '-s', '{{ tv_adb }}', push, '{{ tv_candidate }}', /sdcard/fully-once-settings.json]
+        - name: Restart only the already-foreground Fully browser
+          ansible.builtin.command:
+            argv: [adb, '-s', '{{ tv_adb }}', shell, 'am force-stop de.ozerov.fully; am start -n de.ozerov.fully/.FullyActivity']
+        - name: Verify Fully consumed the URL-only file
+          ansible.builtin.command:
+            argv: [adb, '-s', '{{ tv_adb }}', shell, 'test -e /sdcard/fully-once-settings.json && echo PENDING || echo EMPTY']
+          register: tv_consumed
+          changed_when: false
+          until: tv_consumed.stdout | trim == 'EMPTY'
+          retries: 10
+          delay: 1
+        - ansible.builtin.command:
+            argv: [adb, '-s', '{{ tv_adb }}', shell, '{{ tv_network_guard }}']
+          register: tv_network_after
+          changed_when: false
+          no_log: true
+        - ansible.builtin.assert:
+            that: tv_network_after.stdout == tv_network_before.stdout
+            fail_msg: TV network guard changed; inspect receipts, no automatic retry.
+          no_log: true
+        - become: true
+          ansible.builtin.copy:
+            dest: "{{ tv_state }}/tv-after-{{ tv_receipt_id }}.json"
+            content: "{{ {'plan_hash':tv_plan_hash,'url_sha256':tv_start_url | hash('sha256'),'import_consumed':true,'network_unchanged':true,'preference_keys':['startURL']} | to_nice_json }}"
+            mode: '0600'
+          no_log: true
+        - become: true
+          ansible.builtin.file:
+            path: "{{ tv_state }}/tv-uncertain.json"
+            state: absent
