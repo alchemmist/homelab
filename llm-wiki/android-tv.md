@@ -47,15 +47,13 @@ Home сюда не входит. Это системная кнопка, лау�
 
 | Кнопка | Код Android | Действие |
 | --- | --- | --- |
-| BUTTON_11 | 198 | открыть `xyz.alchemmist.grafana` («Grafana VPN»): переключить WireGuard на профиль `xiaomi-tv` для внутренней сети и открыть Fully Kiosk |
+| BUTTON_11 | 198 | открыть `xyz.alchemmist.grafana` («Grafana»): отключить YouTube VPN, если включён, и открыть публичный светофор в Fully Kiosk без подключения VPN |
 | BUTTON_10 | 197 | открыть `xyz.alchemmist.hdmi`, это HDMI 1 |
 | BUTTON_14 | 201 | открыть Кинопоиск (`ru.kinopoisk.tv`) |
 | BUTTON_16 | 203 | открыть `xyz.alchemmist.tvmode` («YouTube VPN»): переключить WireGuard на профиль `alchemmist-tv` для глобальной сети и открыть YouTube |
 | Home | — | штатный лаунчер, tvQuickActions её не ловит |
 
-Все назначенные горячие клавиши заданы как «открыть приложение», не как shell-команда. Поэтому они живут без сетевой отладки. Помощник `xyz.alchemmist.grafana` переключает WireGuard на `xiaomi-tv`, затем открывает Fully, который сам открывает сохранённый адрес светофора. Помощник `xyz.alchemmist.hdmi` переключает вход на HDMI 1, чтобы в кнопке не хранить длинный intent прошивки. Приложение `xyz.alchemmist.tvmode` («YouTube VPN») переключает WireGuard на `alchemmist-tv`, затем открывает YouTube.
-
-В переключателях `android/tv-mode` и `android/tv-grafana` используется `SwitchVpn`: перед каждым переходом он отправляет WireGuard команду отключить оба профиля (`xiaomi-tv` и `alchemmist-tv`), ждёт исчезновения VPN-сети, поднимает нужный профиль и ждёт от Android отметки `VALIDATED`. Это гарантирует смену между двумя конфигурациями одного WireGuard-клиента, который может держать только один VPN-туннель одновременно. Для YouTube помощник завершает фоновый процесс Fully, а затем открывает YouTube поверх него. Fully может оставить собственную foreground-службу для защиты киоска, поэтому это закрывает браузер с экрана, но не обязательно останавливает все его фоновые службы. На отключение даётся 15 секунд, на подключение — 30; при тайм-ауте целевое приложение не открывается.
+Все назначенные горячие клавиши заданы как «открыть приложение», не как shell-команда. Поэтому они живут без сетевой отладки. Помощник `xyz.alchemmist.grafana` отключает только `alchemmist-tv`, ждёт исчезновения VPN-сети и открывает Fully с сохранённым публичным URL. Он не подключает никакой туннель. `xyz.alchemmist.hdmi` выбирает HDMI 1. Помощник `xyz.alchemmist.tvmode` подключает единственный оставшийся профиль `alchemmist-tv`, ждёт `VALIDATED` и открывает YouTube. Настройки/ключ этого глобального профиля не менялись. Оба helper APK обновляются совместимой прежней подписью и больше не содержат `xiaomi-tv` или записи always-on VPN. Назначения кнопок не переписывались.
 
 ### Исходники и установка помощников
 
@@ -73,7 +71,7 @@ HDMI 1 для прошивки — `com.mediatek.tvinput/.hdmi.HDMIInputService/
 
 1. Home, затем список приложений, открыть tvQuickActions. Цветной кнопкой его не открыть: она уже занята действием.
 2. Нажать на пульте ту кнопку, которую нужно переназначить. Приложение покажет её как текущую.
-3. Задать действие одиночного нажатия. Для Grafana — запуск `Grafana VPN` (`xyz.alchemmist.grafana`), не Fully напрямую. Для HDMI — `xyz.alchemmist.hdmi`. Для YouTube — `YouTube VPN` (`xyz.alchemmist.tvmode`), а не YouTube напрямую. Двойное и долгое нажатие можно занять отдельно, если нужно второе действие на той же кнопке.
+3. Задать действие одиночного нажатия. Для Grafana — запуск `Grafana` (`xyz.alchemmist.grafana`), не Fully напрямую. Для HDMI — `xyz.alchemmist.hdmi`. Для YouTube — `YouTube VPN` (`xyz.alchemmist.tvmode`), а не YouTube напрямую. Двойное и долгое нажатие можно занять отдельно, если нужно второе действие на той же кнопке.
 4. Выйти и проверить физическим нажатием. `adb shell input keyevent` службу доступности не проверяет: ввод с компьютера может не дойти до tvQuickActions, хотя пульт работает.
 
 Новая свободная цветная кнопка назначается тем же путём: открыть приложение и нажать её. Стоит сборка free. Если она не даст добавить ещё одну кнопку, предел у этой сборки, а не у плейбука.
@@ -112,9 +110,9 @@ ansible-playbook playbooks/tv-admin.yml --ask-become-pass
 
 Браузер — Fully Kiosk `de.ozerov.fully`. Стартовый адрес:
 
-`https://tv.alchemmist.xyz/public-dashboards/<accessToken>?kiosk=1&hideLogo=1&autofitpanels=true&socratTv=1`
+`https://grafana.socrat.alchemmist.xyz/public-dashboards/<accessToken>?kiosk=1&hideLogo=1&autofitpanels=true&socratTv=1`
 
-Это native public sharing **только** `socrat-traffic-light`, без входа и без anonymous Viewer всей организации. Точный адрес хранится на socrat-0 в root-private `/var/lib/homelab-grafana-tv-public/fully-url.json` (там канонический hostname Grafana); TV-плейбуки заменяют hostname на `tv.alchemmist.xyz`. Отдельное имя обходит старое приватное разрешение `grafana.socrat…` на ТВ, не меняя DNS/VPN-профиль. Обычные дашборды и API требуют прежнюю авторизацию.
+Это native public sharing **только** `socrat-traffic-light`, без входа и без anonymous Viewer всей организации. Точный URL берётся без подмены hostname из root-private `/var/lib/homelab-grafana-tv-public/fully-url.json` на socrat-0. Отдельный `tv.alchemmist.xyz` отменён и удалён. Внутренний профиль `xiaomi-tv` удалён из WireGuard на ТВ; его peer отозван на серверах, а inventory больше его не создаёт. Обычные дашборды и API сохраняют SSO/роли.
 
 - `kiosk=1` — полный киоск Grafana, без верхней полосы диапазона и Refresh.
 - `hideLogo=1` — без нижней плашки Powered by Grafana. Голый `?kiosk` верхнюю полосу оставлял.
@@ -135,14 +133,12 @@ ansible-playbook playbooks/tv-admin.yml --ask-become-pass
 
 ## Сеть до Grafana
 
-Публичный `tv.alchemmist.xyz` не требует внутреннего туннеля. Старый TV DNS-профиль всё ещё направляет `grafana.socrat.alchemmist.xyz` в приватный шлюз; обычный публичный Grafana на этом имени теперь использует SSO. TV-профили и помощники оставлены без изменений. На телевизоре приложение `com.wireguard.android`, профиль `xiaomi-tv`, адрес `10.250.0.8`. Приватный ключ homelab-профиля только в `~/.config/homelab/wireguard/xiaomi-tv.key` на машине администратора. Публичный ключ пира — в `ansible/inventory/group_vars/Socrat.yml`. Для YouTube добавлен отдельный профиль `alchemmist-tv` из приватного клиентского файла `tv.conf`: полный маршрут через глобальную VPN-сеть, адрес `10.0.0.10`. Его приватный ключ не хранится в репозитории.
+Светофор работает через обычный публичный `grafana.socrat.alchemmist.xyz`. Внутренний туннель/ключ `xiaomi-tv` (бывший `10.250.0.8`) удалён через UI WireGuard, а серверный public peer удалён из persistent/runtime конфигурации всех узлов, где он существовал. Остальные peer bindings сохранены; интерфейсы не перезапускались. Приватные исторические backups не уничтожались.
 
-Маршруты раздельные: профиль `xiaomi-tv` отправляет только homelab-сети в туннель, обычный интернет остаётся на Wi-Fi. Профиль `alchemmist-tv` отправляет весь IPv4/IPv6-трафик через глобальную VPN-сеть. Android Private DNS установлен в `off`: при автоматическом режиме YouTube получал `ERR_NAME_NOT_RESOLVED`; выключение DoT позволило разрешить `i.ytimg.com`. DNS-запросы активного WireGuard-профиля всё равно идут внутри зашифрованного туннеля к DNS-серверам из профиля. Без активного VPN DNS на Wi-Fi больше не использует DoT.
+На ТВ остался **только** `alchemmist-tv` для YouTube, `10.0.0.10`: его ключ/конфигурация не читались и не заменялись. Профиль включается YouTube-помощником по требованию. `always_on_vpn_app` очищен, lockdown выключен; новый setup не восстанавливает автоподключение внутренней сети. Android Private DNS остаётся `off`, как раньше, для совместимости YouTube; DNS/маршруты самого глобального профиля не менялись. Для Grafana после отключения YouTube VPN используются Wi-Fi и обычное публичное разрешение имени.
 
-Пользовательский WireGuard сам туннель после загрузки не поднимает. Плейбук ставит его always-on VPN и оставляет lockdown выключенным (`always_on_vpn_lockdown=0`). Туннель возвращается вместе с телевизором и не запирает остальной трафик.
-
-Fully, tvQuickActions, WireGuard и `xyz.alchemmist.hdmi` стоят в whitelist deviceidle и могут работать в фоне. Иначе Android останавливает их после простоя, и кнопки или туннель не переживают сон.
+Проверен переход помощниками: YouTube запустился с `VALIDATED` VPN; Grafana затем открылась без активной VPN-сети. Это не проверка физического пульта или холодного включения — назначения/HDMI не менялись.
 
 ## Что не автоматизировано
 
-Плейбук устанавливает только homelab-помощники HDMI/Grafana/YouTube VPN и удаляет Happ. Сторонние Fully, tvQuickActions, WireGuard и VPN-профили нужно завести отдельно. Профиль глобального VPN для YouTube импортируется в WireGuard как `alchemmist-tv` из приватного файла конфигурации; исходный `tv.conf` и его ключ нельзя класть в git. Внутренний профиль для Grafana называется `xiaomi-tv`. Плейбук не задаёт масштаб 65% и desktop mode, не логинит пользователя `tv` (публичному светофору вход не нужен) и не записывает назначения кнопок. На новом телевизоре приложения, VPN-профили и сами кнопки потребуют ручной настройки; для публичного светофора нужны созданный native share и его URL, а не пароль Grafana.
+Плейбук устанавливает только homelab-помощники HDMI/Grafana/YouTube VPN и удаляет Happ. Сторонние Fully, tvQuickActions, WireGuard и VPN-профили нужно завести отдельно. Профиль глобального VPN для YouTube импортируется в WireGuard как `alchemmist-tv` из приватного файла конфигурации; исходный `tv.conf` и его ключ нельзя класть в git. Внутренний профиль для Grafana больше не нужен и не импортируется. Плейбук не задаёт масштаб 65% и desktop mode, не логинит пользователя `tv` (публичному светофору вход не нужен) и не записывает назначения кнопок. На новом телевизоре приложения, VPN-профили и сами кнопки потребуют ручной настройки; для публичного светофора нужны созданный native share и его URL, а не пароль Grafana.

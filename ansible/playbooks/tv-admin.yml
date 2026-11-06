@@ -8,7 +8,7 @@
     homelab_tv_select_hdmi: false
     homelab_tv_fully_package: de.ozerov.fully
     homelab_tv_fully_reapply: false
-    homelab_tv_fully_start_url: https://grafana.socrat.alchemmist.xyz/d/socrat-traffic-light?kiosk=1&hideLogo=1&autofitpanels=true
+    homelab_tv_fully_start_url: ""  # populated from the approved native public share below
     homelab_tv_fully_settings:
       startURL: "{{ homelab_tv_fully_start_url }}"
       injectJsCode: ""
@@ -36,11 +36,7 @@
         name: tv-hdmi.apk
     homelab_tv_helper_permissions:
       - package: "{{ homelab_tv_youtube_package }}"
-        name: android.permission.WRITE_SECURE_SETTINGS
-      - package: "{{ homelab_tv_youtube_package }}"
         name: com.wireguard.android.permission.CONTROL_TUNNELS
-      - package: "{{ homelab_tv_grafana_package }}"
-        name: android.permission.WRITE_SECURE_SETTINGS
       - package: "{{ homelab_tv_grafana_package }}"
         name: com.wireguard.android.permission.CONTROL_TUNNELS
     homelab_tv_partner_package: com.xiaomi.android.tvsetup.partnercustomizer
@@ -61,9 +57,9 @@
       register: homelab_tv_public_url
       no_log: true
 
-    - name: Use the public TV hostname without changing the TV VPN or DNS profile
+    - name: Use the canonical native public Grafana URL
       ansible.builtin.set_fact:
-        homelab_tv_fully_start_url: "{{ ((homelab_tv_public_url.content | b64decode | from_json).startURL) | replace('https://grafana.socrat.alchemmist.xyz/', 'https://tv.alchemmist.xyz/') }}"
+        homelab_tv_fully_start_url: "{{ ((homelab_tv_public_url.content | b64decode | from_json).startURL) }}"
       no_log: true
 
     - name: Install Android Debug Bridge
@@ -153,7 +149,7 @@
       changed_when: false
       check_mode: false
 
-    - name: Remove Happ now that both TV modes use WireGuard profiles
+    - name: Remove obsolete Happ (YouTube uses its existing WireGuard profile)
       ansible.builtin.command:
         argv: [adb, -s, "{{ homelab_tv_serial }}", uninstall, "{{ homelab_tv_happ_package }}"]
       register: homelab_tv_happ_uninstall
@@ -170,7 +166,7 @@
         - "{{ homelab_tv_youtube_package }}"
         - "{{ homelab_tv_grafana_package }}"
 
-    - name: Grant helper access to VPN and secure settings controls
+    - name: Grant helper control over the remaining YouTube VPN
       ansible.builtin.command:
         argv: [adb, -s, "{{ homelab_tv_serial }}", shell, pm, grant, "{{ item.package }}", "{{ item.name }}"]
       loop: "{{ homelab_tv_helper_permissions }}"
@@ -322,10 +318,10 @@
       changed_when: false
       check_mode: false
 
-    - name: Bring the WireGuard tunnel up when the television boots
+    - name: Do not auto-connect a TV VPN at boot
       ansible.builtin.command:
-        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, settings, put, secure, always_on_vpn_app, "{{ homelab_tv_wireguard_package }}"]
-      when: homelab_tv_vpn_app.stdout != homelab_tv_wireguard_package
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, settings, delete, secure, always_on_vpn_app]
+      when: homelab_tv_vpn_app.stdout not in ['', 'null']
 
     - name: Read VPN lockdown
       ansible.builtin.command:

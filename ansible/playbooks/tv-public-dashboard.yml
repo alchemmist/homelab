@@ -26,10 +26,10 @@
       register: tv_url_file
       no_log: true
     - ansible.builtin.set_fact:
-        tv_start_url: "{{ ((tv_url_file.content | b64decode | from_json).startURL) | replace('https://grafana.socrat.alchemmist.xyz/', 'https://tv.alchemmist.xyz/') }}"
+        tv_start_url: "{{ ((tv_url_file.content | b64decode | from_json).startURL) }}"
       no_log: true
     - ansible.builtin.assert:
-        that: tv_start_url is match('^https://tv\.alchemmist\.xyz/public-dashboards/[a-f0-9]{32}\?kiosk=1&hideLogo=1&autofitpanels=true&socratTv=1$')
+        that: tv_start_url is match('^https://grafana\.socrat\.alchemmist\.xyz/public-dashboards/[a-f0-9]{32}\?kiosk=1&hideLogo=1&autofitpanels=true&socratTv=1$')
       no_log: true
     - name: Verify the already-authorized TV (never reconnect or change VPN)
       ansible.builtin.command:

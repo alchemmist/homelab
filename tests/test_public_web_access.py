@@ -50,7 +50,7 @@ def test_catalog_proxy_and_native_routes_are_explicit():
  catalog=json.loads((ROOT/'deploy/public-web/services.json').read_text())
  rendered=list(yaml.safe_load_all(subprocess.check_output(['helm','template','test',str(ROOT/'charts/public-web-entry')],text=True)))
  ingresses=[d for d in rendered if d and d['kind']=='Ingress']
- assert len(ingresses)==10
+ assert len(ingresses)==9
  for slug,entry in catalog.items():
   i=next(d for d in ingresses if d['spec']['rules'][0]['host']==entry['host'])
   assert i['metadata']['namespace']=='identity'

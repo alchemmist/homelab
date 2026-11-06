@@ -1,0 +1,31 @@
+---
+- name: Whole-fleet owned TV peer preflight
+  hosts: socrat-0:socrat-1:socrat-2:socrat-3
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - ansible.builtin.copy:
+        src: ../../scripts/retire-tv-internal-wireguard.py
+        dest: /usr/local/sbin/homelab-retire-tv-internal-wireguard
+        mode: '0700'
+    - ansible.builtin.command: /usr/local/sbin/homelab-retire-tv-internal-wireguard
+      changed_when: false
+      register: tv_peer_plan
+    - ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} {{ tv_peer_plan.stdout }}"
+    - ansible.builtin.assert:
+        that: (tv_peer_plan.stdout | from_json).plan_hash == tv_peer_hashes[inventory_hostname]
+      when: tv_peer_apply | default(false) | bool
+- name: Serial exact TV peer retirement, no interface/service restart
+  hosts: socrat-0:socrat-1:socrat-2:socrat-3
+  gather_facts: false
+  become: true
+  serial: 1
+  any_errors_fatal: true
+  tasks:
+    - ansible.builtin.command:
+        argv: [/usr/local/sbin/homelab-retire-tv-internal-wireguard, --apply, --approve-plan-hash, '{{ tv_peer_hashes[inventory_hostname] }}']
+      when: tv_peer_apply | default(false) | bool
+      register: tv_peer_result
+      changed_when: (tv_peer_result.stdout | from_json).applied

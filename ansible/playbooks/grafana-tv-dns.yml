@@ -1,12 +1,12 @@
 ---
-- name: Whole-fleet DNS addition preflight (no package/config/service restarts)
+- name: Whole-fleet DNS alias retirement preflight (no package/config/service restarts)
   hosts: socrat-0:socrat-1:socrat-2
   gather_facts: false
   become: true
   any_errors_fatal: true
   tasks:
     - ansible.builtin.file:
-        path: /var/lib/homelab-grafana-tv-dns
+        path: /var/lib/homelab-grafana-tv-dns-retirement
         state: directory
         mode: '0700'
     - ansible.builtin.copy:
@@ -15,7 +15,7 @@
         mode: '0700'
     - ansible.builtin.copy:
         src: ../../scripts/public_dns_zone.py
-        dest: /var/lib/homelab-grafana-tv-dns/proposed.py
+        dest: /var/lib/homelab-grafana-tv-dns-retirement/proposed.py
         mode: '0700'
     - ansible.builtin.command: /usr/local/sbin/homelab-grafana-tv-dns
       register: dns_plan

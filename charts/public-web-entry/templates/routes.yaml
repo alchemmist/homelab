@@ -1,13 +1,10 @@
 {{- range .Values.routes }}
-{{- if and (eq .authorization "grafana-public-dashboard") (or (ne .name "grafana-tv") (ne .host "tv.alchemmist.xyz") (ne .namespace "identity") (ne .service "public-web-grafana-proxy") (ne (int .port) 80) (not $.Values.grafanaPolicyProxy.enabled) (.path | default "")) }}
-{{- fail "Public TV sharing requires its exact native Grafana policy backend" }}
-{{- end }}
 {{- if and (eq .authorization "grafana-oidc") (or (ne .name "grafana") (ne .host "grafana.socrat.alchemmist.xyz") (ne .namespace "identity") (ne .service "public-web-grafana-proxy") (ne (int .port) 80) (not $.Values.grafanaPolicyProxy.enabled)) }}
 {{- fail "Native Grafana SSO requires the exact password-safe policy proxy" }}
 {{- end }}
 {{- end }}
 {{- range .Values.routes }}
-{{- if not (has .authorization (list "authentik-proxy" "rancher-native" "mcp-bearer" "grafana-oidc" "grafana-public-dashboard")) }}
+{{- if not (has .authorization (list "authentik-proxy" "rancher-native" "mcp-bearer" "grafana-oidc")) }}
 {{- fail "Every public route must declare reviewed authorization" }}
 {{- end }}
 {{- if and (eq .authorization "authentik-proxy") (or (ne .namespace "identity") (ne .service "authentik-server")) }}

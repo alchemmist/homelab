@@ -5,6 +5,7 @@
   become: true
   vars:
     maintenance_helpers:
+      retire-tv-alias: retire-tv-public-alias
       grafana-tv-public: grafana-tv-public
       kuma-db-account-recovery: kuma-db-account-recovery
       kuma-credential-ownership: kuma-credential-ownership

@@ -44,7 +44,6 @@ FAILOVER = [
     "spi-evidence.socrat",
     "sso.socrat",
     "status",
-    "tv",
     "umami",
     "vpn",
     "wiki.socrat",

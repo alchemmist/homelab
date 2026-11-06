@@ -73,8 +73,6 @@ def test_kuma_administration_name_follows_both_reviewed_entrances():
             assert (f"kuma.socrat IN A {ip}" in text)==(ip in zone.healthy_addresses(home,vps))
 
 
-def test_public_tv_alias_follows_entrances_without_new_private_dns():
+def test_retired_tv_alias_is_not_rendered():
     for home,vps in [(True,True),(True,False),(False,True),(False,False)]:
-        text=zone.render(8,home,vps)
-        for ip in [zone.HOME,zone.VPS]:
-            assert (f"tv IN A {ip}" in text)==(ip in zone.healthy_addresses(home,vps))
+        assert 'tv IN A ' not in zone.render(8,home,vps)

@@ -108,23 +108,7 @@
     return v0
 .end method
 
-.method private setWireguardAlwaysOn()V
-    .locals 4
 
-    iget-object v0, p0, Lxyz/alchemmist/tvmode/SwitchVpn;->activity:Landroid/app/Activity;
-    invoke-virtual {v0}, Landroid/content/Context;->getContentResolver()Landroid/content/ContentResolver;
-    move-result-object v0
-
-    const-string v1, "always_on_vpn_app"
-    const-string v2, "com.wireguard.android"
-    invoke-static {v0, v1, v2}, Landroid/provider/Settings$Secure;->putString(Landroid/content/ContentResolver;Ljava/lang/String;Ljava/lang/String;)Z
-
-    const-string v1, "always_on_vpn_lockdown"
-    const/4 v2, 0x0
-    invoke-static {v0, v1, v2}, Landroid/provider/Settings$Secure;->putInt(Landroid/content/ContentResolver;Ljava/lang/String;I)Z
-
-    return-void
-.end method
 
 
 .method private sendWireguard(ZLjava/lang/String;)V
@@ -216,10 +200,7 @@
 
     iget v0, p0, Lxyz/alchemmist/tvmode/SwitchVpn;->phase:I
     if-nez v0, :poll_disconnect
-    invoke-direct {p0}, Lxyz/alchemmist/tvmode/SwitchVpn;->setWireguardAlwaysOn()V
     const/4 v1, 0x0
-    const-string v2, "xiaomi-tv"
-    invoke-direct {p0, v1, v2}, Lxyz/alchemmist/tvmode/SwitchVpn;->sendWireguard(ZLjava/lang/String;)V
     const-string v2, "alchemmist-tv"
     invoke-direct {p0, v1, v2}, Lxyz/alchemmist/tvmode/SwitchVpn;->sendWireguard(ZLjava/lang/String;)V
 
@@ -254,11 +235,12 @@
     :begin_connect
     const/4 v1, 0x1
     iget-boolean v2, p0, Lxyz/alchemmist/tvmode/SwitchVpn;->youtube:Z
-    if-eqz v2, :connect_internal
+    if-eqz v2, :open_public
     const-string v2, "alchemmist-tv"
     goto :connect_requested
-    :connect_internal
-    const-string v2, "xiaomi-tv"
+    :open_public
+    invoke-direct {p0}, Lxyz/alchemmist/tvmode/SwitchVpn;->launchDestination()V
+    return-void
     :connect_requested
     invoke-direct {p0, v1, v2}, Lxyz/alchemmist/tvmode/SwitchVpn;->sendWireguard(ZLjava/lang/String;)V
     const/4 v1, 0x2

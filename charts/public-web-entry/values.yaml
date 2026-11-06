@@ -13,12 +13,6 @@ routes:
   - {name: syncthing-1, host: 1.socrat.alchemmist.xyz, namespace: identity, service: authentik-server, port: 80, authorization: authentik-proxy}
   - {name: kuma-admin, host: kuma.socrat.alchemmist.xyz, namespace: identity, service: authentik-server, port: 80, authorization: authentik-proxy}
 
-  - name: grafana-tv
-    host: tv.alchemmist.xyz
-    namespace: identity
-    service: public-web-grafana-proxy
-    port: 80
-    authorization: grafana-public-dashboard
 rancherPolicyProxy:
   enabled: true
   image: docker.io/library/nginx:stable-alpine@sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311

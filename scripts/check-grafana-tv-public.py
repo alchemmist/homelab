@@ -15,7 +15,7 @@ def main():
     for ip in ['109.173.40.247','109.120.141.97']:
         def check(name,path,status,body=None,headers=(),predicate=None):
             nonlocal passed
-            cmd=['curl','--silent','--show-error','--max-time','25','--resolve',f'tv.alchemmist.xyz:443:{ip}',f'https://tv.alchemmist.xyz{path}','--write-out','\n%{http_code}']
+            cmd=['curl','--silent','--show-error','--max-time','25','--resolve',f'grafana.socrat.alchemmist.xyz:443:{ip}',f'https://grafana.socrat.alchemmist.xyz{path}','--write-out','\n%{http_code}']
             if body is not None:cmd+=['-H','Content-Type: application/json','--data',json.dumps(body)]
             for h in headers:cmd+=['-H',h]
             r=subprocess.run(cmd,capture_output=True,check=True);data,code=r.stdout.rsplit(b'\n',1)
