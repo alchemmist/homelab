@@ -18,6 +18,8 @@ wireguard_admin_dns_attempts: 1
 wireguard_admin_peers:
   - name: socrat-0
     address: 10.250.0.1
+    # Route the non-public worker through the existing encrypted mesh.
+    allowed_ips: [10.250.0.1/32, 10.250.0.5/32]
     endpoint: 109.173.40.247:51830
     public_key: "{{ (wg_socrat_nodes | default({})).get('socrat-0', {}).get('public_key', '') }}"
   - name: socrat-1

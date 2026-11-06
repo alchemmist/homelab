@@ -126,7 +126,9 @@ ipt -F "$new_forward_chain"
 {% for port in rule.tcp_ports %}
 ipt -A "$new_forward_chain" -o "$interface" -s {{ source }}/32 -d {{ destination }}/32 -p tcp --dport {{ port }} -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
 ipt -A "$new_forward_chain" -o "$interface" -s {{ destination }}/32 -d {{ source }}/32 -p tcp --sport {{ port }} -m conntrack --ctstate ESTABLISHED -j ACCEPT
+{% if rule.snat | default(true) | bool %}
 ipt -t nat -A "$new_nat_chain" -s {{ source }}/32 -d {{ destination }}/32 -p tcp --dport {{ port }} -j SNAT --to-source {{ wg_socrat_nodes[inventory_hostname].address }}
+{% endif %}
 {% endfor %}
 {% endfor %}
 ipt -t nat -A "$new_nat_chain" -j RETURN

@@ -55,6 +55,19 @@
     fail_msg: WireGuard admin peer addresses and public keys must be unique.
   tags: prepare
 
+- name: Validate explicit client routes remain narrow and cover their owning peer
+  ansible.builtin.assert:
+    that:
+      - item.allowed_ips | default([item.address + '/32']) is sequence
+      - item.allowed_ips | default([item.address + '/32']) is not string
+      - (item.address + '/32') in (item.allowed_ips | default([item.address + '/32']))
+      - (item.allowed_ips | default([item.address + '/32']) | difference(wg_socrat_nodes.values() | map(attribute='address') | map('regex_replace', '$', '/32') | list) | length) == 0
+    fail_msg: Client routes must be exact registered mesh host routes, including the peer itself.
+  loop: "{{ wireguard_admin_peers }}"
+  loop_control:
+    label: "{{ item.name }}"
+  tags: prepare
+
 - name: Create WireGuard app configuration directory
   ansible.builtin.file:
     path: "{{ wireguard_admin_config_dir }}"

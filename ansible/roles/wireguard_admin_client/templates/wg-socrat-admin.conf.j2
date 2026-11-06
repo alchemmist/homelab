@@ -8,7 +8,7 @@ DNS = {{ wireguard_admin_dns_servers | join(', ') }}
 {% for peer in wireguard_admin_peers %}
 [Peer]
 PublicKey = {{ peer.public_key }}
-AllowedIPs = {{ peer.address }}/32
+AllowedIPs = {{ peer.allowed_ips | default([peer.address + "/32"]) | join(", ") }}
 Endpoint = {{ peer.endpoint }}
 PersistentKeepalive = {{ wireguard_admin_keepalive }}
 

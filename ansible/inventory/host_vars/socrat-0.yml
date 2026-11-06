@@ -66,6 +66,10 @@ homelab_hypr_polkit_agent: /usr/lib/x86_64-linux-gnu/libexec/polkit-kde-authenti
 homelab_hypr_autostart: []
 
 wg_socrat_admin_forward_rules:
+  - client: antonmoss-mac
+    destination: socrat-3
+    tcp_ports: [2222]
+    snat: false
   - client: tim-phone
     destination: socrat-3
     tcp_ports: [2222]

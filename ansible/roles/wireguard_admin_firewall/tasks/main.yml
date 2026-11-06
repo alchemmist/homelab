@@ -18,6 +18,7 @@
 - name: Validate administrative forwarding registry
   ansible.builtin.assert:
     that:
+      - item.snat | default(true) is boolean
       - item.client in wg_socrat_admin_clients
       - item.destination in wg_socrat_nodes
       - inventory_hostname in wg_socrat_nodes

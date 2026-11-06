@@ -254,3 +254,7 @@ Before replacing the public IPv4 of `socrat-2`, use the repository skill
 It requires the audit-first [Ansible playbook](ansible/playbooks/vps-ip-migration.yml)
 and defines the separate registrar, Kubernetes, external delivery and client
 acceptance steps. A successful host playbook alone is not migration completion.
+
+For direct internal Mac SSH (including the non-public worker), see
+[`docs/mac-private-ssh.md`](docs/mac-private-ssh.md). Public SSH and bastions are not
+substitutes for fixing the internal client tunnel.
