@@ -1,5 +1,11 @@
 # Mac → internal SSH
 
+> **Current primary client: NetBird**, alongside Tunnelblick, verified 2026-11-06.
+> See [NetBird/Tunnelblick coexistence](netbird-tunnelblick-coexistence.md).
+> The standalone WireGuard configuration below is the preserved recovery path,
+> not the currently active Mac transport. Do not turn it on over the same routes
+> and mistake its successful SSH for NetBird acceptance.
+
 The ordinary `socrat-0/1/2/3` aliases must use `10.250.0.1/3/2/5:2222`,
 respectively, with `ProxyJump none`, retained pinned host keys and strict checking.
 Public SSH or a bastion is a recovery path, **not** a substitute for internal access.
@@ -54,7 +60,7 @@ imported profile), generated profile's adjacent `.before-private-route-fix`,
 worker `/root/20261105-private-ssh-repair/`. They contain secrets; never commit or
 print their contents. These are recovery preimages, not full server backups.
 
-## Acceptance after any subsequent edit
+## Standalone WireGuard recovery acceptance after an edit
 
 1. Inspect only Address/AllowedIPs/Endpoints in the **imported** profile; generated
    files do not update the imported app configuration. Keep keys unchanged.

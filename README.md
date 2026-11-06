@@ -258,3 +258,6 @@ acceptance steps. A successful host playbook alone is not migration completion.
 For direct internal Mac SSH (including the non-public worker), see
 [`docs/mac-private-ssh.md`](docs/mac-private-ssh.md). Public SSH and bastions are not
 substitutes for fixing the internal client tunnel.
+
+Current primary Mac client: [NetBird alongside Tunnelblick](docs/netbird-tunnelblick-coexistence.md),
+with NetBird DNS disabled and only four selected internal host routes.
