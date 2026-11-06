@@ -74,8 +74,8 @@ class CoreTests(unittest.TestCase):
 class AdapterTests(unittest.TestCase):
     def test_github_paginates_all_open_and_excludes_pr(self):
         http=Mock();http.request.side_effect=[[
-            {'number':i,'title':'[SPI] Test','state':'open'} for i in range(20)],
-            [{'number':101,'title':'[SPI] Last'},{'number':102,'title':'[SPI] PR','pull_request':{}}]]
+            {'number':i,'title':'[SPI] Test','state':'open','updated_at':'first'} for i in range(1,21)],
+            [{'number':101,'title':'[SPI] Last','updated_at':'first'},{'number':102,'title':'[SPI] PR','pull_request':{}}]]
         with tempfile.NamedTemporaryFile(mode='w') as f:
             f.write('fake-token');f.flush();items=GitHub(http,f.name).issues()
         self.assertEqual(len(items),21)

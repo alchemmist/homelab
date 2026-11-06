@@ -89,7 +89,7 @@ class ReviewReuseTests(unittest.TestCase):
     def test_cheap_signature_same_universe_without_comments(self):
         g=GitHub(Mock(),'unused');g.issues=Mock(return_value=self.issues());g.comments=Mock()
         self.assertEqual(g.open_signature(),digest([(x['number'],x['updated_at']) for x in self.issues()]))
-        g.issues.assert_called_once_with();g.comments.assert_not_called()
+        self.assertEqual(g.issues.call_count,2);g.comments.assert_not_called()
 
 class EarlyFenceTests(unittest.TestCase):
     setUp=f.EngineTests.setUp

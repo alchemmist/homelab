@@ -1,6 +1,7 @@
 """Bounded HTTP adapters; tokens are never returned to n8n or the model."""
 from __future__ import annotations
 import json
+import logging
 import base64
 import os
 import re
@@ -114,8 +115,16 @@ class GitHub:
             page+=1
             if page>100: raise Failure('GITHUB_PAGINATION_BUDGET_EXCEEDED')
     def issues(self,state='open'):
-        return [x for x in self.pages('/issues?state='+state+'&sort=created&direction=desc')
-                if 'pull_request' not in x and x.get('title','').startswith('[SPI]')]
+        rows=list(self.pages('/issues?state='+state+'&sort=created&direction=asc'))
+        if any(not isinstance(x,dict) or not isinstance(x.get('title'),str) for x in rows):
+            raise Failure('INVALID_GITHUB_PAGE')
+        result=[x for x in rows if 'pull_request' not in x and x['title'].startswith('[SPI]')]
+        if any(type(x.get('number')) is not int or x['number']<=0 or not isinstance(x.get('updated_at'),str) for x in result):
+            raise Failure('INVALID_GITHUB_PAGE')
+        if len({x['number'] for x in result})!=len(result):
+            raise Failure('GITHUB_SNAPSHOT_UNSTABLE',retry_after=15)
+        if state=='open' and len(result)>120:raise Failure('OPEN_SPI_REVIEW_BUDGET_EXCEEDED')
+        return sorted(result,key=lambda x:x['number'])
     def comments(self,number): return list(self.pages('/issues/'+str(int(number))+'/comments'))
     def source_reference(self,url):
         parsed=urllib.parse.urlsplit(url)
@@ -128,9 +137,13 @@ class GitHub:
         content=base64.b64decode(data['content'],validate=False).decode()
         return clean({'path':path,'sha':data['sha'],'ref':'main','deployed_version_verified':False,'excerpt':content[:12000],'truncated':len(content)>12000})
     def open_signature(self):
-        return digest([(x['number'],x['updated_at']) for x in self.issues()])
+        first=self.issues()
+        second=self.issues()
+        if first!=second:raise Failure('GITHUB_SNAPSHOT_UNSTABLE',retry_after=15)
+        return digest([(x['number'],x['updated_at']) for x in first])
 
     def snapshot(self):
+        # One attempt only: no unbounded inline retries during repository churn.
         issues=self.issues()
         # Title, root analysis and bounded latest comments: never silently drop an issue.
         result=[]
@@ -138,6 +151,7 @@ class GitHub:
             comments=[c for c in self.comments(x['number']) if '<!-- socrat-spi-artifact:' not in (c.get('body') or '') and '<!-- socrat-spi-evidence-index:' not in (c.get('body') or '')] if x.get('comments',0) else []
             result.append(clean({'number':x['number'],'title':x['title'],'body':(x.get('body') or '')[:6000], 'body_truncated':len(x.get('body') or '')>6000,
                                  'updated_at':x['updated_at'],'recent_comments':[c.get('body','')[:1200] for c in comments[-3:]]}))
+        if issues!=self.issues():raise Failure('GITHUB_SNAPSHOT_UNSTABLE',retry_after=15)
         return result
     def primary_reference(self,marker,number=0):
         from evidence_bundle import trusted_comment
@@ -267,13 +281,22 @@ class Model:
                 raise Failure('LLM_'+last) from None
         raise Failure('LLM_'+last)
     def match(self,event,issues,progress=None,on_progress=None):
+        def reject(reason):
+            # No raw IDs, bodies, events, credentials, or exception strings.
+            numbers=[x.get('number') for x in issues if isinstance(x,dict) and type(x.get('number')) is int]
+            logging.getLogger(__name__).warning('match_progress_rejected %s',json.dumps({
+                'reason':reason,'count':len(issues),'uniqueCount':len(set(numbers)),
+                'identityDigest':digest(numbers)},sort_keys=True))
+            return Failure('GITHUB_SNAPSHOT_UNSTABLE',retry_after=15) if reason=='CURRENT_DUPLICATE' else Failure('INVALID_MATCH_PROGRESS')
         deadline=time.monotonic()+780
         event_identity=digest(event)
         event=self.bounded_context(event)
         # Every issue is examined. Batches avoid a single unbounded prompt.
         if len(issues)>120: raise Failure('OPEN_SPI_REVIEW_BUDGET_EXCEEDED')
-        if any(not isinstance(x,dict) or type(x.get('number')) is not int for x in issues) or len({x['number'] for x in issues})!=len(issues):
-            raise Failure('INVALID_MATCH_PROGRESS')
+        if any(not isinstance(x,dict) or type(x.get('number')) is not int for x in issues):
+            raise reject('CURRENT_INVALID_ID')
+        if len({x['number'] for x in issues})!=len(issues):
+            raise reject('CURRENT_DUPLICATE')
         task='Choose the same underlying problem from these OPEN SPI issues, or issue_number=0. Explain ambiguity in at most 120 words. Return compact strict JSON.'
         signature=digest(issues)
         def excerpt(issue):
@@ -298,37 +321,38 @@ class Model:
         if old:
             original=old.get('snapshot')
             if not isinstance(original,list) or digest(original)!=old.get('signature'):
-                raise Failure('INVALID_MATCH_PROGRESS')
-            if any(not isinstance(x,dict) or type(x.get('number')) is not int for x in original) or not isinstance(old.get('reviews'),list):raise Failure('INVALID_MATCH_PROGRESS')
+                raise reject('ORIGINAL_SIGNATURE')
+            if any(not isinstance(x,dict) or type(x.get('number')) is not int for x in original) or not isinstance(old.get('reviews'),list):raise reject('ORIGINAL_SIGNATURE')
             original_by={x['number']:x for x in original}
-            if len(original_by)!=len(original):raise Failure('INVALID_MATCH_PROGRESS')
+            if len(original_by)!=len(original):raise reject('ORIGINAL_SIGNATURE')
             seen=set()
             current={x['number']:x for x in issues}
             for review in old.get('reviews',[]):
                 try:
                     ids=review['ids']
-                    if not isinstance(ids,list) or any(type(n) is not int for n in ids) or len(ids)>12 or (not ids and original):raise Failure('INVALID_MATCH_PROGRESS')
+                    if not isinstance(ids,list) or any(type(n) is not int for n in ids) or len(ids)>12 or (not ids and original):raise reject('BATCH_DIGEST')
                     batch=[original_by[n] for n in ids]
-                    if len(set(ids))!=len(ids) or seen.intersection(ids) or review['content']!=digest(batch):
-                        raise Failure('INVALID_MATCH_PROGRESS')
+                    if len(set(ids))!=len(ids) or seen.intersection(ids):raise reject('OVERLAP')
+                    if review['content']!=digest(batch):raise reject('BATCH_DIGEST')
                     validate(review['decision'],MATCH_SCHEMA)
-                    if review['decision']['issue_number'] not in {0,*ids}:raise Failure('INVALID_MATCH_PROGRESS')
+                    if review['decision']['issue_number'] not in {0,*ids}:raise reject('DECISION')
                     seen.update(ids)
                     if all(n in current for n in ids) and digest([current[n] for n in ids])==review['content']:
                         reviews.append(review)
-                except (KeyError,TypeError,ValueError):raise Failure('INVALID_MATCH_PROGRESS') from None
+                except (KeyError,TypeError,ValueError):raise reject('BATCH_DIGEST') from None
         by_number={x['number']:x for x in issues}
         reviewed=set();candidates=[]
         for review in reviews:
             try:batch=[by_number[n] for n in review['ids']]
-            except (KeyError,TypeError):raise Failure('INVALID_MATCH_PROGRESS') from None
-            if review['content']!=digest(batch) or reviewed.intersection(review['ids']):raise Failure('INVALID_MATCH_PROGRESS')
+            except (KeyError,TypeError):raise reject('BATCH_DIGEST') from None
+            if reviewed.intersection(review['ids']):raise reject('OVERLAP')
+            if review['content']!=digest(batch):raise reject('BATCH_DIGEST')
             result=review['decision'];validate(result,MATCH_SCHEMA)
-            if result['issue_number']not in {0,*review['ids']}:raise Failure('INVALID_MATCH_PROGRESS')
+            if result['issue_number']not in {0,*review['ids']}:raise reject('DECISION')
             reviewed.update(review['ids'])
             candidates.extend(x for x in batch if x['number']==result['issue_number'])
         selection=old.get('selection') if old.get('signature')==signature else None
-        if selection and reviewed!={x['number'] for x in issues}:raise Failure('INVALID_MATCH_PROGRESS')
+        if selection and reviewed!={x['number'] for x in issues}:raise reject('SELECTION')
         def checkpoint():
             value={'version':3,'contract':contract,'signature':signature,'snapshot':issues,'reviews':list(reviews)}
             if selection:value['selection']=selection
@@ -355,17 +379,17 @@ class Model:
         # comparison, so a rate deferral never repeats completed final work.
         comparisons=[]
         if selection:
-            if selection.get('nominees')!=digest(candidates):raise Failure('INVALID_MATCH_PROGRESS')
+            if selection.get('nominees')!=digest(candidates):raise reject('SELECTION')
             replay=[x['number'] for x in candidates]
             comparisons=selection.get('comparisons',[])
             for decision in comparisons:
                 validate(decision,MATCH_SCHEMA)
-                if len(replay)<2 or decision['issue_number'] not in {0,*replay[:2]}:raise Failure('INVALID_MATCH_PROGRESS')
+                if len(replay)<2 or decision['issue_number'] not in {0,*replay[:2]}:raise reject('DECISION')
                 replay=([decision['issue_number']] if decision['issue_number'] else [])+replay[2:]
-            if not comparisons or replay!=selection.get('remaining') or comparisons[-1]!=selection.get('decision'):raise Failure('INVALID_MATCH_PROGRESS')
+            if not comparisons or replay!=selection.get('remaining') or comparisons[-1]!=selection.get('decision'):raise reject('DECISION')
             remaining_numbers=selection.get('remaining',[])
             if len(set(remaining_numbers))!=len(remaining_numbers) or not set(remaining_numbers)<={x['number'] for x in candidates}:
-                raise Failure('INVALID_MATCH_PROGRESS')
+                raise reject('SELECTION')
             finalists=[by_number[n] for n in remaining_numbers]
             result=selection['decision'];validate(result,MATCH_SCHEMA)
         else:

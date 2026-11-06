@@ -205,3 +205,46 @@ Live acceptance is **BLOCKED, not complete**. Bounded observer sampled 18:08:38�
 Another natural job `45b8168e0cf2…` completed stage4 after a publication-stage `UPSTREAM_NETWORK_ERROR` at18:23:25Z (finite count1, sampled retry had no primary intent), with normal `publication_ok` at18:33:13Z. This is not model-output failure or proof for the requested cards. No endpoint diagnosis or infrastructure repair was attempted. Reserved tokens are not exact provider usage.
 
 Exact requested episodes remain unaccepted, all original jobs queued/stage0/attempt0 at final consistent capture: resolved KubeDeploymentReplicasMismatch episode `83bb101278aba11036f0ce7841eabaeb9ebc00339cd667da626c9beee8e41700` (firing `305b227cdc96…`, resolved `8c6af704b3fd…`); firing SocratContainerRestartsFrequent episode `b5a10f46b0a2ce6ebb6429d78cc9cb13e42f0a562f6b39abc181c2d51a7cae0c` (`08ba1f0938dd…`); stale SPI episode `b201c71c8b2bce1305233bfa7e47cacae545f2435fe6d644fd1df9bdf74cfb31` (`998bcead1720…`). None has an accepted primary/Reader/applied two-copy Telegram proof. Older #72 evidence must not substitute for them. All318 baseline IDs/creation times,119 cancelled whole rows and original terminal results/intents were preserved. No ongoing observation or eventual completion is promised.
+
+
+## Source-only snapshot consistency correction (2026-11-06)
+
+Live acceptance remains BLOCKED: the three requested cards are unaccepted. The
+18:35:22 INVALID_MATCH_PROGRESS historical current input was not retained. The
+saved a16a v3 proof and later 62-unique replay were valid; durable corruption is
+not established. The unrelated 18:33 publication is not acceptance evidence.
+
+A fake transport reproduces a precise *possible* cause against clean 72ebc5e:
+61 created-desc issues, append a new issue after page1/per_page20, then continue
+offset pagination: 62 rows but only61 unique identities. The actual baseline
+matcher raises INVALID_MATCH_PROGRESS before checking the valid old proof and
+before inference. This proves a source defect, **not** the historical cause.
+
+The local correction requests created-ascending pages, canonicalizes by issue
+number, rejects duplicates (never dedupes), and reads the same filtered open SPI
+universe again around comment collection. Any full metadata change or duplicate
+is GITHUB_SNAPSHOT_UNSTABLE: one acquisition attempt, patient15–18s deferral,
+zero model calls, no finite failure charge, retained v3 proof/budget. Cheap
+open_signature uses the same issues/filter/order and two metadata reads, no
+comments. Each issues pass retains the existing100-page bound; candidate ceiling
+remains120. Unsupported identities/schema, malformed HTTP/JSON/network errors
+and genuine bad durable proofs remain finite. No loop or conditional GitHub PATCH
+was added. Consecutive equal reads are an observational consistency fence, not a
+transactional GitHub snapshot; changes after the last read remain guarded by the
+existing pre-analysis/pre-primary/post-upload fences.
+
+Matcher rejections now emit sanitized diagnostic JSON with fixed reason enums,
+count/uniqueCount/identity digest only. CURRENT_INVALID_ID and CURRENT_DUPLICATE
+are separate from ORIGINAL_SIGNATURE, BATCH_DIGEST, OVERLAP, DECISION, SELECTION.
+No event/issue/comment body, raw identity, credential, URL or exception text is
+logged. A duplicate supplied directly to matching is also patient instability;
+invalid IDs remain finite. Preserve proofs for diagnosis; do not reset jobs,
+leases, budget, counters or restore caches to work around these errors.
+
+Local fake regressions cover insert/close/reopen/reorder for61/62 rows, exact
+baseline reproduction, current duplicate versus valid retained proof, metadata
+change around comments, malformed response, zero-model engine deferral and
+15–18s due-delay without failure consumption. Existing v3 content/ownership,
+same-signature selection, changed-signature unchanged-batch reuse, v1/v2
+rereview, independent replacement cap/audit and publication tests remain green.
+No live probes, inference, queue writes, deployment or push were performed.
