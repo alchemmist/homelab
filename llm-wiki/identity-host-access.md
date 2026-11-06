@@ -149,3 +149,7 @@ Root ноды способен читать/менять node workloads и secre
 namespace потенциально также получает namespace secrets. Ограниченный app role
 не снимает эти host/workload trust boundaries. Нельзя обещать владельцу внешнего
 root-хоста «нет доступа к данным», пока там исполняются доверенные workloads.
+
+## Рабочий транспорт после 6 ноября
+
+Обычные SSH aliases нод используют только `10.250.0.1/.3/.2/.5:2222` с pinned host keys, без public fallback/ProxyJump. Mac NetBird — основной transport, standalone WG owner `.4` — отдельно проверенный recovery, обычно выключен; mandatory Tunnelblick не менять. Наличие публичных human HTTPS entrances не переносит SSH на публичные A records. Внутренний TV peer `.8` отозван, Mac/phone/node identities этим не затронуты. Текущий адрес VPS, DNS lifecycle и acceptance boundaries: [network-access.md](network-access.md).

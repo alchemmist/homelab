@@ -1,74 +1,61 @@
 # Публичный DNS alchemmist.xyz
 
-> Current VPS address since 2026-11-05: **109.120.141.97**. Earlier addresses and deployment descriptions below are historical. See `docs/vps-ip-migration-20261105.md` for the migration and verification boundary.
+Актуализировано **6 ноября 2026**. Текущий сетевой итог: [network-access.md](network-access.md). Это схема и результаты выполненных приёмок, не непрерывный healthcheck и не инструкция повторить migration apply.
 
-Срез на **2 ноября 2026**. Делегирование уже переключено с REG.RU на свои NS. Это описание схемы и того, что проверено, не замена live-проверке.
+## Адреса и делегирование
 
-## Зачем
+| Назначение | Текущий адрес |
+|---|---|
+| HOME / ns1.alchemmist.xyz | `109.173.40.247` |
+| VPS / ns2.alchemmist.xyz | **`109.120.141.97`** |
 
-У публичного HTTP два входа: квартира `109.173.40.247` и VPS `176.98.185.59`. Раньше REG.RU сразу отдавал оба A. Клиент выбирал один адрес и при его недоступности не обязан был переспрашивать DNS.
+`176.98.185.59` — старый VPS адрес, использовавшийся до 5 ноября. Старые результаты 1–2 ноября относятся к нему, а не к новому IP. Миграция обновила source/runtime и REG.RU glue; новый адрес проверен у родителя. Шлюз провайдера `176.98.185.1` сохранён намеренно, не заменять его вместе со старым IP.
 
-Теперь живой авторитетный сервер публикует для failover-имён только тот адрес, чей TCP 443 ответил. Новый резолвер после истечения кэша идёт на живой вход.
-
-## Как резолвится имя
-
-1. Резолвер спрашивает зону `.xyz`, кто держит `alchemmist.xyz`.
-2. Родитель отвечает NS и glue. Glue задан у регистратора, его не нужно вычислять из дочерней зоны:
-   - `ns1.alchemmist.xyz` → `109.173.40.247`
-   - `ns2.alchemmist.xyz` → `176.98.185.59`
-   - TTL glue у родителя 3600 секунд.
-3. По glue резолвер спрашивает Knot и получает A/NS самой зоны. Внутри зоны те же адреса NS лежат с TTL 60. Для первого шага делегирования используется glue, иначе адрес `ns1.alchemmist.xyz` нельзя узнать, не спросив `ns1.alchemmist.xyz`.
-
-Проверка 2 ноября 2026, около 06:42 UTC: `x.nic.xyz` отдал эти NS и glue. DNS-over-HTTPS Google вернул `chat.alchemmist.xyz` с TTL 60 и указал источник `109.173.40.247`. Cloudflare DoH тоже отдал оба адреса с TTL 60. Обычный `dig @8.8.8.8` из домашней сети может показать старый TTL и флаг `aa`: по пути DNS перехватывается. Для проверки кэша Google и Cloudflare нужен DoH, не UDP на `8.8.8.8` из квартиры.
+1. Резолвер спрашивает `.xyz` о NS `alchemmist.xyz`.
+2. Родитель возвращает `ns1`/`ns2` и registrar glue на HOME/NEW VPS; в наблюдавшейся делегации TTL glue 3600s.
+3. По glue запрашивается authoritative Knot. Внутризонные NS/A используют TTL 60s. Это не замена родительского glue: bootstrap не должен зависеть от запроса к самому ещё не найденному NS.
 
 ## Что стоит на узлах
 
-Knot стоит на ОС `socrat-0`, `socrat-1` и `socrat-2`, не в поде. Плейбук: `ansible/playbooks/public-authoritative-dns.yml`.
+Knot работает на ОС socrat-0/1/2, не в pod. Source: `ansible/playbooks/public-authoritative-dns.yml`, renderer `scripts/public_dns_zone.py`.
 
-- Домашние узлы слушают VIP `192.168.0.250:53`. Сейчас VIP обслуживает один из домашних узлов.
-- VPS слушает `176.98.185.59:53`.
-- Каждые 30 секунд скрипт проверяет TCP 443 и оставляет в зоне только живой адрес. Если молчат оба, публикуются оба, чтобы зона не опустела.
-- TTL записей 60 секунд.
-- `mail`, `sync`, `rooms`, `devsyringe` остаются только на домашнем IP.
-- Роутер Rotek, WAN2: UDP/53 и TCP/53 проброшены на `192.168.0.250`. Рядом по-прежнему 80/443 на тот же VIP.
+- Домашний DNS слушает VIP `192.168.0.250:53`; роутер пересылает на него TCP/UDP 53. HOME HTTPS 80/443 также обслуживается через существующую схему VIP.
+- VPS authoritative DNS слушает новый публичный адрес.
+- Каждые 30s проверяется TCP 443; для failover-имён публикуются ответившие входы. Если не ответил ни один, сохраняются оба адреса, чтобы зона не опустела.
+- Record TTL 60s; серверы обновляют зону независимо, SOA serial может немного различаться.
+- `mail`, `sync`, `rooms`, `devsyringe` остаются HOME-only согласно renderer, а не автоматически получают два IP.
 
-Серверы публикуют зону независимо, серийники могут отличаться на несколько секунд.
+Новые public human entrances используют обычную authoritative зону. `kuma.socrat.alchemmist.xyz` добавлен в failover names после обнаруженного NXDOMAIN, блокировавшего ACME. Он не обозначает native Kuma admin grant: HTTPS gate и app auth описаны отдельно.
 
-## Что это переживает
+Временный `tv.alchemmist.xyz` **полностью retired**: больше не входит в renderer/zone, owned Ingress/Certificate/TLS Secret удалены. Телевизор использует `grafana.socrat.alchemmist.xyz/public-dashboards/<accessToken>` без внутреннего WG. Не добавлять отдельный TV домен обратно.
 
-Отказ VPS: домашний Knot убирает `176.98.185.59`. После TTL новые соединения идут на домашний Traefik. Уже открытые соединения сами не переезжают.
+## Как менять и проверять
 
-Отказ квартиры: VPS Knot оставляет только свой адрес. Ingress на VPS — это data plane. Он держит последние маршруты и pod IP и не нуждается в etcd, пока живы процесс Traefik, сеть до пода и сам под. Поды на выключенных домашних узлах так не достать. На `socrat-2` при этом остаются свои сервисы, в базовой раскладке `vpn.alchemmist.xyz` и `remark42.alchemmist.xyz`. `chat`, `llm`, блог, LMS, wiki и status сидят на домашних узлах.
+Не править разные authoritative серверы независимо вслепую. Сначала проверить все четыре health-комбинации renderer: все несогласованные records должны оставаться byte-equivalent. Затем whole-fleet preflight, fresh exact hash, serial owned-zone refresh с private backups/receipts, без daemon/node restart. При uncertain marker остановиться, не повторять write.
 
-Пока домашние узлы и WireGuard живы, а потерян только кворум, текущие поды продолжают отвечать через VPS-вход. Не обновляются состав эндпоинтов, расписание и продление сертификатов. Упавший под заново не поднимется.
+- `scripts/public-web-dns.py` / `public-web-dns.yml` — узкая первоначальная Kuma addition, не универсальный DNS editor.
+- `scripts/grafana-tv-dns.py` / `grafana-tv-dns.yml` — теперь только retirement временного TV alias, не его создание.
+- `scripts/vps-ip-migration.py` — отдельная completed migration; не запускать ради текущей DNS-проверки.
+- `scripts/retire-tv-public-alias.py` — только exact owned Kubernetes alias resources; не blanket Argo prune.
 
-Два публичных IP не копируют PVC, SQLite и GPU. Полная потеря узла, на котором лежит данные сервиса, гасит этот сервис независимо от DNS.
+Финальные DNS retirement audits трёх узлов показали operations=0; alias-resource audit — operations=0. Остальные records сохранены. Ключи NS/SSH, credentials и частные receipts в wiki не помещать.
 
-## Что сделано 1–2 ноября 2026
-
-- Добавлен и установлен host-level Knot на трёх узлах. Делегация до проверки снаружи не менялась: иначе зона погасла бы.
-- Открыт проброс 53 на домашний VIP.
-- В REG.RU для `alchemmist.xyz` сохранены NS `ns1.alchemmist.xyz` / `ns2.alchemmist.xyz` и glue на два публичных IP.
-- Утром 2 ноября родитель `.xyz`, Google DoH и Cloudflare DoH уже отвечали по новой схеме. Оба SOA доступны: с VPS и с домашнего публичного адреса. HTTPS `chat`, `auth.socrat` и `alchemmist.xyz` проверялся с валидным сертификатом.
-- `obscuravim.xyz` и остальные GitHub Pages не трогались.
-
-Пароль sudo на узлы в git не записывался.
-
-## Чего схема не делает
-
-Кэш резолвера не узнаёт, что IP умер, пока не кончится TTL. Часть операторских кэшей держит запись дольше запрошенных 60 секунд. Клиент не переспрашивает DNS из-за таймаута TCP.
-
-Пока живы оба входа, в ответе два адреса. Резолвер может запомнить оба. Выключение одного входа само по себе не вычищает уже выданный набор.
-
-## Проверка
-
-С узла, где нет перехвата DNS:
+Примеры read-only проверки с подходящего внешнего vantage:
 
 ```sh
 dig @x.nic.xyz alchemmist.xyz NS +norecurse
 dig @109.173.40.247 alchemmist.xyz SOA +norecurse
-dig @176.98.185.59 alchemmist.xyz SOA +norecurse
-curl -sS -H 'accept: application/dns-json'   'https://dns.google/resolve?name=chat.alchemmist.xyz&type=A'
+dig @109.120.141.97 alchemmist.xyz SOA +norecurse
+curl -sS -H 'accept: application/dns-json' \
+  'https://dns.google/resolve?name=grafana.socrat.alchemmist.xyz&type=A'
 ```
 
-Ожидание: у родителя оба NS и glue; оба SOA с TTL 60; у Google DoH адреса с коротким TTL. Источники: `docs/public-ingress.md`, `docs/router-static-mappings.md`, `ansible/playbooks/public-authoritative-dns.yml`.
+Домашний UDP `dig @8.8.8.8` ранее перехватывался и мог показывать старый TTL/AA. Для независимого рекурсивного cache view использовать DoH и другой provider/device; один локальный UDP результат не доказывает глобальную делегацию. Forced routing `curl --resolve` с правильным Host/SNI/TLS проверяет конкретный entrance, **не** обычное DNS-разрешение и не независимый внешний доступ.
+
+## Mac и границы отказоустойчивости
+
+Owned Mac `/etc/resolver` overrides и wiki restorer lifecycle сняты, глобальные DNS/corporate VPN настройки не менялись. Обычный public HTTPS больше не зависит от workstation overrides; NetBird DNS выключен. Внутренний SSH закреплён за private адресами отдельно от публичного DNS. Server-side private DNS для иных consumers может оставаться. См. [итог Mac cleanup](network-access.md#7-mac-старый-owned-dns-lifecycle-снят-полностью).
+
+Кэш не узнаёт об отказе до expiry и может держать запись дольше TTL. Уже открытые соединения не переезжают, клиент не обязан повторять DNS после TCP timeout. Public IP failover не копирует PVC/SQLite/MariaDB/GPU и не делает Authentik/management HA. Traefik Edge может использовать последние маршруты без кворума только пока живы процесс, сеть и backend pods. Потерянный backend/storage DNS не восстанавливает.
+
+Источники: [public ingress](../docs/public-ingress.md), [VPS migration](../docs/vps-ip-migration-20261105.md), [public-web closeout](../docs/public-web-migration.md), `docs/router-static-mappings.md`.

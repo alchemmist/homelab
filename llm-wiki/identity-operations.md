@@ -54,13 +54,13 @@ Tim — личный `tim`, observer, со своими существующим
 для всей observer group. В WebUI он user, а не admin. LiteLLM production app owner-only.
 
 Перед назначением группы читать **все app mappings**, а не только её название.
-Например platform-operator в Argo CD — admin; в Grafana admitted non-owner — Viewer.
+Например platform-operator в Argo CD — admin; в Grafana admitted non-owner — Viewer, кроме отдельно назначенного `app-grafana-editor` → Editor.
 Имена групп — контракт интеграций. Переименование может отозвать/изменить доступы.
 
 ## 3. Как добавить нового человека
 
 **Если это новый администратор кластера:** полный порядок
-[Authentik/MFA → NetBird device approval/JWT policy → отдельные SSH и
+[Authentik/MFA → NetBird identity/device + JWT policy → отдельные SSH и
 Kubernetes/app-права](netbird.md#как-добавить-нового-админа). Ни одна из этих
 ступеней не выдаёт остальные автоматически. Linux-аккаунт создаётся ручным
 [Ansible username + public key](ssh-user.md), без sudo и n8n.
@@ -257,3 +257,7 @@ ansible-playbook playbooks/identity-integrations.yml \
 - Webhook/API/public status не попали за интерактивный redirect.
 - Никаких fixture users, MFA devices, app keys и временных bindings после smoke.
 - Source, runtime Secret references и post-upgrade reconcile согласованы.
+
+## Сетевые изменения 6 ноября
+
+[Сводный итог](network-access.md) и [NetBird](netbird.md) заменяют старую обязательную device-approval процедуру: сейчас approval flags выключены, admission остаётся personal MFA/JWT group-restricted. Новый человек не получает Linux/sudo/app роли автоматически. Не возвращать Mac resolver files, internal TV profile или отдельный TV домен при onboarding. Native Grafana anonymous org access выключен; public traffic-light share — отдельное явно согласованное исключение.

@@ -1,11 +1,13 @@
 # Авторизация кластера Socrat: главный справочник
 
-**Актуализировано 1 ноября 2026 после owner-проверки LiteLLM и исправления native
-inspector/redirect controls.** Это консолидированное описание всей сессии: как
+**Основа identity — 1 ноября 2026; сеть/публичный доступ актуализированы 6 ноября.** Owner-проверка LiteLLM и native inspector/redirect controls относятся к исходной identity-сессии. Это консолидированное описание всей сессии: как
 устроены вход, MFA, права, интеграции, фронтенд, deployment и recovery. Не содержит
 паролей, токенов, MFA seeds, browser sessions или приватных сохранённых HTML.
 
 **Дополнено 2 ноября 2026:** ограничения gateway/SSO, исправление 3x-ui Login, открытая диагностика n8n и актуальный frontend. Предварительные проверки n8n не означают, что сообщение владельца закрыто.
+
+
+**Сетевой closeout 6 ноября:** [актуальный итог](network-access.md) имеет приоритет над старым журналом ниже. Public HTTPS не требует Mac overrides; Grafana anonymous org access выключен, native Viewer/Editor/Admin разделены; Kuma status/admin boundary завершён без native OIDC; NetBird primary, standalone WG recovery, Tunnelblick сохранён; внутренний TV WG и временный TV домен удалены.
 
 ## Читать по задаче
 
@@ -15,6 +17,7 @@ inspector/redirect controls.** Это консолидированное опи�
 | Как войти, добавить человека, выдать/отозвать права, работать с MFA | [Ежедневные операции](identity-operations.md) |
 | Двойной логин, consent offline_access, Failed to fetch, открытая проблема n8n | [Диагностика SSO и gateway](identity-gateway-troubleshooting.md) |
 | Что сделано для каждого сервиса и как подключать следующий | [Интеграции](identity-integrations.md) |
+| Итог VPS/DNS/публичных входов/Mac/ТВ и границы безопасности | [Сеть и доступ](network-access.md) |
 | Как устроен NetBird, добавить админа/ноду, что с отказоустойчивостью | [NetBird: актуальный справочник](netbird.md) |
 | Как добавить username + публичный SSH-ключ на ноды одним Ansible playbook | [SSH: короткая инструкция](ssh-user.md) |
 | Как отдельно устроены Linux/SSH, sudo, kubeconfig и Kubernetes RBAC | [Host access](identity-host-access.md) |
@@ -42,8 +45,8 @@ runtime Authentik/app state; подробная карта файлов есть
 - **LiteLLM owner SSO подтверждён владельцем.** Owner-only admission, reviewed
   UUID -> existing `socrat-admin`; machine API keys сохранены. Recovery password
   не сбрасывался и не считается проверенным этим подтверждением.
-- n8n — Authentik MFA gateway, **не native account SSO**. Kuma **не мигрирован**.
-- Восемь foundation apps плюс отдельно Argo CD: все девять с локальными icons.
+- n8n — Authentik MFA gateway, **не native account SSO**. Kuma имеет отдельный MFA-gated admin entrance и публичный status, **без native OIDC**.
+- Foundation registry: восемь apps плюс отдельно Argo CD, с локальными icons. Дополнительные public gate applications управляются `deploy/public-web/services.json`; девять — не общее число всех нынешних entrances.
 - Quiet Mono v5 работает поверх native executor, без replacement auth JS.
   `Redirecting` без raw `%(app)s`; Follow redirect anchor стилизован; лупа выровнена;
   native history сохранена, ограничена по высоте, не сгенерирована прототипом.
@@ -97,9 +100,7 @@ fixture smoke и restore check изменяют тестовые ресурсы,
 У новых OAuth providers явно задавать `grant_types=[authorization_code,refresh_token]`.
 Не отключать TLS/MFA и не расширять группы, пытаясь исправить этот protocol error.
 
-**Native OIDC + PKCE активен**, owner → **GrafanaAdmin**, остальные admitted groups
-→ Viewer. Insecure email-based linking выключен. Local emergency login и прежний
-осознанный anonymous Viewer сохранены — это не exclusive SSO для чтения.
+**Native OIDC + PKCE активен**, owner → **GrafanaAdmin**, `app-grafana-editor` → Editor, остальные admitted groups → Viewer. Insecure email-based linking выключен. **Anonymous org access выключен**, public Basic/password login блокируется; private recovery сохранён. Исключение без входа — только native public share `socrat-traffic-light`, а не вся организация.
 
 Проверен полный HTTP browser-equivalent flow временным observer: пароль → TOTP →
 consent → code/PKCE → `/api/user` и Viewer role, не server-admin. Test identities
@@ -144,8 +145,7 @@ Private Grafana nginx намеренно очищает Authorization header; ad
   Прямые WG-IP:443 сейчас имеют чужой cert из-за отсутствующих Wiki VHs в live
   gateways; public оба IP работают. Не отключать TLS и не запускать вслепую старый
   wiki-editor-access role по уже вынесенному private-gateway.
-- **Kuma НЕ считать мигрированной.** Public status сохранён; admin/shared sockets
-  требуют безопасной интеграции. В установленной auth реализации нет native OIDC.
+- **Kuma boundary завершён 6 ноября:** public status/read/push отделены от personal-MFA admin host и native account controls; public Socket.IO закрыт. Native OIDC по-прежнему нет. Инцидент credential recovery с ~35min heartbeat gap отражён в [сетевом итоге](network-access.md).
 - LiteLLM, CI/robots, MCP/API, VPN и другие machine credentials не подменять SSO.
   Каталог покрывает восемь foundation-managed portal services (Argo CD отдельно), не буквально все endpoints кластера.
 
@@ -199,13 +199,13 @@ WebUI SQLite integrity + два исходных user ID. Это **не full app
 WebUI restore check использует private temporary SQLite file с cleanup из-за WAL
 header. Архивы encrypted; не копировать plaintext credentials в evidence/Git.
 
-Открыто: Kuma integration, owner-only legacy fallback в остальных apps, n8n native license decision, owner/Tim browser
+Открыто: exhaustive app/role acceptance и owner-only legacy fallback в остальных apps, n8n native license decision, owner/Tim browser
 acceptance других apps, координированное onboarding/offboarding и revocation сессий,
 API keys/SSH/VPN, scheduled independent backups/key escrow/full restore,
 scoped RBAC/rotation нового machine admin API, историческая kubeconfig exposure/rotation.
 IdP disable не отзывает автоматически уже выданные app/API/SSH credentials.
 
-WG keys/routes/firewall не меняли. Не назначать одну подсеть нескольким direct WG
+В identity-сессии 1 ноября WG keys/routes/firewall не меняли; **это не описание последующих сетевых работ 5–6 ноября**, перечисленных в [итоге](network-access.md). Не назначать одну подсеть нескольким direct WG
 peers: нужен gateway+ACL/failover. Root на чужой ноде = доверие к workloads/secrets
 на ней; SSO/taints/NetworkPolicy не устраняют эту границу. На том этапе NetBird
 ещё не был внедрён; последующее внедрение и ограничения описаны в [актуальном справочнике](netbird.md).

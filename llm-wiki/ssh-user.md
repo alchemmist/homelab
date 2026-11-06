@@ -77,3 +77,7 @@ ansible-playbook playbooks/ssh-user.yml \
 изменение полного key set / `state: disabled` через
 [существующий users.yml](identity-host-access.md#4-отзыв-ssh).
 Уже открытые SSH-сессии при удалении ключа сами не завершаются.
+
+## Транспорт (6 ноября 2026)
+
+Обычный SSH остаётся internal-only на четырёх `/32` нод, port 2222, с pinned keys и без public fallback. На owner Mac основной транспорт NetBird, отдельный WG — recovery; публичный DNS/Grafana SSO не выдаёт shell и не меняет этот путь. Не устанавливать старые Mac DNS overrides ради SSH. [Итог сети и границы](network-access.md).

@@ -266,7 +266,7 @@ python3 -m unittest discover -s tests -p test_authentik_branding.py -v
 python3 -m unittest discover -s tests -p test_authentik_flow_titles.py -v
 # Python environment с Playwright/Chromium; readonly, без fixture identities:
 python3 scripts/identity-branding-controls-check.py --run
-python3 scripts/identity-branding-controls-check.py --run --public-edge 176.98.185.59
+python3 scripts/identity-branding-controls-check.py --run --public-edge 109.120.141.97
 ```
 
 Controls check использует fresh anonymous context, требует отказ inspector API и

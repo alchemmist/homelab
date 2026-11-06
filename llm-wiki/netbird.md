@@ -1,12 +1,11 @@
 # NetBird: доступ людей к кластеру
 
-Актуализация: 3 ноября 2026. Это текущая схема, а не первоначальный pilot.
+Актуализация: **6 ноября 2026**. Общий сетевой итог и ограничения: [network-access.md](network-access.md). Это текущая схема, а не первоначальный pilot.
 Старые записи «NetBird отложен / не внедрять» описывают уже завершённый этап.
 
 ## Что он делает и чего не делает
 
-NetBird — управляемый сетевой вход для людей: личный Authentik/MFA, одобрение
-устройства и адресные политики доступа. Панель: https://netbird.socrat.alchemmist.xyz/.
+NetBird — управляемый сетевой вход для людей: личный Authentik/MFA и адресные политики доступа. Автоматическое требование user/device approval сейчас выключено; принадлежность устройства всё равно проверяется оператором. Панель: https://netbird.socrat.alchemmist.xyz/.
 Он заменяет ручную раздачу **человеческих VPN-профилей**, но не межнодовый
 `wg-socrat`, Linux SSH-аутентификацию, sudo, Kubernetes RBAC или роли приложений.
 Сетевой доступ к узлу не означает право войти на него или стать root.
@@ -25,7 +24,7 @@ NetBird — управляемый сетевой вход для людей: л
    учётную запись. Создание человека: [identity-operations.md](identity-operations.md).
 2. **Устройство.** Человек устанавливает NetBird и входит своим Authentik/MFA в
    нашу management-систему. Администратор проверяет принадлежность устройства и
-   одобряет его в NetBird. Setup keys для регистрации людей не используем.
+   согласованные identity/device policies; ручной approval не является текущим обязательным шагом. Setup keys для регистрации людей не используем.
 3. **Сетевые права.** После отдельного согласования включить человека в настоящий
    Authentik/JWT-источник группы `netbird-internal-admins`. Сейчас он **owner-only**;
    Tim не получает admin автоматически. В NetBird это должна оставаться genuine
@@ -42,7 +41,7 @@ NetBird — управляемый сетевой вход для людей: л
    Административная роль Kubernetes не требует членства Linux-пользователя в sudo.
    NetBird account admin/owner — тоже отдельное право управления самой панелью,
    оно не требуется просто для разрешённого сетевого доступа.
-6. **Приёмка человеком.** С его устройства проверить MFA, approval, соединение,
+6. **Приёмка человеком.** С его устройства проверить MFA, identity/device policies, соединение,
    доступ только к согласованным адресам, SSH под его Linux-именем и нужные app/
    Kubernetes операции. Отдельно проверить запрещённые направления и отсутствие
    sudo. Успех owner Mac не является приёмкой другого человека или устройства.
@@ -133,9 +132,7 @@ Missing workloads: `awaiting-argocd-workloads`; missing/non-Ready node:
   Публичный DNS указывает на разные серверы: использовать проверенный SSH alias
   и точный endpoint/HostKeyAlias; connection-only `netbird-controller` закреплён
   за доверенным home IP, не входит в группу нод `Socrat`.
-- На Mac точные resolver exceptions для management, VPS relay и Authentik
-  разрывают bootstrap DNS-цикл. Private application DNS не заменяли публичным.
-  Скрипт plan-default: `scripts/netbird-macos-bootstrap-dns.py`.
+- **Исторические Mac resolver exceptions сняты 6 ноября**, включая restorer lifecycle. Сейчас используется обычный public DNS, DNS NetBird выключен. Не запускать старый `netbird-macos-bootstrap-dns.py` для нормального onboarding; guarded retirement — `scripts/macos-public-dns-cleanup.py`.
 - 403 на странице Users был вызван общим edge-deny `/api/users/invites`.
   Разрешено **только точное GET чтение** с native auth/role checks; локальные
   создание/принятие приглашений, setup и local login/signup по-прежнему закрыты.
@@ -173,3 +170,12 @@ Mac `.4`); автоматического отзыва не делали, нез
 [host access](identity-host-access.md#4-отзыв-ssh); уже открытые SSH sessions и
 forwards требуют отдельного решения. Пока нет отдельной приёмки, не обещать
 мгновенный отзыв по одному изменению группы или истечению пятиминутного bearer.
+
+## Операционный итог 6 ноября
+
+- NetBird — основной транспорт Mac; recovery WG проверен через новый VPS `109.120.141.97` и оставлен выключенным. Tunnelblick не выключался/не перенастраивался. Все ordinary SSH — internal `/32`/2222, pinned host keys, без public fallback.
+- Mac: `disableDns=true`, `disableClientRoutes=false`, `disableServerRoutes=true`, выбраны только четыре `wg-socrat-*` routes. Builtin All не раздаёт DNS будущим peers. No exit/LAN/pod/service/corporate route capture.
+- `scripts/netbird-access.py` / `ansible/playbooks/netbird-access.yml`: audit-first scoped grant/revoke/offboard, owner/service protections, private snapshots и fresh exact hash. Временный lifecycle проверен; bootstrap admin ограничен, fixtures удалены. Membership не даёт автоматически app/Linux/Kubernetes/admin роли и не отзывает все старые sessions.
+- Approval mode выключен, но genuine JWT group admission и личная MFA сохранены. Первый реальный новый человек/device остаётся отдельной приёмкой.
+- Межнодовый WG не удалён. Отозваны только obsolete assistant `.6` и явно согласованный TV `.8`; owner recovery `.4` сохранён. Phone `.7`/скомпрометированный key — отдельное решение.
+- После исправления overlapping transport marks на flannel ingress NetworkPolicy проверена cross-node ordinary/forged probes. Не возвращать старый bypass и не менять NetBird marking глобально: [overlay guard](../docs/k3s-networkpolicy-overlay-marks.md).

@@ -1,5 +1,7 @@
 # Диагностика входа: native SSO и MFA-шлюзы
 
+> Сетевой итог 6 ноября: [network-access.md](network-access.md). Указанный в старых приёмках `176.98.185.59` — бывший VPS; текущий `109.120.141.97`. Grafana/Rancher теперь имеют reviewed публичные entrances, Mac resolver overrides сняты, Kuma status/admin boundary завершён. Исторические diagnostic symptoms ниже не считать текущим live-срезом.
+
 Срез: **2 ноября 2026**. Индекс: [identity.md](identity.md).
 Этот документ фиксирует проверенные результаты и открытые проблемы; не заменяет live-проверку.
 

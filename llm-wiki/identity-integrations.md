@@ -1,7 +1,7 @@
 # Интеграции Authentik и добавление нового сервиса
 
 Начало: [identity.md](identity.md). Не путать native SSO, proxy gate и обычную
-плитку. Статус ниже — внедрение этой сессии; изменения версий требуют нового review.
+плитку. Сетевые entrances/роли актуализированы 6 ноября: [network-access.md](network-access.md). Старые session evidence ниже датированы; изменения версий требуют нового review.
 
 ## 1. Реестр и исходники
 
@@ -19,20 +19,17 @@
 
 `migration` strings каталога — исторические hints, не oracle live readiness:
 например `candidate` может остаться у уже проверенного сервиса. Проверять реальный
-provider, runtime settings и evidence. Сейчас девять dashboard applications с
-локальными иконками: восемь registry apps плюс отдельно управляемый Argo CD.
+provider, runtime settings и evidence. Foundation catalogue содержит девять dashboard applications с локальными иконками: восемь registry apps плюс отдельно управляемый Argo CD. Дополнительные public gates находятся в отдельном `deploy/public-web/services.json`; это не полный cluster-wide auth inventory.
 
 ## 2. Grafana
 
-URL `https://grafana.socrat.alchemmist.xyz/`, private-network ограничения сохранены.
+URL `https://grafana.socrat.alchemmist.xyz/` доступен через оба публичных HTTPS входа с native SSO, не требует workstation DNS overrides.
 Нативный Generic OAuth/OIDC + PKCE, refresh token. Callback `/login/generic_oauth`.
 Settings: `deploy/identity/grafana-oidc-values.yaml`; Secret
 `cattle-monitoring-system/socrat-authentik-grafana` хранит client secret.
 
-`homelab-owner` -> `GrafanaAdmin`; прочие admitted groups -> `Viewer`.
-`ALLOW_INSECURE_EMAIL_LOOKUP=false`, strict role mapping. Локальный emergency
-login и намеренно существующий anonymous Viewer не удалялись. Anonymous reading
-не означает разрешение анонимного администрирования.
+`homelab-owner` -> `GrafanaAdmin`; `app-grafana-editor` -> `Editor`; прочие admitted groups -> `Viewer`. Admission и native роль — разные проверки.
+`ALLOW_INSECURE_EMAIL_LOOKUP=false`, strict role mapping. Anonymous org access **выключен**, OIDC auto-login включён; прежний proxy gate retired после проверки native ролей. Public policy блокирует BasicAuth/POST login/metrics/debug, сохраняет bearer API/WebSockets и private recovery. Публично без входа доступен **только** явно shared `socrat-traffic-light`, не вся организация.
 
 Первый отказ `Login provider denied login request` был protocol issue: отсутствовал
 `grant_types: authorization_code, refresh_token`. Исправление — явно разрешить
@@ -191,10 +188,15 @@ Running/Ready pods. Это не owner/native-login/editor-after-idle acceptance;
 nginx forward-auth3x-ui на n8n proxy-mode без воспроизведения. См.
 [журнал диагностики](identity-gateway-troubleshooting.md#4-n8n-открытое-сообщение-владельца-не-исправленная-проблема).
 
-**Uptime Kuma 2.5.7:** native OIDC не внедрён. Public status/badges/push endpoints
-и administrative/shared Socket.IO traffic требуют безопасного разделения;
-простое закрытие общего socket за browser proxy может сломать status и collectors.
-Плитка и локальная icon не означают выполненную миграцию. Нужен отдельный дизайн.
+**Uptime Kuma:** native OIDC не внедрён и не заявляется. Но разделение входов **завершено**: status `/status/socrat`, status/heartbeat APIs/assets/badges и token push публичны; public Socket.IO/неизвестные admin APIs закрыты, legacy admin paths ведут на `kuma.socrat.alchemmist.xyz`. На admin host personal MFA owner/`uptime-kuma-web-admins`, затем исходная native Kuma auth. MFA не делает человека native admin. Проверены scoped MFA, WebSocket 101/namespace и denial native `getSettings`; fixtures удалены.
+
+При application restart обнаружен Secret/SQL credential mismatch, был наблюдённый ~35min heartbeat gap. Recovery создал отдельный schema-only app account без изменения старых SQL passwords и без DB restart; Secret data изменились, native Kuma account/auth сохранились. Не регенерировать Secret/не менять DB username: [MariaDB runbook](../docs/uptime-kuma-mariadb.md), [итог и ограничения](network-access.md#6-kuma-восстановление-после-инцидента-не-zero-downtime).
+
+### Публичные aliases и Syncthing
+
+`deploy/public-web/services.json` / `charts/public-web-entry` управляют reviewed Search, LLM/LiteLLM aliases, Syncthing и Kuma gates; не смешивать их с foundation registry. Search admission owner/`netbird-internal-admins`; app authorization за aliases остаётся native, machine APIs не переводятся на browser redirect. Rancher публичен с native OIDC/ролями и policy proxy против local-password mutations; agents/bearer/WebSockets/private recovery сохранены. Grafana MCP — public verified TLS + отдельный read-only bearer, не human MFA gate.
+
+На node0 `/sync/` — personal MFA owner/`syncthing-web-admins`, затем неизменённый исходный BasicAuth, prefix снимается. Node1 отвечает 410 gateway-only: новую device/identity ради GUI не создавали. Existing BasicAuth, sync process/config/data не менялись. Реальный owner Basic login остаётся отдельной опциональной приёмкой. [Подробности публичного closeout](../docs/public-web-migration.md).
 
 ## 10. Как подключить новый сервис: безопасный порядок
 

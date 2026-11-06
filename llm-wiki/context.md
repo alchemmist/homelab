@@ -1,6 +1,6 @@
 # Socrat: контекст работы с кластером и мониторингом
 
-Базовый срез на **20 октября 2026**; доставка алертов и SPI дополнены **3 ноября 2026**. Это краткая памятка для продолжения работы, не замена live-проверке. Старые таблицы размещения в README/docs могут отставать от scheduler.
+Сеть/доступ актуализированы **6 ноября 2026**; остальные исторические срезы датированы ниже. Основной итог: **[сеть и доступ 5–6 ноября](network-access.md)**. Он имеет приоритет над старыми утверждениями о private-only Grafana, anonymous Viewer, Mac resolver overrides и внутреннем VPN телевизора. Это краткая памятка для продолжения работы, не замена live-проверке. Старые таблицы размещения в README/docs могут отставать от scheduler.
 
 ## Что мы делаем
 
@@ -12,14 +12,14 @@
 | --- | --- | --- |
 | socrat-0 | Дом; control-plane + etcd | GPU RTX 3090, vLLM, большая часть LLM-стека; домашний NFS |
 | socrat-1 | Дом; control-plane без голоса etcd | Grafana/Prometheus/Alertmanager, Open Terminal, приложения |
-| socrat-2 | Зарубежный VPS; etcd + workload agent | 3x-ui/VPN, Remark42, Kuma, внешний Traefik Edge |
+| socrat-2 | Зарубежный VPS; etcd + workload agent | 3x-ui/VPN, Remark42, внешний Traefik Edge |
 | socrat-3 | Внешняя площадка; control-plane + etcd | Wiki, часть инфраструктуры; также пользовательский desktop |
 
 - Etcd: **0/2/3**, кворум — два голоса. Нода 1 не голосует. Несколько control-plane не означают репликацию приложений и их данных.
 - Ноды связаны WireGuard; пользователь называет сеть `socrat-wg`, системный интерфейс — `wg-socrat`. WG IP нод 0/1/2/3: `10.250.0.1`, `.3`, `.2`, `.5`.
 - У публичных HTTP-сервисов два входа: квартира `109.173.40.247` и VPS `109.120.141.97`, домашний Traefik и Traefik Edge. Зона `alchemmist.xyz` делегирована на свои NS; живой Knot публикует только ответивший адрес. Схема, glue и границы: `llm-wiki/public-dns.md`.
-- **Два IP не резервируют backend/SQLite/PVC.** Kuma — одна реплика на VPS с `hostPath /srv/uptime-kuma`; мониторинг имеет локальные PVC на socrat-1; GPU — только на socrat-0. Полную потерю квартиры все приложения не переживут.
-- Rancher, Grafana и Grafana MCP доступны через приватную WG-сеть, DNS и доверенный HTTPS, не через публичный ingress. Anonymous Viewer в Grafana оставлен намеренно; административные права — отдельно.
+- **Два IP не резервируют backend/SQLite/PVC.** Kuma — single-instance приложение с MariaDB на socrat-0 (`/srv/uptime-kuma-mariadb`), не HA; мониторинг имеет локальные PVC на socrat-1; GPU — только на socrat-0. Полную потерю квартиры все приложения не переживут.
+- Rancher и Grafana имеют обычные публичные HTTPS entrances с native SSO/ролями; Grafana MCP — bearer-only/read-only. Anonymous org access Grafana выключен; только `socrat-traffic-light` явно открыт native public sharing. На Mac NetBird основной, standalone WG — независимое recovery; обязательный Tunnelblick не трогать. Mac resolver overrides сняты; обычный SSH остаётся internal-only с pinned keys.
 
 Подробности: `docs/k3s-ha.md`, `docs/public-ingress.md`, `docs/wireguard-admin-access-plan.md`, `docs/vpn-failover.md`.
 
@@ -41,7 +41,7 @@
 
 ## Как работаем через Grafana MCP
 
-- Endpoint: `https://grafana-mcp.socrat.alchemmist.xyz/mcp`, Streamable HTTP, отдельный bearer token, доступ через WG. Сервер настроен **read-only**, Grafana identity — Viewer.
+- Endpoint: `https://grafana-mcp.socrat.alchemmist.xyz/mcp`, Streamable HTTP, отдельный bearer token, публичный verified-TLS entrance без browser MFA redirects; private путь сохраняется. Сервер настроен **read-only**, Grafana identity — Viewer.
 - В этой сессии доступны инструменты `mcp__socrat_grafana__…`: `query_prometheus`, `get_dashboard_by_uid`, `get_dashboard_property`, чтение alert rules. В новой сессии сначала проверять доступность инструментов.
 - Prometheus datasource UID: `prometheus`. Для instant query передавать `queryType: "instant"`, `endTime: "now"`, `datasourceUid` и `expr`; для range — также startTime/stepSeconds.
 - Метрики, запросы и alert instances читаем MCP. Playwright используем только для проверки внешнего вида/поведения frontend, не вместо API.
@@ -70,7 +70,7 @@ ansible-playbook -i inventory/hosts.yml playbooks/socrat-2-offload.yml
 
 Порядок работы: измерить → изменить declarative source → unit/Promtool/Helm/Ansible проверки → точечное применение → проверить live readiness, метрики, probes и при необходимости UI. Коммит сам по себе ничего не разворачивает. Прямые аварийные patches обязательно отражать в источниках.
 
-## Ресурсы и последний результат
+## Исторический срез ресурсов/offload 20 октября (не текущее размещение)
 
 - Вместо одинаковых CPU limits всем введены 56 индивидуальных профилей: requests CPU/RAM/ephemeral-storage, индивидуальные memory/storage ceilings. Requests — планировочный бюджет, не заранее выделенная RAM; limits не резервируют мощности.
 - CPU caps оставлены только Open Terminal **6**, его cleanup **100m**, vLLM **8**, SearXNG **1**. Для остальных CPU может использовать свободную мощность. Chromium ранее создавал runaway; этот пик не взят за нормальный request.
@@ -86,12 +86,14 @@ ansible-playbook -i inventory/hosts.yml playbooks/socrat-2-offload.yml
 
 - Не выключать ноды и не отбирать у них сеть для тестов. Не удалять данные/бэкапы на Mac. Перезапуски сервисов — последовательно, с проверкой замены, PDB и готовности; широкую пересоздачу включает только явный `container_resource_policy_reconcile=true`.
 - Не ослаблять приватный доступ ради healthcheck. Проверять сервис из WG/кластера; TCP/HTTP probe не равен полноценной VPN-сессии или внешней доступности.
-- Последний завершённый push: `24050eb` — четыре тематических коммита (search, resources, monitoring, socrat-3). Последующий offload, поддержка placement и эта памятка пока не закоммичены. Перед дальнейшей работой проверить `git status`; есть параллельные desktop-изменения, их не затирать.
+- `24050eb` и старые offload-результаты ниже — история, не текущий HEAD. Сетевой/TV closeout опубликован до `448f93f`; перед работой смотреть `git status`/remote. Рабочий изолированный checkout `/tmp/homelab-vps-ip-move`; посторонние изменения `/Users/antonmoss/code/homelab` и `.playwright-mcp/` не затирать.
 - Не коммитить/пушить без запроса. Сообщения коммитов — одна строка, English lowercase, без co-author. Для GitHub API — MCP, не `gh`.
 - Проверки offload: 47 resource/budget unit tests + 4 scope tests, server dry-runs и Ansible прошли. Ранее прошли 191 service-probe и 18 throttling Promtool cases. В полном Python suite есть два старых падения `test_wireguard_admin_client`, воспроизведённых на исходном main; не путать с регрессией этой работы.
 
 
-## Сессия 24 октября 2026: Traffic-light и TV Grafana
+## История: сессия 24 октября 2026 — Traffic-light и TV Grafana
+
+**Не текущий сетевой setup:** с 6 ноября TV использует public sharing URL на каноническом Grafana hostname, now-12h/5s; внутренний WG-профиль и временный отдельный TV домен удалены. См. [TV](android-tv.md) и [итог сети](network-access.md). Раскладка/коммиты ниже — исторический журнал.
 
 В этой сессии Traffic-light dashboard был доведён до текущего TV-вида.
 
@@ -281,3 +283,9 @@ Commands, exact pending commits, migration chain after SPI0009, delivery guarant
 verification evidence, and safe completion steps: [socrat-bot.md](socrat-bot.md),
 “Manual alert escalation — implementation ready, release BLOCKED”. Check live
 GitHub/Argo/schema state before resuming this historical handoff.
+
+## Итог сети 5–6 ноября 2026
+
+[network-access.md](network-access.md) содержит новый VPS IP и glue/3x-ui/webhook/STUN, NetBird primary / WG recovery / Tunnelblick, internal-only SSH, scoped overlay mark guard, публичные app entrances и роли, Syncthing/Kuma boundaries, честный Kuma recovery incident, Mac DNS retirement и финальный TV без внутреннего WG/отдельного домена. Ссылки на guarded инструменты и acceptance limitations находятся там; миграции повторно не запускать по старым заметкам.
+
+В мониторинге прежние описания scraping/размещения также исторические: Collector — sole scraper, Prometheus принимает OTLP; Loki/Tempo управляются Kubernetes/Argo. Детали вне сетевого scope: `docs/opentelemetry-migration.md`, `docs/otel-history-publication.md`. Эта wiki-актуализация не меняет workloads и не повторяет runtime-приёмки.

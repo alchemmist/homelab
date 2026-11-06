@@ -216,7 +216,7 @@ passwords, личного Tim MFA или полной offboarding готовно
 
 ## 9. Оставшийся backlog
 
-Cluster-wide human-auth inventory; Kuma safe boundary; n8n license/native SSO;
+Cluster-wide human-auth inventory; exhaustive Kuma native-account/owner recovery acceptance (public/admin boundary уже завершён); n8n license/native SSO;
 личные Tim delivery/TOTP/private-key acceptance; owner recovery для каждого app;
 legacy local sessions/old-password bypass audit кроме уже проверенного Wiki;
 strict English enforcement для старых overrides; Native inspector JSON highlight/
@@ -241,3 +241,7 @@ recovery и full DR остаются отдельной приёмкой. Ста
 retirement не восстановят API к текущей DB; сначала проверить journal/backup
 consistency. Процедура, guards и доказанные ограничения:
 [admin-automation.md](../docs/identity/admin-automation.md).
+
+## Сетевой closeout и новые private receipts
+
+См. [network-access.md](network-access.md): VPS migration, owned Mac DNS removal, NetBird lifecycle/overlay guard, Kuma credential recovery и retirement TV peer/alias имеют отдельные root-private before/uncertain/after receipts. Исторические backups/keys не удалять из-за нового public HTTPS. В частности Kuma Secret data при recovery изменились; старые SQL passwords и DB lifecycle не менялись. При uncertain marker не запускать apply повторно и не восстанавливать старый Secret вслепую. Эта документация не означает полного DR или мгновенной revocation старых sessions.

@@ -172,24 +172,16 @@ Root внешней ноды — trust boundary для workloads/secrets это�
 
 ## 9. Сеть и публичные входы
 
-Доверенные публичные edges: `109.173.40.247`, `176.98.185.59`. Во время проверки
-использовались process-local resolver overrides с сохранением Host/SNI/TLS, не
-изменения DNS или WireGuard. Grafana/Rancher сохраняют private-network ограничения.
-Текущий private WG gateway имел отдельную проблему TLS/virtual hosts; нельзя
-«лечить» её `verify=False`, публикацией private admin UI или изменением VPN в branding.
-**Актуализация 3 ноября:** NetBird внедрён как управляемый человеческий вход
-(Authentik/MFA, device approval, genuine JWT policies), деплой `root → netbird`
-Argo CD. Межнодовый WG не заменён, независимый administrative WG сохраняется.
-Четыре persistent routing agents и два relay дают проверенную ограниченную
-data-plane избыточность, но management/Signal и Authentik не HA: холодный запуск
-клиента без management провалился. [Текущая схема и onboarding](netbird.md).
+Текущие публичные edges — `109.173.40.247` и **`109.120.141.97`**. Старый `176.98.185.59` — история до 5 ноября. Reviewed Grafana/Rancher entrances публичны с native SSO/ролями; Grafana MCP — bearer-only. Обычный public DNS работает без Mac overrides, anonymous org access Grafana выключен. Только согласованный traffic-light native share доступен без входа. Не публиковать дополнительные private APIs ради branding/healthcheck.
+
+NetBird — основной human ingress, standalone WG — recovery; межнодовый WG сохранён, обязательный Tunnelblick Mac не трогаем. User/device approval requirement выключен, но личная MFA/genuine JWT admission сохранены. Автоматического app/Linux/Kubernetes grant нет. Четыре routing agents и два relay дают bounded data-plane redundancy; management/Signal и Authentik не HA, холодный запуск без management ранее провалился. Текущий lifecycle/overlay guard/Mac/TV cleanup: [network-access.md](network-access.md), [NetBird](netbird.md).
 
 Harbor обеспечивает приватные images/robots для workload delivery, но его OIDC
 не заменяет registry robot passwords. HA Harbor тоже отложена; см. [harbor.md](harbor.md).
 
 ## 10. Что не считать завершённым
 
-- Kuma не мигрирован; n8n — MFA gateway, не native SSO.
+- Kuma public/admin boundary завершён, но native OIDC не внедрён; n8n — MFA gateway, не native SSO. Exhaustive owner/app recovery acceptance остаётся отдельным.
 - Полный inventory всех человеческих auth paths и lifecycle старых sessions ещё нужен.
 - Owner-only local fallback полностью server-side проверен для Wiki; не переносить
   этот вывод на весь кластер. LiteLLM сохраняет owner DB password, но его реальная
