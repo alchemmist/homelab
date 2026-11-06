@@ -123,3 +123,23 @@ or service-account token and bounded CPU/memory/tmp. Logs contain status/method/
 duration only, never URI, cookies or token-bearing query strings. Argo sync waves
 wait for the proxy before switching the existing public ingress; no second
 competing Rancher hostname owner is introduced.
+
+
+Rancher policy activation completed at `f11a7ce4c6c9091a25cab825eee9201bb71c7c08`,
+public-web-entry Synced/Healthy. Proxy1/1; **58/58** negative public checks passed,
+including local-password POST403 on both entrances and normalized double-slash
+paths. Native `/ping`200 on both entrances; protected APIs remain401. Private
+Rancher via `10.250.0.3` still serves the UI and sends an empty local-login POST
+to native validation401, not the public403 rule. The private `10.250.0.1` entrance
+timed out during this check; no before/after causal claim is made for that legacy
+route. Neither private gateway was reconfigured. Public users need neither.
+
+The Search backend also passed a positive public test after the same temporary
+ordinary user received the non-superuser internal-admin group; negative admission
+was checked first. No NetBird device enrollment, native administrative role or
+owner-group membership was used. The fixture identity was deleted afterward.
+
+Final expanded focused run (including identity contracts): **190 passed,
+4 skipped, 139 subtests passed**. Final identity audit: operations0/changed0.
+No Grafana/Collector restart was performed. The completed temporary canary
+executable is removed; private run receipts and diagnostics are retained.

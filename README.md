@@ -274,3 +274,5 @@ Audit/reconcile/grant/revoke/offboard entrypoint:
 
 - [Kubernetes NetworkPolicy / NetBird VXLAN mark isolation](docs/k3s-networkpolicy-overlay-marks.md):
   owned persistent overlay guard, audit/apply playbook and cross-node acceptance.
+
+- [Public web entry migration](docs/public-web-migration.md): ordinary DNS + Authentik/native authorization, applied routes and explicit remaining scope.

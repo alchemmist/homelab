@@ -56,7 +56,7 @@ Before this change, the authoritative TTL was 86400 seconds. Resolvers can retai
 
 ## Excluded names
 
-Rancher, Grafana, private LLM aliases and numbered Syncthing interfaces remain private to socrat-wg. A public wildcard record is not authorization to expose those services; do not expand the VPS namespace allowlist to their private gateways.
+Grafana, Rancher, Search, the former private LLM aliases and the token-protected Grafana MCP endpoint now have explicitly reviewed public HTTPS entry routes. See [public web migration](public-web-migration.md) for gate/native authorization, live acceptance and remaining scope. This does not publish their old private gateway or backend ports. Numbered Syncthing GUIs are not included in this batch. A wildcard DNS record is never authorization to expose an arbitrary service.
 
 The wiki is intentionally public under its current runtime configuration, with authenticated editing; it is included above. Its separate WireGuard route does not make the public hostname private.
 
