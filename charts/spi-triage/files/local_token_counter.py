@@ -3,6 +3,7 @@ import hashlib
 import importlib.metadata
 import json
 import os
+import threading
 from pathlib import Path
 from core import Failure
 
@@ -12,6 +13,10 @@ PINS = {
     'tokenizer_config.json': '5f7aa0d810000c4a0940b35c8f16e56c3439260fccc13a321826ebc3ccf2501f',
 }
 MAX_BYTES = 512 * 1024
+_INITIALIZE = threading.Lock()
+_ENCODE = threading.Lock()
+_NATIVE = None
+_IDENTITY = None
 
 
 def contract(body):
@@ -41,7 +46,15 @@ class LocalCounter:
     def __init__(self, root='/opt/spi-tokenizer'):
         os.environ['TOKENIZERS_PARALLELISM'] = 'false'
         os.environ['RAYON_NUM_THREADS'] = '1'
-        root = Path(root)
+        root = Path(root).resolve()
+        try:
+            with _INITIALIZE:
+                self._validated_load(root)
+        except Exception:
+            raise Failure('LLM_LOCAL_COUNTER_INVALID') from None
+
+    def _validated_load(self, root):
+        global _NATIVE, _IDENTITY
         try:
             for name, expected in PINS.items():
                 with (root / name).open('rb') as stream:
@@ -57,17 +70,31 @@ class LocalCounter:
                 with Path(path).open('rb') as stream:
                     if hashlib.file_digest(stream, 'sha256').hexdigest() != expected:
                         raise ValueError('library hash')
-            from tokenizers import Tokenizer
-            self.tokenizer = Tokenizer.from_file(str(root / 'tokenizer.json'))
+            identity = (str(root), tuple(sorted(manifest.items())), tuple(sorted(PINS.items())))
+            if _NATIVE is not None:
+                if identity != _IDENTITY:
+                    raise ValueError('restart required for different contract')
+            else:
+                from tokenizers import Tokenizer
+                native = Tokenizer.from_file(str(root / 'tokenizer.json'))
+                _IDENTITY = identity
+                _NATIVE = native
+            self._tokenizer = _NATIVE
         except Exception:
             raise Failure('LLM_LOCAL_COUNTER_INVALID') from None
+
+    @property
+    def tokenizer(self):
+        return self._tokenizer
 
     def reservation(self, body):
         prompt = render(body)
         schema = json.dumps(body['response_format'], ensure_ascii=False).encode('utf-8')
         if len(schema) > MAX_BYTES:
             raise Failure('LLM_REQUEST_TOO_LARGE')
-        return len(self.tokenizer.encode(prompt, add_special_tokens=False).ids) + len(schema) + 256 + body['max_tokens']
+        with _ENCODE:
+            count = len(self._tokenizer.encode(prompt, add_special_tokens=False).ids)
+        return count + len(schema) + 256 + body['max_tokens']
 
 
 def configured_counter():

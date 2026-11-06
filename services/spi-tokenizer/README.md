@@ -1,6 +1,6 @@
 # Source-only experimental local counter — BLOCKED
 
-Do not activate this image. The full offline local-mode regression process was OOM-killed at the unchanged 384Mi limit. Do not increase resources to work around this acceptance failure. Final pairwise selection is unchanged and deferred.
+Do not activate this image. The previous per-Model implementation was OOM-killed at 384Mi. The corrected singleton combined regression completed without OOM (276436 KiB peak), but has four unresolved test failures/errors and incomplete oracle/legal acceptance. Do not increase resources. Final pairwise selection is unchanged and deferred.
 
 Build locally: `sh services/spi-tokenizer/build-local.sh /tmp/spi-tokenizer-assets.YxjQRa`. No push is performed. Base Python 3.13 Alpine digest is pinned in Dockerfile. Wheel URL is pinned in wheel-url.txt; wheel SHA256 is checked before no-index/no-deps installation. Asset revision: https://huggingface.co/RedHatAI/Qwen3.8-27B-INT4/resolve/91bd022d5b49442a868bc35008f6c21e1860edfa/ . Asset hashes are in local_token_counter.py and checked during build and runtime. Build requires pre-fetched assets, not runtime internet. Assets and wheel are not tracked.
 
@@ -8,4 +8,12 @@ Model card attribution is retained in MODEL-README.md and image README.md; it de
 
 Default `tokenAccountingMode: byte-bound-v1` remains compatible. Experimental `local-qwen-v1` is explicit, fail-closed, offline and validates before store recovery. No chart activation is authorized. Remote alias remapping requires operator revalidation of the pinned tokenizer/template; local validation cannot verify remote configuration. Reservation uses rendered prompt tokens plus full response-format UTF-8 bytes, 256 framing allowance and explicit completion cap; this is reservation utilization, NOT exact provider usage. Existing durable charges remain untouched and actual-usage upward adjustment remains unchanged. Rollback selects byte-bound-v1 and original pinned base image; retain cache, database and budget ledger without refunds.
 
-Outstanding: singleton/lifecycle/resource analysis after the observed OOM; seven historic actual-payload AutoTokenizer oracles; adversarial oracles; complete license/NOTICE review; public-source fetch/rebuild script; helper/JS regressions; fake-clock tighter-cost acceptance. No production readiness or live throughput claim.
+## Native lifetime and filesystem contract
+
+One process-global native tokenizer is initialized under a lock on first local-mode Model. Every subsequent constructor re-streams all asset/library hashes before reuse; missing files and drift still fail closed. Root path, asset pins and full installed-file manifest must match the first contract. A different valid contract requires process restart: there is no keyed cache, eviction or second native lifetime. Initialization and encode are serialized; the application creates no counter threads/queues. TOKENIZERS_PARALLELISM=false and RAYON_NUM_THREADS=1 are retained. Request bodies, rendered strings and encodings are call-local, never cached. 24 simultaneously retained Models and largest allowed ASCII input were exercised in the same process as all 203 discovered SPI tests, including SQLite, evidence bundles and snapshot-v3 code.
+
+Assets, manifest, installed library and their parent directories must be immutable/read-only for the entire process lifetime. Verification is streamed with hashlib.file_digest. This assumes trusted image construction and no privileged concurrent filesystem mutation between verification and native load; hashes do not defend against a writable manifest plus writable library. Do not mutate the native tokenizer returned by the inspection property. No runtime asset updates are supported.
+
+Rebuild input is a strict preloaded context, **not** a claim that the private directory is universally available. Runtime assets and wheel are checked against fixed hashes; source URL and revision above identify the public provenance. No downloads, weights or assets are placed in Git or ConfigMaps.
+
+Outstanding: seven historic actual-payload AutoTokenizer oracles; adversarial oracles; complete license/NOTICE review; public-source fetch/rebuild script; helper/JS regressions; fake-clock tighter-cost acceptance. No production readiness or live throughput claim.

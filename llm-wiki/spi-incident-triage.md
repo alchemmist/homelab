@@ -846,3 +846,17 @@ reassociation, quota/identity/network changes or model probes. Reservations are
 not exact usage. 3RPM/30000TPM/parallel1, durable three-generation bound and
 664-second scheduling guard retained. Further natural observation is a parent
 scheduling decision, not an ongoing observer from this completed window.
+
+### Source-only tokenizer lifecycle correction (not activated)
+
+The experimental local accounting loader now retains one process-global native
+Tokenizer across Models, validates every requested asset/library contract before
+reuse, serializes initialization/encode, and rejects alternate contracts until
+restart. Read-only assets and installed library are required. Byte-bound default,
+384Mi/1 CPU, existing budget charges and v3 proofs are unchanged. Combined local
+regression with 24 live Models completed without OOM at 276436 KiB peak, but is
+**not accepted**: three missing-tool test errors and one byte-bound-specific test
+expectation remain; seven installed-reference historic oracles and legal packaging
+are unfinished. See services/spi-tokenizer/README.md. No live activation or
+throughput improvement is claimed; rollback retains database/cache/budget and
+selects the prior image with byte-bound-v1, never refunds.
