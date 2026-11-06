@@ -58,3 +58,37 @@ def test_catalog_proxy_and_native_routes_are_explicit():
  mcp=next(d for d in ingresses if d['metadata']['name']=='public-web-grafana-mcp')
  assert mcp['spec']['rules'][0]['http']['paths'][0]['path']=='/mcp'
  assert all(d['spec']['tls'] for d in ingresses)
+
+def test_public_probe_reuses_migration_owned_addresses():
+ spec=importlib.util.spec_from_file_location('public_entry_check',ROOT/'scripts/check-public-web-entry.py')
+ c=importlib.util.module_from_spec(spec);spec.loader.exec_module(c)
+ assert len(c.addresses())==2
+ assert c.addresses(['109.173.40.247','109.120.141.97'])==['109.173.40.247','109.120.141.97']
+ with pytest.raises(ValueError):c.addresses(['10.250.0.1','109.120.141.97'])
+ with pytest.raises(ValueError):c.addresses(['109.120.141.97','109.120.141.97'])
+
+@pytest.mark.parametrize('index,key,value',[(4,'service','unprotected-backend'),(4,'namespace','identity'),(5,'port',8080),(5,'path','/'),(0,'service','grafana')])
+def test_chart_rejects_mislabeled_authorization(index,key,value,tmp_path):
+ import yaml,subprocess
+ values=yaml.safe_load((ROOT/'charts/public-web-entry/values.yaml').read_text())
+ values['routes'][index][key]=value
+ p=tmp_path/'values.yaml';p.write_text(yaml.safe_dump(values))
+ result=subprocess.run(['helm','template','test',str(ROOT/'charts/public-web-entry'),'-f',str(p)],text=True,capture_output=True)
+ assert result.returncode!=0
+
+def test_rancher_public_proxy_denies_local_password_without_changing_private_backend():
+ import yaml,subprocess
+ docs=[x for x in yaml.safe_load_all(subprocess.check_output(['helm','template','test',str(ROOT/'charts/public-web-entry')],text=True)) if x]
+ config=next(x['data']['nginx.conf'] for x in docs if x['kind']=='ConfigMap')
+ assert '~^(POST|PUT|PATCH|DELETE):/v3-public/localProviders(?:/|$) 1;' in config
+ assert 'if ($deny_local_password) { return 403; }' in config
+ assert 'http://rancher.cattle-system.svc.cluster.local:80' in config
+ assert 'proxy_set_header Upgrade $http_upgrade' in config
+ assert 'proxy_set_header X-HTTP-Method-Override ""' in config
+ d=next(x for x in docs if x['kind']=='Deployment')
+ pod=d['spec']['template']['spec'];c=pod['containers'][0]
+ assert pod['automountServiceAccountToken'] is False and pod['securityContext']['runAsNonRoot']
+ assert c['securityContext']['readOnlyRootFilesystem'] and c['securityContext']['capabilities']['drop']==['ALL']
+ assert '@sha256:' in c['image']
+ i=next(x for x in docs if x['kind']=='Ingress' and x['metadata']['name']=='public-web-rancher')
+ assert i['spec']['rules'][0]['http']['paths'][0]['backend']['service']['name']=='public-web-rancher-proxy'

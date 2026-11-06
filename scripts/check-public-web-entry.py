@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+"""Anonymous negative probes only, forced public entrances with ordinary TLS validation."""
+import argparse
+import ast
+import concurrent.futures
+import ipaddress
+import json
+from pathlib import Path
+import subprocess
+import urllib.parse
+
+
+def addresses(explicit=None):
+    if explicit:
+        values = explicit
+    else:
+        # Reuse the existing migration-owned public address inventory.
+        source = Path(__file__).with_name('check-public-ingress.py')
+        tree = ast.parse(source.read_text())
+        values = next(ast.literal_eval(n.value) for n in tree.body if isinstance(n, ast.Assign)
+                      and any(isinstance(t, ast.Name) and t.id == 'ADDRESSES' for t in n.targets))
+    if len(values) != 2 or len(set(values)) != 2 or any(
+            ipaddress.ip_address(v).version != 4 or not ipaddress.ip_address(v).is_global for v in values):
+        raise ValueError('Exactly two distinct public IPv4 entrances required')
+    return values
+
+PROXY_HOSTS = ['grafana.socrat.alchemmist.xyz', 'search.socrat.alchemmist.xyz',
+               'llm.socrat.alchemmist.xyz', 'litellm.socrat.alchemmist.xyz']
+
+def probe(case):
+    host, ip, path, expected = case[:4]
+    method = case[4] if len(case) > 4 else 'GET'
+    args = ['curl', '-sS', '--max-time', '12', '--path-as-is', '--resolve', f'{host}:443:{ip}',
+            '-H', 'X-authentik-username: admin', '-H', 'X-authentik-groups: homelab-owner',
+            '-H', 'X-Forwarded-For: 10.250.0.4', '-H', 'X-Forwarded-Host: evil.invalid',
+            '-H', 'X-Forwarded-Proto: http', '-H', 'Authorization: Bearer intentionally-invalid',
+            '-D', '-', '-o', '/dev/null', f'https://{host}{path}']
+    if method == 'POST':
+        args[1:1] = ['--request', 'POST', '--header', 'Content-Type: application/json', '--data', '{}']
+    p = subprocess.run(args, text=True, capture_output=True, timeout=15)
+    statuses = [line.split()[1] for line in p.stdout.splitlines() if line.startswith('HTTP/')]
+    status = int(statuses[-1]) if statuses else 0
+    location = next((line.split(':', 1)[1].strip() for line in p.stdout.splitlines()
+                     if line.lower().startswith('location:')), '')
+    u = urllib.parse.urlsplit(location)
+    good = p.returncode == 0 and status == expected
+    if expected == 302:
+        good &= u.scheme == 'https' and u.hostname == host and u.path == '/outpost.goauthentik.io/start'
+    return {'host': host, 'entrance': ip, 'path': path, 'method': method, 'status': status,
+            'tls_verified': p.returncode == 0, 'passed': bool(good)}
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--address', action='append', help='Repeat twice when running outside the repository')
+    ips = addresses(parser.parse_args().address)
+    cases = [(h, ip, path, 302) for h in PROXY_HOSTS for ip in ips
+             for path in ['/', '/api/search', '/api/admin/settings', '//api/search', '/metrics']]
+    cases += [('rancher.socrat.alchemmist.xyz', ip, path, 401) for ip in ips for path in
+              ['/v3/users', '/v3/clusters', '/v3/connect/register', '/v1/management.cattle.io.users']]
+    cases += [('rancher.socrat.alchemmist.xyz', ip, path, 403, 'POST') for ip in ips for path in
+              ['/v3-public/localProviders/local?action=login', '//v3-public/localProviders/local?action=login']]
+    cases += [('grafana-mcp.socrat.alchemmist.xyz', ip, path, code) for ip in ips for path, code in
+              [('/mcp', 401), ('/metrics', 404), ('/healthz', 404)]]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+        results = list(pool.map(probe, cases))
+    failed = [r for r in results if not r['passed']]
+    print(json.dumps({'checks': len(results), 'passed': len(results)-len(failed), 'failures': failed}, indent=2))
+    if failed:
+        raise SystemExit(1)
+
+if __name__ == '__main__':
+    main()

@@ -2,7 +2,7 @@
   "grafana": {
     "name": "Grafana",
     "url": "https://grafana.socrat.alchemmist.xyz/",
-    "description": "Metrics, dashboards and alerts; private WireGuard access remains required.",
+    "description": "Metrics, dashboards and alerts; public HTTPS with personal Authentik/MFA. Native application roles remain separate.",
     "redirect": "https://grafana.socrat.alchemmist.xyz/login/generic_oauth",
     "groups": [
       "homelab-owner",
@@ -49,7 +49,7 @@
   "rancher": {
     "name": "Rancher",
     "url": "https://rancher.socrat.alchemmist.xyz/",
-    "description": "Kubernetes administration; private WireGuard access remains required.",
+    "description": "Kubernetes administration over public HTTPS; personal Authentik/OIDC and reviewed Rancher permissions are required.",
     "migration": "native-oidc-explicit-principal-linking",
     "icon": "service-icons/rancher-6fb0a4f542f7.svg",
     "redirect": "https://rancher.socrat.alchemmist.xyz/verify-auth",

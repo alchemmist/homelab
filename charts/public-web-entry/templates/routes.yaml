@@ -5,7 +5,10 @@
 {{- if and (eq .authorization "authentik-proxy") (or (ne .namespace "identity") (ne .service "authentik-server")) }}
 {{- fail "Proxy routes must terminate at the Authentik gate, not the backend" }}
 {{- end }}
-{{- if and (eq .authorization "mcp-bearer") (or (ne .name "grafana-mcp") (ne .path "/mcp") (ne .service "grafana-mcp")) }}
+{{- if and (eq .authorization "rancher-native") (or (ne .name "rancher") (ne .host "rancher.socrat.alchemmist.xyz") (ne .namespace "cattle-system") (ne .service "public-web-rancher-proxy") (ne (int .port) 80) (not $.Values.rancherPolicyProxy.enabled) (.path | default "")) }}
+{{- fail "Native Rancher admission is valid only for its exact reviewed backend" }}
+{{- end }}
+{{- if and (eq .authorization "mcp-bearer") (or (ne .name "grafana-mcp") (ne .host "grafana-mcp.socrat.alchemmist.xyz") (ne .namespace "cattle-monitoring-system") (ne .path "/mcp") (ne .service "grafana-mcp") (ne (int .port) 8000)) }}
 {{- fail "Only the token-protected MCP endpoint may bypass interactive SSO" }}
 {{- end }}
 ---
@@ -17,6 +20,7 @@ metadata:
   labels:
     homelab.alchemmist.xyz/public-web: reviewed
   annotations:
+    argocd.argoproj.io/sync-wave: "1"
     cert-manager.io/cluster-issuer: {{ $.Values.issuer }}
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: 'true'
