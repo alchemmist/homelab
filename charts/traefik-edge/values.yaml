@@ -11,6 +11,8 @@ watchNamespaces:
   - automation
   - blog
   - cats
+  - cattle-system
+  - cattle-monitoring-system
   - format-quorum
   - harbor
   - identity

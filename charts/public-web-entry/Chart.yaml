@@ -1,0 +1,5 @@
+apiVersion: v2
+name: public-web-entry
+version: 0.1.0
+type: application
+description: Reviewed public HTTPS routes; native authorization or Authentik gates

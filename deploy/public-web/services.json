@@ -1,0 +1,25 @@
+{
+  "grafana": {
+    "host": "grafana.socrat.alchemmist.xyz",
+    "upstream": "http://kube-prometheus-stack-grafana.cattle-monitoring-system.svc.cluster.local:80",
+    "admissionFrom": "grafana"
+  },
+  "search": {
+    "host": "search.socrat.alchemmist.xyz",
+    "upstream": "http://searxng.llm.svc.cluster.local:8080",
+    "groups": [
+      "homelab-owner",
+      "netbird-internal-admins"
+    ]
+  },
+  "webui-alias": {
+    "host": "llm.socrat.alchemmist.xyz",
+    "upstream": "http://open-webui.llm.svc.cluster.local:8080",
+    "admissionFrom": "open-webui"
+  },
+  "litellm-alias": {
+    "host": "litellm.socrat.alchemmist.xyz",
+    "upstream": "http://litellm.llm.svc.cluster.local:4000",
+    "admissionFrom": "litellm"
+  }
+}

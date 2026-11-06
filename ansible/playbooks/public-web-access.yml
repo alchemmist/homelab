@@ -1,0 +1,25 @@
+---
+- name: Audit or explicitly create Authentik public web gates
+  hosts: socrat-0
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Install reviewed create-only helper
+      ansible.builtin.copy:
+        src: ../../scripts/public-web-access.py
+        dest: /usr/local/sbin/homelab-public-web-access
+        mode: '0700'
+    - name: Install secret-free reviewed host catalog
+      ansible.builtin.copy:
+        src: ../../deploy/public-web/services.json
+        dest: /var/lib/homelab-public-web-services.json
+        mode: '0600'
+    - name: Audit or apply an explicitly approved fresh plan
+      ansible.builtin.command:
+        argv: "{{ ['/usr/local/sbin/homelab-public-web-access', '--catalog', '/var/lib/homelab-public-web-services.json'] + (['--apply', '--approve-plan-hash', public_web_approve_plan_hash | default('')] if public_web_apply | default(false) | bool else []) }}"
+      register: public_web_result
+      changed_when: (public_web_result.stdout | from_json).applied
+      when: not ansible_check_mode
+    - ansible.builtin.debug:
+        var: public_web_result.stdout
+      when: not ansible_check_mode

@@ -1,0 +1,38 @@
+{{- range .Values.routes }}
+{{- if not (has .authorization (list "authentik-proxy" "rancher-native" "mcp-bearer")) }}
+{{- fail "Every public route must declare reviewed authorization" }}
+{{- end }}
+{{- if and (eq .authorization "authentik-proxy") (or (ne .namespace "identity") (ne .service "authentik-server")) }}
+{{- fail "Proxy routes must terminate at the Authentik gate, not the backend" }}
+{{- end }}
+{{- if and (eq .authorization "mcp-bearer") (or (ne .name "grafana-mcp") (ne .path "/mcp") (ne .service "grafana-mcp")) }}
+{{- fail "Only the token-protected MCP endpoint may bypass interactive SSO" }}
+{{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: public-web-{{ .name }}
+  namespace: {{ .namespace }}
+  labels:
+    homelab.alchemmist.xyz/public-web: reviewed
+  annotations:
+    cert-manager.io/cluster-issuer: {{ $.Values.issuer }}
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: 'true'
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts: [{{ .host | quote }}]
+      secretName: public-web-{{ .name }}-tls
+  rules:
+    - host: {{ .host }}
+      http:
+        paths:
+          - path: {{ .path | default "/" }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .service }}
+                port: {number: {{ .port }}}
+{{- end }}

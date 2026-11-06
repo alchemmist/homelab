@@ -1,0 +1,10 @@
+# Proxy gates must pass audit/readback BEFORE these routes are activated.
+issuer: letsencrypt-http01
+routes:
+  - {name: grafana, host: grafana.socrat.alchemmist.xyz, namespace: identity, service: authentik-server, port: 80, authorization: authentik-proxy}
+  - {name: search, host: search.socrat.alchemmist.xyz, namespace: identity, service: authentik-server, port: 80, authorization: authentik-proxy}
+  - {name: webui-alias, host: llm.socrat.alchemmist.xyz, namespace: identity, service: authentik-server, port: 80, authorization: authentik-proxy}
+  - {name: litellm-alias, host: litellm.socrat.alchemmist.xyz, namespace: identity, service: authentik-server, port: 80, authorization: authentik-proxy}
+  # Native auth is essential for Rancher agents/websockets and token-based MCP.
+  - {name: rancher, host: rancher.socrat.alchemmist.xyz, namespace: cattle-system, service: rancher, port: 80, authorization: rancher-native}
+  - {name: grafana-mcp, host: grafana-mcp.socrat.alchemmist.xyz, namespace: cattle-monitoring-system, service: grafana-mcp, port: 8000, authorization: mcp-bearer, path: /mcp}
