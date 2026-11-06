@@ -54,7 +54,7 @@ def test_catalog_proxy_and_native_routes_are_explicit():
  for slug,entry in catalog.items():
   i=next(d for d in ingresses if d['spec']['rules'][0]['host']==entry['host'])
   assert i['metadata']['namespace']=='identity'
-  assert i['spec']['rules'][0]['http']['paths'][0]['backend']['service']['name']=='authentik-server'
+  assert i['spec']['rules'][0]['http']['paths'][0]['backend']['service']['name']==('public-web-grafana-proxy' if slug=='grafana' else 'authentik-server')
  mcp=next(d for d in ingresses if d['metadata']['name']=='public-web-grafana-mcp')
  assert mcp['spec']['rules'][0]['http']['paths'][0]['path']=='/mcp'
  assert all(d['spec']['tls'] for d in ingresses)
