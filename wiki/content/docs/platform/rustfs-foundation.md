@@ -39,3 +39,14 @@ Single-node Retain local storage is **not HA or independent backup**. Requested
 local-path capacity is **not an enforced filesystem quota**. Existing n8n IDs,
 credentials/PVC/encryption key, calendar, blog write-disabled state, historical
 comments and queued jobs remain untouched. No fake incidents or publication tests.
+
+## Public continuation 2026-11-06
+
+Protected public entrances are now deployed with valid cert-manager TLS on both
+public IPs. Network isolation recheck passed after external NetBird fix. Native
+console URL is https://rustfs.socrat.alchemmist.xyz/rustfs/console/ (not root).
+**Foundation acceptance still requires real owner/MFA/native OIDC and evidence
+file download/hash, outsider and logout tests; SPI remains off.** Full evidence,
+fixture URL and exact hash/manual steps: `docs/rustfs/public-foundation-20261106.md`.
+Single-node Retain storage is neither HA nor independent backup. Rollback must
+preserve PVC/PV and account for manual prune-OFF ingress removal.

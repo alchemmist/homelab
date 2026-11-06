@@ -100,3 +100,16 @@ No speculative allowance/fix added. Parent review/CNI-NAT investigation needed;
 post-NAT S3 source/root cause unknown. DNS still lacks sudo credential; TLS,
 human browser/native OIDC/STS/logout/revocation, authenticated bounded/slow-peer
 checks remain unperformed. Do not describe DNS as the only remaining gate.
+
+## 2026-11-06 public routes live; NOT full acceptance
+
+Current truth: docs/rustfs/public-foundation-20261106.md supersedes old DNS/edge/
+network blockers. NetBird fix1591b02, parent24/24 network denial checks passed.
+Tracked browser activation62f48606f590e2b896b2979dfcc5f7b621b8a91a manually synced
+pruneOFF, Synced/Healthy. Both public IPs valid TLS, console302/evidence401,
+forged/path negatives401. Authentik pod console /rustfs/console/200 (root403).
+Exact DNS/egress two public/32; dedicated admissions reconciled idempotently.
+Human browser native OIDC/STS, actual file download/hash, outsider/logout still
+pending (parent browser profile busy). Do not confuse proxy admission with native
+identity or claim useful listing under GetOnly. SPI OFF. See new report for exact
+fixture URL/hash, human steps and rollback (pruneOFF does not delete ingresses).
