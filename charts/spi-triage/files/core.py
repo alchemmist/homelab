@@ -155,6 +155,8 @@ class Store:
               lease REAL NOT NULL DEFAULT 0, attempts INTEGER NOT NULL DEFAULT 0,
               deliveries INTEGER NOT NULL DEFAULT 1, result TEXT NOT NULL DEFAULT '{}',
               issue INTEGER NOT NULL DEFAULT 0, intent TEXT, error TEXT);
+            CREATE TABLE IF NOT EXISTS snapshot_budget (
+              job_id TEXT PRIMARY KEY REFERENCES jobs(id), replacements INTEGER NOT NULL, retained TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS match_review_v3 (
               job_id TEXT PRIMARY KEY REFERENCES jobs(id) ON DELETE CASCADE,
               progress TEXT NOT NULL);
@@ -183,6 +185,45 @@ class Store:
         with self.db() as c:
             row=c.execute('SELECT progress FROM match_review_v3 WHERE job_id=?',(key,)).fetchone()
         return json.loads(row['progress']) if row else None
+
+    def snapshot_guard(self,key):
+        """A separate ledger cannot be erased by replacing jobs.result."""
+        with self.db() as c:
+            row=c.execute('SELECT * FROM jobs WHERE id=?',(key,)).fetchone()
+            result=json.loads(row['result'])
+            budget=c.execute('SELECT * FROM snapshot_budget WHERE job_id=?',(key,)).fetchone()
+            invalid=len(result.get('snapshot_audit',[]))>2
+            if budget:
+                retained=json.loads(budget['retained'])
+                invalid=invalid or result.get('snapshot_generation')!=budget['replacements'] or result.get('snapshot_audit',[])!=retained.get('snapshot_audit',[])
+            if invalid:
+                c.execute("UPDATE jobs SET state='dead',error='WRITE_NEEDS_REVIEW',lease=0 WHERE id=?",(key,))
+        if invalid:raise Failure('WRITE_NEEDS_REVIEW')
+
+    def replace_snapshot(self,key,expected,retained,expensive):
+        """Budget and reset (or terminal preservation) commit together.
+
+        Three generations total: the initial generation plus two replacements.
+        A stage-zero replay is fenced without consuming another replacement.
+        """
+        exhausted=False
+        with self.db() as c:
+            row=c.execute('SELECT * FROM jobs WHERE id=?',(key,)).fetchone()
+            if row['stage']==0:return
+            if row['result']!=json.dumps(expected['result']) or row['stage']!=expected['stage']:
+                raise Failure('INVALID_STAGE_ORDER')
+            budget=c.execute('SELECT * FROM snapshot_budget WHERE job_id=?',(key,)).fetchone()
+            count=budget['replacements'] if budget else len(expected['result'].get('snapshot_audit',[]))
+            exhausted=expensive and count>=2
+            if exhausted:
+                c.execute("UPDATE jobs SET state='dead',error='WRITE_NEEDS_REVIEW',lease=0 WHERE id=?",(key,))
+            else:
+                if expensive:
+                    count+=1
+                    retained['snapshot_generation']=count
+                    c.execute('INSERT OR REPLACE INTO snapshot_budget VALUES(?,?,?)',(key,count,json.dumps(retained)))
+                c.execute("UPDATE jobs SET stage=0,result=?,state='processing',updated=?,lease=? WHERE id=?",(json.dumps(retained),time.time(),time.time()+1500,key))
+        if exhausted:raise Failure('WRITE_NEEDS_REVIEW')
 
     def reserve_llm(self, tokens, timeout=600, now=None):
         """One SPI-key ledger on the shared PVC. No credentials or payloads."""
@@ -267,6 +308,12 @@ class Store:
         with self.db() as c:
             c.execute('UPDATE jobs SET stage=?,result=?,updated=?,lease=?'+''.join(','+k+'=?' for k in fields)+' WHERE id=?',
                       [stage,json.dumps(result),now,0 if fields.get('state') in ('complete','dry_run','dead') else now+1500,*fields.values(),key])
+            if c.execute('SELECT 1 FROM snapshot_budget WHERE job_id=?',(key,)).fetchone():
+                # Never overwrite the independent retained copy with an old
+                # worker's marker-less reset. Such a reset fails closed later.
+                budget=c.execute('SELECT replacements,retained FROM snapshot_budget WHERE job_id=?',(key,)).fetchone()
+                if result.get('snapshot_generation')==budget['replacements'] and result.get('snapshot_audit',[])==json.loads(budget['retained']).get('snapshot_audit',[]):
+                    c.execute('UPDATE snapshot_budget SET retained=? WHERE job_id=?',(json.dumps(result),key))
             if on_save is not None:on_save(c)
     def fail(self,key,code,retry_after=None,rate_metadata=None):
         job=self.get(key);now=time.time()

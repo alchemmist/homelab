@@ -51,7 +51,8 @@ class Engine:
             REQUEST_DEADLINE.at=time.monotonic()+780
             try:return self._run(name,key)
             except Failure as e:
-                self.store.fail(key,e.code,retry_after=e.retry_after,rate_metadata=e.rate_metadata)
+                if not (self.store.get(key)['state']=='dead' and self.store.get(key)['error']=='WRITE_NEEDS_REVIEW'):
+                    self.store.fail(key,e.code,retry_after=e.retry_after,rate_metadata=e.rate_metadata)
                 current=self.store.get(key)
                 patient=e.code in PATIENT_TRANSIENT or (e.code=='OPEN_SPI_CHANGED' and current['stage']==0 and not current['intent'])
                 log_event('stage_deferred' if patient else 'stage_failed', 'warning' if patient else 'error', stage=name, code=e.code)
@@ -66,9 +67,11 @@ class Engine:
         stages={'match':1,'collect':2,'analyze':3,'publish':4}
         if name not in stages:raise Failure('INVALID_STAGE')
         job=self.store.get(key);wanted=stages[name]
+        if job['state']=='dead' and job['error']=='WRITE_NEEDS_REVIEW':raise Failure('WRITE_NEEDS_REVIEW')
         if job['stage']>=wanted:return {'job_id':key,'status':job['state'],'stage':job['stage']}
         if job['stage']!=wanted-1 or job['state']!='processing':raise Failure('INVALID_STAGE_ORDER')
         r=job['result'];event=job['event'];resolved=event['status']=='resolved'
+        if not job['intent']:self.store.snapshot_guard(key)
         if name=='match':
             if resolved:
                 r['resolved_issue']=self.store.episode_issue(event['episode'])
@@ -171,7 +174,7 @@ class Engine:
             del retained['storage_publication']
         for field in ('match','report','evidence','open_signature'):
             retained.pop(field,None)
-        self.store.save(key,0,retained,state='processing')
+        self.store.replace_snapshot(key,self.store.get(key),retained,'report' in result or 'storage_publication' in result)
         raise Failure('OPEN_SPI_CHANGED',retry_after=15)
 
     def upload_evidence(self,key,result,intent=None):

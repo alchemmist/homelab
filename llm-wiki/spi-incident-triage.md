@@ -708,3 +708,35 @@ changed is unknown (the prior probe timed out). Fake tests cover four prepared
 and eventual exact-primary publication with two-recipient applied outbox.
 The three requested live cards remain unaccepted; no new deployment, inference,
 queue mutation, backup restoration or observation window accompanies this change.
+
+### Durable late-snapshot replacement bound
+
+A job has exactly three expensive snapshot generations: the initial generation
+and at most two replacements. A stale post-analysis/pre-upload or post-upload
+snapshot spends one replacement in the same SQLite transaction as the safe
+stage-zero reset and audit retention. The third late invalidation does not reset:
+it terminates as `dead` / `WRITE_NEEDS_REVIEW`, preserving the current report,
+evidence, backend, active storage binding, verified receipts and previous audit.
+There is no fourth generation. At most two historical full bundles plus the
+current bundle exist in this job's logical trace; existing overbound/unknown
+traces are retained and fail closed, never truncated. Candidate inputs remain
+bounded by 120 candidates and twelve per matching batch, unchanged.
+
+The additive `snapshot_budget` ledger is authoritative across restarts/reclaims
+and jobs.result replacement. It keeps a bounded independent retained copy of the
+current result (including the same at-most-two historical bundles), not another
+append-only history. Replacing result with an old marker-less reset causes
+operator review before any model/upload; operators must inspect both the job and
+ledger retained JSON, not discard the ledger or reset counters to resume work.
+Do not manually select replacement jobs, cancel queue entries, or clear receipts.
+Stage-zero repeated invalidation does not spend twice. Transaction rollback
+cannot commit the budget without the reset or vice versa.
+
+Cheap pre-analysis signature fences may remain patient with zero analysis calls;
+this is not permission for infinite new analysis or S3 generations. Primary intent
+reconciliation remains ahead of freshness fences; ambiguous/unsafe writes remain
+finite and are not reclassified as patient. Both full publication freshness fences
+remain. Existing failure counts, 3 RPM / 30000 TPM / parallel-one admission,
+Root-plus-key Reader URLs and Telegram delivery semantics are unchanged. This is
+source assurance only, not acceptance of the three real user cards or rollout
+authorization.

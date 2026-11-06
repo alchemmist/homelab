@@ -99,6 +99,102 @@ class EngineStorageTests(unittest.TestCase):
         self.assertNotEqual(final['storage_publication']['binding'],audit[0]['storage_publication']['binding'])
         self.assertEqual(self.bundle,original);self.g.request.assert_called_once()
 
+    def test_twenty_late_churns_are_durably_bounded(self):
+        import copy
+        original=copy.deepcopy(self.bundle)
+        for cycle in range(20):
+            current=self.store.get(self.key)
+            if current['state']=='dead':
+                with self.assertRaises(Failure):self.engine.run('publish',self.key)
+                continue
+            r=current['result']
+            if current['stage']==0:
+                r.update(evidence={'bundle':prepare_bundle(event(),{},[{'name':'logs.json','content':str(cycle)}])},
+                         report=report(),match={'candidates':[]},open_signature=digest([]))
+                self.store.save(self.key,3,r,state='processing')
+            self.g.snapshot.side_effect=[[],[{'number':3,'updated_at':str(cycle)}]]
+            with self.assertRaises(Failure):self.engine.run('publish',self.key)
+        final=self.store.get(self.key)
+        self.assertEqual(final['state'],'dead')
+        self.assertEqual(final['error'],'WRITE_NEEDS_REVIEW')
+        self.assertEqual(len(final['result']['snapshot_audit']),2)
+        self.assertEqual(final['result']['snapshot_audit'][0]['evidence']['bundle'],original)
+        self.assertIn('report',final['result'])
+        self.assertEqual(final['result']['storage_publication']['binding'],final['result']['storage_publication']['verified'])
+        self.assertEqual(self.s.ensure_object.call_count,6)
+        self.g.request.assert_not_called()
+
+    def test_real_stage_route_bounds_analysis_and_uploads(self):
+        self.store.save(self.key,0,{},state='processing')
+        self.engine.model.match.return_value={'candidates':[]}
+        self.engine.model.analyze.return_value=report()
+        self.g.open_signature.return_value=digest([])
+        self.engine.evidence.collect.side_effect=lambda event: {'bundle':prepare_bundle(event,{},[{'name':'logs.json','content':str(self.engine.evidence.collect.call_count)}])}
+        for cycle in range(20):
+            if self.store.get(self.key)['state']=='dead':
+                with self.assertRaises(Failure):self.engine.run('match',self.key)
+                continue
+            r=self.store.get(self.key)['result']
+            self.store.save(self.key,0,r,state='processing')
+            self.g.snapshot.side_effect=None;self.g.snapshot.return_value=[]
+            for stage in ('match','collect','analyze'):self.engine.run(stage,self.key)
+            self.g.snapshot.side_effect=[[],[{'number':3,'updated_at':str(cycle)}]]
+            with self.assertRaises(Failure):self.engine.run('publish',self.key)
+        self.assertEqual(self.engine.model.analyze.call_count,3)
+        self.assertEqual(self.engine.evidence.collect.call_count,3)
+        self.assertEqual(self.s.ensure_object.call_count,6)
+        self.assertEqual(len(self.store.get(self.key)['result']['snapshot_audit']),2)
+        self.g.request.assert_not_called()
+
+    def test_replacement_transaction_rollback_and_stage_zero_replay(self):
+        self.g.snapshot.return_value=[{'number':3,'updated_at':'new'}]
+        with self.store.db() as c:
+            c.execute("CREATE TRIGGER abort_reset BEFORE UPDATE ON jobs WHEN NEW.stage=0 BEGIN SELECT RAISE(ABORT,'crash'); END")
+        with self.assertRaises(Failure):self.engine.run('publish',self.key)
+        with self.store.db() as c:
+            self.assertEqual(c.execute('SELECT count(*) FROM snapshot_budget').fetchone()[0],0)
+            c.execute('DROP TRIGGER abort_reset')
+        current=self.store.get(self.key)
+        self.store.save(self.key,3,current['result'],state='processing')
+        with self.assertRaisesRegex(Failure,'OPEN_SPI_CHANGED'):self.engine.run('publish',self.key)
+        saved=self.store.get(self.key)
+        self.store.replace_snapshot(self.key,saved,saved['result'],True)
+        with self.store.db() as c:
+            self.assertEqual(c.execute('SELECT replacements FROM snapshot_budget').fetchone()[0],1)
+
+    def test_late_preupload_bound_survives_restart(self):
+        for cycle in range(3):
+            self.store=Store(self.store.path);self.engine.store=self.store
+            r=self.store.get(self.key)['result']
+            r.update(report=report(),match={'candidates':[]},open_signature=digest([]),evidence={'bundle':self.bundle})
+            self.store.save(self.key,3,r,state='processing')
+            self.g.snapshot.return_value=[{'number':3,'updated_at':str(cycle)}]
+            with self.assertRaisesRegex(Failure,'WRITE_NEEDS_REVIEW' if cycle==2 else 'OPEN_SPI_CHANGED'):
+                self.engine.run('publish',self.key)
+        self.assertEqual(self.store.get(self.key)['state'],'dead')
+        self.s.ensure_object.assert_not_called();self.g.request.assert_not_called()
+
+    def test_old_result_reset_fails_closed_with_independent_retention(self):
+        self.g.snapshot.side_effect=[[],[{'number':3,'updated_at':'new'}]]
+        with self.assertRaises(Failure):self.engine.run('publish',self.key)
+        retained=self.store.get(self.key)['result']
+        self.store.save(self.key,0,{},state='processing')
+        self.engine.store=Store(self.store.path)
+        with self.assertRaisesRegex(Failure,'WRITE_NEEDS_REVIEW'):self.engine.run('match',self.key)
+        with self.store.db() as c:
+            import json
+            ledger=c.execute('SELECT * FROM snapshot_budget').fetchone()
+            self.assertEqual(json.loads(ledger['retained']),retained)
+            self.assertEqual(ledger['replacements'],1)
+        self.engine.model.match.assert_not_called()
+
+    def test_unknown_overbound_audit_retained(self):
+        self.r['snapshot_audit']=[{'unknown':n} for n in range(4)]
+        self.store.save(self.key,3,self.r)
+        with self.assertRaisesRegex(Failure,'WRITE_NEEDS_REVIEW'):self.engine.run('publish',self.key)
+        self.assertEqual(self.store.get(self.key)['result'],self.r)
+        self.s.ensure_object.assert_not_called()
+
     def test_changed_snapshot_preserves_lock(self):
         self.g.snapshot.side_effect=[[],[{'number':3,'updated_at':'new'}]]
         with self.assertRaisesRegex(Failure,'OPEN_SPI_CHANGED'):self.engine.run('publish',self.key)
