@@ -740,3 +740,14 @@ remain. Existing failure counts, 3 RPM / 30000 TPM / parallel-one admission,
 Root-plus-key Reader URLs and Telegram delivery semantics are unchanged. This is
 source assurance only, not acceptance of the three real user cards or rollout
 authorization.
+
+
+## Snapshot-review reuse rollout — 6 November 2026
+
+Reviewed source `f6f8f101` + `0d27df3`, rebased release `ac6efc01`, deployed through ordinary SPI autoSync/Recreate. Live normalized ConfigMap matched all source files; pinned Python image, container/volume/PVC spec, provider/accounting and 3 RPM / 30000 TPM / one parallel unchanged. Additive `match_review_v3` and `snapshot_budget` tables exist. Legacy reviews deliberately require one fresh v3 review; never restore caches from backups. Late generations remain initial plus two replacements; retain independent proofs/budget on rollback.
+
+Live acceptance is **BLOCKED, not complete**. Bounded observer sampled 18:08:38–18:36:23Z (28 consistent snapshots), then stopped when fresh matching `INVALID_MATCH_PROGRESS` occurred at 18:35:22Z on `a16a0dfcf743…`. One durable v3 batch (12 IDs, original snapshot61) had been saved. Its snapshot/content digests validate; a separate read-only native matcher replay with a fresh62-unique-candidate snapshot reached the deliberately disabled model-call boundary without error. The original failing current snapshot is not persisted: exact cause and cross-snapshot live reuse remain unproved, not established cache corruption. No automatic source repair, cache reset, rollback or queue mutation was performed. Finite failure count for that job was3 (baseline2). Natural worker activity continues independently; this acceptance observer has ended.
+
+Another natural job `45b8168e0cf2…` completed stage4 after a publication-stage `UPSTREAM_NETWORK_ERROR` at18:23:25Z (finite count1, sampled retry had no primary intent), with normal `publication_ok` at18:33:13Z. This is not model-output failure or proof for the requested cards. No endpoint diagnosis or infrastructure repair was attempted. Reserved tokens are not exact provider usage.
+
+Exact requested episodes remain unaccepted, all original jobs queued/stage0/attempt0 at final consistent capture: resolved KubeDeploymentReplicasMismatch episode `83bb101278aba11036f0ce7841eabaeb9ebc00339cd667da626c9beee8e41700` (firing `305b227cdc96…`, resolved `8c6af704b3fd…`); firing SocratContainerRestartsFrequent episode `b5a10f46b0a2ce6ebb6429d78cc9cb13e42f0a562f6b39abc181c2d51a7cae0c` (`08ba1f0938dd…`); stale SPI episode `b201c71c8b2bce1305233bfa7e47cacae545f2435fe6d644fd1df9bdf74cfb31` (`998bcead1720…`). None has an accepted primary/Reader/applied two-copy Telegram proof. Older #72 evidence must not substitute for them. All318 baseline IDs/creation times,119 cancelled whole rows and original terminal results/intents were preserved. No ongoing observation or eventual completion is promised.
