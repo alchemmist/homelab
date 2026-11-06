@@ -1,0 +1,39 @@
+---
+- name: Whole-fleet DNS addition preflight (no package/config/service restarts)
+  hosts: socrat-0:socrat-1:socrat-2
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - ansible.builtin.file:
+        path: /var/lib/homelab-grafana-tv-dns
+        state: directory
+        mode: '0700'
+    - ansible.builtin.copy:
+        src: ../../scripts/grafana-tv-dns.py
+        dest: /usr/local/sbin/homelab-grafana-tv-dns
+        mode: '0700'
+    - ansible.builtin.copy:
+        src: ../../scripts/public_dns_zone.py
+        dest: /var/lib/homelab-grafana-tv-dns/proposed.py
+        mode: '0700'
+    - ansible.builtin.command: /usr/local/sbin/homelab-grafana-tv-dns
+      register: dns_plan
+      changed_when: false
+    - ansible.builtin.debug:
+        var: dns_plan.stdout
+    - ansible.builtin.assert:
+        that: (dns_plan.stdout | from_json).plan_hash == public_web_dns_hash
+      when: public_web_dns_apply | default(false) | bool
+- name: Serial approved owned-zone refresh
+  hosts: socrat-0:socrat-1:socrat-2
+  serial: 1
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - ansible.builtin.command:
+        argv: [/usr/local/sbin/homelab-grafana-tv-dns, --apply, --approve-plan-hash, "{{ public_web_dns_hash }}"]
+      when: public_web_dns_apply | default(false) | bool
+      register: dns_apply
+      changed_when: (dns_apply.stdout | from_json).applied

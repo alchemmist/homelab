@@ -5,6 +5,7 @@
   become: true
   vars:
     maintenance_helpers:
+      grafana-tv-public: grafana-tv-public
       kuma-db-account-recovery: kuma-db-account-recovery
       kuma-credential-ownership: kuma-credential-ownership
       role-groups: public-web-role-groups

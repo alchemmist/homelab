@@ -11,6 +11,8 @@ metadata:
 data:
   nginx.conf: |
 {{ .Files.Get "files/grafana-policy.conf" | indent 4 }}
+  traffic-light-inset.js: |
+{{ .Files.Get "files/traffic-light-inset.js" | indent 4 }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -25,7 +27,7 @@ spec:
     metadata:
       labels: {app: public-web-grafana-proxy}
       annotations:
-        checksum/config: {{ .Files.Get "files/grafana-policy.conf" | sha256sum | quote }}
+        checksum/config: {{ printf "%s%s" (.Files.Get "files/grafana-policy.conf") (.Files.Get "files/traffic-light-inset.js") | sha256sum | quote }}
     spec:
       automountServiceAccountToken: false
       nodeSelector: {kubernetes.io/hostname: socrat-0}
@@ -51,6 +53,7 @@ spec:
           livenessProbe: {tcpSocket: {port: http}, periodSeconds: 15}
           volumeMounts:
             - {name: config, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf, readOnly: true}
+            - {name: config, mountPath: /etc/nginx/traffic-light-inset.js, subPath: traffic-light-inset.js, readOnly: true}
             - {name: tmp, mountPath: /tmp}
       volumes:
         - name: config

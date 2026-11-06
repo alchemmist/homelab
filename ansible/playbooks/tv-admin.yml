@@ -54,6 +54,18 @@
       - "{{ homelab_tv_youtube_package }}"
     homelab_tv_fully_settings_path: "{{ homelab_user_home }}/.cache/homelab-tv/fully-once-settings.json"
   tasks:
+    - name: Read the approved native public traffic-light URL (no browser credentials)
+      become: true
+      ansible.builtin.slurp:
+        src: /var/lib/homelab-grafana-tv-public/fully-url.json
+      register: homelab_tv_public_url
+      no_log: true
+
+    - name: Use the public TV hostname without changing the TV VPN or DNS profile
+      ansible.builtin.set_fact:
+        homelab_tv_fully_start_url: "{{ ((homelab_tv_public_url.content | b64decode | from_json).startURL) | replace('https://grafana.socrat.alchemmist.xyz/', 'https://tv.alchemmist.xyz/') }}"
+      no_log: true
+
     - name: Install Android Debug Bridge
       become: true
       ansible.builtin.package:

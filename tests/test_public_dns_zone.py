@@ -55,7 +55,7 @@ def test_rustfs_names_additive_without_changes_to_existing_records():
     prior['STATIC_A']['netbird-relay-vps.socrat'] = [zone.VPS]
     for home, vps in [(True, True), (False, True), (True, False), (False, False)]:
         new = zone.render(123, home, vps).splitlines()
-        names = ('rustfs.socrat IN A ', 'spi-evidence.socrat IN A ', 'kuma.socrat IN A ')
+        names = ('rustfs.socrat IN A ', 'spi-evidence.socrat IN A ', 'kuma.socrat IN A ', 'tv IN A ')
         assert [line for line in new if not line.startswith(names)] == prior['render'](123, home, vps).splitlines()
         for name in ('rustfs.socrat', 'spi-evidence.socrat'):
             for address in zone.healthy_addresses(home, vps):
@@ -71,3 +71,10 @@ def test_kuma_administration_name_follows_both_reviewed_entrances():
         text=zone.render(7,home,vps)
         for ip in [zone.HOME,zone.VPS]:
             assert (f"kuma.socrat IN A {ip}" in text)==(ip in zone.healthy_addresses(home,vps))
+
+
+def test_public_tv_alias_follows_entrances_without_new_private_dns():
+    for home,vps in [(True,True),(True,False),(False,True),(False,False)]:
+        text=zone.render(8,home,vps)
+        for ip in [zone.HOME,zone.VPS]:
+            assert (f"tv IN A {ip}" in text)==(ip in zone.healthy_addresses(home,vps))
