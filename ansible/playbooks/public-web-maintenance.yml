@@ -5,6 +5,8 @@
   become: true
   vars:
     maintenance_helpers:
+      kuma-db-account-recovery: kuma-db-account-recovery
+      kuma-live-credential-repair: kuma-live-credential-repair
       kuma-credential-ownership: kuma-credential-ownership
       role-groups: public-web-role-groups
       retire-grafana-gate: retire-grafana-proxy-gate

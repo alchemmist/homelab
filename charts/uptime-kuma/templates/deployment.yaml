@@ -42,7 +42,7 @@ spec:
             - name: UPTIME_KUMA_DB_NAME
               value: {{ .Values.database.database | quote }}
             - name: UPTIME_KUMA_DB_USERNAME
-              value: {{ .Values.database.username | quote }}
+              value: {{ .Values.applicationDatabaseUsername | default .Values.database.username | quote }}
             - name: UPTIME_KUMA_DB_PASSWORD
               valueFrom:
                 secretKeyRef:

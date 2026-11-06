@@ -1,3 +1,4 @@
+applicationDatabaseUsername: homelab_kuma_app
 image: louislam/uptime-kuma:2.5.7
 replicaCount: 1
 database:
