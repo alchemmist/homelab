@@ -794,3 +794,55 @@ change around comments, malformed response, zero-model engine deferral and
 same-signature selection, changed-signature unchanged-batch reuse, v1/v2
 rereview, independent replacement cap/audit and publication tests remain green.
 No live probes, inference, queue writes, deployment or push were performed.
+
+
+## Snapshot consistency live receipt — 2026-11-06
+
+Approved source **598f9fa6b1fb73490e0440aaabbaee255952a4c5** deployed through ordinary
+SPI autoSync/Recreate; worker started18:54:20Z, all13 normalized runtime files
+match source, unchanged pinned container/PVC spec. 198 SPI+5 helper+9 JS tests,
+Helm lint/template and diff checks passed. No source follow-up or synthetic calls.
+
+**Acceptance PENDING.** Original bounded natural window18:54:32–20:09:33Z,
+74 private consistent samples; observer ended, no continuing monitoring promised.
+16 new batch proofs/158 candidate reviews (12.8 batches/hour), two unrelated
+publications19:26:04Z/19:47:52Z (1.6 completions/hour), complete175→177.
+All four original target jobs still queued/stage0/attempt0; no target publication,
+Reader file proof or independent Telegram2/2 publication acknowledgement exists.
+Do not substitute unrelated publications or rerun accepted fixtures as proof.
+
+Exact pending episodes: resolved KubeDeploymentReplicasMismatch uptake-kuma
+`83bb101278aba11036f0ce7841eabaeb9ebc00339cd667da626c9beee8e41700`
+(firing305b227c…/resolved8c6af704…), firing SocratContainerRestartsFrequent
+`b5a10f46b0a2ce6ebb6429d78cc9cb13e42f0a562f6b39abc181c2d51a7cae0c`
+(job08ba1f09…), stale SPI
+`b201c71c8b2bce1305233bfa7e47cacae545f2435fe6d644fd1df9bdf74cfb31`
+(job998bcead…). All still require natural match/collect/analyze/publish, exact
+primary+public-origin artifact links, original Reader bytes/SHA and applied TG2/2.
+
+Actual stored v3 same-signature prefix reuse and changed-signature unchanged
+partitions were verified by IDs and content digests against current snapshots:
+a16a retained3 partitions/35 IDs and c93 retained2/24 across changed signatures;
+later same-signature extensions retained exact prefixes. a16a finished6 batch
+reviews/63 candidates,4 positive nominees and3 final pairwise comparisons;
+c93 finished6/62,0 nominees/0 comparisons. fa453 currently5 reviews/53 of63,
+0 nominees/0 comparisons; a92 currently3/29 of63,0/0. N positive nominees may
+require N−1 pairwise calls even when a combined payload might fit. Throughput is
+not a target ETA:23 queued and3 retry remain, signatures and network vary.
+
+19 admission deferrals, one finite match UPSTREAM_TIMEOUT19:09:12Z and one
+patient GITHUB_SNAPSHOT_UNSTABLE19:27:49Z occurred, with subsequent progress.
+No new INVALID_MATCH_PROGRESS or live cap exhaustion observed. Snapshot HTTP
+count/duration and instability subtype not available in existing telemetry.
+Historical18:35 cause remains UNKNOWN; local pagination reproduction is not
+proof of that historic cause. Equal double observations are not transactional.
+
+Fresh private SQLite backup API snapshots passed header/integrity/FK checks.
+All323 baseline IDs/creation preserved; all119 cancelled whole rows identical.
+Terminal state/stage/result/intent preserved; one complete row naturally got a
+duplicate delivery14→15 and updated time. Outbox applied70→72/pending7 unchanged;
+v3 rows2→4, snapshot_budget0→0. No manual claims/requeue/restore/reset, receipt
+reassociation, quota/identity/network changes or model probes. Reservations are
+not exact usage. 3RPM/30000TPM/parallel1, durable three-generation bound and
+664-second scheduling guard retained. Further natural observation is a parent
+scheduling decision, not an ongoing observer from this completed window.
