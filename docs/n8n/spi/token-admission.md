@@ -8,15 +8,44 @@ No new background threads, sleeps, inference endpoints or provider fallback.
 
 ## Counting and bounds
 
-No tokenizer is fetched at runtime. Fallback reservation is the **entire actual
-`json.dumps(payload)` UTF-8 byte length + 2048 framing tokens + max_tokens**.
-It counts system, escaped nested user JSON, JSON schema and serialized overhead.
-This is deliberately much more conservative than chars/4: byte-level BPE starts
-with byte units and merges cannot increase their number. The 2048 framing margin
-assumes the deployed Qwen chat/schema template adds no more than that many tokens;
-it is not a measured tokenizer count. Verify that assumption and tokenizer family
-against the deployed alias before rollout. A model/template change requires review.
-This is not an unconditional bound for arbitrary proprietary tokenizers/templates.
+`qwen-byte-bound-v1` reserves **NFC UTF-8 bytes of the actual SYSTEM and user
+message strings + UTF-8 bytes of response_format + 256 framing + max_tokens**.
+HTTP JSON escaping, transport keys and duplicate escaped representations are not
+model tokens. Evidence JSON inside the user string is real content and is counted.
+No runtime tokenizer dependency, pip installation or internet fetch is introduced.
+
+Validated read-only against deployed RedHatAI/Qwen3.8-27B-INT4 revision
+`91bd022d5b49442a868bc35008f6c21e1860edfa`: tokenizer.json uses NFC followed by
+ByteLevel BPE. Pre-merge normalized byte count bounds content tokens. Its installed
+text-only two-message template with enable_thinking=false adds 99 rendered bytes;
+256 is a doubled, rounded-up byte bound. Strict schema is additionally charged at
+full byte size although guided decoding does not insert it into the chat template.
+The method rejects a different alias, roles, tools or thinking settings. This is
+not a guarantee for future alias/provider/template changes: revalidate before any
+such rollout. The fixed source alias alone cannot detect an operator remapping it.
+
+LiteLLM 1.105.1 authenticated `/utils/token_counter` was inspected and tested with
+benign local text using the existing scoped key. It resolves this alias to
+qwen3.8-27b but reports `openai_tokenizer`, not the actual Qwen tokenizer. Its schema
+does not accept response_format. Therefore it is NOT used in production and an
+auth outage/counter failure cannot silently change accounting. Installed v3 limiter
+source estimates input from message chars/4 and reserves explicit max_tokens;
+our byte bound dominates that heuristic as well as the validated provider BPE.
+No claim that the generic counter equals provider usage is made; no paid call was
+made. There is no count cache or new ledger data format/version to migrate.
+
+Analysis first tries full context, then 600-byte preliminary candidate/report
+scalar excerpts, then explicit 1200/600/300-byte scalar excerpts across context
+until the complete request fits. Matching also bounds event scalar text. Lists,
+dictionary keys, candidate numbers, artifact IDs, references, missing/truncation
+and limitation metadata survive. Each excerpt has original bytes, digest,
+unreviewed byte count and a limitation. Full originals in Store/RustFS are not
+modified. Model serialization now redacts without core.clean's silent string/list
+caps. Irreducible metadata fails visibly as LLM_CONTEXT_METADATA_TOO_LARGE; it is
+not called ordinary historic oversize. All seven specified historic samples fit,
+with actual offline Qwen prompt+completion counts 7866–11780 and conservative
+reservations 20075–29228. This costs throughput/context quality, not extra spend;
+it is intentionally less efficient than packaging a reviewed exact tokenizer.
 
 Match output is 768 tokens with compact strict JSON and a 120-word reason request;
 report output stays 2500. Truncation, invalid JSON and invalid evidence references

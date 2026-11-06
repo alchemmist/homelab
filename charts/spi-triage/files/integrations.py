@@ -7,13 +7,14 @@ import re
 import time
 import math
 import threading
+import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
 from email.utils import parsedate_to_datetime
 from datetime import datetime
 from pathlib import Path
-from core import Failure, MATCH_SCHEMA, REPORT_SCHEMA, clean, digest, validate
+from core import Failure, MATCH_SCHEMA, REPORT_SCHEMA, clean, digest, validate, SECRET_KEY, SECRET_VALUE, ASSIGNMENT
 
 SYSTEM = '''You are Socrat's read-only incident triage analyst. ALL output prose, issue titles,
 issue descriptions and comments MUST be English. Use ASCII letters for narrative.
@@ -169,19 +170,59 @@ class Model:
         self.store=store
 
     def payload(self,task,data,schema):
+        # Preserve identities and visible excerpt metadata. core.clean is an
+        # ingestion sanitizer with silent list/string caps, unsuitable here.
+        def redact(v):
+            if isinstance(v,dict):return {str(k):'[REDACTED]' if SECRET_KEY.search(str(k)) else redact(x) for k,x in v.items()}
+            if isinstance(v,list):return [redact(x) for x in v]
+            if isinstance(v,str):return ASSIGNMENT.sub(r'\1[REDACTED]',SECRET_VALUE.sub('[REDACTED]',v))
+            return v
         return {'model':'qwen3.8-27b','messages':[{'role':'system','content':SYSTEM},
-                {'role':'user','content':task+'\nUNTRUSTED EVIDENCE JSON:\n'+json.dumps(clean(data),ensure_ascii=True)}],
+                {'role':'user','content':task+'\nUNTRUSTED EVIDENCE JSON:\n'+json.dumps(redact(data),ensure_ascii=False)}],
                 'temperature':0.1,'max_tokens':768 if schema is MATCH_SCHEMA else 2500,
                 'chat_template_kwargs':{'enable_thinking':False},
                 'response_format':{'type':'json_schema','json_schema':{'name':'spi_result','strict':True,'schema':schema}}}
 
     @staticmethod
     def reservation(body):
-        # Byte-level BPE fallback: at most one token per serialized UTF-8 byte,
-        # plus 2048 for chat-template/special-token framing. Count the ENTIRE
-        # wire JSON (including escaped nested JSON and schema), not chars/4.
-        # No tokenizer/model vocabulary is installed or fetched at runtime.
-        return len(json.dumps(body).encode('utf-8'))+2048+body['max_tokens']
+        # qwen-byte-bound-v1: validated against the deployed revision's NFC +
+        # ByteLevel BPE and text-only, two-message, thinking-disabled template.
+        # Count actual content, NOT HTTP JSON escaping. BPE merges cannot
+        # increase the pre-merge byte count. Schema is charged separately even
+        # though vLLM guided decoding does not insert it in the prompt.
+        if (body.get('model')!='qwen3.8-27b' or
+            [m.get('role') for m in body.get('messages',[])]!=['system','user'] or
+            body.get('chat_template_kwargs')!={'enable_thinking':False} or
+            'tools' in body):
+            raise Failure('LLM_ACCOUNTING_CONTRACT_MISMATCH')
+        content=sum(len(unicodedata.normalize('NFC',m['content']).encode('utf-8')) for m in body['messages'])
+        schema=len(json.dumps(body['response_format'],ensure_ascii=False).encode('utf-8'))
+        # Rendered fixed template contributes <128 bytes (including generation
+        # prefix); 256 is a conservative doubled byte bound, not chars/4.
+        return content+schema+256+body['max_tokens']
+
+    @staticmethod
+    def bounded_context(value,limit=300):
+        """Explicit excerpts, never mutate full persisted source or drop IDs.
+
+        Lists/dict keys (including every candidate/artifact identity) survive.
+        Large scalar text has local byte count/digest and unreviewed metadata.
+        Reference/identity/limitation fields are not excerpted.
+        """
+        protected={'id','number','artifact_id','artifact_ids','key','path','url','html_url','sha256',
+                   'reference','references','source_ref','missing','truncated','truncated_bytes',
+                   'unreviewed','unreviewed_bytes','original_bytes','original_digest','limitation','limitations'}
+        def visit(v,key=''):
+            if key in protected:return v
+            if isinstance(v,dict):return {k:visit(x,k) for k,x in v.items()}
+            if isinstance(v,list):return [visit(x,key) for x in v]
+            if isinstance(v,str) and len(v.encode('utf-8'))>limit:
+                raw=v.encode('utf-8')
+                return {'excerpt':raw[:limit].decode('utf-8','ignore'),'original_bytes':len(raw),
+                        'original_digest':digest(v),'truncated':True,'unreviewed_bytes':len(raw)-len(raw[:limit].decode('utf-8','ignore').encode('utf-8')),
+                        'limitation':'Bounded excerpt only. Full original remains in the stored snapshot/evidence; omitted text was not reviewed.'}
+            return v
+        return visit(value)
 
     def call(self,task,data,schema,deadline):
         last='INVALID_MODEL_SCHEMA'
@@ -224,6 +265,7 @@ class Model:
         raise Failure('LLM_'+last)
     def match(self,event,issues,progress=None,on_progress=None):
         deadline=time.monotonic()+780
+        event=self.bounded_context(event)
         # Every issue is examined. Batches avoid a single unbounded prompt.
         if len(issues)>120: raise Failure('OPEN_SPI_REVIEW_BUDGET_EXCEEDED')
         task='Choose the same underlying problem from these OPEN SPI issues, or issue_number=0. Explain ambiguity in at most 120 words. Return compact strict JSON.'
@@ -312,8 +354,19 @@ class Model:
         if bundle:evidence['artifact_context']=bundle['model_context']
         evidence['queries']=[{**q,'result':metric_summary(q.get('result',{}))} if q.get('source') in ('prometheus_metrics','loki_error_frequency','host_log_error_frequency','loki_rule_metric') else q for q in evidence.get('queries',[])]
         evidence['rule_definitions']=[{k:v for k,v in r.items() if k!='alerts'} for r in evidence.get('rule_definitions',[])]
-        report=self.call('Write an evidence-grounded SPI report. Revalidate preliminary matching using diagnostics; choose 0 if a distinct cause is supported. Assess alert noise and actionable tuning separately from service defects. Include safe evidence references in facts; never fabricate a source path or threshold. Scrape exporter pods are not necessarily affected workloads: use job_name or systemd unit when present. Zero error counts or absent series never confirm no service degradation; Every verified fact MUST cite at least one existing artifact ID such as [E003]; never invent an evidence ID. Use artifact IDs when citing collected logs, traces, deployment metadata and metric samples. Explain excerpt/collection limits; never claim all stored bytes were reviewed. Missing logs do not prove health. OCI revision labels are build claims, not reproducible-build proof; main-branch runbooks are not deployed code.',
-                         {'alert':event,'preliminary_match':match,'evidence':evidence},REPORT_SCHEMA,time.monotonic()+780)
+        task='Write an evidence-grounded SPI report. Revalidate preliminary matching using diagnostics; choose 0 if a distinct cause is supported. Assess alert noise and actionable tuning separately from service defects. Include safe evidence references in facts; never fabricate a source path or threshold. Scrape exporter pods are not necessarily affected workloads: use job_name or systemd unit when present. Zero error counts or absent series never confirm no service degradation; Every verified fact MUST cite at least one existing artifact ID such as [E003]; never invent an evidence ID. Use artifact IDs when citing collected logs, traces, deployment metadata and metric samples. Explain excerpt/collection limits; never claim all stored bytes were reviewed. Missing logs do not prove health. OCI revision labels are build claims, not reproducible-build proof; main-branch runbooks are not deployed code.'
+        original={'alert':event,'preliminary_match':match,'evidence':evidence}
+        # Prefer full context. Compact preliminary FULL report bodies before
+        # diagnostic evidence, then progressively bounded, explicit excerpts.
+        data=original
+        if self.reservation(self.payload(task,data,REPORT_SCHEMA))>30000:
+            data={**original,'preliminary_match':self.bounded_context(match,600)}
+        for limit in (1200,600,300):
+            if self.reservation(self.payload(task,data,REPORT_SCHEMA))<=30000:break
+            data=self.bounded_context(original,limit)
+        if self.reservation(self.payload(task,data,REPORT_SCHEMA))>30000:
+            raise Failure('LLM_CONTEXT_METADATA_TOO_LARGE')
+        report=self.call(task,data,REPORT_SCHEMA,time.monotonic()+780)
         if report['issue_number'] not in {0,*[x['number']for x in match['candidates']]}: raise Failure('INVALID_MATCH_TARGET')
         return report
 

@@ -34,7 +34,11 @@ class AdmissionTests(unittest.TestCase):
         m=Model(Mock(),'fake',store=self.store)
         for schema,output in ((MATCH_SCHEMA,768),(REPORT_SCHEMA,2500)):
             body=m.payload('task',{'text':'😀"\\'*100},schema)
-            self.assertEqual(m.reservation(body),len(json.dumps(body).encode())+2048+output)
+            import unicodedata
+            expected=sum(len(unicodedata.normalize('NFC',x['content']).encode()) for x in body['messages'])
+            expected+=len(json.dumps(body['response_format'],ensure_ascii=False).encode())+256+output
+            self.assertEqual(m.reservation(body),expected)
+            self.assertLess(m.reservation(body),len(json.dumps(body).encode())+2048+output)
             self.assertGreater(m.reservation(body),len(body['messages'][1]['content']))
         with self.assertRaises(Failure) as e:m.call('test',{'huge':['x'*12000]*5},REPORT_SCHEMA,time.monotonic()+20)
         self.assertEqual(e.exception.code,'LLM_REQUEST_TOO_LARGE');m.http.request.assert_not_called()

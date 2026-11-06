@@ -551,7 +551,19 @@ calendar/blog, Telegram test, model invocation or other comment change occurred.
 
 See [bounded accounting, checkpoint migration and rollout gates](../docs/n8n/spi/token-admission.md).
 The implementation replaces instance-local RPM sleeps with shared durable
-3 RPM / 30000 TPM / parallel1 reservations, whole-wire byte-bound fallback,
-adaptive <=12 batches, labeled matching excerpts and restart-safe reviews/final
-comparisons. This is not deployed acceptance or a global client audit. Local
-synthetic payload counts are not measurements of current GitHub candidates.
+3 RPM / 30000 TPM / parallel1 reservations, adaptive <=12 batches, labeled
+matching excerpts and restart-safe reviews/final comparisons. The corrected
+qwen-byte-bound-v1 method counts NFC actual message bytes (not HTTP escaping),
+schema bytes, validated 256-byte template bound and completion reserve. Deployed
+Qwen revision 91bd022d5b49442a868bc35008f6c21e1860edfa has NFC/ByteLevel BPE;
+its text-only thinking-disabled template adds 99 bytes. Authenticated LiteLLM
+1.105.1 token_counter reports openai_tokenizer for this alias and is deliberately
+NOT treated as exact Qwen usage. No runtime dependency or count cache is added.
+Analysis prefers full context, then preliminary report excerpts, then explicit
+1200/600/300-byte scalar excerpts preserving identities/references/missing data.
+Seven read-only historic captured analyze requests all fit: reserved 20075–29228,
+actual offline Qwen prompt+completion 7866–11780. No inference or queue transitions
+were used. This is source-only feasibility, not model-quality/deployed acceptance
+or a global client audit. Existing full Store/RustFS evidence remains unchanged.
+Rollback retains the same ledger/checkpoints; v2 must never be reinterpreted as
+fixed-12 progress. Revalidate model/template mapping before alias changes.
