@@ -27,6 +27,7 @@ FAILOVER = [
     "grafana.socrat",
     "harbor.socrat",
     "img",
+    "kuma.socrat",
     "litellm.socrat",
     "llm",
     "llm.socrat",
