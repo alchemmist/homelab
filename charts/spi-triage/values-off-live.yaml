@@ -1,0 +1,5 @@
+# Authorized OFF acceptance: load writer for continuations; never select new S3 jobs.
+s3Evidence:
+  enabled: false
+  retainCredentials: true
+  writerSecret: spi-evidence-writer

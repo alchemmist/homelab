@@ -1,6 +1,6 @@
 # RustFS SPI artifact migration — implementation contract
 
-Status: authorized implementation, 5 November 2026; NOT deployed yet.
+Status: dedicated writer deployed legacy/OFF on 6 November 2026; new-job S3 selection remains OFF. See live acceptance evidence below.
 
 Goal: put bounded, redacted SPI evidence files into private RustFS S3 storage;
 GitHub receives narrative and concise permanent authenticated file links, not
@@ -134,4 +134,68 @@ Rollout sequence (not executed by this source change):
 Historical comments and the existing downloader remain available. Standalone
 Retain storage is not HA, quota enforcement, or an independent backup. Original
 workflow/credential IDs, PVC/encryption and calendar/Yandex/blog WRITE_ENABLED=false
-are unchanged. No live RustFS conditional semantics have been tested by this phase.
+are unchanged. Live RustFS conditional semantics were subsequently verified in the OFF acceptance described below.
+
+## Actual legacy/OFF rollout — 6 November 2026
+
+Dedicated `automation/spi-evidence-writer` was rendered with the reviewed offline
+helper using the existing private writer/bootstrap ownership journal, then applied
+before worker rollout. No root/reader keys were given to SPI. Source was fetched,
+rebased and pushed over HTTPS. RustFS alone was manually synced with prune=false;
+no root or unrelated application sync was requested. Initial deployment revision
+`28daf9a0449c6c5d2a36377e87eead59308996ed` was Synced/Healthy for SPI and RustFS.
+The explicit `values-off-live.yaml` overlay preserves disabled chart defaults and
+is selected by the tracked SPI Application. RustFS live values enable only the
+reviewed `spiWriter` AND-selector TCP9000 ingress.
+
+Fresh private SQLite backup API snapshots preceded both source pushes. First
+backup: 23,404,544 bytes, SHA256
+`789400aec803dd14645a52261dd3e0b77e2fd81f805cc3349e27fe0c72551a85`.
+Second pre-push backup: same byte count, SHA256
+`d0b7a8745f69365979032dd4f291c90e84aae66c72b5e67a96a79368ab6e3c98`.
+Each reopened successfully, SQLite header valid, integrity_check=ok and no FK
+violations. Private snapshots, ID/creation/intent baseline and benign fixture
+receipts are retained under the operator's private homelab/spi-off-acceptance
+configuration directory; no incident evidence is dumped into this runbook.
+
+Live worker: existing pinned Python base plus ConfigMap source, legacy selection,
+0440 `/s3-writer/credentials.json`, successful `load_storage()` dedicated client.
+ConfigMap source matches tracked files except Helm's final newline removal.
+New isolated benign storage fixtures (not jobs/events) passed PUT/GET/SHA,
+exact-repeat and different-byte conflict, and **direct signed conditional PUT
+against an already-existing own new fixture returned 412 with unchanged bytes**.
+Two direct simultaneous create contenders returned 200 and 412; final bytes
+matched the winner. Live PUT with an intentionally lost client response reconciled
+by live GET; a separate process/new client verified repeat receipts. This is a
+storage-only response-loss seam, not a production job or worker restart claim.
+Fixtures remain retained; no historical/public/original45B collision or deletion.
+
+Writer and reader each returned explicit XML AccessDenied 403 for other prefix,
+other bucket, list, delete-own-new-fixture and admin; reader PUT was also 403.
+Gateway reader GET returned the new fixture's exact hash. Gateway TCP9000 and
+Authentik TCP9001 were permitted. Unrelated n8n pod TCP9000 was refused, not allowed;
+actual RustFS policy retains exact namespace AND pod peers. Public artifact
+without a session returned 401 with verified TLS. Console verified TLS returned
+200; existing accepted nativeOIDC/human45B/hash evidence remains accepted, not
+re-enacted. Console GetOnly and human IAM were not modified.
+
+After snapshot retained all 289 IDs and creation times, all terminal states and
+terminal result receipts, and the original primary intent. Only normal observed
+state movement: one processing->retry, one retry->processing. No resets, forced
+selection, lease/budget edits, reopening or dead revival. Inventory: 145 effective
+legacy-locked jobs (144 artifact-publication receipts plus one primary intent),
+all terminal; 112 nonterminal jobs remain new-selection-eligible, and 144 total
+jobs are unlocked. Explicit publication_backend fields are absent in this older
+inventory. Existing primary intent lacks primary_done, but must remain legacy;
+absence of a new explicit field does not make it safe to reinterpret. Turning ON
+would select S3 only when those eligible jobs naturally reach backend selection;
+it would not migrate those 145 legacy continuations. No ON was performed.
+
+Rollback: keep `s3Evidence.enabled=false`, `retainCredentials=true` and exact
+writerSecret in the live overlay. Keep Secret/mount/network access until measured
+inventory proves no S3-locked continuations need them; never remove historical
+comments/files. RustFS PVC remains Bound with Retain PV. Standalone storage is not
+HA or an independent backup. The observed Kubernetes context has four Ready
+nodes; no nodes/topology were added, removed or changed (a seven-node claim is not
+made). n8n identities/workflows/PVC/encryption, calendar/Yandex/blog WRITE_ENABLED,
+NetBird/Mac/VPN/DNS/shared edge and human IAM are outside this deployment change.

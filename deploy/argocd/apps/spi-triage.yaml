@@ -13,6 +13,7 @@ spec:
     path: charts/spi-triage
     helm:
       releaseName: spi-triage
+      valueFiles: [values-off-live.yaml]
   destination:
     namespace: automation
     server: https://kubernetes.default.svc
