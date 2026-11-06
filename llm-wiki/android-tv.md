@@ -1,6 +1,6 @@
 # Гостиная: телевизор как монитор и светофор Grafana
 
-Срез на **22 октября 2026**. Памятка, как устроен Xiaomi в гостиной и что переживает выключение питания. Операционная инструкция на английском — `docs/android-tv.md`. Плейбук — `ansible/playbooks/tv-admin.yml`. Это не замена live-проверке: адрес по DHCP может смениться.
+Срез на **6 ноября 2026** (пульт/холодное включение проверялись пользователем 22 октября). Памятка, как устроен Xiaomi в гостиной и что переживает выключение питания. Операционная инструкция на английском — `docs/android-tv.md`. Плейбук — `ansible/playbooks/tv-admin.yml`. Это не замена live-проверке: адрес по DHCP может смениться.
 
 ## Зачем он нужен
 
@@ -112,7 +112,9 @@ ansible-playbook playbooks/tv-admin.yml --ask-become-pass
 
 Браузер — Fully Kiosk `de.ozerov.fully`. Стартовый адрес:
 
-`https://grafana.socrat.alchemmist.xyz/d/socrat-traffic-light?kiosk=1&hideLogo=1&autofitpanels=true`
+`https://tv.alchemmist.xyz/public-dashboards/<accessToken>?kiosk=1&hideLogo=1&autofitpanels=true&socratTv=1`
+
+Это native public sharing **только** `socrat-traffic-light`, без входа и без anonymous Viewer всей организации. Точный адрес хранится на socrat-0 в root-private `/var/lib/homelab-grafana-tv-public/fully-url.json` (там канонический hostname Grafana); TV-плейбуки заменяют hostname на `tv.alchemmist.xyz`. Отдельное имя обходит старое приватное разрешение `grafana.socrat…` на ТВ, не меняя DNS/VPN-профиль. Обычные дашборды и API требуют прежнюю авторизацию.
 
 - `kiosk=1` — полный киоск Grafana, без верхней полосы диапазона и Refresh.
 - `hideLogo=1` — без нижней плашки Powered by Grafana. Голый `?kiosk` верхнюю полосу оставлял.
@@ -121,17 +123,19 @@ ansible-playbook playbooks/tv-admin.yml --ask-become-pass
 
 Плейбук записывает это в `/sdcard/fully-once-settings.json`. Fully читает файл на следующем старте и удаляет его. Чтобы файл был виден, у Fully разрешены `NO_ISOLATED_STORAGE` и `LEGACY_STORAGE`. Перезапуск Fully — только если файл изменился или передан `-e homelab_tv_fully_reapply=true`.
 
-Вход в Grafana — пользователь `tv`, Viewer. Пароль в секрете `socrat-grafana-tv` пространства `cattle-monitoring-system`. В репозиторий и в эту памятку пароль не кладётся.
+Для публичного светофора вход **не нужен**. Прежний пользователь `tv` / Secret `socrat-grafana-tv` не использовались и не менялись; это исторический приватный доступ, не публичный пароль.
 
-Дашборд — UID `socrat-traffic-light`, JSON `charts/monitoring-k3s/dashboards/traffic-light.json`, ConfigMap `socrat-traffic-light-dashboard`. Обновление 5 секунд. `now-3h` — окно графиков, не интервал обновления. Слева плитки сервисов, справа CPU, память, диск и температура, ноды `socrat-0` … `socrat-3` по возрастанию имени. У socrat-2 нет датчика температуры CPU.
+Дашборд — UID `socrat-traffic-light`, JSON `charts/monitoring-k3s/dashboards/traffic-light.json`, ConfigMap `socrat-traffic-light-dashboard`. Обновление 5 секунд. Текущее live-окно — `now-12h` (проверено 6 ноября), не интервал обновления; прежняя памятка описывала `now-3h`. JSON дашборда при публикации не менялся. Слева плитки сервисов, справа CPU, память, диск и температура, ноды `socrat-0` … `socrat-3` по возрастанию имени. У socrat-2 нет датчика температуры CPU.
 
-Верхняя полоса управления скрыта полем дашборда `timepicker.hidden`, не стилями. Отступ 5px со всех сторон — не настройка Fully и не CSS всего сайта. Приватный шлюз Grafana подмешивает `charts/syncthing/files/traffic-light-inset.js` только на `/d/socrat-traffic-light`, и только если у virtual host `grafana` стоит `trafficLightInset: true`. Флаг есть и в inventory socrat-0, и в `monitoring_wg_access`, чтобы повторный выкат его не стёр. Шлюз — nginx в DaemonSet Syncthing, Grafana на socrat-1, `10.250.0.3:18443`.
+Приватный старый маршрут `/d/socrat-traffic-light` сохраняет свой JS `charts/syncthing/files/traffic-light-inset.js` и `trafficLightInset: true`. Его ConfigMap/Pod и Syncthing не менялись. Публичный policy nginx подмешивает `charts/public-web-entry/files/traffic-light-inset.js`. Только для public URL с `socratTv=1` и проверенным UID он переносит 5px inset, скрывает header/footer и восстанавливает autofit: native public scene не применяет старые kiosk/autofit-параметры. Геометрия берётся из **скомпактированного** native layout, а не из потенциально пересекающихся `gridPos`; все 51 панели помещаются без пересечений. JS/CSS остаются серверными, `injectJsCode` Fully пустой.
+
+Для **только URL**, без полного TV provisioning, использовать `ansible/playbooks/tv-public-dashboard.yml`: сначала аудит, затем `tv_public_apply=true` и свежий `tv_public_hash`. Он требует уже авторизованный ADB, Fully на переднем плане и отсутствие чужого pending import; импортирует ровно `startURL`, перезапускает только Fully и проверяет неизменность DNS/VPN guard. При `tv-uncertain.json` повторять нельзя без проверки приватных receipts. 6 ноября файл успешно прочитан Fully, public page с живыми данными проверена реальным ADB screenshot. Пульт, HDMI и холодное включение повторно не тестировались и не перенастраивались.
 
 Масштаб страницы Fully задаётся плейбуком как 55% через `initialScale`, размер веб-шрифта — 75% через `fontSize`; desktop mode остаётся включённым вручную.
 
 ## Сеть до Grafana
 
-`grafana.socrat.alchemmist.xyz` открывается только из WireGuard. На телевизоре приложение `com.wireguard.android`, профиль `xiaomi-tv`, адрес `10.250.0.8`. Приватный ключ homelab-профиля только в `~/.config/homelab/wireguard/xiaomi-tv.key` на машине администратора. Публичный ключ пира — в `ansible/inventory/group_vars/Socrat.yml`. Для YouTube добавлен отдельный профиль `alchemmist-tv` из приватного клиентского файла `tv.conf`: полный маршрут через глобальную VPN-сеть, адрес `10.0.0.10`. Его приватный ключ не хранится в репозитории.
+Публичный `tv.alchemmist.xyz` не требует внутреннего туннеля. Старый TV DNS-профиль всё ещё направляет `grafana.socrat.alchemmist.xyz` в приватный шлюз; обычный публичный Grafana на этом имени теперь использует SSO. TV-профили и помощники оставлены без изменений. На телевизоре приложение `com.wireguard.android`, профиль `xiaomi-tv`, адрес `10.250.0.8`. Приватный ключ homelab-профиля только в `~/.config/homelab/wireguard/xiaomi-tv.key` на машине администратора. Публичный ключ пира — в `ansible/inventory/group_vars/Socrat.yml`. Для YouTube добавлен отдельный профиль `alchemmist-tv` из приватного клиентского файла `tv.conf`: полный маршрут через глобальную VPN-сеть, адрес `10.0.0.10`. Его приватный ключ не хранится в репозитории.
 
 Маршруты раздельные: профиль `xiaomi-tv` отправляет только homelab-сети в туннель, обычный интернет остаётся на Wi-Fi. Профиль `alchemmist-tv` отправляет весь IPv4/IPv6-трафик через глобальную VPN-сеть. Android Private DNS установлен в `off`: при автоматическом режиме YouTube получал `ERR_NAME_NOT_RESOLVED`; выключение DoT позволило разрешить `i.ytimg.com`. DNS-запросы активного WireGuard-профиля всё равно идут внутри зашифрованного туннеля к DNS-серверам из профиля. Без активного VPN DNS на Wi-Fi больше не использует DoT.
 
@@ -141,4 +145,4 @@ Fully, tvQuickActions, WireGuard и `xyz.alchemmist.hdmi` стоят в whitelis
 
 ## Что не автоматизировано
 
-Плейбук устанавливает только homelab-помощники HDMI/Grafana/YouTube VPN и удаляет Happ. Сторонние Fully, tvQuickActions, WireGuard и VPN-профили нужно завести отдельно. Профиль глобального VPN для YouTube импортируется в WireGuard как `alchemmist-tv` из приватного файла конфигурации; исходный `tv.conf` и его ключ нельзя класть в git. Внутренний профиль для Grafana называется `xiaomi-tv`. Плейбук не задаёт масштаб 65% и desktop mode, не логинит пользователя `tv` и не записывает назначения кнопок. На новом телевизоре приложения, VPN-профили, вход в Grafana и сами кнопки потребуют ручной настройки.
+Плейбук устанавливает только homelab-помощники HDMI/Grafana/YouTube VPN и удаляет Happ. Сторонние Fully, tvQuickActions, WireGuard и VPN-профили нужно завести отдельно. Профиль глобального VPN для YouTube импортируется в WireGuard как `alchemmist-tv` из приватного файла конфигурации; исходный `tv.conf` и его ключ нельзя класть в git. Внутренний профиль для Grafana называется `xiaomi-tv`. Плейбук не задаёт масштаб 65% и desktop mode, не логинит пользователя `tv` (публичному светофору вход не нужен) и не записывает назначения кнопок. На новом телевизоре приложения, VPN-профили и сами кнопки потребуют ручной настройки; для публичного светофора нужны созданный native share и его URL, а не пароль Grafana.

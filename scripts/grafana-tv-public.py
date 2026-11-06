@@ -17,6 +17,7 @@ def main():
             try:
                 with urllib.request.urlopen(req,timeout=20) as r:return r.status,json.load(r)
             except urllib.error.HTTPError as e:return e.code,json.load(e)
+        code,settings=api('GET','/api/admin/settings');need(code==200 and settings.get('auth.anonymous',{}).get('enabled') in [False,'false'],'Organization anonymous access drift; refuse publication')
         code,dashboard=api('GET','/api/dashboards/uid/'+UID);need(code==200 and dashboard['dashboard']['uid']==UID,'Unexpected dashboard')
         endpoint='/api/dashboards/uid/'+UID+'/public-dashboards';code,before=api('GET',endpoint)
         desired={'isEnabled':True,'annotationsEnabled':False,'timeSelectionEnabled':False,'share':'public'}

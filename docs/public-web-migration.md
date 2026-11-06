@@ -212,3 +212,7 @@ Still separate: independent external clean-device/browser/provider acceptance,
 exhaustive every-app/every-role flows, real new-human NetBird enrollment and
 unrelated storage/SPI/CI work. Mac DNS-free acceptance is observed on the unchanged
 work VPN, not a promise about every corporate resolver or Internet provider.
+
+### Living-room traffic light (2026-11-06)
+
+Only `socrat-traffic-light` is additionally available through **native public dashboard sharing**, at `tv.alchemmist.xyz/public-dashboards/<accessToken>`. This is not anonymous organization-wide Viewer access and not an Authentik group bypass. Ordinary Grafana UI/APIs keep native SSO/roles and public password/Basic blocks. The TV hostname avoids its existing private DNS mapping without changing TV networking. URL-only delivery, server-side presentation, scoped acceptance and rollback/uncertain-write handling are documented in `docs/android-tv.md` and `llm-wiki/android-tv.md`; do not use full TV provisioning for a URL-only update.

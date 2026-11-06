@@ -64,3 +64,14 @@ def test_live_update_is_url_only_and_does_not_reprovision_tv():
     assert 'adb install' not in s and 'settings put' not in s
     assert 'am force-stop de.ozerov.fully; am start -n de.ozerov.fully/.FullyActivity' in s
     assert 'initialScale' not in s and 'fontSize' not in s and 'injectJsCode' not in s
+
+@pytest.mark.skipif(not shutil.which('helm'), reason='Helm is needed for route contract')
+@pytest.mark.parametrize('field,value', [('name','other'),('host','other.alchemmist.xyz'),('namespace','default'),('service','kube-prometheus-stack-grafana'),('port',3000),('authorization','anonymous'),('path','/api')])
+def test_public_tv_route_rejects_unreviewed_backend(field,value,tmp_path):
+    import yaml
+    values=yaml.safe_load((ROOT/'charts/public-web-entry/values.yaml').read_text())
+    route=next(r for r in values['routes'] if r['name']=='grafana-tv')
+    route[field]=value
+    f=tmp_path/'values.yaml';f.write_text(yaml.safe_dump(values))
+    r=subprocess.run(['helm','template','test',str(ROOT/'charts/public-web-entry'),'-f',str(f)],capture_output=True,text=True)
+    assert r.returncode!=0
