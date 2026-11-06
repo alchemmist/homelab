@@ -1,4 +1,71 @@
-# SPI token admission (source-only; not a deployment receipt)
+# SPI token admission
+
+## Live receipt — 2026-11-06
+
+Reviewed c2d9f57 + 8b933d9 rebased to bd41901 + **48b8161** and deployed
+through the SPI application's ordinary automatic Recreate rollout at 15:52:51Z.
+Argo readback: Synced / Healthy. No image build: the existing pinned Python
+3.13 base and ConfigMap remain in use. Runtime file hashes match the ConfigMap;
+all normalized source files match (Helm final-newline normalization required).
+Actual Model payload/reservation/call/match/analyze and Store reserve_llm/finish_llm
+methods and service Store injection were read back. Replicas, complete container
+spec, volumes/PVC and strategy are unchanged. Startup recovered one processing job.
+
+Fresh SQLite backup API snapshot before push: header valid, integrity ok, no FK
+violations; SHA256 `6d84865261d3415ddd99844e039d22343737739606bfda4f92e2ba47ea6a6d58`.
+315 original IDs/creation timestamps survive; all 119 cancelled whole rows remain
+identical. Baseline outbox 68 applied / 7 pending, unchanged at observation end.
+Private observations are outside git, mode 0600 in a 0700 directory.
+
+**Acceptance PENDING**, not complete. Bounded natural observation ran
+15:53:58Z–16:38:59Z (45 minutes plus snapshot completion overhead), 45 samples:
+33 completed adaptive batch reviews / 346 candidate reviews across seven jobs;
+four jobs naturally completed match+collect and reached stage 2. Zero new complete
+jobs, analysis reports or primary publications. Final counts: 119 cancelled,
+173 complete, 2 dry_run, 1 processing, 15 queued, 6 retry (one new natural job).
+207 same-signature v2 prefix comparisons found no discarded completed reviews.
+35 fresh log deferrals were LLM_ADMISSION_DEFERRED; zero fresh HTTP429, invalid
+output-length, ordinary oversize or checkpoint errors. Retained jobs.error 429
+while processing is historical, not a new provider failure. No generation probes.
+
+Stage-2 requests reconstructed locally with transport intercepted before admission
+reserve 28332 / 28811 / 28931 / 28839 tokens including 2500 output. They fit, but
+were not admitted in this window: older due matching jobs won created,id claim
+order and consumed near-full capacity. Repeated analysis waits occurred while
+28080–29929 charges remained held. This is observed head-of-line backlog/claim
+competition, not proof of infinite starvation by small requests: matching also
+reserves near 30k and its finite snapshot work continues. No fairness guarantee is
+claimed. At least 33 successful natural model calls are proven by saved reviews;
+19 distinct completion expiries were sampled. Six active-to-finished samples give
+16.93–100.63-second durations assuming the source's 600-second request timeout;
+these are not complete per-request telemetry. Sampled integer charges 9739–29972
+obeyed 3 RPM / 30000 TPM / parallel1. Actual provider usage is not separately
+persisted; ledger charges are max(reservation, actual), never refunded, and are
+not claimed as exact usage. The prior offline 7866–11780 actual-token measurements
+are historical reconstruction, not new live analysis usage.
+
+Exact original cards remain pending, all queued stage0 / attempt0:
+
+| Card | Exact episode | Jobs |
+|---|---|---|
+| Resolved KubeDeploymentReplicasMismatch, uptake-kuma, original 17:21 MSK | `83bb101278aba11036f0ce7841eabaeb9ebc00339cd667da626c9beee8e41700` | firing `305b227cdc96…`; resolved `8c6af704b3fd…` |
+| Firing SocratContainerRestartsFrequent, 17:28 MSK | `b5a10f46b0a2ce6ebb6429d78cc9cb13e42f0a562f6b39abc181c2d51a7cae0c` | `08ba1f0938dd…` |
+| SPI triage queue is stale, 17:45 MSK | `b201c71c8b2bce1305233bfa7e47cacae545f2435fe6d644fd1df9bdf74cfb31` | `998bcead1720…` |
+
+Each native receipt has two copies; event receipts are two per event (uptake has
+both firing and resolved, four total). No target outbox/primary exists yet, so
+there is no exact GitHub narrative/canonical file URL+Reader SHA or Telegram
+applied acknowledgement 2/2 to confirm. No substitute #38 receipt is accepted.
+Remaining step is natural admission/analysis/publication and exact episode/revision
+link acknowledgement. Existing valid stale alert remains active and unmodified.
+Observation stopped at the stated boundary; no continued monitoring is promised.
+
+Validation rerun: 169 SPI tests, 5 chart/helper tests, 9 JS ingress tests, Helm lint
+and template, diff whitespace check. No forced claims, requeues, manual retries,
+lease/budget resets, queue clearing, provider/key/payment/limit/network/IAM changes
+or unrelated application sync. Do not roll back to a binary interpreting v2 as
+fixed-12. The following sections describe the validated deployment-specific
+accounting assumptions, not a universal tokenizer guarantee.
 
 The existing Model constructor accepts `store=`. Service passes its shared PVC
 Store. Standalone callers lazily open `SPI_DATABASE` (default `/data/spi.sqlite`).
@@ -101,4 +168,6 @@ not delete ledgers or reset/requeue jobs, especially the 119 cancelled tombstone
 Old binaries cannot consume v2 progress correctly, so rollback must retain new
 checkpoints and not reinterpret them as old fixed-12 decisions. Observe the
 original three user cards naturally; do not force selection or inject incidents.
-No live writes, key changes, paid inference or rollout were performed for this fix.
+The source review itself performed no rollout or inference; the separately authorized
+live rollout and worker's actual natural inference are recorded above. No test
+inference, credential change or forced job transition was performed.

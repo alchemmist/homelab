@@ -547,7 +547,7 @@ performed here. Console GetOnly is not upload/admin access. Standalone Retain is
 not HA or an independent backup. No network/IAM/DNS/shared-edge/PVC/workflow,
 calendar/blog, Telegram test, model invocation or other comment change occurred.
 
-## Source-only SPI token admission — 6 November 2026
+## SPI token admission — 6 November 2026
 
 See [bounded accounting, checkpoint migration and rollout gates](../docs/n8n/spi/token-admission.md).
 The implementation replaces instance-local RPM sleeps with shared durable
@@ -567,3 +567,33 @@ were used. This is source-only feasibility, not model-quality/deployed acceptanc
 or a global client audit. Existing full Store/RustFS evidence remains unchanged.
 Rollback retains the same ledger/checkpoints; v2 must never be reinterpreted as
 fixed-12 progress. Revalidate model/template mapping before alias changes.
+
+Authorized live rollout: reviewed commits rebased to bd41901 + **48b8161**,
+normal SPI-only Argo Recreate at15:52:51Z, Synced/Healthy. Runtime methods,
+shared Store injection and hashes verified against actual ConfigMap/normalized
+source. Pinned Python base, replica/container spec and original PVC unchanged.
+Fresh pre-push backup passed header/integrity/FK; all315 original IDs/created
+and119cancelled whole rows preserved. No queue/lease/budget mutation.
+
+**Live acceptance PENDING.** Bounded natural observation15:53:58–16:38:59Z:
+33 adaptive batch reviews/346 candidate reviews, seven v2 jobs, four stage2
+(match+collect) advances, zero new reports/primary publications/completions.
+207 same-signature prefix comparisons passed.35 fresh typed admission waits,
+zero fresh429/oversize/length/checkpoint errors. Historical retained jobs.error
+is not a fresh429. Actual usage is not separately persisted; sampled integer
+ledger charges9739–29972 obeyed3RPM/30000TPM/parallel1, not exact usage claims.
+Stage2 requests fit28332–28931 but older due matching jobs won created,id claim
+order with near-full ledger holds; observed head-of-line delay, not demonstrated
+infinite small-request starvation. No unreviewed accounting/fairness fix deployed.
+
+Exact requested episodes83bb101278aba11036f0ce7841eabaeb9ebc00339cd667da626c9beee8e41700
+(uptake-kuma resolved17:21MSK; firing305b227cdc96…/resolved8c6af704b3fd…),
+b5a10f46b0a2ce6ebb6429d78cc9cb13e42f0a562f6b39abc181c2d51a7cae0c
+(SocratContainerRestartsFrequent17:28;08ba1f0938dd…), and
+b201c71c8b2bce1305233bfa7e47cacae545f2435fe6d644fd1df9bdf74cfb31
+(stale17:45;998bcead1720…) remain queued0/attempt0, no primary/outbox yet.
+Native two-copy/event receipts exist, but exact GitHub narrative, canonical file
+URLs/ReaderSHA and appliedTelegram2/2 are pending. #38 is not a substitute.
+Stale alert remains unmodified; observation has stopped, not ongoing.
+169SPI+5chart/helper+9JS tests and Helm lint/template passed. See runbook for
+remaining natural admission→analysis→publication→exact acknowledgement gate.
