@@ -8,6 +8,7 @@ import os
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from storage_runtime import load_storage
 from dispatcher import Dispatcher
 from core import Failure, PATIENT_TRANSIENT, Store, digest, normalize, render
 from integrations import Evidence, GitHub, HTTP, Model, REQUEST_DEADLINE
@@ -217,13 +218,15 @@ def read_request_body(handler, timeout=10):
 
 def serve():
     os.umask(0o077)
+    storage,storage_backend=load_storage()
     http=HTTP();store=Store(os.environ.get('SPI_DATABASE','/data/spi.sqlite'))
     recovered=store.recover_on_start()
     log_event('worker_started', recovered_jobs=recovered)
     delivery=Delivery(store,os.environ.get('BOT_INTERNAL_TOKEN',''),enabled=os.environ.get('SPI_TELEGRAM_LINKS_ENABLED','false')=='true')
     engine=Engine(store,GitHub(http,os.environ.get('GITHUB_TOKEN_FILE','/github/token')),
                   Model(http,os.environ['LITELLM_KEY']),Evidence(http,os.environ['GRAFANA_TOKEN'],os.environ['GRAFANA_URL'],github=GitHub(http,os.environ.get('GITHUB_TOKEN_FILE','/github/token'))),
-                  write=os.environ.get('WRITE_ENABLED')=='true',delivery=delivery)
+                  write=os.environ.get('WRITE_ENABLED')=='true',delivery=delivery,
+                  storage=storage,storage_backend=storage_backend)
     delivery.github=engine.github
     dispatcher=Dispatcher(store,os.environ['WORKER_TOKEN'],enabled=os.environ.get('SPI_DISPATCH_ENABLED','false')=='true',busy=engine.lock.locked)
     dispatcher.start();delivery.start()
