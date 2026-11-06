@@ -56,7 +56,7 @@ Before this change, the authoritative TTL was 86400 seconds. Resolvers can retai
 
 ## Excluded names
 
-Grafana, Rancher, Search, the former private LLM aliases and the token-protected Grafana MCP endpoint now have explicitly reviewed public HTTPS entry routes. See [public web migration](public-web-migration.md) for gate/native authorization, live acceptance and remaining scope. This does not publish their old private gateway or backend ports. Numbered Syncthing GUIs are not included in this batch. A wildcard DNS record is never authorization to expose an arbitrary service.
+Grafana, Rancher, Search, the former private LLM aliases and the token-protected Grafana MCP endpoint now have explicitly reviewed public HTTPS entry routes. See [public web migration](public-web-migration.md) for gate/native authorization, live acceptance and remaining scope. This does not publish their old private gateway or backend ports. Node0 Syncthing `/sync/` now has scoped MFA plus its retained BasicAuth; node1 explicitly reports gateway-only410. Kuma has a separate protected admin host while public status/heartbeat remain read-only. The Mac-owned resolver chain has been retired without changing global DNS or Tunnelblick. A wildcard DNS record is never authorization to expose an arbitrary service.
 
 The wiki is intentionally public under its current runtime configuration, with authenticated editing; it is included above. Its separate WireGuard route does not make the public hostname private.
 

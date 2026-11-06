@@ -25,7 +25,8 @@ def addresses(explicit=None):
     return values
 
 PROXY_HOSTS = ['search.socrat.alchemmist.xyz',
-               'llm.socrat.alchemmist.xyz', 'litellm.socrat.alchemmist.xyz']
+               'llm.socrat.alchemmist.xyz', 'litellm.socrat.alchemmist.xyz',
+               '0.socrat.alchemmist.xyz','1.socrat.alchemmist.xyz','kuma.socrat.alchemmist.xyz']
 
 def probe(case):
     host, ip, path, expected = case[:4]
@@ -50,6 +51,8 @@ def probe(case):
     if expected == 302:
         if host=='grafana.socrat.alchemmist.xyz':
             good &= u.scheme in ('','https') and u.hostname in (None,host) and u.path in ('/login','/login/generic_oauth')
+        elif host=='status.alchemmist.xyz':
+            good &= u.scheme=='https' and u.hostname=='kuma.socrat.alchemmist.xyz' and u.path==urllib.parse.urlsplit(path).path
         else:
             good &= u.scheme == 'https' and u.hostname == host and u.path == '/outpost.goauthentik.io/start'
     return {'host': host, 'entrance': ip, 'path': path, 'method': method, 'status': status,
@@ -71,6 +74,9 @@ def main():
               ['/v3-public/localProviders/local?action=login', '//v3-public/localProviders/local?action=login']]
     cases += [('grafana-mcp.socrat.alchemmist.xyz', ip, path, code) for ip in ips for path, code in
               [('/mcp', 401), ('/metrics', 404), ('/healthz', 404)]]
+    cases += [(host,ip,path,302) for host in ['0.socrat.alchemmist.xyz','1.socrat.alchemmist.xyz'] for ip in ips for path in ['/sync/','/sync/rest/config','/sync/rest/noauth/health']]
+    cases += [('kuma.socrat.alchemmist.xyz',ip,path,302) for ip in ips for path in ['/dashboard','/socket.io/?EIO=4&transport=polling','/api/entry-page']]
+    cases += [('status.alchemmist.xyz',ip,path,code) for ip in ips for path,code in [('/status/socrat',200),('/api/status-page/socrat',200),('/api/status-page/heartbeat/socrat',200),('/socket.io/?EIO=4&transport=polling',404),('/socket.io/?EIO=4&transport=websocket',404),('/metrics',404),('/api/settings',404),('/api/push/intentionally-invalid?status=up',404),('/dashboard',302),('/settings',302),('/login',302),('/manage-status-page',302)]]
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
         results = list(pool.map(probe, cases))
     failed = [r for r in results if not r['passed']]

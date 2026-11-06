@@ -4,29 +4,33 @@ Goal: ordinary public DNS and browser Authentik/MFA, without client resolver fil
 or VPN for web applications. Node SSH, databases, Kubernetes internals and telemetry
 receivers remain private. DNS publication is not an authorization boundary.
 
-## Reviewed first batch
+## Current reviewed entries
 
 | Host | Public admission | Backend authorization retained |
 |---|---|---|
-| grafana.socrat.alchemmist.xyz | Dedicated Authentik proxy gate, exact groups cloned from native Grafana admission | Existing Grafana OIDC roles; internal anonymous Viewer remains behind the gate, not publicly accessible without gate login |
+| grafana.socrat.alchemmist.xyz | Native Grafana OIDC auto-login, personal Authentik MFA | Anonymous disabled; owner → GrafanaAdmin, app-grafana-editor → Editor, other admitted groups → Viewer; public password/Basic fallback denied |
 | search.socrat.alchemmist.xyz | Authentik owner / netbird-internal-admins, mandatory MFA | Search UI, no grant to other admin apps |
 | llm.socrat.alchemmist.xyz | Authentik gate with existing Open WebUI admission | Native WebUI identity, roles, chats unchanged |
 | litellm.socrat.alchemmist.xyz | Authentik gate with existing LiteLLM admission | Native reviewed-subject OIDC and API keys unchanged |
 | rancher.socrat.alchemmist.xyz | Native Rancher OIDC and existing restricted principals, public local-password actions denied | Small policy proxy preserves Rancher agents, API bearer credentials and websockets; private recovery remains |
 | grafana-mcp.socrat.alchemmist.xyz/mcp | Existing native MCP server bearer-token validation | Existing read-only tools and fixed Grafana upstream; no health/admin backend ports exposed |
+| 0.socrat.alchemmist.xyz/sync/ | Owner / syncthing-web-admins, personal MFA | Existing BasicAuth and original Syncthing device retained; prefix rewrite preserved |
+| 1.socrat.alchemmist.xyz/sync/ | Same scoped MFA gate | Explicit 410 gateway-only response; no substitute/new device |
+| kuma.socrat.alchemmist.xyz/dashboard | Owner / uptime-kuma-web-admins, personal MFA | Native Kuma authorization/password retained; MFA admission alone grants no native admin rights |
 
 `charts/public-web-entry` owns the new explicit Ingress resources, their
-certificate references and a small isolated Rancher policy proxy. Root Argo deploys the dedicated Application. VPS Traefik
+certificate references and isolated Grafana/Rancher/Syncthing/Kuma policy bridges. Root Argo deploys the dedicated Application. VPS Traefik
 adds exactly cattle-system and cattle-monitoring-system to its namespace list;
 this requires its own targeted controller rollout, not a k3s/node/VPN restart.
 Certificates are independently issued by cert-manager, not copied between owners.
 
-Proxy gates are necessary in particular because the existing private Grafana
-allows anonymous Viewer. Publishing its backend directly is forbidden. A proxy
-login is an admission gate, not native Grafana identity: native Sign in remains
-necessary for owner/editor privileges. Do not advertise this interim two-layer
-behavior as a completed seamless native-SSO migration. No monitoring stack upgrade
-or Grafana/Collector lifecycle change is part of this batch.
+Grafana now uses its own native OAuth identity, not the retired outer proxy gate.
+The bounded `grafana-public-sso.py` helper audits the existing OAuth/secret source,
+requires a fresh hash for an application-only rollout, and rejects unreviewed
+admission/role drift. Authoritative values are in
+`deploy/identity/grafana-oidc-values.yaml`. Existing native admin recovery and
+bearer APIs are preserved; the public bridge blocks local password/Basic fallback.
+No whole monitoring-stack sync or Collector restart is part of this change.
 
 ## Identity ownership and operations
 
@@ -50,8 +54,9 @@ this migration. Gate readback must converge BEFORE public ingress activation.
 
 - Existing public chat, LiteLLM canonical host, Wiki, n8n, Harbor, Argo and x-ui
   need regression checks, not duplicate competing ingress ownership.
-- Syncthing node GUI domains require a separate reviewed admission/path migration;
-  node identities, BasicAuth and `/sync/` path compatibility must be preserved.
+- Syncthing real-owner BasicAuth/browser acceptance can supplement the completed
+  scoped-MFA/prefix/backend checks. Never start another writer or impersonate the
+  gateway-only node as a real device.
 - Existing local resolver overrides must not be called unnecessary/removed until
   the affected hostname has accepted public routing. Do not touch corporate
   resolver files, Tunnelblick settings or flush global DNS during its required
@@ -63,7 +68,10 @@ this migration. Gate readback must converge BEFORE public ingress activation.
   Tests from this Mac forced to public destinations are not independent external
   vantage tests. Do not declare all onboarding complete from anonymous redirects.
 
-## Applied acceptance — 2026-11-06
+## Historical first-batch acceptance — 2026-11-06
+
+The following first-batch results are retained as history; the closeout below
+supersedes its then-outstanding Grafana/Syncthing/Kuma/Mac items.
 
 First batch is **delivered**, not just rendered: public-web-entry and traefik-edge
 were Synced/Healthy at `63650a15edbacfec09ad2cc952332d3fd96b96f8`.
@@ -143,3 +151,64 @@ Final expanded focused run (including identity contracts): **190 passed,
 4 skipped, 139 subtests passed**. Final identity audit: operations0/changed0.
 No Grafana/Collector restart was performed. The completed temporary canary
 executable is removed; private run receipts and diagnostics are retained.
+
+
+## Four-item closeout — 2026-11-06
+
+- **Grafana:** native personal identity and MFA/auto-login accepted with fresh
+  ordinary Viewer and Editor fixtures. Viewer read, Editor temporary-folder
+  create/delete, and admin-API denial were checked. Both fixtures were deleted;
+  no human received owner membership. Existing owner-admin mapping is preserved,
+  not claimed as a new real-owner browser login. The obsolete owned Grafana
+  proxy application/provider/outpost assignment was retired only after acceptance.
+- **Syncthing:** `/sync/` and prefixed noauth-health work through a loopback-only
+  clone with temporary Basic credentials; production BasicAuth bytes were checked
+  unchanged. A fresh MFA identity with only `syncthing-web-admins` reached the
+  production BasicAuth401 on node0 and explicit gateway-only410 on node1, and
+  was denied Kuma admission (Authentik denial HTML is HTTP200, not transport403).
+  The clone starts nginx only, never a Syncthing process. No device enrollment,
+  identity/key/config rewrite or synchronization restart was performed. A real
+  owner's existing Basic password was not replaced or borrowed for the fixture.
+- **Kuma:** public status/assets/status-page/heartbeat APIs remain accessible;
+  public Socket.IO, metrics and unknown administrative APIs are closed. Old
+  admin paths redirect to the MFA-protected admin host. Fresh scoped MFA passed
+  native WebSocket upgrade101; native `getSettings` denied the MFA-only identity.
+  This check was repeated after recovery. Native passwords/accounts remain a
+  separate authorization boundary, not a claim of native OIDC support.
+- **Mac:** native macOS administrator consent applied the exact cleanup plan.
+  Twelve owned resolver files, the owned wiki restorer/plist/marker were backed
+  up and removed; only `system/xyz.alchemmist.wiki-resolver` was unloaded.
+  Global DNS hash and original Tunnelblick process40769 were unchanged before/
+  after; no cache flush, HUP, VPN command or route change was made. Final cleanup
+  audit has operations0, resolver_files0 and owned_daemon_loaded=false. Native
+  system resolution for 12 affected/control hostnames returned only the two
+  public entrances; ordinary DNS+TLS requests reached their gates. Four fresh
+  pinned internal SSH connections passed, NetBird peers4/4. Recovery WG remained
+  unused. Legacy Wiki DNS installation is now explicit opt-in and WG client DNS
+  defaults to none, preventing normal onboarding from recreating the chain.
+
+**Kuma recovery incident:** the application-only restart exposed a Secret/live
+DB credential mismatch and caused application unavailability. The observed
+maximum recent heartbeat gap on a checked active HTTP monitor was **2072s
+(about 35 minutes)**; this was not zero downtime and missing scheduled checks
+were not fabricated/backfilled. No MariaDB restart occurred (original Pod UID,
+restart count0). Existing native-user/auth fingerprints matched before/after.
+The old DB account/grants/password were not changed. A new service account
+`homelab_kuma_app` was created with the original exact schema-only grant; the
+existing Secret was reconciled to its validated application credential and the
+validated live root credential. No credentials are in Git or public logs. See
+[the DB runbook](uptime-kuma-mariadb.md) for private receipts and audit-only tools.
+
+Final live negative matrix: **134/134** against both public entrances, including
+forged identity/forwarding headers, invalid tokens, private/native admin paths,
+new gate paths, status read endpoints and denied public Socket.IO. Public status
+also rendered correctly in an isolated browser context (its existing partially-
+degraded application summary is not asserted globally healthy). Gate lifecycle
+audit operations0/changed0; service-account privilege/credential audit operations0.
+Focused regression: **117 passed, 17 subtests passed**; three relevant Ansible
+playbooks passed syntax checks. These are focused tests, not the repository suite.
+
+Still separate: independent external clean-device/browser/provider acceptance,
+exhaustive every-app/every-role flows, real new-human NetBird enrollment and
+unrelated storage/SPI/CI work. Mac DNS-free acceptance is observed on the unchanged
+work VPN, not a promise about every corporate resolver or Internet provider.

@@ -67,36 +67,39 @@ The first playbook configures the gateway on `socrat-0`; the second manages loca
 
 ## Private administrative access
 
-The Mac joins `wg-socrat` with one WireGuard profile and a direct peer for each
-node. Private DNS names `0.socrat.alchemmist.xyz`, `1.socrat.alchemmist.xyz`, and
-`2.socrat.alchemmist.xyz` resolve to the individual WireGuard addresses; every
-node accepts private SSH on TCP 2222. DNS runs on all three hosts outside
-Kubernetes. The Mac peer is restricted to SSH, DNS, and the private HTTPS interfaces.
+NetBird is the normal private administrative transport; standalone WireGuard is
+recovery-only and normally off. Ordinary SSH uses pinned internal aliases over
+`10.250.0.1/.3/.2/.5:2222`, never a public DNS fallback. Selected human web
+interfaces use ordinary public HTTPS, so the Mac needs no homelab resolver files
+and the mandatory Tunnelblick session need not be changed.
 
-Server configuration is managed by `playbooks/wireguard-admin-access.yml`;
-`playbooks/wireguard-admin-client.yml` preserves the local private key and
-renders the Mac profile and split DNS configuration. Profile import and macOS
-VPN approval use the official WireGuard application.
+`playbooks/wireguard-admin-client.yml` preserves the recovery private key and
+profile; its DNS mode defaults to `none`. Public SSH/provisioning recovery is a
+separate explicit procedure, not ordinary access.
 
 ```bash
-ssh -i ~/.ssh/socrat-master -p 2222 alchemmist@0.socrat.alchemmist.xyz
-ssh -i ~/.ssh/socrat-1 -p 2222 alchemmist@1.socrat.alchemmist.xyz
-ssh -i ~/.ssh/personal_server -p 2222 alchemmist@2.socrat.alchemmist.xyz
+ssh socrat-0
+ssh socrat-1
+ssh socrat-2
+ssh socrat-3
 ```
 
 See the [administrative access runbook](docs/wireguard-admin-access-plan.md#reapply-the-deployed-configuration)
 for Ansible commands, router mappings, provisioning and remaining acceptance checks.
 
-## Private Syncthing UI
+## Syncthing web UI
 
-Each node runs one Syncthing pod with its own local data and identity. With
-WireGuard connected, open `https://0.socrat.alchemmist.xyz/sync/` and the
-corresponding node 1 or 2 name. The existing BasicAuth credentials are retained;
-public `sync-*` ingresses and direct network access to the raw GUI are closed.
+Open `https://0.socrat.alchemmist.xyz/sync/` with ordinary public DNS/TLS. Personal
+Authentik MFA and owner/`syncthing-web-admins` admission precede the existing
+BasicAuth. The original device/data and `/sync/` compatibility are preserved;
+raw GUI/protocol ports are not published by this change. The node1 URL is gated
+but explicitly returns410 because that node is gateway-only, not another
+Syncthing device. No writer is started to make a GUI URL work.
 
-Apply `playbooks/syncthing-private-ui.yml` using the direct maintenance
-inventory. See the [Syncthing runbook](docs/syncthing-private-ui.md) for the
-traffic model, certificate renewal, monitoring, provisioning and recovery.
+See [public web migration](docs/public-web-migration.md) for current admission
+and acceptance, and [the Syncthing runbook](docs/syncthing-private-ui.md) for the
+legacy private/recovery path. Kuma administration is separately protected at
+`https://kuma.socrat.alchemmist.xyz/dashboard`; its public status page stays read-only.
 
 ## Local LLM inference
 

@@ -24,6 +24,12 @@ def main():
         desired={'password':base64.b64encode(password.encode()).decode(),'root-password':base64.b64encode(root_password.encode()).decode()}
         if exists:
             need((STATE/'after.json').exists() and secret['data']==desired,'Foreign/partial service account; stop')
+            need((STATE/'before-grants.private').read_text()==original,'Original account drift; stop')
+            expected=next(x for x in rows if x.startswith('GRANT ALL PRIVILEGES ON ')).replace(' TO `uptime_kuma`@`%`',' TO `'+USER+'`@`%`')
+            own=sql("SHOW GRANTS FOR '"+USER+"'@'%';").splitlines()
+            need(len(own)==2 and expected in own and any(x.startswith('GRANT USAGE ON *.*') for x in own) and not any('WITH GRANT OPTION' in x for x in own),'Recovery service-account privilege drift')
+            verifier=sql("SELECT authentication_string FROM mysql.user WHERE User='"+USER+"' AND Host='%';")
+            need(verifier.upper()=='*'+hashlib.sha1(hashlib.sha1(password.encode()).digest()).hexdigest().upper(),'Recovery account credential drift')
             print(json.dumps({'operations':0,'applied':False,'existing_db_passwords_unchanged':True}));return
         context={'secret_uid':secret['metadata']['uid'],'secret_rv':secret['metadata']['resourceVersion'],'db_uid':db[0]['metadata']['uid'],'original_grants_hash':hashlib.sha256(original.encode()).hexdigest(),'candidate_hash':hashlib.sha256(password.encode()).hexdigest(),'account':USER,'schema':SCHEMA,'tool':hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
         digest=hashlib.sha256(json.dumps(context,sort_keys=True).encode()).hexdigest()

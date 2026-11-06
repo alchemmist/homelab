@@ -1,5 +1,13 @@
 # Private Syncthing interfaces
 
+> Current human web entry is `https://0.socrat.alchemmist.xyz/sync/` with ordinary
+> public DNS/TLS, personal MFA/scoped admission, and retained BasicAuth. Node1's
+> public GUI address explicitly returns gateway-only410; it is not a second
+> enrolled device. No synchronization process/configuration was changed for this
+> publication. See [public web migration](public-web-migration.md). The private
+> DNS/gateway instructions below are legacy/recovery, not normal client setup.
+
+
 Socrat-0 and socrat-1 each run one independent Syncthing device in the Helm DaemonSet. Each device keeps its identity, database and folders under `/srv/syncthing` on that node. Socrat-2 no longer runs a pod; its previous directory stays on disk.
 
 Connect the Mac's `wg-socrat-admin` profile, then open:
