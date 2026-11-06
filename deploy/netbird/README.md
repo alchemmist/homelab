@@ -50,3 +50,12 @@ Community management stays one replica and can be planned without routers.
 Existing-node router mode is allowed only after an explicit review. This repo does
 not generate or install those routers, and `router_compose` must not be applied to
 socrat-0..3.
+
+### Kubernetes overlay mark compatibility
+
+Host NetBird reverse-route skb marks overlap kube-router/CNI bits and can bypass
+cross-node NetworkPolicy when inherited through VXLAN. The narrowly scoped,
+persistent pod-overlay boundary guard and its live acceptance are documented in
+[`docs/k3s-networkpolicy-overlay-marks.md`](../../docs/k3s-networkpolicy-overlay-marks.md).
+Audit this guard after host NetBird or overlay changes; do not use S3 HTTP403 as
+proof of packet isolation. This does not require changing administrators' clients.

@@ -1,0 +1,12 @@
+[Unit]
+Description=Clear inherited transport marks on Kubernetes overlay pod ingress
+After=network-pre.target
+Before=k3s.service k3s-agent.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/homelab-k3s-overlay-marks --apply
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

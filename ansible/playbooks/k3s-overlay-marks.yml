@@ -1,0 +1,37 @@
+---
+- name: Preflight the complete existing overlay without changes
+  hosts: Socrat
+  any_errors_fatal: true
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Require nftables and the existing VXLAN overlay
+      ansible.builtin.shell: |
+        set -eu
+        nft -j list tables >/dev/null
+        ip -d link show flannel.1 | grep -q 'vxlan id '
+        test "$(cat /proc/sys/net/bridge/bridge-nf-call-iptables)" = 1
+      changed_when: false
+      check_mode: false
+
+    - name: Audit ownership and kernel-validate the proposed atomic transaction
+      ansible.builtin.script:
+        cmd: "{{ playbook_dir }}/../../scripts/k3s-overlay-marks.py"
+        executable: python3
+      changed_when: false
+      check_mode: false
+      register: overlay_mark_audit
+
+    - name: Report the audit plan without applying it
+      ansible.builtin.debug:
+        var: overlay_mark_audit.stdout_lines
+
+- name: Restore policy semantics serially without bouncing interfaces
+  hosts: Socrat
+  any_errors_fatal: true
+  gather_facts: false
+  become: true
+  serial: 1
+  roles:
+    - role: k3s_overlay_marks
+      when: k3s_overlay_marks_apply | default(false) | bool

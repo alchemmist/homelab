@@ -1,0 +1,32 @@
+---
+- name: Install narrowly scoped overlay boundary helper
+  ansible.builtin.copy:
+    src: "{{ role_path }}/../../../scripts/k3s-overlay-marks.py"
+    dest: /usr/local/sbin/homelab-k3s-overlay-marks
+    owner: root
+    group: root
+    mode: '0700'
+  register: overlay_helper
+
+- name: Install boot persistence without restarting any network or Kubernetes service
+  ansible.builtin.template:
+    src: overlay-marks.service.j2
+    dest: /etc/systemd/system/homelab-k3s-overlay-marks.service
+    owner: root
+    group: root
+    mode: '0644'
+  register: overlay_unit
+
+- name: Activate only the owned overlay boundary service
+  ansible.builtin.systemd_service:
+    name: homelab-k3s-overlay-marks.service
+    daemon_reload: "{{ overlay_unit.changed }}"
+    enabled: true
+    state: "{{ 'restarted' if overlay_helper.changed or overlay_unit.changed else 'started' }}"
+
+- name: Verify exact live table without modifying it
+  ansible.builtin.command: /usr/local/sbin/homelab-k3s-overlay-marks
+  changed_when: false
+  register: overlay_verify
+  failed_when: overlay_verify.rc != 0 or (overlay_verify.stdout | from_json).operations != 0
+  when: not ansible_check_mode

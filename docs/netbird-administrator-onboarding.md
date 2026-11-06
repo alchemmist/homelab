@@ -222,3 +222,7 @@ WireGuard GUI. Automated UI access was unavailable; its `.6` credentials are
 revoked on all nodes and cannot be used. Do not delete the tested `.4` recovery
 profile to make the list look shorter. Removal of that obsolete GUI entry is a
 cosmetic remaining action, not a second working recovery identity.
+
+Infrastructure prerequisite: preserve the installed [Kubernetes overlay mark
+guard](k3s-networkpolicy-overlay-marks.md). Its audit is necessary after node,
+host NetBird or overlay changes, not a new step for each person's enrollment.

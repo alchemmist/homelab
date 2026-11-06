@@ -271,3 +271,6 @@ One reviewed Authentik group grants network admission; users install the standar
 client and sign in with MFA. No personal VPN file or per-device policy is needed.
 Audit/reconcile/grant/revoke/offboard entrypoint:
 [`ansible/playbooks/netbird-access.yml`](ansible/playbooks/netbird-access.yml).
+
+- [Kubernetes NetworkPolicy / NetBird VXLAN mark isolation](docs/k3s-networkpolicy-overlay-marks.md):
+  owned persistent overlay guard, audit/apply playbook and cross-node acceptance.
