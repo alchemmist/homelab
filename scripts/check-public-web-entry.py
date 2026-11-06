@@ -24,17 +24,20 @@ def addresses(explicit=None):
         raise ValueError('Exactly two distinct public IPv4 entrances required')
     return values
 
-PROXY_HOSTS = ['grafana.socrat.alchemmist.xyz', 'search.socrat.alchemmist.xyz',
+PROXY_HOSTS = ['search.socrat.alchemmist.xyz',
                'llm.socrat.alchemmist.xyz', 'litellm.socrat.alchemmist.xyz']
 
 def probe(case):
     host, ip, path, expected = case[:4]
     method = case[4] if len(case) > 4 else 'GET'
+    auth = case[5] if len(case) > 5 else 'Bearer intentionally-invalid'
     args = ['curl', '-sS', '--max-time', '12', '--path-as-is', '--resolve', f'{host}:443:{ip}',
             '-H', 'X-authentik-username: admin', '-H', 'X-authentik-groups: homelab-owner',
             '-H', 'X-Forwarded-For: 10.250.0.4', '-H', 'X-Forwarded-Host: evil.invalid',
-            '-H', 'X-Forwarded-Proto: http', '-H', 'Authorization: Bearer intentionally-invalid',
+            '-H', 'X-Forwarded-Proto: http',
             '-D', '-', '-o', '/dev/null', f'https://{host}{path}']
+    if auth:
+        args[1:1] = ['--header','Authorization: '+auth]
     if method == 'POST':
         args[1:1] = ['--request', 'POST', '--header', 'Content-Type: application/json', '--data', '{}']
     p = subprocess.run(args, text=True, capture_output=True, timeout=15)
@@ -45,7 +48,10 @@ def probe(case):
     u = urllib.parse.urlsplit(location)
     good = p.returncode == 0 and status == expected
     if expected == 302:
-        good &= u.scheme == 'https' and u.hostname == host and u.path == '/outpost.goauthentik.io/start'
+        if host=='grafana.socrat.alchemmist.xyz':
+            good &= u.scheme in ('','https') and u.hostname in (None,host) and u.path in ('/login','/login/generic_oauth')
+        else:
+            good &= u.scheme == 'https' and u.hostname == host and u.path == '/outpost.goauthentik.io/start'
     return {'host': host, 'entrance': ip, 'path': path, 'method': method, 'status': status,
             'tls_verified': p.returncode == 0, 'passed': bool(good)}
 
@@ -55,6 +61,10 @@ def main():
     ips = addresses(parser.parse_args().address)
     cases = [(h, ip, path, 302) for h in PROXY_HOSTS for ip in ips
              for path in ['/', '/api/search', '/api/admin/settings', '//api/search', '/metrics']]
+    cases += [('grafana.socrat.alchemmist.xyz',ip,path,code,method,auth) for ip in ips for path,code,method,auth in
+              [('/',302,'GET',None),('/api/search',401,'GET',None),('/api/admin/settings',401,'GET',None),
+               ('/metrics',404,'GET',None),('/debug/pprof/',404,'GET',None),('/login',403,'POST',None),
+               ('/api/user',403,'GET','Basic aW52YWxpZDppbnZhbGlk')]]
     cases += [('rancher.socrat.alchemmist.xyz', ip, path, 401) for ip in ips for path in
               ['/v3/users', '/v3/clusters', '/v3/connect/register', '/v1/management.cattle.io.users']]
     cases += [('rancher.socrat.alchemmist.xyz', ip, path, 403, 'POST') for ip in ips for path in

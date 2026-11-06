@@ -1,9 +1,4 @@
 {
-  "grafana": {
-    "host": "grafana.socrat.alchemmist.xyz",
-    "upstream": "http://kube-prometheus-stack-grafana.cattle-monitoring-system.svc.cluster.local:80",
-    "admissionFrom": "grafana"
-  },
   "search": {
     "host": "search.socrat.alchemmist.xyz",
     "upstream": "http://searxng.llm.svc.cluster.local:8080",

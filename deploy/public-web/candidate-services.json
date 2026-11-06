@@ -1,0 +1,44 @@
+{
+  "search": {
+    "host": "search.socrat.alchemmist.xyz",
+    "upstream": "http://searxng.llm.svc.cluster.local:8080",
+    "groups": [
+      "homelab-owner",
+      "netbird-internal-admins"
+    ]
+  },
+  "webui-alias": {
+    "host": "llm.socrat.alchemmist.xyz",
+    "upstream": "http://open-webui.llm.svc.cluster.local:8080",
+    "admissionFrom": "open-webui"
+  },
+  "litellm-alias": {
+    "host": "litellm.socrat.alchemmist.xyz",
+    "upstream": "http://litellm.llm.svc.cluster.local:4000",
+    "admissionFrom": "litellm"
+  },
+  "syncthing-0": {
+    "host": "0.socrat.alchemmist.xyz",
+    "upstream": "http://public-web-syncthing-0.syncthing.svc.cluster.local:80",
+    "groups": [
+      "homelab-owner",
+      "syncthing-web-admins"
+    ]
+  },
+  "syncthing-1": {
+    "host": "1.socrat.alchemmist.xyz",
+    "upstream": "http://public-web-syncthing-1.syncthing.svc.cluster.local:80",
+    "groups": [
+      "homelab-owner",
+      "syncthing-web-admins"
+    ]
+  },
+  "kuma-admin": {
+    "host": "kuma.socrat.alchemmist.xyz",
+    "upstream": "http://uptime-kuma.uptime-kuma.svc.cluster.local:80",
+    "groups": [
+      "homelab-owner",
+      "uptime-kuma-web-admins"
+    ]
+  }
+}
