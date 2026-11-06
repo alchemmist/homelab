@@ -63,3 +63,19 @@ def test_schema_recovery_never_resets_existing_passwords_or_restarts_database():
 def test_fresh_bootstrap_rejects_mismatched_application_identity():
     r=subprocess.run(['helm','template','uptime-kuma',str(ROOT/'charts/uptime-kuma'),'--set','database.bootstrapSecret=true'],text=True,capture_output=True)
     assert r.returncode!=0 and 'Fresh DB bootstrap requires' in r.stderr
+
+
+def test_dns_cleanup_only_owned_files_and_no_global_flush_or_vpn_commands():
+    text=(ROOT/'scripts/macos-public-dns-cleanup.py').read_text();m=module('macos-public-dns-cleanup')
+    assert len(m.DOMAINS)==12 and all(x.endswith('.alchemmist.xyz') for x in m.DOMAINS)
+    for forbidden in ['dscacheutil','killall','networksetup','netbird down','set State:/Network/Global/DNS']:
+        assert forbidden not in text
+    assert "['/bin/launchctl','bootout','system/'+LABEL]" in text
+    assert 'Backup verification failed' in text and 'Fresh exact plan approval required' in text
+
+def test_new_clients_do_not_reinstall_private_dns_by_default():
+    defaults=yaml.safe_load((ROOT/'ansible/roles/wireguard_admin_client/defaults/main.yml').read_text())
+    assert defaults['wireguard_admin_dns_mode']=='none'
+    task=(ROOT/'ansible/roles/wiki_editor_client/tasks/main.yml').read_text()
+    assert 'wiki_editor_client_private_dns_legacy | default(false)' in task
+    assert 'include_tasks: legacy-resolver.yml' in task
