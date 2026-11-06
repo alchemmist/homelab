@@ -220,12 +220,33 @@ class Store:
         with self.db() as c: row=c.execute('SELECT * FROM jobs WHERE id=?',(key,)).fetchone()
         if row is None: raise Failure('JOB_NOT_FOUND')
         d=dict(row); d['event']=json.loads(d['event']); d['result']=json.loads(d['result']);return d
+    def _schedule(self, c, now):
+        """Shared claim/wake policy; never alter durable job deadlines.
+
+        Finish ready work first. A known local analysis admission retry may
+        bridge ledger expiry to its jittered due time (at most 664s from failure).
+        Unknown provider backoffs never reserve capacity. Expired ledger rows
+        are deliberately readable here, but cannot extend the bounded hold.
+        """
+        rows=c.execute("SELECT id,stage,state,created,updated,available,lease,error FROM jobs WHERE state IN ('queued','retry','processing')").fetchall()
+        holds=[r['available'] for r in rows
+               if r['state']=='retry' and r['stage']==2
+               and r['error']=='LLM_ADMISSION_DEFERRED' and r['lease']<=now
+               and r['updated']<=now<r['available']<=r['updated']+664
+               and c.execute('SELECT 1 FROM llm_admission WHERE expires>=? AND expires<=? AND expires>=? LIMIT 1',
+                             (r['updated'],r['available'],r['available']-4)).fetchone()]
+        hold=max(holds,default=0)
+        scheduled=[(max(r['available'],r['lease'],hold if r['stage']==0 else 0),r) for r in rows]
+        ready=[r for due,r in scheduled if due<=now]
+        ready.sort(key=lambda r:(-r['stage'],r['created'],r['id']))
+        return (ready[0] if ready else None),min((due for due,r in scheduled),default=None)
+
     def claim(self):
         now=time.time()
         with self.db() as c:
             c.execute('DELETE FROM dispatch WHERE singleton=1')
             if c.execute("SELECT 1 FROM jobs WHERE state='processing' AND lease>?",(now,)).fetchone(): return {'job_id':''}
-            row=c.execute("SELECT id FROM jobs WHERE state IN ('queued','retry','processing') AND available<=? AND lease<=? ORDER BY created,id LIMIT 1",(now,now)).fetchone()
+            row,_=self._schedule(c,now)
             if not row:return {'job_id':''}
             c.execute("UPDATE jobs SET state='processing',lease=?,attempts=attempts+1,updated=? WHERE id=?",(now+1500,now,row['id']))
             return {'job_id':row['id']}
@@ -271,7 +292,7 @@ class Store:
         with self.db() as c:
             active=c.execute("SELECT max(lease) FROM jobs WHERE state='processing' AND lease>?",(now,)).fetchone()[0]
             if active:return None,active
-            due=c.execute("SELECT min(max(available,lease)) FROM jobs WHERE state IN ('queued','retry','processing')").fetchone()[0]
+            _,due=self._schedule(c,now)
             if due is None:return None,None
             r=c.execute('SELECT * FROM dispatch WHERE singleton=1').fetchone()
             deadline=max(due,r['deadline'] if r else 0)

@@ -171,3 +171,40 @@ original three user cards naturally; do not force selection or inject incidents.
 The source review itself performed no rollout or inference; the separately authorized
 live rollout and worker's actual natural inference are recorded above. No test
 inference, credential change or forced job transition was performed.
+
+## Completion-aware scheduler correction (source-only, pending independent review)
+
+Claims now prefer eligible stages in descending pipeline order: stage3 write,
+stage2 analysis, stage1 collection, then stage0 new/partial matching. Within
+one stage, natural `created,id` ordering is unchanged. Active processing leases
+remain exclusive; no active HTTP request is preempted. Independent Telegram
+outbox delivery is unchanged. Pending-age alerts still use original creation
+age across all pending jobs, not the scheduler's effective due time.
+
+Claim and durable dispatcher wake calculation share one policy. A live stage2
+`retry` with exactly `LLM_ADMISSION_DEFERRED` may hold **only stage0** until its
+existing jittered available time, if a known ledger expiry lies between failure
+and that time and no more than four seconds before it. The hold must end within
+664 seconds of failure (normal 600-second abandoned request + conservative61s
+ledger retention + at most3s jitter). Expired ledger entries can bridge the
+jitter interval but never extend that deadline. No available/attempt/lease,
+checkpoint or result fields are rewritten to promote a job. Future wake times
+include the hold, so an old due matcher does not produce repeated callbacks
+while claim intentionally yields. Safe writes and collection remain eligible.
+
+Unknown upstream429/hour backoff, dead/cancelled jobs, unmatched/stale ledger
+entries, or deadlines outside this bound never hold matching. At the deadline,
+due analysis wins by stage priority and re-evaluates normal 3 RPM /30000 TPM /
+parallel1 admission; this does not bypass quotas. Abandoned reservations recover
+through their existing expiry, not a reset. Very large/nonstandard timeouts or
+clock discontinuities outside this normal wall-clock bound lose the hold rather
+than freezing new work. This is completion preference, not universal fairness
+under an unbounded stream of later-stage work. Publication still requires valid
+model output, unchanged open-incident snapshot and successful storage/delivery;
+fake progress tests do not prove any live card accepted or published.
+
+Rollback: after fresh backup and reviewed fetch/rebase/deployment, reverting this
+scheduler-only change restores created/id scheduling without database migration.
+Retain the validated v2-capable token-admission runtime; never roll back to a
+fixed-12 matcher that reinterprets v2 checkpoints. No deployment, queue mutation,
+paid model call or endpoint probe accompanies this source-only correction.

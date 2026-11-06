@@ -51,3 +51,27 @@ by exact episode/revision acknowledgements; no forced selection or resets.
 Rerun:169 SPI,5 chart/helper,9 JS tests; Helm lint/template and whitespace checks
 passed. Keep integer charges and v2 checkpoints; old fixed12 binaries must not
 reinterpret v2. No continuing observation after this bounded window is implied.
+
+### Completion-aware scheduling correction — source-only
+
+The scoped correction prefers eligible stage3 writes, stage2 analysis, stage1
+collection, then stage0 matching; ties retain natural created/id ordering.
+Claim and dispatcher share effective eligibility/next-wake calculation. Only a
+live stage2 retry with `LLM_ADMISSION_DEFERRED` and a matching known ledger
+expiry may hold stage0 until its existing jittered due time (expiry to due at
+most4s; failure to due at most664s). Expired ledger data cannot extend this
+bound. Active requests are not preempted; safe writes/collection and independent
+Telegram deliveries are not held. Unknown429/hour backoff, terminal jobs and
+out-of-bound/stale deadlines do not freeze healthy new matching. Pending-age
+alerts retain original semantics; no durable job deadlines/checkpoints change.
+
+Normal admission remains 3 RPM/30000 TPM/parallel1 with qwen-byte-bound-v1,
+256 framing and conservative61s completion retention. Abandoned active ledger
+entries use normal expiry, including after restart. This is completion
+preference, not a global starvation guarantee under infinite later-stage work.
+Stable snapshots, valid analysis and successful publication remain prerequisites;
+synthetic tests do not accept the user's three live cards. No paid calls, queue
+changes, deployment or endpoint probes are part of this correction. See
+`docs/n8n/spi/token-admission.md` for bounds and runbook. Rollback only this
+scheduler delta on the v2-capable runtime; never reinterpret v2 checkpoints with
+a fixed-12 matcher. Later rollout requires review, fresh backup and fetch/rebase.

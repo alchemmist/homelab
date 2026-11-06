@@ -546,3 +546,12 @@ evidence, not a new session test. Human logout/outsider-session tests were NOT
 performed here. Console GetOnly is not upload/admin access. Standalone Retain is
 not HA or an independent backup. No network/IAM/DNS/shared-edge/PVC/workflow,
 calendar/blog, Telegram test, model invocation or other comment change occurred.
+
+### Completion-aware scheduling (source-only correction)
+
+See [token admission](token-admission.md#completion-aware-scheduler-correction-source-only-pending-independent-review)
+for descending stage priority, bounded local-admission jitter hold, unknown429
+non-hold policy and v2-safe rollback. Claim and dispatcher use the same effective
+eligibility, without changing stored deadlines or pending-age alerts. Source
+regressions are not live acceptance; later reviewed rollout requires a fresh
+SQLite backup and fetch/rebase. Do not force claims or promote selected jobs.
