@@ -86,7 +86,7 @@ class Engine:
                 self.store.save(key,4,r,state='dry_run');return {'job_id':key,'status':'dry_run','issue_number':0}
             if 'publication_backend' not in r:
                 r['publication_backend']='legacy' if job['intent'] or 'artifact_publication' in r else self.storage_backend
-                self.store.save(key,3,r)
+                self.store.save(key,3,r,intent=job['intent'])
             if r['publication_backend'] not in {'legacy','s3'}:raise Failure('STORAGE_INTEGRITY')
             marker='<!-- socrat-spi:'+key+' -->'
             # Reconcile BEFORE checking open candidates: the previous write may itself
@@ -100,6 +100,10 @@ class Engine:
                     self.save_primary(key,r,event,self.github.primary_reference(marker,number))
                 self.finish_evidence(key,r,number)
                 return {'job_id':key,'status':'reconciled','issue_number':number}
+            # Without a trusted primary intent the artifact target cannot be
+            # inferred from a fresh match. Retain all legacy receipts for review.
+            if 'artifact_publication' in r:
+                raise Failure('WRITE_NEEDS_REVIEW')
             if resolved and not r.get('analyze_recovery'):
                 number=r['resolved_issue']
                 existing=self.github.request('GET','/issues/'+str(number)) if number else None
@@ -118,6 +122,11 @@ class Engine:
                     issues=self.github.snapshot()
                     if digest([(x['number'],x['updated_at']) for x in issues])!=r['open_signature']:
                         self.store.save(key,0,{'publication_backend':'s3'},state='processing');raise Failure('OPEN_SPI_CHANGED')
+                if resolved and not r.get('analyze_recovery'):
+                    existing=self.github.request('GET','/issues/'+str(number))
+                    if existing.get('state')!='open':
+                        self.store.save(key,4,r,state='complete',issue=number)
+                        return {'job_id':key,'status':'resolved_without_open_spi'}
                 body=repair_markdown_links(body+storage_markdown(objects))
             else:body=repair_markdown_links(body+index_markdown(r.get('evidence',{}).get('bundle')))
             self.store.save(key,3,r,intent=json.dumps({'number':number}))
