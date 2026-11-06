@@ -123,3 +123,26 @@ def publish_parts(github,number,bundle,progress,save):
         if exc.code.startswith('HTTP_4') and exc.code!='HTTP_408':progress.pop('index_pending',None);save()
         raise
     progress['index_done']=True;progress.pop('index_pending',None);save()
+
+
+def storage_objects(bundle):
+    """Reconstitute exactly the persisted ASCII bytes; reject damaged bundles."""
+    if not bundle:return []
+    manifest=bundle['manifest'];text=encoded(manifest).encode('ascii')
+    sha=hashlib.sha256(text).hexdigest()
+    prefix='spi/v1/'+manifest['event_key']+'/'+sha+'/'
+    objects=[(prefix+'manifest.json',text)]
+    for row in manifest['artifacts']:
+        parts=sorted((p for p in bundle['parts'] if p['id']==row['id']),key=lambda p:p['part'])
+        raw=''.join(p['text'] for p in parts).encode('ascii')
+        if len(raw)!=row['stored_chars'] or hashlib.sha256(raw).hexdigest()!=row['sha256']:
+            raise Failure('STORAGE_INTEGRITY')
+        objects.append((prefix+row['id']+'-'+row['name'],raw))
+    return objects
+
+
+def storage_markdown(objects):
+    if not objects:return ''
+    return '\n\n## Reproducible evidence\nSanitized, bounded evidence; truncation and missing reads are recorded in the manifest. Not every byte was reviewed by the model. Sign-in required.\n'+ '\n'.join(
+        '- ['+('MANIFEST' if i==0 else key.rsplit('/',1)[1])+'](https://spi-evidence.socrat.alchemmist.xyz/spi-evidence/'+key+')'
+        for i,(key,raw) in enumerate(objects))

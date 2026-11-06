@@ -1,4 +1,5 @@
 """Authenticated private stage API. Durable state is independent of n8n executions."""
+import hashlib
 import hmac
 import json
 import re
@@ -8,9 +9,10 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from dispatcher import Dispatcher
-from core import Failure, LLM_TRANSIENT, Store, digest, normalize, render
+from core import Failure, PATIENT_TRANSIENT, Store, digest, normalize, render
 from integrations import Evidence, GitHub, HTTP, Model, REQUEST_DEADLINE
-from evidence_bundle import index_markdown, publish_parts
+from evidence_bundle import index_markdown, publish_parts, storage_objects, storage_markdown
+from s3_evidence import StorageTransient, StoragePermanent, StorageConflict
 from grafana_links import repair_markdown_links
 from telegram_delivery import Delivery
 from telegram_links import primary_url
@@ -32,8 +34,10 @@ def log_event(event, level='info', **fields):
     print(json.dumps(record, separators=(',', ':')), flush=True)
 
 class Engine:
-    def __init__(self,store,github,model,evidence,write=False,delivery=None):
+    def __init__(self,store,github,model,evidence,write=False,delivery=None,storage=None,storage_backend='legacy'):
         self.store=store;self.github=github;self.model=model;self.evidence=evidence;self.write=write
+        if storage_backend not in {'legacy','s3'}:raise ValueError('Invalid storage backend')
+        self.storage=storage;self.storage_backend=storage_backend
         self.lock=threading.Lock();self.delivery=delivery
     def claim(self):
         # A socket call may outlive the durable lease. Never reclaim while this
@@ -47,7 +51,7 @@ class Engine:
             try:return self._run(name,key)
             except Failure as e:
                 self.store.fail(key,e.code,retry_after=e.retry_after)
-                log_event('stage_deferred' if e.code in LLM_TRANSIENT else 'stage_failed', 'warning' if e.code in LLM_TRANSIENT else 'error', stage=name, code=e.code)
+                log_event('stage_deferred' if e.code in PATIENT_TRANSIENT else 'stage_failed', 'warning' if e.code in PATIENT_TRANSIENT else 'error', stage=name, code=e.code)
                 raise
             except Exception:
                 self.store.fail(key,'INTERNAL_ERROR')
@@ -80,10 +84,15 @@ class Engine:
         elif name=='publish':
             if not self.write:
                 self.store.save(key,4,r,state='dry_run');return {'job_id':key,'status':'dry_run','issue_number':0}
+            if 'publication_backend' not in r:
+                r['publication_backend']='legacy' if job['intent'] or 'artifact_publication' in r else self.storage_backend
+                self.store.save(key,3,r)
+            if r['publication_backend'] not in {'legacy','s3'}:raise Failure('STORAGE_INTEGRITY')
             marker='<!-- socrat-spi:'+key+' -->'
             # Reconcile BEFORE checking open candidates: the previous write may itself
             # have changed that snapshot, or a human may have closed the created issue.
             if job['intent']:
+                if r['publication_backend']=='s3':self.upload_evidence(key,r,intent=job['intent'])
                 intent=json.loads(job['intent'])
                 number=intent['number'] if intent.get('primary_done') else self.github.reconcile(marker,intent['number'])
                 if not number:raise Failure('WRITE_NEEDS_REVIEW')
@@ -100,10 +109,17 @@ class Engine:
             else:
                 issues=self.github.snapshot()
                 if digest([(x['number'],x['updated_at']) for x in issues])!=r['open_signature']:
-                    self.store.save(key,0,{},state='processing');raise Failure('OPEN_SPI_CHANGED')
+                    self.store.save(key,0,{'publication_backend':r['publication_backend']},state='processing');raise Failure('OPEN_SPI_CHANGED')
                 title,body=render(r['report'],event);number=r['report']['issue_number']
                 if number not in {0,*[x['number']for x in r['match']['candidates']]}:raise Failure('INVALID_MATCH_TARGET')
-            body=repair_markdown_links(body+index_markdown(r.get('evidence',{}).get('bundle')))
+            if r['publication_backend']=='s3':
+                objects=self.upload_evidence(key,r)
+                if not resolved or r.get('analyze_recovery'):
+                    issues=self.github.snapshot()
+                    if digest([(x['number'],x['updated_at']) for x in issues])!=r['open_signature']:
+                        self.store.save(key,0,{'publication_backend':'s3'},state='processing');raise Failure('OPEN_SPI_CHANGED')
+                body=repair_markdown_links(body+storage_markdown(objects))
+            else:body=repair_markdown_links(body+index_markdown(r.get('evidence',{}).get('bundle')))
             self.store.save(key,3,r,intent=json.dumps({'number':number}))
             try:
                 if number:
@@ -127,6 +143,27 @@ class Engine:
         return {'job_id':key,'status':'processing','stage':wanted}
 
 
+    def upload_evidence(self,key,result,intent=None):
+        objects=storage_objects(result.get('evidence',{}).get('bundle'))
+        binding=[{'bucket':'spi-evidence','key':k,'sha256':hashlib.sha256(raw).hexdigest(),'size':len(raw),'verified':True} for k,raw in objects]
+        progress=result.setdefault('storage_publication',{'binding':binding,'verified':[]})
+        if progress.get('binding')!=binding or progress.get('verified')!=binding[:len(progress.get('verified',[]))]:
+            raise Failure('STORAGE_INTEGRITY')
+        def save():
+            fields={} if intent is None else {'intent':intent}
+            self.store.save(key,3,result,**fields)
+        save()
+        for i,(object_key,raw) in enumerate(objects):
+            if i<len(progress['verified']):continue
+            if self.storage is None:raise Failure('STORAGE_CONFIG')
+            try:verified=self.storage.ensure_object(object_key,raw)
+            except StorageTransient as exc:raise Failure('STORAGE_TRANSIENT',exc.retry_after) from None
+            except StorageConflict:raise Failure('STORAGE_CONFLICT') from None
+            except StoragePermanent:raise Failure('STORAGE_PERMANENT') from None
+            if verified!=binding[i]:raise Failure('STORAGE_INTEGRITY')
+            progress['verified'].append(verified);save()
+        return objects
+
     def save_primary(self,key,result,event,publication):
         try:primary_url(publication)
         except ValueError:raise Failure('INVALID_PRIMARY_REFERENCE')from None
@@ -140,7 +177,9 @@ class Engine:
         progress=result.setdefault('artifact_publication',{})
         def save():self.store.save(key,3,result,intent=intent)
         save()
-        publish_parts(self.github,number,result.get('evidence',{}).get('bundle'),progress,save)
+        if result.get('publication_backend','legacy')=='legacy':
+            publish_parts(self.github,number,result.get('evidence',{}).get('bundle'),progress,save)
+        else:self.upload_evidence(key,result,intent=intent)
         self.store.save(key,4,result,state='complete',issue=number,intent=None)
 
 

@@ -24,6 +24,8 @@ LLM_TRANSIENT = {'LLM_'+code for code in (
     'UPSTREAM_TIMEOUT','UPSTREAM_NETWORK_ERROR','REQUEST_BUDGET_EXCEEDED',
     'MODEL_STAGE_BUDGET_EXCEEDED','INVALID_MODEL_SCHEMA','INVALID_UPSTREAM_JSON')}
 
+PATIENT_TRANSIENT = LLM_TRANSIENT | {'STORAGE_TRANSIENT'}
+
 SECRET_KEY = re.compile(r'authorization|cookie|password|passwd|secret|api[_-]?key|access[_-]?token|refresh[_-]?token|x[_-]?token|private[_-]?key', re.I)
 SECRET_VALUE = re.compile(r'(?i)(?:bearer\s+\S+|(?:gh[pousr]_|github_pat_)[A-Za-z0-9_]+|sk-[A-Za-z0-9_-]{12,}|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|-----BEGIN[^\n]*PRIVATE KEY-----[\s\S]*?-----END[^\n]*PRIVATE KEY-----)')
 ASSIGNMENT = re.compile(r'(?i)((?:password|passwd|secret|token|api[_-]?key|cookie|authorization)\s*[=:]\s*)[^\s,;&]+')
@@ -216,12 +218,12 @@ class Store:
             # Total claims remain diagnostic. Busy LLM deferrals must not spend
             # the independent recovery allowance of later stages/publication.
             count=job['attempts']
-            if code not in LLM_TRANSIENT:
+            if code not in PATIENT_TRANSIENT:
                 c.execute("INSERT INTO job_failure_budget VALUES(?,1) ON CONFLICT(job_id) DO UPDATE SET failures=failures+1",(key,))
                 count=c.execute('SELECT failures FROM job_failure_budget WHERE job_id=?',(key,)).fetchone()[0]
-            dead=(count>=8 and code not in LLM_TRANSIENT) or code=='WRITE_NEEDS_REVIEW'
+            dead=(count>=8 and code not in PATIENT_TRANSIENT) or code=='WRITE_NEEDS_REVIEW'
             delay=min(3600,30*2**min(count,7)*random.uniform(.8,1.2))
-            if code in LLM_TRANSIENT and retry_after is not None:delay=max(delay,Failure(code,retry_after).retry_after or 0)
+            if code in PATIENT_TRANSIENT and retry_after is not None:delay=max(delay,Failure(code,retry_after).retry_after or 0)
             c.execute('UPDATE jobs SET state=?,lease=0,available=?,updated=?,error=? WHERE id=?',
                       ('dead' if dead else 'retry',now+delay,now,code,key))
     def episode_issue(self,episode):
