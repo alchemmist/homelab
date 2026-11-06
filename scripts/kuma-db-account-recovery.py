@@ -6,7 +6,7 @@ USER='homelab_kuma_app';SCHEMA='uptime_kuma';STATE=Path('/var/lib/homelab-kuma-a
 def need(ok,message):
     if not ok:raise RuntimeError(message)
 def k(*args,input=None):return subprocess.check_output(['kubectl','-n','uptime-kuma',*args],input=input,text=True,stderr=subprocess.DEVNULL)
-def sql(statement):return k('exec','-i','deploy/uptime-kuma-db','--','sh','-c','MYSQL_PWD="$MARIADB_ROOT_PASSWORD" mariadb -h 127.0.0.1 -u root -N',input=statement+'\n').strip()
+def sql(statement):return k('exec','-i','deploy/uptime-kuma-db','--','sh','-c','MYSQL_PWD="$MARIADB_ROOT_PASSWORD" mariadb -h 127.0.0.1 -u root -N --raw',input=statement+'\n').strip()
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--apply',action='store_true');p.add_argument('--approve-plan-hash');a=p.parse_args();os.umask(0o077)
     need(not STATE.is_symlink(),'Unsafe state path');STATE.mkdir(mode=0o700,exist_ok=True);need(STATE.stat().st_uid==0 and not STATE.stat().st_mode&0o077,'Unsafe state ownership')
@@ -18,7 +18,7 @@ def main():
         secret=json.loads(k('get','secret','uptime-kuma-db','-o','json'));need(set(secret['data'])=={'password','root-password'},'Unknown secret shape')
         db=json.loads(k('get','pods','-l','app=uptime-kuma-db','-o','json'))['items'];need(len(db)==1 and all(x['ready'] for x in db[0]['status']['containerStatuses']),'DB must remain healthy')
         original=sql("SHOW GRANTS FOR 'uptime_kuma'@'%';")
-        rows=original.splitlines();need(len(rows)==2 and any('GRANT USAGE ON *.*' in x for x in rows) and any('GRANT ALL PRIVILEGES ON `uptime_kuma`.*' in x for x in rows) and 'WITH GRANT OPTION' not in original,'Unreviewed original schema privileges')
+        rows=original.splitlines();need(len(rows)==2 and any('GRANT USAGE ON *.*' in x for x in rows) and any(x == 'GRANT ALL PRIVILEGES ON `uptime\\_kuma`.* TO `uptime_kuma`@`%`' for x in rows) and 'WITH GRANT OPTION' not in original,'Unreviewed original schema privileges')
         exists=sql("SELECT COUNT(*) FROM mysql.user WHERE User='"+USER+"';")=='1'
         root_password=k('exec','deploy/uptime-kuma-db','--','sh','-c','printf %s "$MARIADB_ROOT_PASSWORD"')
         desired={'password':base64.b64encode(password.encode()).decode(),'root-password':base64.b64encode(root_password.encode()).decode()}
@@ -29,7 +29,8 @@ def main():
         digest=hashlib.sha256(json.dumps(context,sort_keys=True).encode()).hexdigest()
         if a.apply:
             need(a.approve_plan_hash==digest,'Fresh hash approval required');(STATE/'before-secret.json').write_text(json.dumps(secret));(STATE/'before-grants.private').write_text(original);(STATE/'uncertain.json').write_text(json.dumps(context))
-            sql("CREATE USER '"+USER+"'@'%' IDENTIFIED BY '"+password+"'; GRANT ALL PRIVILEGES ON `"+SCHEMA+"`.* TO '"+USER+"'@'%';")
+            schema_grant=next(x for x in rows if x.startswith("GRANT ALL PRIVILEGES ON "));schema_grant=schema_grant.replace(" TO `uptime_kuma`@`%`", " TO `"+USER+"`@`%`")
+            sql("CREATE USER '"+USER+"'@'%' IDENTIFIED BY '"+password+"'; "+schema_grant+";")
             patch=[{'op':'test','path':'/metadata/uid','value':context['secret_uid']},{'op':'test','path':'/metadata/resourceVersion','value':context['secret_rv']},{'op':'replace','path':'/data','value':desired}]
             k('patch','secret','uptime-kuma-db','--type=json','--patch-file=/dev/stdin',input=json.dumps(patch))
             # Validate the NEW account independently without exposing its password in argv.

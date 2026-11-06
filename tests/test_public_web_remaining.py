@@ -51,3 +51,15 @@ def test_kuma_no_gitops_random_secret_by_default():
  assert not any(x['kind']=='Secret' for x in docs)
  assert next(x for x in docs if x['kind']=='Ingress')['spec']['rules'][0]['http']['paths'][0]['backend']['service']['name']=='public-web-kuma-proxy'
  assert len([x for x in docs if x['kind']=='Deployment'])==2
+
+
+def test_schema_recovery_never_resets_existing_passwords_or_restarts_database():
+    text=(ROOT/'scripts/kuma-db-account-recovery.py').read_text()
+    assert 'CREATE USER' in text and 'ALTER USER' not in text and 'DROP USER' not in text
+    assert 'rollout restart' not in text and "secret['metadata']['resourceVersion']" in text
+    assert 'schema_grant.replace' in text and "--patch-file=/dev/stdin" in text
+    assert 'Foreign/partial service account; stop' in text and 'uncertain.json' in text
+
+def test_fresh_bootstrap_rejects_mismatched_application_identity():
+    r=subprocess.run(['helm','template','uptime-kuma',str(ROOT/'charts/uptime-kuma'),'--set','database.bootstrapSecret=true'],text=True,capture_output=True)
+    assert r.returncode!=0 and 'Fresh DB bootstrap requires' in r.stderr
