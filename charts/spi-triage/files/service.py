@@ -51,7 +51,7 @@ class Engine:
             REQUEST_DEADLINE.at=time.monotonic()+780
             try:return self._run(name,key)
             except Failure as e:
-                self.store.fail(key,e.code,retry_after=e.retry_after)
+                self.store.fail(key,e.code,retry_after=e.retry_after,rate_metadata=e.rate_metadata)
                 log_event('stage_deferred' if e.code in PATIENT_TRANSIENT else 'stage_failed', 'warning' if e.code in PATIENT_TRANSIENT else 'error', stage=name, code=e.code)
                 raise
             except Exception:
@@ -224,7 +224,7 @@ def serve():
     log_event('worker_started', recovered_jobs=recovered)
     delivery=Delivery(store,os.environ.get('BOT_INTERNAL_TOKEN',''),enabled=os.environ.get('SPI_TELEGRAM_LINKS_ENABLED','false')=='true')
     engine=Engine(store,GitHub(http,os.environ.get('GITHUB_TOKEN_FILE','/github/token')),
-                  Model(http,os.environ['LITELLM_KEY']),Evidence(http,os.environ['GRAFANA_TOKEN'],os.environ['GRAFANA_URL'],github=GitHub(http,os.environ.get('GITHUB_TOKEN_FILE','/github/token'))),
+                  Model(http,os.environ['LITELLM_KEY'],store=store),Evidence(http,os.environ['GRAFANA_TOKEN'],os.environ['GRAFANA_URL'],github=GitHub(http,os.environ.get('GITHUB_TOKEN_FILE','/github/token'))),
                   write=os.environ.get('WRITE_ENABLED')=='true',delivery=delivery,
                   storage=storage,storage_backend=storage_backend)
     delivery.github=engine.github

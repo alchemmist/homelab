@@ -12,8 +12,9 @@ from datetime import datetime, timezone
 
 class Failure(Exception):
     """Only fixed, non-sensitive codes may cross the worker API boundary."""
-    def __init__(self, code, retry_after=None):
+    def __init__(self, code, retry_after=None, rate_metadata=None):
         self.retry_after = min(86400,max(0,float(retry_after))) if type(retry_after) in (int,float) and math.isfinite(retry_after) else None
+        self.rate_metadata={k:v for k,v in (rate_metadata or {}).items() if k in {'tokens_remaining','tokens_reset','requests_remaining','requests_reset','retry_after'} and type(v) in (int,float) and math.isfinite(v) and 0<=v<=1e12}
         self.code = code
         super().__init__(code)
 
@@ -22,7 +23,7 @@ class Failure(Exception):
 LLM_TRANSIENT = {'LLM_'+code for code in (
     'HTTP_408','HTTP_425','HTTP_429','HTTP_500','HTTP_502','HTTP_503','HTTP_504',
     'UPSTREAM_TIMEOUT','UPSTREAM_NETWORK_ERROR','REQUEST_BUDGET_EXCEEDED',
-    'MODEL_STAGE_BUDGET_EXCEEDED','INVALID_MODEL_SCHEMA','INVALID_UPSTREAM_JSON')}
+    'MODEL_STAGE_BUDGET_EXCEEDED','ADMISSION_DEFERRED')}
 
 PATIENT_TRANSIENT = LLM_TRANSIENT | {'STORAGE_TRANSIENT'}
 
@@ -154,6 +155,8 @@ class Store:
               lease REAL NOT NULL DEFAULT 0, attempts INTEGER NOT NULL DEFAULT 0,
               deliveries INTEGER NOT NULL DEFAULT 1, result TEXT NOT NULL DEFAULT '{}',
               issue INTEGER NOT NULL DEFAULT 0, intent TEXT, error TEXT);
+            CREATE TABLE IF NOT EXISTS llm_rate_metadata (job_id TEXT PRIMARY KEY, metadata TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS llm_admission (id INTEGER PRIMARY KEY, tokens INTEGER NOT NULL, expires REAL NOT NULL, active INTEGER NOT NULL);
             CREATE TABLE IF NOT EXISTS dispatch (singleton INTEGER PRIMARY KEY CHECK(singleton=1), token TEXT NOT NULL, deadline REAL NOT NULL, attempts INTEGER NOT NULL);
             CREATE TABLE IF NOT EXISTS job_failure_budget (
               job_id TEXT PRIMARY KEY REFERENCES jobs(id) ON DELETE CASCADE,
@@ -171,6 +174,28 @@ class Store:
         except BaseException:
             c.rollback(); raise
         finally: c.close()
+    def reserve_llm(self, tokens, timeout=600, now=None):
+        """One SPI-key ledger on the shared PVC. No credentials or payloads."""
+        if type(tokens) is not int or not 0 < tokens <= 30000:
+            raise Failure('LLM_REQUEST_TOO_LARGE')
+        now=time.time() if now is None else now
+        with self.db() as c:
+            c.execute('DELETE FROM llm_admission WHERE expires<=?',(now,))
+            rows=c.execute('SELECT * FROM llm_admission ORDER BY expires').fetchall()
+            if any(r['active'] for r in rows) or len(rows)>=3 or sum(r['tokens'] for r in rows)+tokens>30000:
+                # Earliest ledger change; retrying re-evaluates every constraint.
+                raise Failure('LLM_ADMISSION_DEFERRED',retry_after=max(1,min(r['expires'] for r in rows)-now))
+            return c.execute('INSERT INTO llm_admission(tokens,expires,active) VALUES(?,?,1)',
+                             (tokens,now+timeout+61)).lastrowid
+
+    def finish_llm(self, reservation, actual=None, now=None):
+        now=time.time() if now is None else now
+        with self.db() as c:
+            # Never refund an estimate: proxy reservation semantics may differ.
+            if type(actual) is int and actual>=0:
+                c.execute('UPDATE llm_admission SET tokens=max(tokens,?) WHERE id=?',(actual,reservation))
+            c.execute('UPDATE llm_admission SET active=0,expires=? WHERE id=?',(now+61,reservation))
+
     def recover_on_start(self):
         # Called only by the sole Recreate worker, never by ordinary connections.
         # The previous process cannot still publish once its replacement starts.
@@ -212,11 +237,14 @@ class Store:
             c.execute('UPDATE jobs SET stage=?,result=?,updated=?,lease=?'+''.join(','+k+'=?' for k in fields)+' WHERE id=?',
                       [stage,json.dumps(result),now,0 if fields.get('state') in ('complete','dry_run','dead') else now+1500,*fields.values(),key])
             if on_save is not None:on_save(c)
-    def fail(self,key,code,retry_after=None):
+    def fail(self,key,code,retry_after=None,rate_metadata=None):
         job=self.get(key);now=time.time()
         with self.db() as c:
             # Total claims remain diagnostic. Busy LLM deferrals must not spend
             # the independent recovery allowance of later stages/publication.
+            if rate_metadata:
+                safe=Failure(code,rate_metadata=rate_metadata).rate_metadata
+                c.execute('INSERT OR REPLACE INTO llm_rate_metadata VALUES(?,?)',(key,json.dumps(safe)))
             count=job['attempts']
             if code not in PATIENT_TRANSIENT:
                 c.execute("INSERT INTO job_failure_budget VALUES(?,1) ON CONFLICT(job_id) DO UPDATE SET failures=failures+1",(key,))
@@ -224,6 +252,8 @@ class Store:
             dead=(count>=8 and code not in PATIENT_TRANSIENT) or code=='WRITE_NEEDS_REVIEW'
             delay=min(3600,30*2**min(count,7)*random.uniform(.8,1.2))
             if code in PATIENT_TRANSIENT and retry_after is not None:delay=max(delay,Failure(code,retry_after).retry_after or 0)
+            if code=='LLM_ADMISSION_DEFERRED' or (code=='LLM_HTTP_429' and retry_after is not None):
+                delay=(Failure(code,retry_after).retry_after or 61)+random.uniform(1,3)
             c.execute('UPDATE jobs SET state=?,lease=0,available=?,updated=?,error=? WHERE id=?',
                       ('dead' if dead else 'retry',now+delay,now,code,key))
     def episode_issue(self,episode):

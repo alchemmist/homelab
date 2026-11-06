@@ -72,8 +72,22 @@ class HTTP:
                     try:hint=float(value)
                     except ValueError:hint=max(0,parsedate_to_datetime(value).timestamp()-time.time())
             except (ValueError,TypeError,AttributeError,OverflowError):pass
+            metadata={}
+            for category in ('tokens','requests'):
+                for field in ('remaining','reset'):
+                    raw=e.headers.get('x-ratelimit-'+field+'-'+category) if e.headers else None
+                    if raw is None:continue
+                    try:
+                        number=float(raw)
+                        if math.isfinite(number) and 0<=number<=1e12:
+                            metadata[category+'_'+field]=number
+                            if field=='reset':
+                                delay=number-time.time() if number>1e9 else number
+                                if delay>=0:hint=max(hint or 0,min(86400,delay))
+                    except (ValueError,TypeError):pass
+            if hint is not None and math.isfinite(hint):metadata['retry_after']=max(0,min(86400,hint))
             e.close()
-            raise Failure('HTTP_'+str(e.code),retry_after=hint) from None
+            raise Failure('HTTP_'+str(e.code),retry_after=hint,rate_metadata=metadata) from None
         except urllib.error.URLError as e:
             raise Failure('UPSTREAM_TIMEOUT' if isinstance(e.reason,TimeoutError) else 'UPSTREAM_NETWORK_ERROR') from None
         except TimeoutError: raise Failure('UPSTREAM_TIMEOUT') from None
@@ -148,27 +162,51 @@ class GitHub:
         return next((x['number'] for x in self.issues('all') if trusted_comment(x) and marker in (x.get('body') or '')),0)
 
 class Model:
-    def __init__(self,http,key,base='http://litellm.llm.svc.cluster.local:4000/v1',min_interval=21):
+    def __init__(self,http,key,base='http://litellm.llm.svc.cluster.local:4000/v1',min_interval=21,store=None):
         self.http=http;self.key=key;self.base=base;self.min_interval=min_interval;self.last_request=0
+        # Production explicitly passes the worker Store. Standalone instances share
+        # the same configured PVC database, not an instance-local rate limiter.
+        self.store=store
+
+    def payload(self,task,data,schema):
+        return {'model':'qwen3.8-27b','messages':[{'role':'system','content':SYSTEM},
+                {'role':'user','content':task+'\nUNTRUSTED EVIDENCE JSON:\n'+json.dumps(clean(data),ensure_ascii=True)}],
+                'temperature':0.1,'max_tokens':768 if schema is MATCH_SCHEMA else 2500,
+                'chat_template_kwargs':{'enable_thinking':False},
+                'response_format':{'type':'json_schema','json_schema':{'name':'spi_result','strict':True,'schema':schema}}}
+
+    @staticmethod
+    def reservation(body):
+        # Byte-level BPE fallback: at most one token per serialized UTF-8 byte,
+        # plus 2048 for chat-template/special-token framing. Count the ENTIRE
+        # wire JSON (including escaped nested JSON and schema), not chars/4.
+        # No tokenizer/model vocabulary is installed or fetched at runtime.
+        return len(json.dumps(body).encode('utf-8'))+2048+body['max_tokens']
+
     def call(self,task,data,schema,deadline):
         last='INVALID_MODEL_SCHEMA'
+        body=self.payload(task,data,schema)
+        tokens=self.reservation(body)
+        if tokens>30000:raise Failure('LLM_REQUEST_TOO_LARGE')
         for attempt in range(2):
-            pause=max(0,self.min_interval-(time.monotonic()-self.last_request))
-            if time.monotonic()+pause+10>deadline:raise Failure('LLM_MODEL_STAGE_BUDGET_EXCEEDED')
-            if pause:time.sleep(pause)
-            self.last_request=time.monotonic()
             remaining=deadline-time.monotonic()
             if remaining<10: raise Failure('LLM_MODEL_STAGE_BUDGET_EXCEEDED')
+            timeout=min(600,remaining)
+            if self.store is None:
+                from core import Store
+                self.store=Store(os.environ.get('SPI_DATABASE','/data/spi.sqlite'))
+            reservation=self.store.reserve_llm(tokens,timeout=timeout)
+            response={}
             try:
                 response=self.http.request('POST',self.base+'/chat/completions',{'Authorization':'Bearer '+self.key},
-                    {'model':'qwen3.8-27b','messages':[{'role':'system','content':SYSTEM},
-                      {'role':'user','content':task+'\nUNTRUSTED EVIDENCE JSON:\n'+json.dumps(clean(data),ensure_ascii=True)}],
-                     'temperature':0.1,'max_tokens':2500,'chat_template_kwargs':{'enable_thinking':False},
-                     'response_format':{'type':'json_schema','json_schema':{'name':'spi_result','strict':True,'schema':schema}}},
-                     timeout=min(600,remaining),limit=250_000)
+                                           body,timeout=timeout,limit=250_000)
             except Failure as e:
-                raise Failure('LLM_'+e.code,retry_after=e.retry_after) from None
+                raise Failure('LLM_'+e.code,retry_after=e.retry_after,rate_metadata=e.rate_metadata) from None
+            finally:
+                usage=response.get('usage',{}) if isinstance(response,dict) else {}
+                self.store.finish_llm(reservation,actual=usage.get('total_tokens'))
             try:
+                if response['choices'][0].get('finish_reason')=='length':raise Failure('MODEL_OUTPUT_TRUNCATED')
                 value=json.loads(response['choices'][0]['message']['content']);validate(value,schema)
                 if clean(value)!=value: raise Failure('UNSAFE_MODEL_OUTPUT')
                 context=data.get('evidence',{}).get('artifact_context') if isinstance(data,dict) else None
@@ -180,34 +218,93 @@ class Model:
                 return value
             except (KeyError,IndexError,TypeError,ValueError,Failure) as exc:
                 last=exc.code if isinstance(exc,Failure) else 'INVALID_MODEL_SCHEMA'
+                # Invalid references/JSON are finite failures, not an admission
+                # retry that could indefinitely mask a broken output contract.
+                raise Failure('LLM_'+last) from None
         raise Failure('LLM_'+last)
     def match(self,event,issues,progress=None,on_progress=None):
         deadline=time.monotonic()+780
         # Every issue is examined. Batches avoid a single unbounded prompt.
         if len(issues)>120: raise Failure('OPEN_SPI_REVIEW_BUDGET_EXCEEDED')
+        task='Choose the same underlying problem from these OPEN SPI issues, or issue_number=0. Explain ambiguity in at most 120 words. Return compact strict JSON.'
         signature=digest(issues)
-        decisions=list(progress.get('decisions',[]))if isinstance(progress,dict) and progress.get('signature')==signature else []
-        if len(decisions)>(max(1,len(issues))+11)//12:raise Failure('INVALID_MATCH_PROGRESS')
-        candidates=[]
-        for index,result in enumerate(decisions):
-            validate(result,MATCH_SCHEMA)
-            batch=issues[index*12:(index+1)*12]
-            if result['issue_number']not in {0,*[x['number']for x in batch]}:raise Failure('INVALID_MATCH_PROGRESS')
+        def excerpt(issue):
+            value=dict(issue)
+            for field in ('body','title'):
+                if isinstance(value.get(field),str) and len(value[field].encode('utf-8'))>1600:
+                    value[field]=value[field].encode('utf-8')[:1600].decode('utf-8','ignore')
+                    value[field+'_match_excerpt_truncated']=True
+            if 'recent_comments' in value:
+                value['recent_comments']=[c.encode('utf-8')[:400].decode('utf-8','ignore') for c in value['recent_comments']]
+                value['match_comment_excerpt_limit_bytes']=400
+            value['match_context_limitation']='Bounded matching excerpts only; full source evidence remains in GitHub. Do not infer absent content.'
+            return value
+        # A fixed byte-bounded excerpt policy prevents one normal long issue
+        # from blocking review. Original snapshot content binds every review.
+        bounded={x['number']:excerpt(x) for x in issues}
+        old=progress if isinstance(progress,dict) and progress.get('signature')==signature else {}
+        reviews=[]
+        if old.get('version')==2:
+            reviews=list(old.get('reviews',[]))
+        elif old.get('decisions'):
+            # Old decisions really refer to fixed twelve-item partitions. Retain
+            # those exact identities; never reinterpret their index adaptively.
+            for i,result in enumerate(old['decisions']):
+                batch=issues[i*12:(i+1)*12]
+                if not batch and issues:raise Failure('INVALID_MATCH_PROGRESS')
+                reviews.append({'ids':[x['number'] for x in batch],'content':digest(batch),'decision':result})
+        by_number={x['number']:x for x in issues}
+        reviewed=set();candidates=[]
+        for review in reviews:
+            try:batch=[by_number[n] for n in review['ids']]
+            except (KeyError,TypeError):raise Failure('INVALID_MATCH_PROGRESS') from None
+            if review['content']!=digest(batch) or reviewed.intersection(review['ids']):raise Failure('INVALID_MATCH_PROGRESS')
+            result=review['decision'];validate(result,MATCH_SCHEMA)
+            if result['issue_number']not in {0,*review['ids']}:raise Failure('INVALID_MATCH_PROGRESS')
+            reviewed.update(review['ids'])
             candidates.extend(x for x in batch if x['number']==result['issue_number'])
-        for i in range(len(decisions)*12,max(1,len(issues)),12):
-            batch=issues[i:i+12]
-            result=self.call('Choose the same underlying problem from these OPEN SPI issues, or issue_number=0. Explain ambiguity.',
-                             {'alert':event,'open_issues':batch},MATCH_SCHEMA,deadline)
+        def checkpoint():
+            if on_progress:on_progress({'version':2,'signature':signature,'snapshot':issues,'reviews':list(reviews)})
+        pending=[x for x in issues if x['number'] not in reviewed]
+        while pending or (not issues and not reviews):
+            batch=[]
+            for issue in pending[:12]:
+                proposed=batch+[issue]
+                if self.reservation(self.payload(task,{'alert':event,'open_issues':[bounded[x['number']] for x in proposed]},MATCH_SCHEMA))>30000:break
+                batch=proposed
+            if pending and not batch:
+                checkpoint()
+                raise Failure('LLM_SINGLE_CANDIDATE_TOO_LARGE')
+            checkpoint()
+            result=self.call(task,{'alert':event,'open_issues':[bounded[x['number']] for x in batch]},MATCH_SCHEMA,deadline)
             if result['issue_number'] not in {0,*[x['number'] for x in batch]}: raise Failure('INVALID_MATCH_TARGET')
-            decisions.append(result)
-            if on_progress:on_progress({'signature':signature,'decisions':list(decisions)})
+            reviews.append({'ids':[x['number'] for x in batch],'content':digest(batch),'decision':result})
+            checkpoint()
             candidates.extend(x for x in batch if x['number']==result['issue_number'])
-        if len(candidates)>1:
-            result=self.call('Select the best matching OPEN issue, or 0. Different symptoms may share a cause; identical alert names may differ.',
-                             {'alert':event,'open_issues':candidates},MATCH_SCHEMA,deadline)
-            if result['issue_number'] not in {0,*[x['number'] for x in candidates]}: raise Failure('INVALID_MATCH_TARGET')
-            decisions.append(result)
-        else: result=decisions[-1]
+            pending=pending[len(batch):]
+        # Pairwise bounded reduction reviews every batch nominee. Persist each
+        # comparison, so a rate deferral never repeats completed final work.
+        selection=old.get('selection') if old.get('version')==2 else None
+        if selection:
+            remaining_numbers=selection.get('remaining',[])
+            if len(set(remaining_numbers))!=len(remaining_numbers) or not set(remaining_numbers)<={x['number'] for x in candidates}:
+                raise Failure('INVALID_MATCH_PROGRESS')
+            finalists=[by_number[n] for n in remaining_numbers]
+            result=selection['decision'];validate(result,MATCH_SCHEMA)
+        else:
+            finalists=list(candidates)
+            result=next((r['decision'] for r in reviews if r['decision']['issue_number']),reviews[-1]['decision'])
+        while len(finalists)>1:
+            pair=finalists[:2]
+            result=self.call(task,{'alert':event,'open_issues':[bounded[x['number']] for x in pair]},MATCH_SCHEMA,deadline)
+            if result['issue_number'] not in {0,*[x['number'] for x in pair]}: raise Failure('INVALID_MATCH_TARGET')
+            finalists=([by_number[result['issue_number']]] if result['issue_number'] else [])+finalists[2:]
+            if on_progress:on_progress({'version':2,'signature':signature,'snapshot':issues,'reviews':list(reviews),
+                                        'selection':{'remaining':[x['number'] for x in finalists],'decision':result}})
+        if finalists and result['issue_number']!=finalists[0]['number']:
+            # A previous pair rejected both; the remaining nominee is not an
+            # arbitrary shortcut: its own completed batch review selected it.
+            result=next(r['decision'] for r in reviews if r['decision']['issue_number']==finalists[0]['number'])
         return {'decision':result,'candidates':candidates,'reviewed_numbers':[x['number']for x in issues]}
     def analyze(self,event,match,evidence):
         evidence=dict(evidence)

@@ -89,9 +89,9 @@ class AdapterTests(unittest.TestCase):
         with self.assertRaisesRegex(Failure,'INVALID_MATCH_TARGET'):model.match(event(),[{'number':1}])
     def test_schema_retry_is_bounded(self):
         http=Mock();http.request.return_value={'choices':[{'message':{'content':'not json'}}]}
-        model=Model(http,'fake',min_interval=0)
+        model=Model(http,'fake',min_interval=0,store=Mock())
         with self.assertRaises(Failure):model.match(event(),[])
-        self.assertEqual(http.request.call_count,2)
+        self.assertEqual(http.request.call_count,1)
 
 class EvidenceTests(unittest.TestCase):
     def test_metric_summary_preserves_transient_peak_and_empty_data(self):

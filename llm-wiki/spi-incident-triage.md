@@ -546,3 +546,12 @@ evidence, not a new session test. Human logout/outsider-session tests were NOT
 performed here. Console GetOnly is not upload/admin access. Standalone Retain is
 not HA or an independent backup. No network/IAM/DNS/shared-edge/PVC/workflow,
 calendar/blog, Telegram test, model invocation or other comment change occurred.
+
+## Source-only SPI token admission — 6 November 2026
+
+See [bounded accounting, checkpoint migration and rollout gates](../docs/n8n/spi/token-admission.md).
+The implementation replaces instance-local RPM sleeps with shared durable
+3 RPM / 30000 TPM / parallel1 reservations, whole-wire byte-bound fallback,
+adaptive <=12 batches, labeled matching excerpts and restart-safe reviews/final
+comparisons. This is not deployed acceptance or a global client audit. Local
+synthetic payload counts are not measurements of current GitHub candidates.

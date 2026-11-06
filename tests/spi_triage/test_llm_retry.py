@@ -41,7 +41,7 @@ class ModelRetryTests(unittest.TestCase):
     def test_transport_classification_and_hint_preserved(self):
         for code in ['HTTP_429','HTTP_503','HTTP_504','UPSTREAM_TIMEOUT','UPSTREAM_NETWORK_ERROR']:
             http=Mock();http.request.side_effect=Failure(code,retry_after=91)
-            with self.assertRaises(Failure)as caught:Model(http,'fake',min_interval=0).call('test',{},MATCH_SCHEMA,time.monotonic()+30)
+            with self.assertRaises(Failure)as caught:Model(http,'fake',min_interval=0,store=Mock()).call('test',{},MATCH_SCHEMA,time.monotonic()+30)
             self.assertIn(caught.exception.code,LLM_TRANSIENT);self.assertEqual(caught.exception.retry_after,91)
             self.assertEqual(http.request.call_count,1) # durable queue retry, no busy loop
     def test_retry_after_seconds_and_date(self):
@@ -55,7 +55,7 @@ class ModelRetryTests(unittest.TestCase):
         good={'issue_number':0,'reason':'Different','confidence':'low'};issues=[{'number':i}for i in range(25)]
         m=Model(Mock(),'fake');m.call=Mock(side_effect=[good,Failure('LLM_HTTP_503')]);saved=[]
         with self.assertRaises(Failure):m.match(f.event(),issues,on_progress=lambda p:saved.append(json.loads(json.dumps(p))))
-        self.assertEqual(len(saved[-1]['decisions']),1)
+        self.assertEqual(len(saved[-1]['reviews']),1)
         m.call=Mock(return_value=good);r=m.match(f.event(),issues,progress=saved[-1]);self.assertEqual(m.call.call_count,2);self.assertEqual(r['reviewed_numbers'],list(range(25)))
         m.call.reset_mock();m.match(f.event(),issues+[{'number':25}],progress=saved[-1]);self.assertEqual(m.call.call_count,3)
 
