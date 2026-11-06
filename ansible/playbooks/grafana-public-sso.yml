@@ -1,0 +1,18 @@
+---
+- name: Audit or explicitly activate native Grafana SSO without syncing the monitoring stack
+  hosts: socrat-0
+  gather_facts: false
+  become: true
+  tasks:
+    - ansible.builtin.copy:
+        src: ../../scripts/grafana-public-sso.py
+        dest: /usr/local/sbin/homelab-grafana-public-sso
+        mode: '0700'
+    - ansible.builtin.command:
+        argv: "{{ ['/usr/local/sbin/homelab-grafana-public-sso'] + (['--apply', '--approve-plan-hash', grafana_sso_plan_hash | default('')] if grafana_sso_apply | default(false) | bool else []) }}"
+      register: sso
+      changed_when: (sso.stdout | from_json).applied
+      when: not ansible_check_mode
+    - ansible.builtin.debug:
+        var: sso.stdout
+      when: not ansible_check_mode

@@ -164,7 +164,8 @@ class IdentityTests(unittest.TestCase):
     def test_grafana_keeps_local_login_and_uses_secret_reference(self):
         v=yaml.safe_load((ROOT/'deploy/identity/grafana-oidc-values.yaml').read_text())['grafana']
         self.assertNotIn('GF_AUTH_DISABLE_LOGIN_FORM',v['env'])
-        self.assertEqual(v['env']['GF_AUTH_GENERIC_OAUTH_AUTO_LOGIN'],'false')
+        self.assertEqual(v['env']['GF_AUTH_GENERIC_OAUTH_AUTO_LOGIN'],'true')
+        self.assertEqual(v['env']['GF_AUTH_ANONYMOUS_ENABLED'],'false')
         self.assertNotIn('GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET',v['env'])
         self.assertEqual(v['envValueFrom']['GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET']['secretKeyRef']['name'],'socrat-authentik-grafana')
 

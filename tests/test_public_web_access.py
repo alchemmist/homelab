@@ -79,13 +79,13 @@ def test_chart_rejects_mislabeled_authorization(index,key,value,tmp_path):
 def test_rancher_public_proxy_denies_local_password_without_changing_private_backend():
  import yaml,subprocess
  docs=[x for x in yaml.safe_load_all(subprocess.check_output(['helm','template','test',str(ROOT/'charts/public-web-entry')],text=True)) if x]
- config=next(x['data']['nginx.conf'] for x in docs if x['kind']=='ConfigMap')
+ config=next(x['data']['nginx.conf'] for x in docs if x['kind']=='ConfigMap' and x['metadata']['name']=='public-web-rancher-policy')
  assert '~^(POST|PUT|PATCH|DELETE):/v3-public/localProviders(?:/|$) 1;' in config
  assert 'if ($deny_local_password) { return 403; }' in config
  assert 'http://rancher.cattle-system.svc.cluster.local:80' in config
  assert 'proxy_set_header Upgrade $http_upgrade' in config
  assert 'proxy_set_header X-HTTP-Method-Override ""' in config
- d=next(x for x in docs if x['kind']=='Deployment')
+ d=next(x for x in docs if x['kind']=='Deployment' and x['metadata']['name']=='public-web-rancher-proxy')
  pod=d['spec']['template']['spec'];c=pod['containers'][0]
  assert pod['automountServiceAccountToken'] is False and pod['securityContext']['runAsNonRoot']
  assert c['securityContext']['readOnlyRootFilesystem'] and c['securityContext']['capabilities']['drop']==['ALL']
