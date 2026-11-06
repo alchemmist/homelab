@@ -26,6 +26,10 @@ def env_plan(d):
     require(lookup['GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_STRICT']['value'] == 'true','Precondition failed; stop and inspect privately')
     require(lookup['GF_AUTH_OAUTH_ALLOW_INSECURE_EMAIL_LOOKUP']['value'] == 'false','Precondition failed; stop and inspect privately')
     require(lookup.get('GF_AUTH_PROXY_ENABLED', {}).get('value', 'false') == 'false','Precondition failed; stop and inspect privately')
+    legacy_groups='homelab-owner homelab-observer homelab-platform-operator homelab-project-maintainer'
+    legacy_role="contains(groups[*], 'homelab-owner') && 'GrafanaAdmin' || 'Viewer'"
+    require(lookup['GF_AUTH_GENERIC_OAUTH_ALLOWED_GROUPS']['value'] in (legacy_groups,DESIRED['GF_AUTH_GENERIC_OAUTH_ALLOWED_GROUPS']),'Unreviewed native admission; stop')
+    require(lookup['GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH']['value'] in (legacy_role,DESIRED['GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH']),'Unreviewed native role mapping; stop')
     updates=[k for k,v in DESIRED.items() if lookup.get(k,{}).get('value')!=v]
     result=[e for e in env if e['name'] not in DESIRED]+[{'name':k,'value':v} for k,v in DESIRED.items()]
     return index,updates,result

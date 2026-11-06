@@ -47,7 +47,7 @@ spec:
           resources:
             requests: {cpu: 10m, memory: 16Mi}
             limits: {cpu: 500m, memory: 64Mi}
-          readinessProbe: {tcpSocket: {port: http}, periodSeconds: 5}
+          readinessProbe: {httpGet: {path: /api/health, port: http}, periodSeconds: 5}
           livenessProbe: {tcpSocket: {port: http}, periodSeconds: 15}
           volumeMounts:
             - {name: config, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf, readOnly: true}

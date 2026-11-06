@@ -5,6 +5,7 @@
   become: true
   vars:
     maintenance_helpers:
+      kuma-credential-ownership: kuma-credential-ownership
       role-groups: public-web-role-groups
       retire-grafana-gate: retire-grafana-proxy-gate
       grafana-empty-admission: grafana-app-admission

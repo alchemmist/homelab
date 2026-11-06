@@ -1,6 +1,8 @@
 image: louislam/uptime-kuma:2.5.7
 replicaCount: 1
 database:
+  # Provision once outside GitOps; never regenerate live DB credentials on sync.
+  bootstrapSecret: false
   enabled: true
   image: mariadb:11.4
   nodeName: socrat-0
