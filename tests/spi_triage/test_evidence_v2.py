@@ -8,7 +8,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'charts/spi-triage/fil
 from evidence_bundle import redact,prepare_bundle,publish_parts,index_markdown,index_marker,PART_SIZE
 from provenance import DeploymentCollector
 from telemetry import TelemetryCollector,absolute_window,grafana_explore_url
-from core import Failure
+from core import digest, Failure
 from test_triage import event
 
 class ArtifactTests(unittest.TestCase):
@@ -125,7 +125,7 @@ class EngineArtifactTests(unittest.TestCase):
         from service import Engine
         from test_triage import report
         with tempfile.TemporaryDirectory()as folder:
-            store=Store(Path(folder)/'db');g=Mock();g.snapshot.return_value=[];g.comments.return_value=[]
+            store=Store(Path(folder)/'db');g=Mock();g.snapshot.return_value=[];g.open_signature.return_value=digest([]);g.comments.return_value=[]
             g.request.side_effect=[{'number':9},Failure('UPSTREAM_TIMEOUT')]
             model=Mock();model.match.return_value={'candidates':[]};model.analyze.return_value=report()
             evidence=Mock();e=event();bundle=prepare_bundle(e,{},[{'name':'test.json','content':{'observation':'real fixture'}}]);evidence.collect.return_value={'bundle':bundle}

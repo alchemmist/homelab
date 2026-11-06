@@ -67,7 +67,7 @@ class AdmissionTests(unittest.TestCase):
         m=Model(Mock(),'fake',store=self.store);m.call=Mock(return_value=GOOD)
         saved=[];m.match(f.event(),issues,progress=progress,on_progress=saved.append)
         self.assertEqual(saved[-1]['reviews'][0]['ids'],list(range(12)))
-        self.assertEqual(m.call.call_count,2)
+        self.assertEqual(m.call.call_count,3) # Unbound legacy proof must be reviewed again.
     def test_reset_delay_not_claim_backoff(self):
         key=self.store.enqueue(f.event())['job_id']
         for _ in range(20):self.store.fail(key,'LLM_ADMISSION_DEFERRED',retry_after=60)

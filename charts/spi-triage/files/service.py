@@ -52,7 +52,9 @@ class Engine:
             try:return self._run(name,key)
             except Failure as e:
                 self.store.fail(key,e.code,retry_after=e.retry_after,rate_metadata=e.rate_metadata)
-                log_event('stage_deferred' if e.code in PATIENT_TRANSIENT else 'stage_failed', 'warning' if e.code in PATIENT_TRANSIENT else 'error', stage=name, code=e.code)
+                current=self.store.get(key)
+                patient=e.code in PATIENT_TRANSIENT or (e.code=='OPEN_SPI_CHANGED' and current['stage']==0 and not current['intent'])
+                log_event('stage_deferred' if patient else 'stage_failed', 'warning' if patient else 'error', stage=name, code=e.code)
                 raise
             except Exception:
                 self.store.fail(key,'INTERNAL_ERROR')
@@ -74,13 +76,17 @@ class Engine:
             if not resolved or r.get('analyze_recovery'):
                 issues=self.github.snapshot();r['open_signature']=digest([(x['number'],x['updated_at']) for x in issues])
                 def checkpoint(progress):
-                    r['match_progress']=progress
-                    self.store.save(key,0,r)
-                r['match']=self.model.match(event,issues,progress=r.get('match_progress'),on_progress=checkpoint)
+                    r['match_progress_v3']=progress
+                    def retain(c):
+                        c.execute('INSERT OR REPLACE INTO match_review_v3 VALUES(?,?)',(key,json.dumps(progress)))
+                    self.store.save(key,0,r,on_save=retain)
+                r['match']=self.model.match(event,issues,progress=self.store.match_checkpoint(key) or r.get('match_progress_v3'),on_progress=checkpoint)
         elif name=='collect':
             if not resolved or r.get('resolved_issue') or r.get('analyze_recovery'):r['evidence']=self.evidence.collect(event)
         elif name=='analyze':
             if not resolved or r.get('analyze_recovery'):
+                if not job['intent'] and self.github.open_signature()!=r['open_signature']:
+                    self.invalidate_snapshot(key,r,job)
                 r['report']=self.model.analyze(event,r['match'],r['evidence']);render(r['report'],event)
         elif name=='publish':
             if not self.write:
@@ -114,7 +120,7 @@ class Engine:
             else:
                 issues=self.github.snapshot()
                 if digest([(x['number'],x['updated_at']) for x in issues])!=r['open_signature']:
-                    self.store.save(key,0,{'publication_backend':r['publication_backend']},state='processing');raise Failure('OPEN_SPI_CHANGED')
+                    self.invalidate_snapshot(key,r,job)
                 title,body=render(r['report'],event);number=r['report']['issue_number']
                 if number not in {0,*[x['number']for x in r['match']['candidates']]}:raise Failure('INVALID_MATCH_TARGET')
             if r['publication_backend']=='s3':
@@ -122,7 +128,7 @@ class Engine:
                 if not resolved or r.get('analyze_recovery'):
                     issues=self.github.snapshot()
                     if digest([(x['number'],x['updated_at']) for x in issues])!=r['open_signature']:
-                        self.store.save(key,0,{'publication_backend':'s3'},state='processing');raise Failure('OPEN_SPI_CHANGED')
+                        self.invalidate_snapshot(key,r,job)
                 if resolved and not r.get('analyze_recovery'):
                     existing=self.github.request('GET','/issues/'+str(number))
                     if existing.get('state')!='open':
@@ -152,6 +158,21 @@ class Engine:
         self.store.save(key,wanted,r)
         return {'job_id':key,'status':'processing','stage':wanted}
 
+
+    def invalidate_snapshot(self,key,result,job):
+        if job['intent'] or 'artifact_publication' in result:
+            raise Failure('WRITE_NEEDS_REVIEW')
+        retained=dict(result)
+        # Uploaded immutable objects keep their original evidence binding forever.
+        if 'storage_publication' in retained:
+            audit=list(retained.get('snapshot_audit',[]))
+            audit.append({k:retained.get(k) for k in ('evidence','storage_publication','open_signature')})
+            retained['snapshot_audit']=audit
+            del retained['storage_publication']
+        for field in ('match','report','evidence','open_signature'):
+            retained.pop(field,None)
+        self.store.save(key,0,retained,state='processing')
+        raise Failure('OPEN_SPI_CHANGED',retry_after=15)
 
     def upload_evidence(self,key,result,intent=None):
         objects=storage_objects(result.get('evidence',{}).get('bundle'))

@@ -251,3 +251,47 @@ All316 original IDs/creation times and terminal results/intents preserved;
 duplicate delivery (only updated/deliveries changed). Outbox68->69 applied,
 7 pending unchanged. No forced claims/reset/revival/probe or unrelated changes.
 Observation ended; no ongoing monitoring promised. Rollback remains v2-capable.
+
+## Local implementation: snapshot review reuse (not deployed)
+
+Safe open-snapshot churn now retains the publication backend and matching proofs.
+New proofs are explicitly v3 and bind the immutable event digest, actual matching
+payload (including model/system/schema), excerpt policy, original full snapshot
+and exact batch identities/content digests. The original snapshot/proofs are
+validated before transferring only unchanged whole batches. Inserts/deletes/order
+changes do not regroup proven batches; uncovered current candidates are reviewed
+in adaptive batches of at most 12, with the existing 120-candidate ceiling.
+Pairwise selection is invalidated on any full-signature change; same-signature
+selection resumes from validated nominee-bound comparison history.
+
+`match_progress_v3` is separate from old progress. Its checkpoint is also stored
+transactionally in additive SQLite `match_review_v3`, so an older worker resetting
+`jobs.result` cannot erase or reinterpret v3 proofs. Old v1/v2 caches have no
+explicit event/prompt/model provenance; this implementation conservatively
+re-reviews them rather than manufacturing a binding, even on an equal signature.
+No backup caches are restored to jobs. Unknown contract changes re-review.
+
+Before analysis, `GitHub.open_signature()` uses exactly `issues()` (the full
+snapshot's universe/filter/order), without fetching comments. A stale snapshot
+consumes no analysis call and invalidates safely. Existing pre-primary and
+post-upload full fences and intent-first reconciliation remain mandatory.
+Legacy artifact checkpoints or ambiguous primary intents are never cleared.
+After an S3 upload, safe invalidation moves original evidence and exact storage
+binding/verified receipts into `snapshot_audit`; new collection gets a fresh
+active binding, never the previous bundle's receipts. Immutable objects are not
+rewritten or adopted as new evidence. Public Reader URLs remain `/` + object key.
+
+Only `OPEN_SPI_CHANGED` after a safe stage-zero reset with no intent receives
+15–20 second jittered patient retries. Attempts and existing finite failure
+budgets are not reset. Unsafe intents, unknown HTTP/JSON/auth/evidence errors and
+`WRITE_NEEDS_REVIEW` retain finite/visible handling; LLM admission, claims,
+callback scheduling, exclusive leases and token/parallel limits are unchanged.
+
+This is source-only readiness, not live acceptance. The observed 24 reviews/244
+candidate checks lost across four jobs are proven; which live candidate contents
+changed is unknown (the prior probe timed out). Fake tests cover four prepared
+61-issue/six-batch jobs, exact batch reuse, mutations/closures, early fencing,
+20 safe deferrals, rollback retention, selection restart, post-upload audit,
+and eventual exact-primary publication with two-recipient applied outbox.
+The three requested live cards remain unaccepted; no new deployment, inference,
+queue mutation, backup restoration or observation window accompanies this change.

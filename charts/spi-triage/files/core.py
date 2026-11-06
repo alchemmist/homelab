@@ -155,6 +155,9 @@ class Store:
               lease REAL NOT NULL DEFAULT 0, attempts INTEGER NOT NULL DEFAULT 0,
               deliveries INTEGER NOT NULL DEFAULT 1, result TEXT NOT NULL DEFAULT '{}',
               issue INTEGER NOT NULL DEFAULT 0, intent TEXT, error TEXT);
+            CREATE TABLE IF NOT EXISTS match_review_v3 (
+              job_id TEXT PRIMARY KEY REFERENCES jobs(id) ON DELETE CASCADE,
+              progress TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS llm_rate_metadata (job_id TEXT PRIMARY KEY, metadata TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS llm_admission (id INTEGER PRIMARY KEY, tokens INTEGER NOT NULL, expires REAL NOT NULL, active INTEGER NOT NULL);
             CREATE TABLE IF NOT EXISTS dispatch (singleton INTEGER PRIMARY KEY CHECK(singleton=1), token TEXT NOT NULL, deadline REAL NOT NULL, attempts INTEGER NOT NULL);
@@ -174,6 +177,13 @@ class Store:
         except BaseException:
             c.rollback(); raise
         finally: c.close()
+    def match_checkpoint(self,key):
+        # Separate namespace survives old workers replacing the jobs.result JSON.
+        # Older binaries neither read nor reinterpret this table.
+        with self.db() as c:
+            row=c.execute('SELECT progress FROM match_review_v3 WHERE job_id=?',(key,)).fetchone()
+        return json.loads(row['progress']) if row else None
+
     def reserve_llm(self, tokens, timeout=600, now=None):
         """One SPI-key ledger on the shared PVC. No credentials or payloads."""
         if type(tokens) is not int or not 0 < tokens <= 30000:
@@ -267,14 +277,16 @@ class Store:
                 safe=Failure(code,rate_metadata=rate_metadata).rate_metadata
                 c.execute('INSERT OR REPLACE INTO llm_rate_metadata VALUES(?,?)',(key,json.dumps(safe)))
             count=job['attempts']
-            if code not in PATIENT_TRANSIENT:
+            safe_snapshot=code=='OPEN_SPI_CHANGED' and job['stage']==0 and not job['intent']
+            if code not in PATIENT_TRANSIENT and not safe_snapshot:
                 c.execute("INSERT INTO job_failure_budget VALUES(?,1) ON CONFLICT(job_id) DO UPDATE SET failures=failures+1",(key,))
                 count=c.execute('SELECT failures FROM job_failure_budget WHERE job_id=?',(key,)).fetchone()[0]
-            dead=(count>=8 and code not in PATIENT_TRANSIENT) or code=='WRITE_NEEDS_REVIEW'
+            dead=(count>=8 and code not in PATIENT_TRANSIENT and not safe_snapshot) or code=='WRITE_NEEDS_REVIEW'
             delay=min(3600,30*2**min(count,7)*random.uniform(.8,1.2))
             if code in PATIENT_TRANSIENT and retry_after is not None:delay=max(delay,Failure(code,retry_after).retry_after or 0)
             if code=='LLM_ADMISSION_DEFERRED' or (code=='LLM_HTTP_429' and retry_after is not None):
                 delay=(Failure(code,retry_after).retry_after or 61)+random.uniform(1,3)
+            if safe_snapshot:delay=15+random.uniform(0,5)
             c.execute('UPDATE jobs SET state=?,lease=0,available=?,updated=?,error=? WHERE id=?',
                       ('dead' if dead else 'retry',now+delay,now,code,key))
     def episode_issue(self,episode):

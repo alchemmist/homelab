@@ -127,6 +127,9 @@ class GitHub:
         if data.get('encoding')!='base64' or data.get('size',0)>100000:return None
         content=base64.b64decode(data['content'],validate=False).decode()
         return clean({'path':path,'sha':data['sha'],'ref':'main','deployed_version_verified':False,'excerpt':content[:12000],'truncated':len(content)>12000})
+    def open_signature(self):
+        return digest([(x['number'],x['updated_at']) for x in self.issues()])
+
     def snapshot(self):
         issues=self.issues()
         # Title, root analysis and bounded latest comments: never silently drop an issue.
@@ -265,9 +268,12 @@ class Model:
         raise Failure('LLM_'+last)
     def match(self,event,issues,progress=None,on_progress=None):
         deadline=time.monotonic()+780
+        event_identity=digest(event)
         event=self.bounded_context(event)
         # Every issue is examined. Batches avoid a single unbounded prompt.
         if len(issues)>120: raise Failure('OPEN_SPI_REVIEW_BUDGET_EXCEEDED')
+        if any(not isinstance(x,dict) or type(x.get('number')) is not int for x in issues) or len({x['number'] for x in issues})!=len(issues):
+            raise Failure('INVALID_MATCH_PROGRESS')
         task='Choose the same underlying problem from these OPEN SPI issues, or issue_number=0. Explain ambiguity in at most 120 words. Return compact strict JSON.'
         signature=digest(issues)
         def excerpt(issue):
@@ -284,17 +290,33 @@ class Model:
         # A fixed byte-bounded excerpt policy prevents one normal long issue
         # from blocking review. Original snapshot content binds every review.
         bounded={x['number']:excerpt(x) for x in issues}
-        old=progress if isinstance(progress,dict) and progress.get('signature')==signature else {}
+        contract=digest({'event':event_identity,'payload':self.payload(task,{},MATCH_SCHEMA),
+                         'excerpt_contract':'title-body1600-comments400-v1'})
+        # v3 lives in a separate service result key: rollback cannot reinterpret it.
+        old=progress if isinstance(progress,dict) and progress.get('version')==3 and progress.get('contract')==contract else {}
         reviews=[]
-        if old.get('version')==2:
-            reviews=list(old.get('reviews',[]))
-        elif old.get('decisions'):
-            # Old decisions really refer to fixed twelve-item partitions. Retain
-            # those exact identities; never reinterpret their index adaptively.
-            for i,result in enumerate(old['decisions']):
-                batch=issues[i*12:(i+1)*12]
-                if not batch and issues:raise Failure('INVALID_MATCH_PROGRESS')
-                reviews.append({'ids':[x['number'] for x in batch],'content':digest(batch),'decision':result})
+        if old:
+            original=old.get('snapshot')
+            if not isinstance(original,list) or digest(original)!=old.get('signature'):
+                raise Failure('INVALID_MATCH_PROGRESS')
+            if any(not isinstance(x,dict) or type(x.get('number')) is not int for x in original) or not isinstance(old.get('reviews'),list):raise Failure('INVALID_MATCH_PROGRESS')
+            original_by={x['number']:x for x in original}
+            if len(original_by)!=len(original):raise Failure('INVALID_MATCH_PROGRESS')
+            seen=set()
+            current={x['number']:x for x in issues}
+            for review in old.get('reviews',[]):
+                try:
+                    ids=review['ids']
+                    if not isinstance(ids,list) or any(type(n) is not int for n in ids) or len(ids)>12 or (not ids and original):raise Failure('INVALID_MATCH_PROGRESS')
+                    batch=[original_by[n] for n in ids]
+                    if len(set(ids))!=len(ids) or seen.intersection(ids) or review['content']!=digest(batch):
+                        raise Failure('INVALID_MATCH_PROGRESS')
+                    validate(review['decision'],MATCH_SCHEMA)
+                    if review['decision']['issue_number'] not in {0,*ids}:raise Failure('INVALID_MATCH_PROGRESS')
+                    seen.update(ids)
+                    if all(n in current for n in ids) and digest([current[n] for n in ids])==review['content']:
+                        reviews.append(review)
+                except (KeyError,TypeError,ValueError):raise Failure('INVALID_MATCH_PROGRESS') from None
         by_number={x['number']:x for x in issues}
         reviewed=set();candidates=[]
         for review in reviews:
@@ -305,8 +327,13 @@ class Model:
             if result['issue_number']not in {0,*review['ids']}:raise Failure('INVALID_MATCH_PROGRESS')
             reviewed.update(review['ids'])
             candidates.extend(x for x in batch if x['number']==result['issue_number'])
+        selection=old.get('selection') if old.get('signature')==signature else None
+        if selection and reviewed!={x['number'] for x in issues}:raise Failure('INVALID_MATCH_PROGRESS')
         def checkpoint():
-            if on_progress:on_progress({'version':2,'signature':signature,'snapshot':issues,'reviews':list(reviews)})
+            value={'version':3,'contract':contract,'signature':signature,'snapshot':issues,'reviews':list(reviews)}
+            if selection:value['selection']=selection
+            if on_progress:on_progress(value)
+        checkpoint() # Persist transferred proofs even before admission can defer.
         pending=[x for x in issues if x['number'] not in reviewed]
         while pending or (not issues and not reviews):
             batch=[]
@@ -326,8 +353,16 @@ class Model:
             pending=pending[len(batch):]
         # Pairwise bounded reduction reviews every batch nominee. Persist each
         # comparison, so a rate deferral never repeats completed final work.
-        selection=old.get('selection') if old.get('version')==2 else None
+        comparisons=[]
         if selection:
+            if selection.get('nominees')!=digest(candidates):raise Failure('INVALID_MATCH_PROGRESS')
+            replay=[x['number'] for x in candidates]
+            comparisons=selection.get('comparisons',[])
+            for decision in comparisons:
+                validate(decision,MATCH_SCHEMA)
+                if len(replay)<2 or decision['issue_number'] not in {0,*replay[:2]}:raise Failure('INVALID_MATCH_PROGRESS')
+                replay=([decision['issue_number']] if decision['issue_number'] else [])+replay[2:]
+            if not comparisons or replay!=selection.get('remaining') or comparisons[-1]!=selection.get('decision'):raise Failure('INVALID_MATCH_PROGRESS')
             remaining_numbers=selection.get('remaining',[])
             if len(set(remaining_numbers))!=len(remaining_numbers) or not set(remaining_numbers)<={x['number'] for x in candidates}:
                 raise Failure('INVALID_MATCH_PROGRESS')
@@ -341,8 +376,10 @@ class Model:
             result=self.call(task,{'alert':event,'open_issues':[bounded[x['number']] for x in pair]},MATCH_SCHEMA,deadline)
             if result['issue_number'] not in {0,*[x['number'] for x in pair]}: raise Failure('INVALID_MATCH_TARGET')
             finalists=([by_number[result['issue_number']]] if result['issue_number'] else [])+finalists[2:]
-            if on_progress:on_progress({'version':2,'signature':signature,'snapshot':issues,'reviews':list(reviews),
-                                        'selection':{'remaining':[x['number'] for x in finalists],'decision':result}})
+            comparisons.append(result)
+            selection={'nominees':digest(candidates),'comparisons':list(comparisons),
+                       'remaining':[x['number'] for x in finalists],'decision':result}
+            checkpoint()
         if finalists and result['issue_number']!=finalists[0]['number']:
             # A previous pair rejected both; the remaining nominee is not an
             # arbitrary shortcut: its own completed batch review selected it.

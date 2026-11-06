@@ -57,7 +57,7 @@ class ModelRetryTests(unittest.TestCase):
         with self.assertRaises(Failure):m.match(f.event(),issues,on_progress=lambda p:saved.append(json.loads(json.dumps(p))))
         self.assertEqual(len(saved[-1]['reviews']),1)
         m.call=Mock(return_value=good);r=m.match(f.event(),issues,progress=saved[-1]);self.assertEqual(m.call.call_count,2);self.assertEqual(r['reviewed_numbers'],list(range(25)))
-        m.call.reset_mock();m.match(f.event(),issues+[{'number':25}],progress=saved[-1]);self.assertEqual(m.call.call_count,3)
+        m.call.reset_mock();m.match(f.event(),issues+[{'number':25}],progress=saved[-1]);self.assertEqual(m.call.call_count,2)
 
 class EngineCheckpointTests(unittest.TestCase):
     setUp=f.EngineTests.setUp
@@ -67,7 +67,7 @@ class EngineCheckpointTests(unittest.TestCase):
             on_progress({'signature':'test','decisions':[]});raise Failure('LLM_HTTP_429')
         self.model.match.side_effect=matching;key=self.store.enqueue(f.event())['job_id'];self.store.claim()
         with self.assertRaises(Failure):self.engine.run('match',key)
-        r=self.store.get(key);self.assertEqual(r['result']['match_progress']['signature'],'test');self.assertEqual(r['state'],'retry');self.github.request.assert_not_called()
+        r=self.store.get(key);self.assertEqual(r['result']['match_progress_v3']['signature'],'test');self.assertEqual(r['state'],'retry');self.github.request.assert_not_called()
 
     def test_many_llm_deferrals_do_not_exhaust_github_reconciliation(self):
         key=self.store.enqueue(f.event())['job_id'];self.model.match.side_effect=Failure('LLM_HTTP_429')

@@ -79,10 +79,30 @@ class EngineStorageTests(unittest.TestCase):
         self.assertEqual(self.store.get(self.key)['state'],'retry')
         self.store.save(self.key,3,self.r,state='processing');self.engine.run('publish',self.key)
         self.assertEqual(self.g.request.call_count,1)
+    def test_postupload_invalidation_keeps_original_audit_not_new_bundle_binding(self):
+        import copy
+        self.g.snapshot.side_effect=[[],[{'number':3,'updated_at':'new'}]]
+        original=copy.deepcopy(self.bundle)
+        with self.assertRaisesRegex(Failure,'OPEN_SPI_CHANGED'):self.engine.run('publish',self.key)
+        result=self.store.get(self.key)['result'];audit=copy.deepcopy(result['snapshot_audit'])
+        self.assertEqual(audit[0]['evidence']['bundle'],original)
+        for (key,raw),receipt in zip(storage_objects(original),audit[0]['storage_publication']['verified']):
+            self.assertEqual(receipt['sha256'],hashlib.sha256(raw).hexdigest())
+            self.assertEqual(receipt['key'],key)
+        replacement=prepare_bundle(event(),{},[{'name':'new.json','content':'different fake bytes'}])
+        result.update(evidence={'bundle':replacement},report=report(),match={'candidates':[]},open_signature=digest([]))
+        self.store.save(self.key,3,result,state='processing')
+        self.g.snapshot.side_effect=None;self.g.snapshot.return_value=[]
+        self.engine.run('publish',self.key)
+        final=self.store.get(self.key)['result']
+        self.assertEqual(final['snapshot_audit'],audit)
+        self.assertNotEqual(final['storage_publication']['binding'],audit[0]['storage_publication']['binding'])
+        self.assertEqual(self.bundle,original);self.g.request.assert_called_once()
+
     def test_changed_snapshot_preserves_lock(self):
         self.g.snapshot.side_effect=[[],[{'number':3,'updated_at':'new'}]]
         with self.assertRaisesRegex(Failure,'OPEN_SPI_CHANGED'):self.engine.run('publish',self.key)
-        self.g.request.assert_not_called();self.assertEqual(self.store.get(self.key)['result'],{'publication_backend':'s3'})
+        self.g.request.assert_not_called();self.assertEqual(self.store.get(self.key)['result']['publication_backend'],'s3');self.assertEqual(self.store.get(self.key)['result']['snapshot_audit'][0]['storage_publication']['binding'],self.store.get(self.key)['result']['snapshot_audit'][0]['storage_publication']['verified'])
     def test_checkpoint_tampering_rejected(self):
         self.r['publication_backend']='s3';self.r['storage_publication']={'binding':[],'verified':[]}
         self.store.save(self.key,3,self.r)

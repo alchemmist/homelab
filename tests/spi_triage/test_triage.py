@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import Mock
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'charts/spi-triage/files'))
-from core import Failure, Store, REPORT_SCHEMA, clean, normalize, render, validate
+from core import digest, Failure, Store, REPORT_SCHEMA, clean, normalize, render, validate
 from integrations import GitHub, Model, Evidence, metric_summary
 from service import Engine
 
@@ -124,7 +124,7 @@ class EvidenceTests(unittest.TestCase):
 
 class EngineTests(unittest.TestCase):
     def setUp(self):
-        self.tmp=tempfile.TemporaryDirectory();self.store=Store(Path(self.tmp.name)/'db');self.github=Mock();self.github.snapshot.return_value=[]
+        self.tmp=tempfile.TemporaryDirectory();self.store=Store(Path(self.tmp.name)/'db');self.github=Mock();self.github.snapshot.return_value=[];self.github.open_signature.side_effect=lambda:digest([(x['number'],x['updated_at']) for x in self.github.snapshot.return_value])
         self.model=Mock();self.model.match.return_value={'candidates':[]};self.model.analyze.return_value=report()
         self.evidence=Mock();self.evidence.collect.return_value={'missing':['logs']}
         self.engine=Engine(self.store,self.github,self.model,self.evidence,write=False)

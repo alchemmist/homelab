@@ -36,7 +36,7 @@ class CompletionSchedulerTests(unittest.TestCase):
         self.now=161+jitter
         self.assertEqual(self.s.claim()['job_id'],key)
         http=Mock();http.request.return_value={'number':7}
-        http.snapshot.return_value=[]
+        http.snapshot.return_value=[];http.open_signature.return_value=digest([])
         model=Mock()
         def analyze(*args):
             r=self.s.reserve_llm(28931);self.s.finish_llm(r);return f.report()
