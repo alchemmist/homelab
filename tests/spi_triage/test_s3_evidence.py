@@ -20,6 +20,35 @@ class ClientTests(unittest.TestCase):
             if isinstance(value, Exception): raise value
             return value
         return s.S3Evidence('access','secret',transport=transport)
+    def test_resolver_capacity_survives_sequential_timeouts(self):
+        release = threading.Event()
+        workers = []
+        slots = threading.BoundedSemaphore(s.MAX_RESOLVERS)
+        def stuck(*args, **kwargs):
+            workers.append(threading.current_thread())
+            release.wait()
+            return [(socket.AF_INET, socket.SOCK_STREAM, 6, '', ('127.0.0.1', 9))]
+        with patch.object(s, '_RESOLVER_SLOTS', slots), patch.object(s.socket, 'getaddrinfo', stuck), patch.object(s.socket, 'socket') as make_socket:
+            try:
+                for _ in range(24):
+                    conn = s.HTTPConnection('unused.invalid', 9000, timeout=.01)
+                    conn.budget = .01
+                    with self.assertRaises(TimeoutError):
+                        conn.connect()
+                    conn.close()
+                self.assertEqual(len(workers), s.MAX_RESOLVERS)
+                self.assertTrue(all(worker.is_alive() for worker in workers))
+            finally:
+                release.set()
+                for worker in workers:
+                    worker.join(1)
+            self.assertTrue(all(not worker.is_alive() for worker in workers))
+            make_socket.assert_not_called()
+            # All slots are returned on actual completion, not caller timeout.
+            for _ in range(s.MAX_RESOLVERS):
+                self.assertTrue(slots.acquire(blocking=False))
+            self.assertFalse(slots.acquire(blocking=False))
+
     def test_existing(self):
         c=self.client([(200,{},b'abc')]);self.assertTrue(c.ensure_object(KEY,b'abc')['verified']);self.assertEqual(len(self.calls),1)
     def test_conflict(self):

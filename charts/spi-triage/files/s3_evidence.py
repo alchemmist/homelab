@@ -16,6 +16,9 @@ from email.utils import parsedate_to_datetime
 ORIGIN = 'http://rustfs.rustfs.svc.cluster.local:9000'
 BUCKET = 'spi-evidence'
 MAX_BYTES = 2 * 1024 * 1024
+# Process-wide admission bound; timed-out callers do not release resolver slots.
+MAX_RESOLVERS = 4
+_RESOLVER_SLOTS = threading.BoundedSemaphore(MAX_RESOLVERS)
 KEY = re.compile(r'spi/v1/[0-9a-f]{64}/[0-9a-f]{64}/(?:manifest\.json|E[0-9]{3}-[A-Za-z0-9._-]{1,100})\Z')
 class StoragePermanent(Exception):
     def __init__(self): super().__init__('S3_PERMANENT')
@@ -101,16 +104,28 @@ class DeadlineConnection:
 
 class HTTPConnection(DeadlineConnection, http.client.HTTPConnection):
     def connect(self):
-        # getaddrinfo has no socket timeout. A daemon resolver may finish late,
-        # but cannot create a late connection or extend the caller's budget.
+        # Admission and resolution share one deadline. Only the resolver releases
+        # capacity: a timed-out caller cannot admit more stuck native DNS calls.
         started = time.monotonic()
+        deadline = started + min(self.timeout, self.budget)
+        slots = _RESOLVER_SLOTS
+        if not slots.acquire(timeout=max(0, deadline - time.monotonic())):
+            raise TimeoutError('resolution capacity deadline')
         results = queue.Queue(maxsize=1)
         def resolve():
-            try: results.put(socket.getaddrinfo(self.host, self.port, type=socket.SOCK_STREAM))
-            except OSError: results.put(None)
-        threading.Thread(target=resolve, daemon=True).start()
-        try: addresses = results.get(timeout=min(self.timeout, self.budget))
+            try:
+                try: results.put(socket.getaddrinfo(self.host, self.port, type=socket.SOCK_STREAM))
+                except OSError: results.put(None)
+            finally:
+                slots.release()
+        try:
+            threading.Thread(target=resolve, daemon=True).start()
+        except BaseException:
+            slots.release()
+            raise
+        try: addresses = results.get(timeout=max(0, deadline - time.monotonic()))
         except queue.Empty: raise TimeoutError('resolution deadline') from None
+        if time.monotonic() >= deadline: raise TimeoutError('resolution deadline')
         if not addresses: raise OSError('resolution failed')
         self.budget -= time.monotonic() - started
         if self.budget <= 0: raise TimeoutError('resolution deadline')
