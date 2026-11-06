@@ -1,5 +1,6 @@
-# Authorized OFF acceptance: load writer for continuations; never select new S3 jobs.
+# Authorized live activation: new selections use S3; existing backend locks persist.
+# Rollback: enabled=false, retaining credentials and exact continuation connectivity.
 s3Evidence:
-  enabled: false
+  enabled: true
   retainCredentials: true
   writerSecret: spi-evidence-writer
