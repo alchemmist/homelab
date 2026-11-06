@@ -22,3 +22,7 @@ browserRoutes:
   enabled: false
 # Exact Authentik public endpoint addresses, established before rollout. Not 0/0.
 authEgressCIDRs: []
+
+# Dedicated SPI writer only; no reader/root credentials shared with SPI.
+spiWriter:
+  enabled: false

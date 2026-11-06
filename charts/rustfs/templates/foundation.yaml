@@ -154,6 +154,12 @@ spec:
     matchLabels: {app: rustfs}
   policyTypes: [Ingress, Egress]
   ingress:
+    {{- if .Values.spiWriter.enabled }}
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: automation}}
+          podSelector: {matchLabels: {app: spi-triage}}
+      ports: [{port: 9000, protocol: TCP}]
+    {{- end }}
     {{- if .Values.gateway.enabled }}
     - from:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: {{ .Values.gateway.namespace }}}}
@@ -166,7 +172,7 @@ spec:
           podSelector: {matchLabels: {app.kubernetes.io/name: authentik, app.kubernetes.io/component: server}}
       ports: [{port: 9001, protocol: TCP}]
     {{- end }}
-    {{- if not (or .Values.gateway.enabled .Values.browserRoutes.enabled) }}
+    {{- if not (or .Values.gateway.enabled .Values.browserRoutes.enabled .Values.spiWriter.enabled) }}
     []
     {{- end }}
   {{- if .Values.oidc.enabled }}

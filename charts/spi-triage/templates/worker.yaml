@@ -54,6 +54,12 @@ spec:
               value: {{ .Values.telegramLinksEnabled | quote }}
             - name: SPI_DISPATCH_ENABLED
               value: {{ .Values.dispatchEnabled | quote }}
+            - name: SPI_EVIDENCE_BACKEND
+              value: {{ ternary "s3" "legacy" .Values.s3Evidence.enabled | quote }}
+            {{- if or .Values.s3Evidence.enabled .Values.s3Evidence.retainCredentials }}
+            - name: SPI_S3_WRITER_FILE
+              value: /s3-writer/credentials.json
+            {{- end }}
             - name: WRITE_ENABLED
               value: {{ .Values.writeEnabled | quote }}
             - name: GRAFANA_URL
@@ -86,6 +92,11 @@ spec:
               cpu: '1'
               memory: 384Mi
           volumeMounts:
+            {{- if or .Values.s3Evidence.enabled .Values.s3Evidence.retainCredentials }}
+            - name: s3-writer
+              mountPath: /s3-writer
+              readOnly: true
+            {{- end }}
             - name: code
               mountPath: /app
               readOnly: true
@@ -97,6 +108,15 @@ spec:
               mountPath: /github
               readOnly: true
       volumes:
+        {{- if or .Values.s3Evidence.enabled .Values.s3Evidence.retainCredentials }}
+        - name: s3-writer
+          secret:
+            secretName: {{ .Values.s3Evidence.writerSecret | quote }}
+            defaultMode: 0440
+            items:
+              - key: credentials.json
+                path: credentials.json
+        {{- end }}
         - name: tmp
           emptyDir:
             medium: Memory
@@ -146,6 +166,12 @@ spec:
       ports:
         - port: 8080
   egress:
+    {{- if or .Values.s3Evidence.enabled .Values.s3Evidence.retainCredentials }}
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: rustfs}}
+          podSelector: {matchLabels: {app: rustfs}}
+      ports: [{port: 9000, protocol: TCP}]
+    {{- end }}
     - to:
         - namespaceSelector:
             matchLabels:

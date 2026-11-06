@@ -1,0 +1,11 @@
+{{- if not (kindIs "bool" .Values.s3Evidence.enabled) }}
+{{- fail "s3Evidence.enabled must be boolean" }}
+{{- end }}
+{{- if not (kindIs "bool" .Values.s3Evidence.retainCredentials) }}
+{{- fail "s3Evidence.retainCredentials must be boolean" }}
+{{- end }}
+{{- if or .Values.s3Evidence.enabled .Values.s3Evidence.retainCredentials }}
+{{- if not (regexMatch "^spi-evidence-writer$" .Values.s3Evidence.writerSecret) }}
+{{- fail "S3 requires dedicated spi-evidence-writer Secret, never root/reader/general env Secret" }}
+{{- end }}
+{{- end }}
