@@ -51,6 +51,16 @@ class ClientTests(unittest.TestCase):
 
     def test_existing(self):
         c=self.client([(200,{},b'abc')]);self.assertTrue(c.ensure_object(KEY,b'abc')['verified']);self.assertEqual(len(self.calls),1)
+    def test_private_bucket_qualified_paths_unchanged(self):
+        for key in (KEY,KEY.rsplit('/',1)[0]+'/manifest.json'):
+            c=self.client([(404,{},b''),(201,{},b''),(200,{},b'abc')])
+            receipt=c.ensure_object(key,b'abc')
+            self.assertEqual([call[0] for call in self.calls],['GET','PUT','GET'])
+            self.assertEqual([call[1] for call in self.calls],['/spi-evidence/'+key]*3)
+            self.assertEqual(receipt['bucket'],'spi-evidence')
+            self.assertEqual(receipt['key'],key)
+            self.assertEqual(receipt['sha256'],hashlib.sha256(b'abc').hexdigest())
+
     def test_conflict(self):
         c=self.client([(200,{},b'bad')])
         with self.assertRaises(s.StorageConflict):c.ensure_object(KEY,b'abc')

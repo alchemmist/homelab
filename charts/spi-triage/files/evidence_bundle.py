@@ -144,5 +144,5 @@ def storage_objects(bundle):
 def storage_markdown(objects):
     if not objects:return ''
     return '\n\n## Reproducible evidence\nSanitized, bounded evidence; truncation and missing reads are recorded in the manifest. Not every byte was reviewed by the model. Sign-in required.\n'+ '\n'.join(
-        '- ['+('MANIFEST' if i==0 else key.rsplit('/',1)[1])+'](https://spi-evidence.socrat.alchemmist.xyz/spi-evidence/'+key+')'
+        '- ['+('MANIFEST' if i==0 else key.rsplit('/',1)[1])+'](https://spi-evidence.socrat.alchemmist.xyz/'+key+')'
         for i,(key,raw) in enumerate(objects))

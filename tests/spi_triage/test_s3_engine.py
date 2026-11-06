@@ -1,4 +1,7 @@
 import hashlib
+import importlib.util
+import re
+from urllib.parse import urlsplit
 import tempfile
 import unittest
 from pathlib import Path
@@ -6,7 +9,7 @@ from unittest.mock import Mock
 from test_triage import event, report
 from core import Store, digest, Failure
 from service import Engine
-from evidence_bundle import prepare_bundle
+from evidence_bundle import prepare_bundle, storage_objects, storage_markdown
 from s3_evidence import StorageTransient
 
 class EngineStorageTests(unittest.TestCase):
@@ -23,10 +26,37 @@ class EngineStorageTests(unittest.TestCase):
         self.assertEqual(self.store.get(self.key)['result']['publication_backend'],'s3')
         self.g.request.assert_not_called()
         return {'bucket':'spi-evidence','key':key,'sha256':hashlib.sha256(raw).hexdigest(),'size':len(raw),'verified':True}
+    def assert_public_links(self, body, objects):
+        spec=importlib.util.spec_from_file_location('public_link_gateway',Path(__file__).resolve().parents[2]/'services/rustfs_gateway/gateway.py')
+        gateway=importlib.util.module_from_spec(spec);spec.loader.exec_module(gateway)
+        urls=re.findall(r'\]\((https://spi-evidence\.[^\s)]+)\)',body)
+        self.assertEqual(len(urls),len(objects))
+        for url,(key,raw) in zip(urls,objects):
+            parsed=urlsplit(url)
+            self.assertEqual(parsed.scheme,'https')
+            self.assertEqual(parsed.netloc,urlsplit(gateway.ORIGIN).netloc)
+            self.assertIsNone(parsed.username);self.assertIsNone(parsed.password)
+            self.assertEqual(parsed.query,'');self.assertEqual(parsed.fragment,'')
+            self.assertIsNotNone(gateway.KEY.fullmatch(parsed.path))
+            self.assertEqual(parsed.path,'/'+key)
+            self.assertFalse(parsed.path.startswith('/spi-evidence/'))
+            # The historical bucket-qualified public URL must remain rejected.
+            self.assertIsNone(gateway.KEY.fullmatch('/spi-evidence/'+key))
+
+    def test_renderer_all_objects_match_actual_gateway(self):
+        bundle=prepare_bundle(event(),{},[
+            {'name':name,'content':{'text':'bounded'}}
+            for name in ('logs.json','trace-lines.txt','metric_samples.json','Mixed.Case-1.json')])
+        objects=storage_objects(bundle)
+        self.assert_public_links(storage_markdown(objects),objects)
+        self.assertEqual(storage_objects(bundle),objects)
+        self.assertEqual(storage_markdown([]),'')
+
     def test_verified_before_single_primary(self):
         self.engine.run('publish',self.key)
         self.assertEqual(self.s.ensure_object.call_count,2);self.assertEqual(self.g.request.call_count,1)
         body=self.g.request.call_args.args[2]['body'];self.assertIn('https://spi-evidence.',body);self.assertNotIn('private diagnostic',body)
+        self.assert_public_links(body,storage_objects(self.bundle))
     def test_per_file_checkpoint_restart_toggle(self):
         n=[0]
         def upload(k,b):
