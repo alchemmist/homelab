@@ -16,7 +16,11 @@
     },
     "open-webui.svg": {
       "url": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/open-webui.svg",
-      "sha256": "54717f2b0d403a6a559c87622d23dfd3cff3538e910ea3dbd8ffbf015aa3ff89"
+      "sha256": "54717f2b0d403a6a559c87622d23dfd3cff3538e910ea3dbd8ffbf015aa3ff89",
+      "applications": [
+        "open-webui",
+        "public-web-webui-alias"
+      ]
     },
     "n8n.svg": {
       "url": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/n8n.svg",
@@ -26,11 +30,19 @@
       "source": "deploy/litellm/branding/socrat-icon-v1.png",
       "transformation": "Original 2349px circular Socrat favicon downsampled to 512px PNG, embedded unchanged in SVG wrapper.",
       "sha256": "08ef91235235b027105679eb61a9458dea1f19d6c3472a985e3585bc0a834f7a",
-      "source_sha256": "7fe591292ddbe4bbcb0b6c7cdbf9544924763c744ee9896e15322ab4c01dc82f"
+      "source_sha256": "7fe591292ddbe4bbcb0b6c7cdbf9544924763c744ee9896e15322ab4c01dc82f",
+      "applications": [
+        "wiki",
+        "spi-evidence"
+      ]
     },
     "uptime-kuma.svg": {
       "url": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/uptime-kuma.svg",
-      "sha256": "f3caa8a8bac253a77fa2ae7e7bc9b062b55a006abd787b111533714152ec744c"
+      "sha256": "f3caa8a8bac253a77fa2ae7e7bc9b062b55a006abd787b111533714152ec744c",
+      "applications": [
+        "uptime-kuma",
+        "public-web-kuma-admin"
+      ]
     },
     "litellm.svg": {
       "repository": "https://github.com/BerriAI/litellm",
@@ -38,7 +50,11 @@
       "url": "https://raw.githubusercontent.com/BerriAI/litellm/60fc121ce8ab995cb2997e0bbd0a980ee93c627d/ui/litellm-dashboard/public/assets/logos/litellm_monogram.svg",
       "sha256": "69eaed389008a423e98590466c98b80f4ab7ffec47f4bda53ee0db3890775ba0",
       "license": "MIT for non-enterprise repository content; product mark remains a trademark of its respective owner.",
-      "transformation": "Unmodified official light-background product monogram SVG."
+      "transformation": "Unmodified official light-background product monogram SVG.",
+      "applications": [
+        "litellm",
+        "public-web-litellm-alias"
+      ]
     },
     "argocd.svg": {
       "url": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/argo-cd.svg",
@@ -48,6 +64,36 @@
       "source": "original",
       "transformation": "Simple book mark drawn for the LMS portal entry.",
       "sha256": "733ef8f848f3c03f9449c0838673542f85bf1afb80e8e904ad3b2821ed56f953"
+    },
+    "netbird.svg": {
+      "url": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/netbird.svg",
+      "sha256": "afe6ae99e35a60153d080e989b549f6f5f7c72a8f220afc1e3864fb48d5059ed",
+      "applications": [
+        "netbird-pilot"
+      ]
+    },
+    "searxng.svg": {
+      "url": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/searxng.svg",
+      "sha256": "e0f4c72fe58055043d04446350e7d3e6a25105e507519b1ceacffd5b9aa89593",
+      "applications": [
+        "public-web-search"
+      ]
+    },
+    "syncthing.svg": {
+      "url": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/syncthing.svg",
+      "sha256": "65d1430f7522bea0507259929f0033d7c62539d14757d7c6f5b62574eb4da2d3",
+      "applications": [
+        "public-web-syncthing-0",
+        "public-web-syncthing-1"
+      ]
+    },
+    "rustfs.svg": {
+      "url": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/rustfs.svg",
+      "sha256": "a708327b4d7cf213c11dada32a810686d0b0243ffa56906b8d17762e84c7fb8a",
+      "applications": [
+        "spi-rustfs-native",
+        "spi-rustfs-console"
+      ]
     }
   }
 }
