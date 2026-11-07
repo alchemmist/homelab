@@ -1,4 +1,12 @@
-# Authorized live activation: new selections use S3; existing backend locks persist.
+# PREPARED ONLY: local counter activation requires separate rollout approval.
+# Private pull robot expires after 90 days; rotate spi-harbor-pull before expiry.
+# Rollback: original values.yaml Python digest + byte-bound-v1; preserve database,
+# cache, ledger and spent finite failure allowances. Never restore/refund them.
+image: harbor.socrat.alchemmist.xyz/spi-triage/runtime@sha256:4cd6a12c1b046c03b74195b2d93aff183d8465230d364b527fa116fd25624a91
+tokenAccountingMode: local-qwen-v1
+imagePullSecrets:
+  - name: spi-harbor-pull
+# Authorized live S3 activation: new selections use S3; backend locks persist.
 # Rollback: enabled=false, retaining credentials and exact continuation connectivity.
 s3Evidence:
   enabled: true

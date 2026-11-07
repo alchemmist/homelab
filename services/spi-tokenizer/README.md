@@ -19,3 +19,42 @@ Rebuild input is a strict preloaded context, **not** a claim that the private di
 Completed source gates and pins: VALIDATION.md. The build intentionally requires a strictly verified preloaded context; public source URLs are recorded, not a claim of a universal downloader. Node/git exist only in ephemeral validation images. No activation, production acceptance or live throughput claim.
 
 P1 proxy-floor correction: see the final section of VALIDATION.md for the installed-source rounding/check/refund proof, raw-input bound, adaptive analysis, refreshed seven-case table and 211-test zero-skip constrained runs. Earlier native-only formulas and 3586-token synthetic costs are superseded; no activation is authorized.
+
+## Private pull readiness (prepared, not activated)
+
+On 2026-11-07 the dedicated private Harbor `spi-triage/runtime` manifest
+`sha256:4cd6a12c1b046c03b74195b2d93aff183d8465230d364b527fa116fd25624a91`
+was verified through Registry V2 and pulled on `socrat-1`. Its dedicated
+`automation/spi-harbor-pull` Secret is referenced only by imagePullSecrets,
+never mounted or exposed to application env. Robot permission metadata grants
+only target repository pull; push and `homelab/spi-triage` pull were absent.
+The 90-day project robot requires private rotation before expiry (1801812182).
+Do not export credentials to Git, logs, browser cookies or command arguments.
+
+The deny-egress, no-service/no-PVC preflight validated pinned assets and library,
+then one benign public reservation: 1072, peak RSS 229024 KiB. This is startup
+measurement, **not** steady-state memory proof. Temporary Pod/policy removed.
+Source Harbor scanner reported nine fixable High vulnerabilities: runtime
+vulnerability baseline/dependency attribution remains UNTRIAGED and is an
+explicit activation-review gate. Do not blindly update pinned dependencies.
+
+`values-off-live.yaml` prepares the private image/local counter; default chart
+still uses original Python/byte-bound-v1. No production activation or job retry
+has occurred. Operator CLI `scripts/n8n/spi_operator_retry.py` is dry-run unless
+`--execute`, restricted to two exact approved job IDs, transactionally audited,
+and preserves spent failure allowances. It requires separate independent review
+before execution. Other dead/cancelled/completed jobs are not authorized.
+
+Before **every** Git push (auto-Argo) and before future retry, use reviewed
+`scripts/n8n/spi_private_backup.py` inside the worker with a private PVC temp
+directory, streaming stdout directly to an operator host file under umask 077.
+Verify host mode 0600, SQLite integrity, original terminal whole-row hashes,
+all 119 cancelled rows, cache/intents/upload receipts/ledger and whole-table
+hashes before permitting the change; retain the private backup. The helper uses
+online backup, a 512 MiB/60 s bound, 64 KiB streaming, and finally removes private
+PVC temp files. No serialize, restore, lease release or promotion is allowed.
+A failed/truncated stream is not a valid backup. Future authenticated HTTPS
+fetch/rebase is mandatory before any push; functional upstream delta/conflict
+requires new review. Rollback uses original pinned Python and byte-bound-v1,
+with DB/cache/ledger/history untouched. These preparations do not mean three
+cards are complete.

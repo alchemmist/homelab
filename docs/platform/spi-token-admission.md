@@ -554,3 +554,12 @@ remain `LLM_UPSTREAM_TIMEOUT`. User authorization is for future audited retries
 of 08ba and 998b only after reviewed correction; this source slice performs no
 retry, deployment or live write. No cancelled/completed/other dead-job revival,
 queue cleanup or counter reset is authorized here.
+
+### Private pull preparation, 2026-11-07
+
+Private Harbor target and actual socrat-1 pull/startup have passed. The SPI-only
+pull secret is imagePullSecrets-only; a 90-day pull-only robot must be privately
+rotated. Production local-counter activation and two exact-job operator retry
+remain separate reviewed actions, not done. See `services/spi-tokenizer/README.md`
+for pre-push/pre-retry bounded private SQLite backup and immutable retry audit.
+Nine fixable High runtime vulnerabilities remain untriaged pending rollout review.

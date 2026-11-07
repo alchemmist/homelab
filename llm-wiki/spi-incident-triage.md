@@ -1114,3 +1114,12 @@ remain `LLM_UPSTREAM_TIMEOUT`. User authorization is for future audited retries
 of 08ba and 998b only after reviewed correction; this source slice performs no
 retry, deployment or live write. No cancelled/completed/other dead-job revival,
 queue cleanup or counter reset is authorized here.
+
+2026-11-07: private `spi-triage/runtime` registry digest and actual socrat-1
+restricted pull/startup passed (private pull-only robot, 90-day rotation).
+Local override/CLI are preparation only: not deployed, not retried, not three
+completed cards. Preserve all terminal history and spent allowances. Mandatory
+bounded private SQLite backup before every push/auto-Argo and future two-job
+retry; see tokenizer README. Nine fixable High runtime findings remain untriaged
+and require activation review. Original pinned Python/byte-bound rollback keeps
+DB/cache/ledger intact.
