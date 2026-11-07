@@ -127,10 +127,12 @@ Do **not** turn the migration acceptance into a claim of cluster-wide health:
 - The separate concurrent blog release `8b3e079` points at an unavailable Harbor
   digest: new Pod ImagePullBackOff, two old Pods still serving. No unrelated release
   rollback or image substitution was performed as part of monitoring ownership.
+  The independent subsequent robot release `f485c74` corrected the artifact; final
+  readback after `4124691` confirms blog Synced/Healthy. This incident is closed.
 - Root's separate Rancher drift was traced to two already-live Argo PostDelete
   lifecycle finalizers absent from Git. They are now declared explicitly, preserving
   hooks and actual metadata rather than adding diff ignores or changing Rancher.
 
-Investigate the WAL with a safe backup/repair procedure and the missing blog
-artifact as separate incidents; neither is permission to prune state or rerun the
-retired combined monitoring installer.
+Investigate the remaining WAL issue with a safe backup/repair procedure. The blog
+incident is already closed by its independent release. Neither is permission to
+prune state or rerun the retired combined monitoring installer.

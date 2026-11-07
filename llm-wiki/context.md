@@ -77,8 +77,9 @@ blanket sync/prune, `helm upgrade` или ручной image patch для обх
 Loki/Tempo снова на auto-sync. Все новые владельцы Synced/Healthy, сохранены 103
 UID существующих ресурсов и PVC/Secret/Certificate; неиспользуемый общий ConfigMap
 удалён отдельно по UID. Не повторять retirement и не возвращать старые owners.
-Есть отдельные незакрытые проблемы WAL Prometheus и нового digest блога, поэтому
-это **не** обещание здоровья всего кластера. Карта/приёмка и границы:
+Остаётся отдельная проблема WAL Prometheus; сбой digest блога исправлен
+параллельным релизом `f485c74` (blog снова Synced/Healthy). Это **не** обещание
+целостности WAL или здоровья всего кластера. Карта/приёмка и границы:
 [деплой](cluster-deploy.md), [наблюдаемость](observability-current.md),
 [closeout](../docs/monitoring-service-split.md).
 

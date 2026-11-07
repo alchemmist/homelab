@@ -90,7 +90,7 @@ API. Для чтения использовать MCP/API, браузер — д
 [SPI](spi-incident-triage.md) · [n8n](n8n-workflows.md).
 
 
-## Незакрытые проблемы на финальной проверке split
+## Отдельные инциденты, замеченные при закрытии split
 
 - **PrometheusTSDBCompactionsFailing**: в логах 2026-11-07 09:00 UTC checksum
   corruption WAL segment `00001786` при checkpoint/truncation. Это раньше disarm
@@ -101,7 +101,10 @@ API. Для чтения использовать MCP/API, браузер — д
   `sha256:c476e069de95fd3daafaac09f1f1fcf58f65230deaecb6740b5b9cf84aae8c99`,
   который registry возвращает NotFound. Новый pod — ImagePullBackOff, два прежних
   продолжают обслуживать. Это отдельный release incident, не результат переноса
-  Grafana/Loki/Tempo. Чужой release не откатывался и образ не подменялся.
+  Grafana/Loki/Tempo. Вскоре независимый robot release **`f485c74`** записал
+  доступный digest; повторная проверка после `4124691`: blog **Synced/Healthy**.
+  Этот инцидент закрыт параллельным релизом, не repair мониторинга. Чужой release
+  в ходе split не откатывался и образ вручную не подменялся.
 - Root показывал отдельный metadata drift Rancher: Argo-managed PostDelete
   finalizers отсутствовали в Git. В manifest задекларированы **уже существующие**
   finalizers, не удалены hooks и не добавлен ignoreDifferences. Rancher runtime,
