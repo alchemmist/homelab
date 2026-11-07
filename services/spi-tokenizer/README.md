@@ -34,9 +34,16 @@ Do not export credentials to Git, logs, browser cookies or command arguments.
 The deny-egress, no-service/no-PVC preflight validated pinned assets and library,
 then one benign public reservation: 1072, peak RSS 229024 KiB. This is startup
 measurement, **not** steady-state memory proof. Temporary Pod/policy removed.
-Source Harbor scanner reported nine fixable High vulnerabilities: runtime
-vulnerability baseline/dependency attribution remains UNTRIAGED and is an
-explicit activation-review gate. Do not blindly update pinned dependencies.
+Scanner inventory: **9 TOTAL: 5 High, 3 Medium, 1 Low**, not nine High or zero
+vulnerabilities. Independent review found inherited identical pip-vendored
+msgpack (pure Python, no C extension), pkg_resources and urllib3; none is imported
+by SPI runtime. The pinned original base has identical pip, ensurepip and /usr/lib
+hashes. Five High findings have explicit current-runtime trigger exclusions, not
+a blanket waiver. zlib is inherited and usable by Python; absent GDAL/infback9
+artifacts provide strong advisory-misattribution evidence, but Medium attribution
+uncertainty is retained (not universally N/A). No demonstrated newly introduced/
+reachable High in current SPI; adding imports or package-install paths requires
+re-review. No pin suppression, upgrade or zero-CVE claim is implied.
 
 `values-off-live.yaml` prepares the private image/local counter; default chart
 still uses original Python/byte-bound-v1. No production activation or job retry
@@ -58,3 +65,36 @@ fetch/rebase is mandatory before any push; functional upstream delta/conflict
 requires new review. Rollback uses original pinned Python and byte-bound-v1,
 with DB/cache/ledger/history untouched. These preparations do not mean three
 cards are complete.
+
+
+### Source-only operator corrections (not activated)
+
+The CLI now requires `--target-manifest` and a private authorization record with
+`target_manifest_digest`. Manifest version 1 contains nonce, the original target
+file SHA256 and the two complete original rows. Its digest is SHA256 of ASCII
+JSON with sorted keys and compact separators (including exact string column
+contents; `result` is never parsed/reformatted). Do not regenerate rows from
+production or change IDs to bypass drift: any changed/missing/extra column is
+rejected under BEGIN IMMEDIATE before audit DDL or mutation. Default dry-run
+rolls back without schema/data writes. The authorization hash includes manifest
+binding and original authorization lineage; audit records retain manifest,
+authorization and pre/post row hashes outside volatile result. Exact final audit
+contents and schema and normalized whole-original-table hashes are checked before
+commit. Only state/available/updated change; spent unsafe allowances stay spent.
+
+Existing private targets.json and authorization.json captures remain unchanged.
+Private target-manifest-v1.json and authorization-bound-v1.json bind that capture,
+not a new production read. Original authorization message time remains unknown/
+null, and its original recorded_at is preserved (not an invented auth time).
+Only the user's two full IDs 08ba… and 998b… are in scope after fresh independent
+review; no other terminal row, completed episode, intent or lease is authorized.
+
+Backup's POSIX main-thread CLI deadline covers connection opens, backup busy
+wait, integrity VM progress, file reads, blocked stdout write and flush; SIGALRM
+and timer state are restored. It is not an HTTP-thread helper. Size is capped at
+512MiB, streaming chunks at 64KiB; private PVC temp mode is 0600. Redirect with
+umask 077, verify host mode0600 and success plus integrity; on any nonzero exit or
+truncation delete/mark failed the host output and do not push. Temp/sidecars are
+removed on ordinary failures. Deadline/cleanup assume normally interruptible OS
+I/O, not a guarantee against uninterruptible kernel I/O. No production backup,
+push, deploy or retry was performed by this source correction.

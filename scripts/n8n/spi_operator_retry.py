@@ -39,6 +39,18 @@ def table_hashes(c, original_jobs=None):
         result[name] = h.hexdigest()
     return result
 
+def manifest_digest(manifest):
+    if (not isinstance(manifest, dict) or manifest.get('version') != 1
+        or manifest.get('nonce') != NONCE
+        or not re.fullmatch(r'[0-9a-f]{64}', manifest.get('original_target_file_sha256', ''))):
+        raise ValueError('invalid target manifest')
+    rows = manifest.get('rows')
+    if (not isinstance(rows, list) or len(rows) != 2
+        or any(not isinstance(r, dict) for r in rows)
+        or {r.get('id') for r in rows} != set(TARGETS)):
+        raise ValueError('invalid manifest IDs')
+    return digest(manifest)
+
 def authorize(a):
     if (a.get('authorization_text') != 'Да, все рзрешаю' or a.get('nonce') != NONCE
         or set(a.get('job_ids', [])) != set(TARGETS) or len(a['job_ids']) != 2
@@ -47,8 +59,11 @@ def authorize(a):
         raise ValueError('authorization mismatch')
     datetime.datetime.fromisoformat(a['recorded_at'].replace('Z','+00:00'))
 
-def retry(path, authorization, execute=False):
+def retry(path, authorization, execute=False, manifest=None):
     authorize(authorization)
+    bound = manifest_digest(manifest)
+    if authorization.get('target_manifest_digest') != bound:
+        raise ValueError('authorization manifest mismatch')
     c = sqlite3.connect('file:'+str(path)+'?mode=rw', uri=True, isolation_level=None)
     c.row_factory = sqlite3.Row
     try:
@@ -60,6 +75,8 @@ def retry(path, authorization, execute=False):
             if len(matches) != 1:
                 raise ValueError('missing exact full ID')
             row = dict(matches[0])
+            if row != next(r for r in manifest['rows'] if r['id'] == key):
+                raise ValueError('reviewed full row drift')
             if row['state']=='complete' and row['stage']==2:
                 raise ValueError('already complete: skip, never rerun')
             if (row['state']!='dead' or row['stage']!=2 or row['lease']!=0
@@ -74,16 +91,27 @@ def retry(path, authorization, execute=False):
         if not execute:
             c.rollback()
             return {'mode':'DRY_RUN','eligible':2,'row_hashes':{r['id']:digest(r) for r in rows}}
-        c.execute('CREATE TABLE IF NOT EXISTS operator_retry_audit (nonce TEXT NOT NULL, job_id TEXT NOT NULL, authorization_hash TEXT NOT NULL, pre_row_hash TEXT NOT NULL, executed_at REAL NOT NULL, reason TEXT NOT NULL, explicit_change TEXT NOT NULL, PRIMARY KEY(nonce,job_id))')
+        c.execute('CREATE TABLE IF NOT EXISTS operator_retry_audit (nonce TEXT NOT NULL, job_id TEXT NOT NULL, authorization_hash TEXT NOT NULL, pre_row_hash TEXT NOT NULL, executed_at REAL NOT NULL, reason TEXT NOT NULL, explicit_change TEXT NOT NULL, manifest_digest TEXT NOT NULL, post_row_hash TEXT NOT NULL, PRIMARY KEY(nonce,job_id))')
         for action in ('UPDATE','DELETE'):
-            c.execute('CREATE TRIGGER IF NOT EXISTS operator_retry_audit_no_'+action.lower()+' BEFORE '+action+' ON operator_retry_audit BEGIN SELECT RAISE(ABORT,\'immutable audit\'); END')
+            name='operator_retry_audit_no_'+action.lower()
+            sql='CREATE TRIGGER '+name+' BEFORE '+action+' ON operator_retry_audit BEGIN SELECT RAISE(ABORT,\'immutable audit\'); END'
+            existing=c.execute("SELECT sql FROM sqlite_master WHERE name=?",(name,)).fetchone()
+            if existing is None:
+                c.execute(sql)
+            elif existing[0] != sql:
+                raise ValueError('audit immutability schema mismatch')
         if c.execute('SELECT count(*) FROM operator_retry_audit').fetchone()[0] + 2 > 2:
             raise ValueError('bounded audit full')
+        audit_schema = list(c.execute("SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name"))
+        audit_before = [tuple(r) for r in c.execute('SELECT * FROM operator_retry_audit ORDER BY nonce,job_id')]
+        expected_audit = list(audit_before)
         now=time.time()
         for row in rows:
             change={'state':'retry','available':now,'updated':now}
             c.execute('UPDATE jobs SET state=?,available=?,updated=? WHERE id=?',('retry',now,now,row['id']))
-            c.execute('INSERT INTO operator_retry_audit VALUES(?,?,?,?,?,?,?)',(NONCE,row['id'],digest(authorization),digest(row),now,authorization['reason'],packed(change)))
+            entry=(NONCE,row['id'],digest(authorization),digest(row),now,authorization['reason'],packed(change),bound,digest(dict(row,**change)))
+            c.execute('INSERT INTO operator_retry_audit VALUES(?,?,?,?,?,?,?,?,?)',entry)
+            expected_audit.append(entry)
             actual=dict(c.execute('SELECT * FROM jobs WHERE id=?',(row['id'],)).fetchone())
             if actual != dict(row,**change):
                 raise ValueError('unexpected selected row mutation')
@@ -95,6 +123,10 @@ def retry(path, authorization, execute=False):
         for key,row in expected.items():
             if dict(c.execute('SELECT * FROM jobs WHERE id=?',(key,)).fetchone())!=row:
                 raise ValueError('final target mismatch')
+        if ([tuple(r) for r in c.execute('SELECT * FROM operator_retry_audit ORDER BY nonce,job_id')]
+            != sorted(expected_audit, key=lambda r:(r[0],r[1]))
+            or list(c.execute("SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name")) != audit_schema):
+            raise ValueError('audit content/schema mismatch')
         c.commit()
         return {'mode':'EXECUTED','changed':2,'authorization_hash':digest(authorization)}
     except BaseException:
@@ -107,10 +139,12 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--database',required=True)
     p.add_argument('--authorization',required=True)
+    p.add_argument('--target-manifest',required=True)
     p.add_argument('--execute',action='store_true')
     a=p.parse_args()
     with open(a.authorization) as f: auth=json.load(f)
-    print(packed(retry(a.database,auth,a.execute)))
+    with open(a.target_manifest) as f: manifest=json.load(f)
+    print(packed(retry(a.database,auth,a.execute,manifest)))
 
 if __name__=='__main__':
     main()

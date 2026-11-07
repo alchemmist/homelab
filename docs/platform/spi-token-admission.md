@@ -562,4 +562,18 @@ pull secret is imagePullSecrets-only; a 90-day pull-only robot must be privately
 rotated. Production local-counter activation and two exact-job operator retry
 remain separate reviewed actions, not done. See `services/spi-tokenizer/README.md`
 for pre-push/pre-retry bounded private SQLite backup and immutable retry audit.
-Nine fixable High runtime vulnerabilities remain untriaged pending rollout review.
+Scanner inventory: **9 TOTAL: 5 High, 3 Medium, 1 Low**, not nine High or zero
+vulnerabilities. Independent review found inherited identical pip-vendored
+msgpack (pure Python, no C extension), pkg_resources and urllib3; none is imported
+by SPI runtime. The pinned original base has identical pip, ensurepip and /usr/lib
+hashes. Five High findings have explicit current-runtime trigger exclusions, not
+a blanket waiver. zlib is inherited and usable by Python; absent GDAL/infback9
+artifacts provide strong advisory-misattribution evidence, but Medium attribution
+uncertainty is retained (not universally N/A). No demonstrated newly introduced/
+reachable High in current SPI; adding imports or package-install paths requires
+re-review. No pin suppression, upgrade or zero-CVE claim is implied.
+
+Source-only helper correction: private full-row manifest binding and end-to-end
+CLI backup deadline are prepared, not activated. Original auth time is unknown/
+null; only two full IDs 08ba…/998b… are authorized after independent review. See
+tokenizer README for canonical manifest, failure cleanup and backup limitations.

@@ -1120,6 +1120,19 @@ restricted pull/startup passed (private pull-only robot, 90-day rotation).
 Local override/CLI are preparation only: not deployed, not retried, not three
 completed cards. Preserve all terminal history and spent allowances. Mandatory
 bounded private SQLite backup before every push/auto-Argo and future two-job
-retry; see tokenizer README. Nine fixable High runtime findings remain untriaged
-and require activation review. Original pinned Python/byte-bound rollback keeps
+retry; see tokenizer README. Scanner inventory: **9 TOTAL: 5 High, 3 Medium, 1 Low**, not nine High or zero
+vulnerabilities. Independent review found inherited identical pip-vendored
+msgpack (pure Python, no C extension), pkg_resources and urllib3; none is imported
+by SPI runtime. The pinned original base has identical pip, ensurepip and /usr/lib
+hashes. Five High findings have explicit current-runtime trigger exclusions, not
+a blanket waiver. zlib is inherited and usable by Python; absent GDAL/infback9
+artifacts provide strong advisory-misattribution evidence, but Medium attribution
+uncertainty is retained (not universally N/A). No demonstrated newly introduced/
+reachable High in current SPI; adding imports or package-install paths requires
+re-review. No pin suppression, upgrade or zero-CVE claim is implied. Original pinned Python/byte-bound rollback keeps
 DB/cache/ledger intact.
+
+Source-only helper correction: private full-row manifest binding and end-to-end
+CLI backup deadline are prepared, not activated. Original auth time is unknown/
+null; only two full IDs 08ba…/998b… are authorized after independent review. See
+tokenizer README for canonical manifest, failure cleanup and backup limitations.
