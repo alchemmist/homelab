@@ -8,6 +8,8 @@ import json
 import os
 from pathlib import Path
 import platform
+import shlex
+import time
 import shutil
 import subprocess
 import tarfile
@@ -43,18 +45,24 @@ def private_write(path, data):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--ssh-host', default='socrat-0')
+    p.add_argument('--archive', type=Path, help='Previously downloaded release archive; the pinned checksum is still mandatory')
+    p.add_argument('--offline', action='store_true', help='Use the existing npm cache; combine with --archive')
+    p.add_argument('--configure-project', type=Path, help='Install cached-path settings only into an old checkout where .pi/mcp.json remains ignored/untracked; backup first, never merge/reset tracked work')
     args = p.parse_args()
     target = Path.home()/'.local/share/homelab/mcp'
+    for name in ('run-official-mcp.py', 'mcp-credential.py'):
+        private_write(target/'bin'/name, (ROOT/'scripts'/name).read_bytes())
     npm = target/'npm'
     npm.mkdir(parents=True, exist_ok=True)
     for name in ('package.json', 'package-lock.json'):
         shutil.copyfile(ROOT/'tools/official-mcp'/name, npm/name)
-    subprocess.run(['npm', 'ci', '--ignore-scripts', '--no-audit', '--no-fund'], cwd=npm, check=True, stdout=subprocess.DEVNULL)
+    subprocess.run(['npm', 'ci', '--ignore-scripts', '--no-audit', '--no-fund'] + (['--offline'] if args.offline else []), cwd=npm, check=True, stdout=subprocess.DEVNULL, timeout=120)
     art = ARTIFACTS.get((platform.system(), platform.machine()))
     if not art: raise SystemExit('Platform not reviewed; add a verified stable release artifact/checksum first.')
     suffix, digest = art
     url = f'https://github.com/prometheus/prometheus-mcp/releases/download/v{VERSION}/prometheus-mcp-server_{VERSION}_{suffix}.tar.gz'
-    data = urllib.request.urlopen(url, timeout=90).read()
+    if args.offline and not args.archive: raise ValueError('Offline setup requires a checksum-verified --archive')
+    data = args.archive.read_bytes() if args.archive else urllib.request.urlopen(url, timeout=90).read()
     if hashlib.sha256(data).hexdigest() != digest: raise ValueError('Upstream archive checksum mismatch')
     # Extract a single regular file, never archive paths/symlinks.
     with tarfile.open(fileobj=io.BytesIO(data), mode='r:gz') as archive:
@@ -73,6 +81,25 @@ def main():
         private_write(folder/name, base64.b64decode(secret[key]))
     # Only a filename is stored in the HTTP config, never an inline credential.
     private_write(folder/'metrics-http.yaml', ('bearer_token_file: '+json.dumps(str(folder/'grafana-viewer-token'))+'\nfollow_redirects: false\n').encode())
+    if args.configure_project:
+        project = args.configure_project.resolve()
+        destination = project/'.pi/mcp.json'
+        relative = '.pi/mcp.json'
+        tracked = subprocess.run(['git','-C',str(project),'ls-files','--error-unmatch',relative],capture_output=True).returncode == 0
+        ignored = subprocess.run(['git','-C',str(project),'check-ignore','-q',relative]).returncode == 0
+        if tracked or not ignored:
+            raise ValueError('Refuse to overwrite tracked/unignored project config; use its committed settings instead.')
+        if destination.is_symlink(): raise ValueError('Refuse symlink project config')
+        if destination.exists():
+            private_write(folder/'project-backups'/('mcp-'+str(time.time_ns())+'.json'),destination.read_bytes())
+        config = json.loads((ROOT/'.pi/mcp.json').read_text())
+        for server in config['mcpServers'].values():
+            if server.get('command') == 'python3':
+                server['args'] = [str(target/'bin'/'run-official-mcp.py') if arg=='scripts/run-official-mcp.py' else arg for arg in server.get('args',[])]
+            for key,value in server.get('headers',{}).items():
+                server['headers'][key] = value.replace('scripts/mcp-credential.py',shlex.quote(str(target/'bin'/'mcp-credential.py')))
+        private_write(destination,(json.dumps(config,indent=2)+'\n').encode())
+        print('Ignored project MCP settings updated with cached runtime paths; old private settings backed up. Tracked work untouched.')
     print('Installed pinned official stdio clients; existing Grafana Viewer/client credentials reused, not rotated.')
     print('n8n requires owner to enable Instance-level MCP; Umami requires its own authorized API key. See docs/official-mcp.md.')
 

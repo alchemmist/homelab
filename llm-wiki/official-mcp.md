@@ -35,8 +35,33 @@ systemd units четырёх нод, не только приложения из
 по стабильному пакету/авторизации; LiteLLM admin требует proxy_admin даже для reads;
 Kuma MCP отсутствует в установленной stable2.5.7. Internal DB/cache, backup buckets,
 контроллеры и наши сервисы не получают самописных/сторонних обёрток и широких прав.
+Open Terminal имеет native MCP, но он открывает полный shell/file API под общим
+ключом; это намеренно не включено как обычная диагностика.
 Решение по **каждой** Application и upstream evidence — в реестре.
 
 Read-only tools не разрешают агенту публиковать логи/приватные данные, исполнять
 workflow, гасить alert или считать Healthy доказательством целостности WAL.
 HTTP200 с HTML/IdP login — не успешный MCP initialize.
+
+## Проверенный итог
+
+Feature commit `e77eed4`; полный audit содержит также 271 Pod records (включая
+completed jobs и operator-owned DB Pods) и 114 workload controllers — это **не**
+число отдельных сервисов/MCP. В tracked config 3 включённых official connectors;
+локальный ранее работавший wiki access сохранён отдельно.
+
+Проверены actual Pi loader, Argo11/tools+реальный read, metrics10/tools+`query=1`,
+Grafana37/read-only+auth rejection/dashboard/query. Loki/Tempo/Pyroscope metadata
+действительно прочитаны через MCP, без вывода содержимого. Два n8n Ingress сохранили
+UID и приняты n8n; Grafana/n8n Pods не перезапускались; MCP Secret UID/содержимое
+не менялись. Намеренно rollout только Grafana MCP с новыми tool families.
+
+131 test +24 subtests; public regression134/134. Старый WAL incident не исправлялся,
+alert не скрывался. n8n403/Umami missing-key — остаются **реальные blockers**.
+
+В исходном грязном checkout сохранены dashboard/Traefik изменения; branch/source
+не reset/merge. Его ignored project MCP config переведён на установленные cached
+launchers после приватного backup старого symlink; shared target и Wiki override
+сохранены. Не коммитить private local config с унаследованными credentials: новая
+tracked версия в main содержит только безопасные ссылки. Новая доверенная сессия
+увидит подключения; уже запущенную сессию MCP нужно переподключить.

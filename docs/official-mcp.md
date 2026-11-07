@@ -132,6 +132,9 @@ Do not reuse the database password, guess default credentials or reset an admin.
   upgrade or database migration is performed. Other upstreams are recorded as
   no suitable first-party operational MCP identified, not universally impossible.
 - Open WebUI/vLLM MCP consumer support is not a server for administering them.
+  Open Terminal **does** have first-party native MCP, but it exposes every API
+  endpoint, including shell/file writes, under the shared terminal key. It is
+  deliberately not enabled as a general diagnostics connector.
 - Redis and MariaDB have official MCPs, but their deployed instances are internal
   application data planes. They are intentionally not exposed to agents as SQL,
   cache content or credential access. PostgreSQL reference/community adapters are
@@ -140,3 +143,47 @@ Do not reuse the database password, guess default credentials or reset an admin.
 
 All decisions and source links are in the audit, including infrastructure,
 controllers, exporters, platform dependencies and our own applications.
+
+
+### Existing dirty checkout
+
+Do not reset/stash unrelated dashboard/Traefik work to install MCP settings. When
+an older checkout still ignores `.pi/mcp.json`, setup supports explicit
+`--configure-project /path/to/homelab`: it refuses tracked/unignored config,
+backs up the old private config0600 and installs nonsecret settings referencing
+cached launcher files. It does not change that checkout's tracked source or branch.
+After a normal later update to main, use the tracked project settings and scripts.
+
+## Verified closeout
+
+Feature handoff: `e77eed4`. Snapshot: 49 Applications, 114 workload controllers,
+271 Pod records (including completed jobs/direct operator-owned database Pods),
+and running service-unit inventories on all four nodes. These are inventory
+counts, not a claim of 271 independent services or MCP installations.
+
+- Actual Pi configuration loader accepts both the tracked worktree settings and
+  the original Homelab checkout's private cached-path settings. The latter had
+  unrelated dashboard/Traefik work: tracked source/branch was **not** reset or
+  merged. Its old owned project symlink was recorded privately and detached;
+  the shared config target is untouched. Existing project-specific Wiki settings
+  remain in the ignored local config; none of those credentials went into Git.
+- Argo CD: initialize, tools/list (11 tools), no write tools, real bounded
+  application listing. Official metrics: same checks (10 tools), real `query=1`.
+- Grafana MCP: 37 tools, all read-only; trusted HTTPS, missing/invalid token denial,
+  dashboard read and Prometheus query pass. Loki labels, scoped Tempo resource
+  attributes and Pyroscope labels succeed through the actual MCP, without printing
+  response data. This is not every-producer ingestion/profile coverage acceptance.
+- Both adopted n8n Ingress UIDs are unchanged and tracked by `n8n`. Grafana's
+  actual Pod and n8n's actual Pod retain UID; the Grafana MCP rollout is intentional.
+  Grafana MCP credential Secret UID and content hash are unchanged.
+- n8n public endpoint now returns native JSON401 for missing/bad tokens and
+  JSON403 for the existing valid token until owner enablement, not HTML200.
+  The n8n/Umami project entries remain disabled; no claimed successful connection.
+- **131 tests + 24 subtests**, Helm lint for both affected charts, and public
+  regression **134/134** pass. These are focused regression checks, not a fresh
+  browser MFA, backup restore or full monitoring-data-integrity acceptance.
+
+Setup can use `--offline --archive /path/to/the/release.tar.gz` with the existing
+npm cache; the archive checksum is still enforced. The release archive is never
+extracted wholesale. Private original-profile rollback metadata is under
+`~/.config/homelab/mcp/project-backups/`, never in Git.

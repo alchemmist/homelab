@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('mcp_credentials', ROOT/'scripts/mcp-credential.py')
+spec = importlib.util.spec_from_file_location('mcp_credentials', Path(__file__).with_name('mcp-credential.py'))
 creds = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(creds)
 BASE = Path.home()/'.local/share/homelab/mcp'

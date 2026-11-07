@@ -1,6 +1,6 @@
 {
   "auditedAt": "2026-11-07",
-  "scope": "All 49 current Argo Applications plus all Deployment/StatefulSet/DaemonSet instances and running systemd services on all four nodes; one-off Jobs/CronJobs are supporting automation, not independent user APIs. Upstream negative findings are point-in-time, not claims that MCP can never exist.",
+  "scope": "All 49 current Argo Applications plus all Deployment/StatefulSet/DaemonSet instances and running systemd services on all four nodes; one-off Jobs/CronJobs are supporting automation, not independent user APIs. Upstream negative findings are point-in-time, not claims that MCP can never exist. Pod inventory also records directly operator-owned CNPG/database Pods and supporting jobs, without env/Secret contents.",
   "applications": [
     {
       "application": "alertmanager",
@@ -136,8 +136,9 @@
     },
     {
       "application": "open-terminal",
-      "decision": "no-first-party-runtime-mcp-identified",
-      "reason": "Upstream MCP integration is a tool consumer/proxy or model tool-calling interface, not a first-party management MCP for this deployed service."
+      "decision": "not-selected",
+      "reason": "First-party native MCP exists and exposes every FastAPI endpoint, including shell/file mutation, under the shared terminal API key. Not enabled as a routine diagnostics connector; no remote-shell authority added. Open WebUI/vLLM client support is separately not an administration MCP.",
+      "upstream": "https://github.com/open-webui/open-terminal/blob/main/open_terminal/mcp_server.py"
     },
     {
       "application": "open-webui",
@@ -1324,7 +1325,7 @@
   },
   "internalDataPlaneDecisions": [
     {
-      "service": "PostgreSQL databases (Authentik/LMS/n8n/Umami/LiteLLM/Socrat bot/Harbor)",
+      "service": "PostgreSQL databases (Authentik/LMS/Umami/LiteLLM/Socrat bot/Harbor) and SQLite volumes (n8n/Grafana)",
       "decision": "not-exposed",
       "reason": "Internal application data plane; no new SQL MCP, credentials or data access granted. Archived reference/community PostgreSQL adapters are not an appropriate first-party operational connector."
     },
@@ -1355,5 +1356,3814 @@
     "https://github.com/syncthing/syncthing",
     "https://github.com/cloudnative-pg/cloudnative-pg",
     "https://github.com/cert-manager/cert-manager"
+  ],
+  "podInventory": [
+    {
+      "namespace": "argocd",
+      "name": "argo-cd-argocd-application-controller-0",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "StatefulSet",
+          "name": "argo-cd-argocd-application-controller"
+        }
+      ],
+      "images": [
+        "quay.io/argoproj/argocd:v3.5.6"
+      ]
+    },
+    {
+      "namespace": "argocd",
+      "name": "argo-cd-argocd-applicationset-controller-59f9457f9d-lxj72",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "argo-cd-argocd-applicationset-controller-59f9457f9d"
+        }
+      ],
+      "images": [
+        "quay.io/argoproj/argocd:v3.5.6"
+      ]
+    },
+    {
+      "namespace": "argocd",
+      "name": "argo-cd-argocd-notifications-controller-fd767b6cf-f6245",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "argo-cd-argocd-notifications-controller-fd767b6cf"
+        }
+      ],
+      "images": [
+        "quay.io/argoproj/argocd:v3.5.6"
+      ]
+    },
+    {
+      "namespace": "argocd",
+      "name": "argo-cd-argocd-redis-64767b7b4f-gmc2g",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "argo-cd-argocd-redis-64767b7b4f"
+        }
+      ],
+      "images": [
+        "docker.io/library/redis:8.2-alpine"
+      ]
+    },
+    {
+      "namespace": "argocd",
+      "name": "argo-cd-argocd-repo-server-6c9f497b84-7bslq",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "argo-cd-argocd-repo-server-6c9f497b84"
+        }
+      ],
+      "images": [
+        "quay.io/argoproj/argocd:v3.5.6"
+      ]
+    },
+    {
+      "namespace": "argocd",
+      "name": "argo-cd-argocd-server-966697978-lm69t",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "argo-cd-argocd-server-966697978"
+        }
+      ],
+      "images": [
+        "quay.io/argoproj/argocd:v3.5.6"
+      ]
+    },
+    {
+      "namespace": "automation",
+      "name": "blog-updates-worker-757655cb55-mn2kh",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "blog-updates-worker-757655cb55"
+        }
+      ],
+      "images": [
+        "python:3.13-alpine@sha256:7984cf56ceaddebe4fefeb75d64000b9f45d8b77b11a09b24524da6cdc3af0c8"
+      ]
+    },
+    {
+      "namespace": "automation",
+      "name": "n8n-6c68f65f4-jhwq2",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "n8n-6c68f65f4"
+        }
+      ],
+      "images": [
+        "docker.io/n8nio/n8n@sha256:624a1f10f37119a73eca34c0cbd358668aebf0068d320ad5eae584f9d35aa314"
+      ]
+    },
+    {
+      "namespace": "automation",
+      "name": "spi-triage-7c7768db9d-892vs",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "spi-triage-7c7768db9d"
+        }
+      ],
+      "images": [
+        "harbor.socrat.alchemmist.xyz/spi-triage/runtime@sha256:4cd6a12c1b046c03b74195b2d93aff183d8465230d364b527fa116fd25624a91"
+      ]
+    },
+    {
+      "namespace": "automation",
+      "name": "wiki-openapi-worker-b56d58b9c-zxw5l",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "wiki-openapi-worker-b56d58b9c"
+        }
+      ],
+      "images": [
+        "python:3.13-alpine@sha256:7984cf56ceaddebe4fefeb75d64000b9f45d8b77b11a09b24524da6cdc3af0c8"
+      ]
+    },
+    {
+      "namespace": "blog",
+      "name": "blog-795d46759f-d9dz6",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "blog-795d46759f"
+        }
+      ],
+      "images": [
+        "harbor.socrat.alchemmist.xyz/homelab/blog@sha256:c17b95f0ba3ff29016abe9671c3f5a8fe5063cecdc38c65a62f1720c771ae10d"
+      ]
+    },
+    {
+      "namespace": "blog",
+      "name": "blog-795d46759f-dhtvd",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "blog-795d46759f"
+        }
+      ],
+      "images": [
+        "harbor.socrat.alchemmist.xyz/homelab/blog@sha256:c17b95f0ba3ff29016abe9671c3f5a8fe5063cecdc38c65a62f1720c771ae10d"
+      ]
+    },
+    {
+      "namespace": "cats",
+      "name": "cats-7d8f8fc479-26q46",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "cats-7d8f8fc479"
+        }
+      ],
+      "images": [
+        "harbor.socrat.alchemmist.xyz/homelab/cats@sha256:ffef7edb39d622190b6ba88642bc35f7a8b159943532517889a3ff8d795ed179"
+      ]
+    },
+    {
+      "namespace": "cats",
+      "name": "cats-7d8f8fc479-t22kk",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "cats-7d8f8fc479"
+        }
+      ],
+      "images": [
+        "harbor.socrat.alchemmist.xyz/homelab/cats@sha256:ffef7edb39d622190b6ba88642bc35f7a8b159943532517889a3ff8d795ed179"
+      ]
+    },
+    {
+      "namespace": "cattle-capi-system",
+      "name": "capi-controller-manager-6c8f858cf7-hfrlz",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "capi-controller-manager-6c8f858cf7"
+        }
+      ],
+      "images": [
+        "rancher/cluster-api-controller:v1.13.3"
+      ]
+    },
+    {
+      "namespace": "cattle-fleet-local-system",
+      "name": "fleet-agent-9bb754f4c-ktn8h",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "fleet-agent-9bb754f4c"
+        }
+      ],
+      "images": [
+        "rancher/fleet-agent:v0.16.2"
+      ]
+    },
+    {
+      "namespace": "cattle-fleet-system",
+      "name": "fleet-controller-b89cdf655-hdhpq",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "fleet-controller-b89cdf655"
+        }
+      ],
+      "images": [
+        "rancher/fleet:v0.16.2",
+        "rancher/fleet:v0.16.2",
+        "rancher/fleet:v0.16.2"
+      ]
+    },
+    {
+      "namespace": "cattle-fleet-system",
+      "name": "helmops-798597dcfd-ctvlr",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "helmops-798597dcfd"
+        }
+      ],
+      "images": [
+        "rancher/fleet:v0.16.2"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "alertmanager-kube-prometheus-stack-alertmanager-0",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "StatefulSet",
+          "name": "alertmanager-kube-prometheus-stack-alertmanager"
+        }
+      ],
+      "images": [
+        "quay.io/prometheus/alertmanager:v0.34.1",
+        "quay.io/prometheus-operator/prometheus-config-reloader:v0.94.1"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "grafana-mcp-54f9d87cc9-qjcxz",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "grafana-mcp-54f9d87cc9"
+        }
+      ],
+      "images": [
+        "grafana/mcp-grafana:2.0.2@sha256:78d208116ec52b09b44f0eca66892073b39aefcb64483c54d43255c8eab7e97a"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "kube-prometheus-stack-grafana-5cf4c46b58-vvmwd",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "kube-prometheus-stack-grafana-5cf4c46b58"
+        }
+      ],
+      "images": [
+        "quay.io/kiwigrid/k8s-sidecar:2.14.1",
+        "quay.io/kiwigrid/k8s-sidecar:2.14.1",
+        "docker.io/grafana/grafana:13.2.4-distroless"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "kube-prometheus-stack-kube-state-metrics-6b94698c5d-dbzgf",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "kube-prometheus-stack-kube-state-metrics-6b94698c5d"
+        }
+      ],
+      "images": [
+        "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.20.0"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "kube-prometheus-stack-operator-74c8d4b65-sxmpn",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "kube-prometheus-stack-operator-74c8d4b65"
+        }
+      ],
+      "images": [
+        "quay.io/prometheus-operator/prometheus-operator:v0.94.1"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "kube-prometheus-stack-prometheus-node-exporter-7h52b",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "DaemonSet",
+          "name": "kube-prometheus-stack-prometheus-node-exporter"
+        }
+      ],
+      "images": [
+        "quay.io/prometheus/node-exporter:v1.12.1-distroless"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "kube-prometheus-stack-prometheus-node-exporter-7tdsl",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "DaemonSet",
+          "name": "kube-prometheus-stack-prometheus-node-exporter"
+        }
+      ],
+      "images": [
+        "quay.io/prometheus/node-exporter:v1.12.1-distroless"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "kube-prometheus-stack-prometheus-node-exporter-fbx56",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "DaemonSet",
+          "name": "kube-prometheus-stack-prometheus-node-exporter"
+        }
+      ],
+      "images": [
+        "quay.io/prometheus/node-exporter:v1.12.1-distroless"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "kube-prometheus-stack-prometheus-node-exporter-wzldk",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "DaemonSet",
+          "name": "kube-prometheus-stack-prometheus-node-exporter"
+        }
+      ],
+      "images": [
+        "quay.io/prometheus/node-exporter:v1.12.1-distroless"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "monitoring-etcd-metrics-nth6l",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "DaemonSet",
+          "name": "monitoring-etcd-metrics"
+        }
+      ],
+      "images": [
+        "nginx:1.31.2-alpine"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "monitoring-etcd-metrics-sxwzj",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "DaemonSet",
+          "name": "monitoring-etcd-metrics"
+        }
+      ],
+      "images": [
+        "nginx:1.31.2-alpine"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "monitoring-etcd-metrics-xz5ts",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "DaemonSet",
+          "name": "monitoring-etcd-metrics"
+        }
+      ],
+      "images": [
+        "nginx:1.31.2-alpine"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "monitoring-service-probes-7c7644d5cd-2zv2g",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "monitoring-service-probes-7c7644d5cd"
+        }
+      ],
+      "images": [
+        "quay.io/prometheus/blackbox-exporter:v0.29.0"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "otel-application-credentials-29901060-jzg7l",
+      "phase": "Succeeded",
+      "owners": [
+        {
+          "kind": "Job",
+          "name": "otel-application-credentials-29901060"
+        }
+      ],
+      "images": [
+        "python:3.13-alpine@sha256:7984cf56ceaddebe4fefeb75d64000b9f45d8b77b11a09b24524da6cdc3af0c8"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "otel-loki-cd668b857-djxwd",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "otel-loki-cd668b857"
+        }
+      ],
+      "images": [
+        "docker.io/grafana/loki@sha256:0db216b630ae1f348a1584c67f3cead8b4c1fc839169a39501db664744158e28"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "otel-tempo-5f6f8d9867-r9mz7",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "otel-tempo-5f6f8d9867"
+        }
+      ],
+      "images": [
+        "docker.io/grafana/tempo@sha256:12b0820f13ffa10ce956b6e9acc3b03f3cffded99109be6cc09d106fe56e5d38"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "prometheus-kube-prometheus-stack-prometheus-0",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "StatefulSet",
+          "name": "prometheus-kube-prometheus-stack-prometheus"
+        }
+      ],
+      "images": [
+        "quay.io/prometheus/prometheus:v3.15.0-distroless",
+        "quay.io/prometheus-operator/prometheus-config-reloader:v0.94.1",
+        "quay.io/thanos/thanos:v0.42.4",
+        "docker.io/otel/opentelemetry-collector-contrib@sha256:ac0bb9cdc844b55d2fd2655d03e596243787d6a8c52dd408b1dc96dd1bd372ee"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "pyroscope-647584666f-wmvf5",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "pyroscope-647584666f"
+        }
+      ],
+      "images": [
+        "docker.io/grafana/pyroscope@sha256:ef9b48976386aa2781e84664dfdba7cc33a1b6793c0cc9d130812173a926ca1f"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "rancher-monitoring-dashboards-monitoring-proxy-d9775db9f-5rpt7",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "rancher-monitoring-dashboards-monitoring-proxy-d9775db9f"
+        }
+      ],
+      "images": [
+        "rancher/mirrored-library-nginx:1.31.2-alpine"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "socrat-n8n-activity-747c55b845-4lwvg",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "socrat-n8n-activity-747c55b845"
+        }
+      ],
+      "images": [
+        "python@sha256:e064671ca452259bab50e8e2c7bd896e39e9a343bb06ca25234adf6fe18d0fc7",
+        "docker.io/otel/opentelemetry-collector-contrib@sha256:ac0bb9cdc844b55d2fd2655d03e596243787d6a8c52dd408b1dc96dd1bd372ee"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "thanos-cascade-29900910-drk9l",
+      "phase": "Succeeded",
+      "owners": [
+        {
+          "kind": "Job",
+          "name": "thanos-cascade-29900910"
+        }
+      ],
+      "images": [
+        "python:3.12-slim"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "thanos-cascade-29900970-c5bgc",
+      "phase": "Succeeded",
+      "owners": [
+        {
+          "kind": "Job",
+          "name": "thanos-cascade-29900970"
+        }
+      ],
+      "images": [
+        "python:3.12-slim"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "thanos-cascade-29901030-q9vfl",
+      "phase": "Succeeded",
+      "owners": [
+        {
+          "kind": "Job",
+          "name": "thanos-cascade-29901030"
+        }
+      ],
+      "images": [
+        "python:3.12-slim"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "thanos-compactor-1h-649c9668c6-64pn9",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "thanos-compactor-1h-649c9668c6"
+        }
+      ],
+      "images": [
+        "quay.io/thanos/thanos:v0.42.4"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "thanos-compactor-5m-86bfc99c77-l9f5q",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "thanos-compactor-5m-86bfc99c77"
+        }
+      ],
+      "images": [
+        "quay.io/thanos/thanos:v0.42.4"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "thanos-compactor-77fc75cdd8-hl2n8",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "thanos-compactor-77fc75cdd8"
+        }
+      ],
+      "images": [
+        "quay.io/thanos/thanos:v0.42.4"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "thanos-disk-2jlhv",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "DaemonSet",
+          "name": "thanos-disk"
+        }
+      ],
+      "images": [
+        "python:3.12-slim"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "thanos-disk-9ljsv",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "DaemonSet",
+          "name": "thanos-disk"
+        }
+      ],
+      "images": [
+        "python:3.12-slim"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "thanos-disk-bplrb",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "DaemonSet",
+          "name": "thanos-disk"
+        }
+      ],
+      "images": [
+        "python:3.12-slim"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "thanos-query-8c7bb5f58-sq7qk",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "thanos-query-8c7bb5f58"
+        }
+      ],
+      "images": [
+        "quay.io/thanos/thanos:v0.42.4"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "thanos-shelf-1h-6fdfd6449-g2d9c",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "thanos-shelf-1h-6fdfd6449"
+        }
+      ],
+      "images": [
+        "python:3.12-slim"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "thanos-shelf-5m-7757987658-7pqwv",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "thanos-shelf-5m-7757987658"
+        }
+      ],
+      "images": [
+        "python:3.12-slim"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "thanos-store-1h-c8cd86bff-hmhgb",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "thanos-store-1h-c8cd86bff"
+        }
+      ],
+      "images": [
+        "quay.io/thanos/thanos:v0.42.4"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "thanos-store-55554669b7-6x8tx",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "thanos-store-55554669b7"
+        }
+      ],
+      "images": [
+        "quay.io/thanos/thanos:v0.42.4"
+      ]
+    },
+    {
+      "namespace": "cattle-monitoring-system",
+      "name": "thanos-store-5m-859b86b7f6-w7dn4",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "thanos-store-5m-859b86b7f6"
+        }
+      ],
+      "images": [
+        "quay.io/thanos/thanos:v0.42.4"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "public-web-rancher-proxy-57bd97c795-f6lwb",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "public-web-rancher-proxy-57bd97c795"
+        }
+      ],
+      "images": [
+        "docker.io/library/nginx:stable-alpine@sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "rancher-5ff5c5b8cd-m2f6d",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "rancher-5ff5c5b8cd"
+        }
+      ],
+      "images": [
+        "rancher/rancher:v2.15.2"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "rancher-5ff5c5b8cd-qkcbl",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "rancher-5ff5c5b8cd"
+        }
+      ],
+      "images": [
+        "rancher/rancher:v2.15.2"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "rancher-webhook-7dcb669cc6-jrgg4",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "rancher-webhook-7dcb669cc6"
+        }
+      ],
+      "images": [
+        "rancher/rancher-webhook:v0.11.3"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "rancher-webhook-7dcb669cc6-vjnhd",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "rancher-webhook-7dcb669cc6"
+        }
+      ],
+      "images": [
+        "rancher/rancher-webhook:v0.11.3"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-25fgt",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-2klzw",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-2p9f9",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-2qdt2",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-2zmg6",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-46z92",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-4bvvg",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-4h67k",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-4rf2d",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-56vjx",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-5dxxv",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-5f7cv",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-5kp8x",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-5lg2g",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-5m5r4",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-5qhqs",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-5sr64",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-69m2g",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-6qxhm",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-6rt2c",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-7p9gr",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-7qprb",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-7t8jc",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-8b78b",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-8bbxn",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-8qzl7",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-9d67n",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-9wnfg",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-b4bwx",
+      "phase": "Succeeded",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-b4clk",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-b57f9",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-bbqjr",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-bdkmj",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-bdtcr",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-bg5fd",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-bjsxx",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-bm6rs",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-bqsmg",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-bvr9l",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-bxh4z",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-c7tsz",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-cbpmz",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-cmdbs",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-csqt6",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-d54mw",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-d6cdj",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-dcz6w",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-dgz4x",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-dhfpd",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-dsgkv",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-dxczb",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-dxsh2",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-fgclm",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-fhgxr",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-fkvcw",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-gpmm6",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-gtnpr",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-gvvlf",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-h26c4",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-hfrm9",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-hgjn2",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-hw42t",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-hxfcq",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-hzxzj",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-jjnp8",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-jk4v2",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-jrhmv",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-kkb4p",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-kknsz",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-kpwx5",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-l4mgk",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-lbl7k",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-lf7fg",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-lfq85",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-mlz2n",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-mrsr4",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-msqqc",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-nbz9h",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-nhshn",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-nln2g",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-nnk9d",
+      "phase": "Succeeded",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-pb5t2",
+      "phase": "Succeeded",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-pbhwl",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-pqbkd",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-ptt2z",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-q68m4",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-qqktm",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-qztqb",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-r4tpp",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-r7wcr",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-r8m47",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-rbw69",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-rm5vf",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-rrbj8",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-s4mht",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-s572f",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-s89ld",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-shlk6",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-srbsc",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-sxww7",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-t45jh",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-t9dgx",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-t9tjz",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-tgcbt",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-tjf2v",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-tvwxf",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-v86zc",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-vftjv",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-vjnf2",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-vrnng",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-vvkqx",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-w5595",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-w86rx",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-x2qdg",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-xb4vk",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-xbj9q",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-xd62t",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-xjc55",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-xrnln",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-xvw2w",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-z2fcx",
+      "phase": "Succeeded",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-zdssb",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller-5b6fd6b596-zlhf9",
+      "phase": "Failed",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "system-upgrade-controller-5b6fd6b596"
+        }
+      ],
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "cattle-turtles-system",
+      "name": "rancher-turtles-controller-manager-d88695588-f5w8z",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "rancher-turtles-controller-manager-d88695588"
+        }
+      ],
+      "images": [
+        "rancher/turtles:v0.27.2"
+      ]
+    },
+    {
+      "namespace": "cert-manager",
+      "name": "cert-manager-56f54b7bb-crsfx",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "cert-manager-56f54b7bb"
+        }
+      ],
+      "images": [
+        "quay.io/jetstack/cert-manager-controller:v1.16.2"
+      ]
+    },
+    {
+      "namespace": "cert-manager",
+      "name": "cert-manager-56f54b7bb-g2pvd",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "cert-manager-56f54b7bb"
+        }
+      ],
+      "images": [
+        "quay.io/jetstack/cert-manager-controller:v1.16.2"
+      ]
+    },
+    {
+      "namespace": "cert-manager",
+      "name": "cert-manager-cainjector-844c7dd695-9th74",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "cert-manager-cainjector-844c7dd695"
+        }
+      ],
+      "images": [
+        "quay.io/jetstack/cert-manager-cainjector:v1.16.2"
+      ]
+    },
+    {
+      "namespace": "cert-manager",
+      "name": "cert-manager-cainjector-844c7dd695-wrjq6",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "cert-manager-cainjector-844c7dd695"
+        }
+      ],
+      "images": [
+        "quay.io/jetstack/cert-manager-cainjector:v1.16.2"
+      ]
+    },
+    {
+      "namespace": "cert-manager",
+      "name": "cert-manager-webhook-964859b56-bksp6",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "cert-manager-webhook-964859b56"
+        }
+      ],
+      "images": [
+        "quay.io/jetstack/cert-manager-webhook:v1.16.2"
+      ]
+    },
+    {
+      "namespace": "cert-manager",
+      "name": "cert-manager-webhook-964859b56-qr6kw",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "cert-manager-webhook-964859b56"
+        }
+      ],
+      "images": [
+        "quay.io/jetstack/cert-manager-webhook:v1.16.2"
+      ]
+    },
+    {
+      "namespace": "cnpg-system",
+      "name": "cnpg-cloudnative-pg-fdd5c9cf-2krdb",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "cnpg-cloudnative-pg-fdd5c9cf"
+        }
+      ],
+      "images": [
+        "ghcr.io/cloudnative-pg/cloudnative-pg:1.30.1"
+      ]
+    },
+    {
+      "namespace": "cnpg-system",
+      "name": "cnpg-cloudnative-pg-fdd5c9cf-lfhbq",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "cnpg-cloudnative-pg-fdd5c9cf"
+        }
+      ],
+      "images": [
+        "ghcr.io/cloudnative-pg/cloudnative-pg:1.30.1"
+      ]
+    },
+    {
+      "namespace": "fleet-local",
+      "name": "rke2-machineconfig-cleanup-cronjob-29897105-2bdbw",
+      "phase": "Succeeded",
+      "owners": [
+        {
+          "kind": "Job",
+          "name": "rke2-machineconfig-cleanup-cronjob-29897105"
+        }
+      ],
+      "images": [
+        "rancher/rancher-agent:v2.15.2"
+      ]
+    },
+    {
+      "namespace": "fleet-local",
+      "name": "rke2-machineconfig-cleanup-cronjob-29898545-fjtnz",
+      "phase": "Succeeded",
+      "owners": [
+        {
+          "kind": "Job",
+          "name": "rke2-machineconfig-cleanup-cronjob-29898545"
+        }
+      ],
+      "images": [
+        "rancher/rancher-agent:v2.15.2"
+      ]
+    },
+    {
+      "namespace": "fleet-local",
+      "name": "rke2-machineconfig-cleanup-cronjob-29899985-r26xg",
+      "phase": "Succeeded",
+      "owners": [
+        {
+          "kind": "Job",
+          "name": "rke2-machineconfig-cleanup-cronjob-29899985"
+        }
+      ],
+      "images": [
+        "rancher/rancher-agent:v2.15.2"
+      ]
+    },
+    {
+      "namespace": "format-quorum",
+      "name": "format-quorum-bd89ff44f-4zsgl",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "format-quorum-bd89ff44f"
+        }
+      ],
+      "images": [
+        "harbor.socrat.alchemmist.xyz/homelab/format-quorum@sha256:2c7127c13aa1ea1efd1ab6e59d4f0a043d19a46ec70462d2ddf876dc351eb153"
+      ]
+    },
+    {
+      "namespace": "harbor",
+      "name": "harbor-core-8675989576-gcw6k",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "harbor-core-8675989576"
+        }
+      ],
+      "images": [
+        "docker.io/goharbor/harbor-core:v2.15.4"
+      ]
+    },
+    {
+      "namespace": "harbor",
+      "name": "harbor-database-0",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "StatefulSet",
+          "name": "harbor-database"
+        }
+      ],
+      "images": [
+        "docker.io/goharbor/harbor-db:v2.15.4"
+      ]
+    },
+    {
+      "namespace": "harbor",
+      "name": "harbor-jobservice-5fc54b4c5f-l9jr8",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "harbor-jobservice-5fc54b4c5f"
+        }
+      ],
+      "images": [
+        "docker.io/goharbor/harbor-jobservice:v2.15.4"
+      ]
+    },
+    {
+      "namespace": "harbor",
+      "name": "harbor-portal-648f9d555f-7wdtx",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "harbor-portal-648f9d555f"
+        }
+      ],
+      "images": [
+        "docker.io/goharbor/harbor-portal:v2.15.4"
+      ]
+    },
+    {
+      "namespace": "harbor",
+      "name": "harbor-redis-0",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "StatefulSet",
+          "name": "harbor-redis"
+        }
+      ],
+      "images": [
+        "docker.io/goharbor/valkey-photon:v2.15.4"
+      ]
+    },
+    {
+      "namespace": "harbor",
+      "name": "harbor-registry-8544559d79-2cl4j",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "harbor-registry-8544559d79"
+        }
+      ],
+      "images": [
+        "docker.io/goharbor/registry-photon:v2.15.4",
+        "docker.io/goharbor/harbor-registryctl:v2.15.4"
+      ]
+    },
+    {
+      "namespace": "harbor",
+      "name": "harbor-trivy-0",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "StatefulSet",
+          "name": "harbor-trivy"
+        }
+      ],
+      "images": [
+        "docker.io/goharbor/trivy-adapter-photon:v2.15.4"
+      ]
+    },
+    {
+      "namespace": "identity",
+      "name": "authentik-postgres-0",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "StatefulSet",
+          "name": "authentik-postgres"
+        }
+      ],
+      "images": [
+        "postgres:17.11-trixie"
+      ]
+    },
+    {
+      "namespace": "identity",
+      "name": "authentik-server-669498f4f-m5k67",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "authentik-server-669498f4f"
+        }
+      ],
+      "images": [
+        "ghcr.io/goauthentik/server:2026.8.5"
+      ]
+    },
+    {
+      "namespace": "identity",
+      "name": "authentik-worker-6b7855f5b-wvfx9",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "authentik-worker-6b7855f5b"
+        }
+      ],
+      "images": [
+        "ghcr.io/goauthentik/server:2026.8.5"
+      ]
+    },
+    {
+      "namespace": "identity",
+      "name": "netbird-edge-forwarder-5576d4fc7d-mtgpl",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "netbird-edge-forwarder-5576d4fc7d"
+        }
+      ],
+      "images": [
+        "rancher/mirrored-library-traefik@sha256:f86a2cab1b5c649070c49f883c743dd32d8485a56e3368c5f93b9e91f1e91259"
+      ]
+    },
+    {
+      "namespace": "identity",
+      "name": "netbird-relay-home-b897ffd57-5lpk2",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "netbird-relay-home-b897ffd57"
+        }
+      ],
+      "images": [
+        "netbirdio/relay:0.82.0@sha256:8f6b9e4193653ede89e83dd4aa4e2cf2562579b3e2481dcf259a7ab28bcd5fa1"
+      ]
+    },
+    {
+      "namespace": "identity",
+      "name": "netbird-relay-vps-7669bd7865-w2pjv",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "netbird-relay-vps-7669bd7865"
+        }
+      ],
+      "images": [
+        "netbirdio/relay:0.82.0@sha256:8f6b9e4193653ede89e83dd4aa4e2cf2562579b3e2481dcf259a7ab28bcd5fa1"
+      ]
+    },
+    {
+      "namespace": "identity",
+      "name": "public-web-grafana-proxy-85cbbfddf-skl8p",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "public-web-grafana-proxy-85cbbfddf"
+        }
+      ],
+      "images": [
+        "docker.io/library/nginx:stable-alpine@sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311"
+      ]
+    },
+    {
+      "namespace": "identity",
+      "name": "rustfs-gateway-748cf468db-8zl2n",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "rustfs-gateway-748cf468db"
+        }
+      ],
+      "images": [
+        "harbor.socrat.alchemmist.xyz/homelab/rustfs-gateway@sha256:9253d36e923e216cd34714a5baf9b57d1bb5577bf52c4671a4f8d302a27fef57"
+      ]
+    },
+    {
+      "namespace": "identity",
+      "name": "socrat-authentik-theme-5f8578b9b5-q8rkn",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "socrat-authentik-theme-5f8578b9b5"
+        }
+      ],
+      "images": [
+        "nginxinc/nginx-unprivileged@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03"
+      ]
+    },
+    {
+      "namespace": "img-proxy",
+      "name": "img-proxy-5d5fc4b57f-s9r7v",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "img-proxy-5d5fc4b57f"
+        }
+      ],
+      "images": [
+        "nginx:1.27-alpine"
+      ]
+    },
+    {
+      "namespace": "kube-system",
+      "name": "coredns-c748c6bcb-pmgj9",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "coredns-c748c6bcb"
+        }
+      ],
+      "images": [
+        "rancher/mirrored-coredns-coredns:1.14.7"
+      ]
+    },
+    {
+      "namespace": "kube-system",
+      "name": "coredns-c748c6bcb-wz2kx",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "coredns-c748c6bcb"
+        }
+      ],
+      "images": [
+        "rancher/mirrored-coredns-coredns:1.14.7"
+      ]
+    },
+    {
+      "namespace": "kube-system",
+      "name": "helm-install-traefik-wlx4c",
+      "phase": "Succeeded",
+      "owners": [
+        {
+          "kind": "Job",
+          "name": "helm-install-traefik"
+        }
+      ],
+      "images": [
+        "rancher/klipper-helm:v0.13.3-build20260727"
+      ]
+    },
+    {
+      "namespace": "kube-system",
+      "name": "local-path-provisioner-849978cd79-h44tk",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "local-path-provisioner-849978cd79"
+        }
+      ],
+      "images": [
+        "rancher/local-path-provisioner:v0.0.37"
+      ]
+    },
+    {
+      "namespace": "kube-system",
+      "name": "metrics-server-fcf6cfb5b-kxz8c",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "metrics-server-fcf6cfb5b"
+        }
+      ],
+      "images": [
+        "rancher/mirrored-metrics-server:v0.9.0"
+      ]
+    },
+    {
+      "namespace": "kube-system",
+      "name": "nvidia-device-plugin-xfx6g",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "DaemonSet",
+          "name": "nvidia-device-plugin"
+        }
+      ],
+      "images": [
+        "nvcr.io/nvidia/k8s-device-plugin:v0.20.1"
+      ]
+    },
+    {
+      "namespace": "kube-system",
+      "name": "svclb-traefik-80aba32c-2h2kw",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "DaemonSet",
+          "name": "svclb-traefik-80aba32c"
+        }
+      ],
+      "images": [
+        "rancher/klipper-lb:v0.4.17",
+        "rancher/klipper-lb:v0.4.17"
+      ]
+    },
+    {
+      "namespace": "kube-system",
+      "name": "svclb-traefik-80aba32c-x22lb",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "DaemonSet",
+          "name": "svclb-traefik-80aba32c"
+        }
+      ],
+      "images": [
+        "rancher/klipper-lb:v0.4.17",
+        "rancher/klipper-lb:v0.4.17"
+      ]
+    },
+    {
+      "namespace": "kube-system",
+      "name": "traefik-6b87778f79-mfkzv",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "traefik-6b87778f79"
+        }
+      ],
+      "images": [
+        "rancher/mirrored-library-traefik:3.7.13"
+      ]
+    },
+    {
+      "namespace": "kube-system",
+      "name": "traefik-6b87778f79-zn6m5",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "traefik-6b87778f79"
+        }
+      ],
+      "images": [
+        "rancher/mirrored-library-traefik:3.7.13"
+      ]
+    },
+    {
+      "namespace": "llm",
+      "name": "litellm-5c4695bbc9-hx6kp",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "litellm-5c4695bbc9"
+        }
+      ],
+      "images": [
+        "ghcr.io/berriai/litellm:1.105.1"
+      ]
+    },
+    {
+      "namespace": "llm",
+      "name": "litellm-branding-7dcf6b8f54-r6sth",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "litellm-branding-7dcf6b8f54"
+        }
+      ],
+      "images": [
+        "nginx:1.28-alpine@sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236"
+      ]
+    },
+    {
+      "namespace": "llm",
+      "name": "litellm-postgres-5cbbfdc865-95hql",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "litellm-postgres-5cbbfdc865"
+        }
+      ],
+      "images": [
+        "postgres:18.6-alpine"
+      ]
+    },
+    {
+      "namespace": "llm",
+      "name": "open-terminal-849c55f79-5x5rs",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "open-terminal-849c55f79"
+        }
+      ],
+      "images": [
+        "ghcr.io/open-webui/open-terminal:0.14.1@sha256:03af3bd6c71af3548cbaef874f72d0a8ebd7daa813e0f08d3bdfe8f865f65212",
+        "ghcr.io/open-webui/open-terminal:0.14.1@sha256:03af3bd6c71af3548cbaef874f72d0a8ebd7daa813e0f08d3bdfe8f865f65212"
+      ]
+    },
+    {
+      "namespace": "llm",
+      "name": "open-webui-5557d4ffcf-rxgdr",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "open-webui-5557d4ffcf"
+        }
+      ],
+      "images": [
+        "ghcr.io/open-webui/open-webui:v0.12.3-slim@sha256:5adfb0355bbe4a5860c0ba9482cc0b40f573de3749a21a64cf4789391a14fffc"
+      ]
+    },
+    {
+      "namespace": "llm",
+      "name": "open-webui-gateway-5f5b67d778-zqds5",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "open-webui-gateway-5f5b67d778"
+        }
+      ],
+      "images": [
+        "nginx:1.28-alpine@sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236"
+      ]
+    },
+    {
+      "namespace": "llm",
+      "name": "searxng-77fc46b8bc-fvmng",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "searxng-77fc46b8bc"
+        }
+      ],
+      "images": [
+        "docker.io/searxng/searxng@sha256:d81e14a4328ba7a57f297dff0472be629d30bf29580406c0d5b3bdab563c9bed"
+      ]
+    },
+    {
+      "namespace": "llm",
+      "name": "vllm-8598586798-jnz89",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "vllm-8598586798"
+        }
+      ],
+      "images": [
+        "vllm/vllm-openai:v0.31.0@sha256:c1c9f6fd5c109ba7f0546a59f5b2f15fb87f64c77782e90a27b648b42a8e67c3"
+      ]
+    },
+    {
+      "namespace": "lms",
+      "name": "lms-9b95cfd55-mss7n",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "lms-9b95cfd55"
+        }
+      ],
+      "images": [
+        "ghcr.io/alchemmist/lms@sha256:9890519389652cdd8c8436a76f81be6bc81131174a728144ab268c4150a80167"
+      ]
+    },
+    {
+      "namespace": "lms",
+      "name": "lms-database-backup-29900520-vsxjs",
+      "phase": "Succeeded",
+      "owners": [
+        {
+          "kind": "Job",
+          "name": "lms-database-backup-29900520"
+        }
+      ],
+      "images": [
+        "docker.io/library/postgres@sha256:839fbb5a4942a7758dd93e18b42ea5649807491a0545b5eeeb8f0b8bb11857a5"
+      ]
+    },
+    {
+      "namespace": "lms",
+      "name": "lms-database-backup-29900880-x4czk",
+      "phase": "Succeeded",
+      "owners": [
+        {
+          "kind": "Job",
+          "name": "lms-database-backup-29900880"
+        }
+      ],
+      "images": [
+        "docker.io/library/postgres@sha256:839fbb5a4942a7758dd93e18b42ea5649807491a0545b5eeeb8f0b8bb11857a5"
+      ]
+    },
+    {
+      "namespace": "lms",
+      "name": "lms-ha-1",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "Cluster",
+          "name": "lms-ha"
+        }
+      ],
+      "images": [
+        "ghcr.io/cloudnative-pg/postgresql:17.11-system-trixie@sha256:03a1c6a62b27e8ad31cae5c085131b5ac706b09403d6fcb6c58d16c8daa257cd"
+      ]
+    },
+    {
+      "namespace": "lms",
+      "name": "lms-ha-2",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "Cluster",
+          "name": "lms-ha"
+        }
+      ],
+      "images": [
+        "ghcr.io/cloudnative-pg/postgresql:17.11-system-trixie@sha256:03a1c6a62b27e8ad31cae5c085131b5ac706b09403d6fcb6c58d16c8daa257cd"
+      ]
+    },
+    {
+      "namespace": "lms",
+      "name": "lms-ha-3",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "Cluster",
+          "name": "lms-ha"
+        }
+      ],
+      "images": [
+        "ghcr.io/cloudnative-pg/postgresql:17.11-system-trixie@sha256:03a1c6a62b27e8ad31cae5c085131b5ac706b09403d6fcb6c58d16c8daa257cd"
+      ]
+    },
+    {
+      "namespace": "lms",
+      "name": "lms-postgres-58cc9799f9-m8shv",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "lms-postgres-58cc9799f9"
+        }
+      ],
+      "images": [
+        "postgres:17-bookworm"
+      ]
+    },
+    {
+      "namespace": "monori",
+      "name": "monori-7475b4d787-6f8wd",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "monori-7475b4d787"
+        }
+      ],
+      "images": [
+        "harbor.socrat.alchemmist.xyz/homelab/monori@sha256:ef7def1d4eafdfa28cf4bd72f26fda1bceeb5c335510e26a56029a9f9b1b03c6"
+      ]
+    },
+    {
+      "namespace": "monori",
+      "name": "monori-back-5cb6489749-q4ljk",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "monori-back-5cb6489749"
+        }
+      ],
+      "images": [
+        "harbor.socrat.alchemmist.xyz/homelab/monori@sha256:4543c95fe7f26b342878cee4cee0648918c6ed55f1f62584227661c3efe11ff6"
+      ]
+    },
+    {
+      "namespace": "monori",
+      "name": "monori-sync-6d8bbc6b8c-bt654",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "monori-sync-6d8bbc6b8c"
+        }
+      ],
+      "images": [
+        "harbor.socrat.alchemmist.xyz/homelab/monori@sha256:762c3b18504541e195b99ee2999fe723a466ff0bccb06211c87c75a038d33dbd"
+      ]
+    },
+    {
+      "namespace": "netbird-host-peers",
+      "name": "machine-socrat-0-7846975f58-58vhc",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "machine-socrat-0-7846975f58"
+        }
+      ],
+      "images": [
+        "netbirdio/netbird:0.82.0@sha256:eca5b274c635bfbb04ec6724a0712d1146190dd450eea199eeb83916fdd94965"
+      ]
+    },
+    {
+      "namespace": "netbird-host-peers",
+      "name": "machine-socrat-1-68ff9d7c5b-8h2vr",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "machine-socrat-1-68ff9d7c5b"
+        }
+      ],
+      "images": [
+        "netbirdio/netbird:0.82.0@sha256:eca5b274c635bfbb04ec6724a0712d1146190dd450eea199eeb83916fdd94965"
+      ]
+    },
+    {
+      "namespace": "netbird-host-peers",
+      "name": "machine-socrat-2-69d7fbd56b-c7f7z",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "machine-socrat-2-69d7fbd56b"
+        }
+      ],
+      "images": [
+        "netbirdio/netbird:0.82.0@sha256:eca5b274c635bfbb04ec6724a0712d1146190dd450eea199eeb83916fdd94965"
+      ]
+    },
+    {
+      "namespace": "netbird-host-peers",
+      "name": "machine-socrat-3-74855897b8-9brd9",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "machine-socrat-3-74855897b8"
+        }
+      ],
+      "images": [
+        "netbirdio/netbird:0.82.0@sha256:eca5b274c635bfbb04ec6724a0712d1146190dd450eea199eeb83916fdd94965"
+      ]
+    },
+    {
+      "namespace": "netbird-pilot",
+      "name": "dashboard-5b78449795-b4bh2",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "dashboard-5b78449795"
+        }
+      ],
+      "images": [
+        "netbirdio/dashboard@sha256:340b13c00b84349572a2acc5605e907cb09250a9e6461c757097eabdb8e02f2c"
+      ]
+    },
+    {
+      "namespace": "netbird-pilot",
+      "name": "server-6d8699467c-shqw6",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "server-6d8699467c"
+        }
+      ],
+      "images": [
+        "netbirdio/netbird-server:0.82.0@sha256:7b5b53b2dc8bc25639f791cf72d47cf86911894ff3f8a97cb79bab9be958109c"
+      ]
+    },
+    {
+      "namespace": "netbird-pilot",
+      "name": "stun-868c488686-h5mwb",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "stun-868c488686"
+        }
+      ],
+      "images": [
+        "coturn/coturn:4.7.0@sha256:a00afb5b4890de4df22bbe70379c6b316685dffee297d53cac1271dcb91fab93"
+      ]
+    },
+    {
+      "namespace": "pr-agent",
+      "name": "pr-agent-5d587c47b9-5fcjg",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "pr-agent-5d587c47b9"
+        }
+      ],
+      "images": [
+        "pragent/pr-agent:0.49.0-github_app"
+      ]
+    },
+    {
+      "namespace": "pr-agent",
+      "name": "spi-github-broker-29901060-5p72s",
+      "phase": "Succeeded",
+      "owners": [
+        {
+          "kind": "Job",
+          "name": "spi-github-broker-29901060"
+        }
+      ],
+      "images": [
+        "pragent/pr-agent:0.49.0-github_app@sha256:b57649785c4366eed39aab698f6d0fe944fa21cb7c2312ddc9bc8e4db2192a60"
+      ]
+    },
+    {
+      "namespace": "pr-agent",
+      "name": "wiki-openapi-broker-29901060-g7fn7",
+      "phase": "Succeeded",
+      "owners": [
+        {
+          "kind": "Job",
+          "name": "wiki-openapi-broker-29901060"
+        }
+      ],
+      "images": [
+        "pragent/pr-agent:0.49.0-github_app@sha256:b57649785c4366eed39aab698f6d0fe944fa21cb7c2312ddc9bc8e4db2192a60"
+      ]
+    },
+    {
+      "namespace": "remark42",
+      "name": "remark42-6fc74cdd49-gnrpl",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "remark42-6fc74cdd49"
+        }
+      ],
+      "images": [
+        "ghcr.io/umputun/remark42:v1.17.1"
+      ]
+    },
+    {
+      "namespace": "rustfs",
+      "name": "rustfs-565f9bdb5d-px4ld",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "rustfs-565f9bdb5d"
+        }
+      ],
+      "images": [
+        "rustfs/rustfs:1.0.4@sha256:ed9210d6411d77ffceb70d94b964a3cb7d225983368bc25bebe01e995293dcc2"
+      ]
+    },
+    {
+      "namespace": "socrat-bot",
+      "name": "socrat-bot-7866c4ccbb-qjcg9",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "socrat-bot-7866c4ccbb"
+        }
+      ],
+      "images": [
+        "harbor.socrat.alchemmist.xyz/homelab/socrat-bot@sha256:4c3c04356e83c38c78ffde4e2e413488b27326b656659fb9e8e715c81e7d9edf"
+      ]
+    },
+    {
+      "namespace": "socrat-bot",
+      "name": "socrat-bot-postgres-0",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "StatefulSet",
+          "name": "socrat-bot-postgres"
+        }
+      ],
+      "images": [
+        "postgres:17"
+      ]
+    },
+    {
+      "namespace": "socrat-bot",
+      "name": "socrat-bot-sudo-broker-547ddbbf4-fpsrm",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "socrat-bot-sudo-broker-547ddbbf4"
+        }
+      ],
+      "images": [
+        "harbor.socrat.alchemmist.xyz/homelab/socrat-bot@sha256:4c3c04356e83c38c78ffde4e2e413488b27326b656659fb9e8e715c81e7d9edf"
+      ]
+    },
+    {
+      "namespace": "socrat-bot",
+      "name": "socrat-bot-xui-updater-847dfff74-9xm7m",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "socrat-bot-xui-updater-847dfff74"
+        }
+      ],
+      "images": [
+        "harbor.socrat.alchemmist.xyz/homelab/socrat-bot@sha256:4c3c04356e83c38c78ffde4e2e413488b27326b656659fb9e8e715c81e7d9edf"
+      ]
+    },
+    {
+      "namespace": "socrat-home",
+      "name": "socrat-home-7f78fd5d8b-2qzlz",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "socrat-home-7f78fd5d8b"
+        }
+      ],
+      "images": [
+        "harbor.socrat.alchemmist.xyz/homelab/socrat-home@sha256:41e26b089357b32fc7caefc21dc2bc1dfcb12c7e8f90373fb11dfefb152c734f"
+      ]
+    },
+    {
+      "namespace": "socrat-home",
+      "name": "socrat-home-7f78fd5d8b-g79sp",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "socrat-home-7f78fd5d8b"
+        }
+      ],
+      "images": [
+        "harbor.socrat.alchemmist.xyz/homelab/socrat-home@sha256:41e26b089357b32fc7caefc21dc2bc1dfcb12c7e8f90373fb11dfefb152c734f"
+      ]
+    },
+    {
+      "namespace": "storage",
+      "name": "nfs-subdir-external-provisioner-5f4d654d97-4rc7t",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "nfs-subdir-external-provisioner-5f4d654d97"
+        }
+      ],
+      "images": [
+        "registry.k8s.io/sig-storage/nfs-subdir-external-provisioner:v4.0.2"
+      ]
+    },
+    {
+      "namespace": "syncthing",
+      "name": "private-gateway-74ncc",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "DaemonSet",
+          "name": "private-gateway"
+        }
+      ],
+      "images": [
+        "nginx:1.27-alpine"
+      ]
+    },
+    {
+      "namespace": "syncthing",
+      "name": "private-gateway-xptz7",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "DaemonSet",
+          "name": "private-gateway"
+        }
+      ],
+      "images": [
+        "nginx:1.27-alpine"
+      ]
+    },
+    {
+      "namespace": "syncthing",
+      "name": "public-web-syncthing-proxy-5cfd6f68bc-b5whc",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "public-web-syncthing-proxy-5cfd6f68bc"
+        }
+      ],
+      "images": [
+        "docker.io/library/nginx:stable-alpine@sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311"
+      ]
+    },
+    {
+      "namespace": "syncthing",
+      "name": "syncthing-d6c6b689d-pw5d5",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "syncthing-d6c6b689d"
+        }
+      ],
+      "images": [
+        "syncthing/syncthing:latest"
+      ]
+    },
+    {
+      "namespace": "traefik-edge",
+      "name": "traefik-edge-86867f6f6d-vm4hq",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "traefik-edge-86867f6f6d"
+        }
+      ],
+      "images": [
+        "rancher/mirrored-library-traefik@sha256:f86a2cab1b5c649070c49f883c743dd32d8485a56e3368c5f93b9e91f1e91259"
+      ]
+    },
+    {
+      "namespace": "traefik-edge",
+      "name": "xui-auth-gateway-7897fb9cc6-kpffz",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "xui-auth-gateway-7897fb9cc6"
+        }
+      ],
+      "images": [
+        "nginxinc/nginx-unprivileged@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03"
+      ]
+    },
+    {
+      "namespace": "umami",
+      "name": "umami-688f9945c5-dzxgs",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "umami-688f9945c5"
+        }
+      ],
+      "images": [
+        "ghcr.io/umami-software/umami:latest"
+      ]
+    },
+    {
+      "namespace": "umami",
+      "name": "umami-db-d4cff967b-r96bp",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "umami-db-d4cff967b"
+        }
+      ],
+      "images": [
+        "postgres:15"
+      ]
+    },
+    {
+      "namespace": "uptime-kuma",
+      "name": "public-web-kuma-proxy-fdc66ddf-rcbs8",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "public-web-kuma-proxy-fdc66ddf"
+        }
+      ],
+      "images": [
+        "docker.io/library/nginx:stable-alpine@sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311"
+      ]
+    },
+    {
+      "namespace": "uptime-kuma",
+      "name": "uptime-kuma-7659b64787-fkpgj",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "uptime-kuma-7659b64787"
+        }
+      ],
+      "images": [
+        "louislam/uptime-kuma:2.5.7"
+      ]
+    },
+    {
+      "namespace": "uptime-kuma",
+      "name": "uptime-kuma-db-57cf9546d5-pvrt5",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "uptime-kuma-db-57cf9546d5"
+        }
+      ],
+      "images": [
+        "mariadb:11.4"
+      ]
+    },
+    {
+      "namespace": "wiki",
+      "name": "wiki-runtime-wiki-c4674dcdc-kmmjm",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "wiki-runtime-wiki-c4674dcdc"
+        }
+      ],
+      "images": [
+        "harbor.socrat.alchemmist.xyz/homelab/wiki-runtime@sha256:dc5b15b391cd94fad3db51dc7fa917e138d77ea345e27518371073538c5a78d9"
+      ]
+    },
+    {
+      "namespace": "x-ui",
+      "name": "x-ui-79787488f4-fkfgs",
+      "phase": "Running",
+      "owners": [
+        {
+          "kind": "ReplicaSet",
+          "name": "x-ui-79787488f4"
+        }
+      ],
+      "images": [
+        "ghcr.io/mhsanaei/3x-ui@sha256:1628adbd9bed680d25d6f714bef4a20f132105f4612ea294952f6665dad32e5b"
+      ]
+    }
   ]
 }
