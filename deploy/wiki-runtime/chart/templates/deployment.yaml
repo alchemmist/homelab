@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: {{ include "wiki.name" . }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicaCount }}
   strategy:
     type: Recreate
   selector:

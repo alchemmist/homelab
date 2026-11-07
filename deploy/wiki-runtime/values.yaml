@@ -1,3 +1,5 @@
+# Temporary GitOps edit freeze for the offline pre-upgrade backup.
+replicaCount: 0
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/wiki-runtime
   tag: "0.4.1-oidc-20261101"
