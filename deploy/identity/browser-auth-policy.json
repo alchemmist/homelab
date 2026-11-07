@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "purpose": "Reviewed browser-authentication expectations, not a scheduled account writer or an app-role grant",
+  "accountMappings": "deploy/identity/account-mappings.json",
+  "protectedOwner": "alchemmist",
+  "preserveOwnerRecoveryAndMachineIdentities": true,
+  "humans": {
+    "tim": {
+      "desiredBrowserAuthentication": "authentik-only",
+      "preserveExistingDataAndRoles": true,
+      "rancher": {
+        "legacyLocalUserEnabled": false,
+        "existingExternalUserEnabled": true,
+        "retainDisabledLegacyRecordAndInertGrantHistory": true
+      },
+      "grafana": {
+        "linkExistingUserByReviewedProviderSubject": true,
+        "emailAccountMerging": false,
+        "localPasswordPresent": false
+      },
+      "openWebui": {
+        "preserveExistingOidcSubjectLink": true,
+        "authRowActiveForOAuth": true,
+        "legacyPasswordReplacedWithDiscardedRandomCredential": true,
+        "legacySessionStampRevoked": true
+      },
+      "wiki": {
+        "localOwnerRecoveryAllowed": false,
+        "preserveReviewedSubjectMappingAndEditorRole": true
+      },
+      "umami": {
+        "state": "suspended-pending-native-oidc",
+        "localPasswordReplacedWithDiscardedRandomCredential": true,
+        "softDisabledWithoutDeletingData": true,
+        "gatePlusNativePasswordIsNotOidc": true,
+        "followUpIssue": 85
+      }
+    }
+  },
+  "scope": "Interactive browser sign-in and reviewed legacy app credentials; not an SSH-key, WireGuard, service-account, robot or application-data offboarding"
+}
