@@ -18,7 +18,9 @@ import urllib.request
 
 BASE='https://auth.socrat.alchemmist.xyz/api/v3/'
 GROUPS=('homelab-owner','homelab-platform-operator')
-EXPRESSION='return {"rustfs_policy": ["spi-console-reader"] if ak_is_group_member(request.user, name="homelab-owner") or ak_is_group_member(request.user, name="homelab-platform-operator") else []}'
+# Explicit live-validated human identity; never grant admin to an entire SSO group.
+# UUID is also this provider's signed subject (sub_mode=user_uuid).
+EXPRESSION='return {"rustfs_policy": ["consoleAdmin"] if request.user.pk == 5 and str(request.user.uuid) == "9e33877a-3eaa-4541-98eb-8cdc10088ef6" and request.user.username == "alchemmist" else (["spi-console-reader"] if ak_is_group_member(request.user, name="homelab-owner") or ak_is_group_member(request.user, name="homelab-platform-operator") else [])}'
 COLLECTIONS=('core/groups/','flows/instances/','crypto/certificatekeypairs/',
     'propertymappings/provider/scope/','providers/oauth2/','providers/proxy/',
     'core/applications/','policies/bindings/','outposts/instances/')

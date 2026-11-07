@@ -163,6 +163,19 @@ class Provisioning(unittest.TestCase):
             tables['core/applications/'][0]['policy_engine_mode']='all'
             with patch('sys.argv',argv+['--apply']),patch.object(m.urllib.request,'build_opener',return_value=HTTP()),self.assertRaises(ValueError):m.main()
 
+    def test_human_admin_claim_is_exact_identity_only(self):
+        from types import SimpleNamespace
+        expression=module('provision_identity').EXPRESSION
+        def claim(pk=5, uuid='9e33877a-3eaa-4541-98eb-8cdc10088ef6', username='alchemmist', member=False):
+            user=SimpleNamespace(pk=pk, uuid=uuid, username=username)
+            return eval(expression.removeprefix('return '), {'request':SimpleNamespace(user=user),
+                'ak_is_group_member':lambda user,name:member})['rustfs_policy']
+        self.assertEqual(claim(), ['consoleAdmin'])
+        for changed in ({'pk':6}, {'uuid':'other'}, {'username':'robot'}):
+            self.assertEqual(claim(**changed), [])
+            self.assertEqual(claim(**changed, member=True), ['spi-console-reader'])
+        self.assertEqual(claim(pk=99, username='spi-writer', member=True), ['spi-console-reader'])
+
     def test_builtin_scope_exact_managed_identity(self):
         m=module('provision_identity')
         official={'pk':'official','scope_name':'profile','managed':'goauthentik.io/providers/oauth2/scope-profile'}
