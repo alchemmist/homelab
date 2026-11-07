@@ -145,5 +145,8 @@ TV layout в Git, старые panel coordinates не повторять. Физ
 
 Agent entrypoint — `AGENTS.md`, settings — `.pi/mcp.json` (без секретов в Git).
 Официальные подключения и полный audit/ограничения: [official-mcp.md](official-mcp.md).
-Для n8n требуется native owner enablement, для Umami — authorized analytics key;
-не обходить это через reset/DB и не объявлять disabled entries рабочими.
+n8n MCP после локального обновления токена проверен (`initialize`/`tools/list`)
+и включён на Mac: поиск/чтение workflows, без execution. Токен только в private
+файле0600, не в Git. В committed config n8n пока disabled; другие машины не
+настроены автоматически. Umami остаётся опциональным и ждёт authorized analytics
+key; не обходить это через reset/DB. Новых обязательных MCP на кластере не требуется.

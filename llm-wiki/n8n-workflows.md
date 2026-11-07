@@ -171,11 +171,15 @@ Instance credential IDs сопоставлять при импорте чере�
   Наличие WG также не заменяет вход.
 - Public API: `/api/v1/`, заголовок `X-N8N-API-KEY`.
 - MCP: `/mcp-server/http`, `Authorization: Bearer <MCP token>`.
-  Аудит 2026-11-07: native instance-level MCP выключен (валидный token → backend403,
-  missing/invalid →401). В `.pi/mcp.json` client отключён до owner enablement через UI;
-  не считать сохранённый token доказательством работающего MCP. Новый exact ingress
-  принадлежит `charts/n8n/templates/access.yaml`; UI gate не снимается.
-  [MCP runbook](official-mcp.md) фиксирует блокеры и правила доступа.
+  Первоначальный аудит 2026-11-07 выявлял backend403 (instance MCP disabled), но
+  последующая проверка с обновлённым локальным token успешно прошла `initialize`
+  и `tools/list`: этот blocker закрыт. В локальном project config Mac клиент
+  включён; доступны `search_workflows` и `get_workflow_details`, серверный
+  `execute_workflow` скрыт от агента. Workflow при проверке не исполнялись.
+  В committed `.pi/mcp.json` запись пока disabled — не переносить локальное
+  включение на другие checkout/машины как уже выполненное.
+  Exact ingress принадлежит `charts/n8n/templates/access.yaml`; UI gate сохранён.
+  [MCP runbook в wiki](official-mcp.md) фиксирует текущее состояние и границы доступа.
   API key и MCP token — разные credentials, не взаимозаменяемы.
 - Локальные файлы: `~/.config/n8n/api-key`, `~/.config/n8n/mcp-token`.
   Каталог — mode 0700, секретные файлы — 0600. Не выводить содержимое.
