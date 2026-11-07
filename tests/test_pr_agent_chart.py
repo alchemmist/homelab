@@ -31,6 +31,9 @@ class PrAgentChartTest(unittest.TestCase):
         self.assertIn("PR_CODE_SUGGESTIONS__COMMITTABLE_CODE_SUGGESTIONS", rendered)
         self.assertIn("GITHUB_APP__HANDLE_PUSH_TRIGGER", rendered)
         self.assertIn("GITHUB_APP__PUSH_COMMANDS", rendered)
+        self.assertIn("GITHUB__PUBLISH_AS_CHECK_RUN", rendered)
+        check_at = next(i for i, line in enumerate(rendered.splitlines()) if "GITHUB__PUBLISH_AS_CHECK_RUN" in line)
+        self.assertIn('"true"', rendered.splitlines()[check_at + 1])
         lines = rendered.splitlines()
         push_at = next(i for i, line in enumerate(lines) if "GITHUB_APP__PUSH_COMMANDS" in line)
         push_value = lines[push_at + 1]

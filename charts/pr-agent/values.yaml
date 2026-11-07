@@ -23,6 +23,8 @@ persistentInlineComments: true
 handlePushTrigger: true
 # /improve stays manual. Automatic runs on every push reposted the same inline suggestion.
 pushCommands: '["/review"]'
+# Publish describe/review as GitHub checks: in progress while the agent runs, then success or failure.
+publishAsCheckRun: true
 gunicornWorkers: "2"
 # Match LiteLLM's request_timeout. The webhook returns immediately, but each model
 # call used to give up after 120s while the proxy would still be waiting in queue.

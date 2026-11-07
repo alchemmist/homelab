@@ -80,6 +80,8 @@ spec:
               value: github
             - name: GITHUB__DEPLOYMENT_TYPE
               value: app
+            - name: GITHUB__PUBLISH_AS_CHECK_RUN
+              value: {{ .Values.publishAsCheckRun | quote }}
             - name: OPENAI__API_BASE
               value: {{ .Values.openaiApiBase | quote }}
             - name: OPENAI__KEY
