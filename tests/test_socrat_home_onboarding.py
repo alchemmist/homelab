@@ -48,3 +48,10 @@ def test_inline_links_and_existing_artwork_are_preserved():
 
 def test_onboarding_uses_the_existing_courier_font():
     assert "font:15px/1.75 CourierCyr,monospace}.onboarding p" in HTML
+
+
+def test_links_use_body_color_without_extra_word_emphasis():
+    assert ".onboarding a{display:inline;padding:0;font:inherit;color:inherit;" in HTML
+    assert ".copy nav a{color:var(--muted);text-decoration:underline;" in HTML
+    assert ".copy a:hover{color:var(--muted)}" in HTML
+    assert "<strong" not in HTML and "<em>" not in HTML
