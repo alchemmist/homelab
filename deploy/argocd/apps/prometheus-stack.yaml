@@ -3,8 +3,7 @@ kind: Application
 metadata:
   name: prometheus-stack
   namespace: argocd
-  finalizers:
-  - resources-finalizer.argocd.argoproj.io
+  finalizers: []
 spec:
   project: default
   sources:
@@ -23,7 +22,8 @@ spec:
     server: https://kubernetes.default.svc
   syncPolicy:
     automated:
+      enabled: false
       prune: false
-      selfHeal: true
+      selfHeal: false
     syncOptions:
     - ServerSideApply=true
