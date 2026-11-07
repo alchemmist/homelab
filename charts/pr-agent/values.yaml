@@ -21,7 +21,8 @@ committableSuggestions: true
 suggestionsMaxCalls: "100"
 persistentInlineComments: true
 handlePushTrigger: true
-pushCommands: '["/review", "/improve"]'
+# /improve stays manual. Automatic runs on every push reposted the same inline suggestion.
+pushCommands: '["/review"]'
 gunicornWorkers: "2"
 # Match LiteLLM's request_timeout. The webhook returns immediately, but each model
 # call used to give up after 120s while the proxy would still be waiting in queue.
