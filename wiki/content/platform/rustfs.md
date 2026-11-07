@@ -1,6 +1,6 @@
 ---
 title: "RustFS evidence foundation"
-weight: 35
+weight: 30
 ---
 
 ## Current state (2026-11-05)

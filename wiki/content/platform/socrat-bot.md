@@ -1,6 +1,6 @@
 ---
 title: "Socrat Bot"
-weight: 35
+weight: 40
 ---
 
 Команда `/unsubscribe` и кнопка **Unsubscribe** отключают алерты, сохраняя одобрение владельца.
