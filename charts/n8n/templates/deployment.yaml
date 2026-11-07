@@ -31,6 +31,8 @@ spec:
         - name: n8n
           image: {{ .Values.image | quote }}
           env:
+            - name: EXECUTIONS_TIMEOUT_MAX
+              value: '21600'
             - name: N8N_CUSTOM_EXTENSIONS
               value: /opt/n8n/yandex-extension
             - name: N8N_ENCRYPTION_KEY
