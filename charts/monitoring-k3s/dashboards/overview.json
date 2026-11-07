@@ -4363,12 +4363,17 @@
         "hide": 0,
         "includeAll": false,
         "multi": false,
-        "query": "-,argo-cd,authentik,blog,cats,cert-manager,cnpg-operator,format-quorum,grafana,grafana-mcp,harbor,img-proxy,litellm,litellm-infra,lms,loki,monitoring-k3s,monitoring-llm,monori,n8n,nvidia-device-plugin,open-terminal,open-webui,pr-agent,private-gateway,prometheus-stack,pyroscope,rancher,remark42,searxng,socrat-bot,socrat-home,syncthing,tempo,thanos,traefik-edge,umami,uptime-kuma,vllm,wiki-runtime,x-ui,xui-auth-gateway",
+        "query": "-,alertmanager,argo-cd,authentik,blog,cats,cert-manager,cnpg-operator,format-quorum,grafana,grafana-mcp,harbor,img-proxy,kube-state-metrics,litellm,litellm-infra,lms,loki,monitoring-k3s,monitoring-llm,monori,n8n,node-exporter,nvidia-device-plugin,open-terminal,open-webui,pr-agent,private-gateway,prometheus,prometheus-operator,pyroscope,rancher,remark42,searxng,socrat-bot,socrat-home,syncthing,tempo,thanos,traefik-edge,umami,uptime-kuma,vllm,wiki-runtime,x-ui,xui-auth-gateway",
         "options": [
           {
             "selected": true,
             "text": "-",
             "value": "-"
+          },
+          {
+            "selected": false,
+            "text": "alertmanager",
+            "value": "alertmanager"
           },
           {
             "selected": false,
@@ -4427,6 +4432,11 @@
           },
           {
             "selected": false,
+            "text": "kube-state-metrics",
+            "value": "kube-state-metrics"
+          },
+          {
+            "selected": false,
             "text": "litellm",
             "value": "litellm"
           },
@@ -4467,6 +4477,11 @@
           },
           {
             "selected": false,
+            "text": "node-exporter",
+            "value": "node-exporter"
+          },
+          {
+            "selected": false,
             "text": "nvidia-device-plugin",
             "value": "nvidia-device-plugin"
           },
@@ -4492,8 +4507,13 @@
           },
           {
             "selected": false,
-            "text": "prometheus-stack",
-            "value": "prometheus-stack"
+            "text": "prometheus",
+            "value": "prometheus"
+          },
+          {
+            "selected": false,
+            "text": "prometheus-operator",
+            "value": "prometheus-operator"
           },
           {
             "selected": false,

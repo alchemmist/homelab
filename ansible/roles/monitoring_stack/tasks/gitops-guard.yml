@@ -1,29 +1,10 @@
 ---
-- name: Detect independently managed monitoring Applications before any legacy mutation
-  ansible.builtin.command:
-    argv:
-      - "{{ monitoring_k3s_binary }}"
-      - kubectl
-      - --kubeconfig
-      - "{{ monitoring_kubeconfig }}"
-      - -n
-      - argocd
-      - get
-      - applications.argoproj.io
-      - prometheus-stack
-      - grafana
-      - --ignore-not-found
-      - -o
-      - name
-  register: monitoring_independent_gitops_owners
-  changed_when: false
-  tags: [always]
-
-- name: Refuse the retired combined installer once monitoring is split under Argo
-  ansible.builtin.assert:
-    that: monitoring_independent_gitops_owners.stdout | trim | length == 0
-    fail_msg: >-
-      Monitoring is split into Argo Applications. Edit deploy/platform/prometheus-stack/values.yaml,
-      charts/grafana, charts/loki, charts/tempo or charts/pyroscope and commit/push.
-      Do not run legacy monitoring Helm upgrades or uninstall the historical Helm release.
+- name: Refuse the retired combined monitoring installer
+  ansible.builtin.fail:
+    msg: >-
+      The combined monitoring Helm installer is retired. Use the Argo Applications
+      prometheus, alertmanager, prometheus-operator, node-exporter, kube-state-metrics
+      and grafana. Edit their charts and commit/push. Restore prerequisites/Secrets
+      separately under the appropriate runbook; do not upgrade or uninstall the
+      historical kube-prometheus-stack Helm release.
   tags: [always]

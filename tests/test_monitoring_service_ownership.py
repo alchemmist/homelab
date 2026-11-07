@@ -1,5 +1,6 @@
 """Monitoring ownership contracts; no image, data path, TLS or selector migration."""
 import hashlib
+from functools import lru_cache
 import json
 from pathlib import Path
 import subprocess
@@ -8,10 +9,16 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 NS = 'cattle-monitoring-system'
 CLUSTER = {'ClusterRole', 'ClusterRoleBinding', 'CustomResourceDefinition', 'MutatingWebhookConfiguration', 'ValidatingWebhookConfiguration'}
+COMPONENTS = ('prometheus', 'alertmanager', 'prometheus-operator', 'node-exporter', 'kube-state-metrics')
+yaml.SafeLoader.add_constructor('tag:yaml.org,2002:value', lambda loader, node: loader.construct_scalar(node))
 OWNERS = {'grafana': ('charts/grafana', 'kube-prometheus-stack'), 'loki': ('charts/loki', 'loki'), 'tempo': ('charts/tempo', 'tempo'), 'pyroscope': ('charts/pyroscope', 'profiling'), 'monitoring-k3s': ('charts/monitoring-k3s', 'monitoring-k3s')}
 
+OWNERS.update({name: ('charts/'+name, 'kube-prometheus-stack') for name in COMPONENTS})
+
+@lru_cache(maxsize=None)
+
 def render(path, release):
-    text = subprocess.check_output(['helm', 'template', release, str(ROOT/path), '-n', NS], text=True)
+    text = subprocess.check_output(['helm', 'template', release, str(ROOT/path), '-n', NS, '--include-crds'], text=True)
     return [d for d in yaml.safe_load_all(text) if d and not (d['metadata'].get('annotations') or {}).get('helm.sh/hook')]
 
 def key(d):
@@ -82,16 +89,19 @@ def test_each_backend_owns_its_config_without_changing_config_bytes():
         assert volumes['data']['hostPath']['path'] == '/var/lib/private/homelab-otel-'+name
         assert not any(d['kind'] in ('Certificate', 'Secret') for d in docs)
 
-def test_prometheus_release_names_and_matching_labels_do_not_change():
-    a = yaml.safe_load((ROOT/'deploy/argocd/apps/prometheus-stack.yaml').read_text())
-    source = a['spec']['sources'][0]
-    assert source['chart'] == 'kube-prometheus-stack'
-    assert source['targetRevision'] == '92.10.0'
-    assert source['helm']['releaseName'] == 'kube-prometheus-stack'
-    v = yaml.safe_load((ROOT/'deploy/platform/prometheus-stack/values.yaml').read_text())
+def test_prometheus_components_preserve_release_names_and_matching_labels():
+    for name in COMPONENTS:
+        a = yaml.safe_load((ROOT/f'deploy/argocd/apps/{name}.yaml').read_text())
+        source = a['spec']['source']
+        assert source['path'] == 'charts/'+name
+        assert source['helm']['releaseName'] == 'kube-prometheus-stack'
+        assert source['helm']['parameters'] == []
+    v = yaml.safe_load((ROOT/'charts/prometheus/values.yaml').read_text())['kube-prometheus-stack']
     assert v['grafana'] == {'enabled': False}
+    assert v['alertmanager']['enabled'] is False
     assert v['prometheus']['prometheusSpec']['ruleSelector']['matchLabels']['release'] == 'kube-prometheus-stack'
-    assert len(a['spec']['sources']) == 2
+    assert v['prometheus']['prometheusSpec']['alertingEndpoints'][0]['name'] == 'kube-prometheus-stack-alertmanager'
+
 
 def test_retired_aggregate_owners_and_charts_are_not_reintroduced():
     for name in ('kube-prometheus-stack', 'otel-backends', 'profiling'):
@@ -99,7 +109,7 @@ def test_retired_aggregate_owners_and_charts_are_not_reintroduced():
     for name in ('otel-backends', 'profiling'):
         assert not (ROOT/f'charts/{name}').exists()
     assert not (ROOT/'deploy/platform/kube-prometheus-stack').exists()
-    for name in ('grafana', 'prometheus-stack', 'loki', 'tempo', 'pyroscope'):
+    for name in ('grafana', 'loki', 'tempo', 'pyroscope', *COMPONENTS):
         app = yaml.safe_load((ROOT/f'deploy/argocd/apps/{name}.yaml').read_text())
         assert app['spec']['syncPolicy']['automated'].get('enabled') is not False
         assert app['spec']['syncPolicy']['automated']['prune'] is False
@@ -114,10 +124,11 @@ def test_legacy_monitoring_installer_fails_before_roles_under_gitops():
     tasks = yaml.safe_load((ROOT/'ansible/roles/monitoring_stack/tasks/main.yml').read_text())
     assert tasks[0]['ansible.builtin.import_tasks'] == 'gitops-guard.yml'
     checks = yaml.safe_load((ROOT/'ansible/roles/monitoring_stack/tasks/gitops-guard.yml').read_text())
-    assert 'prometheus-stack' in checks[0]['ansible.builtin.command']['argv']
-    assert 'grafana' in checks[0]['ansible.builtin.command']['argv']
-    assert checks[0]['changed_when'] is False
-    assert checks[1]['ansible.builtin.assert']['that'].endswith('length == 0')
+    assert len(checks) == 1
+    assert 'ansible.builtin.fail' in checks[0]
+    assert 'prometheus' in checks[0]['ansible.builtin.fail']['msg']
+    assert 'alertmanager' in checks[0]['ansible.builtin.fail']['msg']
+    assert checks[0]['tags'] == ['always']
 
 
 def test_existing_rancher_postdelete_finalizers_are_declared_not_ignored():

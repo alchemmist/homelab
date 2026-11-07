@@ -1,7 +1,7 @@
 ---
 - name: Read the Prometheus node requested by the monitoring values
   ansible.builtin.set_fact:
-    monitoring_prometheus_desired_node: "{{ (lookup('file', playbook_dir + '/../../deploy/platform/prometheus-stack/values.yaml') | from_yaml).prometheus.prometheusSpec.nodeSelector['kubernetes.io/hostname'] }}"
+    monitoring_prometheus_desired_node: "{{ (lookup('file', playbook_dir + '/../../charts/prometheus/values.yaml') | from_yaml)['kube-prometheus-stack'].prometheus.prometheusSpec.nodeSelector['kubernetes.io/hostname'] }}"
 
 - name: Create the Thanos staging directory
   ansible.builtin.file:

@@ -1,0 +1,251 @@
+kube-prometheus-stack:
+  grafana:
+    enabled: false
+  prometheus:
+    prometheusSpec:
+      disableCompaction: true
+      enableOTLPReceiver: true
+      evaluationInterval: 30s
+      nodeSelector:
+        kubernetes.io/hostname: socrat-0
+      podMonitorNamespaceSelector:
+        matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values:
+          - cattle-monitoring-system
+          - llm
+      podMonitorSelector:
+        matchLabels:
+          homelab.alchemmist.xyz/scrape-owner: retired-legacy-prometheus
+      probeNamespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: cattle-monitoring-system
+      probeSelector:
+        matchLabels:
+          homelab.alchemmist.xyz/scrape-owner: retired-legacy-prometheus
+      replicas: 1
+      resources:
+        limits:
+          memory: 8Gi
+        requests:
+          cpu: 500m
+          memory: 4Gi
+      retention: 12h
+      ruleNamespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: cattle-monitoring-system
+      ruleSelector:
+        matchLabels:
+          release: kube-prometheus-stack
+      scrapeConfigNamespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: cattle-monitoring-system
+      scrapeConfigSelector:
+        matchLabels:
+          homelab.alchemmist.xyz/scrape-owner: retired-legacy-prometheus
+      scrapeInterval: 5s
+      scrapeTimeout: 4s
+      serviceMonitorNamespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: cattle-monitoring-system
+      serviceMonitorSelector:
+        matchLabels:
+          homelab.alchemmist.xyz/scrape-owner: retired-legacy-prometheus
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            accessModes:
+            - ReadWriteOnce
+            resources:
+              requests:
+                storage: 10Gi
+            storageClassName: local-path
+      thanos:
+        image: quay.io/thanos/thanos:v0.42.4
+        objectStorageConfig:
+          existingSecret:
+            key: objstore.yml
+            name: thanos-objstore-raw
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            cpu: 50m
+            memory: 256Mi
+        volumeMounts:
+        - mountPath: /var/lib/socrat-thanos
+          name: thanos-data
+      volumes:
+      - hostPath:
+          path: /var/lib/socrat-thanos
+          type: Directory
+        name: thanos-data
+      - name: otel-config
+        configMap:
+          name: otel-cluster-config
+      - name: otel-source-auth
+        secret:
+          secretName: otel-source-auth
+          defaultMode: 288
+      - name: otel-source-tls
+        secret:
+          secretName: otel-source-auth
+          defaultMode: 288
+          items:
+          - key: tls-0
+            path: 0_cattle-monitoring-system_kube-prometheus-stack-admission_ca
+          - key: tls-1
+            path: 1_cattle-monitoring-system_kube-root-ca.crt_ca.crt
+      - name: otel-tls
+        secret:
+          secretName: otel-tls-cluster
+          defaultMode: 288
+          items:
+          - key: ca.crt
+            path: ca.crt
+          - key: tls.crt
+            path: server.crt
+          - key: tls.key
+            path: server.key
+          - key: tls.crt
+            path: client.crt
+          - key: tls.key
+            path: client.key
+      tsdb:
+        outOfOrderTimeWindow: 30m
+      walCompression: true
+      alertingEndpoints:
+      - namespace: cattle-monitoring-system
+        name: kube-prometheus-stack-alertmanager
+        port: http-web
+        pathPrefix: /
+        apiVersion: v2
+    thanosService:
+      enabled: true
+    thanosServiceMonitor:
+      enabled: true
+    enabled: true
+  alertmanager:
+    enabled: false
+  prometheusOperator:
+    enabled: false
+  nodeExporter:
+    enabled: false
+  kubeStateMetrics:
+    enabled: false
+  windowsMonitoring:
+    enabled: false
+  thanosRuler:
+    enabled: false
+  crds:
+    enabled: false
+  kubernetesServiceMonitors:
+    enabled: true
+  defaultRules:
+    additionalRuleAnnotations:
+      KubeCPUOvercommit:
+        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer
+      KubeMemoryOvercommit:
+        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer
+      KubeNodeNotReady:
+        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ $labels.node }}
+      KubeNodeUnreachable:
+        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ $labels.node }}
+      KubePodCrashLooping:
+        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/{{ $labels.namespace }}/{{ $labels.pod
+          }}
+      KubePodNotReady:
+        rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/{{ $labels.namespace }}/{{ $labels.pod
+          }}
+    disabled:
+      KubeMemoryOvercommit: true
+      KubeNodeNotReady: true
+      KubeNodePressure: true
+      KubeletClientCertificateExpiration: true
+      KubeletClientCertificateRenewalErrors: true
+      KubeletServerCertificateExpiration: true
+      KubeletServerCertificateRenewalErrors: true
+      NodeBondingDegraded: true
+      NodeRAIDDegraded: true
+      NodeRAIDDiskFailure: true
+    rules:
+      alertmanager: false
+      etcd: false
+      configReloaders: false
+      general: true
+      k8sContainerCpuUsageSecondsTotal: true
+      k8sContainerMemoryCache: true
+      k8sContainerMemoryRss: true
+      k8sContainerMemorySwap: true
+      k8sContainerResource: true
+      k8sContainerMemoryWorkingSetBytes: true
+      k8sPodOwner: true
+      kubeApiserverAvailability: true
+      kubeApiserverBurnrate: true
+      kubeApiserverHistogram: true
+      kubeApiserverSlos: true
+      kubeControllerManager: false
+      kubelet: true
+      kubeProxy: false
+      kubePrometheusGeneral: true
+      kubePrometheusNodeRecording: true
+      kubernetesApps: true
+      kubernetesResources: true
+      kubernetesStorage: true
+      kubernetesSystem: true
+      kubeSchedulerAlerting: false
+      kubeSchedulerRecording: false
+      kubeStateMetrics: false
+      network: true
+      node: true
+      nodeExporterAlerting: false
+      nodeExporterRecording: false
+      prometheus: true
+      prometheusOperator: false
+      windows: false
+    create: true
+  additionalPrometheusRulesMap:
+    homelab-memory-overcommit:
+      groups:
+      - name: homelab-memory-overcommit
+        rules:
+        - alert: KubeMemoryOvercommit
+          annotations:
+            description: Cluster memory requests exceed the allocatable memory of all nodes by {{ $value | humanize }} bytes.
+              Pods will stay Pending. Loss of socrat-0 is an accepted hardware limit and is not part of this check.
+            summary: Cluster memory requests exceed total allocatable memory.
+            rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer
+            runbook_url: https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubememoryovercommit
+          expr: 'sum(namespace_memory:kube_pod_container_resource_requests:sum{})
+
+            - sum(kube_node_status_allocatable{job="kube-state-metrics",resource="memory"}) > 0
+
+            '
+          for: 10m
+          labels:
+            severity: warning
+  kubeApiServer:
+    serviceMonitor:
+      relabelings:
+      - action: keep
+        regex: 10\.250\.0\.(1|3|5):6443
+        sourceLabels:
+        - __address__
+  kubeControllerManager:
+    enabled: false
+  kubeEtcd:
+    enabled: false
+  kubeProxy:
+    enabled: false
+  kubeScheduler:
+    enabled: false
+  kubelet:
+    serviceMonitor:
+      insecureSkipVerify: false
+      metricRelabelings:
+      - action: drop
+        regex: (192\.168\.0\.(23|24)|10\.250\.0\.5):10250;(apiserver|etcd|scheduler|workqueue|kubeproxy)_.*
+        sourceLabels:
+        - instance
+        - __name__

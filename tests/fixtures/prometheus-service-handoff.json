@@ -1,0 +1,310 @@
+{
+  "Alertmanager/cattle-monitoring-system/kube-prometheus-stack-alertmanager": {
+    "owner": "alertmanager",
+    "sha256": "c04683cce8a841bc4ca2553cd2969bb0b7d2c417d87644e5dd011d70c69bb6b2"
+  },
+  "ClusterRole//kube-prometheus-stack-kube-state-metrics": {
+    "owner": "kube-state-metrics",
+    "sha256": "e4f6b166e1cdbf94054a0642bd4749a2a86e7817297092a94fb9ecaf2e0ca993"
+  },
+  "ClusterRole//kube-prometheus-stack-operator": {
+    "owner": "prometheus-operator",
+    "sha256": "8fdb7704ace6698d01edec45ddbdc7fba28d5df0c5eeb58ee58ad5b192ed022e"
+  },
+  "ClusterRole//kube-prometheus-stack-prometheus": {
+    "owner": "prometheus",
+    "sha256": "ddb10d94f2e35aced863c8b4ac05335f82e450b49dfb6be826c254ec10178393"
+  },
+  "ClusterRoleBinding//kube-prometheus-stack-kube-state-metrics": {
+    "owner": "kube-state-metrics",
+    "sha256": "4786d3e60f209644c61ccb5e25a5a1076dfda6b66814c79696d382f92facf29e"
+  },
+  "ClusterRoleBinding//kube-prometheus-stack-operator": {
+    "owner": "prometheus-operator",
+    "sha256": "16a58d7e1431b9cd9e2e1ffa00b73bf5500aad7afbffd9531c4ec1f1fa0d553c"
+  },
+  "ClusterRoleBinding//kube-prometheus-stack-prometheus": {
+    "owner": "prometheus",
+    "sha256": "a8cd13484bb9f86562f9cd8efe78fdb90da38b189c109871e6914b2c3c3461bb"
+  },
+  "CustomResourceDefinition//alertmanagerconfigs.monitoring.coreos.com": {
+    "owner": "prometheus-operator",
+    "sha256": "618c834ab1846a86aba189041c52ec978546d8d532e1b9f602dc1ce205b9e6cb"
+  },
+  "CustomResourceDefinition//alertmanagers.monitoring.coreos.com": {
+    "owner": "prometheus-operator",
+    "sha256": "e62180feaab8e4eb41a2dca387bec5c37b0bc57c00a34466160dbed5b9e34172"
+  },
+  "CustomResourceDefinition//podmonitors.monitoring.coreos.com": {
+    "owner": "prometheus-operator",
+    "sha256": "dd74270faaddb02a009a5d35a3dd31149da18304b06f645636c9c2f5a76c5430"
+  },
+  "CustomResourceDefinition//probes.monitoring.coreos.com": {
+    "owner": "prometheus-operator",
+    "sha256": "60929305d0344a4df44a3ba784eac0a054dea93314330b5bac17707626c29ef8"
+  },
+  "CustomResourceDefinition//prometheusagents.monitoring.coreos.com": {
+    "owner": "prometheus-operator",
+    "sha256": "ec5f722d7bd7914a7aca70aa0f05be1985a986e16c952d9f3d1852628266e4ad"
+  },
+  "CustomResourceDefinition//prometheuses.monitoring.coreos.com": {
+    "owner": "prometheus-operator",
+    "sha256": "4a7d286696d7c24e0c0306eadef694216793de6c636330955e9e4ec8ad238cff"
+  },
+  "CustomResourceDefinition//prometheusrules.monitoring.coreos.com": {
+    "owner": "prometheus-operator",
+    "sha256": "4a5327e86d2616367eceff14363d70ed85130271d3ba9f2441b6be7d0bd1e7fe"
+  },
+  "CustomResourceDefinition//scrapeconfigs.monitoring.coreos.com": {
+    "owner": "prometheus-operator",
+    "sha256": "55aac0fc22edd93ca57a995da381a5edf64f55b36dfa8a082cf35fadedf5c82e"
+  },
+  "CustomResourceDefinition//servicemonitors.monitoring.coreos.com": {
+    "owner": "prometheus-operator",
+    "sha256": "08b7f8e99b3763596f6b47e434489891de593d03e26c08d20db3d6937c05e545"
+  },
+  "CustomResourceDefinition//thanosrulers.monitoring.coreos.com": {
+    "owner": "prometheus-operator",
+    "sha256": "912b8829bc4db9b307025290eed8b57fa948aa8c262ce080c9150c1f54f84dfc"
+  },
+  "DaemonSet/cattle-monitoring-system/kube-prometheus-stack-prometheus-node-exporter": {
+    "owner": "node-exporter",
+    "sha256": "6b257edfdfe6106fc547f1aff9cd075a691fc5fdf1f2780c1cdc8446e289b842"
+  },
+  "Deployment/cattle-monitoring-system/kube-prometheus-stack-kube-state-metrics": {
+    "owner": "kube-state-metrics",
+    "sha256": "4539d7ae65771d8a73e1a55a502a82773fa12819b37837be1917488cbd0d86fb"
+  },
+  "Deployment/cattle-monitoring-system/kube-prometheus-stack-operator": {
+    "owner": "prometheus-operator",
+    "sha256": "95f6b5bfa8e8158266b51d0646f2f774f7d892406bed28fc2bdb088ebbab11b8"
+  },
+  "MutatingWebhookConfiguration//kube-prometheus-stack-admission": {
+    "owner": "prometheus-operator",
+    "sha256": "95b287bf4be73b5a7905b7281fcf02040c6897c55f48898384d1c5422ec61d2f"
+  },
+  "Prometheus/cattle-monitoring-system/kube-prometheus-stack-prometheus": {
+    "owner": "prometheus",
+    "sha256": "443c95d34054935e17236a4989f1ae8f6d6bc75de8e9eaec925d4b114b5887d6"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-alertmanager.rules": {
+    "owner": "alertmanager",
+    "sha256": "0f4eeb5bc05ddc31d7bac69f4f9b56d43e06f4b84cabd2b48524e6d487e5a253"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-config-reloaders": {
+    "owner": "prometheus-operator",
+    "sha256": "8769f1a35d333971e2e7f45ee6f24ca240881704f49b85a15d5d0e8a1ebdaa95"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-general.rules": {
+    "owner": "prometheus",
+    "sha256": "274a0146c0b5238f70bb91bcdca66d00433af2923dd3feb36d08e5e4788feba2"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-homelab-memory-overcommit": {
+    "owner": "prometheus",
+    "sha256": "d1df1e2bbf62a92f9f7efca6a1a16a69ebb48fefa115bba118d26f6bdb8b507d"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-k8s.rules.container-cpu-usage-seconds-tot": {
+    "owner": "prometheus",
+    "sha256": "2c76e68328638aebf3f0da7227b3b6133dc2ca82e32c121253b0dc75941224fa"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-k8s.rules.container-memory-cache": {
+    "owner": "prometheus",
+    "sha256": "7149a95bada500e43b158469f8491e7a0e42473020124892b1995b2ec6ed8ad0"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-k8s.rules.container-memory-rss": {
+    "owner": "prometheus",
+    "sha256": "df0cb4198ac80f73f0519a97d6b473f10cac3bd7b00d016669d406619acc9331"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-k8s.rules.container-memory-swap": {
+    "owner": "prometheus",
+    "sha256": "cde59375d9d90dd6c98e46ee1bdc028115099f4b51c705bb1f777a6c73a52154"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-k8s.rules.container-memory-working-set-by": {
+    "owner": "prometheus",
+    "sha256": "259856d2dfb1c987bcb9da7fd7655a93cb4c845b153627b7a7525d634a09ae58"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-k8s.rules.container-resource": {
+    "owner": "prometheus",
+    "sha256": "1c8173a392a3ada90891186d56453e8b614b36b871e3c2098f5fe6ef4d6ae32d"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-k8s.rules.pod-owner": {
+    "owner": "prometheus",
+    "sha256": "44363cf7dfe9b722409a1130d4047882a43bcf0b8e7a9db24b3b6af29fcb9648"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-kube-apiserver-availability.rules": {
+    "owner": "prometheus",
+    "sha256": "54e5b53143aec317067e3ef90a142520ca08e37fe579f482236c7b6aa2c68726"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-kube-apiserver-burnrate.rules": {
+    "owner": "prometheus",
+    "sha256": "d81bbab2e3f2291aa3d265d6bc9ec80b544ef61ff7c99fa6c14c55006f1ef1fb"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-kube-apiserver-histogram.rules": {
+    "owner": "prometheus",
+    "sha256": "8ae204f5e948323b60ea899bd94d6a4eddd4e72e8ae949a8e06775b2b056e345"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-kube-apiserver-slos": {
+    "owner": "prometheus",
+    "sha256": "d26fb571a0376d5291187e7377b9b570d6c60fae835e1ae06a9aad33dde8becd"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-kube-prometheus-general.rules": {
+    "owner": "prometheus",
+    "sha256": "557b1a28ac3252ca081b7a89ff94b1fda2b08eda3720a6da8d801c68abf3e6d1"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-kube-prometheus-node-recording.rules": {
+    "owner": "prometheus",
+    "sha256": "358d3592a5dbb62ba67eaeeb4bc316c59519c88662676be4adb57f370e694673"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-kube-state-metrics": {
+    "owner": "kube-state-metrics",
+    "sha256": "39842fc07156980f842df496768bb3671b9802320bf6eaed073acf21f49110e0"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-kubelet.rules": {
+    "owner": "prometheus",
+    "sha256": "8fa5468cacf98ac9938e3fc60340c1102999895620f1f83a8ac648fdca854b42"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-kubernetes-apps": {
+    "owner": "prometheus",
+    "sha256": "6670609a906e70b7f235baa8c707a4b7e7a27b44bb9cbd10d88064e891050d74"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-kubernetes-resources": {
+    "owner": "prometheus",
+    "sha256": "3411703b67750f6cf94c1826f9797f38fa2220dbd18bb574634518fefe16fdc9"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-kubernetes-storage": {
+    "owner": "prometheus",
+    "sha256": "31ad25c309433aea912bb3ce84a1975af16b1fadc6be102f9e95f60afcc0ac47"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-kubernetes-system": {
+    "owner": "prometheus",
+    "sha256": "d51da2e790657ad8812e17e64823ce39e7c3cf95c174382f0167bfc08634aaa7"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-kubernetes-system-apiserver": {
+    "owner": "prometheus",
+    "sha256": "970b23269725319aaf60858a8ec5e519fc0abd11089cefc849569c43e0b6afcb"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-kubernetes-system-kubelet": {
+    "owner": "prometheus",
+    "sha256": "057bb19c40352760c51487a19d36fb0b811099e3d21b687e713f063f9eb8ccca"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-node-exporter": {
+    "owner": "node-exporter",
+    "sha256": "e07b45cd1dcd5fde7abd124c08b21fcac8afac5f4a3e02dff62b4bc07f41c67c"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-node-exporter.rules": {
+    "owner": "node-exporter",
+    "sha256": "ce58a1352fe7ea93f9b7b230d6a52c4f031b48bdc602ad70d229ffd8c877f427"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-node-network": {
+    "owner": "prometheus",
+    "sha256": "01aa32c4e0c52c9501001e7944b8e9d50498c733bd04406a512da9f17aafa3f8"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-node.rules": {
+    "owner": "prometheus",
+    "sha256": "266e40a010b7c3a7d30a88f2d20c681708cd731834d5d78308532d922324cb98"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-prometheus": {
+    "owner": "prometheus",
+    "sha256": "e9530723b559d3be44eb6d7e6e7da1fc1cbe795145a72d1b49efbd5e3002f3ce"
+  },
+  "PrometheusRule/cattle-monitoring-system/kube-prometheus-stack-prometheus-operator": {
+    "owner": "prometheus-operator",
+    "sha256": "26b3e8e5585d4aec1f365b48aa9354695ca605d9b8d4ec1c2681c32987c5b964"
+  },
+  "Secret/cattle-monitoring-system/alertmanager-kube-prometheus-stack-alertmanager": {
+    "owner": "alertmanager",
+    "sha256": "909dd9cf4c5b97b7affb5613632c3936616e00b6dac5403c17bde4364bac5c09"
+  },
+  "Secret/cattle-monitoring-system/kube-prometheus-stack-prometheus-token": {
+    "owner": "prometheus",
+    "sha256": "37b4a411ed0fd76be3f8bd6e76c00eb148593a51fde89c6a4048ea4fe4e82afe"
+  },
+  "Service/cattle-monitoring-system/kube-prometheus-stack-alertmanager": {
+    "owner": "alertmanager",
+    "sha256": "5c14972bc40b3fbf75a3dad70204843dd4a1bc9ee613e5934683d27d79a3a47e"
+  },
+  "Service/cattle-monitoring-system/kube-prometheus-stack-kube-state-metrics": {
+    "owner": "kube-state-metrics",
+    "sha256": "feafec7fb4cf72fd15b232830e20583598ad3eced52969046445047e033eaf8c"
+  },
+  "Service/cattle-monitoring-system/kube-prometheus-stack-operator": {
+    "owner": "prometheus-operator",
+    "sha256": "316e23c6150e13292f835a266fd897e2d5b90d56876714a17ddd4310f76cf8a8"
+  },
+  "Service/cattle-monitoring-system/kube-prometheus-stack-prometheus": {
+    "owner": "prometheus",
+    "sha256": "e692f50fbe6906694073bae6442486d1fa3caf9fab1dba018174274ac09a6118"
+  },
+  "Service/cattle-monitoring-system/kube-prometheus-stack-prometheus-node-exporter": {
+    "owner": "node-exporter",
+    "sha256": "8e5989fecb403d0752014083642ffc739c3ce6d082117c6c4fabe0080049e27b"
+  },
+  "Service/cattle-monitoring-system/kube-prometheus-stack-thanos-discovery": {
+    "owner": "prometheus",
+    "sha256": "65cdeec730ef71471029f3317071971141746e77c948864c9213a3f524f1e9f8"
+  },
+  "Service/kube-system/kube-prometheus-stack-coredns": {
+    "owner": "prometheus",
+    "sha256": "e329f543134d0ff5efe1c1f833ec7b2a96f5083558f753ff79e81a8e65f48006"
+  },
+  "ServiceAccount/cattle-monitoring-system/kube-prometheus-stack-alertmanager": {
+    "owner": "alertmanager",
+    "sha256": "4669fc9299a7c357b12746e85f143f4d97012c669f3e76794178f406cfb1238c"
+  },
+  "ServiceAccount/cattle-monitoring-system/kube-prometheus-stack-kube-state-metrics": {
+    "owner": "kube-state-metrics",
+    "sha256": "fc8aa2e8bb3536139802ffe32703c4f90b531cdcd47f6ea671b144939c99dc6c"
+  },
+  "ServiceAccount/cattle-monitoring-system/kube-prometheus-stack-operator": {
+    "owner": "prometheus-operator",
+    "sha256": "cd45c757f56d52570637eea8b156657326163820605fa27ebd6141f872583f00"
+  },
+  "ServiceAccount/cattle-monitoring-system/kube-prometheus-stack-prometheus": {
+    "owner": "prometheus",
+    "sha256": "ee56f680c63eb7f295a4f23a02c0c0eb5e3500e5ddbcad75147bdb1f4cd0aecd"
+  },
+  "ServiceAccount/cattle-monitoring-system/kube-prometheus-stack-prometheus-node-exporter": {
+    "owner": "node-exporter",
+    "sha256": "d26e286c2442154cee82126070524ac633d5fa768d68e8c3b79c08cdf873b3a8"
+  },
+  "ServiceMonitor/cattle-monitoring-system/kube-prometheus-stack-alertmanager": {
+    "owner": "alertmanager",
+    "sha256": "4a930ef930825cfe335df034d2e3f6c7855e96ea85ad00de92eba201291794d2"
+  },
+  "ServiceMonitor/cattle-monitoring-system/kube-prometheus-stack-apiserver": {
+    "owner": "prometheus",
+    "sha256": "394aabe16d9a5bc1e876750fd0289b52995a1eff49248cf4053563cd3042cf6f"
+  },
+  "ServiceMonitor/cattle-monitoring-system/kube-prometheus-stack-coredns": {
+    "owner": "prometheus",
+    "sha256": "db79e372eef3a29f22212b2030209d9318d2dcacfb8f8190eb0ae5b885862253"
+  },
+  "ServiceMonitor/cattle-monitoring-system/kube-prometheus-stack-kube-state-metrics": {
+    "owner": "kube-state-metrics",
+    "sha256": "aa81e7b6979b724cf5457cc003b64b7c5e1e88876a3b589f709d2b9a7da52019"
+  },
+  "ServiceMonitor/cattle-monitoring-system/kube-prometheus-stack-kubelet": {
+    "owner": "prometheus",
+    "sha256": "8fa2c9501ef8d767af2722ea37cae0c4986f6e65c5204d1b33b8c68fcd382b7d"
+  },
+  "ServiceMonitor/cattle-monitoring-system/kube-prometheus-stack-operator": {
+    "owner": "prometheus-operator",
+    "sha256": "f3558469f1a520db108e23610bd8642b1ce1b6566b467fff342ad01d65866992"
+  },
+  "ServiceMonitor/cattle-monitoring-system/kube-prometheus-stack-prometheus": {
+    "owner": "prometheus",
+    "sha256": "52671322bf204ec9c1ca4721ba88912c97d2b503b037b26b4521fc211901f626"
+  },
+  "ServiceMonitor/cattle-monitoring-system/kube-prometheus-stack-prometheus-node-exporter": {
+    "owner": "node-exporter",
+    "sha256": "712ea51a24467022429f64bad09395bc46b21835ad26177f3ff77998e969de8c"
+  },
+  "ServiceMonitor/cattle-monitoring-system/kube-prometheus-stack-thanos-sidecar": {
+    "owner": "prometheus",
+    "sha256": "72539c0e62bf6b58cf3feb7b36aca23f7d687161cc70961d055db8359fa2b8e2"
+  },
+  "ValidatingWebhookConfiguration//kube-prometheus-stack-admission": {
+    "owner": "prometheus-operator",
+    "sha256": "359b34eba355a88d5f8843b522813716995ea9e8eef624c70f7a7ca38245bdd9"
+  }
+}
