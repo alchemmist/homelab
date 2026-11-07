@@ -1,5 +1,9 @@
 # Авторизация кластера Socrat: главный справочник
 
+> Текущий срез7 ноября: [логины, первый вход и native роли](identity-current-state.md),
+> [NetBird/сеть](network-access.md), [владельцы мониторинга](observability-current.md).
+> Датированные rollout/smoke ниже — история своего этапа, не общая readiness.
+
 **Основа identity — 1 ноября 2026; сеть/публичный доступ актуализированы 6 ноября.** Owner-проверка LiteLLM и native inspector/redirect controls относятся к исходной identity-сессии. Это консолидированное описание всей сессии: как
 устроены вход, MFA, права, интеграции, фронтенд, deployment и recovery. Не содержит
 паролей, токенов, MFA seeds, browser sessions или приватных сохранённых HTML.
@@ -38,8 +42,11 @@ runtime Authentik/app state; подробная карта файлов есть
   `akadmin` выведен из эксплуатации после отдельной миграции API; recovery — node-admin.
   Машинные учётки Outpost и identity automation не являются людьми.
   См. [admin automation](../docs/identity/admin-automation.md).
-- Tim — отдельная observer identity, с сохранением reviewed старых app IDs.
-  Личная доставка credential/TOTP и реальная private-key SSH-проверка отдельно.
+- Tim — логин **`antropophag`**, новая штатная IdP identity с pinned UUID. На
+  проверке7 ноября пароль не задан, MFA/первого входа нет. Старый отдельный
+  activation flow удалён; SMTP invitation/recovery не настроены. Данные apps
+  сохранены; Rancher использует новую native SSO-запись с теми же grants.
+  Текущий контракт: [identity-current-state.md](identity-current-state.md).
 - Native SSO: Grafana, Harbor, Rancher, Open WebUI, Wiki, LiteLLM; Argo CD имеет
   собственный отдельный native OIDC controller. Их роли/ограничения неодинаковы.
 - **LiteLLM owner SSO подтверждён владельцем.** Owner-only admission, reviewed
@@ -88,9 +95,11 @@ fixture smoke и restore check изменяют тестовые ресурсы,
 - Обязательное MFA. Owner `alchemmist` уже вошёл и настроил свой фактор. Других
   устройств MFA за него не регистрировать/не сбрасывать пароль при stale initial file.
 - Только `homelab-owner` — superuser; единственный человек в ней alchemmist.
-- Создан **tim**, группа **homelab-observer**, initial credential вне Git в
-  `~/.cache/homelab-authentik/tim-login.json` на socrat-0. Передавать вне чата,
-  вход с личным TOTP и сменой initial password. SMTP приглашения пока нет.
+- На исходном этапе создан **tim**, группа **homelab-observer**, private
+  `tim-login.json`. **Этот initial credential больше не действующий:**
+  7 ноября учётку пересоздали и переименовали в `antropophag`, пароль не задан.
+  Не передавать старый файл и не утверждать завершённый первый вход; SMTP
+  приглашения нет. [Текущий статус](identity-current-state.md).
 - Девять текущих плиток с локальными SVG-иконками, загруженными в собственное media-хранилище Authentik;
   все icon URLs проверены 200. Assets/hash/attribution: `assets/service-icons/`.
 
@@ -210,14 +219,17 @@ peers: нужен gateway+ACL/failover. Root на чужой ноде = дове
 на ней; SSO/taints/NetworkPolicy не устраняют эту границу. На том этапе NetBird
 ещё не был внедрён; последующее внедрение и ограничения описаны в [актуальном справочнике](netbird.md).
 
-### Wiki implementation / latest acceptance
+### Wiki implementation: историческая приёмка1 ноября
 
 - Native Authlib code/PKCE/nonce/signature/aud/exp with pinned issuer; no custom JWT validation.
 - Narrow reproducible derivative in `deploy/wiki-runtime/oidc/`, vendored chart + Secret
   hook. Actual REGISTRY manifest digest is `sha256:64d27d6f320ab7440be82578d1d73193278e6b12f77127776b715c2e98b17515`.
   Podman's local RepoDigests was different after registry manifest conversion;
   first rollout was automatically rolled back, then corrected, pre-pulled and accepted.
-- Wiki lives on **socrat-3**, not socrat-0. Discover PVC affinity before any backup pod.
+- На этой старой приёмке Wiki была на socrat-3. **Сейчас Wiki на socrat-0**:
+  runtime f52cf2a, digest `sha256:dc5b15b391cd94fad3db51dc7fa917e138d77ea345e27518371073538c5a78d9`,
+  retained PVC. Старый digest выше не production. [Upgrade](../docs/wiki-upgrade-20261107.md).
+  Discover actual PVC affinity before any backup pod.
   Frozen full-volume copy made with writer stopped; old app resumed during encrypted
   off-node transfer; snapshot DB integrity/IDs/hash preservation checked. Temporary
   backup/image/smoke resources deleted. Do not repeat a slow network transfer with

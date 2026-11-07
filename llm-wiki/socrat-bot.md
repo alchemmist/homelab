@@ -1,5 +1,12 @@
 # Socrat bot
 
+> Current infrastructure context (7 November): [NetBird](network-access.md),
+> [native identities](identity-current-state.md), [release/Argo](cluster-deploy.md).
+> The latest SPI target receipt is [actual deployment / partial acceptance](spi-incident-triage.md#actual-activation-and-partial-acceptance--7-november-2026):
+> two of three original cards verified, one blocked; no new retry authorization.
+> Older OFF/pending/push-blocked checkpoints below do not supersede that receipt.
+> This wiki refresh sends no messages, retries no jobs and changes no workflow.
+
 Release contract matches [cluster-deploy.md](cluster-deploy.md): the image lives in Harbor, the version lives in Git, and Argo CD syncs on its own. CI does not call `helm upgrade` and does not write Helm parameters.
 
 ## Layers

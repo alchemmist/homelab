@@ -1,298 +1,130 @@
-# Socrat: контекст работы с кластером и мониторингом
+# Socrat: текущий контекст
 
-Сеть/доступ актуализированы **6 ноября 2026**; остальные исторические срезы датированы ниже. Основной итог: **[сеть и доступ 5–6 ноября](network-access.md)**. Он имеет приоритет над старыми утверждениями о private-only Grafana, anonymous Viewer, Mac resolver overrides и внутреннем VPN телевизора. Это краткая памятка для продолжения работы, не замена live-проверке. Старые таблицы размещения в README/docs могут отставать от scheduler.
+Актуализировано **7 ноября 2026**, по Git и отдельной read-only проверке кластера.
+Начинать с [карты справочника](README.md). Старые датированные журналы — evidence
+своего этапа, не задания повторить миграцию и не замена текущим manifests/live state.
 
-## Что мы делаем
+## Сеть и вход
 
-Развиваем личный homelab Socrat: Kubernetes/K3s, VPN, приложения, локальный LLM, приватное администрирование, мониторинг и разумное распределение ресурсов. Постоянные изменения оформляем в **Ansible/Helm/Git**, а не оставляем только ручные правки в UI или kubectl. Релиз образа: CI пушит в Harbor, шаг `alchemmist/deploy-to-socrat@v1` коммитит tag и digest в values, Argo CD сам синкает этот коммит. Application `root` восстанавливает дочерние Application из `deploy/argocd/apps`. Отдельных AppProject и ApplicationSet нет. Полный контракт: `llm-wiki/cluster-deploy.md`.
+**NetBird — основной пользовательский доступ во внутреннюю сеть Socrat.**
+Не предлагать людям ручной профиль «socrat-wg» как обычный onboarding.
 
-## Устройство кластера
-
-| Нода | Роль | Основное назначение |
-| --- | --- | --- |
-| socrat-0 | Дом; control-plane + etcd | GPU RTX 3090, vLLM, большая часть LLM-стека; домашний NFS |
-| socrat-1 | Дом; control-plane без голоса etcd | Grafana/Prometheus/Alertmanager, Open Terminal, приложения |
-| socrat-2 | Зарубежный VPS; etcd + workload agent | 3x-ui/VPN, Remark42, внешний Traefik Edge |
-| socrat-3 | Внешняя площадка; control-plane + etcd | Wiki, часть инфраструктуры; также пользовательский desktop |
-
-- Etcd: **0/2/3**, кворум — два голоса. Нода 1 не голосует. Несколько control-plane не означают репликацию приложений и их данных.
-- Ноды связаны WireGuard; пользователь называет сеть `socrat-wg`, системный интерфейс — `wg-socrat`. WG IP нод 0/1/2/3: `10.250.0.1`, `.3`, `.2`, `.5`.
-- У публичных HTTP-сервисов два входа: квартира `109.173.40.247` и VPS `109.120.141.97`, домашний Traefik и Traefik Edge. Зона `alchemmist.xyz` делегирована на свои NS; живой Knot публикует только ответивший адрес. Схема, glue и границы: `llm-wiki/public-dns.md`.
-- **Два IP не резервируют backend/SQLite/PVC.** Kuma — single-instance приложение с MariaDB на socrat-0 (`/srv/uptime-kuma-mariadb`), не HA; мониторинг имеет локальные PVC на socrat-1; GPU — только на socrat-0. Полную потерю квартиры все приложения не переживут.
-- Rancher и Grafana имеют обычные публичные HTTPS entrances с native SSO/ролями; Grafana MCP — bearer-only/read-only. Anonymous org access Grafana выключен; только `socrat-traffic-light` явно открыт native public sharing. На Mac NetBird основной, standalone WG — независимое recovery; обязательный Tunnelblick не трогать. Mac resolver overrides сняты; обычный SSH остаётся internal-only с pinned keys.
-- Public ingress/policy proxies принадлежат своим Argo Applications: отдельный `public-web-entry` и общий chart удалены (`e7fe891`, 2026-11-07). Для local charts — `publicEntry`, для сторонних — дополнительный source `deploy/platform/<app>/public-entry` в той же Application. Передано 22 ресурса без пересоздания/TLS-изменений; public regression 134/134. Карта владельцев, LiteLLM hook boundary и правила дальнейших изменений: [cluster-deploy.md](cluster-deploy.md#публичные-входы-принадлежат-приложениям--2026-11-07). Не восстанавливать aggregate Application по историческим заметкам.
-
-Подробности: `docs/k3s-ha.md`, `docs/public-ingress.md`, `docs/wireguard-admin-access-plan.md`, `docs/vpn-failover.md`.
-
-## Grafana, метрики и алерты
-
-- Стек в `cattle-monitoring-system`: kube-prometheus-stack, Prometheus, Grafana, Alertmanager, kube-state-metrics, node-exporter; дополнительные GPU/LLM-метрики и blackbox-пробы.
-- Четыре основных dashboard: **Overview, Nodes, Services, LLM**. Nodes выбирает одну ноду по имени; LLM включает vLLM, LiteLLM, очереди, latency, ошибки, GPU/VRAM/температуру.
-- В папке **Rancher** оставлены 12 встраиваемых dashboard без префикса `[Rancher]`; UIDs и переменные важны для интеграции. Неиспользуемые шаблоны и 38 Kubernetes Diagnostics удалены из provisioning; пустая старая папка могла остаться.
-- Overview: крупные Cluster health, capacity gauges с used/total, Node resources, компактная Services · Availability, control plane, активность/restarts. Services: 31 плитка на 33 endpoint; Syncthing объединён в одну плитку с тремя экземплярами.
-- **Все заголовки и описания панелей — English.** У каждого графика понятное описание. Легенды — имена нод, не IP; устраняем дубли от смены exporter/pod, не теряя реальные отдельные серии.
-- Числовые stat-панели компактные; ключевые Cluster health крупнее. Плитка алерта — название и цвет без повторения статуса; клик ведёт в конкретное правило Grafana. Rancher — отдельная явно внешняя ссылка.
-- Цвета наших плиток: зелёный Clear, жёлтый Pending, красный firing warning/critical, синий firing info, серый N/A/нет телеметрии. Это наша настройка, не универсальная семантика цветов Grafana.
-- Не превращаем потерю телеметрии в здоровый ноль. CPU quota throttling без квот — N/A, а не поломка метрик. Его не путать с температурным throttling CPU.
-- Для редких latency/cache/error observations используем компактные итоги выбранного диапазона, а не бессмысленные «дырявые» линии. Не скрываем реальные пропуски данных интерполяцией. Restart bars показывают `increase` за интервал, не rate; оценки Prometheus могут быть дробными.
-- Canonical `root_url` — `https://grafana.socrat.alchemmist.xyz/`, не localhost. Сохраняем совместимость с проксированием/встраиванием через Rancher.
-- **Дополнение 3 ноября:** Loki и Tempo доступны как datasource; Telegram-доставка работает через авторизованный Socrat Alerts → Socrat bot. Старое состояние «Alertmanager без доставки» больше не актуально для этого маршрута. Наличие datasource не доказывает полноту телеметрии каждого сервиса; готовность звонковых алертов этим не подтверждается.
-- Активен **SPI Incident Triage**: durable очередь → сопоставление с открытыми `[SPI]` через qwen3.8-27b → read-only evidence → анализ проблемы и качества алерта → issue/comment от Socrat GitHub App. **Все генерируемые заголовки, описания и комментарии — English.** SPI-публикация включена, блог остаётся `WRITE_ENABLED=false`.
-- Создание [SPI #9](https://github.com/alchemmist/homelab/issues/9) и добавление связанного инцидента комментарием проверены живьём. Подробный контракт, лимиты и восстановление: [spi-incident-triage.md](spi-incident-triage.md); общие правила: [n8n-workflows.md](n8n-workflows.md). Автоматически чинить инфраструктуру, менять пороги или закрывать SPI система не должна.
-
-## Как работаем через Grafana MCP
-
-- Endpoint: `https://grafana-mcp.socrat.alchemmist.xyz/mcp`, Streamable HTTP, отдельный bearer token, публичный verified-TLS entrance без browser MFA redirects; private путь сохраняется. Сервер настроен **read-only**, Grafana identity — Viewer.
-- В этой сессии доступны инструменты `mcp__socrat_grafana__…`: `query_prometheus`, `get_dashboard_by_uid`, `get_dashboard_property`, чтение alert rules. В новой сессии сначала проверять доступность инструментов.
-- Prometheus datasource UID: `prometheus`. Для instant query передавать `queryType: "instant"`, `endTime: "now"`, `datasourceUid` и `expr`; для range — также startTime/stepSeconds.
-- Метрики, запросы и alert instances читаем MCP. Playwright используем только для проверки внешнего вида/поведения frontend, не вместо API.
-- Токены/пароли не выводить и не сохранять в Git. Подключение описано в `docs/grafana-mcp.md` и `wiki/content/observability/grafana-mcp.md`.
-
-## Где менять и как применять
-
-| Что | Источник |
+| Слой | Текущий контракт |
 | --- | --- |
-| Основные dashboard | `charts/monitoring-k3s/dashboards/{overview,nodes,services,llm}.json` |
-| Правила и service probes | `charts/monitoring-k3s/templates/`, каталог `serviceProbes.targets` в `values.yaml` |
-| Базовый monitoring stack/Grafana | `deploy/monitoring/values.yaml` |
-| Связи плиток с native alert details | `ansible/roles/monitoring_k3s/files/resolve_alert_links.py` |
-| Rancher embedding | `ansible/roles/monitoring_rancher/` и `deploy/monitoring/` |
-| Resource/placement profiles | `ansible/vars/container-resources.yml` |
+| NetBird | Личный Authentik/MFA, отдельно согласованные JWT-группы/device policies |
+| Маршруты администратора | Только четыре адреса нод `/32`, не весь LAN/pod/service CIDR и не exit node |
+| Ноды 0 / 1 / 2 / 3 | `10.250.0.1` / `.3` / `.2` / `.5`; SSH `2222`, pinned host keys |
+| Межнодовая сеть | Реальный интерфейс `wg-socrat` сохранён: NetBird human ingress его не заменял |
+| Recovery | Независимый standalone WireGuard владельца, обычно выключен; не обычный путь входа |
+| Рабочий VPN Mac | Обязательный Tunnelblick; не отключать и не менять DNS/routes ради homelab |
+| Public HTTPS | HOME `109.173.40.247`, VPS `109.120.141.97`; обычный DNS/TLS без Mac overrides |
 
-Из `ansible/`:
+У NetBird на Mac DNS выключен, выбраны только четыре согласованных маршрута.
+Setup keys для людей не используются. Автоматический user/device approval выключен,
+но принадлежность устройства и реальные разрешения проверяются. Cold start без
+management ранее не прошёл: не обещать HA и не удалять recovery WG.
 
-```sh
-ansible-playbook -i inventory/hosts.yml playbooks/monitoring.yml --tags monitoring_k3s
-ansible-playbook -i inventory/hosts.yml playbooks/container-resources.yml
-ansible-playbook -i inventory/hosts.yml playbooks/socrat-2-offload.yml
-```
+SSH transport, публичный ключ/Linux account, sudo, Kubernetes RBAC и app role —
+**независимые разрешения**. Публичные HTTPS-входы не означают публичный SSH.
+Не удалять known_hosts, не добавлять public fallback/ProxyJump и не отключать TLS.
+Ключи/пароли/QR/подписки/activation URLs не публиковать.
 
-Для базового стека добавляем tag `monitoring_base`, для embedding — `monitoring_rancher`. Права sudo зависят от playbook; пароль передавать безопасно, не в репозитории. SSH через dual-address hostname может попасть не на тот вход: используем проверенные прямые inventory overrides с правильным HostKeyAlias. Для kubectl на socrat-0: `env K3S_CONFIG_FILE=/dev/null k3s kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml …`. Временные `/tmp`-файлы прошлой сессии не считать постоянными зависимостями.
+Процедуры: [сеть](network-access.md), [NetBird и onboarding](netbird.md),
+[SSH без sudo](ssh-user.md), [Linux/RBAC](identity-host-access.md),
+[публичный DNS](public-dns.md).
 
-Порядок работы: измерить → изменить declarative source → unit/Promtool/Helm/Ansible проверки → точечное применение → проверить live readiness, метрики, probes и при необходимости UI. Коммит сам по себе ничего не разворачивает. Прямые аварийные patches обязательно отражать в источниках.
+## Личности и авторизация
 
-## Исторический срез ресурсов/offload 20 октября (не текущее размещение)
+Начать с [текущего состояния identity](identity-current-state.md), затем
+[операций](identity-operations.md) и [карты интеграций](identity-integrations.md).
 
-- Вместо одинаковых CPU limits всем введены 56 индивидуальных профилей: requests CPU/RAM/ephemeral-storage, индивидуальные memory/storage ceilings. Requests — планировочный бюджет, не заранее выделенная RAM; limits не резервируют мощности.
-- CPU caps оставлены только Open Terminal **6**, его cleanup **100m**, vLLM **8**, SearXNG **1**. Для остальных CPU может использовать свободную мощность. Chromium ранее создавал runaway; этот пик не взят за нормальный request.
-- Нативная MutatingAdmissionPolicy задаёт эффективные Pod resources поверх шаблонов Helm/operators. Изменять бюджет нужно в каталоге. Новые версии/контейнеры требуют повторного аудита. Профили умеют закреплять nodeSelector, сохраняя посторонние labels.
-- Первичный sizing основан примерно на **84 часах**, не полной неделе. Запас проверяем по каждой ноде и реальной памяти, учитывая host-процессы; сумма limits может превышать физическую RAM. N−1 и все одновременные пики не гарантированы.
-- **Актуальное размещение: img-proxy строго на socrat-2** (nodeSelector в chart и admission policy); metrics-server и local-path-provisioner остаются на socrat-1. Ранее img-proxy переносили на socrat-1, но это решение отменено 2026-11-07. Исторические результаты того offload: На VPS освободилось 192Mi requests; осталось около 479Mi незарезервированной RAM. Все 15 PV specifications/UID сохранены, данные томов не переносились. Metrics API работает, image proxy проверен через оба публичных IP.
-- На socrat-2 остаются VPN, Remark42, Kuma, Traefik Edge, Syncthing и две telemetry-службы. У Syncthing там **ноль папок**; удалить его можно отдельно, согласованно изменив DaemonSet/probes/ожидаемые три экземпляра плитки и сохранив конфигурацию. Пока не удалён.
-- После переноса 74 Pod соответствовали профилям и были Ready. Финальная повторная проверка: все **33/33** service probes свежие и успешные, Metrics API возвращает четыре ноды, все ноды Ready без pressure. Временный отказ probe **Wiki** больше не воспроизводится; причина не установлена, исправление Wiki не выполнялось.
+- Owner — `alchemmist`, единственный человек в `homelab-owner`.
+- Tim: **логин `antropophag`**, новая native Authentik identity после согласованного
+  пересоздания; UUID закреплён в account mappings. Display name Tim и Linux `tim`
+  — не логин IdP. На read-only проверке пароль ещё не задан, MFA/первого входа нет.
+  Create user не запускает автоматическую установку пароля. Старый отдельный
+  activation flow удалён, ссылка отозвана; SMTP invitation/recovery не настроены.
+- Native OIDC: Grafana, Harbor, Rancher, Open WebUI, Wiki, LiteLLM, отдельно Argo CD.
+  Admission через IdP не выдаёт native admin. Роли и exact subject links проверять
+  по источникам, не по email или похожему имени.
+- n8n/3x-ui и Kuma admin/Syncthing — MFA gateway с отдельной native авторизацией,
+  не универсальный account SSO. Umami для Tim **приостановлен** до native OIDC (#85).
+- Machine APIs, robots, MCP, agents, webhooks сохраняют отдельные credentials;
+  их нельзя переводить на browser MFA redirects.
+- Grafana anonymous org access выключен. Исключение — только явно shared
+  `socrat-traffic-light`. Wiki read public, запись — native OIDC/роль, MCP — bearer.
 
-Подробные расчёты и ограничения: `docs/resource-budgets.md`; мониторинг: `docs/monitoring.md`, `docs/monitoring-llm.md`.
+## Деплой и источники
 
-## Ограничения работы и состояние Git
+Постоянные изменения оформляются в Ansible/Helm/Git. Workloads — Argo CD,
+`root → deploy/argocd/apps`, проект `default`. Fleet GitRepo/bundles retired;
+наличие Rancher Fleet controllers не означает возврат к Fleet deployment.
 
-- Не выключать ноды и не отбирать у них сеть для тестов. Не удалять данные/бэкапы на Mac. Перезапуски сервисов — последовательно, с проверкой замены, PDB и готовности; широкую пересоздачу включает только явный `container_resource_policy_reconcile=true`.
-- Не ослаблять приватный доступ ради healthcheck. Проверять сервис из WG/кластера; TCP/HTTP probe не равен полноценной VPN-сессии или внешней доступности.
-- `24050eb` и старые offload-результаты ниже — история, не текущий HEAD. Сетевой/TV closeout опубликован до `448f93f`; перед работой смотреть `git status`/remote. Рабочий изолированный checkout `/tmp/homelab-vps-ip-move`; посторонние изменения `/Users/antonmoss/code/homelab` и `.playwright-mcp/` не затирать.
-- Не коммитить/пушить без запроса. Сообщения коммитов — одна строка, English lowercase, без co-author. Для GitHub API — MCP, не `gh`.
-- Проверки offload: 47 resource/budget unit tests + 4 scope tests, server dry-runs и Ansible прошли. Ранее прошли 191 service-probe и 18 throttling Promtool cases. В полном Python suite есть два старых падения `test_wireguard_admin_client`, воспроизведённых на исходном main; не путать с регрессией этой работы.
+Для подключённых приложений: build/test → immutable Harbor image →
+`alchemmist/deploy-to-socrat@v1` → tag/digest в homelab main → Argo reconciliation
+→ readiness и функциональная проверка. Push образа или коммит не равен deployment.
+Уточнять состояние `automated.enabled`, hooks и конкретной Application; не делать
+blanket sync/prune, `helm upgrade` или ручной image patch для обхода GitOps.
 
+Публичный ingress/policy принадлежат **своему приложению**. Aggregate
+`public-web-entry` удалён; его не восстанавливать. Grafana сейчас имеет Application
+`grafana`, chart `charts/grafana` и `deploy/platform/grafana/public-entry`.
+Не искать его текущего владельца в старом `kube-prometheus-stack` app.
 
-## История: сессия 24 октября 2026 — Traffic-light и TV Grafana
+Мониторинг разделён на `grafana`, `prometheus-stack`, `loki`, `tempo`, `pyroscope`;
+дашборды/rules/probes — отдельный `monitoring-k3s`. На read-only срезе новые apps
+Synced/Healthy, старые aggregate owners ещё существуют с отключённым auto-sync,
+`root` OutOfSync/Healthy. Это не разрешение удалять их, запускать hooks или объявлять
+весь кластер синхронизированным. Карта и границы: [деплой](cluster-deploy.md),
+[наблюдаемость](observability-current.md).
 
-**Не текущий сетевой setup:** с 6 ноября TV использует public sharing URL на каноническом Grafana hostname, now-12h/5s; внутренний WG-профиль и временный отдельный TV домен удалены. См. [TV](android-tv.md) и [итог сети](network-access.md). Раскладка/коммиты ниже — исторический журнал.
+## Топология и данные
 
-В этой сессии Traffic-light dashboard был доведён до текущего TV-вида.
+- K3s/etcd: голосуют ноды **0/2/3**, кворум два. Нода1 control-plane без голоса etcd.
+- socrat-0: дом/RTX3090, vLLM/LLM, Authentik/PG, Wiki PVC, Kuma MariaDB и NFS.
+  На проверке Prometheus pod также на socrat-0, не выводить placement из имени app.
+- socrat-1: Grafana, Loki/Tempo/Pyroscope и часть приложений на проверке.
+- socrat-2: VPS/3x-ui/edge; img-proxy закреплён именно здесь (`b3ad6e2`).
+- socrat-3: внешняя control-plane/etcd нода и пользовательский desktop.
+- Два публичных IP не реплицируют backend, GPU, SQLite/PVC или PostgreSQL.
+  Singletons и retained PVC не являются HA/проверенным off-node DR.
 
-### Источник и раскладка dashboard
+Scheduler/placement сверять перед работой; старые offload-таблицы не текущая правда.
+Resource budgets: `ansible/vars/container-resources.yml`, native admission policy;
+requests не резервируют физическую память, сумма limits не доказывает N−1.
 
-- Dashboard UID: `socrat-traffic-light`, файл `charts/monitoring-k3s/dashboards/traffic-light.json`.
-- TV URL: `https://grafana.socrat.alchemmist.xyz/d/socrat-traffic-light?kiosk=1&hideLogo=1&autofitpanels=true`.
-- Общий диапазон dashboard: `now-3h` до `now`, refresh `5s`.
-- Справа находятся CPU, Memory, Disk и CPU temperature; их высота сохраняется полной (`y=0,h=7` и `y=7,h=8`).
-- Слева расположены alert/service tiles и график External traffic · RPS.
-- RPS считает внешний HTTP(S)-трафик через Traefik entrypoints `web`/`websecure`: линии `2xx`, `3xx`, `4xx`, `5xx`, `Total`.
-- Легенда графика скрыта, сетка возвращена, подписи осей оставлены. Ось Y использует `unit: none` без лишних `req/s` и сотых; линии тонкие, Total светло-серый `#9aa7b8`.
-- Нижняя граница RPS выровнена с правыми resource-панелями; свободных вертикальных зон между плитками и графиком быть не должно.
-- Последнее согласованное состояние после отката неудачного эксперимента с нижними плитками: `panel-329`, `panel-330`, `panel-333` имеют `y=9,h=1`, RPS `panel-334` имеет `y=10,h=5`.
+## Мониторинг, бот и телевизор
 
-### Внешний трафик и scraping
+Collector — sole scraper; Prometheus принимает OTLP, Loki/Tempo работают в K8s.
+Dashboard/rules/probes в `charts/monitoring-k3s`, datasource/provisioning Grafana —
+в его текущем chart. English titles/descriptions; не скрывать telemetry gaps,
+не превращать отсутствие данных в здоровый ноль. Чтение метрик — через read-only
+Grafana MCP/API, браузер — для визуальной проверки.
 
-- Home Traefik уже отдаёт `traefik_entrypoint_requests_total` на metrics-порту `9100`, но изначально Prometheus его не скрейпил.
-- В `charts/monitoring-k3s/templates/traefik-metrics.yaml` добавлены ClusterIP Service и ServiceMonitor; обе реплики Traefik имеют target `up`.
-- Grafana/Prometheus live-проверка подтвердила рабочие серии и запросы RPS.
-- VPN через Traefik Edge в RPS не включён: это TCP/Trojan, а не HTTP requests. Для него нужны отдельные connection/bytes или Xray-метрики.
+SPI triage использует durable queue, read-only evidence и scoped GitHub App;
+не получает права автоматически чинить инфраструктуру или закрывать инциденты.
+[Бот](socrat-bot.md), [SPI](spi-incident-triage.md), [n8n](n8n-workflows.md).
+Ручная эскалация20→10 не равна смене severity и не обещает SLA.
 
-### TV и Fully Kiosk
+TV использует public traffic-light URL канонического Grafana, без внутреннего VPN.
+Профиль `xiaomi-tv`/peer отозван; `alchemmist-tv` для YouTube сохранён отдельно.
+Не стирать app data WireGuard. Fully55%/font75%, injectJsCode пуст; актуальный
+TV layout в Git, старые panel coordinates не повторять. Физический пульт/cold boot
+не считать повторно проверенными по одному screenshot: [TV](android-tv.md).
 
-- Телевизор: Xiaomi MiTV-MOOQ1, Android 11, физическое разрешение `1920x1080`, ADB `192.168.0.19:5555` через `socrat-0`.
-- Fully перезапускается через:
+## Безопасный порядок работы
 
-```sh
-adb -s 192.168.0.19:5555 shell am force-stop de.ozerov.fully
-adb -s 192.168.0.19:5555 shell monkey -p de.ozerov.fully 1
-```
+1. Fresh status/fetch и сверка владельца ресурса, версии, UID и реального placement.
+2. Read-only аудит; явный scope, private backup, fresh preconditions/lock/CAS.
+3. Декларативное изменение и профильные tests/render/syntax checks.
+4. Только согласованное точечное применение; uncertain write → остановка/разбор,
+   не слепой retry. Никаких глобальных firewall/DNS/VPN/K3s/DB рестартов попутно.
+5. Отдельно доказать readiness, native права, negative cases и реальные user steps.
 
-- `ansible/playbooks/tv-admin.yml` теперь хранит Fully `initialScale: "55"`, `fontSize: "75"` и URL с `autofitpanels=true`.
-- Реальный screenshot через ADB использовался для проверки раскладки и границ панелей.
-- Grafana Time series рисует оси через uPlot canvas с фиксированным стандартным размером оси; отдельной настройки font-size осей в dashboard JSON нет. Поэтому масштаб Fully уменьшает обычный WebView UI, но не меняет пропорционально canvas typography.
-- Рекомендуемый штатный путь для TV — kiosk/fullscreen, `autofitpanels=true`, отдельная TV-раскладка и компактные grid-панели. CSS/JS-патчи для уменьшения осевых шрифтов не добавлялись.
+Не трогать посторонние worktree/Playwright profile. Не stash/reset/force-push.
+Для Ansible единый `inventory/hosts.yml`, четыре ноды `Socrat`; для подмножества
+явный `--limit`. App/browser MFA не даёт право взять owner kubeconfig.
+Локальные `/tmp`-артефакты не постоянный deployment dependency.
 
-### Provisioning и ручное редактирование Grafana
-
-- Основные dashboard provisioned через ConfigMap/sidecar из Helm chart. Поэтому Grafana показывает `Managed by: File provisioning`.
-- Для разрешения UI-сохранений в `deploy/monitoring/values.yaml` включён `grafana.sidecar.dashboards.provider.allowUiUpdates: true`.
-- `traffic-light.json` содержит `editable: true`.
-- Важно: UI-правка сначала живёт в Grafana DB. Чтобы не потерять её при provisioning/PVC-инциденте, нужно экспортировать dashboard через `/api/dashboards/uid/socrat-traffic-light`, перенести осмысленные изменения в JSON и закоммитить их в Home Lab.
-- В текущей ручной правке были увеличены по высоте панели `325–328` (VPN, 3xUI, LiteLLM DB, Umami DB), но затем по запросу пользователя раскладка была возвращена к прежнему состоянию и сохранена в Git.
-
-### Коммиты этой части работы
-
-- `2421baf show external traffic response rates`
-- `5e8d86f compact traffic light dashboard layout`
-- `2443398 show three hour traffic window`
-- `358633b preserve resource panel height`
-- `a16e1f9 fit traffic chart on tv screen`
-- `59d5a0e simplify traffic chart chrome`
-- `2793cb1 restore traffic chart axes`
-- `b49edd0 restore traffic chart grid`
-- `50515b6 manage tv page scale`
-- `03a8470 enable grafana tv autofit`
-- `1c36fb6 refine traffic chart lines`
-- `92061dc balance tv dashboard vertical space`
-- `69cc1ae compact traffic axis labels`
-- `4830572 tighten tv resource gauges`
-- `a8eab4f restore resource gauge text size`
-- `90bb6b3 uniform service tile sizing`
-- `e77baf8 balance compact traffic chart`
-- `6805b20 fill tv dashboard vertical space`
-- `d4c95b1 square lower service tiles`
-- `509f1b9 allow grafana dashboard editing`
-- `e30c567 save manual traffic tile layout`
-- `0437f6c restore previous traffic layout`
-
-Live deployment revisions reached monitoring-k3s Helm revision 136 during the session. The final dashboard source must remain the source of truth; UI changes should be exported and merged deliberately.
-
-
-## Harbor registry — 30 октября 2026
-
-Публичный Harbor: `https://harbor.socrat.alchemmist.xyz`, web login `admin`.
-Подробная памятка по безопасному получению credentials, push/pull, robot accounts
-и ограничениям — **`llm-wiki/harbor.md`**. Пароли в wiki не хранить.
-Harbor сейчас single-node на socrat-0; существующие GHCR deployment не переведены.
-Полноценная HA-схема согласована как направление, но заблокирована ёмкостью;
-реализован read-only preflight, HA foundation не развёрнут.
-
-
-## Identity / Authentik — 1 ноября 2026
-
-См. **`llm-wiki/identity.md`** и `docs/identity/access-management.md`: Authentik live,
-личные alchemmist/tim с MFA; native OIDC включён в Grafana/Harbor/Rancher/WebUI.
-Ошибка Grafana grant_types исправлена, полный observer MFA/OIDC smoke прошёл.
-На socrat-0 admin kubeconfig уже **0640 root:alchemmist**, Linux policy применена
-на четырёх нодах. n8n UI защищён MFA-gate (не native account SSO), machine endpoints
-отдельно. Wiki native OIDC + owner-only local fallback уже live; Tim сохраняет editor role.
-Kuma НЕ мигрирована; публичное чтение/status сохранены. Wiki WG-TLS gap записан отдельно.
-**Обновление 3 ноября 2026:** NetBird внедрён как human ingress через Authentik/MFA
-и управляется `root → netbird` Argo CD. Межнодовый WG сохранён; legacy
-административный WG не отключать из-за подтверждённого cold-start failure без
-management. Сценарий нового админа, четыре agents/два relay, GitOps onboarding
-нод и честные границы acceptance: [netbird.md](netbird.md). Для Linux-аккаунта
-без sudo достаточно [ssh-user.yml](ssh-user.md), Authentik attributes/n8n не нужны.
-
-
-## Стол socrat-3 — 1 ноября 2026
-
-Подробности: `docs/socrat-3-sway.md`. Источники: `ansible/roles/debian_laptop/files/sway/homelab-sway-app`, `homelab-graphics`, `templates/sway/config.j2`. Применено playbook `debian-laptop.yml` с тегом `sway`; в текущей сессии запущен user unit `homelab-graphics-watch`.
-
-- Повтор по тому же ярлыку не запускает второй процесс, пока жив первый и ещё 10 секунд после клика. Почта и мессенджеры открывают окно в уже работающем Firefox ESR. Это защита от пачки браузеров, которая раньше забивала 3,3 ГиБ RAM.
-- Картинка после входа погашена: нет Waybar, ярлыков и mako, экран в DPMS off. Первый пробел включает их. Пробел не привязан в Sway, поэтому после подъёма он снова обычная клавиша. Аккаунт в группе `input`.
-- Это не освобождает память кластера. Sway (около 99 МБ RSS), порталы, PipeWire и сессия GDM остаются. На замере 1 ноября 2026 при выключенной картинке было занято около 1,3 ГиБ из 3,3 ГиБ. Выигрыш картинки — десятки мегабайт и подсветка, не гигабайты.
-
-
-## Авторизация: консолидированный справочник сессии 1 ноября 2026
-
-Полное актуальное описание — [identity.md](identity.md): архитектура Authentik/OIDC,
-пользователи/MFA/access lifecycle, все интеграции, подключение новых сервисов,
-Quiet Mono/shadow DOM/native inspector, backup/DR/diagnostics. Эта ссылка заменяет
-разрозненные старые пометки о readiness авторизации, но не сведения о других
-подсистемах этого файла. LiteLLM SSO подтверждён владельцем; n8n gateway/Kuma gap,
-owner recovery, Tim acceptance, strict locale и independent DR не скрыты.
-
-
-## Identity: уточнения 2 ноября 2026
-
-- n8n: **открытое сообщение владельца о login/session**, точный симптом пока не
-  получен. Anonymous checks обоих edges прошли (Auth redirect, health200, API401),
-  но owner login/editor/idle-session не проверены; конфигурация не менялась.
-- n8n/3x-ui gateways не являются native SSO: после MFA может оставаться пароль
-  приложения. 3x-ui Failed to fetch воспроизведён при missing proxy-cookie и
-  исправлен native401/top-level reauthorization, без удлинения bearer/обхода CSRF.
-- Argo offline_access consent — разрешение refresh, не новая admin-роль.
-- Nature: same-photo inline preview + один кешируемый HQ image. Plan History:
-  естественная высота без вложенной прокрутки, никакой подмены native записей.
-- Актуальные статусы, доказанные проверки и оставшиеся ограничения:
-  [identity-gateway-troubleshooting.md](identity-gateway-troubleshooting.md).
-
-
-## Identity admin automation — 2 ноября 2026
-
-`akadmin` и его старый bootstrap token удалены после переноса API на
-`homelab-identity-automation` (service_account, отдельная admin group, пароль
-непригоден для входа). Human users остаются `alchemmist`/`tim`; Outpost service
-account сохранён. Новый API key — broad/non-expiring deployment credential,
-не пятиминутный OIDC bearer. Legacy private key name AUTHENTIK_BOOTSTRAP_TOKEN
-теперь alias нового token; runtime bootstrap.py исключает admin bootstrap env.
-Независимый node-admin recovery проверен на disposable admin, owner MFA не
-менялся. Full DR/личная owner recovery/off-site escrow всё ещё отдельны.
-Процедура/guards: [admin-automation.md](../docs/identity/admin-automation.md).
-
-## LMS — 2 ноября 2026
-
-Кабинет курса и Authentik: [lms.md](lms.md). Локальный фоновый генератор решений и тестов, он не на кластере: [lms-generation.md](lms-generation.md).
-
-## Первый структурный рефакторинг: единый Ansible inventory
-
-Все четыре ноды `socrat-0`–`socrat-3` теперь объявлены в
-`ansible/inventory/hosts.yml`, в группе `Socrat`. Отдельный inventory
-`ansible/inventory/socrat-3.yml` удалён; больше не добавлять его в команды.
-Индивидуальные настройки нод перенесены в `inventory/host_vars/<node>.yml`.
-SSH connection settings оставлены в inventory: перенос в host_vars повысил бы
-их приоритет и сломал переопределения `direct.yml`/`lan.yml`.
-
-- `ansible.cfg` загружает `inventory/hosts.yml` и
-  `inventory/netbird-controller.yml`. Controller alias не входит в `Socrat`.
-- Не подключать весь каталог inventory: там находятся maintenance overrides.
-- Явный `-i inventory/hosts.yml` теперь включает **четыре** ноды. Для прежнего
-  подмножества использовать `--limit 'Socrat:!socrat-3'`.
-- Явные `-i` заменяют configured sources. Maintenance overrides подключать после
-  `hosts.yml`; controller inventory при необходимости добавлять отдельно.
-- Никаких изменений на нодах не применялось. До рефакторинга default config уже
-  включал socrat-3 через отдельный файл; default resolved inventory не расширен.
-
-Карта файлов, команды безопасного просмотра и порядок добавления ноды:
-[Ansible inventory guide](../ansible/inventory/README.md).
-
-Проверки: полное совпадение resolved inventory до/после для default/direct/LAN;
-8 профильных inventory/NetBird tests; Starship syntax-check и list-hosts (4 ноды);
-`git diff --check`. Полный Python unittest run: 849 tests, 12 failures,
-29 errors, 12 skipped. В отдельной копии исходного HEAD: 845 tests,
-13 failures, 29 errors, 12 skipped; все имена упавших проверок после изменения
-также падают на baseline. Это не зелёный общий suite и не live acceptance.
-Новые локальные контракты находятся в `tests/test_inventory.py`.
-
-## Socrat bot escalation handoff — 4 November 2026
-
-The approved tiered manual escalation feature is implemented/tested locally, but
-publication and live acceptance were blocked by GitHub push authorization/server
-failures. Do not infer deployment from local commits or existing Healthy status.
-Commands, exact pending commits, migration chain after SPI0009, delivery guarantees,
-verification evidence, and safe completion steps: [socrat-bot.md](socrat-bot.md),
-“Manual alert escalation — implementation ready, release BLOCKED”. Check live
-GitHub/Argo/schema state before resuming this historical handoff.
-
-## Итог сети 5–6 ноября 2026
-
-[network-access.md](network-access.md) содержит новый VPS IP и glue/3x-ui/webhook/STUN, NetBird primary / WG recovery / Tunnelblick, internal-only SSH, scoped overlay mark guard, публичные app entrances и роли, Syncthing/Kuma boundaries, честный Kuma recovery incident, Mac DNS retirement и финальный TV без внутреннего WG/отдельного домена. Ссылки на guarded инструменты и acceptance limitations находятся там; миграции повторно не запускать по старым заметкам.
-
-В мониторинге прежние описания scraping/размещения также исторические: Collector — sole scraper, Prometheus принимает OTLP; Loki/Tempo управляются Kubernetes/Argo. Детали вне сетевого scope: `docs/opentelemetry-migration.md`, `docs/otel-history-publication.md`. Эта wiki-актуализация не меняет workloads и не повторяет runtime-приёмки.
-
-## Wiki runtime — 7 November 2026
-
-Public onboarding pages were published via native MCP and synced to Git; Syncthing and help/wiki/structure notes are deleted. Access is personal Authentik/MFA, with native roles and explicit non-OIDC exceptions; NetBird/SSH has its own guide. SRE/bot subscriptions and manual escalation20→10 are documented separately from severity; Harbor/Git/Argo deployment guide is live. Umami native OIDC remains unimplemented and tracked in homelab#85.
-
-Wiki theme/runtime upgrade is deployed, not merely an image waiting in Harbor: source f52cf2a, registry digest `sha256:dc5b15b391cd94fad3db51dc7fa917e138d77ea345e27518371073538c5a78d9`, GitOps upgrade cc8ac0e. Latest tagged upstream remains0.4.1; this is a pinned main revision. Existing Authentik groups scope is deliberately preserved by a guarded one-line image layer, since upstream omitted it. Same socrat-0 PVC and four Secret UIDs/data, exact native account tables preserved; no migration/credential regeneration. Offline root-private full-volume backup preceded rollout. Single-writer replicaCount0/1 supports explicit maintenance, never multiple writers. Argo Synced/Healthy, public routes/assets, OIDC scope+PKCE, owner form and existing MCP read/write verified; new interactive real-user MFA and physical browser rendering were not reaccepted. See [upgrade receipt](../docs/wiki-upgrade-20261107.md).
+Эта актуализация — документация с read-only аудитом, не повторная миграция,
+не browser acceptance, не завершённый первый вход человека и не общий зелёный suite.

@@ -1,6 +1,9 @@
 # Выкатка на кластер Socrat
 
-Срез на **1 ноября 2026**. Это контракт релиза для сервисов, которые уже живут в Argo CD. Пилот — `blog`. На ту дату остальные workload ещё были на Fleet/Helm и GHCR; этот снимок сам по себе их не переводил.
+Актуализировано **7 ноября 2026**. Workloads управляются Argo CD через root и
+`deploy/argocd/apps`. Ниже — контракт build/image release для подключённых
+сервисов; не все images переведены с GHCR в Harbor. Первый пилот blog — история,
+а не ограничение нынешнего GitOps только одним приложением.
 
 **Снятие GitOps Fleet.** В репозитории больше нет Fleet `GitRepo` и `deploy/**/fleet.yaml`. Выкладка приложений — только Argo CD (`deploy/argocd/apps`). Это не удаление контроллеров Fleet из кластера: Rancher v2.15.2 снова включает Feature Fleet, пока включён multi-cluster-management. Бюджеты `cattle-fleet-*`, размещение `gitjob`/`helmops` и описания исключённых Fleet-дашбордов поэтому оставлены. Не возвращать GitRepo и не считать multi-cluster-management выключенным. Образы на GHCR — отдельная миграция registry, не повод оставлять Fleet-бандл.
 
@@ -8,7 +11,10 @@
 
 ## Что является правдой
 
-Живая версия образа лежит в Git, в `alchemmist/homelab`, ветка `main`. Argo CD читает этот репозиторий и сам приводит кластер к коммиту. CI не вызывает API Argo CD и не делает Sync.
+**Желаемая** версия образа лежит в Git, `alchemmist/homelab`, ветка `main`.
+Живую версию доказывают Argo revision, workload image/imageID и функциональная
+приёмка. Argo применяет её только при разрешённом sync; enabled=false, hooks или
+drift могут остановить процесс. CI не вызывает Argo API и не делает Sync.
 
 Ручная правка в UI Argo CD, `kubectl set image`, `helm upgrade` и Helm-parameters на Application не сохраняются. Следующий sync возвращает объект к манифесту из Git. У блога `selfHeal: true`.
 
@@ -181,7 +187,7 @@ The GitHub Git Operations incident has cleared. Local SSH authentication and `gi
 
 | Argo Application | Публичный вход / policy | Источник |
 | --- | --- | --- |
-| `kube-prometheus-stack` | Grafana, policy proxy и TV JS | `deploy/platform/kube-prometheus-stack/public-entry` |
+| `grafana` | Grafana, policy proxy и TV JS | `charts/grafana` + `deploy/platform/grafana/public-entry` |
 | `rancher` | Rancher, policy proxy | `deploy/platform/rancher/public-entry` |
 | `litellm` | `litellm.socrat…` alias | `deploy/platform/litellm/public-entry` |
 | `searxng` | Search | `charts/searxng`, `publicEntry` |
@@ -221,6 +227,11 @@ Pending из-за 512Mi request на socrat-0, до запуска контей�
 `prune: false / selfHeal: true` auto-sync восстановлен, активных операций/Jobs
 на закрытии нет. БД/идентичности не мигрировали, scheduling hook не меняли;
 его вместимость при будущем реальном релизе — отдельная проверка.
+
+Ownership-таблица выше учитывает последующий monitoring split `8862770`.
+Первоначальная передача22 ресурсов в восемь apps была отдельной завершённой
+приёмкой; она не доказывает финальный cleanup новых monitoring owners.
+[Текущая карта и read-only status](observability-current.md).
 
 Приёмка миграции: **134/134** public TLS/anonymous/forged-header/invalid-token
 checks до и после, **88 профильных тестов**. Пять старых ошибок

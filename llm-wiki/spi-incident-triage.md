@@ -80,11 +80,12 @@ probe, workflow pause, credential/image/network or alert-policy change is part
 of this documentation closeout.
 
 
-Latest production acceptance: **4 November 2026**. Recorded acceptance evidence is
-not a substitute for checking live queue state when investigating a new incident.
+The **4 November 2026** checkpoints below are historical. The latest documented
+production/target receipt is the **7 November** section above; it is partial, not
+three-card success. Recorded evidence is not a substitute for live queue checks.
 
 
-## Current Telegram SPI acceptance — 4 November 2026, 10:49 UTC
+## Historical Telegram SPI acceptance — 4 November 2026, 10:49 UTC
 
 **ENABLED and verified on real original cards.** This supersedes historical
 staging/push-blocker checkpoints below. RustFS was selected for the later S3

@@ -1,5 +1,9 @@
 # Авторизация Socrat: архитектура и границы доверия
 
+> Текущий срез7 ноября: [логины, первый вход и native роли](identity-current-state.md),
+> [NetBird/сеть](network-access.md), [владельцы мониторинга](observability-current.md).
+> Датированные rollout/smoke ниже — история своего этапа, не общая readiness.
+
 Срез внедрения **1 ноября 2026**. Начало справочника: [identity.md](identity.md).
 Это описание реально внедрённой системы и её ограничений, не обещание завершённой
 миграции всех endpoints. Для изменений сначала сверять текущие manifests и live state.
@@ -12,7 +16,8 @@ Authentik — Identity Provider (IdP): личные пользователи, п
 
 Нельзя смешивать четыре разных слоя:
 
-1. **Сеть:** WireGuard, private gateway, публичный ingress, TLS, NetworkPolicy.
+1. **Сеть:** NetBird — основной human ingress; межнодовый WireGuard и отдельный
+   recovery WG сохранены. Публичный ingress/TLS/NetworkPolicy — отдельные границы.
 2. **Аутентификация:** кто человек и как он доказал личность; здесь Authentik/MFA.
 3. **Авторизация:** какие приложения, проекты, namespaces и операции ему разрешены.
 4. **Машинные credentials:** robots, service accounts, virtual keys, webhooks, MCP.

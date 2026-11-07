@@ -1,15 +1,28 @@
 # Authentik: пользователи, доступы и ежедневные операции
 
+> Текущий срез7 ноября: [логины, первый вход и native роли](identity-current-state.md),
+> [NetBird/сеть](network-access.md), [владельцы мониторинга](observability-current.md).
+> Датированные rollout/smoke ниже — история своего этапа, не общая readiness.
+
 Начало: [identity.md](identity.md). Протокол/границы: [identity-architecture.md](identity-architecture.md).
 Все операции с реальными правами требуют согласования scope владельцем.
 
 ## 1. Как пользователю войти
 
+**Предусловие:** пароль уже установлен через согласованный штатный процесс.
+Для свежего `antropophag` это пока не сделано; без пароля и настроенного
+alternative login вход невозможен. Create user не означает auto-enrollment,
+а требование MFA не означает принудительную установку/смену пароля.
+Приглашения/почтовое восстановление у нас не настроены; отдельный custom
+activation flow удалён. Не выдавать старую ссылку.
+
+
 1. Открыть **https://auth.socrat.alchemmist.xyz/** с доверенным HTTPS.
 2. Использовать личный username, не общий `akadmin`.
 3. При первом входе указать выданный initial password, зарегистрировать **свой**
    TOTP в authenticator app и подтвердить кодом. Не передавать QR/seed помощнику.
-4. Сменить initial password, проверить следующий вход собственным фактором.
+4. Если пароль задавал администратор, согласовать его личную смену и проверить
+   следующий вход своим фактором. Не считать смену автоматически принудительной.
 5. Выбрать доступную плитку либо кнопку Authentik/SSO в самом приложении.
 
 Обычная форма теперь объединяет native identification/password. Глаз пароля —
@@ -49,7 +62,10 @@ XHR получает401, native UI выполняет top-level reauthorization.
 | `homelab-machine-owner` | Владение конкретной машиной, не автоматическое владение всем кластером |
 
 Последние три группы созданы без спекулятивной раздачи людям.
-Tim — личный `tim`, observer, со своими существующими IDs в Rancher/WebUI/Wiki.
+Tim — личный **`antropophag`**, observer. После native пересоздания IdP UUID
+обновлён в точных app links; WebUI/Wiki/Grafana IDs сохранены, Rancher — новая
+native SSO-запись с теми же grants (старые записи disabled). Пароль пока не задан,
+MFA/реального первого входа нет: [актуальная identity](identity-current-state.md).
 В Wiki сохранено его прежнее исключение editor по точному subject; это не editor
 для всей observer group. В WebUI он user, а не admin. LiteLLM production app owner-only.
 

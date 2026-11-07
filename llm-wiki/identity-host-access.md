@@ -1,5 +1,9 @@
 # Linux, SSH, kubeconfig и Kubernetes RBAC
 
+> Обычный сетевой доступ — **NetBird**, SSH отдельно по публичному ключу.
+> Linux `tim` не переименован вместе с Authentik login `antropophag`.
+> Standalone WG — только recovery; public HTTPS не открывает SSH в Internet.
+
 Часть [общего справочника](identity.md). Authentik SSO не заменяет эти контуры и
 не выдаёт SSH/root/kubectl автоматически. WireGuard/NetBird topology здесь не менять.
 Сетевой вход и полный сценарий нового админа: [NetBird](netbird.md).

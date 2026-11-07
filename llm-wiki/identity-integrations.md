@@ -1,5 +1,9 @@
 # Интеграции Authentik и добавление нового сервиса
 
+> Текущий срез7 ноября: [логины, первый вход и native роли](identity-current-state.md),
+> [NetBird/сеть](network-access.md), [владельцы мониторинга](observability-current.md).
+> Датированные rollout/smoke ниже — история своего этапа, не общая readiness.
+
 Начало: [identity.md](identity.md). Не путать native SSO, proxy gate и обычную
 плитку. Сетевые entrances/роли актуализированы 6 ноября: [network-access.md](network-access.md). Старые session evidence ниже датированы; изменения версий требуют нового review.
 
@@ -60,8 +64,14 @@ OIDC не устраняет single-node storage/PG/Redis риски и не з�
 Native Generic OIDC + PKCE, callback `/verify-auth`; restricted access, subjects
 на базе Authentik user UUID. Old local users не переписывались в external principal.
 Из-за immutable `principalIds` созданы reviewed external identities
-`u-authentik-alchemmist` / `u-authentik-tim`, которым зеркалируются конкретные
+`u-authentik-alchemmist` / **`u-authentik-tim-v2`**, которым зеркалируются конкретные
 старые global/cluster/project grants. Это не повод выдавать всем cluster-admin.
+
+Tim сейчас входит как `antropophag`; UUID пересозданной identity закреплён в
+account mapping. Старые `u-authentik-tim` и `u-22wv2` disabled, grants/history
+сохранены. Native `principalIds` immutable: не обходить webhook и не менять
+старый principal in-place. `rancherOidcUserId`/`rancherBindingPrefix` сохраняют
+reviewed replacement при следующем reconcile. [Текущие связи](identity-current-state.md).
 
 Source: Rancher branch `integrate.py`, reviewed old IDs в account mapping.
 Client secret — `cattle-global-data/genericoidcconfig-clientsecret`.

@@ -7,8 +7,10 @@
 
 - Публичный UI и registry: **https://harbor.socrat.alchemmist.xyz**.
 - Harbor **2.15.4**, официальный chart **1.19.4**, SHA-256 архива закреплён.
-- Web-пользователь **admin** существует. Отдельного персонального пользователя
-  пока не создавали; саморегистрация отключена, новых пользователей создаёт admin.
+- Обычный human web login — **native Authentik OIDC/MFA** с отдельно reviewed
+  project permissions. Локальный **admin** сохранён как emergency recovery,
+  не общий повседневный логин. Старое описание «только admin, личных users нет»
+  относится к первоначальному bootstrap, а не текущему режиму.
 - Начальный пароль admin на socrat-0:
   `~/.cache/homelab-harbor/private-values.json`, поле `harborAdminPassword`.
   После смены пароля в UI файл не гарантирует актуальность пароля.

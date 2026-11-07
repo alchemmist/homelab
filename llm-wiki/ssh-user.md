@@ -1,5 +1,9 @@
 # Добавить человеку SSH на ноды
 
+> Обычный сетевой доступ — **NetBird**, SSH отдельно по публичному ключу.
+> Linux `tim` не переименован вместе с Authentik login `antropophag`.
+> Standalone WG — только recovery; public HTTPS не открывает SSH в Internet.
+
 Для этого достаточно Ansible. Authentik, атрибуты и n8n не нужны.
 Плейбук создаёт **обычного Linux-пользователя без sudo**, блокирует пароль и
 добавляет его публичный SSH-ключ на все ноды группы `Socrat` из inventory.

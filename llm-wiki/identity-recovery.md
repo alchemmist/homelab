@@ -1,5 +1,9 @@
 # Авторизация: backup, recovery, диагностика и evidence
 
+> Текущий срез7 ноября: [логины, первый вход и native роли](identity-current-state.md),
+> [NetBird/сеть](network-access.md), [владельцы мониторинга](observability-current.md).
+> Датированные rollout/smoke ниже — история своего этапа, не общая readiness.
+
 Начало: [identity.md](identity.md). Любой recovery меняет доверенную систему:
 проверить личность/полномочия оператора, pre-change snapshot и влияние на consumers.
 Не запускать production restore по этому документу без отдельного incident plan.
@@ -11,7 +15,7 @@
 | `socrat-0:~/.cache/homelab-authentik/` | Private runtime deployment root, directory 0700/files 0600 |
 | `credentials.json` в этом root | DB/installation secret material и legacy API-key alias нового machine admin; broad privilege |
 | `automation-api.json`, `credentials-before-automation-*.json` | Secret-bearing exact-identity migration journal и pre-change rollback; не публиковать |
-| `owner-login.json`, `tim-login.json` | Initial credentials + bootstrap markers; могут быть stale |
+| `owner-login.json`, `antropophag-login.json` | Private bootstrap markers; у antropophag initialized=true без password; исторический tim-login не действующий credential |
 | `oidc-clients.json` | Stable confidential OAuth clients; не пересоздавать при потере файла |
 | private integration journals/snapshots | Old config, exact identity bindings, потенциальные secrets |
 | `theme-backups/`, brand journal, original flow-title file | Presentation rollback, не полный DB backup |
@@ -229,7 +233,7 @@ credential rotation; distributed Authentik/Harbor HA. Не закрывать э
 ## 10. Default Admin заменён машинной автоматизацией
 
 `akadmin` и его bootstrap token удалены после guarded checks; daily human users —
-`alchemmist` и `tim`. Outpost account оставлен. Новый `homelab-identity-automation`
+`alchemmist` и `antropophag` (прежний IdP login `tim` переименован7 ноября). Outpost account оставлен. Новый `homelab-identity-automation`
 имеет service_account type, непригодный для входа пароль и **широкие** admin API
 права отдельной группы — не выдавать это за completed least-privilege RBAC.
 Исторический ключ AUTHENTIK_BOOTSTRAP_TOKEN в private credentials теперь alias

@@ -1,5 +1,9 @@
 # Authentik / Quiet Mono: frontend, CSS, inspector и сопровождение
 
+> Текущий срез7 ноября: [логины, первый вход и native роли](identity-current-state.md),
+> [NetBird/сеть](network-access.md), [владельцы мониторинга](observability-current.md).
+> Датированные rollout/smoke ниже — история своего этапа, не общая readiness.
+
 Начало: [identity.md](identity.md). Подробный engineering runbook текущего дизайна.
 
 ## 1. Что работает в production
@@ -450,3 +454,12 @@ OIDC-вкладка не меняет первую; повторные CSS reque
 transferSize=0; preview-only login доступен при удержании HQ на5секунд. Изолированный
 unexposed canary перед production проверил nginx syntax, absent/foreign referrer
 и отсутствие ротации на десяти одинаковых запросах; собственный canary удалён.
+
+
+## Аватарки пользователей — 7 ноября 2026
+
+Owner и antropophag получают штатные Gravatar URLs по email hash, без custom
+avatar attributes. Это не импорт Google login и не восстановление удалённой
+identity. Same email даёт тот же avatar. Внешние browser requests и возможность
+локальных initials: [текущий identity status](identity-current-state.md#аватары).
+Initials в production этой актуализацией не включались.

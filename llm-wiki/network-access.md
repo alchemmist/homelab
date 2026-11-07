@@ -1,6 +1,14 @@
-# Сеть и доступ Socrat: итог 5–6 ноября 2026
+# Сеть и доступ Socrat: текущий контракт на 7 ноября 2026
 
-Это актуальный итог сетевых изменений, а не инструкция повторить миграцию. Он заменяет старые утверждения «Grafana только через WG», «anonymous Viewer сохранён», «на Mac нужны resolver overrides», «ТВ подключает внутренний WG» и «Kuma ещё ждёт разделения входов». Старые приёмки остаются историей; перед новым применением нужен свежий аудит.
+Это актуальный итог сетевых изменений, а не инструкция повторить миграцию. Он заменяет старые утверждения «Grafana только через WG», «anonymous Viewer сохранён», «на Mac нужны resolver overrides», «ТВ подключает внутренний WG» и «Kuma ещё ждёт разделения входов». Transport/negative-case приёмки относятся к5–6 ноября;7 ноября обновлены
+документация и карта владельцев, не повторён полный VPN/внешний browser тест.
+Старые приёмки остаются историей; перед новым применением нужен свежий аудит.
+
+**Внутренняя сеть для пользователя — NetBird**, не ручной socrat-wg профиль.
+Имена `wg-socrat-*` routes и `wireguard-internal` resource — реальные оставшиеся
+идентификаторы; не переименовывать их автоматически. Межнодовый WG и независимый
+аварийный WG ниже сохранены намеренно. Текущие логины/первый вход:
+[identity-current-state.md](identity-current-state.md).
 
 ## 1. Адреса, транспорт и неприкосновенные границы
 
@@ -84,7 +92,7 @@ Syncthing BasicAuth bytes, process/device identity, keys, config и synchronizat
 
 Сборная Application **`public-web-entry` и её chart удалены**. Публичные входы,
 policy proxies и их ConfigMap теперь принадлежат существующим Applications:
-Grafana → `kube-prometheus-stack`, Rancher → `rancher`, Search → `searxng`,
+Grafana → **`grafana`** (после monitoring split), Rancher → `rancher`, Search → `searxng`,
 LLM alias → `open-webui`, LiteLLM alias → `litellm`, MCP → `grafana-mcp`,
 Syncthing → `syncthing`, Kuma admin → `uptime-kuma`.
 
@@ -97,7 +105,9 @@ machine authentication не менялись. Не создавать общий
 После удаления старого owner public regression — **134/134**. Это не новый
 browser-MFA/onboarding тест. Детальная карта, безопасная передача ownership и
 граница LiteLLM hooks: [cluster-deploy.md](cluster-deploy.md#публичные-входы-принадлежат-приложениям--2026-11-07).
-Финальный инфраструктурный коммит — `e7fe891`.
+Ingress handoff был завершён в `e7fe891`; затем monitoring split `8862770`
+передал Grafana собственному app. Не возвращать старого владельца. Текущие sources
+и незавершённый aggregate cleanup: [observability-current.md](observability-current.md).
 
 ## 6. Kuma: восстановление после инцидента, не zero downtime
 
@@ -123,7 +133,8 @@ Secret UID сохранён, **данные Secret при recovery измени�
 
 Остался **только `alchemmist-tv` для YouTube**, без чтения/замены его key/config. YouTube helper поднимает его по требованию и ждёт VALIDATED. Grafana helper отключает этот глобальный VPN и открывает Fully **без подключения туннеля**. Always-on VPN очищен; helper source и `tv-admin.yml` не возвращают его. Package/component/signing identity совместимы с существующими назначениями пульта.
 
-URL Fully — canonical `grafana.socrat.alchemmist.xyz/public-dashboards/<accessToken>?kiosk=1&hideLogo=1&autofitpanels=true&socratTv=1`; точный адрес — root-private `/var/lib/homelab-grafana-tv-public/fully-url.json`. Временный **`tv.alchemmist.xyz` удалён** из authoritative A records и chart; его exact Ingress/Certificate/Secret удалены по UID, не blanket prune. DNS/alias final audits — operations=0; это исторический результат. Отдельный public-web-entry затем удалён; Grafana public ingress/proxy теперь принадлежат kube-prometheus-stack.
+URL Fully — canonical `grafana.socrat.alchemmist.xyz/public-dashboards/<accessToken>?kiosk=1&hideLogo=1&autofitpanels=true&socratTv=1`; точный адрес — root-private `/var/lib/homelab-grafana-tv-public/fully-url.json`. Временный **`tv.alchemmist.xyz` удалён** из authoritative A records и chart; его exact Ingress/Certificate/Secret удалены по UID, не blanket prune. DNS/alias final audits — operations=0; это исторический результат. Отдельный public-web-entry затем удалён; Grafana public ingress/proxy теперь принадлежат **grafana**; Helm release/service
+имена с kube-prometheus-stack сохранены, это не старый Argo owner.
 
 Серверный JS/CSS восстанавливает 5px inset, скрывает public header/footer и autofit compacted layout: native public scene игнорирует старые kiosk/autofit flags. Важно брать compacted geometry, не пересекающиеся raw gridPos. Сохранены Fully scale 55%, font 75%, empty injectJsCode (без Plus watermark), remote assignments/HDMI и Android Private DNS. Native share не меняет dashboard JSON, refresh 5s и live range now-12h.
 
