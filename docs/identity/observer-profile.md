@@ -182,3 +182,15 @@ regressions without infrastructure credentials. The older preparation suite has
 a separately reproduced baseline failure: its allowlist still requests retired
 `n8n` from the native-only catalog. Do not hide that as a passing repository-wide
 suite or reintroduce n8n's retired auth gateway to fix its fixture.
+
+### Concurrency boundary
+
+The ordinary Rancher integration retains admission only if it was already open;
+it re-reads default roles/session settings immediately before the authconfig write
+and uses JSON Patch UID/resourceVersion tests against the original authconfig.
+A concurrent authconfig edit therefore fails closed rather than losing another
+writer's principal changes. This is **not a transaction across roles, settings,
+secrets and authconfig**. Keep a single operator/configuration writer during
+bootstrap/reconciliation; do not concurrently edit default roles or TTL. A failure
+can follow earlier legacy reconciliation/Secret writes: inspect private backups
+and current objects, never assume that the entire integration was rolled back.
