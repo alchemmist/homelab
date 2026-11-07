@@ -77,7 +77,7 @@ Verification: 41 resource-policy/budget unit tests; Ansible syntax check; server
 
 ## Follow-up: offload auxiliary workloads from socrat-2
 
-`ansible/playbooks/socrat-2-offload.yml` moves only `img-proxy`, `metrics-server` and `local-path-provisioner` to socrat-1. It refuses cluster-wide resource reconciliation, applies admission configuration first, and rolls out the selected deployments sequentially. The image proxy is updated through Helm with its previous values preserved; the two K3s controllers receive minimal node-selector patches.
+`ansible/playbooks/socrat-2-offload.yml` now moves only `metrics-server` and `local-path-provisioner` to socrat-1. Since 2026-11-07, `img-proxy` is strictly pinned to socrat-2 in its Argo-managed chart and admission policy; the offload role no longer upgrades or patches it. It refuses cluster-wide resource reconciliation, applies admission configuration first, and rolls out the selected deployments sequentially. The two K3s controllers receive minimal node-selector patches. Image proxy placement is reconciled by Argo, not this legacy offload playbook.
 
 The three profiles also specify `nodeSelector: {kubernetes.io/hostname: socrat-1}`. Admission enforces this placement for replacement Pods even if K3s regenerates a packaged Deployment. Other node-selector labels are preserved. The image proxy chart carries the same default. Changing placement requires updating the profile as well as the controller/chart, not just patching a Pod. No packaged K3s manifests are disabled or rewritten.
 

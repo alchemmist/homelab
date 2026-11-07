@@ -331,7 +331,7 @@ container_resource_policy_profiles:
         ephemeral-storage: 256Mi
       removeCpuLimit: true
   nodeSelector:
-    kubernetes.io/hostname: socrat-1
+    kubernetes.io/hostname: socrat-2
 - namespace: kube-system
   ownerKind: ReplicaSet
   ownerPattern: ^coredns-[a-z0-9]+$

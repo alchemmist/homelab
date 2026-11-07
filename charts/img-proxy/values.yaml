@@ -1,7 +1,7 @@
 replicaCount: 1
 
 nodeSelector:
-  kubernetes.io/hostname: socrat-1
+  kubernetes.io/hostname: socrat-2
 
 image:
   repository: nginx

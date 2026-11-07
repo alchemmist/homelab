@@ -17,7 +17,7 @@
     - name: Keep the resource-policy rollout limited to future pod admission
       ansible.builtin.assert:
         that: not (container_resource_policy_reconcile | default(false) | bool)
-        fail_msg: This playbook only rolls out the three selected deployments.
+        fail_msg: This playbook only rolls out the two selected deployments.
   roles:
     - container_resource_policy
     - vps_workload_offload
