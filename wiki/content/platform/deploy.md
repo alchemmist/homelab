@@ -135,7 +135,7 @@ Action меняет image tag/digest в существующих values, ком�
 2. В `homelab/main` появился коммит releaser с ожидаемым digest и Source commit.
 3. Argo CD увидел этот Git revision: сначала `Synced`, затем `Healthy`. Опрос Git может занять несколько минут, cold pull — дольше; GitHub webhook не следует предполагать настроенным.
 4. Deployment использует точный `repository@sha256:...`, а Helm parameters не перекрывают Git values.
-5. Проверены настоящий HTTPS, OIDC/native role, health и полезная функция. Для нового сервиса проверьте также неавторизованный отказ и необходимые API/WebSocket paths.
+5. Проверены настоящий HTTPS, OIDC/native role, health и полезная функция. Для нового сервиса проверьте также неавторизованный отказ и необходимые API/WebSocket paths. При обновлении темы/runtime проверьте фактическую отдачу новых CSS/JS и сохранение OIDC scopes/MCP: готовый pod сам по себе не подтверждает обновление интерфейса.
 6. Есть dashboards/алерты, владелец сервиса и краткий runbook. См. [Socrat Overview]({{< relref "observability/grafana.md" >}}).
 
 При выданном namespace-scoped kubectl можно дополнительно посмотреть Deployment image и rollout status. Не запрашивайте cluster-admin ради этой проверки.
