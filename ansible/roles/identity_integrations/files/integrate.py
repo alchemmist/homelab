@@ -55,7 +55,8 @@ if service=='harbor':
         'oidc_client_secret':clients['harbor']['client_secret'],
         'oidc_scope':'openid,profile,email,groups','oidc_user_claim':'preferred_username',
         'oidc_groups_claim':'groups','oidc_admin_group':'homelab-owner',
-        'oidc_verify_cert':True,'oidc_auto_onboard':True}
+        'oidc_verify_cert':True,'oidc_auto_onboard':True,
+        'project_creation_restriction':'adminonly'}
     secret={'apiVersion':'v1','kind':'Secret','metadata':{'name':'socrat-authentik-harbor','namespace':'harbor'},
         'type':'Opaque','stringData':{'config-json':json.dumps(config)}}
     kubectl(['apply','-f','-'],secret)
@@ -176,6 +177,21 @@ elif service=='rancher':
                     if key[0]:args+=['-n',key[0]]
                     kubectl(args)
         allowed.append(principal)
+    # Observer admission is group-driven only after native safe defaults exist.
+    observer_principal='genericoidc_group://homelab-observer'
+    raw_default=json.loads(kubectl(['get','globalroles.management.cattle.io','-o','json']))['items']
+    safe_default=next((r for r in raw_default if r['metadata']['name']=='homelab-observer-login'),None)
+    ttl=json.loads(kubectl(['get','settings.management.cattle.io','auth-user-session-ttl-minutes','-o','json']))
+    ready=bool(safe_default and safe_default.get('newUserDefault') is True
+               and safe_default['metadata'].get('labels',{}).get('homelab.alchemmist.xyz/identity-profile')=='observer-v1'
+               and all(not r.get('newUserDefault') or r['metadata']['name']=='homelab-observer-login' for r in raw_default)
+               and (ttl.get('value') or ttl.get('default'))=='60')
+    # Only the reviewed bootstrap may OPEN group admission: readiness here
+    # does not prove legacy chat migration or the other service prerequisites.
+    if observer_principal in original.get('allowedPrincipalIds',[]):
+        if not ready:
+            raise RuntimeError('Observer defaults drifted; do not silently rewrite active group admission')
+        allowed.append(observer_principal)
     secret={'apiVersion':'v1','kind':'Secret','metadata':{'name':'genericoidcconfig-clientsecret','namespace':'cattle-global-data'},
         'type':'Opaque','stringData':{'clientsecret':clients['rancher']['client_secret']}}
     kubectl(['apply','-f','-'],secret)

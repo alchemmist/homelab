@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "group": "homelab-observer",
+  "rancher": {
+    "groupPrincipal": "genericoidc_group://homelab-observer",
+    "cluster": "local",
+    "globalRole": "homelab-observer-login",
+    "clusterRole": "homelab-observer-cluster",
+    "humanSessionMinutes": 60,
+    "allowPersonalApiTokens": false,
+    "allowKubeconfigCreation": false
+  },
+  "nativeAdmission": [
+    "grafana",
+    "wiki",
+    "rancher",
+    "argocd",
+    "harbor"
+  ],
+  "harbor": {
+    "groupType": 3,
+    "roleId": 3,
+    "projects": [
+      "homelab",
+      "library",
+      "spi-triage"
+    ],
+    "projectCreationRestriction": "adminonly"
+  },
+  "unsupported": {
+    "n8n": "No assumed Community viewer role; do not substitute a write-capable user",
+    "uptime-kuma": "Use public status and monitoring; no assumed admin-UI viewer role",
+    "syncthing": "Native GUI credentials are administrative; do not distribute them as viewer credentials",
+    "3x-ui": "No reviewed native viewer role",
+    "open-webui": "Ordinary user creates chats and consumes model resources; not an infrastructure viewer role",
+    "litellm": "Owner-only until a native non-mutating role is reviewed",
+    "rustfs-console": "Existing private S3 read policy needs separate review before adding observer admission"
+  },
+  "legacyChatPreservation": [
+    {
+      "username": "antropophag",
+      "uuid": "6015c85b-82e9-49ce-a4e3-0270c676e26d"
+    }
+  ]
+}

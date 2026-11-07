@@ -45,6 +45,7 @@
     - {src: '{{ playbook_dir }}/../../deploy/identity/lifecycle.json', name: lifecycle.json}
     - {src: icons.py, name: icons.py}
     - {src: '{{ playbook_dir }}/../../deploy/identity/services.json', name: services.json}
+    - {src: '{{ playbook_dir }}/../../deploy/identity/observer/profile.json', name: observer-profile.json}
     - {src: '{{ playbook_dir }}/../../deploy/identity/account-mappings.json', name: account-mappings.json}
 
 - name: Initialize stable credentials without exposing them
