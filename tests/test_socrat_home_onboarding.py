@@ -22,7 +22,8 @@ def test_onboarding_is_between_title_and_wiki_navigation():
     assert 'with your assigned username and password, then change your password.' in HTML
     assert 'to connect to the internal network.' in HTML
     assert 'Then explore the cluster and its services.' in HTML
-    assert 'start from wiki &gt;' in HTML
+    assert 'explore the wiki &gt;' in HTML
+    assert 'start from wiki' not in HTML
 
 
 def test_onboarding_links_use_canonical_hosts_and_netbird_heading():
@@ -43,3 +44,7 @@ def test_inline_links_and_existing_artwork_are_preserved():
     assert '<h1 id="title">welcome to<br><span>socrat cluster</span></h1>' in HTML
     assert '<img src="/wallpaper.webp"' in HTML
     assert '<script' not in HTML
+
+
+def test_onboarding_uses_the_existing_courier_font():
+    assert "font:15px/1.75 CourierCyr,monospace}.onboarding p" in HTML
