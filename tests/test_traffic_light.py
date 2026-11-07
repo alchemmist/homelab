@@ -195,6 +195,11 @@ class TrafficLightQueriesTest(unittest.TestCase):
         self.assertEqual(panel['options']['valueMode'], 'hidden')
         self.assertEqual(panel['options']['orientation'], 'vertical')
 
+    def test_user_approved_resource_panels_remain_unchanged(self):
+        approved = json.loads((ROOT / 'tests/fixtures/traffic-light-approved-resources.json').read_text())
+        for panel_id, expected in approved.items():
+            self.assertEqual(panel_by_id(self.dashboard, int(panel_id)), expected)
+
     def test_absolute_resource_values_and_dynamic_capacity(self):
         for panel_id, unit in [(21, 'suffix: cores'), (22, 'bytes'), (23, 'bytes')]:
             panel = panel_by_id(self.dashboard, panel_id)

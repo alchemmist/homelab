@@ -109,8 +109,12 @@ as JSON objects. It replaces only the latency and incident blocks.
   itself is not represented as a newly scoped read-only credential.
 - No workflow payloads, execution IDs, names or API secrets are exposed as metric
   labels or printed. Metadata stays transient in process memory. No public route
-  is created for the observer; ingress is restricted to Prometheus, and egress to
-  n8n and cluster DNS. n8n configuration and persistence are unchanged.
+  is created for the observer. A pinned native OTel sidecar scrapes it over loopback
+  and Argo CD over a ClusterIP Service, then sends metrics using a dedicated
+  cert-manager client certificate through the existing mTLS OTLP receiver. No
+  main Collector, Prometheus or n8n restart is needed. Egress is restricted to
+  n8n, Argo CD, the cluster OTLP receiver and DNS. Legacy ServiceMonitors do not
+  activate scraping after the native-OTel cutover. n8n configuration and persistence are unchanged.
 - Counts mean **starts in the last 5 minutes / hour by current outcome**, not
   completions or cumulative counters. The historical chart samples rolling
   windows at five-minute intervals; do not apply rate/increase. Older executions

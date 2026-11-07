@@ -1,0 +1,515 @@
+{
+  "21": {
+    "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+    },
+    "description": "Per-node absolute usage; each bar is normalized to that node\u2019s live capacity, with relative 75% / 90% warning thresholds. CPU shows non-idle logical cores (including iowait), not GHz. Memory is total minus available. Disk is root filesystem size minus free (reserved free blocks are not used). Missing usage/capacity is not replaced with zero.",
+    "fieldConfig": {
+      "defaults": {
+        "color": {
+          "mode": "thresholds"
+        },
+        "decimals": 1,
+        "min": 0,
+        "noValue": "No telemetry",
+        "thresholds": {
+          "mode": "percentage",
+          "steps": [
+            {
+              "color": "#26783D",
+              "value": 0
+            },
+            {
+              "color": "#A85D08",
+              "value": 75
+            },
+            {
+              "color": "#B42332",
+              "value": 90
+            }
+          ]
+        },
+        "unit": "suffix: cores"
+      }
+    },
+    "gridPos": {
+      "h": 8,
+      "w": 5,
+      "x": 14,
+      "y": 0
+    },
+    "id": 21,
+    "options": {
+      "displayMode": "basic",
+      "legend": {
+        "calcs": [],
+        "displayMode": "list",
+        "placement": "bottom",
+        "showLegend": false
+      },
+      "maxVizHeight": 300,
+      "minVizHeight": 0,
+      "minVizWidth": 0,
+      "namePlacement": "auto",
+      "orientation": "horizontal",
+      "reduceOptions": {
+        "calcs": [
+          "lastNotNull"
+        ],
+        "fields": "",
+        "values": false
+      },
+      "showUnfilled": true,
+      "sizing": "auto",
+      "text": {
+        "titleSize": 16,
+        "valueSize": 16
+      },
+      "valueMode": "color"
+    },
+    "pluginVersion": "13.2.4",
+    "targets": [
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "expr": "max by(nodename) ((sum by(instance)(1 - rate(node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"}[5m]))) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\"}))",
+        "format": "table",
+        "instant": true,
+        "refId": "A"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "expr": "max by(nodename) ((count by(instance)(node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"})) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\"}))",
+        "format": "table",
+        "instant": true,
+        "refId": "B"
+      }
+    ],
+    "title": "CPU",
+    "transformations": [
+      {
+        "id": "joinByField",
+        "options": {
+          "byField": "nodename",
+          "mode": "outerTabular"
+        }
+      },
+      {
+        "id": "organize",
+        "options": {
+          "excludeByName": {
+            "Time": true,
+            "Time 1": true,
+            "Time 2": true
+          },
+          "renameByName": {
+            "Value #A": "Used",
+            "Value #B": "Capacity"
+          }
+        }
+      },
+      {
+        "id": "filterByValue",
+        "options": {
+          "filters": [
+            {
+              "config": {
+                "id": "isNotNull",
+                "options": {}
+              },
+              "fieldName": "Used"
+            },
+            {
+              "config": {
+                "id": "isNotNull",
+                "options": {}
+              },
+              "fieldName": "Capacity"
+            }
+          ],
+          "match": "all",
+          "type": "include"
+        }
+      },
+      {
+        "id": "sortBy",
+        "options": {
+          "sort": [
+            {
+              "desc": false,
+              "field": "nodename"
+            }
+          ]
+        }
+      },
+      {
+        "id": "rowsToFields",
+        "options": {
+          "mappings": [
+            {
+              "fieldName": "nodename",
+              "handlerKey": "field.name"
+            },
+            {
+              "fieldName": "Used",
+              "handlerKey": "field.value"
+            },
+            {
+              "fieldName": "Capacity",
+              "handlerKey": "max"
+            }
+          ]
+        }
+      }
+    ],
+    "type": "bargauge"
+  },
+  "22": {
+    "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+    },
+    "description": "Per-node absolute usage; each bar is normalized to that node\u2019s live capacity, with relative 75% / 90% warning thresholds. CPU shows non-idle logical cores (including iowait), not GHz. Memory is total minus available. Disk is root filesystem size minus free (reserved free blocks are not used). Missing usage/capacity is not replaced with zero.",
+    "fieldConfig": {
+      "defaults": {
+        "color": {
+          "mode": "thresholds"
+        },
+        "decimals": 1,
+        "min": 0,
+        "noValue": "No telemetry",
+        "thresholds": {
+          "mode": "percentage",
+          "steps": [
+            {
+              "color": "#26783D",
+              "value": 0
+            },
+            {
+              "color": "#A85D08",
+              "value": 75
+            },
+            {
+              "color": "#B42332",
+              "value": 90
+            }
+          ]
+        },
+        "unit": "bytes"
+      }
+    },
+    "gridPos": {
+      "x": 19,
+      "y": 0,
+      "w": 5,
+      "h": 8
+    },
+    "id": 22,
+    "options": {
+      "displayMode": "basic",
+      "legend": {
+        "calcs": [],
+        "displayMode": "list",
+        "placement": "bottom",
+        "showLegend": false
+      },
+      "maxVizHeight": 300,
+      "minVizHeight": 0,
+      "minVizWidth": 0,
+      "namePlacement": "auto",
+      "orientation": "horizontal",
+      "reduceOptions": {
+        "calcs": [
+          "lastNotNull"
+        ],
+        "fields": "",
+        "values": false
+      },
+      "showUnfilled": true,
+      "sizing": "auto",
+      "text": {
+        "titleSize": 16,
+        "valueSize": 16
+      },
+      "valueMode": "color"
+    },
+    "pluginVersion": "13.2.4",
+    "targets": [
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "expr": "max by(nodename) (((node_memory_MemTotal_bytes{job=\"node-exporter\"} - node_memory_MemAvailable_bytes{job=\"node-exporter\"})) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\"}))",
+        "format": "table",
+        "instant": true,
+        "refId": "A"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "expr": "max by(nodename) ((node_memory_MemTotal_bytes{job=\"node-exporter\"}) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\"}))",
+        "format": "table",
+        "instant": true,
+        "refId": "B"
+      }
+    ],
+    "title": "Memory",
+    "transformations": [
+      {
+        "id": "joinByField",
+        "options": {
+          "byField": "nodename",
+          "mode": "outerTabular"
+        }
+      },
+      {
+        "id": "organize",
+        "options": {
+          "excludeByName": {
+            "Time": true,
+            "Time 1": true,
+            "Time 2": true
+          },
+          "renameByName": {
+            "Value #A": "Used",
+            "Value #B": "Capacity"
+          }
+        }
+      },
+      {
+        "id": "filterByValue",
+        "options": {
+          "filters": [
+            {
+              "config": {
+                "id": "isNotNull",
+                "options": {}
+              },
+              "fieldName": "Used"
+            },
+            {
+              "config": {
+                "id": "isNotNull",
+                "options": {}
+              },
+              "fieldName": "Capacity"
+            }
+          ],
+          "match": "all",
+          "type": "include"
+        }
+      },
+      {
+        "id": "sortBy",
+        "options": {
+          "sort": [
+            {
+              "desc": false,
+              "field": "nodename"
+            }
+          ]
+        }
+      },
+      {
+        "id": "rowsToFields",
+        "options": {
+          "mappings": [
+            {
+              "fieldName": "nodename",
+              "handlerKey": "field.name"
+            },
+            {
+              "fieldName": "Used",
+              "handlerKey": "field.value"
+            },
+            {
+              "fieldName": "Capacity",
+              "handlerKey": "max"
+            }
+          ]
+        }
+      }
+    ],
+    "type": "bargauge"
+  },
+  "23": {
+    "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+    },
+    "description": "Per-node absolute usage; each bar is normalized to that node\u2019s live capacity, with relative 75% / 90% warning thresholds. CPU shows non-idle logical cores (including iowait), not GHz. Memory is total minus available. Disk is root filesystem size minus free (reserved free blocks are not used). Missing usage/capacity is not replaced with zero.",
+    "fieldConfig": {
+      "defaults": {
+        "color": {
+          "mode": "thresholds"
+        },
+        "decimals": 1,
+        "min": 0,
+        "noValue": "No telemetry",
+        "thresholds": {
+          "mode": "percentage",
+          "steps": [
+            {
+              "color": "#26783D",
+              "value": 0
+            },
+            {
+              "color": "#A85D08",
+              "value": 75
+            },
+            {
+              "color": "#B42332",
+              "value": 90
+            }
+          ]
+        },
+        "unit": "bytes"
+      }
+    },
+    "gridPos": {
+      "x": 14,
+      "y": 8,
+      "w": 5,
+      "h": 7
+    },
+    "id": 23,
+    "options": {
+      "displayMode": "basic",
+      "legend": {
+        "calcs": [],
+        "displayMode": "list",
+        "placement": "bottom",
+        "showLegend": false
+      },
+      "maxVizHeight": 300,
+      "minVizHeight": 0,
+      "minVizWidth": 0,
+      "namePlacement": "auto",
+      "orientation": "horizontal",
+      "reduceOptions": {
+        "calcs": [
+          "lastNotNull"
+        ],
+        "fields": "",
+        "values": false
+      },
+      "showUnfilled": true,
+      "sizing": "auto",
+      "text": {
+        "titleSize": 16,
+        "valueSize": 16
+      },
+      "valueMode": "color"
+    },
+    "pluginVersion": "13.2.4",
+    "targets": [
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "expr": "max by(nodename) (((node_filesystem_size_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype!~\"tmpfs|overlay\"} - node_filesystem_free_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype!~\"tmpfs|overlay\"})) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\"}))",
+        "format": "table",
+        "instant": true,
+        "refId": "A"
+      },
+      {
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "expr": "max by(nodename) ((node_filesystem_size_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype!~\"tmpfs|overlay\"}) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\"}))",
+        "format": "table",
+        "instant": true,
+        "refId": "B"
+      }
+    ],
+    "title": "Disk",
+    "transformations": [
+      {
+        "id": "joinByField",
+        "options": {
+          "byField": "nodename",
+          "mode": "outerTabular"
+        }
+      },
+      {
+        "id": "organize",
+        "options": {
+          "excludeByName": {
+            "Time": true,
+            "Time 1": true,
+            "Time 2": true
+          },
+          "renameByName": {
+            "Value #A": "Used",
+            "Value #B": "Capacity"
+          }
+        }
+      },
+      {
+        "id": "filterByValue",
+        "options": {
+          "filters": [
+            {
+              "config": {
+                "id": "isNotNull",
+                "options": {}
+              },
+              "fieldName": "Used"
+            },
+            {
+              "config": {
+                "id": "isNotNull",
+                "options": {}
+              },
+              "fieldName": "Capacity"
+            }
+          ],
+          "match": "all",
+          "type": "include"
+        }
+      },
+      {
+        "id": "sortBy",
+        "options": {
+          "sort": [
+            {
+              "desc": false,
+              "field": "nodename"
+            }
+          ]
+        }
+      },
+      {
+        "id": "rowsToFields",
+        "options": {
+          "mappings": [
+            {
+              "fieldName": "nodename",
+              "handlerKey": "field.name"
+            },
+            {
+              "fieldName": "Used",
+              "handlerKey": "field.value"
+            },
+            {
+              "fieldName": "Capacity",
+              "handlerKey": "max"
+            }
+          ]
+        }
+      }
+    ],
+    "type": "bargauge"
+  }
+}
