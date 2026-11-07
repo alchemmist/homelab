@@ -1,7 +1,7 @@
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/blog
-  tag: "5c97fbd2de10ca49dd0a1e07bab2f51916f37ae5"
-  digest: sha256:f9cb388d47c6fc7c2948a7e68e0b0368e80472623ababa809c7d8b13586741bc
+  tag: "9628aad3c257ec4b4171d8eff808908742c9b640"
+  digest: sha256:c476e069de95fd3daafaac09f1f1fcf58f65230deaecb6740b5b9cf84aae8c99
   pullPolicy: IfNotPresent
 
 replicaCount: 2
