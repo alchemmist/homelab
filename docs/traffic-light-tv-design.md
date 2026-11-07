@@ -125,3 +125,27 @@ as JSON objects. It replaces only the latency and incident blocks.
 - Gauge history begins with observer deployment. No synthetic historical backfill.
   First hour can show real summary counts immediately from execution metadata.
   Export failures suppress counts and expose collection_success=0, not healthy zero.
+
+### Activity preview verification
+
+Published experiment `8355cae`, native-pipeline corrections `94bb894` / `fe41cd6`,
+and aligned n8n readouts `3e5b64d` via GitOps. The approved resource snapshot is
+also checked by a dedicated fixture in `test_traffic_light.py` (commit `7a320d0`).
+24 dashboard tests + 4 observer tests pass; Helm lint passes.
+
+Live checks: both new native scrape targets have up=1, the observer has
+collection_success=1, and the two-container observer pod is Ready. Argo CD reports
+Synced / Healthy. No n8n rollout or main telemetry pipeline restart was performed.
+Initial use of legacy ServiceMonitors produced no data because that scrape owner
+is retired; replaced by the isolated native OTel sidecar and removed those three
+now-unused Service/ServiceMonitor objects created by this experiment.
+
+The public dashboard was opened in an authenticated Viewer browser at 1920×1080
+and its actual screenshot inspected. Confirmed absolute-resource bars unchanged,
+Argo CD ready/drift counts and colored app segments, real n8n rolling-start bars,
+and a single aligned three-value readout. At check time n8n showed 72 recent starts,
+60 errors and 1 running execution; these are observed data, not demonstration values.
+The chart shows rolling five-minute windows over the last hour, sampled at 30s;
+neighboring bars overlap in time and must not be summed as disjoint bins. History
+begins at deployment; the blank portion before it is intentional. Physical Fully
+TV scale still requires operator review.
