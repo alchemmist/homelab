@@ -11,11 +11,14 @@ grant. Do not infer that admission to Authentik grants application administratio
 Existing IdP UUID, reviewed email, native account IDs and configured subject links
 were reconciled before mutation. No email-based automatic account merge, new human,
 role expansion, owner password change, MFA bypass or impersonated human login.
-At the initial cutover the existing Authentik user was active, non-superuser
-and still had its initial password. A subsequent explicit owner request replaced
-that state with [self-service activation](existing-user-activation.md): old password
-unusable, same user/UUID/groups, one-use24h link for password setting then mandatory
-MFA. No real-user factor or login has been performed by the operator.
+**Follow-up:** the owner rejected the separate activation flow and explicitly
+requested native user recreation. See [native recreation](user-recreation-20261107.md).
+The old IdP identity and custom activation flow/token were removed; the fresh IdP
+identity has the same groups but a new UUID, no password, MFA or real login.
+Reviewed service subjects were relinked without email-based merging. The table below
+records the original cutover; the follow-up supersedes its unchanged-UUID/unchanged-
+Rancher-record and no-pod-restart assumptions. No real-user password/MFA login was
+performed by the operator.
 
 ## Applied and checked
 

@@ -137,7 +137,7 @@ elif service=='rancher':
         # Do not bypass it: create a separate external identity and mirror ONLY
         # the reviewed local user's Rancher-managed grants. Keep local break-glass.
         import hashlib
-        external_id='u-authentik-'+username
+        external_id=account.get('rancherOidcUserId','u-authentik-'+username)
         collision=[u for u in all_users if principal in u.get('principalIds',[])]
         if any(u['metadata']['name'] not in [user_id,external_id] for u in collision):
             raise RuntimeError('OIDC principal belongs to an unexpected Rancher user')
@@ -158,7 +158,7 @@ elif service=='rancher':
             for binding in bindings:
                 if binding.get('userName')!=user_id:continue
                 old_name=binding['metadata']['name']
-                new_name='identity-'+username+'-'+hashlib.sha256(old_name.encode()).hexdigest()[:16]
+                new_name=account.get('rancherBindingPrefix','identity-'+username+'-')+hashlib.sha256(old_name.encode()).hexdigest()[:16]
                 namespace=binding['metadata'].get('namespace')
                 desired.add((namespace,new_name))
                 manifest={'apiVersion':binding['apiVersion'],'kind':binding['kind'],

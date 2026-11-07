@@ -184,7 +184,7 @@ obsolete initial password after OIDC activation; the role now guards that path.
 
 Rancher correctly rejects changes to an existing User's immutable principalIds.
 The migration does **not** bypass or disable that webhook. Separate external users
-`u-authentik-alchemmist` and `u-authentik-tim` bind to exact Authentik UUID subjects.
+`u-authentik-alchemmist` and `u-authentik-tim-v2` bind to exact Authentik UUID subjects.
 Their GlobalRoleBindings/ClusterRoleTemplateBindings/ProjectRoleTemplateBindings
 mirror only the reviewed original identities. Native Rancher controllers generate
 Kubernetes bindings; no hand-written broad cluster-admin binding was added for Tim.

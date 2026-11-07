@@ -69,7 +69,7 @@ PILOT = (
     },
     {
         'username': 'tim',
-        'uuid': '0d2c194a-dee7-4226-b599-0a44ce2f2b76',
+        'uuid': '6015c85b-82e9-49ce-a4e3-0270c676e26d',
         'email': 'antropophag@gmail.com',
         'required_groups': ('homelab-observer',),
         'is_superuser': False,

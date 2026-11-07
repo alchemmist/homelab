@@ -33,7 +33,7 @@ native NetBird connector созданы и прочитаны обратно. С
 Только два уже существующих пользователя, UUID не меняются:
 
 - `alchemmist` `9e33877a-3eaa-4541-98eb-8cdc10088ef6`, группа `homelab-owner`
-- `tim` `0d2c194a-dee7-4226-b599-0a44ce2f2b76`, группа `homelab-observer`
+- `tim` `6015c85b-82e9-49ce-a4e3-0270c676e26d`, группа `homelab-observer`
 
 Допуск в приложение `netbird-pilot` — одна binding на `netbird-pilot-login`.
 В claim дополнительно только `netbird-pilot-grafana` и `netbird-pilot-ssh-socrat-2`.

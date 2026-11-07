@@ -84,7 +84,7 @@ class PublicEntryTests(unittest.TestCase):
         self.assertEqual(owner.target_user([self.fixture()],owner.subject())['id'],owner.subject())
 
     def test_no_uuid_connector_email_fallback(self):
-        for candidate in [owner.EMAIL,owner.UUID,owner.subject('0d2c194a-dee7-4226-b599-0a44ce2f2b76'),owner.subject(connector='local')]:
+        for candidate in [owner.EMAIL,owner.UUID,owner.subject('6015c85b-82e9-49ce-a4e3-0270c676e26d'),owner.subject(connector='local')]:
             with self.subTest(candidate=candidate),self.assertRaises(ValueError):owner.target_user([self.fixture()],candidate)
         for key,value in [('email','other@example.invalid'),('idp_id','local'),('is_service_user',True),('last_login','0001-01-01T00:00:00Z')]:
             user=self.fixture();user[key]=value

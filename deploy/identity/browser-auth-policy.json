@@ -10,8 +10,12 @@
       "preserveExistingDataAndRoles": true,
       "rancher": {
         "legacyLocalUserEnabled": false,
-        "existingExternalUserEnabled": true,
-        "retainDisabledLegacyRecordAndInertGrantHistory": true
+        "retainDisabledLegacyRecordAndInertGrantHistory": true,
+        "currentExternalUserId": "u-authentik-tim-v2",
+        "currentExternalUserEnabled": true,
+        "retiredExternalUserId": "u-authentik-tim",
+        "retiredExternalUserEnabled": false,
+        "nativePrincipalIsImmutable": true
       },
       "grafana": {
         "linkExistingUserByReviewedProviderSubject": true,
@@ -36,16 +40,12 @@
         "followUpIssue": 85
       },
       "idpEnrollment": {
-        "state": "self-setup-link-issued",
-        "existingUuidPreserved": true,
-        "oldPasswordUsable": false,
-        "operatorSetsHumanPassword": false,
-        "tokenIntent": "verification",
-        "tokenLifetimeHours": 24,
-        "oneUse": true,
-        "flow": "homelab-existing-human-activation-v1",
-        "passwordThenMandatoryMfa": true,
-        "credentialValuesInGit": false
+        "state": "fresh-native-user-without-password",
+        "nativeCreateUser": true,
+        "passwordAssigned": false,
+        "mfaEnrolled": false,
+        "customActivationFlow": false,
+        "activationLinkIssued": false
       }
     }
   },

@@ -26,7 +26,7 @@ ALLOWLIST = {
     'wiki': ('reader', 'editor'), 'lms': ('student',),
 }
 PINNED = {'alchemmist': '9e33877a-3eaa-4541-98eb-8cdc10088ef6',
-          'tim': '0d2c194a-dee7-4226-b599-0a44ce2f2b76'}
+          'tim': '6015c85b-82e9-49ce-a4e3-0270c676e26d'}
 # Detailed OAuth/proxy and MFA serializers supplement polymorphic inventories.
 # No device secrets, recovery codes, tokens, sessions or native service APIs read.
 COLLECTIONS = (
