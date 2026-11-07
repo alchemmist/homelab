@@ -42,3 +42,8 @@ def test_syncthing_public_route_has_no_extra_basic_auth_wrapper():
  assert 'auth_basic' not in nginx and 'auth_request' not in nginx
  assert 'return 410' in nginx
  assert 'proxy_pass http://gui0' in nginx
+
+
+def test_obsolete_xui_controller_source_is_removed():
+ assert not (ROOT/'deploy/argocd/apps/xui-auth-gateway.yaml').exists()
+ assert not (ROOT/'deploy/xui-auth-gateway').exists()
