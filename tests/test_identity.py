@@ -1,4 +1,5 @@
 import contextlib
+import hashlib
 import io
 import json
 from pathlib import Path
@@ -67,6 +68,11 @@ class IdentityTests(unittest.TestCase):
     def setup_root(self,root):
         (root/'credentials.json').write_text(json.dumps({'AUTHENTIK_BOOTSTRAP_TOKEN':'fake-test-token'}))
         (root/'services.json').write_text((ROOT/'deploy/identity/services.json').read_text())
+        (root/'observer-profile.json').write_bytes((ROOT/'deploy/identity/observer/profile.json').read_bytes())
+        # Most foundation tests represent the post-bootstrap steady state.
+        receipt=root/'observer-ready.json'
+        receipt.write_text(json.dumps({'version':1,'nativeObserverReady':True,'policy_sha256':hashlib.sha256((root/'observer-profile.json').read_bytes()).hexdigest()}))
+        receipt.chmod(0o600)
 
     def setup_reviewed(self,root,api):
         # Restored current identities, not speculative/future users.
@@ -80,6 +86,19 @@ class IdentityTests(unittest.TestCase):
         (root/'antropophag-login.json').write_text(json.dumps({'initialized':True}))
         (root/'antropophag-login.json').chmod(0o600)
         (root/'account-mappings.json').write_text(json.dumps(accounts))
+
+    def test_harbor_observer_admission_waits_for_native_bootstrap(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);self.setup_root(root);api=FakeAuthentik()
+            (root/'observer-ready.json').unlink()
+            self.configure(root,api)
+            observer=next(g for g in api.data['core/groups/'] if g['name']=='homelab-observer')
+            harbor=next(a for a in api.data['core/applications/'] if a['slug']=='harbor')
+            self.assertFalse(any(b['target']==harbor['pk'] and b['group']==observer['pk'] for b in api.data['policies/bindings/']))
+            receipt=root/'observer-ready.json'
+            receipt.write_text(json.dumps({'version':1,'nativeObserverReady':True,'policy_sha256':hashlib.sha256((root/'observer-profile.json').read_bytes()).hexdigest()}));receipt.chmod(0o600)
+            self.configure(root,api)
+            self.assertEqual(sum(b['target']==harbor['pk'] and b['group']==observer['pk'] for b in api.data['policies/bindings/']),1)
 
     def test_configuration_idempotent_and_mfa_required(self):
         with tempfile.TemporaryDirectory() as d:

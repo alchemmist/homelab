@@ -1,0 +1,9 @@
+{{- if .Values.observerAccess.enabled }}
+{{- if or (ne .Values.observerAccess.group "homelab-observer") (ne .Values.observerAccess.cluster "local") }}
+{{- fail "Observer roles are reviewed only for homelab-observer on local; re-review scope before changing" }}
+{{- end }}
+{{- range (.Files.Get "files/observer-rbac.json" | fromJsonArray) }}
+---
+{{ toYaml . }}
+{{- end }}
+{{- end }}
