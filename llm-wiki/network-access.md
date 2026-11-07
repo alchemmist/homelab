@@ -80,6 +80,25 @@ Syncthing BasicAuth bytes, process/device identity, keys, config и synchronizat
 
 Основные источники: `deploy/public-web/services.json`, `publicEntry` в локальных чартах и `deploy/platform/<app>/public-entry` в существующих Argo Applications, `scripts/public-web-access.py`, `ansible/playbooks/public-web-access.yml`, [публичные входы](../docs/public-web-migration.md). Audit/create-only, drift refusal, outpost preservation, private receipts. Authentik policy denial может быть HTML с HTTP 200: оценивать фактический denial, не требовать фиктивный transport 403.
 
+### Владение public ingress после миграции 2026-11-07
+
+Сборная Application **`public-web-entry` и её chart удалены**. Публичные входы,
+policy proxies и их ConfigMap теперь принадлежат существующим Applications:
+Grafana → `kube-prometheus-stack`, Rancher → `rancher`, Search → `searxng`,
+LLM alias → `open-webui`, LiteLLM alias → `litellm`, MCP → `grafana-mcp`,
+Syncthing → `syncthing`, Kuma admin → `uptime-kuma`.
+
+Для локальных чартов менять `publicEntry` в values; для сторонних —
+`deploy/platform/<app>/public-entry`, подключённый дополнительным source той же
+Application. Authentik policies/группы остаются централизованными, native роли и
+machine authentication не менялись. Не создавать общий ingress Application снова.
+
+Все 22 ресурса переданы без пересоздания; TLS/проверки доступа сохранены.
+После удаления старого owner public regression — **134/134**. Это не новый
+browser-MFA/onboarding тест. Детальная карта, безопасная передача ownership и
+граница LiteLLM hooks: [cluster-deploy.md](cluster-deploy.md#публичные-входы-принадлежат-приложениям--2026-11-07).
+Финальный инфраструктурный коммит — `e7fe891`.
+
 ## 6. Kuma: восстановление после инцидента, не zero downtime
 
 Application-only restart для закрытия старых sockets выявил несовпадение Secret и действующего SQL password; приложение было недоступно. Максимальный наблюдённый heartbeat gap активного HTTP monitor — **2072s, около 35 минут**. Историю не подделывали, backfill не делали.

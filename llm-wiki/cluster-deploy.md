@@ -170,3 +170,66 @@ NetBird больше не исключение: Application создаёт `root
 `deploy-to-socrat@v1` (56037a9) uses an isolated temporary 0600 deploy key, pinned official GitHub host keys, SSH-over-443, bounded retries and rebases the same commit when concurrent `main` updates cause either non-fast-forward or remote ref-lock rejection. It remains one composite step; no Argo API calls. Static shell tests plus eight image/component unit tests pass.
 
 The GitHub Git Operations incident has cleared. Local SSH authentication and `git ls-remote` work again. End-to-end LMS run **41811725828** succeeded on the final retry: robot commit **76e9902** recorded `sha256:9890519389652cdd8c8436a76f81be6bc81131174a728144ab268c4150a80167`; live Deployment uses that GHCR digest and its rollout completed. Earlier failed attempts are not successful releases. LMS remains on GHCR intentionally during HA ownership work.
+
+
+## Публичные входы принадлежат приложениям — 2026-11-07
+
+**Отдельная Argo Application `public-web-entry` удалена из Git и кластера.**
+Удалён и `charts/public-web-entry`. Не восстанавливать этот сборный слой при
+настройке нового сервиса: Ingress и специфичный защитный proxy/config должны
+принадлежать той же Application, что и сервис.
+
+| Argo Application | Публичный вход / policy | Источник |
+| --- | --- | --- |
+| `kube-prometheus-stack` | Grafana, policy proxy и TV JS | `deploy/platform/kube-prometheus-stack/public-entry` |
+| `rancher` | Rancher, policy proxy | `deploy/platform/rancher/public-entry` |
+| `litellm` | `litellm.socrat…` alias | `deploy/platform/litellm/public-entry` |
+| `searxng` | Search | `charts/searxng`, `publicEntry` |
+| `open-webui` | `llm.socrat…` alias | `charts/open-webui`, `publicEntry` |
+| `grafana-mcp` | bearer-only `/mcp` | `charts/grafana-mcp`, `publicEntry` |
+| `syncthing` | оба GUI-входа, policy proxy | `charts/syncthing`, `publicEntry` |
+| `uptime-kuma` | admin-вход, policy proxy | `charts/uptime-kuma`, `publicEntry` |
+
+Для сторонних Helm-чартов `deploy/platform/<app>/public-entry` добавлен как
+ещё один `spec.sources` **существующей** Application; это не новые Applications.
+Основные upstream chart/version/values сохранены. У локальных чартов public
+шаблоны включены непосредственно в chart. Traefik, cert-manager и Authentik —
+общие платформенные компоненты; admission allowlist/группы по-прежнему управляются
+identity tooling (`deploy/public-web/services.json`), а не дублируются в чартах.
+
+### Передача владения и проверенные границы
+
+1. Старую Application сначала отключили от auto-sync и сняли deletion finalizer
+   **через Git**, чтобы root не запустил каскадное удаление.
+2. Все 22 ресурса передали восьми владельцам; offline-render до/после полностью
+   совпал. Live tracking annotation у каждого ресурса указывает на нового владельца.
+3. UID всех 22 ресурсов и 18 объектов Certificate/TLS Secret сохранены. У 186
+   существовавших проверенных подов UID/readiness/restart counts не изменились.
+4. Затем удалили старую Application и общий chart. Детям оставили `prune: false`,
+   `selfHeal: true`; root после удаления вернулся в `Synced / Healthy`.
+
+Префикс `public-web-` в **именах ресурсов** намеренно сохранён: он не означает
+наличие старой Application. Namespace `identity` у Authentik-gated Ingress также
+не означает владение Authentik/общим public app. Смотреть на Argo tracking и
+источник соответствующей Application; не переименовывать/пересоздавать TLS или
+Ingress только ради косметики.
+
+LiteLLM full sync попытался запустить существующий DB migration hook. Job остался
+Pending из-за 512Mi request на socrat-0, до запуска контейнера. На время handoff
+его auto-sync приостановили в Git, операцию остановили, pending Job убрал Argo;
+отдельным resource-only sync передали только alias Ingress без hooks. Обычный
+`prune: false / selfHeal: true` auto-sync восстановлен, активных операций/Jobs
+на закрытии нет. БД/идентичности не мигрировали, scheduling hook не меняли;
+его вместимость при будущем реальном релизе — отдельная проверка.
+
+Приёмка миграции: **134/134** public TLS/anonymous/forged-header/invalid-token
+checks до и после, **88 профильных тестов**. Пять старых ошибок
+`test_syncthing_scheduling.py` воспроизведены на исходном `c612d71` (ожидание
+DaemonSet при текущем Deployment); полный repository suite не объявлялся зелёным.
+Новый browser MFA/enrollment этой передачей владения не проверялся.
+
+Коммиты: disarm `41e10a2`, перенос `7ae691a`, временная пауза LiteLLM `4e2c72e`,
+окончательное удаление/возврат auto-sync **`e7fe891`**. Подробности:
+[операционная миграция](../docs/public-web-migration.md),
+[доступ и авторизация](network-access.md). Старый aggregate chart не возвращать
+при откате одного приложения; менять только источник его действующего владельца.
