@@ -149,3 +149,38 @@ The chart shows rolling five-minute windows over the last hour, sampled at 30s;
 neighboring bars overlap in time and must not be summed as disjoint bins. History
 begins at deployment; the blank portion before it is intentional. Physical Fully
 TV scale still requires operator review.
+
+## Headerless revision after TV feedback (7 November)
+
+Supersedes the activity layout above. User reported clipped Stat headers, legend
+and time-override chrome, hairline app segments and insufficient disk height.
+The previous acceptance checked the ordinary authenticated `/d/...` page, not
+also the actual **native shared TV page**. These use different layout behavior.
+
+- Resource semantics/styles/queries remain approved; Disk alone changes geometry
+  to h=8, matching CPU and Memory. Snapshot tests permit geometry changes only.
+- Grid is 24×16, not 24×18. The public presentation asset fits the whole viewport,
+  so three equally tall resource panels are measured in pixels, not just JSON.
+- RPS shrinks from w=14,h=5 to w=7,h=4. n8n rolling-start history sits beside it,
+  also w=7,h=4. No legend, title, description/info or time-override badge.
+- n8n totals use three single-value panels, with short in-viz labels above large
+  numbers. Each gets two rows; wide inline layout is disabled to avoid clipping.
+- Argo CD uses two actual state-history lanes, Git drift and app health. No
+  per-application hairline bars or one-row headline Stat headers. Current health
+  is not represented as a made-up historical deployment count. Lookback 30m;
+  no period badge or legend. Grey/gaps remain unknown; no stale green fallback.
+- The existing named service tiles can stay: narrowing RPS and shortening the
+  overall grid freed enough room. Anonymous service cubes are an option rather
+  than a requirement; do not sacrifice identification unnecessarily.
+- Reviewed the Body Ops reference screenshot and design at
+  https://github.com/MarrowHealth/built-with-marrow/tree/main/projects/body-ops .
+  Applied aligned visual groups and readable standalone values, not its
+  long-scroll layout or panel chrome, which do not suit this TV.
+
+Pre-release browser previews use the exact private shared URL with the candidate
+model and candidate queries intercepted locally, not a published fake dashboard.
+Inspected screenshots at 1920×1080 and 1440×900. CPU/Memory/Disk each measure
+531px / 441px respectively; Disk and VPN end together at y=1075 / 895. Every
+panel fits with the five-pixel inset. The direct macOS desktop screenshot failed
+(screen-capture permission/display unavailable), so this is browser viewport
+verification, not a claim to have captured the operator's physical laptop screen.

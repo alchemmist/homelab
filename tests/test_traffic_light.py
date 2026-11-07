@@ -64,11 +64,11 @@ class TrafficLightLayoutTest(unittest.TestCase):
         for panel in self.dashboard['panels']:
             grid = panel['gridPos']
             self.assertLessEqual(grid['x'] + grid['w'], 24)
-            self.assertLessEqual(grid['y'] + grid['h'], 18)
+            self.assertLessEqual(grid['y'] + grid['h'], 16)
             for assert_key in cells(grid):
                 self.assertNotIn(assert_key, occupied, f'panel {panel["id"]} overlaps {occupied.get(assert_key)}')
                 occupied[assert_key] = panel['id']
-        holes = [(x, y) for y in range(18) for x in range(24)
+        holes = [(x, y) for y in range(16) for x in range(24)
                  if (x, y) not in occupied]
         self.assertEqual(holes, [])
 
@@ -92,11 +92,11 @@ class TrafficLightLayoutTest(unittest.TestCase):
         self.assertEqual(up['gridPos'], {'x': 23, 'y': 8, 'w': 1, 'h': 2})
         self.assertEqual(up['fieldConfig']['defaults']['displayName'], 'UP')
         chart = panel_by_id(self.dashboard, 907)
-        self.assertEqual(chart['gridPos'], {'x': 19, 'y': 13, 'w': 5, 'h': 5})
+        self.assertEqual(chart['gridPos'], {'x': 19, 'y': 12, 'w': 5, 'h': 4})
         self.assertEqual(chart['type'], 'stat')
         history = panel_by_id(self.dashboard, 909)
-        self.assertEqual(history['gridPos'], {'x': 19, 'y': 10, 'w': 3, 'h': 1})
-        self.assertEqual(history['type'], 'stat')
+        self.assertEqual(history['gridPos'], {'x': 19, 'y': 10, 'w': 5, 'h': 2})
+        self.assertEqual(history['type'], 'state-timeline')
 
     def test_unmodified_resource_columns(self):
         cpu = panel_by_id(self.dashboard, 21)
@@ -106,7 +106,7 @@ class TrafficLightLayoutTest(unittest.TestCase):
             self.assertEqual(panel['gridPos']['x'] in (14, 19), True)
         self.assertEqual(cpu['gridPos'], {'x': 14, 'y': 0, 'w': 5, 'h': 8})
         self.assertEqual(memory['gridPos'], {'x': 19, 'y': 0, 'w': 5, 'h': 8})
-        self.assertEqual(disk['gridPos'], {'x': 14, 'y': 8, 'w': 5, 'h': 7})
+        self.assertEqual(disk['gridPos'], {'x': 14, 'y': 8, 'w': 5, 'h': 8})
 
 
     def test_ingress_chart_preserves_live_rps_queries(self):
@@ -117,9 +117,10 @@ class TrafficLightLayoutTest(unittest.TestCase):
             self.assertIn('entrypoint=~"web|websecure"', target['expr'])
             self.assertIn('[5m]', target['expr'])
 
-    def test_rps_chart_keeps_full_width(self):
+    def test_rps_and_n8n_share_a_shorter_graph_row(self):
         panel = panel_by_id(self.dashboard, 334)
-        self.assertEqual(panel['gridPos'], {'x': 0, 'y': 10, 'w': 14, 'h': 5})
+        self.assertEqual(panel['gridPos'], {'x': 0, 'y': 10, 'w': 7, 'h': 4})
+        self.assertEqual(panel_by_id(self.dashboard, 920)['gridPos'], {'x': 7, 'y': 10, 'w': 7, 'h': 4})
 
 
 class TrafficLightQueriesTest(unittest.TestCase):
@@ -182,23 +183,50 @@ class TrafficLightQueriesTest(unittest.TestCase):
     def test_vpn_preserves_latest_manual_stat_visualization(self):
         panel = panel_by_id(self.dashboard, 907)
         self.assertEqual(panel['type'], 'stat')
-        self.assertEqual(panel['gridPos']['y'] + panel['gridPos']['h'], 18)
+        self.assertEqual(panel['gridPos']['y'] + panel['gridPos']['h'], 16)
         self.assertEqual(panel['fieldConfig']['defaults']['min'], 0)
         self.assertNotIn('max', panel['fieldConfig']['defaults'])
 
-    def test_argocd_segments_require_synced_and_healthy(self):
-        panel = panel_by_id(self.dashboard, 922)
-        expr = panel['targets'][0]['expr']
-        self.assertIn('health_status="Healthy",sync_status="Synced"', expr)
-        self.assertIn('Degraded|Missing|Unknown', expr)
-        self.assertIn('max(up{job="socrat-argocd"}) == 1', expr)
-        self.assertEqual(panel['options']['valueMode'], 'hidden')
-        self.assertEqual(panel['options']['orientation'], 'vertical')
+    def test_argocd_has_two_readable_state_history_lanes(self):
+        panel = panel_by_id(self.dashboard, 909)
+        self.assertEqual(panel['type'], 'state-timeline')
+        self.assertEqual(len(panel['targets']), 2)
+        self.assertEqual([t['legendFormat'] for t in panel['targets']], ['Argo · Git', 'Argo · Apps'])
+        self.assertIn('sync_status!="Synced"', panel['targets'][0]['expr'])
+        self.assertIn('Degraded|Missing|Unknown', panel['targets'][1]['expr'])
+        for target in panel['targets']:
+            self.assertFalse(target['instant'])
+            self.assertTrue(target['range'])
+            self.assertIn('timestamp(up{job="socrat-argocd"}) < 90', target['expr'])
+        self.assertFalse(panel['fieldConfig']['defaults']['custom']['spanNulls'])
+        self.assertEqual(panel['options']['showValue'], 'never')
+
+    def test_new_activity_visuals_have_no_headers_legends_or_period_badges(self):
+        for panel_id in (909, 920, 923, 924, 925):
+            panel = panel_by_id(self.dashboard, panel_id)
+            self.assertEqual(panel.get('title', ''), '')
+            self.assertEqual(panel.get('description', ''), '')
+            self.assertFalse(panel.get('options', {}).get('legend', {}).get('showLegend', False))
+            if panel.get('timeFrom'):
+                self.assertTrue(panel['hideTimeOverride'])
+        for panel_id in (923, 924, 925):
+            panel = panel_by_id(self.dashboard, panel_id)
+            self.assertEqual(len(panel['targets']), 1)
+            self.assertEqual(panel['options']['orientation'], 'vertical')
+            self.assertFalse(panel['options']['wideLayout'])
+            self.assertEqual(panel['gridPos']['h'], 2)
 
     def test_user_approved_resource_panels_remain_unchanged(self):
         approved = json.loads((ROOT / 'tests/fixtures/traffic-light-approved-resources.json').read_text())
         for panel_id, expected in approved.items():
-            self.assertEqual(panel_by_id(self.dashboard, int(panel_id)), expected)
+            actual = dict(panel_by_id(self.dashboard, int(panel_id)))
+            expected = dict(expected)
+            # The user explicitly requested a taller disk panel; no metric/style changes.
+            actual.pop('gridPos')
+            expected.pop('gridPos')
+            self.assertEqual(actual, expected)
+        heights = [panel_by_id(self.dashboard, i)['gridPos']['h'] for i in (21, 22, 23)]
+        self.assertEqual(heights, [8, 8, 8])
 
     def test_absolute_resource_values_and_dynamic_capacity(self):
         for panel_id, unit in [(21, 'suffix: cores'), (22, 'bytes'), (23, 'bytes')]:
@@ -220,8 +248,8 @@ class TrafficLightQueriesTest(unittest.TestCase):
         for panel in self.dashboard['panels']:
             self.assertNotIn('histogram_quantile', str(panel.get('targets')))
             self.assertNotEqual(panel['type'], 'table')
-        self.assertEqual(panel_by_id(self.dashboard, 923)['targets'][2]['legendFormat'], 'Running')
-        self.assertIn('window="0"', panel_by_id(self.dashboard, 923)['targets'][2]['expr'])
+        self.assertEqual(panel_by_id(self.dashboard, 925)['targets'][0]['legendFormat'], 'n8n · running')
+        self.assertIn('window="0"', panel_by_id(self.dashboard, 925)['targets'][0]['expr'])
 
     def test_up_tile_counts_ready_nodes_with_quorum_thresholds(self):
         up = panel_by_id(self.dashboard, 908)
@@ -258,7 +286,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
 
     def test_new_panels_have_an_english_description(self):
         for panel in self.dashboard['panels']:
-            if panel['id'] >= 901:
+            if panel['id'] >= 901 and panel['id'] not in (909, 920, 923, 924, 925):
                 self.assertTrue(panel.get('description', '').strip(), f'panel {panel["id"]}')
 
     def test_row_panels_have_unique_target_ids_and_series_names(self):

@@ -1,7 +1,7 @@
 {
   "uid": "socrat-traffic-light",
   "title": "Traffic-light panel",
-  "description": "TV activity experiment: approved absolute per-node resource bars retained unchanged. n8n recent workflow starts and running executions, Argo CD application delivery state, HTTP request history and VPN clients. Read-only collectors; unknown is not healthy.",
+  "description": "Headerless TV layout: approved absolute resource bars; CPU, memory and disk all eight grid rows high. Half-width RPS and n8n history, three unclipped n8n readouts, two Argo CD state-history lanes. Existing named service tiles and VPN sparkline retained. Fixed 24×16 grid.",
   "tags": [
     "socrat",
     "tv"
@@ -3613,7 +3613,7 @@
         "x": 14,
         "y": 8,
         "w": 5,
-        "h": 7
+        "h": 8
       },
       "id": 23,
       "options": {
@@ -4970,10 +4970,10 @@
         ]
       },
       "gridPos": {
-        "h": 5,
-        "w": 14,
         "x": 0,
-        "y": 10
+        "y": 10,
+        "w": 7,
+        "h": 4
       },
       "id": 334,
       "options": {
@@ -5084,9 +5084,9 @@
       },
       "gridPos": {
         "x": 19,
-        "y": 13,
+        "y": 12,
         "w": 5,
-        "h": 5
+        "h": 4
       },
       "id": 907,
       "options": {
@@ -5128,242 +5128,11 @@
       "type": "stat"
     },
     {
-      "id": 909,
-      "title": "Argo CD · ready",
-      "description": "Live read-only activity telemetry; no data is not zero. n8n starts are grouped by start time and current outcome; waiting is not running.",
-      "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "gridPos": {
-        "x": 19,
-        "y": 10,
-        "w": 3,
-        "h": 1
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "(sum(argocd_app_info{job=\"socrat-argocd\",health_status=\"Healthy\",sync_status=\"Synced\"}) or (0 * count(argocd_app_info{job=\"socrat-argocd\"}))) and on() (max(up{job=\"socrat-argocd\"}) == 1)",
-          "format": "time_series",
-          "instant": true,
-          "range": false,
-          "legendFormat": "{{status}}",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "decimals": 0,
-          "noValue": "No telemetry",
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "#26783D"
-          }
-        }
-      },
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "value",
-        "text": {
-          "valueSize": 32,
-          "titleSize": 14
-        }
-      }
-    },
-    {
-      "id": 921,
-      "title": "Git drift",
-      "description": "Live read-only activity telemetry; no data is not zero. n8n starts are grouped by start time and current outcome; waiting is not running.",
-      "type": "stat",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 22,
-        "y": 10,
-        "w": 2,
-        "h": 1
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "(sum(argocd_app_info{job=\"socrat-argocd\",sync_status!=\"Synced\"}) or (0 * count(argocd_app_info{job=\"socrat-argocd\"}))) and on() (max(up{job=\"socrat-argocd\"}) == 1)",
-          "format": "time_series",
-          "instant": true,
-          "range": false,
-          "legendFormat": "{{status}}",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "decimals": 0,
-          "noValue": "No telemetry",
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "#A85D08"
-          }
-        }
-      },
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "value",
-        "text": {
-          "valueSize": 32,
-          "titleSize": 14
-        }
-      }
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "One segment per Argo CD application. Green: Synced AND Healthy; blue: Progressing; amber: Git drift; red: unhealthy or unknown. This is application state, not deployment history. Hover to identify the application.",
-      "fieldConfig": {
-        "defaults": {
-          "min": 0,
-          "max": 1,
-          "decimals": 0,
-          "noValue": "No telemetry",
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": null
-              },
-              {
-                "color": "#5794F2",
-                "value": 2
-              },
-              {
-                "color": "#A85D08",
-                "value": 3
-              },
-              {
-                "color": "#B42332",
-                "value": 4
-              }
-            ]
-          }
-        }
-      },
-      "gridPos": {
-        "x": 19,
-        "y": 11,
-        "w": 5,
-        "h": 2
-      },
-      "id": 922,
-      "options": {
-        "displayMode": "basic",
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "maxVizHeight": 300,
-        "minVizHeight": 0,
-        "minVizWidth": 1,
-        "namePlacement": "hidden",
-        "orientation": "vertical",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showUnfilled": true,
-        "sizing": "manual",
-        "text": {
-          "titleSize": 16,
-          "valueSize": 16
-        },
-        "valueMode": "hidden"
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "max by(name) ((4 * argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing|Unknown\"}) or (2 * argocd_app_info{job=\"socrat-argocd\",health_status=\"Progressing\"}) or (3 * argocd_app_info{job=\"socrat-argocd\",sync_status!=\"Synced\"}) or argocd_app_info{job=\"socrat-argocd\",health_status=\"Healthy\",sync_status=\"Synced\"} or (4 * argocd_app_info{job=\"socrat-argocd\"})) and on() (max(up{job=\"socrat-argocd\"}) == 1)",
-          "format": "time_series",
-          "instant": true,
-          "range": false,
-          "legendFormat": "{{name}}",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "title": "Delivery · one segment per app",
-      "transformations": [
-        {
-          "id": "joinByField",
-          "options": {
-            "byField": "Time",
-            "mode": "outer"
-          }
-        },
-        {
-          "id": "order",
-          "options": {
-            "orderBy": [
-              {
-                "desc": false,
-                "name": "name",
-                "type": "label"
-              }
-            ],
-            "orderByMode": "auto"
-          }
-        }
-      ],
-      "type": "bargauge"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "Rolling five-minute counts of workflow starts, colored by their current outcome. Gauges from read-only execution metadata, not counters: do not apply rate/increase. History starts with the observer rollout; no fabricated backfill. Old resumed workflows are not counted as new starts.",
+      "description": "",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -5375,7 +5144,7 @@
             "axisColorMode": "text",
             "axisGridShow": true,
             "axisLabel": "",
-            "axisPlacement": "left",
+            "axisPlacement": "auto",
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "bars",
@@ -5475,10 +5244,10 @@
         ]
       },
       "gridPos": {
-        "x": 0,
-        "y": 15,
-        "w": 13,
-        "h": 3
+        "x": 7,
+        "y": 10,
+        "w": 7,
+        "h": 4
       },
       "id": 920,
       "options": {
@@ -5487,7 +5256,7 @@
           "calcs": [],
           "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": false
         },
         "tooltip": {
           "hideZeros": false,
@@ -5515,25 +5284,135 @@
           }
         }
       ],
-      "title": "n8n · starts · rolling 5m",
+      "title": "",
       "type": "timeseries",
       "interval": "30s",
-      "timeFrom": "1h"
+      "timeFrom": "1h",
+      "hideTimeOverride": true
+    },
+    {
+      "id": 909,
+      "title": "",
+      "description": "",
+      "type": "state-timeline",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 19,
+        "y": 10,
+        "w": 5,
+        "h": 2
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "2 * clamp_max((count(argocd_app_info{job=\"socrat-argocd\",sync_status!=\"Synced\"}) or (0 * count(argocd_app_info{job=\"socrat-argocd\"}))), 1) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1)",
+          "format": "time_series",
+          "range": true,
+          "instant": false,
+          "legendFormat": "Argo · Git"
+        },
+        {
+          "refId": "B",
+          "expr": "max((3 * argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing|Unknown\"}) or argocd_app_info{job=\"socrat-argocd\",health_status=~\"Progressing|Suspended\"} or (0 * argocd_app_info{job=\"socrat-argocd\",health_status=\"Healthy\"}) or (3 * argocd_app_info{job=\"socrat-argocd\"})) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1)",
+          "format": "time_series",
+          "range": true,
+          "instant": false,
+          "legendFormat": "Argo · Apps"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "noValue": "No telemetry",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Ready",
+                  "color": "#26783D"
+                },
+                "1": {
+                  "text": "Progressing / paused",
+                  "color": "#5794F2"
+                },
+                "2": {
+                  "text": "Git drift",
+                  "color": "#A85D08"
+                },
+                "3": {
+                  "text": "Unhealthy / unknown",
+                  "color": "#B42332"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#5794F2",
+                "value": 1
+              },
+              {
+                "color": "#A85D08",
+                "value": 2
+              },
+              {
+                "color": "#B42332",
+                "value": 3
+              }
+            ]
+          },
+          "custom": {
+            "fillOpacity": 90,
+            "lineWidth": 0,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showValue": "never",
+        "mergeValues": true,
+        "alignValue": "center",
+        "rowHeight": 0.8,
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "timeFrom": "30m",
+      "hideTimeOverride": true
     },
     {
       "id": 923,
-      "title": "n8n · activity",
-      "description": "Live read-only activity telemetry; no data is not zero. n8n starts are grouped by start time and current outcome; waiting is not running.",
+      "title": "",
+      "description": "",
       "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
       "gridPos": {
-        "x": 13,
-        "y": 15,
-        "w": 6,
-        "h": 3
+        "x": 0,
+        "y": 14,
+        "w": 5,
+        "h": 2
       },
       "targets": [
         {
@@ -5542,31 +5421,7 @@
           "format": "time_series",
           "instant": true,
           "range": false,
-          "legendFormat": "Starts / 1h",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        },
-        {
-          "refId": "B",
-          "expr": "sum(socrat_n8n_starts_window{window=\"3600\",status=\"error\"}) and on() (max(socrat_n8n_collection_success) == 1) and on() (time() - max(socrat_n8n_collection_timestamp_seconds) < 90)",
-          "format": "time_series",
-          "instant": true,
-          "range": false,
-          "legendFormat": "Errors / 1h",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        },
-        {
-          "refId": "C",
-          "expr": "max(socrat_n8n_starts_window{window=\"0\",status=\"running\"}) and on() (max(socrat_n8n_collection_success) == 1) and on() (time() - max(socrat_n8n_collection_timestamp_seconds) < 90)",
-          "format": "time_series",
-          "instant": true,
-          "range": false,
-          "legendFormat": "Running",
+          "legendFormat": "n8n · starts/h",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -5581,46 +5436,15 @@
           "color": {
             "mode": "fixed",
             "fixedColor": "#5794F2"
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Errors / 1h"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "thresholds"
-                }
-              },
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "#26783D",
-                      "value": null
-                    },
-                    {
-                      "color": "#B42332",
-                      "value": 1
-                    }
-                  ]
-                }
-              }
-            ]
-          }
-        ]
+          },
+          "displayName": "n8n · starts/h"
+        }
       },
       "options": {
         "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "center",
-        "orientation": "horizontal",
+        "orientation": "vertical",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -5632,7 +5456,142 @@
         "text": {
           "valueSize": 32,
           "titleSize": 14
+        },
+        "wideLayout": false
+      }
+    },
+    {
+      "id": 924,
+      "title": "",
+      "description": "",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 5,
+        "y": 14,
+        "w": 4,
+        "h": 2
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(socrat_n8n_starts_window{window=\"3600\",status=\"error\"}) and on() (max(socrat_n8n_collection_success) == 1) and on() (time() - max(socrat_n8n_collection_timestamp_seconds) < 90)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "legendFormat": "n8n · errors/h",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
         }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No telemetry",
+          "color": {
+            "mode": "thresholds"
+          },
+          "displayName": "n8n · errors/h",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#B42332",
+                "value": 1
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name",
+        "text": {
+          "valueSize": 32,
+          "titleSize": 14
+        },
+        "wideLayout": false
+      }
+    },
+    {
+      "id": 925,
+      "title": "",
+      "description": "",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 9,
+        "y": 14,
+        "w": 5,
+        "h": 2
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(socrat_n8n_starts_window{window=\"0\",status=\"running\"}) and on() (max(socrat_n8n_collection_success) == 1) and on() (time() - max(socrat_n8n_collection_timestamp_seconds) < 90)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "legendFormat": "n8n · running",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No telemetry",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#5794F2"
+          },
+          "displayName": "n8n · running"
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name",
+        "text": {
+          "valueSize": 32,
+          "titleSize": 14
+        },
+        "wideLayout": false
       }
     }
   ],
