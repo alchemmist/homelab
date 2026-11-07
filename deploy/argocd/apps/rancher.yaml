@@ -17,6 +17,12 @@ spec:
     - repoURL: https://github.com/alchemmist/homelab.git
       targetRevision: main
       ref: values
+    - repoURL: https://github.com/alchemmist/homelab.git
+      targetRevision: main
+      path: deploy/platform/rancher/public-entry
+      helm:
+        releaseName: rancher-public-entry
+        parameters: []
   destination:
     namespace: cattle-system
     server: https://kubernetes.default.svc

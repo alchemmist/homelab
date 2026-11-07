@@ -34,15 +34,15 @@ def test_grafana_drift_stops(key,value):
  with pytest.raises(RuntimeError):m.env_plan(d)
 
 def test_public_policies_keep_machine_auth_and_block_human_fallbacks():
- gf=(ROOT/'charts/public-web-entry/files/grafana-policy.conf').read_text()
+ gf=(ROOT/'deploy/platform/kube-prometheus-stack/public-entry/files/grafana-policy.conf').read_text()
  assert '~*^Basic 1' in gf and '~^POST:/login/?$ 1' in gf
  assert 'proxy_set_header Authorization ""' not in gf and 'proxy_set_header Upgrade $http_upgrade' in gf
- kuma=(ROOT/'charts/public-web-entry/files/kuma-policy.conf').read_text()
+ kuma=(ROOT/'charts/uptime-kuma/files/kuma-policy.conf').read_text()
  assert 'location ^~ /socket.io { return 404; }' in kuma
  assert 'location ^~ /api/push/ { proxy_pass http://kuma; }' in kuma
  assert 'limit_except GET HEAD { deny all; }' in kuma
  assert 'https://kuma.socrat.alchemmist.xyz$request_uri' in kuma
- sync=(ROOT/'charts/public-web-entry/files/syncthing-policy.conf').read_text()
+ sync=(ROOT/'charts/syncthing/files/syncthing-policy.conf').read_text()
  assert 'proxy_pass http://gui0/;' in sync and 'auth_basic_user_file /etc/nginx/basic/users' in sync
  assert 'return 410' in sync and 'syncthing-sync-1' not in sync
 
@@ -50,7 +50,8 @@ def test_kuma_no_gitops_random_secret_by_default():
  docs=[x for x in yaml.safe_load_all(subprocess.check_output(['helm','template','uptime-kuma',str(ROOT/'charts/uptime-kuma')],text=True)) if x]
  assert not any(x['kind']=='Secret' for x in docs)
  assert next(x for x in docs if x['kind']=='Ingress')['spec']['rules'][0]['http']['paths'][0]['backend']['service']['name']=='public-web-kuma-proxy'
- assert len([x for x in docs if x['kind']=='Deployment'])==2
+ assert len([x for x in docs if x['kind']=='Deployment'])==3
+ assert any(x['kind']=='Deployment' and x['metadata']['name']=='public-web-kuma-proxy' for x in docs)
 
 
 def test_schema_recovery_never_resets_existing_passwords_or_restarts_database():

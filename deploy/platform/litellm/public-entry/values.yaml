@@ -1,0 +1,8 @@
+issuer: letsencrypt-http01
+routes:
+- name: litellm-alias
+  host: litellm.socrat.alchemmist.xyz
+  namespace: identity
+  service: authentik-server
+  port: 80
+  authorization: authentik-proxy

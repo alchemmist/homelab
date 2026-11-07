@@ -1,6 +1,7 @@
 import copy,importlib.util,json
 from pathlib import Path
 import pytest
+from public_entry_contract import CHARTS, render, values as entry_values
 ROOT=Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location('public_web_access',ROOT/'scripts/public-web-access.py')
 m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
@@ -48,7 +49,7 @@ def test_exact_converged_readback_and_drift_stop():
 def test_catalog_proxy_and_native_routes_are_explicit():
  import yaml,subprocess
  catalog=json.loads((ROOT/'deploy/public-web/services.json').read_text())
- rendered=list(yaml.safe_load_all(subprocess.check_output(['helm','template','test',str(ROOT/'charts/public-web-entry')],text=True)))
+ rendered=render()
  ingresses=[d for d in rendered if d and d['kind']=='Ingress']
  assert len(ingresses)==9
  for slug,entry in catalog.items():
@@ -67,18 +68,19 @@ def test_public_probe_reuses_migration_owned_addresses():
  with pytest.raises(ValueError):c.addresses(['10.250.0.1','109.120.141.97'])
  with pytest.raises(ValueError):c.addresses(['109.120.141.97','109.120.141.97'])
 
-@pytest.mark.parametrize('index,key,value',[(4,'service','unprotected-backend'),(4,'namespace','identity'),(5,'port',8080),(5,'path','/'),(0,'service','grafana')])
-def test_chart_rejects_mislabeled_authorization(index,key,value,tmp_path):
+@pytest.mark.parametrize('owner,key,value',[('rancher','service','unprotected-backend'),('rancher','namespace','identity'),('grafana-mcp','port',8080),('grafana-mcp','path','/'),('kube-prometheus-stack','service','grafana')])
+def test_chart_rejects_mislabeled_authorization(owner,key,value,tmp_path):
  import yaml,subprocess
- values=yaml.safe_load((ROOT/'charts/public-web-entry/values.yaml').read_text())
- values['routes'][index][key]=value
- p=tmp_path/'values.yaml';p.write_text(yaml.safe_dump(values))
- result=subprocess.run(['helm','template','test',str(ROOT/'charts/public-web-entry'),'-f',str(p)],text=True,capture_output=True)
+ values=copy.deepcopy(entry_values(owner))
+ values['routes'][0][key]=value
+ overrides=values if CHARTS[owner].startswith('deploy/') else {'publicEntry':values}
+ p=tmp_path/'values.yaml';p.write_text(yaml.safe_dump(overrides))
+ result=subprocess.run(['helm','template',owner,str(ROOT/CHARTS[owner]),'-f',str(p)],text=True,capture_output=True)
  assert result.returncode!=0
 
 def test_rancher_public_proxy_denies_local_password_without_changing_private_backend():
  import yaml,subprocess
- docs=[x for x in yaml.safe_load_all(subprocess.check_output(['helm','template','test',str(ROOT/'charts/public-web-entry')],text=True)) if x]
+ docs=render('rancher')
  config=next(x['data']['nginx.conf'] for x in docs if x['kind']=='ConfigMap' and x['metadata']['name']=='public-web-rancher-policy')
  assert '~^(POST|PUT|PATCH|DELETE):/v3-public/localProviders(?:/|$) 1;' in config
  assert 'if ($deny_local_password) { return 403; }' in config

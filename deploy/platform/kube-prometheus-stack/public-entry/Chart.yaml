@@ -1,0 +1,6 @@
+apiVersion: v2
+name: kube-prometheus-stack-public-entry
+version: 0.1.0
+type: application
+description: Application-owned HTTPS routes and access policy; rendered in the kube-prometheus-stack
+  Argo Application.

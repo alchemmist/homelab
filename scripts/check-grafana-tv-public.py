@@ -10,7 +10,7 @@ def main():
     a=p.parse_args();url=json.loads(Path(a.url_file).read_text())['startURL'];u=urlsplit(url)
     assert u.scheme=='https' and u.hostname=='grafana.socrat.alchemmist.xyz' and u.path.startswith('/public-dashboards/')
     token=u.path.split('/')[2];assert len(token)==32 and all(c in '0123456789abcdef' for c in token)
-    expected_js=hashlib.sha256((Path(__file__).resolve().parents[1]/'charts/public-web-entry/files/traffic-light-inset.js').read_bytes()).hexdigest()
+    expected_js=hashlib.sha256((Path(__file__).resolve().parents[1]/'deploy/platform/kube-prometheus-stack/public-entry/files/traffic-light-inset.js').read_bytes()).hexdigest()
     passed=0
     for ip in ['109.173.40.247','109.120.141.97']:
         def check(name,path,status,body=None,headers=(),predicate=None):

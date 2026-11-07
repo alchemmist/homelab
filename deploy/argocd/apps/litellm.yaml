@@ -17,6 +17,12 @@ spec:
     - repoURL: https://github.com/alchemmist/homelab.git
       targetRevision: main
       ref: values
+    - repoURL: https://github.com/alchemmist/homelab.git
+      targetRevision: main
+      path: deploy/platform/litellm/public-entry
+      helm:
+        releaseName: litellm-public-entry
+        parameters: []
   destination:
     namespace: llm
     server: https://kubernetes.default.svc

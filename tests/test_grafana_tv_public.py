@@ -6,7 +6,7 @@ import subprocess
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-JS = ROOT / 'charts/public-web-entry/files/traffic-light-inset.js'
+JS = ROOT / 'deploy/platform/kube-prometheus-stack/public-entry/files/traffic-light-inset.js'
 
 @pytest.mark.skipif(not shutil.which('node'), reason='Node is needed for JS runtime contract')
 @pytest.mark.parametrize('mode', ['unrelated', 'not_opted_in', 'legacy', 'wrong_uid', 'public'])
@@ -67,8 +67,8 @@ def test_live_update_is_url_only_and_does_not_reprovision_tv():
 
 def test_no_dedicated_tv_alias_or_internal_vpn_in_helpers():
     import yaml
-    values=yaml.safe_load((ROOT/'charts/public-web-entry/values.yaml').read_text())
-    assert not any(r['host']=='tv.alchemmist.xyz' for r in values['routes'])
+    from public_entry_contract import CHARTS, values
+    assert not any(r['host']=='tv.alchemmist.xyz' for owner in CHARTS for r in values(owner)['routes'])
     for app in ['tv-mode','tv-grafana']:
         s=(ROOT/'android'/app/'smali/xyz/alchemmist/tvmode/SwitchVpn.smali').read_text()
         assert 'xiaomi-tv' not in s

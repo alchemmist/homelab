@@ -19,3 +19,15 @@ resources:
   limits:
     cpu: 500m
     memory: 256Mi
+
+# Public access is owned by this application, not an aggregate Application.
+publicEntry:
+  issuer: letsencrypt-http01
+  routes:
+  - name: grafana-mcp
+    host: grafana-mcp.socrat.alchemmist.xyz
+    namespace: cattle-monitoring-system
+    service: grafana-mcp
+    port: 8000
+    authorization: mcp-bearer
+    path: /mcp

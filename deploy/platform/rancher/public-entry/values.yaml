@@ -1,0 +1,11 @@
+issuer: letsencrypt-http01
+routes:
+- name: rancher
+  host: rancher.socrat.alchemmist.xyz
+  namespace: cattle-system
+  service: public-web-rancher-proxy
+  port: 80
+  authorization: rancher-native
+rancherPolicyProxy:
+  enabled: true
+  image: docker.io/library/nginx:stable-alpine@sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311

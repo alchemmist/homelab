@@ -17,6 +17,12 @@ spec:
     - repoURL: https://github.com/alchemmist/homelab.git
       targetRevision: main
       ref: values
+    - repoURL: https://github.com/alchemmist/homelab.git
+      targetRevision: main
+      path: deploy/platform/kube-prometheus-stack/public-entry
+      helm:
+        releaseName: kube-prometheus-stack-public-entry
+        parameters: []
   destination:
     namespace: cattle-monitoring-system
     server: https://kubernetes.default.svc

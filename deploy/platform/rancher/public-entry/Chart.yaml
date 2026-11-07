@@ -1,0 +1,6 @@
+apiVersion: v2
+name: rancher-public-entry
+version: 0.1.0
+type: application
+description: Application-owned HTTPS routes and access policy; rendered in the rancher
+  Argo Application.
