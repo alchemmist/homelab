@@ -1,31 +1,17 @@
 {{- range .Values.publicEntry.routes }}
-{{- if and (eq .authorization "grafana-oidc") (or (ne .name "grafana") (ne .host "grafana.socrat.alchemmist.xyz") (ne .namespace "identity") (ne .service "public-web-grafana-proxy") (ne (int .port) 80) (not $.Values.publicEntry.grafanaPolicyProxy.enabled)) }}
-{{- fail "Native Grafana SSO requires the exact password-safe policy proxy" }}
-{{- end }}
-{{- end }}
-{{- range .Values.publicEntry.routes }}
-{{- if not (has .authorization (list "authentik-proxy" "rancher-native" "mcp-bearer" "grafana-oidc")) }}
-{{- fail "Every public route must declare reviewed authorization" }}
-{{- end }}
-{{- if and (eq .authorization "authentik-proxy") (or (ne .namespace "identity") (ne .service "authentik-server")) }}
-{{- fail "Proxy routes must terminate at the Authentik gate, not the backend" }}
-{{- end }}
-{{- if and (eq .authorization "rancher-native") (or (ne .name "rancher") (ne .host "rancher.socrat.alchemmist.xyz") (ne .namespace "cattle-system") (ne .service "public-web-rancher-proxy") (ne (int .port) 80) (not $.Values.publicEntry.rancherPolicyProxy.enabled) (.path | default "")) }}
-{{- fail "Native Rancher admission is valid only for its exact reviewed backend" }}
-{{- end }}
-{{- if and (eq .authorization "mcp-bearer") (or (ne .name "grafana-mcp") (ne .host "grafana-mcp.socrat.alchemmist.xyz") (ne .namespace "cattle-monitoring-system") (ne .path "/mcp") (ne .service "grafana-mcp") (ne (int .port) 8000)) }}
-{{- fail "Only the token-protected MCP endpoint may bypass interactive SSO" }}
+{{- $binding := printf "%s|%s|%s|%v|%s" .host .namespace .service .port .authorization }}
+{{- if not (has $binding (list "search.socrat.alchemmist.xyz|llm|searxng|8080|public")) }}
+{{- fail "Unreviewed direct browser route: native authentication or explicit public access required" }}
 {{- end }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: public-web-{{ .name }}
+  name: {{ .name }}-browser
   namespace: {{ .namespace }}
   labels:
     homelab.alchemmist.xyz/public-web: reviewed
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
     cert-manager.io/cluster-issuer: {{ $.Values.publicEntry.issuer }}
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: 'true'
@@ -38,7 +24,7 @@ spec:
     - host: {{ .host }}
       http:
         paths:
-          - path: {{ .path | default "/" }}
+          - path: /
             pathType: Prefix
             backend:
               service:

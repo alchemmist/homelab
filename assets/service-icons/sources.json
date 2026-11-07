@@ -18,13 +18,13 @@
       "url": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/open-webui.svg",
       "sha256": "54717f2b0d403a6a559c87622d23dfd3cff3538e910ea3dbd8ffbf015aa3ff89",
       "applications": [
-        "open-webui",
-        "public-web-webui-alias"
+        "open-webui"
       ]
     },
     "n8n.svg": {
       "url": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/n8n.svg",
-      "sha256": "45b282108f60b12df6cba68e3fa633d56970eab4d2ac6b1eef43a60b5ea29af5"
+      "sha256": "45b282108f60b12df6cba68e3fa633d56970eab4d2ac6b1eef43a60b5ea29af5",
+      "applications": []
     },
     "wiki.svg": {
       "source": "deploy/litellm/branding/socrat-icon-v1.png",
@@ -32,17 +32,13 @@
       "sha256": "08ef91235235b027105679eb61a9458dea1f19d6c3472a985e3585bc0a834f7a",
       "source_sha256": "7fe591292ddbe4bbcb0b6c7cdbf9544924763c744ee9896e15322ab4c01dc82f",
       "applications": [
-        "wiki",
-        "spi-evidence"
+        "wiki"
       ]
     },
     "uptime-kuma.svg": {
       "url": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/uptime-kuma.svg",
       "sha256": "f3caa8a8bac253a77fa2ae7e7bc9b062b55a006abd787b111533714152ec744c",
-      "applications": [
-        "uptime-kuma",
-        "public-web-kuma-admin"
-      ]
+      "applications": []
     },
     "litellm.svg": {
       "repository": "https://github.com/BerriAI/litellm",
@@ -52,8 +48,7 @@
       "license": "MIT for non-enterprise repository content; product mark remains a trademark of its respective owner.",
       "transformation": "Unmodified official light-background product monogram SVG.",
       "applications": [
-        "litellm",
-        "public-web-litellm-alias"
+        "litellm"
       ]
     },
     "argocd.svg": {
@@ -75,24 +70,18 @@
     "searxng.svg": {
       "url": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/searxng.svg",
       "sha256": "e0f4c72fe58055043d04446350e7d3e6a25105e507519b1ceacffd5b9aa89593",
-      "applications": [
-        "public-web-search"
-      ]
+      "applications": []
     },
     "syncthing.svg": {
       "url": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/syncthing.svg",
       "sha256": "65d1430f7522bea0507259929f0033d7c62539d14757d7c6f5b62574eb4da2d3",
-      "applications": [
-        "public-web-syncthing-0",
-        "public-web-syncthing-1"
-      ]
+      "applications": []
     },
     "rustfs.svg": {
       "url": "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/83f32e08257b66fbd971ac8d7645f5b38d52e85d/svg/rustfs.svg",
       "sha256": "a708327b4d7cf213c11dada32a810686d0b0243ffa56906b8d17762e84c7fb8a",
       "applications": [
-        "spi-rustfs-native",
-        "spi-rustfs-console"
+        "spi-rustfs-native"
       ]
     }
   }

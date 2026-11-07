@@ -29,10 +29,8 @@ def targets():
 
 def test_current_application_coverage_and_asset_checksums():
     mapping = targets()
-    assert len(mapping) == 20  # 3x-ui already has its own working branded icon.
-    assert set(mapping) >= {'netbird-pilot', 'lms', 'public-web-search',
-                            'public-web-syncthing-0', 'public-web-syncthing-1',
-                            'spi-rustfs-native', 'spi-rustfs-console', 'spi-evidence'}
+    assert set(mapping) == {'grafana','harbor','rancher','open-webui','wiki',
+                            'litellm','lms','argocd','netbird-pilot','spi-rustfs-native'}
     for filename, record in MANIFEST['files'].items():
         assert hashlib.sha256((ASSETS / filename).read_bytes()).hexdigest() == record['sha256']
 
@@ -106,7 +104,7 @@ def test_updates_only_icons_and_keeps_unmanaged_app(tmp_path):
     api = FakeAPI()
     before = copy.deepcopy(api.apps)
     run(tmp_path, api, list(before.values()))
-    assert len(api.patches) == 20
+    assert len(api.patches) == 10
     for slug, app in api.apps.items():
         assert {k: v for k, v in app.items() if k != 'meta_icon'} == {
             k: v for k, v in before[slug].items() if k != 'meta_icon'}

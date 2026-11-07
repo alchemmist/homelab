@@ -49,5 +49,14 @@
       }
     }
   },
-  "scope": "Interactive browser sign-in and reviewed legacy app credentials; not an SSH-key, WireGuard, service-account, robot or application-data offboarding"
+  "scope": "Interactive browser sign-in and reviewed legacy app credentials; not an SSH-key, WireGuard, service-account, robot or application-data offboarding",
+  "serviceAuthentication": {
+    "principle": "native-oidc-where-supported-otherwise-native-service-login",
+    "externalAuthentikProxyGates": false,
+    "publicWithoutLogin": [
+      "searxng",
+      "spi-evidence-published-artifacts"
+    ],
+    "artifactPublication": "manifest-bound-read-only-public-GET-HEAD; private-S3-write-and-administration"
+  }
 }

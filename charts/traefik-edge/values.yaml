@@ -70,5 +70,5 @@ kubernetesCRD:
 
 # Human panel is gated; public VPN transports/subscriptions keep their old backends.
 panelGateway:
-  enabled: true
+  enabled: false
   serviceName: xui-auth-gateway

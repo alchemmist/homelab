@@ -1,0 +1,44 @@
+"""No external auth gateway; public exceptions are explicit, not blanket bypasses."""
+from pathlib import Path
+import json
+import subprocess
+import yaml
+import pytest
+ROOT=Path(__file__).resolve().parents[1]
+
+@pytest.mark.parametrize('chart,ns,service,authorization',[
+ ('open-webui','llm','open-webui','native-oidc'),
+ ('searxng','llm','searxng','public'),
+ ('uptime-kuma','uptime-kuma','uptime-kuma','native-login'),
+ ('syncthing','syncthing','public-web-syncthing-0','native-login'),
+])
+def test_direct_route_and_reject_mislabeled_backend(chart,ns,service,authorization,tmp_path):
+ values=yaml.safe_load((ROOT/f'charts/{chart}/values.yaml').read_text())
+ route=values['publicEntry']['routes'][0]
+ assert route['namespace']==ns and route['service']==service and route['authorization']==authorization
+ route['service']='unreviewed-service'
+ override=tmp_path/'override.yaml';override.write_text(yaml.safe_dump(values))
+ p=subprocess.run(['helm','template',chart,str(ROOT/f'charts/{chart}'),'-f',str(override)],capture_output=True,text=True)
+ assert p.returncode!=0
+
+
+def test_reader_egress_has_no_idp_and_storage_keeps_private_s3_iam():
+ text=subprocess.check_output(['helm','template','rustfs',str(ROOT/'charts/rustfs'),'-n','rustfs','-f',str(ROOT/'charts/rustfs/values-foundation-live.yaml')],text=True)
+ docs=[d for d in yaml.safe_load_all(text) if d]
+ reader=next(d for d in docs if d['kind']=='Deployment' and d['metadata']['name']=='rustfs-gateway')
+ env=reader['spec']['template']['spec']['containers'][0]['env']
+ assert {e['name'] for e in env}=={'S3_ACCESS_KEY','S3_SECRET_KEY'}
+ policy=next(d for d in docs if d['kind']=='NetworkPolicy' and d['metadata']['name']=='rustfs-gateway-isolation')
+ assert len(policy['spec']['egress'])==2
+ assert '443' not in json.dumps(policy)
+ proxy=next(d for d in docs if d['kind']=='ConfigMap' and d['metadata']['name']=='rustfs-console-http')
+ assert 'auth_request' not in proxy['data']['nginx.conf']
+ assert 'Cookie' not in proxy['data']['nginx.conf']
+ assert all(p['backend']['service']['name']!='authentik-server' for d in docs if d['kind']=='Ingress' for rule in d['spec']['rules'] for p in rule['http']['paths'])
+
+
+def test_syncthing_public_route_has_no_extra_basic_auth_wrapper():
+ nginx=(ROOT/'charts/syncthing/files/syncthing-policy.conf').read_text()
+ assert 'auth_basic' not in nginx and 'auth_request' not in nginx
+ assert 'return 410' in nginx
+ assert 'proxy_pass http://gui0' in nginx

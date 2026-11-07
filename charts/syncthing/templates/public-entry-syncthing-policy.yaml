@@ -52,10 +52,7 @@ spec:
           volumeMounts:
             - {name: config, mountPath: /etc/nginx/nginx.conf, subPath: nginx.conf, readOnly: true}
             - {name: tmp, mountPath: /tmp}
-            - {name: basic, mountPath: /etc/nginx/basic, readOnly: true}
       volumes:
-        - name: basic
-          secret: {secretName: syncthing-basic-auth, defaultMode: 0440}
         - name: config
           configMap: {name: public-web-syncthing-policy}
         - name: tmp

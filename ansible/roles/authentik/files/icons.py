@@ -94,14 +94,15 @@ for filename, source in json.loads((assets / 'sources.json').read_text())['files
             if key.split('}')[-1] == 'href' and not value.startswith(('#', 'data:image/png;base64,')):
                 raise RuntimeError('External SVG resource: ' + filename)
     targets = source.get('applications', [Path(filename).stem])
-    if not isinstance(targets, list) or not targets:
+    if not isinstance(targets, list):
         raise RuntimeError('Invalid icon application targets')
     name = 'service-icons/' + Path(filename).stem + '-' + digest[:12] + '.svg'
     for slug in targets:
         if not re.fullmatch(r'[a-z0-9-]+', slug) or slug in seen:
             raise RuntimeError('Invalid or duplicate application target')
         seen.add(slug)
-    plan.append((filename, content, digest, name, targets))
+    if targets:
+        plan.append((filename, content, digest, name, targets))
 
 run_id = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ') + '-' + uuid.uuid4().hex[:8]
 private_json(root / ('portal-icons-before-' + run_id + '.json'), inventory['results'])

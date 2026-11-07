@@ -9,7 +9,7 @@
   },
   "ConfigMap/syncthing/public-web-syncthing-policy": {
     "owner": "syncthing",
-    "sha256": "f07241c5fdf28d3df68910274f177c2c2b7159ab8f1945d9ed8ad707ce70b72f"
+    "sha256": "1233b8d808af8012cc607c1f7439cf183666e7c4527819d13fdba3ba57274f56"
   },
   "ConfigMap/uptime-kuma/public-web-kuma-policy": {
     "owner": "uptime-kuma",
@@ -25,7 +25,7 @@
   },
   "Deployment/syncthing/public-web-syncthing-proxy": {
     "owner": "syncthing",
-    "sha256": "c0aca0637877efcab434f3b37a09199dfade7a678c124963b6310a30888a22df"
+    "sha256": "d7a961b257208824bebff0b1438383c62d3fe197cac6042fc22ea1550585781a"
   },
   "Deployment/uptime-kuma/public-web-kuma-proxy": {
     "owner": "uptime-kuma",
@@ -43,29 +43,29 @@
     "owner": "grafana",
     "sha256": "9bf69706a823b96366d0899fb8c14ab18fab0141c0b6e6bc0bca2c2b7b5a1675"
   },
-  "Ingress/identity/public-web-kuma-admin": {
-    "owner": "uptime-kuma",
-    "sha256": "1cebb78b4f74ea45767982df7e6c59fe8eeeec32c020bff7af92f3d376152ecc"
-  },
-  "Ingress/identity/public-web-litellm-alias": {
+  "Ingress/llm/litellm-alias-browser": {
     "owner": "litellm",
-    "sha256": "6e6d41ad9ccc5d0ff3fc2525b7955ec9caec74ff57b999498afda466d332513d"
+    "sha256": "101111b339450e16269746bc43c3e3d1009301305727315568241fec75dee655"
   },
-  "Ingress/identity/public-web-search": {
+  "Ingress/llm/search-browser": {
     "owner": "searxng",
-    "sha256": "1bd0440b6b6c13bb3178fc14b04e5068b39f439dc0fa040b21e55ae3ee373243"
+    "sha256": "4df509329ac467bf42a6a296a9670576307a105d8885703564a5395f0e12971b"
   },
-  "Ingress/identity/public-web-syncthing-0": {
-    "owner": "syncthing",
-    "sha256": "d1e6195e8325fc011209427c674f9baf3768eba451a91abb49a5d9d3aec8273d"
-  },
-  "Ingress/identity/public-web-syncthing-1": {
-    "owner": "syncthing",
-    "sha256": "624f3e35336deae6f2fe0e97e5d796ef8387ce4896228a2f745d710599dfd70e"
-  },
-  "Ingress/identity/public-web-webui-alias": {
+  "Ingress/llm/webui-alias-browser": {
     "owner": "open-webui",
-    "sha256": "8abeca11c8f2a6613ff8ef066e444d818cb5c5fb2dd0f19a551cb4fdfff9f721"
+    "sha256": "cf01dec8554414993419e448e11f1d3d2e38b7a93a2970c3b05a8c54876e040f"
+  },
+  "Ingress/syncthing/syncthing-0-browser": {
+    "owner": "syncthing",
+    "sha256": "beb4c96662dea00e17464083a3021c1378f993743e356f57f0e26cae34c3e351"
+  },
+  "Ingress/syncthing/syncthing-1-browser": {
+    "owner": "syncthing",
+    "sha256": "8a33f0891327d505564fd49f966abb19129c1582af31107c95a50960b0f0b5b0"
+  },
+  "Ingress/uptime-kuma/kuma-admin-browser": {
+    "owner": "uptime-kuma",
+    "sha256": "5b952e83ba53d941ac62be3afe1d8a3556b0f725fae5b7b167a5908705f03c06"
   },
   "Service/cattle-system/public-web-rancher-proxy": {
     "owner": "rancher",

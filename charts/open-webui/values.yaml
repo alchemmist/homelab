@@ -63,7 +63,7 @@ publicEntry:
   routes:
   - name: webui-alias
     host: llm.socrat.alchemmist.xyz
-    namespace: identity
-    service: authentik-server
-    port: 80
-    authorization: authentik-proxy
+    namespace: llm
+    service: open-webui
+    port: 8080
+    authorization: native-oidc

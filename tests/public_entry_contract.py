@@ -23,5 +23,5 @@ def render(owner=None):
     docs = []
     for name in ([owner] if owner else CHARTS):
         output = subprocess.check_output(['helm', 'template', name, str(ROOT / CHARTS[name])], text=True)
-        docs.extend(d for d in yaml.safe_load_all(output) if d and d['metadata']['name'].startswith('public-web-'))
+        docs.extend(d for d in yaml.safe_load_all(output) if d and (d['metadata']['name'].startswith('public-web-') or d['metadata']['name'].endswith('-browser')))
     return docs

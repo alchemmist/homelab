@@ -91,27 +91,6 @@
     },
     "groupsScope": true
   },
-  "n8n": {
-    "name": "n8n",
-    "url": "https://n8n.socrat.alchemmist.xyz/",
-    "description": "Workflow automation. Do not expose webhooks behind an interactive login proxy.",
-    "migration": "authentik-ui-gateway-native-sso-requires-license",
-    "icon": "service-icons/n8n-45b282108f60.svg",
-    "proxy": {
-      "internalHost": "http://n8n.automation.svc.cluster.local/",
-      "skipPathRegex": "^/(webhook(?:/|$)|webhook-waiting(?:/|$)|form(?:/|$)|form-waiting(?:/|$)|healthz(?:/|$)|api/v1(?:/|$)|rest/oauth[12]-credential/callback(?:/|$))"
-    },
-    "groups": [
-      "homelab-owner"
-    ],
-    "admission": "ui-gate",
-    "appRoles": {
-      "user": {
-        "nativeRole": "UI gate only; native account permissions unchanged",
-        "assignable": true
-      }
-    }
-  },
   "wiki": {
     "name": "Wiki",
     "url": "https://wiki.socrat.alchemmist.xyz/",
@@ -137,15 +116,6 @@
       }
     },
     "groupsScope": true
-  },
-  "uptime-kuma": {
-    "name": "Uptime Kuma",
-    "url": "https://status.alchemmist.xyz/",
-    "description": "Uptime checks and status pages; public status is not an administrative interface.",
-    "migration": "verify-native-sso-or-admin-only-proxy-without-breaking-public-status",
-    "icon": "service-icons/uptime-kuma-f3caa8a8bac2.svg",
-    "admission": "portal-only",
-    "appRoles": {}
   },
   "litellm": {
     "name": "LiteLLM",

@@ -16,13 +16,11 @@ def state():
 
 def services():return {'grafana':{'host':'grafana.socrat.alchemmist.xyz','upstream':'http://grafana.monitoring.svc.cluster.local:80','admissionFrom':'grafana'}}
 
-def test_create_only_preserves_native_admission():
- s=state();before=copy.deepcopy(s);ops,outpost=m.plan(s,services())
- assert s==before and outpost['providers']==[99]
- assert ops[0]['groups']==['reader']
- assert ops[0]['provider']['skip_path_regex']=='^$'
- assert not ops[0]['provider']['intercept_header_auth']
- assert ops[0]['provider']['cookie_domain']=='grafana.socrat.alchemmist.xyz'
+def test_legacy_proxy_creation_is_retired_without_mutation():
+ s=state();before=copy.deepcopy(s)
+ with pytest.raises(ValueError,match='retired'):m.plan(s,services())
+ assert s==before
+ assert m.plan(s,{})[0]==[]
 
 @pytest.mark.parametrize('change',[lambda s:s['mfa'][0].update(not_configured_action='skip'),lambda s:s['groups'][0].update(parents=['owner']),lambda s:s['bindings'][0].update(negate=True),lambda s:s['bindings'][0].update(user='someone'),lambda s:s['apps'][0].update(policy_engine_mode='all')])
 def test_reject_unsafe_baseline(change):
@@ -38,27 +36,16 @@ def test_no_foreign_provider_adoption():
  s=state();s['providers']=[{'name':'public-web-grafana','pk':7}]
  with pytest.raises(ValueError):m.plan(s,services())
 
-def test_exact_converged_readback_and_drift_stop():
- s=state();ops,_=m.plan(s,services());s['providers']=[dict(ops[0]['provider'],pk=7)]
- s['apps'].append({'slug':'public-web-grafana','pk':'gate','provider':7,'meta_description':m.OWNER,'policy_engine_mode':'any'})
- s['bindings'].append({'target':'gate','group':'reader','enabled':True,'failure_result':False});s['outposts'][0]['providers'].append(7)
- assert m.plan(s,services())[0]==[]
- s['providers'][0]['skip_path_regex']='^/'
- with pytest.raises(ValueError):m.plan(s,services())
-
-def test_catalog_proxy_and_native_routes_are_explicit():
- import yaml,subprocess
+def test_catalog_is_empty_and_routes_use_native_or_explicit_public_access():
  catalog=json.loads((ROOT/'deploy/public-web/services.json').read_text())
- rendered=render()
- ingresses=[d for d in rendered if d and d['kind']=='Ingress']
+ assert catalog=={}
+ ingresses=[d for d in render() if d and d['kind']=='Ingress']
  assert len(ingresses)==9
- for slug,entry in catalog.items():
-  i=next(d for d in ingresses if d['spec']['rules'][0]['host']==entry['host'])
-  assert i['metadata']['namespace']=='identity'
-  assert i['spec']['rules'][0]['http']['paths'][0]['backend']['service']['name']==('public-web-grafana-proxy' if slug=='grafana' else 'authentik-server')
- mcp=next(d for d in ingresses if d['metadata']['name']=='public-web-grafana-mcp')
- assert mcp['spec']['rules'][0]['http']['paths'][0]['path']=='/mcp'
  assert all(d['spec']['tls'] for d in ingresses)
+ assert all(p['backend']['service']['name']!='authentik-server' for d in ingresses for rule in d['spec']['rules'] for p in rule['http']['paths'])
+ for owner in ('open-webui','litellm','searxng','syncthing','uptime-kuma'):
+  for d in render(owner):
+   if d['kind']=='Ingress':assert not d['metadata']['name'].startswith('public-web-')
 
 def test_public_probe_reuses_migration_owned_addresses():
  spec=importlib.util.spec_from_file_location('public_entry_check',ROOT/'scripts/check-public-web-entry.py')

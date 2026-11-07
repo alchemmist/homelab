@@ -20,7 +20,7 @@ publicEntry:
   routes:
   - name: search
     host: search.socrat.alchemmist.xyz
-    namespace: identity
-    service: authentik-server
-    port: 80
-    authorization: authentik-proxy
+    namespace: llm
+    service: searxng
+    port: 8080
+    authorization: public

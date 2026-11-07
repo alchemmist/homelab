@@ -17,7 +17,6 @@ gateway:
   image: ""
   readerSecret: rustfs-reader
   imagePullSecrets: []
-  authUrl: https://spi-evidence.socrat.alchemmist.xyz/outpost.goauthentik.io/auth/nginx
 browserRoutes:
   enabled: false
 # Exact Authentik public endpoint addresses, established before rollout. Not 0/0.

@@ -30,7 +30,6 @@ spec:
             capabilities: {drop: [ALL]}
           ports: [{name: http, containerPort: 8080}]
           env:
-            - {name: AUTH_URL, value: {{ .Values.gateway.authUrl | quote }}}
             - name: S3_ACCESS_KEY
               valueFrom:
                 secretKeyRef: {name: {{ .Values.gateway.readerSecret }}, key: access-key}
@@ -79,8 +78,4 @@ spec:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
           podSelector: {matchLabels: {k8s-app: kube-dns}}
       ports: [{port: 53, protocol: UDP}, {port: 53, protocol: TCP}]
-    {{- range .Values.authEgressCIDRs }}
-    - to: [{ipBlock: {cidr: {{ . | quote }}}}]
-      ports: [{port: 443, protocol: TCP}]
-    {{- end }}
 {{- end }}

@@ -47,8 +47,10 @@ class Foundation(unittest.TestCase):
         self.assertIn("RUSTFS_CORS_ALLOWED_ORIGINS, value: ''", text)
         self.assertNotIn('kind: Secret', text)
         self.assertNotIn('kind: Role', text)
-        self.assertIn('service: {name: authentik-server', text)
-        self.assertIn('path: /outpost.goauthentik.io/', text)
+        self.assertIn('service: {name: rustfs-console-http', text)
+        self.assertNotIn('service: {name: authentik-server', text)
+        self.assertNotIn('path: /outpost.goauthentik.io/', text)
+        self.assertNotIn('name: AUTH_URL', text)
         self.assertNotIn('nodePort:', text)
         self.assertNotIn('type: LoadBalancer', text)
         # Root is referenced by storage only; gateway has its isolated reader Secret.

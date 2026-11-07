@@ -45,7 +45,6 @@
     - {src: '{{ playbook_dir }}/../../deploy/identity/lifecycle.json', name: lifecycle.json}
     - {src: icons.py, name: icons.py}
     - {src: '{{ playbook_dir }}/../../deploy/identity/services.json', name: services.json}
-    - {src: '{{ playbook_dir }}/../../deploy/identity/n8n-gateway.yaml', name: n8n-gateway.yaml}
     - {src: '{{ playbook_dir }}/../../deploy/identity/account-mappings.json', name: account-mappings.json}
 
 - name: Initialize stable credentials without exposing them
@@ -93,12 +92,6 @@
     argv: [python3, '{{ authentik_directory }}/configure.py', '{{ authentik_directory }}']
   no_log: true
   changed_when: false
-
-- name: Apply the n8n UI gate with independent machine endpoint routes
-  ansible.builtin.command:
-    argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, apply, -f, '{{ authentik_directory }}/n8n-gateway.yaml']
-  register: identity_gateway
-  changed_when: "'created' in identity_gateway.stdout or 'configured' in identity_gateway.stdout"
 
 - name: Read persistent volume identities
   ansible.builtin.command:

@@ -14,4 +14,4 @@ resources:
     cpu: '1'
     memory: 1Gi
 ingress:
-  enabled: false
+  enabled: true

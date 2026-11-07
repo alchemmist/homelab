@@ -1,14 +1,13 @@
 {{- if and .Values.enabled .Values.browserRoutes.enabled }}
 {{- if not (and .Values.oidc.enabled .Values.gateway.enabled) }}
-{{- fail "browserRoutes requires native OIDC and protected gateway" }}
+{{- fail "browserRoutes requires native OIDC and public reader" }}
 {{- end }}
-# Console is entirely Authentik reverse-proxied, including native OIDC callbacks.
-# Evidence uses forward_single: the reader validates the session directly against
-# the trusted /auth/nginx endpoint, never trusts client X-authentik-* headers.
+# Console uses a routing-only namespace bridge, then native RustFS OIDC.
+# Published evidence is anonymous GET/HEAD with manifest integrity checks.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: rustfs-authentik-browser
+  name: rustfs-console-browser
   namespace: identity
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-http01
@@ -27,14 +26,7 @@ spec:
           - path: /
             pathType: Prefix
             backend:
-              service: {name: authentik-server, port: {number: 80}}
-    - host: spi-evidence.socrat.alchemmist.xyz
-      http:
-        paths:
-          - path: /outpost.goauthentik.io/
-            pathType: Prefix
-            backend:
-              service: {name: authentik-server, port: {number: 80}}
+              service: {name: rustfs-console-http, port: {number: 80}}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -47,6 +39,9 @@ metadata:
     traefik.ingress.kubernetes.io/router.priority: '50'
 spec:
   ingressClassName: traefik
+  tls:
+    - hosts: [spi-evidence.socrat.alchemmist.xyz]
+      secretName: rustfs-browser-tls
   rules:
     - host: spi-evidence.socrat.alchemmist.xyz
       http:

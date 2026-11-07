@@ -73,7 +73,7 @@ def main():
     # Application list is admission-filtered, including for automation principals.
     # Exact dedicated detail GET respects RBAC without requiring superuser listing.
     inventory['core/applications/']=[]
-    for slug in ('spi-rustfs-native','spi-rustfs-console','spi-evidence'):
+    for slug in ('spi-rustfs-native',):
         app=api('GET','core/applications/'+slug+'/',allow_missing=True)
         if app is not None:
             if app.get('slug')!=slug: raise ValueError('application detail identity mismatch')
@@ -128,17 +128,6 @@ def main():
         'access_token_validity':'minutes=5','refresh_token_validity':'hours=1'})
     providers=[]
     apps=[('spi-rustfs-native','RustFS native OIDC',native,'https://rustfs.socrat.alchemmist.xyz/')]
-    for slug,host,internal in (
-        ('spi-rustfs-console','rustfs.socrat.alchemmist.xyz','http://rustfs.rustfs.svc.cluster.local:9001/'),
-        ('spi-evidence','spi-evidence.socrat.alchemmist.xyz','http://rustfs-gateway.rustfs.svc.cluster.local:8080/')):
-        provider=reconcile('providers/proxy/','name',slug,{'name':slug,'mode':'forward_single' if slug=='spi-evidence' else 'proxy',
-            'authentication_flow':flow['default-authentication-flow'],
-            'authorization_flow':flow['default-provider-authorization-implicit-consent'],
-            'invalidation_flow':flow['default-provider-invalidation-flow'],
-            'external_host':'https://'+host+'/','internal_host':internal,
-            'internal_host_ssl_validation':True,'skip_path_regex':'',
-            'cookie_domain':host,'intercept_header_auth':False,'basic_auth_enabled':False})
-        providers.append(provider['pk']); apps.append((slug,slug,provider,'https://'+host+'/'))
     for slug,name,provider,url in apps:
         app=reconcile('core/applications/','slug',slug,{'name':name,'slug':slug,
             'provider':provider['pk'],'meta_launch_url':url,'policy_engine_mode':'any'})
@@ -149,13 +138,6 @@ def main():
         for order,group in enumerate(groups):
             if not any(b.get('group')==group for b in bindings):
                 api('POST','policies/bindings/',{'target':app['pk'],'group':group,'order':order,'enabled':True,'failure_result':False})
-    outposts=[o for o in inventory['outposts/instances/'] if o.get('managed')=='goauthentik.io/outposts/embedded']
-    if len(outposts)!=1: raise ValueError('embedded outpost prerequisite missing')
-    outpost=outposts[0]
-    # Add only our providers, preserve all existing settings and provider assignments.
-    wanted=sorted(set(outpost['providers'])|set(providers))
-    if sorted(outpost['providers'])!=wanted:
-        api('PATCH','outposts/instances/'+outpost['pk']+'/',{'providers':wanted})
     print('Dedicated applications reconciled; verify discovery S256/client_secret_post and real browser authorization before routes.')
 
 if __name__=='__main__':

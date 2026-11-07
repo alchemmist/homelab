@@ -26,7 +26,7 @@ class Deadlines(unittest.TestCase):
                 s.close()
                 with socket.create_connection(server.server_address) as c:
                     c.settimeout(1); c.sendall(b'GET / HTTP/1.0\r\n\r\n')
-                    self.assertIn(b'401', c.recv(4096))
+                    self.assertIn(b'200', c.recv(4096))
             finally:
                 server.shutdown(); server.server_close(); t.join()
 
@@ -92,7 +92,7 @@ class Deadlines(unittest.TestCase):
                     server.slots.release()
                     with socket.create_connection(server.server_address) as c:
                         c.settimeout(1); c.sendall(b'GET / HTTP/1.0\r\n\r\n')
-                        self.assertIn(b'401', c.recv(4096))
+                        self.assertIn(b'200', c.recv(4096))
                 finally:
                     listener.close(); t.join(2)
                     server.shutdown(); server.server_close(); serving.join()

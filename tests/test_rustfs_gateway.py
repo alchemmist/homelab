@@ -41,41 +41,47 @@ class Tests(unittest.TestCase):
             r = Response(body); r.headers=Message(); r.headers['Content-Length']=length
             with self.assertRaises(ValueError): g.bounded(r)
 
-    def test_http_auth_and_exact_bytes(self):
+    def test_public_http_preview_ranges_and_exact_bytes(self):
         class Reader:
             calls=[]
-            def authorized(self,cookie): return cookie == 'valid=1'
             def read(self,key): self.calls.append(key); return b'{"x":1}\n'
         reader=Reader()
         server=g.http.server.HTTPServer(('127.0.0.1',0),g.Handler); server.reader=reader
         worker=threading.Thread(target=server.serve_forever,daemon=True); worker.start()
         try:
-            def request(path, headers={}, method='GET'):
+            def request(path, headers=None, method='GET'):
                 conn=http.client.HTTPConnection(*server.server_address,timeout=2)
-                conn.request(method,path,headers=headers); response=conn.getresponse(); data=response.read(); result=(response.status,dict(response.getheaders()),data); conn.close(); return result
-            self.assertEqual(request('/bad', {'X-authentik-username':'owner'})[0],401)
-            self.assertEqual(request(BASE+'manifest.json')[0],401)
-            self.assertEqual(reader.calls,[])
-            status,headers,_=request(BASE+'manifest.json',{'Accept':'text/html','Host':'evil.invalid','X-Forwarded-Host':'evil.invalid'})
-            self.assertEqual(status,302)
-            location=g.urllib.parse.urlsplit(headers['Location'])
-            self.assertEqual(location.scheme+'://'+location.netloc,g.ORIGIN)
-            self.assertEqual(location.path,'/outpost.goauthentik.io/start')
-            self.assertEqual(g.urllib.parse.parse_qs(location.query),{'rd':[g.ORIGIN+BASE+'manifest.json']})
-            self.assertEqual(headers['Cache-Control'],'no-store')
-            self.assertEqual(request(BASE+'manifest.json',{'Accept':'text/html'},'HEAD')[0],401)
-            for path in ['/bad','//evil.invalid/a',BASE+'manifest.json?rd=https://evil.invalid',BASE+'%2e%2e/a']:
-                status,headers,_=request(path,{'Accept':'text/html'})
-                self.assertEqual(status,401);self.assertNotIn('Location',headers)
-            self.assertEqual(reader.calls,[])
-            self.assertEqual(request('/bad',{'Cookie':'valid=1'})[0],404)
-            status,headers,data=request(BASE+'manifest.json',{'Cookie':'valid=1'})
-            self.assertEqual(status,200); self.assertEqual(data,b'{"x":1}\n')
-            self.assertEqual(headers['X-Content-Type-Options'],'nosniff')
-            self.assertEqual(headers['Content-Disposition'],'attachment; filename="manifest.json"')
-            self.assertEqual(request(BASE+'manifest.json',{'Cookie':'valid=1'},'PUT')[0],405)
+                conn.request(method,path,headers=headers or {}); response=conn.getresponse(); data=response.read(); result=(response.status,dict(response.getheaders()),data); conn.close(); return result
+            self.assertEqual(request('/bad')[0],404)
+            for path in ['//evil.invalid/a', BASE+'manifest.json?x=1', BASE+'%2e%2e/a']:
+                self.assertEqual(request(path)[0],404)
+            for headers in [{}, {'Cookie':'untrusted', 'X-authentik-username':'owner'}, {'Accept':'text/html'}]:
+                status,h,data=request(BASE+'manifest.json',headers)
+                self.assertEqual(status,200); self.assertEqual(data,b'{"x":1}\n')
+                self.assertEqual(h['Content-Type'],'application/json; charset=utf-8')
+                self.assertEqual(h['Content-Disposition'],'inline; filename="manifest.json"')
+                self.assertEqual(h['X-Content-Type-Options'],'nosniff')
+                self.assertNotIn('Location',h); self.assertNotIn('Set-Cookie',h)
+            status,h,data=request(BASE+'manifest.json',method='HEAD')
+            self.assertEqual(status,200);self.assertEqual(data,b'');self.assertEqual(h['Content-Length'],'8')
+            status,h,data=request(BASE+'manifest.json',{'Range':'bytes=0-2'})
+            self.assertEqual((status,data),(206,b'{"x'));self.assertEqual(h['Content-Range'],'bytes 0-2/8')
+            self.assertEqual(request(BASE+'manifest.json',{'Range':'bytes=99-'})[0],416)
+            for method in ['PUT','POST','DELETE','PATCH','OPTIONS']:
+                self.assertEqual(request(BASE+'manifest.json',method=method)[0],405)
         finally:
-            server.shutdown(); server.server_close(); worker.join()
+            server.shutdown();server.server_close();worker.join()
+
+    def test_preview_type_allowlist(self):
+        for name,mime in [('E001-file.pdf','application/pdf'),('E001-file.png','image/png'),('E001-file.mp4','video/mp4')]:
+            self.assertEqual(g.presentation(name),(mime,True))
+        for name in ['E001-file.html','E001-file.svg','E001-file.js','E001-file.unknown']:
+            self.assertEqual(g.presentation(name),('application/octet-stream',False))
+        for value in ['bytes=0-1,3-4','bytes=-','bytes=-0','bytes=8-9','bytes=2-1','Bytes=0-1']:
+            with self.assertRaises(ValueError):g.byte_range(value,8)
+        self.assertEqual(g.byte_range('bytes=-2',8),(6,7))
+        self.assertEqual(g.byte_range('bytes=2-',8),(2,7))
+
 
 class Integrity(unittest.TestCase):
     def test_reader_checks_manifest_and_file(self):
@@ -98,26 +104,24 @@ class Integrity(unittest.TestCase):
     def test_redirect_denied(self):
         with self.assertRaises(ValueError): g.NoRedirect().redirect_request(None,None,302,'',{},'http://evil/')
 
-    def test_trusted_auth_response(self):
+    def test_public_reader_needs_no_idp_or_cookie(self):
         import os
         from unittest.mock import patch
-        class Response:
-            status=204
-            headers={'X-authentik-groups':'homelab-owner|other'}
-            def __enter__(self): return self
-            def __exit__(self,*args): pass
-        class HTTP:
-            def open(self,req,timeout):
-                self.request=req;return response
-        response=Response(); http=HTTP()
-        with patch.dict(os.environ, {'AUTH_URL':g.ORIGIN+'/outpost.goauthentik.io/auth/nginx','S3_ACCESS_KEY':'reader','S3_SECRET_KEY':'private'}):
-            reader=g.Reader(); reader.http=http
-        self.assertTrue(reader.authorized('session=valid'))
-        self.assertEqual(http.request.get_header('X-original-url'),g.ORIGIN+'/')
-        response.headers={'X-authentik-groups':'homelab-observer'}
-        self.assertFalse(reader.authorized('session=valid'))
-        self.assertFalse(reader.authorized(''))
-        self.assertFalse(reader.authorized('a\r\nX-authentik-groups: homelab-owner'))
+        with patch.dict(os.environ, {'S3_ACCESS_KEY':'reader','S3_SECRET_KEY':'fixture'},clear=True):
+            reader=g.Reader()
+        self.assertFalse(hasattr(reader,'auth'))
+        self.assertFalse(hasattr(reader,'authorized'))
+
+    def test_v3_binary_artifact_integrity(self):
+        import json
+        body=b'\x89PNG\r\n\x1a\n\xff\x00'
+        doc={'format':'socrat-evidence-v3','event_key':'a'*64,'artifacts':[{'id':'E001','name':'image.png','stored_bytes':len(body),'sha256':hashlib.sha256(body).hexdigest()}]}
+        manifest=json.dumps(doc).encode('ascii');digest=hashlib.sha256(manifest).hexdigest()
+        prefix='spi/v1/'+'a'*64+'/'+digest
+        reader=object.__new__(g.Reader);objects={prefix+'/manifest.json':manifest,prefix+'/E001-image.png':body};reader.object=lambda key:objects[key]
+        self.assertEqual(reader.read(prefix+'/E001-image.png'),body)
+        objects[prefix+'/E001-image.png']=b'corrupt'
+        with self.assertRaises(ValueError):reader.read(prefix+'/E001-image.png')
 
     def test_signing_against_openssl_canonical_vector(self):
         import subprocess

@@ -31,10 +31,10 @@ publicEntry:
   routes:
   - name: kuma-admin
     host: kuma.socrat.alchemmist.xyz
-    namespace: identity
-    service: authentik-server
+    namespace: uptime-kuma
+    service: uptime-kuma
     port: 80
-    authorization: authentik-proxy
+    authorization: native-login
   kumaPolicyProxy:
     enabled: true
     image: docker.io/library/nginx:stable-alpine@sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311

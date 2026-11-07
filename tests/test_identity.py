@@ -98,7 +98,7 @@ class IdentityTests(unittest.TestCase):
                 self.assertEqual(provider['grant_types'],['authorization_code','refresh_token'])
             grafana=next(p for p in api.data['providers/oauth2/'] if p['name']=='homelab-grafana')
             self.assertIn('offline_access', grafana['property_mappings'])
-            self.assertEqual(len(api.data['core/applications/']),8)
+            self.assertEqual(len(api.data['core/applications/']),6)
             self.assertEqual(len(api.data['policies/bindings/']),sum(len(admission_groups(slug,service)) for slug,service in json.loads((root/'services.json').read_text()).items() if slug!='litellm'))
             for method,path,body,query in api.requests:
                 if method=='GET' and path=='core/applications/':
@@ -113,7 +113,7 @@ class IdentityTests(unittest.TestCase):
             self.configure(root,api);self.configure(root,api)
             provider=next(p for p in api.data['providers/oauth2/'] if p['name']=='homelab-litellm')
             self.assertIn('litellm-identity',provider['property_mappings'])
-            self.assertEqual(len(api.data['core/applications/']),9)
+            self.assertEqual(len(api.data['core/applications/']),7)
 
     def test_existing_owner_never_silently_taken_over(self):
         with tempfile.TemporaryDirectory() as d:
@@ -174,7 +174,7 @@ class RolloutRegressionTests(unittest.TestCase):
         import hashlib,xml.etree.ElementTree as ET
         manifest=json.loads((ROOT/'assets/service-icons/sources.json').read_text())
         services=json.loads((ROOT/'deploy/identity/services.json').read_text())
-        self.assertEqual(len(services),9)
+        self.assertEqual(len(services),7)
         for slug,service in services.items():
             data=(ROOT/'assets/service-icons'/f'{slug}.svg').read_bytes()
             digest=hashlib.sha256(data).hexdigest()
@@ -196,22 +196,19 @@ class RolloutRegressionTests(unittest.TestCase):
             self.assertNotIn(tim['pk'],owner_group['users'])
             self.assertEqual((root/'antropophag-login.json').stat().st_mode & 0o777,0o600)
 
-    def test_n8n_gate_does_not_capture_machine_traffic_or_claim_native_sso(self):
-        import re
+    def test_n8n_native_login_and_machine_paths_have_no_idp_gate(self):
         services=json.loads((ROOT/'deploy/identity/services.json').read_text())
-        pattern=re.compile(services['n8n']['proxy']['skipPathRegex'])
-        for path in ['/healthz','/webhook/a','/api/v1/workflows','/form/a']:
-            self.assertIsNotNone(pattern.match(path))
-        for path in ['/','/rest/login','/rest/settings','/webhookevil/secret']:
-            self.assertIsNone(pattern.match(path))
-        ui,machine=list(yaml.safe_load_all((ROOT/'charts/n8n/templates/access.yaml').read_text()))
-        self.assertGreater(int(machine['metadata']['annotations']['traefik.ingress.kubernetes.io/router.priority']),
-                           int(ui['metadata']['annotations']['traefik.ingress.kubernetes.io/router.priority']))
+        self.assertNotIn('n8n',services)
+        self.assertNotIn('uptime-kuma',services)
+        resources=list(yaml.safe_load_all((ROOT/'charts/n8n/templates/access.yaml').read_text()))
+        self.assertEqual(len(resources),1)
+        machine=resources[0]
         self.assertEqual(machine['metadata']['namespace'],'automation')
         for path in machine['spec']['rules'][0]['http']['paths']:
             self.assertEqual(path['backend']['service']['name'],'n8n')
             self.assertNotEqual(path['path'],'/')
-        self.assertIn('native-sso-requires-license',services['n8n']['migration'])
+        self.assertTrue(yaml.safe_load((ROOT/'charts/n8n/values.yaml').read_text())['ingress']['enabled'])
+        self.assertNotIn('n8n-gateway', (ROOT/'ansible/roles/authentik/tasks/main.yml').read_text())
 
     def test_owner_mapping_is_server_admin_only_for_owner_group(self):
         env=yaml.safe_load((ROOT/'deploy/identity/grafana-oidc-values.yaml').read_text())['grafana']['env']

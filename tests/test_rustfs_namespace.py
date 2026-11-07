@@ -25,7 +25,7 @@ class Namespace(unittest.TestCase):
                 self.assertNotIn('persistentVolumeClaim:', d)
             reader = next(d for d in docs if 'name: rustfs-evidence-browser' in d)
             self.assertIn('namespace: '+ns, reader)
-            auth = next(d for d in docs if 'name: rustfs-authentik-browser' in d)
+            auth = next(d for d in docs if 'name: rustfs-console-browser' in d)
             self.assertIn('namespace: identity', auth)
             self.assertIn('namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: '+ns+'}}\n          podSelector: {matchLabels: {app: rustfs-gateway}}', text)
             self.assertIn('namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: rustfs}}\n          podSelector: {matchLabels: {app: rustfs}}', text)

@@ -1,7 +1,5 @@
-"""Private bounded artifact reader. No access/request/error bodies are logged.
-
-AUTH_URL must be the trusted Authentik outpost auth/nginx endpoint, never user input.
-The outpost must enforce the reviewed owner/platform application policy itself.
+"""Public, bounded, integrity-checked artifact reader; private read-only S3 upstream.
+No cookies, caller identity headers, request paths or bodies are logged.
 """
 import datetime
 import hashlib
@@ -179,30 +177,11 @@ def bounded(response):
 class Reader:
     def __init__(self):
         self.http = opener()
-        self.auth = os.environ['AUTH_URL']
-        if self.auth != ORIGIN + '/outpost.goauthentik.io/auth/nginx':
-            raise ValueError('invalid auth endpoint')
         self.s3 = os.environ.get('S3_ENDPOINT', 'http://rustfs.rustfs.svc.cluster.local:9000')
         if self.s3 != 'http://rustfs.rustfs.svc.cluster.local:9000':
             raise ValueError('fixed S3 service required')
         self.access = os.environ['S3_ACCESS_KEY']
         self.secret = os.environ['S3_SECRET_KEY']
-
-    def authorized(self, cookie):
-        if not cookie or len(cookie) > 8192 or '\r' in cookie or '\n' in cookie:
-            return False
-        request = urllib.request.Request(self.auth, headers={
-            'Cookie': cookie, 'X-Original-URL': ORIGIN + '/',
-            'X-Forwarded-Proto': 'https', 'X-Forwarded-Host': 'spi-evidence.socrat.alchemmist.xyz',
-            'X-Forwarded-Method': 'GET'})
-        try:
-            with self.http.open(request, timeout=5) as response:
-                groups = set(response.headers.get('X-authentik-groups', '').split('|'))
-                return response.status in (200, 204) and bool(groups & {'homelab-owner', 'homelab-platform-operator'})
-        except (OSError, ValueError, urllib.error.URLError) as error:
-            if isinstance(error, urllib.error.HTTPError):
-                error.close()
-            return False
 
     def object(self, key):
         url = self.s3 + '/spi-evidence/' + key
@@ -218,7 +197,7 @@ class Reader:
         if hashlib.sha256(manifest).hexdigest() != manifest_hash:
             raise ValueError('manifest hash mismatch')
         document = json.loads(manifest.decode('ascii'))
-        if not isinstance(document, dict) or document.get('event_key') != event or document.get('format') != 'socrat-evidence-v2':
+        if not isinstance(document, dict) or document.get('event_key') != event or document.get('format') not in ('socrat-evidence-v2', 'socrat-evidence-v3'):
             raise ValueError('manifest identity mismatch')
         if filename == 'manifest.json':
             return manifest
@@ -229,13 +208,51 @@ class Reader:
         if len(matches) != 1:
             raise ValueError('unlisted file')
         row = matches[0]
-        if type(row.get('stored_chars')) is not int or not 0 <= row['stored_chars'] <= 90000:
+        binary = document['format'] == 'socrat-evidence-v3'
+        size = row.get('stored_bytes' if binary else 'stored_chars')
+        if type(size) is not int or not 0 <= size <= (MAX_BYTES if binary else 90000):
             raise ValueError('invalid artifact length')
         body = self.object(key)
-        if len(body) != row['stored_chars'] or hashlib.sha256(body).hexdigest() != row.get('sha256'):
+        if len(body) != size or hashlib.sha256(body).hexdigest() != row.get('sha256'):
             raise ValueError('artifact hash mismatch')
-        body.decode('ascii')
+        if not binary:
+            body.decode('ascii')
         return body
+
+
+# Explicit types only: arbitrary S3 metadata cannot turn a download into active HTML.
+PREVIEW_TYPES = {
+    'json': 'application/json; charset=utf-8', 'txt': 'text/plain; charset=utf-8',
+    'log': 'text/plain; charset=utf-8', 'csv': 'text/plain; charset=utf-8',
+    'yaml': 'text/plain; charset=utf-8', 'yml': 'text/plain; charset=utf-8',
+    'pdf': 'application/pdf', 'png': 'image/png', 'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg', 'gif': 'image/gif', 'webp': 'image/webp',
+    'avif': 'image/avif', 'mp4': 'video/mp4', 'webm': 'video/webm',
+    'ogv': 'video/ogg', 'mp3': 'audio/mpeg', 'ogg': 'audio/ogg', 'wav': 'audio/wav',
+}
+
+
+def presentation(filename):
+    suffix = (filename or '').rsplit('.', 1)[-1].lower()
+    mime = PREVIEW_TYPES.get(suffix)
+    return (mime, True) if mime else ('application/octet-stream', False)
+
+
+def byte_range(value, size):
+    match = re.fullmatch(r'bytes=([0-9]{0,20})-([0-9]{0,20})', value)
+    if not match or not size or not any(match.groups()):
+        raise ValueError('invalid range')
+    first, last = match.groups()
+    if not first:
+        count = int(last)
+        if count == 0:
+            raise ValueError('empty suffix')
+        return max(0, size - count), size - 1
+    start = int(first)
+    end = min(int(last), size - 1) if last else size - 1
+    if start >= size or start > end:
+        raise ValueError('unsatisfiable range')
+    return start, end
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -275,24 +292,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def answer(self):
         self.close_connection = True
         self.header_timer.cancel()
-        # Authentication precedes even validation/error responses; never trust X-auth headers.
-        cookies = self.headers.get_all('Cookie', [])
-        if len(cookies) != 1 or not self.server.reader.authorized(cookies[0]):
-            # Browser clicks must enter SSO and return to the exact file, not
-            # stop at an empty401. Never derive the origin from caller headers
-            # or inspect object existence before authentication.
-            location = None
-            if self.command == 'GET' and 'text/html' in self.headers.get('Accept', '').lower():
-                try:
-                    target = self.raw_requestline.split()[1].decode('ascii')
-                    if target != self.path:
-                        raise ValueError('normalized target denied')
-                    valid_key(target)
-                    location = ORIGIN + '/outpost.goauthentik.io/start?' + urllib.parse.urlencode({'rd': ORIGIN + target})
-                except (ValueError, IndexError):
-                    pass
-            self.respond(302 if location else 401, location=location)
-            return
         if self.command not in ('GET', 'HEAD'):
             self.respond(405)
             return
@@ -300,6 +299,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             raw_target = self.raw_requestline.split()[1].decode('ascii')
             if raw_target != self.path:
                 raise ValueError('normalized target denied')
+            if raw_target == '/':
+                self.respond(200, b'Socrat evidence reader. Open an artifact link from an incident issue.\n')
+                return
             key = valid_key(raw_target)
         except (ValueError, IndexError):
             self.respond(404)
@@ -311,29 +313,46 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 error.close()
             self.respond(502)
             return
-        self.respond(200, body, key.rsplit('/', 1)[1])
+        filename = key.rsplit('/', 1)[1]
+        ranges = self.headers.get_all('Range', []) if self.command == 'GET' else []
+        if ranges:
+            try:
+                if len(ranges) != 1:
+                    raise ValueError('multiple ranges')
+                start, end = byte_range(ranges[0], len(body))
+            except ValueError:
+                self.respond(416, full_length=len(body))
+                return
+            self.respond(206, body[start:end + 1], filename,
+                         content_range=f'bytes {start}-{end}/{len(body)}')
+            return
+        self.respond(200, body, filename)
 
     def send_error(self, code, message=None, explain=None):
         # Parser/unsupported-method errors must not echo raw request lines or
         # distinguish paths to unauthenticated callers.
         self.close_connection = True
-        self.respond(401)
+        self.respond(400)
 
-    def respond(self, status, body=b'', filename=None, location=None):
+    def respond(self, status, body=b'', filename=None, content_range=None, full_length=None):
+        mime, inline = presentation(filename) if filename else ('text/plain; charset=utf-8', True)
         self.send_response(status)
-        self.send_header('Content-Type', 'application/octet-stream')
+        self.send_header('Content-Type', mime)
         self.send_header('X-Content-Type-Options', 'nosniff')
-        self.send_header('Cache-Control', 'no-store')
-        self.send_header('Vary', 'Accept')
-        if location is not None:
-            self.send_header('Location', location)
-        self.send_header('Content-Security-Policy', "default-src 'none'; sandbox")
+        self.send_header('Cache-Control', 'public, max-age=3600, immutable' if filename else 'no-store')
+        self.send_header('Content-Security-Policy', "default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+        self.send_header('Referrer-Policy', 'no-referrer')
         self.send_header('Connection', 'close')
         self.send_header('Content-Length', str(len(body)))
-        if status == 401:
-            self.send_header('Link', '<' + ORIGIN + '/outpost.goauthentik.io/start?rd=https%3A%2F%2Fspi-evidence.socrat.alchemmist.xyz%2F>; rel="authenticate"')
+        if status == 405:
+            self.send_header('Allow', 'GET, HEAD')
         if filename:
-            self.send_header('Content-Disposition', 'attachment; filename="' + filename + '"')
+            self.send_header('Accept-Ranges', 'bytes')
+            self.send_header('Content-Disposition', ('inline' if inline else 'attachment') + '; filename="' + filename + '"')
+        if content_range:
+            self.send_header('Content-Range', content_range)
+        if full_length is not None:
+            self.send_header('Content-Range', 'bytes */' + str(full_length))
         self.end_headers()
         if self.command != 'HEAD':
             self.wfile.write(body)

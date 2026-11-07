@@ -43,7 +43,8 @@ def test_public_policies_keep_machine_auth_and_block_human_fallbacks():
  assert 'limit_except GET HEAD { deny all; }' in kuma
  assert 'https://kuma.socrat.alchemmist.xyz$request_uri' in kuma
  sync=(ROOT/'charts/syncthing/files/syncthing-policy.conf').read_text()
- assert 'proxy_pass http://gui0/;' in sync and 'auth_basic_user_file /etc/nginx/basic/users' in sync
+ assert 'proxy_pass http://gui0/;' in sync and 'auth_basic' not in sync
+ assert 'auth_request' not in sync
  assert 'return 410' in sync and 'syncthing-sync-1' not in sync
 
 def test_kuma_no_gitops_random_secret_by_default():
