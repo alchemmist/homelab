@@ -118,3 +118,12 @@ def test_legacy_monitoring_installer_fails_before_roles_under_gitops():
     assert 'grafana' in checks[0]['ansible.builtin.command']['argv']
     assert checks[0]['changed_when'] is False
     assert checks[1]['ansible.builtin.assert']['that'].endswith('length == 0')
+
+
+def test_existing_rancher_postdelete_finalizers_are_declared_not_ignored():
+    app = yaml.safe_load((ROOT/'deploy/argocd/apps/rancher.yaml').read_text())
+    assert app['metadata']['finalizers'] == [
+        'resources-finalizer.argocd.argoproj.io',
+        'post-delete-finalizer.argocd.argoproj.io',
+        'post-delete-finalizer.argocd.argoproj.io/cleanup',
+    ]

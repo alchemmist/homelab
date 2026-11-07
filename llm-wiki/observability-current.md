@@ -1,8 +1,8 @@
 # Наблюдаемость: источники и владельцы
 
-Срез **7 ноября 2026**, Git `832e341` и отдельное read-only чтение Argo/pods.
-Не объявляет завершённым cleanup старых owners, синхронизацию root, новый browser
-acceptance или независимый DR. Последующие commits/status проверять перед apply.
+Актуализировано **7 ноября 2026**, после завершённого handoff (`f4020d1`) и
+runtime-проверок. Это заменяет ранний read-only срез промежуточного split.
+Не объявляет новый browser-MFA acceptance, каждый producer исправным или независимый DR.
 
 ## Argo ownership после split
 
@@ -15,13 +15,22 @@ acceptance или независимый DR. Последующие commits/stat
 | `pyroscope` | `charts/pyroscope` | Profiling backend и его Grafana integration |
 | `monitoring-k3s` | `charts/monitoring-k3s` | Dashboard JSON, rules, probes и связанные monitoring resources |
 
-На срезе все шесть apps — Synced/Healthy. Но `loki` и `tempo` имеют
-`automated.enabled=false`: selfHeal flag сам по себе не включает auto-sync.
-Старые `kube-prometheus-stack`, `otel-backends`, `profiling` ещё есть, Healthy,
-OutOfSync, с отключённым automated/selfHeal; root тоже OutOfSync/Healthy.
-**Не включать старым owners auto-sync и не удалять их с finalizers ради зелёного
-статуса.** Новый source owner, tracking, UIDs, render-equivalence, PVC/Secret и
-hooks проверяются отдельно. Этот справочник ничего из этого не применяет.
+Все шесть указанных apps — Synced/Healthy. Auto-sync Loki/Tempo восстановлен:
+временный `automated.enabled=false` снят, `prune=false/selfHeal=true` сохранены.
+Старые `kube-prometheus-stack`, `otel-backends`, `profiling` удалены из Git/кластера
+после снятия finalizers и передачи владения. 103 UID существующих объектов сохранены
+(в том числе 10 shared CRD в Prometheus scope без принудительных tracking annotations).
+PVC/Secret/Certificate UID не менялись. Только неиспользуемый ConfigMap
+`otel-backends` удалён с UID/resourceVersion preconditions после проверки ссылок.
+Не повторять retirement и не включать старых owners. Карта и полный протокол:
+[monitoring-service-split.md](../docs/monitoring-service-split.md).
+
+В Grafana сверены private согласованные SQLite snapshots: users/org/memberships,
+datasource identities, dashboard UIDs, OAuth links и public shares сохранены.
+Native OIDC redirect работает; public regression134/134 и TV24/24 на двух IP прошли.
+Loki/Tempo verified-mTLS `/ready`200, отказ без client cert, свежие logs и stored
+traces проверены без вывода содержимого. Это не physical-TV/browser-MFA повторная
+приёмка. Новый TV layout/JS из параллельных `832e341`/`757dc18` сохранён.
 
 App name не равен Helm release или Service name: имя
 `kube-prometheus-stack-grafana` у pod/service не возвращает владение старой app.
@@ -79,3 +88,24 @@ API. Для чтения использовать MCP/API, браузер — д
 
 [Деплой](cluster-deploy.md) · [сеть](network-access.md) · [TV](android-tv.md) ·
 [SPI](spi-incident-triage.md) · [n8n](n8n-workflows.md).
+
+
+## Незакрытые проблемы на финальной проверке split
+
+- **PrometheusTSDBCompactionsFailing**: в логах 2026-11-07 09:00 UTC checksum
+  corruption WAL segment `00001786` при checkpoint/truncation. Это раньше disarm
+  split в 10:20 UTC; Prometheus Pod миграцией не перезапускался. Ready/Argo Healthy
+  не доказывает целостность WAL. Алерт не выключали, WAL/blocks не удаляли и не
+  откатывали; нужен отдельный безопасный разбор с backup перед repair.
+- **Blog**: параллельный robot release `8b3e079` записал Harbor digest
+  `sha256:c476e069de95fd3daafaac09f1f1fcf58f65230deaecb6740b5b9cf84aae8c99`,
+  который registry возвращает NotFound. Новый pod — ImagePullBackOff, два прежних
+  продолжают обслуживать. Это отдельный release incident, не результат переноса
+  Grafana/Loki/Tempo. Чужой release не откатывался и образ не подменялся.
+- Root показывал отдельный metadata drift Rancher: Argo-managed PostDelete
+  finalizers отсутствовали в Git. В manifest задекларированы **уже существующие**
+  finalizers, не удалены hooks и не добавлен ignoreDifferences. Rancher runtime,
+  MCM/Fleet и значения chart этим не менялись.
+
+Watchdog severity=none — ожидаемый heartbeat, не доказательство отсутствия других
+алертов. Не объявлять весь кластер здоровым по зелёным новым Applications.

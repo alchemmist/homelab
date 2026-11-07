@@ -82,11 +82,12 @@ the fixture. Only that reviewed TV asset update is re-baselined.
 
 ## Acceptance and limits
 
-- 60 focused ownership, public access/TV, profiling and Loki safety tests pass;
+- 100 focused ownership, public access/TV, profiling, retention, relocation and
+  dashboard tests pass (24 pytest subtests also pass);
   Helm lint succeeds for the four local service charts and existing shared chart.
 - Public TLS/anonymous/forged-header/invalid-token regression: 134/134 before and
   after the service handoff. Native TV sharing/presentation checks: 24/24 at both
-  public IPs using the existing share, without republishing. Repeat after retirement;
+  public IPs using the existing share, without republishing. Both repeated successfully after retirement;
   neither check is new browser enrollment or independent-provider acceptance.
 - Grafana DB reports ok; native OIDC redirects to Authentik. Before/after consistent
   private SQLite snapshots preserve users, organizations/memberships, datasource
@@ -103,3 +104,33 @@ the fixture. Only that reviewed TV asset update is re-baselined.
 - This does **not** claim a full browser MFA/role matrix, fresh traces from every
   producer, a new profiling ingestion test, off-node backups, HA or DR validation.
   The private DB snapshots are a migration safeguard, not a cluster backup design.
+
+
+## Final retirement readback and separate incidents
+
+Old Applications are absent. The unused shared ConfigMap was deleted only after
+all Pod/Deployment/StatefulSet/DaemonSet/Job/CronJob references were absent, with
+UID/resourceVersion preconditions and a private rollback snapshot. All 103 retained
+resource UIDs and all previously sampled PVC/Secret/Certificate UIDs are unchanged.
+Before/after consistent SQLite snapshots are retained privately (0600) under
+`~/.config/homelab/grafana/migrations/2026-11-07-monitoring-split/`, not Git.
+Grafana/Loki/Tempo were rolled out; other old completed Job Pods expired normally,
+and an independently changed Thanos compactor/TV proxy is not attributed to this
+split. Concurrent dashboard/TV commits were preserved during rebase.
+
+Do **not** turn the migration acceptance into a claim of cluster-wide health:
+
+- Prometheus logs contain a WAL segment `00001786` checksum error at 09:00 UTC,
+  before the 10:20 UTC disarm commit. The existing Prometheus Pod was not restarted.
+  `PrometheusTSDBCompactionsFailing` remains visible; no alert mute, WAL truncation,
+  block deletion, data reset or unapproved database repair was performed.
+- The separate concurrent blog release `8b3e079` points at an unavailable Harbor
+  digest: new Pod ImagePullBackOff, two old Pods still serving. No unrelated release
+  rollback or image substitution was performed as part of monitoring ownership.
+- Root's separate Rancher drift was traced to two already-live Argo PostDelete
+  lifecycle finalizers absent from Git. They are now declared explicitly, preserving
+  hooks and actual metadata rather than adding diff ignores or changing Rancher.
+
+Investigate the WAL with a safe backup/repair procedure and the missing blog
+artifact as separate incidents; neither is permission to prune state or rerun the
+retired combined monitoring installer.
