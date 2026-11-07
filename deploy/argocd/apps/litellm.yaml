@@ -28,5 +28,7 @@ spec:
     server: https://kubernetes.default.svc
   syncPolicy:
     automated:
+      # Temporary handoff pause: resource-only sync must not run DB migration hooks.
+      enabled: false
       prune: false
       selfHeal: true
