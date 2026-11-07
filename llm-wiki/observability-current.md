@@ -146,3 +146,14 @@ API. Для чтения использовать MCP/API, браузер — д
 
 Watchdog severity=none — ожидаемый heartbeat, не доказательство отсутствия других
 алертов. Не объявлять весь кластер здоровым по зелёным новым Applications.
+
+### Public status redirect repair
+
+`status.alchemmist.xyz/` ошибочно редиректил на
+`http://status.alchemmist.xyz:8080/status/socrat`: stock nginx policy proxy
+формировал absolute redirect из внутреннего listener8080 после TLS termination.
+В `charts/uptime-kuma/files/kuma-policy.conf` добавлен `absolute_redirect off`:
+Location теперь относительный `/status/socrat`, HTTPS/public origin сохраняются.
+Изменены только policy config и обусловленный checksum rollout proxy, не Kuma
+DB/PVC, native auth или UI gateway. Reviewed ownership fixture обновляет только
+ConfigMap policy и Deployment proxy; исходная handoff-версия остаётся в Git history.

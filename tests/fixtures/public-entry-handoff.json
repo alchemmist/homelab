@@ -13,7 +13,7 @@
   },
   "ConfigMap/uptime-kuma/public-web-kuma-policy": {
     "owner": "uptime-kuma",
-    "sha256": "aac989e875013111fd21cad11813dff650df6781f52fb04436f43e63f9c04745"
+    "sha256": "9e060c931b4dac2209e35a39a15973d748bff2e300449e41682c552665befc7f"
   },
   "Deployment/cattle-system/public-web-rancher-proxy": {
     "owner": "rancher",
@@ -29,7 +29,7 @@
   },
   "Deployment/uptime-kuma/public-web-kuma-proxy": {
     "owner": "uptime-kuma",
-    "sha256": "5e49d0b2ee86bc3b19133000fef5844907ada4121b7a1d0d7de04901072a2fef"
+    "sha256": "a4d8d2a326826976e370f8581b175b6a7f39aa36d7b78285d306ce45564198ae"
   },
   "Ingress/cattle-monitoring-system/public-web-grafana-mcp": {
     "owner": "grafana-mcp",
