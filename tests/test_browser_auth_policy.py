@@ -30,6 +30,29 @@ class ExistingHumanBrowserAuthPolicyTests(unittest.TestCase):
         self.assertTrue(target['legacyPasswordReplacedWithDiscardedRandomCredential'])
         self.assertTrue(target['legacySessionStampRevoked'])
 
+    def test_existing_identity_uses_self_setup_not_a_new_operator_password(self):
+        enrollment = self.policy['humans']['tim']['idpEnrollment']
+        self.assertTrue(enrollment['existingUuidPreserved'])
+        self.assertFalse(enrollment['oldPasswordUsable'])
+        self.assertFalse(enrollment['operatorSetsHumanPassword'])
+        self.assertFalse(enrollment['credentialValuesInGit'])
+        self.assertEqual(enrollment['tokenIntent'], 'verification')
+        self.assertTrue(enrollment['passwordThenMandatoryMfa'])
+
+    def test_activation_is_token_only_never_create_and_not_emergency_recovery(self):
+        flow = json.loads((ROOT / 'deploy/identity/existing-user-activation.json').read_text())
+        self.assertEqual(flow['authentication'], 'require_token')
+        self.assertEqual(flow['token']['intent'], 'verification')
+        self.assertFalse(flow['token']['emergencyRecoveryKey'])
+        self.assertTrue(flow['token']['revokeOnExecution'])
+        self.assertEqual(flow['token']['lifetimeHours'], 24)
+        self.assertEqual(flow['stages'][1]['userCreationMode'], 'never_create')
+        self.assertEqual(flow['stages'][2]['notConfiguredAction'], 'configure')
+        self.assertIn('homelab-owner', flow['guardExpression'])
+        self.assertIn('token, "user_id", None) == user.pk', flow['guardExpression'])
+        self.assertFalse(flow['globalBrandRecoveryFlowChanged'])
+        self.assertFalse(flow['ownerAuthenticationFlowChanged'])
+
     def test_umami_is_explicitly_suspended_not_false_oidc_success(self):
         target = self.policy['humans']['tim']['umami']
         self.assertEqual(target['state'], 'suspended-pending-native-oidc')

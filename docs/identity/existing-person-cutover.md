@@ -11,10 +11,11 @@ grant. Do not infer that admission to Authentik grants application administratio
 Existing IdP UUID, reviewed email, native account IDs and configured subject links
 were reconciled before mutation. No email-based automatic account merge, new human,
 role expansion, owner password change, MFA bypass or impersonated human login.
-The existing Authentik user is active, non-superuser and has a usable password;
-it was not reset. No MFA devices were enrolled yet. The bound authentication-flow
-validator requires configuration, so first login must enroll a personal factor.
-This is not evidence that the person has completed a real first login.
+At the initial cutover the existing Authentik user was active, non-superuser
+and still had its initial password. A subsequent explicit owner request replaced
+that state with [self-service activation](existing-user-activation.md): old password
+unusable, same user/UUID/groups, one-use24h link for password setting then mandatory
+MFA. No real-user factor or login has been performed by the operator.
 
 ## Applied and checked
 

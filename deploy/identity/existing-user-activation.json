@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "purpose": "Audited expected configuration of the operator-issued existing-human activation flow; not public enrollment or automatic token issuance",
+  "slug": "homelab-existing-human-activation-v1",
+  "designation": "recovery",
+  "authentication": "require_token",
+  "deniedAction": "message",
+  "policyEngineMode": "all",
+  "token": {
+    "intent": "verification",
+    "expiring": true,
+    "lifetimeHours": 24,
+    "revokeOnExecution": true,
+    "userBound": true,
+    "emergencyRecoveryKey": false
+  },
+  "guardExpression": "ctx = request.context\nplan = ctx.get(\"flow_plan\")\nif plan is not None:\n    ctx = plan.context\nuser = ctx.get(\"pending_user\")\ntoken = ctx.get(\"is_restored\")\nreturn bool(user and token and user.is_active and not user.is_superuser and getattr(token, \"user_id\", None) == user.pk and not user.groups.filter(name=\"homelab-owner\").exists())",
+  "guardAt": ["flow planning", "user-write stage execution"],
+  "stages": [
+    {"order": 10, "existingStage": "default-password-change-prompt", "fields": ["password", "password_repeat"], "preservePasswordValidationPolicies": true},
+    {"order": 20, "ownedStage": "homelab-existing-human-activation-v1-write", "userCreationMode": "never_create", "createUsersGroup": null},
+    {"order": 30, "existingStage": "default-authentication-mfa-validation", "notConfiguredAction": "configure"},
+    {"order": 100, "existingStage": "default-authentication-login"}
+  ],
+  "globalBrandRecoveryFlowChanged": false,
+  "ownerAuthenticationFlowChanged": false,
+  "credentialMaterialInThisFile": false
+}

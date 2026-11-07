@@ -34,6 +34,18 @@
         "softDisabledWithoutDeletingData": true,
         "gatePlusNativePasswordIsNotOidc": true,
         "followUpIssue": 85
+      },
+      "idpEnrollment": {
+        "state": "self-setup-link-issued",
+        "existingUuidPreserved": true,
+        "oldPasswordUsable": false,
+        "operatorSetsHumanPassword": false,
+        "tokenIntent": "verification",
+        "tokenLifetimeHours": 24,
+        "oneUse": true,
+        "flow": "homelab-existing-human-activation-v1",
+        "passwordThenMandatoryMfa": true,
+        "credentialValuesInGit": false
       }
     }
   },
