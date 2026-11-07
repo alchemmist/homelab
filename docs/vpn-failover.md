@@ -90,3 +90,11 @@ Normal `vpn.yml` deployment and host workload cleanup refuse to proceed on `socr
 Unit tests cover failure thresholds, grace periods, persistent fencing on errors, port conflicts, partial recovery retries, maintenance inhibit and manual failback. Installing and inspecting the dormant services does not demonstrate a real outage recovery. No home-node shutdown, live VPN cutover or VPS reboot test is part of this setup; those require a separate maintenance window. An authenticated VPN connection and both TCP/UDP client paths should be checked during that future exercise.
 
 Historical watchdog installation validation on 2026-10-15, before workload consolidation: all 92 repository unit tests passed, including 17 watchdog tests. Both native 3x-ui instances and Caddy passed the isolated listener/TLS/WebSocket check. The production container IDs remained unchanged. The enabled timer reported Kubernetes mode, healthy VPN and zero failures; all fallback units remained inactive. A normal check consumed approximately 150 ms of CPU, with no watchdog process resident between checks. Host-side pre-start checks with `RootDirectoryStartOnly=yes` were also exercised using a harmless transient service.
+
+## Incident follow-up: 2026-11-07
+
+See [the forensic/recovery report](vpn-incident-2026-11-07.md). Kubernetes-service
+starts now have a separate `kubernetes_start_timeout_seconds` deadline (default
+180 seconds); other systemctl commands retain40 seconds. Failed public WebSocket
+checks include sanitized stage/error classification; no private URL or exception
+text is emitted. Live server/agent selection must match the node's actual role.

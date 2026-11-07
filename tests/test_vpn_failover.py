@@ -254,5 +254,49 @@ class KubernetesFencingTests(unittest.TestCase):
         self.assertFalse((self.watchdog.state / 'active').exists())
 
 
+
+class ProbeDiagnosticsTests(unittest.TestCase):
+    def watchdog(self):
+        return MODULE.Watchdog({'tcp_endpoints': [], 'websocket': {'host': 'example.invalid', 'path': '/private-route'}})
+
+    def test_connect_failure_is_classified_without_exception_text(self):
+        with mock.patch.object(MODULE.socket, 'create_connection', side_effect=TimeoutError('sensitive diagnostic text')):
+            result = self.watchdog().health()
+        self.assertFalse(result['healthy'])
+        self.assertEqual(result['websocket_diagnostics']['stage'], 'tcp_connect')
+        self.assertEqual(result['websocket_diagnostics']['exception'], 'TimeoutError')
+        self.assertNotIn('sensitive', json.dumps(result))
+        self.assertNotIn('private-route', json.dumps(result))
+
+    def test_rejected_upgrade_records_only_numeric_status(self):
+        context = mock.MagicMock()
+        stream = context.wrap_socket.return_value.__enter__.return_value
+        stream.recv.return_value = b'HTTP/1.1 403 Forbidden\r\n\r\nprivate data'
+        with mock.patch.object(MODULE.ssl, 'create_default_context', return_value=context), mock.patch.object(MODULE.socket, 'create_connection'):
+            result = self.watchdog().health()
+        self.assertEqual(result['websocket_diagnostics']['http_status'], 403)
+        self.assertEqual(result['websocket_diagnostics']['stage'], 'websocket_response')
+        self.assertNotIn('private data', json.dumps(result))
+
+class CommandDeadlineTests(unittest.TestCase):
+    def test_rejoining_kubernetes_has_separate_deadline(self):
+        w = MODULE.Watchdog({})
+        with mock.patch.object(MODULE.subprocess, 'run') as run:
+            run.return_value.stdout = ''
+            w.command('systemctl', 'start', 'k3s.service')
+            self.assertEqual(run.call_args.kwargs['timeout'], 180)
+            w.command('systemctl', 'stop', 'k3s.service')
+            self.assertEqual(run.call_args.kwargs['timeout'], 40)
+            w.command('systemctl', 'start', 'homelab-vpn-primary.service')
+            self.assertEqual(run.call_args.kwargs['timeout'], 40)
+
+    def test_kubernetes_deadline_can_be_configured(self):
+        w = MODULE.Watchdog({'kubernetes_start_timeout_seconds': 240})
+        with mock.patch.object(MODULE.subprocess, 'run') as run:
+            run.return_value.stdout = ''
+            w.command('systemctl', 'start', 'k3s-agent.service')
+            self.assertEqual(run.call_args.kwargs['timeout'], 240)
+
+
 if __name__ == '__main__':
     unittest.main()

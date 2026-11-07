@@ -157,3 +157,20 @@ Location теперь относительный `/status/socrat`, HTTPS/public 
 Изменены только policy config и обусловленный checksum rollout proxy, не Kuma
 DB/PVC, native auth или UI gateway. Reviewed ownership fixture обновляет только
 ConfigMap policy и Deployment proxy; исходная handoff-версия остаётся в Git history.
+
+### socrat-2 watchdog incident and recovery — 2026-11-07
+
+[Forensic report](../docs/vpn-incident-2026-11-07.md): four failed TLS/WebSocket
+checks from20:02:22 MSK caused the VPN watchdog to stop k3s at20:03:56 and fence
+VPS Pods. This was an explicit stop, not a proven k3s crash/OOM. Exact first
+handshake error was discarded by the old helper; timeout/certificate/false-positive
+explanations remain unproven. Native fallback became healthy but intentionally did
+not auto-failback.
+
+Corrected stale live `agent_unit` (agent→server); isolated Kubernetes-start timeout
+from40s to180s after first controlled failback timed out. Added safe probe error
+classification, without private paths/tokens. Threshold4, TLS verification and
+fencing safety retained. Controlled second failback succeeded: all4 nodes Ready,
+x-ui/Traefik1/1, native units stopped, timer resumed. Authenticated public Trojan
+TLS/WebSocket → HTTPS200 verified. Pods were replaced after fencing; DBs were not
+reset/restored. Private backup/journal paths and limitations are in the report.

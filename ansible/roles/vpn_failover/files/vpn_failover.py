@@ -43,7 +43,9 @@ class Watchdog:
             os.close(descriptor)
 
     def command(self, *args):
-        return subprocess.run(args, check=True, capture_output=True, text=True, timeout=40).stdout.strip()
+        # A rejoining etcd voter may need longer than ordinary unit operations.
+        timeout = self.config.get('kubernetes_start_timeout_seconds', 180) if len(args) == 3 and args[:2] == ('systemctl', 'start') and args[2] in self.fenced_units else 40
+        return subprocess.run(args, check=True, capture_output=True, text=True, timeout=timeout).stdout.strip()
 
     def service_installed(self, unit):
         state = self.command('systemctl', 'show', unit, '--property=LoadState', '--value')
@@ -148,11 +150,15 @@ class Watchdog:
             except OSError:
                 errors.append('TCP listener unavailable: ' + str(port))
         ws = self.config['websocket']
+        stage = 'tcp_connect'
+        diagnostics = {}
         try:
             key = base64.b64encode(os.urandom(16)).decode()
             context = ssl.create_default_context()
             with socket.create_connection((ws.get('address', '127.0.0.1'), ws.get('port', 443)), self.timeout) as raw:
+                stage = 'tls_handshake'
                 with context.wrap_socket(raw, server_hostname=ws['host']) as stream:
+                    stage = 'websocket_response'
                     request = f"GET {ws['path']} HTTP/1.1\r\nHost: {ws['host']}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n\r\n"
                     stream.sendall(request.encode())
                     response = b''
@@ -166,13 +172,22 @@ class Watchdog:
                     lines = response.split(b'\r\n\r\n', 1)[0].decode('latin1').split('\r\n')
                     headers = dict(line.lower().split(':', 1) for line in lines[1:] if ':' in line)
                     expected = base64.b64encode(hashlib.sha1((key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').encode()).digest()).decode()
+                    status = lines[0].split()[1] if len(lines[0].split()) >= 2 else ''
+                    diagnostics['http_status'] = int(status) if status.isdigit() else None
                     if len(lines[0].split()) < 2 or lines[0].split()[1] != '101':
                         raise ValueError('WebSocket upgrade rejected')
                     accept = next((line.split(':', 1)[1].strip() for line in lines[1:] if line.lower().startswith('sec-websocket-accept:')), '')
                     if accept != expected or headers.get('upgrade', '').strip() != 'websocket':
                         raise ValueError('WebSocket handshake invalid')
-        except (OSError, ValueError):
+        except (OSError, ValueError) as error:
             errors.append('Public VPN TLS/WebSocket handshake failed')
+            diagnostics.update(stage=stage, exception=type(error).__name__)
+            if isinstance(error, ssl.SSLCertVerificationError):
+                diagnostics['tls_verify_code'] = error.verify_code
+            if isinstance(error, OSError) and error.errno is not None:
+                diagnostics['errno'] = error.errno
+            # Never log exception text: it may contain private paths or URLs.
+            return {'healthy': False, 'errors': errors, 'websocket_diagnostics': diagnostics}
         return {'healthy': not errors, 'errors': errors}
 
     def clock(self):
