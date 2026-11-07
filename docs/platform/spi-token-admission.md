@@ -532,3 +532,25 @@ pinned assets, without downloads/push. Default stays OFF. No job selection,
 retry/revival, queue mutation, deployment, image/git push, new keys/fees, quota or
 resource change. Live card acceptance is not claimed; dead-job retry requires
 separate explicit authorization and independent review of this source fix.
+
+### GitHub read timeout patience (source-only correction)
+
+Only a typed `UPSTREAM_TIMEOUT` from semantic `GitHub.request("GET", ...)`
+becomes `GITHUB_READ_TIMEOUT`: existing durable patient deferral, 60 seconds
+plus 1–3 seconds jitter, independent of historical claims. Total attempts,
+unsafe-failure allowance, cached results/v3 proofs, snapshot replacement budget
+and fresh-admission ledger are not reset. Snapshot two-pass coherence, outer
+request deadline, exclusive claims and leases remain unchanged. Canonical enum
+only is persisted/audited; no raw exception, path or token is logged.
+
+POST/PATCH/PUT/DELETE timeouts retain finite failures and durable ambiguous-write
+intent/reconciliation fences; this does not authorize write replay or intent
+clearing. Auth, JSON/schema/reference failures, unknown network errors and generic
+5xx/429 are not newly patient. Existing snapshot-instability delays are unchanged.
+
+Historical 998b bare timeout is consistent with early GitHub signature reads;
+the exact historical endpoint/page is unknown, not proven. Model POST timeouts
+remain `LLM_UPSTREAM_TIMEOUT`. User authorization is for future audited retries
+of 08ba and 998b only after reviewed correction; this source slice performs no
+retry, deployment or live write. No cancelled/completed/other dead-job revival,
+queue cleanup or counter reset is authorized here.

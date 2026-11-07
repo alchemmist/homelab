@@ -104,7 +104,14 @@ class GitHub:
         if not path.startswith('/') or '..' in path or '://' in path: raise Failure('INVALID_GITHUB_PATH')
         token=Path(self.token_file).read_text().strip()
         if not token: raise Failure('GITHUB_TOKEN_UNAVAILABLE')
-        return self.http.request(method,self.root+path,{'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'},body)
+        try:
+            return self.http.request(method,self.root+path,{'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'},body)
+        except Failure as e:
+            # Semantic GitHub GET only, regardless of any transport envelope.
+            # Writes retain finite failure/ambiguous-intent reconciliation rules.
+            if method == 'GET' and e.code == 'UPSTREAM_TIMEOUT':
+                raise Failure('GITHUB_READ_TIMEOUT',retry_after=60) from None
+            raise
     def pages(self,path):
         page=1;page_size=20
         while True:
