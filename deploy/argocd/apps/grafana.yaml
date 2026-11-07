@@ -1,0 +1,32 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: grafana
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  destination:
+    namespace: cattle-monitoring-system
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+    - ServerSideApply=true
+  sources:
+  - repoURL: https://github.com/alchemmist/homelab.git
+    targetRevision: main
+    path: charts/grafana
+    helm:
+      releaseName: kube-prometheus-stack
+      parameters: []
+  - repoURL: https://github.com/alchemmist/homelab.git
+    targetRevision: main
+    path: deploy/platform/grafana/public-entry
+    helm:
+      releaseName: grafana-public-entry
+      parameters: []

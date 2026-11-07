@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-loki-config
+  labels:
+    app.kubernetes.io/part-of: otel-backends
+data:
+  loki.yaml: |
+{{ .Files.Get "files/loki.yaml" | indent 4 }}

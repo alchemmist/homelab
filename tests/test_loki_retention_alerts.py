@@ -10,7 +10,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 class LokiRetentionAlertTests(unittest.TestCase):
     def test_render_and_prometheus_syntax(self):
         docs = list(yaml.safe_load_all(subprocess.check_output(
-            ['helm', 'template', 'otel-backends', str(ROOT / 'charts/otel-backends')], text=True)))
+            ['helm', 'template', 'loki', str(ROOT / 'charts/loki')], text=True)))
         rules = next(d for d in docs if d and d.get('kind') == 'PrometheusRule'
                      and d['metadata']['name'] == 'otel-loki-retention')
         self.assertEqual(rules['metadata']['labels']['release'], 'kube-prometheus-stack')

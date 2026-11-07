@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-tempo-config
+  labels:
+    app.kubernetes.io/part-of: otel-backends
+data:
+  tempo.yaml: |
+{{ .Files.Get "files/tempo.yaml" | indent 4 }}

@@ -77,7 +77,7 @@
         "hide": 0,
         "includeAll": false,
         "multi": false,
-        "query": "-,argo-cd,authentik,blog,cats,cert-manager,cnpg-operator,format-quorum,grafana-mcp,harbor,img-proxy,kube-prometheus-stack,litellm,litellm-infra,lms,lms-database-ha,monitoring-k3s,monitoring-llm,monori,n8n,nvidia-device-plugin,open-terminal,open-webui,otel-backends,pr-agent,private-gateway,profiling,rancher,remark42,searxng,socrat-bot,socrat-home,syncthing,thanos,traefik-edge,umami,uptime-kuma,vllm,wiki-runtime,x-ui,xui-auth-gateway",
+        "query": "-,argo-cd,authentik,blog,cats,cert-manager,cnpg-operator,format-quorum,grafana,grafana-mcp,harbor,img-proxy,litellm,litellm-infra,lms,loki,monitoring-k3s,monitoring-llm,monori,n8n,nvidia-device-plugin,open-terminal,open-webui,pr-agent,private-gateway,prometheus-stack,pyroscope,rancher,remark42,searxng,socrat-bot,socrat-home,syncthing,tempo,thanos,traefik-edge,umami,uptime-kuma,vllm,wiki-runtime,x-ui,xui-auth-gateway",
         "options": [
           {
             "selected": true,
@@ -121,6 +121,11 @@
           },
           {
             "selected": false,
+            "text": "grafana",
+            "value": "grafana"
+          },
+          {
+            "selected": false,
             "text": "grafana-mcp",
             "value": "grafana-mcp"
           },
@@ -133,11 +138,6 @@
             "selected": false,
             "text": "img-proxy",
             "value": "img-proxy"
-          },
-          {
-            "selected": false,
-            "text": "kube-prometheus-stack",
-            "value": "kube-prometheus-stack"
           },
           {
             "selected": false,
@@ -156,8 +156,8 @@
           },
           {
             "selected": false,
-            "text": "lms-database-ha",
-            "value": "lms-database-ha"
+            "text": "loki",
+            "value": "loki"
           },
           {
             "selected": false,
@@ -196,11 +196,6 @@
           },
           {
             "selected": false,
-            "text": "otel-backends",
-            "value": "otel-backends"
-          },
-          {
-            "selected": false,
             "text": "pr-agent",
             "value": "pr-agent"
           },
@@ -211,8 +206,13 @@
           },
           {
             "selected": false,
-            "text": "profiling",
-            "value": "profiling"
+            "text": "prometheus-stack",
+            "value": "prometheus-stack"
+          },
+          {
+            "selected": false,
+            "text": "pyroscope",
+            "value": "pyroscope"
           },
           {
             "selected": false,
@@ -243,6 +243,11 @@
             "selected": false,
             "text": "syncthing",
             "value": "syncthing"
+          },
+          {
+            "selected": false,
+            "text": "tempo",
+            "value": "tempo"
           },
           {
             "selected": false,

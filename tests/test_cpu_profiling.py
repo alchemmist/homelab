@@ -11,7 +11,7 @@ def render(chart, *args):
 
 
 def test_backend_is_persistent_bounded_unprivileged_and_private():
-    docs=render('profiling')
+    docs=render('pyroscope')
     dep=next(d for d in docs if d['kind']=='Deployment')
     pod=dep['spec']['template']['spec']; c=pod['containers'][0]
     assert pod['automountServiceAccountToken'] is False
@@ -38,7 +38,7 @@ def test_backend_is_persistent_bounded_unprivileged_and_private():
 
 
 def test_flamegraph_is_native_pyroscope_not_a_span_waterfall():
-    docs=render('profiling')
+    docs=render('pyroscope')
     cm=next(d for d in docs if d['metadata']['name']=='service-cpu-profiling-dashboard')
     d=json.loads(cm['data']['service-cpu-profiling.json'])
     assert d['uid']=='service-cpu-profiling'

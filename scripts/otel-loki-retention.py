@@ -10,7 +10,7 @@ import re
 
 ROOT = Path(__file__).resolve().parents[1]
 POLICY = ROOT / 'deploy/monitoring/otel/retention-policy.json'
-COPIES = [ROOT / p for p in ('deploy/monitoring/otel/loki.yaml', 'charts/otel-backends/files/loki.yaml')]
+COPIES = [ROOT / p for p in ('deploy/monitoring/otel/loki.yaml', 'charts/loki/files/loki.yaml')]
 LEVELS = {'trace', 'debug', 'info', 'warn', 'error', 'fatal', 'unknown'}
 
 

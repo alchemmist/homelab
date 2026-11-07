@@ -68,7 +68,7 @@ def test_public_probe_reuses_migration_owned_addresses():
  with pytest.raises(ValueError):c.addresses(['10.250.0.1','109.120.141.97'])
  with pytest.raises(ValueError):c.addresses(['109.120.141.97','109.120.141.97'])
 
-@pytest.mark.parametrize('owner,key,value',[('rancher','service','unprotected-backend'),('rancher','namespace','identity'),('grafana-mcp','port',8080),('grafana-mcp','path','/'),('kube-prometheus-stack','service','grafana')])
+@pytest.mark.parametrize('owner,key,value',[('rancher','service','unprotected-backend'),('rancher','namespace','identity'),('grafana-mcp','port',8080),('grafana-mcp','path','/'),('grafana','service','grafana')])
 def test_chart_rejects_mislabeled_authorization(owner,key,value,tmp_path):
  import yaml,subprocess
  values=copy.deepcopy(entry_values(owner))

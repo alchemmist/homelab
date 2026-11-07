@@ -1,0 +1,10 @@
+node: socrat-1
+externalIP: 10.250.0.3
+image: docker.io/grafana/loki@sha256:0db216b630ae1f348a1584c67f3cead8b4c1fc839169a39501db664744158e28
+storagePath: /var/lib/private/homelab-otel-loki
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 2Gi

@@ -4,7 +4,7 @@
     "sha256": "a38d5974228dd85bafd3d2c7e5d818e5642b932dab8d75b7d1e64f4365544393"
   },
   "ConfigMap/identity/public-web-grafana-policy": {
-    "owner": "kube-prometheus-stack",
+    "owner": "grafana",
     "sha256": "f36f47176a946e06cd9d93732bedf52ab68eda9ed8e75a1a6fb712c94a933b1d"
   },
   "ConfigMap/syncthing/public-web-syncthing-policy": {
@@ -20,7 +20,7 @@
     "sha256": "ae64150dce84e164ae6ba6b75d59d3dcc63929957fad08604bec54358a5cde32"
   },
   "Deployment/identity/public-web-grafana-proxy": {
-    "owner": "kube-prometheus-stack",
+    "owner": "grafana",
     "sha256": "759e61e156ea4abc74bfab8f0bf8b574f4079bfbb06c1d13e38ad04784f64aed"
   },
   "Deployment/syncthing/public-web-syncthing-proxy": {
@@ -40,7 +40,7 @@
     "sha256": "f753c7b76f1768d98c086a5347bbf6b9dc1408eb078887aa8bb3269e8579d8a6"
   },
   "Ingress/identity/public-web-grafana": {
-    "owner": "kube-prometheus-stack",
+    "owner": "grafana",
     "sha256": "9bf69706a823b96366d0899fb8c14ab18fab0141c0b6e6bc0bca2c2b7b5a1675"
   },
   "Ingress/identity/public-web-kuma-admin": {
@@ -72,7 +72,7 @@
     "sha256": "2f0e741052919f3afa2713a46ad772115dd2670c3be3dead4fb77b10925fb9e6"
   },
   "Service/identity/public-web-grafana-proxy": {
-    "owner": "kube-prometheus-stack",
+    "owner": "grafana",
     "sha256": "d95e25cc3465f43634c7e4a5620b26420bc6e06ec40793988b923c637f843bd5"
   },
   "Service/syncthing/public-web-syncthing-0": {

@@ -1,0 +1,8 @@
+apiVersion: v2
+name: grafana-service
+description: Standalone Grafana; keeps existing release names, PVC, SSO and datasources.
+version: 1.0.0
+dependencies:
+- name: grafana
+  version: 14.0.0
+  repository: oci://ghcr.io/grafana-community/helm-charts

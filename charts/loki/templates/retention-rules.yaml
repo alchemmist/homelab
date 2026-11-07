@@ -1,0 +1,33 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: otel-loki-retention
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: otel-loki.retention
+      rules:
+        - alert: LokiRetentionFailed
+          expr: increase(loki_compactor_apply_retention_operation_total{status="failure"}[15m]) > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: Loki retention application has failed
+            description: Inspect compactor writable scratch, capacity and permissions; do not shorten live retention to test.
+        - alert: LokiRetentionSuccessStale
+          expr: (time() - loki_compactor_apply_retention_last_successful_run_timestamp_seconds > 900) and on(instance) (time() - process_start_time_seconds > 900)
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: Loki has no recent successful retention pass
+        - alert: LokiRetentionMetricsMissing
+          expr: absent(loki_compactor_apply_retention_last_successful_run_timestamp_seconds)
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: Loki retention metrics are not being scraped
+            description: Retention cannot be monitored until authenticated Loki metrics scraping is configured and verified.

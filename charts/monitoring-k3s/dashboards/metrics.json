@@ -63,7 +63,7 @@
         "hide": 0,
         "includeAll": false,
         "multi": false,
-        "query": "-,argo-cd,authentik,blog,cats,cert-manager,cnpg-operator,format-quorum,grafana-mcp,harbor,img-proxy,kube-prometheus-stack,litellm,litellm-infra,lms,lms-database-ha,monitoring-k3s,monitoring-llm,monori,n8n,nvidia-device-plugin,open-terminal,open-webui,otel-backends,pr-agent,private-gateway,profiling,rancher,remark42,searxng,socrat-bot,socrat-home,syncthing,thanos,traefik-edge,umami,uptime-kuma,vllm,wiki-runtime,x-ui,xui-auth-gateway",
+        "query": "-,argo-cd,authentik,blog,cats,cert-manager,cnpg-operator,format-quorum,grafana,grafana-mcp,harbor,img-proxy,litellm,litellm-infra,lms,loki,monitoring-k3s,monitoring-llm,monori,n8n,nvidia-device-plugin,open-terminal,open-webui,pr-agent,private-gateway,prometheus-stack,pyroscope,rancher,remark42,searxng,socrat-bot,socrat-home,syncthing,tempo,thanos,traefik-edge,umami,uptime-kuma,vllm,wiki-runtime,x-ui,xui-auth-gateway",
         "options": [
           {
             "selected": true,
@@ -107,6 +107,11 @@
           },
           {
             "selected": false,
+            "text": "grafana",
+            "value": "grafana"
+          },
+          {
+            "selected": false,
             "text": "grafana-mcp",
             "value": "grafana-mcp"
           },
@@ -119,11 +124,6 @@
             "selected": false,
             "text": "img-proxy",
             "value": "img-proxy"
-          },
-          {
-            "selected": false,
-            "text": "kube-prometheus-stack",
-            "value": "kube-prometheus-stack"
           },
           {
             "selected": false,
@@ -142,8 +142,8 @@
           },
           {
             "selected": false,
-            "text": "lms-database-ha",
-            "value": "lms-database-ha"
+            "text": "loki",
+            "value": "loki"
           },
           {
             "selected": false,
@@ -182,11 +182,6 @@
           },
           {
             "selected": false,
-            "text": "otel-backends",
-            "value": "otel-backends"
-          },
-          {
-            "selected": false,
             "text": "pr-agent",
             "value": "pr-agent"
           },
@@ -197,8 +192,13 @@
           },
           {
             "selected": false,
-            "text": "profiling",
-            "value": "profiling"
+            "text": "prometheus-stack",
+            "value": "prometheus-stack"
+          },
+          {
+            "selected": false,
+            "text": "pyroscope",
+            "value": "pyroscope"
           },
           {
             "selected": false,
@@ -229,6 +229,11 @@
             "selected": false,
             "text": "syncthing",
             "value": "syncthing"
+          },
+          {
+            "selected": false,
+            "text": "tempo",
+            "value": "tempo"
           },
           {
             "selected": false,
@@ -768,7 +773,7 @@
       "id": 10,
       "title": "Loaded blocks",
       "type": "stat",
-      "description": "Blocks the compactors currently have loaded. raw \u00b7 socrat-0 is the workshop and can hold raw, 5-minute and hourly blocks until they are copied away. 5m \u00b7 socrat-1 and 1h \u00b7 socrat-3 are the shelves. Zero means that shelf has no loaded blocks yet. A missing shelf means that compactor is not being scraped.",
+      "description": "Blocks the compactors currently have loaded. raw · socrat-0 is the workshop and can hold raw, 5-minute and hourly blocks until they are copied away. 5m · socrat-1 and 1h · socrat-3 are the shelves. Zero means that shelf has no loaded blocks yet. A missing shelf means that compactor is not being scraped.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -782,7 +787,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (shelf) (label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-[0-9a-f]+-.+\"}, \"shelf\", \"raw \u00b7 socrat-0\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-5m-.+\"}, \"shelf\", \"5m \u00b7 socrat-1\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-1h-.+\"}, \"shelf\", \"1h \u00b7 socrat-3\", \"pod\", \".+\"))",
+          "expr": "sum by (shelf) (label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-[0-9a-f]+-.+\"}, \"shelf\", \"raw · socrat-0\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-5m-.+\"}, \"shelf\", \"5m · socrat-1\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-1h-.+\"}, \"shelf\", \"1h · socrat-3\", \"pod\", \".+\"))",
           "legendFormat": "{{shelf}}",
           "instant": true,
           "format": "time_series"
@@ -846,7 +851,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (shelf) (label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"marked-for-deletion\",pod=~\"thanos-compactor-[0-9a-f]+-.+\"}, \"shelf\", \"raw \u00b7 socrat-0\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"marked-for-deletion\",pod=~\"thanos-compactor-5m-.+\"}, \"shelf\", \"5m \u00b7 socrat-1\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"marked-for-deletion\",pod=~\"thanos-compactor-1h-.+\"}, \"shelf\", \"1h \u00b7 socrat-3\", \"pod\", \".+\"))",
+          "expr": "sum by (shelf) (label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"marked-for-deletion\",pod=~\"thanos-compactor-[0-9a-f]+-.+\"}, \"shelf\", \"raw · socrat-0\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"marked-for-deletion\",pod=~\"thanos-compactor-5m-.+\"}, \"shelf\", \"5m · socrat-1\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"marked-for-deletion\",pod=~\"thanos-compactor-1h-.+\"}, \"shelf\", \"1h · socrat-3\", \"pod\", \".+\"))",
           "legendFormat": "{{shelf}}",
           "instant": true,
           "format": "time_series"
@@ -910,7 +915,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "max by (shelf) (label_replace(thanos_compact_halted{job=\"cattle-monitoring-system/thanos\",pod=~\"thanos-compactor-[0-9a-f]+-.+\"}, \"shelf\", \"raw \u00b7 socrat-0\", \"pod\", \".+\") or label_replace(thanos_compact_halted{job=\"cattle-monitoring-system/thanos\",pod=~\"thanos-compactor-5m-.+\"}, \"shelf\", \"5m \u00b7 socrat-1\", \"pod\", \".+\") or label_replace(thanos_compact_halted{job=\"cattle-monitoring-system/thanos\",pod=~\"thanos-compactor-1h-.+\"}, \"shelf\", \"1h \u00b7 socrat-3\", \"pod\", \".+\"))",
+          "expr": "max by (shelf) (label_replace(thanos_compact_halted{job=\"cattle-monitoring-system/thanos\",pod=~\"thanos-compactor-[0-9a-f]+-.+\"}, \"shelf\", \"raw · socrat-0\", \"pod\", \".+\") or label_replace(thanos_compact_halted{job=\"cattle-monitoring-system/thanos\",pod=~\"thanos-compactor-5m-.+\"}, \"shelf\", \"5m · socrat-1\", \"pod\", \".+\") or label_replace(thanos_compact_halted{job=\"cattle-monitoring-system/thanos\",pod=~\"thanos-compactor-1h-.+\"}, \"shelf\", \"1h · socrat-3\", \"pod\", \".+\"))",
           "legendFormat": "{{shelf}}",
           "instant": true,
           "format": "time_series"
@@ -991,7 +996,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (shelf) (label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-[0-9a-f]+-.+\"}, \"shelf\", \"raw \u00b7 socrat-0\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-5m-.+\"}, \"shelf\", \"5m \u00b7 socrat-1\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-1h-.+\"}, \"shelf\", \"1h \u00b7 socrat-3\", \"pod\", \".+\"))",
+          "expr": "sum by (shelf) (label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-[0-9a-f]+-.+\"}, \"shelf\", \"raw · socrat-0\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-5m-.+\"}, \"shelf\", \"5m · socrat-1\", \"pod\", \".+\") or label_replace(thanos_blocks_meta_synced{job=\"cattle-monitoring-system/thanos\",state=\"loaded\",pod=~\"thanos-compactor-1h-.+\"}, \"shelf\", \"1h · socrat-3\", \"pod\", \".+\"))",
           "legendFormat": "{{shelf}}",
           "instant": false,
           "format": "time_series"
@@ -1720,14 +1725,14 @@
         {
           "refId": "A",
           "expr": "kube_job_status_succeeded{namespace=\"cattle-monitoring-system\",job_name=~\"thanos-cascade-.+\"}",
-          "legendFormat": "Succeeded \u00b7 {{job_name}}",
+          "legendFormat": "Succeeded · {{job_name}}",
           "instant": false,
           "format": "time_series"
         },
         {
           "refId": "B",
           "expr": "kube_job_status_failed{namespace=\"cattle-monitoring-system\",job_name=~\"thanos-cascade-.+\"}",
-          "legendFormat": "Failed \u00b7 {{job_name}}",
+          "legendFormat": "Failed · {{job_name}}",
           "instant": false,
           "format": "time_series"
         }

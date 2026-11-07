@@ -7,14 +7,12 @@ nodes:
   socrat-1: 10.250.0.3
   socrat-2: 10.250.0.2
 nodeAlertLinks: {}
-
 traefikMetrics:
   enabled: true
   serviceName: monitoring-traefik-metrics
   port: 9100
   interval: 5s
   scrapeTimeout: 4s
-
 serviceProbes:
   enabled: true
   image: quay.io/prometheus/blackbox-exporter:v0.29.0
@@ -206,3 +204,4 @@ serviceProbes:
     url: http://socrat-bot.socrat-bot.svc.cluster.local:8080/healthz
     module: http_2xx
     alertName: SocratServiceSocratBotUnavailable
+otelBackendExternalIP: 10.250.0.3

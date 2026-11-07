@@ -34,7 +34,7 @@ def test_grafana_drift_stops(key,value):
  with pytest.raises(RuntimeError):m.env_plan(d)
 
 def test_public_policies_keep_machine_auth_and_block_human_fallbacks():
- gf=(ROOT/'deploy/platform/kube-prometheus-stack/public-entry/files/grafana-policy.conf').read_text()
+ gf=(ROOT/'deploy/platform/grafana/public-entry/files/grafana-policy.conf').read_text()
  assert '~*^Basic 1' in gf and '~^POST:/login/?$ 1' in gf
  assert 'proxy_set_header Authorization ""' not in gf and 'proxy_set_header Upgrade $http_upgrade' in gf
  kuma=(ROOT/'charts/uptime-kuma/files/kuma-policy.conf').read_text()

@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class LokiMarkerScratchTests(unittest.TestCase):
     def test_loki_only_writable_bounded_scratch_preserves_security_and_data(self):
-        rendered = subprocess.check_output(['helm', 'template', 'otel-backends', str(ROOT/'charts/otel-backends')], text=True)
+        rendered = '\n---\n'.join(subprocess.check_output(['helm', 'template', name, str(ROOT/'charts'/name)], text=True) for name in ('loki', 'tempo'))
         deployments = {d['metadata']['name']: d for d in yaml.safe_load_all(rendered) if d and d['kind']=='Deployment'}
         for name, d in deployments.items():
             spec=d['spec']['template']['spec']; c=spec['containers'][0]

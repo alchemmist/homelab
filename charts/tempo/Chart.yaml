@@ -1,0 +1,4 @@
+apiVersion: v2
+name: tempo
+version: 1.0.0
+description: Standalone tempo backend; existing runtime and persistent host path retained.

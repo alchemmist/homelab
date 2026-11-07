@@ -5,7 +5,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 CHARTS = {
-    'kube-prometheus-stack': 'deploy/platform/kube-prometheus-stack/public-entry',
+    'grafana': 'deploy/platform/grafana/public-entry',
     'searxng': 'charts/searxng',
     'open-webui': 'charts/open-webui',
     'litellm': 'deploy/platform/litellm/public-entry',

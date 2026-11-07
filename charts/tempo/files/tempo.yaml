@@ -1,0 +1,40 @@
+server:
+  http_listen_address: ${OTEL_BIND_IP}
+  http_listen_port: 3200
+  grpc_listen_address: 127.0.0.1
+  grpc_listen_port: 9096
+  http_tls_config:
+    cert_file: ${OTEL_TLS_DIR}/server.crt
+    key_file: ${OTEL_TLS_DIR}/server.key
+    client_ca_file: ${OTEL_TLS_DIR}/ca.crt
+    client_auth_type: RequireAndVerifyClientCert
+memberlist:
+  bind_addr: [127.0.0.1]
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: ${OTEL_BIND_IP}:4317
+          tls:
+            cert_file: ${OTEL_TLS_DIR}/server.crt
+            key_file: ${OTEL_TLS_DIR}/server.key
+            client_ca_file: ${OTEL_TLS_DIR}/ca.crt
+ingester:
+  max_block_duration: 5m
+  lifecycler:
+    address: 127.0.0.1
+    ring:
+      replication_factor: 1
+compactor:
+  compaction:
+    block_retention: 168h
+storage:
+  trace:
+    backend: local
+    wal:
+      path: ${OTEL_STORAGE_DIR}/tempo/wal
+    local:
+      path: ${OTEL_STORAGE_DIR}/tempo/blocks
+usage_report:
+  reporting_enabled: false

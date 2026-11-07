@@ -6,7 +6,7 @@ import subprocess
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-JS = ROOT / 'deploy/platform/kube-prometheus-stack/public-entry/files/traffic-light-inset.js'
+JS = ROOT / 'deploy/platform/grafana/public-entry/files/traffic-light-inset.js'
 
 @pytest.mark.skipif(not shutil.which('node'), reason='Node is needed for JS runtime contract')
 @pytest.mark.parametrize('mode', ['unrelated', 'not_opted_in', 'legacy', 'wrong_uid', 'public'])

@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-loki
+  labels:
+    app: otel-loki
+    app.kubernetes.io/part-of: otel-backends
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-loki
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        checksum/loki-config: {{ .Files.Get "files/loki.yaml" | sha256sum }}
+      labels:
+        app: otel-loki
+        app.kubernetes.io/part-of: otel-backends
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.node | quote }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: loki
+        image: {{ .Values.image | quote }}
+        imagePullPolicy: IfNotPresent
+        args:
+        - -config.file=/etc/otel/loki.yaml
+        - -config.expand-env=true
+        env:
+        - name: OTEL_BIND_IP
+          value: 0.0.0.0
+        - name: OTEL_STORAGE_DIR
+          value: /var/lib/otel
+        - name: OTEL_TLS_DIR
+          value: /etc/otel/tls
+        - name: GOMEMLIMIT
+          value: 1536MiB
+        - name: GOMAXPROCS
+          value: '2'
+        ports:
+        - name: http
+          containerPort: 3100
+        readinessProbe:
+          tcpSocket:
+            port: http
+          periodSeconds: 5
+        livenessProbe:
+          tcpSocket:
+            port: http
+          periodSeconds: 20
+          initialDelaySeconds: 20
+        resources:
+{{ toYaml .Values.resources | indent 10 }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: config
+          mountPath: /etc/otel
+          readOnly: true
+        - name: tls
+          mountPath: /etc/otel/tls
+          readOnly: true
+        - name: data
+          mountPath: /var/lib/otel
+        - name: marker-tmp
+          mountPath: /tmp
+      volumes:
+      - name: marker-tmp
+        emptyDir:
+          sizeLimit: 1Gi
+      - name: config
+        configMap:
+          name: otel-loki-config
+      - name: tls
+        secret:
+          secretName: otel-tls-backends
+          defaultMode: 288
+          items:
+          - key: ca.crt
+            path: ca.crt
+          - key: tls.crt
+            path: server.crt
+          - key: tls.key
+            path: server.key
+      - name: data
+        hostPath:
+          path: {{ .Values.storagePath | quote }}
+          type: DirectoryOrCreate
