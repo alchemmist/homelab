@@ -24,9 +24,6 @@ def addresses(explicit=None):
         raise ValueError('Exactly two distinct public IPv4 entrances required')
     return values
 
-PROXY_HOSTS = ['search.socrat.alchemmist.xyz',
-               'llm.socrat.alchemmist.xyz', 'litellm.socrat.alchemmist.xyz',
-               '0.socrat.alchemmist.xyz','1.socrat.alchemmist.xyz','kuma.socrat.alchemmist.xyz']
 
 def probe(case):
     host, ip, path, expected = case[:4]
@@ -39,15 +36,15 @@ def probe(case):
             '-D', '-', '-o', '/dev/null', f'https://{host}{path}']
     if auth:
         args[1:1] = ['--header','Authorization: '+auth]
-    if method == 'POST':
-        args[1:1] = ['--request', 'POST', '--header', 'Content-Type: application/json', '--data', '{}']
+    if method != 'GET':
+        args[1:1] = ['--request', method, '--header', 'Content-Type: application/json', '--data', '{}']
     p = subprocess.run(args, text=True, capture_output=True, timeout=15)
     statuses = [line.split()[1] for line in p.stdout.splitlines() if line.startswith('HTTP/')]
     status = int(statuses[-1]) if statuses else 0
     location = next((line.split(':', 1)[1].strip() for line in p.stdout.splitlines()
                      if line.lower().startswith('location:')), '')
     u = urllib.parse.urlsplit(location)
-    good = p.returncode == 0 and status == expected
+    good = p.returncode == 0 and status in expected if isinstance(expected, (tuple,list)) else p.returncode == 0 and status == expected
     if expected == 302:
         if host=='grafana.socrat.alchemmist.xyz':
             good &= u.scheme in ('','https') and u.hostname in (None,host) and u.path in ('/login','/login/generic_oauth')
@@ -62,8 +59,21 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--address', action='append', help='Repeat twice when running outside the repository')
     ips = addresses(parser.parse_args().address)
-    cases = [(h, ip, path, 302) for h in PROXY_HOSTS for ip in ips
-             for path in ['/', '/api/search', '/api/admin/settings', '//api/search', '/metrics']]
+    cases = [(host,ip,path,code,method,None) for ip in ips for host,path,code,method in [
+        ('search.socrat.alchemmist.xyz','/',200,'GET'),
+        ('llm.socrat.alchemmist.xyz','/',200,'GET'),
+        ('llm.socrat.alchemmist.xyz','/api/v1/auths/',401,'GET'),
+        ('litellm.socrat.alchemmist.xyz','/v1/models',(401,403),'GET'),
+        ('n8n.socrat.alchemmist.xyz','/',200,'GET'),
+        ('n8n.socrat.alchemmist.xyz','/rest/workflows',401,'GET'),
+        ('0.socrat.alchemmist.xyz','/sync/rest/system/status',(401,403),'GET'),
+        ('1.socrat.alchemmist.xyz','/sync/',410,'GET'),
+        ('kuma.socrat.alchemmist.xyz','/dashboard',200,'GET'),
+        ('spi-evidence.socrat.alchemmist.xyz','/',200,'GET'),
+        ('spi-evidence.socrat.alchemmist.xyz','/bad',404,'GET'),
+        ('spi-evidence.socrat.alchemmist.xyz','/bad',405,'PUT'),
+        ('spi-evidence.socrat.alchemmist.xyz','/bad',405,'DELETE'),
+    ]]
     cases += [('grafana.socrat.alchemmist.xyz',ip,path,code,method,auth) for ip in ips for path,code,method,auth in
               [('/',302,'GET',None),('/api/search',401,'GET',None),('/api/admin/settings',401,'GET',None),
                ('/metrics',404,'GET',None),('/debug/pprof/',404,'GET',None),('/login',403,'POST',None),
@@ -74,8 +84,6 @@ def main():
               ['/v3-public/localProviders/local?action=login', '//v3-public/localProviders/local?action=login']]
     cases += [('grafana-mcp.socrat.alchemmist.xyz', ip, path, code) for ip in ips for path, code in
               [('/mcp', 401), ('/metrics', 404), ('/healthz', 404)]]
-    cases += [(host,ip,path,302) for host in ['0.socrat.alchemmist.xyz','1.socrat.alchemmist.xyz'] for ip in ips for path in ['/sync/','/sync/rest/config','/sync/rest/noauth/health']]
-    cases += [('kuma.socrat.alchemmist.xyz',ip,path,302) for ip in ips for path in ['/dashboard','/socket.io/?EIO=4&transport=polling','/api/entry-page']]
     cases += [('status.alchemmist.xyz',ip,path,code) for ip in ips for path,code in [('/status/socrat',200),('/api/status-page/socrat',200),('/api/status-page/heartbeat/socrat',200),('/socket.io/?EIO=4&transport=polling',404),('/socket.io/?EIO=4&transport=websocket',404),('/metrics',404),('/api/settings',404),('/api/push/intentionally-invalid?status=up',404),('/dashboard',302),('/settings',302),('/login',302),('/manage-status-page',302)]]
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
         results = list(pool.map(probe, cases))

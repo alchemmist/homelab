@@ -27,6 +27,8 @@ spec:
     namespace: llm
     server: https://kubernetes.default.svc
   syncPolicy:
+    # Route-only changes must not rerun the chart migration hook.
+    syncOptions: [ApplyOutOfSyncOnly=true]
     automated:
       prune: false
       selfHeal: true
