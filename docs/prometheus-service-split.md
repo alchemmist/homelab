@@ -97,3 +97,21 @@ ownership change. No WAL/blocks were deleted or truncated, no data reset, retent
 change, source-scraper change, duplicate scrape path or new HA/DR acceptance is
 implied. This does not rerun browser MFA/onboarding or every-producer telemetry
 validation; those systems' configurations were not changed by the handoff.
+
+
+## Retirement closeout
+
+The aggregate was removed at `bcc93ca` after disarm `652e286` and adoption
+`78a9336`. Final readback: aggregate absent; all five component owners and root
+Synced/Healthy; all 49 Applications Synced/Healthy at this snapshot. The repeated
+UID/Pod/PVC/Secret-content audit still passes. Public-access regression is 134/134.
+Argo health does not establish database integrity: the pre-existing
+`PrometheusTSDBCompactionsFailing` alert remains visible, alongside the expected
+Watchdog heartbeat. No alert masking or WAL repair was performed.
+
+Private pre-handoff metadata/render/hash receipts are retained 0600 under
+`~/.config/homelab/monitoring/migrations/2026-11-07-prometheus-components/`.
+An ownership rollback requires another disarm/finalizer-free handoff. Do not
+blindly revert commits that delete the five new Applications with active resource
+finalizers: that can cascade into their workloads. Roll back ordinary runtime
+settings only through their current owning chart, preserving persistent data.

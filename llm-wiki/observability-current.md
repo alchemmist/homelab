@@ -19,7 +19,7 @@
 | `pyroscope` | `charts/pyroscope` | Profiling backend и его Grafana integration |
 | `monitoring-k3s` | `charts/monitoring-k3s` | Dashboard JSON, rules, probes и связанные monitoring resources |
 
-Все шесть указанных apps — Synced/Healthy. Auto-sync Loki/Tempo восстановлен:
+Все указанные apps — Synced/Healthy. Auto-sync Loki/Tempo восстановлен:
 временный `automated.enabled=false` снят, `prune=false/selfHeal=true` сохранены.
 Старые `kube-prometheus-stack`, `prometheus-stack`, `otel-backends`, `profiling` удалены из Git/кластера
 после снятия finalizers и передачи владения. 103 UID существующих объектов сохранены
