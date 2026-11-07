@@ -64,11 +64,11 @@ class TrafficLightLayoutTest(unittest.TestCase):
         for panel in self.dashboard['panels']:
             grid = panel['gridPos']
             self.assertLessEqual(grid['x'] + grid['w'], 24)
-            self.assertLessEqual(grid['y'] + grid['h'], 15)
+            self.assertLessEqual(grid['y'] + grid['h'], 18)
             for assert_key in cells(grid):
                 self.assertNotIn(assert_key, occupied, f'panel {panel["id"]} overlaps {occupied.get(assert_key)}')
                 occupied[assert_key] = panel['id']
-        holes = [(x, y) for y in range(15) for x in range(24)
+        holes = [(x, y) for y in range(18) for x in range(24)
                  if (x, y) not in occupied]
         self.assertEqual(holes, [])
 
@@ -80,22 +80,22 @@ class TrafficLightLayoutTest(unittest.TestCase):
         digits = ['0', '1', '2', '3']
         for i, panel_id in enumerate((901, 902, 903, 904)):
             panel = panel_by_id(self.dashboard, panel_id)
-            self.assertEqual(panel['gridPos'], {'x': 19 + i, 'y': 7, 'w': 1, 'h': 1})
+            self.assertEqual(panel['gridPos'], {'x': 19 + i, 'y': 8, 'w': 1, 'h': 1})
             self.assertEqual(panel['fieldConfig']['defaults']['displayName'], digits[i])
             self.assertEqual(len(panel['targets']), 1)
         for i, (panel_id, name) in enumerate(((905, 'Home IP'), (906, 'VPS IP'))):
             panel = panel_by_id(self.dashboard, panel_id)
-            self.assertEqual(panel['gridPos'], {'x': 19 + i * 2, 'y': 8, 'w': 2, 'h': 1})
+            self.assertEqual(panel['gridPos'], {'x': 19 + i * 2, 'y': 9, 'w': 2, 'h': 1})
             self.assertEqual(panel['fieldConfig']['defaults']['displayName'], name)
             self.assertEqual(len(panel['targets']), 1)
         up = panel_by_id(self.dashboard, 908)
-        self.assertEqual(up['gridPos'], {'x': 23, 'y': 7, 'w': 1, 'h': 2})
+        self.assertEqual(up['gridPos'], {'x': 23, 'y': 8, 'w': 1, 'h': 2})
         self.assertEqual(up['fieldConfig']['defaults']['displayName'], 'UP')
         chart = panel_by_id(self.dashboard, 907)
-        self.assertEqual(chart['gridPos'], {'x': 19, 'y': 13, 'w': 5, 'h': 2})
-        self.assertEqual(chart['type'], 'timeseries')
+        self.assertEqual(chart['gridPos'], {'x': 19, 'y': 13, 'w': 5, 'h': 5})
+        self.assertEqual(chart['type'], 'stat')
         history = panel_by_id(self.dashboard, 909)
-        self.assertEqual(history['gridPos'], {'x': 19, 'y': 9, 'w': 5, 'h': 4})
+        self.assertEqual(history['gridPos'], {'x': 19, 'y': 10, 'w': 5, 'h': 3})
         self.assertEqual(history['type'], 'timeseries')
 
     def test_unmodified_resource_columns(self):
@@ -104,9 +104,18 @@ class TrafficLightLayoutTest(unittest.TestCase):
         disk = panel_by_id(self.dashboard, 23)
         for panel in (cpu, memory, disk):
             self.assertEqual(panel['gridPos']['x'] in (14, 19), True)
-        self.assertEqual(cpu['gridPos'], {'x': 14, 'y': 0, 'w': 5, 'h': 7})
-        self.assertEqual(memory['gridPos'], {'x': 19, 'y': 0, 'w': 5, 'h': 7})
-        self.assertEqual(disk['gridPos'], {'x': 14, 'y': 7, 'w': 5, 'h': 7})
+        self.assertEqual(cpu['gridPos'], {'x': 14, 'y': 0, 'w': 5, 'h': 8})
+        self.assertEqual(memory['gridPos'], {'x': 19, 'y': 0, 'w': 5, 'h': 8})
+        self.assertEqual(disk['gridPos'], {'x': 14, 'y': 8, 'w': 5, 'h': 7})
+
+
+    def test_ingress_chart_preserves_live_rps_queries(self):
+        panel = panel_by_id(self.dashboard, 334)
+        self.assertEqual(len(panel['targets']), 5)
+        for target in panel['targets']:
+            self.assertIn('sum(rate(traefik_entrypoint_requests_total{', target['expr'])
+            self.assertIn('entrypoint=~"web|websecure"', target['expr'])
+            self.assertIn('[5m]', target['expr'])
 
     def test_rps_chart_keeps_full_width(self):
         panel = panel_by_id(self.dashboard, 334)
@@ -144,7 +153,6 @@ class TrafficLightQueriesTest(unittest.TestCase):
         self.assertIn('socrat_vpn_collection_success == 1', expr)
         self.assertIn('socrat_vpn_collection_timestamp_seconds < 90', expr)
         panel = panel_by_id(self.dashboard, 907)
-        self.assertFalse(panel['fieldConfig']['defaults']['custom']['spanNulls'])
         self.assertEqual(panel['fieldConfig']['defaults']['min'], 0)
 
     def test_edge_tiles_match_probe_catalog(self):
@@ -159,42 +167,55 @@ class TrafficLightQueriesTest(unittest.TestCase):
             self.assertIn(f'id: {service_id}\n', text)
             self.assertIn(alert, text)
 
-    def test_tv_charts_hide_axes_but_keep_grid(self):
-        for panel_id in (907, 909):
-            custom = panel_by_id(self.dashboard, panel_id)['fieldConfig']['defaults']['custom']
-            self.assertEqual(custom['axisPlacement'], 'hidden')
-            self.assertTrue(custom['axisGridShow'])
+    def test_latency_chart_keeps_grid_and_units(self):
+        panel = panel_by_id(self.dashboard, 909)
+        self.assertTrue(panel['fieldConfig']['defaults']['custom']['axisGridShow'])
+        self.assertEqual(panel['fieldConfig']['defaults']['unit'], 's')
 
     def test_dashboard_time_window_is_twelve_hours(self):
         self.assertEqual(self.dashboard['time'], {'from': 'now-12h', 'to': 'now'})
 
-    def test_vpn_chart_hides_its_background(self):
+    def test_vpn_preserves_latest_manual_stat_visualization(self):
         panel = panel_by_id(self.dashboard, 907)
-        self.assertTrue(panel['transparent'])
-        self.assertFalse(panel['options']['legend']['showLegend'])
-
-    def test_vpn_panel_bindings(self):
-        panel = panel_by_id(self.dashboard, 907)
-        self.assertEqual(panel['title'], '')
+        self.assertEqual(panel['type'], 'stat')
+        self.assertEqual(panel['gridPos']['y'] + panel['gridPos']['h'], 18)
         self.assertEqual(panel['fieldConfig']['defaults']['min'], 0)
         self.assertNotIn('max', panel['fieldConfig']['defaults'])
-        # no traffic-light zones: a single calm threshold and fixed blue fill
-        custom = panel['fieldConfig']['defaults']['custom']
-        self.assertEqual(custom['thresholdsStyle'], {'mode': 'off'})
-        self.assertEqual(len(panel['fieldConfig']['defaults']['thresholds']['steps']), 1)
 
-    def test_cluster_cpu_history_shows_per_node_series(self):
+    def test_cpu_history_replaced_with_http_latency(self):
         panel = panel_by_id(self.dashboard, 909)
-        target = panel['targets'][0]
-        self.assertEqual(target['expr'],
-                         '100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{job="node-exporter",mode="idle"}[5m])))')
-        self.assertEqual(target['legendFormat'], '{{instance}}')
-        defaults = panel['fieldConfig']['defaults']
-        self.assertEqual(defaults['color']['mode'], 'palette-classic')
-        self.assertEqual(defaults['unit'], 'percent')
-        self.assertEqual((defaults['min'], defaults['max']), (0, 100))
-        self.assertEqual([s['color'] for s in defaults['thresholds']['steps']],
-                         ['#26783D', '#A85D08', '#B42332'])
+        expr = panel['targets'][0]['expr']
+        self.assertIn('histogram_quantile(0.95', expr)
+        self.assertIn('sum by(le)', expr)
+        self.assertIn('job="traefik"', expr)
+        self.assertNotIn('node_cpu_seconds_total', expr)
+        self.assertNotIn('or vector(0)', expr)
+
+    def test_absolute_resource_values_and_dynamic_capacity(self):
+        for panel_id, unit in [(21, 'suffix: cores'), (22, 'bytes'), (23, 'bytes')]:
+            panel = panel_by_id(self.dashboard, panel_id)
+            defaults = panel['fieldConfig']['defaults']
+            self.assertEqual(defaults['unit'], unit)
+            self.assertEqual(defaults['thresholds']['mode'], 'percentage')
+            self.assertNotIn('max', defaults)
+            mappings = panel['transformations'][-1]['options']['mappings']
+            self.assertIn({'fieldName': 'Capacity', 'handlerKey': 'max'}, mappings)
+            self.assertIn({'fieldName': 'Used', 'handlerKey': 'field.value'}, mappings)
+            self.assertEqual(panel['targets'][0]['format'], 'table')
+            self.assertIn('nodename', panel['targets'][1]['expr'])
+            for target in panel['targets']:
+                self.assertNotIn('or vector(0)', target['expr'])
+        self.assertIn('node_filesystem_free_bytes', panel_by_id(self.dashboard, 23)['targets'][0]['expr'])
+
+    def test_incident_list_is_bounded_and_health_gated(self):
+        panel = panel_by_id(self.dashboard, 920)
+        self.assertEqual(panel['type'], 'table')
+        expr = panel['targets'][0]['expr']
+        self.assertIn('topk(3', expr)
+        self.assertIn('group by(alertname, severity)', expr)
+        self.assertIn('up{job="kube-prometheus-stack-prometheus"} == 1', expr)
+        self.assertIn('unless on()', expr)
+        self.assertEqual(panel['gridPos'], {'x': 0, 'y': 15, 'w': 19, 'h': 3})
 
     def test_up_tile_counts_ready_nodes_with_quorum_thresholds(self):
         up = panel_by_id(self.dashboard, 908)
