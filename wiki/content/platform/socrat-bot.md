@@ -1,6 +1,6 @@
 ---
 title: "Socrat Bot"
-weight: 35
+weight: 30
 ---
 
 Socrat Bot — это Telegram-бот кластера. Через него приходят карточки алертов,
