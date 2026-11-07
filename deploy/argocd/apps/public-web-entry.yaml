@@ -3,7 +3,8 @@ kind: Application
 metadata:
   name: public-web-entry
   namespace: argocd
-  finalizers: [resources-finalizer.argocd.argoproj.io]
+  # Migration: root may remove this Application only without cascading deletion.
+  finalizers: []
 spec:
   project: default
   source:
@@ -14,5 +15,5 @@ spec:
     namespace: identity
     server: https://kubernetes.default.svc
   syncPolicy:
-    automated: {prune: false, selfHeal: true}
+    automated: {enabled: false, prune: false, selfHeal: false}
     syncOptions: [ServerSideApply=true]
