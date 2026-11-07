@@ -1,7 +1,7 @@
 ---
 vpn_failover_root: /opt/homelab-vpn-failover
 vpn_failover_state: /var/lib/homelab-vpn-failover
-vpn_failover_k3s_unit: k3s-agent.service
+vpn_failover_k3s_unit: k3s.service
 vpn_failover_fenced_units:
   - k3s-agent.service
   - k3s.service
@@ -32,3 +32,9 @@ vpn_failover_caddy_ports:
   - {protocol: udp, port: 443}
 vpn_failover_arm: true
 vpn_failover_verify_native: true
+
+# Additional confirmation before fencing or restarting native VPN.
+vpn_failover_confirmation_checks: 2
+vpn_failover_confirmation_interval_seconds: 1
+vpn_failover_native_start_grace_seconds: 30
+vpn_failover_kubernetes_start_timeout_seconds: 180

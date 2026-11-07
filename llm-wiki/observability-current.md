@@ -174,3 +174,26 @@ fencing safety retained. Controlled second failback succeeded: all4 nodes Ready,
 x-ui/Traefik1/1, native units stopped, timer resumed. Authenticated public Trojan
 TLS/WebSocket → HTTPS200 verified. Pods were replaced after fencing; DBs were not
 reset/restored. Private backup/journal paths and limitations are in the report.
+
+
+### Watchdog hardening after the incident
+
+Role/Python defaults now select `k3s.service`, consistent with socrat-2's etcd-only
+server role. Legacy `k3s-agent.service` remains only a compatibility fencing/guard
+reference or historical context; do not delete it from the safety lists.
+
+After4 scheduled failures, watchdog requires2 further bad samples1s apart before
+fencing; recovery cancels activation and resets failures. Native startup has30s
+monotonic/boot-scoped warm-up (still unhealthy if checks fail), and native restarts
+also require confirmation. Failback checks target identity before stopping VPN;
+failed server startup attempts immediate native rollback. No automatic failback,
+TLS weakening or alert muting. Safe last-failure receipt retained outside Git.
+See [current protocol/defaults](../docs/vpn-failover.md#hardened-detection-and-service-identity).
+
+Hardening applied live without restarting k3s, x-ui or Traefik; their current Pod
+names were retained, all4 nodes Ready, native primary/Caddy inactive, timer active.
+Post-update scheduled probes healthy/failures0.63 focused tests +2 subtests and
+Ansible syntax-check pass. Error/confirmation/warm-up/rollback branches are unit
+and fault-injection tested; no additional production outage was deliberately
+triggered to exercise the new fencing policy. Private installation receipts are
+under `/var/lib/homelab-vpn-failover/hardening/2026-11-07/` on socrat-2.

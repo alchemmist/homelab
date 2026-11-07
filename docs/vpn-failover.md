@@ -1,6 +1,6 @@
 # Independent VPN recovery on socrat-2
 
-The optional `vpn_failover` role prepares native systemd recovery for the primary 3x-ui configuration and the retained legacy fallback plus Caddy on `socrat-2`. The normal runtime is the Kubernetes `x-ui` Deployment in namespace `x-ui` with only the `primary` container. A short Python process runs from a systemd timer every 30 seconds after the previous check finishes; no additional daemon or container runs while the VPN is healthy.
+The optional `vpn_failover` role prepares native systemd recovery for the primary 3x-ui configuration plus Caddy on `socrat-2`. The normal runtime is the Kubernetes `x-ui` Deployment in namespace `x-ui` with only the `primary` container. A short Python process runs from a systemd timer every 30 seconds after the previous check finishes; no additional daemon or container runs while the VPN is healthy.
 
 Install from `ansible/`:
 
@@ -8,29 +8,28 @@ Install from `ansible/`:
 ansible-playbook playbooks/vpn-failover.yml --ask-become-pass
 ```
 
-Installation preserves the pinned primary and legacy image filesystems under `/opt/homelab-vpn-failover`, renders dormant native services, installs Kubernetes server and agent startup guards, verifies current VPN health and enables `homelab-vpn-watchdog.timer`. Before enabling the timer, it starts the native runtimes in an isolated network namespace using private SQLite backups and copied runtime assets, checks them, and removes the test resources. It does not stop healthy Kubernetes workloads. The dedicated playbook is not imported into the normal VPN deployment. For independent VPS access, add `-e ansible_host=176.98.185.59 -e ansible_port=22`. Set `-e vpn_failover_arm=false` to prepare without enabling monitoring. Use `-e vpn_failover_verify_native=false` only when intentionally skipping the isolated smoke test.
+Installation preserves the pinned primary image filesystem under `/opt/homelab-vpn-failover`, renders dormant native services, installs Kubernetes server and agent startup guards, verifies current VPN health and enables `homelab-vpn-watchdog.timer`. Before enabling the timer, it starts the native runtimes in an isolated network namespace using private SQLite backups and copied runtime assets, checks them, and removes the test resources. It does not stop healthy Kubernetes workloads. The dedicated playbook is not imported into the normal VPN deployment. For independent VPS access, add `-e ansible_host=176.98.185.59 -e ansible_port=22`. Set `-e vpn_failover_arm=false` to prepare without enabling monitoring. Use `-e vpn_failover_verify_native=false` only when intentionally skipping the isolated smoke test.
 
 ## Detection and recovery
 
-The watchdog checks the configured primary and legacy TCP VPN listeners and performs a certificate-validated TLS/WebSocket upgrade through local port 443 using the public VPN hostname and exact Trojan route. This detects missing listeners and a broken public Trojan ingress. It does not perform an authenticated VPN request or validate UDP tunnels end to end. Panel availability, the status page and Kubernetes API connectivity are not failure triggers.
+The watchdog checks the configured primary TCP VPN listeners and performs a certificate-validated TLS/WebSocket upgrade through local port 443 using the public VPN hostname and exact Trojan route. This detects missing listeners and a broken public Trojan ingress. It does not perform an authenticated VPN request or validate UDP tunnels end to end. Panel availability, the status page and Kubernetes API connectivity are not failure triggers.
 
-Four consecutive unhealthy checks trigger recovery. A healthy check resets the counter. There is a 180-second grace period after VPS boot; check durations add to the nominal two-minute detection window. An unavailable home control plane alone does not trigger recovery while the VPN keeps working.
+Four consecutive unhealthy checks reach the recovery threshold. Before fencing, two additional checks separated by one second must remain unhealthy; any success cancels activation and resets the counter. A healthy check resets the counter. There is a 180-second grace period after VPS boot; check durations add to the nominal two-minute detection window. An unavailable home control plane alone does not trigger recovery while the VPN keeps working.
 
-Before switching, the watchdog verifies required local files and checks both live SQLite databases read-only. It durably writes `/var/lib/homelab-vpn-failover/active`, stops both `k3s.service` and `k3s-agent.service`, and terminates remaining Kubernetes and k3s service cgroup processes. **This stops all Kubernetes pods on the VPS**, including Traefik and the status page. Home nodes are not stopped. It does not run `k3s-killall.sh` or flush network rules.
+Before switching, the watchdog verifies required local files and checks the configured live primary SQLite database read-only. It durably writes `/var/lib/homelab-vpn-failover/active`, stops both `k3s.service` and `k3s-agent.service`, and terminates remaining Kubernetes and k3s service cgroup processes. **This stops all Kubernetes pods on the VPS**, including Traefik and the status page. Home nodes are not stopped. It does not run `k3s-killall.sh` or flush network rules.
 
 Only after checking that Kubernetes processes are gone and VPN ports are free does it start:
 
 - `homelab-vpn-primary.service`
-- `homelab-vpn-legacy.service`
 - `homelab-vpn-caddy.service`
 
-Both 3x-ui services execute directly under systemd with `RootDirectory` pointing to their preserved image filesystem. No Docker or Kubernetes runtime is required to start them. Bind mounts preserve the same live databases: `/srv/x-ui-lab/db` for primary and `/etc/x-ui` for legacy. Legacy also uses `/usr/local/x-ui/bin`. Database snapshots are not restored, merged or interchanged.
+The primary 3x-ui service executes directly under systemd with `RootDirectory` pointing to their preserved image filesystem. No Docker or Kubernetes runtime is required to start them. Bind mounts preserve the same live primary database at `/srv/x-ui-lab/db`. Retained legacy assets are not an active native service in the current configuration. Database snapshots are not restored, merged or interchanged.
 
 Caddy uses the retained certificate storage at `/srv/caddy/data/caddy` and can renew through ACME independently of cert-manager and the home control plane. Certificate issuance or renewal still needs working DNS, public challenge reachability and an ACME service. Existing subscription, panel and Trojan routes are retained.
 
-The active marker survives reboot and blocks both Kubernetes server and agent startup. The timer retries starting native units that are inactive or failed, and each native unit has its own restart policy. A failure during recovery keeps the marker in place. If native VPN health fails four consecutive checks, the watchdog stops and restarts all three native services after verifying that their ports are released. A healthy check resets this separate recovery counter.
+The active marker survives reboot and blocks both Kubernetes server and agent startup. The timer retries starting native units that are inactive or failed, and each native unit has its own restart policy. A failure during recovery keeps the marker in place. If native VPN health fails four consecutive checks, the watchdog stops and restarts both configured native services after verifying that their ports are released. A healthy check resets this separate recovery counter.
 
-The native image digests come from `charts/x-ui/values.yaml`: `instances.primary` supplies the primary service and `instances.compatibility` supplies `homelab-vpn-legacy.service`. Recovery does not depend on the former `x-ui-lab` and `x-ui-legacy` namespace names.
+The primary native image digest comes from `charts/x-ui/values.yaml`, `instances.primary`. Compatibility assets are retained separately, not started as a third native service. Recovery does not depend on the former `x-ui-lab` and `x-ui-legacy` namespace names.
 
 ## Interaction with the HA datastore
 
@@ -81,7 +80,7 @@ When the control plane and VPS connectivity are healthy, schedule a brief VPN in
 sudo /usr/local/sbin/homelab-vpn-failover failback
 ```
 
-This serializes against watchdog checks, verifies the Kubernetes fence, stops native services, verifies that their ports are released, resets the failure counter and grace period, removes the active marker and starts the configured primary Kubernetes service (`k3s.service` after HA promotion). If native services do not release their ports, the marker stays in place. If Kubernetes startup fails, the marker is restored and both service variants are fenced again. Verify `check`, Kubernetes workload readiness and an actual VPN client connection after failback. Do not remove the active marker by hand while native services own the databases.
+This serializes against watchdog checks, verifies the Kubernetes fence, stops native services, verifies that their ports are released, resets the failure counter and grace period, removes the active marker and starts the configured primary Kubernetes service (`k3s.service` after HA promotion). If native services do not release their ports, the marker stays in place. If Kubernetes startup fails, the marker is restored, both service variants are fenced again and native recovery is attempted immediately (the timer remains a retry path). Verify `check`, Kubernetes workload readiness and an actual VPN client connection after failback. Do not remove the active marker by hand while native services own the databases.
 
 Normal `vpn.yml` deployment and host workload cleanup refuse to proceed on `socrat-2` while recovery is active. Updating recovery assets also requires returning to Kubernetes first.
 
@@ -98,3 +97,34 @@ starts now have a separate `kubernetes_start_timeout_seconds` deadline (default
 180 seconds); other systemctl commands retain40 seconds. Failed public WebSocket
 checks include sanitized stage/error classification; no private URL or exception
 text is emitted. Live server/agent selection must match the node's actual role.
+
+
+## Hardened detection and service identity
+
+Current socrat-2 is an etcd-only **server**, so both role defaults and live config
+select `k3s.service`. `k3s-agent.service` remains in the fencing list and startup
+guards **intentionally**, to prevent a retained obsolete unit from running beside
+the server/native runtime. Do not globally replace/remove those safety references.
+Failback verifies the target is installed before stopping native VPN and refuses a
+legacy agent target when a server unit is installed; no automatic unit guessing.
+
+Configuration defaults:
+
+| Setting | Default | Purpose |
+|---|---:|---|
+| `failure_threshold` | 4 | Consecutive scheduled failures |
+| `confirmation_checks` | 2 | Additional consecutive bad samples before fencing/restart |
+| `confirmation_interval_seconds` | 1 | Spacing of confirmation samples |
+| `native_start_grace_seconds` | 30 | Do not count native warm-up failures toward restart |
+| `kubernetes_start_timeout_seconds` | 180 | Allow etcd/server startup to finish |
+
+A native warm-up failure remains unhealthy/nonzero, not silently green; checks and
+normal systemd restart policies continue. Warm-up uses monotonic uptime and a boot
+ID, not wall-clock timestamps. Native service restarts also require confirmation;
+a recovered sample cancels the restart. Counters are reset during warm-up.
+`last_failure.json` persists the last scheduled Kubernetes failure with safe probe
+diagnostics; no exception text, response bodies or private URLs are stored.
+
+These measures reduce transient-trigger risk; they do not prove the original
+handshake errors were false positives. A sustained confirmed TLS/WebSocket failure
+can still intentionally fence this entire VPS. Automatic failback remains disabled.

@@ -22,7 +22,7 @@ class Watchdog:
     def __init__(self, config):
         self.config = config
         self.state = Path(config.get('state_dir', STATE_DIR))
-        self.agent = config.get('agent_unit', 'k3s-agent.service')
+        self.agent = config.get('agent_unit', 'k3s.service')
         self.fenced_units = list(dict.fromkeys(config.get('fenced_units', ['k3s-agent.service', 'k3s.service']) + [self.agent]))
         self.units = config.get('native_units', NATIVE_UNITS)
         self.timeout = config.get('timeout_seconds', 4)
@@ -200,6 +200,19 @@ class Watchdog:
             saved = {}
         return saved if saved.get('boot_id') == boot else {'boot_id': boot, 'failures': 0, 'grace_until': self.config.get('boot_grace_seconds', 180)}
 
+    def confirm_failure(self):
+        # Independent samples, under the existing lock, before destructive action.
+        for _ in range(max(1, int(self.config.get('confirmation_checks', 2)))):
+            time.sleep(max(0, self.config.get('confirmation_interval_seconds', 1)))
+            health = self.health()
+            if health['healthy']:
+                return False, health
+        return True, health
+
+    def native_warmup(self):
+        boot, uptime = self.clock()
+        self.write('native_warmup.json', {'boot_id': boot, 'until': uptime + self.config.get('native_start_grace_seconds', 30)})
+
     def activate(self):
         self.preflight()
         if not (self.state / 'active').exists():
@@ -209,14 +222,25 @@ class Watchdog:
         if not running and self.occupied():
             raise RuntimeError('VPN ports still occupied; refusing native startup')
         self.guard()
+        started = False
         for unit in self.units:
             if not self.service_active(unit):
                 assigned = {(item['protocol'], int(item['port'])) for item in self.config.get('native_unit_ports', {}).get(unit, [])}
                 if assigned.intersection(self.occupied()):
                     raise RuntimeError('Native service ports occupied: ' + unit)
+                if not started:
+                    self.native_warmup()
+                started = True
                 self.command('systemctl', 'start', unit)
         health = self.health()
-        boot, _ = self.clock()
+        boot, uptime = self.clock()
+        try:
+            warmup = json.loads((self.state / 'native_warmup.json').read_text())
+        except (FileNotFoundError, ValueError):
+            warmup = {}
+        if not health['healthy'] and warmup.get('boot_id') == boot and uptime < warmup.get('until', 0):
+            self.write('fallback_failures.json', {'boot_id': boot, 'failures': 0})
+            return {'mode': 'fallback', 'warming_up': True, 'failures': 0, **health}
         try:
             saved = json.loads((self.state / 'fallback_failures.json').read_text())
         except (FileNotFoundError, ValueError):
@@ -224,12 +248,17 @@ class Watchdog:
         failures = saved.get('failures', 0) if saved.get('boot_id') == boot else 0
         failures = 0 if health['healthy'] else failures + 1
         if failures >= self.config.get('failure_threshold', 4):
+            confirmed, health = self.confirm_failure()
+            if not confirmed:
+                self.write('fallback_failures.json', {'boot_id': boot, 'failures': 0})
+                return {'mode': 'fallback', 'restart_cancelled': True, 'failures': 0, **health}
             self.write('fallback_failures.json', {'boot_id': boot, 'failures': 0})
             for unit in reversed(self.units):
                 self.command('systemctl', 'stop', unit)
             if any(self.service_active(unit) for unit in self.units) or self.occupied():
                 raise RuntimeError('Native VPN did not release ports for recovery restart')
             self.guard()
+            self.native_warmup()
             for unit in self.units:
                 self.command('systemctl', 'start', unit)
             return {'mode': 'fallback', 'restarted': True, **self.health()}
@@ -248,13 +277,24 @@ class Watchdog:
         health = self.health()
         saved['failures'] = 0 if health['healthy'] else saved['failures'] + 1
         self.write('failures.json', saved)
+        if not health['healthy']:
+            self.write('last_failure.json', {'mode': 'kubernetes', 'boot_id': boot, 'uptime': uptime, **health})
         if saved['failures'] >= self.config.get('failure_threshold', 4):
+            confirmed, health = self.confirm_failure()
+            if not confirmed:
+                saved['failures'] = 0
+                self.write('failures.json', saved)
+                return {'mode': 'kubernetes', 'activation_cancelled': True, 'failures': 0, **health}
             return self.activate()
         return {'mode': 'kubernetes', 'failures': saved['failures'], **health}
 
     def failback(self):
         if not (self.state / 'active').exists():
             raise RuntimeError('Fallback is not active')
+        if not self.service_installed(self.agent):
+            raise RuntimeError('Configured Kubernetes service is not installed; keeping native VPN')
+        if self.agent == 'k3s-agent.service' and self.service_installed('k3s.service'):
+            raise RuntimeError('Legacy agent target conflicts with installed server; keeping native VPN')
         self.fence()
         for unit in reversed(self.units):
             self.command('systemctl', 'stop', unit)
@@ -273,6 +313,8 @@ class Watchdog:
         except Exception:
             self.write('active', {'activated_at': time.time(), 'reason': 'failback failed'})
             self.fence()
+            # Restore service immediately, rather than waiting for the next timer.
+            self.activate()
             raise
         return {'mode': 'kubernetes', 'grace': True}
 

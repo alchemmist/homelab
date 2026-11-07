@@ -13,7 +13,7 @@ SPEC.loader.exec_module(MODULE)
 
 class FakeWatchdog(MODULE.Watchdog):
     def __init__(self, directory):
-        super().__init__({'state_dir': directory, 'listen_ports': [], 'failure_threshold': 4})
+        super().__init__({'state_dir': directory, 'listen_ports': [], 'failure_threshold': 4, 'confirmation_interval_seconds': 0, 'native_start_grace_seconds': 0})
         self.good = False
         self.uptime = 300
         self.events = []
@@ -21,6 +21,9 @@ class FakeWatchdog(MODULE.Watchdog):
         self.stuck = False
         self.ports = []
         self.invalid = False
+
+    def service_installed(self, unit):
+        return unit == self.agent
 
     def clock(self):
         return 'boot-one', self.uptime
@@ -297,6 +300,90 @@ class CommandDeadlineTests(unittest.TestCase):
             w.command('systemctl', 'start', 'k3s-agent.service')
             self.assertEqual(run.call_args.kwargs['timeout'], 240)
 
+
+
+
+class HardeningTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.w = FakeWatchdog(self.directory.name)
+
+    def test_recovery_during_confirmation_cancels_fencing(self):
+        self.w.health = mock.Mock(side_effect=[{'healthy': False, 'errors': ['unavailable']}] * 4 + [{'healthy': True, 'errors': []}])
+        for _ in range(3): self.w.tick()
+        result = self.w.tick()
+        self.assertTrue(result['activation_cancelled'])
+        self.assertEqual(result['failures'], 0)
+        self.assertEqual(self.w.events, [])
+        self.assertFalse((self.w.state / 'active').exists())
+
+    def test_all_confirmation_samples_must_remain_unhealthy(self):
+        self.w.health = mock.Mock(return_value={'healthy': False, 'errors': ['unavailable']})
+        for _ in range(4): result = self.w.tick()
+        self.assertEqual(result['mode'], 'fallback')
+        self.assertEqual(self.w.health.call_count, 7)  # four + two confirms + native
+        self.assertEqual(self.w.events[0], 'fence')
+
+    def test_native_warmup_does_not_count_startup_failures(self):
+        self.w.config['native_start_grace_seconds'] = 30
+        self.assertTrue(self.w.activate()['warming_up'])
+        for _ in range(5): self.assertTrue(self.w.tick()['warming_up'])
+        self.assertFalse(any(isinstance(e, tuple) and e[1] == 'stop' for e in self.w.events))
+        self.w.uptime += 31
+        self.assertEqual(self.w.tick()['failures'], 1)
+
+    def test_native_restart_cancelled_if_confirmation_recovers(self):
+        self.w.activate()
+        self.w.tick(); self.w.tick()
+        self.w.health = mock.Mock(side_effect=[{'healthy': False, 'errors': ['unavailable']}, {'healthy': True, 'errors': []}])
+        self.assertTrue(self.w.tick()['restart_cancelled'])
+        self.assertFalse(any(isinstance(e, tuple) and e[1] == 'stop' for e in self.w.events))
+
+    def test_stale_agent_target_keeps_native_untouched(self):
+        self.w.activate(); self.w.events.clear()
+        self.w.agent = 'k3s-agent.service'
+        self.w.service_installed = lambda unit: True
+        with self.assertRaisesRegex(RuntimeError, 'Legacy agent'):
+            self.w.failback()
+        self.assertEqual(self.w.events, [])
+        self.assertTrue((self.w.state / 'active').exists())
+
+    def test_missing_target_keeps_native_untouched(self):
+        self.w.activate(); self.w.events.clear()
+        self.w.service_installed = lambda unit: False
+        with self.assertRaisesRegex(RuntimeError, 'not installed'):
+            self.w.failback()
+        self.assertEqual(self.w.events, [])
+
+    def test_failed_kubernetes_start_restores_native_immediately(self):
+        self.w.activate()
+        command = self.w.command
+        def failed(*args):
+            if args == ('systemctl', 'start', self.w.agent): raise RuntimeError('start failed')
+            return command(*args)
+        self.w.command = failed
+        with self.assertRaisesRegex(RuntimeError, 'start failed'):
+            self.w.failback()
+        self.assertEqual(self.w.running, set(MODULE.NATIVE_UNITS))
+        self.assertTrue((self.w.state / 'active').exists())
+
+    def test_failure_receipt_is_durable(self):
+        self.w.tick()
+        receipt = json.loads((self.w.state / 'last_failure.json').read_text())
+        self.assertEqual(receipt['mode'], 'kubernetes')
+        self.assertFalse(receipt['healthy'])
+        self.assertEqual((self.w.state / 'last_failure.json').stat().st_mode & 0o777, 0o600)
+
+
+class ServiceIdentityContractTests(unittest.TestCase):
+    def test_python_and_ansible_defaults_use_current_server(self):
+        self.assertEqual(MODULE.Watchdog({}).agent, 'k3s.service')
+        import yaml
+        root = SOURCE.parents[4]
+        defaults = yaml.safe_load((root / 'ansible/roles/vpn_failover/defaults/main.yml').read_text())
+        self.assertEqual(defaults['vpn_failover_k3s_unit'], 'k3s.service')
+        self.assertEqual(set(defaults['vpn_failover_fenced_units']), {'k3s.service', 'k3s-agent.service'})
 
 if __name__ == '__main__':
     unittest.main()
