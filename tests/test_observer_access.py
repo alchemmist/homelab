@@ -65,9 +65,9 @@ def permits(rules, group, resource, verb, name=None):
 
 
 class ObserverPolicyTests(unittest.TestCase):
-    def test_this_delivery_does_not_activate_rancher_roles(self):
+    def test_reviewed_activation_enables_native_rancher_roles(self):
         values = (ROOT / 'deploy/platform/rancher/public-entry/values.yaml').read_text()
-        self.assertIn('observerAccess:\n  enabled: false', values)
+        self.assertIn('observerAccess:\n  enabled: true', values)
 
     def test_native_only_no_user_objects(self):
         self.assertEqual([o['kind'] for o in RBAC], ['GlobalRole', 'RoleTemplate', 'ClusterRoleTemplateBinding'])
