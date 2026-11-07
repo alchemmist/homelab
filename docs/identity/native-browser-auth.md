@@ -112,3 +112,30 @@ the native route was created from the exact Git render, with original Argo owner
 without running migrations or changing its workload/database. LiteLLM is now
 Synced/Healthy. ApplyOutOfSyncOnly reduces applies but is not sufficient to skip
 all hooks; route-only operations require explicit resource selection/apply strategy.
+
+## Recovered VPS: final acceptance
+
+The earlier blocked receipt above is historical and is superseded by this
+recheck after operator-reported recovery (issue#103):
+
+- Public native-access probe: **82/82 passed**,41 on HOME and41 on VPS, forced
+  public addresses with ordinary certificate/SNI validation.
+- All4 nodes Ready; socrat-2 Ready since2026-11-07T17:55:34Z. All8 affected Argo
+  applications Synced/Healthy, including traefik-edge.
+- The old xui gateway Application, Deployment, Service, ConfigMap and Pods are
+  absent. All9 retired proxy-backed ingresses remain absent. No force-delete,
+  finalizer bypass or service/VPN restart was needed during this recheck.
+-10 native OIDC apps/providers and non-owned bindings match the post-retirement
+  snapshot. Proxy Providers0; retired provider assignments remain detached.
+  The only reviewed difference was computed meta_icon_url; stored meta_icon and
+  all other compared identity fields match. No identities were mutated.
+- Existing published artifact verified independently through both public
+  entrances: anonymous GET/HEAD/206, manifest SHA-256 and artifact SHA-256,
+  inline disposition, no cookie/redirect, four write methods return405.
+- Private final receipt: recovered-vps-closeout.json under the existing private
+  cutover directory. Never publish the credential-bearing source snapshots.
+
+The local Chrome JSON/PNG/WebM/PDF fixtures and136 tests/36 subtests retain their
+original scope. This closes the outage-dependent protocol/runtime retirement
+acceptance, not independent-ISP or per-human login/MFA acceptance. No human was
+impersonated and no new published incident artifact was uploaded for this test.

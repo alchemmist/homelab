@@ -1,9 +1,10 @@
 # Public ingress through two addresses
 
 >7 November current policy: [native login/public exceptions](public-web-migration.md),
-> not universal Authentik proxy gates. HOME41/41 checks passed; VPS public TLS is
-> failing with socrat-2/k3s unavailable. Earlier receipts below are historical,
-> not proof of current two-entrance availability. No VPN/global DNS mutations.
+> not universal Authentik proxy gates. Recovered-VPS acceptance:82/82 public
+> checks passed across HOME and VPS; all4 nodes Ready and all8 affected apps
+> Synced/Healthy. Old gateway Deployment/Pod are gone. Earlier receipts below
+> retain their original scope. No VPN/global DNS mutations during recheck.
 
 > Current VPS address since 2026-11-05: **109.120.141.97**. Earlier addresses and deployment descriptions below are historical. See `docs/vps-ip-migration-20261105.md` for the migration and verification boundary.
 
