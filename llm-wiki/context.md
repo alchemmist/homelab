@@ -75,10 +75,13 @@ blanket sync/prune, `helm upgrade` или ручной image patch для обх
 `node-exporter`, `kube-state-metrics`, `loki`, `tempo`, `pyroscope`;
 дашборды/rules/probes — отдельный `monitoring-k3s`. Handoff закрыт: старые
 `kube-prometheus-stack`, `prometheus-stack`, `otel-backends`, `profiling` удалены без
-каскадного удаления;
-Loki/Tempo снова на auto-sync. Все новые владельцы Synced/Healthy, сохранены 103
-UID существующих ресурсов и PVC/Secret/Certificate; неиспользуемый общий ConfigMap
-удалён отдельно по UID. Не повторять retirement и не возвращать старые owners.
+каскадного удаления. Auto-sync включён у действующих владельцев. На закрытии
+первого этапа сохранены 103 UID ресурсов; на окончательном разделении
+Prometheus-компонентов повторно проверены все 77 ресурсов этого подмножества,
+8 runtime Pods без перезапуска, 4 PVC и UID/содержимое 3 целевых Secrets.
+Неиспользуемый общий ConfigMap удалён отдельно по UID. Не повторять retirement и не возвращать старые owners.
+Итоговый checkpoint — `0bb4e31`; 104 профильных теста и 24 subtest, public regression
+134/134. Это результаты закрытия миграции, не замена новой live-проверке.
 Остаётся отдельная проблема WAL Prometheus; сбой digest блога исправлен
 параллельным релизом `f485c74` (blog снова Synced/Healthy). Это **не** обещание
 целостности WAL или здоровья всего кластера. Карта/приёмка и границы:

@@ -23,7 +23,8 @@
 временный `automated.enabled=false` снят, `prune=false/selfHeal=true` сохранены.
 Старые `kube-prometheus-stack`, `prometheus-stack`, `otel-backends`, `profiling` удалены из Git/кластера
 после снятия finalizers и передачи владения. 103 UID существующих объектов сохранены
-(в том числе 10 shared CRD в Prometheus scope без принудительных tracking annotations).
+(в том числе 10 shared CRD: после окончательного разделения их scope —
+`prometheus-operator`, без принудительных tracking annotations).
 PVC/Secret/Certificate UID не менялись. Только неиспользуемый ConfigMap
 `otel-backends` удалён с UID/resourceVersion preconditions после проверки ссылок.
 Не повторять retirement и не включать старых owners. Карта и полный протокол:
@@ -47,6 +48,27 @@ Pods сохранили UID/ноду/readiness/restarts; все 4 PVC сохра
 по-прежнему находит прежний Alertmanager endpoint. Ни WAL repair, ни переустановка
 оператора, ни миграция данных не требовались. Детали и source-provenance:
 [prometheus-service-split.md](../docs/prometheus-service-split.md).
+
+## Зафиксированный closeout, не новая команда миграции
+
+Окончательное разделение: disarm `652e286` → передача пяти владельцам `78a9336`
+→ удаление aggregate `bcc93ca` → checkpoint **`0bb4e31`**. На финальном срезе все
+**49 Applications**, включая `root`, были Synced/Healthy. При этом
+`PrometheusTSDBCompactionsFailing` оставался firing: Argo Healthy не означает
+целостность WAL. Watchdog — отдельный ожидаемый heartbeat.
+
+Приёмка последнего этапа: **104 профильных теста + 24 pytest subtest**, Helm lint
+пяти component charts, Ansible syntax check; public-access regression **134/134**.
+Более ранние TV24/24 относятся к предыдущей приёмке Grafana, не к новому физическому
+тесту телевизора. Результаты этапов не складывать в вымышленный общий test suite.
+
+Private UID/Pod/PVC/Secret-hash/render receipts последнего handoff сохранены 0600
+в `~/.config/homelab/monitoring/migrations/2026-11-07-prometheus-components/`.
+Это rollback evidence без вывода содержимого Secrets, не off-node backup/DR.
+Для обратной передачи владельца снова нужны disarm и снятие deletion finalizers;
+**не делать blanket git revert**, удаляющий новые Applications с активными
+finalizers: это может каскадно удалить workload. Обычный rollback версии — новый
+коммит в source текущего владельца, с сохранением данных.
 
 ## Данные и pipeline
 

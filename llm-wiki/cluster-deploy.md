@@ -284,8 +284,9 @@ browser-MFA/enrollment, backup/restore/HA или every-service telemetry accepta
 
 Точные владельцы, безопасный handoff и границы проверок:
 [monitoring-service-split.md](../docs/monitoring-service-split.md).
-Legacy `monitoring.yml` и `monitoring_stack` guard отказывают до мутаций при
-наличии независимых Argo owners. Править действующие Git sources, не старый
+На том промежуточном этапе guard отказывал при наличии независимых owners;
+после окончательного split `monitoring.yml` / `monitoring_stack` retired
+**безусловно**, до любых мутаций, включая запуск на свежем кластере. Править действующие Git sources, не старый
 `deploy/monitoring/values.yaml` и не UI image/Helm overrides.
 
 
@@ -326,3 +327,15 @@ Ansible installer окончательно retired: always-tag fail до люб�
 старого Application/values. Ни глобальный prune, ни restart/WAL repair/DB migration,
 ни ротация TLS или alert credentials не выполнялись. Проверки/границы и диаграмма
 владения: [prometheus-service-split.md](../docs/prometheus-service-split.md).
+
+
+Закрывающие коммиты окончательного разделения: `652e286` (disarm), `78a9336`
+(adopt), `bcc93ca` (удаление aggregate), **`0bb4e31`** (финальная проверка/rollback
+safeguards). 104 tests + 24 subtests и 134/134 public checks прошли; на закрытии
+49 Applications Synced/Healthy, но старый WAL alert не маскировался и не исправлялся.
+Подробный итог/границы: [observability-current.md](observability-current.md#зафиксированный-closeout-не-новая-команда-миграции).
+
+**Не откатывать передачу владения простым удалением новых Applications с active
+finalizers.** Это может каскадно удалить уже переданные workloads. Обратная
+передача требует такого же disarm/handoff; обычные изменения версии откатываются
+через текущий owning chart. Private audit receipts не являются проверенным DR.
