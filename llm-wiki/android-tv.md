@@ -155,3 +155,27 @@ Argo CD подтвердил Synced / Healthy. Публичный URL откры
 в Chromium 1920×1080; это не проверка физического ТВ с масштабом Fully. Детали:
 `docs/traffic-light-tv-design.md`. Прямой patch ConfigMap откатывает Argo CD;
 публиковать нужно через Git. Доступ к публичному URL не требует WireGuard.
+
+## Актуальная раскладка после визуальной правки 7 ноября
+
+Релизы `832e341` (dashboard) и `757dc18` (kiosk presentation): сетка **24×16**,
+CPU/Memory/Disk по **8 строк** высотой. Абсолютные значения, относительная длина
+полос и пороги сохранены. RPS и n8n стоят рядом, каждый `w=7,h=4`; у новых блоков
+нет шапок, info, легенд и плашек диапазона. Под ними три отдельных читаемых Stat
+n8n. Вместо полосок по приложениям Argo — две state-timeline дорожки: Git / Apps.
+Сервисные имена пока сохранены: анонимизация кубиков не понадобилась для места.
+
+Проверять **оба** маршрута: фактический `/public-dashboards/<token>?...&socratTv=1`
+и `/d/socrat-traffic-light?kiosk=1&hideLogo=1&autofitpanels=true`. У ordinary kiosk
+был независимый баг native autofit, сжимавший ресурсы и оставлявший пустоты. Только
+для этого opt-in режима активный policy asset
+`deploy/platform/grafana/public-entry/files/traffic-light-inset.js` теперь применяет
+такую же равномерную fit-сетку; edit/viewPanel не перехватываются. Auth hover сохранён.
+Shared scene по-прежнему использует compacted layout, authenticated fit принимает
+только целую collision-free сохранённую сетку. UI редактирования, auth и Fully не менялись.
+
+Реальная браузерная проверка четырёх комбинаций (оба маршрута × 1920×1080 / 1440×900):
+55 панелей, одинаковая pixel-высота CPU/Memory/Disk (531 / 441 px), общая нижняя
+граница Disk/VPN, без пересечений и обрезания Stat. Скрипт:
+`scripts/check-traffic-light-tv-layout.cjs`; URL и session state передаются приватными
+файлами, не коммитятся. Детали и ограничения — `docs/traffic-light-tv-design.md`.

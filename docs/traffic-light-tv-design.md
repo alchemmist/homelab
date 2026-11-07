@@ -208,3 +208,15 @@ native. Public scenes retain their original compacted-position logic because
 manual public source layouts may overlap. No React internals, data queries,
 authentication policy, Fully JS injection or organization anonymous-access
 settings are changed. Authenticated hover interactions remain enabled.
+
+Final served verification for this revision: dashboard release `832e341`, kiosk
+presentation parity `757dc18`. Argo CD applications grafana and monitoring-k3s
+both Synced / Healthy. The real-page browser regression passed all four cases
+(shared + authenticated kiosk, each 1920×1080 and 1440×900), with no panel-query
+or JavaScript errors, overlaps or clipped n8n labels/values. Inspected actual
+post-deployment screenshots for the shared TV view and authenticated laptop view.
+40 targeted tests pass; the focused public-access script passes 24 checks across
+both ingress IPs, including exact presentation asset hash and unchanged access
+restrictions. This is not a physical-TV capture or an independent external-network
+measurement. No backend metrics collector, service workflow or database changes
+were made in this headerless revision.
