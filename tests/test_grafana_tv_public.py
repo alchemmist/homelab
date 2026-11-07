@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 JS = ROOT / 'deploy/platform/grafana/public-entry/files/traffic-light-inset.js'
 
 @pytest.mark.skipif(not shutil.which('node'), reason='Node is needed for JS runtime contract')
-@pytest.mark.parametrize('mode', ['unrelated', 'not_opted_in', 'legacy', 'wrong_uid', 'public'])
+@pytest.mark.parametrize('mode', ['unrelated', 'not_opted_in', 'legacy', 'legacy_kiosk', 'legacy_edit', 'legacy_overlap', 'wrong_uid', 'public'])
 def test_inset_runtime_scope_and_compacted_layout(mode):
     script = r'''
 const fs=require('fs'),vm=require('vm'),mode=process.argv[1];
@@ -18,11 +18,11 @@ const grid={style:{height:'106px'},parentElement:{style:{width:'400px'}},clientW
 const items=[{style:{transform:'translate(0px, 0px)',width:'26px',height:'68px'},parentElement:grid,getAttribute(){return 'grid-item-3'}},
  {style:{transform:'translate(0px, 76px)',width:'26px',height:'30px'},parentElement:grid,getAttribute(){return 'grid-item-4'}}];
 const page={querySelectorAll(){return items}};
-const model={uid:mode==='wrong_uid'?'another-dashboard':'socrat-traffic-light',panels:[{id:3,gridPos:{x:0,y:0,w:2,h:2}},{id:4,gridPos:{x:0,y:1,w:2,h:1}}]};
-const location={pathname:mode==='legacy'?'/d/socrat-traffic-light':mode==='unrelated'?'/login':'/public-dashboards/'+token,
- search:mode==='not_opted_in'?'?kiosk=1':'?kiosk=1&socratTv=1'};
+const model={uid:mode==='wrong_uid'?'another-dashboard':'socrat-traffic-light',panels:[{id:3,gridPos:{x:0,y:0,w:2,h:2}},{id:4,gridPos:{x:0,y:mode==='legacy_kiosk'?2:1,w:2,h:1}}]};
+const location={pathname:mode.startsWith('legacy')?'/d/socrat-traffic-light':mode==='unrelated'?'/login':'/public-dashboards/'+token,
+ search:mode==='legacy_kiosk'||mode==='legacy_overlap'?'?kiosk=1&autofitpanels=true':mode==='legacy_edit'?'?kiosk=1&autofitpanels=true&editPanel=3':mode==='not_opted_in'?'?kiosk=1':'?kiosk=1&socratTv=1'};
 const document={getElementById:id=>styles[id],createElement:()=>({textContent:''}),head:{appendChild(s){styles[s.id]=s}},documentElement:{},
- querySelector:()=>page,querySelectorAll:()=>[]};
+ querySelector:()=>page,querySelectorAll:selector=>selector.includes('react-grid-item')?items:[]};
 const context={location,document,window:{addEventListener(){}},MutationObserver:function(){this.observe=()=>{}},
  XMLHttpRequest:function(){this.open=(m,p)=>calls.push([m,p]);this.send=()=>{this.status=200;this.responseText=JSON.stringify({dashboard:model});this.onload()}}};
 vm.runInNewContext(fs.readFileSync(process.argv[2],'utf8'),context);
@@ -34,12 +34,17 @@ console.log(JSON.stringify({css:styles['socrat-tv-inset']?.textContent||'',calls
         assert result == {'css': '', 'calls': []}
     else:
         assert 'padding:5px' in result['css']
-        assert len(result['calls']) == (0 if mode == 'legacy' else 1)
+        assert len(result['calls']) == (0 if mode in ['legacy', 'legacy_edit'] else 1)
         if mode == 'public':
             assert 'grid-template-rows:repeat(3,' in result['css']
             assert '[data-griditem-key="grid-item-4"]{grid-column:1 / span 2!important;grid-row:3 / span 1!important;}' in result['css']
             assert 'public-dashboard-footer' in result['css']
             assert 'pointer-events:none' in result['css']
+        elif mode == 'legacy_kiosk':
+            assert 'grid-template-rows:repeat(3,' in result['css']
+            assert 'socrat-tv-auth-grid' in result['css']
+            assert 'pointer-events:none' not in result['css']
+            assert result['calls'] == [['GET', '/api/dashboards/uid/socrat-traffic-light']]
         else:
             assert 'grid-template-rows' not in result['css']
 

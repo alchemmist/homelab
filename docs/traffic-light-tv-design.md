@@ -184,3 +184,27 @@ Inspected screenshots at 1920×1080 and 1440×900. CPU/Memory/Disk each measure
 panel fits with the five-pixel inset. The direct macOS desktop screenshot failed
 (screen-capture permission/display unavailable), so this is browser viewport
 verification, not a claim to have captured the operator's physical laptop screen.
+
+### Served-page geometry regression check
+
+`scripts/check-traffic-light-tv-layout.cjs --url-file <private fully-url.json>`
+checks the **real served shared page**, not the preview. It checks both 1920×1080
+and 1440×900: all 55 panels fit with no overlaps, CPU/Memory/Disk pixel heights
+match, Disk and VPN bottoms align, graph dimensions match, the n8n readouts are
+not clipped, and forbidden headers/period badges are absent. Panel query failures
+and JavaScript errors fail the check. Grafana's anonymous API-discovery 401 is
+not treated as a panel-query failure. Optional `--auth-state-file <private state>`
+also verifies the normal `/d/...` kiosk URL; session state is never committed.
+Use an installed Playwright module, or set `PLAYWRIGHT_MODULE` and optionally
+`CHROMIUM_EXECUTABLE_PATH`. `TV_SCREENSHOT_DIR` optionally writes review images.
+
+The ordinary authenticated kiosk route had a second bug: Grafana independently
+fits resource panel rows, yielding gaps even with a collision-free JSON grid.
+The existing **presentation-only** public policy asset now also opts this route
+into the same pixel-fit grid, only with explicit `kiosk=1&autofitpanels=true` and
+no edit/view-panel parameter. An authenticated metadata request validates the
+UID and collision-free integral saved positions; normal viewing/editing remains
+native. Public scenes retain their original compacted-position logic because
+manual public source layouts may overlap. No React internals, data queries,
+authentication policy, Fully JS injection or organization anonymous-access
+settings are changed. Authenticated hover interactions remain enabled.
