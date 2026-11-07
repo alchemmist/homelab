@@ -79,3 +79,36 @@ supported files to download.
    data/workloads and both public TLS entrances. Remove transitional rules only
    after the old route is gone. Record completed receipts; uncertain write means
    inspect/read back before retry, never blanket cleanup.
+
+## Runtime receipt and bounded acceptance
+
+IdP cleanup:11 obsolete apps,10 proxy providers deleted; all10 native OIDC apps,
+provider/client data and non-owned policy bindings byte-equivalent after API
+normalization. Users/groups/native service databases were not deletion targets.
+Outposts remain but no proxy is assigned. Private before/after/progress receipts:
+`/var/lib/homelab-native-auth-cutover/` (never publish their credential fields).
+
+Nine legacy ingresses removed with exact ownership/UID guards. The old xui Argo
+Application is gone; its ConfigMap/Service are gone. Its Deployment/Pod are already
+terminating on socrat-2, whose Node is Unknown; normal GC awaits node recovery.
+No forced Pod deletion or foreground-finalizer bypass was used.
+
+135 scoped tests plus36 subtests passed before final CSP tightening. Isolated
+Chrome synthetic v3 fixtures open JSON, PNG, WebM and PDF without download;
+image/video decoded and the PDF page was visually inspected. PDF needs explicit
+`object-src 'self'` in CSP; default-src none alone blocks its native viewer.
+These are local handler/browser tests, not an independently published production
+binary incident. Existing production text/manifest reads are checked separately.
+
+Public entrance acceptance: HOME41/41; VPS41/41 fail TLS before HTTP. socrat-2
+Node Unknown since17:04:42UTC; host k3s inactive, clean exit17:03:56UTC, and
+public443 answers Caddy TLS internal_error. Cause/ownership is unproven; neither
+Caddy nor k3s nor VPN was restarted. This prevents full public/SSO acceptance,
+and must not be described as a completed healthy cluster cutover.
+
+LiteLLM automatic sync initially queued a migration hook that never scheduled or
+started. It was cancelled only after proving no container/node/startTime existed;
+the native route was created from the exact Git render, with original Argo owner,
+without running migrations or changing its workload/database. LiteLLM is now
+Synced/Healthy. ApplyOutOfSyncOnly reduces applies but is not sufficient to skip
+all hooks; route-only operations require explicit resource selection/apply strategy.

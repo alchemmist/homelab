@@ -44,7 +44,7 @@ def probe(case):
     location = next((line.split(':', 1)[1].strip() for line in p.stdout.splitlines()
                      if line.lower().startswith('location:')), '')
     u = urllib.parse.urlsplit(location)
-    good = p.returncode == 0 and status in expected if isinstance(expected, (tuple,list)) else p.returncode == 0 and status == expected
+    good = p.returncode == 0 and (status in expected if isinstance(expected, (tuple,list)) else status == expected)
     if expected == 302:
         if host=='grafana.socrat.alchemmist.xyz':
             good &= u.scheme in ('','https') and u.hostname in (None,host) and u.path in ('/login','/login/generic_oauth')

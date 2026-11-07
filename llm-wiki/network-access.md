@@ -1,5 +1,22 @@
 # Сеть и доступ Socrat: текущий контракт на 7 ноября 2026
 
+## Текущая граница — 7 ноября, снятие внешних auth gates
+
+Удалены11 obsolete Authentik Applications (включая старую Kuma bookmark-карточку)
+и10 Proxy Providers; outpost assignments сняты.10 native OIDC Applications,
+их UUID/client credentials/callbacks/policy bindings сохранены. n8n,3x-ui, Kuma
+и Syncthing используют собственный login; SearXNG и опубликованные SPI artifacts
+публичны без Authentik и NetBird. Reader допускает только GET/HEAD, проверяет
+manifest/hash и выдаёт безопасные типы inline. [Контракт и границы](../docs/identity/native-browser-auth.md).
+
+При проверке: домашний публичный вход41/41; второму входу нельзя приписывать success.
+`socrat-2` Node Ready=Unknown с17:04:42UTC; `k3s` inactive (exit17:03:56UTC),
+на443 отвечает Caddy с TLS internal_error. Причина остановки не установлена;
+Caddy/k3s/VPN не перезапускали. Старый xui gateway Pod/Deployment ожидает обычного
+завершения на недоступной ноде; force-delete/finalizer bypass не выполнялся.
+Остальные7 затронутых Argo apps Synced/Healthy, edge Synced/Progressing.
+
+
 Это актуальный итог сетевых изменений, а не инструкция повторить миграцию. Он заменяет старые утверждения «Grafana только через WG», «anonymous Viewer сохранён», «на Mac нужны resolver overrides», «ТВ подключает внутренний WG» и «Kuma ещё ждёт разделения входов». Transport/negative-case приёмки относятся к5–6 ноября;7 ноября обновлены
 документация и карта владельцев, не повторён полный VPN/внешний browser тест.
 Старые приёмки остаются историей; перед новым применением нужен свежий аудит.
@@ -68,15 +85,15 @@ Recovery WG проверен через новый VPS и все четыре н
 |---|---|
 | Grafana | Native OIDC auto-login, anonymous org access **выключен**; owner → GrafanaAdmin, `app-grafana-editor` → Editor, остальные admitted → Viewer |
 | Светофор `socrat-traffic-light` | Только этот dashboard доступен native public sharing без входа на `grafana.socrat.alchemmist.xyz/public-dashboards/<accessToken>` |
-| Search | Personal MFA/group gate; scoped admission не даёт owner privileges |
-| `llm.socrat` / `litellm.socrat` | MFA alias gates плюс сохранённая native app authorization; исходные machine entrances/credentials сохранены; MFA aliases не универсальная замена API endpoint |
+| Search | Публичный SearXNG, без Authentik/NetBird |
+| `llm.socrat` / `litellm.socrat` | Прямые aliases к приложениям с native OIDC; machine entrances/credentials сохранены |
 | Rancher | Native OIDC/roles; public local-password mutations блокируются, bearer/agents/WebSockets/private recovery сохранены |
 | Grafana MCP | Отдельный bearer, read-only native identity; missing/invalid token 401, не интерактивный MFA gate |
 | Wiki | Public read, native OIDC/роли для записи; `/mcp` защищён, поддельные WG/identity headers не дают обхода |
-| Syncthing node0 `/sync/` | Personal MFA (`homelab-owner` / `syncthing-web-admins`), затем исходный BasicAuth; prefix корректно снимается |
+| Syncthing node0 `/sync/` | Штатный GUI login, заранее включённый до снятия пустой BasicAuth обвязки; prefix снимается; API key/devices сохранены |
 | Syncthing node1 `/sync/` | Явный **410 gateway-only**, не другая Syncthing device и не фиктивный GUI |
 | Kuma status | Anonymous `/status/socrat`, status/heartbeat APIs, assets/badges и native-token push сохранены |
-| Kuma admin | `kuma.socrat.alchemmist.xyz`: personal MFA (`homelab-owner` / `uptime-kuma-web-admins`), затем native Kuma auth; MFA само по себе не даёт native admin |
+| Kuma admin | `kuma.socrat.alchemmist.xyz`: только native Kuma login; публичный status-only фильтр сохранён |
 
 Обычные app role groups `app-grafana-viewer`, `app-grafana-editor`, `syncthing-web-admins`, `uptime-kuma-web-admins` создавались пустыми; временные тестовые memberships удалены. Не предполагать выдачу этих прав новым людям и не добавлять их в owner group ради входа. Machine consumers должны сохранять свои исходные API entrances/tokens, а не переезжать на MFA alias без отдельной совместимости.
 

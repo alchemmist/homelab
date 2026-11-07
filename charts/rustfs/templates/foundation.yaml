@@ -170,9 +170,6 @@ spec:
     - from:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: identity}}
           podSelector: {matchLabels: {app: rustfs-console-http}}
-        # Transitional only: keep the old console route live until exact-UID retirement.
-        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: identity}}
-          podSelector: {matchLabels: {app.kubernetes.io/name: authentik, app.kubernetes.io/component: server}}
       ports: [{port: 9001, protocol: TCP}]
     {{- end }}
     {{- if not (or .Values.gateway.enabled .Values.browserRoutes.enabled .Values.spiWriter.enabled) }}

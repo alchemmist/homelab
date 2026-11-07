@@ -61,6 +61,8 @@ class Tests(unittest.TestCase):
                 self.assertEqual(h['Content-Type'],'application/json; charset=utf-8')
                 self.assertEqual(h['Content-Disposition'],'inline; filename="manifest.json"')
                 self.assertEqual(h['X-Content-Type-Options'],'nosniff')
+                self.assertIn("object-src 'self'",h['Content-Security-Policy'])
+                self.assertIn("media-src 'self'",h['Content-Security-Policy'])
                 self.assertNotIn('Location',h); self.assertNotIn('Set-Cookie',h)
             status,h,data=request(BASE+'manifest.json',method='HEAD')
             self.assertEqual(status,200);self.assertEqual(data,b'');self.assertEqual(h['Content-Length'],'8')

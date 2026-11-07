@@ -340,7 +340,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_header('Content-Type', mime)
         self.send_header('X-Content-Type-Options', 'nosniff')
         self.send_header('Cache-Control', 'public, max-age=3600, immutable' if filename else 'no-store')
-        self.send_header('Content-Security-Policy', "default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+        self.send_header('Content-Security-Policy', "default-src 'none'; img-src 'self' data:; media-src 'self'; object-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
         self.send_header('Referrer-Policy', 'no-referrer')
         self.send_header('Connection', 'close')
         self.send_header('Content-Length', str(len(body)))

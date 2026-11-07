@@ -4,11 +4,18 @@ Most third-party product icons come from homarr-labs/dashboard-icons at the immu
 
 Wiki no longer uses BookStack artwork. Wiki uses the existing circular Socrat favicon from `deploy/litellm/branding/socrat-icon-v1.png` (2349×2349), downsampled to 512×512 PNG and embedded in a local SVG wrapper. The original artwork, circle and proportions are preserved; this is higher-resolution raster artwork, not a newly drawn vector logo. LiteLLM’s Authentik dashboard tile instead uses the **official LiteLLM monogram SVG**, copied unmodified from a pinned BerriAI/litellm revision recorded in `sources.json`. This is independent of the custom Socrat branding inside the LiteLLM application.
 
-`icons.py` uploads versioned local files and patches **only** `meta_icon` for existing applications, including Argo CD even though its provider is managed outside the foundation catalog. It does not replace providers, launch URLs, policy bindings or group memberships. All nine current production application icons were fetched via Authentik's resolved media URL with trusted HTTPS and verified against their local SHA-256.
+`icons.py` uploads versioned local files and patches **only** `meta_icon` for existing applications, including Argo CD even though its provider is managed outside the foundation catalog. It does not replace providers, launch URLs, policy bindings or group memberships. The earlier nine production application icons were fetched via Authentik's resolved media URL with trusted HTTPS and verified against their local SHA-256.
 
-## Complete portal coverage — 7 November 2026
+## Current inventory after proxy retirement — 7 November 2026
 
-The reviewed Authentik inventory has21 applications. Twenty use these local,
+The manifest now targets only the10 remaining native OIDC applications. Retired
+proxy aliases and service-login-only cards are no longer targets; unused logo
+assets stay available as an asset library. An empty `applications` list means
+no Authentik application target, not permission to create a new application.
+
+## Historical complete portal coverage — before proxy retirement
+
+The earlier reviewed Authentik inventory had21 applications. Twenty use these local,
 checksum-pinned SVGs;3x-ui retains its independently managed branded PNG URL.
 `applications` in each manifest entry maps one asset to existing application
 slugs, including gateway aliases. Missing applications are skipped, never created.
@@ -25,7 +32,7 @@ receipts and live state before any retry. Never clear that marker blindly.
 
 Do not run the full Authentik deployment or provider/IAM reconciler just to change
 icons. These metadata changes need no restart and grant no access. Re-running the
-helper after current applications exist preserves the same alias icon mappings.
+helper after current applications exist updates only the remaining native application icon mappings.
 The earlier nine-icon verification above is historical, not the total inventory.
 
 Live acceptance:11 missing icons assigned;21/21 existing applications now have

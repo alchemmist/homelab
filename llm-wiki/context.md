@@ -47,7 +47,7 @@ SSH transport, публичный ключ/Linux account, sudo, Kubernetes RBAC 
 - Native OIDC: Grafana, Harbor, Rancher, Open WebUI, Wiki, LiteLLM, отдельно Argo CD.
   Admission через IdP не выдаёт native admin. Роли и exact subject links проверять
   по источникам, не по email или похожему имени.
-- n8n/3x-ui и Kuma admin/Syncthing — MFA gateway с отдельной native авторизацией,
+- n8n/3x-ui, Kuma admin/Syncthing — только штатный логин сервиса; внешние Authentik proxy gates удалены.
   не универсальный account SSO. Umami для Tim **приостановлен** до native OIDC (#85).
 - Machine APIs, robots, MCP, agents, webhooks сохраняют отдельные credentials;
   их нельзя переводить на browser MFA redirects.

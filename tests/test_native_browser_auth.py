@@ -30,6 +30,8 @@ def test_reader_egress_has_no_idp_and_storage_keeps_private_s3_iam():
  assert {e['name'] for e in env}=={'S3_ACCESS_KEY','S3_SECRET_KEY'}
  policy=next(d for d in docs if d['kind']=='NetworkPolicy' and d['metadata']['name']=='rustfs-gateway-isolation')
  assert len(policy['spec']['egress'])==2
+ storage=next(d for d in docs if d['kind']=='NetworkPolicy' and d['metadata']['name']=='rustfs-isolation')
+ assert 'authentik' not in json.dumps(storage['spec']['ingress'])
  assert '443' not in json.dumps(policy)
  proxy=next(d for d in docs if d['kind']=='ConfigMap' and d['metadata']['name']=='rustfs-console-http')
  assert 'auth_request' not in proxy['data']['nginx.conf']

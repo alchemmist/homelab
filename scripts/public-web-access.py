@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create-only, audit-first Authentik gates; does not alter native app roles or users."""
+"""Read-only compatibility audit: external Authentik proxy creation is retired."""
 import argparse, datetime, fcntl, hashlib, json, os, re, urllib.request
 from pathlib import Path
 OWNER='homelab-public-web-v1'

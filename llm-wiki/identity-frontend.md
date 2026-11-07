@@ -1,5 +1,22 @@
 # Authentik / Quiet Mono: frontend, CSS, inspector и сопровождение
 
+## Текущая граница — 7 ноября, снятие внешних auth gates
+
+Удалены11 obsolete Authentik Applications (включая старую Kuma bookmark-карточку)
+и10 Proxy Providers; outpost assignments сняты.10 native OIDC Applications,
+их UUID/client credentials/callbacks/policy bindings сохранены. n8n,3x-ui, Kuma
+и Syncthing используют собственный login; SearXNG и опубликованные SPI artifacts
+публичны без Authentik и NetBird. Reader допускает только GET/HEAD, проверяет
+manifest/hash и выдаёт безопасные типы inline. [Контракт и границы](../docs/identity/native-browser-auth.md).
+
+При проверке: домашний публичный вход41/41; второму входу нельзя приписывать success.
+`socrat-2` Node Ready=Unknown с17:04:42UTC; `k3s` inactive (exit17:03:56UTC),
+на443 отвечает Caddy с TLS internal_error. Причина остановки не установлена;
+Caddy/k3s/VPN не перезапускали. Старый xui gateway Pod/Deployment ожидает обычного
+завершения на недоступной ноде; force-delete/finalizer bypass не выполнялся.
+Остальные7 затронутых Argo apps Synced/Healthy, edge Synced/Progressing.
+
+
 > Текущий срез7 ноября: [логины, первый вход и native роли](identity-current-state.md),
 > [NetBird/сеть](network-access.md), [владельцы мониторинга](observability-current.md).
 > Датированные rollout/smoke ниже — история своего этапа, не общая readiness.

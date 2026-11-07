@@ -1,5 +1,10 @@
 # Public ingress through two addresses
 
+>7 November current policy: [native login/public exceptions](public-web-migration.md),
+> not universal Authentik proxy gates. HOME41/41 checks passed; VPS public TLS is
+> failing with socrat-2/k3s unavailable. Earlier receipts below are historical,
+> not proof of current two-entrance availability. No VPN/global DNS mutations.
+
 > Current VPS address since 2026-11-05: **109.120.141.97**. Earlier addresses and deployment descriptions below are historical. See `docs/vps-ip-migration-20261105.md` for the migration and verification boundary.
 
 Public cluster HTTP services have two entrance addresses: home `109.173.40.247` and VPS `176.98.185.59`. REG.RU is configured with two A records for each of these 15 names:
