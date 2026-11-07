@@ -21,7 +21,7 @@ def test_onboarding_is_under_title_with_one_final_wiki_sentence():
     assert HTML.index('</h1>') < HTML.index('class="onboarding"')
     assert 'with your assigned username and password, then change your password.' in HTML
     assert 'to connect to the internal network.' in HTML
-    assert '<p><a href="https://wiki.socrat.alchemmist.xyz/">Then explore the cluster and its services with wiki.</a></p>' in HTML
+    assert '<p>Then explore the cluster and its services with <a href="https://wiki.socrat.alchemmist.xyz/">wiki</a>.</p>' in HTML
     assert '<nav ' not in HTML
     assert 'explore the wiki &gt;' not in HTML
     assert 'start from wiki' not in HTML
