@@ -33,8 +33,7 @@
     "groups": [
       "homelab-owner",
       "homelab-platform-operator",
-      "homelab-project-maintainer",
-      "homelab-observer"
+      "homelab-project-maintainer"
     ],
     "migration": "native-oidc-candidate",
     "icon": "service-icons/harbor-51ef5dd74fab.svg",

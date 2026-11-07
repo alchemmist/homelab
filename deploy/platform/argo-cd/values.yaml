@@ -29,8 +29,9 @@ configs:
       g, homelab-platform-operator, role:admin
       g, homelab-project-maintainer, role:readonly
       g, homelab-observer, role:readonly
+      g, mcp, role:readonly
       p, mcp, applications, sync, */*, allow
-    policy.default: role:readonly
+    policy.default: role:unassigned
     scopes: '[groups]'
 controller:
   replicas: 1

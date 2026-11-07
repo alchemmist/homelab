@@ -1,0 +1,11 @@
+{{- if .Values.observerMembership.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "wiki.name" . }}-observer-membership
+data:
+  oidc.py: |
+{{ .Files.Get "files/observer_oidc.py" | indent 4 }}
+  observer_membership.py: |
+{{ .Files.Get "files/observer_membership.py" | indent 4 }}
+{{- end }}

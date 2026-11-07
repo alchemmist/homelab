@@ -45,22 +45,24 @@ def build(state, policy):
 
 def _build(state, policy):
     require(policy['version'] == 1 and policy['group'] == 'homelab-observer', 'Unreviewed profile')
-    require(set(policy['nativeAdmission']) == {'grafana', 'wiki', 'rancher', 'argocd', 'harbor'}
-            and len(policy['nativeAdmission']) == 5, 'Unreviewed app scope')
+    require(set(policy['nativeAdmission']) == {'grafana', 'wiki', 'rancher', 'argocd'}
+            and len(policy['nativeAdmission']) == 4 and policy['harbor']['enabled'] is False, 'Unreviewed app scope')
     require(policy['harbor']['projects'] == ['homelab', 'library', 'spi-triage'], 'Unreviewed project scope')
     rancher = policy['rancher']
     require(rancher['groupPrincipal'] == 'genericoidc_group://homelab-observer'
             and rancher['cluster'] == 'local'
             and rancher['globalRole'] == 'homelab-observer-login'
             and rancher['clusterRole'] == 'homelab-observer-cluster', 'Unreviewed principal/cluster')
-    require(rancher['humanSessionMinutes'] == 60 and not rancher['allowPersonalApiTokens']
-            and not rancher['allowKubeconfigCreation'], 'Unreviewed session/token policy')
+    require(rancher['humanSessionMinutes'] == 60 and rancher['denyExtCredentialMinting'] is True
+            and rancher['legacySelfCredentialsReadOnly'] is True, 'Unreviewed session/token policy')
     group = exact(state['groups'], 'name', policy['group'])
     require(group.get('is_superuser') is False and group.get('roles') == [] and group.get('parents') == [],
             'Observer must not carry IdP administration or inherited grants')
     supported_targets = {app['pk'] for app in state['apps'] if app['slug'] in policy['nativeAdmission']}
+    harbor_app = exact(state['apps'], 'slug', 'harbor')
+    gated_targets = {harbor_app['pk']}
     unexpected = [b for b in state['bindings'] if b.get('group') == group['pk']
-                  and b.get('enabled') and b.get('target') not in supported_targets]
+                  and b.get('enabled') and b.get('target') not in supported_targets | gated_targets]
     require(not unexpected, 'Observer still admits unsupported apps; migrate legacy admission before rollout')
     # Source RBAC must be activated/reviewed before enabling group admission.
     login = state['rancherLoginRole']
@@ -138,9 +140,9 @@ def _build(state, policy):
             require(existing[0]['role_id'] == 3, 'Existing group is not Guest; no silent downgrade/adoption')
             require(len(native_groups) == 1 and existing[0].get('entity_id') == native_groups[0]['id'],
                     'Harbor membership does not reference the reviewed OIDC group')
-        else:
-            ops.append({'system': 'harbor', 'method': 'POST', 'path': '/api/v2.0/projects/' + project + '/members',
-                        'body': {'role_id': 3, 'member_group': {'group_name': policy['group'], 'group_type': 3}}})
+            require(type(existing[0].get('id')) is int and existing[0]['id'] > 0, 'Missing owned Harbor member identity')
+            ops.append({'system': 'harbor', 'method': 'DELETE',
+                        'path': '/api/v2.0/projects/' + project + '/members/' + str(existing[0]['id']), 'body': None})
     auth = state['rancherAuth']
     require(auth.get('enabled') is True and auth.get('accessMode') == 'restricted'
             and auth.get('groupsClaim') == 'groups', 'Rancher authentication is not the reviewed restricted provider')
@@ -149,6 +151,13 @@ def _build(state, policy):
     if rancher['groupPrincipal'] not in allowed:
         ops.append(kpatch(auth, '/apis/management.cattle.io/v3/authconfigs/genericoidc',
                           {'allowedPrincipalIds': allowed + [rancher['groupPrincipal']]}))
+    # Close only this group's Harbor admission; Guest CLI cache is not revocable.
+    for gated in [b for b in state['bindings'] if b.get('target') == harbor_app['pk'] and b.get('group') == group['pk']]:
+        require(gated.get('enabled') is True and gated.get('negate') is False
+                and not gated.get('policy') and not gated.get('user') and not gated.get('failure_result'),
+                'Complex gated Harbor admission; stop for review')
+        require(isinstance(gated.get('pk'), str) and gated['pk'], 'Missing Harbor binding identity')
+        ops.append({'system': 'authentik', 'method': 'DELETE', 'path': 'policies/bindings/' + gated['pk'] + '/', 'body': None})
     # Admission is last. All existing groups/clients/native identities stay put.
     for slug in policy['nativeAdmission']:
         app = exact(state['apps'], 'slug', slug)

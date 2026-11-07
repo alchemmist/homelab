@@ -20,12 +20,13 @@ configs:
         groups:
           essential: true
   rbac:
-    policy.default: role:readonly
+    policy.default: role:unassigned
     policy.csv: |
       g, homelab-owner, role:admin
       g, homelab-platform-operator, role:admin
       g, homelab-project-maintainer, role:readonly
       g, homelab-observer, role:readonly
+      g, mcp, role:readonly
     scopes: '[groups]'
   params:
     server.insecure: false

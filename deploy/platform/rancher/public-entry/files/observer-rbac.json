@@ -9,7 +9,7 @@
       }
     },
     "displayName": "Homelab observer login",
-    "description": "Minimal UI login, no cluster creation, API token or kubeconfig minting.",
+    "description": "Minimal UI login, no infrastructure creation; native observer cache keeps legacy self credentials scoped.",
     "newUserDefault": true,
     "rules": [
       {

@@ -1,0 +1,110 @@
+{{- if .Values.observerAccess.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: observer-membership
+  namespace: cattle-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: homelab-observer-membership-cache
+rules:
+  - apiGroups: [management.cattle.io]
+    resources: [users, userattributes]
+    verbs: [get, list]
+  - apiGroups: [management.cattle.io]
+    resources: [userattributes]
+    verbs: [patch]
+  - apiGroups: [management.cattle.io]
+    resources: [authconfigs]
+    resourceNames: [genericoidc]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: homelab-observer-membership-cache
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: homelab-observer-membership-cache
+subjects:
+  - kind: ServiceAccount
+    name: observer-membership
+    namespace: cattle-system
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: observer-membership-code
+  namespace: cattle-system
+data:
+  observer_membership.py: |
+{{ .Files.Get "files/observer_membership.py" | indent 4 }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: observer-membership
+  namespace: cattle-system
+spec:
+  schedule: '* * * * *'
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 50
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 50
+      ttlSecondsAfterFinished: 600
+      template:
+        metadata:
+          labels: {app: observer-membership}
+        spec:
+          restartPolicy: Never
+          serviceAccountName: observer-membership
+          nodeSelector: {kubernetes.io/hostname: socrat-0}
+          securityContext: {runAsNonRoot: true, runAsUser: 65534, runAsGroup: 65534, fsGroup: 65534, seccompProfile: {type: RuntimeDefault}}
+          containers:
+            - name: reconcile
+              image: docker.io/library/python:3.12-slim@sha256:4840d514c583a4d3d8cad3940e68dee6f0f6f3635c12fcd0a3d74c21a5b93a54
+              command: [python, -B, /code/observer_membership.py]
+              env:
+                - {name: OBSERVER_IDP_READ_TOKEN_FILE, value: /credentials/token}
+              securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+              resources:
+                requests: {cpu: 10m, memory: 32Mi}
+                limits: {cpu: 100m, memory: 128Mi}
+              volumeMounts:
+                - {name: code, mountPath: /code, readOnly: true}
+                - {name: credentials, mountPath: /credentials, readOnly: true}
+          volumes:
+            - name: code
+              configMap: {name: observer-membership-code}
+            - name: credentials
+              secret: {secretName: observer-membership-reader, defaultMode: 0440}
+{{- end }}
+{{- if .Values.observerAccess.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: observer-membership
+  namespace: cattle-system
+spec:
+  podSelector:
+    matchLabels: {app: observer-membership}
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress:
+    - ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+    - ports: [{protocol: TCP, port: 443}]
+    - to:
+        - ipBlock: {cidr: 10.250.0.1/32}
+        - ipBlock: {cidr: 10.250.0.2/32}
+        - ipBlock: {cidr: 10.250.0.3/32}
+        - ipBlock: {cidr: 10.250.0.5/32}
+      ports: [{protocol: TCP, port: 6443}]
+{{- end }}

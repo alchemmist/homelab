@@ -36,7 +36,7 @@ def fixture():
             'harbor': {'groups': [], 'oidcGroupsClaim': 'groups', 'oidcAdminGroup': 'homelab-owner',
                        'projectCreationRestriction': 'everyone', 'projects': {p: [] for p in POLICY['harbor']['projects']}},
             'apps': [{'slug': slug, 'pk': 'app-' + slug, 'provider': i, 'policy_engine_mode': 'any'}
-                     for i, slug in enumerate(POLICY['nativeAdmission'], start=1)],
+                     for i, slug in enumerate(POLICY['nativeAdmission'] + ['harbor'], start=1)],
             'bindings': []}
 
 
@@ -51,6 +51,11 @@ def converge(state, operations):
                     obj[change['path'][1:]] = copy.deepcopy(change['value'])
         elif op['system'] == 'harbor' and op['method'] == 'PUT':
             state['harbor']['projectCreationRestriction'] = op['body']['project_creation_restriction']
+        elif op['system'] == 'harbor' and op['method'] == 'DELETE':
+            project = op['path'].split('/')[-3]
+            state['harbor']['projects'][project] = [m for m in state['harbor']['projects'][project] if m['id'] != int(op['path'].split('/')[-1])]
+        elif op['system'] == 'authentik' and op['method'] == 'DELETE':
+            state['bindings'] = [b for b in state['bindings'] if 'policies/bindings/' + b.get('pk', '') + '/' != op['path']]
         elif op['system'] == 'harbor':
             project = op['path'].split('/')[-2]
             state['harbor']['groups'] = [{'id': 101, 'group_name': 'homelab-observer', 'group_type': 3}]
@@ -121,8 +126,21 @@ class ObserverPolicyTests(unittest.TestCase):
         self.assertNotIn('core/users/', text)
         self.assertNotIn('password', text)
         self.assertTrue(all(o['path'] != 'core/groups/group-id/' for o in operations))
-        self.assertEqual(sum(o['system'] == 'harbor' and o['method'] == 'POST' for o in operations), 3)
-        self.assertEqual(sum(o['system'] == 'authentik' for o in operations), 5)
+        self.assertEqual(sum(o['system'] == 'harbor' and o['method'] == 'POST' for o in operations), 0)
+        self.assertEqual(sum(o['system'] == 'authentik' for o in operations), 4)
+
+    def test_harbor_gate_removes_only_exact_owned_guest_and_observer_admission(self):
+        state = fixture()
+        state['harbor']['groups'] = [{'id': 101, 'group_name': 'homelab-observer', 'group_type': 3}]
+        for n, project in enumerate(POLICY['harbor']['projects'], start=1):
+            state['harbor']['projects'][project] = [{'id': n, 'entity_type': 'g', 'entity_name': 'homelab-observer', 'entity_id': 101, 'role_id': 3}]
+        harbor = next(a for a in state['apps'] if a['slug'] == 'harbor')
+        state['bindings'] = [{'pk': 'owned-harbor-binding', 'target': harbor['pk'], 'group': 'group-id', 'enabled': True, 'negate': False, 'policy': None, 'user': None, 'failure_result': False}]
+        ops = plan.build(state, POLICY)
+        self.assertEqual(sum(o['system'] == 'harbor' and o['method'] == 'DELETE' for o in ops), 3)
+        self.assertEqual(sum(o['system'] == 'authentik' and o['method'] == 'DELETE' for o in ops), 1)
+        converge(state, ops)
+        self.assertEqual(plan.build(state, POLICY), [])
 
     def test_cas_and_preserved_principals(self):
         operations = plan.build(fixture(), POLICY)
@@ -189,7 +207,7 @@ class ObserverPolicyTests(unittest.TestCase):
                          lambda p: p['harbor']['projects'].append('other-project'),
                          lambda p: p['harbor'].update(roleId=1),
                          lambda p: p['rancher'].update(humanSessionMinutes=960),
-                         lambda p: p['rancher'].update(allowPersonalApiTokens=True),
+                         lambda p: p['rancher'].update(denyExtCredentialMinting=False),
                          lambda p: p['rancher'].update(groupPrincipal='genericoidc_group://homelab-owner')]:
             policy = copy.deepcopy(POLICY)
             mutation(policy)
@@ -220,6 +238,8 @@ class ObserverPolicyTests(unittest.TestCase):
     def test_harbor_group_type_and_native_entity_id_are_verified(self):
         state = fixture()
         converge(state, plan.build(state, POLICY))
+        state['harbor']['groups'] = [{'id': 101, 'group_name': 'homelab-observer', 'group_type': 3}]
+        state['harbor']['projects']['homelab'] = [{'id': 201, 'entity_type': 'g', 'entity_name': 'homelab-observer', 'entity_id': 101, 'role_id': 3}]
         state['harbor']['groups'][0]['group_type'] = 1
         with self.assertRaisesRegex(ValueError, 'non-OIDC'):
             plan.build(state, POLICY)

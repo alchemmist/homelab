@@ -87,7 +87,7 @@ class IdentityTests(unittest.TestCase):
         (root/'antropophag-login.json').chmod(0o600)
         (root/'account-mappings.json').write_text(json.dumps(accounts))
 
-    def test_harbor_observer_admission_waits_for_native_bootstrap(self):
+    def test_harbor_observer_stays_gated_even_with_native_readiness_receipt(self):
         with tempfile.TemporaryDirectory() as d:
             root=Path(d);self.setup_root(root);api=FakeAuthentik()
             (root/'observer-ready.json').unlink()
@@ -98,7 +98,7 @@ class IdentityTests(unittest.TestCase):
             receipt=root/'observer-ready.json'
             receipt.write_text(json.dumps({'version':1,'nativeObserverReady':True,'policy_sha256':hashlib.sha256((root/'observer-profile.json').read_bytes()).hexdigest()}));receipt.chmod(0o600)
             self.configure(root,api)
-            self.assertEqual(sum(b['target']==harbor['pk'] and b['group']==observer['pk'] for b in api.data['policies/bindings/']),1)
+            self.assertEqual(sum(b['target']==harbor['pk'] and b['group']==observer['pk'] for b in api.data['policies/bindings/']),0)
 
     def test_configuration_idempotent_and_mfa_required(self):
         with tempfile.TemporaryDirectory() as d:
