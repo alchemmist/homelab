@@ -1,4 +1,4 @@
-"""No external auth gateway; public exceptions are explicit, not blanket bypasses."""
+"""Native app routes and explicit private/public exception boundaries."""
 from pathlib import Path
 import json
 import subprocess
@@ -22,21 +22,27 @@ def test_direct_route_and_reject_mislabeled_backend(chart,ns,service,authorizati
  assert p.returncode!=0
 
 
-def test_reader_egress_has_no_idp_and_storage_keeps_private_s3_iam():
+def test_private_reader_has_only_pinned_idp_egress_and_storage_keeps_s3_iam():
  text=subprocess.check_output(['helm','template','rustfs',str(ROOT/'charts/rustfs'),'-n','rustfs','-f',str(ROOT/'charts/rustfs/values-foundation-live.yaml')],text=True)
  docs=[d for d in yaml.safe_load_all(text) if d]
  reader=next(d for d in docs if d['kind']=='Deployment' and d['metadata']['name']=='rustfs-gateway')
  env=reader['spec']['template']['spec']['containers'][0]['env']
- assert {e['name'] for e in env}=={'S3_ACCESS_KEY','S3_SECRET_KEY'}
+ # Concurrent main explicitly made RustFS private; do not restore anonymous evidence.
+ values=yaml.safe_load((ROOT/'charts/rustfs/values-foundation-live.yaml').read_text())
+ assert values['browserRoutes']['unifiedOrigin'] is True
+ assert {e['name'] for e in env}=={'AUTH_URL','S3_ACCESS_KEY','S3_SECRET_KEY'}
+ assert next(e['value'] for e in env if e['name']=='AUTH_URL')=='https://rustfs.socrat.alchemmist.xyz/outpost.goauthentik.io/auth/nginx'
  policy=next(d for d in docs if d['kind']=='NetworkPolicy' and d['metadata']['name']=='rustfs-gateway-isolation')
- assert len(policy['spec']['egress'])==2
+ assert len(policy['spec']['egress'])==2+len(values['authEgressCIDRs'])
+ tls=[r for r in policy['spec']['egress'] if any(p['port']==443 for p in r['ports'])]
+ assert {t['ipBlock']['cidr'] for r in tls for t in r['to']}==set(values['authEgressCIDRs'])
+ assert '0.0.0.0/0' not in json.dumps(tls)
  storage=next(d for d in docs if d['kind']=='NetworkPolicy' and d['metadata']['name']=='rustfs-isolation')
  assert 'authentik' not in json.dumps(storage['spec']['ingress'])
- assert '443' not in json.dumps(policy)
  proxy=next(d for d in docs if d['kind']=='ConfigMap' and d['metadata']['name']=='rustfs-console-http')
  assert 'auth_request' not in proxy['data']['nginx.conf']
  assert 'Cookie' not in proxy['data']['nginx.conf']
- assert all(p['backend']['service']['name']!='authentik-server' for d in docs if d['kind']=='Ingress' for rule in d['spec']['rules'] for p in rule['http']['paths'])
+ assert all(p['path'].startswith('/outpost.goauthentik.io/') and rule['host']=='rustfs.socrat.alchemmist.xyz' for d in docs if d['kind']=='Ingress' for rule in d['spec']['rules'] for p in rule['http']['paths'] if p['backend']['service']['name']=='authentik-server')
 
 
 def test_syncthing_public_route_has_no_extra_basic_auth_wrapper():
