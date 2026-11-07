@@ -36,14 +36,18 @@ negative probes. It must not expect obsolete `/outpost.goauthentik.io/start`
 redirects for native-login/public services. Browser files are opened by native
 viewers, not a script-heavy wrapper; active/unknown formats remain attachments.
 
-Current result: HOME41/41; VPS41/41 fail TLS before HTTP. socrat-2 Node is Unknown
-since17:04:42UTC; host k3s is inactive (exit17:03:56UTC), and public443 answers
-Caddy TLS internal_error. Cause/ownership is not established. No Caddy/k3s/VPN
-restart or global DNS/route change was made. Edge is Synced/Progressing; the other
-seven affected Argo applications are Synced/Healthy. The old xui Deployment/Pod
-is already terminating and awaits normal node recovery, not force deletion.
+Final recovered-VPS result:82/82 passed across both public entrances. All4 nodes
+Ready; socrat-2 recovered at17:55:34UTC7 November. All8 affected applications,
+including traefik-edge, are Synced/Healthy. Old xui gateway Application,
+Deployment, Service, ConfigMap and Pods are absent; no force-delete was needed.
+Anonymous artifact GET/HEAD/206 and SHA-256/manifest/inline were verified through
+both entrances; PUT/POST/PATCH/DELETE return405. All10 native OIDC registrations,
+providers and policy bindings remain unchanged; Proxy Providers0. Only computed
+media URLs differed from the original snapshot; stored meta_icon fields match.
+The prior Caddy/TLS and Node Unknown failure is a resolved historical blocker.
+This recheck made no infrastructure, VPN or global DNS/route mutations.
 
 Historical5–6 November receipts (including134/134 TLS/public checks and117 focused
-checks) remain receipts for their original stage, not acceptance of the current
-VPS outage. Native human first-use/independent ISP/physical TV/DR acceptance is
+checks) remain receipts for their original stage, not substitutes for the recovered-VPS
+acceptance above. Native human first-use/independent ISP/physical TV/DR acceptance is
 not inferred from API probes or synthetic fixtures.

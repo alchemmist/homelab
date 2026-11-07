@@ -9,12 +9,15 @@
 публичны без Authentik и NetBird. Reader допускает только GET/HEAD, проверяет
 manifest/hash и выдаёт безопасные типы inline. [Контракт и границы](../docs/identity/native-browser-auth.md).
 
-При проверке: домашний публичный вход41/41; второму входу нельзя приписывать success.
-`socrat-2` Node Ready=Unknown с17:04:42UTC; `k3s` inactive (exit17:03:56UTC),
-на443 отвечает Caddy с TLS internal_error. Причина остановки не установлена;
-Caddy/k3s/VPN не перезапускали. Старый xui gateway Pod/Deployment ожидает обычного
-завершения на недоступной ноде; force-delete/finalizer bypass не выполнялся.
-Остальные7 затронутых Argo apps Synced/Healthy, edge Synced/Progressing.
+Повторная приёмка после восстановления socrat-2: **82/82** публичных проверок
+на HOME и VPS, обычная проверка TLS без отключения верификации. Все4 ноды Ready;
+socrat-2 Ready с17:55:34UTC7 ноября. Все8 затронутых Argo apps Synced/Healthy.
+Старые xui gateway Application/Deployment/Service/ConfigMap и Pod отсутствуют;
+force-delete не потребовался.10 native OIDC регистраций/providers/bindings и
+сохранённые поля иконок не изменились; Proxy Providers0. Опубликованный artifact
+проверен через оба входа: anonymous GET/HEAD/206, manifest/SHA-256, inline,
+PUT/POST/PATCH/DELETE405. [Приёмка](../docs/identity/native-browser-auth.md#recovered-vps-final-acceptance).
+Это протокольная приёмка, не новая проверка входа от имени каждого человека.
 
 
 > Текущий срез7 ноября: [логины, первый вход и native роли](identity-current-state.md),
