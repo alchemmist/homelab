@@ -6,34 +6,7 @@ kind: ConfigMap
 metadata: {name: rustfs-console-http, namespace: identity}
 data:
   nginx.conf: |
-    pid /tmp/nginx.pid;
-    error_log /dev/null;
-    events { worker_connections 256; }
-    http {
-      server_tokens off;
-      access_log off;
-      client_body_temp_path /tmp/client;
-      proxy_temp_path /tmp/proxy;
-      resolver 10.43.0.10 valid=30s ipv6=off;
-      map $http_upgrade $connection_upgrade { default upgrade; '' close; }
-      server {
-        listen 8080;
-        client_max_body_size 8m;
-        location / {
-          set $console http://rustfs.rustfs.svc.cluster.local:9001;
-          proxy_pass $console;
-          proxy_http_version 1.1;
-          proxy_set_header Host rustfs.socrat.alchemmist.xyz;
-          proxy_set_header X-Forwarded-Proto https;
-          proxy_set_header X-Forwarded-Host rustfs.socrat.alchemmist.xyz;
-          proxy_set_header X-authentik-username "";
-          proxy_set_header X-authentik-groups "";
-          proxy_set_header Upgrade $http_upgrade;
-          proxy_set_header Connection $connection_upgrade;
-          proxy_read_timeout 60s;
-        }
-      }
-    }
+{{ .Files.Get "files/console-http.conf" | indent 4 }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -42,7 +15,10 @@ spec:
   replicas: 1
   selector: {matchLabels: {app: rustfs-console-http}}
   template:
-    metadata: {labels: {app: rustfs-console-http}}
+    metadata:
+      labels: {app: rustfs-console-http}
+      annotations:
+        checksum/config: {{ .Files.Get "files/console-http.conf" | sha256sum }}
     spec:
       automountServiceAccountToken: false
       securityContext:
