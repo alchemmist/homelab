@@ -18,7 +18,8 @@
     "name": "Tim",
     "email": "antropophag@gmail.com",
     "groups": [
-      "homelab-observer"
+      "homelab-observer",
+      "homelab-chat-user"
     ],
     "rancherUserId": "u-22wv2",
     "openWebuiUserId": "01e16076-81f3-40b6-ab9b-2d7a3795799d",

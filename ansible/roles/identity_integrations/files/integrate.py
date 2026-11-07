@@ -55,7 +55,8 @@ if service=='harbor':
         'oidc_client_secret':clients['harbor']['client_secret'],
         'oidc_scope':'openid,profile,email,groups','oidc_user_claim':'preferred_username',
         'oidc_groups_claim':'groups','oidc_admin_group':'homelab-owner',
-        'oidc_verify_cert':True,'oidc_auto_onboard':True}
+        'oidc_verify_cert':True,'oidc_auto_onboard':True,
+        'project_creation_restriction':'adminonly'}
     secret={'apiVersion':'v1','kind':'Secret','metadata':{'name':'socrat-authentik-harbor','namespace':'harbor'},
         'type':'Opaque','stringData':{'config-json':json.dumps(config)}}
     kubectl(['apply','-f','-'],secret)
@@ -124,6 +125,7 @@ asyncio.run(main())"""
     kubectl(['-n','llm','rollout','status','deployment/open-webui','--timeout=600s'])
     print('Open WebUI native OIDC configured; exact UUID links preserve users/chats; no email-based merging')
 elif service=='rancher':
+    from observer_admission import retain_observer, authconfig_patch
     accounts=json.loads((root/'account-mappings.json').read_text())
     original=json.loads(kubectl(['get','authconfigs.management.cattle.io','genericoidc','-o','json']))
     private_save(root/'rancher-authconfig-before-oidc.json',original)
@@ -187,7 +189,14 @@ elif service=='rancher':
         'rancherApiHost':'https://rancher.socrat.alchemmist.xyz',
         'scope':'openid profile email','groupsClaim':'groups','nameClaim':'preferred_username',
         'emailClaim':'email','groupSearchEnabled':False,'clientAuthenticatedSearch':False,'pkceMethod':'S256'}
-    kubectl(['patch','authconfigs.management.cattle.io','genericoidc','--type=merge','--patch',json.dumps(settings)])
+    # Re-read dependencies immediately before the write. Kubernetes cannot make
+    # this a multi-resource transaction; authconfig UID/RV tests protect its
+    # admission list against concurrent edits, including changes since backup.
+    roles=json.loads(kubectl(['get','globalroles.management.cattle.io','-o','json']))['items']
+    ttl=json.loads(kubectl(['get','settings.management.cattle.io','auth-user-session-ttl-minutes','-o','json']))
+    settings['allowedPrincipalIds']=retain_observer(original,allowed,roles,ttl)
+    kubectl(['patch','authconfigs.management.cattle.io','genericoidc','--type=json','--patch',
+             json.dumps(authconfig_patch(original,settings))])
     print('Rancher native OIDC enabled; UUID-bound external identities mirror reviewed grants; local emergency identities preserved')
 elif service=='wiki':
     import secrets

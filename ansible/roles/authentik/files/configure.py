@@ -29,6 +29,21 @@ def unique(path, field, value):
     return exact[0] if exact else None
 
 services=json.loads((root/'services.json').read_text())
+# Never admit new Harbor observers while its native project-creation defaults
+# are still broad. The one-time native bootstrap writes this private receipt.
+observer_ready_path=root/'observer-ready.json'
+observer_ready=False
+if observer_ready_path.exists():
+    import os
+    st=observer_ready_path.stat()
+    if observer_ready_path.is_symlink() or st.st_mode & 0o077 or st.st_uid!=os.geteuid():
+        raise RuntimeError('Unsafe observer readiness receipt')
+    ready=json.loads(observer_ready_path.read_text())
+    import hashlib
+    observer_profile=root/'observer-profile.json'
+    observer_ready=(ready.get('version')==1 and ready.get('nativeObserverReady') is True
+                    and observer_profile.is_file()
+                    and ready.get('policy_sha256')==hashlib.sha256(observer_profile.read_bytes()).hexdigest())
 account_path=root/'account-mappings.json'
 accounts=json.loads(account_path.read_text()) if account_path.exists() else {}
 # Check pinned identities BEFORE any write, including email/link reconciliation.
@@ -184,6 +199,8 @@ for slug,service in services.items():
     else:application=api('POST','core/applications/',settings)
     # Additive bindings only. Unknown/disabled/negated UI policy is a blocker.
     for order,name in enumerate(allowed):
+        if name=='homelab-observer' and service.get('observerAdmissionRequiresBootstrap') and not observer_ready:
+            continue
         if not any(b.get('group')==groups[name] for b in bindings):
             api('POST','policies/bindings/',{'target':application['pk'],'group':groups[name],
                 'order':order,'enabled':True,'failure_result':False})
