@@ -18,11 +18,33 @@ receivers remain private. DNS publication is not an authorization boundary.
 | 1.socrat.alchemmist.xyz/sync/ | Same scoped MFA gate | Explicit 410 gateway-only response; no substitute/new device |
 | kuma.socrat.alchemmist.xyz/dashboard | Owner / uptime-kuma-web-admins, personal MFA | Native Kuma authorization/password retained; MFA admission alone grants no native admin rights |
 
-`charts/public-web-entry` owns the new explicit Ingress resources, their
-certificate references and isolated Grafana/Rancher/Syncthing/Kuma policy bridges. Root Argo deploys the dedicated Application. VPS Traefik
-adds exactly cattle-system and cattle-monitoring-system to its namespace list;
-this requires its own targeted controller rollout, not a k3s/node/VPN restart.
-Certificates are independently issued by cert-manager, not copied between owners.
+Public entry is owned by each service's existing Argo Application, **not a separate
+public-web-entry Application**. For local charts, routes/proxies are templates in
+that chart and settings are under `publicEntry` in its values. For externally
+sourced platform charts, a small app-specific chart under
+`deploy/platform/<app>/public-entry` is an additional source of the **same**
+Application. No extra access Application or aggregate chart remains.
+
+| Owner Application | Public resources |
+| --- | --- |
+| kube-prometheus-stack | Grafana ingress and policy proxy/config |
+| searxng | Search ingress |
+| open-webui | LLM alias ingress |
+| litellm | LiteLLM alias ingress |
+| rancher | Rancher ingress and policy proxy/config |
+| grafana-mcp | MCP ingress |
+| syncthing | Both GUI ingresses and policy proxy/config |
+| uptime-kuma | Kuma admin ingress and policy proxy/config |
+
+Shared Traefik, Authentik and cert-manager remain platform components. Authentik
+admission policy stays in `deploy/public-web/services.json` and its audit-first
+identity tooling; native authorization is not duplicated into Helm charts.
+Resource names, namespaces, TLS Secret references and existing access restrictions
+are deliberately preserved. Identity-gated ingress resources may remain in the
+`identity` namespace but are tracked by their owning service's Application.
+
+VPS Traefik includes cattle-system and cattle-monitoring-system in its namespace
+list. Certificates are independently issued by cert-manager, not copied between owners.
 
 Grafana now uses its own native OAuth identity, not the retired outer proxy gate.
 The bounded `grafana-public-sso.py` helper audits the existing OAuth/secret source,
@@ -216,3 +238,39 @@ work VPN, not a promise about every corporate resolver or Internet provider.
 ### Living-room traffic light (2026-11-06)
 
 Only `socrat-traffic-light` is additionally available through **native public dashboard sharing**, at `grafana.socrat.alchemmist.xyz/public-dashboards/<accessToken>`. This is not anonymous organization-wide Viewer access and not an Authentik group bypass. Ordinary Grafana UI/APIs keep native SSO/roles and public password/Basic blocks. The temporary TV hostname has been removed: the TV internal WireGuard profile/key is explicitly retired, so the canonical Grafana hostname resolves publicly without that private path. The YouTube global VPN remains on demand. URL-only delivery, server-side presentation, scoped acceptance and rollback/uncertain-write handling are documented in `docs/android-tv.md` and `llm-wiki/android-tv.md`; do not use full TV provisioning for a URL-only update.
+
+
+## Per-application ownership handoff — 2026-11-07
+
+The former aggregate `public-web-entry` owner was first disarmed in Git: automatic
+sync disabled and Application deletion finalizer removed. All **22** resources
+were then added to their eight service owners. Offline rendering verifies exact
+payload equality against the pre-migration snapshot (including proxy configs,
+Pod templates, TLS, auth guards and resources); only Argo tracking ownership
+changes live. Before retirement, all 22 resources had the expected new tracking
+owner and their original UIDs. All 18 Certificate/Secret UIDs and all 186 sampled
+existing Pod UIDs/readiness/restart counts were unchanged.
+
+LiteLLM's full auto-sync attempted its pre-existing DB migration hook. The Job
+remained Pending (512Mi request pinned to a memory-constrained socrat-0); it never
+started. Automatic sync was temporarily paused in Git, the operation terminated,
+and the pending hook removed by Argo. The alias Ingress alone was synced using a
+resource-only operation, which skips hooks. Auto-sync was restored after the
+application became Synced/Healthy. No DB migration, identity rewrite or workload
+restart was required; the migration Job's existing scheduling policy was not
+silently changed as part of an ingress ownership refactor.
+
+After ownership verification the aggregate Application manifest and chart were
+removed from Git; root prunes only the now-finalizer-free Application, not the
+transferred resources. Children retain prune=false/selfHeal=true. Public TLS and
+anonymous/forged-header/invalid-token checks passed **134/134** before and after
+handoff. This is a configuration/ownership migration, not a fresh browser-MFA or
+user enrollment acceptance test. Historical acceptance sections above describe
+the former owner at the time; they are not installation instructions.
+
+Test scope: 88 focused public-access, ownership, TV-policy, Syncthing GUI and
+WebUI tests pass. An additional older `test_syncthing_scheduling.py` suite has five
+pre-existing failures (it expects a DaemonSet, while the current chart defaults
+to a Deployment). Running that suite against pre-migration commit `c612d71`
+reproduced all five failures; it is not silently counted as passing or changed
+as part of this migration.

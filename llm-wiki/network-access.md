@@ -78,7 +78,7 @@ Kuma public Socket.IO и неизвестные admin APIs закрыты; ст�
 
 Syncthing BasicAuth bytes, process/device identity, keys, config и synchronization не менялись/не перезапускались. Реальный owner Basic login — отдельная опциональная приёмка; пароль не заимствовался и не сбрасывался.
 
-Основные источники: `deploy/public-web/services.json`, `charts/public-web-entry`, `scripts/public-web-access.py`, `ansible/playbooks/public-web-access.yml`, [публичные входы](../docs/public-web-migration.md). Audit/create-only, drift refusal, outpost preservation, private receipts. Authentik policy denial может быть HTML с HTTP 200: оценивать фактический denial, не требовать фиктивный transport 403.
+Основные источники: `deploy/public-web/services.json`, `publicEntry` в локальных чартах и `deploy/platform/<app>/public-entry` в существующих Argo Applications, `scripts/public-web-access.py`, `ansible/playbooks/public-web-access.yml`, [публичные входы](../docs/public-web-migration.md). Audit/create-only, drift refusal, outpost preservation, private receipts. Authentik policy denial может быть HTML с HTTP 200: оценивать фактический denial, не требовать фиктивный transport 403.
 
 ## 6. Kuma: восстановление после инцидента, не zero downtime
 
@@ -104,7 +104,7 @@ Secret UID сохранён, **данные Secret при recovery измени�
 
 Остался **только `alchemmist-tv` для YouTube**, без чтения/замены его key/config. YouTube helper поднимает его по требованию и ждёт VALIDATED. Grafana helper отключает этот глобальный VPN и открывает Fully **без подключения туннеля**. Always-on VPN очищен; helper source и `tv-admin.yml` не возвращают его. Package/component/signing identity совместимы с существующими назначениями пульта.
 
-URL Fully — canonical `grafana.socrat.alchemmist.xyz/public-dashboards/<accessToken>?kiosk=1&hideLogo=1&autofitpanels=true&socratTv=1`; точный адрес — root-private `/var/lib/homelab-grafana-tv-public/fully-url.json`. Временный **`tv.alchemmist.xyz` удалён** из authoritative A records и chart; его exact Ingress/Certificate/Secret удалены по UID, не blanket prune. DNS/alias final audits — operations=0; public-web-entry Synced/Healthy.
+URL Fully — canonical `grafana.socrat.alchemmist.xyz/public-dashboards/<accessToken>?kiosk=1&hideLogo=1&autofitpanels=true&socratTv=1`; точный адрес — root-private `/var/lib/homelab-grafana-tv-public/fully-url.json`. Временный **`tv.alchemmist.xyz` удалён** из authoritative A records и chart; его exact Ingress/Certificate/Secret удалены по UID, не blanket prune. DNS/alias final audits — operations=0; это исторический результат. Отдельный public-web-entry затем удалён; Grafana public ingress/proxy теперь принадлежат kube-prometheus-stack.
 
 Серверный JS/CSS восстанавливает 5px inset, скрывает public header/footer и autofit compacted layout: native public scene игнорирует старые kiosk/autofit flags. Важно брать compacted geometry, не пересекающиеся raw gridPos. Сохранены Fully scale 55%, font 75%, empty injectJsCode (без Plus watermark), remote assignments/HDMI и Android Private DNS. Native share не меняет dashboard JSON, refresh 5s и live range now-12h.
 

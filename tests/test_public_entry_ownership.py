@@ -27,11 +27,13 @@ class OwnershipTests(unittest.TestCase):
             self.assertFalse(app['spec']['syncPolicy']['automated']['prune'])
             self.assertTrue(app['spec']['syncPolicy']['automated']['selfHeal'])
 
-    def test_no_new_public_access_applications(self):
+    def test_aggregate_chart_and_application_are_gone(self):
+        self.assertFalse((ROOT/'charts/public-web-entry').exists())
+        self.assertFalse((ROOT/'deploy/argocd/apps/public-web-entry.yaml').exists())
         for path in (ROOT/'deploy/argocd/apps').glob('*.yaml'):
-            if path.name == 'public-web-entry.yaml':  # old owner is disarmed until handoff completes
-                app = yaml.safe_load(path.read_text())
-                self.assertEqual(app['metadata'].get('finalizers'), [])
-                self.assertFalse(app['spec']['syncPolicy']['automated']['enabled'])
-            else:
-                self.assertNotIn('public-entry', yaml.safe_load(path.read_text())['metadata']['name'])
+            app = yaml.safe_load(path.read_text())
+            self.assertNotEqual(app['metadata']['name'], 'public-web-entry')
+            sources = app['spec'].get('sources', [app['spec'].get('source', {})])
+            self.assertFalse(any(s.get('path') == 'charts/public-web-entry' for s in sources))
+        litellm = yaml.safe_load((ROOT/'deploy/argocd/apps/litellm.yaml').read_text())
+        self.assertIsNot(litellm['spec']['syncPolicy']['automated'].get('enabled'), False)
