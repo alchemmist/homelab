@@ -37,7 +37,7 @@ class Namespace(unittest.TestCase):
             self.render('default')
 
     def test_fixed_destination(self):
-        env = dict(AUTH_URL='https://spi-evidence.socrat.alchemmist.xyz/outpost.goauthentik.io/auth/nginx', S3_ACCESS_KEY='offline', S3_SECRET_KEY='offline')
+        env = dict(AUTH_URL='https://rustfs.socrat.alchemmist.xyz/outpost.goauthentik.io/auth/nginx', S3_ACCESS_KEY='offline', S3_SECRET_KEY='offline')
         with patch.dict(os.environ, env, clear=True):
             self.assertEqual(Reader().s3, 'http://rustfs.rustfs.svc.cluster.local:9000')
             for endpoint in ('http://rustfs:9000', 'http://127.0.0.1:9000', 'https://public.example', 'http://rustfs.rustfs.svc.cluster.local:9000/evil'):
