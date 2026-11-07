@@ -5300,7 +5300,7 @@
         },
         "maxVizHeight": 300,
         "minVizHeight": 0,
-        "minVizWidth": 0,
+        "minVizWidth": 1,
         "namePlacement": "hidden",
         "orientation": "vertical",
         "reduceOptions": {
@@ -5311,7 +5311,7 @@
           "values": false
         },
         "showUnfilled": true,
-        "sizing": "auto",
+        "sizing": "manual",
         "text": {
           "titleSize": 16,
           "valueSize": 16
@@ -5515,13 +5515,14 @@
           }
         }
       ],
-      "title": "n8n · workflow starts / 5 min",
+      "title": "n8n · starts · rolling 5m",
       "type": "timeseries",
-      "interval": "5m"
+      "interval": "30s",
+      "timeFrom": "1h"
     },
     {
       "id": 923,
-      "title": "Starts · 1h",
+      "title": "n8n · activity",
       "description": "Live read-only activity telemetry; no data is not zero. n8n starts are grouped by start time and current outcome; waiting is not running.",
       "type": "stat",
       "datasource": {
@@ -5531,7 +5532,7 @@
       "gridPos": {
         "x": 13,
         "y": 15,
-        "w": 2,
+        "w": 6,
         "h": 3
       },
       "targets": [
@@ -5541,125 +5542,31 @@
           "format": "time_series",
           "instant": true,
           "range": false,
-          "legendFormat": "{{status}}",
+          "legendFormat": "Starts / 1h",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "decimals": 0,
-          "noValue": "No telemetry",
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "#5794F2"
-          }
-        }
-      },
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
         },
-        "textMode": "value",
-        "text": {
-          "valueSize": 32,
-          "titleSize": 14
-        }
-      }
-    },
-    {
-      "id": 924,
-      "title": "Errors · 1h",
-      "description": "Live read-only activity telemetry; no data is not zero. n8n starts are grouped by start time and current outcome; waiting is not running.",
-      "type": "stat",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 15,
-        "y": 15,
-        "w": 2,
-        "h": 3
-      },
-      "targets": [
         {
-          "refId": "A",
+          "refId": "B",
           "expr": "sum(socrat_n8n_starts_window{window=\"3600\",status=\"error\"}) and on() (max(socrat_n8n_collection_success) == 1) and on() (time() - max(socrat_n8n_collection_timestamp_seconds) < 90)",
           "format": "time_series",
           "instant": true,
           "range": false,
-          "legendFormat": "{{status}}",
+          "legendFormat": "Errors / 1h",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "decimals": 0,
-          "noValue": "No telemetry",
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "#B42332"
-          }
-        }
-      },
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
         },
-        "textMode": "value",
-        "text": {
-          "valueSize": 32,
-          "titleSize": 14
-        }
-      }
-    },
-    {
-      "id": 925,
-      "title": "Running",
-      "description": "Live read-only activity telemetry; no data is not zero. n8n starts are grouped by start time and current outcome; waiting is not running.",
-      "type": "stat",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 17,
-        "y": 15,
-        "w": 2,
-        "h": 3
-      },
-      "targets": [
         {
-          "refId": "A",
+          "refId": "C",
           "expr": "max(socrat_n8n_starts_window{window=\"0\",status=\"running\"}) and on() (max(socrat_n8n_collection_success) == 1) and on() (time() - max(socrat_n8n_collection_timestamp_seconds) < 90)",
           "format": "time_series",
           "instant": true,
           "range": false,
-          "legendFormat": "{{status}}",
+          "legendFormat": "Running",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -5675,13 +5582,45 @@
             "mode": "fixed",
             "fixedColor": "#5794F2"
           }
-        }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Errors / 1h"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "#26783D",
+                      "value": null
+                    },
+                    {
+                      "color": "#B42332",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "center",
-        "orientation": "auto",
+        "orientation": "horizontal",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -5689,7 +5628,7 @@
           "fields": "",
           "values": false
         },
-        "textMode": "value",
+        "textMode": "value_and_name",
         "text": {
           "valueSize": 32,
           "titleSize": 14
