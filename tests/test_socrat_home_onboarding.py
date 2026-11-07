@@ -17,12 +17,13 @@ class Links(HTMLParser):
             self.urls.append(dict(attrs)['href'])
 
 
-def test_onboarding_is_between_title_and_wiki_navigation():
-    assert HTML.index('</h1>') < HTML.index('class="onboarding"') < HTML.index('<nav ')
+def test_onboarding_is_under_title_with_one_final_wiki_sentence():
+    assert HTML.index('</h1>') < HTML.index('class="onboarding"')
     assert 'with your assigned username and password, then change your password.' in HTML
     assert 'to connect to the internal network.' in HTML
-    assert 'Then explore the cluster and its services.' in HTML
-    assert 'explore the wiki &gt;' in HTML
+    assert '<p><a href="https://wiki.socrat.alchemmist.xyz/">Then explore the cluster and its services with wiki.</a></p>' in HTML
+    assert '<nav ' not in HTML
+    assert 'explore the wiki &gt;' not in HTML
     assert 'start from wiki' not in HTML
 
 
@@ -49,12 +50,12 @@ def test_inline_links_and_existing_artwork_are_preserved():
 def test_heading_stays_courier_and_prose_uses_wiki_serif():
     assert 'h1{font-family:CourierCyr,monospace;' in HTML
     assert 'font:18px/1.6 "Computer Modern Roman",serif}.onboarding p' in HTML
-    assert '.copy nav a{font:18px/1.6 "Computer Modern Roman",serif;' in HTML
+    assert '.onboarding a{display:inline;padding:0;font:inherit;' in HTML
 
 
 def test_links_use_body_color_without_extra_word_emphasis():
     assert ".onboarding a{display:inline;padding:0;font:inherit;color:inherit;" in HTML
-    assert 'serif;color:var(--muted);text-decoration:underline;' in HTML
+    assert 'color:inherit;text-decoration:underline;' in HTML
     assert ".copy a:hover{color:var(--muted)}" in HTML
     assert "<strong" not in HTML and "<em>" not in HTML
 
