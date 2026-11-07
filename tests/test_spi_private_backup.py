@@ -97,3 +97,58 @@ except Exception:sys.exit(1)
             self.assertEqual(list(Path(d).glob('.spi-prechange-*')),[])
             self.assertEqual(signal.getsignal(signal.SIGALRM),old)
             self.assertEqual(signal.getitimer(signal.ITIMER_REAL),(0.0,0.0))
+
+class CleanupBoundaryTests(unittest.TestCase):
+    def test_real_ownership_and_close_failures(self):
+        import signal
+        from unittest.mock import patch
+        for boundary in ('creation', 'first-close', 'second-close', 'pending-close'):
+            with self.subTest(boundary=boundary), tempfile.TemporaryDirectory() as d:
+                spec=importlib.util.spec_from_file_location('backup',SCRIPT)
+                m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+                src=Path(d)/'source'
+                c=sqlite3.connect(src);c.execute('CREATE TABLE x(a)');c.close()
+                old=signal.getsignal(signal.SIGALRM)
+                create=m.tempfile.mkstemp;connect=m.sqlite3.connect
+                count=[0]
+                def owned(*a,**kw):
+                    result=create(*a,**kw)
+                    for suffix in ('-wal','-shm','-journal'):
+                        Path(result[1]+suffix).touch(mode=0o600)
+                    if boundary=='creation':os.kill(os.getpid(),signal.SIGALRM)
+                    return result
+                class Conn(sqlite3.Connection):
+                    def close(self):
+                        super().close();count[0]+=1
+                        if boundary=='pending-close':
+                            os.kill(os.getpid(),signal.SIGALRM)
+                        if count[0]==(2 if boundary=='second-close' else 1):
+                            raise TimeoutError('synthetic close failure')
+                def connected(*a,**kw):return connect(*a,**kw,factory=Conn)
+                with patch.object(m.tempfile,'mkstemp',owned),patch.object(m.sqlite3,'connect',connected):
+                    with self.assertRaises(TimeoutError):m.backup(str(src),d)
+                self.assertEqual(list(Path(d).glob('.spi-prechange-*')),[])
+                self.assertEqual(signal.getsignal(signal.SIGALRM),old)
+                self.assertEqual(signal.getitimer(signal.ITIMER_REAL),(0.0,0.0))
+
+    def test_prior_periodic_timer_restored_on_open_failure(self):
+        import signal
+        spec=importlib.util.spec_from_file_location('backup',SCRIPT)
+        m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+        handler=signal.getsignal(signal.SIGALRM)
+        timer=signal.getitimer(signal.ITIMER_REAL)
+        def caller(*args):pass
+        try:
+            signal.signal(signal.SIGALRM,caller)
+            signal.setitimer(signal.ITIMER_REAL,30,7)
+            with tempfile.TemporaryDirectory() as d:
+                with self.assertRaises(sqlite3.OperationalError):m.backup(str(Path(d)/'absent'),d)
+                self.assertEqual(list(Path(d).glob('.spi-prechange-*')),[])
+            self.assertIs(signal.getsignal(signal.SIGALRM),caller)
+            remaining,interval=signal.getitimer(signal.ITIMER_REAL)
+            self.assertGreater(remaining,25);self.assertLessEqual(remaining,30)
+            self.assertEqual(interval,7)
+        finally:
+            signal.setitimer(signal.ITIMER_REAL,0)
+            signal.signal(signal.SIGALRM,handler)
+            signal.setitimer(signal.ITIMER_REAL,*timer)

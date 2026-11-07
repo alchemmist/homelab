@@ -18,8 +18,9 @@ def backup(source, directory, max_bytes=512*1024*1024, deadline_seconds=60):
     start=time.monotonic()
     old_handler=signal.getsignal(signal.SIGALRM)
     old_timer=signal.getitimer(signal.ITIMER_REAL)
-    path=None; src=None; dst=None
+    path=None; fd=None; src=None; dst=None
     def expired(*args):
+        signal.setitimer(signal.ITIMER_REAL,0)
         raise TimeoutError('backup deadline exceeded')
     def check():
         if time.monotonic()-start >= deadline_seconds:
@@ -27,10 +28,19 @@ def backup(source, directory, max_bytes=512*1024*1024, deadline_seconds=60):
     signal.signal(signal.SIGALRM,expired)
     signal.setitimer(signal.ITIMER_REAL,deadline_seconds)
     try:
-        fd,path=tempfile.mkstemp(prefix='.spi-prechange-',suffix='.sqlite',dir=directory)
-        os.close(fd)
-        src=sqlite3.connect('file:'+source+'?mode=ro',uri=True,timeout=min(0.05,deadline_seconds))
-        dst=sqlite3.connect(path,timeout=min(0.05,deadline_seconds))
+        # Block return/assignment boundaries until ownership is recorded.
+        mask=signal.pthread_sigmask(signal.SIG_BLOCK,{signal.SIGALRM})
+        try:
+            fd,path=tempfile.mkstemp(prefix='.spi-prechange-',suffix='.sqlite',dir=directory)
+        finally:
+            signal.pthread_sigmask(signal.SIG_SETMASK,mask)
+        os.close(fd); fd=None
+        mask=signal.pthread_sigmask(signal.SIG_BLOCK,{signal.SIGALRM})
+        try:
+            src=sqlite3.connect('file:'+source+'?mode=ro',uri=True,timeout=min(0.05,deadline_seconds))
+            dst=sqlite3.connect(path,timeout=min(0.05,deadline_seconds))
+        finally:
+            signal.pthread_sigmask(signal.SIG_SETMASK,mask)
         page_size=src.execute('PRAGMA page_size').fetchone()[0]
         def progress(status,remaining,total):
             check()
@@ -54,18 +64,32 @@ def backup(source, directory, max_bytes=512*1024*1024, deadline_seconds=60):
         sys.stdout.buffer.flush()
         check()
     finally:
+        # Cancel before cleanup. Independent attempts; never retry or re-arm.
+        mask=signal.pthread_sigmask(signal.SIG_BLOCK,{signal.SIGALRM})
+        signal.setitimer(signal.ITIMER_REAL,0)
+        errors=[]
         try:
-            if dst is not None:dst.close()
-            if src is not None:src.close()
+            for conn in (dst,src):
+                try:
+                    if conn is not None:conn.close()
+                except BaseException as exc:errors.append(exc)
+            try:
+                if fd is not None:os.close(fd)
+            except BaseException as exc:errors.append(exc)
             if path:
                 for suffix in ('','-wal','-shm','-journal'):
                     try:os.unlink(path+suffix)
                     except FileNotFoundError:pass
+                    except BaseException as exc:errors.append(exc)
         finally:
-            signal.setitimer(signal.ITIMER_REAL,0)
+            # Drain our pending one-shot before restoring a default handler.
+            if signal.SIGALRM in signal.sigpending():
+                signal.sigwait({signal.SIGALRM})
             signal.signal(signal.SIGALRM,old_handler)
             if old_timer[0]:
                 signal.setitimer(signal.ITIMER_REAL,max(0.000001,old_timer[0]-(time.monotonic()-start)),old_timer[1])
+            signal.pthread_sigmask(signal.SIG_SETMASK,mask)
+        if errors:raise errors[0]
 
 
 def main():
