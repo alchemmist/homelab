@@ -54,6 +54,10 @@ spec:
             - secretRef:
                 name: {{ .Values.secretName }}
           env:
+            - name: SPI_DURABLE_WAIT_ENABLED
+              value: {{ .Values.durableWaitEnabled | quote }}
+            - name: SPI_LLM_MINUTE_TOKENS
+              value: {{ .Values.llmMinuteTokens | quote }}
             - name: SPI_TOKEN_ACCOUNTING_MODE
               value: {{ .Values.tokenAccountingMode | quote }}
             - name: RAYON_NUM_THREADS

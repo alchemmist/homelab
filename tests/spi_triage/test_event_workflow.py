@@ -33,13 +33,20 @@ class EventWorkflowTests(unittest.TestCase):
             'path': 'spi-incident-triage-dispatch'})
         chain = ['Dispatch Triage Job', 'Claim Triage Job', 'Select Claimed Job',
                  'Match Open SPI', 'Collect Evidence', 'Analyze Incident', 'Publish SPI']
-        self.assertEqual(set(nodes), set(chain))
-        self.assertEqual(set(w['connections']), set(chain[:-1]))
-        for source, target in zip(chain, chain[1:]):
-            self.assertEqual(w['connections'][source], {
-                'main': [[{'node': target, 'type': 'main', 'index': 0}]]})
-        self.assertEqual(nodes['Select Claimed Job']['parameters']['jsCode'],
-                         'return items.filter(item => Boolean(item.json.job_id));')
+        self.assertEqual(set(nodes), set(chain)|{'Route Stage Outcome','Wait For Admission','Resume Pinned Stage'})
+        self.assertEqual(len(nodes),10)
+        original_ids=['9c393df1-a66f-41bf-acaf-b2b66f31a393','ace6035e-4fe4-4742-a2ac-e48d24fecf04','e7d658f0-698a-4a49-b66c-2b5c3336b52c','1f4819ea-709f-4a56-8ffe-22f6396ac78b','0f300417-871e-4478-8af5-c067e051209b','10869f3b-8aa7-4ba2-b185-3a35c921cabf','656d32a2-5cdd-475b-b9a4-53d6f289832b']
+        self.assertEqual([nodes[n]['id'] for n in chain],original_ids)
+        def targets(name):return [[x['node'] for x in output] for output in w['connections'][name]['main']]
+        self.assertEqual(targets('Dispatch Triage Job'),[['Claim Triage Job']])
+        self.assertEqual(targets('Claim Triage Job'),[['Select Claimed Job']])
+        self.assertEqual(targets('Select Claimed Job'),[['Route Stage Outcome']])
+        self.assertEqual(targets('Route Stage Outcome'),[['Wait For Admission'],['Resume Pinned Stage']])
+        self.assertEqual(targets('Wait For Admission'),[['Resume Pinned Stage']])
+        self.assertEqual(targets('Resume Pinned Stage'),[[n] for n in chain[3:]]+[[]])
+        for name in chain[3:]:self.assertEqual(targets(name),[['Select Claimed Job']])
+        self.assertEqual(nodes['Wait For Admission']['type'],'n8n-nodes-base.wait')
+        self.assertIn('INVALID_SPI_WAIT_ENVELOPE',nodes['Select Claimed Job']['parameters']['jsCode'])
         for name, endpoint in [('Claim Triage Job', 'claim'), ('Match Open SPI', 'match'),
                                ('Collect Evidence', 'collect'), ('Analyze Incident', 'analyze'),
                                ('Publish SPI', 'publish')]:
@@ -49,24 +56,39 @@ class EventWorkflowTests(unittest.TestCase):
             self.assertEqual(p['method'], 'POST')
             self.assertEqual(p['genericAuthType'], 'httpHeaderAuth')
             self.assertEqual(p['authentication'], 'genericCredentialType')
-            self.assertEqual(p['options']['timeout'], 20000 if endpoint == 'claim' else 900000)
-            self.assertEqual(p['jsonBody'], '={{ JSON.stringify({}) }}' if endpoint == 'claim'
-                             else '={{ JSON.stringify({job_id: $json.job_id}) }}')
+            self.assertEqual(p['options']['timeout'], 20000 if endpoint == 'claim' else 1920000)
+            self.assertEqual(p['jsonBody'], "={{ JSON.stringify({execution_id: String($execution.id), workflow_revision: 'durable-v1'}) }}" if endpoint == 'claim'
+                             else '={{ JSON.stringify($json) }}' )
             self.assertEqual(node['credentials'], trigger['credentials'])
             self.assertFalse(node.get('retryOnFail', False))
         self.assertEqual(w['settings'], {'executionOrder': 'v1', 'timezone': 'Europe/Moscow',
-                                        'executionTimeout': 3600, 'saveExecutionProgress': False,
-                                        'saveDataSuccessExecution': 'none',
-                                        'saveDataErrorExecution': 'none',
-                                        'saveManualExecutions': False})
+                                        'executionTimeout': 21600, 'saveExecutionProgress': True,
+                                        'saveDataSuccessExecution': 'all',
+                                        'saveDataErrorExecution': 'all',
+                                        'saveManualExecutions': True})
 
     def test_dispatch_execution_persistence_defense_in_depth(self):
-        """Custom trigger strips headers; persistence is additionally disabled."""
+        """Authenticated trigger strips secret headers; requested history stays enabled."""
         settings = self.workflow['settings']
         for key in ('saveDataSuccessExecution', 'saveDataErrorExecution'):
-            self.assertEqual(settings[key], 'none')
+            self.assertEqual(settings[key], 'all')
         for key in ('saveManualExecutions', 'saveExecutionProgress'):
-            self.assertIs(settings[key], False)
+            self.assertIs(settings[key], True)
+
+    def test_actual_envelope_validator_rejects_unknown_and_early_terminal(self):
+        import subprocess,time
+        code=next(n for n in self.workflow['nodes'] if n['name']=='Select Claimed Job')['parameters']['jsCode']
+        base={'contract':1,'status':'deferred','job_id':'a'*64,'execution_id':'1234','workflow_revision':'durable-v1','fence':'b'*64,'stage':'match','due_at':time.time()+80,'deadline':time.time()+21600,'code':'LLM_ADMISSION_DEFERRED'}
+        inputs=[base,{**base,'code':'WORKER_ADMISSION_DEFERRED'},
+                {**base,'code':'LLM_INVALID_EVIDENCE_REFERENCE'},
+                {**base,'code':'UNKNOWN'},{**base,'due_at':'tomorrow'},
+                {**base,'execution_id':'9999'},
+                {**base,'status':'complete','outcome':'complete'},
+                {**base,'status':'complete','stage':'publish','outcome':'complete'},
+                {'contract':1,'status':'empty','job_id':''}]
+        js='const run=new Function("items","$execution",'+json.dumps(code)+');const inputs='+json.dumps(inputs)+';console.log(JSON.stringify(inputs.map(x=>{try{return run([{json:x}],{id:"1234"}).length}catch(e){return "error"}})));'
+        results=json.loads(subprocess.check_output(['node','-e',js],text=True))
+        self.assertEqual(results,[1,1,'error','error','error','error','error',1,0])
 
     def test_render_reuses_worker_identity_without_mutating_template(self):
         original = copy.deepcopy(self.workflow)

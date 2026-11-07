@@ -10,7 +10,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from storage_runtime import load_storage
 from dispatcher import Dispatcher
-from core import Failure, PATIENT_TRANSIENT, Store, digest, normalize, render
+from core import Failure, OWNER_CONTEXT, PATIENT_TRANSIENT, Store, digest, normalize, render
 from integrations import Evidence, GitHub, HTTP, Model, REQUEST_DEADLINE
 from evidence_bundle import index_markdown, publish_parts, storage_objects, storage_markdown
 from s3_evidence import StorageTransient, StoragePermanent, StorageConflict
@@ -40,7 +40,9 @@ class Engine:
         if storage_backend not in {'legacy','s3'}:raise ValueError('Invalid storage backend')
         self.storage=storage;self.storage_backend=storage_backend
         self.lock=threading.Lock();self.delivery=delivery
-    def claim(self):
+    def claim(self, data=None):
+        if data is not None:
+            return self.store.owners.claim(data.get('execution_id'),data.get('workflow_revision'),time.time())
         # A socket call may outlive the durable lease. Never reclaim while this
         # process still owns a stage, including its final save/failure handling.
         if not self.lock.acquire(blocking=False):return {'job_id':''}
@@ -48,7 +50,10 @@ class Engine:
         finally:self.lock.release()
     def run(self,name,key):
         with self.lock:
-            REQUEST_DEADLINE.at=time.monotonic()+780
+            with self.store.db() as c:
+                if c.execute("SELECT 1 FROM workflow_wait_owner WHERE job_id=? AND phase IN ('ready','waiting','running','complete')",(key,)).fetchone():
+                    raise Failure('WAIT_OWNER_CONFLICT')
+            REQUEST_DEADLINE.at=time.monotonic()+1800
             try:return self._run(name,key)
             except Failure as e:
                 if not (self.store.get(key)['state']=='dead' and self.store.get(key)['error']=='WRITE_NEEDS_REVIEW'):
@@ -63,6 +68,45 @@ class Engine:
                 raise Failure('INTERNAL_ERROR') from None
             finally:
                 del REQUEST_DEADLINE.at
+    def run_v1(self, name, data):
+        # Admission deferral is the only successful HTTP patient outcome. Legacy
+        # run() never uses this route and therefore retains its 422 semantics.
+        if not self.lock.acquire(blocking=False):
+            result=self.store.owners.capacity_defer(name,data,time.time())
+            if result['status']=='deferred':log_event('stage_deferred','warning',stage=name,code=result['code'])
+            return result
+        try:
+            priority=self.store.owners.capacity_defer(name,data,time.time(),priority_only=True)
+            if priority is not None:
+                if priority['status']=='deferred':log_event('stage_deferred','warning',stage=name,code=priority['code'])
+                return priority
+            cached,owner=self.store.owners.begin(name,data,time.time())
+            if cached is not None:return cached
+            OWNER_CONTEXT.binding=(owner['job_id'],owner['fence'])
+            REQUEST_DEADLINE.at=time.monotonic()+min(1800,max(0,owner['deadline']-time.time()))
+            try:
+                self._run(name,owner['job_id'])
+                return self.store.owners.finish(owner,False,time.time())
+            except Failure as exc:
+                if exc.code=='LLM_ADMISSION_DEFERRED':
+                    try:
+                        result=self.store.owners.finish(owner,True,time.time(),exc.retry_after)
+                        log_event('stage_deferred','warning',stage=name,code=exc.code)
+                        return result
+                    except Failure as terminal:
+                        exc=terminal
+                self.store.fail(owner['job_id'],exc.code,retry_after=exc.retry_after,rate_metadata=exc.rate_metadata,on_fail=self.store.owners.failure_callback(owner))
+                log_event('stage_failed','error',stage=name,code=exc.code)
+                raise exc
+            except Exception:
+                self.store.fail(owner['job_id'],'INTERNAL_ERROR',on_fail=self.store.owners.failure_callback(owner))
+                raise Failure('INTERNAL_ERROR') from None
+            finally:
+                del REQUEST_DEADLINE.at
+                del OWNER_CONTEXT.binding
+        finally:
+            self.lock.release()
+
     def _run(self,name,key):
         stages={'match':1,'collect':2,'analyze':3,'publish':4}
         if name not in stages:raise Failure('INVALID_STAGE')
@@ -245,7 +289,7 @@ def serve():
     # Fail closed before store recovery, claims or dispatch.
     storage,storage_backend=load_storage()
     model=Model(HTTP(),os.environ['LITELLM_KEY'])
-    http=HTTP();store=Store(os.environ.get('SPI_DATABASE','/data/spi.sqlite'))
+    http=HTTP();store=Store(os.environ.get('SPI_DATABASE','/data/spi.sqlite'),minute_token_limit=int(os.environ.get('SPI_LLM_MINUTE_TOKENS','30000')))
     model.store=store
     recovered=store.recover_on_start()
     log_event('worker_started', recovered_jobs=recovered)
@@ -291,6 +335,10 @@ def serve():
             if not hmac.compare_digest(self.headers.get('X-Worker-Token',''),os.environ['WORKER_TOKEN']):return self.send(403,{'code':'FORBIDDEN'})
             try:
                 data=read_request_body(self)
+                contract=self.headers.get('X-SPI-Workflow-Contract')
+                if contract not in (None,'1'):raise Failure('INVALID_WORKFLOW_CONTRACT')
+                opted=contract=='1'
+                if opted and os.environ.get('SPI_DURABLE_WAIT_ENABLED','false')!='true':raise Failure('WORKFLOW_CONTRACT_DISABLED')
                 if self.path=='/enqueue':result=store.enqueue(normalize(data))
                 elif self.path=='/enqueue-group':
                     alerts=data.get('alerts')
@@ -303,14 +351,14 @@ def serve():
                     if isinstance(receipt,dict) and not receipt.get('error'):
                         delivery.receipt({'episode':result['episode']},receipt)
                 elif self.path=='/claim':
-                    result=engine.claim();h=store.health()
+                    result=engine.claim(data if opted else None);h=store.health()
                     log_event('queue_health', oldest_pending_seconds=h['oldest_pending_seconds'], dead_jobs=h['counts'].get('dead',0))
                 elif self.path in ['/match','/collect','/analyze','/publish']:
                     key=data.get('job_id','')
                     if not isinstance(key,str) or len(key)!=64 or any(c not in '0123456789abcdef'for c in key):raise Failure('INVALID_JOB_ID')
-                    result=engine.run(self.path[1:],key)
+                    result=engine.run_v1(self.path[1:],data) if opted else engine.run(self.path[1:],key)
                 else:return self.send(404,{'code':'NOT_FOUND'})
-                return self.send(200,result)
+                return self.send(202 if opted and result.get('status')=='deferred' else 200,result)
             except Failure as e:
                 self.close_connection=True
                 return self.send(422,{'code':e.code})

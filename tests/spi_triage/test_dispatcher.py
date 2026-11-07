@@ -50,8 +50,8 @@ class DispatchTests(unittest.TestCase):
     def test_expired_processing_lease(self):
         with patch('core.time.time',return_value=100):
             self.enqueue();self.store.claim()
-        self.assertEqual(self.store.reserve_dispatch(1599),(None,1600))
-        self.assertIsNotNone(self.store.reserve_dispatch(1600)[0])
+        self.assertEqual(self.store.reserve_dispatch(2079),(None,2080))
+        self.assertIsNotNone(self.store.reserve_dispatch(2080)[0])
 
 
 class ServiceSafetyTests(unittest.TestCase):

@@ -262,7 +262,8 @@ class Model:
         for attempt in range(2):
             remaining=deadline-time.monotonic()
             if remaining<10: raise Failure('LLM_MODEL_STAGE_BUDGET_EXCEEDED')
-            timeout=min(600,remaining)
+            timeout=min(remaining,getattr(REQUEST_DEADLINE,'at',deadline)-time.monotonic())
+            if timeout<10:raise Failure('LLM_MODEL_STAGE_BUDGET_EXCEEDED')
             if self.store is None:
                 from core import Store
                 self.store=Store(os.environ.get('SPI_DATABASE','/data/spi.sqlite'))
@@ -301,7 +302,7 @@ class Model:
                 'reason':reason,'count':len(issues),'uniqueCount':len(set(numbers)),
                 'identityDigest':digest(numbers)},sort_keys=True))
             return Failure('GITHUB_SNAPSHOT_UNSTABLE',retry_after=15) if reason=='CURRENT_DUPLICATE' else Failure('INVALID_MATCH_PROGRESS')
-        deadline=time.monotonic()+780
+        deadline=min(time.monotonic()+1800,getattr(REQUEST_DEADLINE,'at',float('inf')))
         event_identity=digest(event)
         event=self.bounded_context(event)
         # Every issue is examined. Batches avoid a single unbounded prompt.
@@ -440,7 +441,7 @@ class Model:
             data=self.bounded_context(original,limit)
         if self.budget_reservation(self.payload(task,data,REPORT_SCHEMA))>30000:
             raise Failure('LLM_CONTEXT_METADATA_TOO_LARGE')
-        report=self.call(task,data,REPORT_SCHEMA,time.monotonic()+780)
+        report=self.call(task,data,REPORT_SCHEMA,min(time.monotonic()+1800,getattr(REQUEST_DEADLINE,'at',float('inf'))))
         if report['issue_number'] not in {0,*[x['number']for x in match['candidates']]}: raise Failure('INVALID_MATCH_TARGET')
         return report
 

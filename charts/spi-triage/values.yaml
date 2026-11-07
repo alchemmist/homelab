@@ -20,3 +20,8 @@ s3Evidence:
   enabled: false
   retainCredentials: false
   writerSecret: ""
+
+# Enable only after backward-compatible backend and reviewed workflow cutover.
+durableWaitEnabled: false
+# Raise to 60000 only after existing SPI proxy key matches.
+llmMinuteTokens: 30000

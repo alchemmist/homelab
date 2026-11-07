@@ -3,6 +3,8 @@ title: "RustFS evidence foundation"
 weight: 30
 ---
 
+Практическое руководство: [S3-хранилище: что это и как пользоваться]({{< relref "platform/s3-storage.md" >}}). Ниже — датированная история внедрения; ранние ограничения не являются описанием текущего состояния.
+
 ## Current state (2026-11-05)
 
 Private RustFS foundation and protected reader are deployed through the dedicated

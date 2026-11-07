@@ -7,6 +7,9 @@ import sqlite3
 import time
 import math
 import random
+import threading
+
+OWNER_CONTEXT = threading.local()
 from contextlib import contextmanager, closing
 from datetime import datetime, timezone
 
@@ -140,8 +143,15 @@ def render(report, event):
     if clean(title) != title or clean(body) != body: raise Failure('UNSAFE_MODEL_OUTPUT')
     return title, body
 
+# Context/work bounds and minute throughput are deliberately independent.
+LLM_REQUEST_TOKEN_LIMIT = 30000
+LLM_MINUTE_TOKEN_LIMIT = 30000  # Legacy default; opt-in 60000 at reviewed cutover.
+
 class Store:
-    def __init__(self, path):
+    def __init__(self, path, minute_token_limit=LLM_MINUTE_TOKEN_LIMIT):
+        if type(minute_token_limit) is not int or minute_token_limit not in (30000, 60000):
+            raise ValueError('Unsupported minute token limit')
+        self.minute_token_limit = minute_token_limit
         self.path = str(path)
         with closing(sqlite3.connect(self.path)) as c:
             c.execute('PRAGMA temp_store=MEMORY')
@@ -169,6 +179,9 @@ class Store:
             CREATE INDEX IF NOT EXISTS runnable ON jobs(state,available,lease);
             CREATE INDEX IF NOT EXISTS episode ON jobs(episode);
             ''')
+        from durable_wait import WaitOwners
+        self.owners = WaitOwners(self)
+
     @contextmanager
     def db(self):
         c = sqlite3.connect(self.path, timeout=15)
@@ -189,6 +202,7 @@ class Store:
     def snapshot_guard(self,key):
         """A separate ledger cannot be erased by replacing jobs.result."""
         with self.db() as c:
+            self._guard_owner(c,key)
             row=c.execute('SELECT * FROM jobs WHERE id=?',(key,)).fetchone()
             result=json.loads(row['result'])
             budget=c.execute('SELECT * FROM snapshot_budget WHERE job_id=?',(key,)).fetchone()
@@ -208,6 +222,7 @@ class Store:
         """
         exhausted=False
         with self.db() as c:
+            self._guard_owner(c,key)
             row=c.execute('SELECT * FROM jobs WHERE id=?',(key,)).fetchone()
             if row['stage']==0:return
             if row['result']!=json.dumps(expected['result']) or row['stage']!=expected['stage']:
@@ -222,18 +237,20 @@ class Store:
                     count+=1
                     retained['snapshot_generation']=count
                     c.execute('INSERT OR REPLACE INTO snapshot_budget VALUES(?,?,?)',(key,count,json.dumps(retained)))
-                c.execute("UPDATE jobs SET stage=0,result=?,state='processing',updated=?,lease=? WHERE id=?",(json.dumps(retained),time.time(),time.time()+1500,key))
+                c.execute("UPDATE jobs SET stage=0,result=?,state='processing',updated=?,lease=? WHERE id=?",(json.dumps(retained),time.time(),self._processing_lease(c,key,time.time()),key))
         if exhausted:raise Failure('WRITE_NEEDS_REVIEW')
 
     def reserve_llm(self, tokens, timeout=600, now=None):
         """One SPI-key ledger on the shared PVC. No credentials or payloads."""
-        if type(tokens) is not int or not 0 < tokens <= 30000:
+        if type(tokens) is not int or not 0 < tokens <= LLM_REQUEST_TOKEN_LIMIT:
             raise Failure('LLM_REQUEST_TOO_LARGE')
         now=time.time() if now is None else now
         with self.db() as c:
+            binding=getattr(OWNER_CONTEXT,'binding',None)
+            if binding:self._guard_owner(c,binding[0])
             c.execute('DELETE FROM llm_admission WHERE expires<=?',(now,))
             rows=c.execute('SELECT * FROM llm_admission ORDER BY expires').fetchall()
-            if any(r['active'] for r in rows) or len(rows)>=3 or sum(r['tokens'] for r in rows)+tokens>30000:
+            if any(r['active'] for r in rows) or len(rows)>=3 or sum(r['tokens'] for r in rows)+tokens>self.minute_token_limit:
                 # Earliest ledger change; retrying re-evaluates every constraint.
                 raise Failure('LLM_ADMISSION_DEFERRED',retry_after=max(1,min(r['expires'] for r in rows)-now))
             return c.execute('INSERT INTO llm_admission(tokens,expires,active) VALUES(?,?,1)',
@@ -247,12 +264,26 @@ class Store:
                 c.execute('UPDATE llm_admission SET tokens=max(tokens,?) WHERE id=?',(actual,reservation))
             c.execute('UPDATE llm_admission SET active=0,expires=? WHERE id=?',(now+61,reservation))
 
+    def _reconcile_owners(self, c, now):
+        # No ambiguous paid call is replayed after ownership expires. Waiting
+        # owners have no in-flight side effects and may release retained progress.
+        rows=c.execute("SELECT * FROM workflow_wait_owner WHERE phase IN ('ready','waiting','running') AND expires<=?",(now,)).fetchall()
+        for owner in rows:
+            job=c.execute('SELECT stage FROM jobs WHERE id=?',(owner['job_id'],)).fetchone()
+            checkpointed=job and job['stage']>{'match':0,'collect':1,'analyze':2,'publish':3}[owner['stage']]
+            if owner['phase']=='running' and not checkpointed:
+                c.execute("UPDATE jobs SET state='dead',lease=0,error='WRITE_NEEDS_REVIEW' WHERE id=? AND state='processing'",(owner['job_id'],))
+            else:
+                c.execute("UPDATE jobs SET state='retry',lease=0,available=max(available,?) WHERE id=? AND state='processing'",(now,owner['job_id']))
+            c.execute('INSERT OR IGNORE INTO workflow_execution_tombstone VALUES(?)',(owner['execution_id'],))
+            c.execute("UPDATE workflow_wait_owner SET phase='revoked' WHERE job_id=?",(owner['job_id'],))
+
     def recover_on_start(self):
         # Called only by the sole Recreate worker, never by ordinary connections.
         # The previous process cannot still publish once its replacement starts.
         now=time.time()
         with self.db() as c:
-            return c.execute("UPDATE jobs SET state='retry',lease=0,available=?,updated=? WHERE state='processing'",(now,now)).rowcount
+            return c.execute("UPDATE jobs SET state='retry',lease=0,available=?,updated=? WHERE state='processing' AND id NOT IN (SELECT job_id FROM workflow_wait_owner WHERE phase IN ('ready','waiting','running'))",(now,now)).rowcount
     def enqueue(self, event):
         return self.enqueue_many([event])[0]
     def enqueue_many(self, events):
@@ -271,6 +302,24 @@ class Store:
         with self.db() as c: row=c.execute('SELECT * FROM jobs WHERE id=?',(key,)).fetchone()
         if row is None: raise Failure('JOB_NOT_FOUND')
         d=dict(row); d['event']=json.loads(d['event']); d['result']=json.loads(d['result']);return d
+    def _owned_priority_until(self,c,stage,now,exclude=None):
+        # Only current, bounded local owners can reserve completion priority.
+        rows=c.execute("""SELECT o.*,j.stage AS durable_stage,j.state AS job_state,
+            j.error AS job_error,j.updated AS job_updated FROM workflow_wait_owner o
+            JOIN jobs j ON j.id=o.job_id WHERE o.revision='durable-v1'
+            AND o.phase IN ('ready','waiting') AND o.expires>? AND o.deadline>?""",(now,now)).fetchall()
+        until=0
+        for owner in rows:
+            index={'match':0,'collect':1,'analyze':2,'publish':3}.get(owner['stage'],-1)
+            if owner['job_id']==exclude or owner['job_state']!='processing' or owner['durable_stage']!=index or index<=stage:continue
+            short=(index==2 and owner['job_error']=='LLM_ADMISSION_DEFERRED'
+                   and owner['due']<=owner['job_updated']+70)
+            eligible=(owner['phase']=='ready' or owner['due']<=now or short)
+            bounded=(owner['expires']<=owner['deadline'] and
+                     ((owner['phase']=='ready' and owner['expires']<=owner['job_updated']+180) or (owner['phase']=='waiting' and owner['expires']<=owner['due']+180)))
+            if eligible and bounded:until=max(until,owner['expires'])
+        return until
+
     def _schedule(self, c, now):
         """Shared claim/wake policy; never alter durable job deadlines.
 
@@ -279,7 +328,8 @@ class Store:
         Unknown provider backoffs never reserve capacity. Expired ledger rows
         are deliberately readable here, but cannot extend the bounded hold.
         """
-        rows=c.execute("SELECT id,stage,state,created,updated,available,lease,error FROM jobs WHERE state IN ('queued','retry','processing')").fetchall()
+        self._reconcile_owners(c,now)
+        rows=c.execute("SELECT id,stage,state,created,updated,available,lease,error FROM jobs WHERE state IN ('queued','retry','processing') AND id NOT IN (SELECT job_id FROM workflow_wait_owner WHERE phase IN ('ready','waiting','running','complete'))").fetchall()
         holds=[r['available'] for r in rows
                if r['state']=='retry' and r['stage']==2
                and r['error']=='LLM_ADMISSION_DEFERRED' and r['lease']<=now
@@ -287,27 +337,41 @@ class Store:
                and c.execute('SELECT 1 FROM llm_admission WHERE expires>=? AND expires<=? AND expires>=? LIMIT 1',
                              (r['updated'],r['available'],r['available']-4)).fetchone()]
         hold=max(holds,default=0)
-        scheduled=[(max(r['available'],r['lease'],hold if r['stage']==0 else 0),r) for r in rows]
+        scheduled=[(max(r['available'],r['lease'],hold if r['stage']==0 else 0,self._owned_priority_until(c,r['stage'],now)),r) for r in rows]
         ready=[r for due,r in scheduled if due<=now]
         ready.sort(key=lambda r:(-r['stage'],r['created'],r['id']))
-        return (ready[0] if ready else None),min((due for due,r in scheduled),default=None)
+        deadlines=[due for due,r in scheduled]
+        deadlines.extend(r[0] for r in c.execute("SELECT expires FROM workflow_wait_owner WHERE phase IN ('ready','waiting','running')"))
+        return (ready[0] if ready else None),min(deadlines,default=None)
 
     def claim(self):
         now=time.time()
         with self.db() as c:
+            self._reconcile_owners(c,now)
             c.execute('DELETE FROM dispatch WHERE singleton=1')
             if c.execute("SELECT 1 FROM jobs WHERE state='processing' AND lease>?",(now,)).fetchone(): return {'job_id':''}
             row,_=self._schedule(c,now)
             if not row:return {'job_id':''}
-            c.execute("UPDATE jobs SET state='processing',lease=?,attempts=attempts+1,updated=? WHERE id=?",(now+1500,now,row['id']))
+            c.execute("UPDATE jobs SET state='processing',lease=?,attempts=attempts+1,updated=? WHERE id=?",(now+1980,now,row['id']))
             return {'job_id':row['id']}
+    def _guard_owner(self,c,key):
+        row=c.execute("SELECT fence,phase,expires,deadline FROM workflow_wait_owner WHERE job_id=? AND phase IN ('ready','waiting','running')",(key,)).fetchone()
+        if row and time.time()>=min(row['expires'],row['deadline']):raise Failure('WAIT_OWNER_EXPIRED')
+        if row and (row['phase']!='running' or getattr(OWNER_CONTEXT,'binding',None)!=(key,row['fence'])):
+            raise Failure('STALE_WAIT_OWNER')
+
+    def _processing_lease(self,c,key,now):
+        owner=c.execute("SELECT expires,deadline FROM workflow_wait_owner WHERE job_id=? AND phase IN ('ready','waiting','running')",(key,)).fetchone()
+        return min(now+1980,owner['expires'],owner['deadline']) if owner else now+1980
+
     def save(self,key,stage,result,on_save=None,**fields):
         allowed={'state','issue','intent','error'}
         if not set(fields)<=allowed: raise ValueError('Invalid job fields')
         now=time.time()
         with self.db() as c:
+            self._guard_owner(c,key)
             c.execute('UPDATE jobs SET stage=?,result=?,updated=?,lease=?'+''.join(','+k+'=?' for k in fields)+' WHERE id=?',
-                      [stage,json.dumps(result),now,0 if fields.get('state') in ('complete','dry_run','dead') else now+1500,*fields.values(),key])
+                      [stage,json.dumps(result),now,0 if fields.get('state') in ('complete','dry_run','dead') else self._processing_lease(c,key,now),*fields.values(),key])
             if c.execute('SELECT 1 FROM snapshot_budget WHERE job_id=?',(key,)).fetchone():
                 # Never overwrite the independent retained copy with an old
                 # worker's marker-less reset. Such a reset fails closed later.
@@ -315,9 +379,10 @@ class Store:
                 if result.get('snapshot_generation')==budget['replacements'] and result.get('snapshot_audit',[])==json.loads(budget['retained']).get('snapshot_audit',[]):
                     c.execute('UPDATE snapshot_budget SET retained=? WHERE job_id=?',(json.dumps(result),key))
             if on_save is not None:on_save(c)
-    def fail(self,key,code,retry_after=None,rate_metadata=None):
+    def fail(self,key,code,retry_after=None,rate_metadata=None,on_fail=None):
         job=self.get(key);now=time.time()
         with self.db() as c:
+            self._guard_owner(c,key)
             # Total claims remain diagnostic. Busy LLM deferrals must not spend
             # the independent recovery allowance of later stages/publication.
             if rate_metadata:
@@ -336,6 +401,7 @@ class Store:
             if safe_snapshot:delay=15+random.uniform(0,5)
             c.execute('UPDATE jobs SET state=?,lease=0,available=?,updated=?,error=? WHERE id=?',
                       ('dead' if dead else 'retry',now+delay,now,code,key))
+            if on_fail is not None:on_fail(c)
     def episode_issue(self,episode):
         with self.db() as c: row=c.execute("SELECT issue FROM jobs WHERE episode=? AND issue>0 ORDER BY created LIMIT 1",(episode,)).fetchone()
         return row['issue'] if row else 0
@@ -349,6 +415,7 @@ class Store:
         """Reserve one wake durably; return (reservation id, next deadline)."""
         now=time.time() if now is None else now
         with self.db() as c:
+            self._reconcile_owners(c,now)
             active=c.execute("SELECT max(lease) FROM jobs WHERE state='processing' AND lease>?",(now,)).fetchone()[0]
             if active:return None,active
             _,due=self._schedule(c,now)

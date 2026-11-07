@@ -6,6 +6,9 @@ image: harbor.socrat.alchemmist.xyz/spi-triage/runtime@sha256:4cd6a12c1b046c03b7
 tokenAccountingMode: local-qwen-v1
 imagePullSecrets:
   - name: spi-harbor-pull
+# Authorized durable wait rollout: proxy SPI key remains 30000 pending owner login.
+durableWaitEnabled: true
+llmMinuteTokens: 30000
 # Authorized live S3 activation: new selections use S3; backend locks persist.
 # Rollback: enabled=false, retaining credentials and exact continuation connectivity.
 s3Evidence:

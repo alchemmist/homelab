@@ -9,3 +9,10 @@
 {{- fail "S3 requires dedicated spi-evidence-writer Secret, never root/reader/general env Secret" }}
 {{- end }}
 {{- end }}
+
+{{- if not (kindIs "bool" .Values.durableWaitEnabled) }}
+{{- fail "durableWaitEnabled must be boolean" }}
+{{- end }}
+{{- if or (kindIs "bool" .Values.llmMinuteTokens) (not (or (eq (toString .Values.llmMinuteTokens) "30000") (eq (toString .Values.llmMinuteTokens) "60000"))) }}
+{{- fail "llmMinuteTokens must be 30000 or 60000" }}
+{{- end }}
