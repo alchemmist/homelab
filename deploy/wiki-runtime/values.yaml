@@ -1,9 +1,9 @@
-# Temporary GitOps edit freeze for the offline pre-upgrade backup.
-replicaCount: 0
+# Single writer; zero is reserved for coordinated offline maintenance.
+replicaCount: 1
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/wiki-runtime
-  tag: "0.4.1-oidc-20261101"
-  digest: "sha256:64d27d6f320ab7440be82578d1d73193278e6b12f77127776b715c2e98b17515"
+  tag: "upstream-f52cf2a-socrat-20261106"
+  digest: "sha256:dc5b15b391cd94fad3db51dc7fa917e138d77ea345e27518371073538c5a78d9"
 oidcSecret: socrat-authentik-wiki
 imagePullSecrets:
   - name: wiki-harbor-pull
