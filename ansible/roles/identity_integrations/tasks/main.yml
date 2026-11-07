@@ -5,6 +5,12 @@
     dest: /home/alchemmist/.cache/homelab-authentik/integrate.py
     mode: '0600'
 
+- name: Copy pure observer admission guard
+  ansible.builtin.copy:
+    src: observer_admission.py
+    dest: /home/alchemmist/.cache/homelab-authentik/observer_admission.py
+    mode: '0600'
+
 - name: Copy non-secret Grafana environment settings
   ansible.builtin.copy:
     content: "{{ (lookup('file', playbook_dir + '/../../deploy/identity/grafana-oidc-values.yaml') | from_yaml).grafana.env | to_json }}"

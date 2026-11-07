@@ -125,6 +125,7 @@ asyncio.run(main())"""
     kubectl(['-n','llm','rollout','status','deployment/open-webui','--timeout=600s'])
     print('Open WebUI native OIDC configured; exact UUID links preserve users/chats; no email-based merging')
 elif service=='rancher':
+    from observer_admission import retain_observer, authconfig_patch
     accounts=json.loads((root/'account-mappings.json').read_text())
     original=json.loads(kubectl(['get','authconfigs.management.cattle.io','genericoidc','-o','json']))
     private_save(root/'rancher-authconfig-before-oidc.json',original)
@@ -177,21 +178,6 @@ elif service=='rancher':
                     if key[0]:args+=['-n',key[0]]
                     kubectl(args)
         allowed.append(principal)
-    # Observer admission is group-driven only after native safe defaults exist.
-    observer_principal='genericoidc_group://homelab-observer'
-    raw_default=json.loads(kubectl(['get','globalroles.management.cattle.io','-o','json']))['items']
-    safe_default=next((r for r in raw_default if r['metadata']['name']=='homelab-observer-login'),None)
-    ttl=json.loads(kubectl(['get','settings.management.cattle.io','auth-user-session-ttl-minutes','-o','json']))
-    ready=bool(safe_default and safe_default.get('newUserDefault') is True
-               and safe_default['metadata'].get('labels',{}).get('homelab.alchemmist.xyz/identity-profile')=='observer-v1'
-               and all(not r.get('newUserDefault') or r['metadata']['name']=='homelab-observer-login' for r in raw_default)
-               and (ttl.get('value') or ttl.get('default'))=='60')
-    # Only the reviewed bootstrap may OPEN group admission: readiness here
-    # does not prove legacy chat migration or the other service prerequisites.
-    if observer_principal in original.get('allowedPrincipalIds',[]):
-        if not ready:
-            raise RuntimeError('Observer defaults drifted; do not silently rewrite active group admission')
-        allowed.append(observer_principal)
     secret={'apiVersion':'v1','kind':'Secret','metadata':{'name':'genericoidcconfig-clientsecret','namespace':'cattle-global-data'},
         'type':'Opaque','stringData':{'clientsecret':clients['rancher']['client_secret']}}
     kubectl(['apply','-f','-'],secret)
@@ -203,7 +189,14 @@ elif service=='rancher':
         'rancherApiHost':'https://rancher.socrat.alchemmist.xyz',
         'scope':'openid profile email','groupsClaim':'groups','nameClaim':'preferred_username',
         'emailClaim':'email','groupSearchEnabled':False,'clientAuthenticatedSearch':False,'pkceMethod':'S256'}
-    kubectl(['patch','authconfigs.management.cattle.io','genericoidc','--type=merge','--patch',json.dumps(settings)])
+    # Re-read dependencies immediately before the write. Kubernetes cannot make
+    # this a multi-resource transaction; authconfig UID/RV tests protect its
+    # admission list against concurrent edits, including changes since backup.
+    roles=json.loads(kubectl(['get','globalroles.management.cattle.io','-o','json']))['items']
+    ttl=json.loads(kubectl(['get','settings.management.cattle.io','auth-user-session-ttl-minutes','-o','json']))
+    settings['allowedPrincipalIds']=retain_observer(original,allowed,roles,ttl)
+    kubectl(['patch','authconfigs.management.cattle.io','genericoidc','--type=json','--patch',
+             json.dumps(authconfig_patch(original,settings))])
     print('Rancher native OIDC enabled; UUID-bound external identities mirror reviewed grants; local emergency identities preserved')
 elif service=='wiki':
     import secrets

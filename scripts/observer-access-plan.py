@@ -36,6 +36,14 @@ def kpatch(obj, path, changes):
 
 
 def build(state, policy):
+    require(isinstance(state, dict) and isinstance(policy, dict), 'Observer state and policy must be objects')
+    try:
+        return _build(state, policy)
+    except (KeyError, TypeError, AttributeError, IndexError):
+        raise ValueError('Malformed observer state/policy: missing field or incorrect nested structure') from None
+
+
+def _build(state, policy):
     require(policy['version'] == 1 and policy['group'] == 'homelab-observer', 'Unreviewed profile')
     require(set(policy['nativeAdmission']) == {'grafana', 'wiki', 'rancher', 'argocd', 'harbor'}
             and len(policy['nativeAdmission']) == 5, 'Unreviewed app scope')

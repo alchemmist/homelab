@@ -1,6 +1,5 @@
 """Hermetic native authorization-policy and bounded-bootstrap regression tests."""
 import ast
-import textwrap
 import copy
 import importlib.util
 import json
@@ -198,21 +197,25 @@ class ObserverPolicyTests(unittest.TestCase):
                 plan.build(fixture(), policy)
 
     def test_native_reconciler_retains_but_never_opens_group_admission(self):
-        source = (ROOT / 'ansible/roles/identity_integrations/files/integrate.py').read_text()
-        block = source.split("    observer_principal='", 1)[1].split("    secret=", 1)[0]
-        block = textwrap.dedent("    observer_principal='" + block)
+        spec = importlib.util.spec_from_file_location('observer_admission', ROOT / 'ansible/roles/identity_integrations/files/observer_admission.py')
+        guard = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(guard)
         state = fixture()
         converge(state, plan.build(state, POLICY))
-        def kubectl(args):
-            return json.dumps({'items': state['globalRoles']} if args[1].startswith('globalroles') else state['rancherSessionSetting'])
-        principal = POLICY['rancher']['groupPrincipal']
-        for original, expected in [({}, []), ({'allowedPrincipalIds': [principal]}, [principal])]:
-            env = {'json': json, 'kubectl': kubectl, 'original': original, 'allowed': []}
-            exec(block, env)
-            self.assertEqual(env['allowed'], expected)
+        for original, expected in [({}, []), ({'allowedPrincipalIds': [guard.PRINCIPAL]}, [guard.PRINCIPAL])]:
+            self.assertEqual(guard.retain_observer(original, [], state['globalRoles'], state['rancherSessionSetting']), expected)
         state['rancherSessionSetting']['value'] = '960'
         with self.assertRaisesRegex(RuntimeError, 'defaults drifted'):
-            exec(block, {'json': json, 'kubectl': kubectl, 'original': {'allowedPrincipalIds': [principal]}, 'allowed': []})
+            guard.retain_observer({'allowedPrincipalIds': [guard.PRINCIPAL]}, [], state['globalRoles'], state['rancherSessionSetting'])
+        patch = guard.authconfig_patch(state['rancherAuth'], {'allowedPrincipalIds': ['preserved']})
+        self.assertEqual(patch[:2], [
+            {'op': 'test', 'path': '/metadata/uid', 'value': 'auth-uid'},
+            {'op': 'test', 'path': '/metadata/resourceVersion', 'value': '9'}])
+
+    def test_malformed_snapshot_is_a_clear_validation_error(self):
+        for state, policy in [({}, POLICY), (None, POLICY), (fixture(), {}), (fixture(), None)]:
+            with self.assertRaises(ValueError):
+                plan.build(state, policy)
 
     def test_harbor_group_type_and_native_entity_id_are_verified(self):
         state = fixture()
@@ -264,6 +267,19 @@ class BootstrapSafetyTests(unittest.TestCase):
              contextlib.redirect_stdout(io.StringIO()) as output:
             self.bootstrap.main()
             return json.loads(output.getvalue())
+
+    def test_api_paths_are_scoped_and_reject_traversal(self):
+        for system, path in [('authentik', '../../etc/passwd'), ('harbor', '/etc/passwd'),
+                             ('harbor', '/api/v2.0/projects/../robots'),
+                             ('harbor', '/api/v2.0/projects/%252e%252e/robots'),
+                             ('kubernetes', '//other.example/api'),
+                             ('authentik', 'https://other.example/core/users/')]:
+            with self.subTest(path=path), self.assertRaises(ValueError):
+                self.bootstrap.validate_path(system, path)
+        for system, path in [('authentik', 'core/users/?username=antropophag&page=1'),
+                             ('harbor', '/api/v2.0/projects/homelab/members?page=1'),
+                             ('kubernetes', '/apis/management.cattle.io/v3/authconfigs/genericoidc')]:
+            self.bootstrap.validate_path(system, path)
 
     def test_default_is_no_native_writes(self):
         result = self.run_main()

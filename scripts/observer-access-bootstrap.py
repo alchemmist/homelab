@@ -30,6 +30,22 @@ def private(path, directory=False):
                     and (path.is_dir() if directory else path.is_file()), 'Unsafe private path')
 
 
+def validate_path(system, path):
+    planner.require(isinstance(path, str) and path and not any(c.isspace() for c in path)
+                    and not any(c in path for c in ['\\', '#']) and '://' not in path
+                    and not path.startswith('//'), 'Unsafe API path')
+    parsed = urllib.parse.urlsplit(path)
+    decoded = parsed.path
+    for _ in range(3):
+        decoded = urllib.parse.unquote(decoded)
+    planner.require('%' not in decoded and not any(p in {'.', '..'} for p in decoded.split('/'))
+                    and not any(c in decoded for c in ['\\', '?', '#']), 'Unsafe API path traversal')
+    prefixes = {'kubernetes': ('/apis/management.cattle.io/v3/',),
+                'harbor': ('/api/v2.0/',),
+                'authentik': ('core/groups/', 'core/users/', 'core/applications/', 'policies/bindings/')}
+    planner.require(system in prefixes and parsed.path.startswith(prefixes[system]), 'API path outside reviewed namespace')
+
+
 class Client:
     def __init__(self, credentials):
         class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -49,7 +65,7 @@ class Client:
                      'harbor': 'Basic ' + base64.b64encode((credentials['harborUsername'] + ':' + credentials['harborPassword']).encode()).decode()}
 
     def call(self, system, method, path, body=None):
-        planner.require(system in self.origins and '://' not in path and not path.startswith('//'), 'Unsafe API path')
+        validate_path(system, path)
         headers = {'Content-Type': 'application/json-patch+json' if system == 'kubernetes' and method == 'PATCH' else 'application/json'}
         if system in self.auth:
             headers['Authorization'] = self.auth[system]
