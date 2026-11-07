@@ -1,5 +1,85 @@
 # SPI token admission
 
+## Actual activation and partial acceptance — 7 November 2026
+
+**DOCUMENTED_PARTIAL_ACCEPTANCE: runtime deployed; two of three original cards
+verified; overall three-card acceptance BLOCKED by 998b.** This dated receipt
+supersedes preparation/pending statements below; older sections are historical,
+not current runtime status.
+
+### Source, runtime and bounded execution
+
+Reviewed source `5f6a585d7418cc65bc26a8b774d29be40aaf4994` actually deployed at
+09:02:46 UTC on socrat-1: Argo Synced / Healthy; pod
+`spi-triage-7c7768db9d-892vs`, UID `d92ed34c-4024-4b7f-bef6-d97606066b66`,
+restart0. Actual image:
+`harbor.socrat.alchemmist.xyz/spi-triage/runtime@sha256:4cd6a12c1b046c03b74195b2d93aff183d8465230d364b527fa116fd25624a91`.
+CPU/memory limits 1/384Mi, requests 50m/96Mi; ephemeral storage limit/request
+4Gi/16Mi unchanged. Native `native-qwen-plus-proxy-floor-v1` source semantics,
+`local-qwen-v1` environment and tokenizers 0.22.2 were verified. This is not a
+claim of a freshly emitted method property. Limits remain 3 RPM / 30000 TPM /
+parallel1; finite model allowances and counters were preserved, never reset.
+Historical 1.6 jobs/hour is not a new throughput promise; native/fake-clock
+capability tests are not runtime TPS evidence. Existing Robot CVE disposition
+remains 5 High / 3 Medium / 1 Low, not zero vulnerabilities.
+
+Exactly two authorized audited retries (08ba and 998b) executed once, without
+replenishing allowances. Natural observation **ENDED 09:35:35 UTC**, early at
+998b's finite failure (started09:09:30); no ongoing monitoring window or ETA.
+Public Reader proof at09:51:48 is a separate point-in-time verification.
+
+### Exact original cards: two verified, one blocked
+
+| Original card / job / episode | Actual publication and delivery evidence |
+|---|---|
+| Resolved replicas mismatch: 8c6 (`8c6af704b3fd…`), original83bb | [Issue75](https://github.com/alchemmist/homelab/issues/75), trusted primary6252041180; 4 artifacts + manifest =5 exact objects. Saved desired Telegram revision2, applied acknowledgement expected2/observed2/verifiedtrue. Not rerun. |
+| Firing restarts: 08ba (`08ba1f0938dd…`), originalb5a | [Issue88](https://github.com/alchemmist/homelab/issues/88), trusted primary6257485410; 12 artifacts + manifest =13 exact objects. Complete stage4. Saved desired Telegram revision1 (NOT2), applied acknowledgement expected2/observed2/verifiedtrue. |
+| Queue stale: 998b (`998bcead1720…`), originalb201 | **Dead stage0/match**, attempts18, finite ledger9, bare `INVALID_UPSTREAM_JSON`. No intent or primary. Original two-job authorization is USED UP: explicit fresh permission required for any further retry; no automatic retry/new nonce. |
+
+Both actual GitHub primaries were GET-verified against author351189559, exact
+full-job marker and primary ID, with every bound artifact URL. The response's
+`performed_via_github_app` was null: App association is not independently proved
+by that field. Both exact event sets have two native Telegram copies matching
+the immutable receipts (resolved83bb / firingb5a). These are **saved delivery
+acknowledgements**, not fresh Bot message GETs or new screenshots; no supported
+message-read route was discovered/performed.
+
+All18 exact objects independently matched private S3 and authenticated public
+Reader bytes, size and SHA256, ASCII, HTTP200, attachment and nosniff. Public
+proof is **complete, not pending**, through a real human browser existing SSO
+context at09:51:48 UTC. Initial unauthenticated API401 was followed by normal
+canonical-URL navigation and standard Authentik existing-SSO autoauthentication;
+no credentials entered/copied, cookie export or forged identity headers. Hashing
+was in memory, with standard abc SHA256 known-vector validation; no raw artifact
+bodies printed. Issue88 manifest was16303 bytes, SHA256
+`af2b3b2d183b60bebd61520c527e1e3c682c0bb6df5b0fc2c149a4d610792a35`.
+This proves publication bytes, not complete external telemetry: manifest88 has
+5 missing /0 truncated; manifest75 has3 missing /0 truncated. Empty/missing
+external reads and explicit limits remain disclosed, not silently successful.
+
+### Remaining failure and preservation
+
+Shared HTTP.request broadly maps ValueError/UnicodeError to bare
+`INVALID_UPSTREAM_JSON`; GitHub propagates it unchanged. Model.call wraps HTTP
+failure with `LLM_`; ordinary model-content/schema failures are
+`LLM_INVALID_MODEL_SCHEMA`. Therefore this is not the normal Model bad-response
+producer. GitHub read-path origin is plausible, **not proven**: historical body,
+status, content type and exact origin were not retained and remain UNKNOWN.
+Do not invent a root cause or blanket-classify unsafe JSON as patient.
+998b retains8 reviews,73 snapshot entries and4 selection structures with matching
+checkpoint; this does not guarantee all will be reusable. No cache restore/reset.
+All119 cancelled rows stayed exact before retries; 305b was never revived;
+75 was not rerun. Finite ledger and model counters/allowances remain preserved.
+Since cutover: zero new `LLM_CONTEXT_METADATA_TOO_LARGE`, one new bare invalid
+JSON finite failure. Keep legitimate stage-failure alerting; no live Grafana
+policy proof was obtained and no alert was muted.
+
+This is source approval + actual deployment + two audited retries + **2/3
+end-to-end target proof**, not full acceptance. No new workload, retry, model
+probe, workflow pause, credential/image/network or alert-policy change is part
+of this documentation closeout.
+
+
 ## Live receipt — 2026-11-06
 
 Reviewed c2d9f57 + 8b933d9 rebased to bd41901 + **48b8161** and deployed
