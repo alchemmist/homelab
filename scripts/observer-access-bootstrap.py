@@ -14,6 +14,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import pwd
 from pathlib import Path
 import ssl
 import urllib.error
@@ -25,10 +26,20 @@ planner = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(planner)
 
 
-def private(path, directory=False):
-    planner.require(not path.is_symlink() and path.exists() and path.stat().st_uid == os.geteuid()
+def private(path, directory=False, owner_uid=None):
+    expected_uid = os.geteuid() if owner_uid is None else owner_uid
+    planner.require(not path.is_symlink() and path.exists() and path.stat().st_uid == expected_uid
                     and not path.stat().st_mode & 0o077
                     and (path.is_dir() if directory else path.is_file()), 'Unsafe private path')
+
+
+def readiness_directory(path):
+    # Foundation is deployed into the existing alchemmist-owned 0700 cache.
+    # Keep strict caller ownership everywhere else; do not chown that directory.
+    owner_uid = None
+    if os.geteuid() == 0 and path == Path('/home/alchemmist/.cache/homelab-authentik'):
+        owner_uid = pwd.getpwnam('alchemmist').pw_uid
+    private(path, directory=True, owner_uid=owner_uid)
 
 
 def validate_path(system, path):
@@ -177,7 +188,7 @@ def main():
     private(args.credentials.parent, directory=True)
     private(args.credentials)
     if args.authentik_directory:
-        private(args.authentik_directory, directory=True)
+        readiness_directory(args.authentik_directory)
         planner.require(not (args.authentik_directory / 'observer-ready.json').exists(), 'Readiness receipt already exists; inspect before replacing')
     planner.require(args.state.is_absolute() and not args.state.is_symlink(), 'Private absolute state path required')
     args.state.mkdir(mode=0o700, parents=True, exist_ok=True)

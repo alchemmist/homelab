@@ -291,6 +291,18 @@ class BootstrapSafetyTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.bootstrap.harbor_authorization({'harborJobserviceSecret': ''})
 
+    def test_foundation_ready_path_preserves_explicit_trusted_owner(self):
+        path = Path('/home/alchemmist/.cache/homelab-authentik')
+        with patch.object(self.bootstrap.os, 'geteuid', return_value=0), \
+             patch.object(self.bootstrap.pwd, 'getpwnam') as user, \
+             patch.object(self.bootstrap, 'private') as validate:
+            user.return_value.pw_uid = 1000
+            self.bootstrap.readiness_directory(path)
+            validate.assert_called_once_with(path, directory=True, owner_uid=1000)
+            validate.reset_mock()
+            self.bootstrap.readiness_directory(self.root)
+            validate.assert_called_once_with(self.root, directory=True, owner_uid=None)
+
     def test_default_is_no_native_writes(self):
         result = self.run_main()
         self.assertFalse(result['applied'])
