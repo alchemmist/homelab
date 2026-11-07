@@ -14,25 +14,6 @@ spec:
       port: 8082
       targetPort: metrics
 ---
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: socrat-argocd-metrics
-  labels:
-    release: {{ .Values.prometheusRelease }}
-spec:
-  namespaceSelector:
-    matchNames: [argocd]
-  selector:
-    matchLabels:
-      app: socrat-argocd-metrics
-  endpoints:
-    - port: metrics
-      interval: 15s
-      relabelings:
-        - targetLabel: job
-          replacement: socrat-argocd
----
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -59,6 +40,8 @@ spec:
       annotations:
         checksum/exporter: {{ .Files.Get "files/n8n-activity-exporter.py" | sha256sum }}
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: socrat-0
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
@@ -69,7 +52,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: exporter
-          image: python:3.12-alpine
+          image: python@sha256:e064671ca452259bab50e8e2c7bd896e39e9a343bb06ca25234adf6fe18d0fc7
           command: [python, /app/exporter.py]
           env:
             - name: PYTHONDONTWRITEBYTECODE
@@ -100,7 +83,36 @@ spec:
             - name: credentials
               mountPath: /secrets
               readOnly: true
+        - name: native-metrics
+          image: docker.io/otel/opentelemetry-collector-contrib@sha256:ac0bb9cdc844b55d2fd2655d03e596243787d6a8c52dd408b1dc96dd1bd372ee
+          args: ["--config=/collector/collector.yaml"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 192Mi
+          volumeMounts:
+            - name: native-config
+              mountPath: /collector
+              readOnly: true
+            - name: native-tls
+              mountPath: /tls
+              readOnly: true
       volumes:
+        - name: native-config
+          configMap:
+            name: socrat-tv-native-metrics
+        - name: native-tls
+          secret:
+            secretName: socrat-tv-native-metrics
+            defaultMode: 0440
         - name: code
           configMap:
             name: socrat-n8n-activity
@@ -108,37 +120,6 @@ spec:
           secret:
             secretName: socrat-n8n-observer
             defaultMode: 0440
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: socrat-n8n-activity
-  labels:
-    app: socrat-n8n-activity
-spec:
-  selector:
-    app: socrat-n8n-activity
-  ports:
-    - name: metrics
-      port: 9189
-      targetPort: metrics
----
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: socrat-n8n-activity
-  labels:
-    release: {{ .Values.prometheusRelease }}
-spec:
-  selector:
-    matchLabels:
-      app: socrat-n8n-activity
-  endpoints:
-    - port: metrics
-      interval: 15s
-      relabelings:
-        - targetLabel: job
-          replacement: socrat-n8n-activity
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -161,6 +142,20 @@ spec:
         - port: 9189
   egress:
     - to:
+        - ipBlock:
+            cidr: 10.250.0.1/32
+      ports:
+        - port: 4317
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: argocd
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: argocd-application-controller
+      ports:
+        - port: 8082
+    - to:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: automation
@@ -181,3 +176,66 @@ spec:
           protocol: UDP
         - port: 53
           protocol: TCP
+
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: socrat-tv-native-metrics
+spec:
+  secretName: socrat-tv-native-metrics
+  commonName: socrat-tv-native-metrics
+  usages: [digital signature, client auth]
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: otel-ca
+    kind: Issuer
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: socrat-tv-native-metrics
+data:
+  collector.yaml: |
+    receivers:
+      prometheus:
+        trim_metric_suffixes: false
+        config:
+          scrape_configs:
+            - job_name: socrat-n8n-activity
+              scrape_interval: 15s
+              scrape_timeout: 5s
+              static_configs:
+                - targets: [127.0.0.1:9189]
+            - job_name: socrat-argocd
+              scrape_interval: 15s
+              scrape_timeout: 5s
+              static_configs:
+                - targets: [socrat-argocd-metrics.argocd.svc.cluster.local:8082]
+    processors:
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 128
+      batch:
+        timeout: 1s
+    exporters:
+      otlp:
+        endpoint: 10.250.0.1:4317
+        tls:
+          ca_file: /tls/ca.crt
+          cert_file: /tls/tls.crt
+          key_file: /tls/tls.key
+          server_name_override: kube-prometheus-stack-prometheus.cattle-monitoring-system.svc
+          reload_interval: 1m
+        sending_queue:
+          queue_size: 100
+        retry_on_failure:
+          max_elapsed_time: 60s
+    service:
+      pipelines:
+        metrics:
+          receivers: [prometheus]
+          processors: [memory_limiter, batch]
+          exporters: [otlp]

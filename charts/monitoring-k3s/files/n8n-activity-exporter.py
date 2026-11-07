@@ -2,6 +2,7 @@
 import datetime as dt
 import json
 import os
+import socketserver
 import threading
 import time
 import urllib.parse
@@ -112,6 +113,14 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 
+class MetricsServer(ThreadingHTTPServer):
+    def server_bind(self):
+        # Avoid slow reverse DNS lookups during HTTPServer initialization.
+        socketserver.TCPServer.server_bind(self)
+        self.server_name = 'n8n-observer'
+        self.server_port = self.server_address[1]
+
+
 if __name__ == '__main__':
     threading.Thread(target=loop, daemon=True).start()
-    ThreadingHTTPServer(('0.0.0.0', 9189), Handler).serve_forever()
+    MetricsServer(('0.0.0.0', 9189), Handler).serve_forever()
