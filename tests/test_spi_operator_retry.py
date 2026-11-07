@@ -100,6 +100,24 @@ class RetryTests(unittest.TestCase):
         key=next(iter(m.TARGETS));self.mutate('UPDATE jobs SET id=? WHERE id=?',(key[:12]+'f'*52,key));self.reject()
     def test_trigger_other_row_rollback(self):
         self.mutate('CREATE TRIGGER sabotage AFTER UPDATE ON jobs BEGIN UPDATE ledger SET value=0; END');self.reject()
+    def test_every_other_table_trigger_mutation_rolls_back(self):
+        for table in ('job_failure_budget','snapshot_budget','cache','ledger','outbox','upload_receipts'):
+            with self.subTest(table=table):
+                self.mutate('CREATE TRIGGER sabotage AFTER UPDATE ON jobs BEGIN UPDATE '+table+' SET value=0; END')
+                self.reject()
+                self.mutate('DROP TRIGGER sabotage')
+
+    def test_nonselected_row_mutation_rolls_back(self):
+        self.mutate("INSERT INTO jobs(id,episode,state,result) VALUES('other','other','dead','retained')")
+        self.mutate("CREATE TRIGGER sabotage AFTER UPDATE ON jobs WHEN NEW.id!='other' BEGIN UPDATE jobs SET result='changed' WHERE id='other'; END")
+        self.reject()
+
+    def test_without_rowid_mutation_rolls_back(self):
+        self.mutate('CREATE TABLE "odd""table"(k TEXT PRIMARY KEY, v TEXT) WITHOUT ROWID')
+        self.mutate('INSERT INTO "odd""table" VALUES(\'a\',\'retained\')')
+        self.mutate('CREATE TRIGGER sabotage AFTER UPDATE ON jobs BEGIN UPDATE "odd""table" SET v=\'changed\'; END')
+        self.reject()
+
     def test_missing_row_atomic(self):
         self.mutate('DELETE FROM jobs WHERE id=?',(next(iter(m.TARGETS)),));self.reject()
 

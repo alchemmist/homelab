@@ -23,16 +23,52 @@ def packed(x):
 def digest(x):
     return hashlib.sha256(packed(x).encode()).hexdigest()
 
+def quoted(name):
+    return '"' + name.replace('"', '""') + '"'
+
+
+def ordered_table_scan(c, name):
+    """Transaction-local physical order, not a VACUUM-independent logical hash.
+
+    Never sort complete rows: require the native rowid/primary btree order and
+    check the actual planner before streaming. Unsupported schemas fail closed.
+    """
+    tables = list(c.execute('PRAGMA main.table_list'))
+    matches = [r for r in tables if r[1] == name]
+    if len(matches) != 1 or matches[0][2] != 'table':
+        raise ValueError('unsupported table kind')
+    q = quoted(name)
+    info = list(c.execute('PRAGMA main.table_xinfo(' + q + ')'))
+    if not info:
+        raise ValueError('unsupported table columns')
+    if matches[0][4]:  # WITHOUT ROWID: declared primary key is the table btree.
+        keys = sorted((r for r in info if r[5]), key=lambda r: r[5])
+        if not keys:
+            raise ValueError('missing WITHOUT ROWID primary key')
+        order = ','.join(quoted(r[1]) for r in keys)
+    else:
+        names = {r[1].lower() for r in info}
+        alias = next((a for a in ('rowid', '_rowid_', 'oid') if a not in names), None)
+        if alias is None:
+            # Refuse rather than risk an index sort or a nullable/nonunique key.
+            raise ValueError('all rowid aliases shadowed: unsupported schema')
+        order = quoted(alias)
+    sql = 'SELECT * FROM main.' + q + ' ORDER BY ' + order
+    plan = list(c.execute('EXPLAIN QUERY PLAN ' + sql))
+    if not plan or any('TEMP B-TREE' in r[3].upper() for r in plan):
+        raise ValueError('table scan requires temporary sort')
+    return c.execute(sql)
+
+
 def table_hashes(c, original_jobs=None):
     result = {}
     for (name,) in c.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"):
         if name == AUDIT:
             continue
-        q = '"' + name.replace('"', '""') + '"'
-        # Canonical bounded-memory hash; SQLite sorting spills to file if necessary.
-        columns = len(c.execute('SELECT * FROM ' + q + ' LIMIT 0').description)
+        # Whole rows, streamed in stable btree order within BEGIN IMMEDIATE.
+        # Memory is bounded by a row and its serialized representation.
         h = hashlib.sha256()
-        for row in c.execute('SELECT * FROM ' + q + ' ORDER BY ' + ','.join(str(i+1) for i in range(columns))):
+        for row in ordered_table_scan(c, name):
             if name == 'jobs' and original_jobs and row['id'] in original_jobs:
                 row = [original_jobs[row['id']][k] for k in row.keys()]
             h.update(packed([{'blob':v.hex()} if isinstance(v, bytes) else v for v in row]).encode()+b'\n')
