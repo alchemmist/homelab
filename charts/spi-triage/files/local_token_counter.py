@@ -20,11 +20,16 @@ _IDENTITY = None
 
 
 def contract(body):
+    if not isinstance(body, dict) or set(body) - {'model', 'messages', 'chat_template_kwargs', 'max_tokens', 'response_format', 'temperature'}:
+        raise Failure('LLM_ACCOUNTING_CONTRACT_MISMATCH')
     messages = body.get('messages', [])
+    if not isinstance(messages, list) or any(not isinstance(m, dict) for m in messages):
+        raise Failure('LLM_ACCOUNTING_CONTRACT_MISMATCH')
     if (body.get('model') != 'qwen3.8-27b' or
         [m.get('role') for m in messages] != ['system', 'user'] or
         any(set(m) != {'role', 'content'} or not isinstance(m['content'], str) for m in messages) or
-        body.get('chat_template_kwargs') != {'enable_thinking': False} or
+        (body.get('chat_template_kwargs') != {'enable_thinking': False} or
+         body['chat_template_kwargs'].get('enable_thinking') is not False) or
         'tools' in body or body.get('max_tokens') not in (768, 2500)):
         raise Failure('LLM_ACCOUNTING_CONTRACT_MISMATCH')
     return messages
@@ -40,6 +45,45 @@ def render(body):
     system, user = (m['content'].strip() for m in messages)
     return (('<|im_start|>system\n' + system + '<|im_end|>\n') if system else '') + \
         '<|im_start|>user\n' + user + '<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n'
+
+
+def raw_fits(body):
+    """Bound counter JSON work before serialization, trimming or native encoding.
+
+    Charge bounded UTF-8 plus JSON escaping, containers
+    and scalar spelling. Traversal stops at the budget; no unbounded encode.
+    This intentionally conservative guard is separate from token accounting.
+    """
+    remaining = MAX_BYTES
+    stack = [(body, 0)]
+    while stack:
+        value, depth = stack.pop()
+        if depth > 64:
+            raise Failure('LLM_ACCOUNTING_CONTRACT_MISMATCH')
+        if isinstance(value, str):
+            if len(value) > MAX_BYTES:
+                return False
+            remaining -= len(value.encode('utf-8')) + 2 + sum(5 if ord(c) < 32 else 1 if ord(c) in (34, 92) else 0 for c in value)
+        elif isinstance(value, dict):
+            remaining -= 2 + 4 * len(value)
+            if remaining < 0: return False
+            for key, item in value.items():
+                if not isinstance(key, str):
+                    raise Failure('LLM_ACCOUNTING_CONTRACT_MISMATCH')
+                stack.extend(((key, depth + 1), (item, depth + 1)))
+        elif isinstance(value, list):
+            remaining -= 2 + 2 * len(value)
+            if remaining < 0: return False
+            stack.extend((item, depth + 1) for item in value)
+        elif value is None or isinstance(value, (bool, float)):
+            remaining -= 32
+        elif isinstance(value, int) and value.bit_length() < 64:
+            remaining -= 32
+        else:
+            raise Failure('LLM_ACCOUNTING_CONTRACT_MISMATCH')
+        if remaining < 0:
+            return False
+    return True
 
 
 class LocalCounter:
@@ -88,13 +132,21 @@ class LocalCounter:
         return self._tokenizer
 
     def reservation(self, body):
+        messages = contract(body)  # Validate even oversized requests; never mask contracts.
+        # A safe integer over-budget probe allows adaptive analysis excerpting.
+        # Actual Model.call rejects this before ledger admission or HTTP.
+        if not raw_fits(body):
+            return 30001
         prompt = render(body)
         schema = json.dumps(body['response_format'], ensure_ascii=False).encode('utf-8')
-        if len(schema) > MAX_BYTES:
-            raise Failure('LLM_REQUEST_TOO_LARGE')
+        # LiteLLM 1.105.1 parallel_request_limiter_v3: concatenated raw string
+        # contents, max(1, chars // 4), then explicit max_tokens once. No roles,
+        # dict repr, JSON escapes or schema are included by that estimator.
+        # Ceil plus framing also dominates the historical chars/4 estimate.
+        proxy_floor = (sum(len(m['content']) for m in messages) + 3) // 4 + 256
         with _ENCODE:
             count = len(self._tokenizer.encode(prompt, add_special_tokens=False).ids)
-        return count + len(schema) + 256 + body['max_tokens']
+        return max(count + len(schema) + 256, proxy_floor) + body['max_tokens']
 
 
 def configured_counter():

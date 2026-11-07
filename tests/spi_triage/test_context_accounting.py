@@ -40,7 +40,7 @@ class ContextAccountingTests(unittest.TestCase):
   class Stop(Exception):pass
   def call(task,data,schema,deadline):
    captured.update(data)
-   self.assertLessEqual(m.reservation(m.payload(task,data,schema)),30000)
+   self.assertLessEqual(m.budget_reservation(m.payload(task,data,schema)),30000)
    raise Stop()
   m.call=call
   with self.assertRaises(Stop):m.analyze(event,match,evidence)
@@ -50,6 +50,23 @@ class ContextAccountingTests(unittest.TestCase):
   self.assertEqual(captured['evidence']['artifact_context']['index'][0]['id'],'E001')
   self.assertTrue(captured['alert']['description']['truncated'])
  def test_irreducible_metadata_visible_without_transport(self):
-  m=Model(Mock(),'unused');event=f.event();event['path']=['x'*12000]*5
+  m=Model(Mock(),'unused');event=f.event();event['path']=['x'*120000]*5
   with self.assertRaises(Failure) as e:m.analyze(event,{'candidates':[]},{})
   self.assertEqual(e.exception.code,'LLM_CONTEXT_METADATA_TOO_LARGE');m.http.request.assert_not_called()
+
+ def test_local_120_long_report_analysis(self):
+  if __import__('os').environ.get('SPI_TOKEN_ACCOUNTING_MODE')!='local-qwen-v1':return
+  m=Model(Mock(),'unused')
+  match={'candidates':[{'number':n,'body':'report '*5000} for n in range(120)],'reviewed_numbers':list(range(120))}
+  evidence={'bundle':{'model_context':{'index':[{'id':'E001','path':'artifact/reference'}],'excerpt':'evidence '*5000}}}
+  original=copy.deepcopy((match,evidence));captured={}
+  class Stop(Exception):pass
+  def call(task,data,schema,deadline):
+   captured.update(data)
+   self.assertLessEqual(m.counter.reservation(m.payload(task,data,schema)),30000)
+   raise Stop()
+  m.call=call
+  with self.assertRaises(Stop):m.analyze(f.event(),match,evidence)
+  self.assertEqual((match,evidence),original)
+  self.assertEqual([c['number'] for c in captured['preliminary_match']['candidates']],list(range(120)))
+  self.assertEqual(captured['evidence']['artifact_context']['index'][0]['id'],'E001')

@@ -220,6 +220,10 @@ class Model:
         # prefix); 256 is a conservative doubled byte bound, not chars/4.
         return content+schema+256+body['max_tokens']
 
+    def budget_reservation(self, body):
+        # Oversize is a bounded probe result, not a transport exception.
+        return self.counter.reservation(body) if self.counter else self.reservation(body)
+
     @staticmethod
     def bounded_context(value,limit=300):
         """Explicit excerpts, never mutate full persisted source or drop IDs.
@@ -422,12 +426,12 @@ class Model:
         # Prefer full context. Compact preliminary FULL report bodies before
         # diagnostic evidence, then progressively bounded, explicit excerpts.
         data=original
-        if self.reservation(self.payload(task,data,REPORT_SCHEMA))>30000:
+        if self.budget_reservation(self.payload(task,data,REPORT_SCHEMA))>30000:
             data={**original,'preliminary_match':self.bounded_context(match,600)}
         for limit in (1200,600,300):
-            if self.reservation(self.payload(task,data,REPORT_SCHEMA))<=30000:break
+            if self.budget_reservation(self.payload(task,data,REPORT_SCHEMA))<=30000:break
             data=self.bounded_context(original,limit)
-        if self.reservation(self.payload(task,data,REPORT_SCHEMA))>30000:
+        if self.budget_reservation(self.payload(task,data,REPORT_SCHEMA))>30000:
             raise Failure('LLM_CONTEXT_METADATA_TOO_LARGE')
         report=self.call(task,data,REPORT_SCHEMA,time.monotonic()+780)
         if report['issue_number'] not in {0,*[x['number']for x in match['candidates']]}: raise Failure('INVALID_MATCH_TARGET')

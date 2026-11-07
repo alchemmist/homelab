@@ -25,7 +25,7 @@ class Lifecycle(unittest.TestCase):
         body['messages'][1]['content']='a'*(MAX_BYTES-128)
         models[0].counter.reservation(body)
         body['messages'][1]['content']+='a'
-        with self.assertRaises(Failure): models[0].counter.reservation(body)
+        self.assertEqual(models[0].counter.reservation(body), 30001)
         for m in models: m.http.request.assert_not_called()
 
     def test_invalid_native_contract_before_recovery_or_http(self):

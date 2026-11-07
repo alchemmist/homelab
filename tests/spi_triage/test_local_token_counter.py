@@ -28,3 +28,32 @@ class CounterContract(unittest.TestCase):
         with patch.dict(os.environ, {'SPI_TOKEN_ACCOUNTING_MODE': 'unknown'}):
             with self.assertRaises(Failure): configured_counter()
         with self.assertRaises(Failure): LocalCounter('/nonexistent/spi-tokenizer')
+
+class ProxyFloor(unittest.TestCase):
+    def counter(self):
+        from types import SimpleNamespace
+        counter = object.__new__(LocalCounter)
+        counter._tokenizer = SimpleNamespace(encode=lambda *a, **kw: SimpleNamespace(ids=[1]*10))
+        return counter
+
+    def body(self, text, maximum=2500):
+        return dict(model='qwen3.8-27b', messages=[dict(role='system', content='s'), dict(role='user', content=text)], chat_template_kwargs={'enable_thinking':False}, max_tokens=maximum, response_format={})
+
+    def test_raw_floor_and_rounding(self):
+        for text in [' '*100000+'x', 'a'*60000, '😀\\\"\n'*1000] + ['x'*n for n in range(8)]:
+            for maximum in (768,2500):
+                body=self.body(text, maximum)
+                actual=self.counter().reservation(body)
+                self.assertGreaterEqual(actual, (len(text)+1+3)//4+maximum)
+                self.assertGreaterEqual(actual,10+2+256+maximum)
+                self.assertEqual(actual,max(268,(len(text)+4)//4+256)+maximum)
+
+    def test_oversize_no_bpe_and_contract_not_masked(self):
+        from unittest.mock import Mock
+        counter=self.counter(); counter._tokenizer=Mock()
+        body=self.body(' '*600000)
+        self.assertEqual(counter.reservation(body),30001)
+        counter._tokenizer.encode.assert_not_called()
+        for key,value in [('metadata',{}),('tools',[]),('model','bad'),('chat_template_kwargs',{'enable_thinking':True})]:
+            bad=dict(body);bad[key]=value
+            with self.assertRaises(Failure):counter.reservation(bad)

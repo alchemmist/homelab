@@ -159,3 +159,42 @@ class AdmissionTests(unittest.TestCase):
         with self.store.db() as c:
             data=json.loads(c.execute('select metadata from llm_rate_metadata').fetchone()[0])
         self.assertNotIn('body',data);self.assertEqual(data['tokens_remaining'],4155)
+
+    def test_local_proxy_modeled_precheck_and_settlement(self):
+        if os.environ.get('SPI_TOKEN_ACCOUNTING_MODE') != 'local-qwen-v1':return
+        m=Model(Mock(),'fake',store=self.store)
+        # Actual installed 1.105.1 text estimator and reconciliation semantics:
+        # pre-call checks current + raw chars//4 + explicit cap > limit;
+        # success settles actual-reserved, errors without usage refund fully.
+        proxy_current=0
+        for i in range(3):
+            body=m.payload('test',{'text':'x'*16000+str(i)},MATCH_SCHEMA)
+            cost=m.counter.reservation(body)
+            proxy=sum(len(x['content']) for x in body['messages'])//4+body['max_tokens']
+            self.assertGreaterEqual(cost,proxy)
+            self.assertLessEqual(proxy_current+proxy,30000)
+            r=self.store.reserve_llm(cost,now=100+i*2)
+            proxy_current+=proxy
+            actual=proxy if i==0 else 1
+            proxy_current+=actual-proxy
+            self.store.finish_llm(r,actual=actual,now=101+i*2)
+        # Floor-dominant raw whitespace survives trimming: two such requests
+        # cannot overlap the local minute even when proxy refunds to 1.
+        body=m.payload('test',{'text':' '*100000+'x'},REPORT_SCHEMA)
+        cost=m.counter.reservation(body)
+        proxy=sum(len(x['content']) for x in body['messages'])//4+2500
+        self.assertGreaterEqual(cost,proxy)
+        r=self.store.reserve_llm(cost,now=200)
+        self.store.finish_llm(r,actual=1,now=201)
+        with self.assertRaises(Failure):self.store.reserve_llm(cost,now=202)
+        self.store.reserve_llm(cost,now=262)
+
+    def test_local_raw_bound_before_http_and_bpe(self):
+        if os.environ.get('SPI_TOKEN_ACCOUNTING_MODE') != 'local-qwen-v1':return
+        m=Model(Mock(),'fake',store=self.store)
+        with patch.object(m.counter,'_tokenizer') as native:
+            with self.assertRaises(Failure) as e:
+                m.call('test',{'text':' '*600000},REPORT_SCHEMA,time.monotonic()+20)
+            self.assertEqual(e.exception.code,'LLM_REQUEST_TOO_LARGE')
+            native.encode.assert_not_called()
+        m.http.request.assert_not_called()
