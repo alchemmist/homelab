@@ -1174,6 +1174,9 @@ resources:
           cidr: 109.120.141.97/32
       - ipBlock:
           cidr: 10.250.0.2/32
+      # VPS host-network ingress reaches home pods from its Flannel tunnel IP.
+      - ipBlock:
+          cidr: 10.42.0.0/32
       - ipBlock:
           cidr: 10.42.0.1/32
       - ipBlock:

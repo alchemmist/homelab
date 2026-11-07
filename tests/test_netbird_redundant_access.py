@@ -104,6 +104,7 @@ class IndependentAccessTest(unittest.TestCase):
         self.assertEqual(ingress['spec']['tls'][0]['secretName'], 'netbird-pilot-tls')
         self.assertEqual(ingress['spec']['rules'][0]['host'], 'netbird.socrat.alchemmist.xyz')
         sources = policy['spec']['ingress'][0]['from']
+        self.assertIn('10.42.0.0/32', {s['ipBlock']['cidr'] for s in sources if 'ipBlock' in s})
         self.assertEqual(sources[0]['podSelector']['matchLabels'], {'app.kubernetes.io/name': 'traefik'})
         self.assertEqual(sources[0]['namespaceSelector']['matchLabels'], {'kubernetes.io/metadata.name': 'kube-system'})
         self.assertEqual(relay.advertised_relays()['addresses'], [relay.URI, relay.HOME_URI])

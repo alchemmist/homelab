@@ -51,6 +51,22 @@ class GitOpsTests(unittest.TestCase):
         image = self.values()['image']
         self.assertEqual(dashboard['spec']['template']['spec']['containers'][0]['image'], image['repository']+'@'+image['digest'])
 
+    def test_home_relay_admits_exact_vps_flannel_source_without_weakening_health(self):
+        resources = self.values()['resources']
+        policy = next(r for r in resources if r['kind'] == 'NetworkPolicy' and r['metadata']['name'] == 'netbird-relay-home')
+        rule = policy['spec']['ingress'][0]
+        cidrs = {source['ipBlock']['cidr'] for source in rule['from'] if 'ipBlock' in source}
+        self.assertIn('10.42.0.0/32', cidrs)
+        self.assertTrue(all(cidr.endswith('/32') for cidr in cidrs))
+        self.assertEqual(rule['ports'], [{'port': 33080, 'protocol': 'TCP'}])
+        deployment = next(r for r in resources if r['kind'] == 'Deployment' and r['metadata']['name'] == 'netbird-relay-home')
+        container = deployment['spec']['template']['spec']['containers'][0]
+        self.assertEqual(container['readinessProbe']['httpGet']['path'], '/health')
+        self.assertEqual(container['readinessProbe']['httpGet']['port'], 9000)
+        env = {e['name']: e for e in container['env']}
+        self.assertIn('secretKeyRef', env['NB_AUTH_SECRET']['valueFrom'])
+        self.assertEqual(env['NB_EXPOSED_ADDRESS']['value'], 'rels://netbird.socrat.alchemmist.xyz:443')
+
     def inventory(self, address='10.250.0.9'):
         return {'Socrat': {'hosts': ['socrat-4']}, '_meta': {'hostvars': {'socrat-4': {
             'wg_socrat_admin_clients': {'owner': {'address': '10.250.0.4'}},
