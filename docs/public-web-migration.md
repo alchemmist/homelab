@@ -27,7 +27,7 @@ Application. No extra access Application or aggregate chart remains.
 
 | Owner Application | Public resources |
 | --- | --- |
-| kube-prometheus-stack | Grafana ingress and policy proxy/config |
+| grafana | Grafana ingress and policy proxy/config |
 | searxng | Search ingress |
 | open-webui | LLM alias ingress |
 | litellm | LiteLLM alias ingress |
@@ -274,3 +274,8 @@ pre-existing failures (it expects a DaemonSet, while the current chart defaults
 to a Deployment). Running that suite against pre-migration commit `c612d71`
 reproduced all five failures; it is not silently counted as passing or changed
 as part of this migration.
+
+Monitoring ownership update: Grafana was subsequently extracted into its own
+`grafana` Application; the public extension source is now
+`deploy/platform/grafana/public-entry`. Current boundaries and retained names:
+[monitoring service split](monitoring-service-split.md).

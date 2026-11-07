@@ -1,6 +1,0 @@
-apiVersion: v2
-name: otel-backends
-version: 0.1.0
-description: In-cluster Loki and Tempo for native OTLP
-type: application
-appVersion: "loki-3.7.9-tempo-2.10.10"

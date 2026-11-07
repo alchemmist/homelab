@@ -244,3 +244,46 @@ DaemonSet при текущем Deployment); полный repository suite не 
 [операционная миграция](../docs/public-web-migration.md),
 [доступ и авторизация](network-access.md). Старый aggregate chart не возвращать
 при откате одного приложения; менять только источник его действующего владельца.
+
+
+## Мониторинг разделён по самостоятельным сервисам — 2026-11-07
+
+- `prometheus-stack`: Prometheus, Alertmanager, оператор, exporters и общие
+  recording/alert rules. Upstream chart по-прежнему `kube-prometheus-stack`
+  92.10.0, но Grafana в нём **выключена**. Helm releaseName остаётся
+  `kube-prometheus-stack`, чтобы не менять имена, selectors, PVC и адреса.
+- `grafana`: локальный wrapper `charts/grafana`, vendored upstream dependency
+  Grafana chart **14.0.0** из прежнего стека (не обновление версии), существующий
+  PVC/admin/OIDC Secrets, datasource provisioning и публичный policy proxy.
+  Native SSO, роль/группы, refresh/session durations и anonymous=false теперь
+  задекларированы в Git, а не зависят от старых live patches.
+- `loki`, `tempo`: независимые чарты и собственные ConfigMap, прежние runtime
+  images, Service имена, hostPath и mTLS. Общий leaf Certificate
+  `otel-tls-backends` принадлежит `monitoring-k3s` как shared PKI; Secret/SANs
+  не переизданы ради разделения. Loki retention rules живут с Loki.
+- `pyroscope`: бывшая Application `profiling`; данные/Deployment/PVC сохранены.
+- `grafana-mcp`, `thanos`: уже самостоятельные Applications, такими и остались.
+  `monitoring-k3s` / `monitoring-llm` — отдельная cluster/domain instrumentation;
+  существующие сборщики не переустанавливались и не перенастраивались этим split.
+
+Старые Applications `kube-prometheus-stack`, `otel-backends`, `profiling` и
+неиспользуемые агрегирующие чарты/пути удалены после disarm и проверки нового
+владения. Старые имена `kube-prometheus-stack-grafana`, `otel-loki`, `otel-tempo`,
+release labels и `app.kubernetes.io/part-of: otel-backends` — compatibility
+identities, не доказательство наличия старой Application. Не делать `helm
+uninstall` старого release и не переименовывать live PVC ради эстетики.
+
+Перед Grafana rollout создан согласованный SQLite backup (private 0600, вне Git).
+После rollout сверены сохранность пользователей/организаций/ролей, datasource
+identities, dashboard UIDs, native OAuth links и public sharing; содержимое БД
+и токены не выводились. Grafana/Loki/Tempo перезапущены контролируемо, версии и
+каталоги данных не менялись. TLS/anonymous regression 134/134; native OIDC redirect,
+verified mTLS readiness, отказ без client certificate, свежие Loki logs и доступ
+к сохранённым Tempo traces проверяются отдельно от состояния Argo. Это не новый
+browser-MFA/enrollment, backup/restore/HA или every-service telemetry acceptance.
+
+Точные владельцы, безопасный handoff и границы проверок:
+[monitoring-service-split.md](../docs/monitoring-service-split.md).
+Legacy `monitoring.yml` и `monitoring_stack` guard отказывают до мутаций при
+наличии независимых Argo owners. Править действующие Git sources, не старый
+`deploy/monitoring/values.yaml` и не UI image/Helm overrides.

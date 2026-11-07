@@ -7,11 +7,17 @@
   roles:
     - monitoring_vpn
 
-- name: Deploy persistent cluster metrics and Grafana
+- name: Legacy monitoring bootstrap guarded against active GitOps owners
   hosts: socrat-0
   gather_facts: false
   become: false
   any_errors_fatal: true
+  pre_tasks:
+    - name: Refuse legacy monitoring mutations before any role
+      ansible.builtin.include_role:
+        name: monitoring_stack
+        tasks_from: gitops-guard.yml
+      tags: [always]
   roles:
     - role: monitoring_thanos
       tags: [monitoring_thanos, monitoring_base]

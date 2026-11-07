@@ -48,7 +48,7 @@ this backend supports more than one explicitly instrumented service.
 
 ## Deployment and access
 
-- Argo app `profiling`, chart `charts/profiling`, namespace
+- Argo app `pyroscope`, chart `charts/pyroscope`, namespace
   `cattle-monitoring-system`.
 - Pyroscope **2.4.2**, digest-pinned multiarchitecture image, v2 filesystem
   storage, one replica with a persistent 5 GiB `local-path` PVC, 7-day retention.
@@ -92,7 +92,7 @@ environment variable alone is not enough.
 ## Verification
 
 ```sh
-helm lint charts/profiling
+helm lint charts/pyroscope
 helm lint charts/lms -f deploy/lms/values.yaml
 uv run --python 3.13 --with pytest --with pyyaml --with jinja2 --with cryptography \
   python -m pytest -q tests/test_cpu_profiling.py tests/test_lms_observability.py

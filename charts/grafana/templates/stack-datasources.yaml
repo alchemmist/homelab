@@ -14,7 +14,5 @@ metadata:
     release: kube-prometheus-stack
     heritage: Helm
 data:
-  datasource.yaml: "apiVersion: 1\ndatasources:\n- name: \"Prometheus\"\n  type: prometheus\n  uid: prometheus\n  url: http://thanos-query.cattle-monitoring-system.svc.cluster.local:9090\n\
-    \  access: proxy\n  isDefault: true\n  jsonData:\n    httpMethod: POST\n    timeInterval: 5s\n- name: \"Alertmanager\"\
-    \n  type: alertmanager\n  uid: alertmanager\n  url: http://kube-prometheus-stack-alertmanager.cattle-monitoring-system:9093/\n\
-    \  access: proxy\n  jsonData:\n    handleGrafanaManagedAlerts: false\n    implementation: prometheus"
+  datasource.yaml: |-
+{{ .Files.Get "files/datasources.yaml" | indent 4 }}

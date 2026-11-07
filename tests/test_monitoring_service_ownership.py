@@ -93,10 +93,28 @@ def test_prometheus_release_names_and_matching_labels_do_not_change():
     assert v['prometheus']['prometheusSpec']['ruleSelector']['matchLabels']['release'] == 'kube-prometheus-stack'
     assert len(a['spec']['sources']) == 2
 
-def test_old_owners_are_disabled_until_removed_not_cascaded():
+def test_retired_aggregate_owners_and_charts_are_not_reintroduced():
     for name in ('kube-prometheus-stack', 'otel-backends', 'profiling'):
-        p = ROOT/f'deploy/argocd/apps/{name}.yaml'
-        if p.exists():
-            a = yaml.safe_load(p.read_text())
-            assert a['metadata']['finalizers'] == []
-            assert a['spec']['syncPolicy']['automated']['enabled'] is False
+        assert not (ROOT/f'deploy/argocd/apps/{name}.yaml').exists()
+    for name in ('otel-backends', 'profiling'):
+        assert not (ROOT/f'charts/{name}').exists()
+    assert not (ROOT/'deploy/platform/kube-prometheus-stack').exists()
+    for name in ('grafana', 'prometheus-stack', 'loki', 'tempo', 'pyroscope'):
+        app = yaml.safe_load((ROOT/f'deploy/argocd/apps/{name}.yaml').read_text())
+        assert app['spec']['syncPolicy']['automated'].get('enabled') is not False
+        assert app['spec']['syncPolicy']['automated']['prune'] is False
+        assert app['spec']['syncPolicy']['automated']['selfHeal'] is True
+
+
+def test_legacy_monitoring_installer_fails_before_roles_under_gitops():
+    play = yaml.safe_load((ROOT/'ansible/playbooks/monitoring.yml').read_text())[1]
+    guard = play['pre_tasks'][0]
+    assert guard['ansible.builtin.include_role'] == {'name': 'monitoring_stack', 'tasks_from': 'gitops-guard.yml'}
+    assert guard['tags'] == ['always']
+    tasks = yaml.safe_load((ROOT/'ansible/roles/monitoring_stack/tasks/main.yml').read_text())
+    assert tasks[0]['ansible.builtin.import_tasks'] == 'gitops-guard.yml'
+    checks = yaml.safe_load((ROOT/'ansible/roles/monitoring_stack/tasks/gitops-guard.yml').read_text())
+    assert 'prometheus-stack' in checks[0]['ansible.builtin.command']['argv']
+    assert 'grafana' in checks[0]['ansible.builtin.command']['argv']
+    assert checks[0]['changed_when'] is False
+    assert checks[1]['ansible.builtin.assert']['that'].endswith('length == 0')
