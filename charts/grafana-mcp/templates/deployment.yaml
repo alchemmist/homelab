@@ -41,7 +41,11 @@ spec:
             - --endpoint-path=/mcp
             - --healthz-address=0.0.0.0:8080
             - --disable-write
-            - --enabled-tools=search,datasource,prometheus,alerting,dashboard,folder,navigation
+            - --enabled-tools=search,datasource,prometheus,alerting,dashboard,folder,navigation,loki,tempo,pyroscope
+            - --loki-guardrail-mode=enforce
+            - --loki-guardrail-max-range=24h
+            - --loki-guardrail-max-bytes=536870912
+            - --max-loki-log-limit=100
             - --allow-grafana-url-override=false
             - --allow-cross-origin-redirects=false
             - --usage-stats=disabled

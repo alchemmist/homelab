@@ -7,7 +7,8 @@ __pycache__/
 # Secrets
 *.vault.yml
 .vault-pass
-/.pi/mcp.json
+# .pi/mcp.json is tracked and contains only secret-file references.
+/.pi/mcp.local.json
 
 # macOS
 .DS_Store

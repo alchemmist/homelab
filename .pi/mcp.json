@@ -1,0 +1,58 @@
+{
+  "mcpServers": {
+    "socrat-grafana": {
+      "url": "https://grafana-mcp.socrat.alchemmist.xyz/mcp",
+      "headers": {
+        "Authorization": "!python3 scripts/mcp-credential.py grafana"
+      },
+      "description": "Read-only dashboards, Prometheus/Thanos, Alertmanager, Loki logs, Tempo traces and Pyroscope profiles. Never mute alerts to obtain green.",
+      "exposure": "codemode"
+    },
+    "argocd": {
+      "command": "python3",
+      "args": [
+        "scripts/run-official-mcp.py",
+        "argocd"
+      ],
+      "description": "Official Argo CD Labs MCP, read-only application status, events, resources and diagnostics. Change deployments through Git, not MCP writes.",
+      "exposure": "codemode"
+    },
+    "socrat-metrics": {
+      "command": "python3",
+      "args": [
+        "scripts/run-official-mcp.py",
+        "metrics"
+      ],
+      "description": "Official Prometheus project MCP, read-only Thanos-compatible queries and metric discovery through the existing Grafana Viewer datasource proxy. Not the direct Prometheus TSDB/admin API.",
+      "exposure": "codemode"
+    },
+    "n8n": {
+      "url": "https://n8n.socrat.alchemmist.xyz/mcp-server/http",
+      "headers": {
+        "Authorization": "!python3 scripts/mcp-credential.py n8n"
+      },
+      "description": "Official built-in n8n instance MCP. Pending owner enablement; read-only workflow search/details by default. No workflow execution or credential changes.",
+      "enabled": false,
+      "exposure": "hidden",
+      "toolExposure": {
+        "search_workflows": "codemode",
+        "get_workflow_details": "codemode"
+      }
+    },
+    "umami": {
+      "command": "python3",
+      "args": [
+        "scripts/run-official-mcp.py",
+        "umami"
+      ],
+      "description": "Official Umami read-only analytics MCP; pending a scoped authorized API key, not the database password.",
+      "enabled": false,
+      "exposure": "codemode"
+    },
+    "github": {
+      "url": "https://api.githubcopilot.com/mcp",
+      "enabled": false,
+      "description": "Official external GitHub MCP; remains disabled to preserve the previous project policy. Not a newly deployed Homelab service."
+    }
+  }
+}

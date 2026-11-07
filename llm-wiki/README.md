@@ -49,3 +49,5 @@ Git/manifests задают intent; runtime определяется отдель
 
 Эта редакция изменила только `llm-wiki`, после read-only чтения Argo/pods/IdP.
 Infrastructure sync/rollout, пароль/MFA за человека и смена VPN/DNS не выполнялись.
+
+- [Официальные MCP для агентов](official-mcp.md) — project settings, полная сервисная инвентаризация, read-only scope и реальные blockers.

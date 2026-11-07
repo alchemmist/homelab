@@ -182,7 +182,7 @@ Default readonly также не отменяет application gate. Built-in adm
 
 **n8n:** Community не даёт нужную native SSO integration без лицензии. Embedded
 outpost Authentik охраняет browser UI/rest owner-only, после MFA n8n может ещё
-просить свой логин. Конфигурация `deploy/identity/n8n-gateway.yaml` и proxy settings
+просить свой логин. Конфигурация `charts/n8n/templates/access.yaml` и proxy settings
 в catalog. Webhooks, waiting webhooks, forms, healthz, `/api/v1` и OAuth credential
 callbacks обходят browser gate по reviewed route boundary. Это не делает API
 анонимным: оно продолжает проверять собственные keys/signatures.

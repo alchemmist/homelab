@@ -139,3 +139,11 @@ TV layout в Git, старые panel coordinates не повторять. Физ
 
 Эта актуализация — документация с read-only аудитом, не повторная миграция,
 не browser acceptance, не завершённый первый вход человека и не общий зелёный suite.
+
+
+## MCP в репозитории
+
+Agent entrypoint — `AGENTS.md`, settings — `.pi/mcp.json` (без секретов в Git).
+Официальные подключения и полный audit/ограничения: [official-mcp.md](official-mcp.md).
+Для n8n требуется native owner enablement, для Umami — authorized analytics key;
+не обходить это через reset/DB и не объявлять disabled entries рабочими.

@@ -1,0 +1,1359 @@
+{
+  "auditedAt": "2026-11-07",
+  "scope": "All 49 current Argo Applications plus all Deployment/StatefulSet/DaemonSet instances and running systemd services on all four nodes; one-off Jobs/CronJobs are supporting automation, not independent user APIs. Upstream negative findings are point-in-time, not claims that MCP can never exist.",
+  "applications": [
+    {
+      "application": "alertmanager",
+      "decision": "covered",
+      "reason": "Read-only telemetry via the official Grafana MCP; metrics additionally use socrat-metrics through the existing Thanos datasource.",
+      "connector": "socrat-grafana"
+    },
+    {
+      "application": "argo-cd",
+      "decision": "connected",
+      "reason": "Argo project Labs, not a core built-in endpoint; pinned 0.9.0, MCP_READ_ONLY=true, stdio; existing token reused.",
+      "connector": "argocd",
+      "upstream": "https://github.com/argoproj-labs/mcp-for-argocd"
+    },
+    {
+      "application": "authentik",
+      "decision": "no-first-party-runtime-mcp-identified",
+      "reason": "No suitable first-party operational MCP identified in upstream source/docs; do not install community wrappers."
+    },
+    {
+      "application": "blog",
+      "decision": "own-app-no-new-wrapper",
+      "reason": "Our own application; no existing maintained native management MCP identified. Do not manufacture REST/OpenAPI wrappers or let infrastructure diagnostics read application databases."
+    },
+    {
+      "application": "cats",
+      "decision": "own-app-no-new-wrapper",
+      "reason": "Our own application; no existing maintained native management MCP identified. Do not manufacture REST/OpenAPI wrappers or let infrastructure diagnostics read application databases."
+    },
+    {
+      "application": "cert-manager",
+      "decision": "infrastructure-covered",
+      "reason": "Controller/exporter/instrumentation/gateway, not a separate agent-facing business API. Read desired/live state with Argo CD and telemetry with Grafana; no MCP per YAML/controller sidecar."
+    },
+    {
+      "application": "cnpg-operator",
+      "decision": "infrastructure-covered",
+      "reason": "Controller/exporter/instrumentation/gateway, not a separate agent-facing business API. Read desired/live state with Argo CD and telemetry with Grafana; no MCP per YAML/controller sidecar."
+    },
+    {
+      "application": "format-quorum",
+      "decision": "own-app-no-new-wrapper",
+      "reason": "Our own application; no existing maintained native management MCP identified. Do not manufacture REST/OpenAPI wrappers or let infrastructure diagnostics read application databases."
+    },
+    {
+      "application": "grafana",
+      "decision": "connected",
+      "reason": "Existing official pinned 2.0.2 server; enable Loki/Tempo/Pyroscope tools as well.",
+      "connector": "socrat-grafana",
+      "upstream": "https://github.com/grafana/mcp-grafana"
+    },
+    {
+      "application": "grafana-mcp",
+      "decision": "connected",
+      "reason": "Existing official pinned 2.0.2 server; enable Loki/Tempo/Pyroscope tools as well.",
+      "connector": "socrat-grafana",
+      "upstream": "https://github.com/grafana/mcp-grafana"
+    },
+    {
+      "application": "harbor",
+      "decision": "no-first-party-runtime-mcp-identified",
+      "reason": "No suitable first-party operational MCP identified in upstream source/docs; do not install community wrappers."
+    },
+    {
+      "application": "img-proxy",
+      "decision": "no-first-party-runtime-mcp-identified",
+      "reason": "No suitable first-party operational MCP identified in upstream source/docs; do not install community wrappers."
+    },
+    {
+      "application": "kube-state-metrics",
+      "decision": "infrastructure-covered",
+      "reason": "Controller/exporter/instrumentation/gateway, not a separate agent-facing business API. Read desired/live state with Argo CD and telemetry with Grafana; no MCP per YAML/controller sidecar."
+    },
+    {
+      "application": "litellm",
+      "decision": "not-selected",
+      "reason": "Official admin connector 0.1.0 exists, but requires proxy_admin even for reads plus gateway permission-response compatibility. No blanket gateway-admin credential or proxy upgrade merely to enable MCP.",
+      "upstream": "https://github.com/BerriAI/liteadmin-mcp"
+    },
+    {
+      "application": "litellm-infra",
+      "decision": "infrastructure-covered",
+      "reason": "Controller/exporter/instrumentation/gateway, not a separate agent-facing business API. Read desired/live state with Argo CD and telemetry with Grafana; no MCP per YAML/controller sidecar."
+    },
+    {
+      "application": "lms",
+      "decision": "own-app-no-new-wrapper",
+      "reason": "Our own application; no existing maintained native management MCP identified. Do not manufacture REST/OpenAPI wrappers or let infrastructure diagnostics read application databases."
+    },
+    {
+      "application": "loki",
+      "decision": "covered",
+      "reason": "Read-only telemetry via the official Grafana MCP; metrics additionally use socrat-metrics through the existing Thanos datasource.",
+      "connector": "socrat-grafana"
+    },
+    {
+      "application": "monitoring-k3s",
+      "decision": "infrastructure-covered",
+      "reason": "Controller/exporter/instrumentation/gateway, not a separate agent-facing business API. Read desired/live state with Argo CD and telemetry with Grafana; no MCP per YAML/controller sidecar."
+    },
+    {
+      "application": "monitoring-llm",
+      "decision": "infrastructure-covered",
+      "reason": "Controller/exporter/instrumentation/gateway, not a separate agent-facing business API. Read desired/live state with Argo CD and telemetry with Grafana; no MCP per YAML/controller sidecar."
+    },
+    {
+      "application": "monori",
+      "decision": "own-app-no-new-wrapper",
+      "reason": "Our own application; no existing maintained native management MCP identified. Do not manufacture REST/OpenAPI wrappers or let infrastructure diagnostics read application databases."
+    },
+    {
+      "application": "n8n",
+      "decision": "blocked-owner-enable",
+      "reason": "Installed 1.123.87 has native MCP. Direct backend rejects missing/invalid tokens with 401, existing valid token with 403 because instance-level MCP is disabled. No owner login/cookie is available. Exact HTTP route prepared, client disabled until owner enables it; no account reset/DB workaround.",
+      "connector": "n8n",
+      "upstream": "https://docs.n8n.io/advanced-ai/accessing-n8n-mcp-server/"
+    },
+    {
+      "application": "netbird",
+      "decision": "not-selected",
+      "reason": "Official source but no releases and @netbird/mcp registry returns 404; upstream describes cloud OAuth token store as a prototype. No broad network admin PAT granted.",
+      "upstream": "https://github.com/netbirdio/netbird-mcp"
+    },
+    {
+      "application": "node-exporter",
+      "decision": "infrastructure-covered",
+      "reason": "Controller/exporter/instrumentation/gateway, not a separate agent-facing business API. Read desired/live state with Argo CD and telemetry with Grafana; no MCP per YAML/controller sidecar."
+    },
+    {
+      "application": "nvidia-device-plugin",
+      "decision": "infrastructure-covered",
+      "reason": "Controller/exporter/instrumentation/gateway, not a separate agent-facing business API. Read desired/live state with Argo CD and telemetry with Grafana; no MCP per YAML/controller sidecar."
+    },
+    {
+      "application": "open-terminal",
+      "decision": "no-first-party-runtime-mcp-identified",
+      "reason": "Upstream MCP integration is a tool consumer/proxy or model tool-calling interface, not a first-party management MCP for this deployed service."
+    },
+    {
+      "application": "open-webui",
+      "decision": "no-first-party-runtime-mcp-identified",
+      "reason": "Upstream MCP integration is a tool consumer/proxy or model tool-calling interface, not a first-party management MCP for this deployed service."
+    },
+    {
+      "application": "pr-agent",
+      "decision": "no-first-party-runtime-mcp-identified",
+      "reason": "No suitable first-party operational MCP identified in upstream source/docs; do not install community wrappers."
+    },
+    {
+      "application": "private-gateway",
+      "decision": "infrastructure-covered",
+      "reason": "Controller/exporter/instrumentation/gateway, not a separate agent-facing business API. Read desired/live state with Argo CD and telemetry with Grafana; no MCP per YAML/controller sidecar."
+    },
+    {
+      "application": "prometheus",
+      "decision": "covered",
+      "reason": "Read-only telemetry via the official Grafana MCP; metrics additionally use socrat-metrics through the existing Thanos datasource.",
+      "connector": "socrat-grafana"
+    },
+    {
+      "application": "prometheus-operator",
+      "decision": "infrastructure-covered",
+      "reason": "Controller/exporter/instrumentation/gateway, not a separate agent-facing business API. Read desired/live state with Argo CD and telemetry with Grafana; no MCP per YAML/controller sidecar."
+    },
+    {
+      "application": "pyroscope",
+      "decision": "covered",
+      "reason": "Read-only telemetry via the official Grafana MCP; metrics additionally use socrat-metrics through the existing Thanos datasource.",
+      "connector": "socrat-grafana"
+    },
+    {
+      "application": "rancher",
+      "decision": "not-selected",
+      "reason": "Official Rancher AI component, but no standalone stable releases; requires Rancher credentials and offers write operations. Do not install the entire AI-agent stack or grant an admin token just for discovery.",
+      "upstream": "https://github.com/rancher/rancher-ai-mcp"
+    },
+    {
+      "application": "remark42",
+      "decision": "no-first-party-runtime-mcp-identified",
+      "reason": "No suitable first-party operational MCP identified in upstream source/docs; do not install community wrappers."
+    },
+    {
+      "application": "root",
+      "decision": "infrastructure-covered",
+      "reason": "Controller/exporter/instrumentation/gateway, not a separate agent-facing business API. Read desired/live state with Argo CD and telemetry with Grafana; no MCP per YAML/controller sidecar."
+    },
+    {
+      "application": "rustfs",
+      "decision": "not-selected",
+      "reason": "Official source-only MCP with no releases; upload/create/delete tools and access to backup/object data. No stable packaged read-only deployment selected; root S3 credentials are not shared with agents.",
+      "upstream": "https://github.com/rustfs/mcp"
+    },
+    {
+      "application": "searxng",
+      "decision": "no-first-party-runtime-mcp-identified",
+      "reason": "No suitable first-party operational MCP identified in upstream source/docs; do not install community wrappers."
+    },
+    {
+      "application": "socrat-bot",
+      "decision": "own-app-no-new-wrapper",
+      "reason": "Our own application; no existing maintained native management MCP identified. Do not manufacture REST/OpenAPI wrappers or let infrastructure diagnostics read application databases."
+    },
+    {
+      "application": "socrat-home",
+      "decision": "own-app-no-new-wrapper",
+      "reason": "Our own application; no existing maintained native management MCP identified. Do not manufacture REST/OpenAPI wrappers or let infrastructure diagnostics read application databases."
+    },
+    {
+      "application": "spi-triage",
+      "decision": "own-app-no-new-wrapper",
+      "reason": "Our own application; no existing maintained native management MCP identified. Do not manufacture REST/OpenAPI wrappers or let infrastructure diagnostics read application databases."
+    },
+    {
+      "application": "syncthing",
+      "decision": "no-first-party-runtime-mcp-identified",
+      "reason": "No suitable first-party operational MCP identified in upstream source/docs; do not install community wrappers."
+    },
+    {
+      "application": "tempo",
+      "decision": "covered",
+      "reason": "Read-only telemetry via the official Grafana MCP; metrics additionally use socrat-metrics through the existing Thanos datasource.",
+      "connector": "socrat-grafana"
+    },
+    {
+      "application": "thanos",
+      "decision": "covered",
+      "reason": "Read-only telemetry via the official Grafana MCP; metrics additionally use socrat-metrics through the existing Thanos datasource.",
+      "connector": "socrat-grafana"
+    },
+    {
+      "application": "traefik-edge",
+      "decision": "infrastructure-covered",
+      "reason": "Controller/exporter/instrumentation/gateway, not a separate agent-facing business API. Read desired/live state with Argo CD and telemetry with Grafana; no MCP per YAML/controller sidecar."
+    },
+    {
+      "application": "umami",
+      "decision": "blocked-credential",
+      "reason": "Installed 3.4.1 includes native endpoint; official @umami/mcp 0.2.0 stdio also available. Package pinned/installed, but no authorized analytics API key is available. Disabled; no default password/login guessing, database access or admin reset.",
+      "connector": "umami",
+      "upstream": "https://github.com/umami-software/umami/tree/master/packages/mcp"
+    },
+    {
+      "application": "uptime-kuma",
+      "decision": "version-blocked",
+      "reason": "Native MCP exists on upstream master, but is absent from installed stable 2.5.7. Do not run unreleased master or upgrade/reset the monitoring database for this task.",
+      "upstream": "https://github.com/louislam/uptime-kuma/blob/master/server/routers/mcp-router.ts"
+    },
+    {
+      "application": "vllm",
+      "decision": "no-first-party-runtime-mcp-identified",
+      "reason": "Upstream MCP integration is a tool consumer/proxy or model tool-calling interface, not a first-party management MCP for this deployed service."
+    },
+    {
+      "application": "wiki-runtime",
+      "decision": "existing-project-access-preserved",
+      "reason": "Existing homelab-wiki global MCP access is preserved; this task adds no new custom wiki adapter."
+    },
+    {
+      "application": "x-ui",
+      "decision": "no-first-party-runtime-mcp-identified",
+      "reason": "No suitable first-party operational MCP identified in upstream source/docs; do not install community wrappers."
+    },
+    {
+      "application": "xui-auth-gateway",
+      "decision": "infrastructure-covered",
+      "reason": "Controller/exporter/instrumentation/gateway, not a separate agent-facing business API. Read desired/live state with Argo CD and telemetry with Grafana; no MCP per YAML/controller sidecar."
+    }
+  ],
+  "workloads": [
+    {
+      "kind": "Deployment",
+      "namespace": "argocd",
+      "name": "argo-cd-argocd-applicationset-controller",
+      "images": [
+        "quay.io/argoproj/argocd:v3.5.6"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "argocd",
+      "name": "argo-cd-argocd-notifications-controller",
+      "images": [
+        "quay.io/argoproj/argocd:v3.5.6"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "argocd",
+      "name": "argo-cd-argocd-redis",
+      "images": [
+        "docker.io/library/redis:8.2-alpine"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "argocd",
+      "name": "argo-cd-argocd-repo-server",
+      "images": [
+        "quay.io/argoproj/argocd:v3.5.6"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "argocd",
+      "name": "argo-cd-argocd-server",
+      "images": [
+        "quay.io/argoproj/argocd:v3.5.6"
+      ]
+    },
+    {
+      "kind": "StatefulSet",
+      "namespace": "argocd",
+      "name": "argo-cd-argocd-application-controller",
+      "images": [
+        "quay.io/argoproj/argocd:v3.5.6"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "automation",
+      "name": "blog-updates-worker",
+      "images": [
+        "python:3.13-alpine@sha256:7984cf56ceaddebe4fefeb75d64000b9f45d8b77b11a09b24524da6cdc3af0c8"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "automation",
+      "name": "n8n",
+      "images": [
+        "docker.io/n8nio/n8n@sha256:624a1f10f37119a73eca34c0cbd358668aebf0068d320ad5eae584f9d35aa314"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "automation",
+      "name": "spi-triage",
+      "images": [
+        "harbor.socrat.alchemmist.xyz/spi-triage/runtime@sha256:4cd6a12c1b046c03b74195b2d93aff183d8465230d364b527fa116fd25624a91"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "automation",
+      "name": "wiki-openapi-worker",
+      "images": [
+        "python:3.13-alpine@sha256:7984cf56ceaddebe4fefeb75d64000b9f45d8b77b11a09b24524da6cdc3af0c8"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "blog",
+      "name": "blog",
+      "images": [
+        "harbor.socrat.alchemmist.xyz/homelab/blog@sha256:c17b95f0ba3ff29016abe9671c3f5a8fe5063cecdc38c65a62f1720c771ae10d"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cats",
+      "name": "cats",
+      "images": [
+        "harbor.socrat.alchemmist.xyz/homelab/cats@sha256:ffef7edb39d622190b6ba88642bc35f7a8b159943532517889a3ff8d795ed179"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cattle-capi-system",
+      "name": "capi-controller-manager",
+      "images": [
+        "rancher/cluster-api-controller:v1.13.3"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cattle-fleet-local-system",
+      "name": "fleet-agent",
+      "images": [
+        "rancher/fleet-agent:v0.16.2"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cattle-fleet-system",
+      "name": "fleet-controller",
+      "images": [
+        "rancher/fleet:v0.16.2",
+        "rancher/fleet:v0.16.2",
+        "rancher/fleet:v0.16.2"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cattle-fleet-system",
+      "name": "helmops",
+      "images": [
+        "rancher/fleet:v0.16.2"
+      ]
+    },
+    {
+      "kind": "DaemonSet",
+      "namespace": "cattle-monitoring-system",
+      "name": "kube-prometheus-stack-prometheus-node-exporter",
+      "images": [
+        "quay.io/prometheus/node-exporter:v1.12.1-distroless"
+      ]
+    },
+    {
+      "kind": "DaemonSet",
+      "namespace": "cattle-monitoring-system",
+      "name": "monitoring-etcd-metrics",
+      "images": [
+        "nginx:1.31.2-alpine"
+      ]
+    },
+    {
+      "kind": "DaemonSet",
+      "namespace": "cattle-monitoring-system",
+      "name": "thanos-disk",
+      "images": [
+        "python:3.12-slim"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cattle-monitoring-system",
+      "name": "grafana-mcp",
+      "images": [
+        "grafana/mcp-grafana:2.0.2@sha256:78d208116ec52b09b44f0eca66892073b39aefcb64483c54d43255c8eab7e97a"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cattle-monitoring-system",
+      "name": "kube-prometheus-stack-grafana",
+      "images": [
+        "quay.io/kiwigrid/k8s-sidecar:2.14.1",
+        "quay.io/kiwigrid/k8s-sidecar:2.14.1",
+        "docker.io/grafana/grafana:13.2.4-distroless"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cattle-monitoring-system",
+      "name": "kube-prometheus-stack-kube-state-metrics",
+      "images": [
+        "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.20.0"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cattle-monitoring-system",
+      "name": "kube-prometheus-stack-operator",
+      "images": [
+        "quay.io/prometheus-operator/prometheus-operator:v0.94.1"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cattle-monitoring-system",
+      "name": "monitoring-service-probes",
+      "images": [
+        "quay.io/prometheus/blackbox-exporter:v0.29.0"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cattle-monitoring-system",
+      "name": "otel-loki",
+      "images": [
+        "docker.io/grafana/loki@sha256:0db216b630ae1f348a1584c67f3cead8b4c1fc839169a39501db664744158e28"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cattle-monitoring-system",
+      "name": "otel-tempo",
+      "images": [
+        "docker.io/grafana/tempo@sha256:12b0820f13ffa10ce956b6e9acc3b03f3cffded99109be6cc09d106fe56e5d38"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cattle-monitoring-system",
+      "name": "pyroscope",
+      "images": [
+        "docker.io/grafana/pyroscope@sha256:ef9b48976386aa2781e84664dfdba7cc33a1b6793c0cc9d130812173a926ca1f"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cattle-monitoring-system",
+      "name": "rancher-monitoring-dashboards-monitoring-proxy",
+      "images": [
+        "rancher/mirrored-library-nginx:1.31.2-alpine"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cattle-monitoring-system",
+      "name": "socrat-n8n-activity",
+      "images": [
+        "python@sha256:e064671ca452259bab50e8e2c7bd896e39e9a343bb06ca25234adf6fe18d0fc7",
+        "docker.io/otel/opentelemetry-collector-contrib@sha256:ac0bb9cdc844b55d2fd2655d03e596243787d6a8c52dd408b1dc96dd1bd372ee"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cattle-monitoring-system",
+      "name": "thanos-compactor",
+      "images": [
+        "quay.io/thanos/thanos:v0.42.4"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cattle-monitoring-system",
+      "name": "thanos-compactor-1h",
+      "images": [
+        "quay.io/thanos/thanos:v0.42.4"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cattle-monitoring-system",
+      "name": "thanos-compactor-5m",
+      "images": [
+        "quay.io/thanos/thanos:v0.42.4"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cattle-monitoring-system",
+      "name": "thanos-query",
+      "images": [
+        "quay.io/thanos/thanos:v0.42.4"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cattle-monitoring-system",
+      "name": "thanos-shelf-1h",
+      "images": [
+        "python:3.12-slim"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cattle-monitoring-system",
+      "name": "thanos-shelf-5m",
+      "images": [
+        "python:3.12-slim"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cattle-monitoring-system",
+      "name": "thanos-store",
+      "images": [
+        "quay.io/thanos/thanos:v0.42.4"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cattle-monitoring-system",
+      "name": "thanos-store-1h",
+      "images": [
+        "quay.io/thanos/thanos:v0.42.4"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cattle-monitoring-system",
+      "name": "thanos-store-5m",
+      "images": [
+        "quay.io/thanos/thanos:v0.42.4"
+      ]
+    },
+    {
+      "kind": "StatefulSet",
+      "namespace": "cattle-monitoring-system",
+      "name": "alertmanager-kube-prometheus-stack-alertmanager",
+      "images": [
+        "quay.io/prometheus/alertmanager:v0.34.1",
+        "quay.io/prometheus-operator/prometheus-config-reloader:v0.94.1"
+      ]
+    },
+    {
+      "kind": "StatefulSet",
+      "namespace": "cattle-monitoring-system",
+      "name": "prometheus-kube-prometheus-stack-prometheus",
+      "images": [
+        "quay.io/prometheus/prometheus:v3.15.0-distroless",
+        "quay.io/prometheus-operator/prometheus-config-reloader:v0.94.1",
+        "quay.io/thanos/thanos:v0.42.4",
+        "docker.io/otel/opentelemetry-collector-contrib@sha256:ac0bb9cdc844b55d2fd2655d03e596243787d6a8c52dd408b1dc96dd1bd372ee"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cattle-system",
+      "name": "public-web-rancher-proxy",
+      "images": [
+        "docker.io/library/nginx:stable-alpine@sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cattle-system",
+      "name": "rancher",
+      "images": [
+        "rancher/rancher:v2.15.2"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cattle-system",
+      "name": "rancher-webhook",
+      "images": [
+        "rancher/rancher-webhook:v0.11.3"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cattle-system",
+      "name": "system-upgrade-controller",
+      "images": [
+        "rancher/system-upgrade-controller:v0.20.1"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cattle-turtles-system",
+      "name": "rancher-turtles-controller-manager",
+      "images": [
+        "rancher/turtles:v0.27.2"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cert-manager",
+      "name": "cert-manager",
+      "images": [
+        "quay.io/jetstack/cert-manager-controller:v1.16.2"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cert-manager",
+      "name": "cert-manager-cainjector",
+      "images": [
+        "quay.io/jetstack/cert-manager-cainjector:v1.16.2"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cert-manager",
+      "name": "cert-manager-webhook",
+      "images": [
+        "quay.io/jetstack/cert-manager-webhook:v1.16.2"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "cnpg-system",
+      "name": "cnpg-cloudnative-pg",
+      "images": [
+        "ghcr.io/cloudnative-pg/cloudnative-pg:1.30.1"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "format-quorum",
+      "name": "format-quorum",
+      "images": [
+        "harbor.socrat.alchemmist.xyz/homelab/format-quorum@sha256:2c7127c13aa1ea1efd1ab6e59d4f0a043d19a46ec70462d2ddf876dc351eb153"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "harbor",
+      "name": "harbor-core",
+      "images": [
+        "docker.io/goharbor/harbor-core:v2.15.4"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "harbor",
+      "name": "harbor-jobservice",
+      "images": [
+        "docker.io/goharbor/harbor-jobservice:v2.15.4"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "harbor",
+      "name": "harbor-portal",
+      "images": [
+        "docker.io/goharbor/harbor-portal:v2.15.4"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "harbor",
+      "name": "harbor-registry",
+      "images": [
+        "docker.io/goharbor/registry-photon:v2.15.4",
+        "docker.io/goharbor/harbor-registryctl:v2.15.4"
+      ]
+    },
+    {
+      "kind": "StatefulSet",
+      "namespace": "harbor",
+      "name": "harbor-database",
+      "images": [
+        "docker.io/goharbor/harbor-db:v2.15.4"
+      ]
+    },
+    {
+      "kind": "StatefulSet",
+      "namespace": "harbor",
+      "name": "harbor-redis",
+      "images": [
+        "docker.io/goharbor/valkey-photon:v2.15.4"
+      ]
+    },
+    {
+      "kind": "StatefulSet",
+      "namespace": "harbor",
+      "name": "harbor-trivy",
+      "images": [
+        "docker.io/goharbor/trivy-adapter-photon:v2.15.4"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "identity",
+      "name": "authentik-server",
+      "images": [
+        "ghcr.io/goauthentik/server:2026.8.5"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "identity",
+      "name": "authentik-worker",
+      "images": [
+        "ghcr.io/goauthentik/server:2026.8.5"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "identity",
+      "name": "netbird-edge-forwarder",
+      "images": [
+        "rancher/mirrored-library-traefik@sha256:f86a2cab1b5c649070c49f883c743dd32d8485a56e3368c5f93b9e91f1e91259"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "identity",
+      "name": "netbird-relay-home",
+      "images": [
+        "netbirdio/relay:0.82.0@sha256:8f6b9e4193653ede89e83dd4aa4e2cf2562579b3e2481dcf259a7ab28bcd5fa1"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "identity",
+      "name": "netbird-relay-vps",
+      "images": [
+        "netbirdio/relay:0.82.0@sha256:8f6b9e4193653ede89e83dd4aa4e2cf2562579b3e2481dcf259a7ab28bcd5fa1"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "identity",
+      "name": "public-web-grafana-proxy",
+      "images": [
+        "docker.io/library/nginx:stable-alpine@sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "identity",
+      "name": "rustfs-gateway",
+      "images": [
+        "harbor.socrat.alchemmist.xyz/homelab/rustfs-gateway@sha256:9253d36e923e216cd34714a5baf9b57d1bb5577bf52c4671a4f8d302a27fef57"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "identity",
+      "name": "socrat-authentik-theme",
+      "images": [
+        "nginxinc/nginx-unprivileged@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03"
+      ]
+    },
+    {
+      "kind": "StatefulSet",
+      "namespace": "identity",
+      "name": "authentik-postgres",
+      "images": [
+        "postgres:17.11-trixie"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "img-proxy",
+      "name": "img-proxy",
+      "images": [
+        "nginx:1.27-alpine"
+      ]
+    },
+    {
+      "kind": "DaemonSet",
+      "namespace": "kube-system",
+      "name": "nvidia-device-plugin",
+      "images": [
+        "nvcr.io/nvidia/k8s-device-plugin:v0.20.1"
+      ]
+    },
+    {
+      "kind": "DaemonSet",
+      "namespace": "kube-system",
+      "name": "svclb-traefik-80aba32c",
+      "images": [
+        "rancher/klipper-lb:v0.4.17",
+        "rancher/klipper-lb:v0.4.17"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "kube-system",
+      "name": "coredns",
+      "images": [
+        "rancher/mirrored-coredns-coredns:1.14.7"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "kube-system",
+      "name": "local-path-provisioner",
+      "images": [
+        "rancher/local-path-provisioner:v0.0.37"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "kube-system",
+      "name": "metrics-server",
+      "images": [
+        "rancher/mirrored-metrics-server:v0.9.0"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "kube-system",
+      "name": "traefik",
+      "images": [
+        "rancher/mirrored-library-traefik:3.7.13"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "llm",
+      "name": "litellm",
+      "images": [
+        "ghcr.io/berriai/litellm:1.105.1"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "llm",
+      "name": "litellm-branding",
+      "images": [
+        "nginx:1.28-alpine@sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "llm",
+      "name": "litellm-postgres",
+      "images": [
+        "postgres:18.6-alpine"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "llm",
+      "name": "open-terminal",
+      "images": [
+        "ghcr.io/open-webui/open-terminal:0.14.1@sha256:03af3bd6c71af3548cbaef874f72d0a8ebd7daa813e0f08d3bdfe8f865f65212",
+        "ghcr.io/open-webui/open-terminal:0.14.1@sha256:03af3bd6c71af3548cbaef874f72d0a8ebd7daa813e0f08d3bdfe8f865f65212"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "llm",
+      "name": "open-webui",
+      "images": [
+        "ghcr.io/open-webui/open-webui:v0.12.3-slim@sha256:5adfb0355bbe4a5860c0ba9482cc0b40f573de3749a21a64cf4789391a14fffc"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "llm",
+      "name": "open-webui-gateway",
+      "images": [
+        "nginx:1.28-alpine@sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "llm",
+      "name": "searxng",
+      "images": [
+        "docker.io/searxng/searxng@sha256:d81e14a4328ba7a57f297dff0472be629d30bf29580406c0d5b3bdab563c9bed"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "llm",
+      "name": "vllm",
+      "images": [
+        "vllm/vllm-openai:v0.31.0@sha256:c1c9f6fd5c109ba7f0546a59f5b2f15fb87f64c77782e90a27b648b42a8e67c3"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "lms",
+      "name": "lms",
+      "images": [
+        "ghcr.io/alchemmist/lms@sha256:9890519389652cdd8c8436a76f81be6bc81131174a728144ab268c4150a80167"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "lms",
+      "name": "lms-postgres",
+      "images": [
+        "postgres:17-bookworm"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "monori",
+      "name": "monori",
+      "images": [
+        "harbor.socrat.alchemmist.xyz/homelab/monori@sha256:ef7def1d4eafdfa28cf4bd72f26fda1bceeb5c335510e26a56029a9f9b1b03c6"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "monori",
+      "name": "monori-back",
+      "images": [
+        "harbor.socrat.alchemmist.xyz/homelab/monori@sha256:4543c95fe7f26b342878cee4cee0648918c6ed55f1f62584227661c3efe11ff6"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "monori",
+      "name": "monori-sync",
+      "images": [
+        "harbor.socrat.alchemmist.xyz/homelab/monori@sha256:762c3b18504541e195b99ee2999fe723a466ff0bccb06211c87c75a038d33dbd"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "netbird-host-peers",
+      "name": "machine-socrat-0",
+      "images": [
+        "netbirdio/netbird:0.82.0@sha256:eca5b274c635bfbb04ec6724a0712d1146190dd450eea199eeb83916fdd94965"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "netbird-host-peers",
+      "name": "machine-socrat-1",
+      "images": [
+        "netbirdio/netbird:0.82.0@sha256:eca5b274c635bfbb04ec6724a0712d1146190dd450eea199eeb83916fdd94965"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "netbird-host-peers",
+      "name": "machine-socrat-2",
+      "images": [
+        "netbirdio/netbird:0.82.0@sha256:eca5b274c635bfbb04ec6724a0712d1146190dd450eea199eeb83916fdd94965"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "netbird-host-peers",
+      "name": "machine-socrat-3",
+      "images": [
+        "netbirdio/netbird:0.82.0@sha256:eca5b274c635bfbb04ec6724a0712d1146190dd450eea199eeb83916fdd94965"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "netbird-pilot",
+      "name": "dashboard",
+      "images": [
+        "netbirdio/dashboard@sha256:340b13c00b84349572a2acc5605e907cb09250a9e6461c757097eabdb8e02f2c"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "netbird-pilot",
+      "name": "server",
+      "images": [
+        "netbirdio/netbird-server:0.82.0@sha256:7b5b53b2dc8bc25639f791cf72d47cf86911894ff3f8a97cb79bab9be958109c"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "netbird-pilot",
+      "name": "stun",
+      "images": [
+        "coturn/coturn:4.7.0@sha256:a00afb5b4890de4df22bbe70379c6b316685dffee297d53cac1271dcb91fab93"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "pr-agent",
+      "name": "pr-agent",
+      "images": [
+        "pragent/pr-agent:0.49.0-github_app"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "remark42",
+      "name": "remark42",
+      "images": [
+        "ghcr.io/umputun/remark42:v1.17.1"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "rustfs",
+      "name": "rustfs",
+      "images": [
+        "rustfs/rustfs:1.0.4@sha256:ed9210d6411d77ffceb70d94b964a3cb7d225983368bc25bebe01e995293dcc2"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "socrat-bot",
+      "name": "socrat-bot",
+      "images": [
+        "harbor.socrat.alchemmist.xyz/homelab/socrat-bot@sha256:4c3c04356e83c38c78ffde4e2e413488b27326b656659fb9e8e715c81e7d9edf"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "socrat-bot",
+      "name": "socrat-bot-sudo-broker",
+      "images": [
+        "harbor.socrat.alchemmist.xyz/homelab/socrat-bot@sha256:4c3c04356e83c38c78ffde4e2e413488b27326b656659fb9e8e715c81e7d9edf"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "socrat-bot",
+      "name": "socrat-bot-xui-updater",
+      "images": [
+        "harbor.socrat.alchemmist.xyz/homelab/socrat-bot@sha256:4c3c04356e83c38c78ffde4e2e413488b27326b656659fb9e8e715c81e7d9edf"
+      ]
+    },
+    {
+      "kind": "StatefulSet",
+      "namespace": "socrat-bot",
+      "name": "socrat-bot-postgres",
+      "images": [
+        "postgres:17"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "socrat-home",
+      "name": "socrat-home",
+      "images": [
+        "harbor.socrat.alchemmist.xyz/homelab/socrat-home@sha256:41e26b089357b32fc7caefc21dc2bc1dfcb12c7e8f90373fb11dfefb152c734f"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "storage",
+      "name": "nfs-subdir-external-provisioner",
+      "images": [
+        "registry.k8s.io/sig-storage/nfs-subdir-external-provisioner:v4.0.2"
+      ]
+    },
+    {
+      "kind": "DaemonSet",
+      "namespace": "syncthing",
+      "name": "private-gateway",
+      "images": [
+        "nginx:1.27-alpine"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "syncthing",
+      "name": "public-web-syncthing-proxy",
+      "images": [
+        "docker.io/library/nginx:stable-alpine@sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "syncthing",
+      "name": "syncthing",
+      "images": [
+        "syncthing/syncthing:latest"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "traefik-edge",
+      "name": "traefik-edge",
+      "images": [
+        "rancher/mirrored-library-traefik@sha256:f86a2cab1b5c649070c49f883c743dd32d8485a56e3368c5f93b9e91f1e91259"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "traefik-edge",
+      "name": "xui-auth-gateway",
+      "images": [
+        "nginxinc/nginx-unprivileged@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "umami",
+      "name": "umami",
+      "images": [
+        "ghcr.io/umami-software/umami:latest"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "umami",
+      "name": "umami-db",
+      "images": [
+        "postgres:15"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "uptime-kuma",
+      "name": "public-web-kuma-proxy",
+      "images": [
+        "docker.io/library/nginx:stable-alpine@sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "uptime-kuma",
+      "name": "uptime-kuma",
+      "images": [
+        "louislam/uptime-kuma:2.5.7"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "uptime-kuma",
+      "name": "uptime-kuma-db",
+      "images": [
+        "mariadb:11.4"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "wiki",
+      "name": "wiki-runtime-wiki",
+      "images": [
+        "harbor.socrat.alchemmist.xyz/homelab/wiki-runtime@sha256:dc5b15b391cd94fad3db51dc7fa917e138d77ea345e27518371073538c5a78d9"
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "namespace": "x-ui",
+      "name": "x-ui",
+      "images": [
+        "ghcr.io/mhsanaei/3x-ui@sha256:1628adbd9bed680d25d6f714bef4a20f132105f4612ea294952f6665dad32e5b"
+      ]
+    }
+  ],
+  "hostRunningUnits": {
+    "socrat-0": [
+      "avahi-daemon.service",
+      "cron.service",
+      "dbus.service",
+      "fsidd.service",
+      "getty@tty1.service",
+      "happd.service",
+      "homelab-otel-agent.service",
+      "homelab-otel-node-exporter.service",
+      "homelab-otel-traces.service",
+      "homelab-private-dns.service",
+      "iscsid.service",
+      "k3s.service",
+      "keepalived.service",
+      "knot.service",
+      "low-memory-monitor.service",
+      "ModemManager.service",
+      "NetworkManager.service",
+      "nfs-blkmap.service",
+      "nfs-idmapd.service",
+      "nfs-mountd.service",
+      "nfsdcld.service",
+      "nvidia-persistenced.service",
+      "polkit.service",
+      "rpc-statd.service",
+      "rpcbind.service",
+      "rtkit-daemon.service",
+      "smartmontools.service",
+      "ssh.service",
+      "systemd-journald.service",
+      "systemd-logind.service",
+      "systemd-timesyncd.service",
+      "systemd-udevd.service",
+      "user@1000.service",
+      "wpa_supplicant.service"
+    ],
+    "socrat-1": [
+      "bluetooth.service",
+      "cups.service",
+      "dbus-broker.service",
+      "dirmngr@etc-pacman.d-gnupg.service",
+      "getty@tty1.service",
+      "happd.service",
+      "homelab-otel-agent.service",
+      "homelab-otel-application-ingress.service",
+      "homelab-otel-node-exporter.service",
+      "homelab-private-dns.service",
+      "iwd.service",
+      "k3s.service",
+      "keepalived.service",
+      "knot.service",
+      "NetworkManager.service",
+      "polkit.service",
+      "power-profiles-daemon.service",
+      "rpc-statd.service",
+      "rpcbind.service",
+      "rtkit-daemon.service",
+      "sshd.service",
+      "systemd-journald.service",
+      "systemd-logind.service",
+      "systemd-timesyncd.service",
+      "systemd-udevd.service",
+      "systemd-userdbd.service",
+      "upower.service",
+      "user@1000.service",
+      "wireguard-tcp-transport.service"
+    ],
+    "socrat-2": [
+      "containerd.service",
+      "cron.service",
+      "dbus.service",
+      "docker.service",
+      "fail2ban.service",
+      "getty@tty1.service",
+      "homelab-otel-agent.service",
+      "homelab-otel-node-exporter.service",
+      "homelab-private-dns.service",
+      "iscsid.service",
+      "k3s.service",
+      "knot.service",
+      "qemu-guest-agent.service",
+      "rpc-statd.service",
+      "rpcbind.service",
+      "ssh.service",
+      "systemd-journald.service",
+      "systemd-logind.service",
+      "systemd-timesyncd.service",
+      "systemd-udevd.service",
+      "user@1003.service",
+      "wireguard-tcp-transport.service"
+    ],
+    "socrat-3": [
+      "accounts-daemon.service",
+      "avahi-daemon.service",
+      "bluetooth.service",
+      "chrony.service",
+      "cron.service",
+      "cups-browsed.service",
+      "cups.service",
+      "dbus.service",
+      "fwupd.service",
+      "gdm.service",
+      "happd.service",
+      "homelab-otel-agent.service",
+      "homelab-otel-node-exporter.service",
+      "k3s-agent.service",
+      "low-memory-monitor.service",
+      "ModemManager.service",
+      "NetworkManager.service",
+      "nfs-blkmap.service",
+      "polkit.service",
+      "power-profiles-daemon.service",
+      "rpcbind.service",
+      "rtkit-daemon.service",
+      "smartmontools.service",
+      "ssh.service",
+      "switcheroo-control.service",
+      "systemd-journald.service",
+      "systemd-logind.service",
+      "systemd-udevd.service",
+      "udisks2.service",
+      "upower.service",
+      "user@1000.service",
+      "wpa_supplicant.service"
+    ]
+  },
+  "internalDataPlaneDecisions": [
+    {
+      "service": "PostgreSQL databases (Authentik/LMS/n8n/Umami/LiteLLM/Socrat bot/Harbor)",
+      "decision": "not-exposed",
+      "reason": "Internal application data plane; no new SQL MCP, credentials or data access granted. Archived reference/community PostgreSQL adapters are not an appropriate first-party operational connector."
+    },
+    {
+      "service": "Redis/Valkey caches (Argo CD/Harbor)",
+      "decision": "not-exposed",
+      "upstream": "https://github.com/redis/mcp-redis",
+      "reason": "Redis has an official MCP, but these are internal caches, Harbor uses Valkey, and content/search/write access is not needed for service operations. Inspect health via Argo/Grafana."
+    },
+    {
+      "service": "MariaDB (Uptime Kuma)",
+      "decision": "not-exposed",
+      "upstream": "https://github.com/MariaDB/mcp",
+      "reason": "Official database MCP exists, but direct SQL/data-plane access is not needed and would expose monitoring credentials/data; retain app authorization."
+    },
+    {
+      "service": "K3s/etcd/DNS/local-path/NFS/Fleet/CAPI/Turtles/webhooks/probes/workers",
+      "decision": "infrastructure-covered",
+      "reason": "Inventoried by workload and host unit. No new database/SSH/shell/general Kubernetes MCP or broad cluster-admin credential. Existing required Rancher/Fleet management remains."
+    }
+  ],
+  "sources": [
+    "https://github.com/prometheus/prometheus-mcp/tree/v0.18.0",
+    "https://github.com/open-webui/open-webui/tree/main/backend/open_webui/utils/mcp",
+    "https://github.com/searxng/searxng",
+    "https://github.com/goauthentik/authentik",
+    "https://github.com/goharbor/harbor",
+    "https://github.com/syncthing/syncthing",
+    "https://github.com/cloudnative-pg/cloudnative-pg",
+    "https://github.com/cert-manager/cert-manager"
+  ]
+}

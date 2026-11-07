@@ -204,7 +204,7 @@ class RolloutRegressionTests(unittest.TestCase):
             self.assertIsNotNone(pattern.match(path))
         for path in ['/','/rest/login','/rest/settings','/webhookevil/secret']:
             self.assertIsNone(pattern.match(path))
-        ui,machine=list(yaml.safe_load_all((ROOT/'deploy/identity/n8n-gateway.yaml').read_text()))
+        ui,machine=list(yaml.safe_load_all((ROOT/'charts/n8n/templates/access.yaml').read_text()))
         self.assertGreater(int(machine['metadata']['annotations']['traefik.ingress.kubernetes.io/router.priority']),
                            int(ui['metadata']['annotations']['traefik.ingress.kubernetes.io/router.priority']))
         self.assertEqual(machine['metadata']['namespace'],'automation')

@@ -171,6 +171,11 @@ Instance credential IDs сопоставлять при импорте чере�
   Наличие WG также не заменяет вход.
 - Public API: `/api/v1/`, заголовок `X-N8N-API-KEY`.
 - MCP: `/mcp-server/http`, `Authorization: Bearer <MCP token>`.
+  Аудит 2026-11-07: native instance-level MCP выключен (валидный token → backend403,
+  missing/invalid →401). В `.pi/mcp.json` client отключён до owner enablement через UI;
+  не считать сохранённый token доказательством работающего MCP. Новый exact ingress
+  принадлежит `charts/n8n/templates/access.yaml`; UI gate не снимается.
+  [MCP runbook](official-mcp.md) фиксирует блокеры и правила доступа.
   API key и MCP token — разные credentials, не взаимозаменяемы.
 - Локальные файлы: `~/.config/n8n/api-key`, `~/.config/n8n/mcp-token`.
   Каталог — mode 0700, секретные файлы — 0600. Не выводить содержимое.

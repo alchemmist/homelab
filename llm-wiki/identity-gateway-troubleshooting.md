@@ -67,7 +67,7 @@ MFA, owner-only admission, native CSRF и отдельные machine credentials
 
 Следующий шаг — получить безопасное описание: на каком экране сбой; точный текст; сразу или после простоя; проблема в native n8n форме, Authentik/MFA, editor/rest или зацикливании. Затем воспроизвести именно этот сценарий. Не переносить XHR401-конфигурацию 3x-ui вслепую: n8n использует **proxy mode embedded outpost**, а 3x-ui — nginx forward-auth.
 
-Источники n8n: `deploy/identity/n8n-gateway.yaml`, `deploy/identity/services.json`, `ansible/roles/authentik/files/configure.py`. UI/rest owner-only; отдельные reviewed routes для webhook/forms/health/API/OAuth credential callbacks сохраняют собственную native authentication. Не включать их в wildcard browser gate и не открывать весь `/rest` ради обхода ошибки login.
+Источники n8n: `charts/n8n/templates/access.yaml`, `deploy/identity/services.json`, `ansible/roles/authentik/files/configure.py`. UI/rest owner-only; отдельные reviewed routes для webhook/forms/health/API/OAuth credential callbacks и exact MCP HTTP сохраняют собственную native authentication. Не включать их в wildcard browser gate и не открывать весь `/rest` ради обхода ошибки login.
 
 ## 5. Безопасный порядок диагностики
 

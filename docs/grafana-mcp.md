@@ -2,9 +2,9 @@
 
 User connection instructions live in `wiki/content/observability/grafana-mcp.md` and are published at <https://wiki.socrat.alchemmist.xyz/observability/grafana-mcp/>.
 
-The private Streamable HTTP endpoint is `https://grafana-mcp.socrat.alchemmist.xyz/mcp`. Clients need the administrative `socrat-wg` network and its split DNS. Authentication uses a dedicated bearer token stored in `cattle-monitoring-system/grafana-mcp-credentials`, key `client-token`. Never publish the token or reuse the Grafana administrator password as an MCP credential.
+The Streamable HTTP endpoint is `https://grafana-mcp.socrat.alchemmist.xyz/mcp`. The existing reviewed public exact `/mcp` bearer-auth route and private gateway are supported; VPN-only descriptions predate that public-entry migration. Authentication uses a dedicated bearer token stored in `cattle-monitoring-system/grafana-mcp-credentials`, key `client-token`. Never publish the token or reuse the Grafana administrator password as an MCP credential.
 
-The MCP service reads Grafana through its Kubernetes Service. Keep the server read-only and its Grafana identity at Viewer permissions; declarative dashboard and alert changes belong in homelab. Do not expose the endpoint through a public ingress or add public A records for it.
+The MCP service reads Grafana through its Kubernetes Service. Keep the server read-only and its Grafana identity at Viewer permissions; declarative dashboard and alert changes belong in homelab. Do not broaden the reviewed route to the whole server or disable bearer/Host/TLS checks. Project agent setup and telemetry tools: [official-mcp.md](official-mcp.md).
 
 ## Deployment
 
@@ -18,7 +18,7 @@ ansible-playbook -i inventory/hosts.yml playbooks/grafana-mcp.yml --ask-become-p
 
 The first run also requires `grafana_mcp_admin_user` and `grafana_mcp_admin_password` through a protected extra-vars file or Ansible Vault. Existing credentials are reused on subsequent runs without the administrator password. Sensitive bootstrap tasks use `no_log`; no token belongs in inventory. Secret resource-version changes trigger a deployment rollout when this playbook is reapplied, so environment-based credentials pick up rotations.
 
-The MCP Service is ClusterIP-only. Its private nginx virtual host preserves the client Authorization header and supports streaming without buffering. The endpoint shares Grafana's node placement on socrat-1 and is not independently highly available. Public HTTP-01 routes exist temporarily only for certificate validation.
+The MCP Service remains ClusterIP-only behind the reviewed HTTPS ingress and private gateway. Its private nginx virtual host preserves the client Authorization header and supports streaming without buffering. The endpoint shares Grafana's node placement on socrat-1 and is not independently highly available. Public HTTP-01 routes exist temporarily only for certificate validation.
 
 ## Acceptance
 
@@ -26,7 +26,7 @@ Run `python3 scripts/check-grafana-mcp.py` from the repository root. It reads th
 
 For a client with a stale DNS cache, `--address 10.250.0.3` overrides resolution only inside the checker and keeps hostname/certificate verification intact. This proves private HTTPS connectivity but does not prove the client's system DNS cache is current.
 
-Verify trusted HTTPS over WG, rejection without a token and with an incorrect token, successful MCP initialization and `tools/list`, and a real dashboard read and Prometheus query. Confirm write tools are absent. Check that public ingress does not expose the MCP service. A browser GET of `/mcp` is not a protocol health check.
+Verify trusted HTTPS over WG, rejection without a token and with an incorrect token, successful MCP initialization and `tools/list`, and a real dashboard read and Prometheus query. Confirm write tools are absent. Check that only the reviewed `/mcp` bearer-auth route is exposed; missing/invalid credentials must be rejected. A browser GET of `/mcp` is not a protocol health check.
 
 ## Wiki publication
 
