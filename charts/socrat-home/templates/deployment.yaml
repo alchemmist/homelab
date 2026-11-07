@@ -20,7 +20,7 @@ spec:
       annotations:
         checksum/access-logging: {{ include (print $.Template.BasePath "/access-logging.yaml") . | sha256sum }}
       {{- if .Values.homepageIndex.enabled }}
-        checksum/homepage-index: {{ printf "%s:%s:%s" (.Files.Get "files/index.html" | sha256sum) (.Files.Get "files/wallpaper.webp" | sha256sum) (.Files.Get "files/favicon.svg" | sha256sum) | sha256sum }}
+        checksum/homepage-index: {{ printf "%s:%s:%s:%s" (.Files.Get "files/index.html" | sha256sum) (.Files.Get "files/wallpaper.webp" | sha256sum) (.Files.Get "files/favicon.svg" | sha256sum) (.Files.Get "files/cmu.serif-roman.woff2" | sha256sum) | sha256sum }}
       {{- end }}
       labels:
         app: {{ .Release.Name }}
@@ -83,6 +83,10 @@ spec:
             - name: homepage-index
               mountPath: /usr/share/nginx/html/wallpaper.webp
               subPath: wallpaper.webp
+              readOnly: true
+            - name: homepage-index
+              mountPath: /usr/share/nginx/html/fonts/cmu.serif-roman.woff2
+              subPath: cmu.serif-roman.woff2
               readOnly: true
             - name: homepage-index
               mountPath: /usr/share/nginx/html/favicon.svg

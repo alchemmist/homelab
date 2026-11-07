@@ -9,5 +9,6 @@ data:
   favicon.svg: |
 {{ .Files.Get "files/favicon.svg" | indent 4 }}
 binaryData:
+  cmu.serif-roman.woff2: {{ .Files.Get "files/cmu.serif-roman.woff2" | b64enc | quote }}
   wallpaper.webp: {{ .Files.Get "files/wallpaper.webp" | b64enc | quote }}
 {{- end }}
