@@ -66,9 +66,27 @@ currently firing warning.
 
 ConfigMap is owned by **Argo CD** (`monitoring-k3s`). A direct ConfigMap patch was
 observed to be reverted by reconciliation; it is not a lasting deployment path.
-Ship this change via the repository's normal GitOps path. Do not disable self-heal.
-The remote main branch advanced during work; do not overwrite or force-push it.
-A live before-change dashboard and ConfigMap were exported to temporary files.
-At the end of implementation the TV was unreachable through ADB at its documented
-address, and the shared Playwright profile was occupied. **No rendered-TV check
-or successful persistent rollout is claimed.**
+Ship via GitOps; do not disable self-heal.
+
+## Rollout verification, 7 November 2026
+
+Released as `208e2ea` through main. Work was isolated in a separate worktree based
+on the current remote main, without including unrelated dirty files from the
+operator's checkout. Argo CD subsequently reported Synced / Healthy.
+
+A separate Chromium browser was used because the shared Playwright MCP profile
+was occupied. Authenticated as the existing TV Viewer using the cluster secret;
+credentials were not printed or committed. The public dashboard URL was opened
+at 1920×1080 and its rendered screenshot inspected. Confirmed:
+
+- CPU values in cores and RAM/root disk in GiB;
+- capacity-relative bar lengths, including the orange high-memory node;
+- HTTP p95 history replacing CPU history;
+- the bounded incident table showing the live PrometheusTSDBCompactionsFailing warning;
+- the existing VPN Stat and sparkline retained;
+- all visible panels fit within the browser viewport.
+
+This verifies the actual served public dashboard, not a mocked API response.
+The physical TV / Fully scale still needs operator confirmation. In particular,
+Grafana autofit and the gateway inset affect final panel heights; the JSON grid
+boundary is tested, but exact pixel alignment on the physical TV is not claimed.
