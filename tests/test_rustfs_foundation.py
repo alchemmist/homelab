@@ -50,7 +50,7 @@ class Foundation(unittest.TestCase):
         self.assertIn('service: {name: rustfs-console-http', text)
         self.assertNotIn('service: {name: authentik-server', text)
         self.assertNotIn('path: /outpost.goauthentik.io/', text)
-        self.assertNotIn('name: AUTH_URL', text)
+        self.assertIn('name: AUTH_URL', text)
         self.assertNotIn('nodePort:', text)
         self.assertNotIn('type: LoadBalancer', text)
         # Root is referenced by storage only; gateway has its isolated reader Secret.

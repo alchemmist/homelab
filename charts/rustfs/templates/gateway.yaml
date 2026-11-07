@@ -30,6 +30,7 @@ spec:
             capabilities: {drop: [ALL]}
           ports: [{name: http, containerPort: 8080}]
           env:
+            - {name: AUTH_URL, value: {{ ternary "https://rustfs.socrat.alchemmist.xyz/outpost.goauthentik.io/auth/nginx" .Values.gateway.authUrl .Values.browserRoutes.unifiedOrigin | quote }}}
             - name: S3_ACCESS_KEY
               valueFrom:
                 secretKeyRef: {name: {{ .Values.gateway.readerSecret }}, key: access-key}
@@ -70,6 +71,12 @@ spec:
           podSelector: {matchLabels: {app.kubernetes.io/name: traefik}}
       ports: [{port: 8080, protocol: TCP}]
   egress:
+    {{- if .Values.browserRoutes.unifiedOrigin }}
+    {{- range .Values.authEgressCIDRs }}
+    - to: [{ipBlock: {cidr: {{ . | quote }}}}]
+      ports: [{port: 443, protocol: TCP}]
+    {{- end }}
+    {{- end }}
     - to:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: rustfs}}
           podSelector: {matchLabels: {app: rustfs}}

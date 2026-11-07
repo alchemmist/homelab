@@ -1,4 +1,4 @@
-"""Public, bounded, integrity-checked artifact reader; private read-only S3 upstream.
+"""SSO-protected, bounded, integrity-checked artifact reader; private read-only S3 upstream.
 No cookies, caller identity headers, request paths or bodies are logged.
 """
 import datetime
@@ -17,7 +17,9 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-ORIGIN = 'https://spi-evidence.socrat.alchemmist.xyz'
+HOST = 'rustfs.socrat.alchemmist.xyz'
+ORIGIN = 'https://' + HOST
+LEGACY_HOST = 'spi-evidence.socrat.alchemmist.xyz'
 KEY = re.compile(r'/spi/v1/[0-9a-f]{64}/[0-9a-f]{64}/(?:manifest\.json|E[0-9]{3}-[A-Za-z0-9._-]{1,100})\Z')
 MAX_BYTES = 2 * 1024 * 1024
 
@@ -177,11 +179,37 @@ def bounded(response):
 class Reader:
     def __init__(self):
         self.http = opener()
+        self.auth = os.environ['AUTH_URL']
+        if self.auth != ORIGIN + '/outpost.goauthentik.io/auth/nginx':
+            raise ValueError('fixed auth origin required')
         self.s3 = os.environ.get('S3_ENDPOINT', 'http://rustfs.rustfs.svc.cluster.local:9000')
         if self.s3 != 'http://rustfs.rustfs.svc.cluster.local:9000':
             raise ValueError('fixed S3 service required')
         self.access = os.environ['S3_ACCESS_KEY']
         self.secret = os.environ['S3_SECRET_KEY']
+
+    def authorized(self, cookie):
+        return self.authorization(cookie) == 200
+
+    def authorization(self, cookie):
+        if not cookie or len(cookie) > 8192 or '\r' in cookie or '\n' in cookie:
+            return 401
+        request = urllib.request.Request(self.auth, headers={
+            'Cookie': cookie, 'X-Original-URL': ORIGIN + '/spi/v1/',
+            'X-Forwarded-Proto': 'https', 'X-Forwarded-Host': HOST,
+            'X-Forwarded-Method': 'GET'})
+        try:
+            with self.http.open(request, timeout=5) as response:
+                groups = set(response.headers.get('X-authentik-groups', '').split('|'))
+                if response.status not in (200, 204):
+                    return 503
+                return 200 if groups & {'homelab-owner', 'homelab-platform-operator'} else 403
+        except (OSError, ValueError, urllib.error.URLError) as error:
+            if isinstance(error, urllib.error.HTTPError):
+                code = error.code
+                error.close()
+                return code if code in (401, 403) else 503
+            return 503
 
     def object(self, key):
         url = self.s3 + '/spi-evidence/' + key
@@ -292,6 +320,51 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def answer(self):
         self.close_connection = True
         self.header_timer.cancel()
+        # Only a fixed legacy authority may redirect, with an exact validated raw
+        # immutable key. Never reflect queries, forwarded headers, or caller hosts.
+        hosts = self.headers.get_all('Host', [])
+        if hosts == [LEGACY_HOST]:
+            if self.command not in ('GET', 'HEAD'):
+                self.respond(405)
+                return
+            try:
+                target = self.raw_requestline.split()[1].decode('ascii')
+                if target != self.path:
+                    raise ValueError('normalized target denied')
+                valid_key(target)
+            except (ValueError, IndexError):
+                self.respond(404)
+                return
+            self.respond(308, location=ORIGIN + target)
+            return
+        if hosts != [HOST]:
+            self.respond(421)
+            return
+        # Authentication precedes canonical validation/error responses; never trust X-auth headers.
+        cookies = self.headers.get_all('Cookie', [])
+        auth_status = 401
+        if len(cookies) == 1:
+            reader = self.server.reader
+            auth_status = reader.authorization(cookies[0])
+        if auth_status != 200:
+            if auth_status != 401:
+                self.respond(auth_status)
+                return
+            # Browser clicks must enter SSO and return to the exact file, not
+            # stop at an empty401. Never derive the origin from caller headers
+            # or inspect object existence before authentication.
+            location = None
+            if self.command == 'GET' and 'text/html' in self.headers.get('Accept', '').lower():
+                try:
+                    target = self.raw_requestline.split()[1].decode('ascii')
+                    if target != self.path:
+                        raise ValueError('normalized target denied')
+                    valid_key(target)
+                    location = ORIGIN + '/outpost.goauthentik.io/start?' + urllib.parse.urlencode({'rd': ORIGIN + target})
+                except (ValueError, IndexError):
+                    pass
+            self.respond(302 if location else 401, location=location)
+            return
         if self.command not in ('GET', 'HEAD'):
             self.respond(405)
             return
@@ -334,18 +407,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.close_connection = True
         self.respond(400)
 
-    def respond(self, status, body=b'', filename=None, content_range=None, full_length=None):
+    def respond(self, status, body=b'', filename=None, content_range=None, full_length=None, location=None):
         mime, inline = presentation(filename) if filename else ('text/plain; charset=utf-8', True)
         self.send_response(status)
         self.send_header('Content-Type', mime)
         self.send_header('X-Content-Type-Options', 'nosniff')
-        self.send_header('Cache-Control', 'public, max-age=3600, immutable' if filename else 'no-store')
+        self.send_header('Cache-Control', 'private, no-store' if filename else 'no-store')
         self.send_header('Content-Security-Policy', "default-src 'none'; img-src 'self' data:; media-src 'self'; object-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
         self.send_header('Referrer-Policy', 'no-referrer')
         self.send_header('Connection', 'close')
         self.send_header('Content-Length', str(len(body)))
+        if location:
+            self.send_header('Location', location)
         if status == 405:
             self.send_header('Allow', 'GET, HEAD')
+        if status == 401:
+            self.send_header('Link', '<' + ORIGIN + '/outpost.goauthentik.io/start?' + urllib.parse.urlencode({'rd': ORIGIN + '/spi/v1/'}) + '>; rel="authenticate"')
         if filename:
             self.send_header('Accept-Ranges', 'bytes')
             self.send_header('Content-Disposition', ('inline' if inline else 'attachment') + '; filename="' + filename + '"')

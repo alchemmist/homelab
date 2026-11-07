@@ -25,8 +25,8 @@ class Deadlines(unittest.TestCase):
                 self.assertLess(time.monotonic()-start, .9)
                 s.close()
                 with socket.create_connection(server.server_address) as c:
-                    c.settimeout(1); c.sendall(b'GET / HTTP/1.0\r\n\r\n')
-                    self.assertIn(b'200', c.recv(4096))
+                    c.settimeout(1); c.sendall(b'GET / HTTP/1.0\r\nHost: rustfs.socrat.alchemmist.xyz\r\n\r\n')
+                    self.assertIn(b'401', c.recv(4096))
             finally:
                 server.shutdown(); server.server_close(); t.join()
 
@@ -71,7 +71,7 @@ class Deadlines(unittest.TestCase):
                             pass
                 t = threading.Thread(target=peer, daemon=True); t.start()
                 class Reader:
-                    def authorized(self, cookie): return bool(cookie)
+                    def authorization(self, cookie): return 200 if cookie else 401
                     def read(self, key):
                         with g.opener().open(url, timeout=1) as response:
                             return g.bounded(response)
@@ -81,7 +81,7 @@ class Deadlines(unittest.TestCase):
                     start = time.monotonic()
                     with socket.create_connection(server.server_address) as c:
                         c.settimeout(1)
-                        c.sendall(('GET /spi/v1/' + 'a'*64 + '/' + 'b'*64 + '/manifest.json HTTP/1.0\r\nCookie: fixture\r\n\r\n').encode())
+                        c.sendall(('GET /spi/v1/' + 'a'*64 + '/' + 'b'*64 + '/manifest.json HTTP/1.0\r\nHost: rustfs.socrat.alchemmist.xyz\r\nCookie: fixture\r\n\r\n').encode())
                         self.assertIn(b'502', c.recv(4096))
                     self.assertLess(time.monotonic()-start, .9)
                     # A second connection proves the bounded slot was returned,
@@ -91,8 +91,8 @@ class Deadlines(unittest.TestCase):
                         self.assertLess(time.monotonic(), until); time.sleep(.01)
                     server.slots.release()
                     with socket.create_connection(server.server_address) as c:
-                        c.settimeout(1); c.sendall(b'GET / HTTP/1.0\r\n\r\n')
-                        self.assertIn(b'200', c.recv(4096))
+                        c.settimeout(1); c.sendall(b'GET / HTTP/1.0\r\nHost: rustfs.socrat.alchemmist.xyz\r\n\r\n')
+                        self.assertIn(b'401', c.recv(4096))
                 finally:
                     listener.close(); t.join(2)
                     server.shutdown(); server.server_close(); serving.join()
@@ -121,7 +121,7 @@ class Deadlines(unittest.TestCase):
                 self.request.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1024)
                 super().setup()
         class Reader:
-            def authorized(self, cookie): return True
+            def authorization(self, cookie): return 200
             def read(self, key): return b'x' * g.MAX_BYTES
         with patch.object(g, 'REQUEST_SECONDS', .3), patch.object(g, 'MAX_CONNECTIONS', 1):
             server = g.Server(('127.0.0.1', 0), Handler); server.reader = Reader()
@@ -129,7 +129,7 @@ class Deadlines(unittest.TestCase):
             c = socket.socket(); c.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1024)
             try:
                 c.connect(server.server_address)
-                c.sendall(('GET /spi/v1/' + 'a'*64 + '/' + 'b'*64 + '/manifest.json HTTP/1.0\r\nCookie: valid\r\n\r\n').encode())
+                c.sendall(('GET /spi/v1/' + 'a'*64 + '/' + 'b'*64 + '/manifest.json HTTP/1.0\r\nHost: rustfs.socrat.alchemmist.xyz\r\nCookie: valid\r\n\r\n').encode())
                 time.sleep(.6)
                 self.assertTrue(server.slots.acquire(blocking=False))
                 server.slots.release()

@@ -15,10 +15,13 @@ gateway:
   enabled: false
   # Build services/rustfs_gateway; supply a reviewed digest before enabling.
   image: ""
+  authUrl: https://spi-evidence.socrat.alchemmist.xyz/outpost.goauthentik.io/auth/nginx
   readerSecret: rustfs-reader
   imagePullSecrets: []
 browserRoutes:
   enabled: false
+  # Activate only with reviewed Reader digest and shared provider forward_single.
+  unifiedOrigin: false
 # Exact Authentik public endpoint addresses, established before rollout. Not 0/0.
 authEgressCIDRs: []
 
