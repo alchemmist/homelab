@@ -1,6 +1,6 @@
 ---
 title: "Umami: аналитика сайтов"
-weight: 30
+weight: 40
 ---
 
 Адрес: [umami.alchemmist.xyz](https://umami.alchemmist.xyz).
