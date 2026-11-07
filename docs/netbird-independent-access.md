@@ -165,3 +165,27 @@ control-plane HA are not claimed from that adoption test.
 Historical activation/retirement scripts are one-shot migrations, **not** general
 reconciliation or rollback. Do not replay them, scale a group from stale snapshots,
 restore a full runtime blindly, or revoke an identity from only its friendly name.
+
+## Home relay readiness repair (2026-11-07)
+
+The home relay process was running with zero restarts but not Ready. Native
+`/health` returned 503 (`certificate_valid=false`), and the public TLS WebSocket
+self-check received 502 through the VPS entrance. This field reflected failed
+end-to-end validation, not an expired certificate: the home entrance worked.
+
+The host-network VPS ingress reaches remote Pod IPs using the Flannel tunnel
+source **10.42.0.0** (`ip route get 10.42.2.43` on socrat-2). The home relay
+NetworkPolicy admitted 10.42.0.1 but omitted 10.42.0.0. The VPS relay's own policy
+already admitted both. Added only `10.42.0.0/32` to the home relay ingress rule,
+TCP 33080; updated both GitOps values and the historical offline renderer.
+No CIDR subnet-wide opening, TLS bypass, health-probe relaxation, auth-secret
+change, image update, Pod restart or database change was required.
+
+After Argo auto-sync of fix `f6b0801`, the existing home Pod became 1/1 Ready,
+`/health` returned 200/healthy with `certificate_valid=true`, and trusted TLS
+WebSocket Upgrade returned 101 through **both** public A-record entrances
+(109.120.141.97 and 109.173.40.247). All ten NetBird Pods were Ready with zero
+restarts and the Application was Synced/Healthy. These checks validate ingress
+and readiness; they are not a new authenticated peer-payload or outage test.
+The bounded unauthenticated WebSocket Upgrade checks close before NetBird auth,
+so their expected EOF log entries must not be mistaken for failed self-health.
