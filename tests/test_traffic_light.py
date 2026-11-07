@@ -95,8 +95,8 @@ class TrafficLightLayoutTest(unittest.TestCase):
         self.assertEqual(chart['gridPos'], {'x': 19, 'y': 13, 'w': 5, 'h': 5})
         self.assertEqual(chart['type'], 'stat')
         history = panel_by_id(self.dashboard, 909)
-        self.assertEqual(history['gridPos'], {'x': 19, 'y': 10, 'w': 5, 'h': 3})
-        self.assertEqual(history['type'], 'timeseries')
+        self.assertEqual(history['gridPos'], {'x': 19, 'y': 10, 'w': 3, 'h': 1})
+        self.assertEqual(history['type'], 'stat')
 
     def test_unmodified_resource_columns(self):
         cpu = panel_by_id(self.dashboard, 21)
@@ -167,10 +167,14 @@ class TrafficLightQueriesTest(unittest.TestCase):
             self.assertIn(f'id: {service_id}\n', text)
             self.assertIn(alert, text)
 
-    def test_latency_chart_keeps_grid_and_units(self):
-        panel = panel_by_id(self.dashboard, 909)
-        self.assertTrue(panel['fieldConfig']['defaults']['custom']['axisGridShow'])
-        self.assertEqual(panel['fieldConfig']['defaults']['unit'], 's')
+    def test_n8n_history_is_a_gauge_not_counter_rate(self):
+        panel = panel_by_id(self.dashboard, 920)
+        self.assertEqual(panel['fieldConfig']['defaults']['custom']['drawStyle'], 'bars')
+        expr = panel['targets'][0]['expr']
+        self.assertIn('socrat_n8n_starts_window', expr)
+        self.assertIn('collection_success', expr)
+        self.assertNotIn('increase(', expr)
+        self.assertNotIn('rate(', expr)
 
     def test_dashboard_time_window_is_twelve_hours(self):
         self.assertEqual(self.dashboard['time'], {'from': 'now-12h', 'to': 'now'})
@@ -182,14 +186,14 @@ class TrafficLightQueriesTest(unittest.TestCase):
         self.assertEqual(panel['fieldConfig']['defaults']['min'], 0)
         self.assertNotIn('max', panel['fieldConfig']['defaults'])
 
-    def test_cpu_history_replaced_with_http_latency(self):
-        panel = panel_by_id(self.dashboard, 909)
+    def test_argocd_segments_require_synced_and_healthy(self):
+        panel = panel_by_id(self.dashboard, 922)
         expr = panel['targets'][0]['expr']
-        self.assertIn('histogram_quantile(0.95', expr)
-        self.assertIn('sum by(le)', expr)
-        self.assertIn('job="traefik"', expr)
-        self.assertNotIn('node_cpu_seconds_total', expr)
-        self.assertNotIn('or vector(0)', expr)
+        self.assertIn('health_status="Healthy",sync_status="Synced"', expr)
+        self.assertIn('Degraded|Missing|Unknown', expr)
+        self.assertIn('max(up{job="socrat-argocd"}) == 1', expr)
+        self.assertEqual(panel['options']['valueMode'], 'hidden')
+        self.assertEqual(panel['options']['orientation'], 'vertical')
 
     def test_absolute_resource_values_and_dynamic_capacity(self):
         for panel_id, unit in [(21, 'suffix: cores'), (22, 'bytes'), (23, 'bytes')]:
@@ -207,15 +211,12 @@ class TrafficLightQueriesTest(unittest.TestCase):
                 self.assertNotIn('or vector(0)', target['expr'])
         self.assertIn('node_filesystem_free_bytes', panel_by_id(self.dashboard, 23)['targets'][0]['expr'])
 
-    def test_incident_list_is_bounded_and_health_gated(self):
-        panel = panel_by_id(self.dashboard, 920)
-        self.assertEqual(panel['type'], 'table')
-        expr = panel['targets'][0]['expr']
-        self.assertIn('topk(3', expr)
-        self.assertIn('group by(alertname, severity)', expr)
-        self.assertIn('up{job="kube-prometheus-stack-prometheus"} == 1', expr)
-        self.assertIn('unless on()', expr)
-        self.assertEqual(panel['gridPos'], {'x': 0, 'y': 15, 'w': 19, 'h': 3})
+    def test_activity_replaces_incident_list_and_latency(self):
+        for panel in self.dashboard['panels']:
+            self.assertNotIn('histogram_quantile', str(panel.get('targets')))
+            self.assertNotEqual(panel['type'], 'table')
+        self.assertEqual(panel_by_id(self.dashboard, 925)['title'], 'Running')
+        self.assertIn('window="0"', panel_by_id(self.dashboard, 925)['targets'][0]['expr'])
 
     def test_up_tile_counts_ready_nodes_with_quorum_thresholds(self):
         up = panel_by_id(self.dashboard, 908)

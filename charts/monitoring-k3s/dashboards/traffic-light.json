@@ -1,7 +1,7 @@
 {
   "uid": "socrat-traffic-light",
   "title": "Traffic-light panel",
-  "description": "Living-room TV: service state, alert counts, GPU, per-node absolute resource usage with capacity-normalized bars, external HTTP traffic, home HTTP p95 latency, active problems and VPN clients. Fixed 24×18 grid; no content below the VPN chart. Missing telemetry is not healthy.",
+  "description": "TV activity experiment: approved absolute per-node resource bars retained unchanged. n8n recent workflow starts and running executions, Argo CD application delivery state, HTTP request history and VPN clients. Read-only collectors; unknown is not healthy.",
   "tags": [
     "socrat",
     "tv"
@@ -5061,119 +5061,6 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "95th percentile across home Traefik HTTP(S) requests, aggregated from duration histogram buckets over 5 minutes. Only home Traefik currently exposes these buckets. No requests gives a gap, never a fabricated zero. Not VPN latency.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "#73BF69"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisGridShow": true,
-            "axisLabel": "",
-            "axisPlacement": "left",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 8,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "showValues": false,
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "decimals": 2,
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": 0
-              },
-              {
-                "color": "#A85D08",
-                "value": 75
-              },
-              {
-                "color": "#B42332",
-                "value": 90
-              }
-            ]
-          },
-          "unit": "s",
-          "noValue": "No requests"
-        }
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 5,
-        "x": 19,
-        "y": 10
-      },
-      "id": 909,
-      "options": {
-        "graphTooltip": 1,
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "desc"
-        },
-        "xAxis": {
-          "axisBorderShow": false,
-          "axisGridShow": true,
-          "axisPlacement": "auto"
-        }
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "histogram_quantile(0.95, sum by(le) (rate(traefik_entrypoint_request_duration_seconds_bucket{job=\"traefik\",entrypoint=~\"web|websecure\"}[5m])))",
-          "format": "time_series",
-          "legendFormat": "p95",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "HTTP latency · p95",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
       "description": "Active VPN clients now, with recent history shown as an area sparkline; same metric freshness checks as before.",
       "fieldConfig": {
         "defaults": {
@@ -5241,59 +5128,346 @@
       "type": "stat"
     },
     {
+      "id": 909,
+      "title": "Argo CD · ready",
+      "description": "Live read-only activity telemetry; no data is not zero. n8n starts are grouped by start time and current outcome; waiting is not running.",
+      "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Up to three distinct alert names, critical before warning. Multiple instances are grouped by name and severity. This is not a complete alert list; Critical/Warnings tiles keep full instance counts. Empty is shown only when the Prometheus scrape is healthy. Query failure is not an all-clear.",
+      "gridPos": {
+        "x": 19,
+        "y": 10,
+        "w": 3,
+        "h": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum(argocd_app_info{job=\"socrat-argocd\",health_status=\"Healthy\",sync_status=\"Synced\"}) or (0 * count(argocd_app_info{job=\"socrat-argocd\"}))) and on() (max(up{job=\"socrat-argocd\"}) == 1)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{status}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
       "fieldConfig": {
         "defaults": {
-          "custom": {
-            "align": "left",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "filterable": false
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No telemetry",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#26783D"
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value",
+        "text": {
+          "valueSize": 32,
+          "titleSize": 14
+        }
+      }
+    },
+    {
+      "id": 921,
+      "title": "Git drift",
+      "description": "Live read-only activity telemetry; no data is not zero. n8n starts are grouped by start time and current outcome; waiting is not running.",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 22,
+        "y": 10,
+        "w": 2,
+        "h": 1
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum(argocd_app_info{job=\"socrat-argocd\",sync_status!=\"Synced\"}) or (0 * count(argocd_app_info{job=\"socrat-argocd\"}))) and on() (max(up{job=\"socrat-argocd\"}) == 1)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{status}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No telemetry",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#A85D08"
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value",
+        "text": {
+          "valueSize": 32,
+          "titleSize": 14
+        }
+      }
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "One segment per Argo CD application. Green: Synced AND Healthy; blue: Progressing; amber: Git drift; red: unhealthy or unknown. This is application state, not deployment history. Hover to identify the application.",
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 1,
+          "decimals": 0,
+          "noValue": "No telemetry",
+          "color": {
+            "mode": "thresholds"
           },
-          "noValue": "No telemetry"
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": null
+              },
+              {
+                "color": "#5794F2",
+                "value": 2
+              },
+              {
+                "color": "#A85D08",
+                "value": 3
+              },
+              {
+                "color": "#B42332",
+                "value": 4
+              }
+            ]
+          }
+        }
+      },
+      "gridPos": {
+        "x": 19,
+        "y": 11,
+        "w": 5,
+        "h": 2
+      },
+      "id": 922,
+      "options": {
+        "displayMode": "basic",
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "maxVizHeight": 300,
+        "minVizHeight": 0,
+        "minVizWidth": 0,
+        "namePlacement": "hidden",
+        "orientation": "vertical",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "sizing": "auto",
+        "text": {
+          "titleSize": 16,
+          "valueSize": 16
+        },
+        "valueMode": "hidden"
+      },
+      "pluginVersion": "13.2.4",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max by(name) ((4 * argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing|Unknown\"}) or (2 * argocd_app_info{job=\"socrat-argocd\",health_status=\"Progressing\"}) or (3 * argocd_app_info{job=\"socrat-argocd\",sync_status!=\"Synced\"}) or argocd_app_info{job=\"socrat-argocd\",health_status=\"Healthy\",sync_status=\"Synced\"} or (4 * argocd_app_info{job=\"socrat-argocd\"})) and on() (max(up{job=\"socrat-argocd\"}) == 1)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{name}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "title": "Delivery · one segment per app",
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "Time",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "order",
+          "options": {
+            "orderBy": [
+              {
+                "desc": false,
+                "name": "name",
+                "type": "label"
+              }
+            ],
+            "orderByMode": "auto"
+          }
+        }
+      ],
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Rolling five-minute counts of workflow starts, colored by their current outcome. Gauges from read-only execution metadata, not counters: do not apply rate/increase. History starts with the observer rollout; no fabricated backfill. Old resumed workflows are not counted as new starts.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisGridShow": true,
+            "axisLabel": "",
+            "axisPlacement": "left",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "bars",
+            "fillOpacity": 85,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 0,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": 0
+              },
+              {
+                "color": "#A85D08",
+                "value": 75
+              },
+              {
+                "color": "#B42332",
+                "value": 90
+              }
+            ]
+          },
+          "unit": "short",
+          "noValue": "Collecting history"
         },
         "overrides": [
           {
             "matcher": {
               "id": "byName",
-              "options": "Severity"
+              "options": "success"
             },
             "properties": [
               {
-                "id": "custom.width",
-                "value": 110
-              },
-              {
-                "id": "mappings",
-                "value": [
-                  {
-                    "options": {
-                      "critical": {
-                        "color": "#B42332",
-                        "text": "CRITICAL"
-                      },
-                      "ok": {
-                        "color": "#26783D",
-                        "text": "OK"
-                      },
-                      "warning": {
-                        "color": "#A85D08",
-                        "text": "WARNING"
-                      }
-                    },
-                    "type": "value"
-                  }
-                ]
-              },
-              {
-                "id": "custom.cellOptions",
+                "id": "color",
                 "value": {
-                  "type": "color-text"
+                  "mode": "fixed",
+                  "fixedColor": "#26783D"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#B42332"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "other"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8e8e8e"
                 }
               }
             ]
@@ -5301,49 +5475,226 @@
         ]
       },
       "gridPos": {
-        "h": 3,
-        "w": 19,
         "x": 0,
-        "y": 15
+        "y": 15,
+        "w": 13,
+        "h": 3
       },
       "id": 920,
       "options": {
-        "cellHeight": "sm",
-        "footer": {
-          "show": false
+        "graphTooltip": 1,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
         },
-        "showHeader": false,
-        "sortBy": []
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "desc"
+        },
+        "xAxis": {
+          "axisBorderShow": false,
+          "axisGridShow": true,
+          "axisPlacement": "auto"
+        }
       },
+      "pluginVersion": "13.2.4",
       "targets": [
         {
-          "expr": "(sort_desc(topk(3, (2 * group by(alertname, severity) (ALERTS{alertstate=\"firing\",severity=\"critical\",alertname!~\"Watchdog|InfoInhibitor\"})) or group by(alertname, severity) (ALERTS{alertstate=\"firing\",severity=\"warning\",alertname!~\"Watchdog|InfoInhibitor\"})))) or (label_replace(label_replace(0 * max((up{job=\"kube-prometheus-stack-prometheus\"} == 1) and (time() - timestamp(up{job=\"kube-prometheus-stack-prometheus\"}) < 90)), \"alertname\", \"No active critical / warning alerts\", \"\", \"\"), \"severity\", \"ok\", \"\", \"\") unless on() count(ALERTS{alertstate=\"firing\",severity=~\"critical|warning\",alertname!~\"Watchdog|InfoInhibitor\"}))",
-          "format": "table",
-          "instant": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Active problems · top 3",
-      "transformations": [
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true,
-              "Value": true
-            },
-            "indexByName": {
-              "alertname": 1,
-              "severity": 0
-            },
-            "renameByName": {
-              "alertname": "Problem",
-              "severity": "Severity"
-            }
+          "refId": "A",
+          "expr": "max by(status) (socrat_n8n_starts_window{window=\"300\",status=~\"success|error|other\"}) and on() (max(socrat_n8n_collection_success) == 1) and on() (time() - max(socrat_n8n_collection_timestamp_seconds) < 90)",
+          "format": "time_series",
+          "instant": false,
+          "range": true,
+          "legendFormat": "{{status}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
           }
         }
       ],
-      "type": "table"
+      "title": "n8n · workflow starts / 5 min",
+      "type": "timeseries",
+      "interval": "5m"
+    },
+    {
+      "id": 923,
+      "title": "Starts · 1h",
+      "description": "Live read-only activity telemetry; no data is not zero. n8n starts are grouped by start time and current outcome; waiting is not running.",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 13,
+        "y": 15,
+        "w": 2,
+        "h": 3
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(socrat_n8n_starts_window{window=\"3600\"}) and on() (max(socrat_n8n_collection_success) == 1) and on() (time() - max(socrat_n8n_collection_timestamp_seconds) < 90)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{status}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No telemetry",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#5794F2"
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value",
+        "text": {
+          "valueSize": 32,
+          "titleSize": 14
+        }
+      }
+    },
+    {
+      "id": 924,
+      "title": "Errors · 1h",
+      "description": "Live read-only activity telemetry; no data is not zero. n8n starts are grouped by start time and current outcome; waiting is not running.",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 15,
+        "y": 15,
+        "w": 2,
+        "h": 3
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(socrat_n8n_starts_window{window=\"3600\",status=\"error\"}) and on() (max(socrat_n8n_collection_success) == 1) and on() (time() - max(socrat_n8n_collection_timestamp_seconds) < 90)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{status}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No telemetry",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#B42332"
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value",
+        "text": {
+          "valueSize": 32,
+          "titleSize": 14
+        }
+      }
+    },
+    {
+      "id": 925,
+      "title": "Running",
+      "description": "Live read-only activity telemetry; no data is not zero. n8n starts are grouped by start time and current outcome; waiting is not running.",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 17,
+        "y": 15,
+        "w": 2,
+        "h": 3
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(socrat_n8n_starts_window{window=\"0\",status=\"running\"}) and on() (max(socrat_n8n_collection_success) == 1) and on() (time() - max(socrat_n8n_collection_timestamp_seconds) < 90)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "legendFormat": "{{status}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "No telemetry",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#5794F2"
+          }
+        }
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value",
+        "text": {
+          "valueSize": 32,
+          "titleSize": 14
+        }
+      }
     }
   ],
   "timepicker": {

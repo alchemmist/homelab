@@ -1,0 +1,183 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: socrat-argocd-metrics
+  namespace: argocd
+  labels:
+    app: socrat-argocd-metrics
+spec:
+  selector:
+    app.kubernetes.io/name: argocd-application-controller
+    app.kubernetes.io/instance: argo-cd
+  ports:
+    - name: metrics
+      port: 8082
+      targetPort: metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: socrat-argocd-metrics
+  labels:
+    release: {{ .Values.prometheusRelease }}
+spec:
+  namespaceSelector:
+    matchNames: [argocd]
+  selector:
+    matchLabels:
+      app: socrat-argocd-metrics
+  endpoints:
+    - port: metrics
+      interval: 15s
+      relabelings:
+        - targetLabel: job
+          replacement: socrat-argocd
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: socrat-n8n-activity
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+data:
+  exporter.py: |
+{{ .Files.Get "files/n8n-activity-exporter.py" | indent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: socrat-n8n-activity
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: socrat-n8n-activity
+  template:
+    metadata:
+      labels:
+        app: socrat-n8n-activity
+      annotations:
+        checksum/exporter: {{ .Files.Get "files/n8n-activity-exporter.py" | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: exporter
+          image: python:3.12-alpine
+          command: [python, /app/exporter.py]
+          env:
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+          ports:
+            - name: metrics
+              containerPort: 9189
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 24Mi
+            limits:
+              cpu: 100m
+              memory: 96Mi
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+          volumeMounts:
+            - name: code
+              mountPath: /app
+              readOnly: true
+            - name: credentials
+              mountPath: /secrets
+              readOnly: true
+      volumes:
+        - name: code
+          configMap:
+            name: socrat-n8n-activity
+        - name: credentials
+          secret:
+            secretName: socrat-n8n-observer
+            defaultMode: 0440
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: socrat-n8n-activity
+  labels:
+    app: socrat-n8n-activity
+spec:
+  selector:
+    app: socrat-n8n-activity
+  ports:
+    - name: metrics
+      port: 9189
+      targetPort: metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: socrat-n8n-activity
+  labels:
+    release: {{ .Values.prometheusRelease }}
+spec:
+  selector:
+    matchLabels:
+      app: socrat-n8n-activity
+  endpoints:
+    - port: metrics
+      interval: 15s
+      relabelings:
+        - targetLabel: job
+          replacement: socrat-n8n-activity
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: socrat-n8n-activity
+spec:
+  podSelector:
+    matchLabels:
+      app: socrat-n8n-activity
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cattle-monitoring-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+      ports:
+        - port: 9189
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: automation
+          podSelector:
+            matchLabels:
+              app: n8n
+      ports:
+        - port: 5678
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
