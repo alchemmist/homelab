@@ -390,3 +390,89 @@ production records, not smoke rows (the test used a separate temporary DB).
 Direct local NetBird API endpoints began refusing connections during acceptance;
 verification used the existing `ssh socrat-0 'kubectl ...'` path instead. The API
 was healthy from that node; no network/credential/kubeconfig changes were made.
+
+## Optional alert images — released and accepted (2026-11-07)
+
+Bot release `bf50ab282fd8e5a2dd68e2471384a81a7c771fdc` includes implementation
+`e3df297`, concurrency hardening `5dc5bc0`, and heartbeat-cleanup fix `bf50ab2`.
+CI https://github.com/alchemmist/socrat-bot/actions/runs/42389584627 reported
+**181 passed, 17 conditional skips**; the final local PostgreSQL17 suite matched.
+Independent release review approved the concurrency fixes before push.
+Image digest: `sha256:78fcc5631fd7b2d63a933a72412ad92c98bb3765f77429fea3f1360c56497b54`.
+All three deployments rolled out, migration head is `0015_alert_images`, healthz
+returned `{"ok":true}`, and Argo was Synced/Healthy at revision `d44bced`.
+A protected pre-migration database dump was saved outside Git.
+
+### API and semantics
+
+`POST /v1/messages` accepts optional top-level `images` (up to three), each with
+`mime_type` (`image/png` or `image/jpeg`), canonical strict `data_base64`, and an
+optional bounded ASCII `filename`. Maximum decoded size is 4 MiB/image (12 MiB
+combined). File signatures must match MIME; unknown image fields/URLs are rejected.
+Image-bearing validation errors omit request values. Existing token authorization
+and ingress isolation remain unchanged. Supported alert forms are `card`, `alert`,
+and a singleton `alerts`; images with only ordinary `text` receive actionable400.
+
+Example (replace placeholders; token remains private):
+
+```json
+{
+  "chat_id": 123456789,
+  "card": {
+    "key": "cpu-high/server-1",
+    "title": "High CPU usage",
+    "summary": "CPU usage exceeds 90%"
+  },
+  "images": [{"mime_type": "image/png", "data_base64": "BASE64_PNG_BYTES"}]
+}
+```
+
+Bot uploads actual multipart bytes via `sendPhoto` as replies to each recipient's
+original text card, with `allow_sending_without_reply=false`. It never converts the
+card to a photo caption, preserving full text, stable card IDs, Mute/Escalate,
+SPI/notes, and resolution behavior. Same-slot identical bytes deduplicate; changed
+bytes use `editMessageMedia` against the saved photo ID. Edit rejection NEVER falls
+back to a replacement send. Omitted/null/empty `images` makes no image mutation and
+does not synchronously drain or report unrelated retained attachments. A shorter
+nonempty list changes only supplied slots; no delete endpoint exists. A new
+incident generation starts with no retained images.
+
+Desired bytes/revisions and generation/recipient/slot receipts persist separately.
+Recipients derive only from admitted current-generation delivery intents with a
+successful parent card. Escalation admits new recipients to the retained images;
+subscription/tier changes alone do not add an audience. New photo attempts recheck
+opt-in/generation/ownership before HTTP. The claim refreshes bytes, revision,
+metadata, receipt and eligibility coherently after acquiring the shared per-card
+lease, preventing stale metadata or already-recorded successes from creating
+incorrect receipts/duplicate sends. Owner-fenced heartbeat and a20-second total
+HTTP deadline keep ordinary live operations serialized; no network transaction.
+API image submissions attempt at most one synchronous operation within2 seconds;
+remaining work is retried by the independent durable media worker. Text-only
+updates never wait for that media drain. Attachment statuses (`pending`, `sent`,
+`superseded`) refer to the submission's immutable generation/revision snapshot,
+not whichever episode happens to be current when the response is produced.
+
+### Live acceptance and boundaries
+
+Released-image smoke used a temporary SQLite database; production DB was read-only
+only to discover the owner identity. Real Telegram traffic was guarded to the
+owner and to IDs created by that test: one clearly marked text card and one PNG
+chart reply. Confirmed pending→sent reporting, preserved parent reply ID, identical
+image retry without duplicate, changed PNG content on the same photo message ID,
+and resolved text-card ID preservation. Both test messages were deleted. No real
+incident was mutated and no other subscriber received a test.
+
+No exactly-once transport guarantee: Telegram acceptance followed by response loss
+can still duplicate a new photo after lease recovery. Authorization changes after
+HTTP starts cannot retract it. Validation is signature-only, not full image decode;
+permanent rejection remains pending with retries. Database/backups retain image
+bytes (including old generations), with no automatic GC yet; treat these as
+sensitive. Global candidate enumeration is not yet paginated. Generating/selecting
+Grafana graphs, browser rendering and Grafana credentials remain out of scope: the
+caller supplies bytes, and the bot does not fetch screenshot URLs.
+
+README/OpenAPI and deterministic repository docs are updated. The existing wiki
+automation opened public-wiki review PR99:
+https://github.com/alchemmist/homelab/pull/99 . It was not auto-merged. Homelab's
+original checkout had unrelated monitoring/Traefik edits during documentation;
+this handoff was committed from an isolated worktree without altering those files.
