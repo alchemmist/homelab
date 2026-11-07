@@ -38,6 +38,7 @@ spec:
       labels:
         app: socrat-n8n-activity
       annotations:
+        checksum/native-pipeline: "tv-native-service-v1"
         checksum/exporter: {{ .Files.Get "files/n8n-activity-exporter.py" | sha256sum }}
     spec:
       nodeSelector:
@@ -142,8 +143,12 @@ spec:
         - port: 9189
   egress:
     - to:
-        - ipBlock:
-            cidr: 10.250.0.1/32
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: cattle-monitoring-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
       ports:
         - port: 4317
     - to:
@@ -222,7 +227,7 @@ data:
         timeout: 1s
     exporters:
       otlp:
-        endpoint: 10.250.0.1:4317
+        endpoint: socrat-tv-otlp-receiver.cattle-monitoring-system.svc.cluster.local:4317
         tls:
           ca_file: /tls/ca.crt
           cert_file: /tls/tls.crt
@@ -239,3 +244,17 @@ data:
           receivers: [prometheus]
           processors: [memory_limiter, batch]
           exporters: [otlp]
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: socrat-tv-otlp-receiver
+spec:
+  selector:
+    app.kubernetes.io/name: prometheus
+    operator.prometheus.io/name: kube-prometheus-stack-prometheus
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: otel-grpc
