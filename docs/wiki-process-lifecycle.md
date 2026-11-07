@@ -1,5 +1,10 @@
 # Wiki Git zombie recovery — 2026-10-30
 
+**Historical incident.** Since the [2026-11-07 upgrade](wiki-upgrade-20261107.md),
+the active pinned upstream runtime includes the source lifecycle fix below.
+Statements about the unchanged old image/unpublished fix describe the original
+incident, not the current deployment. Retain safe repository-local settings.
+
 ## Root cause
 
 Production image `ghcr.io/alchemmist/hugo-docs-wiki@sha256:56b24ca70f7ebcb5c3d4844c0e5ec5b779416f74f891be5b24807f65e8878b7e`

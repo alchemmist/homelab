@@ -1,5 +1,10 @@
 # Wiki native OIDC identity patch
 
+**Historical overlay, superseded 2026-11-07.** The active runtime uses upstream
+`f52cf2a` with the small groups-scope preservation layer in `../upstream`. This
+recipe and old image are retained for provenance/rollback; do not apply these
+0.4.1 source edits to the new runtime. See `docs/wiki-upgrade-20261107.md`.
+
 Live on 2026-11-01. This is a narrow patch over upstream hugo-docs **0.4.1**,
 not a claim that the unmodified release supports OIDC. Original source SHA-256:
 `867041976f336ea6d8c4956470c15db498b6896f078102160994d618c445ed69`.
