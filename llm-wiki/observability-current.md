@@ -1,7 +1,7 @@
 # Наблюдаемость: источники и владельцы
 
-Актуализировано **7 ноября 2026**, после завершённого handoff (`f4020d1`) и
-runtime-проверок. Это заменяет ранний read-only срез промежуточного split.
+Актуализировано **7 ноября 2026**, после завершённых handoff Grafana/backends (`f4020d1`),
+пяти Prometheus-компонентов и runtime-проверок. Это заменяет ранний read-only срез промежуточного split.
 Не объявляет новый browser-MFA acceptance, каждый producer исправным или независимый DR.
 
 ## Argo ownership после split
@@ -9,7 +9,11 @@ runtime-проверок. Это заменяет ранний read-only сре�
 | Application | Источник | Ответственность |
 | --- | --- | --- |
 | `grafana` | `charts/grafana`, `deploy/platform/grafana/public-entry` | Native Grafana, datasource provisioning, public policy и TV assets |
-| `prometheus-stack` | upstream kube-prometheus-stack92.10.0 + `deploy/platform/prometheus-stack/values.yaml` | Prometheus/operator/Alertmanager/exporters; upstream Helm release name прежний |
+| `prometheus` | `charts/prometheus` | Только Prometheus, его storage/конфигурация, общие rules и cluster monitors |
+| `alertmanager` | `charts/alertmanager` | Только Alertmanager, routing/config, свои Service/SA/rules |
+| `prometheus-operator` | `charts/prometheus-operator` | Контроллер, CRD, admission webhooks и правила оператора/reloaders |
+| `node-exporter` | `charts/node-exporter` | Нодовый DaemonSet, Service/monitor и собственные правила |
+| `kube-state-metrics` | `charts/kube-state-metrics` | Экспорт состояния Kubernetes, RBAC/Service/monitor/rules |
 | `loki` | `charts/loki` | Logs backend и scoped retention resources |
 | `tempo` | `charts/tempo` | Traces backend |
 | `pyroscope` | `charts/pyroscope` | Profiling backend и его Grafana integration |
@@ -17,7 +21,7 @@ runtime-проверок. Это заменяет ранний read-only сре�
 
 Все шесть указанных apps — Synced/Healthy. Auto-sync Loki/Tempo восстановлен:
 временный `automated.enabled=false` снят, `prune=false/selfHeal=true` сохранены.
-Старые `kube-prometheus-stack`, `otel-backends`, `profiling` удалены из Git/кластера
+Старые `kube-prometheus-stack`, `prometheus-stack`, `otel-backends`, `profiling` удалены из Git/кластера
 после снятия finalizers и передачи владения. 103 UID существующих объектов сохранены
 (в том числе 10 shared CRD в Prometheus scope без принудительных tracking annotations).
 PVC/Secret/Certificate UID не менялись. Только неиспользуемый ConfigMap
@@ -34,7 +38,15 @@ traces проверены без вывода содержимого. Это н�
 
 App name не равен Helm release или Service name: имя
 `kube-prometheus-stack-grafana` у pod/service не возвращает владение старой app.
-Текущие manifests: `deploy/argocd/apps/{grafana,prometheus-stack,loki,tempo,pyroscope}.yaml`.
+Текущие manifests: `deploy/argocd/apps/{grafana,prometheus,alertmanager,prometheus-operator,node-exporter,kube-state-metrics,loki,tempo,pyroscope}.yaml`.
+
+Последний aggregate `prometheus-stack` также разобран: все 77 ресурсов переданы
+пяти независимым Applications, render payload совпадает полностью. Все 8 runtime
+Pods сохранили UID/ноду/readiness/restarts; все 4 PVC сохранили bound volumes;
+3 целевых Secret (включая webhook TLS) сохранили UID **и содержимое**. Prometheus
+по-прежнему находит прежний Alertmanager endpoint. Ни WAL repair, ни переустановка
+оператора, ни миграция данных не требовались. Детали и source-provenance:
+[prometheus-service-split.md](../docs/prometheus-service-split.md).
 
 ## Данные и pipeline
 

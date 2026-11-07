@@ -4,7 +4,11 @@
 
 | Application | Owns | Git source |
 | --- | --- | --- |
-| prometheus-stack | Prometheus, Alertmanager, operator, exporters, base rules/monitors | `deploy/platform/prometheus-stack/values.yaml`; kube-prometheus-stack chart 92.10.0 |
+| prometheus | Prometheus, storage, common rules/cluster monitors | `charts/prometheus` |
+| alertmanager | Alertmanager, routing/config, own monitor/rules | `charts/alertmanager` |
+| prometheus-operator | Operator, CRDs, admission webhooks, own rules | `charts/prometheus-operator` |
+| node-exporter | Node agent DaemonSet, monitor/rules | `charts/node-exporter` |
+| kube-state-metrics | Kubernetes-state exporter, RBAC/monitor/rules | `charts/kube-state-metrics` |
 | grafana | Grafana, PVC, provisioning, RBAC, public ingress/policy proxy | `charts/grafana`, `deploy/platform/grafana/public-entry` |
 | loki | Loki runtime/config, Service, retention rules | `charts/loki` |
 | tempo | Tempo runtime/config and Service | `charts/tempo` |
@@ -14,8 +18,10 @@
 | monitoring-k3s / monitoring-llm | Shared cluster/domain instrumentation, dashboards and access; shared backend leaf Certificate | Their existing charts |
 
 The boundary is a separately deployable service, not an arbitrary YAML resource.
-Prometheus Operator/exporters/Alertmanager remain a supported Prometheus stack;
-Grafana is no longer bundled inside it. Shared PKI, instrumentation and application
+Prometheus, Alertmanager, their operator and the two exporters are now separate
+Applications as well; no `prometheus-stack` Application remains. The initial
+handoff below is historical; final component ownership is documented in
+[prometheus-service-split.md](prometheus-service-split.md). Shared PKI, instrumentation and application
 owned dashboards/rules are not duplicated into every service. Existing host/cluster
 Collectors and Prometheus's coupled OTEL sidecar are not reinstalled by this split.
 
@@ -28,9 +34,9 @@ false in both ini and env. No password, client secret or DB contents are in Git.
 
 ## Names are compatibility, not Application ownership
 
-Helm releaseName `kube-prometheus-stack` is retained for both the Prometheus stack
-and standalone Grafana rendering. Argo is the deployer, not two imperative Helm
-releases. The two Applications render disjoint resource sets. Existing selectors,
+Helm releaseName `kube-prometheus-stack` is retained for the five independent
+Prometheus-family component charts and standalone Grafana rendering. Argo is the deployer, not two imperative Helm
+releases. The Applications render disjoint resource sets. Existing selectors,
 Service URLs, release labels and PVC names must not be changed just to match the
 new Application names. In particular `kube-prometheus-stack-grafana` remains the
 Grafana Service/Deployment/PVC. Pyroscope retains releaseName `profiling`; Loki
@@ -39,12 +45,12 @@ and Tempo retain `otel-loki` / `otel-tempo` and legacy part-of labels.
 **Never `helm uninstall` the historical releases.** They describe resources now
 owned by several Applications. Roll back only the current owning Application's
 Git source. Historical Helm records and local data are retained for recovery.
-Legacy `monitoring.yml` checks the independent owners before **any** role, and
-`monitoring_stack` has the same guard for direct role callers. It refuses legacy
-mutations after the split. Node/resource/PKI prerequisites are not permission to
+Legacy `monitoring.yml` now fails unconditionally before **any** role, and
+`monitoring_stack` has the same retired-installer guard for direct role callers.
+It cannot revive the old umbrella installation, even on a fresh cluster. Node/resource/PKI prerequisites are not permission to
 upgrade the old combined Helm release.
 
-## Non-destructive handoff, 2026-11-07
+## Initial non-destructive handoff, 2026-11-07
 
 1. Disable old `kube-prometheus-stack`, `otel-backends`, `profiling` auto-sync and
    remove their deletion finalizers through Git; confirm live disarm.

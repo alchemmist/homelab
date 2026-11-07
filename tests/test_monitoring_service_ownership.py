@@ -104,7 +104,7 @@ def test_prometheus_components_preserve_release_names_and_matching_labels():
 
 
 def test_retired_aggregate_owners_and_charts_are_not_reintroduced():
-    for name in ('kube-prometheus-stack', 'otel-backends', 'profiling'):
+    for name in ('kube-prometheus-stack', 'prometheus-stack', 'otel-backends', 'profiling'):
         assert not (ROOT/f'deploy/argocd/apps/{name}.yaml').exists()
     for name in ('otel-backends', 'profiling'):
         assert not (ROOT/f'charts/{name}').exists()

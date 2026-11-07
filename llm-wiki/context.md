@@ -71,9 +71,11 @@ blanket sync/prune, `helm upgrade` или ручной image patch для обх
 `grafana`, chart `charts/grafana` и `deploy/platform/grafana/public-entry`.
 Не искать его текущего владельца в старом `kube-prometheus-stack` app.
 
-Мониторинг разделён на `grafana`, `prometheus-stack`, `loki`, `tempo`, `pyroscope`;
+Мониторинг разделён на `grafana`, `prometheus`, `alertmanager`, `prometheus-operator`,
+`node-exporter`, `kube-state-metrics`, `loki`, `tempo`, `pyroscope`;
 дашборды/rules/probes — отдельный `monitoring-k3s`. Handoff закрыт: старые
-`kube-prometheus-stack`, `otel-backends`, `profiling` удалены без каскадного удаления;
+`kube-prometheus-stack`, `prometheus-stack`, `otel-backends`, `profiling` удалены без
+каскадного удаления;
 Loki/Tempo снова на auto-sync. Все новые владельцы Synced/Healthy, сохранены 103
 UID существующих ресурсов и PVC/Secret/Certificate; неиспользуемый общий ConfigMap
 удалён отдельно по UID. Не повторять retirement и не возвращать старые owners.
@@ -81,7 +83,8 @@ UID существующих ресурсов и PVC/Secret/Certificate; неи�
 параллельным релизом `f485c74` (blog снова Synced/Healthy). Это **не** обещание
 целостности WAL или здоровья всего кластера. Карта/приёмка и границы:
 [деплой](cluster-deploy.md), [наблюдаемость](observability-current.md),
-[closeout](../docs/monitoring-service-split.md).
+[первый closeout](../docs/monitoring-service-split.md),
+[окончательное разделение Prometheus-компонентов](../docs/prometheus-service-split.md).
 
 ## Топология и данные
 

@@ -287,3 +287,42 @@ browser-MFA/enrollment, backup/restore/HA или every-service telemetry accepta
 Legacy `monitoring.yml` и `monitoring_stack` guard отказывают до мутаций при
 наличии независимых Argo owners. Править действующие Git sources, не старый
 `deploy/monitoring/values.yaml` и не UI image/Helm overrides.
+
+
+## Последний Prometheus aggregate тоже удалён — 2026-11-07
+
+Предыдущий раздел описывает промежуточный этап. **Application `prometheus-stack`
+удалена**, больше не объединять Prometheus и Alertmanager по границе upstream chart.
+Текущие владельцы/источники:
+
+| Application | Source | Состав |
+| --- | --- | --- |
+| `prometheus` | `charts/prometheus` | Prometheus, его конфигурация/storage, общие recording/alert rules и cluster monitors |
+| `alertmanager` | `charts/alertmanager` | Alertmanager, routing/config, свои SA/Service/monitor/rules |
+| `prometheus-operator` | `charts/prometheus-operator` | Оператор, 10 общих CRD, admission webhooks, свои rules |
+| `node-exporter` | `charts/node-exporter` | DaemonSet и его Service/monitor/rules |
+| `kube-state-metrics` | `charts/kube-state-metrics` | Экспорт состояния K8s и поддерживающие RBAC/Service/monitor/rules |
+
+Все 77 ресурсов имеют ровно одного владельца, payload до/после совпадает полностью.
+CRD остаются shared definitions без принудительного application tracking; новый
+scope — оператор. 8 существующих runtime Pods не пересоздавались и не меняли ноду
+или restart counters. 4 PVC/bound volumes и UID/содержимое 3 целевых Secrets сохранены.
+Prometheus продолжает находить тот же Alertmanager по прежнему Service.
+
+Upstream kube-prometheus-stack92.10.0 переиспользуется **только как pinned source
+шаблонов**: один проверенный неизменяемый archive в `charts/_vendor`, каждый local
+chart включает только свой компонент. Это не aggregate Application и не общие
+изменяемые values. У каждого сервиса свой chart/values и самостоятельный sync.
+ReleaseName/resource names/labels `kube-prometheus-stack` оставлены для совместимости;
+не переименовывать PVC/Services и не запускать `helm uninstall` прежнего release.
+
+Архив по SHA256, symlinks и полная disjoint/render-equivalence проверка находятся
+в тестах. Argo рендерит всё из Git offline, без dependency downloads. Сборный
+Ansible installer окончательно retired: always-tag fail до любой мутации, даже
+на свежем кластере. Пререквизиты/Secrets восстанавливать отдельно по runbook;
+не обходить guard для возврата старого стека.
+
+При handoff сначала disarm/no finalizers, затем adopt, live проверки, затем удаление
+старого Application/values. Ни глобальный prune, ни restart/WAL repair/DB migration,
+ни ротация TLS или alert credentials не выполнялись. Проверки/границы и диаграмма
+владения: [prometheus-service-split.md](../docs/prometheus-service-split.md).

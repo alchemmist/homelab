@@ -59,10 +59,6 @@ def test_offline_source_is_immutable_shared_code_not_shared_ownership():
         assert app['spec']['source']['helm']=={'releaseName':'kube-prometheus-stack','parameters':[]}
         assert app['spec']['syncPolicy']['automated']=={'prune':False,'selfHeal':True}
 
-def test_aggregate_owner_is_disarmed_during_handoff():
-    p=ROOT/'deploy/argocd/apps/prometheus-stack.yaml'
-    if p.exists():
-        app=yaml.safe_load(p.read_text())
-        assert app['metadata']['finalizers']==[]
-        assert app['spec']['syncPolicy']['automated']['enabled'] is False
-        assert app['spec']['syncPolicy']['automated']['selfHeal'] is False
+def test_aggregate_application_and_values_are_gone():
+    assert not (ROOT/'deploy/argocd/apps/prometheus-stack.yaml').exists()
+    assert not (ROOT/'deploy/platform/prometheus-stack').exists()
