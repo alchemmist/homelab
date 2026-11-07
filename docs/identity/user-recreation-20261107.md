@@ -4,6 +4,14 @@ The owner explicitly rejected the added existing-account activation mechanism an
 requested a fresh native Authentik user. This supersedes the previous activation
 proposal/deployment; do not reinstall that flow or use its old delivery file.
 
+## Subsequent native username change
+
+On explicit owner request the same user was renamed from `tim` to `antropophag`
+by native username-only PATCH. UUID, hashed provider subject, email, display name,
+groups and unset-password state remain unchanged. Active account/lifecycle/pilot
+keys and the initialized bootstrap journal now use `antropophag`; Linux user `tim`,
+VPN device names and existing Rancher resource IDs are separate and unchanged.
+
 ## Completed
 
 - Native `POST /api/v3/core/users/` created `tim`, display name Tim, same reviewed
@@ -44,7 +52,7 @@ This is **a freshly created user without a password**, not a completed onboardin
 Native Create user does not automatically grant a first-login password-setting
 screen. In this installation no Brand email-recovery/enrollment invitation flow
 was configured before this task; the task intentionally does not configure one.
-The owner can use the standard Authentik **Directory → Users → tim → Set password**
+The owner can use the standard Authentik **Directory → Users → antropophag → Set password**
 operation. Password-based login cannot work until password establishment is handled
 through a deliberately chosen native procedure. Normal existing MFA policy still
 requires enrollment afterward. No invitation was sent and no real-user login was

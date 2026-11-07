@@ -20,7 +20,7 @@ existingIdentities:
     linux: alchemmist
     rancher: user-zc7lw
     migration: preserve-local-break-glass
-  tim:
+  antropophag:
     authentikUuid: 6015c85b-82e9-49ce-a4e3-0270c676e26d  # gitleaks:allow -- public reviewed subject UUID, not a credential
     linux: tim
     rancher: u-22wv2  # disabled legacy row retained for grant-mirroring history

@@ -5,7 +5,7 @@
   "protectedOwner": "alchemmist",
   "preserveOwnerRecoveryAndMachineIdentities": true,
   "humans": {
-    "tim": {
+    "antropophag": {
       "desiredBrowserAuthentication": "authentik-only",
       "preserveExistingDataAndRoles": true,
       "rancher": {

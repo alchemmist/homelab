@@ -76,14 +76,14 @@ class AppIAMTests(unittest.TestCase):
                 self.assertFalse(group['is_superuser']); self.assertEqual(group['users'], [])
 
     def test_scoped_grant_remove_and_disabled_are_idempotent(self):
-        tim = next(u for u in self.fake.data['core/users/'] if u['username'] == 'tim')
+        tim = next(u for u in self.fake.data['core/users/'] if u['username'] == 'antropophag')
         before = list(tim['groups'])
-        self.manifest['users']['tim']['appGroups'] = ['app-grafana-viewer', 'app-wiki-reader']
+        self.manifest['users']['antropophag']['appGroups'] = ['app-grafana-viewer', 'app-wiki-reader']
         plan = self.plan()
         self.assertEqual([o['action'] for o in plan['operations']], ['add', 'add'])
         lifecycle.apply_plan(self.api, plan, plan['sha256'])
         self.assertEqual(self.plan()['operations'], [])
-        self.manifest['users']['tim'].update(state='disabled', appGroups=[])
+        self.manifest['users']['antropophag'].update(state='disabled', appGroups=[])
         plan = self.plan()
         self.assertEqual([o['action'] for o in plan['operations']], ['disable', 'remove', 'remove'])
         lifecycle.apply_plan(self.api, plan, plan['sha256'])
@@ -97,7 +97,7 @@ class AppIAMTests(unittest.TestCase):
         plan = self.plan()
         with self.assertRaisesRegex(RuntimeError, 'hash mismatch'):
             lifecycle.apply_plan(self.api, plan, 'stale')
-        tim = next(u for u in self.fake.data['core/users/'] if u['username'] == 'tim')
+        tim = next(u for u in self.fake.data['core/users/'] if u['username'] == 'antropophag')
         tim['is_active'] = False
         self.assertNotEqual(plan['sha256'], self.plan()['sha256'])
         self.assertEqual(self.api.writes, [])
@@ -116,16 +116,16 @@ class AppIAMTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'Owner'):
             self.plan()
         self.manifest['users']['alchemmist']['state'] = 'preserve'
-        self.manifest['users']['tim']['appGroups'] = ['homelab-owner']
+        self.manifest['users']['antropophag']['appGroups'] = ['homelab-owner']
         with self.assertRaisesRegex(RuntimeError, 'declared app groups'):
             self.plan()
         self.assertEqual(self.api.writes, [])
 
     def test_unsupported_native_role_and_machine_account_refused(self):
-        self.manifest['users']['tim']['appGroups'] = ['app-rancher-user']
+        self.manifest['users']['antropophag']['appGroups'] = ['app-rancher-user']
         with self.assertRaisesRegex(RuntimeError, 'not ready'):
             self.plan()
-        self.manifest['users']['tim']['appGroups'] = []
+        self.manifest['users']['antropophag']['appGroups'] = []
         self.fake.data['core/users/'][1]['type'] = 'service_account'
         with self.assertRaisesRegex(RuntimeError, 'service/external'):
             self.plan()
@@ -136,7 +136,7 @@ class AppIAMTests(unittest.TestCase):
         rbac = {'pk': 'rbac-ancestor', 'name': 'rbac-ancestor', 'is_superuser': False,
                 'parents': [], 'roles': ['admin-role'], 'attributes': {}, 'users': []}
         self.fake.data['core/groups/'].append(rbac)
-        self.manifest['users']['tim']['appGroups'] = ['app-grafana-viewer']
+        self.manifest['users']['antropophag']['appGroups'] = ['app-grafana-viewer']
         for field, value in [('parents', [owner['pk']]), ('parents', [rbac['pk']]),
                              ('is_superuser', True), ('roles', ['admin-role'])]:
             old = copy.deepcopy(group); group[field] = value
@@ -147,7 +147,7 @@ class AppIAMTests(unittest.TestCase):
 
     def test_incomplete_current_group_schema_refused_before_assignment(self):
         group = next(g for g in self.fake.data['core/groups/'] if g['name'] == 'app-grafana-viewer')
-        self.manifest['users']['tim']['appGroups'] = ['app-grafana-viewer']
+        self.manifest['users']['antropophag']['appGroups'] = ['app-grafana-viewer']
         for field in ['parents', 'roles', 'is_superuser']:
             for value in ['missing', None, {}, '', 0]:
                 old = copy.deepcopy(group)
@@ -179,7 +179,7 @@ class AppIAMTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'instead of recreating'):
             identity.IdentityTests().configure(Path(self.temp.name), self.fake)
         self.assertFalse(any(m != 'GET' for m, _, _, _ in self.fake.requests[before:]))
-        del self.manifest['users']['tim']
+        del self.manifest['users']['antropophag']
         self.assertEqual(self.plan()['operations'], [])
         self.assertEqual(self.api.writes, [])
 
@@ -244,7 +244,7 @@ class AppIAMTests(unittest.TestCase):
         self.assertEqual(webui['OAUTH_ADMIN_ROLES'], 'homelab-owner')
         self.assertEqual(webui['OAUTH_MERGE_ACCOUNTS_BY_EMAIL'], 'False')
         self.assertIn('app-open-webui-user', webui['OAUTH_ALLOWED_ROLES'])
-        self.assertEqual(self.reviewed['tim']['wikiRole'], 'editor')
+        self.assertEqual(self.reviewed['antropophag']['wikiRole'], 'editor')
         self.assertEqual(self.reviewed['alchemmist']['idpUserUuid'], self.manifest['users']['alchemmist']['uuid'])
         for provider in self.fake.data['providers/oauth2/']:
             self.assertEqual(provider['authorization_flow'], 'default-provider-authorization-explicit-consent')

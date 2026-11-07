@@ -73,12 +73,12 @@ class IdentityTests(unittest.TestCase):
         self.configure(root,api)
         accounts=json.loads((ROOT/'deploy/identity/account-mappings.json').read_text())
         observer=next(g for g in api.data['core/groups/'] if g['name']=='homelab-observer')
-        api.data['core/users/'].append({'pk':6,'uuid':accounts['tim']['idpUserUuid'],
-            'username':'tim','email':accounts['tim']['email'],'is_active':True,
+        api.data['core/users/'].append({'pk':6,'uuid':accounts['antropophag']['idpUserUuid'],
+            'username':'antropophag','email':accounts['antropophag']['email'],'is_active':True,
             'is_superuser':False,'groups':[observer['pk']]})
         observer['users'].append(6)
-        (root/'tim-login.json').write_text(json.dumps({'initialized':True}))
-        (root/'tim-login.json').chmod(0o600)
+        (root/'antropophag-login.json').write_text(json.dumps({'initialized':True}))
+        (root/'antropophag-login.json').chmod(0o600)
         (root/'account-mappings.json').write_text(json.dumps(accounts))
 
     def test_configuration_idempotent_and_mfa_required(self):
@@ -191,10 +191,10 @@ class RolloutRegressionTests(unittest.TestCase):
             helper.configure(root,api);helper.configure(root,api)
             self.assertEqual(len(api.data['core/users/']),2)
             owner_group=next(g for g in api.data['core/groups/'] if g['name']=='homelab-owner')
-            tim=next(u for u in api.data['core/users/'] if u['username']=='tim')
+            tim=next(u for u in api.data['core/users/'] if u['username']=='antropophag')
             self.assertNotIn(owner_group['pk'],tim['groups'])
             self.assertNotIn(tim['pk'],owner_group['users'])
-            self.assertEqual((root/'tim-login.json').stat().st_mode & 0o777,0o600)
+            self.assertEqual((root/'antropophag-login.json').stat().st_mode & 0o777,0o600)
 
     def test_n8n_gate_does_not_capture_machine_traffic_or_claim_native_sso(self):
         import re

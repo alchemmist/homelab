@@ -46,7 +46,7 @@ class FakeAuthentik(threading.Thread):
             {'pk': 5, 'uuid': '9e33877a-3eaa-4541-98eb-8cdc10088ef6', 'username': 'alchemmist',
              'name': 'alchemmist', 'email': 'anton.ingrish@gmail.com', 'is_active': True,
              'is_superuser': True, 'type': 'internal', 'groups': list(OWNER_GROUPS)},
-            {'pk': 6, 'uuid': '6015c85b-82e9-49ce-a4e3-0270c676e26d', 'username': 'tim',
+            {'pk': 6, 'uuid': '6015c85b-82e9-49ce-a4e3-0270c676e26d', 'username': 'antropophag',
              'name': 'Tim', 'email': 'antropophag@gmail.com', 'is_active': True,
              'is_superuser': False, 'type': 'internal', 'groups': list(TIM_GROUPS)},
         ]
@@ -246,7 +246,7 @@ class NetBirdOIDCTests(unittest.TestCase):
         write_json(self.mappings, {
             'alchemmist': {'idpUserUuid': '9e33877a-3eaa-4541-98eb-8cdc10088ef6',
                            'email': 'anton.ingrish@gmail.com', 'groups': ['homelab-owner']},
-            'tim': {'idpUserUuid': '6015c85b-82e9-49ce-a4e3-0270c676e26d',
+            'antropophag': {'idpUserUuid': '6015c85b-82e9-49ce-a4e3-0270c676e26d',
                     'email': 'antropophag@gmail.com', 'groups': ['homelab-observer']},
         })
         write_json(self.root / 'credentials.json', {'AUTHENTIK_BOOTSTRAP_TOKEN': TOKEN})
@@ -360,7 +360,7 @@ class NetBirdOIDCTests(unittest.TestCase):
         self.assertEqual(journal['client_secret_sha256'], hashlib.sha256(secret.encode()).hexdigest())
         self.assertEqual(journal['pilot_users']['alchemmist']['uuid'],
                          '9e33877a-3eaa-4541-98eb-8cdc10088ef6')
-        self.assertEqual(journal['pilot_users']['tim']['pk'], 6)
+        self.assertEqual(journal['pilot_users']['antropophag']['pk'], 6)
         self.assertEqual(set(journal['groups']), set(oidc.GROUP_NAMES))
         for recorded in journal['groups'].values():
             self.assertIsInstance(recorded['pk'], str)
@@ -457,7 +457,7 @@ class NetBirdOIDCTests(unittest.TestCase):
             'version': 1, 'marker': 'marker-1', 'groups': {oidc.ADMISSION_GROUP: {'pk': 'owned-group', 'num_pk': 9}},
             'pilot_users': {
                 'alchemmist': {'pk': 5, 'uuid': '9e33877a-3eaa-4541-98eb-8cdc10088ef6'},
-                'tim': {'pk': 6, 'uuid': '6015c85b-82e9-49ce-a4e3-0270c676e26d'},
+                'antropophag': {'pk': 6, 'uuid': '6015c85b-82e9-49ce-a4e3-0270c676e26d'},
             },
         })
         code, out, err = self.run_tool('plan', '--netbird-config', str(self.config))

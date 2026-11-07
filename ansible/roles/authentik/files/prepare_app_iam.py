@@ -26,7 +26,7 @@ ALLOWLIST = {
     'wiki': ('reader', 'editor'), 'lms': ('student',),
 }
 PINNED = {'alchemmist': '9e33877a-3eaa-4541-98eb-8cdc10088ef6',
-          'tim': '6015c85b-82e9-49ce-a4e3-0270c676e26d'}
+          'antropophag': '6015c85b-82e9-49ce-a4e3-0270c676e26d'}
 # Detailed OAuth/proxy and MFA serializers supplement polymorphic inventories.
 # No device secrets, recovery codes, tokens, sessions or native service APIs read.
 COLLECTIONS = (
@@ -209,8 +209,8 @@ def build_plan(api, services, reviewed, stage='groups-only', evidence=None):
                 'Pinned active owner/Tim missing or changed')
         require(all(g in groups and groups[g]['pk'] in user['groups']
                     for g in reviewed[name]['groups']), 'Pinned legacy membership missing')
-    require(users['tim'].get('is_superuser') is False and
-            groups['homelab-owner']['pk'] not in users['tim']['groups'],
+    require(users['antropophag'].get('is_superuser') is False and
+            groups['homelab-owner']['pk'] not in users['antropophag']['groups'],
             'Tim privilege drift')
     operations = []
     missing = names - groups.keys()
