@@ -1,6 +1,7 @@
 # Native observer profile (issue #105)
 
-**Status: activated configuration; synthetic native acceptance in progress (2026-11-07).**
+**Status: activated configuration; final synthetic round-trip blocked by internal SSH access (2026-11-07).**
+See [the exact activation checkpoint](observer-activation-20261107.md).
 Rancher observer RBAC is enabled. The guarded bootstrap applied safe new-user
 defaults and the 60-minute human session setting. Legacy WebUI admission was split
 into `homelab-chat-user` without changing the existing person's subject or data.
@@ -94,8 +95,9 @@ created and deleted a short-lived test key; it did not grant infrastructure writ
   stop races. Owner and existing explicitly admitted subjects are excluded; all
   other cached groups remain untouched. There is no user or role provisioning.
   Removing the cache entry was verified to make an existing browser session lose
-  nodes/namespaces/workload access immediately. API keys use the same current
-  authorization; credential possession does not freeze an observer grant.
+  nodes/namespaces/workload access immediately. Legacy bearer keys are expected to use the same current authorization; their
+  independent live removal/re-add acceptance remains pending. Do not claim this
+  from a successful browser/cache check alone.
 * Wiki's pinned native OIDC implementation is preserved byte-for-byte by an init
   container. The native hook checks current IdP admission for linked **reader**
   cookie and MCP-token authentication, caching a complete snapshot for at most
