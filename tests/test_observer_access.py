@@ -281,6 +281,16 @@ class BootstrapSafetyTests(unittest.TestCase):
                              ('kubernetes', '/apis/management.cattle.io/v3/authconfigs/genericoidc')]:
             self.bootstrap.validate_path(system, path)
 
+    def test_explicit_harbor_machine_identity_uses_internal_config_api(self):
+        header, path = self.bootstrap.harbor_authorization({'harborJobserviceSecret': 'test-machine-only'})
+        self.assertEqual(header, 'Harbor-Secret test-machine-only')
+        self.assertEqual(path, '/api/v2.0/internalconfig')
+        header, path = self.bootstrap.harbor_authorization({'harborUsername': 'admin', 'harborPassword': 'test-only'})
+        self.assertTrue(header.startswith('Basic '))
+        self.assertEqual(path, '/api/v2.0/configurations')
+        with self.assertRaises(ValueError):
+            self.bootstrap.harbor_authorization({'harborJobserviceSecret': ''})
+
     def test_default_is_no_native_writes(self):
         result = self.run_main()
         self.assertFalse(result['applied'])

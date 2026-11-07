@@ -115,7 +115,8 @@ unproven forever-cached membership under a claim of automatic revocation.
    Check CRD schema and controller-generated roles before admission is opened.
 3. On socrat-0, keep the complete matching checkout and use an existing protected
    0700 operator directory / 0600 credential JSON (`authentikToken`, built-in
-   Harbor bootstrap `harborUsername`, `harborPassword`). Never put values in shell
+   Harbor bootstrap `harborUsername`, `harborPassword`, or explicit existing
+   `harborJobserviceSecret` machine identity). Never put values in shell
    arguments, Git, PRs or public logs; do not enroll/impersonate human accounts.
 4. First review/audit the one-time legacy chat split:
    ```sh
@@ -194,3 +195,11 @@ secrets and authconfig**. Keep a single operator/configuration writer during
 bootstrap/reconciliation; do not concurrently edit default roles or TTL. A failure
 can follow earlier legacy reconciliation/Secret writes: inspect private backups
 and current objects, never assume that the entire integration was rolled back.
+
+
+Harbor's native solution identity uses `Authorization: Harbor-Secret` and
+`GET /api/v2.0/internalconfig`. Do not send it to the regular human configuration
+GET, whose deployed solution-user response path returns HTTP 500. The internal
+response includes sensitive configuration and stays in memory/private receipts.
+Both modes keep the existing credentials unchanged; there is no password reset,
+SQL membership write, human impersonation or newly provisioned privileged robot.

@@ -2,7 +2,8 @@
 """One-time bounded native configuration bootstrap; NOT a user sync daemon.
 
 Run on socrat-0 after reviewed Argo RBAC activation. Default audits only.
-Private credential JSON: authentikToken, harborUsername, harborPassword.
+Private credential JSON: authentikToken and either harborJobserviceSecret or
+harborUsername + harborPassword (explicit native machine vs admin mode).
 Kubernetes uses the existing local k3s admin certificate, never a copied token.
 """
 import argparse
@@ -46,6 +47,17 @@ def validate_path(system, path):
     planner.require(system in prefixes and parsed.path.startswith(prefixes[system]), 'API path outside reviewed namespace')
 
 
+def harbor_authorization(credentials):
+    if 'harborJobserviceSecret' in credentials:
+        secret = credentials['harborJobserviceSecret']
+        planner.require(isinstance(secret, str) and secret and not any(c.isspace() for c in secret), 'Invalid native Harbor machine credential')
+        return 'Harbor-Secret ' + secret, '/api/v2.0/internalconfig'
+    username, password = credentials['harborUsername'], credentials['harborPassword']
+    planner.require(isinstance(username, str) and username and ':' not in username
+                    and isinstance(password, str) and password, 'Invalid Harbor admin credential')
+    return 'Basic ' + base64.b64encode((username + ':' + password).encode()).decode(), '/api/v2.0/configurations'
+
+
 class Client:
     def __init__(self, credentials):
         class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -61,8 +73,8 @@ class Client:
             urllib.request.ProxyHandler({}), NoRedirect(),
             urllib.request.HTTPSHandler(context=context if name == 'kubernetes' else ssl.create_default_context()))
             for name in self.origins}
-        self.auth = {'authentik': 'Bearer ' + credentials['authentikToken'],
-                     'harbor': 'Basic ' + base64.b64encode((credentials['harborUsername'] + ':' + credentials['harborPassword']).encode()).decode()}
+        harbor_header, self.harbor_config_path = harbor_authorization(credentials)
+        self.auth = {'authentik': 'Bearer ' + credentials['authentikToken'], 'harbor': harbor_header}
 
     def call(self, system, method, path, body=None):
         validate_path(system, path)
@@ -115,7 +127,7 @@ def snapshot(client, policy):
     get = lambda path: client.call('kubernetes', 'GET', kbase + path)
     globals_ = get('globalroles')['items']
     cluster = policy['rancher']['cluster']
-    config = client.call('harbor', 'GET', '/api/v2.0/configurations')
+    config = client.call('harbor', 'GET', client.harbor_config_path)
     value = lambda key: config[key]['value']
     apps = client.rows('core/applications/?superuser_full_list=true')
     apps = [{k: app[k] for k in ['slug', 'pk', 'provider', 'policy_engine_mode']}
