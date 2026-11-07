@@ -1,12 +1,12 @@
 # Native observer profile (issue #105)
 
-**Status: implementation staged for review, not rolled out.** No Danila group,
+**Status: inactive implementation prepared for merge/review, not rolled out.** No Danila group,
 password, MFA, native account or application role has been changed. The Rancher
 chart switch remains **off** until review and the deployment acceptance below.
 CI is scoped to this policy; this file does not claim repository branch protection
 or mandatory review/check enforcement has already been configured.
 
-## Open rollout blockers (draft, not a completed deployment)
+## Separate activation gates (not blockers to merging the inactive code)
 
 * Current legacy `homelab-observer` admission also opens ordinary Open WebUI use.
   That is **not** a viewer role. Before adding a strict observer, migrate existing
@@ -65,8 +65,8 @@ account read-only. Public search, evidence previews and status pages stay public
   not an identity lifecycle controller. Default API access is GET only. Apply
   requires the exact fresh plan hash, a second snapshot, Kubernetes UID/RV tests,
   private before/after/progress receipts and an uncertain-write stop marker.
-* Existing identity integrations retain the group admission once safe defaults
-  exist; Harbor's authoritative native configuration retains admin-only project
+* Existing identity integrations retain already-open group admission when safe
+  defaults exist, but cannot open it instead of the reviewed bootstrap; Harbor's authoritative native configuration retains admin-only project
   creation. Foundation does not newly admit Harbor observers without the private
   bootstrap readiness receipt. No client secret or redirect URI is changed.
 

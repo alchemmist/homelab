@@ -84,6 +84,16 @@ class Client:
         raise RuntimeError('Incomplete Harbor pagination')
 
 
+    def harbor_groups(self):
+        result = []
+        for page in range(1, 101):
+            data = self.call('harbor', 'GET', '/api/v2.0/usergroups?group_name=homelab-observer&page_size=100&page=' + str(page))
+            result.extend(g for g in data if g.get('group_name') == 'homelab-observer')
+            if len(data) < 100:
+                return result
+        raise RuntimeError('Incomplete Harbor group pagination')
+
+
 def snapshot(client, policy):
     kbase = '/apis/management.cattle.io/v3/'
     get = lambda path: client.call('kubernetes', 'GET', kbase + path)
@@ -101,7 +111,7 @@ def snapshot(client, policy):
             'rancherGroupBinding': get('namespaces/' + cluster + '/clusterroletemplatebindings/homelab-observer-group'),
             'rancherSessionSetting': get('settings/auth-user-session-ttl-minutes'),
             'rancherAuth': get('authconfigs/genericoidc'),
-            'harbor': {'oidcGroupsClaim': value('oidc_groups_claim'), 'oidcAdminGroup': value('oidc_admin_group'),
+            'harbor': {'groups': client.harbor_groups(), 'oidcGroupsClaim': value('oidc_groups_claim'), 'oidcAdminGroup': value('oidc_admin_group'),
                        'projectCreationRestriction': value('project_creation_restriction'),
                        'projects': {name: client.harbor_members(name) for name in policy['harbor']['projects']}}}
 

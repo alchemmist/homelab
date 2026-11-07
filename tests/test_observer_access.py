@@ -1,5 +1,6 @@
 """Hermetic native authorization-policy and bounded-bootstrap regression tests."""
 import ast
+import textwrap
 import copy
 import importlib.util
 import json
@@ -33,7 +34,7 @@ def fixture():
                             'enabled': True, 'accessMode': 'restricted', 'groupsClaim': 'groups',
                             'clientSecret': 'MUST-NOT-APPEAR-IN-PLAN',
                             'allowedPrincipalIds': ['genericoidc_user://owner-subject', 'genericoidc_user://preserved-subject']},
-            'harbor': {'oidcGroupsClaim': 'groups', 'oidcAdminGroup': 'homelab-owner',
+            'harbor': {'groups': [], 'oidcGroupsClaim': 'groups', 'oidcAdminGroup': 'homelab-owner',
                        'projectCreationRestriction': 'everyone', 'projects': {p: [] for p in POLICY['harbor']['projects']}},
             'apps': [{'slug': slug, 'pk': 'app-' + slug, 'provider': i, 'policy_engine_mode': 'any'}
                      for i, slug in enumerate(POLICY['nativeAdmission'], start=1)],
@@ -53,7 +54,8 @@ def converge(state, operations):
             state['harbor']['projectCreationRestriction'] = op['body']['project_creation_restriction']
         elif op['system'] == 'harbor':
             project = op['path'].split('/')[-2]
-            state['harbor']['projects'][project].append({'entity_type': 'g', 'entity_name': 'homelab-observer', 'role_id': 3})
+            state['harbor']['groups'] = [{'id': 101, 'group_name': 'homelab-observer', 'group_type': 3}]
+            state['harbor']['projects'][project].append({'entity_type': 'g', 'entity_name': 'homelab-observer', 'entity_id': 101, 'role_id': 3})
         else:
             state['bindings'].append(copy.deepcopy(op['body']))
 
@@ -64,6 +66,10 @@ def permits(rules, group, resource, verb, name=None):
 
 
 class ObserverPolicyTests(unittest.TestCase):
+    def test_this_delivery_does_not_activate_rancher_roles(self):
+        values = (ROOT / 'deploy/platform/rancher/public-entry/values.yaml').read_text()
+        self.assertIn('observerAccess:\n  enabled: false', values)
+
     def test_native_only_no_user_objects(self):
         self.assertEqual([o['kind'] for o in RBAC], ['GlobalRole', 'RoleTemplate', 'ClusterRoleTemplateBinding'])
         binding = RBAC[2]
@@ -190,6 +196,34 @@ class ObserverPolicyTests(unittest.TestCase):
             mutation(policy)
             with self.assertRaises(ValueError):
                 plan.build(fixture(), policy)
+
+    def test_native_reconciler_retains_but_never_opens_group_admission(self):
+        source = (ROOT / 'ansible/roles/identity_integrations/files/integrate.py').read_text()
+        block = source.split("    observer_principal='", 1)[1].split("    secret=", 1)[0]
+        block = textwrap.dedent("    observer_principal='" + block)
+        state = fixture()
+        converge(state, plan.build(state, POLICY))
+        def kubectl(args):
+            return json.dumps({'items': state['globalRoles']} if args[1].startswith('globalroles') else state['rancherSessionSetting'])
+        principal = POLICY['rancher']['groupPrincipal']
+        for original, expected in [({}, []), ({'allowedPrincipalIds': [principal]}, [principal])]:
+            env = {'json': json, 'kubectl': kubectl, 'original': original, 'allowed': []}
+            exec(block, env)
+            self.assertEqual(env['allowed'], expected)
+        state['rancherSessionSetting']['value'] = '960'
+        with self.assertRaisesRegex(RuntimeError, 'defaults drifted'):
+            exec(block, {'json': json, 'kubectl': kubectl, 'original': {'allowedPrincipalIds': [principal]}, 'allowed': []})
+
+    def test_harbor_group_type_and_native_entity_id_are_verified(self):
+        state = fixture()
+        converge(state, plan.build(state, POLICY))
+        state['harbor']['groups'][0]['group_type'] = 1
+        with self.assertRaisesRegex(ValueError, 'non-OIDC'):
+            plan.build(state, POLICY)
+        state['harbor']['groups'][0]['group_type'] = 3
+        state['harbor']['projects']['homelab'][0]['entity_id'] = 999
+        with self.assertRaisesRegex(ValueError, 'reviewed OIDC group'):
+            plan.build(state, POLICY)
 
     def test_unsupported_services_are_explicit_not_fake_viewers(self):
         for slug in ['n8n', 'syncthing', 'uptime-kuma', 'open-webui', '3x-ui', 'litellm']:

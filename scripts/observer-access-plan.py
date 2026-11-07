@@ -118,6 +118,9 @@ def build(state, policy):
     if state['harbor']['projectCreationRestriction'] != 'adminonly':
         ops.append({'system': 'harbor', 'method': 'PUT', 'path': '/api/v2.0/configurations',
                     'body': {'project_creation_restriction': 'adminonly'}})
+    native_groups = state['harbor']['groups']
+    require(len(native_groups) <= 1 and all(g.get('group_name') == policy['group']
+            and g.get('group_type') == 3 for g in native_groups), 'Ambiguous/non-OIDC Harbor group')
     for project in harbor['projects']:
         require(project in state['harbor']['projects'], 'Missing reviewed Harbor project')
         members = state['harbor']['projects'][project]
@@ -125,6 +128,8 @@ def build(state, policy):
         require(len(existing) <= 1, 'Duplicate Harbor group membership')
         if existing:
             require(existing[0]['role_id'] == 3, 'Existing group is not Guest; no silent downgrade/adoption')
+            require(len(native_groups) == 1 and existing[0].get('entity_id') == native_groups[0]['id'],
+                    'Harbor membership does not reference the reviewed OIDC group')
         else:
             ops.append({'system': 'harbor', 'method': 'POST', 'path': '/api/v2.0/projects/' + project + '/members',
                         'body': {'role_id': 3, 'member_group': {'group_name': policy['group'], 'group_type': 3}}})

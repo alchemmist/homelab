@@ -186,10 +186,12 @@ elif service=='rancher':
                and safe_default['metadata'].get('labels',{}).get('homelab.alchemmist.xyz/identity-profile')=='observer-v1'
                and all(not r.get('newUserDefault') or r['metadata']['name']=='homelab-observer-login' for r in raw_default)
                and (ttl.get('value') or ttl.get('default'))=='60')
-    if ready:
+    # Only the reviewed bootstrap may OPEN group admission: readiness here
+    # does not prove legacy chat migration or the other service prerequisites.
+    if observer_principal in original.get('allowedPrincipalIds',[]):
+        if not ready:
+            raise RuntimeError('Observer defaults drifted; do not silently rewrite active group admission')
         allowed.append(observer_principal)
-    elif observer_principal in original.get('allowedPrincipalIds',[]):
-        raise RuntimeError('Observer defaults drifted; do not silently rewrite active group admission')
     secret={'apiVersion':'v1','kind':'Secret','metadata':{'name':'genericoidcconfig-clientsecret','namespace':'cattle-global-data'},
         'type':'Opaque','stringData':{'clientsecret':clients['rancher']['client_secret']}}
     kubectl(['apply','-f','-'],secret)
