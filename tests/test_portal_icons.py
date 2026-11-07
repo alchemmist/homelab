@@ -54,7 +54,8 @@ class Response:
 class FakeAPI:
     def __init__(self):
         self.apps = {s: {'slug': s, 'pk': 'fixture-' + s, 'name': s, 'meta_icon': '',
-                         'provider': 42, 'policy_engine_mode': 'any', 'meta_hide': True,
+                         'provider': 42, 'provider_obj': {'property_mappings': ['mapping-b', 'mapping-a']},
+                         'policy_engine_mode': 'any', 'meta_hide': True,
                          'meta_launch_url': 'https://example.invalid/'} for s in targets()}
         self.apps['unmanaged'] = {'slug': 'unmanaged', 'pk': 'fixture-unmanaged', 'meta_icon': 'keep.svg'}
         self.patches = []
@@ -83,7 +84,10 @@ class FakeAPI:
             assert set(payload) == {'meta_icon'}
             self.apps[slug].update(payload)
             self.patches.append(slug)
-        return Response(self.apps[slug])
+        detail = copy.deepcopy(self.apps[slug])
+        if 'provider_obj' in detail:
+            detail['provider_obj']['property_mappings'].reverse()
+        return Response(detail)
 
 
 def run(tmp_path, api, expected=None):
@@ -136,3 +140,12 @@ def test_served_checksum_mismatch_leaves_review_marker(tmp_path):
         run(tmp_path, api)
     assert not api.patches
     assert (tmp_path / 'portal-icons-uncertain.json').exists()
+
+
+def test_property_mapping_membership_change_is_not_ignored(tmp_path):
+    api = FakeAPI()
+    expected = copy.deepcopy(list(api.apps.values()))
+    expected[0]['provider_obj']['property_mappings'].append('different-mapping')
+    with pytest.raises(RuntimeError, match='differs from reviewed audit'):
+        run(tmp_path, api, expected)
+    assert not api.patches

@@ -47,10 +47,21 @@ def private_json(path, value):
         json.dump(value, out)
 
 
+def normalize(value, key=''):
+    if isinstance(value, dict):
+        return {k: normalize(v, k) for k, v in value.items()}
+    if isinstance(value, list):
+        items = [normalize(v) for v in value]
+        # Authentik list/detail endpoints return this M2M relation in different
+        # orders. Preserve and compare every member, not incidental DB ordering.
+        return sorted(items, key=lambda v: json.dumps(v, sort_keys=True)) if key == 'property_mappings' else items
+    return value
+
+
 def stable(app):
     # These three fields are the icon and its derived, possibly signed URLs.
-    return {k: v for k, v in app.items()
-            if k not in {'meta_icon', 'meta_icon_url', 'meta_icon_themed_urls'}}
+    return normalize({k: v for k, v in app.items()
+                      if k not in {'meta_icon', 'meta_icon_url', 'meta_icon_themed_urls'}})
 
 
 inventory = api('GET', 'core/applications/?superuser_full_list=true&page_size=100')

@@ -27,3 +27,17 @@ Do not run the full Authentik deployment or provider/IAM reconciler just to chan
 icons. These metadata changes need no restart and grant no access. Re-running the
 helper after current applications exist preserves the same alias icon mappings.
 The earlier nine-icon verification above is historical, not the total inventory.
+
+Live acceptance:11 missing icons assigned;21/21 existing applications now have
+icons. Every application-resolved icon URL returned HTTPS200 and exact expected
+SHA-256 (20 local SVG mappings plus unchanged3x-ui PNG). Application UUIDs,
+providers, launch URLs, descriptions, visibility, group/policy metadata and other
+non-icon API fields matched the private pre-change inventory. No restart,
+provider reconciliation, new application, role or membership change was required.
+
+Authentik serializes provider `property_mappings` M2M IDs in different orders on
+list/detail reads. The helper normalizes ordering while comparing every member;
+a changed member still blocks the operation. The first attempt stopped before
+any application update on that ordering mismatch; full unchanged-state review
+preceded marker archival and the successful metadata-only run. A separately
+missing cached LMS asset was also caught during staging, before helper/API writes.

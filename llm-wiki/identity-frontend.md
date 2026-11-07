@@ -463,3 +463,23 @@ avatar attributes. Это не импорт Google login и не восстан�
 identity. Same email даёт тот же avatar. Внешние browser requests и возможность
 локальных initials: [текущий identity status](identity-current-state.md#аватары).
 Initials в production этой актуализацией не включались.
+
+## Иконки всех существующих приложений — 7 ноября 2026
+
+В Authentik21 application: добавлены11 отсутствовавших иконок, включая NetBird,
+LMS, RustFS, поиск, Syncthing и служебные aliases.20 записей используют локальные
+checksum-pinned SVG;3x-ui сохранил собственный branded PNG. Manifest
+`assets/service-icons/sources.json` связывает один asset с несколькими exact slugs
+через `applications`. SPI evidence использует существующую иконку Socrat.
+
+Все21 resolved URL проверены: HTTPS200 и ожидаемый SHA256. PATCH менял только
+`meta_icon`; UUID, providers, URLs, visibility и прочие non-icon application fields
+сохранены. Hidden gateway entries не раскрывались, роли/группы не выдавались,
+приложения не создавались, рестартов не было. Это проверка API/media, не визуальная
+приёмка всех карточек в реальной человеческой сессии.
+
+Для повторного применения — только `ansible/roles/authentik/files/icons.py`,
+не полный Authentik/IAM rollout. Helper использует lock, private backup, SVG/media
+checksum verification и exact before/after checks; при uncertain marker сначала
+reconcile. Порядок provider property-mapping M2M IDs нормализуется, сами memberships
+сравниваются полностью. [Assets/receipt contract](../assets/service-icons/README.md).
