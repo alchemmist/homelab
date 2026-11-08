@@ -47,7 +47,11 @@ worker-token credentials do not authorize queue-management endpoints.
 
 `queueUI.enabled` defaults false; live overlay enables it with the existing pinned
 runtime image. UI resources:10m/16Mi requests,200m/64Mi limits, separate deployment,
-no PVC. Worker image/resources/quotas/PVC and existing workflow graph are unchanged.
+no PVC. UI placement is pinned to the validated Reader node (`socrat-2`):
+large anonymous HTTPS-header checks failed on the original UI/worker nodes but
+succeeded on the Reader node. This is a scoped placement workaround, not a claim
+that the cluster's public-egress/large-header transit issue is repaired. TLS verification
+and SSO remain mandatory. Worker image/resources/quotas/PVC and workflow graph are unchanged.
 Backend changes require a natural-idle rollout and fresh verified HOST SQLite
 backup. Production mutation tests/synthetic jobs are not used: cancellation and
 race/rollback cases are tested only on temporary local SQLite fixtures.

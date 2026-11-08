@@ -24,6 +24,8 @@ spec:
     spec:
       automountServiceAccountToken: false
       enableServiceLinks: false
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.queueUI.nodeName | quote }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
