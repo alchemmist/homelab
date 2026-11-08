@@ -69,8 +69,8 @@ class Engine:
             finally:
                 del REQUEST_DEADLINE.at
     def run_v1(self, name, data):
-        # Admission deferral is the only successful HTTP patient outcome. Legacy
-        # run() never uses this route and therefore retains its 422 semantics.
+        # Admission and typed GitHub read timeouts use durable HTTP deferral.
+        # Legacy run() retains its 422 semantics; unsafe writes stay fatal.
         if not self.lock.acquire(blocking=False):
             result=self.store.owners.capacity_defer(name,data,time.time())
             if result['status']=='deferred':log_event('stage_deferred','warning',stage=name,code=result['code'])
@@ -96,9 +96,9 @@ class Engine:
                     if restarted is not None:
                         log_event('snapshot_revalidated',stage='match',code=exc.code)
                         return restarted
-                if exc.code=='LLM_ADMISSION_DEFERRED':
+                if exc.code in {'LLM_ADMISSION_DEFERRED','GITHUB_READ_TIMEOUT'}:
                     try:
-                        result=self.store.owners.finish(owner,True,time.time(),exc.retry_after)
+                        result=self.store.owners.finish(owner,True,time.time(),exc.retry_after,code=exc.code)
                         log_event('stage_deferred','warning',stage=name,code=exc.code)
                         return result
                     except Failure as terminal:

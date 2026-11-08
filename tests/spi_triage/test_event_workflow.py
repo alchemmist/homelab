@@ -79,7 +79,7 @@ class EventWorkflowTests(unittest.TestCase):
         import subprocess,time
         code=next(n for n in self.workflow['nodes'] if n['name']=='Select Claimed Job')['parameters']['jsCode']
         base={'contract':1,'status':'deferred','job_id':'a'*64,'execution_id':'1234','workflow_revision':'durable-v1','fence':'b'*64,'stage':'match','due_at':time.time()+80,'deadline':time.time()+21600,'code':'LLM_ADMISSION_DEFERRED'}
-        inputs=[base,{**base,'code':'WORKER_ADMISSION_DEFERRED'},
+        inputs=[base,{**base,'code':'WORKER_ADMISSION_DEFERRED'},{**base,'code':'GITHUB_READ_TIMEOUT'},
                 {**base,'code':'LLM_INVALID_EVIDENCE_REFERENCE'},
                 {**base,'code':'UNKNOWN'},{**base,'due_at':'tomorrow'},
                 {**base,'execution_id':'9999'},
@@ -88,7 +88,7 @@ class EventWorkflowTests(unittest.TestCase):
                 {'contract':1,'status':'empty','job_id':''}]
         js='const run=new Function("items","$execution",'+json.dumps(code)+');const inputs='+json.dumps(inputs)+';console.log(JSON.stringify(inputs.map(x=>{try{return run([{json:x}],{id:"1234"}).length}catch(e){return "error"}})));'
         results=json.loads(subprocess.check_output(['node','-e',js],text=True))
-        self.assertEqual(results,[1,1,'error','error','error','error','error',1,0])
+        self.assertEqual(results,[1,1,1,'error','error','error','error','error',1,0])
 
     def test_render_reuses_worker_identity_without_mutating_template(self):
         original = copy.deepcopy(self.workflow)

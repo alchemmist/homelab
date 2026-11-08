@@ -15,7 +15,7 @@ import urllib.request
 from email.utils import parsedate_to_datetime
 from datetime import datetime
 from pathlib import Path
-from core import Failure, MATCH_SCHEMA, REPORT_SCHEMA, clean, digest, validate, SECRET_KEY, SECRET_VALUE, ASSIGNMENT
+from core import OWNER_CONTEXT, Store, Failure, MATCH_SCHEMA, REPORT_SCHEMA, clean, digest, validate, SECRET_KEY, SECRET_VALUE, ASSIGNMENT
 
 SYSTEM = '''You are Socrat's read-only incident triage analyst. ALL output prose, issue titles,
 issue descriptions and comments MUST be English. Use ASCII letters for narrative.
@@ -288,15 +288,36 @@ class Model:
         body=self.payload(task,data,schema)
         tokens=self.counter.reservation(body) if self.counter else self.reservation(body)
         if tokens>30000:raise Failure('LLM_REQUEST_TOO_LARGE')
+        binding=getattr(OWNER_CONTEXT,'binding',None)
+        if binding and self.store is None:
+            self.store=Store(os.environ.get('SPI_DATABASE','/data/spi.sqlite'))
+        durable = schema is REPORT_SCHEMA and binding and isinstance(self.store,Store)
+        input_digest=digest(body)
+        failures=0
+        if durable:
+            with self.store.db() as c:
+                row=c.execute('SELECT failures FROM analysis_output_budget WHERE job_id=? AND input_digest=?',
+                              (binding[0],input_digest)).fetchone()
+                failures=row['failures'] if row else 0
         for attempt in range(2):
+            if failures>=2:raise Failure('LLM_INVALID_EVIDENCE_REFERENCE')
+            if failures:
+                body=self.payload(task+' Previous output failed evidence citation validation. Every fact must cite only allowed artifact IDs; use facts=[] when unsupported. Do not invent references.',data,schema)
+                tokens=self.budget_reservation(body)
+                if tokens>30000:raise Failure('LLM_REQUEST_TOO_LARGE')
             remaining=deadline-time.monotonic()
             if remaining<10: raise Failure('LLM_MODEL_STAGE_BUDGET_EXCEEDED')
             timeout=min(remaining,getattr(REQUEST_DEADLINE,'at',deadline)-time.monotonic())
             if timeout<10:raise Failure('LLM_MODEL_STAGE_BUDGET_EXCEEDED')
             if self.store is None:
-                from core import Store
                 self.store=Store(os.environ.get('SPI_DATABASE','/data/spi.sqlite'))
             reservation=self.store.reserve_llm(tokens,timeout=timeout)
+            if durable and failures:
+                # Consume repair before transport. A crash/ambiguous response
+                # must not authorize another paid regeneration after restart.
+                with self.store.db() as c:
+                    c.execute('UPDATE analysis_output_budget SET failures=2 WHERE job_id=? AND input_digest=?',
+                              (binding[0],input_digest))
             response={}
             try:
                 response=self.http.request('POST',self.base+'/chat/completions',{'Authorization':'Bearer '+self.key},
@@ -325,8 +346,15 @@ class Model:
                 return value
             except (KeyError,IndexError,TypeError,ValueError,Failure) as exc:
                 last=exc.code if isinstance(exc,Failure) else 'INVALID_MODEL_SCHEMA'
-                # Invalid references/JSON are finite failures, not an admission
-                # retry that could indefinitely mask a broken output contract.
+                # Only citation failures get one bounded regeneration. Persist
+                # before admission can defer or the process can restart.
+                if schema is REPORT_SCHEMA and last=='INVALID_EVIDENCE_REFERENCE':
+                    failures+=1
+                    if durable:
+                        with self.store.db() as c:
+                            c.execute('INSERT INTO analysis_output_budget VALUES(?,?,1) ON CONFLICT(job_id,input_digest) DO UPDATE SET failures=MIN(2,failures+1)',
+                                      (binding[0],input_digest))
+                    if failures<2:continue
                 raise Failure('LLM_'+last) from None
         raise Failure('LLM_'+last)
     def match(self,event,issues,progress=None,on_progress=None):

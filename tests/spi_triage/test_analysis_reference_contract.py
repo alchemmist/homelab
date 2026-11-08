@@ -43,7 +43,7 @@ class ReferenceContractTests(unittest.TestCase):
         m.http.request.return_value = {'choices': [{'message': {'content': json.dumps(result)}}]}
         self.assertEqual(m.call('analysis', self.data(()), REPORT_SCHEMA, time.monotonic() + 20), result)
 
-    def test_invalid_reference_still_fails_once_and_logs_counts_not_content(self):
+    def test_invalid_reference_fails_after_one_repair_and_logs_counts_not_content(self):
         m = self.model()
         result = f.report()
         result['facts'] = ['PRIVATE-FACT-TEXT [E002] and [E999]']
@@ -52,7 +52,7 @@ class ReferenceContractTests(unittest.TestCase):
             with self.assertRaises(Failure) as caught:
                 m.call('analysis', self.data(), REPORT_SCHEMA, time.monotonic() + 20)
         self.assertEqual(caught.exception.code, 'LLM_INVALID_EVIDENCE_REFERENCE')
-        self.assertEqual(m.http.request.call_count, 1)
+        self.assertEqual(m.http.request.call_count, 2)
         text = '\n'.join(logs.output)
         self.assertIn('unknown_reference_count', text)
         self.assertNotIn('PRIVATE-FACT-TEXT', text)

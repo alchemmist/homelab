@@ -162,10 +162,9 @@ class ModelEvidenceTests(unittest.TestCase):
         import time
         bad=report();bad['facts']=['A guessed fact [E999]'];good=report();good['facts']=['An alert fired [E001]']
         h=Mock();h.request.side_effect=[{'choices':[{'message':{'content':json.dumps(bad)}}]},{'choices':[{'message':{'content':json.dumps(good)}}]}]
-        with self.assertRaises(Failure) as caught:
-            Model(h,'fake',min_interval=0,store=Mock()).call('analyze',{'evidence':{'artifact_context':{'index':[{'id':'E001'}]}}},REPORT_SCHEMA,time.monotonic()+20)
-        self.assertEqual(caught.exception.code,'LLM_INVALID_EVIDENCE_REFERENCE')
-        self.assertEqual(h.request.call_count,1)
+        result=Model(h,'fake',min_interval=0,store=Mock()).call('analyze',{'evidence':{'artifact_context':{'index':[{'id':'E001'}]}}},REPORT_SCHEMA,time.monotonic()+20)
+        self.assertEqual(result,good)
+        self.assertEqual(h.request.call_count,2)
 
 
 class PrimaryReconciliationTests(unittest.TestCase):

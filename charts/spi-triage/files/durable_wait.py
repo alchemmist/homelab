@@ -180,7 +180,9 @@ class WaitOwners:
             c.execute('UPDATE jobs SET lease=? WHERE id=?', (min(now+INFLIGHT_SECONDS,row['deadline']),row['job_id']))
             return None, dict(row)
 
-    def finish(self, owner, deferred, now, retry_after=None):
+    def finish(self, owner, deferred, now, retry_after=None, code="LLM_ADMISSION_DEFERRED"):
+        if deferred and code not in {"LLM_ADMISSION_DEFERRED", "GITHUB_READ_TIMEOUT"}:
+            raise Failure("UNSAFE_WAIT_ERROR")
         import json
         with self.store.db() as c:
             row = c.execute('SELECT * FROM workflow_wait_owner WHERE job_id=?', (owner['job_id'],)).fetchone()
@@ -190,12 +192,12 @@ class WaitOwners:
             if deferred:
                 if job['stage'] != STAGES.index(row['stage']):
                     raise Failure('INVALID_STAGE_ORDER')
-                delay = Failure('LLM_ADMISSION_DEFERRED', retry_after).retry_after
+                delay = Failure(code, retry_after).retry_after
                 due = now+max(MIN_DURABLE_WAIT_SECONDS,(delay or 61)+2)
                 if due+WAIT_GRACE_SECONDS >= row['deadline']:
                     raise Failure('WAIT_DEADLINE_EXCEEDED')
                 phase='waiting'; stage=row['stage']; expires=due+WAIT_GRACE_SECONDS
-                c.execute("UPDATE jobs SET lease=0,available=?,updated=?,error='LLM_ADMISSION_DEFERRED' WHERE id=?",(due,now,row['job_id']))
+                c.execute("UPDATE jobs SET lease=0,available=?,updated=?,error=? WHERE id=?",(due,now,code,row['job_id']))
             else:
                 if job['stage'] != STAGES.index(row['stage'])+1:
                     raise Failure('INVALID_STAGE_ORDER')
@@ -206,7 +208,7 @@ class WaitOwners:
             fence=secrets.token_hex(32)
             response=self.envelope(dict(row)|{'fence':fence,'stage':stage,'due':due},
                                    'deferred' if deferred else ('complete' if phase=='complete' else 'ready'))
-            if deferred:response['code']='LLM_ADMISSION_DEFERRED'
+            if deferred:response['code']=code
             if phase=='complete': response['outcome']=job['state']
             c.execute('UPDATE workflow_wait_owner SET phase=?,stage=?,fence=?,due=?,expires=?,response=? WHERE job_id=?',
                       (phase,stage,fence,due,expires,json.dumps(response),row['job_id']))

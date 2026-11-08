@@ -170,6 +170,9 @@ class Store:
             CREATE TABLE IF NOT EXISTS match_review_v3 (
               job_id TEXT PRIMARY KEY REFERENCES jobs(id) ON DELETE CASCADE,
               progress TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS analysis_output_budget (
+              job_id TEXT NOT NULL REFERENCES jobs(id), input_digest TEXT NOT NULL,
+              failures INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(job_id,input_digest));
             CREATE TABLE IF NOT EXISTS llm_rate_metadata (job_id TEXT PRIMARY KEY, metadata TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS llm_admission (id INTEGER PRIMARY KEY, tokens INTEGER NOT NULL, expires REAL NOT NULL, active INTEGER NOT NULL);
             CREATE TABLE IF NOT EXISTS dispatch (singleton INTEGER PRIMARY KEY CHECK(singleton=1), token TEXT NOT NULL, deadline REAL NOT NULL, attempts INTEGER NOT NULL);

@@ -555,3 +555,30 @@ non-hold policy and v2-safe rollback. Claim and dispatcher use the same effectiv
 eligibility, without changing stored deadlines or pending-age alerts. Source
 regressions are not live acceptance; later reviewed rollout requires a fresh
 SQLite backup and fetch/rebase. Do not force claims or promote selected jobs.
+
+## Execution 13873 / 13897 correction (local source, not deployed)
+
+Typed `GITHUB_READ_TIMEOUT` now uses the v1 durable deferred response and the
+workflow's existing Wait/Resume route. The same stage, absolute deadline and
+checkpoint survive; unsafe publication timeouts and legacy API semantics do not
+change. Deploy the workflow validator allowlist BEFORE the worker change: old
+validators reject the new deferred code. Use explicit inactive update by original
+ID, preserving settings/credentials/static data and restoring original activation;
+coordinate existing waiting executions rather than blindly replacing live state.
+
+Only `INVALID_EVIDENCE_REFERENCE` in report generation gets one repair request.
+The strict existing-ID validator remains mandatory. The additive
+`analysis_output_budget` table binds job plus exact original request digest,
+including model/prompt/schema/input. It stores counters only, not model text.
+The first rejection is durable before admission waiting; the repair is consumed
+before transport. A crash or lost repair response fails closed rather than issuing
+another regeneration. Normal transport/admission handling is unchanged, but a
+consumed repair is not replenished after transport failure. A changed original
+request has a separate budget; no historical failed calls are retroactively counted.
+Malformed JSON/schema and unsafe output do not get this citation-specific repair.
+Rollback retains the additive ledger; no queue/budget/lease resets or job revival.
+
+Source regressions are offline, not production acceptance. Before any push (SPI
+is auto-synced), take and verify a fresh consistent SQLite backup, review the
+workflow/worker rollout order and coordinate with the concurrent spi-evidence
+repository extraction. No Reader/API/UI or evidence storage migration is included.
