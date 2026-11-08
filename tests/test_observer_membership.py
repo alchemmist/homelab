@@ -114,6 +114,18 @@ class MembershipTests(unittest.TestCase):
         self.assertFalse(reader.admitted('subject',{'homelab-observer'}))
         self.assertEqual(reader.rows.call_count,2)
 
+    def test_initial_human_cutover_is_only_reviewed_group_delta(self):
+        spec=importlib.util.spec_from_file_location('initial_cutover',ROOT/'scripts/observer-initial-person-cutover.py')
+        c=importlib.util.module_from_spec(spec);spec.loader.exec_module(c)
+        user={'pk':94,'uuid':c.UUID,'is_active':True,'is_superuser':False,'groups':[c.READONLY,c.NETBIRD,'unrelated']}
+        group={'pk':'observer','name':'homelab-observer','is_superuser':False,'roles':[],'parents':[]}
+        before=copy.deepcopy(user);ops=c.plan(user,group)
+        self.assertEqual(user,before)
+        self.assertEqual(ops,[{'path':'core/groups/observer/add_user/','body':{'pk':94}}, {'path':'core/groups/'+c.READONLY+'/remove_user/','body':{'pk':94}}])
+        user['groups']=[c.NETBIRD,'unrelated','observer'];self.assertEqual(c.plan(user,group),[])
+        user['uuid']='somebody-else'
+        with self.assertRaises(RuntimeError):c.plan(user,group)
+
     def test_grafana_roles_are_explicit_without_unadmitted_viewer_fallback(self):
         import yaml
         a=yaml.safe_load((ROOT/'deploy/identity/grafana-oidc-values.yaml').read_text())['grafana']['env']
