@@ -126,6 +126,45 @@ class MembershipTests(unittest.TestCase):
         user['uuid']='somebody-else'
         with self.assertRaises(RuntimeError):c.plan(user,group)
 
+    def test_initial_cutover_records_both_steps_without_overwriting_progress(self):
+        import tempfile, types, importlib.machinery, io, contextlib, json
+        spec=importlib.util.spec_from_file_location('initial_driver',ROOT/'scripts/observer-initial-person-cutover.py')
+        c=importlib.util.module_from_spec(spec);spec.loader.exec_module(c)
+        user={'pk':94,'uuid':c.UUID,'is_active':True,'is_superuser':False,
+              'groups':[c.READONLY,c.NETBIRD],'password_change_date':'unchanged'}
+        group={'pk':'observer','name':'homelab-observer','is_superuser':False,'roles':[],'parents':[]}
+        posts=[]
+        class Client:
+            def __init__(self,credentials):pass
+            def rows(self,path):return [copy.deepcopy(group)]
+            def call(self,system,method,path,body=None):
+                if method=='GET':return copy.deepcopy(user)
+                posts.append((path,body))
+                if '/add_user/' in path:user['groups'].append('observer')
+                else:user['groups'].remove(c.READONLY)
+        fake=types.ModuleType('observer_bootstrap');fake.Client=Client
+        fake.private=lambda *args,**kwargs:None
+        fake.planner=types.SimpleNamespace(exact=lambda rows,key,value:next(x for x in rows if x[key]==value))
+        def exclusive_save(path,value):
+            with path.open('x') as file:json.dump(value,file)
+        fake.save=exclusive_save
+        class Loader:
+            def create_module(self,spec):return fake
+            def exec_module(self,module):pass
+        boot_spec=importlib.machinery.ModuleSpec('observer_bootstrap',Loader())
+        digest=c.fingerprint(user,group)
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);credentials=root/'credentials.json';credentials.write_text('{}')
+            acceptance=root/'acceptance.json';acceptance.write_text(json.dumps({'nativeObserverAcceptanceReady':True,'services':['rancher','wiki','argocd','grafana'],'harborGated':True}))
+            state=root/'state'
+            args=['cutover','--credentials',str(credentials),'--state',str(state),'--acceptance',str(acceptance),'--apply','--approve-plan-hash',digest]
+            with patch('sys.argv',args),patch.object(c.importlib.util,'spec_from_file_location',return_value=boot_spec),contextlib.redirect_stdout(io.StringIO()):c.main()
+            self.assertEqual(len(posts),2)
+            self.assertTrue((state/'progress-1.json').exists());self.assertTrue((state/'progress-2.json').exists())
+            self.assertFalse((state/'uncertain.json').exists())
+            self.assertEqual(set(user['groups']),{c.NETBIRD,'observer'})
+            self.assertTrue(json.loads((state/'receipt.json').read_text())['netbird_preserved'])
+
     def test_grafana_roles_are_explicit_without_unadmitted_viewer_fallback(self):
         import yaml
         a=yaml.safe_load((ROOT/'deploy/identity/grafana-oidc-values.yaml').read_text())['grafana']['env']

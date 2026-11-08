@@ -29,4 +29,12 @@ spec:
               The minute worker has no success for at least three minutes (or never succeeded).
               Inspect its Job logs and CAS identity checks; do not manually grant broader roles.
               Kubernetes cookies/keys can retain cached observer reads until reconciliation recovers.
+        - alert: HomelabObserverMembershipWorkerMissing
+          expr: absent(kube_cronjob_info{namespace="cattle-system",cronjob="observer-membership"})
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: Observer membership worker is missing or not observable
+            description: Restore the reviewed CronJob and metric collection before claiming bounded native revocation.
 {{- end }}
