@@ -237,7 +237,9 @@ class Store:
                     count+=1
                     retained['snapshot_generation']=count
                     c.execute('INSERT OR REPLACE INTO snapshot_budget VALUES(?,?,?)',(key,count,json.dumps(retained)))
-                c.execute("UPDATE jobs SET stage=0,result=?,state='processing',updated=?,lease=? WHERE id=?",(json.dumps(retained),time.time(),self._processing_lease(c,key,time.time()),key))
+                now=time.time()
+                c.execute("UPDATE jobs SET stage=0,result=?,state='processing',updated=?,lease=? WHERE id=?",(json.dumps(retained),now,self._processing_lease(c,key,now),key))
+                self.owners.snapshot_replaced(c,key,now)
         if exhausted:raise Failure('WRITE_NEEDS_REVIEW')
 
     def reserve_llm(self, tokens, timeout=600, now=None):

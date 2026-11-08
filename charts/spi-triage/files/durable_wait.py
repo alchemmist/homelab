@@ -212,6 +212,46 @@ class WaitOwners:
                       (phase,stage,fence,due,expires,json.dumps(response),row['job_id']))
             return response
 
+    def snapshot_replaced(self,c,key,now):
+        """Commit a safe rewind receipt with Store.replace_snapshot's job reset.
+
+        Legacy calls have no running v1 owner. Never mint a new claim, deadline,
+        budget, or authority to replay an ambiguous publication.
+        """
+        import json
+        from core import OWNER_CONTEXT
+        row=c.execute('SELECT * FROM workflow_wait_owner WHERE job_id=?',(key,)).fetchone()
+        if not row or row['phase'] not in ('ready','waiting','running'):return
+        if (row['phase']!='running' or getattr(OWNER_CONTEXT,'binding',None)!=(key,row['fence'])
+                or row['stage'] not in ('collect','analyze','publish')
+                or row['request_stage']!=row['stage'] or row['request_fence']!=row['fence']):
+            raise Failure('STALE_WAIT_OWNER')
+        if now>=min(row['expires'],row['deadline']):raise Failure('WAIT_OWNER_EXPIRED')
+        job=c.execute('SELECT stage,state,intent FROM jobs WHERE id=?',(key,)).fetchone()
+        if job['stage']!=0 or job['state']!='processing' or job['intent']:
+            raise Failure('INVALID_STAGE_ORDER')
+        fence=secrets.token_hex(32);expires=min(now+WAIT_GRACE_SECONDS,row['deadline'])
+        response=self.envelope(dict(row)|{'fence':fence,'stage':'match','due':now},'ready')
+        c.execute("UPDATE workflow_wait_owner SET phase='ready',stage='match',fence=?,due=?,expires=?,response=? WHERE job_id=?",
+                  (fence,now,expires,json.dumps(response),key))
+        c.execute('UPDATE jobs SET lease=?,updated=? WHERE id=?',(expires,now,key))
+
+    def snapshot_response(self,owner,now):
+        """Only the exact committed old request may receive its rewind receipt."""
+        import json
+        with self.store.db() as c:
+            row=c.execute('SELECT * FROM workflow_wait_owner WHERE job_id=?',(owner['job_id'],)).fetchone()
+            if (not row or row['phase']!='ready' or row['stage']!='match'
+                    or row['execution_id']!=owner['execution_id'] or row['revision']!=owner['revision']
+                    or row['request_fence']!=owner['fence'] or row['request_stage']!=owner['stage']
+                    or not row['response'] or now>=min(row['expires'],row['deadline'])):return None
+            job=c.execute('SELECT stage,state,intent FROM jobs WHERE id=?',(owner['job_id'],)).fetchone()
+            if job['stage']!=0 or job['state']!='processing' or job['intent']:return None
+            response=json.loads(row['response'])
+            if response.get('status')!='ready' or response.get('stage')!='match' or response.get('fence')!=row['fence']:
+                raise Failure('STALE_WAIT_OWNER')
+            return response
+
     def failure_callback(self,owner):
         def release(c):
             c.execute('INSERT OR IGNORE INTO workflow_execution_tombstone VALUES(?)',(owner['execution_id'],))
