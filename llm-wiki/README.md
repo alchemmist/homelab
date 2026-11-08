@@ -1,6 +1,6 @@
 # LLM wiki: карта актуального контекста Socrat
 
-Актуализация **7 ноября 2026**. Это рабочая память для сопровождения homelab,
+Актуализация **8 ноября 2026** (observer; остальные срезы датированы в своих разделах). Это рабочая память для сопровождения homelab,
 не public wiki content и не набор команд для автоматического повторения миграций.
 Git/manifests задают intent; runtime определяется отдельной проверкой.
 
@@ -21,6 +21,7 @@ Git/manifests задают intent; runtime определяется отдель
 | --- | --- |
 | Сетевой onboarding, devices, JWT policies и node agents | [NetBird](netbird.md), [DNS](public-dns.md) |
 | Публичный SSH key, обычный Linux account и отзыв | [SSH user](ssh-user.md), [host/RBAC](identity-host-access.md) |
+| Observer: обычное групповое подключение, Danila, отзыв доступа | [Native observer](native-observer.md), [приёмка](../docs/identity/observer-acceptance-20261108.md) |
 | Главный identity справочник и ежедневные операции | [Identity](identity.md), [операции](identity-operations.md) |
 | OIDC, native app roles, gateway exceptions | [Архитектура](identity-architecture.md), [интеграции](identity-integrations.md), [диагностика](identity-gateway-troubleshooting.md) |
 | Optional disabled SSH-key integration | [UUID/key assignments](identity-ssh-keys.md) |
@@ -47,7 +48,8 @@ Git/manifests задают intent; runtime определяется отдель
 - Не публиковать credentials, QR, private keys, subscriptions, tokenized share/
   recovery/activation URLs. Публичный hostname не делает machine API anonymous.
 
-Эта редакция изменила только `llm-wiki`, после read-only чтения Argo/pods/IdP.
-Infrastructure sync/rollout, пароль/MFA за человека и смена VPN/DNS не выполнялись.
+Эта редакция изменила только `llm-wiki` и свела уже завершённую приёмку observer
+в общую навигацию. Новые runtime-проверки/rollout, пароль/MFA за человека и смена
+VPN/DNS при обновлении справочника не выполнялись.
 
 - [Официальные MCP для агентов](official-mcp.md) — project settings, полная сервисная инвентаризация, read-only scope и реальные blockers.

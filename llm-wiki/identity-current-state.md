@@ -1,6 +1,26 @@
 # Identity: текущий статус и первый вход
 
-## Текущая граница — 7 ноября, снятие внешних auth gates
+## Текущее дополнение — observer принят 8 ноября
+
+`homelab-observer` даёт нативный viewer-доступ к **Rancher, Grafana, Wiki, Argo CD**.
+Danila уже добавлен в эту группу; `authentik Read-only` удалена, согласованный
+`netbird-internal-admins` сохранён. Пароль/MFA не менялись, вход за человека не
+выполнялся, персональные native users/roles не provisionились. Следующее обычное
+подключение — IdP group add и native SSO/JIT, не повтор one-time cutover script.
+
+Проверены allow/deny, старые browser/API/MCP credentials, новый вход после удаления
+группы и автоматический remove/re-add native кеша. Прежние owner/editor/direct
+права аддитивны. **Harbor observer не поддержан:** admission и три Guest grants
+закрыты после реального CLI revocation failure; отдельная задача #134. Не открывать
+его по наличию старого bootstrap receipt. Подробности: [native observer](native-observer.md),
+[приёмка](../docs/identity/observer-acceptance-20261108.md), [runbook](../docs/identity/observer-profile.md).
+
+## Исторический срез — 7 ноября, снятие общих внешних auth gates
+
+Ниже зафиксирована приёмка того этапа, не текущее обещание anonymous SPI evidence
+или нулевого числа Proxy Providers. Позднее RustFS получил отдельную private
+single-domain защиту: [live edge](../docs/rustfs/private-single-domain-live.md).
+Её не отменять при работе с observer, которому RustFS не выдавался.
 
 Удалены11 obsolete Authentik Applications (включая старую Kuma bookmark-карточку)
 и10 Proxy Providers; outpost assignments сняты.10 native OIDC Applications,
@@ -30,7 +50,8 @@ PUT/POST/PATCH/DELETE405. [Приёмка](../docs/identity/native-browser-auth.
 | Человек | Логин Authentik | Состояние |
 | --- | --- | --- |
 | Владелец | `alchemmist` | Защищённый owner, личный MFA, единственный human в `homelab-owner` |
-| Tim | `antropophag` | Active/internal, nonsuperuser; на проверке пароль не задан и `last_login=null` |
+| Tim | `antropophag` | Active/internal, nonsuperuser; на проверке 7 ноября пароль не задан и `last_login=null` |
+| Danila | Существующий immutable subject сохранён | С 8 ноября observer в четырёх сервисах; IdP Read-only снята, NetBird сохранён; реальный первый SSO не impersonated |
 
 UUID Tim: `6015c85b-82e9-49ce-a4e3-0270c676e26d`. Старую identity удалили штатно
 после явного запроса владельца. Затем изменили **только username** с `tim` на

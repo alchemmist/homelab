@@ -3,6 +3,21 @@
 Срез на **30 октября 2026**. Harbor уже развёрнут; распределённая HA-схема пока
 не развёрнута из-за ресурсов. Это контекст и инструкция, не замена live-проверке.
 
+## Observer: актуальное ограничение на 8 ноября 2026
+
+**`homelab-observer` не открывает Harbor.** Native Guest правильно запрещал push/delete,
+но старый CLI secret продолжал получать pull после удаления IdP-группы. Поэтому
+сняты только observer admission и его Guest-привязки в `homelab`, `library`,
+`spi-triage`; owner, robots и остальные grants не затронуты. Проверено: старая
+synthetic сессия видит ноль проектов, новый registry JWT не содержит actions.
+Уже выпущенный signed JWT не отзывается задним числом (наблюдался TTL30min).
+
+Не восстанавливать эти права старым bootstrap/readiness receipt, не удалять людей
+и не сбрасывать их пароли ради обхода кеша. Перед reopening нужна отдельная native
+revocation-приёмка: [#134](https://github.com/alchemmist/homelab/issues/134),
+[observer evidence](../docs/identity/observer-acceptance-20261108.md).
+Остальная registry/robot информация ниже сохраняет дату своего среза.
+
 ## Вход и состояние
 
 - Публичный UI и registry: **https://harbor.socrat.alchemmist.xyz**.

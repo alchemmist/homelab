@@ -2,6 +2,20 @@
 
 Canonical runbook: [observer profile](../docs/identity/observer-profile.md).
 Live evidence: [accepted rollout](../docs/identity/observer-acceptance-20261108.md).
+Implementation issue [#105](https://github.com/alchemmist/homelab/issues/105) closed;
+Harbor follow-up [#134](https://github.com/alchemmist/homelab/issues/134) remains open.
+
+## First use and scope
+
+Native SSO endpoints: [Rancher](https://rancher.socrat.alchemmist.xyz),
+[Grafana](https://grafana.socrat.alchemmist.xyz),
+[Wiki](https://wiki.socrat.alchemmist.xyz),
+[Argo CD](https://argocd.socrat.alchemmist.xyz).
+The person completes their own login/MFA; existing sessions may need sign-out/sign-in.
+The real human's first login is not claimed from synthetic acceptance. No private
+credential or per-user provisioning script is needed for ordinary group onboarding.
+
+## Accepted state and operational guardrails
 
 - Effective `homelab-observer` scope is **Rancher, Grafana, Wiki, Argo CD**.
   Add the IdP group; native SSO/JIT resolves local accounts/roles. No future

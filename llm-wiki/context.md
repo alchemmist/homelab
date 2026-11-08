@@ -1,6 +1,7 @@
 # Socrat: текущий контекст
 
-Актуализировано **7 ноября 2026**, по Git и отдельной read-only проверке кластера.
+Актуализировано **8 ноября 2026** для завершённого observer rollout; остальные
+срезы сохраняют свои даты. Это не новая полная live-проверка кластера.
 Начинать с [карты справочника](README.md). Старые датированные журналы — evidence
 своего этапа, не задания повторить миграцию и не замена текущим manifests/live state.
 
@@ -49,6 +50,17 @@ SSH transport, публичный ключ/Linux account, sudo, Kubernetes RBAC 
   по источникам, не по email или похожему имени.
 - n8n/3x-ui, Kuma admin/Syncthing — только штатный логин сервиса; внешние Authentik proxy gates удалены.
   не универсальный account SSO. Umami для Tim **приостановлен** до native OIDC (#85).
+- **Observer принят 8 ноября:** Rancher, Grafana, Wiki, Argo CD. Danila добавлен в
+  `homelab-observer`, ошибочная `authentik Read-only` снята, согласованный NetBird
+  сохранён; пароль/MFA и персональные native app/RBAC записи не создавались.
+  Обычному следующему человеку достаточно IdP-группы и native SSO/JIT. Имеющиеся
+  owner/editor/direct grants аддитивны, observer их не понижает.
+- Отзыв проверен на synthetic identity: старые cookie/действующий Rancher bearer,
+  Wiki MCP и новый вход без группы; автоматический native cache remove/re-add.
+  Worker не создаёт users/roles; его доступность контролируют Prometheus alerts.
+  Не обещать мгновенный logout всех OAuth/JWT. **Harbor для observer закрыт**:
+  нативный CLI-кеш не прошёл отзыв, follow-up #134. Не возвращать Guest grants
+  по старому readiness receipt. [Границы и evidence](native-observer.md).
 - Machine APIs, robots, MCP, agents, webhooks сохраняют отдельные credentials;
   их нельзя переводить на browser MFA redirects.
 - Grafana anonymous org access выключен. Исключение — только явно shared
