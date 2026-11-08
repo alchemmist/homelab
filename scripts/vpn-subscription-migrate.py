@@ -85,11 +85,12 @@ def is_legacy(uri):
     return p.scheme=='vless' and p.port==32063
 
 
-def snapshot(database,state,phase,json_format=False):
+def snapshot(database,state,phase,json_format=False,exclude_client_ids=()):
     directory=h.private_directory(state/phase)
     with closing(sqlite3.connect(database.as_uri()+'?mode=ro',uri=True)) as c:
         settings=dict(c.execute('SELECT key,value FROM settings'))
         rows=c.execute('SELECT id,sub_id FROM clients WHERE enable=1 ORDER BY id').fetchall()
+        rows=[row for row in rows if row[0] not in exclude_client_ids]
     if int(settings['subPort'])!=12096 or settings.get('subListen','') not in ('','127.0.0.1','0.0.0.0','::'):
         raise ValueError('Subscription listener drift')
     prefix=settings['subJsonPath' if json_format else 'subPath']

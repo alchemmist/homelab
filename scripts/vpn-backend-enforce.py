@@ -73,20 +73,22 @@ def apply(state,session_hash,config_hash,guard_hash):
                 if attempt==39:raise
                 time.sleep(.25)
         time.sleep(1);before_tunnel=target.transfer(port,s.state,'trojan-before')
+        with closing(sqlite3.connect(s.database.as_uri()+'?mode=ro',uri=True)) as c:
+            own_id=c.execute('SELECT id FROM clients WHERE email=?',(email,)).fetchone()[0]
         # Actor-marked GETs may update last_sub_fetch, never count as device refresh.
-        before=publication.snapshot(s.database,s.state,'backend-before-uri')
-        json_before=publication.snapshot(s.database,s.state,'backend-before-json',True)
+        before=publication.snapshot(s.database,s.state,'backend-before-uri',exclude_client_ids=(own_id,))
+        json_before=publication.snapshot(s.database,s.state,'backend-before-json',True,exclude_client_ids=(own_id,))
         pre=target.configuration(s.database)
         guard.apply(s.state,guard_hash)
-        after=publication.snapshot(s.database,s.state,'backend-after-uri')
-        json_after=publication.snapshot(s.database,s.state,'backend-after-json',True)
+        after=publication.snapshot(s.database,s.state,'backend-after-uri',exclude_client_ids=(own_id,))
+        json_after=publication.snapshot(s.database,s.state,'backend-after-json',True,exclude_client_ids=(own_id,))
         if before!=after or json_before!=json_after:raise ValueError('Publication changed through guard')
         after_tunnel=target.transfer(port,s.state,'trojan-after')
         if target.semantic(target.configuration(s.database))!=target.semantic(pre):raise ValueError('Proxy config changed during guard')
         guard.persist(s.state)
         h.save(s.state/'functional-acceptance.json',{'own_trojan_tls443_before':before_tunnel,'own_trojan_tls443_after':after_tunnel,
           'uri_json_public_backend_preserved':True,'original_identities':len(original['clients']),
-          'synthetic_fixture_extra_identity':True,'external_raw_denial_not_yet_verified':True})
+          'synthetic_fixture_excluded_from_original_subscription_comparison':True,'external_raw_denial_not_yet_verified':True})
     finally:
         if process:
             process.terminate()
@@ -125,4 +127,11 @@ def main():
 
 if __name__=='__main__':
     try:main()
-    except Exception:raise SystemExit('Backend enforcement stopped; inspect private receipts, never replay writes.') from None
+    except Exception:
+        import sys,traceback
+        try:
+            if '--state' in sys.argv:
+                state=Path(sys.argv[sys.argv.index('--state')+1])
+                if state.exists():h.save(h.private_directory(state)/'failure-private.json',{'traceback':traceback.format_exc()})
+        except (OSError,ValueError):pass
+        raise SystemExit('Backend enforcement stopped; inspect private receipts, never replay writes.') from None
