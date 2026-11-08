@@ -42,6 +42,8 @@ metadata:
 data:
   observer_membership.py: |
 {{ .Files.Get "files/observer_membership.py" | indent 4 }}
+  observer_runner.py: |
+{{ .Files.Get "files/observer_runner.py" | indent 4 }}
 ---
 apiVersion: batch/v1
 kind: CronJob
@@ -70,7 +72,7 @@ spec:
           containers:
             - name: reconcile
               image: docker.io/library/python:3.12-slim@sha256:4840d514c583a4d3d8cad3940e68dee6f0f6f3635c12fcd0a3d74c21a5b93a54
-              command: [python, -B, /code/observer_membership.py]
+              command: [python, -B, /code/observer_runner.py]
               env:
                 - {name: OBSERVER_IDP_READ_TOKEN_FILE, value: /credentials/token}
               securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
