@@ -299,6 +299,14 @@ def serve():
     model=Model(HTTP(),os.environ['LITELLM_KEY'])
     http=HTTP();store=Store(os.environ.get('SPI_DATABASE','/data/spi.sqlite'),minute_token_limit=int(os.environ.get('SPI_LLM_MINUTE_TOKENS','30000')))
     model.store=store
+    queue_admin = None
+    queue_token = ''
+    if os.environ.get('SPI_QUEUE_UI_ENABLED') == 'true':
+        from pathlib import Path
+        queue_token = Path('/queue-control/token').read_text().strip()
+        if len(queue_token) < 32:raise RuntimeError('QUEUE_ADMIN_TOKEN_REQUIRED')
+        from queue_admin import QueueAdmin, authorized as queue_authorized
+        queue_admin = QueueAdmin(store)
     recovered=store.recover_on_start()
     log_event('worker_started', recovered_jobs=recovered)
     delivery=Delivery(store,os.environ.get('BOT_INTERNAL_TOKEN',''),enabled=os.environ.get('SPI_TELEGRAM_LINKS_ENABLED','false')=='true')
@@ -340,6 +348,22 @@ def serve():
                 return self.send(200,'\n'.join(lines)+'\n','text/plain; version=0.0.4')
             return self.send(404,{'code':'NOT_FOUND'})
         def do_POST(self):
+            if self.path in ('/operator/queue/list', '/operator/queue/cancel'):
+                if queue_admin is None or not queue_authorized(self.headers, queue_token):
+                    return self.send(403, {'code':'FORBIDDEN'})
+                try:
+                    data = read_request_body(self)
+                    if self.path.endswith('/list'):
+                        return self.send(200, queue_admin.list(data))
+                    result = queue_admin.cancel(data)
+                    dispatcher.signal()
+                    return self.send(200, result)
+                except Failure as e:
+                    return self.send(409 if e.code in ('QUEUE_ITEM_CHANGED','QUEUE_ITEM_NOT_CANCELLABLE') else 400, {'code':e.code})
+                except (ValueError, TypeError, AttributeError):
+                    return self.send(400, {'code':'INVALID_REQUEST'})
+                except Exception:
+                    return self.send(500, {'code':'INTERNAL_ERROR'})
             if not hmac.compare_digest(self.headers.get('X-Worker-Token',''),os.environ['WORKER_TOKEN']):return self.send(403,{'code':'FORBIDDEN'})
             try:
                 data=read_request_body(self)
