@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "scope": "existing-socrat-2-only",
+  "newVpsOrPublicIp": false,
+  "realityCorrection": {
+    "port": 32053,
+    "protocol": "vless",
+    "network": "xhttp",
+    "security": "reality",
+    "serverNames": ["www.yahoo.com"],
+    "oldTarget": "www.intel.com:443",
+    "newTarget": "www.yahoo.com:443",
+    "preserveClientMaterial": true,
+    "apiApplyEnabled": false
+  },
+  "plaintextMigration": {
+    "port": 32063,
+    "requireEncryptedReplacementAndClientAcceptance": true,
+    "retirementEnabled": false,
+    "rotateClientCredentialsAutomatically": false
+  },
+  "rawBackendObservation": {
+    "ports": [12096, 32087],
+    "counterOnly": true,
+    "packetLogging": false,
+    "enforcementEnabled": false
+  },
+  "preserve": [
+    "production-traefik-443",
+    "native-panel-auth-and-existing-api-tokens",
+    "netbird",
+    "inter-node-and-recovery-wireguard",
+    "existing-wireguard-and-amneziawg-client-material",
+    "corporate-tunnelblick-and-global-dns-routes",
+    "tv-youtube-profile"
+  ]
+}

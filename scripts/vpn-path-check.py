@@ -14,6 +14,7 @@ import time
 import urllib.parse
 
 ALLOWED_HOSTS = {'wiki.socrat.alchemmist.xyz', 'grafana.socrat.alchemmist.xyz', 'vpn.alchemmist.xyz'}
+CONTROL_ADDRESSES = ('109.120.141.97', '109.173.40.247')
 MAX_BYTES = 2 * 1024 * 1024
 
 
@@ -28,8 +29,10 @@ def endpoint(url):
     return parsed
 
 
-def check(url, vantage, family=4):
+def check(url, vantage, family=4, control_address=None):
     parsed = endpoint(url)
+    if control_address is not None and (control_address not in CONTROL_ADDRESSES or family != 4):
+        raise ValueError('Explicit controls are limited to the two approved IPv4 ingress addresses')
     result = {'utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
               'vantage_label': vantage, 'family': family, 'host': parsed.hostname,
               'path_sha256': hashlib.sha256((parsed.path or '/').encode()).hexdigest(),
@@ -39,6 +42,10 @@ def check(url, vantage, family=4):
     start = time.monotonic()
     try:
         address = socket.getaddrinfo(parsed.hostname, 443, socket.AF_INET if family == 4 else socket.AF_INET6, socket.SOCK_STREAM)[0]
+        result['dns_address'] = address[4][0]
+        if control_address is not None:
+            address = (*address[:4], (control_address, 443))
+        result['explicit_control_address'] = control_address is not None
         result['address'] = address[4][0]
         stage = 'tcp'
         with socket.socket(address[0], socket.SOCK_STREAM) as raw:
@@ -77,8 +84,9 @@ def main():
     parser.add_argument('--url', default='https://wiki.socrat.alchemmist.xyz/')
     parser.add_argument('--vantage', required=True, help='Non-sensitive ISP/ASN/network label, not a person identifier')
     parser.add_argument('--family', type=int, choices=(4, 6), default=4)
+    parser.add_argument('--address', choices=CONTROL_ADDRESSES, help='Per-connection ingress control; no OS DNS/route override')
     args = parser.parse_args()
-    print(json.dumps(check(args.url, args.vantage, args.family), sort_keys=True))
+    print(json.dumps(check(args.url, args.vantage, args.family, args.address), sort_keys=True))
 
 
 if __name__ == '__main__':

@@ -6,6 +6,8 @@ on:
       - 'scripts/vpn-hardening-inventory.py'
       - 'scripts/vpn-backend-audit.py'
       - 'scripts/vpn-path-check.py'
+      - 'scripts/vpn-reality-plan.py'
+      - 'deploy/vpn-hardening/**'
       - 'tests/test_vpn_hardening.py'
   push:
     branches: [main]
@@ -14,6 +16,8 @@ on:
       - 'scripts/vpn-hardening-inventory.py'
       - 'scripts/vpn-backend-audit.py'
       - 'scripts/vpn-path-check.py'
+      - 'scripts/vpn-reality-plan.py'
+      - 'deploy/vpn-hardening/**'
       - 'tests/test_vpn_hardening.py'
 permissions:
   contents: read

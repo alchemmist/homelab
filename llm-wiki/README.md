@@ -20,6 +20,7 @@ Git/manifests задают intent; runtime определяется отдель
 | Тема | Документы |
 | --- | --- |
 | Сетевой onboarding, devices, JWT policies и node agents | [NetBird](netbird.md), [DNS](public-dns.md) |
+| VPN/TSPU: конфигурационное усиление текущего VPS, без новых покупок | [Hardening и текущие gates](vpn-hardening.md) |
 | Публичный SSH key, обычный Linux account и отзыв | [SSH user](ssh-user.md), [host/RBAC](identity-host-access.md) |
 | Observer: обычное групповое подключение, Danila, отзыв доступа | [Native observer](native-observer.md), [приёмка](../docs/identity/observer-acceptance-20261108.md) |
 | Главный identity справочник и ежедневные операции | [Identity](identity.md), [операции](identity-operations.md) |

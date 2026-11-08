@@ -34,6 +34,16 @@ SSH transport, публичный ключ/Linux account, sudo, Kubernetes RBAC 
 [SSH без sudo](ssh-user.md), [Linux/RBAC](identity-host-access.md),
 [публичный DNS](public-dns.md).
 
+## VPN: текущая работа по #83
+
+С 8 ноября — только конфигурация существующего socrat-2, **без покупки VPS/IP**.
+Свежий аудит и приватный WAL-aware backup выполнены. Установлены только ACCEPT
+backend-счётчики, не блокировки. Target-only REALITY preview готов, но mismatch
+и plaintext32063 ещё не исправлены: нужен штатный machine API доступ и client
+acceptance. `x-ui -getApiToken` ротирует токен, не извлекает его; не запускать ради
+чтения. Не выключать старые клиентские профили и не обещать обход IP/ASN-ban.
+[Актуальный scope, исследования, инструменты и gates](vpn-hardening.md).
+
 ## Личности и авторизация
 
 Начать с [текущего состояния identity](identity-current-state.md), затем

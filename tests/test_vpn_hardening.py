@@ -150,6 +150,11 @@ class PathCheckTests(unittest.TestCase):
                     'https://vpn.alchemmist.xyz/sub/secret', 'https://wiki.socrat.alchemmist.xyz:444/'):
             with self.assertRaises(ValueError):probe.endpoint(url)
 
+    def test_address_control_cannot_scan_arbitrary_destinations(self):
+        probe=load('path_check_address','vpn-path-check.py')
+        with self.assertRaises(ValueError):probe.check('https://wiki.socrat.alchemmist.xyz/','control',control_address='192.0.2.1')
+        with self.assertRaises(ValueError):probe.check('https://wiki.socrat.alchemmist.xyz/','control',family=6,control_address='109.120.141.97')
+
     def test_records_dns_failure_without_claiming_tunnel_or_recovery(self):
         probe=load('path_check_failure','vpn-path-check.py')
         with patch.object(probe.socket,'getaddrinfo',side_effect=OSError('PRIVATE_TEST_SENTINEL')):
@@ -171,3 +176,47 @@ class PathCheckTests(unittest.TestCase):
             self.assertEqual(result.get('complete_success_above_32k',False),expected)
             self.assertEqual(result['received_bytes'],40000)
             self.assertFalse(result['native_tunnel_test'])
+
+
+class RealityPlanTests(unittest.TestCase):
+    def setup_plan(self):
+        planner=load('reality_plan','vpn-reality-plan.py')
+        policy=json.loads((ROOT/'deploy/vpn-hardening/policy.json').read_text())
+        config={'inbounds':[{'id':1,'port':32053,'protocol':'vless','enable':1,
+          'stream_settings':json.dumps({'network':'xhttp','security':'reality','realitySettings':{'target':'www.intel.com:443','serverNames':['www.yahoo.com'],'privateKey':'PRIVATE_TEST_SENTINEL','shortIds':['PRIVATE_TEST_SENTINEL']}})}],
+          'clients':[{'id':1,'secret':'PRIVATE_TEST_SENTINEL'}],'client_inbounds':[],'hosts':[]}
+        return planner,policy,config
+
+    def test_preview_preserves_input_and_hides_client_material(self):
+        planner,policy,config=self.setup_plan();before=json.dumps(config,sort_keys=True)
+        result=planner.build(config,policy)
+        self.assertEqual(json.dumps(config,sort_keys=True),before)
+        self.assertEqual(len(result['operations']),1)
+        self.assertEqual(result['operations'][0]['new'],'www.yahoo.com:443')
+        self.assertNotIn('PRIVATE_TEST_SENTINEL',json.dumps(result))
+        self.assertEqual(result['production_writes'],0)
+
+    def test_already_correct_target_is_noop(self):
+        planner,policy,config=self.setup_plan()
+        stream=json.loads(config['inbounds'][0]['stream_settings']);stream['realitySettings']['target']='www.yahoo.com:443'
+        config['inbounds'][0]['stream_settings']=json.dumps(stream)
+        result=planner.build(config,policy);self.assertEqual(result['operations'],[])
+        self.assertEqual(result['before_configuration_sha256'],result['planned_configuration_sha256'])
+
+    def test_sni_and_security_drift_stop(self):
+        planner,policy,config=self.setup_plan()
+        for field,value in (('security','none'),('network','grpc')):
+            changed=json.loads(json.dumps(config));stream=json.loads(changed['inbounds'][0]['stream_settings']);stream[field]=value
+            changed['inbounds'][0]['stream_settings']=json.dumps(stream)
+            with self.assertRaises(ValueError):planner.build(changed,policy)
+        stream=json.loads(config['inbounds'][0]['stream_settings']);stream['realitySettings']['serverNames']=['www.sony.com']
+        config['inbounds'][0]['stream_settings']=json.dumps(stream)
+        with self.assertRaises(ValueError):planner.build(config,policy)
+
+    def test_ambiguous_target_and_scope_changes_stop(self):
+        planner,policy,config=self.setup_plan()
+        stream=json.loads(config['inbounds'][0]['stream_settings']);stream['realitySettings']['dest']='www.intel.com:443'
+        config['inbounds'][0]['stream_settings']=json.dumps(stream)
+        with self.assertRaises(ValueError):planner.build(config,policy)
+        policy['newVpsOrPublicIp']=True
+        with self.assertRaises(ValueError):planner.build(config,policy)
