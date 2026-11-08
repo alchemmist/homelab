@@ -1,12 +1,11 @@
 # Native observer profile (issue #105)
 
-**Status: activated configuration; final synthetic round-trip blocked by internal SSH access (2026-11-07).**
-See [the exact activation checkpoint](observer-activation-20261107.md).
-Rancher observer RBAC is enabled. The guarded bootstrap applied safe new-user
-defaults and the 60-minute human session setting. Legacy WebUI admission was split
-into `homelab-chat-user` without changing the existing person's subject or data.
-Danila is not onboarded until the four admitted services pass acceptance.
-CI remains scoped; this does not claim branch protection or independent approval.
+**Status: active and accepted for four services; Danila's initial membership correction completed (2026-11-08).**
+See [the live acceptance and cleanup](observer-acceptance-20261108.md). Rancher RBAC,
+safe new-user defaults, native admission and revocation handling are deployed.
+Danila now has observer instead of IdP Read-only; approved NetBird membership is
+preserved. No password/MFA or individual native app/RBAC provisioning was performed.
+CI is scoped; this is not a claim of branch protection or independent approval.
 
 **Harbor is deliberately gated, not a supported observer service today.** Real
 synthetic acceptance proved that its native Guest cannot push/delete, but a CLI
@@ -95,20 +94,22 @@ created and deleted a short-lived test key; it did not grant infrastructure writ
   stop races. Owner and existing explicitly admitted subjects are excluded; all
   other cached groups remain untouched. There is no user or role provisioning.
   Removing the cache entry was verified to make an existing browser session lose
-  nodes/namespaces/workload access immediately. Legacy bearer keys are expected to use the same current authorization; their
-  independent live removal/re-add acceptance remains pending. Do not claim this
-  from a successful browser/cache check alone.
+  nodes/namespaces/workload access immediately. An independent still-valid legacy bearer key was verified to lose node reads
+  (403) after group removal, not just the browser cookie. Re-admission preserved
+  the native identity without personal provisioning.
 * Wiki's pinned native OIDC implementation is preserved byte-for-byte by an init
   container. The native hook checks current IdP admission for linked **reader**
   cookie and MCP-token authentication, caching a complete snapshot for at most
   60 seconds. Read failures deny reader authentication, never extend stale
   access. Owner/editor/unlinked machine identities are not changed. No wiki
   account, password, session table, token or article is written by this hook.
-* Grafana keeps its native eight-hour maximum login lifetime and role refresh.
+* Grafana keeps its native eight-hour maximum login lifetime, explicit role-group
+  mapping and role refresh, with one-minute browser token rotation.
   Argo CD's default is an unprivileged `role:unassigned`, not a fallback Viewer;
   reviewed groups remain explicit. Existing `mcp` machine read access is explicit
   as well, preserving its prior default-reader behavior and separate sync grant.
-* Harbor stays gated because native CLI cached authorization survived removal.
+* Harbor stays gated because native CLI cached authorization survived removal
+  (follow-up [#134](https://github.com/alchemmist/homelab/issues/134)).
   Already issued registry JWTs are independently valid for up to 30 minutes;
   removing project membership is not a retroactive JWT-signature revocation.
 * Public Wiki articles, search/evidence and public status remain public. Observer
@@ -120,7 +121,7 @@ Its private token is installed once as `observer-membership-reader` in
 `cattle-system` and `wiki`. The Rancher worker can read users/attributes and patch
 UserAttributes, but cannot mutate users/RBAC/workloads, read Secrets or exec.
 It stops without mutation on incomplete/failed IdP reads. An unavailable worker
-can delay Rancher revocation: monitor failed/missed CronJobs; one minute is a
+can delay Rancher revocation: monitor failed/missed CronJobs and the source-controlled last-success/missing-worker alerts; one minute is a
 healthy-operation polling interval, not an unconditional SLA.
 
 One-time machine setup is source-controlled in

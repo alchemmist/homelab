@@ -1,6 +1,7 @@
 # Observer activation checkpoint — 2026-11-07
 
-**Not a completed human onboarding. Issue #105 remains open.**
+**Historical blocked checkpoint, superseded by [accepted activation on November 8](observer-acceptance-20261108.md).**
+The statements below describe the November 7 stop, not current membership.
 
 ## Delivered and checked
 
