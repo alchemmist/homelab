@@ -7,6 +7,8 @@ on:
       - 'scripts/vpn-backend-audit.py'
       - 'scripts/vpn-path-check.py'
       - 'scripts/vpn-reality-plan.py'
+      - 'scripts/vpn-panel-session.py'
+      - 'tests/test_vpn_panel_session.py'
       - 'deploy/vpn-hardening/**'
       - 'tests/test_vpn_hardening.py'
   push:
@@ -17,6 +19,8 @@ on:
       - 'scripts/vpn-backend-audit.py'
       - 'scripts/vpn-path-check.py'
       - 'scripts/vpn-reality-plan.py'
+      - 'scripts/vpn-panel-session.py'
+      - 'tests/test_vpn_panel_session.py'
       - 'deploy/vpn-hardening/**'
       - 'tests/test_vpn_hardening.py'
 permissions:
@@ -30,6 +34,8 @@ jobs:
         with:
           persist-credentials: false
       - name: Standard-library unit tests (no infrastructure access)
-        run: python3 -m unittest discover -s tests -p test_vpn_hardening.py -v
+        run: |
+          python3 -m unittest discover -s tests -p test_vpn_hardening.py -v
+          python3 -m unittest discover -s tests -p test_vpn_panel_session.py -v
       - name: Render counter-only policy offline
         run: python3 scripts/vpn-backend-audit.py --render
