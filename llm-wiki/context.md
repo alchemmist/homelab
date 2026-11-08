@@ -228,3 +228,13 @@ working path; verified internalTraefik443 Host/SNI endpoint works. No repair yet
 Proposed scoped internal auth-name DNS mapping with fresh approval/preimages,
 no globalDNS/node restarts/RBAC broadening/token rotation. Historical observer
 acceptance != current revocation bound. See observer acceptance incident appendix.
+
+
+Observer reconciliation DNS FIX ACCEPTED20:46UTC: auth hostname internal-only now
+maps private HA VIP192.168.0.250 via scoped coredns-custom key. InitialServiceIP
+attempt failed worker network-policy acceptance; own key corrected under fresh
+CAS, NO NetworkPolicy widening. Both CoreDNS replicas+VIP agree; natural successes
+20:44/45/46, Prometheus no pending/firing, freshness18s. Private receipt at
+/var/lib/homelab-observer-rollout/observer-internal-dns-vip-20261108 on socrat-0.
+Source scripts/observer-internal-dns.py, runbook deploy/identity/authentik-internal-dns.md.
+No tokens/RBAC/publicDNS/VPN changes/restarts. PublicVPN incident NOT repaired by this.

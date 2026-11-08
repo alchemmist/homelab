@@ -161,3 +161,37 @@ is a proposed fix; not applied without fresh owner approval/preimage/backup and
 acceptance. Do not change global/Mac DNS, flush DNS/firewalls, restart nodes, relax
 revocation freshness or issue a new token to mask this. Public authoritative
 failover redesign is a separate larger change requiring fleet preflight/receipts.
+
+
+### Scoped internal DNS repair accepted20:46UTC
+
+Owner explicitly approved the narrow internal Authentik DNS fix. Added only
+`authentik-internal.server` in `kube-system/coredns-custom`, full exact UID/RV/data
+CAS and private preimages. All existing keys including Rancher preserved.
+Initial mapping toTraefikService10.43.218.222 passed Wiki HTTPS but failed actual
+restricted worker acceptance (fast connect refusal). Credential-free TLS probes
+inside the existing worker network namespace, without executing in its CPU cgroup
+or changing routes, confirmed Service443 and10.250.0.1:443 refused while private
+HA VIP192.168.0.250:443 succeeded with full certificate verification.
+
+No NetworkPolicy broadened. After successful scoped machine APIHTTP200 via private
+VIP, replaced ONLY our exact previous key using its accepted preimage receipt and
+a fresh CAS approval. **Final target is private HA VIP192.168.0.250, not ServiceIP.**
+Public Host/SNI/issuer and TLS verification unchanged; no tokens, human membership,
+RBAC, public DNS, upstream resolvers, Mac settings or VPN profiles modified.
+No node/K3s/CoreDNS/pod restart or manually forced CronJob used. Normal projection
+and reload propagated the record; all three DNS views (VIP and two replicas)
+returned exactly192.168.0.250.
+
+Runtime proof: three consecutive natural successes20:44:12,20:45:12,20:46:11UTC.
+Prometheus freshness18.061s and no pending/firing series for the membership alert.
+Private final state `socrat-0:/var/lib/homelab-observer-rollout/observer-internal-dns-vip-20261108/`
+contains before/plan/after/write response, full runtime observations, three-job
+acceptance and alert readback. Initial failed ServiceIP attempt retained separately
+as historical pending acceptance, not represented as success. Rollback must remove
+only exact owned key after fresh CAS; do not restore whole old ConfigMap.
+
+Reviewed source/runbook: `scripts/observer-internal-dns.py`,
+`deploy/identity/authentik-internal-dns.md`. Targeted tests75passed+195subtests.
+This repairs internal membership reconciliation dependency, NOT public VPN access
+or authoritative DNS partial-partition failover generally. Those incidents remain.
