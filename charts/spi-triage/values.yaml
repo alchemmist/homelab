@@ -30,3 +30,4 @@ llmMinuteTokens: 30000
 # Private SSO queue viewer + safe pending-only cancellation, no retry controls.
 queueUI:
   enabled: false
+  authEgressCIDRs: []

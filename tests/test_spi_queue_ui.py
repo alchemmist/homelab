@@ -14,16 +14,20 @@ spec = importlib.util.spec_from_file_location('queue_web', ROOT / 'charts/spi-tr
 web = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(web)
 RealConnection = http.client.HTTPConnection
+RealAuthorization = web.Handler.authorization
 
 class QueueWebTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        cls.auth_patch = patch.object(web.Handler, 'authorization', return_value=200)
+        cls.auth_patch.start()
         cls.server = web.Server(('127.0.0.1', 0), web.Handler)
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
         cls.thread.start()
     @classmethod
     def tearDownClass(cls):
         cls.server.shutdown(); cls.server.server_close(); cls.thread.join(2)
+        cls.auth_patch.stop()
     def request(self, method='GET', path='/queue/', body=None, extra=None):
         headers = {'Host': 'rustfs.socrat.alchemmist.xyz', 'X-authentik-groups': 'homelab-owner'}
         headers.update(extra or {})
@@ -45,10 +49,15 @@ class QueueWebTests(unittest.TestCase):
         self.assertIn('expected_updated', js)
     def test_host_group_and_arbitrary_path_denied(self):
         self.assertEqual(self.request(extra={'Host':'evil.invalid'})[0], 400)
-        self.assertEqual(self.request(extra={'X-authentik-groups':'viewer'})[0], 403)
         self.assertEqual(self.request(path='/queue/../../service.py')[0], 404)
         self.assertEqual(self.request(path='/queue/app.js?x=1')[0], 404)
         self.assertEqual(self.request(path='/queue')[0], 308)
+    def test_anonymous_challenge_returns_exact_queue_and_does_not_trust_identity_header(self):
+        with patch.object(web.Handler, 'authorization', return_value=401):
+            code, headers, _ = self.request(extra={'X-authentik-groups':'homelab-owner'})
+        self.assertEqual(code, 302)
+        self.assertEqual(web.urllib.parse.parse_qs(web.urllib.parse.urlsplit(headers['Location']).query)['rd'], [web.ORIGIN + '/queue/'])
+
     def test_csrf_rejected_before_upstream(self):
         for extra in ({}, {'Origin':'https://evil.invalid', 'X-SPI-Queue':'1'},
                       {'Origin':web.ORIGIN, 'X-SPI-Queue':'1', 'Sec-Fetch-Site':'cross-site'}):
@@ -79,6 +88,31 @@ class QueueWebTests(unittest.TestCase):
         self.assertEqual(code, 405)
         self.assertNotIn('Access-Control-Allow-Origin', response_headers)
 
+class QueueAuthorizationTests(unittest.TestCase):
+    def test_caller_groups_never_authorize_without_real_cookie(self):
+        from email.message import Message
+        handler = Mock(); handler.headers = Message(); handler.headers['X-authentik-groups'] = 'homelab-owner'
+        with patch.object(web.AUTH, 'open') as auth:
+            self.assertEqual(RealAuthorization(handler), 401)
+            auth.assert_not_called()
+
+    def test_only_trusted_auth_response_groups_grant_access(self):
+        from email.message import Message
+        handler = Mock(); handler.headers = Message()
+        handler.headers['Cookie'] = 'opaque-local-session-fixture'
+        handler.headers['X-authentik-groups'] = 'homelab-owner'
+        with patch.object(web.AUTH, 'open') as auth:
+            response = auth.return_value.__enter__.return_value
+            response.status = 204; response.headers = {'X-authentik-groups':'viewer'}
+            self.assertEqual(RealAuthorization(handler), 403)
+            response.headers = {'X-authentik-groups':'homelab-owner'}
+            self.assertEqual(RealAuthorization(handler), 200)
+            request = auth.call_args.args[0]
+            self.assertEqual(request.full_url, web.ORIGIN + '/outpost.goauthentik.io/auth/nginx')
+            self.assertEqual(request.get_header('Cookie'), 'opaque-local-session-fixture')
+        with patch.object(web.AUTH, 'open', side_effect=OSError()):
+            self.assertEqual(RealAuthorization(handler), 503)
+
 class QueueHelmTests(unittest.TestCase):
     def test_private_routes_network_identity_and_separate_secret(self):
         raw = subprocess.check_output(['helm', 'template', 'spi-triage', str(ROOT/'charts/spi-triage'),
@@ -87,12 +121,9 @@ class QueueHelmTests(unittest.TestCase):
         def get(kind, name):return next(d for d in docs if d and d['kind']==kind and d['metadata']['name']==name)
         ingress = get('Ingress', 'spi-queue-ui')
         self.assertEqual(ingress['spec']['rules'][0]['host'], 'rustfs.socrat.alchemmist.xyz')
-        chain = ingress['metadata']['annotations']['traefik.ingress.kubernetes.io/router.middlewares'].split(',')
-        self.assertIn('clean-identity', chain[0]); self.assertIn('queue-auth', chain[1])
-        self.assertEqual(get('Middleware','spi-queue-clean-identity')['spec']['headers']['customRequestHeaders']['X-authentik-groups'], '')
-        auth = get('Middleware','spi-queue-auth')['spec']['forwardAuth']
-        self.assertFalse(auth['trustForwardHeader'])
-        self.assertEqual(auth['authResponseHeaders'], ['X-authentik-groups'])
+        self.assertNotIn('traefik.ingress.kubernetes.io/router.middlewares', ingress['metadata']['annotations'])
+        # Cookie is verified directly at the same fixed TLS endpoint as Reader.
+        self.assertIn("'/outpost.goauthentik.io/auth/nginx'", (ROOT/'charts/spi-triage/ui/queue_web.py').read_text())
         pod = get('Deployment','spi-queue-ui')['spec']['template']['spec']
         self.assertFalse(pod['automountServiceAccountToken'])
         container = pod['containers'][0]
@@ -102,7 +133,10 @@ class QueueHelmTests(unittest.TestCase):
         self.assertEqual(container['volumeMounts'][1]['mountPath'], '/queue-control')
         net = get('NetworkPolicy','spi-queue-ui')['spec']
         self.assertEqual(net['ingress'][0]['from'][0]['podSelector']['matchLabels']['app.kubernetes.io/name'], 'traefik')
-        self.assertEqual(net['egress'][0]['to'][0]['podSelector']['matchLabels'], {'app':'spi-triage'})
-        self.assertFalse(any('ipBlock' in target for rule in net['egress'] for target in rule['to']))
+        self.assertTrue(any(target.get('podSelector',{}).get('matchLabels')=={'app':'spi-triage'} for rule in net['egress'] for target in rule['to']))
+        cidrs = {target['ipBlock']['cidr'] for rule in net['egress'] for target in rule['to'] if 'ipBlock' in target}
+        self.assertEqual(cidrs, {'109.173.40.247/32','109.120.141.97/32'})
+        for rule in net['egress']:
+            if any('ipBlock' in target for target in rule['to']):self.assertEqual(rule['ports'], [{'port':443,'protocol':'TCP'}])
 
 if __name__ == '__main__':unittest.main()

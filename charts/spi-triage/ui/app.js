@@ -4,7 +4,7 @@ const states = {queued:'Новая', retry:'Ждёт повторной попы
 const stages = ['Match', 'Collect', 'Analyze', 'Publish', 'Готово'];
 let offset = 0, busy = false;
 const limit = 25;
-const date = n => n ? new Date(n * 1000).toLocaleString() : '—';
+const date = n => n ? new Date(n * 1000).toLocaleString('ru-RU') : '—';
 function node(tag, value, parent) {
   const el = document.createElement(tag);
   if (value !== undefined && value !== null) el.textContent = String(value);
@@ -14,12 +14,12 @@ function node(tag, value, parent) {
 async function api(action, data) {
   const response = await fetch('/queue/api/' + action, {method:'POST', credentials:'same-origin',
     headers:{'Content-Type':'application/json', 'X-SPI-Queue':'1'}, body:JSON.stringify(data),
-    signal:AbortSignal.timeout(12000)});
+    signal:AbortSignal.timeout(18000)});
   if (response.redirected || !(response.headers.get('Content-Type') || '').includes('application/json'))
     throw new Error('Проверьте SSO-сессию: откройте эту страницу заново.');
   const result = await response.json();
   if (!response.ok) {
-    const messages = {QUEUE_ITEM_CHANGED:'Задание изменилось. Обновите список.', QUEUE_ITEM_NOT_CANCELLABLE:'Задание уже выполняется или имеет публикацию; отмена запрещена.', QUEUE_UNAVAILABLE:'Backend временно недоступен. Данные на экране могут быть устаревшими.'};
+    const messages = {AUTH_UNAVAILABLE:'Сервис SSO временно недоступен. Данные могут быть устаревшими.', FORBIDDEN:'Нет прав на управление очередью.', AUTH_REQUIRED:'Сессия истекла. Откройте /queue/ заново для входа через SSO.', QUEUE_ITEM_CHANGED:'Задание изменилось. Обновите список.', QUEUE_ITEM_NOT_CANCELLABLE:'Задание уже выполняется или имеет публикацию; отмена запрещена.', QUEUE_UNAVAILABLE:'Backend временно недоступен. Данные на экране могут быть устаревшими.'};
     throw new Error(messages[result.code] || 'Запрос не выполнен (' + (result.code || response.status) + ').');
   }
   return result;
