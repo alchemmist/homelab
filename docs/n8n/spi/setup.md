@@ -556,7 +556,7 @@ eligibility, without changing stored deadlines or pending-age alerts. Source
 regressions are not live acceptance; later reviewed rollout requires a fresh
 SQLite backup and fetch/rebase. Do not force claims or promote selected jobs.
 
-## Execution 13873 / 13897 correction (local source, not deployed)
+## Execution 13873 / 13897 correction (deployed 8 November 2026)
 
 Typed `GITHUB_READ_TIMEOUT` now uses the v1 durable deferred response and the
 workflow's existing Wait/Resume route. The same stage, absolute deadline and
@@ -582,3 +582,28 @@ Source regressions are offline, not production acceptance. Before any push (SPI
 is auto-synced), take and verify a fresh consistent SQLite backup, review the
 workflow/worker rollout order and coordinate with the concurrent spi-evidence
 repository extraction. No Reader/API/UI or evidence storage migration is included.
+
+### Rollout receipt — 2026-11-08
+
+Source `48d158ffa8076e8a6b3f2e42aeb6899461635986` pushed to main and
+applied by ordinary Argo auto-sync. Updated only the deferred-code validator in
+original workflow `J9akzlydrf9XZiID`, preserving the graph/credentials/settings.
+Drained active publication execution14000 naturally with dispatch ingress
+inactive, took a fresh SQLite backup, then pushed. Re-enabled the same workflow
+after worker readiness. No forced claim, job replay or terminal revival.
+
+Argo Synced/Healthy at this revision; pod `spi-triage-7db656545d-247rx` Ready1/1,
+restart0. All four changed runtime files match normalized source; additive ledger
+exists. Pre-push backup204828672B SHA256
+`a3a17361c2e40cd5aa79d09b64036141ae7f5c59e31facfca1de32ea14804f50`;
+post backup204828672B SHA256
+`2d43d40a4dc94d6a25ce60d0fb7710f08d3b9445c0c79a640d8c87c32b5dcf93`.
+Both passed integrity/FK. All565 original IDs/creation times retained, as were
+terminal state/stage/result/intent for119cancelled,334complete,7dead,2dry_run.
+Temporary inactive dispatch produced normal unconfirmed/backoff, then natural
+`dispatch_sent`21:13:25Z and `publication_ok`21:13:29Z after reactivation.
+This proves resumed ordinary processing, not a live injected timeout/citation
+repair test. Those paths have offline regressions only; historic executions
+13873/13897 were not rerun. Python285 tests:282pass/3optional-tokenizer skips;
+ingressJS9/9; Helm lint/render and diff checks passed. spi-evidence extraction and
+unrelated worktree edits untouched. Observation ended; no ongoing monitoring claim.
