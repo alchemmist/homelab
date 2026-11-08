@@ -35,3 +35,5 @@
 {{- end }}
 {{- end }}
 {{- end }}
+
+{{- if not (kindIs "bool" .Values.queueUI.external) }}{{ fail "queueUI.external must be boolean" }}{{- end }}

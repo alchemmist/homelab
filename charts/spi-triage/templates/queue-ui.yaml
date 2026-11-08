@@ -1,4 +1,4 @@
-{{- if .Values.queueUI.enabled }}
+{{- if and .Values.queueUI.enabled (not .Values.queueUI.external) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:

@@ -30,6 +30,8 @@ llmMinuteTokens: 30000
 # Private SSO queue viewer + safe pending-only cancellation, no retry controls.
 queueUI:
   enabled: false
-  # Validated TLS auth path for normal-size session headers, like Reader.
-  nodeName: socrat-2
+  # Backend API remains enabled when frontend resources move to another app.
+  external: false
+  # socrat-2 is currently Unreachable; keep frontend on its existing ready node.
+  nodeName: socrat-3
   authEgressCIDRs: []

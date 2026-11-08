@@ -6,5 +6,5 @@ image:
   digest: ""
 imagePullSecrets:
   - name: spi-queue-ui-harbor-pull
-nodeName: socrat-2
+nodeName: socrat-3
 authEgressCIDRs: [109.173.40.247/32, 109.120.141.97/32]

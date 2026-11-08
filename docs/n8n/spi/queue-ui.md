@@ -47,11 +47,20 @@ worker-token credentials do not authorize queue-management endpoints.
 
 `queueUI.enabled` defaults false; live overlay enables it with the existing pinned
 runtime image. UI resources:10m/16Mi requests,200m/64Mi limits, separate deployment,
-no PVC. UI placement is pinned to the validated Reader node (`socrat-2`):
-large anonymous HTTPS-header checks failed on the original UI/worker nodes but
-succeeded on the Reader node. This is a scoped placement workaround, not a claim
-that the cluster's public-egress/large-header transit issue is repaired. TLS verification
-and SSO remain mandatory. Worker image/resources/quotas/PVC and workflow graph are unchanged.
+no PVC. UI source now lives in public `alchemmist/spi-queue-ui`; its CI tests/builds and
+publishes an independent Harbor image, with the standard deploy-to-socrat action
+updating `charts/spi-queue-ui/values.yaml` and `deploy/spi-queue-ui/values.yaml`.
+The new Argo app is bootstrapped disabled until a verified image is available.
+Current resources remain owned by spi-triage; do not claim runtime handoff yet.
+Owner explicitly waived the backup gate for UI publication/migration/releases.
+Existing private backups must not be deleted, and this grants no destructive
+backend/data operations. `socrat-2` became Unreachable; the UI stays on its
+existing ready node socrat-3. Earlier large-header success from Reader is not
+proof that pinning to an unavailable node can fix the current network issue.
+When activating the independent app, set legacy `queueUI.external=true` in the
+same reviewed handoff while keeping `queueUI.enabled=true`; compare rendered
+worker Deployment/ConfigMap byte-for-byte. No double resource ownership.
+SSO/TLS verification stays enabled. Worker image/resources/quotas/PVC and workflow graph are unchanged.
 Backend changes require a natural-idle rollout and fresh verified HOST SQLite
 backup. Production mutation tests/synthetic jobs are not used: cancellation and
 race/rollback cases are tested only on temporary local SQLite fixtures.
