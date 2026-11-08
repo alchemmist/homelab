@@ -1,0 +1,31 @@
+name: VPN hardening safety
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/vpn-hardening.yml'
+      - 'scripts/vpn-hardening-inventory.py'
+      - 'scripts/vpn-backend-audit.py'
+      - 'scripts/vpn-path-check.py'
+      - 'tests/test_vpn_hardening.py'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/vpn-hardening.yml'
+      - 'scripts/vpn-hardening-inventory.py'
+      - 'scripts/vpn-backend-audit.py'
+      - 'scripts/vpn-path-check.py'
+      - 'tests/test_vpn_hardening.py'
+permissions:
+  contents: read
+jobs:
+  offline-safety:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Standard-library unit tests (no infrastructure access)
+        run: python3 -m unittest discover -s tests -p test_vpn_hardening.py -v
+      - name: Render counter-only policy offline
+        run: python3 scripts/vpn-backend-audit.py --render
