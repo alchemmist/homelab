@@ -102,12 +102,18 @@ class IntegrationTests(unittest.TestCase):
     def test_owned_completion_priority_analysis_due_and_publish_ready(self):
         a=self.engine.run_v1('match',self.data)
         a=self.engine.run_v1('collect',a)
-        # Claim B during A's future WORKER-capacity wait (not a known LLM slot).
+        # A pre-upgrade cohort can contain multiple owners. Seed B explicitly;
+        # new admissions must no longer create that backlog during A's Wait.
         self.engine.lock.acquire()
         try:a=self.engine.run_v1('analyze',a)
         finally:self.engine.lock.release()
-        self.store.enqueue(f.event(start='2026-11-03T14:00:00Z'))
-        b=self.engine.claim({**self.identity,'execution_id':'4000'})
+        key=self.store.enqueue(f.event(start='2026-11-03T14:00:00Z'))['job_id']
+        with self.store.db() as c:
+            c.execute("UPDATE jobs SET state='processing',lease=0,updated=? WHERE id=?",(self.now,key))
+        self.store.owners.bind(key,'4000','durable-v1','match',self.now)
+        with self.store.db() as c:
+            c.execute("UPDATE workflow_wait_owner SET phase='ready',expires=? WHERE job_id=?",(self.now+180,key))
+            b=self.store.owners.envelope(c.execute('SELECT * FROM workflow_wait_owner WHERE job_id=?',(key,)).fetchone())
         self.assertEqual(b['stage'],'match')
         self.now=a['due_at']
         self.model.analyze.side_effect=Failure('LLM_ADMISSION_DEFERRED',61)
@@ -167,8 +173,10 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(next_job['stage'],'analyze')
 
     def test_fresh_v1_claim_acks_dispatch_replay_does_not_erase_new_wake(self):
-        self.model.match.side_effect=Failure('LLM_ADMISSION_DEFERRED',61)
-        self.engine.run_v1('match',self.data)
+        data=self.data
+        for stage in ('match','collect','analyze','publish'):
+            data=self.engine.run_v1(stage,data)
+        self.assertEqual(data['status'],'complete')
         saved=None
         for i in range(8):
             self.store.enqueue(f.event(start='2026-11-03T14:%02d:00Z'%i))
@@ -178,7 +186,9 @@ class IntegrationTests(unittest.TestCase):
             identity={**self.identity,'execution_id':str(2000+i)}
             data=self.engine.claim(identity)
             self.assertEqual(self.store.dispatch_status()['attempts'],0)
-            self.engine.run_v1('match',data)
+            for stage in ('match','collect','analyze','publish'):
+                data=self.engine.run_v1(stage,data)
+            self.assertEqual(data['status'],'complete')
             saved=identity
         self.store.enqueue(f.event(start='2026-11-03T15:00:00Z'))
         token,_=self.store.reserve_dispatch(self.now)
@@ -248,12 +258,15 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(restored.get(self.key)['state'],'dead')
         self.assertEqual(restored.get(self.key)['error'],'WRITE_NEEDS_REVIEW')
 
-    def test_wait_releases_global_capacity_other_job_can_finish(self):
+    def test_wait_releases_http_lock_but_retains_logical_owner(self):
         self.model.match.side_effect=Failure('LLM_ADMISSION_DEFERRED',61)
         self.engine.run_v1('match',self.data)
         other=self.store.enqueue(f.event(start='2026-11-03T14:00:00Z'))['job_id']
         claimed=self.engine.claim({**self.identity,'execution_id':'1235'})
-        self.assertEqual(claimed['job_id'],other)
+        self.assertEqual(claimed['status'],'empty')
+        self.assertFalse(self.engine.lock.locked())
+        self.assertEqual(self.store.get(other)['state'],'queued')
+        self.assertEqual(self.store.get(other)['attempts'],0)
 
 
 class ModelTimerTests(unittest.TestCase):

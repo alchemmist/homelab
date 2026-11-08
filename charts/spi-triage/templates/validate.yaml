@@ -16,3 +16,6 @@
 {{- if or (kindIs "bool" .Values.llmMinuteTokens) (not (or (eq (toString .Values.llmMinuteTokens) "30000") (eq (toString .Values.llmMinuteTokens) "60000"))) }}
 {{- fail "llmMinuteTokens must be 30000 or 60000" }}
 {{- end }}
+{{- if not (has .Values.s3Evidence.publicOrigin (list "https://rustfs.socrat.alchemmist.xyz" "https://spi-evidence.socrat.alchemmist.xyz")) }}
+{{- fail "s3Evidence.publicOrigin must be the canonical RustFS origin or pre-cutover legacy origin" }}
+{{- end }}

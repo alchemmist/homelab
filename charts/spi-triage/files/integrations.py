@@ -195,6 +195,21 @@ class Model:
         from local_token_counter import configured_counter
         self.counter=configured_counter()
 
+    @staticmethod
+    def analysis_reference_ids(data):
+        evidence=data.get('evidence') if isinstance(data,dict) else None
+        context=evidence.get('artifact_context') if isinstance(evidence,dict) else None
+        if context is None:return None  # Legacy calls without an artifact bundle.
+        if not isinstance(context,dict) or not isinstance(context.get('index'),list):
+            raise Failure('LLM_INVALID_EVIDENCE_CONTEXT')
+        index=context['index']
+        if len(index)>999 or any(not isinstance(x,dict) or not isinstance(x.get('id'),str)
+                or not re.fullmatch(r'E[0-9]{3}',x['id']) for x in index):
+            raise Failure('LLM_INVALID_EVIDENCE_CONTEXT')
+        ids=sorted(x['id'] for x in index)
+        if len(ids)!=len(set(ids)):raise Failure('LLM_INVALID_EVIDENCE_CONTEXT')
+        return ids
+
     def payload(self,task,data,schema):
         # Preserve identities and visible excerpt metadata. core.clean is an
         # ingestion sanitizer with silent list/string caps, unsuitable here.
@@ -203,11 +218,23 @@ class Model:
             if isinstance(v,list):return [redact(x) for x in v]
             if isinstance(v,str):return ASSIGNMENT.sub(r'\1[REDACTED]',SECRET_VALUE.sub('[REDACTED]',v))
             return v
+        guided=schema
+        if schema is REPORT_SCHEMA:
+            ids=self.analysis_reference_ids(data)
+            if ids is not None:
+                # Constrain missing/invented-example citations before generation.
+                # Post-validation below still rejects EVERY unknown ID; this
+                # pattern does not replace that stricter reference check.
+                facts={'type':'array','items':{'type':'string'}}
+                if ids:
+                    facts['items']['pattern']=r'[\s\S]*\[(?:'+'|'.join(ids)+r')\][\s\S]*'
+                else:facts['maxItems']=0
+                guided={**schema,'properties':{**schema['properties'],'facts':facts}}
         return {'model':'qwen3.8-27b','messages':[{'role':'system','content':SYSTEM},
                 {'role':'user','content':task+'\nUNTRUSTED EVIDENCE JSON:\n'+json.dumps(redact(data),ensure_ascii=False)}],
                 'temperature':0.1,'max_tokens':768 if schema is MATCH_SCHEMA else 2500,
                 'chat_template_kwargs':{'enable_thinking':False},
-                'response_format':{'type':'json_schema','json_schema':{'name':'spi_result','strict':True,'schema':schema}}}
+                'response_format':{'type':'json_schema','json_schema':{'name':'spi_result','strict':True,'schema':guided}}}
 
     @staticmethod
     def reservation(body):
@@ -281,12 +308,18 @@ class Model:
                 if response['choices'][0].get('finish_reason')=='length':raise Failure('MODEL_OUTPUT_TRUNCATED')
                 value=json.loads(response['choices'][0]['message']['content']);validate(value,schema)
                 if clean(value)!=value: raise Failure('UNSAFE_MODEL_OUTPUT')
-                context=data.get('evidence',{}).get('artifact_context') if isinstance(data,dict) else None
-                if schema is REPORT_SCHEMA and context:
-                    ids={x['id']for x in context.get('index',[])}
+                ids=self.analysis_reference_ids(data) if schema is REPORT_SCHEMA else None
+                if ids is not None:
+                    allowed=set(ids);missing=unknown=0
                     for fact in value['facts']:
                         refs=set(re.findall(r'\bE[0-9]{3}\b',fact))
-                        if not refs or not refs<=ids:raise Failure('INVALID_EVIDENCE_REFERENCE')
+                        missing+=not refs;unknown+=len(refs-allowed)
+                    if missing or unknown:
+                        # Counts only: never log response/fact text or references.
+                        logging.getLogger(__name__).warning('analysis_reference_rejected %s',json.dumps({
+                            'artifact_count':len(ids),'fact_count':len(value['facts']),
+                            'missing_reference_fact_count':missing,'unknown_reference_count':unknown},sort_keys=True))
+                        raise Failure('INVALID_EVIDENCE_REFERENCE')
                 return value
             except (KeyError,IndexError,TypeError,ValueError,Failure) as exc:
                 last=exc.code if isinstance(exc,Failure) else 'INVALID_MODEL_SCHEMA'
@@ -429,8 +462,11 @@ class Model:
         if bundle:evidence['artifact_context']=bundle['model_context']
         evidence['queries']=[{**q,'result':metric_summary(q.get('result',{}))} if q.get('source') in ('prometheus_metrics','loki_error_frequency','host_log_error_frequency','loki_rule_metric') else q for q in evidence.get('queries',[])]
         evidence['rule_definitions']=[{k:v for k,v in r.items() if k!='alerts'} for r in evidence.get('rule_definitions',[])]
-        task='Write an evidence-grounded SPI report. Revalidate preliminary matching using diagnostics; choose 0 if a distinct cause is supported. Assess alert noise and actionable tuning separately from service defects. Include safe evidence references in facts; never fabricate a source path or threshold. Scrape exporter pods are not necessarily affected workloads: use job_name or systemd unit when present. Zero error counts or absent series never confirm no service degradation; Every verified fact MUST cite at least one existing artifact ID such as [E003]; never invent an evidence ID. Use artifact IDs when citing collected logs, traces, deployment metadata and metric samples. Explain excerpt/collection limits; never claim all stored bytes were reviewed. Missing logs do not prove health. OCI revision labels are build claims, not reproducible-build proof; main-branch runbooks are not deployed code.'
+        task='Write an evidence-grounded SPI report. Revalidate preliminary matching using diagnostics; choose 0 if a distinct cause is supported. Assess alert noise and actionable tuning separately from service defects. Include safe evidence references in facts; never fabricate a source path or threshold. Scrape exporter pods are not necessarily affected workloads: use job_name or systemd unit when present. Zero error counts or absent series never confirm no service degradation; Every verified fact MUST cite at least one existing artifact ID from the exact artifact_context.index allowlist; never invent an evidence ID. Use artifact IDs when citing collected logs, traces, deployment metadata and metric samples. Explain excerpt/collection limits; never claim all stored bytes were reviewed. Missing logs do not prove health. OCI revision labels are build claims, not reproducible-build proof; main-branch runbooks are not deployed code.'
         original={'alert':event,'preliminary_match':match,'evidence':evidence}
+        ids=self.analysis_reference_ids(original)
+        if ids is not None:
+            task+=' Allowed artifact IDs: '+(', '.join(ids) if ids else '(none)')+'. Cite them in square brackets. If no supplied artifact supports a verified fact, return facts=[] and describe uncertainty under hypotheses/missing_evidence instead. Never turn an unsupported claim into a verified fact.'
         # Prefer full context. Compact preliminary FULL report bodies before
         # diagnostic evidence, then progressively bounded, explicit excerpts.
         data=original

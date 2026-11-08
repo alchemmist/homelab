@@ -88,6 +88,14 @@ class Engine:
                 self._run(name,owner['job_id'])
                 return self.store.owners.finish(owner,False,time.time())
             except Failure as exc:
+                if exc.code=='OPEN_SPI_CHANGED':
+                    # Store reset and owner/fence/receipt changed atomically.
+                    # This is a normal bounded stage rewind, not a patient error
+                    # or a new execution/claim; real/ambiguous failures stay fatal.
+                    restarted=self.store.owners.snapshot_response(owner,time.time())
+                    if restarted is not None:
+                        log_event('snapshot_revalidated',stage='match',code=exc.code)
+                        return restarted
                 if exc.code=='LLM_ADMISSION_DEFERRED':
                     try:
                         result=self.store.owners.finish(owner,True,time.time(),exc.retry_after)

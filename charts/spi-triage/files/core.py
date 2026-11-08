@@ -237,7 +237,9 @@ class Store:
                     count+=1
                     retained['snapshot_generation']=count
                     c.execute('INSERT OR REPLACE INTO snapshot_budget VALUES(?,?,?)',(key,count,json.dumps(retained)))
-                c.execute("UPDATE jobs SET stage=0,result=?,state='processing',updated=?,lease=? WHERE id=?",(json.dumps(retained),time.time(),self._processing_lease(c,key,time.time()),key))
+                now=time.time()
+                c.execute("UPDATE jobs SET stage=0,result=?,state='processing',updated=?,lease=? WHERE id=?",(json.dumps(retained),now,self._processing_lease(c,key,now),key))
+                self.owners.snapshot_replaced(c,key,now)
         if exhausted:raise Failure('WRITE_NEEDS_REVIEW')
 
     def reserve_llm(self, tokens, timeout=600, now=None):
@@ -308,13 +310,21 @@ class Store:
             j.error AS job_error,j.updated AS job_updated FROM workflow_wait_owner o
             JOIN jobs j ON j.id=o.job_id WHERE o.revision='durable-v1'
             AND o.phase IN ('ready','waiting') AND o.expires>? AND o.deadline>?""",(now,now)).fetchall()
+        current=c.execute('SELECT deadline,job_id FROM workflow_wait_owner WHERE job_id=?',(exclude,)).fetchone() if exclude else None
         until=0
         for owner in rows:
             index={'match':0,'collect':1,'analyze':2,'publish':3}.get(owner['stage'],-1)
-            if owner['job_id']==exclude or owner['job_state']!='processing' or owner['durable_stage']!=index or index<=stage:continue
+            if owner['job_id']==exclude or owner['job_state']!='processing' or owner['durable_stage']!=index:continue
+            # Drain pre-upgrade cohorts fairly: equal-stage owners retain their
+            # original deadline order. Do not let a younger callback steal the
+            # slot immediately before an older owner's normal admission wake.
+            older=(index==stage and current is not None and
+                   (owner['deadline'],owner['job_id'])<(current['deadline'],current['job_id']))
+            if index<stage or (index==stage and not older):continue
             short=(index==2 and owner['job_error']=='LLM_ADMISSION_DEFERRED'
                    and owner['due']<=owner['job_updated']+70)
-            eligible=(owner['phase']=='ready' or owner['due']<=now or short)
+            near_wake=older and owner['due']<=now+70
+            eligible=(owner['phase']=='ready' or owner['due']<=now or short or near_wake)
             bounded=(owner['expires']<=owner['deadline'] and
                      ((owner['phase']=='ready' and owner['expires']<=owner['job_updated']+180) or (owner['phase']=='waiting' and owner['expires']<=owner['due']+180)))
             if eligible and bounded:until=max(until,owner['expires'])
@@ -329,6 +339,13 @@ class Store:
         are deliberately readable here, but cannot extend the bounded hold.
         """
         self._reconcile_owners(c,now)
+        # The worker/model have one execution slot. Waiting releases the HTTP
+        # lock and job lease, NOT that logical slot. Starting additional six-hour
+        # owners here turns durable Wait into a starvation queue. Keep intake
+        # queued until the current owner finishes or is safely reconciled. The
+        # same transaction gates v1 claim, legacy claim and dispatcher wakes.
+        active=c.execute("SELECT min(min(expires,deadline)) FROM workflow_wait_owner WHERE phase IN ('ready','waiting','running')").fetchone()[0]
+        if active is not None:return None,active
         rows=c.execute("SELECT id,stage,state,created,updated,available,lease,error FROM jobs WHERE state IN ('queued','retry','processing') AND id NOT IN (SELECT job_id FROM workflow_wait_owner WHERE phase IN ('ready','waiting','running','complete'))").fetchall()
         holds=[r['available'] for r in rows
                if r['state']=='retry' and r['stage']==2
