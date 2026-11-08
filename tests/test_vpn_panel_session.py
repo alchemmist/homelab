@@ -178,3 +178,37 @@ class SubscriptionMigrationTests(unittest.TestCase):
         m=self.module()
         self.assertTrue(m.json_legacy({'outbounds':[{'protocol':'vless','settings':{'address':'192.0.2.1','port':32063,'id':'PRESERVE'}}]}))
         self.assertFalse(m.json_legacy({'outbounds':[{'protocol':'vless','settings':{'port':32053}}]}))
+
+
+class BackendGuardTests(unittest.TestCase):
+    def module(self,filename):
+        spec=importlib.util.spec_from_file_location('backend_test',ROOT/'scripts'/filename)
+        m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return m
+
+    def test_exact_owned_guard_and_missing_table_comment_supported(self):
+        m=self.module('vpn-backend-guard.py');objects=m.expected();m.validate(objects)
+        objects[0]['table']['comment']=m.OWNER;m.validate(objects)
+        objects[-1]['rule']['expr'][1]['match']['right']['set'].append(443)
+        with self.assertRaises(ValueError):m.validate(objects)
+
+    def test_foreign_owner_and_extra_rule_refused(self):
+        m=self.module('vpn-backend-guard.py');objects=m.expected();objects[0]['table']['comment']='foreign'
+        with self.assertRaises(ValueError):m.validate(objects)
+        objects=m.expected();objects.append({'rule':{'expr':[{'accept':None}]}})
+        with self.assertRaises(ValueError):m.validate(objects)
+
+    def test_guard_scope_and_boot_ensure(self):
+        m=self.module('vpn-backend-guard.py');text=m.rules()
+        self.assertIn('iifname "eth0"',text);self.assertIn('{ 12096, 32087 }',text)
+        self.assertIn('ct state established',text);self.assertNotIn('flush',text)
+        self.assertNotIn('forward',text);self.assertNotIn(' log ',text)
+        self.assertIn('--ensure',m.UNIT);self.assertNotIn('ExecStop=',m.UNIT)
+
+    def test_trojan_probe_uses_fresh_own_secret_and_verified_tls443(self):
+        m=self.module('vpn-backend-enforce.py')
+        cfg=m.client({'network':'ws','security':'none','wsSettings':{'path':'/owned-test'}},'OWN_FRESH_SECRET',12345)
+        self.assertEqual(cfg['inbounds'][0]['listen'],'127.0.0.1')
+        proxy=cfg['outbounds'][1];self.assertEqual(proxy['settings']['servers'][0]['port'],443)
+        self.assertFalse(proxy['streamSettings']['tlsSettings']['allowInsecure'])
+        self.assertEqual(cfg['outbounds'][0]['protocol'],'blackhole')
+        self.assertEqual(cfg['routing']['rules'][0]['domain'],['full:speed.cloudflare.com'])
