@@ -140,3 +140,36 @@ class TargetHelperTests(unittest.TestCase):
         self.assertEqual(after['settings'],before['settings'])
         self.assertEqual(before['streamSettings']['realitySettings']['target'],'www.intel.com:443')
         self.assertIsNone(module.json_field(None));self.assertIsNone(module.json_field(''))
+
+
+class SubscriptionMigrationTests(unittest.TestCase):
+    def module(self):
+        spec=importlib.util.spec_from_file_location('sub_migrate',ROOT/'scripts/vpn-subscription-migrate.py')
+        m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return m
+
+    def test_payload_only_excludes_publication(self):
+        m=self.module();before={'id':7,'port':32063,'protocol':'vless','enable':True,
+         'excludeFromSub':False,'streamSettings':{'network':'xhttp','security':'none'},
+         'settings':{'clients':[{'id':'PRESERVE'}]},'clientStats':[]}
+        after=m.payload(before,7)
+        self.assertTrue(after['enable']);self.assertTrue(after['excludeFromSub'])
+        expected=dict(before,excludeFromSub=True);expected.pop('clientStats');self.assertEqual(after,expected)
+        self.assertFalse(before['excludeFromSub'])
+        with self.assertRaises(ValueError):m.payload(after,7)
+
+    def test_publication_delta_preserves_opaque_imports_and_credentials(self):
+        m=self.module();secure='vless://preserved@192.0.2.1:32053?security=reality'
+        legacy='vless://preserved@192.0.2.1:32063?security=none';opaque='vpn://opaque-private'
+        before={str(i):sorted([secure,legacy,opaque]) for i in range(7)}
+        after={k:sorted([secure,opaque]) for k in before}
+        self.assertEqual(m.check_delta(before,after)['plaintext_links_removed'],7)
+        after['0']=[secure]
+        with self.assertRaises(ValueError):m.check_delta(before,after)
+
+    def test_only_reality_random_id_is_normalized(self):
+        m=self.module();before={'shortId':'preserve','streamSettings':{'realitySettings':{'shortId':'random','publicKey':'preserve-key'}}}
+        after=m.normalize_json(before)
+        self.assertEqual(after,{'shortId':'preserve','streamSettings':{'realitySettings':{'publicKey':'preserve-key'}}})
+        self.assertEqual(before['streamSettings']['realitySettings']['shortId'],'random')
+        self.assertTrue(m.json_legacy({'outbounds':[{'protocol':'vless','settings':{'vnext':[{'port':32063}]}}]}))
+        self.assertFalse(m.json_legacy({'outbounds':[{'protocol':'trojan','settings':{'vnext':[{'port':32063}]}}]}))
