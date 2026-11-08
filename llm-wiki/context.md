@@ -194,3 +194,13 @@ cleaned, four nodes Ready.71 tests+6 subtests. Mobile/reboot not tested. Legacy3
 still excluded+enabled pending actual refresh confirmation; WATCHDOG CONFIG STILL
 REQUIRES IT, so no blind API disable (would false-fail/fence). Coordinated watchdog
 source/live config+monitoring update is required before retirement. See VPN wiki.
+
+
+VPN83 latest supersedes previous retirement gate: OWNER APPROVED old-client
+DISCONNECT.32063 now disabled+excluded, no listener/external TCP refused. Source/live
+watchdog dependencies+collector updated under existing lock, timer resumed, recovery
+healthy/not inhibited. All16 URI/JSON subscriptions preserved; users refresh SAME
+URL/select encrypted profile, keys unchanged. Actual HOME WAN REALITY+Trojan64KiB
+repeated after cutover, passed; no global network change, all temp keys/clients clean.
+133 tests+8 subtests scoped. Server move complete, do not re-enable32063. Mobile,
+reboot/DR and future-IP-ban immunity not claimed. See authoritative VPN wiki latest.

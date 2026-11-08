@@ -1,6 +1,6 @@
 # Configuration-only VPN hardening — 8 November 2026
 
-Issue: [#83](https://github.com/alchemmist/homelab/issues/83). **In progress: REALITY, subscription withdrawal, public backend guard and home-fixed protocol acceptance accepted. Legacy retirement/mobile gates remain.**
+Issue: [#83](https://github.com/alchemmist/homelab/issues/83). **In progress: REALITY, subscription withdrawal, public backend guard and home-fixed protocol acceptance accepted. Legacy retirement completed with owner approval; mobile/reboot acceptance remains separate.**
 The owner explicitly excluded a new VPS, public IP or provider purchase. Original
 P1/P2 independent-ASN and proxy/infrastructure-IP separation are deferred, not
 prerequisites to start this configuration-only phase and not completed outcomes.
@@ -369,19 +369,81 @@ mandatory corporate VPN, changing routing, or relabeling the home fixed path.
 one IP. Independent-ASN/fallback purchase and proxy/infrastructure IP separation
 remain explicitly deferred by budget. No immunity or causal TSPU claim.
 
-## Next gated production steps
+## Final server cutover: plaintext32063 retired with explicit owner approval
 
-1. Confirm owner-coordinated refresh and working encrypted client connections,
-   then retire32063 with the watchdog+monitoring dependencies corrected safely.
-2. Obtain actual mobile-path acceptance when such a vantage is available. Home
-   fixed-path VLESS/REALITY and Trojan64KiB acceptance is already complete.
-3. No more plaintext API credentials are needed from the owner. Use a new unique,
-   short-lived native session only when the next approved operation is ready.
-4. Reboot/fallback DR acceptance remains separate: do not reboot nodes, fence K3s,
-   flush firewall rules or claim recovery from enabled unit state alone.
+The owner explicitly authorized disconnecting old clients to finish the move and
+asked whether users need to refresh. **Yes: refresh the SAME existing subscription,
+then select REALITY or TLS-protected Trojan if not automatically selected.** No new
+URL/key/password or app reinstall is needed. Already encrypted clients continue to
+work. Cached plaintext32063 clients cannot reconnect until they switch; this effect
+was explicitly explained/accepted. Device refresh itself is not falsely claimed.
 
-Scoped local checks at this checkpoint: **71 tests +6 subtests passed**, including
-panel guard/IP-migration regressions and42 dedicated hardening/session tests. CI
+The supported native API changed only **32063 `enable:1→0`**; exclusion remains1.
+The disabled row, seven historical bindings and all client/host/key records are
+retained for audit, not deleted. All16 URI AND JSON subscriptions were compared
+public/backend before/after: all78 published entries unchanged. External workstation
+TCP checks now confirm32063,12096 and32087 reject connections; loopback32063 has
+no listening socket. REALITY/Trojan remain working.
+
+Crucially, recovery dependencies were coordinated FIRST, not bypassed: watchdog
+`tcp_endpoints`, `listen_ports`, native-primary inventory and monitoring collector
+port list no longer require32063. The source Ansible defaults/template were updated
+too. Exact live config/unit preimages were backed up, future watchdog timer dispatch
+was briefly paused while any running job drained, and updates/native disable were
+serialized under its EXISTING state lock. No running watchdog/K3s/native service was
+stopped; no recovery latch/failure counter was forged, no general protection removed.
+Timer resumed in finally. Final watchdog is **Kubernetes/healthy/not inhibited**;
+collector loaded the new port list and last exit status0; four nodes Ready.
+
+The native disable succeeded once. Initial post-write comparison then stopped on a
+**comparison-only bug**, not a different native change: expected `False` sorted
+elsewhere than SQLite integer0 among other rows. Per-primary-ID semantic diff proved
+no unexpected field differences and original clients unchanged. Expected flag now
+keeps integer0 (regression-covered). Original approved plan/config/unit and actual
+state were then rechecked, both full subscription formats verified, and uncertainty
+resolved by readback **without repeating any configuration/API write**. Timer and
+temporary credential cleanup had already completed even on that stopped path.
+Separate `users`, `settings`, all original token rows matched the native backup.
+
+**Post-retirement actual home-WAN acceptance repeated successfully**: own new
+short-lived identity, REALITY32053 HTTP200/65536 bytes AND Trojan/TLS443
+HTTP200/65536 bytes, expected home public source, no overlay to VPS, unchanged main
+routes/resolver. Own processes/configs/copied binary removed; native fixture and
+TTL API tokens explicitly deleted, original proxy config/tokens preserved. Final
+counts:16 original identities/85 database bindings, **zero temporary tokens/clients**.
+No user keys, global routes/DNS, mandatory Tunnelblick, NetBird, WG/AWG or TV profile
+changes. Native Xray child reload is not a pod/node/K3s restart.
+
+Code `vpn-legacy-retire.py`; source includes corresponding watchdog/collector
+retirement intent. Local expanded scoped suite: **133 tests+8 subtests passed**
+(hardening/session, panel guard, VPS IP migration, monitoring VPN and failover).
+Not the full repository suite or DR acceptance.
+
+Private proof: `/var/lib/homelab-vpn-hardening/vpn83-20261108-legacy-retire/`
+(`receipt.json`, `retirement-acceptance.json`, backup/preimages, full URI/JSON
+before/after, cleanup receipt). Post-retirement VPS session
+`vpn83-20261108-post-retire-home`; home receipt
+`/var/lib/homelab-vpn-hardening/vpn83-home-after-retirement/receipt.json`.
+
+**Server-side migration/old-entry retirement is complete.** The earlier
+"do not retire without confirmation" gate was explicitly superseded by the owner's
+cutover approval, not silently assumed. Actual mobile-ISP, reboot/DR and universal
+future-blocking immunity are NOT claimed. One IP cannot resist a destination-IP/
+prefix/ASN block by camouflage; deferred extra-ASN/IP infrastructure stays deferred.
+
+## Remaining verification, not unfinished server cutover
+
+1. Users refresh the existing subscription/select an encrypted profile. Owner
+   coordinates this; explicit cutover approval accepted old-client disconnect.
+2. Actual mobile-path test when a real vantage is available. Home fixed REALITY
+   and Trojan64KiB tests passed before AND after legacy retirement.
+3. Reboot/fallback DR acceptance remains separate; do not manufacture evidence by
+   restarting nodes/K3s or flushing firewall rules. Enabled guard is not boot proof.
+4. Additional ASN/IP/provider fallback and IP separation remain deferred by budget;
+   there is no destination-IP-ban immunity on this one IP.
+
+Scoped local checks at this checkpoint: **133 tests +8 subtests passed**, including
+hardening/session, panel guard/IP migration, monitoring VPN and failover regressions. CI
 runs only offline safety, with no infrastructure credentials. Not the full repo suite.
 
 Private final evidence: `/var/lib/homelab-vpn-hardening/vpn83-20261108-target-final`,
@@ -390,6 +452,6 @@ snapshots, native backup and credential-cleanup receipt. Keep all private. The f
 aborted session is retained separately under the `target-main` directory.
 
 The issue remains open. Public backend denial and the available home fixed-path
-acceptance now passed. Plaintext retirement, mobile acceptance, reboot/DR acceptance
+acceptance now passed. Plaintext retirement is now complete. Mobile acceptance, reboot/DR acceptance
 and destination-IP-ban immunity are not completed or implied. No new VPS/IP, image upgrade, TV/WG/AWG peer/config change,
 Tunnelblick/global DNS/route change or NetBird change occurred.

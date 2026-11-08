@@ -18,11 +18,14 @@
   "plaintextMigration": {
     "port": 32063,
     "requireEncryptedReplacementAndClientAcceptance": true,
-    "retirementEnabled": false,
+    "retirementEnabled": true,
     "rotateClientCredentialsAutomatically": false,
     "excludeFromSubscriptions": true,
     "ownerCoordinatesDeviceRefresh": true,
-    "retainCachedClientListenerUntilRefreshConfirmed": true
+    "retainCachedClientListenerUntilRefreshConfirmed": false,
+    "retired": true,
+    "ownerApprovedCachedClientDisconnect": true,
+    "requireIndividualDeviceRefreshConfirmation": false
   },
   "rawBackendObservation": {
     "ports": [
@@ -59,6 +62,9 @@
     "expectedHomePublicSourceConfirmed": true,
     "overlayBypassToVps": false,
     "mobileAcceptance": false,
-    "legacyClientRefreshConfirmed": false
+    "legacyClientRefreshConfirmed": false,
+    "legacyRetirementOwnerApproved": true,
+    "legacyListenerDisabled": true,
+    "postRetirementHomeFixedWanRealityAndTrojan65536Bytes": true
   }
 }

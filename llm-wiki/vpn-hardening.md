@@ -136,3 +136,32 @@ A plain API disable would falsely fail recovery and can fence K3s. Retirement mu
 coordinate exact source/live config+collector updates under the existing watchdog
 lock, not stop recovery or ignore alerts. Do not falsely claim device/mobile/reboot
 acceptance. Budget still excludes new VPS/IP/ASN fallback.
+
+
+## Latest authoritative: server move complete,32063 disabled
+
+Owner explicitly approved old-client disconnect to finish. Native32063 now
+**enable=0, exclude_from_sub=1**, no TCP listener, external TCP refused. Only native
+enable flag changed, original clients/keys/bindings/URLs untouched. All16 URI+JSON
+subscriptions preserved (78 published entries). Users update SAME subscription and
+select an encrypted REALITY/Trojan profile if needed; no replacement credentials.
+Individual-device refresh is NOT claimed; owner cutover approval supersedes waiting
+for its confirmation. Do not resurrect the previously retained legacy listener.
+
+Watchdog endpoint/listen/native-primary inventories and collector ports updated
+BEFORE disable; corresponding Ansible defaults/template updated. Brief timer-dispatch
+pause+existing-job drain+existing serialization lock, no stopping running watchdog/
+K3s/native services, no latch/counter manipulation. Timer resumed, watchdog healthy
+Kubernetes/not inhibited, collector new ports+exit0, four nodes Ready. One successful
+native disable; boolFalse-vs-SQLite0 sort comparison stopped readback afterward.
+Per-ID diff proved no extra fields changed; integer-type fix regression covered.
+Full readback/subscriptions finalized with ZERO repeated configuration/API writes.
+Original users/settings/token rows preserved, zero probe clients/temp tokens.
+
+Repeated actual home-WAN post-retirement REALITY32053 and TrojanTLS443 tests both
+HTTP200/65536 bytes, expected source/non-overlay, routes/resolver unchanged; own
+fixtures/binary/configs/processes/tokens cleaned. Private legacy-retire and
+post-retire-home sessions on VPS; home `vpn83-home-after-retirement/receipt.json`.
+133 expanded local tests+8 subtests passed. Mobile and reboot/DR NOT tested; no
+future-IP/ASN-ban immunity/new infrastructure purchase. Server cutover complete;
+#83 remains for explicitly unverified/deferred broader resilience outcomes.
