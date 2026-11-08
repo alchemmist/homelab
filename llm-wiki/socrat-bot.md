@@ -476,3 +476,67 @@ automation opened public-wiki review PR99:
 https://github.com/alchemmist/homelab/pull/99 . It was not auto-merged. Homelab's
 original checkout had unrelated monitoring/Traefik edits during documentation;
 this handoff was committed from an isolated worktree without altering those files.
+
+## Native Telegram mailing formatting — released (2026-11-08)
+
+User requested that native Telegram formatting, particularly hidden clickable text
+links, survive `/mailing`. Implemented in bot `5f23b76`; released head is
+`ffd52ec362def31586b15c93ef3904af4687213a` (additional media-test timing stabilization).
+CI https://github.com/alchemmist/socrat-bot/actions/runs/42474318589 : **186 passed,
+17 skipped** on PostgreSQL17. First publication attempt had a transient Harbor TLS
+handshake timeout; reran only failed publication, with no manual deployment.
+Image digest `sha256:52848db3f838128371e29004bac7490cde23b3b5fd3f65e69afff5982a38c912`.
+All three deployments rolled out; schema head `0016_mailing_entities`, healthz OK,
+Argo Synced/Healthy at `552e803`. Protected pre-migration backup outside Git.
+Independent exact-diff review approved. Original homelab monitoring/Traefik edits
+were preserved; this record uses an isolated documentation worktree.
+
+### Behavior
+
+Owner composes `/mailing BODY` in one Telegram message and uses Telegram's native
+editor to apply links/bold/italic/etc before sending. The bot reads original
+message entities, not reconstructed command arguments. Formatting persists through
+native-formatted owner body preview, immediate/scheduled/legacy-approved delivery,
+and receipt-only `/mailing_edit UUID BODY` or reply edits. No HTML/Markdown parse
+mode; literal markup stays literal. Unicode/emoji offsets use UTF-16 boundaries.
+Semantic entities crossing the removed command/UUID prefix are dropped rather than
+retargeted; style entities crossing the prefix are clipped. Internal/trailing body
+whitespace and newlines survive; leading command-separating whitespace is stripped.
+
+Migration0016 adds `Broadcast.entities` / `BroadcastCopy.applied_entities` JSON with
+non-null empty-list defaults/backfill; populated SQLite and PostgreSQL upgrade,
+downgrade and re-upgrade tests preserve old receipt IDs/text/timestamps. Formatting
+metadata (hidden URLs, language, text-mention User, custom-emoji ID) round-trips.
+Formatting-only edits are detected even when text is unchanged; explicit empty
+entities remove old formatting. Partial failures retain previous applied state;
+retry skips reconciled copies. Existing finite edit ownership, original saved
+receipt audience, no replacement send, and no unsolicited old-mailing edits remain.
+
+Owner preview is now TWO messages: the fully native-formatted body, then the
+existing scheduling controls. History intentionally remains a bounded/escaped
+plaintext preview; it does not reproduce hidden clickable links. Internal HTTP
+broadcast API remains plaintext (no entities field added). Telegram is the final
+validator for entity combinations/features. See bot `docs/telegram-mailing-formatting.md`.
+
+### Acceptance and test limits
+
+Released-image smoke `/tmp/socrat-mailing-formatting-live-smoke.py` used temporary
+SQLite; production DB was read-only solely for owner lookup. Only owner's chat was
+allowed by transport guards. Telegram confirmed exact hidden text-link and bold
+entities in the body preview and one delivered test copy, including emoji before
+the link; formatting-only edit changed URL/bold to italic on the same original
+copy ID; identical retry made no request; reply edit with empty entities removed
+formatting. Two test messages were deleted. Scheduling controls were intercepted
+instead of leaving live buttons referring to isolated DB records. No real mailing
+record/copy was changed, no production DB writes, no other recipient sends.
+Scheduled/legacy approval paths were covered by mocked automated tests, not real
+mass mailings.
+
+Worker's native host PostgreSQL test run had10 existing media failures reproduced
+on pristine pre-formatting `bf50ab2`; do not attribute these to mailing formatting
+or claim non-UTC host-PG compatibility. Parent's independent Docker PostgreSQL17
+suite passed186/17, matching CI; production `SHOW TIMEZONE` is `Etc/UTC`.
+Initial CI also exposed the known overly tight media heartbeat test deadline
+(120ms for two real DB renewals). `ffd52ec` extends its TEST-only deadline to1s,
+retaining deadline, concurrent exclusion, finite lease, heartbeat and cleanup
+assertions. Production media behavior did not change in this follow-up.
