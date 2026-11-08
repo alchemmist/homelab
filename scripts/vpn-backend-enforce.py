@@ -43,7 +43,7 @@ def client(stream,password,port):
                           {'type':'field','network':'tcp,udp','outboundTag':'blocked'}]}}
 
 
-def apply(state,session_hash,config_hash,guard_hash):
+def apply(state,session_hash,config_hash,guard_hash,accept_existing=False):
     s=native.NativeSession(state);original=target.configuration(s.database)
     if h.digest(original)!=config_hash or h.digest(guard.plan())!=guard_hash:raise ValueError('Fresh approvals required')
     trojan=[r for r in original['inbounds'] if r['port']==32087 and r['protocol']=='trojan' and r['enable']]
@@ -79,7 +79,9 @@ def apply(state,session_hash,config_hash,guard_hash):
         before=publication.snapshot(s.database,s.state,'backend-before-uri',exclude_client_ids=(own_id,))
         json_before=publication.snapshot(s.database,s.state,'backend-before-json',True,exclude_client_ids=(own_id,))
         pre=target.configuration(s.database)
-        guard.apply(s.state,guard_hash)
+        if accept_existing:
+            if guard.read_table() is None:raise ValueError('Expected exact installed guard')
+        else:guard.apply(s.state,guard_hash)
         after=publication.snapshot(s.database,s.state,'backend-after-uri',exclude_client_ids=(own_id,))
         json_after=publication.snapshot(s.database,s.state,'backend-after-json',True,exclude_client_ids=(own_id,))
         if before!=after or json_before!=json_after:raise ValueError('Publication changed through guard')
@@ -108,7 +110,7 @@ def apply(state,session_hash,config_hash,guard_hash):
     current=target.configuration(s.database);h.save(s.state/'proxy-after-private.json',current)
     if target.semantic(current)!=target.semantic(original):raise ValueError('Final proxy preservation failed')
     result={'guard_installed':True,'persistent_unit_active_enabled':True,'reboot_tested':False,
-      'own_trojan_tls443_64k_before_after':True,'all_original_uri_json_subscriptions_preserved':True,
+      'own_trojan_tls443_64k_verified':True,'existing_rule_acceptance_only':accept_existing,'rule_write_performed':not accept_existing,'all_original_uri_json_subscriptions_preserved':True,
       'fixture_and_temporary_tokens_removed':True,'proxy_config_unchanged':True,'plaintext_listener_retired':False,
       'russian_mobile_acceptance':False,'external_raw_denial_requires_separate_vantage':True}
     h.save(s.state/'receipt.json',result);return result
@@ -116,10 +118,10 @@ def apply(state,session_hash,config_hash,guard_hash):
 
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--state',type=Path,required=True);p.add_argument('--apply',action='store_true')
-    p.add_argument('--approve-session-hash');p.add_argument('--approve-configuration-hash');p.add_argument('--approve-guard-hash');a=p.parse_args()
+    p.add_argument('--accept-existing',action='store_true');p.add_argument('--approve-session-hash');p.add_argument('--approve-configuration-hash');p.add_argument('--approve-guard-hash');a=p.parse_args()
     if a.apply:
         if not all([a.approve_session_hash,a.approve_configuration_hash,a.approve_guard_hash]):p.error('Three approvals required')
-        print(h.canonical(apply(a.state,a.approve_session_hash,a.approve_configuration_hash,a.approve_guard_hash)))
+        print(h.canonical(apply(a.state,a.approve_session_hash,a.approve_configuration_hash,a.approve_guard_hash,a.accept_existing)))
     else:
         s=native.NativeSession(a.state);plan=s.preview()
         print(h.canonical({'session_sha256':h.digest(plan),'configuration_sha256':plan['configuration_sha256'],'guard_sha256':h.digest(guard.plan()),'writes':0}))

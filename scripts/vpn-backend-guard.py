@@ -47,7 +47,7 @@ def expected():
     return [{'table':{'family':'inet','name':TABLE}},
       {'chain':{'family':'inet','table':TABLE,'name':'input','type':'filter','hook':'input','prio':-6,'policy':'accept'}},
       {'rule':{'family':'inet','table':TABLE,'chain':'input','comment':'owned83:established',
-       'expr':prefix+[{'match':{'op':'==','left':{'ct':{'key':'state'}},'right':'established'}},{'counter':{}},{'return':None}]}},
+       'expr':prefix+[{'match':{'op':'in','left':{'ct':{'key':'state'}},'right':'established'}},{'counter':{}},{'return':None}]}},
       {'rule':{'family':'inet','table':TABLE,'chain':'input','comment':'owned83:public-deny',
        'expr':prefix+[{'counter':{}},{'reject':{'type':'tcp reset'}}]}}]
 
@@ -96,6 +96,22 @@ def apply(state,approval):
     h.save(state/'backend-guard-receipt.json',wanted)
     (state/'backend-guard-uncertain.json').unlink()
     return wanted
+
+
+def finalize_readback(state,approval):
+    require_host()
+    marker=json.loads((state/'backend-guard-uncertain.json').read_text())
+    if marker['approval']!=approval or h.digest(marker['plan'])!=approval:
+        raise ValueError('Interrupted approval mismatch')
+    if marker['plan']['rules_sha256']!=h.digest(rules()) or marker['plan']['before_sha256']!=h.digest(None):
+        raise ValueError('Interrupted rules/preimage mismatch')
+    if json.loads((state/'backend-guard-before.json').read_text()) is not None:raise ValueError('Nonempty original table')
+    current=read_table()
+    if current is None:raise ValueError('No installed guard; do not replay')
+    h.save(state/'backend-guard-after.json',current)
+    h.save(state/'backend-guard-receipt.json',dict(marker['plan'],readback_finalized=True,repeated_rule_writes=0))
+    (state/'backend-guard-uncertain.json').unlink()
+    return {'readback_finalized':True,'repeated_rule_writes':0}
 
 
 def ensure():

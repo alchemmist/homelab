@@ -212,3 +212,8 @@ class BackendGuardTests(unittest.TestCase):
         self.assertFalse(proxy['streamSettings']['tlsSettings']['allowInsecure'])
         self.assertEqual(cfg['outbounds'][0]['protocol'],'blackhole')
         self.assertEqual(cfg['routing']['rules'][0]['domain'],['full:speed.cloudflare.com'])
+
+    def test_nft_106_conntrack_membership_uses_in_operator(self):
+        m=self.module('vpn-backend-guard.py');expr=m.expected()[2]['rule']['expr'][2]
+        self.assertEqual(expr['match']['op'],'in')
+        self.assertEqual(expr['match']['right'],'established')
