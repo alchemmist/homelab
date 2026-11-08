@@ -93,9 +93,16 @@ def rancher_plan(users, attributes, authconfig, admitted):
         if len(external) != 1 or external[0] in protected:
             continue
         subject = external[0]
-        if attr.get('ExtraByProvider', {}).get('genericoidc', {}).get('principalid') != [PREFIX + subject]:
-            raise RuntimeError('Native cache identity mismatch')
         cache = attr.get('GroupPrincipals', {}).get('genericoidc')
+        if attr.get('ExtraByProvider', {}).get('genericoidc', {}).get('principalid') != [PREFIX + subject]:
+            # Historical orphan identities can have no live provider cache. They
+            # are not ours to adopt/repair. Never let one block unrelated viewers;
+            # a mismatched cache carrying our grant remains a fail-closed error.
+            items = cache.get('Items') if isinstance(cache, dict) else None
+            if not items or (isinstance(items, list) and all(isinstance(p, dict)
+                    and p.get('metadata', {}).get('name') != PRINCIPAL for p in items)):
+                continue
+            raise RuntimeError('Native cache identity mismatch')
         if not isinstance(cache, dict) or not isinstance(cache.get('Items'), (list, type(None))):
             raise RuntimeError('Malformed generic OIDC cache')
         old = cache['Items'] or []

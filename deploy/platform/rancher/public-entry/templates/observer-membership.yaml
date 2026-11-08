@@ -102,6 +102,8 @@ spec:
     - ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
     - ports: [{protocol: TCP, port: 443}]
     - to:
+        # Exact additional control-plane Endpoint; no LAN-wide allowance.
+        - ipBlock: {cidr: 192.168.0.23/32}
         - ipBlock: {cidr: 10.250.0.1/32}
         - ipBlock: {cidr: 10.250.0.2/32}
         - ipBlock: {cidr: 10.250.0.3/32}

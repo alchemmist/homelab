@@ -66,6 +66,16 @@ class MembershipTests(unittest.TestCase):
             users,attrs,auth=fixture();change(attrs[0])
             with self.assertRaises(RuntimeError):m.rancher_plan(users,attrs,auth,lambda *a:False)
 
+    def test_unrelated_legacy_orphan_is_preserved_and_does_not_block_current_viewer(self):
+        users,attrs,auth=fixture()
+        legacy_user={'metadata':{'name':'u-old'},'principalIds':[m.PREFIX+'old-subject']}
+        legacy_attr={'metadata':{'name':'u-old'},'ExtraByProvider':{},'GroupPrincipals':{}}
+        before=copy.deepcopy(legacy_attr)
+        ops=m.rancher_plan([legacy_user]+users,[legacy_attr]+attrs,auth,lambda *a:False)
+        self.assertEqual(len(ops),1)
+        self.assertEqual(ops[0][0],'u-fixture')
+        self.assertEqual(legacy_attr,before)
+
     def test_idp_failure_cannot_produce_partial_mutations(self):
         users,attrs,auth=fixture()
         def failed(*args):raise RuntimeError('IdP unavailable')
