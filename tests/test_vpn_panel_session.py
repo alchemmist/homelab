@@ -236,3 +236,34 @@ class HomeProbeTests(unittest.TestCase):
         self.assertIn('65536',text);self.assertIn('socks5h://127.0.0.1:',text)
         for forbidden in ['ip route add','networksetup','resolvectl dns','sysctl -w']:
             self.assertNotIn(forbidden,text)
+
+
+class LegacyRetirementTests(unittest.TestCase):
+    def module(self):
+        spec=importlib.util.spec_from_file_location('retire',ROOT/'scripts/vpn-legacy-retire.py')
+        m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return m
+
+    def test_watchdog_removes_only_legacy_dependencies(self):
+        m=self.module();old={'state_dir':'/var/lib/homelab-vpn-failover','tcp_endpoints':[['127.0.0.1',32063],['127.0.0.1',32053]],
+          'listen_ports':[{'protocol':'tcp','port':32063},{'protocol':'tcp','port':443}],
+          'native_unit_ports':{'homelab-vpn-primary.service':[{'protocol':'tcp','port':32063},{'protocol':'udp','port':32085}]},
+          'failure_threshold':4,'confirmation_checks':2}
+        after=m.watchdog_after(old);self.assertEqual(after['tcp_endpoints'],[['127.0.0.1',32053]])
+        self.assertEqual(after['listen_ports'],[{'protocol':'tcp','port':443}]);self.assertEqual(after['failure_threshold'],4)
+        self.assertEqual(after['native_unit_ports']['homelab-vpn-primary.service'],[{'protocol':'udp','port':32085}])
+        self.assertEqual(len(old['tcp_endpoints']),2)
+        with self.assertRaises(ValueError):m.watchdog_after(after)
+
+    def test_collector_rewrite_is_narrow_and_not_repeatable(self):
+        m=self.module();before='ExecStart=python3 collector --ports 32087,32053,32083,32063 --state PRIVATEPATH'
+        after=m.monitoring_after(before);self.assertEqual(after,'ExecStart=python3 collector --ports 32087,32053,32083 --state PRIVATEPATH')
+        with self.assertRaises(ValueError):m.monitoring_after(after)
+
+    def test_native_projection_only_disables_excluded_legacy(self):
+        m=self.module();old={'inbounds':[{'id':7,'port':32063,'protocol':'vless','enable':1,'exclude_from_sub':1,
+          'stream_settings':'{"network":"xhttp","security":"none"}','settings':'{"clients":[{"id":"PRESERVE"}]}'}],
+          'clients':[{'id':1,'secret':'PRESERVE'}],'client_inbounds':[{'client_id':1,'inbound_id':7}],'hosts':[{'id':7}]}
+        after=m.desired(old);self.assertFalse(after['inbounds'][0]['enable']);self.assertTrue(old['inbounds'][0]['enable'])
+        after['inbounds'][0]['enable']=1;self.assertEqual(after,old)
+        old['inbounds'][0]['exclude_from_sub']=0
+        with self.assertRaises(ValueError):m.desired(old)

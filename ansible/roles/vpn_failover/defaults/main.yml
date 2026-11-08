@@ -21,7 +21,6 @@ vpn_failover_primary_ports:
   - {protocol: tcp, port: 12096}
   - {protocol: tcp, port: 32053}
   - {protocol: tcp, port: 32083}
-  - {protocol: tcp, port: 32063}
   - {protocol: tcp, port: 32084}
   - {protocol: tcp, port: 32087}
   - {protocol: udp, port: 32085}

@@ -7,7 +7,6 @@ monitoring_vpn_ports:
   - 32087
   - 32053
   - 32083
-  - 32063
 monitoring_vpn_xray_metrics_url: http://127.0.0.1:11112/debug/vars
 monitoring_vpn_xray_timeout: 5
 monitoring_vpn_activity_window: 60
