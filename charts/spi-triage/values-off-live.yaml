@@ -20,3 +20,5 @@ s3Evidence:
 # Private same-origin management UI; dedicated token never reaches the browser.
 queueUI:
   enabled: true
+  # Same fixed TLS auth-edge addresses as the private RustFS Reader.
+  authEgressCIDRs: [109.173.40.247/32, 109.120.141.97/32]

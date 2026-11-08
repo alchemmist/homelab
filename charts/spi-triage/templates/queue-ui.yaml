@@ -97,7 +97,6 @@ metadata:
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: 'true'
     traefik.ingress.kubernetes.io/router.priority: '160'
-    traefik.ingress.kubernetes.io/router.middlewares: automation-spi-queue-clean-identity@kubernetescrd,automation-spi-queue-auth@kubernetescrd
 spec:
   ingressClassName: traefik
   rules:
@@ -121,6 +120,10 @@ spec:
           podSelector: {matchLabels: {app.kubernetes.io/name: traefik}}
       ports: [{port: 8080, protocol: TCP}]
   egress:
+    {{- range .Values.queueUI.authEgressCIDRs }}
+    - to: [{ipBlock: {cidr: {{ . | quote }}}}]
+      ports: [{port: 443, protocol: TCP}]
+    {{- end }}
     - to:
         - podSelector: {matchLabels: {app: spi-triage}}
       ports: [{port: 8080, protocol: TCP}]

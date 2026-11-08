@@ -25,3 +25,13 @@
 {{- if and .Values.queueUI.enabled (not (regexMatch "^.+@sha256:[0-9a-f]{64}$" .Values.image)) }}
 {{- fail "queueUI requires the pinned worker runtime image" }}
 {{- end }}
+{{- if .Values.queueUI.enabled }}
+{{- if not .Values.queueUI.authEgressCIDRs }}
+{{- fail "queueUI requires explicit fixed auth-edge /32 egress" }}
+{{- end }}
+{{- range .Values.queueUI.authEgressCIDRs }}
+{{- if not (has . (list "109.173.40.247/32" "109.120.141.97/32")) }}
+{{- fail "queueUI auth egress must use the reviewed TLS auth-edge /32 addresses" }}
+{{- end }}
+{{- end }}
+{{- end }}

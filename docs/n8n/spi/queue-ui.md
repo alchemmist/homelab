@@ -27,11 +27,15 @@ retry, active abort, GitHub closure or evidence deletion is exposed.
 
 ## Security and deployment
 
-Existing RustFS SSO remains authoritative. Traefik strips caller-supplied identity
-headers, authenticates with the existing outpost, and forwards verified groups.
-Only existing `homelab-owner`/`homelab-platform-operator` groups are accepted.
-The frontend NetworkPolicy accepts only Traefik and permits only backend/DNS
-egress. Host, same-origin Origin and a custom JSON-request header are checked.
+Existing RustFS SSO remains authoritative. Like the private evidence Reader, the
+frontend verifies the opaque session cookie only against the fixed TLS
+`/outpost.goauthentik.io/auth/nginx` endpoint. Caller identity headers never grant
+access. Only trusted response groups `homelab-owner`/`homelab-platform-operator`
+are accepted. Anonymous page requests use an exact `/queue/` SSO return target;
+expired API sessions return401. Authentication outages fail closed.
+The frontend NetworkPolicy accepts only Traefik and permits only backend/DNS and
+the same two fixed auth-edge /32 addresses on TCP443 as the evidence Reader.
+Host, same-origin Origin and a custom JSON-request header are checked.
 No CORS. All pages/API responses are private/no-store with nosniff and a strict
 self-only CSP; incident text is rendered with textContent, never innerHTML.
 

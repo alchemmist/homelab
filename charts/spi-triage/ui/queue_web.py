@@ -1,5 +1,6 @@
-"""Private queue BFF. Ingress SSO + Traefik-only NetworkPolicy are mandatory.
-Only two fixed operator routes; no worker token, cookies or caller headers forwarded.
+"""Private queue BFF; verified SSO cookie + Traefik-only ingress.
+Cookies go only to the fixed TLS auth endpoint, never to the queue backend.
+Only two fixed operator routes; no worker token or caller identity is trusted.
 """
 import http.client
 import http.server
@@ -7,6 +8,9 @@ import json
 from pathlib import Path
 import socket
 import threading
+import urllib.request
+import urllib.error
+import urllib.parse
 
 ORIGIN = 'https://rustfs.socrat.alchemmist.xyz'
 ASSETS = {'/queue/': ('index.html', 'text/html; charset=utf-8'),
@@ -14,6 +18,11 @@ ASSETS = {'/queue/': ('index.html', 'text/html; charset=utf-8'),
           '/queue/style.css': ('style.css', 'text/css; charset=utf-8')}
 ROUTES = {'/queue/api/list': '/operator/queue/list', '/queue/api/cancel': '/operator/queue/cancel'}
 TOKEN = ''
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):return None
+
+AUTH = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
 
 def expire(sock):
     try:sock.shutdown(socket.SHUT_RDWR)
@@ -47,17 +56,36 @@ class Handler(http.server.BaseHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError):pass
 
     def valid_host(self):
-        # Ingress removes caller identity headers before authenticated response
-        # headers are copied; NetworkPolicy admits only Traefik to this service.
         return self.headers.get_all('Host', []) == ['rustfs.socrat.alchemmist.xyz']
 
-    def permitted(self):
-        return bool(set(self.headers.get('X-authentik-groups', '').split('|'))
-                    & {'homelab-owner', 'homelab-platform-operator'})
+    def authorization(self):
+        # Same trusted auth/nginx endpoint as the private evidence Reader.
+        # Never trust caller identity headers or forward cookies to the backend.
+        cookies = self.headers.get_all('Cookie', [])
+        if len(cookies) != 1 or not cookies[0] or len(cookies[0]) > 8192 or '\r' in cookies[0] or '\n' in cookies[0]:
+            return 401
+        request = urllib.request.Request(ORIGIN + '/outpost.goauthentik.io/auth/nginx', headers={
+            'Cookie':cookies[0], 'X-Original-URL':ORIGIN + '/queue/',
+            'X-Forwarded-Proto':'https', 'X-Forwarded-Host':'rustfs.socrat.alchemmist.xyz',
+            'X-Forwarded-Method':'GET'})
+        try:
+            with AUTH.open(request, timeout=5) as response:
+                if response.status not in (200, 204):return 503
+                groups = set(response.headers.get('X-authentik-groups', '').split('|'))
+                return 200 if groups & {'homelab-owner', 'homelab-platform-operator'} else 403
+        except (OSError, ValueError, urllib.error.URLError) as error:
+            if isinstance(error, urllib.error.HTTPError):
+                code = error.code; error.close()
+                return code if code in (401, 403) else 503
+            return 503
 
     def do_GET(self):
         if not self.valid_host():return self.send(400, b'{}')
-        if not self.permitted():return self.send(403, b'{}')
+        auth = self.authorization()
+        if auth != 200:
+            if auth == 401:
+                return self.send(302, b'', location=ORIGIN + '/outpost.goauthentik.io/start?' + urllib.parse.urlencode({'rd':ORIGIN + '/queue/'}))
+            return self.send(auth, b'{"code":"AUTH_UNAVAILABLE"}')
         if self.path == '/queue':return self.send(308, b'', location='/queue/')
         asset = ASSETS.get(self.path)
         if not asset:return self.send(404, b'{}')
@@ -65,7 +93,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def do_POST(self):
         if not self.valid_host():return self.send(400, b'{}')
-        if not self.permitted():return self.send(403, b'{}')
+        auth = self.authorization()
+        if auth != 200:
+            code = 'AUTH_REQUIRED' if auth == 401 else ('FORBIDDEN' if auth == 403 else 'AUTH_UNAVAILABLE')
+            return self.send(auth, json.dumps({'code':code}).encode())
         if (self.headers.get_all('Origin', []) != [ORIGIN]
                 or self.headers.get('X-SPI-Queue') != '1'
                 or self.headers.get('Sec-Fetch-Site', 'same-origin') != 'same-origin'):
