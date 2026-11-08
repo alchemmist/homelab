@@ -31,7 +31,7 @@
     ],
     "counterOnly": true,
     "packetLogging": false,
-    "enforcementEnabled": false
+    "enforcementEnabled": true
   },
   "preserve": [
     "production-traefik-443",
@@ -41,5 +41,24 @@
     "existing-wireguard-and-amneziawg-client-material",
     "corporate-tunnelblick-and-global-dns-routes",
     "tv-youtube-profile"
-  ]
+  ],
+  "publicBackendGuard": {
+    "table": "homelab_xui_backend_guard",
+    "interface": "eth0",
+    "ports": [
+      12096,
+      32087
+    ],
+    "preserveEstablishedConnections": true,
+    "persistentUnit": "homelab-xui-backend-guard.service",
+    "packetLogging": false,
+    "rebootAcceptance": false
+  },
+  "acceptance": {
+    "homeFixedWanRealityAndTrojan65536Bytes": true,
+    "expectedHomePublicSourceConfirmed": true,
+    "overlayBypassToVps": false,
+    "mobileAcceptance": false,
+    "legacyClientRefreshConfirmed": false
+  }
 }

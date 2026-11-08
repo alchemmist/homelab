@@ -183,3 +183,14 @@ links removed (78 URI entries remain), unrelated profiles/keys/URLs preserved.
 Server publication migration done, not device refresh/legacy retirement. No device
 remote-control prerequisite for this phase; wait for owner refresh confirmation
 before closing32063. Temporary tokens removed; see llm-wiki/vpn-hardening.md.
+
+
+VPN83 latest: raw public eth0 TCP12096/32087 rejected by a dedicated persistent
+exact-owned guard; external resets+TLS443 and all16 URI/JSON subscriptions verified.
+Own Trojan64KiB before/after; no rule replay after nft1.0.6 readback correction.
+Real socrat-0 HOME FIXED WAN now passes own REALITY32053+TrojanTLS44364KiB each;
+expected home source, not overlay; routes/resolver unchanged, all probe credentials
+cleaned, four nodes Ready.71 tests+6 subtests. Mobile/reboot not tested. Legacy32063
+still excluded+enabled pending actual refresh confirmation; WATCHDOG CONFIG STILL
+REQUIRES IT, so no blind API disable (would false-fail/fence). Coordinated watchdog
+source/live config+monitoring update is required before retirement. See VPN wiki.

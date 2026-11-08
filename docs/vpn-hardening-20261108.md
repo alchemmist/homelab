@@ -1,6 +1,6 @@
 # Configuration-only VPN hardening — 8 November 2026
 
-Issue: [#83](https://github.com/alchemmist/homelab/issues/83). **In progress: target correction accepted; other gates remain open.**
+Issue: [#83](https://github.com/alchemmist/homelab/issues/83). **In progress: REALITY, subscription withdrawal, public backend guard and home-fixed protocol acceptance accepted. Legacy retirement/mobile gates remain.**
 The owner explicitly excluded a new VPS, public IP or provider purchase. Original
 P1/P2 independent-ASN and proxy/infrastructure-IP separation are deferred, not
 prerequisites to start this configuration-only phase and not completed outcomes.
@@ -266,28 +266,122 @@ full URI/JSON before/after bodies, native backup and credential-cleanup receipt.
 Keep it0700/0600. Audit GETs may change last_sub_fetch; they are never device refresh.
 Raw backend guards, Russian vantage acceptance and IP-ban resilience are unchanged.
 
+## Public raw-backend guard: applied, persistent and functionally accepted
+
+Fresh source counters before external tests showed12096 only on loopback/wg-socrat,
+32087 only on those same interfaces, and zero `other` packets on both. All original
+16 standard URI+JSON subscriptions already used working public HTTPS. Workstation
+baseline TCP connections confirmed that both literal public raw ports were open.
+These bounded test connections are known generated observations, not consumers.
+
+A separate owned table **`inet homelab_xui_backend_guard`** now returns established
+connections and resets new incoming TCP12096/32087 **only on eth0**. It is an INPUT
+base chain priority-6, default accept. No forward/NAT/SSH/443/UDP/WG/AWG/NetBird,
+other firewall table, TV profile or panel guard was changed. The ACCEPT-only audit
+table is still present separately; it is not the enforcing mechanism. The public
+interface/IPv4 were freshly checked. No guessed overlay source allowlist was used.
+
+`scripts/vpn-backend-enforce.py` requires fresh session/config/guard approvals,
+backup, owned native fixture and complete before/after proof. A fresh own Trojan
+identity authenticated through public-hostname **TLS443/WebSocket**, certificate
+verification enabled, and downloaded65536 bytes before guard installation. After
+installation, another explicitly named own fixture downloaded65536 bytes through
+the same TLS443 path (twice during existing-rule acceptance). Entire original16
+URI+JSON subscriptions still match backend/public and their pre-guard versions;
+fixture subscriptions are excluded from that original-population comparison.
+No human keys were used. Every fixture and temporary machine token was deleted.
+All original16 identities/85 database bindings and proxy config remain unchanged;
+publication still contains78 entries because32063 is excluded.
+
+The first preparation stopped before a rule write when the extra synthetic
+Trojan-only JSON subscription had no generated config. Comparisons now explicitly
+cover original identities and do not mistake the intentionally limited fixture for
+an original subscriber. The next attempt installed the guard once; strict readback
+then stopped because nft1.0.6 represents `ct state established` with `op: in`, not
+`==`. **No rule replay or flush**: full exact AST validation was corrected/tested,
+and interrupted state finalized by readback with zero repeated rule writes. A fresh
+session accepted the already installed guard and installed persistence; it did not
+reinstall/reset the live rules or counters.
+
+External workstation probes now receive **TCP resets on both raw ports**, while
+443 presents verified TLS1.3. The owned deny counter increased with those probes.
+Local subscribed paths, public subscriptions and authenticated Trojan443 remain
+working. `/usr/local/libexec/homelab-vpn-backend-guard/` holds root-owned code and
+inventory helper; `homelab-xui-backend-guard.service` is active+enabled and validates
+or installs ONLY the exact owned table at startup. It does not flush the firewall,
+restart K3s/nodes or remove the guard when stopped. **Reboot was not performed and
+boot recovery acceptance is not claimed.** Runtime mode remains Kubernetes, watchdog
+healthy/not inhibited, four nodes Ready.
+
+Private proof: `vpn83-20261108-backend-final` (pre-rule tunnel and interrupted
+readback), `vpn83-20261108-backend-accept` (post-rule full functional acceptance,
+original config, persistence and cleanup receipts), under
+`/var/lib/homelab-vpn-hardening`. Workstation negative-control receipt is private
+`/tmp/netbird-tunnelblick-safe/vpn83-external-guard-proof.json`.
+
+## Actual home fixed-WAN protocol acceptance
+
+A new ephemeral identity, quota10MiB and expiry20min, was bound only to32053 and
+Trojan32087 through the supported native API. Own probe configs and a SHA256-pinned
+copy of the running Xray26.10.21 binary were transferred using private no-log Ansible
+fetch/copy over approved pinned internal SSH, never embedded secrets in process
+arguments/environment or posted plaintext machine credentials. TTL API tokens
+stayed on the VPS, were never transferred, and were explicitly removed afterward.
+The controller uses unconditional VPS cleanup after a successful prepare, even if
+the home test fails. Interrupted two-phase work must use private ownership evidence,
+not replay fixture/token creation.
+
+On socrat-0 the route to the public VPS is **eno1 via192.168.0.1, not an overlay**.
+The directly observed public source matched the approved expected home public IP.
+Separate loopback-only, destination-restricted Xray processes successfully fetched
+**HTTP200/65536 bytes through VLESS/XHTTP/REALITY32053 and HTTP200/65536 bytes
+through Trojan/TLS/WebSocket443**. This closes the available home fixed-path
+large-transfer/authenticated-protocol gate, not all Russian networks or a mobile
+ISP. It is stronger than the previous same-VPS-only probe. Main routes and resolver
+contents hashed identically before/after; no OS proxy/DNS/routes or production
+client application was changed. Child processes stopped, private probe configs and
+copied binary removed. Server cleanup proved original proxy config/token rows
+unchanged and removed own client/tokens. Zero vpn83 fixture/token rows remain.
+
+Code: `vpn-home-session.py` (bounded VPS prepare/ownership-checked cleanup),
+`vpn-home-probe.py` (standalone home test). Local scoped result now **71 tests
++6 subtests passed**. Private home receipt:
+`/var/lib/homelab-vpn-hardening/vpn83-home-fixed-20261108/receipt.json` on socrat-0;
+VPS session receipt under `vpn83-20261108-home-acceptance`. Controller files0700/0600;
+local delivered secret configs/binary were removed after cleanup. Audit subscription
+GETs remain distinct from actual user refresh; no user/device acceptance invented.
+
+### What is genuinely still gated
+
+-32063 is still enabled but excluded from every subscription. The owner said they
+will coordinate refresh, not that refresh/working client connections already
+happened. A live legacy connection was observed during this phase; do not infer
+abandonment from subscription database records.
+- **Blind disable is unsafe:** the active recovery watchdog still requires32063 in
+`tcp_endpoints`, `listen_ports` and native-primary port inventory. Retiring it needs
+a coordinated source+live watchdog config change under its existing serialization
+lock, and monitoring port-list update, BEFORE disabling the native inbound. Never
+trigger an unintended fence/fallback, weaken recovery globally, or just stop the
+watchdog to hide a false failure. No such retirement write has yet been performed.
+- No actual mobile ISP vantage is available. Do not emulate one by disabling the
+mandatory corporate VPN, changing routing, or relabeling the home fixed path.
+- Destination-IP/prefix/ASN blocking remains outside camouflage's capabilities on
+one IP. Independent-ASN/fallback purchase and proxy/infrastructure IP separation
+remain explicitly deferred by budget. No immunity or causal TSPU claim.
+
 ## Next gated production steps
 
-1. **No new listener is needed just to provide encryption:** all seven32063 links
-   already have at least one enabled REALITY alternative with an enabled host rule.
-   Both configured subscription base URLs use the expected HTTPS hostname. This is
-   server configuration evidence. Standard URI publication subsequently passed;
-   device/import and JSON-subscription proof remain open.
-   Publication withdrawal is now complete under owner-coordinated refresh. Confirm
-   actual clients refresh and can use those alternatives before retiring32063; do not expand port/protocol exposure unnecessarily.
-2. Observe12096 and distinguish Traefik/cluster probes from direct consumers; only
-   then design a narrow backend guard. Preserve readiness, subscription fetches,
-   Trojan443 and machines. Do not guess interface/source allowlists. Target correction
-   did not close the raw backend paths or alter the ACCEPT-only counter table.
-3. Use a fresh explicitly named temporary session only when another operation is
-   ready to execute, not an idle permanent admin credential. The approved issuance
-   mechanism is available; no plaintext machine credential needs to be posted in chat.
-4. Run actual tunnel/large-transfer tests from available fixed/mobile Russian paths
-   and an external control. No trigger traffic, malformed packets, broad scans,
-   packet payload captures or automatic IP rotation.
+1. Confirm owner-coordinated refresh and working encrypted client connections,
+   then retire32063 with the watchdog+monitoring dependencies corrected safely.
+2. Obtain actual mobile-path acceptance when such a vantage is available. Home
+   fixed-path VLESS/REALITY and Trojan64KiB acceptance is already complete.
+3. No more plaintext API credentials are needed from the owner. Use a new unique,
+   short-lived native session only when the next approved operation is ready.
+4. Reboot/fallback DR acceptance remains separate: do not reboot nodes, fence K3s,
+   flush firewall rules or claim recovery from enabled unit state alone.
 
-Scoped local checks at this checkpoint: **60 tests +6 subtests passed**, including
-panel guard/IP-migration regressions and31 dedicated hardening/session tests. CI
+Scoped local checks at this checkpoint: **71 tests +6 subtests passed**, including
+panel guard/IP-migration regressions and42 dedicated hardening/session tests. CI
 runs only offline safety, with no infrastructure credentials. Not the full repo suite.
 
 Private final evidence: `/var/lib/homelab-vpn-hardening/vpn83-20261108-target-final`,
@@ -295,7 +389,7 @@ including `receipt.json`, `target-acceptance.json`, before/after64KiB proofs, pr
 snapshots, native backup and credential-cleanup receipt. Keep all private. The first
 aborted session is retained separately under the `target-main` directory.
 
-The issue remains open. The accepted target correction is not proof of closed
-public backends, completed plaintext retirement, Russian reachability or protection
-from destination-IP bans. No new VPS/IP, image upgrade, TV/WG/AWG peer/config change,
+The issue remains open. Public backend denial and the available home fixed-path
+acceptance now passed. Plaintext retirement, mobile acceptance, reboot/DR acceptance
+and destination-IP-ban immunity are not completed or implied. No new VPS/IP, image upgrade, TV/WG/AWG peer/config change,
 Tunnelblick/global DNS/route change or NetBird change occurred.

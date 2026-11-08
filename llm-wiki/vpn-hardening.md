@@ -103,3 +103,36 @@ confirms users refreshed/connected; do not invent acceptance from our audit GETs
 All temporary tokens cleaned, original users/settings/tokens preserved; pod Ready,
 restarts0, three verified REALITY fallbacks healthy.64 tests+6 subtests local passed.
 Private proof `/var/lib/homelab-vpn-hardening/vpn83-20261108-subscription-final`.
+
+
+## Latest: backend exposure closed and real home-path tunnels accepted
+
+A separate exact-owned `inet homelab_xui_backend_guard` INPUT priority-6 rule set
+now returns established/raw connections and rejects NEW eth0 TCP12096/32087 only.
+No NAT/forward/443/SSH/overlay changes; audit counters remain separate. Before tests
+other-interface counters were0; baseline raw public ports open, after enforcement
+external TCP resets on both and verified TLS443. All original16 URI+JSON subscriptions
+preserved, own synthetic TrojanTLS443 downloaded64KiB before and after. No human
+credentials. Guard unit enabled+active; no reboot performed/boot acceptance claimed.
+Nft1.0.6 ct-state `in` AST mismatch stopped readback AFTER installation; exact
+validation fixed and readback finalized with ZERO rule replay. Fresh session tested
+existing guard/persistence. Limited fixture JSON excluded from original-population
+checks. All fixtures/tokens cleaned; original proxy records unchanged.
+
+Home socrat-0 actual WAN (eno1→192.168.0.1, public source matches approved home IP,
+not WG/NetBird) then passed native **REALITY32053 AND TrojanTLS443,65536 bytes each**.
+Only own20min/10MiB identity; pinned copied core; no route/DNS/global-proxy change,
+no human secret use, protected SSH fetch/copy rather than secrets in argv/env.
+Processes/configs/binary removed, native fixture/tokens cleaned, four nodes Ready,
+watchdog Kubernetes/healthy/not inhibited. This is home FIXED, **not mobile**.
+Private `vpn83-20261108-backend-{final,accept}` and `vpn83-20261108-home-acceptance`
+on VPS; home `/var/lib/homelab-vpn-hardening/vpn83-home-fixed-20261108/receipt.json`.
+71 local scoped tests+6 subtests passed; not full repo/DR/IP-ban immunity.
+
+Remaining retirement gate: owner said they WILL ask users to refresh, not that
+refresh succeeded. Legacy32063 remains enabled/excluded. Live watchdog still
+expects32063 in endpoint/listen/native-primary inventory; monitoring lists it too.
+A plain API disable would falsely fail recovery and can fence K3s. Retirement must
+coordinate exact source/live config+collector updates under the existing watchdog
+lock, not stop recovery or ignore alerts. Do not falsely claim device/mobile/reboot
+acceptance. Budget still excludes new VPS/IP/ASN fallback.
