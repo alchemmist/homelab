@@ -59,8 +59,17 @@ The post-change target plan is no-op. Private proof under
 
 All seven plaintext links already have an enabled encrypted alternative; no new
 port/listener is needed just to provide one. Configured subscription bases are HTTPS
-on the expected hostname. Device/import compatibility and rendered subscriptions
-are still unproven. Do not infer actual migration from server-side overlap counts.
+on the expected hostname. All16 standard URI subscriptions were checked via public HTTPS and loopback:
+85 entries match, ignoring only randomized REALITY sid (79 interpreted profiles
+and6 opaque vpn imports preserved unchanged). All7 affected records really publish
+encrypted alternatives. JSON-subscription/device compatibility remains unproven.
+Six affected identities have10 registered HWID rows; the seventh has no registered
+device inventory. These are not ten proven current/unique devices. Audit GETs used
+a distinct agent and can update last_sub_fetch: NEVER treat them as device refresh.
+Socrat-3 Happ saved port32053, TUNfalse, no active loopback proxy; no app store/GUI/
+route change or functional-device claim. No end-device control/acceptance exists
+yet; migration is **not complete**,32063 remains. Private follow-up evidence under
+`/var/lib/homelab-vpn-hardening/migration-client-audit-20261108`.
 
 Do not close32063 before compatible encrypted replacement/subscription refresh and
 client acceptance. Do not enforce raw-backend rejects before consumer/source proof.

@@ -179,12 +179,56 @@ or TV profile was changed. Optional RAW+Vision would be another transport on the
 same IP, not an independent fallback. No image upgrade or AWG retuning was bundled.
 The separate November7 watchdog fence is not proof of an IP ban and was not altered.
 
+## Client migration follow-up: publication verified, devices not migrated
+
+The owner subsequently requested completing migration of every client. Read-only
+inventory and bounded subscription GETs checked **all16 enabled identities** through
+both loopback12096 and public HTTPS. The standard URI subscriptions matched after
+excluding only the existing randomized REALITY `sid`: **85 published entries**, of
+which79 were interpreted VLESS/Trojan/WireGuard profiles and6 opaque `vpn://` import
+entries preserved and compared without rewriting. The latter initially stopped a
+strict parser; no configuration mutation was attempted during either failed parse.
+All seven affected identities really receive encrypted alternatives in their public
+subscriptions. This closes the standard URI **publication** gap, not device refresh,
+JSON-subscription validation or Russian fixed/mobile tunnel acceptance.
+
+Before audit GETs, runtime metadata was privately captured. Six affected identities
+have10 registered HWID/device rows; the seventh has no registered-device inventory.
+These are registrations, not ten proven unique/current/online devices. Stored
+traffic rows did not establish per-inbound encrypted use. Every audit GET carried
+`homelab-vpn-migration-audit/1`; it may advance native `last_sub_fetch` and MUST NOT
+be counted as a human/device refresh. No HWID was submitted, none was provisioned;
+the affected registered-row count remained10 after the audit.
+
+Managed-node checks found no conventional Xray/sing-box client service/config on
+socrat-0. On socrat-3, Happ is installed: saved selected port32053, TUN preference
+false, happd active with NET_ADMIN/NET_RAW excluded and NoNewPrivileges. No Happ
+loopback proxy listener was running. Its binary subscription store and GUI settings
+were **not edited**, GUI was not launched and routes/proxy state were not changed.
+Saved selection is not functional acceptance; the TV WireGuard profile is out of
+this migration and remains untouched.
+
+**Actual blocker:** there is no proven control channel to the affected end-device
+applications and no user/device acceptance. A server cannot change a cached
+`security=none` URI into a REALITY client configuration. Removing publication or
+closing32063 before those applications switch could disconnect users. No such
+write/retirement was performed. Completion needs managed client access or actual
+subscription refresh plus working encrypted connection from the affected devices;
+missing/extra devices also need inventory. Do not report this migration complete.
+
+Final semantic configuration still matches the accepted target-only snapshot;
+no temporary tokens remain. Private publication bodies, pre-audit runtime metadata,
+per-record migration evidence and honest incomplete receipt are under
+`/var/lib/homelab-vpn-hardening/migration-client-audit-20261108`,0700/0600. Never
+publish URLs, subscription IDs, client credentials, hardware identifiers or bodies.
+
 ## Next gated production steps
 
 1. **No new listener is needed just to provide encryption:** all seven32063 links
    already have at least one enabled REALITY alternative with an enabled host rule.
    Both configured subscription base URLs use the expected HTTPS hostname. This is
-   server configuration evidence, not device/import or rendered-subscription proof.
+   server configuration evidence. Standard URI publication subsequently passed;
+   device/import and JSON-subscription proof remain open.
    Confirm actual clients refresh and can use those alternatives before hiding or
    retiring32063; do not expand port/protocol exposure unnecessarily.
 2. Observe12096 and distinguish Traefik/cluster probes from direct consumers; only
