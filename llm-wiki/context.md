@@ -216,3 +216,15 @@ home tcpdump missing; no matched packet attribution. No repair/IP change perform
 Don't use HOME as VPN fallback without explicit risk consent or remove old IP before
 safe parallel replacement. See VPN wiki/runbook incident section; future ban immunity
 never established.
+
+
+Observer alert active20:02–20:24: exact cause identified read-only. CoreDNS onVPS
+returns Authentik hostname→VPS109.120.141.97; home CoreDNS→HOME109.173.40.247,
+cluster VIP alternates. Actual worker socket SYN_SENT/retrans toVPS443, notKubeAPI.
+VPS authoritative refresh loopback probes see home=False/vps=True and publishVPS
+while home authority publishesHOME; provider upstreams inherit that split, not
+proven stale/poisoned DNS. Membership token valid; groups/users HTTP200 through
+working path; verified internalTraefik443 Host/SNI endpoint works. No repair yet.
+Proposed scoped internal auth-name DNS mapping with fresh approval/preimages,
+no globalDNS/node restarts/RBAC broadening/token rotation. Historical observer
+acceptance != current revocation bound. See observer acceptance incident appendix.

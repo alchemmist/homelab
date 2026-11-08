@@ -114,3 +114,50 @@ Private evidence is retained in `/var/lib/homelab-observer-rollout/20261107-fina
 and `/var/lib/homelab-observer-initial-person`, including the live acceptance,
 automatic cache round-trip, cleanup and final group receipts. Credential values
 remain private, not in this document, issues or Git.
+
+
+## Active dependency incident: observer reconciliation intermittent,20:02–20:24UTC
+
+Historical acceptance is not current bounded-revocation evidence. Last successful
+worker19:52:12, then failures at20:00/20:01;20:09 success followed20:10 failure.
+Prometheus20:16 reported pending, last success about236s ago (20:12:12), so a single
+success can clear the alert temporarily without repairing its dependency.
+
+Read-only diagnosis confirmed a DNS/public-entry failure, not revoked credentials:
+- Authentik read-only machine Secret is byte-identical in cattle-system and wiki;
+  no token value emitted. Same credential reads users9/groups21 withHTTP200.
+- Hostname-origin API calls intermittently raiseURLError(reason=TimeoutError).
+  Full groups page21/11577bytes and users9/14360bytes also complete in0.28–0.39s;
+  no evidence of a deterministic oversized page or expired token.
+- Verified-TLS per-process comparison with original Host/SNI to cluster Traefik
+  10.43.218.222:443 returned groupsHTTP200 in0.329s; ordinary public-origin request
+  immediately afterward timed out in5.104s. No TLS validation disabled, credentials
+  rotated, group/role changed or DNS/routes modified.
+- Passive /proc socket metadata of the ACTUAL running CronJob (no exec/load inside
+  its100mCPU container) at20:20:09–12 showed SYN_SENT to109.120.141.97:443 with
+  retransmissions. KUBERNETES_SERVICE_HOST is10.43.0.1, so this was not the
+  Kubernetes cache API; worker has no auth hostname /etc/hosts override.
+- CoreDNS replicas disagree: socrat-2 pod10.42.0.26 consistently returns
+  auth.socrat.alchemmist.xyz→109.120.141.97; socrat-0 pod10.42.2.225 consistently
+  returns109.173.40.247. ClusterDNS VIP10.43.0.10 alternates between these views.
+  VPS CoreDNS really inherits provider resolvers46.254.22.138/46.254.23.138, both
+  returning the VPS answer. Independent GoogleDoH returns HOME answer. Do NOT
+  label provider poisoning/stale cache: our independently rendered authoritative
+  failover zones legitimately differ under a partial network partition.
+- Live VPS /usr/local/libexec/public-dns-refresh probes VPS127.0.0.1, not end-user
+  reachability. Last5min showed ten `updated home=False vps=True` results. Thus VPS
+  authority still advertises its locally healthy but home/mobile-inaccessible
+  public entry; home authority selects HOME. Source scripts/public_dns_zone.py
+  and public_authoritative_dns role explain this split. DNS failover cannot
+  infer client-specific reachability from local loopback health.
+
+Cause chain: inconsistent authoritative/upstream DNS views→random CoreDNS answer→
+worker attempts affected VPS public443→5s connect timeout→no complete membership
+snapshot→safe exit before cache reconciliation→critical freshness alert recurs.
+The worker and Wiki internal membership dependency should use a narrow consistent
+INTERNAL Authentik ingress resolution, preserving public hostname/Host/SNI/TLS and
+all credential/RBAC/CAS protections. A scoped cluster DNS override for auth hostname
+is a proposed fix; not applied without fresh owner approval/preimage/backup and
+acceptance. Do not change global/Mac DNS, flush DNS/firewalls, restart nodes, relax
+revocation freshness or issue a new token to mask this. Public authoritative
+failover redesign is a separate larger change requiring fleet preflight/receipts.
