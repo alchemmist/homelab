@@ -455,3 +455,54 @@ The issue remains open. Public backend denial and the available home fixed-path
 acceptance now passed. Plaintext retirement is now complete. Mobile acceptance, reboot/DR acceptance
 and destination-IP-ban immunity are not completed or implied. No new VPS/IP, image upgrade, TV/WG/AWG peer/config change,
 Tunnelblick/global DNS/route change or NetBird change occurred.
+
+
+## New reachability incident after cutover —19:07–19:45UTC
+
+Server cutover success is NOT ongoing public reachability evidence. Owner reported
+public IP inaccessible while Main/Happ initially still worked, then all phone
+profiles failed, including a separate mobile network. No restart, firewall flush,
+unban, IP/DNS/route change or new native credentials was performed for diagnosis.
+
+-19:07 workstation connected to public443/32053/32083/32084, but home socrat-0
+  new connections timed out. By19:20,19:26 and19:33 the workstation also timed out.
+  Workstation direct egress check is NOT the expected home public IP; do not assert
+  these are two independent ASNs or classify its country without evidence.
+- VPS remains reachable through approved internal SSH; K3s/watchdog healthy,
+  four nodes Ready, no recovery/inhibit latch. Loopback443/32053/32083/32084 open;
+  outbound verified YahooTLS works. Conntrack11440/131072, no recent conntrack-full,
+  link-down, OOM or SYN-flood kernel markers. Historical counters are not current
+  rates. Exact owned backend guard still affects ONLY eth0 TCP12096/32087.
+- Current full proxy projection equals exactly the authorized retirement change;
+  all16 master client records enabled. Original client_traffics enable/expiry/
+  quota/reset/inbound-assignment fields match retirement backup. Thus no evidence
+  of global account/key/limit disable by retirement. No exact home-IP ban in either
+  Fail2ban jail3x-ipl/sshd; no exact home-IP reference in nft/legacy rules, legacy
+  INPUT policy accept. This does not exclude upstream anti-DDoS or range filtering.
+- Independent bounded external TCP check from **Germany/Nuremberg AS24940** reached
+  literal109.120.141.97:443 in0.010108s. Public diagnostic
+  `https://check-host.net/check-report/567207ddk3ba`, one node/one owned endpoint,
+  not a scan. Server/IP is not globally offline. Source/region-dependent filtering
+  or routing is the leading hypothesis, not proven TSPU attribution.
+- **DNS control distinction:** current workstation DNS for vpn.alchemmist.xyz is
+  the approved HOME public IP, not the VPS. Direct verified TLS to that home443
+  succeeds while literal VPS443 times out. Domain HTTP/TLS success must NOT be
+  presented as literal-VPS reachability. Earlier manually constructed Trojan probes
+  use this hostname; no packet-level destination record from their execution was
+  retained, so do not assume they specifically exercised literal VPS public443.
+  Direct REALITY probe config explicitly used VPS IPv4 and succeeded at that time.
+- Header-only non-promiscuous VPS captures saw sparse home-address SYN/SYNACK
+  metadata, without payload/pcap files. **Not sufficient to attribute matching
+  packets to particular failed connect attempts.** Paired fixed-port diagnosis
+  could not run on home because tcpdump is absent; no package installed. The VPS
+  capture from that pair is NOT matched-test evidence and is not used to locate
+  the loss. Do not claim end-to-end packet correlation or proven one-way loss.
+
+Next operational decision is upstream/provider investigation or an owner-approved
+parallel IP replacement as a provisional recovery measure, not a guaranteed fix
+for prefix/ASN filtering. Do not remove the old address before a safe control-path
+cutover. Do not silently advertise the home IP as a VPN fallback: doing so risks
+blocking the public infrastructure/home address; this requires explicit owner
+tradeoff approval. Mobile failure is owner-reported, not an instrumented mobile
+trace. Server-only restart/weakening authentication/reenabling plaintext is not
+justified by the observed pre-TLS connect timeouts.

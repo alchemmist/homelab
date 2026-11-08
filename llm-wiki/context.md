@@ -204,3 +204,15 @@ URL/select encrypted profile, keys unchanged. Actual HOME WAN REALITY+Trojan64Ki
 repeated after cutover, passed; no global network change, all temp keys/clients clean.
 133 tests+8 subtests scoped. Server move complete, do not re-enable32063. Mobile,
 reboot/DR and future-IP-ban immunity not claimed. See authoritative VPN wiki latest.
+
+
+VPN active incident19:07–19:45UTC supersedes availability assumptions: owner says all
+phone profiles now fail on mobile too. New literal-VPS TCP timed out home+workstation,
+internal health/4nodes/auth fields intact. Independent GermanyTCP443 succeeded10ms:
+regional/source filtering or routing suspected, not proven TSPU. vpn hostname DNS
+currently HOME IP (TLSworks), not VPS; earlier Trojan hostname probe exact path was
+not recorded, do not claim literalVPS443 from it. Paired header diagnosis unavailable
+home tcpdump missing; no matched packet attribution. No repair/IP change performed.
+Don't use HOME as VPN fallback without explicit risk consent or remove old IP before
+safe parallel replacement. See VPN wiki/runbook incident section; future ban immunity
+never established.

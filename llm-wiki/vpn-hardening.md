@@ -165,3 +165,28 @@ post-retire-home sessions on VPS; home `vpn83-home-after-retirement/receipt.json
 133 expanded local tests+8 subtests passed. Mobile and reboot/DR NOT tested; no
 future-IP/ASN-ban immunity/new infrastructure purchase. Server cutover complete;
 #83 remains for explicitly unverified/deferred broader resilience outcomes.
+
+
+## New active incident: public access degraded after otherwise accepted cutover
+
+19:07 home→literalVPS secure TCP ports timed out; workstation initially passed then
+also timed out by19:20–19:33. Owner reports Main/Happ initially surviving, then ALL
+phone VPNs also failing on mobile. Internal VPS health/4 Ready nodes normal, exact
+proxy/traffic auth-quota fields unchanged, all16 clients enabled, no observed exact
+home ban/conntrack exhaustion. No repair/reset/IP change performed. Independent
+single Germany AS24940 check reached literalVPS443 in10ms:
+https://check-host.net/check-report/567207ddk3ba. Regional/source filtering/routing
+is likely; NOT proven TSPU/block attribution or a globally dead server.
+
+IMPORTANT DNS: vpn.alchemmist.xyz currently resolves HOME public IP from workstation;
+that TLS443 works while literalVPS443 times out. Hostname success != direct VPS
+success. Earlier Trojan test used that hostname, exact destination not recorded;
+only REALITY home config explicitly targeted VPS literal. Do not overstate prior
+Trojan path. Header-only VPS observations are NOT matched home-test packet proof;
+paired home capture unavailable (no tcpdump, not installed), cannot localize loss.
+
+IP change may temporarily restore regional access, not cure prefix/ASN filtering.
+Keep old IP/control path until parallel cutover; no provider purchase/replace without
+owner authorization. Do not silently shift VPN users onto HOME IP (risks all home/
+infra endpoints). Mobile failure is owner-reported. Root-cause incident still open;
+accepted config migration is not evidence of ongoing availability/IP-ban immunity.
