@@ -128,3 +128,15 @@ class TargetHelperTests(unittest.TestCase):
         a={'inbounds':[{'id':1,'stream_settings':'{"b":2,"a":1}'}]}
         b={'inbounds':[{'id':1,'stream_settings':'{ "a": 1, "b": 2 }'}]}
         self.assertEqual(module.semantic(a),module.semantic(b))
+
+    def test_modern_nested_json_dto_is_supported_without_legacy_reencoding(self):
+        module=self.module();before=self.inbound()
+        before['streamSettings']=json.loads(before['streamSettings'])
+        before['settings']=json.loads(before['settings'])
+        before['sniffing']=None
+        after=module.api_payload(before)
+        self.assertIsInstance(after['streamSettings'],dict)
+        self.assertEqual(after['streamSettings']['realitySettings']['target'],'www.yahoo.com:443')
+        self.assertEqual(after['settings'],before['settings'])
+        self.assertEqual(before['streamSettings']['realitySettings']['target'],'www.intel.com:443')
+        self.assertIsNone(module.json_field(None));self.assertIsNone(module.json_field(''))

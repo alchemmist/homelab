@@ -61,16 +61,22 @@ def corrected(config):
     return after
 
 
+def json_field(value):
+    # 3x-ui3.11 emits native objects; its decoder also accepts legacy JSON strings.
+    if value is None or value == '':return None
+    return json.loads(value) if isinstance(value,str) else copy.deepcopy(value)
+
+
 def api_payload(inbound):
     after=copy.deepcopy(inbound)
     if (after.get('port')!=32053 or after.get('protocol')!='vless' or not after.get('enable')):
         raise ValueError('Unexpected native inbound')
-    stream=json.loads(after['streamSettings'])
+    stream=json_field(after['streamSettings'])
     if stream.get('security')!='reality' or stream.get('network')!='xhttp':raise ValueError('Transport drift')
     if stream['realitySettings'].get('serverNames')!=['www.yahoo.com'] or stream['realitySettings'].get('target')!='www.intel.com:443':
         raise ValueError('API target drift')
     stream['realitySettings']['target']='www.yahoo.com:443'
-    after['streamSettings']=h.canonical(stream)
+    after['streamSettings']=h.canonical(stream) if isinstance(inbound['streamSettings'],str) else stream
     after.pop('clientStats',None)  # Not an editable client-statistics operation.
     return after
 
@@ -174,7 +180,7 @@ def apply(state,policy,session_hash,target_hash):
         if semantic(before_api)!=semantic(prewrite):raise ValueError('Concurrent config change during API read')
         db_target=next(r for r in prewrite['inbounds'] if r['id']==target['id'])
         for api_key,db_key in (('settings','settings'),('streamSettings','stream_settings'),('sniffing','sniffing')):
-            if json.loads(matches[0][api_key])!=json.loads(db_target[db_key]):raise ValueError('API/DB projection mismatch')
+            if json_field(matches[0][api_key])!=json_field(db_target[db_key]):raise ValueError('API/DB projection mismatch')
         h.save(s.state/'proxy-prewrite-private.json',prewrite)
         h.save(s.state/'target-write-uncertain.json',{'target_plan_sha256':target_hash})
         # Only one native write. An ambiguous response is not automatically retried.
