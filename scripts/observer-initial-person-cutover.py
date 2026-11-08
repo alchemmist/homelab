@@ -53,6 +53,7 @@ def main():
     parser.add_argument('--state', type=Path, required=True)
     parser.add_argument('--acceptance', type=Path)
     parser.add_argument('--apply', action='store_true')
+    parser.add_argument('--finalize-readback', action='store_true', help='Verify an interrupted completed delta; zero remote writes')
     parser.add_argument('--approve-plan-hash')
     args = parser.parse_args()
     spec = importlib.util.spec_from_file_location('observer_bootstrap', Path(__file__).with_name('observer-access-bootstrap.py'))
@@ -65,13 +66,34 @@ def main():
         boot.save(args.state/name, value)
     with (args.state/'lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        require(not (args.state/'uncertain.json').exists(), 'Inspect uncertain receipt before any retry')
+        require(not (args.state/'uncertain.json').exists() or args.finalize_readback, 'Inspect uncertain receipt before any retry')
         client = boot.Client(json.loads(args.credentials.read_text()))
         def snapshot():
             user = client.call('authentik', 'GET', 'core/users/94/')
             observer = boot.planner.exact(client.rows('core/groups/'), 'name', 'homelab-observer')
             return user, observer
         before, group = snapshot(); ops = plan(before, group); digest = fingerprint(before, group)
+        if args.finalize_readback:
+            require(not args.apply, 'Readback finalization cannot apply writes')
+            marker = json.loads((args.state/'uncertain.json').read_text())
+            require(args.approve_plan_hash == marker['plan_hash'], 'Interrupted approval hash required')
+            original = json.loads((args.state/'before.json').read_text())
+            recorded = json.loads((args.state/'operations.json').read_text())
+            require(recorded == plan(original, group), 'Interrupted operations do not match reviewed delta')
+            require(not ops, 'Interrupted group changes are incomplete; do not replay them')
+            expected = set(original['groups']) - {READONLY} | {group['pk']}
+            require(set(before['groups']) == expected and before['password_change_date'] == original['password_change_date'],
+                    'Unexpected unrelated identity change; stop for review')
+            save('after.json', before)
+            save('receipt.json', {'subject_uuid': UUID, 'operations': len(recorded), 'observer_member': True,
+                                 'idp_readonly_removed': True, 'netbird_preserved': True,
+                                 'password_mfa_writes': False, 'native_user_provisioning': False,
+                                 'readback_finalized_without_remote_writes': True})
+            (args.state/'uncertain.json').unlink()
+            print(json.dumps({'readback_finalized': True, 'remote_writes': 0, 'observer_member': True,
+                              'idp_readonly_removed': True, 'netbird_preserved': True,
+                              'password_mfa_writes': False, 'native_user_provisioning': False}))
+            return
         if not args.apply:
             print(json.dumps({'writes': False, 'plan_hash': digest, 'operations': ops,
                               'netbird_preserved': True, 'password_mfa_changes': False, 'native_user_provisioning': False}))
@@ -89,7 +111,7 @@ def main():
         save('uncertain.json', {'plan_hash': digest, 'started': datetime.datetime.now(datetime.timezone.utc).isoformat()})
         for index, op in enumerate(ops):
             client.call('authentik', 'POST', op['path'], op['body'])
-            save('progress.json', {'completed': index + 1})
+            save('progress-' + str(index + 1) + '.json', {'completed': index + 1})
         after, after_group = snapshot()
         require(not plan(after, after_group), 'Membership readback not converged')
         expected = set(before['groups']) - {READONLY} | {group['pk']}
