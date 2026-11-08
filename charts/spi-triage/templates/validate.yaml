@@ -19,3 +19,9 @@
 {{- if not (has .Values.s3Evidence.publicOrigin (list "https://rustfs.socrat.alchemmist.xyz" "https://spi-evidence.socrat.alchemmist.xyz")) }}
 {{- fail "s3Evidence.publicOrigin must be the canonical RustFS origin or pre-cutover legacy origin" }}
 {{- end }}
+{{- if not (kindIs "bool" .Values.queueUI.enabled) }}
+{{- fail "queueUI.enabled must be boolean" }}
+{{- end }}
+{{- if and .Values.queueUI.enabled (not (regexMatch "^.+@sha256:[0-9a-f]{64}$" .Values.image)) }}
+{{- fail "queueUI requires the pinned worker runtime image" }}
+{{- end }}

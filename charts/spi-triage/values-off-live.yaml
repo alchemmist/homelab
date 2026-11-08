@@ -16,3 +16,7 @@ s3Evidence:
   enabled: true
   retainCredentials: true
   writerSecret: spi-evidence-writer
+
+# Private same-origin management UI; dedicated token never reaches the browser.
+queueUI:
+  enabled: true

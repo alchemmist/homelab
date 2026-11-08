@@ -54,6 +54,9 @@ spec:
             - secretRef:
                 name: {{ .Values.secretName }}
           env:
+            {{- if .Values.queueUI.enabled }}
+            - {name: SPI_QUEUE_UI_ENABLED, value: 'true'}
+            {{- end }}
             - name: SPI_DURABLE_WAIT_ENABLED
               value: {{ .Values.durableWaitEnabled | quote }}
             - name: SPI_LLM_MINUTE_TOKENS
@@ -108,6 +111,9 @@ spec:
               cpu: '1'
               memory: 384Mi
           volumeMounts:
+            {{- if .Values.queueUI.enabled }}
+            - {name: queue-control, mountPath: /queue-control, readOnly: true}
+            {{- end }}
             {{- if or .Values.s3Evidence.enabled .Values.s3Evidence.retainCredentials }}
             - name: s3-writer
               mountPath: /s3-writer
@@ -124,6 +130,12 @@ spec:
               mountPath: /github
               readOnly: true
       volumes:
+        {{- if .Values.queueUI.enabled }}
+        - name: queue-control
+          secret:
+            secretName: spi-queue-control
+            defaultMode: 0440
+        {{- end }}
         {{- if or .Values.s3Evidence.enabled .Values.s3Evidence.retainCredentials }}
         - name: s3-writer
           secret:
