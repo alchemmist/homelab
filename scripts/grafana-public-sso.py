@@ -6,7 +6,7 @@ NS='cattle-monitoring-system'
 DEPLOY='kube-prometheus-stack-grafana'
 DESIRED={'GF_AUTH_ANONYMOUS_ENABLED':'false','GF_AUTH_GENERIC_OAUTH_AUTO_LOGIN':'true',
  'GF_AUTH_GENERIC_OAUTH_ALLOWED_GROUPS':'homelab-owner homelab-observer homelab-platform-operator homelab-project-maintainer app-grafana-viewer app-grafana-editor',
- 'GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH':"contains(groups[*], 'homelab-owner') && 'GrafanaAdmin' || contains(groups[*], 'app-grafana-editor') && 'Editor' || 'Viewer'"}
+ 'GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH':"contains(groups[*], 'homelab-owner') && 'GrafanaAdmin' || contains(groups[*], 'app-grafana-editor') && 'Editor' || (contains(groups[*], 'homelab-observer') || contains(groups[*], 'homelab-platform-operator') || contains(groups[*], 'homelab-project-maintainer') || contains(groups[*], 'app-grafana-viewer')) && 'Viewer' || ''"}
 
 def require(ok,message):
     if not ok:raise RuntimeError(message)
@@ -27,9 +27,10 @@ def env_plan(d):
     require(lookup['GF_AUTH_OAUTH_ALLOW_INSECURE_EMAIL_LOOKUP']['value'] == 'false','Precondition failed; stop and inspect privately')
     require(lookup.get('GF_AUTH_PROXY_ENABLED', {}).get('value', 'false') == 'false','Precondition failed; stop and inspect privately')
     legacy_groups='homelab-owner homelab-observer homelab-platform-operator homelab-project-maintainer'
+    previous_role="contains(groups[*], 'homelab-owner') && 'GrafanaAdmin' || contains(groups[*], 'app-grafana-editor') && 'Editor' || 'Viewer'"
     legacy_role="contains(groups[*], 'homelab-owner') && 'GrafanaAdmin' || 'Viewer'"
     require(lookup['GF_AUTH_GENERIC_OAUTH_ALLOWED_GROUPS']['value'] in (legacy_groups,DESIRED['GF_AUTH_GENERIC_OAUTH_ALLOWED_GROUPS']),'Unreviewed native admission; stop')
-    require(lookup['GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH']['value'] in (legacy_role,DESIRED['GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH']),'Unreviewed native role mapping; stop')
+    require(lookup['GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH']['value'] in (legacy_role,previous_role,DESIRED['GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH']),'Unreviewed native role mapping; stop')
     updates=[k for k,v in DESIRED.items() if lookup.get(k,{}).get('value')!=v]
     result=[e for e in env if e['name'] not in DESIRED]+[{'name':k,'value':v} for k,v in DESIRED.items()]
     return index,updates,result

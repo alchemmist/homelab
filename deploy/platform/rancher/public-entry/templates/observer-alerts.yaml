@@ -1,0 +1,32 @@
+{{- if .Values.observerAccess.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: homelab-observer-membership
+  namespace: cattle-monitoring-system
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: homelab-observer-membership
+      rules:
+        - alert: HomelabObserverMembershipNotReconciled
+          expr: |
+            (
+              (time() - kube_cronjob_status_last_successful_time{namespace="cattle-system",cronjob="observer-membership"} > 180)
+              or
+              (kube_cronjob_info{namespace="cattle-system",cronjob="observer-membership"}
+               unless on(namespace,cronjob)
+               kube_cronjob_status_last_successful_time{namespace="cattle-system",cronjob="observer-membership"})
+            ) and on(namespace,cronjob)
+            (kube_cronjob_spec_suspend{namespace="cattle-system",cronjob="observer-membership"} == 0)
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: Observer membership revocation has not completed recently
+            description: >-
+              The minute worker has no success for at least three minutes (or never succeeded).
+              Inspect its Job logs and CAS identity checks; do not manually grant broader roles.
+              Kubernetes cookies/keys can retain cached observer reads until reconciliation recovers.
+{{- end }}

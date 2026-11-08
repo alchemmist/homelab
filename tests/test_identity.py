@@ -233,7 +233,7 @@ class RolloutRegressionTests(unittest.TestCase):
         env=yaml.safe_load((ROOT/'deploy/identity/grafana-oidc-values.yaml').read_text())['grafana']['env']
         self.assertEqual(env['GF_AUTH_GENERIC_OAUTH_ALLOW_ASSIGN_GRAFANA_ADMIN'],'true')
         self.assertEqual(env['GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH'],
-            "contains(groups[*], 'homelab-owner') && 'GrafanaAdmin' || contains(groups[*], 'app-grafana-editor') && 'Editor' || 'Viewer'")
+            "contains(groups[*], 'homelab-owner') && 'GrafanaAdmin' || contains(groups[*], 'app-grafana-editor') && 'Editor' || (contains(groups[*], 'homelab-observer') || contains(groups[*], 'homelab-platform-operator') || contains(groups[*], 'homelab-project-maintainer') || contains(groups[*], 'app-grafana-viewer')) && 'Viewer' || ''")
         self.assertIn('offline_access', env['GF_AUTH_GENERIC_OAUTH_SCOPES'].split())
         self.assertEqual(env['GF_AUTH_GENERIC_OAUTH_USE_REFRESH_TOKEN'], 'true')
         self.assertEqual(env['GF_AUTH_LOGIN_MAXIMUM_LIFETIME_DURATION'], '8h')

@@ -114,6 +114,18 @@ class MembershipTests(unittest.TestCase):
         self.assertFalse(reader.admitted('subject',{'homelab-observer'}))
         self.assertEqual(reader.rows.call_count,2)
 
+    def test_grafana_roles_are_explicit_without_unadmitted_viewer_fallback(self):
+        import yaml
+        a=yaml.safe_load((ROOT/'deploy/identity/grafana-oidc-values.yaml').read_text())['grafana']['env']
+        b=yaml.safe_load((ROOT/'charts/grafana/values.yaml').read_text())['grafana']['env']
+        for env in [a,b]:
+            self.assertEqual(env['GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_STRICT'],'true')
+            self.assertEqual(env['GF_AUTH_TOKEN_ROTATION_INTERVAL_MINUTES'],'1')
+            self.assertIn('groups',env['GF_AUTH_GENERIC_OAUTH_SCOPES'].split())
+            self.assertTrue(env['GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH'].endswith("|| ''"))
+            self.assertIn("'homelab-observer'",env['GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH'])
+        self.assertEqual(a['GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH'],b['GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH'])
+
     def test_argo_unknown_groups_have_no_default_reader_grant_machine_reader_is_explicit(self):
         for path in ['deploy/platform/argo-cd/values.yaml','deploy/argocd/values.yaml']:
             text=(ROOT/path).read_text()
