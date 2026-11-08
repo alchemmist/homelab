@@ -143,6 +143,9 @@ def storage_objects(bundle):
 
 def storage_markdown(objects):
     if not objects:return ''
+    origin=os.environ.get('SPI_EVIDENCE_PUBLIC_ORIGIN','https://spi-evidence.socrat.alchemmist.xyz')
+    if origin not in ('https://rustfs.socrat.alchemmist.xyz','https://spi-evidence.socrat.alchemmist.xyz'):
+        raise Failure('STORAGE_PUBLIC_ORIGIN')
     return '\n\n## Reproducible evidence\nSanitized, bounded evidence; truncation and missing reads are recorded in the manifest. Not every byte was reviewed by the model. Sign-in required.\n'+ '\n'.join(
-        '- ['+('MANIFEST' if i==0 else key.rsplit('/',1)[1])+'](https://spi-evidence.socrat.alchemmist.xyz/'+key+')'
+        '- ['+('MANIFEST' if i==0 else key.rsplit('/',1)[1])+']('+origin+'/'+key+')'
         for i,(key,raw) in enumerate(objects))

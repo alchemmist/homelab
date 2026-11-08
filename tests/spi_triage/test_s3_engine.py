@@ -5,7 +5,7 @@ from urllib.parse import urlsplit
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 from test_triage import event, report
 from core import Store, digest, Failure
 from service import Engine
@@ -14,6 +14,8 @@ from s3_evidence import StorageTransient
 
 class EngineStorageTests(unittest.TestCase):
     def setUp(self):
+        origin=patch.dict('os.environ',{'SPI_EVIDENCE_PUBLIC_ORIGIN':'https://rustfs.socrat.alchemmist.xyz'})
+        origin.start();self.addCleanup(origin.stop)
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
         self.store=Store(Path(self.tmp.name)/'db');self.key=self.store.enqueue(event())['job_id'];self.store.claim()
         self.bundle=prepare_bundle(event(),{},[{'name':'logs.json','content':'private diagnostic'}])
@@ -29,7 +31,7 @@ class EngineStorageTests(unittest.TestCase):
     def assert_public_links(self, body, objects):
         spec=importlib.util.spec_from_file_location('public_link_gateway',Path(__file__).resolve().parents[2]/'services/rustfs_gateway/gateway.py')
         gateway=importlib.util.module_from_spec(spec);spec.loader.exec_module(gateway)
-        urls=re.findall(r'\]\((https://spi-evidence\.[^\s)]+)\)',body)
+        urls=re.findall(r'\]\((https://(?:rustfs|spi-evidence)\.socrat\.alchemmist\.xyz/[^\s)]+)\)',body)
         self.assertEqual(len(urls),len(objects))
         for url,(key,raw) in zip(urls,objects):
             parsed=urlsplit(url)
@@ -55,7 +57,7 @@ class EngineStorageTests(unittest.TestCase):
     def test_verified_before_single_primary(self):
         self.engine.run('publish',self.key)
         self.assertEqual(self.s.ensure_object.call_count,2);self.assertEqual(self.g.request.call_count,1)
-        body=self.g.request.call_args.args[2]['body'];self.assertIn('https://spi-evidence.',body);self.assertNotIn('private diagnostic',body)
+        body=self.g.request.call_args.args[2]['body'];self.assertIn('https://rustfs.socrat.alchemmist.xyz/spi/v1/',body);self.assertNotIn('private diagnostic',body)
         self.assert_public_links(body,storage_objects(self.bundle))
     def test_per_file_checkpoint_restart_toggle(self):
         n=[0]

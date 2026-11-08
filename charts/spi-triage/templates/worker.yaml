@@ -68,6 +68,8 @@ spec:
               value: {{ .Values.telegramLinksEnabled | quote }}
             - name: SPI_DISPATCH_ENABLED
               value: {{ .Values.dispatchEnabled | quote }}
+            - name: SPI_EVIDENCE_PUBLIC_ORIGIN
+              value: {{ .Values.s3Evidence.publicOrigin | quote }}
             - name: SPI_EVIDENCE_BACKEND
               value: {{ ternary "s3" "legacy" .Values.s3Evidence.enabled | quote }}
             {{- if or .Values.s3Evidence.enabled .Values.s3Evidence.retainCredentials }}

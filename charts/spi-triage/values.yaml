@@ -17,6 +17,7 @@ telegramLinksEnabled: true
 
 # Independent of writeEnabled. Keep credentials mounted on rollback for S3-locked jobs.
 s3Evidence:
+  publicOrigin: https://spi-evidence.socrat.alchemmist.xyz
   enabled: false
   retainCredentials: false
   writerSecret: ""
