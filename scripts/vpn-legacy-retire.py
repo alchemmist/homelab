@@ -59,7 +59,7 @@ def select(config):
 
 
 def desired(config):
-    result=copy.deepcopy(config);select(result)['enable']=False;return result
+    result=copy.deepcopy(config);select(result)['enable']=0;return result
 
 
 def plan(state):

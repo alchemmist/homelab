@@ -267,3 +267,9 @@ class LegacyRetirementTests(unittest.TestCase):
         after['inbounds'][0]['enable']=1;self.assertEqual(after,old)
         old['inbounds'][0]['exclude_from_sub']=0
         with self.assertRaises(ValueError):m.desired(old)
+
+    def test_expected_sqlite_enable_flag_keeps_integer_sort_semantics(self):
+        m=self.module();old={'inbounds':[{'id':7,'port':32063,'protocol':'vless','enable':1,'exclude_from_sub':1,
+          'stream_settings':'{"network":"xhttp","security":"none"}'}]}
+        result=m.desired(old);self.assertIs(type(result['inbounds'][0]['enable']),int)
+        self.assertEqual(result['inbounds'][0]['enable'],0)
