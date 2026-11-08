@@ -123,3 +123,10 @@ new continuous collector/timer or newly provisioned independent external machine
 Planner is a tested prototype, NOT production consensus or guaranteed failover.
 VPS private access remains unverified after21:15 failure/ReadyUnknown; no successful
 VPS-vantage sample, provider intervention, route repair or new-IP migration claimed.
+
+Expanded final verification:103passed+195subtests including private DNS role tests.
+The first expanded run lacked local Jinja2 and failed one test at import; offline
+cache could not supply it. Reran in an ephemeral uv environment with Jinja2=3.1.6
+(test-controller dependency only, no production install); all103passed. Earlier
+93-test result is the narrower suite, not an assertion that missing-dependency run
+passed. No CI/reboot/DR/mobile full-protocol or VPS recovery proof implied.
