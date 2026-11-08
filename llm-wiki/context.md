@@ -174,3 +174,12 @@ n8n MCP после локального обновления токена про
 файле0600, не в Git. В committed config n8n пока disabled; другие машины не
 настроены автоматически. Umami остаётся опциональным и ждёт authorized analytics
 key; не обходить это через reset/DB. Новых обязательных MCP на кластере не требуется.
+
+
+VPN83 latest owner clarification: users will refresh subscriptions themselves.
+Native32063 excludeFromSub=true applied, enabled=true retained for cached clients.
+All16 URI+JSON subscriptions verified public/backend before/after: exactly7 plaintext
+links removed (78 URI entries remain), unrelated profiles/keys/URLs preserved.
+Server publication migration done, not device refresh/legacy retirement. No device
+remote-control prerequisite for this phase; wait for owner refresh confirmation
+before closing32063. Temporary tokens removed; see llm-wiki/vpn-hardening.md.

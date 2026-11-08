@@ -81,3 +81,25 @@ Research references/limits are in the linked runbook: net4people671 field anecdo
 662 attribution withdrawal, Cloudflare2025 byte truncation, FOCI QUIC SNI abstract,
 exact upstream Xray/3x-ui source, and incomplete Amnezia/image/PDF extraction.
 Do not turn field hypotheses into proven classifiers or ban-prevention guarantees.
+
+
+## Latest: plaintext publication withdrawn, owner coordinates device refresh
+
+Owner explicitly clarified they will ask clients to refresh subscriptions. Native
+`excludeFromSub=true` is now applied only to32063; enabled=true retained for cached
+clients during transition. `vpn-subscription-migrate.py` requires fresh dual hashes,
+backup and full publication checks. All16 URI AND JSON subscriptions were checked
+public-vs-backend before/after: exactly7 plaintext links removed,78 URI entries
+remain; other profiles, opaque vpn imports, remaining JSON configs, identities,
+keys and URLs unchanged. Each affected identity retains REALITY. Both legacy vnext
+and current flat VLESS JSON shapes are regression-covered; the first session stopped
+before a write on schema validation, cleaned itself, and was not replayed.
+
+User instruction: update the SAME subscription, then select an encrypted profile if
+not automatically selected. No new credentials required. No remote-device access
+gate for this publication change. **Server publication migration done; end-device
+refresh and old-listener retirement not claimed.** Keep32063 enabled until owner
+confirms users refreshed/connected; do not invent acceptance from our audit GETs.
+All temporary tokens cleaned, original users/settings/tokens preserved; pod Ready,
+restarts0, three verified REALITY fallbacks healthy.64 tests+6 subtests local passed.
+Private proof `/var/lib/homelab-vpn-hardening/vpn83-20261108-subscription-final`.

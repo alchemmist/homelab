@@ -7,7 +7,9 @@
     "protocol": "vless",
     "network": "xhttp",
     "security": "reality",
-    "serverNames": ["www.yahoo.com"],
+    "serverNames": [
+      "www.yahoo.com"
+    ],
     "oldTarget": "www.intel.com:443",
     "newTarget": "www.yahoo.com:443",
     "preserveClientMaterial": true,
@@ -17,10 +19,16 @@
     "port": 32063,
     "requireEncryptedReplacementAndClientAcceptance": true,
     "retirementEnabled": false,
-    "rotateClientCredentialsAutomatically": false
+    "rotateClientCredentialsAutomatically": false,
+    "excludeFromSubscriptions": true,
+    "ownerCoordinatesDeviceRefresh": true,
+    "retainCachedClientListenerUntilRefreshConfirmed": true
   },
   "rawBackendObservation": {
-    "ports": [12096, 32087],
+    "ports": [
+      12096,
+      32087
+    ],
     "counterOnly": true,
     "packetLogging": false,
     "enforcementEnabled": false

@@ -222,6 +222,50 @@ per-record migration evidence and honest incomplete receipt are under
 `/var/lib/homelab-vpn-hardening/migration-client-audit-20261108`,0700/0600. Never
 publish URLs, subscription IDs, client credentials, hardware identifiers or bodies.
 
+## Owner-coordinated refresh: subscription migration applied
+
+The owner clarified that they will tell users to refresh their subscriptions; remote
+control of every application is **not** a prerequisite for withdrawing plaintext
+publication. The following native change is now applied: TCP32063 remains enabled,
+but **`excludeFromSub=true`**. Only this field changed. No listener/client/host/binding
+was deleted and no key, UUID or subscription URL changed.
+
+`scripts/vpn-subscription-migrate.py` previews by default and requires fresh machine
+session and configuration hashes, pinned versions/pod, native backup, full config
+preimages and publication proof before the one native inbound API update. Before
+and after, **all16** enabled subscriptions were fetched through both loopback and
+public HTTPS, in **both URI and JSON formats**. Matching publication checks removed
+only randomized REALITY sid/shortId; opaque vpn imports were preserved, not decoded
+or rewritten. Exactly **7 plaintext entries disappeared**, leaving **78 URI entries**.
+All other URI profiles and all remaining JSON configs are unchanged. Each affected
+identity retained a published REALITY alternative. The existing synthetic64KiB
+REALITY acceptance from the target phase remains protocol evidence, not a claim
+that each end device has refreshed.
+
+The first fresh session stopped **before any publication write** on JSON population
+validation: Xray26/3x-ui3.11 uses flat VLESS settings (`address,port,id`) rather than
+legacy `vnext`. Every machine credential was cleaned and original config preserved.
+A regression now covers both shapes; retained private JSON was validated offline
+before creating the next separately named session. That session completed; no
+uncertain write or failed state was replayed. New local scoped total: **64 tests
++6 subtests passed**. All temporary tokens removed, original users/settings/token
+rows matched native backup; pod Ready/container restarts0, all three REALITY
+fallbacks still pass verified TLS1.3/H2. Native Xray child reload is expected.
+
+**User action:** refresh the existing subscription, then select an encrypted profile
+if the app does not choose one automatically. No new subscription URL or client key
+is needed. The withdrawn32063 profile is no longer available to new imports or
+refreshes. Already-cached clients may still use the retained listener while users
+update. Only after the owner confirms refresh/working connections should32063 be
+disabled; no expiry deadline or device acceptance has been invented. This is completed
+**server publication migration**, not completed end-device refresh/legacy retirement.
+
+Private accepted evidence:
+`/var/lib/homelab-vpn-hardening/vpn83-20261108-subscription-final/{receipt.json,publication-acceptance.json}`,
+full URI/JSON before/after bodies, native backup and credential-cleanup receipt.
+Keep it0700/0600. Audit GETs may change last_sub_fetch; they are never device refresh.
+Raw backend guards, Russian vantage acceptance and IP-ban resilience are unchanged.
+
 ## Next gated production steps
 
 1. **No new listener is needed just to provide encryption:** all seven32063 links
@@ -229,8 +273,8 @@ publish URLs, subscription IDs, client credentials, hardware identifiers or bodi
    Both configured subscription base URLs use the expected HTTPS hostname. This is
    server configuration evidence. Standard URI publication subsequently passed;
    device/import and JSON-subscription proof remain open.
-   Confirm actual clients refresh and can use those alternatives before hiding or
-   retiring32063; do not expand port/protocol exposure unnecessarily.
+   Publication withdrawal is now complete under owner-coordinated refresh. Confirm
+   actual clients refresh and can use those alternatives before retiring32063; do not expand port/protocol exposure unnecessarily.
 2. Observe12096 and distinguish Traefik/cluster probes from direct consumers; only
    then design a narrow backend guard. Preserve readiness, subscription fetches,
    Trojan443 and machines. Do not guess interface/source allowlists. Target correction
