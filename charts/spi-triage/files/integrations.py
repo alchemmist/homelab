@@ -130,7 +130,9 @@ class GitHub:
             raise Failure('INVALID_GITHUB_PAGE')
         if len({x['number'] for x in result})!=len(result):
             raise Failure('GITHUB_SNAPSHOT_UNSTABLE',retry_after=15)
-        if state=='open' and len(result)>120:raise Failure('OPEN_SPI_REVIEW_BUDGET_EXCEEDED')
+        # Catalog size is not a per-model-request budget. Pagination, response
+        # sizes and the caller's absolute deadline remain bounded; fingerprints
+        # must cover every open SPI, including catalogs larger than 120.
         return sorted(result,key=lambda x:x['number'])
     def comments(self,number): return list(self.pages('/issues/'+str(int(number))+'/comments'))
     def source_reference(self,url):
@@ -338,8 +340,9 @@ class Model:
         deadline=min(time.monotonic()+1800,getattr(REQUEST_DEADLINE,'at',float('inf')))
         event_identity=digest(event)
         event=self.bounded_context(event)
-        # Every issue is examined. Batches avoid a single unbounded prompt.
-        if len(issues)>120: raise Failure('OPEN_SPI_REVIEW_BUDGET_EXCEEDED')
+        # Every issue is examined; do not fail every incident merely because
+        # the shared catalog crossed 120. Each request remains <=12 candidates
+        # and <=30000 tokens, with existing v3 checkpoints and finite deadlines.
         if any(not isinstance(x,dict) or type(x.get('number')) is not int for x in issues):
             raise reject('CURRENT_INVALID_ID')
         if len({x['number'] for x in issues})!=len(issues):
