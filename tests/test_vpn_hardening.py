@@ -103,6 +103,26 @@ class HardeningTests(unittest.TestCase):
         with patch.object(audit,'run',return_value=json.dumps(payload)):
             with self.assertRaises(ValueError):audit.read_table()
 
+    def test_nft_106_missing_comment_requires_exact_policy(self):
+        objects=audit.expected_objects()
+        # nft 1.0.6 JSON has no table comment, and may reorder anonymous sets.
+        objects[-1]['rule']['expr'][0]['match']['right']['set'].reverse()
+        objects[-1]['rule']['expr'][-1]['counter']={'packets':5,'bytes':100}
+        audit.validate_objects(objects)
+        objects[-1]['rule']['expr'].append({'drop':None})
+        with self.assertRaises(ValueError):audit.validate_objects(objects)
+
+    def test_readback_finalizes_without_any_remote_write(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state=Path(tmp).resolve();(state/'lock').touch()
+            approval=audit.helpers.digest(audit.plan(None))
+            (state/'before.json').write_text('null')
+            (state/'uncertain.json').write_text(json.dumps({'plan_sha256':approval}))
+            with patch.object(audit.socket,'gethostname',return_value='socrat-2'),patch.object(audit.os,'geteuid',return_value=0),patch.object(audit.helpers,'private_directory',return_value=state),patch.object(audit,'read_table',return_value=audit.expected_objects()),patch.object(audit,'run') as run:
+                receipt=audit.finalize_readback(approval,state)
+                run.assert_not_called();self.assertEqual(receipt['remote_writes'],0)
+                self.assertFalse((state/'uncertain.json').exists())
+
     def test_apply_refuses_wrong_host_and_bad_hash(self):
         with patch.object(audit.socket,'gethostname',return_value='socrat-0'):
             with self.assertRaises(ValueError):audit.apply('bad',None)

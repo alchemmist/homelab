@@ -47,6 +47,44 @@ def run(args, **kwargs):
     return result.stdout
 
 
+def expected_objects():
+    objects = [{'table': {'family': 'inet', 'name': TABLE}},
+               {'chain': {'family': 'inet', 'table': TABLE, 'name': 'input',
+                          'type': 'filter', 'hook': 'input', 'prio': -5, 'policy': 'accept'}}]
+    for port in PORTS:
+        for interface in (*INTERFACES, 'other'):
+            left = {'meta': {'key': 'iifname'}}
+            right = interface if interface != 'other' else {'set': list(INTERFACES)}
+            objects.append({'rule': {'family': 'inet', 'table': TABLE, 'chain': 'input',
+                'comment': str(port) + ':' + interface,
+                'expr': [{'match': {'op': '==' if interface != 'other' else '!=', 'left': left, 'right': right}},
+                         {'match': {'op': '==', 'left': {'payload': {'protocol': 'tcp', 'field': 'dport'}}, 'right': port}},
+                         {'counter': {}}]}})
+    return objects
+
+
+def normalize(value):
+    value = stable(value)
+    if isinstance(value, dict):
+        return {k: sorted(v) if k == 'set' else normalize(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [normalize(x) for x in value]
+    return value
+
+
+def validate_objects(selected):
+    copy = json.loads(json.dumps(selected))
+    for item in copy:
+        if 'table' in item:
+            comment = item['table'].pop('comment', None)
+            if comment not in (None, OWNER):
+                raise ValueError('Unowned table comment')
+    # nft 1.0.6 omits table comments in JSON. Recognize ONLY the complete exact
+    # counter policy, including chain parameters, expressions and rule comments.
+    if normalize(copy) != normalize(expected_objects()):
+        raise ValueError('Existing table is not the exact owned counter policy')
+
+
 def read_table():
     # Read the ruleset so permission errors cannot masquerade as an absent table.
     data = json.loads(run(['nft', '-j', 'list', 'ruleset']))['nftables']
@@ -56,8 +94,9 @@ def read_table():
     if not selected:
         return None
     tables = [x['table'] for x in selected if 'table' in x]
-    if len(tables) != 1 or tables[0].get('comment') != OWNER:
+    if len(tables) != 1:
         raise ValueError('Unowned existing table; refusing modification')
+    validate_objects(selected)
     return selected
 
 
@@ -99,15 +138,41 @@ def apply(approval, state):
         return {**desired, 'installed': True}
 
 
+def finalize_readback(approval, state):
+    if socket.gethostname() != 'socrat-2' or os.geteuid() != 0:
+        raise ValueError('Finalization requires root on socrat-2')
+    directory = helpers.private_directory(state)
+    fd = os.open(directory/'lock', os.O_RDWR | os.O_NOFOLLOW)
+    with os.fdopen(fd, 'w') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        marker = json.loads(helpers.check_path(directory/'uncertain.json').read_text())
+        before = json.loads(helpers.check_path(directory/'before.json').read_text())
+        if before is not None or marker['plan_sha256'] != approval or helpers.digest(plan(before)) != approval:
+            raise ValueError('Original empty preimage and exact interrupted approval required')
+        after = read_table()  # Exact semantic validation, never an install/retry.
+        if after is None:
+            raise ValueError('No completed table to finalize')
+        helpers.save(directory/'after.json', after)
+        receipt = {**plan(before), 'installed': True, 'readback_finalized': True, 'remote_writes': 0}
+        helpers.save(directory/'receipt.json', receipt)
+        (directory/'uncertain.json').unlink()
+        return receipt
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--apply', action='store_true')
+    parser.add_argument('--finalize-readback', action='store_true')
     parser.add_argument('--approve-plan-hash')
     parser.add_argument('--state', type=Path)
     parser.add_argument('--observe', action='store_true', help='Read existing counters, no writes')
     parser.add_argument('--render', action='store_true', help='Offline rules only; no nft call')
     args = parser.parse_args()
-    if args.render:
+    if args.finalize_readback:
+        if not args.state or not args.approve_plan_hash or args.apply or args.render or args.observe:
+            parser.error('Readback-only finalization needs state/hash and no other mode')
+        print(helpers.canonical(finalize_readback(args.approve_plan_hash, args.state)))
+    elif args.render:
         if args.apply or args.observe:
             parser.error('Render cannot be combined with apply/observe')
         print(rules(), end='')
