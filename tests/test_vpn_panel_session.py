@@ -173,3 +173,8 @@ class SubscriptionMigrationTests(unittest.TestCase):
         self.assertEqual(before['streamSettings']['realitySettings']['shortId'],'random')
         self.assertTrue(m.json_legacy({'outbounds':[{'protocol':'vless','settings':{'vnext':[{'port':32063}]}}]}))
         self.assertFalse(m.json_legacy({'outbounds':[{'protocol':'trojan','settings':{'vnext':[{'port':32063}]}}]}))
+
+    def test_native_flat_vless_json_settings_are_detected(self):
+        m=self.module()
+        self.assertTrue(m.json_legacy({'outbounds':[{'protocol':'vless','settings':{'address':'192.0.2.1','port':32063,'id':'PRESERVE'}}]}))
+        self.assertFalse(m.json_legacy({'outbounds':[{'protocol':'vless','settings':{'port':32053}}]}))

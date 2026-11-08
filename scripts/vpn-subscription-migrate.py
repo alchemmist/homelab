@@ -75,7 +75,8 @@ def normalize_json(value):
 
 
 def json_legacy(config):
-    return any(o.get('protocol')=='vless' and any(v.get('port')==32063 for v in o.get('settings',{}).get('vnext',[]))
+    return any(o.get('protocol')=='vless' and (o.get('settings',{}).get('port')==32063
+               or any(v.get('port')==32063 for v in o.get('settings',{}).get('vnext',[])))
                for o in config.get('outbounds',[]))
 
 
