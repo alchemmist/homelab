@@ -238,3 +238,19 @@ CAS, NO NetworkPolicy widening. Both CoreDNS replicas+VIP agree; natural success
 /var/lib/homelab-observer-rollout/observer-internal-dns-vip-20261108 on socrat-0.
 Source scripts/observer-internal-dns.py, runbook deploy/identity/authentik-internal-dns.md.
 No tokens/RBAC/publicDNS/VPN changes/restarts. PublicVPN incident NOT repaired by this.
+
+
+Cheap resilience phase1 accepted21:23UTC, source219eddf: observer CronJob now runs
+safe diagnostics wrapper; original controller/Wiki bytes and all policy/credentials
+unchanged, no Wiki Recreate rollout. Argo rancher Synced/Healthy, three new natural
+jobs21:21/22/23 succeeded; no freshness alert,32s freshness. Private preimages/proofs
+socrat-0:/var/lib/homelab-observer-rollout/resilience-phase1-20261108/. New scripts
+public-entry-health.py (on-demand credential-free TLS+OIDC backend probe; self/
+hairpin not external proof) and public-entry-failover-plan.py (OFFLINE ONLY, always
+ready_to_publish=false, no renderer/zone changes).93tests+195subtests. See docs/
+network/entry-resilience-phase1-20261108.md for gates/partial results.
+NEW21:15 degradation: VPS private10.250.0.2:2222/443 times out also FROM HOME,
+socrat-2 ReadyUnknown, other three Ready. VPS observation launch failed before
+execution; no fallback/relaunch/route repair or writes onVPS. Owner asked whether
+IP/power changed. Do NOT reuse earlier4Ready/internalVPS green as current evidence.
+Public VPN/network incident unresolved; new shared DNS publisher NOT deployed.

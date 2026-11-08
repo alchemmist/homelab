@@ -59,3 +59,23 @@ Owned Mac `/etc/resolver` overrides и wiki restorer lifecycle сняты, гл�
 Кэш не узнаёт об отказе до expiry и может держать запись дольше TTL. Уже открытые соединения не переезжают, клиент не обязан повторять DNS после TCP timeout. Public IP failover не копирует PVC/SQLite/MariaDB/GPU и не делает Authentik/management HA. Traefik Edge может использовать последние маршруты без кворума только пока живы процесс, сеть и backend pods. Потерянный backend/storage DNS не восстанавливает.
 
 Источники: [public ingress](../docs/public-ingress.md), [VPS migration](../docs/vps-ip-migration-20261105.md), [public-web closeout](../docs/public-web-migration.md), `docs/router-static-mappings.md`.
+
+
+##2026-11-08: partial-network failure / phase1 observation
+
+Current public renderer remains independently local-probed; it is NOT consensus
+failover. With VPSIP inaccessible from HOME/mobile but locally healthy onVPS, the
+VPS authority can publishVPS while HOME publishesHOME. Two CoreDNS upstream views
+then disagree. Internal Authentik dependency was scoped to privateHA-VIP192.168.0.250
+(no public DNS change) to restore observer revocation; this does not repair outside
+browser fallback or make Authentik/storage HA. Full chronology in observer acceptance.
+
+New on-demand scripts/public-entry-health.py checks forced-IP correct Host/SNI/
+verifiedTLS/OIDC backend (no credentials). Local/hairpin probes are NOT external
+reachability. scripts/public-entry-failover-plan.py only prepares deterministic
+shared decisions with hysteresis and missing/stale/partition warnings; ALWAYS
+ready_to_publish=false. No production DNS publisher/timer/TTL/zone change. Trusted
+independent collector identities, distribution/leadership/fencing/stale leases,
+partition policy and fleet acceptance required before rollout. See network phase1
+runbook. By21:15 internalVPS path also timed out/ReadyUnknown; older healthy-VPS
+facts are historical, not present availability proof.

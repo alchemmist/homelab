@@ -99,3 +99,27 @@ Next: validate the Git-owned runner after natural reconciliation, retain observa
 resolve current VPS private unreachability with owner/provider, then design reviewed
 collector/publisher + consistency/stale/partition gates. No blind change of public
 DNS health thresholds or route all VPN traffic onto HOME infrastructure IP.
+
+
+## Phase1 acceptance21:23UTC
+
+Git219eddf reconciled naturally by owning rancher Argo application: Synced/Healthy,
+operation Succeeded; no manual sync/prune/image override. ConfigMap/CronJob UIDs
+preserved, original membership controller bytes unchanged, only added runner key
+and changed CronJob command. Full other CronJob spec/ConfigMap data equal preimage.
+Three natural NEW runner jobs21:21,21:22,21:23 all succeeded and logged structured
+completion (1441/1643/1192ms reconcile time, not full pod startup). Native summaries
+all cache_updates=0/users_created=0/roles_modified=0. No forced fault/credential
+revocation experiment. Prometheus no pending/firing freshness alert,32.753s since
+last success. Root private acceptance/monitoring proof retained in phase1 directory.
+
+Targeted tests93passed+195subtests, covering no-secret diagnostics, one execution/no
+retry, uncertain PATCH, unchanged shared Wiki controller, TLS verification, backend
+schema versus TCP-only, local-only evidence, deterministic offline planner,
+hysteresis, stale/missing/partitioned/total failure and duplicate evidence.
+
+Public DNS behavior is STILL UNCHANGED. Health probe is an on-demand tool, NOT a
+new continuous collector/timer or newly provisioned independent external machine.
+Planner is a tested prototype, NOT production consensus or guaranteed failover.
+VPS private access remains unverified after21:15 failure/ReadyUnknown; no successful
+VPS-vantage sample, provider intervention, route repair or new-IP migration claimed.
