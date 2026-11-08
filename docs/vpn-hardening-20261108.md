@@ -1,6 +1,6 @@
 # Configuration-only VPN hardening — 8 November 2026
 
-Issue: [#83](https://github.com/alchemmist/homelab/issues/83). **In progress, not accepted.**
+Issue: [#83](https://github.com/alchemmist/homelab/issues/83). **In progress: target correction accepted; other gates remain open.**
 The owner explicitly excluded a new VPS, public IP or provider purchase. Original
 P1/P2 independent-ASN and proxy/infrastructure-IP separation are deferred, not
 prerequisites to start this configuration-only phase and not completed outcomes.
@@ -13,8 +13,9 @@ Internal SSH to socrat-2 succeeded. Agent audit at 11:29:48Z and parent prefligh
 confirmed the same pinned image, 3x-ui **3.11.0**, Xray **26.10.21**, hostNetwork and
 panel-managed SQLite. Argo owns the container and edge resources, **not** inbounds.
 
-- TCP32053 still has XHTTP/REALITY, Yahoo SNI and Intel target. Ordinary fallback
-  fails hostname verification; that does not prove authenticated-client failure.
+- Before correction, TCP32053 had XHTTP/REALITY, Yahoo SNI and Intel target.
+  Ordinary fallback failed hostname verification. It now has the matching Yahoo
+  target; the failed disguise was not proof of authenticated-client failure.
 - Sony32083 and AMD32084 fallback verified TLS1.3/H2 in the fresh agent audit.
 - TCP32063 still exposes XHTTP/VLESS with no outer TLS/REALITY. It has seven links,
   not seven demonstrated active users. It is not merely a TLS-terminated internal hop.
@@ -70,18 +71,60 @@ never a ruleset flush. Existing panel guard and loopback readiness remained vali
 Live panel rules have an `nb-host` allowance absent from older Git rules: do not
 reinstall that older panel ruleset as a side effect.
 
-### Declarative target correction, preview only
+### Target correction applied and synthetically accepted
 
-`deploy/vpn-hardening/policy.json` specifies existing-server scope and a target-only
-correction. `scripts/vpn-reality-plan.py` builds a pure, drift-checked plan from the
-consistent live configuration. It refuses changed SNI, transport, security, ambiguous
-target schemas and unsupported scope. It cannot execute SQL or API mutations.
+After explicit owner approval of temporary machine access, the target-only change
+was applied through the **native API**. Current TCP32053 target and SNI both use
+Yahoo. TLS fallback now verifies the hostname, TLS1.3 and ALPNh2. Sony32083 and
+AMD32084 still pass the same fallback checks; Trojan/panel loopback readiness and
+the primary pod are healthy, container restarts0. The Xray **child** reload from
+native inbound save is distinct from a pod/node/K3s restart.
 
-The real plan contains one change: **32053 `realitySettings.target`, Intel443 →
-Yahoo443**. Preserve Yahoo `serverNames`, client IDs, keys, short IDs, path, port,
-XHTTP mode and empty flow. Node-side direct Yahoo TLS passed hostname verification,
-TLS1.3 and ALPN h2. This makes Yahoo a candidate, not an accepted REALITY migration.
-The plan is intent, not a readiness/deployment receipt.
+`deploy/vpn-hardening/policy.json` enables the explicitly gated executor.
+`scripts/vpn-reality-plan.py` stays pure/read-only; the post-change plan is a no-op.
+`scripts/vpn-reality-apply.py` requires fresh session and target hashes, backup and
+version/preimage checks. It posts only the target change and checks the whole
+semantic configuration, including all original client/host/binding data. It never
+writes SQL or silently replays an ambiguous API mutation.
+
+A newly generated, owned **synthetic VPN identity** was linked only to32053. No
+human credentials were used. A separate same-node Xray client bound only loopback
+and allowed only `speed.cloudflare.com`; all other destinations were blackholed.
+It authenticated with VLESS/XHTTP/REALITY and downloaded **65536 bytes before and
+65536 bytes after** the correction. Body files were discarded after hashing.
+This proves exact-core compatibility and complete tunnel transfers at this vantage,
+**not Russian ISP availability or every distributed client build**.
+
+The first attempt passed the baseline but stopped before a target write because
+3x-ui3.11 returns nested JSON objects, not legacy JSON strings. Its own fixture and
+credentials were cleaned, and original config preservation was checked. Source and
+regression tests now accept both DTO forms. The next fresh, separately named session
+completed the correction; neither failed state nor a target write was replayed.
+
+Final semantic comparison proved **only target changed**. A separate readback of
+`users` (excluding login epoch), `settings` and complete original `api_tokens` rows
+matched the pre-session backup. Thus no password/MFA/settings or existing token
+changes were concealed by the four-table proxy projection. Rendered human
+subscriptions/device refresh were not exercised or claimed from that comparison.
+
+#### Temporary machine credential lifecycle
+
+`scripts/vpn-panel-session.py` uses collision-checked, separately named credentials.
+Native CLI issuance is authorized **only for a new unique bootstrap name**, never
+`install`, `cli-fallback`, an empty name or a pre-existing token. Its plaintext goes
+directly to an exclusive0600 private file. A TTL-limited cleanup admin token30min
+and worker `node-sync` token20min are created; bootstrap is immediately deleted.
+Only the worker performs client/inbound operations. Cleanup uses exact name/id/hash
+ownership and expected-scope checks, removes own rows and private secret files, and
+compares all original token rows byte-for-byte. Both executed sessions cleaned up;
+**zero temporary token rows or synthetic client remain**, original two tokens intact.
+
+The native CLI cannot assign bootstrap expiry. A crash between issuance and its
+native self-cleanup is an unavoidable **uncertain** window, not an excuse to rotate
+old tokens or replay creation. Private stdout/intent is retained on uncertainty.
+TTL bounds the subsequent worker/cleanup credentials, not that initial CLI window.
+No human login/password/MFA, browser session impersonation or direct SQL mutation
+was used to obtain access.
 
 ### Bounded path diagnostics
 
@@ -107,7 +150,8 @@ The workstation control reached both normal HOME resolution and the explicit VPS
 with verified TLS and complete small responses. Those responses were **below32KiB**,
 so they were correctly **not** counted as large-transfer acceptance. The workstation
 uses mandatory corporate VPN; it is not a Russian residential/mobile vantage.
-Real tunnel, large-transfer and Russian fixed/mobile acceptance remain open.
+Same-node authenticated64KiB tunnel acceptance subsequently passed as described
+above. Russian fixed/mobile and external authenticated tunnel acceptance remain open.
 
 ## Research, re-read by subagents
 
@@ -137,27 +181,33 @@ The separate November7 watchdog fence is not proof of an IP ban and was not alte
 
 ## Next gated production steps
 
-1. Obtain an existing private machine API credential, or explicitly approve a
-   separately named, temporary `node-sync` automation token with cleanup.
-   Upstream v3.11.0 explicitly allows inbound list/add/update/delete for `node-sync`;
-   it does not need full `admin` scope or panel self-update permission.
-   One enabled admin token exists; its database value is a SHA-256 hash. No plaintext
-   file was supplied. Do not call `x-ui -getApiToken` as a read: upstream source and
-   tests show it **recreates/rotates a named credential**. No token, human password,
-   MFA, session or database row was changed to bypass this boundary.
-2. With fresh version/config checks, backup and native API preimage, apply only the
-   32053 target. API changes can restart the Xray child and interrupt all its
-   listeners; do not combine with a firewall or client migration. Verify fallback,
-   unchanged rendered links and one authorized authenticated test client.
-3. Inventory the seven32063 links and subscription consumers; introduce a compatible
-   encrypted replacement before any retirement. Verify subscription cache refresh
-   and client import. Credential rotation is a separate evidence-based decision.
-4. Observe12096 and distinguish Traefik/cluster probes from direct consumers; only
+1. **No new listener is needed just to provide encryption:** all seven32063 links
+   already have at least one enabled REALITY alternative with an enabled host rule.
+   Both configured subscription base URLs use the expected HTTPS hostname. This is
+   server configuration evidence, not device/import or rendered-subscription proof.
+   Confirm actual clients refresh and can use those alternatives before hiding or
+   retiring32063; do not expand port/protocol exposure unnecessarily.
+2. Observe12096 and distinguish Traefik/cluster probes from direct consumers; only
    then design a narrow backend guard. Preserve readiness, subscription fetches,
-   Trojan443 and machines. Do not guess interface/source allowlists.
-5. Run actual tunnel/large-transfer tests from available fixed/mobile Russian paths
+   Trojan443 and machines. Do not guess interface/source allowlists. Target correction
+   did not close the raw backend paths or alter the ACCEPT-only counter table.
+3. Use a fresh explicitly named temporary session only when another operation is
+   ready to execute, not an idle permanent admin credential. The approved issuance
+   mechanism is available; no plaintext machine credential needs to be posted in chat.
+4. Run actual tunnel/large-transfer tests from available fixed/mobile Russian paths
    and an external control. No trigger traffic, malformed packets, broad scans,
    packet payload captures or automatic IP rotation.
 
-The issue remains open. Tests/healthy counters are not proof of accepted encryption,
-closed public backends, Russian reachability or protection from destination-IP bans.
+Scoped local checks at this checkpoint: **60 tests +6 subtests passed**, including
+panel guard/IP-migration regressions and31 dedicated hardening/session tests. CI
+runs only offline safety, with no infrastructure credentials. Not the full repo suite.
+
+Private final evidence: `/var/lib/homelab-vpn-hardening/vpn83-20261108-target-final`,
+including `receipt.json`, `target-acceptance.json`, before/after64KiB proofs, proxy
+snapshots, native backup and credential-cleanup receipt. Keep all private. The first
+aborted session is retained separately under the `target-main` directory.
+
+The issue remains open. The accepted target correction is not proof of closed
+public backends, completed plaintext retirement, Russian reachability or protection
+from destination-IP bans. No new VPS/IP, image upgrade, TV/WG/AWG peer/config change,
+Tunnelblick/global DNS/route change or NetBird change occurred.

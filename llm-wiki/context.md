@@ -38,10 +38,12 @@ SSH transport, публичный ключ/Linux account, sudo, Kubernetes RBAC 
 
 С 8 ноября — только конфигурация существующего socrat-2, **без покупки VPS/IP**.
 Свежий аудит и приватный WAL-aware backup выполнены. Установлены только ACCEPT
-backend-счётчики, не блокировки. Target-only REALITY preview готов, но mismatch
-и plaintext32063 ещё не исправлены: нужен штатный machine API доступ и client
-acceptance. `x-ui -getApiToken` ротирует токен, не извлекает его; не запускать ради
-чтения. Не выключать старые клиентские профили и не обещать обход IP/ASN-ban.
+backend-счётчики, не блокировки. REALITY32053 исправлен штатным API: Yahoo→Yahoo;
+прошли fallback TLS1.3/H2 и synthetic64KiB до/после. Временные machine credentials
+и fixture удалены, прежние токены/users/settings сохранены. Plaintext32063 и raw
+backends ещё не закрыты; у всех7 plaintext-связей уже есть encrypted alternative,
+но device/subscription acceptance не доказана. `x-ui -getApiToken` ротирует токен,
+не извлекает его; не запускать ради чтения. Не выключать старые клиентские профили и не обещать обход IP/ASN-ban.
 [Актуальный scope, исследования, инструменты и gates](vpn-hardening.md).
 
 ## Личности и авторизация

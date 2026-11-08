@@ -73,6 +73,19 @@ def summarize(config):
                        'security': stream.get('security'), 'target': target,
                        'server_name_count': len(reality.get('serverNames') or []),
                        'client_links': sum(x['inbound_id'] == row['id'] for x in links)})
+    encrypted = {row['id'] for row in config['inbounds'] if row['enable'] and
+                 json.loads(row['stream_settings'] or '{}').get('security') in ('tls', 'reality')}
+    enabled_hosts = {row['inbound_id'] for row in config['hosts'] if not row.get('is_disabled', False)}
+    encrypted &= enabled_hosts
+    per_client = {}
+    for link in links:
+        per_client.setdefault(link['client_id'], set()).add(link['inbound_id'])
+    for item in result:
+        if item['protocol'] == 'vless' and item['security'] in (None, '', 'none'):
+            inbound_id = next(row['id'] for row in config['inbounds'] if row['port'] == item['port'])
+            clients = [ids for ids in per_client.values() if inbound_id in ids]
+            item['links_with_existing_enabled_encrypted_alternative'] = sum(bool(ids & encrypted) for ids in clients)
+            item['device_compatibility_and_subscription_render_unproven'] = True
     return {'configuration_sha256': digest(config), 'identities': len(config['clients']),
             'client_links': len(links), 'inbounds': result,
             'records_are_not_active_sessions': True, 'production_configuration_writes': 0}

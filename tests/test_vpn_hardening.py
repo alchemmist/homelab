@@ -29,10 +29,10 @@ class HardeningTests(unittest.TestCase):
           stream_settings TEXT, settings TEXT, up INTEGER, down INTEGER, last_traffic_reset_time INTEGER);
         CREATE TABLE clients(id INTEGER, secret TEXT);
         CREATE TABLE client_inbounds(client_id INTEGER, inbound_id INTEGER);
-        CREATE TABLE hosts(id INTEGER, address TEXT);
+        CREATE TABLE hosts(id INTEGER, address TEXT, inbound_id INTEGER, is_disabled INTEGER);
         INSERT INTO clients VALUES(1,'PRIVATE_TEST_SENTINEL');
         INSERT INTO client_inbounds VALUES(1,1);
-        INSERT INTO hosts VALUES(1,'192.0.2.1');
+        INSERT INTO hosts VALUES(1,'192.0.2.1',1,0);
         ''')
         stream = json.dumps({'network':'xhttp','security':'reality','realitySettings':{'target':'www.yahoo.com:443','serverNames':['www.yahoo.com'],'privateKey':'PRIVATE_TEST_SENTINEL'}})
         con.execute('INSERT INTO inbounds VALUES(1,32053,\'vless\',1,?,?,0,0,0)',(stream,'{"clients":[]}'))
@@ -49,6 +49,19 @@ class HardeningTests(unittest.TestCase):
             self.assertEqual(result['identities'],1)
             self.assertEqual(result['client_links'],1)
             self.assertEqual(result['production_configuration_writes'],0)
+
+    def test_encrypted_alternative_counts_require_enabled_host(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp).resolve()/'vpn.db';con=self.fixture(path)
+            con.execute("INSERT INTO inbounds VALUES(2,32063,'vless',1,?, ?,0,0,0)",
+                        ('{"network":"xhttp","security":"none"}','{"clients":[]}'))
+            con.execute('INSERT INTO client_inbounds VALUES(1,2)');con.commit()
+            result=inventory.inspect(path);plain=next(r for r in result['inbounds'] if r['port']==32063)
+            self.assertEqual(plain['links_with_existing_enabled_encrypted_alternative'],1)
+            con.execute('UPDATE hosts SET is_disabled=1');con.commit()
+            plain=next(r for r in inventory.inspect(path)['inbounds'] if r['port']==32063)
+            self.assertEqual(plain['links_with_existing_enabled_encrypted_alternative'],0)
+            self.assertTrue(plain['device_compatibility_and_subscription_render_unproven']);con.close()
 
     def test_counters_do_not_change_hash_but_config_does(self):
         with tempfile.TemporaryDirectory() as tmp:
