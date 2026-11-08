@@ -21,8 +21,8 @@ def build(config, policy):
             or policy.get('scope') != 'existing-socrat-2-only'):
         raise ValueError('Unsupported scope')
     desired = policy['realityCorrection']
-    if desired.get('apiApplyEnabled') is not False or desired.get('preserveClientMaterial') is not True:
-        raise ValueError('Only preview with preserved client material is supported')
+    if not isinstance(desired.get('apiApplyEnabled'), bool) or desired.get('preserveClientMaterial') is not True:
+        raise ValueError('Explicit apply policy and preserved client material required')
     matches = [x for x in config['inbounds'] if x['port'] == desired['port']]
     if len(matches) != 1:
         raise ValueError('Expected exactly one target inbound')

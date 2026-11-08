@@ -11,7 +11,7 @@
     "oldTarget": "www.intel.com:443",
     "newTarget": "www.yahoo.com:443",
     "preserveClientMaterial": true,
-    "apiApplyEnabled": false
+    "apiApplyEnabled": true
   },
   "plaintextMigration": {
     "port": 32063,

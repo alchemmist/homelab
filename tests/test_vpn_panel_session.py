@@ -88,3 +88,43 @@ class SessionTests(unittest.TestCase):
                 with self.assertRaises(ValueError):s.open('wrong')
                 run.assert_not_called()
             if s.lock:s.lock.close()
+
+
+class TargetHelperTests(unittest.TestCase):
+    def module(self):
+        spec=importlib.util.spec_from_file_location('target_apply',ROOT/'scripts/vpn-reality-apply.py')
+        result=importlib.util.module_from_spec(spec);spec.loader.exec_module(result);return result
+
+    def inbound(self):
+        stream={'network':'xhttp','security':'reality','xhttpSettings':{'path':'/','mode':'auto'},
+          'realitySettings':{'target':'www.intel.com:443','serverNames':['www.yahoo.com'],
+            'privateKey':'PRIVATE_SENTINEL','shortIds':['short-private'], 'settings':{'publicKey':'public-only'}}}
+        return {'id':1,'port':32053,'protocol':'vless','enable':True,'streamSettings':json.dumps(stream),
+                'settings':'{"clients":[{"id":"client-private","flow":""}]}','clientStats':[{'secret':'sentinel'}]}
+
+    def test_only_target_is_patched_and_stats_not_posted(self):
+        module=self.module();before=self.inbound();after=module.api_payload(before)
+        self.assertNotIn('clientStats',after)
+        self.assertEqual(after['settings'],before['settings'])
+        a=json.loads(after['streamSettings']);b=json.loads(before['streamSettings'])
+        self.assertEqual(a['realitySettings']['target'],'www.yahoo.com:443')
+        b['realitySettings']['target']='www.yahoo.com:443';self.assertEqual(a,b)
+        self.assertEqual(json.loads(before['streamSettings'])['realitySettings']['target'],'www.intel.com:443')
+
+    def test_unexpected_sni_or_security_stops(self):
+        module=self.module();before=self.inbound();s=json.loads(before['streamSettings']);s['security']='none';before['streamSettings']=json.dumps(s)
+        with self.assertRaises(ValueError):module.api_payload(before)
+
+    def test_probe_is_loopback_and_only_allows_public_test_destination(self):
+        module=self.module();cfg=module.vless_client(json.loads(self.inbound()['streamSettings']),'new-owned-id',12345)
+        self.assertEqual(cfg['inbounds'][0]['listen'],'127.0.0.1')
+        self.assertEqual(cfg['outbounds'][0]['protocol'],'blackhole')
+        self.assertEqual(cfg['routing']['rules'][0]['domain'],['full:speed.cloudflare.com'])
+        self.assertNotIn('PRIVATE_SENTINEL',json.dumps(cfg))
+        self.assertEqual(cfg['outbounds'][1]['settings']['vnext'][0]['users'][0]['flow'],'')
+
+    def test_json_formatting_is_not_a_semantic_change(self):
+        module=self.module()
+        a={'inbounds':[{'id':1,'stream_settings':'{"b":2,"a":1}'}]}
+        b={'inbounds':[{'id':1,'stream_settings':'{ "a": 1, "b": 2 }'}]}
+        self.assertEqual(module.semantic(a),module.semantic(b))
