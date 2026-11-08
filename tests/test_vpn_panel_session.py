@@ -217,3 +217,22 @@ class BackendGuardTests(unittest.TestCase):
         m=self.module('vpn-backend-guard.py');expr=m.expected()[2]['rule']['expr'][2]
         self.assertEqual(expr['match']['op'],'in')
         self.assertEqual(expr['match']['right'],'established')
+
+
+class HomeProbeTests(unittest.TestCase):
+    def module(self):
+        spec=importlib.util.spec_from_file_location('home_probe',ROOT/'scripts/vpn-home-probe.py')
+        m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return m
+
+    def test_home_receipt_write_is_private_exclusive(self):
+        m=self.module()
+        with tempfile.TemporaryDirectory() as tmp:
+            p=Path(tmp)/'proof.json';m.exclusive(p,{'own_fixture':True})
+            self.assertEqual(p.stat().st_mode&0o777,0o600)
+            with self.assertRaises(FileExistsError):m.exclusive(p,{'overwrite':True})
+
+    def test_probe_limits_destination_and_avoids_global_network_writes(self):
+        text=(ROOT/'scripts/vpn-home-probe.py').read_text()
+        self.assertIn('65536',text);self.assertIn('socks5h://127.0.0.1:',text)
+        for forbidden in ['ip route add','networksetup','resolvectl dns','sysctl -w']:
+            self.assertNotIn(forbidden,text)
