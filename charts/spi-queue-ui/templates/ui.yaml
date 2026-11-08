@@ -1,0 +1,103 @@
+{{- if .Values.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: spi-queue-ui}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: spi-queue-ui}}
+  template:
+    metadata:
+      labels: {app: spi-queue-ui}
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.nodeName | quote }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: ui
+          image: {{ if .Values.image.digest }}{{ printf "%s@%s" .Values.image.repository .Values.image.digest | quote }}{{ else }}{{ printf "%s:%s" .Values.image.repository .Values.image.tag | quote }}{{ end }}
+          command: [python, -B, /ui/queue_web.py]
+          ports: [{name: http, containerPort: 8080}]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {cpu: 200m, memory: 64Mi}
+          startupProbe:
+            tcpSocket: {port: http}
+            periodSeconds: 5
+            failureThreshold: 12
+          readinessProbe:
+            tcpSocket: {port: http}
+          livenessProbe:
+            tcpSocket: {port: http}
+          volumeMounts:
+            - {name: queue-control, mountPath: /queue-control, readOnly: true}
+      volumes:
+        - name: queue-control
+          secret:
+            secretName: spi-queue-control
+            defaultMode: 0440
+---
+apiVersion: v1
+kind: Service
+metadata: {name: spi-queue-ui}
+spec:
+  selector: {app: spi-queue-ui}
+  ports: [{name: http, port: 8080, targetPort: http}]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: spi-queue-ui
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: 'true'
+    traefik.ingress.kubernetes.io/router.priority: '160'
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: rustfs.socrat.alchemmist.xyz
+      http:
+        paths:
+          - path: /queue
+            pathType: Prefix
+            backend:
+              service: {name: spi-queue-ui, port: {number: 8080}}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: spi-queue-ui}
+spec:
+  podSelector: {matchLabels: {app: spi-queue-ui}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: traefik}}
+      ports: [{port: 8080, protocol: TCP}]
+  egress:
+    {{- range .Values.authEgressCIDRs }}
+    - to: [{ipBlock: {cidr: {{ . | quote }}}}]
+      ports: [{port: 443, protocol: TCP}]
+    {{- end }}
+    - to:
+        - podSelector: {matchLabels: {app: spi-triage}}
+      ports: [{port: 8080, protocol: TCP}]
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {k8s-app: kube-dns}}
+      ports: [{port: 53, protocol: UDP}, {port: 53, protocol: TCP}]
+{{- end }}

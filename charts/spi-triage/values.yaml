@@ -30,4 +30,6 @@ llmMinuteTokens: 30000
 # Private SSO queue viewer + safe pending-only cancellation, no retry controls.
 queueUI:
   enabled: false
+  # Validated TLS auth path for normal-size session headers, like Reader.
+  nodeName: socrat-2
   authEgressCIDRs: []
