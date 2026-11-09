@@ -78,11 +78,23 @@ Do not assume two quick commits are atomic or manually sync either half.
    Wait for root reconciliation, then read back the actual child Application:
    `automated.enabled` must be false, no sync operation may be running, and the
    old image/route must still be serving. If not confirmed, STOP; do not publish.
-2. Pause only new SPI claims through the original workflow. Let existing owners,
-   processing and paid reservations drain naturally; verify all are zero from
-   live state and make the established verified idle SQLite backup/history
-   receipt. Preserve every job, deadline and credential. No reset/replay/forced
-   stop. Keep claims paused through release verification.
+2. Pause only new SPI claims through the original workflow; keep intake durable
+   and other workflows active. Before protected publication approval, confirm
+   that the current execution and any logical Wait have finished naturally.
+   Capture a fresh, complete live drain readback: owners (including logical Wait
+   owners), processing, inflight and active paid reservations must all be zero;
+   inspect n8n pending executions for this SPI workflow and confirm that none
+   remains active, waiting, or queued to resume/dispatch work. If any count or
+   execution is non-idle, or readback is unavailable, STOP and wait naturally;
+   reviewer approval alone is not drain evidence.
+   Keep the established SQLite integrity/history preservation receipt and retain
+   existing verified idle backups. The authoritative SPI release contract
+   explicitly waives a new SPI backup prerequisite: do not reinstate it as a
+   blocker here (the separate fresh IdP backup in step 2 of Controlled activation
+   still applies to identity provisioning). Preserve every job, deadline and
+   credential. No reset/replay/forced stop. Keep claims paused through release
+   verification. See the [authoritative SPI activation gate](../../llm-wiki/spi-incident-triage.md#remaining-activation-gate)
+   and [shared-image release contract](../../llm-wiki/cluster-deploy.md#spi-full-service-extraction--9-november-2026).
 3. With the hold confirmed and runtime Secret/provider already provisioned,
    merge the native source and approve its protected standard publication gate.
    Let `deploy-to-socrat@v1` make its normal robot image-digest commit to homelab.
