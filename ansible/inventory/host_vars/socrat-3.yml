@@ -11,7 +11,7 @@ homelab_wifi_msi: true
 homelab_wifi_autoconnect: true
 wg_socrat_extra_allowed_peer_ips:
   socrat-3:
-    socrat-0: [192.168.0.23/32, 10.250.0.4/32]
+    socrat-0: [192.168.0.23/32, 10.250.0.4/32, 192.168.0.250/32]
     socrat-1: [192.168.0.24/32]
 
 # Non-public worker: admin clients enter through the existing routed mesh.

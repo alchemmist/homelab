@@ -84,3 +84,68 @@ claim that encryption prevents IP blocking.
    require separate live acceptance; no testing by taking down the working path.
 8. Natural successful jobs and stable cleared alerts, off-host restore exercise
    and mobile/HTTP/API acceptance before declaring full recovery complete.
+
+## Service repairs and preservation receipts (Nov9 ~12:15UTC)
+
+### Umami restored, not reset
+
+Five scheduled snapshots (Nov6–8) already contained the empty Secret, so its loss
+predates the Nov8 night outage/hardening. Nov1 worker-verified snapshot preserved
+original3 keys. A private read-only bbolt reader (official Go module checksum
+verification; no etcd server/restore) extracted only the target Secret into private
+files. Original Secret UID matches live; recovered DB password matches running
+PostgreSQL machine environment. No human credential login/bypass, role changes,
+password regeneration or database restore.
+
+Before restore, native pg_dump custom archive2222786 bytes, SHA256
+`3a5f96e714fa7603b9904489437f2963574b667b0caec01200c91cf1ccf61651`.
+Native Kubernetes API UID/resourceVersion CAS restored exactly original3 keys.
+Externally owned Secret retained/Prune=false/IgnoreExtraneous. Removed destructive
+Helm lookup/empty-placeholder rendering and pinned the already-running image digest,
+not an application upgrade. App recovered on natural container retry. Root200,
+`/api/heartbeat`200 `{"ok":true}`, Deployment1/1 and Argo Synced/Healthy verified.
+Private source/recovery evidence on node0:
+`/var/lib/homelab-recovery/20261109-umami-{snapshot-reader,restore}/`.
+No raw secret or analytics dump in Git/controller output.
+
+### LMS private Authentik path corrected without web restart
+
+LMS root503 `Sign-in is temporarily unavailable`, healthz200, machine OAuth client
+fields present and match running process. Its pod is on node3. DNS override from
+Nov8 maps Authentik to192.168.0.250. From that actual LMS pod, VIP443 failed errno113;
+strict-TLS metadata through existing TraefikService10.43.218.222 succeeded200 with
+correct original issuer. Do NOT globally switch DNS back to ServiceIP: the restricted
+observer network intentionally cannot reach that target (Nov8 accepted evidence).
+
+node3 routed VIP over enp2s0/src192.168.0.109, no VIP mesh prefix. HOME0 owns VIP
+locally and serves strict-TLS metadata200. Corrected only node3 HOME0 peer AllowedIPs
+with192.168.0.250/32 plus corresponding /32 route, persisted exact file scalar.
+Private preimages/hash approval/full-static-peer verification: no key/endpoint/other
+peer change, no WireGuard restart, no Mac/global DNS/corporate route modifications.
+Native Authentik URL/Host/SNI/issuer/TLS/client credentials unchanged. Actual LMS
+root now303 (normal login redirect), healthz200; service-unavailable alert cleared.
+Previous DNS acceptance missed node3/LMS: this is our compatibility gap, not proof
+of public-IP blocking. Private state node3 `20261109-worker-vip-route/`.
+**Limit:** this mesh VIP route is anchored through HOME0. Not a full HOME0 power-loss
+HA solution; do not claim independent-site resilience from this local repair.
+
+### Effective request owner corrected; no second model restart
+
+Initial chart10Gi changed Deployment/ReplicaSet, but CREATE-time native admission
+still overrode new Pod to12Gi. Jobs briefly ran during the first rollout and then
+became unschedulable again. Corrected authoritative catalog
+`ansible/vars/container-resources.yml`: vLLM request10240Mi, limit24576Mi unchanged.
+Only the corresponding scalar in existing native admission profiles expression was
+CAS patched after server dry-run; no other profile/binding or blanket reconciliation.
+Future-Pod server dry-run verifies10Gi. Native Pod resize subresource reduced only
+running Pod memory request12Gi→10Gi; UID/containerID/full remaining spec unchanged.
+No second model restart, eviction or GPU/model/cache/SDK changes. Updated7d peak
+including startup9.257Gi; request is not a limit, retained limit24Gi.
+Private state VPS `20261109-vllm-effective-budget/`. Kubelet/scheduler and natural
+job freshness still require final readback before claiming scheduler acceptance.
+
+Remaining at last Grafana read: membership freshness critical (before effective
+owner correction), historical failed broker/Thanos jobs, historic Umami restarts,
+Prometheus compaction, node3 I/O and fwupd-refresh. Watchdog intentionally firing.
+LMS/backup and Umami availability alerts no longer firing. Full recovery NOT YET
+accepted; do not replace root-cause work with deleting/silencing alerts.

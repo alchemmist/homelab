@@ -157,7 +157,7 @@ Export current Pods and Nodes with `kubectl get pods -A -o json` and `kubectl ge
 | llm / `^open\-webui-[a-z0-9]+$` / prepare-tool-guard | 10m | none | 32Mi | 128Mi | 16Mi / 256Mi |
 | llm / `^open\-webui\-gateway-[a-z0-9]+$` / nginx | 10m | none | 32Mi | 128Mi | 16Mi / 256Mi |
 | llm / `^searxng-[a-z0-9]+$` / searxng | 100m | 1 | 384Mi | 768Mi | 64Mi / 512Mi |
-| llm / `^vllm-[a-z0-9]+$` / vllm | 2 | 8 | 12288Mi | 24576Mi | 512Mi / 4Gi |
+| llm / `^vllm-[a-z0-9]+$` / vllm | 2 | 8 | 10240Mi | 24576Mi | 512Mi / 4Gi |
 | lms / `^lms-[a-z0-9]+$` / lms | 50m | none | 96Mi | 512Mi | 64Mi / 1Gi |
 | monori / `^monori-[a-z0-9]+$` / front | 10m | none | 32Mi | 512Mi | 64Mi / 1Gi |
 | monori / `^monori\-back-[a-z0-9]+$` / back | 10m | none | 128Mi | 512Mi | 64Mi / 1Gi |
@@ -184,3 +184,19 @@ Export current Pods and Nodes with `kubectl get pods -A -o json` and `kubectl ge
 | kube-system / `^svclb-traefik-[a-z0-9]+$` / lb-tcp-443 | 10m | none | 8Mi | 512Mi | 16Mi / 256Mi |
 | syncthing / `^syncthing$` / syncthing | 50m | none | 128Mi | 512Mi | 64Mi / 1Gi |
 | syncthing / `^syncthing$` / private-gui | 10m | none | 16Mi | 512Mi | 16Mi / 256Mi |
+
+## 2026-11-09 recovery: effective vLLM requests
+
+For the current pinned Qwen3.8-27B model, reduce memory request12Gi→10Gi; retain
+24Gi limit,2 CPU request/8 limit,GPU1,model/cache/OTel state. Pre-rollout7d peak
+working set6.142Gi; after controlled startup, updated7d peak9.257Gi. These are
+measured working sets, not a promise of future peak usage. Limits remain24Gi.
+
+Chart-only change was insufficient: CREATE-time native admission still injected
+12288Mi into the new Pod despite Deployment/ReplicaSet10Gi. The catalog above is
+the authoritative owner; reconcile ONLY its vLLM memory scalar, no broad policy
+reconciliation or pod evictions. Existing Pod can use native resize subresource
+for request-only12Gi→10Gi, preserving limit, UID/container/process/GPU allocation.
+Require fresh preimage/CAS, server dry-run, future-Pod admission behavior, same
+process identity, actual effective resources and natural scheduled jobs/freshness.
+Do not restart the model again merely to make a template look correct.
