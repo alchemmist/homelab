@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "owner": "scripts/spi-queue-oidc.py (dedicated; not the foundation replay)",
+  "application": {
+    "slug": "spi-triage",
+    "name": "SPI Triage",
+    "meta_launch_url": "https://spi.socrat.alchemmist.xyz/queue/",
+    "meta_description": "Native Authentik OIDC for the SPI queue operator UI. Worker APIs and webhooks keep separate machine credentials.",
+    "policy_engine_mode": "any",
+    "group": "Socrat"
+  },
+  "provider": {
+    "name": "homelab-spi-triage",
+    "client_id": "socrat-spi-triage",
+    "client_type": "confidential",
+    "sub_mode": "user_uuid",
+    "grant_types": [
+      "authorization_code"
+    ],
+    "include_claims_in_id_token": true,
+    "access_token_validity": "minutes=5",
+    "refresh_token_validity": "hours=8",
+    "redirect_uris": [
+      {
+        "matching_mode": "strict",
+        "url": "https://spi.socrat.alchemmist.xyz/oauth/callback"
+      }
+    ],
+    "issuer_mode": "per_provider"
+  },
+  "scopes": [
+    "openid",
+    "groups"
+  ],
+  "groups": [
+    "homelab-owner",
+    "homelab-platform-operator",
+    "app-spi-triage-operator"
+  ],
+  "appRoles": {
+    "operator": {
+      "group": "app-spi-triage-operator",
+      "nativeRole": "List queue and cancel eligible pending jobs only; active/Wait/publication guards remain in the backend.",
+      "assignable": true
+    }
+  },
+  "runtimeSecret": {
+    "namespace": "automation",
+    "name": "spi-queue-oidc",
+    "key": "credentials.json"
+  },
+  "session": {
+    "storage": "Bounded process memory; only opaque host-only Secure HttpOnly SameSite=Lax cookies reach the browser",
+    "maximumSeconds": 300,
+    "refresh": "No refresh token is requested or stored. Expiry requires a fresh native OIDC roundtrip.",
+    "revocation": "No immediate IdP-group revocation claim: session ends by verified ID-token expiry, local logout, or UI restart."
+  }
+}

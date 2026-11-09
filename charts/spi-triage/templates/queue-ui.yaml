@@ -46,6 +46,10 @@ spec:
           image: {{ include "spi-triage.image" . | quote }}
           command: [python, -B, /ui/queue_web.py]
           ports: [{name: http, containerPort: 8080}]
+          {{- if .Values.queueUI.oidc.enabled }}
+          env:
+            - {name: SPI_QUEUE_OIDC_ENABLED, value: "true"}
+          {{- end }}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -66,10 +70,19 @@ spec:
             - {name: ui, mountPath: /ui, readOnly: true}
             {{- end }}
             - {name: queue-control, mountPath: /queue-control, readOnly: true}
+            {{- if .Values.queueUI.oidc.enabled }}
+            - {name: oidc-client, mountPath: /oidc-client, readOnly: true}
+            {{- end }}
       volumes:
         {{- if not .Values.bundleEnabled }}
         - name: ui
           configMap: {name: spi-queue-ui}
+        {{- end }}
+        {{- if .Values.queueUI.oidc.enabled }}
+        - name: oidc-client
+          secret:
+            secretName: {{ required "queueUI.oidc.existingSecret required" .Values.queueUI.oidc.existingSecret }}
+            defaultMode: 0440
         {{- end }}
         - name: queue-control
           secret:
@@ -83,6 +96,7 @@ spec:
   selector: {app: spi-queue-ui}
   ports: [{name: http, port: 8080, targetPort: http}]
 ---
+{{- if not .Values.queueUI.oidc.enabled }}
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata: {name: spi-queue-clean-identity}
@@ -100,6 +114,7 @@ spec:
     trustForwardHeader: false
     authResponseHeaders: [X-authentik-groups]
 ---
+{{- end }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -108,13 +123,23 @@ metadata:
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: 'true'
     traefik.ingress.kubernetes.io/router.priority: '160'
+    {{- if .Values.queueUI.oidc.enabled }}
+    cert-manager.io/cluster-issuer: letsencrypt-http01
+    traefik.ingress.kubernetes.io/router.observability.accesslogs: "false"
+    traefik.ingress.kubernetes.io/router.observability.tracing: "false"
+    {{- end }}
 spec:
   ingressClassName: traefik
+  {{- if .Values.queueUI.oidc.enabled }}
+  tls:
+    - hosts: [spi.socrat.alchemmist.xyz]
+      secretName: spi-queue-tls
+  {{- end }}
   rules:
-    - host: rustfs.socrat.alchemmist.xyz
+    - host: {{ ternary "spi.socrat.alchemmist.xyz" "rustfs.socrat.alchemmist.xyz" .Values.queueUI.oidc.enabled }}
       http:
         paths:
-          - path: /queue
+          - path: {{ ternary "/" "/queue" .Values.queueUI.oidc.enabled }}
             pathType: Prefix
             backend:
               service: {name: spi-queue-ui, port: {number: 8080}}
@@ -131,6 +156,17 @@ spec:
           podSelector: {matchLabels: {app.kubernetes.io/name: traefik}}
       ports: [{port: 8080, protocol: TCP}]
   egress:
+    {{- if .Values.queueUI.oidc.enabled }}
+    # Same verified HTTPS origin; admit the actual post-DNAT ingress hops.
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: traefik}}
+      ports: [{port: 8443, protocol: TCP}]
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {svccontroller.k3s.cattle.io/svcname: traefik, svccontroller.k3s.cattle.io/svcnamespace: kube-system}}
+      ports: [{port: 443, protocol: TCP}]
+    {{- end }}
     {{- range .Values.queueUI.authEgressCIDRs }}
     - to: [{ipBlock: {cidr: {{ . | quote }}}}]
       ports: [{port: 443, protocol: TCP}]
