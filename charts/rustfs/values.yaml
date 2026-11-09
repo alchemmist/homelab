@@ -24,6 +24,8 @@ browserRoutes:
   unifiedOrigin: false
 # Exact Authentik public endpoint addresses, established before rollout. Not 0/0.
 authEgressCIDRs: []
+# Opt-in same-origin Authentik HTTPS through the cluster ingress after DNAT.
+authViaTraefik: false
 
 # Dedicated SPI writer only; no reader/root credentials shared with SPI.
 spiWriter:
