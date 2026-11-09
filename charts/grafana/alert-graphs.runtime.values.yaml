@@ -43,6 +43,6 @@ alertGraphs:
     - name: alert-graphs-harbor-pull
   nodeSelector:
     kubernetes.io/hostname: socrat-1
-  # Actual hostNetwork socket source observed in bot on socrat-2; verify authenticated access.
+  # Cross-node socket source is flannel.1 on socrat-2 after service DNAT/SNAT.
   botSourceCIDRs:
-    - 109.120.141.60/32
+    - 10.42.0.0/32
