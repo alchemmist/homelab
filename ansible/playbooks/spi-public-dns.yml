@@ -1,0 +1,39 @@
+---
+- name: Whole-fleet DNS addition preflight (no package/config/service restarts)
+  hosts: socrat-0:socrat-1:socrat-2
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - ansible.builtin.file:
+        path: /var/lib/homelab-spi-public-dns
+        state: directory
+        mode: '0700'
+    - ansible.builtin.copy:
+        src: ../../scripts/spi-public-dns.py
+        dest: /usr/local/sbin/homelab-spi-public-dns
+        mode: '0700'
+    - ansible.builtin.copy:
+        src: ../../scripts/public_dns_zone.py
+        dest: /var/lib/homelab-spi-public-dns/proposed.py
+        mode: '0700'
+    - ansible.builtin.command: /usr/local/sbin/homelab-spi-public-dns
+      register: dns_plan
+      changed_when: false
+    - ansible.builtin.debug:
+        var: dns_plan.stdout
+    - ansible.builtin.assert:
+        that: (dns_plan.stdout | from_json).plan_hash == spi_public_dns_hash
+      when: spi_public_dns_apply | default(false) | bool
+- name: Serial approved owned-zone refresh
+  hosts: socrat-0:socrat-1:socrat-2
+  serial: 1
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - ansible.builtin.command:
+        argv: [/usr/local/sbin/homelab-spi-public-dns, --apply, --approve-plan-hash, "{{ spi_public_dns_hash }}"]
+      when: spi_public_dns_apply | default(false) | bool
+      register: dns_apply
+      changed_when: (dns_apply.stdout | from_json).applied
