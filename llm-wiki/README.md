@@ -1,6 +1,6 @@
 # LLM wiki: карта актуального контекста Socrat
 
-Актуализация **9 ноября 2026** (полный SPI service extraction; observer — 8 ноября, остальные срезы датированы в своих разделах). Это рабочая память для сопровождения homelab,
+Актуализация **9 ноября 2026** (production Moscow VPN cutover и resolved watchdog incident; SPI service extraction; observer — 8 ноября, остальные срезы датированы в своих разделах). Это рабочая память для сопровождения homelab,
 не public wiki content и не набор команд для автоматического повторения миграций.
 Git/manifests задают intent; runtime определяется отдельной проверкой.
 
@@ -20,7 +20,7 @@ Git/manifests задают intent; runtime определяется отдель
 | Тема | Документы |
 | --- | --- |
 | Сетевой onboarding, devices, JWT policies и node agents | [NetBird](netbird.md), [DNS](public-dns.md) |
-| VPN/TSPU: конфигурационное усиление текущего VPS, без новых покупок | [Hardening и текущие gates](vpn-hardening.md) |
+| VPN: Москва frontend → NL backend, сохранённые клиенты, реальные границы | [Текущий production и история](vpn-hardening.md), [приёмка/инцидент](../docs/vpn-production-cutover-20261109.md) |
 | Публичный SSH key, обычный Linux account и отзыв | [SSH user](ssh-user.md), [host/RBAC](identity-host-access.md) |
 | Observer: обычное групповое подключение, Danila, отзыв доступа | [Native observer](native-observer.md), [приёмка](../docs/identity/observer-acceptance-20261108.md) |
 | Главный identity справочник и ежедневные операции | [Identity](identity.md), [операции](identity-operations.md) |
@@ -49,8 +49,8 @@ Git/manifests задают intent; runtime определяется отдель
 - Не публиковать credentials, QR, private keys, subscriptions, tokenized share/
   recovery/activation URLs. Публичный hostname не делает machine API anonymous.
 
-Эта редакция изменила только `llm-wiki` и свела уже завершённую приёмку observer
-в общую навигацию. Новые runtime-проверки/rollout, пароль/MFA за человека и смена
-VPN/DNS при обновлении справочника не выполнялись.
+Редакция9ноября сводит завершённую production VPN приёмку и resolved incident
+в актуальную навигацию. Само обновление справочника не выполняет новые runtime
+rollout/проверки, вход за человека или повторную миграцию VPN/DNS.
 
 - [Официальные MCP для агентов](official-mcp.md) — project settings, полная сервисная инвентаризация, read-only scope и реальные blockers.

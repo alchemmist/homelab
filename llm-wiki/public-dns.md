@@ -1,19 +1,32 @@
 # Публичный DNS alchemmist.xyz
 
-Актуализировано **6 ноября 2026**. Текущий сетевой итог: [network-access.md](network-access.md). Это схема и результаты выполненных приёмок, не непрерывный healthcheck и не инструкция повторить migration apply.
+Актуализировано **9 ноября 2026** (VPN cutover; старые приёмки датированы ниже). Текущий сетевой итог: [network-access.md](network-access.md). Это схема и результаты выполненных приёмок, не непрерывный healthcheck и не инструкция повторить migration apply.
 
 ## Адреса и делегирование
 
 | Назначение | Текущий адрес |
 |---|---|
 | HOME / ns1.alchemmist.xyz | `109.173.40.247` |
-| VPS / ns2.alchemmist.xyz | **`109.120.141.97`** |
+| VPS / ns2.alchemmist.xyz | **`109.120.141.60`** |
 
+`109.120.141.97` — промежуточный старый адрес, миграция на`.60` завершена отдельно.
 `176.98.185.59` — старый VPS адрес, использовавшийся до 5 ноября. Старые результаты 1–2 ноября относятся к нему, а не к новому IP. Миграция обновила source/runtime и REG.RU glue; новый адрес проверен у родителя. Шлюз провайдера `176.98.185.1` сохранён намеренно, не заменять его вместе со старым IP.
 
 1. Резолвер спрашивает `.xyz` о NS `alchemmist.xyz`.
 2. Родитель возвращает `ns1`/`ns2` и registrar glue на HOME/NEW VPS; в наблюдавшейся делегации TTL glue 3600s.
 3. По glue запрашивается authoritative Knot. Внутризонные NS/A используют TTL 60s. Это не замена родительского glue: bootstrap не должен зависеть от запроса к самому ещё не найденному NS.
+
+## VPN — отдельный статический московский вход
+
+`vpn.alchemmist.xyz IN A 91.189.82.238`, TTL60, на всех0/1/2 writers. Удалён из
+FAILOVER, находится в STATIC_A: при отказе Москвы не публиковать NL/HOME как
+скрытый fallback. Прочие records проверены на всех четырёх health-комбинациях;
+NS1 HOME и принятый NS2/glue NL не менялись, registrar не пересылался.
+NL authoritative Knot дополнительно слушает private10.251.4.2:53; московский
+private relay10.250.0.40:53 передаёт TCP/UDP по отдельному WG. Один scoped NL Knot
+restart был нужен для listener, public listener сохранён; startup dependency на WG.
+Никакого Mac resolver override. Это не HA/partition-consistency гарантия трёх writers.
+[Production evidence/incident](../docs/vpn-production-cutover-20261109.md).
 
 ## Что стоит на узлах
 
@@ -45,7 +58,7 @@ Knot работает на ОС socrat-0/1/2, не в pod. Source: `ansible/play
 ```sh
 dig @x.nic.xyz alchemmist.xyz NS +norecurse
 dig @109.173.40.247 alchemmist.xyz SOA +norecurse
-dig @109.120.141.97 alchemmist.xyz SOA +norecurse
+dig @109.120.141.60 alchemmist.xyz SOA +norecurse
 curl -sS -H 'accept: application/dns-json' \
   'https://dns.google/resolve?name=grafana.socrat.alchemmist.xyz&type=A'
 ```

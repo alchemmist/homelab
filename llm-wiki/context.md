@@ -1,6 +1,6 @@
 # Socrat: текущий контекст
 
-Актуализировано **8 ноября 2026** для завершённого observer rollout; остальные
+Актуализировано **9 ноября 2026**: production VPN через Москву принят; остальные
 срезы сохраняют свои даты. Это не новая полная live-проверка кластера.
 Начинать с [карты справочника](README.md). Старые датированные журналы — evidence
 своего этапа, не задания повторить миграцию и не замена текущим manifests/live state.
@@ -34,7 +34,46 @@ SSH transport, публичный ключ/Linux account, sudo, Kubernetes RBAC 
 [SSH без sudo](ssh-user.md), [Linux/RBAC](identity-host-access.md),
 [публичный DNS](public-dns.md).
 
-## VPN: текущая работа по #83
+## Актуально: production VPN через Москву, 9 ноября 2026
+
+**Клиенты/HOME → Москва91.189.82.238 → NL109.120.141.60**. URL подписки
+`vpn.alchemmist.xyz` неизменен; обновлять существующую подписку, не аккаунт/ключи.
+Все три DNS-writer публикуют статический VPN A Москвы без NL fail-open. Нативные
+Hosts7/7 обновлены:17 identities/91 bindings сохранены,32063 disabled. Подписки всех
+17 клиентов:84 URI/77 JSON, обычный DNS/валидный TLS, старого NL endpoint нет.
+После восстановления проверены из HOME три VLESS/REALITY, Trojan и WG:200/65536B/
+контрольный hash, отдельный HTTPS exit-check=NL. UDP32…8192B через реальный
+зашифрованный межсерверный канал также проверен; это не authenticated AWG/mobile.
+
+HOME0/3 management WG и HOME1 pinned-TLS/GOST идут через Москву; известные NL
+DNS/HTTPS/VPN потоки на HOME0/1/3 перенаправляются scoped persistent nft DNAT.
+Не глобальный exit node, Mac/default routes/DNS-настройки не менялись. Private
+DNS:Москва10.250.0.40:53→NL10.251.4.2:53. NS1 HOME и NS2/glue NL сохранены.
+NL WAN raw VPN закрыт; только Trojan HTTP-путь на shared443 допускает московский
+private10.251.4.1/32 и точный loopback127.0.0.1/32 для штатной health-проверки.
+Public403/private101, spoofedXFF не помогает; портал200/LMS303/Argo200 сохранены.
+Такой же gate установлен/проверен в native Caddy fallback.
+
+**Инцидент не скрывать:** первоначальный ACL пропустил local health и вызвал
+watchdog fallback/остановку NL K3s. Исправлено loopback-исключением, проверки и
+watchdog не отключены. Штатный failback исходного member без reset/replacement;
+160MB Raft catch-up занял3m45s, bounded start timeout180→600s. После восстановления:
+3 healthy voters/common leader/hashKV equal (revision17449598),5Ready/noMemoryPressure,
+все пять транспортов и17 подписок повторно приняты, watchdog healthy/fallback off.
+Московский socrat-4 — agent-only10.250.0.40, bootstrap NoSchedule сохранён,
+не control-plane/etcd/обычный heavy worker. Четыре human admin routes не расширялись.
+
+Бэкапы пяти нод плюс post-recovery supplement — private/off-host/SHA verified;
+история/старые recovery receipts сохранены.126 tests+14 subtests passed — срез приёмки,
+не непрерывный healthcheck. Mobile/Happ interactive, authenticated AWG, полный DR/
+chaos/reboot и сохранение end-user IP enforcement не доказаны. Не обещать HA/TSPU immunity.
+Подробности и custody: [production runbook](../docs/vpn-production-cutover-20261109.md).
+Исторический staging: [Moscow bootstrap](../docs/moscow-vpn-transit-20261109.md).
+Не переисполнять migration/prepare/apply: fresh preimage/CAS, uncertain→разбор.
+
+## Исторический VPN-срез 8 ноября (superseded)
+
+
 
 С 8 ноября — только конфигурация существующего socrat-2, **без покупки VPS/IP**.
 Свежий аудит и приватный WAL-aware backup выполнены. Установлены только ACCEPT
