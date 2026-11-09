@@ -3,6 +3,24 @@
 Контракт для агентов и оператора. Актуализировано: **3 ноября 2026**.
 Связанный документ: [архитектура автоматизаций умного дома](smart-home-automation.md).
 
+## Автоматическая привязка новых JSON-шаблонов — offline policy
+
+Создание workflow в коде сопровождается проверкой
+`uv run python scripts/n8n/check_failure_alerts.py`; при пропущенной привязке —
+та же команда с `--fix`, review/commit JSON и обычный native sync. Никакого CronJob
+или автоматического изменения live n8n. Обнаружение новых файлов рекурсивное по
+roots в `n8n-workflow-policy.json`; другой явно заданный handler не перетирается,
+канонический Error Trigger исключён строго по path/name/type без рекурсии.
+UI-only workflows CI не видит до экспорта в исходники.
+
+Новый CI задан в **qg.yaml**, outputs получены `uv run qg generate`, freshness —
+`uv run qg validate`. CLI/provider0.1.8 одинаково pinned, runtime SHA из официального
+quickstart. CI только проверяет; исправление вызывает разработчик/агент. На момент
+внедрения qg.yaml в обоих repos отсутствовал; это bootstrap по migration guide,
+старые проверки сохранены до PR parity, privileged release не переносился в graph.
+Не считать локальный generate/validate приёмкой trusted publisher или изменением
+required branch checks. [Процесс и команды](../docs/n8n/workflow-policy.md).
+
 ## Уведомление об упавшем execution — 9 ноября 2026
 
 Настроен общий **Workflow Failure Alerts** (`iZn7biFh6321a1w8`): native
