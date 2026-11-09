@@ -39,3 +39,7 @@ resources:
     memory: 64Mi
   limits:
     memory: 256Mi
+# Native same-message photo delivery; real gateway/renderer/CNI PNG acceptance passed.
+graphs:
+  enabled: true
+  existingSecret: socrat-bot-graph-client
