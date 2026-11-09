@@ -38,3 +38,21 @@ SPI suite329 tests(3optional skips); offline native amd64 suite329/329,zero skip
 under1CPU/384MiB/64MiBtmpfs; bot PostgreSQL suite202passed/17backend-specific skips;
 Helm graph/inventory suites9passed. Renderer, authenticated evidence download and
 natural one-message Telegram delivery remain explicit live acceptance gates.
+
+## Live reconciliation receipt
+
+Homelab `a1a3fa3` reconciled: all189 live Prometheus rules carry `spi_graphs`,
+28 generated dashboard ConfigMaps exist, all13 checked Applications are
+Synced/Healthy and all4 nodes are Ready. The7 managed Grafana annotations are
+source-only until the authenticated update phase. The deployed independent
+`identity/rustfs-gateway` was read-only verified to support v3/stored_bytes/PNG.
+
+Production image release is blocked at hosted-runner Harbor TLS authentication,
+not unit tests: SPI run42610770650 and bot run42610352796 (including one bounded
+failed-job retry). The SPI publication gate was restored to false. Both consumer
+flags and graph gateway stay disabled; neither bot migration0017 nor the image
+backend was activated. DNS, routes, TLS verification and existing permissions
+were not changed to get around the failure. Native workflow validator changes,
+renderer/credential/CNI acceptance and natural end-to-end observation remain
+pending. See the application `docs/alert-graphs.md` for exact source commits and
+CI links; do not interpret mapping reconciliation as delivered screenshots.
