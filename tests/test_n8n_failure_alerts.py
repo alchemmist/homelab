@@ -76,6 +76,14 @@ class FailureAlertsTests(unittest.TestCase):
         after['staticData']['node:Push']['webhookEvents']=['issues']
         with self.assertRaises(RuntimeError):sync.check(before,after,'handler')
 
+    def test_transient_put_state_requires_authoritative_readback(self):
+        before=self.wf();before['staticData']={'checkpoint':'must-remain'}
+        transient=copy.deepcopy(before);transient['settings']['errorWorkflow']='handler';transient['staticData']=None
+        sync.check(before,transient,'handler',verify_static=False)
+        with self.assertRaises(RuntimeError):sync.check(before,transient,'handler')
+        stable=copy.deepcopy(before);stable['settings']['errorWorkflow']='handler'
+        sync.check(before,stable,'handler')
+
     def test_unexpected_settings_drift_stops(self):
         before=self.wf();after=copy.deepcopy(before);after['settings']={'errorWorkflow':'handler'}
         with self.assertRaises(RuntimeError):sync.check(before,after,'handler')

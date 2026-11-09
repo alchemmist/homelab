@@ -37,7 +37,7 @@ def bind(api, before, target):
     if fresh.get('settings',{}).get('errorWorkflow')==target:return fresh
     request=body(fresh);request['settings']['errorWorkflow']=target
     result=api('PUT','workflows/'+fresh['id'],request)
-    check(before,result,target)
+    check(before,result,target,verify_static=False)
     if before['active'] and result.get('activeVersionId')!=result['versionId']:
         # Reload timer/webhook registration with the identical graph and new settings.
         # No deactivate call, no manual execution; preserve existing active state.
@@ -54,7 +54,7 @@ def protected_static(w):
     state=copy.deepcopy(w.get('staticData'))
     if not isinstance(state,dict):return state
     for node in w['nodes']:
-        if node['type']!='n8n-nodes-base.githubTrigger':continue
+        if node.get('type')!='n8n-nodes-base.githubTrigger':continue
         data=state.get('node:'+node['name'])
         if not isinstance(data,dict):continue
         for key in ('webhookId','webhookSecret'):
@@ -62,12 +62,14 @@ def protected_static(w):
     return state
 
 
-def check(before,after,target):
+def check(before,after,target,verify_static=True):
     if graph(before)!=graph(after) or before['name']!=after['name'] or before['active']!=after['active']:
         raise RuntimeError('Workflow graph/identity/state drift; stop')
     expected={**before['settings'],'errorWorkflow':target}
     if after['settings']!=expected:raise RuntimeError('Unexpected settings drift; stop')
-    if protected_static(before)!=protected_static(after):
+    # PUT returns an entity whose hook staticData may be transient during native
+    # registration. Only authoritative GET readback verifies durable state.
+    if verify_static and protected_static(before)!=protected_static(after):
         raise RuntimeError('Protected workflow static data drift; stop')
     for key in ('id','shared','tags','pinData','meta'):
         if key in before and key in after and before[key]!=after[key]:
