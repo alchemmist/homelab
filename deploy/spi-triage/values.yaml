@@ -1,0 +1,24 @@
+# Canonical full-service cluster values. No secret values.
+tokenAccountingMode: local-qwen-v1
+durableWaitEnabled: true
+llmMinuteTokens: 30000
+s3Evidence:
+  publicOrigin: https://rustfs.socrat.alchemmist.xyz
+  enabled: true
+  retainCredentials: true
+  writerSecret: spi-evidence-writer
+queueUI:
+  enabled: true
+  authEgressCIDRs:
+  - 109.173.40.247/32
+  - 109.120.141.97/32
+legacyImage: harbor.socrat.alchemmist.xyz/spi-triage/runtime@sha256:4cd6a12c1b046c03b74195b2d93aff183d8465230d364b527fa116fd25624a91
+legacyImagePullSecrets:
+- name: spi-harbor-pull
+bundleEnabled: false
+image:
+  repository: harbor.socrat.alchemmist.xyz/homelab/spi-triage
+  tag: bootstrap-disabled
+  digest: ''
+imagePullSecrets:
+- name: spi-triage-harbor-pull

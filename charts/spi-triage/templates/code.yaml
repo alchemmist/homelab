@@ -1,3 +1,4 @@
+{{- if not .Values.bundleEnabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -18,3 +19,5 @@ metadata:
 data:
   github_broker.py: |-
 {{ .Files.Get "files/github_broker.py" | indent 4 }}
+
+{{- end }}

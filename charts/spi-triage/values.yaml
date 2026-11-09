@@ -1,5 +1,5 @@
+# Full-service image is activated only after a protected, naturally drained release.
 tokenAccountingMode: byte-bound-v1
-image: python:3.13-alpine@sha256:7984cf56ceaddebe4fefeb75d64000b9f45d8b77b11a09b24524da6cdc3af0c8
 brokerImage: pragent/pr-agent:0.49.0-github_app@sha256:b57649785c4366eed39aab698f6d0fe944fa21cb7c2312ddc9bc8e4db2192a60
 nodeName: socrat-1
 writeEnabled: true
@@ -8,30 +8,25 @@ secretName: spi-triage
 appSecretName: pr-agent
 brokerNamespace: pr-agent
 grafanaUrl: http://kube-prometheus-stack-grafana.cattle-monitoring-system.svc.cluster.local
-
-# Activate only after the existing SPI event webhook is registered.
 dispatchEnabled: true
-
-# Enable after reviewed native bot episode/copy/revision API rollout.
 telegramLinksEnabled: true
-
-# Independent of writeEnabled. Keep credentials mounted on rollback for S3-locked jobs.
 s3Evidence:
   publicOrigin: https://spi-evidence.socrat.alchemmist.xyz
   enabled: false
   retainCredentials: false
-  writerSecret: ""
-
-# Enable only after backward-compatible backend and reviewed workflow cutover.
+  writerSecret: ''
 durableWaitEnabled: false
-# Raise to 60000 only after existing SPI proxy key matches.
 llmMinuteTokens: 30000
-
-# Private SSO queue viewer + safe pending-only cancellation, no retry controls.
 queueUI:
   enabled: false
-  # Backend API remains enabled when frontend resources move to another app.
-  external: false
-  # socrat-2 is currently Unreachable; keep frontend on its existing ready node.
   nodeName: socrat-3
   authEgressCIDRs: []
+legacyImage: python:3.13-alpine@sha256:7984cf56ceaddebe4fefeb75d64000b9f45d8b77b11a09b24524da6cdc3af0c8
+legacyImagePullSecrets: []
+bundleEnabled: false
+image:
+  repository: harbor.socrat.alchemmist.xyz/homelab/spi-triage
+  tag: bootstrap-disabled
+  digest: ''
+imagePullSecrets:
+- name: spi-triage-harbor-pull
