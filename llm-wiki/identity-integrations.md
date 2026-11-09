@@ -350,3 +350,16 @@ Legacy credential key AUTHENTIK_BOOTSTRAP_TOKEN сохранён как alias н
 так что текущие consumers совместимы; runtime Secret исключает admin bootstrap
 env. Детали и широкие privilege boundaries:
 [admin-automation.md](../docs/identity/admin-automation.md).
+
+## SPI queue native OIDC — prepared 9 November, not activated
+
+Standalone `spi.socrat.alchemmist.xyz`; source in the full `spi-triage` repo.
+Native confidential Code+PKCE, state/nonce and RSA issuer/audience/expiry checks;
+no RustFS forward-auth or client secret in JS. Dedicated SPI identity catalog/
+plan controller follows the separately owned native-provider pattern; do not
+replay foundation or change existing human memberships. Frontend-only Secret,
+canonical callback and app-owned Ingress/TLS/policy are prepared. Built native
+image: 341 tests/zero skips; GET-only live Authentik plan succeeded. No live writes
+or protected publication approval: operator kubeconfig is unreachable and SSH
+lacks its trusted saved host key. See [SPI OIDC runbook](../docs/identity/spi-triage-oidc.md)
+for activation, bounded five-minute local sessions and explicit acceptance gates.
