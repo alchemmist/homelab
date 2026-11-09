@@ -1332,3 +1332,16 @@ Source-only helper correction: private full-row manifest binding and end-to-end
 CLI backup deadline are prepared, not activated. Original auth time is unknown/
 null; only two full IDs 08ba…/998b… are authorized after independent review. See
 tokenizer README for canonical manifest, failure cleanup and backup limitations.
+
+### Alert graph image activation — 2026-11-09 14:01Z
+
+Full SPI image `b70462d` is activated (`bundleEnabled=true`) after natural drain,
+verified private checkpoint and preservation of766 job IDs/491 terminal hashes.
+Original n8n workflow `J9akzlydrf9XZiID` is active with additive
+`GRAPH_CAPTURE_DEFERRED`; normal publication resumed. Gateway/renderer and both
+consumers enabled;200/200 current live rules annotated. Nine natural Telegram
+photo receipts and a no-model/no-notification native2-PNG private S3/Reader
+integrity check passed. See `docs/monitoring/alert-graphs.md` for exact digests,
+expiry/rotation, backups, CNI admission and explicit browser-SSO test limitation.
+No historical replay/reset, fake incident or paid probe was used. Historical
+unrelated matching/backlog receipts are not superseded by this graph deployment.

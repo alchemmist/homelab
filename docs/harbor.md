@@ -196,3 +196,15 @@ for migration, backup/restore evidence and remaining browser acceptance.
   Cats, Format Quorum, Monori and Socrat Home run from Harbor. GHCR originals are
   retained, and LMS remains GHCR intentionally. All 42 Argo Applications were
   Synced/Healthy; Harbor restart alerts resolved without disabling alert rules.
+
+## Hosted-runner graph-release transport compatibility (2026-11-09)
+
+The SPI/bot release failure was Go TLS key-share transport compatibility, not a
+missing `/service/token` secret. Python HTTPS verified existing robot pull/push
+grant; isolated BuildKit uses `GODEBUG=tlsmlkem=0` with a private ephemeral Docker
+config from `scripts/harbor_ci_auth.py`. Normal TLS validation and public DNS
+remain enabled; no global daemon/ingress TLS policy, robot rights or cluster
+pull identity changed. The experimental Harbor TLSOption was reverted and
+removed. Bot run42629684670 and SPI run42622862630 completed the ordinary
+Harbor→homelab→Argo cycle. See monitoring/alert-graphs.md for pinned digests and
+activation proof; do not rotate working secrets to diagnose this TLS symptom.
