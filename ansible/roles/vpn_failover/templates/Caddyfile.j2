@@ -7,6 +7,14 @@
 }
 
 {{ vpn_failover_edge.host }} {
+{% if vpn_failover_edge.vpnTransit.enforce | default(false) %}
+    # Same source gate in native recovery; retain real loopback WS health probe.
+    @trojan_denied {
+        path {{ (vpn_failover_edge.routes | selectattr('name', 'equalto', 'trojan') | first).path }}
+        not remote_ip {{ vpn_failover_edge.vpnTransit.allowedSourceRanges | join(' ') }}
+    }
+    respond @trojan_denied "Forbidden" 403
+{% endif %}
     @trojan path {{ (vpn_failover_edge.routes | selectattr('name', 'equalto', 'trojan') | first).path }}
     reverse_proxy @trojan 127.0.0.1:32087
     @subscriptions path /16a19nq48vtd/* /16a19nq48vtd-json/*

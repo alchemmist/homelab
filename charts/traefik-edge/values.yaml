@@ -80,4 +80,4 @@ vpnTransit:
   enforce: true
   canaryPath: /__homelab_msk_transit_canary
   middlewareNamespace: argocd
-  allowedSourceRanges: ["10.251.4.1/32"]
+  allowedSourceRanges: ["10.251.4.1/32", "127.0.0.1/32"]
