@@ -7,7 +7,7 @@ grafana:
       registry: docker.io
       repository: grafana/grafana-image-renderer
       tag: v5.12.10
-      sha: sha256:83201e73724250bbeb5a3c89763fc274771ef67156ecac3871c427d7b629d8fa8f
+      sha: 83201e73724250bbeb5a3c89763fc274771ef67156ecac3871c427d7b629d8fa8f
     securityContext:
       runAsNonRoot: true
       runAsUser: 65532

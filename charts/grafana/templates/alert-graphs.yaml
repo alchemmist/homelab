@@ -8,7 +8,7 @@
 {{- if not .Values.grafana.imageRenderer.enabled }}
 {{- fail "alertGraphs requires the Grafana remote imageRenderer to be enabled" }}
 {{- end }}
-{{- if not (regexMatch "^sha256:[a-f0-9]{64}$" (.Values.grafana.imageRenderer.image.sha | default "")) }}
+{{- if not (regexMatch "^[a-f0-9]{64}$" (.Values.grafana.imageRenderer.image.sha | default "")) }}
 {{- fail "alertGraphs requires an immutable Grafana imageRenderer.image.sha" }}
 {{- end }}
 {{- range .Values.alertGraphs.botSourceCIDRs }}
