@@ -1,0 +1,96 @@
+{
+  "name": "Workflow Failure Alerts",
+  "nodes": [
+    {
+      "id": "e8a11000-0001-4000-8000-000000000001",
+      "name": "Workflow Failed",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "e8a11000-0002-4000-8000-000000000002",
+      "name": "Prepare Safe Notification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const input = items[0].json;\nconst clean = (value, limit) => String(value || '').replace(/[\\x00-\\x1f\\x7f]/g, ' ').slice(0, limit);\nconst workflowId = clean(input.workflow?.id, 80);\nif (!/^[A-Za-z0-9_-]{1,80}$/.test(workflowId)) throw new Error('Invalid workflow identity');\nconst name = clean(input.workflow?.name, 120) || workflowId;\nconst executionId = clean(input.execution?.id, 24);\nif (executionId && !/^[0-9]{1,24}$/.test(executionId)) throw new Error('Invalid execution identity');\nconst handlerId = String($execution.id);\nif (!/^[0-9]{1,24}$/.test(handlerId)) throw new Error('Invalid handler execution identity');\nconst node = clean(input.execution?.lastNodeExecuted, 120);\nconst base = 'https://n8n.socrat.alchemmist.xyz/workflow/' + encodeURIComponent(workflowId);\nconst url = executionId ? base + '/executions/' + executionId : base;\nconst description = ['Workflow: ' + name, executionId ? 'Execution: ' + executionId : 'Trigger failure (no execution ID)', node ? 'Failed node: ' + node : '', 'Open the protected execution page for error details.'].filter(Boolean).join('\\n');\n// Intentionally never forward error.message/stack/context, headers or node inputs.\nreturn [{json:{chat_id:891074228,alert:{status:'firing',fingerprint:'n8n-' + workflowId + '-' + (executionId || 'trigger-' + handlerId),startsAt:new Date().toISOString(),generatorURL:url,labels:{alertname:'N8nWorkflowExecutionFailed',component:'n8n',namespace:'automation',severity:'warning',workflow_id:workflowId},annotations:{summary:'n8n workflow failed: ' + name,description}}}}];"
+      }
+    },
+    {
+      "id": "e8a11000-0003-4000-8000-000000000003",
+      "name": "Send Failure Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        520,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://socrat-bot.socrat-bot.svc:8080/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 20000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "SOCRAT_BOT_CREDENTIAL_ID",
+          "name": "Socrat bot internal"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Workflow Failed": {
+      "main": [
+        [
+          {
+            "node": "Prepare Safe Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Safe Notification": {
+      "main": [
+        [
+          {
+            "node": "Send Failure Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Moscow",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none",
+    "saveManualExecutions": false,
+    "saveExecutionProgress": false,
+    "executionTimeout": 60
+  },
+  "pinData": {}
+}
