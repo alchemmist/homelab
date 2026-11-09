@@ -56,7 +56,6 @@ expose:
       cert-manager.io/cluster-issuer: letsencrypt-http01
       traefik.ingress.kubernetes.io/router.entrypoints: websecure
       traefik.ingress.kubernetes.io/router.tls: "true"
-      traefik.ingress.kubernetes.io/router.tls.options: harbor-harbor-registry-tls@kubernetescrd
     className: traefik
     hosts:
       core: harbor.socrat.alchemmist.xyz
@@ -151,7 +150,3 @@ trivy:
       memory: 1Gi
 updateStrategy:
   type: Recreate
-
-# Per-host TLS interoperability; no global TLS, routing or auth change.
-socratTLS:
-  enabled: true
