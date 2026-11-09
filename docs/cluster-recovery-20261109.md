@@ -283,3 +283,55 @@ metrics queue0. HDD still83–88% busy/~37flush/s; IO full5m~34%. Catch-up conti
 Compaction alone is **not** sustained I/O acceptance. Native sending-queue batching
 was source-reviewed: persistent enqueue/dispatch/ACK still fsync per original
 request, so do not add it/restart agent claiming it solves the HDD IOPS limit.
+
+### 14:06UTC safety engine / VPN / DNS review
+
+Native `/api/v1/rules` returned all4 new rules **health=ok,state=inactive,no lastError**,
+lastEvaluation14:06:14UTC. Actual fresh unique healthy-voter expression=3. This
+accepts evaluation, not delivery of a test notification or physical UPS protection.
+WAL checkpoint still1785 at14:06; no new native compaction logs in prior30min, so
+next normal cycle is still required (expected15:00UTC). Do not claim completion.
+
+Fresh online SQLite backup-to-memory integrity audit:17 identities/91 links now,
+not the earlier16/85. Exact projection against private Nov8 baseline proves **all
+original16 identities and85 bindings still present and completely unchanged**;
+only1 identity/6 links added by an external/concurrent activity. Origin of that
+addition was not attributed in this recovery; no deletion/rollback authorized.
+Transport targets remain Yahoo/Sony/AMD;32063 disabled; encrypted WG/AWG unchanged.
+Trojan backend has no TLS itself by design behind strict-TLS443; do not mislabel
+this as an exposed plaintext listener. No speculative port/key/client rotation.
+
+Read-only backend check isolated a compatibility defect: NetBird inserts exactly
+one `iifname nb-host counter accept` into this input hook chain. It cannot match
+eth0 and is redundant with existing chain accept policy. Two original owned eth0
+rules remain exact. Validator now accepts **only this complete expression**, at
+most once; rejects different interfaces/extra expressions/duplicate/missing or
+modified public deny/foreign owner.47 tests+3 subtests pass. Only validator Python
+file replaced with matched-source preimage backup; no nft mutation, `--ensure`,
+unit reload/restart or NetBird change. Fresh live read-only validation accepts5
+objects, owned rules byte-semantically unchanged. HOME→NEW443 open,12096/32087
+explicitly refused after change. Receipt node2 `20261109-vpn-final-review2/`.
+
+Thanos failed Job scheduling cause now directly confirmed by retained earlier
+inventory: `thanos-cascade-29903670-5qm7q` at10:30 had `Unschedulable`,1 insufficient
+memory/3 wrong node selector; requested128Mi on node0. Do not extrapolate this as
+proven exact cause of both broker deadlines where old Pods are already absent.
+
+DNS review: `public_dns_zone.py` probes only TCP443, each authority refreshes its
+own zone independently (local loopback/LAN for itself, public IP for peer). During
+partition they can publish inconsistent answer sets; when both checks fail the
+renderer deliberately keeps both addresses. TTL60 and2 NS improve lookup and IP
+publication availability, **not service readiness or coordinated failover**.
+A living Traefik443 can still serve502/503 when Authentik/DB/etcd/backend fails.
+NS1/NS2 glue is correct; no new REG.RU write needed. Seven subscription endpoint
+addresses remain literal VPS IPv4: DNS changes cannot move existing clients.
+HOME forwarding to same VPS, shared stateful services and VPS-only relay are not
+independent backup sites. Same-prefix address change is not proof of TSPU blocking.
+
+For a future separately accepted HA phase: one fenced authoritative publication
+owner with native signed primary/secondary transfer, independent-vantage HTTPS
+SNI/issuer/backend checks per service (and real VPN/STUN/TURN checks), failure
+hysteresis and tested client retries; independently available stateful dependencies
+and a genuinely independent VPN endpoint. Do not replace working literal addresses
+with round-robin DNS or claim that alone solves single-VPS loss. Current scope did
+not purchase a second provider, redesign DB/storage HA or change client credentials.

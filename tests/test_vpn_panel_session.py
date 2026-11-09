@@ -197,6 +197,24 @@ class BackendGuardTests(unittest.TestCase):
         objects=m.expected();objects.append({'rule':{'expr':[{'accept':None}]}})
         with self.assertRaises(ValueError):m.validate(objects)
 
+    def test_exact_existing_netbird_allowance_preserved_without_relaxing_public_guard(self):
+        import copy
+        m=self.module('vpn-backend-guard.py')
+        allow={'rule':{'family':'inet','table':m.TABLE,'chain':'input','expr':[
+            {'match':{'op':'==','left':{'meta':{'key':'iifname'}},'right':'nb-host'}},
+            {'counter':{'packets':17,'bytes':900}},{'accept':None}]}}
+        objects=m.expected();objects.insert(2,allow);before=copy.deepcopy(objects)
+        m.validate(objects);self.assertEqual(objects,before)
+        for iface in ['eth0','lo','wg-socrat']:
+            bad=copy.deepcopy(objects);bad[2]['rule']['expr'][0]['match']['right']=iface
+            with self.subTest(interface=iface),self.assertRaises(ValueError):m.validate(bad)
+        bad=copy.deepcopy(objects);bad.append(copy.deepcopy(allow))
+        with self.assertRaises(ValueError):m.validate(bad)
+        bad=copy.deepcopy(objects);bad[2]['rule']['expr'].append({'drop':None})
+        with self.assertRaises(ValueError):m.validate(bad)
+        bad=copy.deepcopy(objects);bad[-1]['rule']['expr'][-1]={'accept':None}
+        with self.assertRaises(ValueError):m.validate(bad)
+
     def test_guard_scope_and_boot_ensure(self):
         m=self.module('vpn-backend-guard.py');text=m.rules()
         self.assertIn('iifname "eth0"',text);self.assertIn('{ 12096, 32087 }',text)

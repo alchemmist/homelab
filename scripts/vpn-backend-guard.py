@@ -58,6 +58,14 @@ def validate(objects):
         if 'table' in obj:
             comment=obj['table'].pop('comment',None)
             if comment not in (None,OWNER):raise ValueError('Foreign table owner')
+    # NetBird inserts this exact private-interface accept into input hook chains.
+    # It cannot match eth0 and is redundant with this chain's accept policy.
+    # Preserve it; allow no other foreign rule, duplicate, interface or verdict.
+    private_allow={'rule':{'family':'inet','table':TABLE,'chain':'input',
+        'expr':[{'match':{'op':'==','left':{'meta':{'key':'iifname'}},'right':'nb-host'}},
+                {'counter':{}},{'accept':None}]}}
+    if data.count(private_allow)>1:raise ValueError('Duplicate private interface allowance')
+    data=[obj for obj in data if obj!=private_allow]
     if data!=expected():raise ValueError('Not the exact owned backend guard')
 
 
