@@ -20,7 +20,7 @@ chains:
       - name: vps
         nodes:
           - name: socrat-2
-            addr: '{{ wg_tcp_server_address }}:{{ wg_tcp_port }}'
+            addr: '{{ wg_tcp_client_address | default(wg_tcp_server_address) }}:{{ wg_tcp_port }}'
             connector:
               type: relay
               auth:

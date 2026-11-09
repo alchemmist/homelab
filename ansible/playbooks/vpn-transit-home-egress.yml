@@ -1,0 +1,47 @@
+---
+- name: Move only known HOME NL services through Moscow without default route changes
+  hosts: socrat-0:socrat-1:socrat-3
+  serial: 1
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - name: Install the scoped fixed-service egress helper
+      ansible.builtin.copy:
+        src: ../../scripts/vpn-home-transit-egress.py
+        dest: /usr/local/libexec/vpn-home-transit-egress.py
+        mode: '0700'
+    - name: Check for prior accepted or uncertain state before applying
+      ansible.builtin.stat:
+        path: /var/lib/homelab-vpn-transit/home-egress
+      register: egress_state
+    - name: Apply new owned table with a private complete preimage
+      ansible.builtin.command: python3 /usr/local/libexec/vpn-home-transit-egress.py --apply
+      when: not egress_state.stat.exists
+    - name: Install persistent fail-closed startup ordering
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/homelab-msk-home-egress.service
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Known HOME NL service egress through Moscow with startup safety fence
+          Wants=network-pre.target
+          After=network-pre.target
+          Before=network-online.target k3s.service k3s-agent.service
+          [Service]
+          Type=oneshot
+          RemainAfterExit=yes
+          ExecStartPre=/usr/bin/env ip -4 route add prohibit 109.120.141.60/32 metric 32760
+          ExecStart=/usr/bin/python3 /usr/local/libexec/vpn-home-transit-egress.py --boot
+          NoNewPrivileges=yes
+          ProtectHome=yes
+          ProtectSystem=strict
+          ReadWritePaths=/var/lib/homelab-vpn-transit
+          [Install]
+          WantedBy=multi-user.target
+    - name: Validate persisted exact table and activate its startup contract
+      ansible.builtin.systemd_service:
+        name: homelab-msk-home-egress.service
+        enabled: true
+        state: started
+        daemon_reload: true

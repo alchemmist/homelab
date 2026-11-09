@@ -18,7 +18,7 @@
 | Межнодовая сеть | Реальный интерфейс `wg-socrat` сохранён: NetBird human ingress его не заменял |
 | Recovery | Независимый standalone WireGuard владельца, обычно выключен; не обычный путь входа |
 | Рабочий VPN Mac | Обязательный Tunnelblick; не отключать и не менять DNS/routes ради homelab |
-| Public HTTPS | HOME `109.173.40.247`, VPS `109.120.141.97`; обычный DNS/TLS без Mac overrides |
+| Public HTTPS | HOME `109.173.40.247`, VPS `109.120.141.60`; обычный DNS/TLS без Mac overrides |
 
 У NetBird на Mac DNS выключен, выбраны только четыре согласованных маршрута.
 Setup keys для людей не используются. Автоматический user/device approval выключен,
@@ -370,3 +370,23 @@ Trojan and WireGuard/UDP** each passed HTTP200/65536B/hash, separately proving e
 No mobile/Happ, AmneziaWG, comprehensive MTU/failure or complete transit claim.
 Next authorized steps and private evidence/replay rules:
 [dated staging runbook](../docs/moscow-vpn-transit-20261109.md). No new approval needed.
+
+
+### Production VPN cutover 2026-11-09 (supersedes staging-only boundary)
+
+Native Hosts7/7 and all three DNS writers now publish **Moscow91.189.82.238** for
+VPN; URL/domain unchanged,17 identities/91 bindings preserved,32063 disabled.
+Normal-DNS strict-TLS subscriptions84 URI/77 JSON match backend with no old NL IP.
+Post-fence HOME authenticated Yahoo/Sony REALITY, AMDgRPC, Trojan and WG each pass
+HTTP200/65536B/hash and exitNL109.120.141.60. Actual protected cross-host UDP
+32/1200/1420/1472/8192B round trips passed default settings; temporary fixtures gone.
+HOME0/3 WG and HOME1 pinned-TLS/GOST management now transit Moscow. Known public
+NL HTTPS/DNS/VPN flows also use scoped persistent HOME DNAT (not default routes).
+DNS uses private Moscow→private NL Knot listener; one scoped NL Knot restart,
+public listener preserved. Raw NL WAN VPN ports fenced;12096/32087 still closed.
+Final shared443 Trojan-path allowlist is staged through a **canary**, not a blanket
+443 drop or proxy restart; only enforce after live public403/private-allowed proof.
+Fresh native3-voter/common-leader/hashKV agreement and5Ready/noMemoryPressure;
+all5 canonical metrics fresh. Five private native archives off-host SHA verified.
+Details, replay/custody and honest mobile/AWG/source-IP/HA limits:
+[production cutover](../docs/vpn-production-cutover-20261109.md).

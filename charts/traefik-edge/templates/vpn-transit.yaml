@@ -1,0 +1,50 @@
+{{- if .Values.vpnTransit.enabled }}
+# The legacy "argocd" label is a CRD-provider discovery bucket, not app ownership.
+# Keep its existing namespace/selector/RBAC unchanged: only this HTTP middleware
+# is added, no extra CRD routes/transports or wider watches.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ .Release.Name }}-vpn-msk-only
+  namespace: {{ .Values.vpnTransit.middlewareNamespace }}
+  labels:
+    homelab.alchemmist.xyz/edge-transport: argocd
+    app.kubernetes.io/part-of: vpn-transit
+  annotations:
+    argocd.argoproj.io/sync-wave: '-5'
+spec:
+  ipAllowList:
+    sourceRange:
+{{ toYaml .Values.vpnTransit.allowedSourceRanges | indent 6 }}
+---
+{{- range .Values.routes }}
+{{- if eq .name "trojan" }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $.Release.Name }}-trojan-transit
+  namespace: {{ $.Release.Namespace }}
+  annotations:
+    kubernetes.io/ingress.class: {{ $.Values.ingressClass }}
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: {{ printf "%s-%s-vpn-msk-only@kubernetescrd" $.Values.vpnTransit.middlewareNamespace $.Release.Name | quote }}
+spec:
+  ingressClassName: {{ $.Values.ingressClass }}
+  tls:
+    - hosts: [{{ $.Values.host | quote }}]
+      secretName: {{ $.Values.certificate.secretName }}
+  rules:
+    - host: {{ $.Values.host }}
+      http:
+        paths:
+          - path: {{ ternary .path $.Values.vpnTransit.canaryPath $.Values.vpnTransit.enforce | quote }}
+            pathType: Exact
+            backend:
+              service:
+                name: {{ $.Release.Name }}-{{ ternary .name "panel" $.Values.vpnTransit.enforce }}
+                port:
+                  number: {{ ternary .port 18082 $.Values.vpnTransit.enforce }}
+{{- end }}
+{{- end }}
+{{- end }}

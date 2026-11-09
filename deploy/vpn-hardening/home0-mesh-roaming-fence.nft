@@ -1,0 +1,8 @@
+table inet homelab_msk_mesh_fence {
+ chain input { type filter hook input priority -15; policy accept;
+  ip saddr { 109.120.141.60, 192.168.0.1 } udp sport 51830 udp dport 51830 counter drop;
+ }
+ chain output { type filter hook output priority -15; policy accept;
+  ip daddr { 109.120.141.60, 192.168.0.1 } udp sport 51830 udp dport 51830 counter drop;
+ }
+}

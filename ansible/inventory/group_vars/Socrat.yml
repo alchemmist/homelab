@@ -13,8 +13,12 @@ starship_show_hostname: true
 wg_socrat_port: 51830
 wg_socrat_keepalive: 25
 wireguard_private_web_enabled: true
+wg_tcp_client_address: 91.189.82.238
 wg_socrat_peer_endpoints:
+  socrat-0:
+    socrat-2: 91.189.82.238:51832
   socrat-3:
+    socrat-2: 91.189.82.238:51832
     socrat-0: socrat.alchemmist.xyz:51830
     socrat-1: socrat.alchemmist.xyz:51831
   socrat-4:

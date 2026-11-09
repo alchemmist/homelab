@@ -53,3 +53,43 @@ def test_public_key_inventory_has_no_private_material():
     assert all(set(keys) <= {'wg-vpn-transit', 'wg-vps-gateway'} for keys in values['vpn_transit_public_keys'].values())
     assert values['vpn_transit_port'] == 51841
     assert len(values['vpn_transit_xray_sha256']) == 64
+
+
+def test_home_egress_has_only_known_exact_destination_and_no_default_route():
+    import importlib.util
+    path=ROOT/'scripts/vpn-home-transit-egress.py'
+    spec=importlib.util.spec_from_file_location('home_egress',path)
+    mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod)
+    rules=mod.rules()
+    assert '0.0.0.0/0' not in rules and 'flush' not in rules
+    assert rules.count('ip daddr 109.120.141.60')==10
+    assert 'dnat ip to 10.250.0.40:53' in rules
+    assert 'dnat ip to 91.189.82.238:51832' in rules
+    assert 'masquerade' in rules
+    assert '3478' not in rules  # Do not pretend STUN NAT traversal has been validated.
+    play=yaml.safe_load((ROOT/'ansible/playbooks/vpn-transit-home-egress.yml').read_text())
+    assert play[0]['hosts']=='socrat-0:socrat-1:socrat-3'
+    assert play[0]['serial']==1
+    source=path.read_text()
+    assert 'prohibit' in source and "'32760'" in source
+    assert "'default_routes_unchanged': True" in source
+
+
+def test_exit_fence_never_blocks_shared_https_or_dns():
+    import importlib.util
+    spec=importlib.util.spec_from_file_location('exit_fence',ROOT/'scripts/vpn-exit-transit-fence.py')
+    mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod)
+    assert '{ 32053, 32083, 32084 }' in mod.RULES
+    assert '{ 32085, 32086 }' in mod.RULES
+    assert '443' not in mod.RULES and '12096' not in mod.RULES and 'flush' not in mod.RULES
+    assert 'iifname "eth0"' in mod.RULES
+
+
+def test_private_authoritative_listener_and_tcp_certificate_identity_preserved():
+    values=yaml.safe_load((ROOT/'ansible/inventory/host_vars/socrat-2.yml').read_text())
+    assert values['public_dns_extra_listen']==['10.251.4.2@53']
+    assert values['public_dns_transit_listener_enabled'] is True
+    client=(ROOT/'ansible/roles/wireguard_tcp_transport/templates/client.yaml.j2').read_text()
+    assert 'wg_tcp_client_address | default(wg_tcp_server_address)' in client
+    assert 'serverName: wg-transport.socrat.internal' in client
+    assert 'secure: true' in client

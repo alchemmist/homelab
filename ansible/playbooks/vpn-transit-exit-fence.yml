@@ -1,0 +1,42 @@
+---
+- name: Restrict only direct WAN raw VPN ingress after Moscow data-path acceptance
+  hosts: socrat-2
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  tasks:
+    - name: Install owned raw-ingress fence helper
+      ansible.builtin.copy:
+        src: ../../scripts/vpn-exit-transit-fence.py
+        dest: /usr/local/libexec/vpn-exit-transit-fence.py
+        mode: '0700'
+    - name: Inspect prior owned state before applying
+      ansible.builtin.stat:
+        path: /var/lib/homelab-vpn-transit/exit-fence
+      register: exit_fence
+    - name: Apply only the new raw-ingress table with complete private preimage
+      ansible.builtin.command: python3 /usr/local/libexec/vpn-exit-transit-fence.py --apply
+      when: not exit_fence.stat.exists
+    - name: Install persistent counter-independent validation
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/homelab-msk-exit-fence.service
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Reject direct raw VPN ingress on Netherlands WAN; shared HTTPS unchanged
+          Before=k3s.service
+          [Service]
+          Type=oneshot
+          RemainAfterExit=yes
+          ExecStart=/usr/bin/python3 /usr/local/libexec/vpn-exit-transit-fence.py --boot
+          NoNewPrivileges=yes
+          ProtectSystem=strict
+          ProtectHome=yes
+          [Install]
+          WantedBy=multi-user.target
+    - name: Validate and enable only the new raw-ingress fence
+      ansible.builtin.systemd_service:
+        name: homelab-msk-exit-fence.service
+        enabled: true
+        state: started
+        daemon_reload: true

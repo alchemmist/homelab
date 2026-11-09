@@ -1,7 +1,7 @@
 server:
   rundir: "/run/knot"
   user: knot:knot
-{% for address in public_dns_listen[inventory_hostname] %}
+{% for address in (public_dns_listen[inventory_hostname] + (public_dns_extra_listen | default([]))) %}
   listen: {{ address }}
 {% endfor %}
 

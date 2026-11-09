@@ -61,7 +61,7 @@ def finish(s):
     h.save(s.state/'home-session-cleanup-receipt.json',proof);return proof
 
 
-def prepare(state,approval,endpoint="109.120.141.60",include_udp=False):
+def prepare(state,approval,endpoint="91.189.82.238",include_udp=False,include_all_vless=False):
     import ipaddress
     if not ipaddress.ip_address(endpoint).is_global:raise ValueError("Public probe endpoint required")
     s=native.NativeSession(state);s.open(approval)
@@ -76,6 +76,10 @@ def prepare(state,approval,endpoint="109.120.141.60",include_udp=False):
         client={'id':identifier,'email':email,'subId':sub_id,'password':password,'security':'auto','flow':'',
           'enable':True,'limitIp':1,'totalGB':10*1024*1024,'expiryTime':int(time.time()*1000)+20*60000,'comment':'owned83-home-fixed-path-probe'}
         inbound_ids=[rows[32053]['id'],rows[32087]['id']]; udp_settings={}
+        if include_all_vless:
+            for port in (32083,32084):
+                if not rows[port]['enable']:raise ValueError('Additional VLESS transport unavailable')
+                inbound_ids.append(rows[port]['id'])
         if include_udp:
             private=subprocess.check_output(['wg','genkey'],text=True).strip()
             public=subprocess.check_output(['wg','pubkey'],input=private+'\n',text=True).strip()
@@ -94,6 +98,14 @@ def prepare(state,approval,endpoint="109.120.141.60",include_udp=False):
         trojan=backend.client(json.loads(rows[32087]['stream_settings']),password,1080)
         trojan['outbounds'][1]['settings']['servers'][0]['address']=endpoint
         configs={'reality':reality,'trojan':trojan}
+        if include_all_vless:
+            for port in (32083,32084):
+                stream=json.loads(rows[port]['stream_settings']);config=copy.deepcopy(reality);out=config['outbounds'][1]
+                out['settings']['vnext'][0]['port']=port
+                r=stream['realitySettings'];out['streamSettings']={'network':stream['network'],'security':'reality','realitySettings':{'serverName':r['serverNames'][0],'fingerprint':'chrome','publicKey':r['settings']['publicKey'],'shortId':r['shortIds'][0]}}
+                field='grpcSettings' if stream['network']=='grpc' else 'xhttpSettings'
+                out['streamSettings'][field]=copy.deepcopy(stream.get(field) or stream.get('splithttpSettings') or {})
+                configs['vless-'+str(port)]=config
         for label,settings in udp_settings.items():
             config=copy.deepcopy(reality);config['outbounds'][1]={'tag':reality['outbounds'][1]['tag'],'protocol':label,'settings':settings};configs[label]=config
         h.save(s.state/'home-configs-private.json',configs)
@@ -108,11 +120,11 @@ def prepare(state,approval,endpoint="109.120.141.60",include_udp=False):
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--state',type=Path,required=True)
     group=p.add_mutually_exclusive_group();group.add_argument('--prepare',action='store_true');group.add_argument('--cleanup',action='store_true')
-    p.add_argument('--approve-session-hash');p.add_argument('--endpoint',default='109.120.141.60');p.add_argument('--include-udp',action='store_true',help='Add an owned userspace WireGuard probe binding');a=p.parse_args()
+    p.add_argument('--approve-session-hash');p.add_argument('--endpoint',default='91.189.82.238');p.add_argument('--include-udp',action='store_true',help='Add an owned userspace WireGuard probe binding');p.add_argument('--include-all-vless',action='store_true');a=p.parse_args()
     try:
         if a.prepare:
             if not a.approve_session_hash:p.error('Fresh approval required')
-            print(h.canonical(prepare(a.state,a.approve_session_hash,endpoint=a.endpoint,include_udp=a.include_udp)))
+            print(h.canonical(prepare(a.state,a.approve_session_hash,endpoint=a.endpoint,include_udp=a.include_udp,include_all_vless=a.include_all_vless)))
         elif a.cleanup:print(h.canonical(finish(restore(a.state))))
         else:
             s=native.NativeSession(a.state);print(h.canonical({'session_sha256':h.digest(s.preview()),'writes':0}))

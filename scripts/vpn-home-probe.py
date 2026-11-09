@@ -19,7 +19,7 @@ def exclusive(path,value):
     with os.fdopen(fd,'w') as f:json.dump(value,f);f.flush();os.fsync(f.fileno())
 
 
-def network(endpoint="109.120.141.60"):
+def network(endpoint="91.189.82.238"):
     r=subprocess.run(['ip','-j','route','get',endpoint],capture_output=True,text=True,timeout=10)
     if r.returncode:raise ValueError('Route read failed')
     rows=json.loads(r.stdout)
@@ -30,7 +30,7 @@ def network(endpoint="109.120.141.60"):
             'resolv_conf_sha256':hashlib.sha256(Path('/etc/resolv.conf').read_bytes()).hexdigest()}
 
 
-def run(state,approved_binary,endpoint="109.120.141.60"):
+def run(state,approved_binary,endpoint="91.189.82.238"):
     import ipaddress
     if not ipaddress.ip_address(endpoint).is_global:raise ValueError("Public probe endpoint required")
     if socket.gethostname()!='socrat-0' or os.geteuid()!=0:raise ValueError('Requires socrat-0 root')
@@ -92,6 +92,6 @@ def run(state,approved_binary,endpoint="109.120.141.60"):
 
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--state',type=Path,required=True);p.add_argument('--approved-binary-sha256',required=True);p.add_argument('--endpoint',default='109.120.141.60');a=p.parse_args()
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--state',type=Path,required=True);p.add_argument('--approved-binary-sha256',required=True);p.add_argument('--endpoint',default='91.189.82.238');a=p.parse_args()
     try:print(json.dumps(run(a.state,a.approved_binary_sha256,endpoint=a.endpoint)))
     except Exception:raise SystemExit('Home probe stopped; inspect private evidence; no global network changes requested.') from None

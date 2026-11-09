@@ -32,7 +32,7 @@ spec:
       http:
         paths:
 {{- range .Values.routes }}
-{{- if or (not $.Values.panelGateway.enabled) (ne .name "panel") }}
+{{- if and (or (not $.Values.panelGateway.enabled) (ne .name "panel")) (not (and $.Values.vpnTransit.enabled $.Values.vpnTransit.enforce (eq .name "trojan"))) }}
           - path: {{ .path }}
             pathType: {{ .pathType }}
             backend:

@@ -35,6 +35,29 @@
     dest: /usr/local/libexec/public-dns-refresh
     mode: "0755"
 
+- name: Order the private listener after its owned WireGuard address exists
+  when: public_dns_transit_listener_enabled | default(false) | bool
+  block:
+    - ansible.builtin.stat:
+        path: /etc/wireguard/wg-vpn-transit.conf
+      register: dns_transit_config
+    - ansible.builtin.assert:
+        that:
+          - inventory_hostname == 'socrat-2'
+          - dns_transit_config.stat.exists
+    - ansible.builtin.file:
+        path: /etc/systemd/system/knot.service.d
+        state: directory
+        mode: '0755'
+    - ansible.builtin.copy:
+        dest: /etc/systemd/system/knot.service.d/30-vpn-transit-listener.conf
+        mode: '0644'
+        content: |
+          [Unit]
+          Requires=wg-quick@wg-vpn-transit.service
+          After=wg-quick@wg-vpn-transit.service
+      notify: Reload systemd
+
 - name: Configure Knot
   ansible.builtin.template:
     src: knot.conf.j2

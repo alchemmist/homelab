@@ -53,6 +53,9 @@ def test_rustfs_names_additive_without_changes_to_existing_records():
     # Normalize only that address in the historical fixture; compare all records.
     prior['VPS'] = zone.VPS
     prior['STATIC_A']['netbird-relay-vps.socrat'] = [zone.VPS]
+    # Independently approved VPN-only Moscow cutover; do not normalize other names.
+    prior['FAILOVER'].remove('vpn')
+    prior['STATIC_A']['vpn'] = ['91.189.82.238']
     for home, vps in [(True, True), (False, True), (True, False), (False, False)]:
         new = zone.render(123, home, vps).splitlines()
         names = ('rustfs.socrat IN A ', 'spi-evidence.socrat IN A ', 'kuma.socrat IN A ', 'tv IN A ')
@@ -76,3 +79,12 @@ def test_kuma_administration_name_follows_both_reviewed_entrances():
 def test_retired_tv_alias_is_not_rendered():
     for home,vps in [(True,True),(True,False),(False,True),(False,False)]:
         assert 'tv IN A ' not in zone.render(8,home,vps)
+
+
+def test_vpn_has_only_moscow_even_when_original_entrances_fail():
+    assert 'vpn' not in zone.FAILOVER
+    for home,vps in [(True,True),(True,False),(False,True),(False,False)]:
+        lines=zone.render(123,home,vps).splitlines()
+        assert [line for line in lines if line.startswith('vpn IN A ')]==['vpn IN A 91.189.82.238']
+        assert 'ns1 IN A 109.173.40.247' in lines
+        assert 'ns2 IN A 109.120.141.60' in lines

@@ -24,6 +24,14 @@ class EdgeCrdTests(unittest.TestCase):
         self.assertIn('--providers.kubernetescrd.disableclusterscoperesources=true', args)
         self.assertNotIn('--serverstransport.insecureskipverify=true', args)
 
+    def test_vpn_middleware_uses_existing_discovery_without_wider_watches(self):
+        m=next(d for d in self.resources if d['kind']=='Middleware' and d['metadata']['name']=='traefik-edge-vpn-msk-only')
+        self.assertEqual(m['metadata']['namespace'],'argocd')
+        self.assertEqual(m['spec']['ipAllowList']['sourceRange'],['10.251.4.1/32'])
+        self.assertNotIn('ipStrategy',m['spec']['ipAllowList'])
+        ingress=next(d for d in self.resources if d['kind']=='Ingress' and d['metadata']['name']=='traefik-edge-trojan-transit')
+        self.assertEqual(ingress['metadata']['annotations']['traefik.ingress.kubernetes.io/router.middlewares'],'argocd-traefik-edge-vpn-msk-only@kubernetescrd')
+
     def test_new_rbac_is_argocd_read_only_and_not_cluster_wide(self):
         roles = [d for d in self.resources if d['kind']=='Role' and d['metadata']['name']=='traefik-edge-crd']
         self.assertEqual(len(roles), 1)
