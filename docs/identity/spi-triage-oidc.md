@@ -50,20 +50,63 @@ refresh/global logout/instant IdP revocation and does not promise them.
    putting secret literals on argv. Verify the client ID and private credential
    match the native provider; do not share queue/worker/Harbor credentials.
 5. The production `queueUI.oidc.enabled` remains `false` in this preparation PR.
-   Enable it only alongside the native frontend digest and provisioned runtime
-   Secret in a controlled frontend cutover window. The chart native
-   override removes the RustFS queue route from the same Ingress and requests an
-   app-owned HTTP01 certificate for SPI. DNS is operator-owned existing wildcard;
-   this change does not edit DNS. Confirm actual DNS/TLS before calling it live.
-6. The release uses the existing same-job `deploy-to-socrat@v1`, not manual image
-   pins. Before protected publication approval, pause only new SPI claims through
-   the original workflow, let its current owners/paid/processing work drain
-   naturally and verify zero from live state. Restore the same workflow after
-   exact-digest readiness and preservation checks. No reset/replay/forced stop.
+   Use the Git-owned reconciliation hold below: image, flag and Secret must be
+   ready **before** releasing it. The chart native override removes the RustFS
+   queue route from the same Ingress and requests an app-owned HTTP01 certificate
+   for SPI. DNS is operator-owned existing wildcard; this change does not edit
+   DNS. Confirm actual DNS/TLS before calling it live.
+6. Publish only through the existing same-job `deploy-to-socrat@v1`; it updates
+   image fields, **not** the OIDC flag. The hold/release procedure below coordinates
+   the separate commits without changing this deployment contract.
 7. Verify real native MFA/callback and authorized queue read, anonymous API401,
    forged/outsider rejection and local logout; never cancel a real job as a probe.
    Old unused proxy middleware can be retired only after checking no consumers,
    saving preimages and targeting exact resources, never blanket pruning.
+
+### Git-owned hold and release (required; no live overrides)
+
+The current `spi-triage` child Application auto-syncs `main`; its parent `root`
+self-heals the Application from `deploy/argocd/apps/spi-triage.yaml`. A live-only
+pause would be reverted by root, so it is **not** an adequate maintenance hold.
+Do not assume two quick commits are atomic or manually sync either half.
+
+1. Establish one release owner and prevent overlapping same-app publications.
+   Before merging/publishing the native source or enabling the flag, merge a
+   **hold-only** Git commit adding `enabled: false` under this child's existing
+   `spec.syncPolicy.automated` (retain `prune: false`, `selfHeal: true`, finalizer,
+   destination, source and PVCs). Do not disable/delete root or another app.
+   Wait for root reconciliation, then read back the actual child Application:
+   `automated.enabled` must be false, no sync operation may be running, and the
+   old image/route must still be serving. If not confirmed, STOP; do not publish.
+2. Pause only new SPI claims through the original workflow. Let existing owners,
+   processing and paid reservations drain naturally; verify all are zero from
+   live state and make the established verified idle SQLite backup/history
+   receipt. Preserve every job, deadline and credential. No reset/replay/forced
+   stop. Keep claims paused through release verification.
+3. With the hold confirmed and runtime Secret/provider already provisioned,
+   merge the native source and approve its protected standard publication gate.
+   Let `deploy-to-socrat@v1` make its normal robot image-digest commit to homelab.
+   Separately merge the reviewed Git change setting `queueUI.oidc.enabled: true`.
+   Either commit order is safe **only while the confirmed hold remains active**.
+   No manual sync or automated same-app deployment may bypass that hold.
+4. Inspect a single combined homelab revision containing the robot-produced
+   native image repository/tag/digest **and** enabled flag. Render that revision,
+   verify frontend Secret reference/mount, exact callback/host/TLS and runtime
+   Secret presence/matching client privately. Confirm desired image is the
+   successful native CI artifact, the hold is still active and no intervening
+   operation has rolled workloads. Missing any prerequisite means STOP.
+5. Merge a **release-only** Git commit removing `automated.enabled: false` from
+   this child (restore its original auto-sync policy; leave pruning disabled).
+   Root restores auto-sync and SPI reconciles the now-complete desired revision.
+   Read back the actual synced revision, exact running digests, rollout/readiness,
+   unchanged PVC/history/terminal records and zero unexpected owners, then perform
+   step 7 native human/TLS/authorization acceptance. Healthy alone is insufficient.
+   Only after preservation and acceptance restore the same original workflow.
+6. On failure, keep claims paused, re-establish and verify the same Git-owned
+   hold, then coordinate the previous immutable image **and** `oidc.enabled:
+   false` in one desired rollback revision before releasing the hold again.
+   Retain the new provider/Secret and all state for review; do not rotate/delete
+   credentials, restore an old DB over new history, prune or replay jobs.
 
 Network egress admits the existing public TLS endpoints and actual internal VIP
 /32 plus namespace/pod-selected K3s Traefik ServiceLB `443` and Traefik `8443` post-DNAT
