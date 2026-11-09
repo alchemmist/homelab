@@ -33,9 +33,9 @@ def test_private_reader_has_only_pinned_idp_egress_and_storage_keeps_s3_iam():
  assert {e['name'] for e in env}=={'AUTH_URL','S3_ACCESS_KEY','S3_SECRET_KEY'}
  assert next(e['value'] for e in env if e['name']=='AUTH_URL')=='https://rustfs.socrat.alchemmist.xyz/outpost.goauthentik.io/auth/nginx'
  policy=next(d for d in docs if d['kind']=='NetworkPolicy' and d['metadata']['name']=='rustfs-gateway-isolation')
- assert len(policy['spec']['egress'])==2+len(values['authEgressCIDRs'])
+ assert len(policy['spec']['egress'])==2+len(values['authEgressCIDRs'])+(2 if values.get('authViaTraefik') else 0)
  tls=[r for r in policy['spec']['egress'] if any(p['port']==443 for p in r['ports'])]
- assert {t['ipBlock']['cidr'] for r in tls for t in r['to']}==set(values['authEgressCIDRs'])
+ assert {t['ipBlock']['cidr'] for r in tls for t in r['to'] if 'ipBlock' in t}==set(values['authEgressCIDRs'])
  assert '0.0.0.0/0' not in json.dumps(tls)
  storage=next(d for d in docs if d['kind']=='NetworkPolicy' and d['metadata']['name']=='rustfs-isolation')
  assert 'authentik' not in json.dumps(storage['spec']['ingress'])

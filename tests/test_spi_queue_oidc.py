@@ -5,6 +5,7 @@ import json
 import subprocess
 import unittest
 from pathlib import Path
+from unittest.mock import Mock
 
 import yaml
 
@@ -155,3 +156,55 @@ class NativeQueueChartTests(unittest.TestCase):
     def test_no_unknown_provider_is_adopted_without_private_journal(self):
         with self.assertRaisesRegex(RuntimeError, "without private client journal"):
             identity.validate_existing(None, {}, None, {"pk": 1}, None, {}, {})
+
+
+class NativeAPIResponseTests(unittest.TestCase):
+    def test_list_response_shape_fails_closed(self):
+        for value in (
+            None,
+            [],
+            {},
+            {"results": None},
+            {"results": [None]},
+            {"results": [], "pagination": []},
+            {"results": [], "pagination": {"next": "2"}},
+            {"results": [], "pagination": {"next": 4}},
+        ):
+            api = object.__new__(identity.API)
+            api.call = Mock(return_value=value)
+            with (
+                self.subTest(value=value),
+                self.assertRaisesRegex(RuntimeError, "Malformed native"),
+            ):
+                api.rows("core/groups/")
+
+    def test_valid_pagination_is_bounded_and_merged(self):
+        api = object.__new__(identity.API)
+        api.call = Mock(
+            side_effect=[
+                {"results": [{"pk": 1}], "pagination": {"next": 2}},
+                {"results": [{"pk": 2}], "pagination": None},
+            ]
+        )
+        self.assertEqual(api.rows("core/groups/"), [{"pk": 1}, {"pk": 2}])
+        self.assertEqual(api.call.call_count, 2)
+
+    def test_create_response_requires_object_primary_key(self):
+        for value in (None, [], {}, {"pk": None}, {"pk": False}, {"pk": ""}):
+            api = object.__new__(identity.API)
+            api.token = "fixture"
+            api.write = True
+            response = Mock()
+            response.read.return_value = json.dumps(value).encode()
+            api.http = Mock()
+            api.http.open.return_value.__enter__ = Mock(return_value=response)
+            api.http.open.return_value.__exit__ = Mock(return_value=False)
+            with (
+                self.subTest(value=value),
+                self.assertRaisesRegex(RuntimeError, "Malformed native create"),
+            ):
+                api.call("POST", "core/groups/", {})
+
+    def test_production_native_activation_stays_disabled_until_release(self):
+        values = yaml.safe_load((ROOT / "deploy/spi-triage/values.yaml").read_text())
+        self.assertIs(values["queueUI"]["oidc"]["enabled"], False)

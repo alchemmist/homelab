@@ -10,7 +10,8 @@ s3Evidence:
 queueUI:
   enabled: true
   oidc:
-    enabled: true
+    # Activate only with the native frontend digest and provisioned client Secret.
+    enabled: false
     existingSecret: spi-queue-oidc
   authEgressCIDRs:
   - 109.173.40.247/32

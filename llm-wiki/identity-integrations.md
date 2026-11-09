@@ -359,7 +359,7 @@ no RustFS forward-auth or client secret in JS. Dedicated SPI identity catalog/
 plan controller follows the separately owned native-provider pattern; do not
 replay foundation or change existing human memberships. Frontend-only Secret,
 canonical callback and app-owned Ingress/TLS/policy are prepared. Built native
-image341tests/zero skips; GET-only live Authentik plan succeeded. No live writes
+image: 341 tests/zero skips; GET-only live Authentik plan succeeded. No live writes
 or protected publication approval: operator kubeconfig is unreachable and SSH
 lacks its trusted saved host key. See [SPI OIDC runbook](../docs/identity/spi-triage-oidc.md)
 for activation, bounded five-minute local sessions and explicit acceptance gates.

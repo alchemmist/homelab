@@ -28,7 +28,7 @@ is not a subject. See application `docs/queue-oidc.md` for full session/role rul
 
 Existing image dependencies already contain pinned PyJWT/cryptography; no proxy
 or client secret in browser JS. Only frontend mounts `spi-queue-oidc`, credentials
-file0440 with fsGroup10001. No values in Git. Opaque local sessions expire within
+file `0440` with fsGroup `10001`. No values in Git. Opaque local sessions expire within
 five minutes and on logout/restart. This intentionally does not implement silent
 refresh/global logout/instant IdP revocation and does not promise them.
 
@@ -49,7 +49,9 @@ refresh/global logout/instant IdP revocation and does not promise them.
    journal via the established Kubernetes Secret path, without echoing it or
    putting secret literals on argv. Verify the client ID and private credential
    match the native provider; do not share queue/worker/Harbor credentials.
-5. Merge source/config in a controlled frontend cutover window. The chart native
+5. The production `queueUI.oidc.enabled` remains `false` in this preparation PR.
+   Enable it only alongside the native frontend digest and provisioned runtime
+   Secret in a controlled frontend cutover window. The chart native
    override removes the RustFS queue route from the same Ingress and requests an
    app-owned HTTP01 certificate for SPI. DNS is operator-owned existing wildcard;
    this change does not edit DNS. Confirm actual DNS/TLS before calling it live.
@@ -64,19 +66,19 @@ refresh/global logout/instant IdP revocation and does not promise them.
    saving preimages and targeting exact resources, never blanket pruning.
 
 Network egress admits the existing public TLS endpoints and actual internal VIP
-/32 plus namespace/pod-selected K3s Traefik ServiceLB443 and Traefik8443 post-DNAT
+/32 plus namespace/pod-selected K3s Traefik ServiceLB `443` and Traefik `8443` post-DNAT
 hops. No broad Internet/cluster CIDR, direct storage access, DNS override or TLS
 bypass. Backend/PVC/jobs/RBAC/limits are unchanged by the native frontend toggle.
 
 ## Preparation receipt
 
-Built native amd64 image:341 tests/zero skips, offline/read-only,1CPU/384MiB.
+Built native amd64 image: 341 tests/zero skips, offline/read-only, 1 CPU / 384 MiB.
 Homelab tests cover native host/TLS, no forward-auth, frontend-only credential
 mount, exact network selectors, nonprivileged group shape and unchanged backend
 resources. Actual Authentik read-only plan verified existing default MFA/explicit
 consent flows, signing key and reviewed groups scope; no apply performed.
 
 Runtime access is currently unavailable: default kubeconfig reaches obsolete/
-unreachable192.168.0.23:6443; SSH stops at missing trusted host key. No runtime
+unreachable `192.168.0.23:6443`; SSH stops at missing trusted host key. No runtime
 provider/Secret/ingress or image was changed and no production gate approved.
 This receipt does not claim a live migration or human-login acceptance.

@@ -95,7 +95,15 @@ class API:
             with self.http.open(req, timeout=15) as response:
                 body = response.read(1048577)
             require(len(body) <= 1048576, "Oversized native response")
-            return json.loads(body) if body else None
+            result = json.loads(body) if body else None
+            if method == "POST":
+                require(
+                    isinstance(result, dict)
+                    and type(result.get("pk")) in (str, int)
+                    and bool(result["pk"]),
+                    "Malformed native create response; inspect uncertain marker before retry",
+                )
+            return result
         except urllib.error.HTTPError as error:
             status = error.code
             error.close()
@@ -114,8 +122,25 @@ class API:
                 "GET",
                 path + ("&" if "?" in path else "?") + f"page_size=100&page={page}",
             )
+            require(
+                isinstance(data, dict)
+                and isinstance(data.get("results"), list)
+                and all(isinstance(row, dict) for row in data["results"]),
+                "Malformed native list response",
+            )
+            pagination = data.get("pagination")
+            require(
+                pagination is None or isinstance(pagination, dict),
+                "Malformed native pagination",
+            )
+            next_page = (pagination or {}).get("next")
+            require(
+                next_page is None
+                or (type(next_page) is int and next_page in (0, page + 1)),
+                "Malformed native pagination cursor",
+            )
             result.extend(data["results"])
-            if not data.get("pagination", {}).get("next"):
+            if not next_page:
                 return result
         raise RuntimeError("Bounded native pagination exceeded")
 
@@ -382,4 +407,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except RuntimeError as error:
+        raise SystemExit("STOP: " + str(error)) from None
