@@ -9,7 +9,7 @@ ROOT=Path(__file__).resolve().parents[1]
 class FullServiceBundleTests(unittest.TestCase):
     def render(self, bundled=False):
         args=['helm','template','spi-triage',str(ROOT/'charts/spi-triage'),'-n','automation',
-              '-f',str(ROOT/'deploy/spi-triage/values.yaml'),'--set','bundleEnabled=false']
+              '-f',str(ROOT/'deploy/spi-triage/values.yaml'),'--set','bundleEnabled=false','--set','queueUI.oidc.enabled=false','--set','graphs.enabled=false']
         if bundled:args += ['--set','bundleEnabled=true','--set','image.tag='+'b'*40,
                            '--set','image.digest=sha256:'+'a'*64]
         return {(x['kind'],x['metadata'].get('namespace','automation'),x['metadata']['name']):x

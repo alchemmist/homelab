@@ -30,7 +30,7 @@
 {{- fail "queueUI requires explicit fixed auth-edge /32 egress" }}
 {{- end }}
 {{- range .Values.queueUI.authEgressCIDRs }}
-{{- if not (has . (list "109.173.40.247/32" "109.120.141.60/32")) }}
+{{- if not (has . (list "109.173.40.247/32" "109.120.141.60/32" "192.168.0.250/32")) }}
 {{- fail "queueUI auth egress must use the reviewed TLS auth-edge /32 addresses" }}
 {{- end }}
 {{- end }}
@@ -47,4 +47,12 @@
 {{- fail "graphs require the image-backed service and private S3 evidence" }}
 {{- end }}
 {{- $_ := required "graphs.existingSecret is required" .Values.graphs.existingSecret }}
+{{- end }}
+
+{{- if and .Values.queueUI.oidc.enabled (not .Values.bundleEnabled) }}
+{{- fail "native queue OIDC requires the full-service image, not frozen legacy ConfigMaps" }}
+{{- end }}
+
+{{- if not (kindIs "bool" .Values.queueUI.oidc.enabled) }}
+{{- fail "queueUI.oidc.enabled must be boolean" }}
 {{- end }}
