@@ -46,6 +46,10 @@ spec:
         checksum/policy: {{ .Values.alertGraphs.panels | toJson | sha256sum }}
     spec:
       automountServiceAccountToken: false
+      {{- with .Values.alertGraphs.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001

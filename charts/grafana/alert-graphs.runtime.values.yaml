@@ -8,6 +8,8 @@ grafana:
       repository: grafana/grafana-image-renderer
       tag: v5.12.10
       sha: 83201e73724250bbeb5a3c89763fc274771ef67156ecac3871c427d7b629d8fa8f
+    nodeSelector:
+      kubernetes.io/hostname: socrat-1
     securityContext:
       runAsNonRoot: true
       runAsUser: 65532
@@ -30,3 +32,17 @@ grafana:
       RATE_LIMIT_MAX_AVAILABLE: '1073741824'
       RATE_LIMIT_HEADROOM: '134217728'
       BROWSER_READINESS_PRIOR_WAIT: '0s'
+
+alertGraphs:
+  enabled: true
+  existingSecret: socrat-alert-graphs-auth
+  image:
+    repository: harbor.socrat.alchemmist.xyz/homelab/spi-triage
+    digest: sha256:eb830c98ccd6d19ef8535fcb5be003d783cb4aeb98d18fe64e66c1f51a37f64a
+  imagePullSecrets:
+    - name: alert-graphs-harbor-pull
+  nodeSelector:
+    kubernetes.io/hostname: socrat-1
+  # Expected hostNetwork source; acceptance below must verify actual bot access.
+  botSourceCIDRs:
+    - 10.250.0.2/32
