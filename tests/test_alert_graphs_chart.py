@@ -38,6 +38,18 @@ class AlertGraphsChartTests(unittest.TestCase):
         self.assertNotIn('mountPath: /data', result.stdout)
         self.assertNotIn('SPI_S3_WRITER_FILE', result.stdout)
 
+    def test_release_values_render_real_valid_images(self):
+        result=self.render(False, ['-f','charts/grafana/alert-graphs.policy.values.yaml',
+                                  '-f','charts/grafana/alert-graphs.runtime.values.yaml'])
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertNotIn('@sha256:sha256:',result.stdout)
+        import yaml,re
+        for doc in yaml.safe_load_all(result.stdout):
+            if not isinstance(doc,dict) or doc.get('kind')!='Deployment':continue
+            for container in doc['spec']['template']['spec']['containers']:
+                if container['name'] in ('gateway','grafana-image-renderer'):
+                    self.assertRegex(container['image'],r'@sha256:[a-f0-9]{64}$')
+
     def test_requires_immutable_image(self):
         result = self.render(True, ['--set', 'alertGraphs.image.digest=latest'])
         self.assertNotEqual(result.returncode, 0)
