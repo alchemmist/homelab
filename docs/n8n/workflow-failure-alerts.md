@@ -4,8 +4,11 @@ Source: `workflow-failure-alerts.json`; operator sync:
 `scripts/n8n/sync_failure_alerts.py` (default read-only plan, explicit `--apply`).
 This is a native Error Trigger workflow, NOT a Prometheus error-count threshold.
 The six current business workflows are enrolled through `settings.errorWorkflow`.
-No business graph, credential, static data, execution history or active state is
-intentionally changed. New workflows must also be enrolled; this is not an
+No business graph, credential reference, application static data, execution history
+or active state is intentionally changed. Native re-registration can replace a
+GitHub trigger subscription ID/signing secret; its event selection and other
+node/global state must remain unchanged. Verify a single active replacement hook
+and removal of the old one; do not restore obsolete hook secrets. New workflows must also be enrolled; this is not an
 instance-wide automatic default. Run the plan/sync after provisioning new ones.
 
 ## Delivery and privacy
@@ -44,7 +47,7 @@ no exactly-once delivery or acknowledgement is claimed.
   monitoring. Existing SPI/Grafana alert rules are untouched.
 - Settings apply to newly registered/new executions after enrollment. Existing
   in-flight/Wait executions carry saved workflow settings and are not rewritten.
-- Active business workflows are republished with their IDENTICAL graph/settings
+- Active business workflows are updated/published with their IDENTICAL graph/settings
   plus the one error target so cached timer/trigger registrations see it. Inactive
   ones stay inactive. Existing drafts differing from published graphs, competing
   handlers, concurrent changes or unexpected readback drift cause a stop. There
@@ -57,6 +60,7 @@ no exactly-once delivery or acknowledgement is claimed.
 
 Offline tests exercise safe payload projection, stable IDs, trigger-only failures,
 no raw-error/URL forwarding, no recursive/SPI ingress, update guards/idempotence,
-preserved active state and only-settings changes. Live setting/published-version
+preserved active state, only-settings changes and the narrow native GitHub
+registration lifecycle exception (no broad static-data drift suppression). Live setting/published-version
 readback and the first NATURAL delivery are separate acceptance steps. Do not
 manufacture a failed production execution or send a test alert without approval.

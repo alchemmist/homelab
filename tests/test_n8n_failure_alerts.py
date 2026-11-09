@@ -64,6 +64,18 @@ class FailureAlertsTests(unittest.TestCase):
         sync.bind(api,w,'handler');self.assertEqual(len(calls),1)
         before=self.wf();w['name']='Changed'
         with self.assertRaises(RuntimeError):sync.bind(api,before,'handler')
+    def test_only_native_github_registration_may_change(self):
+        before=self.wf();before['nodes']=[{'id':'n','name':'Push','type':'n8n-nodes-base.githubTrigger'}]
+        before['staticData']={'node:Push':{'webhookId':1,'webhookSecret':'old','webhookEvents':['push']},'global':{'checkpoint':'preserved'}}
+        after=copy.deepcopy(before);after['settings']['errorWorkflow']='handler'
+        after['staticData']['node:Push'].update(webhookId=2,webhookSecret='new')
+        sync.check(before,after,'handler')
+        after['staticData']['global']['checkpoint']='changed'
+        with self.assertRaises(RuntimeError):sync.check(before,after,'handler')
+        after=copy.deepcopy(before);after['settings']['errorWorkflow']='handler'
+        after['staticData']['node:Push']['webhookEvents']=['issues']
+        with self.assertRaises(RuntimeError):sync.check(before,after,'handler')
+
     def test_unexpected_settings_drift_stops(self):
         before=self.wf();after=copy.deepcopy(before);after['settings']={'errorWorkflow':'handler'}
         with self.assertRaises(RuntimeError):sync.check(before,after,'handler')

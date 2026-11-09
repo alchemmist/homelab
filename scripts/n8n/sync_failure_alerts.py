@@ -38,7 +38,7 @@ def bind(api, before, target):
     request=body(fresh);request['settings']['errorWorkflow']=target
     result=api('PUT','workflows/'+fresh['id'],request)
     check(before,result,target)
-    if before['active']:
+    if before['active'] and result.get('activeVersionId')!=result['versionId']:
         # Reload timer/webhook registration with the identical graph and new settings.
         # No deactivate call, no manual execution; preserve existing active state.
         api('POST','workflows/'+before['id']+'/activate',{'versionId':result['versionId']})
@@ -48,12 +48,28 @@ def bind(api, before, target):
     return after
 
 
+def protected_static(w):
+    # Native active-workflow updates delete/recreate GitHub subscriptions. Never
+    # restore the obsolete signing secret or suppress drift in other node state.
+    state=copy.deepcopy(w.get('staticData'))
+    if not isinstance(state,dict):return state
+    for node in w['nodes']:
+        if node['type']!='n8n-nodes-base.githubTrigger':continue
+        data=state.get('node:'+node['name'])
+        if not isinstance(data,dict):continue
+        for key in ('webhookId','webhookSecret'):
+            if key in data:data[key]='<native-registration>'
+    return state
+
+
 def check(before,after,target):
     if graph(before)!=graph(after) or before['name']!=after['name'] or before['active']!=after['active']:
         raise RuntimeError('Workflow graph/identity/state drift; stop')
     expected={**before['settings'],'errorWorkflow':target}
     if after['settings']!=expected:raise RuntimeError('Unexpected settings drift; stop')
-    for key in ('id','staticData','shared','tags','pinData','meta'):
+    if protected_static(before)!=protected_static(after):
+        raise RuntimeError('Protected workflow static data drift; stop')
+    for key in ('id','shared','tags','pinData','meta'):
         if key in before and key in after and before[key]!=after[key]:
             raise RuntimeError('Protected workflow field drift; stop')
 
