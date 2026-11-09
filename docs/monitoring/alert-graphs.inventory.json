@@ -962,6 +962,130 @@
   },
   {
     "owner": "monitoring-k3s",
+    "resource": "socrat-control-plane-safety",
+    "group": "socrat.control-plane.safety",
+    "alert": "SocratControlPlaneBatteryLow",
+    "expr": "label_replace(\n  (min by(instance) (node_power_supply_capacity) < 20)\n  * on(instance) group_left(nodename)\n    max by(instance,nodename) (node_uname_info{nodename=~\"socrat-[012]\"}),\n  \"node\", \"$1\", \"nodename\", \"(.+)\"\n)\n",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "SocratControlPlaneBatteryLow",
+          "dashboard_uid": "alerts-ba089cb9438969be",
+          "panel_id": 1,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "SocratControlPlaneBatteryLow / rule evaluations",
+          "dashboard_uid": "alerts-ba089cb9438969be",
+          "panel_id": 2,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
+    "resource": "socrat-control-plane-safety",
+    "group": "socrat.control-plane.safety",
+    "alert": "SocratControlPlaneOnBattery",
+    "expr": "label_replace(\n  (max by(instance) (node_power_supply_online) == 0)\n  * on(instance) group_left(nodename)\n    max by(instance,nodename) (node_uname_info{nodename=~\"socrat-[012]\"}),\n  \"node\", \"$1\", \"nodename\", \"(.+)\"\n)\n",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "SocratControlPlaneOnBattery",
+          "dashboard_uid": "alerts-ba089cb9438969be",
+          "panel_id": 3,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "SocratControlPlaneOnBattery / rule evaluations",
+          "dashboard_uid": "alerts-ba089cb9438969be",
+          "panel_id": 4,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
+    "resource": "socrat-control-plane-safety",
+    "group": "socrat.control-plane.safety",
+    "alert": "SocratEtcdQuorumHealthUnproven",
+    "expr": "(count(max by(node) ((etcd_server_has_leader{job=\"kube-etcd\",node=~\"socrat-[012]\"} == 1) and (timestamp(etcd_server_has_leader{job=\"kube-etcd\",node=~\"socrat-[012]\"}) > time() - 90))) or vector(0)) < 2",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "SocratEtcdQuorumHealthUnproven",
+          "dashboard_uid": "alerts-ba089cb9438969be",
+          "panel_id": 5,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "SocratEtcdQuorumHealthUnproven / rule evaluations",
+          "dashboard_uid": "alerts-ba089cb9438969be",
+          "panel_id": 6,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
+    "resource": "socrat-control-plane-safety",
+    "group": "socrat.control-plane.safety",
+    "alert": "SocratEtcdVoterHealthUnavailable",
+    "expr": "(count(max by(node) ((etcd_server_has_leader{job=\"kube-etcd\",node=~\"socrat-[012]\"} == 1) and (timestamp(etcd_server_has_leader{job=\"kube-etcd\",node=~\"socrat-[012]\"}) > time() - 90))) or vector(0)) < 3",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "SocratEtcdVoterHealthUnavailable",
+          "dashboard_uid": "alerts-ba089cb9438969be",
+          "panel_id": 7,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "SocratEtcdVoterHealthUnavailable / rule evaluations",
+          "dashboard_uid": "alerts-ba089cb9438969be",
+          "panel_id": 8,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
     "resource": "monitoring-k3s-shared-registry",
     "group": "socrat.nodes.hardware",
     "alert": "SocratNodeCPUStealHigh",

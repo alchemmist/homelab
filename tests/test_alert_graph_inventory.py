@@ -20,7 +20,7 @@ class AlertGraphInventoryTests(unittest.TestCase):
 
     def test_all_source_rules_have_real_panel_queries_and_priority(self):
         rows=json.loads((ROOT/'docs/monitoring/alert-graphs.inventory.json').read_text())
-        self.assertEqual(len(rows),196)
+        self.assertEqual(len(rows),200)
         for row in rows:
             with self.subTest(alert=row['alert']):
                 spec=row['graphs'];self.assertEqual(spec['version'],1)

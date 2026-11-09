@@ -1,0 +1,71 @@
+{{- $freshVoters := `count(max by(node) ((etcd_server_has_leader{job="kube-etcd",node=~"socrat-[012]"} == 1) and (timestamp(etcd_server_has_leader{job="kube-etcd",node=~"socrat-[012]"}) > time() - 90))) or vector(0)` -}}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: socrat-control-plane-safety
+  labels:
+    release: {{ .Values.prometheusRelease }}
+spec:
+  groups:
+    - name: socrat.control-plane.safety
+      rules:
+        - alert: SocratControlPlaneOnBattery
+          expr: |
+            label_replace(
+              (max by(instance) (node_power_supply_online) == 0)
+              * on(instance) group_left(nodename)
+                max by(instance,nodename) (node_uname_info{nodename=~"socrat-[012]"}),
+              "node", "$1", "nodename", "(.+)"
+            )
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            {{- with index (.Values.alertGraphAnnotations | default dict) "SocratControlPlaneOnBattery" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
+            summary: An etcd voter has lost external power.
+            description: Check its adapter, cable and outlet before the battery reaches critical capacity. Do not disable UPower critical-battery protection. A second voter failure can remove quorum.
+            runbook_url: https://github.com/alchemmist/homelab/blob/main/docs/cluster-recovery-20261109.md
+        - alert: SocratControlPlaneBatteryLow
+          expr: |
+            label_replace(
+              (min by(instance) (node_power_supply_capacity) < 20)
+              * on(instance) group_left(nodename)
+                max by(instance,nodename) (node_uname_info{nodename=~"socrat-[012]"}),
+              "node", "$1", "nodename", "(.+)"
+            )
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            {{- with index (.Values.alertGraphAnnotations | default dict) "SocratControlPlaneBatteryLow" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
+            summary: An etcd voter battery is below 20 percent.
+            description: Restore stable external power now. Online status alone does not prove a charger can sustain load. Verify the other two voters before maintenance; never reset etcd or bypass battery protection.
+            runbook_url: https://github.com/alchemmist/homelab/blob/main/docs/cluster-recovery-20261109.md
+        - alert: SocratEtcdVoterHealthUnavailable
+          expr: ({{ $freshVoters }}) < 3
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            {{- with index (.Values.alertGraphAnnotations | default dict) "SocratEtcdVoterHealthUnavailable" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
+            summary: Not all three etcd voters have fresh leader-health evidence.
+            description: One unavailable voter removes the single-failure margin. Check native endpoint health, power and transport, and avoid restarting another voter. Missing metrics can also mean collector/proxy failure, not proven datastore corruption.
+            runbook_url: https://github.com/alchemmist/homelab/blob/main/docs/cluster-recovery-20261109.md
+        - alert: SocratEtcdQuorumHealthUnproven
+          expr: ({{ $freshVoters }}) < 2
+          for: 30s
+          labels:
+            severity: critical
+          annotations:
+            {{- with index (.Values.alertGraphAnnotations | default dict) "SocratEtcdQuorumHealthUnproven" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
+            summary: Fewer than two voters have fresh leader-health evidence.
+            description: The three-voter write quorum cannot be confirmed from monitoring. Distinguish actual etcd unavailability from telemetry/proxy failure with native read-only checks. Preserve data and fencing; never automatically reset, restore or change membership.
+            runbook_url: https://github.com/alchemmist/homelab/blob/main/docs/cluster-recovery-20261109.md

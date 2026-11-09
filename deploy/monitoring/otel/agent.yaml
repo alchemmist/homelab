@@ -3,6 +3,10 @@ extensions:
     create_directory: true
     directory: ${env:OTEL_STORAGE_DIR}/agent
     fsync: true
+    compaction:
+      on_start: true
+      on_rebound: true
+      directory: ${env:OTEL_STORAGE_DIR}/agent-compaction
   health_check:
     endpoint: 127.0.0.1:13133
 receivers:

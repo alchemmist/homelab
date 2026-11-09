@@ -8,6 +8,14 @@ alertGraphAnnotations:
     / rule evaluations","dashboard_uid":"alerts-45608093acd53723","panel_id":2,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
   SocratContainerRestartsFrequent: '{"version":1,"graphs":[{"id":"primary","title":"SocratContainerRestartsFrequent","dashboard_uid":"alerts-45608093acd53723","panel_id":3,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratContainerRestartsFrequent
     / rule evaluations","dashboard_uid":"alerts-45608093acd53723","panel_id":4,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
+  SocratControlPlaneBatteryLow: '{"version":1,"graphs":[{"id":"primary","title":"SocratControlPlaneBatteryLow","dashboard_uid":"alerts-ba089cb9438969be","panel_id":1,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratControlPlaneBatteryLow
+    / rule evaluations","dashboard_uid":"alerts-ba089cb9438969be","panel_id":2,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
+  SocratControlPlaneOnBattery: '{"version":1,"graphs":[{"id":"primary","title":"SocratControlPlaneOnBattery","dashboard_uid":"alerts-ba089cb9438969be","panel_id":3,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratControlPlaneOnBattery
+    / rule evaluations","dashboard_uid":"alerts-ba089cb9438969be","panel_id":4,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
+  SocratEtcdQuorumHealthUnproven: '{"version":1,"graphs":[{"id":"primary","title":"SocratEtcdQuorumHealthUnproven","dashboard_uid":"alerts-ba089cb9438969be","panel_id":5,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratEtcdQuorumHealthUnproven
+    / rule evaluations","dashboard_uid":"alerts-ba089cb9438969be","panel_id":6,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
+  SocratEtcdVoterHealthUnavailable: '{"version":1,"graphs":[{"id":"primary","title":"SocratEtcdVoterHealthUnavailable","dashboard_uid":"alerts-ba089cb9438969be","panel_id":7,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratEtcdVoterHealthUnavailable
+    / rule evaluations","dashboard_uid":"alerts-ba089cb9438969be","panel_id":8,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
   SocratNodeCPUStealHigh: '{"version":1,"graphs":[{"id":"primary","title":"SocratNodeCPUStealHigh","dashboard_uid":"alerts-9943c0b05432b778","panel_id":1,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratNodeCPUStealHigh
     / rule evaluations","dashboard_uid":"alerts-9943c0b05432b778","panel_id":2,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
   SocratNodeCPUTemperatureHigh: '{"version":1,"graphs":[{"id":"primary","title":"SocratNodeCPUTemperatureHigh","dashboard_uid":"alerts-9943c0b05432b778","panel_id":3,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratNodeCPUTemperatureHigh

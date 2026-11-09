@@ -56,3 +56,12 @@ were not changed to get around the failure. Native workflow validator changes,
 renderer/credential/CNI acceptance and natural end-to-end observation remain
 pending. See the application `docs/alert-graphs.md` for exact source commits and
 CI links; do not interpret mapping reconciliation as delivered screenshots.
+
+### Recovery safety extension (2026-11-09)
+
+Four additional source rules cover voter external-power loss, battery<20%, one
+missing fresh voter and unproven quorum health. Generated current inventory now
+has200 entries/188 mappings/29 dashboards. This does not rewrite the historical
+196-rule live acceptance above. New rules have native promtool coverage including
+no-data/stale-voter cases; their runtime/source acceptance belongs to the cluster
+recovery receipt. Existing alert conditions, labels and routes remain unchanged.

@@ -149,3 +149,71 @@ owner correction), historical failed broker/Thanos jobs, historic Umami restarts
 Prometheus compaction, node3 I/O and fwupd-refresh. Watchdog intentionally firing.
 LMS/backup and Umami availability alerts no longer firing. Full recovery NOT YET
 accepted; do not replace root-cause work with deleting/silencing alerts.
+
+## Night timeline and prevention gates
+
+Native persisted journals on node1: Nov9 **02:30:45+03** logind received
+`suspend-then-hibernate` from **upowerd**, then kernel entered s2idle; **02:31:02**
+resume. node0 lost etcd leader at **02:30:51**, six seconds after suspend. With VPS
+also unavailable, losing a second of3 voters explains loss of write quorum.
+HashKV failures/restart loop after resume prolonged unavailability. Exact origin
+of that hash mismatch remains open; current common-revision hashes agree.
+UPower invocation is consistent with battery critical-power policy, not a lid event;
+there is no retained UPower battery-percentage event in the queried interval.
+Current node1: ACAD online1, BATT88%, not charging,981cycles. Do not disable critical
+battery protection or initial etcd integrity checks. Owner should verify physical
+adapter/cable/outlet and battery condition; software cannot promise power availability.
+
+Added native source rules: voter AC loss2m warning; voter battery<20%2m critical
+(even with a weak connected charger); fresh healthy-voter evidence<3 for1m warning,
+<2 for30s critical. Existing node_exporter power/etcd metrics already delivered.
+Missing/stale telemetry is explicitly health **unproven**, not proof of corruption.
+No automatic resets/restarts/membership mutation. Native promtool7 scenarios cover
+healthy, unplugged, low battery while online, one/two voters missing, no telemetry,
+and stale third voter. Four new graph mappings generated through existing owner;
+200 current rule entries/188 unique mappings/29 dashboards. Runtime activation and
+quiet healthy evaluation still require fresh readback.
+
+## node3 native persistent-state compaction
+
+Rotating sda HDD. Six-second fsync-only trace:137 completed log-queue fsyncs,
+47 filelog-cursor,12 metric-queue (including resumed-thread calls). Sustained disk
+~80–93% busy/~42–47 flushes/s, despite small throughput. Metrics queue logically0
+but file154763264 bytes; logs~25MB pending but file151031808 bytes. No compaction
+configured. This is write amplification evidence, not proof of failing hardware.
+
+Pinned existing collector **0.164.0** validated additive native `file_storage`
+`compaction.on_start=true,on_rebound=true`, same-filesystem private temporary dir.
+`fsync=true`, no recreate, same queues/IDs/retry/backpressure/privacy remain.
+Only node3 agent was gracefully stopped, all original queue/cursor files archived
+and every file hash verified in archive **before** native start. Backup26921436bytes.
+Agent-only lifecycle26.66s, oldPID210358→2975087; no other unit/Prometheus/K3s/app restart.
+Private evidence node3 `20261109-agent-native-compaction/` includes original config,
+pinned-native validation, approval, consistent archive/hash receipt and lifecycle.
+
+Native health13133/metrics8888 HTTP200. Metric file shrank to4194304bytes; log file
+33579008bytes; original unused2MB queue preserved. Log queue21.68MB and decreasing,
+new-process sent315 log records, filelog refused0. Initial I/O remained high during
+warmup/backlog; do NOT claim contention alert fixed merely from smaller files.
+Source config adds future native rebound reclamation without durability reduction.
+
+## Prometheus WAL: pre-existing corruption, forensic stage only
+
+Native logs every2h confirm segment00001786 CRC failure; fresh blocks continue to
+be written successfully. This same segment was already documented **Nov7 09:00UTC**
+in monitoring split acceptance, before this night. Do not attribute it to Nov9
+suspend or to the DNS repair. Its PVC is **local on node0**, not NFS. Current image
+Prometheus3.15.0-distroless; admin snapshot flag disabled. Do NOT enable it by a
+restart: startup WAL repair could truncate later data.
+
+Old sealed segment134217728bytes copied read-only and SHA verified:
+`9f7a11ba33ced389ef70411989228ecf0fd323e1784c48f96c27b8f053542c93`.
+Latest active segment2679, old segmentmtime unchanged. Offline CRC32C audit finds
+exactly one invalid fragment. Unique one-bit candidate at byte129878544/mask1
+restores its original expectedCRC; candidate has **zero** invalid physical CRCs,
+SHA`8402d0e3a1ee44ccaf5a2bbb33f125f3f8b6a4fff37be59fbf100e9483c6157e`.
+This is a **private candidate only**, NOT accepted production repair or guaranteed
+semantic equivalence. Need pinned-native logical record decoding/cross-check,
+off-host preimage, full sealed-file/identity/CAS plan and explicit preservation gates.
+No production WAL write/truncation/deletion or Prometheus restart performed.
+Private state node0 `20261109-prom-wal-forensics/`.
