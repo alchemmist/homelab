@@ -128,3 +128,52 @@ class DNSPreflightSafetyTests(unittest.TestCase):
             ):
                 guard.main()
             self.assertFalse(missing.exists())
+
+
+class ExclusiveRendererTests(unittest.TestCase):
+    def test_existing_regular_file_is_not_overwritten(self):
+        import tempfile
+
+        guard = load(ROOT / "scripts/spi-public-dns.py", "exclusive_file_guard")
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "stage.tmp"
+            path.write_bytes(b"original")
+            with self.assertRaisesRegex(RuntimeError, "Unexpected temporary renderer"):
+                guard.stage_renderer(path, b"replacement")
+            self.assertEqual(path.read_bytes(), b"original")
+
+    def test_existing_and_dangling_symlinks_are_not_followed(self):
+        import tempfile
+
+        guard = load(ROOT / "scripts/spi-public-dns.py", "exclusive_link_guard")
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            for existing in (True, False):
+                target = base / ("existing" if existing else "absent")
+                if existing:
+                    target.write_bytes(b"original")
+                link = base / ("live.tmp" if existing else "dangling.tmp")
+                link.symlink_to(target)
+                with (
+                    self.subTest(existing=existing),
+                    self.assertRaisesRegex(
+                        RuntimeError, "Unexpected temporary renderer"
+                    ),
+                ):
+                    guard.stage_renderer(link, b"replacement")
+                self.assertTrue(link.is_symlink())
+                if existing:
+                    self.assertEqual(target.read_bytes(), b"original")
+                else:
+                    self.assertFalse(target.exists())
+
+    def test_new_inode_has_expected_public_renderer_mode_and_contents(self):
+        import stat
+        import tempfile
+
+        guard = load(ROOT / "scripts/spi-public-dns.py", "new_inode_guard")
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "stage.tmp"
+            guard.stage_renderer(path, b"VALUE = 1\n")
+            self.assertEqual(path.read_bytes(), b"VALUE = 1\n")
+            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o755)

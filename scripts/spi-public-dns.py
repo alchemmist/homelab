@@ -31,6 +31,19 @@ def load(path, name):
         raise RuntimeError("Invalid DNS renderer: " + path.name) from None
 
 
+def stage_renderer(path, content):
+    """Create a new inode exclusively; never follow/overwrite an existing path."""
+    try:
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        raise RuntimeError("Unexpected temporary renderer") from None
+    with os.fdopen(fd, "wb") as stream:
+        stream.write(content)
+        stream.flush()
+        os.fchmod(stream.fileno(), 0o755)
+        os.fsync(stream.fileno())
+
+
 def delta(old, new):
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
         before = old.render(123, home, vps).splitlines()
@@ -61,6 +74,8 @@ def main():
         "Unsafe state directory",
     )
     proposed = ROOT / "proposed.py"
+    # Public renderer is intentionally 0755; non-owner writes, not reads/exec,
+    # violate integrity. importlib does not apply Unix setuid/setgid semantics.
     for path in [CURRENT, proposed]:
         require(
             path.is_file()
@@ -92,9 +107,7 @@ def main():
             (ROOT / "before.py").write_bytes(old)
             (ROOT / "uncertain.json").write_text(json.dumps(context))
             temp = CURRENT.with_name("public_dns_zone.py.spi-public.tmp")
-            require(not temp.exists(), "Unexpected temporary renderer")
-            temp.write_bytes(new)
-            temp.chmod(0o755)
+            stage_renderer(temp, new)
             temp.replace(CURRENT)
             subprocess.run(
                 ["systemctl", "start", "public-dns-refresh.service"],
