@@ -15,10 +15,15 @@ queueUI:
 legacyImage: harbor.socrat.alchemmist.xyz/spi-triage/runtime@sha256:4cd6a12c1b046c03b74195b2d93aff183d8465230d364b527fa116fd25624a91
 legacyImagePullSecrets:
 - name: spi-harbor-pull
-bundleEnabled: false
+bundleEnabled: true
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/spi-triage
-  tag: bootstrap-disabled
-  digest: ''
+  tag: b70462de66a3ffcfad6c3b86c74d8c45664080ca
+  digest: sha256:eb830c98ccd6d19ef8535fcb5be003d783cb4aeb98d18fe64e66c1f51a37f64a
 imagePullSecrets:
 - name: spi-triage-harbor-pull
+
+# Activated only after natural drain and verified idle checkpoint.
+graphs:
+  enabled: true
+  existingSecret: spi-graph-client

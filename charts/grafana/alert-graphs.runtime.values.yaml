@@ -1,0 +1,51 @@
+# Credentials exist as scoped native Kubernetes Secrets; never put values here.
+grafana:
+  imageRenderer:
+    enabled: true
+    existingSecret: socrat-grafana-renderer
+    image:
+      registry: docker.io
+      repository: grafana/grafana-image-renderer
+      tag: v5.12.10
+      sha: "a7970b826f6e477461e02bf5463d92634e9ad27d525e4e50296978a2e592d2d7"
+    nodeSelector:
+      kubernetes.io/hostname: socrat-1
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 65532
+      runAsGroup: 65532
+      seccompProfile:
+        type: RuntimeDefault
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: '1'
+        memory: 1Gi
+    env:
+      HTTP_HOST: '0.0.0.0'
+      # Upstream request logger otherwise includes ephemeral Grafana renderKey.
+      API_SILENCE_REQUEST_LOG_PATH: '/render,/healthz'
+      LOG_LEVEL: error
+      XDG_CONFIG_HOME: /tmp/.chromium
+      XDG_CACHE_HOME: /tmp/.chromium
+      RATE_LIMIT_MIN_LIMIT: '1'
+      RATE_LIMIT_MAX_LIMIT: '2'
+      RATE_LIMIT_MAX_AVAILABLE: '1073741824'
+      RATE_LIMIT_HEADROOM: '134217728'
+      BROWSER_READINESS_PRIOR_WAIT: '0s'
+
+alertGraphs:
+  enabled: true
+  existingSecret: socrat-alert-graphs-auth
+  image:
+    repository: harbor.socrat.alchemmist.xyz/homelab/spi-triage
+    digest: sha256:eb830c98ccd6d19ef8535fcb5be003d783cb4aeb98d18fe64e66c1f51a37f64a
+  imagePullSecrets:
+    - name: alert-graphs-harbor-pull
+  nodeSelector:
+    kubernetes.io/hostname: socrat-1
+  # Cross-node socket source is flannel.1 on socrat-2 after service DNAT/SNAT.
+  botSourceCIDRs:
+    - 10.42.0.0/32

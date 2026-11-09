@@ -1,6 +1,7 @@
 {
   "name": "Wiki OpenAPI — bot spec to homelab PR",
-  "settings": {"executionOrder": "v1", "timezone": "Europe/Moscow", "saveDataSuccessExecution": "all"},
+  "settings": {
+    "errorWorkflow": "iZn7biFh6321a1w8","executionOrder": "v1", "timezone": "Europe/Moscow", "saveDataSuccessExecution": "all"},
   "nodes": [
     {
       "id": "b1c0a6a0-7e2d-4a1e-9c11-0b0a6a0e7e2d",

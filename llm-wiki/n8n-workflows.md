@@ -3,6 +3,36 @@
 Контракт для агентов и оператора. Актуализировано: **3 ноября 2026**.
 Связанный документ: [архитектура автоматизаций умного дома](smart-home-automation.md).
 
+## Уведомление об упавшем execution — 9 ноября 2026
+
+Настроен общий **Workflow Failure Alerts** (`iZn7biFh6321a1w8`): native
+Error Trigger → безопасная проекция метаданных → существующий Socrat bot
+`/v1/messages` напрямую. Все шесть текущих business workflows ссылаются на него
+через `settings.errorWorkflow`, в том числе Socrat Alerts. Сам handler не
+ссылается на себя и не ходит в Socrat Alerts/SPI — рекурсии доставки нет.
+
+Уведомление на английском: workflow, execution ID, failed node (если есть),
+прямая protected n8n ссылка. Raw error/message/stack, headers и payload не уходят
+в Telegram; детали доступны внутри n8n. Сохранение bodies handler отключено;
+native входные данные могут временно существовать до завершения/pruning.
+Это одно событие отказа, не окно ошибок20минут и не обещание exactly-once.
+
+Проверены6bindings и published settings активных workflows,9offline тестов.
+Активность сохранена:5active, SPI **уже был inactive**; не включался этой задачей.
+Native refresh GitHub triggers заменил Wiki/Blog webhook ID/signing secret:
+старые удалены, новые active, по одному на URL, events прежние. Credential refs,
+бизнес-данные и графы при каждой записи проверены. Отдельную смену SPI Route JS
+в течение окна не перезаписывали. Существующие SPI/Grafana alerts не меняли.
+
+Новые workflows не наследуют binding автоматически: добавлять через
+`scripts/n8n/sync_failure_alerts.py` (без флага — только plan). Уже идущие/Wait
+executions могут хранить старые settings; ручные тесты, caught errors, отмена и
+полный отказ n8n не равны обычному automatic failed execution. Сам handler не
+может сообщить о поломке собственного транспорта тем же транспортом; независимый
+health monitoring нужен отдельно. Первый естественный Telegram end-to-end этим
+срезом не заявляется; искусственных запусков/ошибок/сообщений не создавали.
+[Runbook и enrollment receipt](../docs/n8n/workflow-failure-alerts.md).
+
 ## Текущий календарь: динамический TTS и автоматическая сессия
 
 Пользователь **разрешил исключение для внутреннего API именно для календарной
