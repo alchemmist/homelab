@@ -9,8 +9,10 @@ python3 scripts/build-traffic-light-variants.py
 Import `tmp-1.json` through `tmp-4.json` in Grafana (Dashboards → New → Import).
 Each has a distinct UID and title. Do not select the canonical dashboard UID or
 replace its public share. No additional plugins, CSS or JavaScript are needed by
-the visualizations. These files are deliberately outside the provisioned chart:
-this is a temporary comparison, not a production TV rollout.
+the visualizations. The importable originals live here; deployed copies are in
+`charts/monitoring-k3s/dashboards/traffic-light-tmp-{1,2,3,4}.json`, provisioned by
+`templates/traffic-light-previews.yaml`. This is a temporary comparison, not a
+replacement of the production TV dashboard.
 
 | File | Native visualization | Trade-off |
 | --- | --- | --- |
@@ -31,9 +33,11 @@ Stat also eventually needs more space. Check five nodes first, then synthetic
 
 Static validation passed: unique UIDs, unchanged panel count/layout, unchanged
 non-resource panels, and exact preservation of resource queries,
-transformations and field configuration. **Not imported, not visually checked,
-not deployed.** SSH access was blocked by an unknown ED25519 host key for the
-configured endpoint; host verification was not bypassed.
+transformations and field configuration. Provisioning added through GitOps in `2dc9a53` after explicit owner approval.
+Canonical dashboard/public share and TV settings remain untouched.
+The chart renders successfully and all 25 canonical Traffic Light tests pass.
+Visual/physical-TV acceptance remains outstanding. SSH host verification was
+not bypassed; deployment uses the existing Argo auto-sync, not imperative SSH.
 
 Important: existing TV fitting policy is UID-scoped to `socrat-traffic-light`.
 These new UIDs will not automatically receive its special full-screen geometry.
