@@ -222,6 +222,11 @@ ServiceMonitor/Helm chart не перенастраивает автоматич
   sent metric/log deltas, readiness и age. Краткий scrape gap сообщи честно.
 - Старый failing series может жить до lookback expiry. Не удаляй series и не
   отключай alert. Дождись `probe_success=1` именно с NEW instance и снятия alert.
+- **Обязательный closeout gate:** свежий `probe_success{service_id="edge-vps"}`
+  должен иметь NEW instance; проверь точное live-выражение панели906 dashboard
+  `socrat-traffic-light`: значение0=OK. Source/ServiceMonitor/Argo Synced этого
+  не доказывают. Зафиксируй этот gate явно, не оставляй Collector неопределённым
+  follow-up после объявления переезда завершённым.
 
 ### NetBird и Telegram
 

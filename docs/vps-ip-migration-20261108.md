@@ -286,3 +286,34 @@ blindly; future interoperability review is separate. No firewall writes here.
 Owner mobile acceptance and recipient-level original mailing completion are still
 unproven; queue0 is transport acknowledgement only. Collector and off-host DR
 acceptance remain outside this VPN recovery proof.
+
+
+## 2026-11-09: Traffic Light stale target correction
+
+Owner correctly reported VPS IP still red after migration. Grafana's live metric
+was fresh but for OLD:443 (`probe_success=0`, firing alert). Source dashboard
+text/chart target and live ServiceMonitor were already NEW, Argo Synced/Healthy;
+that did **not** update the frozen native OTel scrape bundle. Prometheus correctly
+had no legacy scrape target because native Collector owns scraping after OTLP
+cutover. This runtime phase had been missed; do not blame browser cache or turn
+the indicator green artificially.
+
+Fresh CM preimage and full pod/CRI identity were saved privately on socrat-0 at
+`/var/lib/homelab-observer-rollout/traffic-light-vps-ip-20261109/`. Located exactly
+one owned blackbox job using job-prefix plus service_id=edge-vps. Changed just
+its target scalar OLD:443 -> NEW:443; parsed full-config equality checked against
+that one expected change. Every other YAML byte, collector.yaml, receiver/exporter
+pipelines, credentials and ingestion boundary remained unchanged. CM JSON patch
+used resourceVersion and full-data CAS tests; candidate projection hashes and
+pinned native Collector validate succeeded before lifecycle action.
+
+Applied the existing `otel-cluster-logs-activate.yml` to the exact reviewed
+Collector container using actual imageRef and full pinned binary SHA256. One
+graceful container stop, kubelet restart on the same storage; **no pod, StatefulSet,
+Prometheus, Thanos or reloader restart**, no TSDB/WAL/queue deletion. Post-readback:
+same pod UID and volumes, all other container IDs unchanged, all containers Ready.
+The first metrics after activation showed NEW probe_success=1, age under5s.
+Old failing series/alert persist until normal ~5min lookback expiry; do not delete
+series, silence the alert or weaken freshness checks to expedite the display.
+Focused existing tests:28 passed+2subtests. Completion requires the actual live
+Grafana panel906 expression to return0=OK, not merely fresh NEW data or Argo green.
