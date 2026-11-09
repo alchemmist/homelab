@@ -197,3 +197,21 @@ Ansible syntax-check pass. Error/confirmation/warm-up/rollback branches are unit
 and fault-injection tested; no additional production outage was deliberately
 triggered to exercise the new fencing policy. Private installation receipts are
 under `/var/lib/homelab-vpn-failover/hardening/2026-11-07/` on socrat-2.
+
+### 2026-11-09 recovery continuation
+
+Full receipts: `docs/cluster-recovery-20261109.md`. Old WAL00001786 checksum fault
+predates night outage (already Nov7).13:34UTC exact one-bit repair applied atomically
+without restart/truncate/replay: pinned native decoder6409 records valid and all
+11716 affected samples independently match raw Thanos history exactly; off-host
+original/candidate SHA verified. **Next native checkpoint and3h alert expiry still
+pending**; no restart shortcut. Physical bit-flip cause unproven.
+
+vLLM actual kubelet allocation/request10Gi,24Gi limit, same process; natural observer
+13:48 success and critical alert cleared. Four power/fresh-quorum safety rules live
+(source has native promtool tests; verify actual evaluation). Node3 native durable
+storage compaction preserved all queues/cursors with consistent backup/off-host
+copy; queue25→9MB, delivery continues/refused0, HDD I/O pressure remains under watch.
+`fsync=true` retained. fwupd metadata service naturally success/no firmware install.
+Three historic failed Job objects retained; current natural replacements succeed;
+no alert masking or deletion solely for green.

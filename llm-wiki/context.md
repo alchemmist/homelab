@@ -319,3 +319,17 @@ Fresh NEW:443 probe_success1; actual live socrat-traffic-light panel906 expressi
 Native VPS-probe Collector delivery gate now passed. Other telemetry/DR gates
 remain separate. Evidence: docs/vps-ip-migration-20261108.md, private socrat-0
 /var/lib/homelab-observer-rollout/traffic-light-vps-ip-20261109/.
+
+### Recovery continuation 2026-11-09 13:54UTC
+
+- `docs/cluster-recovery-20261109.md` now has power timeline, queue preservation and
+  exact WAL bit-repair receipts.00001786 repaired13:34 **without restart/truncate**:
+  native6409 records valid, all11716 affected samples exact-match independent raw
+  Thanos; original/candidate also off-host. **Next native checkpoint pending**;
+  retain no-restart/no-silence gate until subsequent-segment/native acceptance.
+- Effective vLLM kubelet/allocated request10Gi same process; observer13:48 natural
+  success, critical cleared. Four safety rules live; rule-engine evaluation remains
+  to verify. Node3 queue draining25→9MB but HDD I/O warning not yet fixed; keep fsync.
+- fwupd metadata-only service recovered naturally. Three terminal failed Job
+  objects retained with evidence; current native replacements successful. Do not
+  erase/relable failures just to clear warning. Detailed historical cause pending.

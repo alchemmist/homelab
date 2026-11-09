@@ -217,3 +217,69 @@ semantic equivalence. Need pinned-native logical record decoding/cross-check,
 off-host preimage, full sealed-file/identity/CAS plan and explicit preservation gates.
 No production WAL write/truncation/deletion or Prometheus restart performed.
 Private state node0 `20261109-prom-wal-forensics/`.
+
+### WAL exact repair applied 13:34UTC; native checkpoint still pending
+
+Pinned upstream Prometheus **v3.15.0/modulev0.315.0** reader accepted all6409 logical
+records (CRC+Snappy) in candidate. Affected record type2:11716 distinct series,
+all at **2026-11-04T04:07:20.560Z**. Resolved every internal ref from native preceding
+`checkpoint.00001785` plus unmodified earlier Series records. Compared against
+**raw-resolution Thanos** with `partial_response=false`, exact1ms range and exact
+origin job/instance. **11716/11716 match exact labels/timestamp/float64 bits**,0
+missing/different/conflicting, including +Inf; no NaN/stale-marker ambiguity.
+Only constant operator external labels `prometheus`/`prometheus_replica` removed
+for comparison; other labels fully preserved. Local direct Prometheus had no
+samples this old; this was NOT treated as data loss or used as repair evidence.
+
+Both128MiB original and candidate independently copied off-host to controller's
+private recovery directory and SHA verified; Umami pg_dump/original machine-env
+and agent consistent archive also copied privately with0700/0600 modes.
+
+Approval`b08e1ad798d16fa584d1d7c08dbb4f87a9ea88718ddb54b44c56032501578667`.
+Fresh full-file SHA/inode/mtime, same Pod UID/all container IDs, sealed segment
+(latest much newer), exact one-byte/mask1 delta checked before replacement.
+Fsynced temporary on same filesystem, retained ownership/mode/xattrs, rechecked
+original SHA immediately before atomic rename, fsynced both directories.
+Live readback SHA equals verified candidate. Same Pod and all processes; no
+Prometheus restart, other WAL segment write, truncation, replay or sample insertion.
+Original immutable preimages retained on node0 and controller. Write receipt
+`20261109-prom-wal-forensics/one-bit-repair-receipt.json` accepted.
+
+**Not yet complete:** native next scheduled checkpoint/truncation has to succeed
+and scan subsequent segments; old counter-based alert naturally retains failures
+for3h. Do not silence/reset it or restart Prometheus to speed acceptance. This is
+an exact bit correction with independent historical-data proof, NOT attribution
+of the physical bit-flip to disk/RAM/power or proof every later segment is sound.
+
+### Effective memory, observer and power rule live readback
+
+13:48UTC: vLLM Pod request **10Gi**, kubelet `containerStatuses.resources` **10Gi**,
+`allocatedResources` **10Gi**, no resize conditions, Ready=true; same UID/container
+as before native resize. CPU/GPU/24Gi limit unchanged, no second model restart.
+Observer natural job `observer-membership-29903868` completed13:48:13 with0failed.
+No critical firing alerts in13:47 query; observer critical naturally cleared.
+Four new `socrat-control-plane-safety` rules exist live. Check actual rule engine
+health/healthy evaluations separately before claiming prevention acceptance.
+
+### fwupd and retained failed jobs
+
+Node3 packaged `fwupd-refresh.service`: most recent failure13:13UTC, exit1. Exact
+native metadata-only command later returned2 (`Metadata is up to date`). Existing
+packaged `SuccessExitStatus=2 101` already handles that case. Starting **only** this
+metadata service naturally completed with Result=success/exit2; no unit change,
+`reset-failed`, software upgrade or firmware installation. Original metadata error
+mechanism still not proven from retained quiet output; do not claim an I/O cause.
+
+Three failed terminal Job objects remain intentionally unchanged, preserving
+failure evidence; Pods already absent when investigated. Native deadlines:
+Thanos3600s, both brokers120s. All owners have successful **natural**, not forced
+replacements: Thanos13:30:07; SPI and Wiki broker13:40:05. Failed objects and current
+CronJob preimages stored privately on node2 `20261109-failed-jobs/`. Do not delete
+objects/change their failure status or alert conditions just for green. Exact
+historical scheduling cause should be checked against retained earlier inventory.
+
+Node3 after warmup: log queue8.98MB vs~25MB before, sent27512, both receivers refused0;
+metrics queue0. HDD still83–88% busy/~37flush/s; IO full5m~34%. Catch-up continues.
+Compaction alone is **not** sustained I/O acceptance. Native sending-queue batching
+was source-reviewed: persistent enqueue/dispatch/ACK still fsync per original
+request, so do not add it/restart agent claiming it solves the HDD IOPS limit.
