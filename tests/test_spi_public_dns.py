@@ -111,3 +111,20 @@ class DNSPreflightSafetyTests(unittest.TestCase):
             loader.assert_not_called()
             self.assertFalse((base / "before.py").exists())
             self.assertEqual(current.read_text(), "VALUE = 1\n")
+
+    def test_missing_state_directory_has_controlled_stop(self):
+        import tempfile
+        from unittest.mock import patch
+
+        guard = load(ROOT / "scripts/spi-public-dns.py", "missing_state_guard")
+        previous = guard.os.umask(0o077)
+        self.addCleanup(guard.os.umask, previous)
+        with tempfile.TemporaryDirectory() as directory:
+            missing = Path(directory) / "missing"
+            with (
+                patch.object(guard, "ROOT", missing),
+                patch("sys.argv", ["spi-public-dns"]),
+                self.assertRaisesRegex(RuntimeError, "Unsafe state directory"),
+            ):
+                guard.main()
+            self.assertFalse(missing.exists())

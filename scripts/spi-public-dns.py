@@ -53,6 +53,13 @@ def main():
     p.add_argument("--approve-plan-hash")
     a = p.parse_args()
     os.umask(0o077)
+    require(
+        ROOT.is_dir()
+        and not ROOT.is_symlink()
+        and ROOT.stat().st_uid == 0
+        and not ROOT.stat().st_mode & 0o077,
+        "Unsafe state directory",
+    )
     proposed = ROOT / "proposed.py"
     for path in [CURRENT, proposed]:
         require(
@@ -62,10 +69,6 @@ def main():
             and not path.stat().st_mode & 0o022,
             "Unsafe renderer",
         )
-    require(
-        ROOT.stat().st_uid == 0 and not ROOT.stat().st_mode & 0o077,
-        "Unsafe state directory",
-    )
     with (ROOT / "lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         require(not (ROOT / "uncertain.json").exists(), "Uncertain prior write; stop")
