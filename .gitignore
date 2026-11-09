@@ -15,3 +15,6 @@ __pycache__/
 
 # Local locked quality toolchain
 .venv/
+
+# Local browser evidence may contain private session/page data.
+/.playwright-mcp/

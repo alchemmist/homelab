@@ -1,0 +1,24 @@
+{{- if (index .Values "traefikEdgeMetrics" | default dict).enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: monitoring-traefik-edge-metrics
+  labels:
+    release: {{ .Values.prometheusRelease }}
+spec:
+  namespaceSelector:
+    matchNames:
+      - traefik-edge
+  selector:
+    matchLabels:
+      app: traefik-edge-metrics
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: {{ .Values.traefikMetrics.interval }}
+      scrapeTimeout: {{ .Values.traefikMetrics.scrapeTimeout }}
+      relabelings:
+        - targetLabel: job
+          replacement: traefik-edge
+
+{{- end }}

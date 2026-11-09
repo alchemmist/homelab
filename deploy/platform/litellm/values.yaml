@@ -19,6 +19,66 @@ extraEnvVars:
     secretKeyRef:
       key: api-key
       name: vllm-api
+- name: GENERIC_CLIENT_ID
+  valueFrom:
+    secretKeyRef:
+      name: socrat-authentik-litellm
+      key: GENERIC_CLIENT_ID
+      optional: true
+- name: GENERIC_CLIENT_SECRET
+  valueFrom:
+    secretKeyRef:
+      name: socrat-authentik-litellm
+      key: GENERIC_CLIENT_SECRET
+      optional: true
+- name: GENERIC_AUTHORIZATION_ENDPOINT
+  valueFrom:
+    secretKeyRef:
+      name: socrat-authentik-litellm
+      key: GENERIC_AUTHORIZATION_ENDPOINT
+      optional: true
+- name: GENERIC_TOKEN_ENDPOINT
+  valueFrom:
+    secretKeyRef:
+      name: socrat-authentik-litellm
+      key: GENERIC_TOKEN_ENDPOINT
+      optional: true
+- name: GENERIC_USERINFO_ENDPOINT
+  valueFrom:
+    secretKeyRef:
+      name: socrat-authentik-litellm
+      key: GENERIC_USERINFO_ENDPOINT
+      optional: true
+- name: GENERIC_SCOPE
+  valueFrom:
+    secretKeyRef:
+      name: socrat-authentik-litellm
+      key: GENERIC_SCOPE
+      optional: true
+- name: GENERIC_CLIENT_USE_PKCE
+  valueFrom:
+    secretKeyRef:
+      name: socrat-authentik-litellm
+      key: GENERIC_CLIENT_USE_PKCE
+      optional: true
+- name: GENERIC_USER_ID_ATTRIBUTE
+  valueFrom:
+    secretKeyRef:
+      name: socrat-authentik-litellm
+      key: GENERIC_USER_ID_ATTRIBUTE
+      optional: true
+- name: GENERIC_USER_EMAIL_ATTRIBUTE
+  valueFrom:
+    secretKeyRef:
+      name: socrat-authentik-litellm
+      key: GENERIC_USER_EMAIL_ATTRIBUTE
+      optional: true
+- name: GENERIC_USER_ROLE_ATTRIBUTE
+  valueFrom:
+    secretKeyRef:
+      name: socrat-authentik-litellm
+      key: GENERIC_USER_ROLE_ATTRIBUTE
+      optional: true
 fullnameOverride: litellm
 image:
   pullPolicy: IfNotPresent
