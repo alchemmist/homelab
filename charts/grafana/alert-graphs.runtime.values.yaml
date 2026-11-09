@@ -25,6 +25,9 @@ grafana:
         memory: 1Gi
     env:
       HTTP_HOST: '0.0.0.0'
+      # Upstream request logger otherwise includes ephemeral Grafana renderKey.
+      API_SILENCE_REQUEST_LOG_PATH: '/render,/healthz'
+      LOG_LEVEL: error
       XDG_CONFIG_HOME: /tmp/.chromium
       XDG_CACHE_HOME: /tmp/.chromium
       RATE_LIMIT_MIN_LIMIT: '1'
