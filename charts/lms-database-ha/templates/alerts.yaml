@@ -17,6 +17,9 @@ spec:
           for: 1m
           labels: {severity: critical, service: lms}
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "LMSWebUnavailable" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: LMS has no available web worker.
             description: Check the database primary endpoint, app startup and node readiness. Do not create a blank database to restore availability.
         - alert: LMSDatabaseQuorumAtRisk
@@ -24,6 +27,9 @@ spec:
           for: 2m
           labels: {severity: critical, service: lms}
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "LMSDatabaseQuorumAtRisk" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: LMS has fewer than two ready PostgreSQL instances.
             description: Required synchronous writes need a primary and a standby; investigate before changing durability or fencing settings.
         - alert: LMSDatabaseRedundancyDegraded
@@ -31,6 +37,9 @@ spec:
           for: 5m
           labels: {severity: warning, service: lms}
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "LMSDatabaseRedundancyDegraded" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: LMS PostgreSQL has lost a replica.
             description: Service may remain writable, but another failure could remove its synchronous quorum.
         - alert: LMSDatabaseBackupOverdue
@@ -38,5 +47,8 @@ spec:
           for: 15m
           labels: {severity: warning, service: lms}
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "LMSDatabaseBackupOverdue" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: LMS encrypted database backup is overdue.
             description: Inspect backup Job status and storage without printing credentials or dump contents. Replicas are not backups.

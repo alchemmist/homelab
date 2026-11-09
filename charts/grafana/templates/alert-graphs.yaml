@@ -1,0 +1,173 @@
+{{- if .Values.alertGraphs.enabled }}
+{{- $repository := required "alertGraphs.image.repository is required" .Values.alertGraphs.image.repository }}
+{{- $digest := required "alertGraphs.image.digest is required" .Values.alertGraphs.image.digest }}
+{{- if not (regexMatch "^sha256:[a-f0-9]{64}$" $digest) }}
+{{- fail "alertGraphs.image.digest must be an immutable sha256 digest" }}
+{{- end }}
+{{- $secret := required "alertGraphs.existingSecret is required" .Values.alertGraphs.existingSecret }}
+{{- if not .Values.grafana.imageRenderer.enabled }}
+{{- fail "alertGraphs requires the Grafana remote imageRenderer to be enabled" }}
+{{- end }}
+{{- if not (regexMatch "^sha256:[a-f0-9]{64}$" (.Values.grafana.imageRenderer.image.sha | default "")) }}
+{{- fail "alertGraphs requires an immutable Grafana imageRenderer.image.sha" }}
+{{- end }}
+{{- range .Values.alertGraphs.botSourceCIDRs }}
+{{- if not (or (regexMatch "^([0-9]{1,3}\\.){3}[0-9]{1,3}/32$" .) (regexMatch "^[0-9a-fA-F:]+/128$" .)) }}
+{{- fail "alertGraphs.botSourceCIDRs accepts only exact /32 or /128 sources" }}
+{{- end }}
+{{- end }}
+{{- if empty .Values.alertGraphs.panels }}
+{{- fail "alertGraphs.panels must contain the reviewed dashboard:panel -> variable names inventory" }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: socrat-alert-graphs-policy
+  namespace: {{ .Release.Namespace }}
+data:
+  panels.json: {{ .Values.alertGraphs.panels | toJson | quote }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: socrat-alert-graphs
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: socrat-alert-graphs
+  template:
+    metadata:
+      labels:
+        app: socrat-alert-graphs
+      annotations:
+        checksum/policy: {{ .Values.alertGraphs.panels | toJson | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      {{- with .Values.alertGraphs.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: gateway
+          image: {{ printf "%s@%s" $repository $digest | quote }}
+          imagePullPolicy: IfNotPresent
+          command: ["python", "-B", "/app/graph_gateway.py"]
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              cpu: "1"
+              memory: 192Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+          volumeMounts:
+            - name: policy
+              mountPath: /graph-policy
+              readOnly: true
+            - name: credentials
+              mountPath: /graph-secrets
+              readOnly: true
+      volumes:
+        - name: policy
+          configMap:
+            name: socrat-alert-graphs-policy
+        - name: credentials
+          secret:
+            secretName: {{ $secret }}
+            defaultMode: 0440
+            items:
+              - key: grafana
+                path: grafana
+              - key: telegram
+                path: telegram
+              - key: spi
+                path: spi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: socrat-alert-graphs
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: socrat-alert-graphs
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: socrat-alert-graphs
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: socrat-alert-graphs
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: automation
+          podSelector:
+            matchLabels:
+              app: spi-triage
+        # The existing bot uses hostNetwork; pod selectors alone cannot identify it.
+        # Exact node source /32 entries require separate verified CNI acceptance.
+        {{- range .Values.alertGraphs.botSourceCIDRs }}
+        - ipBlock:
+            cidr: {{ . | quote }}
+        {{- end }}
+      ports:
+        - port: 8080
+          protocol: TCP
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: grafana
+              app.kubernetes.io/instance: kube-prometheus-stack
+      ports:
+        - port: 3000
+          protocol: TCP
+{{- end }}

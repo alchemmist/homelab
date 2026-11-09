@@ -36,3 +36,7 @@ resources:
     memory: 64Mi
   limits:
     memory: 256Mi
+
+graphs:
+  enabled: false
+  existingSecret: socrat-bot-graph-client

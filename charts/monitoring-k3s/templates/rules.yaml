@@ -22,6 +22,9 @@ spec:
           labels:
             severity: warning
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "SocratVPNFallbackActive" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: VPN is running in native fallback mode.
             description: 'VPN fallback is latched on {{ "{{ $labels.instance }}" }}. Kubernetes is fenced and native systemd services are responsible for VPN availability. Verify fallback health before manually returning to Kubernetes.'
     - name: socrat.nodes.health
@@ -37,6 +40,9 @@ spec:
           labels:
             severity: warning
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "KubeNodeNotReady" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: Node is not ready.
             description: 'Node {{ "{{ $labels.node }}" }} is not Ready, including when it is cordoned. The alert becomes Firing after 15m in this state.'
             rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ "{{ $labels.node }}" }}'
@@ -46,6 +52,9 @@ spec:
           labels:
             severity: warning
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "KubeNodePressure" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: Node resource pressure is active.
             description: 'Node {{ "{{ $labels.node }}" }} reports {{ "{{ $labels.condition }}" }}. The condition indicates pressure on memory, disk space or inodes, or process IDs and can lead to pod eviction. The alert becomes Firing after 5m.'
             rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ "{{ $labels.node }}" }}'
@@ -55,6 +64,9 @@ spec:
           labels:
             severity: info
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "SocratNodeSchedulingDisabled" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: Node scheduling is disabled.
             description: 'Node {{ "{{ $labels.node }}" }} is cordoned and does not accept ordinary new pods. Existing pods can keep running. This may be intentional maintenance; the alert becomes Firing after 15m.'
             rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ "{{ $labels.node }}" }}'
@@ -73,6 +85,9 @@ spec:
           labels:
             severity: warning
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "SocratNodeMetricsStale" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: Node exporter telemetry is stale or missing.
             description: 'Node {{ "{{ $labels.node }}" }} has no successful node-exporter sample in the last 2m, or no recorded sample in the last 24h. The alert becomes Firing after 1m. Check the exporter, its scrape target and network reachability; this does not by itself prove that the node is down.'
             rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ "{{ $labels.node }}" }}'
@@ -113,6 +128,9 @@ spec:
           labels:
             severity: warning
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "SocratNodeCPUTemperatureHigh" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: CPU temperature is approaching its limit.
             description: Node {{ "{{ $labels.node }}" }} has less than 10 C of CPU temperature headroom for 5m. Headroom uses the CPU
               sensor critical threshold; socrat-1 uses the Ryzen 7 7840HS 100 C limit. Check cooling and sustained load.
@@ -123,6 +141,9 @@ spec:
           labels:
             severity: warning
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "SocratNodeThermalThrottling" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: CPU thermal throttling has been detected.
             description: Node {{ "{{ $labels.node }}" }} has reported hardware CPU thermal throttle events in the trailing 5m for 2m.
               These are hardware events, not container CPU-limit throttling or a percentage of lost performance.
@@ -134,6 +155,9 @@ spec:
           labels:
             severity: warning
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "SocratNodeResourceContention" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: Tasks are persistently waiting for a node resource.
             description: 'Node {{ "{{ $labels.node }}" }} has sustained {{ "{{ $labels.resource }}" }} PSI some pressure for 10m: above 25% for
               CPU or 10% for memory or I/O, averaged over 5m. This measures time with at least one stalled task, not resource
@@ -145,6 +169,9 @@ spec:
           labels:
             severity: warning
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "SocratNodeCPUStealHigh" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: Hypervisor CPU steal time is high.
             description: Node {{ "{{ $labels.node }}" }} spends more than 10% of CPU time waiting for the hypervisor, averaged across
               CPUs over 5m, for 15m. Check contention on the virtualization host; this is distinct from application CPU usage.
@@ -157,6 +184,9 @@ spec:
           labels:
             severity: warning
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "SocratNodeCertificateExpiration" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: A K3s node certificate expires within 30 days.
             description: 'Node {{ "{{ $labels.node }}" }} has a K3s-managed certificate with less than 30 days remaining for 15m. This includes client, serving and CA certificates exposed by K3s. Check certificate renewal and the affected certificate subject before restarting or rotating anything.'
             rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ "{{ $labels.node }}" }}
@@ -179,6 +209,9 @@ spec:
           labels:
             severity: warning
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "SocratContainerOOMKilled" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: Container was recently killed because it ran out of memory.
             description: 'Container {{ "{{ $labels.container }}" }} in pod {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }} on node {{ "{{ $labels.node }}" }} has a last termination marked OOMKilled within the trailing 10m. The alert becomes Firing after 30s even if the pod has recovered to Ready. Check memory usage and the container memory limit. This rule covers regular containers; later terminations can replace the recorded reason.'
             rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/{{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }}'
@@ -197,6 +230,9 @@ spec:
           labels:
             severity: warning
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "SocratContainerRestartsFrequent" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: Container is restarting frequently.
             description: 'Container {{ "{{ $labels.container }}" }} in pod {{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }} on node {{ "{{ $labels.node }}" }} has an estimated increase of at least 3 restarts in the trailing 30m for 1m. This includes regular and init containers and does not require continuous unready or CrashLoopBackOff states. Check termination reasons and previous container logs; Prometheus increase extrapolates between samples.'
             rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/{{ "{{ $labels.namespace }}" }}/{{ "{{ $labels.pod }}" }}'

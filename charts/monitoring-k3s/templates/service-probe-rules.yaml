@@ -18,6 +18,9 @@ spec:
             severity: warning
             service_id: {{ .id | quote }}
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) .alertName }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: {{ printf "%s health check is failing." .title | quote }}
             description: {{ printf "%s has failed its %s check for 2 minutes. Target: %s. This is an in-cluster service check; TCP checks confirm a listening port, not a complete authenticated application transaction. Inspect probe_success and probe_duration_seconds for this service_id." .title .module .url | quote }}
 {{- end }}
@@ -28,6 +31,9 @@ spec:
           labels:
             severity: warning
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "SocratServiceSyncthingUnavailable" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: A Syncthing instance is unavailable.
             description: 'Syncthing on {{ "{{ $labels.node }}" }} has failed its HTTP health check for 2 minutes. Target: {{ "{{ $labels.instance }}" }}. Each node is a separate alert instance; inspect the node label to identify the failed instance.'
         - alert: SocratServiceProbeCollectorUnavailable
@@ -36,6 +42,9 @@ spec:
           labels:
             severity: warning
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "SocratServiceProbeCollectorUnavailable" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: Service availability checks cannot be collected.
             description: Prometheus cannot collect the blackbox exporter or one of its probe targets for 2 minutes. Service tiles without fresh successful collection show No telemetry rather than a healthy result.
 {{- end }}

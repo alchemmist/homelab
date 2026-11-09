@@ -30,3 +30,8 @@ image:
   digest: ''
 imagePullSecrets:
 - name: spi-triage-harbor-pull
+
+# Requires the full-service image and a scoped client token; opt-in after acceptance.
+graphs:
+  enabled: false
+  existingSecret: spi-graph-client

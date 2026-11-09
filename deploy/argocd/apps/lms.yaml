@@ -15,6 +15,7 @@ spec:
       releaseName: lms
       valueFiles:
       - ../../deploy/lms/values.yaml
+      - alert-graphs.values.yaml
       parameters: []
   destination:
     namespace: lms

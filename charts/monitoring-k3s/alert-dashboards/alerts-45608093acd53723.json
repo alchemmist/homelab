@@ -1,0 +1,238 @@
+{
+  "uid": "alerts-45608093acd53723",
+  "title": "Alerts / monitoring-k3s / socrat.containers.health",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": false,
+  "timezone": "utc",
+  "tags": [
+    "socrat",
+    "alert-diagnostics"
+  ],
+  "refresh": "1m",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "SocratContainerOOMKilled",
+      "description": "Condition inputs for SocratContainerOOMKilled. Exact rule expression; gaps mean no matching evaluation or missing telemetry, not proof of health. This rule-scoped panel may show multiple affected series; identify the alert target by its legend labels.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "1",
+          "expr": "(\n  max by (namespace, pod, container, uid) (kube_pod_container_status_last_terminated_reason{job=\"kube-state-metrics\",reason=\"OOMKilled\"}) == 1\n  and on (namespace, pod, container, uid)\n  (\n    time() - max by (namespace, pod, container, uid) (kube_pod_container_status_last_terminated_timestamp{job=\"kube-state-metrics\"}) >= 0\n    and\n    time() - max by (namespace, pod, container, uid) (kube_pod_container_status_last_terminated_timestamp{job=\"kube-state-metrics\"}) <= 600\n  )\n)\n* on (namespace, pod, uid) group_left (node)\nmax by (namespace, pod, uid, node) (kube_pod_info{job=\"kube-state-metrics\"})",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "SocratContainerOOMKilled / matching rule evaluations",
+      "description": "Exact firing-condition query. Empty is not zero: it may mean false condition or missing telemetry.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "1",
+          "expr": "(\n  max by (namespace, pod, container, uid) (kube_pod_container_status_last_terminated_reason{job=\"kube-state-metrics\",reason=\"OOMKilled\"}) == 1\n  and on (namespace, pod, container, uid)\n  (\n    time() - max by (namespace, pod, container, uid) (kube_pod_container_status_last_terminated_timestamp{job=\"kube-state-metrics\"}) >= 0\n    and\n    time() - max by (namespace, pod, container, uid) (kube_pod_container_status_last_terminated_timestamp{job=\"kube-state-metrics\"}) <= 600\n  )\n)\n* on (namespace, pod, uid) group_left (node)\nmax by (namespace, pod, uid, node) (kube_pod_info{job=\"kube-state-metrics\"})\n",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 24,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "SocratContainerRestartsFrequent",
+      "description": "Condition inputs for SocratContainerRestartsFrequent. Exact rule expression; gaps mean no matching evaluation or missing telemetry, not proof of health. This rule-scoped panel may show multiple affected series; identify the alert target by its legend labels.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "1",
+          "expr": "(\n  max by (namespace, pod, container, uid) (\n    increase(kube_pod_container_status_restarts_total{job=\"kube-state-metrics\"}[30m])\n    or\n    increase(kube_pod_init_container_status_restarts_total{job=\"kube-state-metrics\"}[30m])\n  ) >= 3\n)\n* on (namespace, pod, uid) group_left (node)\nmax by (namespace, pod, uid, node) (kube_pod_info{job=\"kube-state-metrics\"})",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 24,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "SocratContainerRestartsFrequent / matching rule evaluations",
+      "description": "Exact firing-condition query. Empty is not zero: it may mean false condition or missing telemetry.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "1",
+          "expr": "(\n  max by (namespace, pod, container, uid) (\n    increase(kube_pod_container_status_restarts_total{job=\"kube-state-metrics\"}[30m])\n    or\n    increase(kube_pod_init_container_status_restarts_total{job=\"kube-state-metrics\"}[30m])\n  ) >= 3\n)\n* on (namespace, pod, uid) group_left (node)\nmax by (namespace, pod, uid, node) (kube_pod_info{job=\"kube-state-metrics\"})\n",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 24,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        }
+      }
+    }
+  ]
+}
