@@ -1,6 +1,6 @@
 image: rancher/mirrored-library-traefik@sha256:f86a2cab1b5c649070c49f883c743dd32d8485a56e3368c5f93b9e91f1e91259
 nodeName: socrat-2
-publicIP: 109.120.141.97
+publicIP: 109.120.141.60
 backendIP: 10.250.0.2
 host: vpn.alchemmist.xyz
 ingressClass: traefik

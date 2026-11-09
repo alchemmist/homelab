@@ -14,7 +14,7 @@ import time
 import urllib.parse
 
 ALLOWED_HOSTS = {'wiki.socrat.alchemmist.xyz', 'grafana.socrat.alchemmist.xyz', 'vpn.alchemmist.xyz'}
-CONTROL_ADDRESSES = ('109.120.141.97', '109.173.40.247')
+CONTROL_ADDRESSES = ('109.120.141.60', '109.173.40.247')
 MAX_BYTES = 2 * 1024 * 1024
 
 

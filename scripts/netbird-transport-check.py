@@ -19,7 +19,7 @@ import struct
 import time
 import yaml
 HOST='netbird.socrat.alchemmist.xyz'
-ENTRANCES=['109.173.40.247','109.120.141.97']
+ENTRANCES=['109.173.40.247','109.120.141.60']
 
 
 class WS:

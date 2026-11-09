@@ -139,7 +139,7 @@ serviceProbes:
     alertName: SocratServiceEdgeHomeUnavailable
   - id: edge-vps
     title: VPS IP
-    url: 109.120.141.97:443
+    url: 109.120.141.60:443
     module: tcp_connect
     alertName: SocratServiceEdgeVpsUnavailable
   - id: vpn

@@ -10,5 +10,5 @@ all:
           ansible_host: 192.168.0.24
           ansible_port: 2222
         socrat-2:
-          ansible_host: 109.120.141.97
+          ansible_host: 109.120.141.60
           ansible_port: 22

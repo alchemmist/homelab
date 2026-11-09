@@ -66,7 +66,7 @@ class ResolvedInventoryTests(unittest.TestCase):
         for overlay, expected in {
             'direct': {'socrat-0': ('192.168.0.23', 22),
                        'socrat-1': ('192.168.0.24', 2222),
-                       'socrat-2': ('109.120.141.97', 22)},
+                       'socrat-2': ('109.120.141.60', 22)},
             'lan': {'socrat-0': ('192.168.0.23', 2222),
                     'socrat-1': ('192.168.0.24', 2222)},
         }.items():

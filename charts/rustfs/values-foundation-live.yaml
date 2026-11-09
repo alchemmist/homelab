@@ -13,7 +13,7 @@ gateway:
 browserRoutes:
   enabled: true
   unifiedOrigin: true
-authEgressCIDRs: [109.173.40.247/32, 109.120.141.97/32]
+authEgressCIDRs: [109.173.40.247/32, 109.120.141.60/32]
 # Explicit Burstable reservation; no reduction of 4Gi runtime bound.
 # socrat-0 allocatable 32545144Ki; existing requests 29392Mi.
 resources:

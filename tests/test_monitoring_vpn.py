@@ -30,7 +30,7 @@ def counters_payload(users):
 
 class PeerParsingTests(unittest.TestCase):
     def test_ipv6_mapped_ipv4_peer_is_dotted(self):
-        line = "0 0 [::ffff:109.120.141.97]:32063 [::ffff:91.78.10.210]:51414"
+        line = "0 0 [::ffff:109.120.141.60]:32063 [::ffff:91.78.10.210]:51414"
         self.assertEqual(MODULE.peer_host(line), "91.78.10.210")
 
     def test_native_ipv4_peer(self):
@@ -38,24 +38,24 @@ class PeerParsingTests(unittest.TestCase):
         self.assertEqual(MODULE.peer_host(line), "31.173.86.226")
 
     def test_state_prefix_is_tolerated(self):
-        line = "ESTAB 0 0 [::ffff:109.120.141.97]:32083 [::ffff:31.173.86.226]:25560"
+        line = "ESTAB 0 0 [::ffff:109.120.141.60]:32083 [::ffff:31.173.86.226]:25560"
         self.assertEqual(MODULE.peer_host(line), "31.173.86.226")
 
     def test_private_ranges_are_filtered(self):
         for host in ("10.250.0.1", "192.168.0.23", "127.0.0.1", "172.17.0.2",
                      "fe80::1", "::1"):
             self.assertTrue(MODULE.is_private(host), host)
-        for host in ("109.173.40.247", "109.120.141.97", "91.78.10.210", "172.32.0.1"):
+        for host in ("109.173.40.247", "109.120.141.60", "91.78.10.210", "172.32.0.1"):
             self.assertFalse(MODULE.is_private(host), host)
 
 
 class StreamCountTests(unittest.TestCase):
     def test_streams_from_mixed_output(self):
         stdout = (
-            "0 0 [::ffff:109.120.141.97]:32063 [::ffff:91.78.10.210]:51414\n"
-            "0 0 [::ffff:109.120.141.97]:32063 [::ffff:91.78.10.210]:51415\n"
+            "0 0 [::ffff:109.120.141.60]:32063 [::ffff:91.78.10.210]:51414\n"
+            "0 0 [::ffff:109.120.141.60]:32063 [::ffff:91.78.10.210]:51415\n"
             "0 0 [::ffff:10.250.0.2]:32083 [::ffff:80.251.125.77]:40001\n"
-            "0 0 [::ffff:109.120.141.97]:32053 [::ffff:10.250.0.1]:40002\n"
+            "0 0 [::ffff:109.120.141.60]:32053 [::ffff:10.250.0.1]:40002\n"
             "0 0 [::ffff:10.250.0.2]:32087 [::ffff:109.173.40.247]:40003\n"
         )
         result = subprocess.CompletedProcess([], 0, stdout=stdout)

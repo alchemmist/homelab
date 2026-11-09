@@ -7,4 +7,4 @@ image:
 imagePullSecrets:
   - name: spi-queue-ui-harbor-pull
 nodeName: socrat-2
-authEgressCIDRs: [109.173.40.247/32, 109.120.141.97/32]
+authEgressCIDRs: [109.173.40.247/32, 109.120.141.60/32]

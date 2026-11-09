@@ -20,7 +20,7 @@ def exclusive(path,value):
 
 
 def network():
-    r=subprocess.run(['ip','-j','route','get','109.120.141.97'],capture_output=True,text=True,timeout=10)
+    r=subprocess.run(['ip','-j','route','get','109.120.141.60'],capture_output=True,text=True,timeout=10)
     if r.returncode:raise ValueError('Route read failed')
     rows=json.loads(r.stdout)
     if len(rows)!=1 or rows[0].get('dev')!='eno1' or rows[0].get('gateway')!='192.168.0.1':raise ValueError('Not approved home WAN route')
@@ -37,6 +37,8 @@ def run(state,approved_binary):
     if binary.is_symlink() or configs.is_symlink():raise ValueError('Symlink refused')
     if hashlib.sha256(binary.read_bytes()).hexdigest()!=approved_binary:raise ValueError('Binary checksum mismatch')
     prepared=json.loads(configs.read_text());before=network();proofs={}
+    if prepared['reality']['outbounds'][1]['settings']['vnext'][0]['address']!='109.120.141.60' or prepared['trojan']['outbounds'][1]['settings']['servers'][0]['address']!='109.120.141.60':
+        raise ValueError('Both protocols must use literal approved VPS IP')
     try:
         opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
         with opener.open('https://api.ipify.org',timeout=10) as r:
@@ -76,7 +78,7 @@ def run(state,approved_binary):
         after=network()
         if before!=after:raise ValueError('Network state changed during home probe')
         result={'vantage':'home-fixed-WAN-not-mobile','expected_home_public_source':expected_home_source,
-          'uses_overlay_to_vps':False,'network_state_preserved':True,'own_ephemeral_identity_only':True,
+          'uses_overlay_to_vps':False,'literal_endpoint':'109.120.141.60','network_state_preserved':True,'own_ephemeral_identity_only':True,
           'reality':proofs['reality'],'trojan':proofs['trojan'],'mobile_acceptance':False}
         exclusive(state/'receipt.json',result);return result
     finally:

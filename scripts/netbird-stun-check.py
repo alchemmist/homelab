@@ -12,7 +12,7 @@ import socket
 import struct
 
 COOKIE = 0x2112A442
-PUBLIC = '109.120.141.97'
+PUBLIC = '109.120.141.60'
 HOME = '109.173.40.247'
 
 

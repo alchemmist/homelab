@@ -61,7 +61,7 @@ def manifests():
         {'apiVersion': 'networking.k8s.io/v1', 'kind': 'NetworkPolicy',
          'metadata': {'name': NAME, 'namespace': NS}, 'spec': {'podSelector': {'matchLabels': labels},
              'policyTypes': ['Ingress'], 'ingress': [{'from': [{'ipBlock': {'cidr': ip+'/32'}} for ip in
-                 ['109.120.141.97', '10.250.0.2', '10.42.0.0', '10.42.0.1']],
+                 ['109.120.141.60', '10.250.0.2', '10.42.0.0', '10.42.0.1']],
                  'ports': [{'protocol': 'TCP', 'port': 33080}]}]}},
         {'apiVersion': 'cert-manager.io/v1', 'kind': 'Certificate',
          'metadata': {'name': NAME+'-tls', 'namespace': NS},
@@ -105,7 +105,7 @@ def home_manifests():
         {'namespaceSelector': {'matchLabels': {'kubernetes.io/metadata.name': 'kube-system'}},
          'podSelector': {'matchLabels': {'app.kubernetes.io/name': 'traefik'}}}
     ] + [{'ipBlock': {'cidr': ip+'/32'}} for ip in [
-        '109.120.141.97', '10.250.0.2', '10.42.0.0', '10.42.0.1',
+        '109.120.141.60', '10.250.0.2', '10.42.0.0', '10.42.0.1',
         '192.168.0.23', '10.250.0.1', '10.42.2.1',
         '192.168.0.24', '10.250.0.3', '10.42.1.1']]
     ingress['spec']['tls'] = [{'hosts': ['netbird.socrat.alchemmist.xyz'],

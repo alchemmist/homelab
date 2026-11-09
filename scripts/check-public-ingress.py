@@ -7,7 +7,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 
-ADDRESSES = ("109.173.40.247", "109.120.141.97")
+ADDRESSES = ("109.173.40.247", "109.120.141.60")
 HOSTS = (
     "alchemmist.xyz",
     "www.alchemmist.xyz",

@@ -7,7 +7,7 @@ import argparse
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--run',action='store_true')
 parser.add_argument('--wait-refresh',action='store_true',help='Also wait beyond actual five-minute provider token lifetime')
-parser.add_argument('--public-edge',choices=['109.120.141.97','109.173.40.247'],default='109.120.141.97')
+parser.add_argument('--public-edge',choices=['109.120.141.60','109.173.40.247'],default='109.120.141.60')
 args=parser.parse_args()
 if not args.run:parser.error('--run required for temporary live fixtures')
 import base64,hashlib,hmac,json,secrets,socket,struct,subprocess,time,urllib.parse,urllib.request,uuid

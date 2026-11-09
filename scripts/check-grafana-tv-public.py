@@ -12,7 +12,7 @@ def main():
     token=u.path.split('/')[2];assert len(token)==32 and all(c in '0123456789abcdef' for c in token)
     expected_js=hashlib.sha256((Path(__file__).resolve().parents[1]/'deploy/platform/grafana/public-entry/files/traffic-light-inset.js').read_bytes()).hexdigest()
     passed=0
-    for ip in ['109.173.40.247','109.120.141.97']:
+    for ip in ['109.173.40.247','109.120.141.60']:
         def check(name,path,status,body=None,headers=(),predicate=None):
             nonlocal passed
             cmd=['curl','--silent','--show-error','--max-time','25','--resolve',f'grafana.socrat.alchemmist.xyz:443:{ip}',f'https://grafana.socrat.alchemmist.xyz{path}','--write-out','\n%{http_code}']

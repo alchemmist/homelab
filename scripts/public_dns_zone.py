@@ -6,7 +6,7 @@ import socket
 from pathlib import Path
 
 HOME = "109.173.40.247"
-VPS = "109.120.141.97"
+VPS = "109.120.141.60"
 TTL = 60
 
 # Names that currently publish both public entrances and can follow health.

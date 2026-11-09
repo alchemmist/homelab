@@ -87,9 +87,9 @@ def default_facts():
             },
             {
                 "name": "socrat-2",
-                "failure_domain": "vps-109.120.141.97",
-                "owned": ["10.250.0.2", "109.120.141.97"],
-                "public_addresses": ["109.120.141.97"],
+                "failure_domain": "vps-109.120.141.60",
+                "owned": ["10.250.0.2", "109.120.141.60"],
+                "public_addresses": ["109.120.141.60"],
                 "egress_iface": "wg-socrat",
                 "snat_address": "10.250.0.2",
                 "routes": ["10.250.0.0/24", "192.168.0.23/32", "192.168.0.24/32"],

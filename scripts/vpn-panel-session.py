@@ -57,8 +57,10 @@ def api_path(database=DB):
 
 
 def request(base, token, method, path, body=None):
-    if not re.fullmatch(r'/(?:setting/apiTokens(?:/create|/delete/[0-9]+)?|inbounds/(?:list|update/[0-9]+)|clients/(?:add|del/[A-Za-z0-9_.@-]+))', path):
+    if not re.fullmatch(r'/(?:setting/apiTokens(?:/create|/delete/[0-9]+)?|inbounds/(?:list|update/[0-9]+)|clients/(?:add|del/[A-Za-z0-9_.@-]+)|hosts/(?:list|raw|get/[A-Za-z0-9_-]{1,64}|update/[A-Za-z0-9_-]{1,64}))', path):
         raise ValueError('Unreviewed native API operation')
+    if path.startswith('/hosts/') and ((path.startswith('/hosts/update/') and method != 'POST') or (not path.startswith('/hosts/update/') and method != 'GET')):
+        raise ValueError('Unreviewed host API method')
     if not re.fullmatch(r'[A-Za-z0-9]{48}', token):
         raise ValueError('Invalid machine credential')
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
@@ -97,7 +99,9 @@ def pod_identity():
 
 
 class NativeSession:
-    def __init__(self, state, database=DB):
+    def __init__(self, state, database=DB, worker_scope='node-sync'):
+        if worker_scope not in ('node-sync','admin'):raise ValueError('Unreviewed worker scope')
+        self.worker_scope=worker_scope
         self.state=Path(state).absolute();self.database=Path(database)
         label=self.state.name
         if not re.fullmatch(r'vpn83-[a-z0-9-]{8,32}',label):
@@ -110,7 +114,7 @@ class NativeSession:
         if any(r['name'] in self.names.values() for r in original):
             raise ValueError('Temporary token name collision; never rotate')
         return {'pod':pod_identity(),'configuration_sha256':h.inspect(self.database)['configuration_sha256'],
-                'existing_tokens_sha256':h.digest(original),'names':self.names,'scope':'node-sync',
+                'existing_tokens_sha256':h.digest(original),'names':self.names,'scope':self.worker_scope,
                 'worker_ttl_minutes':20,'cleanup_ttl_minutes':30}
 
     def _save_credential(self,kind,value):
@@ -177,7 +181,7 @@ class NativeSession:
             if self._owned('bootstrap') is None:raise RuntimeError('Bootstrap ownership missing')
             self._create('cleanup','admin',30,'bootstrap')
             self._delete('bootstrap','cleanup')
-            self._create('worker','node-sync',20,'cleanup')
+            self._create('worker',self.worker_scope,20,'cleanup')
             return self
         except Exception:
             self.cleanup()

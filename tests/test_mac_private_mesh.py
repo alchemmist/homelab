@@ -68,6 +68,6 @@ def test_rendered_profile_is_split_and_carries_worker_route():
     template = (ROOT / 'ansible/roles/wireguard_admin_client/templates/wg-socrat-admin.conf.j2').read_text()
     profile = env.from_string(template).render(**defaults)
     assert 'AllowedIPs = 10.250.0.1/32, 10.250.0.5/32' in profile
-    assert 'Endpoint = 109.120.141.97:51830' in profile
+    assert 'Endpoint = 109.120.141.60:51830' in profile
     assert '0.0.0.0/0' not in profile
     assert 'DNS =' not in profile

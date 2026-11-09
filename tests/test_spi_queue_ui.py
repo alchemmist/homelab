@@ -136,7 +136,7 @@ class QueueHelmTests(unittest.TestCase):
         self.assertEqual(net['ingress'][0]['from'][0]['podSelector']['matchLabels']['app.kubernetes.io/name'], 'traefik')
         self.assertTrue(any(target.get('podSelector',{}).get('matchLabels')=={'app':'spi-triage'} for rule in net['egress'] for target in rule['to']))
         cidrs = {target['ipBlock']['cidr'] for rule in net['egress'] for target in rule['to'] if 'ipBlock' in target}
-        self.assertEqual(cidrs, {'109.173.40.247/32','109.120.141.97/32'})
+        self.assertEqual(cidrs, {'109.173.40.247/32','109.120.141.60/32'})
         for rule in net['egress']:
             if any('ipBlock' in target for target in rule['to']):self.assertEqual(rule['ports'], [{'port':443,'protocol':'TCP'}])
 

@@ -45,6 +45,12 @@ SOURCE_FILES = (
     'tests/test_wireguard_admin_client.py', 'tests/test_monitoring_vpn.py',
     'tests/test_netbird_host_router.py', 'tests/test_netbird_host_peer.py',
     'tests/test_otel_scrape_config.py', 'tests/test_public_dns_zone.py',
+    'scripts/public-entry-health.py', 'scripts/vpn-home-probe.py',
+    'scripts/vpn-path-check.py', 'scripts/vpn-home-session.py',
+    'scripts/check-grafana-tv-public.py',
+    'charts/spi-queue-ui/values.yaml', 'deploy/spi-queue-ui/values.yaml',
+    'charts/spi-triage/values-off-live.yaml', 'charts/spi-triage/templates/validate.yaml',
+    'tests/test_mac_private_mesh.py', 'tests/test_spi_queue_ui.py',
 )
 COMMON_FILES = (
     '/usr/local/libexec/public_dns_zone.py', '/usr/local/libexec/public-dns-refresh',
@@ -242,36 +248,40 @@ def db_plan(path, old):
     return count
 
 
-def migrate_database(path, old, new, store):
-    with sqlite3.connect(path, timeout=20) as connection:
-        backup_path = store.target('sqlite/' + str(path).lstrip('/'))
-        backup_path.touch(mode=0o600, exist_ok=False)
-        with sqlite3.connect(backup_path) as backup:
-            connection.backup(backup)
+def backup_database(path, store):
+    """Consistent private preimage only; production connection is read-only."""
+    target = store.target('sqlite/' + str(path).lstrip('/'))
+    target.touch(mode=0o600, exist_ok=False)
+    with sqlite3.connect(path.resolve().as_uri() + '?mode=ro', uri=True, timeout=20) as source:
+        with sqlite3.connect(target) as backup:
+            source.backup(backup)
             if backup.execute('PRAGMA quick_check').fetchall() != [('ok',)]:
-                raise MigrationError('Database preimage failed integrity; do not continue')
-        backup_path.chmod(0o600)
-        connection.execute('BEGIN IMMEDIATE')
-        before = db_state(connection)
-        cols = [r[1] for r in connection.execute('PRAGMA table_info(hosts)')]
-        index = cols.index('address')
-        expected = copy.deepcopy(before)
-        rows = []
-        count = 0
-        for row in expected['hosts']:
-            values = list(row)
-            if values[index] == old:
-                values[index] = new
-                count += 1
-            rows.append(tuple(values))
-        expected['hosts'] = sorted(rows, key=repr)
-        changed = connection.execute('UPDATE hosts SET address = ? WHERE address = ?', (new, old)).rowcount
-        if changed != count or db_state(connection) != expected:
-            raise MigrationError('Database invariant failed; transaction rolled back')
-        if connection.execute('PRAGMA quick_check').fetchall() != [('ok',)]:
-            raise MigrationError('Updated database failed integrity; transaction rolled back')
-        connection.commit()
-    return count
+                raise MigrationError('Database preimage failed integrity; stop')
+    return target
+
+
+def migrate_database(path, old, new, store):
+    raise MigrationError('Production panel writes require native API; SQL migration prohibited')
+
+
+def service_plan(services, reviewed=None):
+    reviewed = reviewed or {}
+    restart, dormant = [], []
+    for service in services:
+        state = run(['systemctl', 'show', service, '-p', 'ActiveState', '--value']).strip()
+        if service in reviewed and reviewed[service] != state:
+            raise MigrationError('Reviewed native service state drifted; re-audit')
+        if state == 'activating' and run(['systemctl', 'show', service, '-p', 'SubState', '--value']).strip() != 'auto-restart':
+            raise MigrationError('Only reviewed auto-restarting native transport may recover')
+        if state != 'active' and reviewed.get(service) != state:
+            raise MigrationError('Affected native service is not active; review before changing it')
+        if state in ('active', 'activating'):
+            restart.append(service)
+        elif state == 'inactive':
+            dormant.append(service)
+        else:
+            raise MigrationError('Unsupported reviewed native service state')
+    return restart, dormant
 
 
 def wg_endpoint_changes(text, old, new):
@@ -317,7 +327,7 @@ def refresh_guard(old_text, new):
 
 
 def host(hostname, old, new, apply=False, backup_root=None,
-         allow_service_restarts=False, require_assigned=False):
+         allow_service_restarts=False, require_assigned=False, reviewed_service_states=None):
     if hostname not in HOSTS or socket.gethostname().split('.')[0] != hostname:
         raise MigrationError('Unexpected host identity')
     refuse_unfinished(backup_root, hostname + '-' + old + '-to-' + new)
@@ -348,15 +358,15 @@ def host(hostname, old, new, apply=False, backup_root=None,
             raise MigrationError('Primary 3x-ui database missing')
         databases = {p: db_plan(Path(p), old) for p in DATABASES if Path(p).exists()}
     services = required_services(changes)
-    for service in services:
-        if run(['systemctl', 'show', service, '-p', 'ActiveState', '--value']).strip() != 'active':
-            raise MigrationError('Affected native service is not active; review before changing it')
+    restart_services, dormant_services = service_plan(services, reviewed_service_states)
     report = {'component': 'host', 'host': hostname, 'apply': apply, 'changed': False,
               'planned_files': [str(p) for p, _, _ in changes],
-              'planned_database_address_rows': databases, 'planned_native_service_restarts': services,
+              'planned_database_address_rows': databases, 'planned_native_service_restarts': restart_services,
+              'dormant_services_preserved': dormant_services,
               'planned_wg_endpoint_updates': len(peers),
-              'xui_reload_required': bool(databases.get(DATABASES[0], 0))}
-    if apply and (changes or any(databases.values())):
+              'xui_reload_required': False,
+              'native_api_address_migration_pending': bool(databases.get(DATABASES[0], 0))}
+    if apply and changes:
         if os.geteuid() != 0 or not backup_root or not allow_service_restarts:
             raise MigrationError('Host apply requires root, private backup root and restart approval')
         store = Preimages(backup_root, hostname + '-' + old + '-to-' + new)
@@ -368,14 +378,15 @@ def host(hostname, old, new, apply=False, backup_root=None,
             report['database_address_rows_updated'] = {}
             for path, count in databases.items():
                 if count:
-                    report['database_address_rows_updated'][path] = migrate_database(Path(path), old, new, store)
+                    backup_database(Path(path), store)
             for key, endpoint in peers:
                 run(['wg', 'set', 'wg-socrat', 'peer', key, 'endpoint', endpoint])
             if 'wireguard-tcp-transport-guard.service' in services:
                 run(['systemctl', 'daemon-reload'])
-                before = next(text for p, text, _ in changes if str(p).endswith('wireguard-tcp-transport-guard.service'))
-                refresh_guard(before, new)
-            for service in services:
+                if 'wireguard-tcp-transport-guard.service' in restart_services:
+                    before = next(text for p, text, _ in changes if str(p).endswith('wireguard-tcp-transport-guard.service'))
+                    refresh_guard(before, new)
+            for service in restart_services:
                 run(['systemctl', 'restart', service])
             if hostname in HOSTS[:3] and any(str(p).startswith('/usr/local/libexec/public') or str(p) == '/etc/hosts' for p, _, _ in changes):
                 run(['/usr/local/libexec/public-dns-refresh'])
@@ -399,6 +410,7 @@ def main():
     parser.add_argument('--host', choices=HOSTS)
     parser.add_argument('--require-assigned', action='store_true')
     parser.add_argument('--allow-service-restarts', action='store_true')
+    parser.add_argument('--reviewed-service-states', type=json.loads, default={})
     args = parser.parse_args()
     os.umask(0o077)
     try:
@@ -409,7 +421,7 @@ def main():
             report = repository(args.root, args.old_ip, args.new_ip, args.apply, args.backup_root)
         else:
             report = host(args.host, args.old_ip, args.new_ip, args.apply, args.backup_root,
-                          args.allow_service_restarts, args.require_assigned)
+                          args.allow_service_restarts, args.require_assigned, args.reviewed_service_states)
         print(json.dumps(report, sort_keys=True))
     except MigrationError as error:
         print(json.dumps({'ok': False, 'error': str(error)}), file=sys.stderr)

@@ -17,7 +17,8 @@ description: "Смена публичного IPv4 VPS socrat-2 в homelab: об
 
 - **Playbook:** явные old/new IPv4, все четыре preflight, allowlist исходников,
   приватные preimages, точечные host-файлы, endpoints WireGuard без перезапуска
-  интерфейса, native Knot/TCP transport/guard, только `hosts.address` в SQLite.
+  интерфейса, native Knot/TCP transport/guard; SQLite только read-only audit/online backup,
+  изменения `hosts.address` — отдельной фазой через native API.
 - **Skill:** выбор маршрута доступа, анализ отказов и новых владельцев,
   согласование перерывов, registrar, Kubernetes/GitOps, секреты, Collector,
   реальный внешний VPN-тест, подписки, клиентские профили и критерии приёмки.
@@ -33,7 +34,8 @@ description: "Смена публичного IPv4 VPS socrat-2 в homelab: об
    разрешены ли короткие перерывы VPN/NetBird, нужен ли экстренный backup.
    Сама замена IP не означает переустановку ОС или необходимость обновить все ПО.
 3. Проверь `git status`, прочитай действующие project instructions. При грязном
-   исходном checkout используй отдельный worktree от свежего main. Не stash,
+   исходном checkout отдельный worktree допустим только с разрешения оператора;
+   если дополнительные checkout запрещены, работай точечно в согласованном checkout. Не stash,
    reset, force-push и не перезаписывай чужие изменения. Один writer/worktree.
 4. Проверь приватный доступ `10.250.0.2` и независимый путь SSH/консоль
    провайдера. Не переключай единственный работающий путь до проверки нового.
@@ -78,7 +80,7 @@ description: "Смена публичного IPv4 VPS socrat-2 в homelab: об
 vps_ip_migration_old_ip: "<OLD_PUBLIC_IPV4>"
 vps_ip_migration_new_ip: "<NEW_PUBLIC_IPV4>"
 vps_ip_migration_apply: false
-# Источник истины должен быть чистым отдельным worktree.
+# Источник истины — согласованный checkout; чужой dirty diff не включать.
 # Defaults backup roots: root-owned /var/backups/... на узлах,
 # private ~/Library/Application Support/homelab/vps-ip-migration на контроллере.
 ```
@@ -90,13 +92,19 @@ private override inventory с существующими SSH aliases/прове�
 идёт только audit. Ansible `--check` тоже не применяет миграцию.
 
 ```sh
-cd /path/to/isolated-homelab/ansible
+cd /path/to/approved-homelab/ansible
 CROOT="$HOME/Library/Application Support/homelab/otel-controller"
-ANSIBLE_NOCOLOR=1 ANSIBLE_SSH_EXECUTABLE="$CROOT/bin/ssh" \
+ANSIBLE_NOCOLOR=1 ANSIBLE_SSH_EXECUTABLE=/usr/bin/ssh \
   ansible-playbook -i inventory/hosts.yml \
   playbooks/vps-ip-migration.yml \
   -e @"$CROOT/become.yml" -e @/private/path/ip-migration.yml
 ```
+
+Перед запуском проверь effective HostName/ProxyJump через `/usr/bin/ssh -G`
+и настоящий источник соединения. Старый `$CROOT/bin/ssh` может незаметно
+подменять приватный alias публичным IP/ProxyJump: не считать его private-only
+и не использовать без отдельного review. Прямой новый IP — только если
+оператор явно разрешил этот путь, с существующим pinned host key.
 
 Если требуется override, добавь второй `-i /private/path/access-override.yml`.
 Проверь план каждого узла и source diff. Адрес должен уже быть назначен VPS;
@@ -123,12 +131,17 @@ ANSIBLE_NOCOLOR=1 ANSIBLE_SSH_EXECUTABLE="$CROOT/bin/ssh" \
   прежде удаления её точного старого аналога. **Нет flush firewall**.
 - Только затронутые **уже активные** native units: Knot, TCP transport, guard.
   Не запускает неожиданно dormant native fallback/legacy VPN.
-- На VPS согласованная копия primary/retained-legacy SQLite; транзакционно
-  заменяет только **точное** `hosts.address == OLD`. Сравнивает все остальные
-  поля/таблицы внутри write transaction, проверяет quick_check. Не меняет IDs,
-  credentials, лимиты, ports, subscription IDs и не восстанавливает старую БД.
-- JSON receipts без чувствительных строк. `xui_reload_required` означает
-  обязательную следующую фазу, **не выполненный restart Kubernetes**.
+- На VPS read-only schema/integrity audit и согласованные online preimages SQLite.
+  Production SQL writes запрещены. `native_api_address_migration_pending` требует
+  отдельного fresh-preimage/CAS native API изменения только hosts.address с
+  сохранением IDs, ключей, клиентов, лимитов и всех остальных полей. Retained
+  legacy DB историческая: не переписывать её автоматически.
+- Неактивный guard можно сохранить неактивным только после явного per-host review
+  `vps_ip_migration_reviewed_service_states`. Известный transport в activating/
+  auto-restart допускает целевой restart после review текущего state. Drift и
+  неизвестные состояния останавливают audit/apply. K3s этот playbook не запускает.
+- JSON receipts без чувствительных строк. `native_api_address_migration_pending`
+  означает следующую API-фазу, **не выполненный reload/restart Kubernetes**.
 
 ### Ошибка / повторный запуск
 
@@ -172,9 +185,12 @@ NetBird/STUN и auth egress RustFS. Не меняй образы/базы/owners
 
 ### 3x-ui и подписки — обязательная проверка после host phase
 
-1. Fresh consistent preimage и инварианты уже делает playbook. Если helper/schema
+1. Playbook сохраняет согласованный backup; native API writer требует ещё свежий
+   preimage, CAS и собственную проверку инвариантов непосредственно перед записью. Если helper/schema
    не соответствуют текущей панели, не обходи его assert — изучи новую схему/API.
-2. После изменения `hosts.address` согласуй короткий разрыв и пересоздай **только
+2. После native API изменения `hosts.address` проверь необходимость reload;
+   не перезапускай native fallback как Kubernetes pod. В Kubernetes при необходимости
+   согласуй короткий разрыв и пересоздай **только
    один точно идентифицированный pod x-ui** под действующим Deployment. Проверить
    namespace, UID, image и hostPath до действия; дождаться Ready. Не рестартуй VPS,
    k3s, Postgres, Collector и не запускай параллельного writer этой SQLite.
@@ -278,3 +294,28 @@ OLD → NEW, commit/revision, что applied и delivered, actual тесты и 
 остаточные OutOfSync/unknown, parent glue, client actions, краткие перерывы,
 сохранённые backup/preimage locations (без содержимого). Отдельно сообщи failures
 и исправления. Не обещай бесконечную надёжность по короткому успешному тесту.
+
+### Native host-address writer (3x-ui 3.11.0)
+
+`scripts/vps-panel-host-migrate.py --state /private/vpn83-... --old-ip OLD --new-ip NEW`
+делает read-only preview. Apply требует ровно его `--approve-sha256` и `--apply`.
+Для hosts/update нужен временный worker scope admin; обычные sessions остаются
+node-sync. Каждый session использует уникальные имена, worker TTL 20 минут,
+cleanup TTL 30 минут, online preimage и cleanup без ротации существующих токенов.
+Не выдавать постоянный admin и не использовать человеческую авторизацию.
+
+Native DTO roundtrip обновляет host updated_at и кодирует nullable bool false
+как 0; пустой snis при единственном sni становится явным одноэлементным pool.
+Writer разрешает только эти проверенные семантически эквивалентные codec-эффекты
+и свежий native timestamp **только адресно изменённых строк**. Не игнорирует
+реальное изменение SNI/pool/flags, IDs, клиентов, лимитов или других таблиц.
+При незнакомом diff останавливается с uncertain receipt: сначала readback и
+сравнение с upstream, исходный вызов не повторять. После reconciliation новый
+preview нужен только для всё ещё OLD строк, с новым state и новой approval.
+
+Успешный API update не доказывает доставку. Проверить URI и JSON для всех
+сохранившихся идентичностей: backend и публичный TLS-вход должны совпасть,
+OLD отсутствует, NEW присутствует. Host-only update не требует слепого restart.
+External acceptance обеих схем — через literal NEW с сохранёнными TLS SNI/Host;
+у Trojan hostname-only тест может незаметно уйти на другой VPS/HOME. Не менять
+глобальные маршруты/DNS/прокси и Mac WireGuard для per-process probe.

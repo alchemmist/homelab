@@ -15,7 +15,7 @@ import urllib.parse
 HOST = 'auth.socrat.alchemmist.xyz'
 PATH = '/application/o/rancher/.well-known/openid-configuration'
 ISSUER = 'https://' + HOST + '/application/o/rancher/'
-ENTRIES = {'home': '109.173.40.247', 'vps': '109.120.141.97', 'internal': '192.168.0.250'}
+ENTRIES = {'home': '109.173.40.247', 'vps': '109.120.141.60', 'internal': '192.168.0.250'}
 
 
 def valid_discovery(data):

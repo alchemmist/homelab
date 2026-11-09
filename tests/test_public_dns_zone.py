@@ -63,7 +63,7 @@ def test_rustfs_names_additive_without_changes_to_existing_records():
 
 
 def test_current_vps_address_after_provider_migration():
-    assert zone.VPS == "109.120.141.97"
+    assert zone.VPS == "109.120.141.60"
 
 
 def test_kuma_administration_name_follows_both_reviewed_entrances():

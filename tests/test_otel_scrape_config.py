@@ -38,7 +38,7 @@ class ScrapeConfigTests(unittest.TestCase):
         before = copy.deepcopy(original)
         result = SCRAPE.refresh_public_edge_probe(original)
         self.assertEqual(original, before)
-        self.assertEqual(result['scrape_configs'][0]['params']['target'], ['109.120.141.97:443'])
+        self.assertEqual(result['scrape_configs'][0]['params']['target'], ['109.120.141.60:443'])
         self.assertEqual(result['scrape_configs'][1], other)
         self.assertEqual(SCRAPE.refresh_public_edge_probe(result), result)
 

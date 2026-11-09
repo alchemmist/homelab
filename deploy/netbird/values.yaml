@@ -212,7 +212,7 @@ resources:
           - --no-tcp-relay
           - --relay-threads=1
           - --listening-port=3478
-          - --listening-ip=109.120.141.97
+          - --listening-ip=109.120.141.60
           - --no-software-attribute
           - --log-file=stdout
           - --simple-log
@@ -1171,7 +1171,7 @@ resources:
           matchLabels:
             app.kubernetes.io/name: traefik
       - ipBlock:
-          cidr: 109.120.141.97/32
+          cidr: 109.120.141.60/32
       - ipBlock:
           cidr: 10.250.0.2/32
       # VPS host-network ingress reaches home pods from its Flannel tunnel IP.
@@ -1208,7 +1208,7 @@ resources:
     ingress:
     - from:
       - ipBlock:
-          cidr: 109.120.141.97/32
+          cidr: 109.120.141.60/32
       - ipBlock:
           cidr: 10.250.0.2/32
       - ipBlock:

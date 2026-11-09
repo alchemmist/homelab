@@ -7,6 +7,7 @@
       --new-ip {{ vps_ip_migration_new_ip | quote }}
       --host {{ inventory_hostname | quote }}
       --require-assigned
+      --reviewed-service-states {{ (vps_ip_migration_reviewed_service_states | default({})).get(inventory_hostname, {}) | to_json | quote }}
       --backup-root {{ vps_ip_migration_backup_root | quote }}
       --apply --allow-service-restarts
     executable: /usr/bin/python3

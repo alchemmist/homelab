@@ -159,35 +159,23 @@ class DatabaseTests(unittest.TestCase):
             c.execute('CREATE TABLE clients(id INTEGER PRIMARY KEY, secret BLOB, up INTEGER)')
             c.execute('INSERT INTO clients VALUES(1,?,123)', (b'credential',))
 
-    def test_consistent_backup_exact_field_update_and_idempotence(self):
-        self.assertEqual(M.db_plan(self.db, OLD), 1)
+    def test_production_sql_write_prohibited_and_backup_read_only(self):
+        before = self.db.read_bytes()
         store = M.Preimages(self.base / 'backups', 'test')
-        self.assertEqual(M.migrate_database(self.db, OLD, NEW, store), 1)
-        with sqlite3.connect(self.db) as c:
-            self.assertEqual(c.execute('SELECT * FROM hosts').fetchall(), [(1, NEW, 'private-sentinel'), (2, 'vpn.example.com', 'keep')])
-            self.assertEqual(c.execute('SELECT * FROM clients').fetchall(), [(1, b'credential', 123)])
-        backup = next((store.path / 'sqlite').rglob('*.db'))
+        with self.assertRaisesRegex(M.MigrationError, 'native API'):
+            M.migrate_database(self.db, OLD, NEW, store)
+        backup = M.backup_database(self.db, store)
+        self.assertEqual(self.db.read_bytes(), before)
         with sqlite3.connect(backup) as c:
             self.assertEqual(c.execute('SELECT address FROM hosts WHERE id=1').fetchone()[0], OLD)
             self.assertEqual(c.execute('PRAGMA quick_check').fetchall(), [('ok',)])
         self.assertEqual(stat.S_IMODE(backup.stat().st_mode), 0o600)
-        self.assertEqual(M.db_plan(self.db, OLD), 0)
 
     def test_nonliteral_address_needs_review(self):
         with sqlite3.connect(self.db) as c:
             c.execute('UPDATE hosts SET address=? WHERE id=1', (OLD + ':443',))
         with self.assertRaises(M.MigrationError):
             M.db_plan(self.db, OLD)
-
-    def test_trigger_mutation_rolls_back_entire_transaction(self):
-        with sqlite3.connect(self.db) as c:
-            c.execute('CREATE TRIGGER surprise AFTER UPDATE ON hosts BEGIN UPDATE clients SET up=999; END')
-        store = M.Preimages(self.base / 'backups', 'test')
-        with self.assertRaises(M.MigrationError):
-            M.migrate_database(self.db, OLD, NEW, store)
-        with sqlite3.connect(self.db) as c:
-            self.assertEqual(c.execute('SELECT address FROM hosts WHERE id=1').fetchone()[0], OLD)
-            self.assertEqual(c.execute('SELECT up FROM clients').fetchone()[0], 123)
 
     def test_wrong_schema_and_corrupt_database_fail_before_mutation(self):
         with sqlite3.connect(self.db) as c:
@@ -217,6 +205,19 @@ class RuntimeTests(unittest.TestCase):
         changes = [(Path('/etc/hosts'), '', ''), (Path('/etc/wireguard/wg-socrat.conf'), '', ''), (Path('/etc/knot/knot.conf'), '', '')]
         self.assertEqual(M.required_services(changes), ['knot.service'])
         self.assertNotIn('k3s.service', M.required_services(changes))
+
+    def test_reviewed_restarting_transport_and_dormant_guard(self):
+        services = ['wireguard-tcp-transport.service', 'wireguard-tcp-transport-guard.service']
+        states = dict(zip(services, ['activating', 'inactive']))
+        with patch.object(M, 'run', side_effect=lambda a: 'auto-restart' if 'SubState' in a else states[a[2]]):
+            with self.assertRaises(M.MigrationError): M.service_plan(services)
+            self.assertEqual(M.service_plan(services, states), ([services[0]], [services[1]]))
+            with self.assertRaises(M.MigrationError): M.service_plan(services, {services[0]: 'inactive'})
+
+    def test_reviewed_dormant_service_becoming_active_stops(self):
+        with patch.object(M, 'run', return_value='active'):
+            with self.assertRaisesRegex(M.MigrationError, 'drifted'):
+                M.service_plan(['knot.service'], {'knot.service':'inactive'})
 
     def test_wrong_host_and_unassigned_address_fail_before_files(self):
         with patch.object(socket, 'gethostname', return_value='socrat-2'):

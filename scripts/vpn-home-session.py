@@ -73,8 +73,9 @@ def prepare(state,approval):
           'enable':True,'limitIp':1,'totalGB':10*1024*1024,'expiryTime':int(time.time()*1000)+20*60000,'comment':'owned83-home-fixed-path-probe'},
           'inboundIds':[rows[32053]['id'],rows[32087]['id']]})
         reality=target.vless_client(json.loads(rows[32053]['stream_settings']),identifier,1080)
-        reality['outbounds'][1]['settings']['vnext'][0]['address']='109.120.141.97'
+        reality['outbounds'][1]['settings']['vnext'][0]['address']='109.120.141.60'
         trojan=backend.client(json.loads(rows[32087]['stream_settings']),password,1080)
+        trojan['outbounds'][1]['settings']['servers'][0]['address']='109.120.141.60'
         h.save(s.state/'home-configs-private.json',{'reality':reality,'trojan':trojan})
         executable=s.state/'xray-probe';shutil.copyfile(target.server_executable(),executable);executable.chmod(0o700)
         proof={'prepared':True,'expires_within_minutes':20,'binary_sha256':hashlib.sha256(executable.read_bytes()).hexdigest(),

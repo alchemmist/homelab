@@ -6,7 +6,7 @@ Requires Playwright + Chromium. Run from the owner Mac with --run.
 import argparse
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--run', action='store_true', help='Explicitly authorize temporary acceptance fixtures')
-parser.add_argument('--public-edge', choices=['109.173.40.247','109.120.141.97'], default='109.173.40.247')
+parser.add_argument('--public-edge', choices=['109.173.40.247','109.120.141.60'], default='109.173.40.247')
 args = parser.parse_args()
 if not args.run:
     parser.error('--run is required for a live fixture test')

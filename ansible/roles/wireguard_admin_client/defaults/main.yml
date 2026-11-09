@@ -28,5 +28,5 @@ wireguard_admin_peers:
     public_key: "{{ (wg_socrat_nodes | default({})).get('socrat-1', {}).get('public_key', '') }}"
   - name: socrat-2
     address: 10.250.0.2
-    endpoint: 109.120.141.97:51830
+    endpoint: 109.120.141.60:51830
     public_key: "{{ (wg_socrat_nodes | default({})).get('socrat-2', {}).get('public_key', '') }}"
