@@ -215,3 +215,14 @@ copy; queue25→9MB, delivery continues/refused0, HDD I/O pressure remains under
 `fsync=true` retained. fwupd metadata service naturally success/no firmware install.
 Three historic failed Job objects retained; current natural replacements succeed;
 no alert masking or deletion solely for green.
+
+14:40 continuation: node3 queues fully drained; explicit1s filelog polling and
+infinite receiver retries validated/applied only there with5.22s agent-only lifecycle
+and new consistent archive. fsync kept. HDD mean60s17% vs39% after-drain baseline;
+actual5m PSI I/O6.9%, contention alert naturally cleared; native Loki522 fresh
+records/5m. Three healthy etcd voters/common-revision hash agreement rechecked;
+new159MB consistent snapshot/current17-client native panel backup both off-host SHA
+verified. Original16 identities/85 bindings unchanged;1 external addition not
+attributed or deleted. Backend validator now accepts only exact redundant nb-host
+allowance; public eth0 deny untouched and externally re-proven. Next native WAL
+checkpoint remains the remaining functional gate;3 old failed Jobs retained.

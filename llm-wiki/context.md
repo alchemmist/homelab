@@ -333,3 +333,12 @@ remain separate. Evidence: docs/vps-ip-migration-20261108.md, private socrat-0
 - fwupd metadata-only service recovered naturally. Three terminal failed Job
   objects retained with evidence; current native replacements successful. Do not
   erase/relable failures just to clear warning. Detailed historical cause pending.
+
+14:40 update: native safety engine all4 health=ok/inactive, fresh voters3. Node3
+queues0 and Loki delivery fresh;1s filelog poll + infinite receiver retries applied
+only there (consistent backup, fsync retained),5m I/O6.9% and contention naturally
+cleared. Fresh etcd common-revision hash agreement and post-recovery snapshot/current
+panel online backup off-host SHA verified. Guard validator compatibility repaired
+without any nft write. Original16/85 unchanged; current17/91 has1 external addition,
+not attributed/deleted. Only3 old failed Jobs + historical compaction alert firing;
+**next normal WAL checkpoint still pending**, no restart/silence shortcut.

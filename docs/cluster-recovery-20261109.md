@@ -335,3 +335,54 @@ hysteresis and tested client retries; independently available stateful dependenc
 and a genuinely independent VPN endpoint. Do not replace working literal addresses
 with round-robin DNS or claim that alone solves single-VPS loss. Current scope did
 not purchase a second provider, redesign DB/storage HA or change client credentials.
+
+### Durable queue fully drained; rotational-worker checkpoint fix accepted
+
+14:16 native logs and metrics queues **0**, new-process43482 logs delivered,
+filelog/journald refused0. Native Loki metadata-only mTLS query confirmed412 fresh
+node3 records/5m (no log bodies fetched). Empty queue alone did not fix host PSI:
+after-drain60s mean HDD38.87% busy/18.78flushes/s, PSI some~15% remained above10%
+alert threshold. Do not alter that threshold or turn off fsync.
+
+Native old frozen filelog config had implicit default200ms polling and neither
+receiver had effective infinite retry (common source already had filelog retry).
+Applied **only node3**: explicit filelog polling1s (still below kubelet rotation
+check cadence), native infinite retry for both receivers. Files/journal remain
+original durable sources until downstream persistent acceptance; no asynchronous
+pre-persistence batching, storage/cursor reset, privacy/scope/queue-ID changes.
+Existing collector0.164.0 validated full candidate with original environment.
+Approval`aa2f0d66bc6fbe3ca6e2f312b13d496a7c3fb4e9e20d01a26558c4e3debd0eee`.
+Graceful agent-only stop, all original state archived/hash-verified offline before
+atomic config/start; backup3393222bytes, lifecycle5.22s, newPID3027074 (historical).
+Receipt node3 `20261109-agent-checkpoint-cadence-v2/`. No other unit restarted.
+Both consistent agent archives also copied off-host and SHA verified.
+
+After change60s mean HDD **17.04%** busy/7.37flushes/s; PSI some avg60 **7.97%**.
+14:40 actual recorded5m I/O ratio **0.06915** and contention alert **naturally cleared**.
+Post-change native Loki confirmed **522** fresh node3 records/5m. This accepts this
+observed load, not a guarantee an HDD handles arbitrary future bursts. Keep native
+fsync/durable queues/retry protection. Source tests assert1s/retries/no async batch.
+
+### Fresh post-recovery preservation
+
+All3 etcd voters healthy/common leader and **common revision17146862 hashKV equal**.
+New native consistent snapshot159092768bytes,
+SHA`d4ebdd595f8db0820845d880b8ab81d73480159a8db09ebcd73394778616cb5e`;
+includes original restored Umami Secret and current admission/rule state. Existing
+SHA-pinned3.6.14 client used; no reset/restore/skip-integrity flags. Original baseline
+snapshot retained. Current panel native online backup401408bytes,17/91 intact,
+SHA`d3a5d0a010c92cb456e46a321204a73f6c440c355eb14d7a3270921b83ef7516`.
+Both copied privately off-host and SHA verified. This is preservation acceptance,
+**not an isolated full restore exercise or hourly automatic shipping acceptance**.
+
+Scoped independent-history witness11716 samples and every WAL repair/decoder/plan
+receipt now also off-host; witness
+SHA`8a4bb7de653b88c4accb5d49fae86c3fb85fa947a4627f7822db2052d6d0eb6e`.
+One multi-host fetch timed out *after* all WAL proofs arrived; existence/full witness
+SHA checked, only missing node2 receipts subsequently fetched. No production write
+was repeated. Native snapshot, panel backup, both agent archives and bootstrap
+credentials stay outside Git in0700/0600 recovery storage.
+
+14:40 firing non-housekeeping conditions now only3 historic `KubeJobFailed` objects
+and `PrometheusTSDBCompactionsFailing` historical counter. Native next checkpoint
+still awaits normal cycle; do not manufacture a green result before it runs.

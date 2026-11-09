@@ -30,10 +30,17 @@ receivers:
       initial_interval: 1s
       max_interval: 30s
       max_elapsed_time: 0s
-    poll_interval: 200ms
+    # Files remain the durable source until the persisted exporter accepts them.
+    # One-second polls avoid checkpoint fsync churn on rotational workers.
+    poll_interval: 1s
   journald:
     storage: file_storage
     start_at: end
+    retry_on_failure:
+      enabled: true
+      initial_interval: 1s
+      max_interval: 30s
+      max_elapsed_time: 0s
 processors:
   filter/log-ingestion-cut:
     error_mode: propagate

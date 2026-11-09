@@ -30,7 +30,11 @@ class AgentLoggingTests(unittest.TestCase):
         self.assertEqual(receiver['start_at'], 'beginning')
         self.assertEqual(receiver['storage'], 'file_storage')
         self.assertEqual(receiver['retry_on_failure']['max_elapsed_time'], '0s')
-        self.assertEqual(self.agent['receivers']['journald']['storage'], 'file_storage')
+        self.assertEqual(receiver['poll_interval'], '1s')
+        journal = self.agent['receivers']['journald']
+        self.assertEqual(journal['storage'], 'file_storage')
+        self.assertTrue(journal['retry_on_failure']['enabled'])
+        self.assertEqual(journal['retry_on_failure']['max_elapsed_time'], '0s')
         self.assertTrue(self.agent['extensions']['file_storage']['fsync'])
 
     def test_privacy_precedes_durable_log_queue_without_async_batch(self):
