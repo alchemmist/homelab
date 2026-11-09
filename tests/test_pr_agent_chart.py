@@ -23,6 +23,10 @@ class PrAgentChartTest(unittest.TestCase):
         self.assertIn('value: "7200"', rendered)
         self.assertIn("--timeout", rendered)
         self.assertIn('"0"', rendered)
+        self.assertIn("CONFIG__FALLBACK_MODELS", rendered)
+        fallback_at = next(i for i, line in enumerate(rendered.splitlines()) if "CONFIG__FALLBACK_MODELS" in line)
+        fallback_value = rendered.splitlines()[fallback_at + 1]
+        self.assertEqual(fallback_value.count("openai/qwen3.8-27b"), 9)
         self.assertIn("CONFIG__MAX_MODEL_TOKENS", rendered)
         self.assertIn('value: "12288"', rendered)
         self.assertIn('value: "100"', rendered)

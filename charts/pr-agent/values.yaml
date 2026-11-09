@@ -8,6 +8,9 @@ secretName: pr-agent
 port: 3000
 openaiApiBase: http://litellm.llm.svc.cluster.local:4000/v1
 model: openai/qwen3.8-27b
+# Invalid YAML is retried only by walking fallback models. The chart repeats the
+# primary model so one review gets this many generations before the check fails.
+invalidOutputAttempts: 10
 customModelMaxTokens: "131072"
 # Per-call cap. A diff is split once it exceeds this. 12288 keeps one call small enough
 # for the 27B model. max calls is only the ceiling: unused slots are not extra chunks.
