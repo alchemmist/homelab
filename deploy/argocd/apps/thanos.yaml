@@ -13,6 +13,8 @@ spec:
     path: charts/thanos
     helm:
       releaseName: thanos
+      valueFiles:
+      - alert-graphs.values.yaml
       parameters: []
   destination:
     namespace: cattle-monitoring-system

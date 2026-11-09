@@ -13,6 +13,8 @@ spec:
     path: charts/loki
     helm:
       releaseName: loki
+      valueFiles:
+      - alert-graphs.values.yaml
       parameters: []
   destination:
     namespace: cattle-monitoring-system

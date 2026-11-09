@@ -14,6 +14,9 @@ spec:
           labels:
             severity: warning
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "LokiRetentionFailed" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: Loki retention application has failed
             description: Inspect compactor writable scratch, capacity and permissions; do not shorten live retention to test.
         - alert: LokiRetentionSuccessStale
@@ -22,6 +25,9 @@ spec:
           labels:
             severity: warning
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "LokiRetentionSuccessStale" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: Loki has no recent successful retention pass
         - alert: LokiRetentionMetricsMissing
           expr: absent(loki_compactor_apply_retention_last_successful_run_timestamp_seconds)
@@ -29,5 +35,8 @@ spec:
           labels:
             severity: warning
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "LokiRetentionMetricsMissing" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: Loki retention metrics are not being scraped
             description: Retention cannot be monitored until authenticated Loki metrics scraping is configured and verified.

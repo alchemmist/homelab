@@ -13,6 +13,8 @@ spec:
     path: charts/alertmanager
     helm:
       releaseName: kube-prometheus-stack
+      valueFiles:
+      - alert-graphs.values.yaml
       parameters: []
   destination:
     namespace: cattle-monitoring-system

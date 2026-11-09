@@ -172,3 +172,18 @@ grafana:
       secretKeyRef:
         key: client-secret
         name: socrat-authentik-grafana
+
+# Opt-in only after a released spi-triage image contains /app/graph_gateway.py,
+# Grafana remote renderer and scoped machine credentials have passed acceptance.
+# No application source is mirrored into a homelab ConfigMap.
+alertGraphs:
+  enabled: false
+  image:
+    repository: harbor.socrat.alchemmist.xyz/homelab/spi-triage
+    digest: ''
+  imagePullSecrets: []
+  existingSecret: ''
+  panels: {}
+  # Bot runs hostNetwork. Populate only exact observed/verified source /32s;
+  # never open the gateway to all nodes or all pods to work around CNI.
+  botSourceCIDRs: []

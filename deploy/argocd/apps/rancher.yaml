@@ -25,6 +25,8 @@ spec:
       path: deploy/platform/rancher/public-entry
       helm:
         releaseName: rancher-public-entry
+        valueFiles:
+          - alert-graphs.values.yaml
         parameters: []
   destination:
     namespace: cattle-system

@@ -23,6 +23,8 @@ spec:
     path: charts/grafana
     helm:
       releaseName: kube-prometheus-stack
+      valueFiles:
+      - alert-graphs.policy.values.yaml
       parameters: []
   - repoURL: https://github.com/alchemmist/homelab.git
     targetRevision: main

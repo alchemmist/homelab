@@ -44,6 +44,16 @@ spec:
         - name: {{ . | quote }}
         {{- end }}
       {{- end }}
+      {{- if and $.Values.graphs.enabled (eq $component.component "bot") }}
+      securityContext:
+        fsGroup: 65532
+      volumes:
+        - name: graph-client
+          secret:
+            secretName: {{ required "graphs.existingSecret is required" $.Values.graphs.existingSecret | quote }}
+            defaultMode: 0440
+            items: [{key: telegram, path: telegram}]
+      {{- end }}
       containers:
         - name: {{ $component.container }}
           image: {{ include "socrat-bot.image" $ | quote }}
@@ -52,7 +62,15 @@ spec:
           ports:
             - name: http
               containerPort: {{ $component.port }}
+          {{- if and $.Values.graphs.enabled (eq $component.component "bot") }}
+          volumeMounts:
+            - {name: graph-client, mountPath: /graph-client, readOnly: true}
+          {{- end }}
           env:
+            {{- if and $.Values.graphs.enabled (eq $component.component "bot") }}
+            - name: ALERT_GRAPHS_ENABLED
+              value: "true"
+            {{- end }}
             - name: PORT
               value: {{ $component.port | quote }}
             {{- include "socrat-bot.secretEnv" $ | nindent 12 }}

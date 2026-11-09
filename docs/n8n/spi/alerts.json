@@ -30,7 +30,10 @@
       "annotations": {
         "summary": "SPI triage stage failures",
         "description": "Inspect durable jobs and sanitized error codes; ambiguous GitHub writes require review.",
-        "runbook_url": "https://github.com/alchemmist/homelab/blob/main/docs/n8n/spi/setup.md"
+        "runbook_url": "https://github.com/alchemmist/homelab/blob/main/docs/n8n/spi/setup.md",
+        "spi_graphs": "{\"version\":1,\"graphs\":[{\"id\":\"primary\",\"title\":\"SPI triage stage failures\",\"dashboard_uid\":\"alerts-671a8f11c7fffa70\",\"panel_id\":9,\"variables\":{},\"before_seconds\":1800,\"after_seconds\":300},{\"id\":\"condition\",\"title\":\"SPI triage stage failures / rule evaluations\",\"dashboard_uid\":\"alerts-671a8f11c7fffa70\",\"panel_id\":10,\"variables\":{},\"before_seconds\":7200,\"after_seconds\":300}]}",
+        "__dashboardUid__": "alerts-671a8f11c7fffa70",
+        "__panelId__": "9"
       },
       "notification_settings": {
         "receiver": "SPI triage via Socrat Alerts",
@@ -120,7 +123,10 @@
       "annotations": {
         "summary": "SPI triage scheduling heartbeat missing",
         "description": "No queue checks for ten minutes. Inspect the SPI Incident Triage workflow and worker.",
-        "runbook_url": "https://github.com/alchemmist/homelab/blob/main/docs/n8n/spi/setup.md"
+        "runbook_url": "https://github.com/alchemmist/homelab/blob/main/docs/n8n/spi/setup.md",
+        "spi_graphs": "{\"version\":1,\"graphs\":[{\"id\":\"primary\",\"title\":\"SPI triage scheduling heartbeat missing\",\"dashboard_uid\":\"alerts-671a8f11c7fffa70\",\"panel_id\":7,\"variables\":{},\"before_seconds\":1800,\"after_seconds\":300},{\"id\":\"condition\",\"title\":\"SPI triage scheduling heartbeat missing / rule evaluations\",\"dashboard_uid\":\"alerts-671a8f11c7fffa70\",\"panel_id\":8,\"variables\":{},\"before_seconds\":7200,\"after_seconds\":300}]}",
+        "__dashboardUid__": "alerts-671a8f11c7fffa70",
+        "__panelId__": "7"
       },
       "notification_settings": {
         "receiver": "SPI triage via Socrat Alerts",
@@ -210,7 +216,10 @@
       "annotations": {
         "summary": "SPI triage jobs require operator review",
         "description": "Inspect dead jobs. Never blindly retry a publication with an ambiguous GitHub response.",
-        "runbook_url": "https://github.com/alchemmist/homelab/blob/main/docs/n8n/spi/setup.md"
+        "runbook_url": "https://github.com/alchemmist/homelab/blob/main/docs/n8n/spi/setup.md",
+        "spi_graphs": "{\"version\":1,\"graphs\":[{\"id\":\"primary\",\"title\":\"SPI triage jobs require operator review\",\"dashboard_uid\":\"alerts-671a8f11c7fffa70\",\"panel_id\":3,\"variables\":{},\"before_seconds\":1800,\"after_seconds\":300},{\"id\":\"condition\",\"title\":\"SPI triage jobs require operator review / rule evaluations\",\"dashboard_uid\":\"alerts-671a8f11c7fffa70\",\"panel_id\":4,\"variables\":{},\"before_seconds\":7200,\"after_seconds\":300}]}",
+        "__dashboardUid__": "alerts-671a8f11c7fffa70",
+        "__panelId__": "3"
       },
       "notification_settings": {
         "receiver": "SPI triage via Socrat Alerts",
@@ -300,7 +309,10 @@
       "annotations": {
         "summary": "SPI triage queue is stale",
         "description": "Work is older than 45 minutes. Inspect inference contention, retries and scheduling.",
-        "runbook_url": "https://github.com/alchemmist/homelab/blob/main/docs/n8n/spi/setup.md"
+        "runbook_url": "https://github.com/alchemmist/homelab/blob/main/docs/n8n/spi/setup.md",
+        "spi_graphs": "{\"version\":1,\"graphs\":[{\"id\":\"primary\",\"title\":\"SPI triage queue is stale\",\"dashboard_uid\":\"alerts-671a8f11c7fffa70\",\"panel_id\":5,\"variables\":{},\"before_seconds\":1800,\"after_seconds\":300},{\"id\":\"condition\",\"title\":\"SPI triage queue is stale / rule evaluations\",\"dashboard_uid\":\"alerts-671a8f11c7fffa70\",\"panel_id\":6,\"variables\":{},\"before_seconds\":7200,\"after_seconds\":300}]}",
+        "__dashboardUid__": "alerts-671a8f11c7fffa70",
+        "__panelId__": "5"
       },
       "notification_settings": {
         "receiver": "SPI triage via Socrat Alerts",
@@ -390,7 +402,10 @@
       "annotations": {
         "summary": "SPI Telegram links pending",
         "description": "GitHub analysis is published but native Telegram copy acknowledgements are pending. Inspect durable link outbox, immutable card association, bot API health and authentication; never rerun GitHub publication for this.",
-        "runbook_url": "https://github.com/alchemmist/homelab/blob/main/docs/n8n/spi/setup.md"
+        "runbook_url": "https://github.com/alchemmist/homelab/blob/main/docs/n8n/spi/setup.md",
+        "spi_graphs": "{\"version\":1,\"graphs\":[{\"id\":\"primary\",\"title\":\"SPI Telegram links pending\",\"dashboard_uid\":\"alerts-671a8f11c7fffa70\",\"panel_id\":1,\"variables\":{},\"before_seconds\":1800,\"after_seconds\":300},{\"id\":\"condition\",\"title\":\"SPI Telegram links pending / rule evaluations\",\"dashboard_uid\":\"alerts-671a8f11c7fffa70\",\"panel_id\":2,\"variables\":{},\"before_seconds\":7200,\"after_seconds\":300}]}",
+        "__dashboardUid__": "alerts-671a8f11c7fffa70",
+        "__panelId__": "1"
       },
       "notification_settings": {
         "receiver": "SPI triage via Socrat Alerts",

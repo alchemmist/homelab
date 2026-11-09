@@ -30,7 +30,10 @@
       "annotations": {
         "summary": "Yandex calendar session or announcement failed",
         "description": "Automatic session renewal or speech delivery failed. Inspect Yandex Session Maintenance and the failed calendar execution; follow docs/n8n/setup.md. Never paste tokens in chat.",
-        "runbook_url": "https://github.com/alchemmist/homelab/blob/main/docs/n8n/setup.md"
+        "runbook_url": "https://github.com/alchemmist/homelab/blob/main/docs/n8n/setup.md",
+        "spi_graphs": "{\"version\":1,\"graphs\":[{\"id\":\"primary\",\"title\":\"Yandex calendar session or announcement failed\",\"dashboard_uid\":\"alerts-d1db138bd72af1c7\",\"panel_id\":1,\"variables\":{},\"before_seconds\":1800,\"after_seconds\":300},{\"id\":\"condition\",\"title\":\"Yandex calendar session or announcement failed / rule evaluations\",\"dashboard_uid\":\"alerts-d1db138bd72af1c7\",\"panel_id\":2,\"variables\":{},\"before_seconds\":7200,\"after_seconds\":300}]}",
+        "__dashboardUid__": "alerts-d1db138bd72af1c7",
+        "__panelId__": "1"
       },
       "notification_settings": {
         "receiver": "Yandex calendar via Socrat Alerts",
@@ -120,7 +123,10 @@
       "annotations": {
         "summary": "Yandex session maintenance heartbeat missing",
         "description": "No successful silent session renewal check for 40 minutes. Check n8n, maintenance activation and log ingestion; follow docs/n8n/setup.md.",
-        "runbook_url": "https://github.com/alchemmist/homelab/blob/main/docs/n8n/setup.md"
+        "runbook_url": "https://github.com/alchemmist/homelab/blob/main/docs/n8n/setup.md",
+        "spi_graphs": "{\"version\":1,\"graphs\":[{\"id\":\"primary\",\"title\":\"Yandex session maintenance heartbeat missing\",\"dashboard_uid\":\"alerts-d1db138bd72af1c7\",\"panel_id\":3,\"variables\":{},\"before_seconds\":1800,\"after_seconds\":300},{\"id\":\"condition\",\"title\":\"Yandex session maintenance heartbeat missing / rule evaluations\",\"dashboard_uid\":\"alerts-d1db138bd72af1c7\",\"panel_id\":4,\"variables\":{},\"before_seconds\":7200,\"after_seconds\":300}]}",
+        "__dashboardUid__": "alerts-d1db138bd72af1c7",
+        "__panelId__": "3"
       },
       "notification_settings": {
         "receiver": "Yandex calendar via Socrat Alerts",

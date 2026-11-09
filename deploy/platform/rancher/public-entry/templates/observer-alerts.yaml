@@ -24,6 +24,9 @@ spec:
           labels:
             severity: critical
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "HomelabObserverMembershipNotReconciled" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: Observer membership revocation has not completed recently
             description: >-
               The minute worker has no success for at least three minutes (or never succeeded).
@@ -35,6 +38,9 @@ spec:
           labels:
             severity: critical
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "HomelabObserverMembershipWorkerMissing" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: Observer membership worker is missing or not observable
             description: Restore the reviewed CronJob and metric collection before claiming bounded native revocation.
 {{- end }}

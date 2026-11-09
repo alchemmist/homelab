@@ -74,6 +74,10 @@ spec:
               value: {{ .Values.telegramLinksEnabled | quote }}
             - name: SPI_DISPATCH_ENABLED
               value: {{ .Values.dispatchEnabled | quote }}
+            {{- if .Values.graphs.enabled }}
+            - name: SPI_GRAPHS_ENABLED
+              value: "true"
+            {{- end }}
             - name: SPI_EVIDENCE_PUBLIC_ORIGIN
               value: {{ .Values.s3Evidence.publicOrigin | quote }}
             - name: SPI_EVIDENCE_BACKEND
@@ -114,6 +118,9 @@ spec:
               cpu: '1'
               memory: 384Mi
           volumeMounts:
+            {{- if .Values.graphs.enabled }}
+            - {name: graph-client, mountPath: /graph-client, readOnly: true}
+            {{- end }}
             {{- if .Values.queueUI.enabled }}
             - {name: queue-control, mountPath: /queue-control, readOnly: true}
             {{- end }}
@@ -135,6 +142,13 @@ spec:
               mountPath: /github
               readOnly: true
       volumes:
+        {{- if .Values.graphs.enabled }}
+        - name: graph-client
+          secret:
+            secretName: {{ .Values.graphs.existingSecret | quote }}
+            defaultMode: 0440
+            items: [{key: spi, path: spi}]
+        {{- end }}
         {{- if .Values.queueUI.enabled }}
         - name: queue-control
           secret:
@@ -201,6 +215,12 @@ spec:
       ports:
         - port: 8080
   egress:
+    {{- if .Values.graphs.enabled }}
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: cattle-monitoring-system}}
+          podSelector: {matchLabels: {app: socrat-alert-graphs}}
+      ports: [{port: 8080, protocol: TCP}]
+    {{- end }}
     {{- if or .Values.s3Evidence.enabled .Values.s3Evidence.retainCredentials }}
     - to:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: rustfs}}

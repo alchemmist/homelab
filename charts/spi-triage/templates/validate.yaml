@@ -41,3 +41,10 @@
 {{- if not (regexMatch "^sha256:[0-9a-f]{64}$" .Values.image.digest) }}{{ fail "bundle activation requires immutable release digest" }}{{- end }}
 {{- if not (regexMatch "^[0-9a-f]{40}$" .Values.image.tag) }}{{ fail "bundle activation requires full source commit SHA" }}{{- end }}
 {{- end }}
+
+{{- if .Values.graphs.enabled }}
+{{- if not (and .Values.bundleEnabled .Values.s3Evidence.enabled) }}
+{{- fail "graphs require the image-backed service and private S3 evidence" }}
+{{- end }}
+{{- $_ := required "graphs.existingSecret is required" .Values.graphs.existingSecret }}
+{{- end }}

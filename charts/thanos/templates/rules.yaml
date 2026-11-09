@@ -28,6 +28,9 @@ spec:
           labels:
             severity: warning
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "ThanosCascadeStale" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: Metric block shipping has not succeeded for three hours.
             description: The thanos-cascade CronJob in cattle-monitoring-system has had no successful run for 3h. Finished 5-minute and hourly blocks stay on socrat-0 until the next successful run. The alert becomes Firing after 10m.
             rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/cronjob/cattle-monitoring-system/thanos-cascade'
@@ -37,6 +40,9 @@ spec:
           labels:
             severity: warning
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "ThanosCompactorHalted" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: A Thanos compactor has halted.
             description: A Thanos compactor reports thanos_compact_halted. Downsampling or deletion on that bucket stops until the compactor is repaired. The alert becomes Firing after 10m.
             rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/pod/cattle-monitoring-system/{{ "{{ $labels.pod }}" }}'
@@ -46,6 +52,9 @@ spec:
           labels:
             severity: warning
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "ThanosCompactorScaledDown" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: The raw-data compactor has stayed scaled to zero.
             description: thanos-compactor has had zero replicas for 30m. The shipping job scales it down only while it runs. A crashed job can leave downsampling stopped. The alert becomes Firing after 30m.
             rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/deployment/cattle-monitoring-system/thanos-compactor'
@@ -55,6 +64,9 @@ spec:
           labels:
             severity: warning
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "ThanosSidecarDown" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: The Prometheus Thanos sidecar is down.
             description: No thanos-sidecar target is up. Fresh samples and block upload from socrat-0 stop until the sidecar returns. The alert becomes Firing after 10m.
             rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/statefulset/cattle-monitoring-system/prometheus-kube-prometheus-stack-prometheus'
@@ -69,6 +81,9 @@ spec:
           labels:
             severity: warning
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "ThanosRawDiskLow" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: socrat-0 has less than 80 GiB free.
             description: The filesystem on socrat-0 has been under 80 GiB free for 15m. This is a warning. Raw blocks are not deleted because the disk is low.
             rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/socrat-0'
@@ -83,6 +98,9 @@ spec:
           labels:
             severity: warning
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "ThanosFiveDiskLow" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: socrat-1 has less than 50 GiB free.
             description: The filesystem on socrat-1 has been under 50 GiB free for 15m. The shipping job starts removing the oldest 5-minute blocks that already have an hourly copy when free space falls under 40 GiB. This alert does not delete data by itself.
             rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/socrat-1'
@@ -97,6 +115,9 @@ spec:
           labels:
             severity: warning
           annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "ThanosScrapeNodeMemoryLow" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
             summary: socrat-0 has less than 3 GiB of available memory.
             description: socrat-0 MemAvailable has stayed under 3 GiB for 15m after the five-second scrape moved there. Check Prometheus and vLLM before leaving the new scrape interval in place.
             rancher_url: 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/socrat-0'
