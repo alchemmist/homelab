@@ -213,15 +213,107 @@ class NativeAPIResponseTests(unittest.TestCase):
 class NativeOIDCDefaultTests(unittest.TestCase):
     def test_partial_oidc_overlay_keeps_boolean_default(self):
         import tempfile
+
         with tempfile.TemporaryDirectory() as directory:
-            overlay=Path(directory)/'partial.yaml'
-            overlay.write_text('queueUI:\n  oidc:\n    existingSecret: alternate-client\n')
-            subprocess.run(['helm','template','spi-triage',str(ROOT/'charts/spi-triage'),
-                '-f',str(overlay)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
+            overlay = Path(directory) / "partial.yaml"
+            overlay.write_text(
+                "queueUI:\n  oidc:\n    existingSecret: alternate-client\n"
+            )
+            subprocess.run(
+                [
+                    "helm",
+                    "template",
+                    "spi-triage",
+                    str(ROOT / "charts/spi-triage"),
+                    "-f",
+                    str(overlay),
+                ],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+            )
 
     def test_invalid_oidc_enabled_types_are_rejected_not_defaulted(self):
-        for value in ('0','null','"false"'):
-            result=subprocess.run(['helm','template','spi-triage',str(ROOT/'charts/spi-triage'),
-                '--set-json','queueUI.oidc.enabled='+value],capture_output=True,text=True)
+        for value in ("0", "null", '"false"'):
+            result = subprocess.run(
+                [
+                    "helm",
+                    "template",
+                    "spi-triage",
+                    str(ROOT / "charts/spi-triage"),
+                    "--set-json",
+                    "queueUI.oidc.enabled=" + value,
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
             with self.subTest(value=value):
-                self.assertNotEqual(result.returncode,0)
+                self.assertNotEqual(result.returncode, 0)
+
+
+class NativeStatePersistenceTests(unittest.TestCase):
+    def test_save_never_overwrites_existing_file_or_follows_symlink(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            victim = root / "victim.json"
+            victim.write_text("original")
+            link = root / "before.json"
+            link.symlink_to(victim)
+            for destination in (victim, link):
+                with (
+                    self.subTest(destination=destination.name),
+                    self.assertRaises(FileExistsError),
+                ):
+                    identity.save(destination, {"fixture": "must not write"})
+            self.assertEqual(victim.read_text(), "original")
+            self.assertTrue(link.is_symlink())
+            dangling = root / "after.json"
+            target = root / "missing.json"
+            dangling.symlink_to(target)
+            with self.assertRaises(FileExistsError):
+                identity.save(dangling, {"fixture": "must not create"})
+            self.assertFalse(target.exists())
+
+    def test_new_state_file_is_private_and_exclusive(self):
+        import stat
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "credentials.json"
+            identity.save(path, {"fixture": "not a real credential"})
+            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
+            self.assertEqual(
+                json.loads(path.read_text()), {"fixture": "not a real credential"}
+            )
+            with self.assertRaises(FileExistsError):
+                identity.save(path, {})
+
+    def test_cli_rejects_symlink_state_directory_before_api_access(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / "public"
+            target.mkdir(mode=0o777)
+            link = root / "state"
+            link.symlink_to(target, target_is_directory=True)
+            result = subprocess.run(
+                [
+                    "python3",
+                    str(ROOT / "scripts/spi-queue-oidc.py"),
+                    "--state-dir",
+                    str(link),
+                    "--credentials",
+                    str(root / "nonexistent-credential.json"),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("STOP: Private state directory required", result.stderr)
+            self.assertEqual(list(target.iterdir()), [])
