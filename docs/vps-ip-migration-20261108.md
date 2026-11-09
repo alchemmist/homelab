@@ -317,3 +317,12 @@ Old failing series/alert persist until normal ~5min lookback expiry; do not dele
 series, silence the alert or weaken freshness checks to expedite the display.
 Focused existing tests:28 passed+2subtests. Completion requires the actual live
 Grafana panel906 expression to return0=OK, not merely fresh NEW data or Argo green.
+
+
+**Traffic Light acceptance completed at10:50UTC:** queried the actual live Grafana
+panel906 expression through its `prometheus` datasource: value0. Live mapping is
+0=OK/green(#26783D). Current edge-vps probe is NEW:443, success1; OLD probe and
+SocratServiceEdgeVpsUnavailable alert no longer present in instant results after
+natural expiry. No alert silencing/series deletion/dashboard cosmetic workaround.
+This closes the missed native Collector VPS-probe delivery gate, not all unrelated
+telemetry/DR acceptance. Dashboard/overview unrelated dirty work left untouched.

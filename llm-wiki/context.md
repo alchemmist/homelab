@@ -308,3 +308,14 @@ NetBird added one nb-host-only accept to that accept-policy chain: read-only pro
 shows no public-rule change/no-op semantics; installed exact-table validator stops
 on the extra rule, so do not blindly run ensure/rewrite the table. No firewall edits.
 Runbook/evidence index: docs/vps-ip-migration-20261108.md. Focused166tests+21subtests.
+
+
+2026-11-09 10:50UTC correction: owner's Traffic Light report exposed frozen native
+Collector scrape target OLD despite chart/ServiceMonitor NEW and Argo Synced.
+One-target CAS + validated projected config, then existing exact-container graceful
+activation on socrat-0. Same pod/volumes and Prometheus/Thanos/reloader IDs; all Ready.
+Fresh NEW:443 probe_success1; actual live socrat-traffic-light panel906 expression0
+(verified live mapping OK/green); old alert naturally gone, no silencing/deletion.
+Native VPS-probe Collector delivery gate now passed. Other telemetry/DR gates
+remain separate. Evidence: docs/vps-ip-migration-20261108.md, private socrat-0
+/var/lib/homelab-observer-rollout/traffic-light-vps-ip-20261109/.
