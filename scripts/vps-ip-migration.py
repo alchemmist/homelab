@@ -48,7 +48,7 @@ SOURCE_FILES = (
     'scripts/public-entry-health.py', 'scripts/vpn-home-probe.py',
     'scripts/vpn-path-check.py', 'scripts/vpn-home-session.py',
     'scripts/check-grafana-tv-public.py',
-    'charts/spi-queue-ui/values.yaml', 'deploy/spi-queue-ui/values.yaml',
+    'deploy/spi-triage/values.yaml',
     'charts/spi-triage/values-off-live.yaml', 'charts/spi-triage/templates/validate.yaml',
     'tests/test_mac_private_mesh.py', 'tests/test_spi_queue_ui.py',
 )

@@ -27,10 +27,13 @@ spec:
     metadata:
       labels:
         app: spi-triage
+      {{- if not .Values.bundleEnabled }}
       annotations:
         checksum/code: {{ (.Files.Glob "files/*.py").AsConfig | sha256sum }}
+      {{- end }}
     spec:
-      {{- with .Values.imagePullSecrets }}
+      {{- $pull := ternary .Values.imagePullSecrets .Values.legacyImagePullSecrets .Values.bundleEnabled }}
+      {{- with $pull }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -48,7 +51,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: worker
-          image: {{ .Values.image | quote }}
+          image: {{ include "spi-triage.image" . | quote }}
           command: [python, -B, /app/service.py]
           envFrom:
             - secretRef:
@@ -119,9 +122,11 @@ spec:
               mountPath: /s3-writer
               readOnly: true
             {{- end }}
+            {{- if not .Values.bundleEnabled }}
             - name: code
               mountPath: /app
               readOnly: true
+            {{- end }}
             - name: tmp
               mountPath: /tmp
             - name: data
@@ -149,9 +154,11 @@ spec:
           emptyDir:
             medium: Memory
             sizeLimit: 64Mi
+        {{- if not .Values.bundleEnabled }}
         - name: code
           configMap:
             name: spi-triage-code
+        {{- end }}
         - name: data
           persistentVolumeClaim:
             claimName: spi-triage-data

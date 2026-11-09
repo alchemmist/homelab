@@ -78,6 +78,24 @@ backends ещё не закрыты; у всех7 plaintext-связей уже 
 - Grafana anonymous org access выключен. Исключение — только явно shared
   `socrat-traffic-light`. Wiki read public, запись — native OIDC/роль, MCP — bearer.
 
+## SPI: полный сервис в отдельном репозитории — 9 ноября 2026
+
+Канонический код **frontend + backend** теперь в
+[`alchemmist/spi-triage`](https://github.com/alchemmist/spi-triage), не только UI.
+Старый `spi-queue-ui` — прежнее имя того же репозитория; отдельная frontend-схема
+была ошибкой и убрана из Git. Один образ/релиз, существующий Argo `spi-triage`;
+chart и cluster values остаются в homelab. CI42585299451:295тестов в native image
+без пропусков/сети при1CPU/384Mi, release image собран. **Publish skipped**, не
+релиз: `PUBLISH_ENABLED=false`; native cluster access/Harbor остаются блокерами.
+`bundleEnabled=false`:20ресурсов рендерятся идентично прежним; старые code/UI
+ConfigMap-копии заморожены до безопасной активации, это не второй источник разработки.
+**Продакшн на новый bundle ещё не переключён.** Не заявлять live UID/readiness,
+queue counts или browser acceptance по CI/рендеру. Owner отменил backup prerequisite
+для этого выноса/релизов, но не разрешал удалять архивы, убивать paid work или
+сбрасывать budgets/leases. Нужен естественный drain и protected production review,
+не новый backup blocker. Полные границы/проверки/следующие шаги:
+[SPI](spi-incident-triage.md#current-source-extraction--9-november-2026).
+
 ## Деплой и источники
 
 Постоянные изменения оформляются в Ansible/Helm/Git. Workloads — Argo CD,

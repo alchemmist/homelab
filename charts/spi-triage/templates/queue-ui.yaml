@@ -1,4 +1,5 @@
 {{- if .Values.queueUI.enabled }}
+{{- if not .Values.bundleEnabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -9,6 +10,7 @@ data:
   {{ base $path }}: |-
 {{ $.Files.Get $path | indent 4 }}
 {{ end }}
+{{- end }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -19,14 +21,17 @@ spec:
   template:
     metadata:
       labels: {app: spi-queue-ui}
+      {{- if not .Values.bundleEnabled }}
       annotations:
         checksum/ui: {{ (.Files.Glob "ui/*").AsConfig | sha256sum }}
+      {{- end }}
     spec:
       automountServiceAccountToken: false
       enableServiceLinks: false
       nodeSelector:
         kubernetes.io/hostname: {{ .Values.queueUI.nodeName | quote }}
-      {{- with .Values.imagePullSecrets }}
+      {{- $pull := ternary .Values.imagePullSecrets .Values.legacyImagePullSecrets .Values.bundleEnabled }}
+      {{- with $pull }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -38,7 +43,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: ui
-          image: {{ .Values.image | quote }}
+          image: {{ include "spi-triage.image" . | quote }}
           command: [python, -B, /ui/queue_web.py]
           ports: [{name: http, containerPort: 8080}]
           securityContext:
@@ -57,11 +62,15 @@ spec:
           livenessProbe:
             tcpSocket: {port: http}
           volumeMounts:
+            {{- if not .Values.bundleEnabled }}
             - {name: ui, mountPath: /ui, readOnly: true}
+            {{- end }}
             - {name: queue-control, mountPath: /queue-control, readOnly: true}
       volumes:
+        {{- if not .Values.bundleEnabled }}
         - name: ui
           configMap: {name: spi-queue-ui}
+        {{- end }}
         - name: queue-control
           secret:
             secretName: spi-queue-control

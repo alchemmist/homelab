@@ -1,8 +1,0 @@
-{{- if not (kindIs "bool" .Values.enabled) }}{{ fail "enabled must be boolean" }}{{- end }}
-{{- if .Values.enabled }}
-{{- if not (regexMatch "^sha256:[0-9a-f]{64}$" .Values.image.digest) }}{{ fail "activation requires immutable release digest" }}{{- end }}
-{{- if not .Values.authEgressCIDRs }}{{ fail "activation requires narrow reviewed auth egress" }}{{- end }}
-{{- range .Values.authEgressCIDRs }}
-{{- if not (regexMatch "^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+/32$" .) }}{{ fail "auth egress must be reviewed IPv4 /32" }}{{- end }}
-{{- end }}
-{{- end }}

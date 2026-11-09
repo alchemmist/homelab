@@ -1,6 +1,6 @@
 # LLM wiki: карта актуального контекста Socrat
 
-Актуализация **8 ноября 2026** (observer; остальные срезы датированы в своих разделах). Это рабочая память для сопровождения homelab,
+Актуализация **9 ноября 2026** (полный SPI service extraction; observer — 8 ноября, остальные срезы датированы в своих разделах). Это рабочая память для сопровождения homelab,
 не public wiki content и не набор команд для автоматического повторения миграций.
 Git/manifests задают intent; runtime определяется отдельной проверкой.
 
@@ -30,7 +30,7 @@ Git/manifests задают intent; runtime определяется отдель
 | Registry, robots, scoped push/pull | [Harbor](harbor.md) |
 | Wiki runtime/content | [Процесс](../docs/wiki-process-lifecycle.md), [upgrade](../docs/wiki-upgrade-20261107.md), [public onboarding source](../wiki/README.md) |
 | Logs/metrics/traces/profiles | [Мониторинг](observability-current.md), [monitoring](../docs/monitoring.md) |
-| Инциденты, уведомления, workflow integration | [Socrat bot](socrat-bot.md), [SPI](spi-incident-triage.md), [n8n](n8n-workflows.md) |
+| Инциденты, уведомления, workflow integration | [Socrat bot](socrat-bot.md), [SPI: полный frontend/backend repo, CI принят, runtime migration pending](spi-incident-triage.md), [n8n](n8n-workflows.md) |
 | TV/public dashboard и отдельный YouTube VPN | [Android TV](android-tv.md) |
 | LMS и локальные генераторы | [LMS](lms.md), [локальная генерация](lms-generation.md) |
 | Остальные scoped подсистемы | [RustFS](rustfs-foundation.md), [Smart home](smart-home-automation.md), [inference reliability](inference-client-reliability.md) |

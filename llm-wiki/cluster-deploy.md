@@ -339,3 +339,30 @@ safeguards). 104 tests + 24 subtests и 134/134 public checks прошли; на
 finalizers.** Это может каскадно удалить уже переданные workloads. Обратная
 передача требует такого же disarm/handoff; обычные изменения версии откатываются
 через текущий owning chart. Private audit receipts не являются проверенным DR.
+
+
+## SPI full-service extraction — 9 November 2026
+
+The application repo is now `alchemmist/spi-triage`, containing the actual backend,
+English frontend, broker and one shared release image. Former `spi-queue-ui` is
+the same renamed GitHub repository, not a separate active web publisher.
+Existing Application `spi-triage` reads `deploy/spi-triage/values.yaml`; image fields
+are root `image.repository/tag/digest` in it and `charts/spi-triage/values.yaml`.
+CI uses the standard **same publish job** and deploy-to-socrat with `app: spi-triage`.
+The empty frontend-only Argo/chart/deploy definitions were removed from Git.
+
+This is a **stateful singleton**, not the blog's stateless release acceptance.
+Protected environment `spi-triage-production` requires owner approval following
+an actual bounded native SPI-only natural drain (including logical Wait owners,
+paid/inflight/processing and n8n pending readback); never force idle or kill work.
+Approval is not a drain proof. Owner explicitly waived the backup prerequisite
+for this extraction; do not reconstruct it from earlier dated runbooks.
+
+Current gate `bundleEnabled=false` keeps the legacy image/ConfigMap-backed runtime
+and preserves all20SPI resource specs under the compatibility render proof.
+`PUBLISH_ENABLED=false`; CI42585299451 built/tested the complete image but skipped
+publishing. Activation, two namespace pull Secrets and live/browser proof remain
+pending approved private cluster/Harbor reachability. On activation all three roles
+use the same image digest with no ConfigMap shadowing. Do not manually seed image
+versions, start a second backend/PVC, restore budgets or call the migration done.
+See [authoritative SPI checkpoint](spi-incident-triage.md#current-source-extraction--9-november-2026).

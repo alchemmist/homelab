@@ -46,6 +46,12 @@ spec:
         spec:
           nodeSelector:
             kubernetes.io/hostname: {{ .Values.nodeName | quote }}
+          {{- if .Values.bundleEnabled }}
+          {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- end }}
           serviceAccountName: spi-github-broker
           restartPolicy: Never
           securityContext:
@@ -56,7 +62,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: broker
-              image: {{ .Values.brokerImage | quote }}
+              image: {{ if .Values.bundleEnabled }}{{ include "spi-triage.image" . | quote }}{{ else }}{{ .Values.brokerImage | quote }}{{ end }}
               command: [python, -B, /app/spi/github_broker.py]
               env:
                 - name: GITHUB_APP_ID
@@ -81,11 +87,15 @@ spec:
                 readOnlyRootFilesystem: true
                 capabilities:
                   drop: [ALL]
+              {{- if not .Values.bundleEnabled }}
               volumeMounts:
                 - name: code
                   mountPath: /app/spi
                   readOnly: true
+              {{- end }}
+          {{- if not .Values.bundleEnabled }}
           volumes:
             - name: code
               configMap:
                 name: spi-github-broker-code
+          {{- end }}

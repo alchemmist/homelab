@@ -22,7 +22,7 @@
 {{- if not (kindIs "bool" .Values.queueUI.enabled) }}
 {{- fail "queueUI.enabled must be boolean" }}
 {{- end }}
-{{- if and .Values.queueUI.enabled (not (regexMatch "^.+@sha256:[0-9a-f]{64}$" .Values.image)) }}
+{{- if and .Values.queueUI.enabled (not (regexMatch "^.+@sha256:[0-9a-f]{64}$" (include "spi-triage.image" .))) }}
 {{- fail "queueUI requires the pinned worker runtime image" }}
 {{- end }}
 {{- if .Values.queueUI.enabled }}
@@ -34,4 +34,10 @@
 {{- fail "queueUI auth egress must use the reviewed TLS auth-edge /32 addresses" }}
 {{- end }}
 {{- end }}
+{{- end }}
+
+{{- if not (kindIs "bool" .Values.bundleEnabled) }}{{ fail "bundleEnabled must be boolean" }}{{- end }}
+{{- if .Values.bundleEnabled }}
+{{- if not (regexMatch "^sha256:[0-9a-f]{64}$" .Values.image.digest) }}{{ fail "bundle activation requires immutable release digest" }}{{- end }}
+{{- if not (regexMatch "^[0-9a-f]{40}$" .Values.image.tag) }}{{ fail "bundle activation requires full source commit SHA" }}{{- end }}
 {{- end }}

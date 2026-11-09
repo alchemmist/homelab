@@ -247,3 +247,12 @@ acceptance: durable GitOps runtime refs (especially bot/STUN/edge IP), parent gl
 Collector delivery, owner/mobile confirmation and original mailing completion.
 Mac WireGuard and corporate Tunnelblick/global routes/DNS were not modified in
 this recovery segment. NetBird workstation LoginFailed is not claimed resolved.
+
+
+Durability follow-up: remote main advanced with the independent SPI service
+extraction. Normal merge preserves that work (including deleted standalone UI
+chart); only the migrated auth-edge /32 is carried into the new canonical
+`deploy/spi-triage/values.yaml` and compatibility fixture. No force push, stash,
+reset or unrelated dashboard/metrics staging. Post-merge focused regression:
+166 passed +21 subtests. Source publication enables ordinary targeted automatic
+Argo reconciliation; it is not runtime acceptance until observed.

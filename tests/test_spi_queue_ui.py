@@ -126,7 +126,7 @@ class QueueHelmTests(unittest.TestCase):
         self.assertIn("'/outpost.goauthentik.io/auth/nginx'", (ROOT/'charts/spi-triage/ui/queue_web.py').read_text())
         pod = get('Deployment','spi-queue-ui')['spec']['template']['spec']
         self.assertFalse(pod['automountServiceAccountToken'])
-        self.assertEqual(pod['nodeSelector'], {'kubernetes.io/hostname':'socrat-2'})
+        self.assertEqual(pod['nodeSelector'], {'kubernetes.io/hostname':'socrat-3'})
         container = pod['containers'][0]
         self.assertIn('@sha256:4cd6a12', container['image'])
         self.assertNotIn('env', container)

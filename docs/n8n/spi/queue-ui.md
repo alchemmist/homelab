@@ -47,11 +47,33 @@ worker-token credentials do not authorize queue-management endpoints.
 
 `queueUI.enabled` defaults false; live overlay enables it with the existing pinned
 runtime image. UI resources:10m/16Mi requests,200m/64Mi limits, separate deployment,
-no PVC. UI placement is pinned to the validated Reader node (`socrat-2`):
-large anonymous HTTPS-header checks failed on the original UI/worker nodes but
-succeeded on the Reader node. This is a scoped placement workaround, not a claim
-that the cluster's public-egress/large-header transit issue is repaired. TLS verification
-and SSO remain mandatory. Worker image/resources/quotas/PVC and workflow graph are unchanged.
+no PVC. The complete application now has canonical source in public
+[`alchemmist/spi-triage`](https://github.com/alchemmist/spi-triage): backend,
+English frontend, native tokenizer build pins, scoped broker and all tests.
+The earlier frontend-only extraction was incorrect and is retired. There is one
+release image and the existing Argo Application `spi-triage`, not a second web app.
+Role separation preserves security: frontend never mounts the SQLite PVC or worker,
+model, S3 or GitHub credentials; worker and broker keep their existing identities.
+
+Canonical release configuration is `deploy/spi-triage/values.yaml`; the existing
+Application reads it with explicit `parameters: []`. CI builds a full-commit-tagged
+Harbor image and invokes deploy-to-socrat in the same publish job. Production
+approval requires natural owner/paid-work drain, not a backup. Owner explicitly
+waived backups for this extraction; do not recreate that gate or delete archives.
+
+`bundleEnabled=false` temporarily renders the legacy running resources identically.
+Legacy source mirrors are frozen by `LEGACY-SOURCE-MANIFEST.json`, not a second
+active development source. First activation requires a built/verified full image,
+namespace pull Secrets for both automation/pr-agent, safe SPI-only drain and exact
+render/reconciliation checks. With `bundleEnabled=true`, all three roles use the
+same digest and `/app`/`/ui` are image-backed, not ConfigMap shadowed. Existing PVC,
+queue, webhook/workflow/node IDs, credentials and finite budgets are not recreated.
+
+Publication remains disabled while Harbor/private cluster access is unavailable.
+Do not claim image build, runtime migration or authenticated browser acceptance
+from source/unit-test success. The empty mistaken spi-queue-ui Application had no
+finalizer and rendered zero resources; only its source files were retired. Existing
+frontend resources continue under their original spi-triage owner. Worker image/resources/quotas/PVC and workflow graph are unchanged.
 Backend changes require a natural-idle rollout and fresh verified HOST SQLite
 backup. Production mutation tests/synthetic jobs are not used: cancellation and
 race/rollback cases are tested only on temporary local SQLite fixtures.
