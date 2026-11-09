@@ -208,3 +208,20 @@ class NativeAPIResponseTests(unittest.TestCase):
     def test_production_native_activation_stays_disabled_until_release(self):
         values = yaml.safe_load((ROOT / "deploy/spi-triage/values.yaml").read_text())
         self.assertIs(values["queueUI"]["oidc"]["enabled"], False)
+
+
+class NativeOIDCDefaultTests(unittest.TestCase):
+    def test_partial_oidc_overlay_keeps_boolean_default(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory:
+            overlay=Path(directory)/'partial.yaml'
+            overlay.write_text('queueUI:\n  oidc:\n    existingSecret: alternate-client\n')
+            subprocess.run(['helm','template','spi-triage',str(ROOT/'charts/spi-triage'),
+                '-f',str(overlay)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE)
+
+    def test_invalid_oidc_enabled_types_are_rejected_not_defaulted(self):
+        for value in ('0','null','"false"'):
+            result=subprocess.run(['helm','template','spi-triage',str(ROOT/'charts/spi-triage'),
+                '--set-json','queueUI.oidc.enabled='+value],capture_output=True,text=True)
+            with self.subTest(value=value):
+                self.assertNotEqual(result.returncode,0)
