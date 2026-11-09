@@ -1,5 +1,121 @@
 # Socrat SPI incident triage
 
+
+## Current source extraction — 9 November 2026
+
+**Full application source/build accepted; production image migration NOT complete.**
+The owner requested **one complete service with backend and frontend**. The earlier
+frontend-only extraction was a scope mistake, not the final architecture.
+
+### Canonical repository and package
+
+Public source: **[alchemmist/spi-triage](https://github.com/alchemmist/spi-triage)**,
+commit `0eb490d1216e5a5126d7a0862a84728f81c077f1`. The same GitHub repository was
+renamed from `spi-queue-ui`; history/secrets remain with that repository identity
+and the old URL redirects. Do not create a second frontend/backend repository.
+
+- `backend/`: all17 actual Python modules, including durable SQLite queue,
+  dispatcher, owner/fence/checkpoint handling, Match/Collect/Analyze/Publish,
+  token admission/accounting, evidence/S3, provenance, queue admin, GitHub broker
+  and Telegram delivery. Extracted backend bytes match the tracked source;
+  this is not a stub, import or submodule pointing back to homelab.
+- `frontend/`: English HTML/JS/BFF, monospace/native controls, English errors,
+  confirmation and en-GB24h dates. Original alert text remains data and is not
+  rewritten/model-translated. SSO remains mandatory; caller identity headers
+  cannot authorize. Web has no PVC, worker/model/GitHub/S3 credentials or SA token.
+- `tests/backend/` plus frontend tests:285backend +10UI/auth/language tests.
+  Integration contracts/custom n8n nodes and reader/download test snapshots are
+  included; the shared n8n and RustFS infrastructure are external dependencies,
+  not new production deployments owned by the service.
+- One release image packages backend `/app`, frontend `/ui`, broker entrypoint,
+  pinned offline tokenizers0.22.2 and hash-locked broker dependencies. Roles keep
+  existing isolation/identities but use the **same image digest and release**.
+  No model weights, runtime downloads, production DB/events/keys/private archives
+  or homelab Git history were exported. Exact public hash false positives were
+  narrowly allowlisted; the final local secret scan was clean.
+
+### Verified checks — not a production release
+
+[CI42585299451](https://github.com/alchemmist/spi-triage/actions/runs/42585299451)
+succeeded for the full application:295host tests (3optional native skips), then
+**295tests inside the native image, zero skips**, network disabled/read-only,
+1CPU/384Mi/no swap/64Mi tmp. The complete release image also built successfully.
+Node exists only in the test target, not the release image. Do not relabel the
+older UI-only CI results as full-service acceptance.
+
+The publisher was **skipped**, not successful. `PUBLISH_ENABLED=false` remains
+because earlier hosted-runner Harbor HTTPS probes timed out and a later check
+failed DNS resolution. Neither invalid credentials nor a specific global network
+root cause is proved by those failures. No insecure TLS, alternate registry,
+human SSH-key copy or manual image-version override was used as a bypass.
+
+### One GitOps owner, compatible transition
+
+Homelab commit `de6f81e` establishes the corrected source/release contract:
+
+- Existing **Application `spi-triage`**, project `default`, release name,
+  namespace, Services, single worker/PVC, broker CronJob/RBAC and credentials stay.
+- Cluster chart remains `charts/spi-triage`; canonical live configuration is now
+  `deploy/spi-triage/values.yaml`, with root `image.repository/tag/digest`.
+  Application reads that file and has explicit `helm.parameters: []`.
+- Standard single publisher job: full commit SHA tag in
+  `harbor.socrat.alchemmist.xyz/homelab/spi-triage` → build output digest →
+  `alchemmist/deploy-to-socrat@v1` with **`app: spi-triage`** → image-only homelab
+  commit → Argo reconciliation. No independent frontend release/Application.
+- The mistaken empty/disabled `spi-queue-ui` chart/deploy/Application definitions
+  were removed from Git. Its manifest had no finalizer and rendered no resources;
+  do not claim fresh confirmation of runtime deletion while access is unavailable.
+- **`bundleEnabled=false`** retains the current CM-backed runtime. Before/after
+  Helm rendering verified all20existing SPI resources semantically identical,
+  including worker/frontend/broker Pod templates. Four new bundle tests and
+  existing11UI/285backend tests passed locally. This proves intended compatibility,
+  not fresh live UID/readiness or an observed no-restart deployment.
+- Legacy `charts/spi-triage/files` and `ui` copies remain **frozen compatibility
+  snapshots**, not a second development source; backend hashes are bound by
+  `LEGACY-SOURCE-MANIFEST.json`. Do not delete the running ConfigMap inputs before
+  the first accepted image-backed activation.
+
+With `bundleEnabled=true`, worker/web/broker all use the new root image digest;
+legacy `/app` and `/ui` ConfigMap mounts disappear, preventing image code from
+being shadowed. Same SQLite PVC/database, queue/owner/fences, private evidence,
+GitHub issue target, credential identities and spent finite allowances remain.
+Actual quota stays30000TPM/3RPM/parallel1; no quota uplift or reset was performed.
+
+### Remaining activation gate
+
+Fresh approved privateSSH to `socrat-0` timed out; earlier read-only Argo API access
+also failed. No publicSSH/VPN/DNS/RBAC/credential fallback or broad network repair.
+Therefore **no live activation, Argo reconciliation, native authorization/browser
+proof, current queue counts or universal health is claimed by this extraction**.
+No new maintenance/drain window or background deployment is running.
+
+Before activation: restore approved cluster/Harbor reachability; make the existing
+homelab pull robot available as `spi-triage-harbor-pull` in both `automation` and
+`pr-agent`; verify a real published image/digest and the robot version commit.
+Those new namespace pull Secrets have not yet been provisioned. Then use a bounded
+SPI-only window: stop new claims through the existing native workflow control,
+let the current execution/Wait finish naturally, verify actual owner/processing/
+inflight/paid counts and n8n pending executions, and approve protected environment
+`spi-triage-production`. Keep intake durable and other workflows active. Do not
+kill paid work, reset leases/budgets or resurrect terminal jobs to obtain idle.
+The environment reviewer alone is not evidence of a drained queue.
+
+**Owner explicitly waived the backup prerequisite for this extraction and its
+publication/migration/releases. Do not reinstate that blocker from historical
+instructions below.** This is not permission to delete existing private backups,
+rewrite evidence/DB history, weaken SSO/TLS or perform destructive data operations.
+
+After safe activation of the pinned bundle: verify original identities/PVC,
+readiness, complete image-backed code, no duplicate consumer and actual authenticated
+frontend/backend behavior; restore the same SPI workflow and only then remove
+frozen mirrors. Until then the full source is extracted, but runtime migration and
+removal of the old code copies remain unfinished.
+
+The dated receipts below remain historical evidence for their own scopes. They
+are not the current source ownership, a fresh health check or a claim that the
+full bundle is already deployed.
+
+
 ## Actual activation and partial acceptance — 7 November 2026
 
 **DOCUMENTED_PARTIAL_ACCEPTANCE: runtime deployed; two of three original cards
@@ -80,9 +196,8 @@ probe, workflow pause, credential/image/network or alert-policy change is part
 of this documentation closeout.
 
 
-The **4 November 2026** checkpoints below are historical. The latest documented
-production/target receipt is the **7 November** section above; it is partial, not
-three-card success. Recorded evidence is not a substitute for live queue checks.
+The **4 November 2026** checkpoints below are historical. The **7 November** section above is a dated production/target receipt, not the
+latest extraction status; it is partial, not three-card success. Recorded evidence is not a substitute for live queue checks.
 
 
 ## Historical Telegram SPI acceptance — 4 November 2026, 10:49 UTC
