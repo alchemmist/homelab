@@ -32,6 +32,17 @@ class EdgeCrdTests(unittest.TestCase):
         ingress=next(d for d in self.resources if d['kind']=='Ingress' and d['metadata']['name']=='traefik-edge-trojan-transit')
         self.assertEqual(ingress['metadata']['annotations']['traefik.ingress.kubernetes.io/router.middlewares'],'argocd-traefik-edge-vpn-msk-only@kubernetescrd')
 
+    def test_only_trojan_path_is_gated_not_subscription_or_panel(self):
+        ingress=next(d for d in self.resources if d['kind']=='Ingress' and d['metadata']['name']=='traefik-edge-vpn')
+        paths=ingress['spec']['rules'][0]['http']['paths']
+        self.assertEqual({p['backend']['service']['port']['number'] for p in paths},{18082,12096})
+        self.assertNotIn('traefik.ingress.kubernetes.io/router.middlewares',ingress['metadata']['annotations'])
+        transit=next(d for d in self.resources if d['kind']=='Ingress' and d['metadata']['name']=='traefik-edge-trojan-transit')
+        paths=transit['spec']['rules'][0]['http']['paths']
+        self.assertEqual(len(paths),1)
+        self.assertEqual(paths[0]['backend']['service']['port']['number'],32087)
+        self.assertEqual(paths[0]['pathType'],'Exact')
+
     def test_new_rbac_is_argocd_read_only_and_not_cluster_wide(self):
         roles = [d for d in self.resources if d['kind']=='Role' and d['metadata']['name']=='traefik-edge-crd']
         self.assertEqual(len(roles), 1)

@@ -77,7 +77,7 @@ panelGateway:
 # This adds no CRD routes, namespace watches, RBAC permissions or pod rollout.
 vpnTransit:
   enabled: true
-  enforce: false
+  enforce: true
   canaryPath: /__homelab_msk_transit_canary
   middlewareNamespace: argocd
   allowedSourceRanges: ["10.251.4.1/32"]
