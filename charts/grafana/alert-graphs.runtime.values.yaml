@@ -7,7 +7,7 @@ grafana:
       registry: docker.io
       repository: grafana/grafana-image-renderer
       tag: v5.12.10
-      sha: 83201e73724250bbeb5a3c89763fc274771ef67156ecac3871c427d7b629d8fa8f
+      sha: "a7970b826f6e477461e02bf5463d92634e9ad27d525e4e50296978a2e592d2d7"
     nodeSelector:
       kubernetes.io/hostname: socrat-1
     securityContext:
