@@ -92,3 +92,17 @@ independent collector identities, distribution/leadership/fencing/stale leases,
 partition policy and fleet acceptance required before rollout. See network phase1
 runbook. By21:15 internalVPS path also timed out/ReadyUnknown; older healthy-VPS
 facts are historical, not present availability proof.
+
+## SPI standalone DNS addition — prepared, not applied (9 November 2026 UTC)
+
+Operator explicitly approved adding only `spi.socrat`, after independent public
+DoH confirmed NXDOMAIN for both SPI and the assumed wildcard. Source adds this
+name to existing failover records; TTL, addresses, wildcard and all other records
+are unchanged across all four health combinations. Narrow tooling:
+`scripts/spi-public-dns.py`, `ansible/playbooks/spi-public-dns.yml`, private state
+`/var/lib/homelab-spi-public-dns`. Follow the existing whole-fleet preflight, fresh
+exact hash approval and serial zone-refresh procedure; no daemon/node restart.
+Never run the Kuma-only helper for SPI. No apply has occurred: SSH to socrat-0/1
+stops at missing trusted pinned host keys. Restore verified normal operator
+access before Ansible become/preflight; do not bypass trust checks or alter
+workstation DNS/VPN/routes. DNS readiness alone does not activate native OIDC.

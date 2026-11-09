@@ -42,6 +42,7 @@ FAILOVER = [
     "search.socrat",
     "socrat",
     "spi-evidence.socrat",
+    "spi.socrat",
     "sso.socrat",
     "status",
     "umami",
