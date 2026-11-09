@@ -1,7 +1,8 @@
-umamiImage: ghcr.io/umami-software/umami:latest
+umamiImage: ghcr.io/umami-software/umami@sha256:e69d1a7932e9dab0fc523edc7be1f3a53f3c261f57856fc2167ae74a8fc022e8
 postgresImage: postgres:15
 hostPath: /srv/umami
 host: umami.alchemmist.xyz
 tlsSecret: umami-tls
+# Existing external Secret; chart must never create an empty placeholder.
 secretName: umami-env
 clusterIssuer: letsencrypt-http01
