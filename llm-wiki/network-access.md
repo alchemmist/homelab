@@ -171,3 +171,39 @@ URL Fully — canonical `grafana.socrat.alchemmist.xyz/public-dashboards/<access
 - CI `HOMELAB_DEPLOY_KEY` publickey failure, unrelated LMS/RustFS Argo drift и исторические adminclient test expectations — не повод для blanket sync/prune или ослабления защиты.
 
 Закрывающие network/TV коммиты: `435c70b`, `448f93f` (с промежуточной реализацией TV alias и её последующим полным retirement). Последнее живое состояние важнее промежуточной идеи. Wiki-актуализация сама по себе ничего не разворачивает.
+
+
+## VPS migration recovery — 2026-11-09, fresh acceptance
+
+This supersedes the prior unreachable/ReadyUnknown observation, not its history.
+Owner rebooted socrat-2; persistent NEW=109.120.141.60/24, gateway109.120.141.1.
+All four nodes Ready; watchdog Kubernetes healthy=true; native fallback inactive.
+Management uses owner-authorized direct NEW:2222 with pinned key and /usr/bin/ssh;
+old controller wrapper is not private-only evidence and must not be reused blindly.
+Do not further alter Mac WireGuard; corporate Tunnelblick/routes/DNS preserved.
+
+Seven stale panel host addresses migrated via native API only, with uncertain-call
+readback/reconciliation and no replay.16 identities/85 bindings, credentials,
+quotas and disabled legacy32063 preserved; temporary admin tokens removed.
+All16 URI subscriptions(78 entries) and JSON(72) match backend/public TLS pinned
+NEW, zero OLD. Own temporary HOME-WAN identity authenticated REALITY and
+TrojanTLS to literal NEW with HTTP200/65536 bytes each; no overlay/global proxy,
+fixture removed. This is NOT mobile/operator acceptance or filtering attribution.
+
+Source d8a5e54 merged normally with upstream SPI extraction and pushed as0642a36;
+bot/netbird/traefik-edge/spi-triage naturally Synced/Healthy at that revision.
+No blanket sync/prune. Bot runtime webhook env and Telegram destination NEW;
+queue2 ->0, existing machine secret/URL/allowed updates retained, no duplicate
+mailing command sent. Recipient-level mailing completion remains unproven.
+REG.RU accepted ns2-only glue change; **both x.nic.xyz/y.nic.xyz now publish NEW**,
+ns1=109.173.40.247 and both NS names unchanged; cached old glue can outlive this.
+Public NEW UDP53 authoritative answer and STUN Binding verified.
+
+Still separate: owner phone refresh/connectivity; mailing recipient confirmation;
+RustFS manual-sync auth-egress /32 runtime (source changed, app still old revision);
+Collector delivery, off-host DR and workstation NetBird LoginFailed. Public
+backend eth0 TCP12096/32087 denials preserved (external refused;443 open), priority-6.
+NetBird added one nb-host-only accept to that accept-policy chain: read-only proof
+shows no public-rule change/no-op semantics; installed exact-table validator stops
+on the extra rule, so do not blindly run ensure/rewrite the table. No firewall edits.
+Runbook/evidence index: docs/vps-ip-migration-20261108.md. Focused166tests+21subtests.

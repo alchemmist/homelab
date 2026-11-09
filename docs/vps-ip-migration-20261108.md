@@ -256,3 +256,33 @@ chart); only the migrated auth-edge /32 is carried into the new canonical
 reset or unrelated dashboard/metrics staging. Post-merge focused regression:
 166 passed +21 subtests. Source publication enables ordinary targeted automatic
 Argo reconciliation; it is not runtime acceptance until observed.
+
+
+## Final fresh readbacks after source publication (2026-11-09 ~10:23 UTC)
+
+Migration source d8a5e54 was normally merged with four upstream SPI commits and
+pushed as0642a36. Bot/netbird/traefik-edge/spi-triage naturally Synced/Healthy at
+0642a36; bot recreate rollout completed, readyReplicas1, runtime env NEW and
+Telegram destination still NEW, queue0. No manual blanket Argo sync/prune.
+RustFS remains manual-sync at4fc4190 despite source auth-egress /32 update;
+its targeted runtime policy reconciliation remains separately pending.
+
+**Parent acceptance now complete:** x.nic.xyz and y.nic.xyz both directly returned
+ns2 NEW, ns1 unchanged HOME, both NS names unchanged. External direct UDP53 on
+NEW returned authoritative ns2 A=NEW. Registry publication is proven; old recursive
+cache expiry is not. A fresh public STUN Binding on NEW3478 validated transaction
+and global mapped address; does not prove workstation login or VPN acceptance.
+
+Guard boot unit is homelab-xui-backend-guard.service (active/enabled, success),
+not the similarly named nonexistent homelab-vpn-backend-guard.service. Exact
+owned eth0 backend rules/priority-6 survive reboot. NetBird has added one nb-host
+interface accept before those rules; given the unchanged accept-policy chain
+and eth0-only remaining matches, it is a semantic no-op for guard behavior.
+Separate read-only structural comparison verified every owned rule exactly;
+external NEW12096/32087 refused,443 open. Installed strict whole-table validator
+rejects the extra overlay rule: do not silently normalize/delete or call ensure
+blindly; future interoperability review is separate. No firewall writes here.
+
+Owner mobile acceptance and recipient-level original mailing completion are still
+unproven; queue0 is transport acknowledgement only. Collector and off-host DR
+acceptance remain outside this VPN recovery proof.
