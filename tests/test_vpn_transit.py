@@ -93,3 +93,16 @@ def test_private_authoritative_listener_and_tcp_certificate_identity_preserved()
     assert 'wg_tcp_client_address | default(wg_tcp_server_address)' in client
     assert 'serverName: wg-transport.socrat.internal' in client
     assert 'secure: true' in client
+
+
+def test_native_recovery_gate_keeps_real_loopback_health_and_subscription_routes():
+    from jinja2 import Environment
+    edge=yaml.safe_load((ROOT/'charts/traefik-edge/values.yaml').read_text())
+    rendered=Environment().from_string((ROOT/'ansible/roles/vpn_failover/templates/Caddyfile.j2').read_text()).render(vpn_failover_edge=edge)
+    assert 'not remote_ip 10.251.4.1/32 127.0.0.1/32' in rendered
+    assert 'respond @trojan_denied "Forbidden" 403' in rendered
+    assert 'reverse_proxy @trojan 127.0.0.1:32087' in rendered
+    assert 'reverse_proxy @subscriptions 127.0.0.1:12096' in rendered
+    edge.pop('vpnTransit')
+    legacy=Environment().from_string((ROOT/'ansible/roles/vpn_failover/templates/Caddyfile.j2').read_text()).render(vpn_failover_edge=edge)
+    assert '@trojan_denied' not in legacy

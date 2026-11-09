@@ -1,6 +1,6 @@
 > **Production update:** this document retains historical staging evidence.
 > DNS/Hosts and known HOME flows were subsequently switched; current acceptance
-> and remaining shared443 canary gate are in
+> and resolved shared443/watchdog incident are in
 > [production cutover](vpn-production-cutover-20261109.md). Do not replay staging.
 
 # Moscow transit: 2026-11-09 accepted stage, not production cutover

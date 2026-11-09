@@ -7,7 +7,7 @@
 }
 
 {{ vpn_failover_edge.host }} {
-{% if vpn_failover_edge.vpnTransit.enforce | default(false) %}
+{% if (vpn_failover_edge.vpnTransit | default({})).enforce | default(false) %}
     # Same source gate in native recovery; retain real loopback WS health probe.
     @trojan_denied {
         path {{ (vpn_failover_edge.routes | selectattr('name', 'equalto', 'trojan') | first).path }}

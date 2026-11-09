@@ -384,8 +384,15 @@ HOME0/3 WG and HOME1 pinned-TLS/GOST management now transit Moscow. Known public
 NL HTTPS/DNS/VPN flows also use scoped persistent HOME DNAT (not default routes).
 DNS uses private Moscow→private NL Knot listener; one scoped NL Knot restart,
 public listener preserved. Raw NL WAN VPN ports fenced;12096/32087 still closed.
-Final shared443 Trojan-path allowlist is staged through a **canary**, not a blanket
-443 drop or proxy restart; only enforce after live public403/private-allowed proof.
+Final shared443 Trojan-path allowlist **accepted**: public403/private101 with
+spoofedXFF rejected; exact loopback127.0.0.1/32 retains real watchdog WS health.
+Initial private-only ACL accidentally denied that probe and triggered native
+fallback/K3s fencing on NL. Resolved transparently: unchanged health/hash checks,
+native failback of original member, start bound180→600s after measured160MB Raft
+catch-up>180s. No reset/member replacement. After recovery:3 healthy voters/hashKV
+equal at common revision17449598,5Ready/noMemoryPressure, all five HOME transports
+and17 normal-DNS subscriptions retested; enabled watchdoghealthy/no fallback.
+Same source gate also installed/validated in native Caddy; see incident details.
 Fresh native3-voter/common-leader/hashKV agreement and5Ready/noMemoryPressure;
 all5 canonical metrics fresh. Five private native archives off-host SHA verified.
 Details, replay/custody and honest mobile/AWG/source-IP/HA limits:

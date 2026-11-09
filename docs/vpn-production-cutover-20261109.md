@@ -10,9 +10,10 @@ console fingerprint confirmation is required.
 
 Native Hosts API changed **7 groups/7 rows**, with preimage/CAS/readback for each:
 **17 identities/91 bindings preserved**. Temporary machine API tokens removed.
-No production SQL writes, panel/core restart, credential rotation or second panel.
+No production SQL writes, credential rotation or second panel. Hosts API itself
+required no restart; the later recovery incident below did restart the NL runtime.
 Current native online SQLite backup:409600B,
-SHA256`4097da8dbb100f50b9cb30d220aee13a59cdf3e4cf74726747cdddea69ba1ec7`;
+SHA256`28cb3afc1e8e9863c403ef3f7c46de75e7366bf6cc91e56029d1fb05c47dcacc`;
 quick_check=ok,17/91, legacy32063 still disabled. Original16/85 plus the legitimate
 external addition are retained, not attributed to this operation or deleted.
 
@@ -32,8 +33,8 @@ After DNS/Hosts switch and again **after raw-WAN fencing**, an owned expiring
 fixture from real HOME WAN109.173.40.247 passed all five transports:
 
 - Yahoo REALITY/XHTTP32053;
-- Sony REALITY/XHTTP32083;
-- AMD REALITY/gRPC32084;
+- Sony REALITY32083;
+- AMD REALITY32084;
 - Trojan WebSocket/TLS443;
 - WireGuard UDP32085.
 
@@ -92,19 +93,60 @@ Private/VPN data-path acceptance repeated afterwards. AmneziaWG32086 listener is
 bound globally and forwarded privately, but authenticated AWG acceptance remains
 explicitly unproven.
 
-**Last shared443 hardening is staged through a canary first.** An HTTP ipAllowList
-middleware permits only Moscow private10.251.4.1 for the Trojan path, not the whole
-public HTTPS entrypoint. It uses the existing trusted CRD discovery bucket in
-argocd (legacy label value `argocd`, explicit VPN ownership label); namespaces,
-selector, RBAC and Deployment are unchanged. Canary mode keeps the original Trojan
-route intact. Require direct-public403/private-allowed canary proof before setting
-`vpnTransit.enforce=true`. Dynamic Ingress/Middleware only: no edge pod restart,
-blanket sync/prune or unrelated auth changes. Until that final check is recorded,
-old cached Trojan profiles can still use NL443; new subscriptions are Moscow-only.
+**Shared443 Trojan gate accepted.** Canary first proved public403/private404;
+then the real Trojan WebSocket path proved **public403/private101**, including
+spoofed X-Forwarded-For. Only the Trojan route has middleware, panel/subscription
+routes and other HTTPS hosts are not gated. Source ranges are Moscow private
+10.251.4.1/32 **plus exact127.0.0.1/32 for the existing real local WS probe**.
+CRD namespace/selector/RBAC and edge Deployment remain unchanged; the legacy
+`argocd` discovery label is not app ownership. Source rollout was dynamic, but
+**do not call the overall operation restart-free or seamless**: incident below.
+Existing cached clients must refresh; no new direct NL Trojan handshake is allowed.
+Already-open sessions were not globally socket-killed to manufacture acceptance.
+
+### Resolved introduced health-check/failback incident
+
+At22:19UTC the first private-only ACL also denied the watchdog's **loopback**
+WebSocket probe. This was an omission in this cutover, not an unexplained outage.
+The existing watchdog correctly observed a failed real handshake, fenced/stopped
+NL K3s and activated native VPN fallback using the same DB/keys. Other voters
+remained healthy. This caused NL runtime/session disruption; do not mask it as a
+zero-downtime switch or blame OOM/physical hardware.
+
+Added exact trusted loopback to the source gate **without disabling/changing the
+health probe, threshold, timer, etcd initial-corruption checks or hash checks**.
+Also added the same source gate to native Caddy recovery, preventing a future
+fallback from silently reopening public Trojan. Exact before/after CAS, fsynced
+atomic config, native Caddy validation and isolated same-binary actual WS tests:
+local-health101, nonallowlisted127.0.0.2 with spoofed XFF403. Proposed/live template
+matched except this owned ACL block; no broad native-role rollout or Caddy restart
+for the config write. No forced second native-fallback exercise is claimed.
+
+Native `failback` first hit the old180s K3s startup bound and automatically restored
+working fallback. Investigated **before retry**, no blind write replay: original
+member, no alarms on the two healthy original voters, routes/TCP peer ports OK,
+initial corruption check passed; a normal incoming Raft snapshot had already copied
+120168448B. Real management-path TCP128/1200/8192/65536/1048576B passed exact echoes
+(1MiB1.835s); no MTU/default-route/key change was needed.
+
+Changed **only bounded service-start timeout180→600s**, source host var plus native
+config under watchdog lock. Native consensus then received **159555584B in
+3m44.852107912s**, applied it and published the **original member**. No manual
+snapshot restore, member replacement, database reset or corruption-check bypass.
+Local runner's600s transport timeout made the last result initially uncertain;
+inspected **remote accepted receipt and actual live state**, did not replay it.
+K3s active, native services inactive, fallback/inhibit absent. Real enabled watchdog
+now reports `mode=kubernetes, healthy=true, errors=[]`; original17/91 and32063=false.
+
+**After recovery**, repeated full HOME authenticated five-transport200/65536B/hash/
+NL-exit proof, public403/private101 Trojan gate, and all17 normal-DNS URI84/JSON77
+subscription comparisons. Direct NL shared HTTPS also passed strict TLS:
+portal200, LMS303 (normal auth redirect), Argo200. Fixtures/configs/binary/temporary API tokens cleaned;
+original tokens/proxy configuration preserved by native cleanup receipts.
 
 ## Cluster, custody and explicit limits
 
-Native etcd3.6.14 check: **3 healthy voters/common leader/common revision17392485,
+Native etcd3.6.14 check: **3 healthy voters/common leader/common revision17449598,
 hashKV equal**; **5 Ready, no MemoryPressure**. Fresh Grafana/Thanos node_uname_info
 covers all five original canonical instances (HOME0/1 LAN instances preserved).
 No etcd reset/health-check disabling, WAL/history manipulation, collector queue/
@@ -116,6 +158,8 @@ Final native policy/keys/preimages/panel backup/receipts from **all five** nodes
 fetched into `production-evidence/` and independently source-SHA verified; folders
 0700/files0600, not Git. `off-host-verified.json` is the manifest. Original recovery
 24-file manifest and prior stage backups remain separate and unchanged.
+Post-recovery901120B native supplement (SHA2563d1179b0…afa165), updated online
+panel backup and recovery receipts also source-SHA verified off-host; same privacy.
 
 Limits: fixed-HOME proof is **not mobile/Happ interactive acceptance**; no promise
 against blocking/TSPU attribution, site HA, full chaos/reboot or isolated DR restore.
