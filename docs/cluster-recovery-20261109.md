@@ -386,3 +386,37 @@ credentials stay outside Git in0700/0600 recovery storage.
 14:40 firing non-housekeeping conditions now only3 historic `KubeJobFailed` objects
 and `PrometheusTSDBCompactionsFailing` historical counter. Native next checkpoint
 still awaits normal cycle; do not manufacture a green result before it runs.
+
+## Final functional gate: native checkpoint accepted 15:10UTC
+
+Read-only native log-follow awaited the **normal** cycle, no sleeps/polling/restarts
+or admin mutation. At **2026-11-09 15:10:03UTC** Prometheus emitted:
+`WAL checkpoint complete first=1786 last=2388 duration=9m54.8148835s`.
+New native `checkpoint.00002388` exists; original1785 boundary advanced. No new
+compaction failure in watch. Same Pod UID and **all original container IDs**.
+This accepts the repaired segment and subsequent scanned range through2388 with
+standard native checkpoint/retirement; no manual WAL truncation/deletion/replay.
+Immutable original/candidate and scoped historical proof remain on node/controller.
+Read receipt `20261109-prom-wal-forensics/native-checkpoint-functional-receipt.json`.
+
+15:14 native alerts: **no critical**, I/O contention absent; node3 actual5m I/O PSI
+**5.43%**. Remaining warnings:3 terminal old `KubeJobFailed` objects and compaction
+counter's **historical3h window**. Do not reset counters, rewrite terminal statuses
+or silence alerts. Old Job objects have no configured TTL; do not promise they'll
+expire automatically. Their later natural successful jobs/consistent cluster-state
+snapshot and diagnostic archives are preserved; a deliberate retention/archival
+policy is separate from pretending they never failed.
+
+15:15 fresh native checks: all4 nodes Ready, **no active nonready Pods**. Native
+strict-TLS LMS root **303** and Umami `/api/heartbeat` **200 {ok:true}**. Latest
+natural observer success15:15:12, SPI broker15:00:07, Wiki broker15:00:04,
+Thanos cascade14:30:08. No manual workflow execution or test mailing.
+
+Remaining limits: exact historic node1 hashKV mismatch cause/physical bit-flip
+mechanism not established; UPower battery threshold event not retained; owner
+must inspect laptop power/battery. No full isolated cluster/data restore exercise,
+automatic hourly off-host shipping, mobile-network VPN or NetBird interactive
+login acceptance is implied. DNS consistent failover/stateful/site HA and an
+independent second VPN provider were not silently implemented. Functional recovery
+is accepted; claiming every warning/history/independent blocked project is green
+would be false.

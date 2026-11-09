@@ -226,3 +226,11 @@ verified. Original16 identities/85 bindings unchanged;1 external addition not
 attributed or deleted. Backend validator now accepts only exact redundant nb-host
 allowance; public eth0 deny untouched and externally re-proven. Next native WAL
 checkpoint remains the remaining functional gate;3 old failed Jobs retained.
+
+**15:10UTC final WAL gate accepted:** normal Prometheus checkpoint1786→2388 completed
+in9m54s; checkpoint2388 exists, same Pod/all container IDs, no new compaction error
+in native watch. No forced restart/truncate/replay. Historical3h counter alert still
+visible;3 old failed Jobs have no TTL and remain intentionally unchanged.15:15:
+all4 nodes Ready/no active nonready Pods; strict-TLS LMS303, Umami heartbeat200;
+observer/SPI/Wiki/Thanos natural successes fresh. Node3 I/O5m5.4%, alert cleared.
+Native checkpoint/functional receipts supersede earlier pending-gate notes above.

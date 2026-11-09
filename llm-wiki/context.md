@@ -342,3 +342,13 @@ panel online backup off-host SHA verified. Guard validator compatibility repaire
 without any nft write. Original16/85 unchanged; current17/91 has1 external addition,
 not attributed/deleted. Only3 old failed Jobs + historical compaction alert firing;
 **next normal WAL checkpoint still pending**, no restart/silence shortcut.
+
+### Latest acceptance 2026-11-09 15:15UTC (supersedes pending WAL notes)
+
+Normal native WAL checkpoint **1786→2388** succeeded15:10 after9m54s; same Pod/all
+container IDs, no new failure in read-only watch, no forced restart/truncate/replay.
+All4 nodes Ready/no active nonready Pods; actual TLS LMS303/Umami heartbeat200;
+observer/SPI/Wiki/Thanos natural jobs successful. I/O5m5.4%, warning cleared.
+Only3 old terminal failed Jobs (no TTL) and historical3h compaction warning remain;
+no masking/reset/delete. Full receipts and explicit remaining physical-power,
+unknown old hashKV/bit-flip, DR/NetBird/mobile/site-HA limits in recovery runbook.
