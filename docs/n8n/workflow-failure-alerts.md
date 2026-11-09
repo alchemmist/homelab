@@ -94,3 +94,10 @@ Nine offline regression tests pass. Final enrollment/active-version/credential
 readback passed; no synthetic failed execution, test Telegram message, workflow
 retry or model call was made. This is configuration acceptance, not a claimed
 first natural Telegram delivery or exactly-once guarantee.
+
+
+## New workflows in source
+
+Use the [offline policy and Quality Graph workflow](workflow-policy.md). CI
+checks every discovered template; explicit `--fix` adds a missing target locally.
+No CronJob or live n8n mutation is involved in generation.
