@@ -1,0 +1,77 @@
+---
+# Privileged owner setup is separate from the deliberately non-privileged users role.
+# Supply secrets only through a 0600 extra-vars file; never use a public/default password.
+- name: Bootstrap the explicitly authorized small transit node
+  hosts: "{{ edge_bootstrap_hosts | default('socrat-4') }}"
+  gather_facts: true
+  become: true
+  any_errors_fatal: true
+  vars:
+    # Rancher metadata does not exist until the separate worker enrollment passes.
+    homelab_welcome_enabled: false
+  pre_tasks:
+    - name: Validate the scoped owner bootstrap
+      ansible.builtin.assert:
+        that:
+          - inventory_hostname == 'socrat-4'
+          - ansible_facts.os_family == 'Debian'
+          - edge_owner_password_hash is defined
+          - edge_owner_password_hash is match('^[$]')
+          - edge_owner_public_keys is defined
+          - edge_owner_public_keys | length > 40
+      no_log: true
+    - name: Create private first-bootstrap evidence directory
+      ansible.builtin.file:
+        path: /var/lib/homelab-recovery/20261109-socrat4-bootstrap
+        state: directory
+        owner: root
+        group: root
+        mode: '0700'
+    - name: Preserve initial account and SSH configuration without overwriting a preimage
+      ansible.builtin.shell: |
+        set -eu
+        out=/var/lib/homelab-recovery/20261109-socrat4-bootstrap/before.tar
+        test ! -e "$out" || exit 0
+        umask 077
+        tar -cf "$out" /etc/passwd /etc/group /etc/shadow /etc/gshadow /etc/ssh /etc/sudoers /etc/sudoers.d /etc/hosts
+      args:
+        creates: /var/lib/homelab-recovery/20261109-socrat4-bootstrap/before.tar
+      no_log: true
+    - name: Install only the standard server shell and prompt
+      ansible.builtin.apt:
+        name: [zsh, starship, ca-certificates, wireguard-tools]
+        update_cache: true
+        cache_valid_time: 3600
+        state: present
+    - name: Create the explicitly approved owner with the preserved standard password
+      ansible.builtin.user:
+        name: alchemmist
+        create_home: true
+        shell: /usr/bin/zsh
+        groups: sudo
+        append: true
+        password: '{{ edge_owner_password_hash }}'
+      no_log: true
+    - name: Create the owner SSH directory
+      ansible.builtin.file:
+        path: /home/alchemmist/.ssh
+        state: directory
+        owner: alchemmist
+        group: alchemmist
+        mode: '0700'
+    - name: Add the standard public owner keys without removing other keys
+      ansible.posix.authorized_key:
+        user: alchemmist
+        key: '{{ edge_owner_public_keys }}'
+        exclusive: false
+      no_log: true
+    - name: Validate the system sudo policy
+      ansible.builtin.command: /usr/sbin/visudo -c
+      changed_when: false
+    - name: Pass the final port separately from the provider bootstrap endpoint
+      ansible.builtin.set_fact:
+        ansible_port: '{{ homelab_ssh_port | default(2222) }}'
+  roles:
+    - ssh
+    - base
+    - starship

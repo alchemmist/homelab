@@ -352,3 +352,21 @@ observer/SPI/Wiki/Thanos natural jobs successful. I/O5m5.4%, warning cleared.
 Only3 old terminal failed Jobs (no TTL) and historical3h compaction warning remain;
 no masking/reset/delete. Full receipts and explicit remaining physical-power,
 unknown old hashKV/bit-flip, DR/NetBird/mobile/site-HA limits in recovery runbook.
+
+### Moscow staging 2026-11-09 — five nodes, production VPN cutover still pending
+
+`socrat-4` is a constrained **agent-only** worker at mesh `10.250.0.40`, public
+`91.189.82.238`, standard owner SSH2222/zsh/welcome. Explicit TOFU pin accepted;
+no console blocker. All5 Ready/MemoryPressure=False; bootstrap NoSchedule remains,
+no new ordinary workloads/storage. Mac's four approved management routes unchanged.
+New scoped native telemetry is functional: fresh Grafana/Thanos node_uname_info and
+count-only Loki104 records/5m. Existing CA/leaves and historical data untouched.
+
+Independent host Xray relays fixed ports through separate encrypted Moscow↔NL
+`10.251.4.1/.2` link. Actual HOME→**91.189.82.238**→NL authenticated **REALITY,
+Trojan and WireGuard/UDP** each passed HTTP200/65536B/hash, separately proving exit
+**109.120.141.60**. Own expiring fixture/tokens removed; original config preserved.
+**No subscription/DNS or production HOME→NL route switch yet**; old VPN remains.
+No mobile/Happ, AmneziaWG, comprehensive MTU/failure or complete transit claim.
+Next authorized steps and private evidence/replay rules:
+[dated staging runbook](../docs/moscow-vpn-transit-20261109.md). No new approval needed.

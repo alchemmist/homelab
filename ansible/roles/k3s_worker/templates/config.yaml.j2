@@ -6,10 +6,13 @@ flannel-iface: wg-socrat
 prefer-bundled-bin: true
 node-label:
   - svccontroller.k3s.cattle.io/enablelb=false
-  - homelab.io/profile=desktop-worker
+  - homelab.io/profile={{ k3s_worker_profile | default('desktop-worker') }}
 node-taint:
   - {{ k3s_worker_bootstrap_taint }}
 kubelet-arg:
+{% if k3s_worker_swap_enabled | default(false) | bool %}
+  - fail-swap-on=false
+{% endif %}
   - system-reserved={{ k3s_worker_system_reserved }}
   - kube-reserved={{ k3s_worker_kube_reserved }}
-  - eviction-hard=memory.available<200Mi,nodefs.available<10%,imagefs.available<15%,nodefs.inodesFree<5%
+  - eviction-hard=memory.available<{{ k3s_worker_eviction_memory | default('200Mi') }},nodefs.available<10%,imagefs.available<15%,nodefs.inodesFree<5%

@@ -1,0 +1,71 @@
+---
+- name: Install fixed-destination native Xray transit on Moscow only
+  hosts: socrat-4
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  vars_files:
+    - ../vars/vpn-transit.yml
+  tasks:
+    - name: Create public fixed-destination config directory
+      ansible.builtin.file:
+        path: /etc/homelab-vpn-transit
+        state: directory
+        mode: '0755'
+    - name: Inspect the installed proxy binary
+      ansible.builtin.stat:
+        path: /usr/local/libexec/xray-transit
+        checksum_algorithm: sha256
+      register: transit_binary
+    - name: Install the streamed exact upstream binary only when absent or different
+      ansible.builtin.command: install -m 0755 -o root -g root /var/tmp/homelab-edge-native/xray /usr/local/libexec/xray-transit
+      when: transit_binary.stat.checksum | default('') != vpn_transit_xray_sha256
+    - name: Verify executable identity before running any proxy
+      ansible.builtin.command: sha256sum /usr/local/libexec/xray-transit
+      register: transit_binary_hash
+      changed_when: false
+      failed_when: vpn_transit_xray_sha256 not in transit_binary_hash.stdout
+    - name: Install the fixed-port forwarding configuration
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/../../deploy/vpn-hardening/moscow-transit.json'
+        dest: /etc/homelab-vpn-transit/xray.json
+        owner: root
+        group: root
+        mode: '0644'
+        backup: true
+    - name: Validate the exact native proxy configuration
+      ansible.builtin.command: /usr/local/libexec/xray-transit run -test -config /etc/homelab-vpn-transit/xray.json
+      changed_when: false
+    - name: Install the independent bounded proxy service
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/homelab-vpn-transit.service
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Fixed-destination Moscow to Netherlands VPN transit
+          Requires=wg-quick@wg-vpn-transit.service
+          After=network-online.target wg-quick@wg-vpn-transit.service
+          Wants=network-online.target
+          [Service]
+          DynamicUser=yes
+          AmbientCapabilities=CAP_NET_BIND_SERVICE
+          CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+          NoNewPrivileges=yes
+          ProtectSystem=strict
+          ProtectHome=yes
+          PrivateTmp=yes
+          Environment=GOMEMLIMIT=96MiB
+          ExecStart=/usr/local/libexec/xray-transit run -config /etc/homelab-vpn-transit/xray.json
+          Restart=on-failure
+          RestartSec=5s
+          MemoryMax=201326592
+          MemorySwapMax=0
+          LimitNOFILE=65536
+          [Install]
+          WantedBy=multi-user.target
+    - name: Start only the new independent transit service
+      ansible.builtin.systemd_service:
+        name: homelab-vpn-transit.service
+        enabled: true
+        state: started
+        daemon_reload: true

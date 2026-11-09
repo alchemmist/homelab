@@ -1,0 +1,13 @@
+# Managed homelab VPN transit; no client identities and no default route.
+[Interface]
+Address = {{ '10.251.4.1/30' if inventory_hostname == 'socrat-4' else '10.251.4.2/30' }}
+ListenPort = {{ vpn_transit_port }}
+MTU = 1420
+PrivateKey = {{ vpn_transit_private.content | b64decode | trim }}
+
+[Peer]
+{% set other = 'socrat-2' if inventory_hostname == 'socrat-4' else 'socrat-4' %}
+PublicKey = {{ vpn_transit_public_keys[other]['wg-vpn-transit'] }}
+AllowedIPs = {{ '10.251.4.2/32' if inventory_hostname == 'socrat-4' else '10.251.4.1/32' }}
+Endpoint = {{ vpn_transit_exit_public if inventory_hostname == 'socrat-4' else vpn_transit_entry_public }}:{{ vpn_transit_port }}
+PersistentKeepalive = 25

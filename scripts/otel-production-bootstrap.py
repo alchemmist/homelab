@@ -14,7 +14,7 @@ import subprocess
 
 NS = 'cattle-monitoring-system'
 LABELS = {'app.kubernetes.io/part-of': 'homelab-otel'}
-NODES = {'socrat-0': '10.250.0.1', 'socrat-1': '10.250.0.3', 'socrat-2': '10.250.0.2', 'socrat-3': '10.250.0.5'}
+NODES = {'socrat-0': '10.250.0.1', 'socrat-1': '10.250.0.3', 'socrat-2': '10.250.0.2', 'socrat-3': '10.250.0.5', 'socrat-4': '10.250.0.40'}
 
 
 def kube(*args, document=None):
@@ -108,7 +108,7 @@ def run(bundle, output):
                       'apiServer': 'https://10.250.0.1:6443', 'secret': 'otel-tls-' + node, 'sourceReferences': refs if node == 'socrat-0' else []}))
     (output / 'contract.json').write_text(json.dumps(contract, indent=2))
     (output / 'bootstrap.json').write_text(json.dumps({'provisioned': True, 'productionScrapeOwnershipChanged': False,
-             'privateCAKeyDistributedToAgents': False, 'hostCount': 4, 'prometheusServiceIP': service['spec']['clusterIP']}, indent=2))
+             'privateCAKeyDistributedToAgents': False, 'hostCount': len(NODES), 'prometheusServiceIP': service['spec']['clusterIP']}, indent=2))
     print(json.dumps({'provisioned': True, 'scrapeOwnershipChanged': False}))
 
 

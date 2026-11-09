@@ -1,0 +1,32 @@
+---
+- name: Limit transit setup to the two approved endpoints
+  ansible.builtin.assert:
+    that:
+      - inventory_hostname in ['socrat-2', 'socrat-4']
+- name: Read only this endpoint infrastructure private key
+  ansible.builtin.slurp:
+    src: /etc/wireguard/wg-vpn-transit.key
+  register: vpn_transit_private
+  no_log: true
+- name: Configure the separate point-to-point transport with no default route
+  ansible.builtin.template:
+    src: wg-vpn-transit.conf.j2
+    dest: /etc/wireguard/wg-vpn-transit.conf
+    owner: root
+    group: root
+    mode: '0600'
+    backup: true
+  no_log: true
+- name: Enable only the new dedicated transport
+  ansible.builtin.systemd_service:
+    name: wg-quick@wg-vpn-transit
+    enabled: true
+    state: started
+- name: Require the other endpoint through the dedicated encrypted link
+  ansible.builtin.command:
+    argv: [ping, -c, '3', -W, '3', "{{ '10.251.4.2' if inventory_hostname == 'socrat-4' else '10.251.4.1' }}"]
+  register: vpn_transit_ping
+  changed_when: false
+  retries: 6
+  delay: 3
+  until: vpn_transit_ping.rc == 0

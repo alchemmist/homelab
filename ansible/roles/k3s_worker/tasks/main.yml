@@ -75,9 +75,17 @@
     mode: '0644'
   register: k3s_worker_nm_config
 
+- name: Inspect whether NetworkManager manages this worker
+  ansible.builtin.command: /bin/sh -c 'command -v nmcli'
+  register: k3s_worker_nmcli
+  changed_when: false
+  failed_when: false
+
 - name: Reload NetworkManager configuration without interrupting host connections
   ansible.builtin.command: nmcli general reload conf
-  when: k3s_worker_nm_config.changed
+  when:
+    - k3s_worker_nm_config.changed
+    - k3s_worker_nmcli.rc == 0
   changed_when: true
 
 - name: Inspect active swap

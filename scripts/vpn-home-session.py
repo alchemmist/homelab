@@ -17,6 +17,8 @@ import sqlite3
 import time
 import uuid
 import hashlib
+import copy
+import subprocess
 
 
 def load(name,filename):
@@ -59,7 +61,9 @@ def finish(s):
     h.save(s.state/'home-session-cleanup-receipt.json',proof);return proof
 
 
-def prepare(state,approval):
+def prepare(state,approval,endpoint="109.120.141.60",include_udp=False):
+    import ipaddress
+    if not ipaddress.ip_address(endpoint).is_global:raise ValueError("Public probe endpoint required")
     s=native.NativeSession(state);s.open(approval)
     try:
         original=target.configuration(s.database);h.save(s.state/'home-proxy-before-private.json',original)
@@ -69,14 +73,30 @@ def prepare(state,approval):
         with closing(sqlite3.connect(s.database.as_uri()+'?mode=ro',uri=True)) as c:
             if c.execute('SELECT COUNT(*) FROM clients WHERE email=? OR uuid=? OR sub_id=?',(email,identifier,sub_id)).fetchone()[0]:raise ValueError('Fixture collision')
         h.save(s.state/'home-fixture-private.json',{'email':email,'uuid':identifier,'sub_id':sub_id,'password_sha256':hashlib.sha256(password.encode()).hexdigest()})
-        s.call('POST','/clients/add',{'client':{'id':identifier,'email':email,'subId':sub_id,'password':password,'security':'auto','flow':'',
-          'enable':True,'limitIp':1,'totalGB':10*1024*1024,'expiryTime':int(time.time()*1000)+20*60000,'comment':'owned83-home-fixed-path-probe'},
-          'inboundIds':[rows[32053]['id'],rows[32087]['id']]})
+        client={'id':identifier,'email':email,'subId':sub_id,'password':password,'security':'auto','flow':'',
+          'enable':True,'limitIp':1,'totalGB':10*1024*1024,'expiryTime':int(time.time()*1000)+20*60000,'comment':'owned83-home-fixed-path-probe'}
+        inbound_ids=[rows[32053]['id'],rows[32087]['id']]; udp_settings={}
+        if include_udp:
+            private=subprocess.check_output(['wg','genkey'],text=True).strip()
+            public=subprocess.check_output(['wg','pubkey'],input=private+'\n',text=True).strip()
+            client.update(privateKey=private,publicKey=public,allowedIPsByInbound={})
+            for port,label in [(32085,'wireguard')]:
+                if not rows[port]['enable']:raise ValueError('UDP probe inbound unavailable')
+                server=json.loads(rows[port]['settings']);candidate='10.254.83.231/32'
+                if candidate in h.canonical(original):raise ValueError('Fixture address collision; stop')
+                client['allowedIPsByInbound'][str(rows[port]['id'])]=[candidate];inbound_ids.append(rows[port]['id'])
+                server_public=subprocess.check_output(['wg','pubkey'],input=server['secretKey']+'\n',text=True).strip()
+                settings=dict(secretKey=private,address=[candidate],peers=[{'publicKey':server_public,'endpoint':endpoint+':'+str(port),'allowedIPs':['0.0.0.0/0']}],noKernelTun=True,mtu=1420)
+                udp_settings[label]=settings
+        s.call('POST','/clients/add',{'client':client,'inboundIds':inbound_ids})
         reality=target.vless_client(json.loads(rows[32053]['stream_settings']),identifier,1080)
-        reality['outbounds'][1]['settings']['vnext'][0]['address']='109.120.141.60'
+        reality['outbounds'][1]['settings']['vnext'][0]['address']=endpoint
         trojan=backend.client(json.loads(rows[32087]['stream_settings']),password,1080)
-        trojan['outbounds'][1]['settings']['servers'][0]['address']='109.120.141.60'
-        h.save(s.state/'home-configs-private.json',{'reality':reality,'trojan':trojan})
+        trojan['outbounds'][1]['settings']['servers'][0]['address']=endpoint
+        configs={'reality':reality,'trojan':trojan}
+        for label,settings in udp_settings.items():
+            config=copy.deepcopy(reality);config['outbounds'][1]={'tag':reality['outbounds'][1]['tag'],'protocol':label,'settings':settings};configs[label]=config
+        h.save(s.state/'home-configs-private.json',configs)
         executable=s.state/'xray-probe';shutil.copyfile(target.server_executable(),executable);executable.chmod(0o700)
         proof={'prepared':True,'expires_within_minutes':20,'binary_sha256':hashlib.sha256(executable.read_bytes()).hexdigest(),
                'controller_must_cleanup':True,'no_human_identity_used':True}
@@ -88,11 +108,11 @@ def prepare(state,approval):
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--state',type=Path,required=True)
     group=p.add_mutually_exclusive_group();group.add_argument('--prepare',action='store_true');group.add_argument('--cleanup',action='store_true')
-    p.add_argument('--approve-session-hash');a=p.parse_args()
+    p.add_argument('--approve-session-hash');p.add_argument('--endpoint',default='109.120.141.60');p.add_argument('--include-udp',action='store_true',help='Add an owned userspace WireGuard probe binding');a=p.parse_args()
     try:
         if a.prepare:
             if not a.approve_session_hash:p.error('Fresh approval required')
-            print(h.canonical(prepare(a.state,a.approve_session_hash)))
+            print(h.canonical(prepare(a.state,a.approve_session_hash,endpoint=a.endpoint,include_udp=a.include_udp)))
         elif a.cleanup:print(h.canonical(finish(restore(a.state))))
         else:
             s=native.NativeSession(a.state);print(h.canonical({'session_sha256':h.digest(s.preview()),'writes':0}))

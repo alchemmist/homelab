@@ -1,0 +1,22 @@
+# Infrastructure public identities only; private keys remain root-only on each node.
+vpn_transit_public_keys:
+  socrat-1:
+    wg-vps-gateway: 5NZ9ITbR3SBIJh/ApD+UBEULcUtguluNRgPEgfgbIGU=
+  socrat-0:
+    wg-vps-gateway: ZyQ8Kli1pUhi8JtuUmVMOxmzM3OVrXrQo+MIQjmXOFw=
+  socrat-3:
+    wg-vps-gateway: KupryyZJAyVjNwdVRpcGyYBSBt/cU5O4HDLTMt+otHg=
+  socrat-2:
+    wg-vpn-transit: Rxk27yrjeZYfs+dTLLFXJFrPsHS0CewzVjM1584k1Bw=
+  socrat-4:
+    wg-vpn-transit: I/k16F3eLDx85V+xHyxZTIINdYOzv2Tqb9P1l2hfiBM=
+    wg-vps-gateway: UZcOmWw297L8hRxf56ZJgJOORcgt4CSVMhIlpM9F6DE=
+vpn_transit_exit_public: 109.120.141.60
+vpn_transit_entry_public: 91.189.82.238
+vpn_transit_port: 51841
+vpn_gateway_port: 51842
+vpn_gateway_homes:
+  socrat-0: 10.252.4.1
+  socrat-1: 10.252.4.3
+  socrat-3: 10.252.4.5
+vpn_transit_xray_sha256: a27e3f95ab6ce270956d0cecd32eda4686a811afc71c64a6a734a3dede14883e

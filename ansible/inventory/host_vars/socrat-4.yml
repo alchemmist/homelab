@@ -1,0 +1,11 @@
+---
+# 1 GiB transit worker: no etcd, desktops, storage replicas or arbitrary workloads.
+homelab_boot_k3s_service: k3s-agent.service
+k3s_worker_swap_enabled: true
+k3s_worker_system_reserved: cpu=100m,memory=256Mi
+k3s_worker_kube_reserved: cpu=100m,memory=256Mi
+k3s_worker_profile: transit-worker
+k3s_worker_eviction_memory: 128Mi
+# Retain admission taint: only explicitly reviewed infrastructure may tolerate it.
+k3s_worker_bootstrap_taint: homelab.io/bootstrap=true:NoSchedule
+wg_socrat_admin_clients: {}

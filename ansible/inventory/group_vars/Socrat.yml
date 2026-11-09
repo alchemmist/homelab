@@ -17,6 +17,9 @@ wg_socrat_peer_endpoints:
   socrat-3:
     socrat-0: socrat.alchemmist.xyz:51830
     socrat-1: socrat.alchemmist.xyz:51831
+  socrat-4:
+    socrat-0: 109.173.40.247:51830
+    socrat-1: 109.173.40.247:51831
   socrat-1:
     socrat-2: 127.0.0.1:51840
   socrat-2:
@@ -43,6 +46,10 @@ wg_socrat_nodes:
   socrat-3:
     address: 10.250.0.5
     public_key: 9MPu5SMwCwzL+1/Hy4Z9g71uQb42UQ2pCH9jfAoAihs=
+  socrat-4:
+    address: 10.250.0.40
+    public_key: rOXEc8nrYHuYG0D5t+LwY9jxv05zsjxt0P2scF+Sf0k=
+    endpoint: 91.189.82.238:51830
 
 homelab_users:
   - name: tim

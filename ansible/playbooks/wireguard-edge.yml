@@ -1,0 +1,35 @@
+---
+- name: Append the new transit worker without restarting existing interfaces
+  hosts: socrat-0:socrat-1:socrat-2:socrat-3
+  gather_facts: false
+  become: true
+  serial: 1
+  any_errors_fatal: true
+  tasks:
+    - name: Validate the explicitly reviewed new public identity
+      ansible.builtin.assert:
+        that:
+          - wg_socrat_nodes['socrat-4'].address == '10.250.0.40'
+          - wg_socrat_nodes['socrat-4'].public_key == 'rOXEc8nrYHuYG0D5t+LwY9jxv05zsjxt0P2scF+Sf0k='
+    - name: Append the isolated peer with preimage and no-replay receipt
+      ansible.builtin.script:
+        cmd: '{{ playbook_dir }}/../../scripts/socrat-edge-peer.py'
+        executable: python3
+
+- name: Start only the new node management interface
+  hosts: socrat-4
+  gather_facts: true
+  become: true
+  any_errors_fatal: true
+  roles:
+    - wireguard_socrat
+  post_tasks:
+    - name: Read management address after rendering
+      ansible.builtin.command: ip -json address show dev wg-socrat
+      register: edge_wg_address
+      changed_when: false
+    - name: Activate the corrected address only on the unadmitted new node
+      ansible.builtin.systemd_service:
+        name: wg-quick@wg-socrat
+        state: restarted
+      when: "'10.250.0.40' not in edge_wg_address.stdout"

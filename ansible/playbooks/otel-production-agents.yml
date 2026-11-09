@@ -1,6 +1,6 @@
 ---
 - name: Install persistent native host agents and trace gateway
-  hosts: socrat-0:socrat-1:socrat-2:socrat-3
+  hosts: "{{ otel_production_hosts | default('socrat-0:socrat-1:socrat-2:socrat-3') }}"
   gather_facts: false
   serial: 1
   become: true
@@ -29,13 +29,20 @@
         owner: root
         group: root
         mode: '0755'
+      when: otel_production_native_staged_dir is not defined
+    - name: Install a streamed stock binary without buffering the full archive on small nodes
+      ansible.builtin.command:
+        argv: [install, -m, '0755', -o, root, -g, root, '{{ otel_production_native_staged_dir }}/otelcol-contrib', /usr/local/lib/homelab-otel/otelcol-contrib]
+      when: otel_production_native_staged_dir is defined
+      notify: Restart validated host agent
     - name: Verify upstream binary identity
       ansible.builtin.command: sha256sum /usr/local/lib/homelab-otel/otelcol-contrib
       register: collector_hash
       failed_when: "'57911a9d902cfe2c287dac09fcee4b054630b4ec248fa190a3115d860a32f81f' not in collector_hash.stdout"
       changed_when: false
     - name: Install already independently verified stock host exporter
-      ansible.builtin.command: install -m 0755 -o root -g root /var/tmp/otel-host-source-canary-20261030T1645/node_exporter /usr/local/lib/homelab-otel/node_exporter
+      ansible.builtin.command:
+        argv: [install, -m, '0755', -o, root, -g, root, "{{ otel_production_exporter_source | default('/var/tmp/otel-host-source-canary-20261030T1645/node_exporter') }}", /usr/local/lib/homelab-otel/node_exporter]
       changed_when: false
     - name: Verify immutable native exporter identity after copy
       ansible.builtin.command: sha256sum /usr/local/lib/homelab-otel/node_exporter

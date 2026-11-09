@@ -1,0 +1,10 @@
+---
+- name: Prepare the dedicated Moscow Netherlands transport without moving clients
+  hosts: socrat-2:socrat-4
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  vars_files:
+    - ../vars/vpn-transit.yml
+  roles:
+    - vpn_transit
