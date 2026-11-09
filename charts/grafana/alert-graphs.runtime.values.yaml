@@ -43,6 +43,6 @@ alertGraphs:
     - name: alert-graphs-harbor-pull
   nodeSelector:
     kubernetes.io/hostname: socrat-1
-  # Expected hostNetwork source; acceptance below must verify actual bot access.
+  # Actual hostNetwork socket source observed in bot on socrat-2; verify authenticated access.
   botSourceCIDRs:
-    - 10.250.0.2/32
+    - 109.120.141.60/32
