@@ -64,3 +64,33 @@ preserved active state, only-settings changes and the narrow native GitHub
 registration lifecycle exception (no broad static-data drift suppression). Live setting/published-version
 readback and the first NATURAL delivery are separate acceptance steps. Do not
 manufacture a failed production execution or send a test alert without approval.
+
+
+## Enrollment receipt — 9 November 2026
+
+Created native handler **`iZn7biFh6321a1w8`** (`Workflow Failure Alerts`), with no
+recursive error target. Six native settings read back correctly:
+
+| Workflow | ID | Active state retained |
+| --- | --- | --- |
+| Yandex Session Maintenance | `BJczDRwqaikJBnyo` | active |
+| Calendar → Yandex Station Voice Reminder | `Cdr4tggOc0kVAzx8` | active |
+| Wiki OpenAPI | `GQgoxYmgWBRZRgcQ` | active |
+| SPI Incident Triage | `J9akzlydrf9XZiID` | **inactive already before this task** |
+| Blog Updates | `R1wSeHmw3yPdqKKI` | active |
+| Socrat Alerts | `b2TlucyOTiZP9CzN` | active |
+
+Active workflows have their new settings version published. Native GitHub
+registration recreated Wiki and Blog subscriptions: old hook absent, replacement
+active, exactly one hook for each URL, same event selection. No manual credential
+rotation, duplicate hook adoption or application-state restore was performed.
+Each write checked that its fresh graph/credentials were unchanged. During this
+window a separate change to SPI Route JS was observed relative to the initial
+snapshot; it was already present before final resume and was not reverted by this
+settings-only task. SPI still has ten nodes, unchanged credentials and remains off.
+Do not activate SPI just to test error delivery.
+
+Nine offline regression tests pass. Final enrollment/active-version/credential
+readback passed; no synthetic failed execution, test Telegram message, workflow
+retry or model call was made. This is configuration acceptance, not a claimed
+first natural Telegram delivery or exactly-once guarantee.
