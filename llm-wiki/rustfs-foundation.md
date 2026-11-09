@@ -113,3 +113,27 @@ Human browser native OIDC/STS, actual file download/hash, outsider/logout still
 pending (parent browser profile busy). Do not confuse proxy admission with native
 identity or claim useful listing under GetOnly. SPI OFF. See new report for exact
 fixture URL/hash, human steps and rollback (pruneOFF does not delete ingresses).
+
+## 2026-11-09 14:54Z — user-reported native OIDC connection failure
+
+RustFS logs confirmed `token_request_failed`/`request_error_kind=connect`, not
+`invalid_client` or a password error. From the actual RustFS container, ordinary
+verified HTTPS discovery failed with HTTP000. Two separate drifts were present:
+manual-sync RustFS policies still allowed the retired VPS109.120.141.97, while
+Git already had109.120.141.60; internal DNS actually resolves Authentik to the
+existing ingress VIP192.168.0.250. The hostPort path first DNATs to K3s Traefik
+ServiceLB443, then to the Traefik8443 pod. Public-IP-only policy did not admit
+this path. Updating just the stale public address was insufficient.
+
+Git commits950d720/40948c2 add opt-in `authViaTraefik` for the two isolated
+consumers, exact VIP/32 and namespace+pod-selected Traefik8443/ServiceLB443.
+No DNS, route, TLS verification, human/group/client credential or storage change.
+Argo selectively reconciled only `rustfs-isolation` and
+`rustfs-gateway-isolation`, prune=false. RustFS pod remained unchanged (0 restarts).
+Actual RustFS ordinary HTTPS now returns discovery200/0.421s, JWKS200/0.204s,
+and token endpoint400/0.285s for an intentionally incomplete credential-free
+request (expected protocol rejection, proving transport only; no token minted).
+App Synced/Healthy. Offline tests prove only the two policies change and selectors
+remain narrow. Fresh human authorization-code login is still to be confirmed;
+never equate these transport checks with completed human SSO acceptance. Retry
+from `/rustfs/console/`, not by reusing an old failed callback code.

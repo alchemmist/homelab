@@ -72,6 +72,18 @@ spec:
       ports: [{port: 8080, protocol: TCP}]
   egress:
     {{- if .Values.browserRoutes.unifiedOrigin }}
+    {{- if .Values.authViaTraefik }}
+    # Internal DNS uses the existing HTTPS VIP; CNI sees Traefik after DNAT.
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: traefik}}
+      ports: [{port: 8443, protocol: TCP}]
+    # K3s hostPort first DNATs to the Traefik ServiceLB pod's HTTPS port.
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {svccontroller.k3s.cattle.io/svcname: traefik, svccontroller.k3s.cattle.io/svcnamespace: kube-system}}
+      ports: [{port: 443, protocol: TCP}]
+    {{- end }}
     {{- range .Values.authEgressCIDRs }}
     - to: [{ipBlock: {cidr: {{ . | quote }}}}]
       ports: [{port: 443, protocol: TCP}]
