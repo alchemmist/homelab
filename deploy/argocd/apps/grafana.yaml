@@ -25,6 +25,7 @@ spec:
       releaseName: kube-prometheus-stack
       valueFiles:
       - alert-graphs.policy.values.yaml
+      - alert-graphs.runtime.values.yaml
       parameters: []
   - repoURL: https://github.com/alchemmist/homelab.git
     targetRevision: main
