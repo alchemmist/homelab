@@ -78,6 +78,8 @@ class DNSPreflightSafetyTests(unittest.TestCase):
 
         guard = load(ROOT / "scripts/spi-public-dns.py", "lock_guard")
         require = guard.require
+        previous_umask = guard.os.umask(0o077)
+        self.addCleanup(guard.os.umask, previous_umask)
 
         def fixture_permissions(ok, message):
             # Fixture files are user-owned; retain every non-ownership safety check.
