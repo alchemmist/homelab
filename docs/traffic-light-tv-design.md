@@ -220,3 +220,12 @@ both ingress IPs, including exact presentation asset hash and unchanged access
 restrictions. This is not a physical-TV capture or an independent external-network
 measurement. No backend metrics collector, service workflow or database changes
 were made in this headerless revision.
+
+## Approved TMP-1 promotion — 10 November 2026
+
+Owner selected TMP-1. CPU, Memory and Disk now use native Bar gauge
+`namePlacement: top` instead of `auto`, preventing left-label switching when
+five or more nodes compress each row. Queries, dynamic maxima, absolute units,
+thresholds and layout are unchanged. All four temporary dashboards and their
+provisioning sources are retired. Canonical UID/public share and TV settings
+are preserved. No additional CSS/JavaScript or plugins were introduced.

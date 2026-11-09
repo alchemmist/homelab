@@ -221,7 +221,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
         for panel_id, expected in approved.items():
             actual = dict(panel_by_id(self.dashboard, int(panel_id)))
             expected = dict(expected)
-            # The user explicitly requested a taller disk panel; no metric/style changes.
+            # Approved TMP-1: fixed top labels; metrics, capacity and geometry retained.
             actual.pop('gridPos')
             expected.pop('gridPos')
             self.assertEqual(actual, expected)

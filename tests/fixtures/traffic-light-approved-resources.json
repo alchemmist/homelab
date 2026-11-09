@@ -51,7 +51,7 @@
       "maxVizHeight": 300,
       "minVizHeight": 0,
       "minVizWidth": 0,
-      "namePlacement": "auto",
+      "namePlacement": "top",
       "orientation": "horizontal",
       "reduceOptions": {
         "calcs": [
@@ -222,7 +222,7 @@
       "maxVizHeight": 300,
       "minVizHeight": 0,
       "minVizWidth": 0,
-      "namePlacement": "auto",
+      "namePlacement": "top",
       "orientation": "horizontal",
       "reduceOptions": {
         "calcs": [
@@ -393,7 +393,7 @@
       "maxVizHeight": 300,
       "minVizHeight": 0,
       "minVizWidth": 0,
-      "namePlacement": "auto",
+      "namePlacement": "top",
       "orientation": "horizontal",
       "reduceOptions": {
         "calcs": [
