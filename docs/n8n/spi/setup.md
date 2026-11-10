@@ -3,10 +3,34 @@
 ## Contract and rollout
 
 All generated issue titles, descriptions and comments MUST be **English**.
-Titles start with `[SPI]`. Match only open SPI issues, using the model for semantic
-identity rather than just alert-name equality. Closed issues do not prevent a new
-incident issue. Distinguish service impact from monitoring quality; a brief or
-self-resolved incident is not automatically a false positive.
+Titles start with `[SPI]`. The current managed catalog has **20 open workstreams**
+and **zero automatic issue creation**. Stable service/workload routing replaces
+catalog-wide LLM matching; this is organizational grouping, not proof of a shared
+root cause. Unknown/high-impact findings enter review #17; availability-check
+subcases use #50 unless promoted by severity. Distinguish service impact from
+monitoring quality; a brief or self-resolved incident is not automatically a false
+positive. Canonical implementation and maintenance contract:
+[`alchemmist/spi-triage/docs/managed-catalog.md`](https://github.com/alchemmist/spi-triage/blob/main/docs/managed-catalog.md).
+
+On 2026-11-10,152 open source reports were consolidated into20 open topics and132
+standalone closures, explicitly **not marked fixed**. Source bodies/comments,
+graphs, immutable evidence and historical queue rows were retained. Targets index
+sources; closed sources link back. Every production GitHub client rejects new
+issue creation. Humans must free a slot before introducing a new tracking issue.
+
+Managed Match makes no paid call and reads neither a full catalog nor comment
+history. Evidence collection, analysis/citation validation, S3 verification,
+publication intents, ownership fences, finite budgets and original n8n identities
+remain in place. Comment churn no longer forces a paid snapshot re-review.
+Legacy matching/snapshot descriptions below apply only to compatibility and
+historical execution reconciliation, not new managed work.
+
+The rollout used naturally completed16842 and verified zero logical owners,
+processing jobs, paid reservations and native pending SPI executions. Queued
+admissions were retained. Only SPI intake was paused; its original activity was
+restored after the immutable release reached Synced/Healthy and all20 targets
+passed native-authorized read-only validation. Other workflow activity flags and
+SPI graph/settings/credential bindings were unchanged.
 
 Deployment was first verified in **dry-run**, then SPI publication was enabled
 (`charts/spi-triage/values.yaml: writeEnabled: true`) within the operator-authorized
