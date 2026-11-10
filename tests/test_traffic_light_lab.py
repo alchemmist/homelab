@@ -26,20 +26,34 @@ class TrafficLightLabTest(unittest.TestCase):
         for p in original['panels']:
             if p['id'] != 909:
                 self.assertEqual(self.panels[p['id']], p)
-        self.assertEqual(set(self.panels) - {p['id'] for p in original['panels']}, {972})
+        self.assertEqual(set(self.panels) - {p['id'] for p in original['panels']}, {973})
         self.assertNotIn(909, self.panels)
-        self.assertFalse(set(self.panels) & set(range(950, 972)))
+        self.assertFalse(set(self.panels) & set(range(950, 973)))
 
-    def test_map_has_named_apps_fixed_cohort_and_honest_semantics(self):
-        p = self.panels[972]
-        self.assertEqual(p['type'], 'state-timeline')
+    def test_mosaic_includes_every_git_app_once_without_topk(self):
+        p = self.panels[973]
+        self.assertEqual(p['type'], 'canvas')
         self.assertEqual(p['gridPos'], {'x': 12, 'y': 8, 'w': 6, 'h': 8})
         self.assertEqual(p['targets'][0]['legendFormat'], '{{name}}')
-        self.assertIn('@ end()', p['targets'][0]['expr'])
-        self.assertIn('topk(8', p['targets'][0]['expr'])
-        self.assertIn('Sync does NOT imply a Pod redeploy', p['description'])
-        self.assertFalse(p['fieldConfig']['defaults']['custom']['spanNulls'])
-        self.assertEqual(p['fieldConfig']['defaults']['mappings'][0]['options']['0']['color'], '#252C36')
+        self.assertTrue(p['targets'][0]['instant'])
+        self.assertNotIn('topk', p['targets'][0]['expr'])
+        self.assertNotIn('$__range', p['targets'][0]['expr'])
+        self.assertFalse(p['options']['panZoom'])
+        self.assertFalse(p['options']['inlineEditing'])
+        elements = [e for e in p['options']['root']['elements'] if not e['name'].startswith('Legend ')]
+        self.assertEqual(sorted(e['name'] for e in elements), lab.application_names())
+        occupied = set()
+        labels = []
+        for e in elements:
+            self.assertEqual(e['background']['color']['field'], e['name'])
+            self.assertEqual(e['background']['color']['fixed'], '#555555')
+            self.assertEqual(e['config']['text']['field'], e['name'])
+            self.assertTrue(e['links'][0]['url'].endswith('/' + e['name']))
+            self.assertNotIn((e['placement']['left'], e['placement']['top']), occupied)
+            occupied.add((e['placement']['left'], e['placement']['top']))
+            labels.append(e['config']['text']['fixed'])
+        self.assertEqual(len(labels), len(set(labels)))
+        self.assertLessEqual(max(map(len, labels)), 10)
 
     def test_nonoverlapping_tv_grid(self):
         occupied = {}
@@ -54,7 +68,7 @@ class TrafficLightLabTest(unittest.TestCase):
         self.assertEqual(len(self.panels), len(self.dashboard['panels']))
 
     @unittest.skipUnless(shutil.which('promtool'), 'promtool needed for PromQL semantics')
-    def test_promql_priority_cohort_gaps_and_sync_pulse(self):
+    def test_promql_priority_all_apps_gaps_and_sync_pulse(self):
         def series(name, values='1+0x30'):
             return {'series': name, 'values': values}
         def app(name, health='Healthy', sync='Synced'):
@@ -63,7 +77,7 @@ class TrafficLightLabTest(unittest.TestCase):
             return series(f'argocd_app_sync_total{{job="socrat-argocd",name="{name}",phase="{phase}"}}', values)
         def samples(values):
             return [{'labels': '{name="' + n + '"}', 'value': v} for n, v in values.items()]
-        activity, cohort, selected = lab.queries('30m')
+        activity = lab.query()
         up = series('up{job="socrat-argocd"}')
         inputs = [up, app('quiet'), app('sync'), counter('sync'),
                   app('drift', sync='OutOfSync'), counter('drift'),
@@ -74,11 +88,9 @@ class TrafficLightLabTest(unittest.TestCase):
         values = {'quiet': 0, 'sync': 1, 'drift': 2, 'working': 3, 'failed': 4, 'unhealthy': 5, 'unknown': 6}
         cases = [
             {'interval': '1m', 'input_series': inputs, 'promql_expr_test': [
-                {'expr': activity, 'eval_time': '30m', 'exp_samples': samples(values)},
-                {'expr': selected, 'eval_time': '30m', 'exp_samples': samples({n: v for n, v in values.items() if n != 'quiet'})}]},
+                {'expr': activity, 'eval_time': '30m', 'exp_samples': samples(values)}]},
             {'interval': '1m', 'input_series': [], 'promql_expr_test': [
-                {'expr': activity, 'eval_time': '30m', 'exp_samples': []},
-                {'expr': selected, 'eval_time': '30m', 'exp_samples': []}]},
+                {'expr': activity, 'eval_time': '30m', 'exp_samples': []}]},
             {'interval': '1m', 'input_series': [series(up['series'], '1'), series(app('quiet')['series'], '1')],
              'promql_expr_test': [{'expr': activity, 'eval_time': '3m', 'exp_samples': []}]},
             {'interval': '1m', 'input_series': [series(up['series'], '0+0x30'), app('quiet')],

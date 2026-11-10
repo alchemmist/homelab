@@ -2,6 +2,9 @@
 """Build an app-level Argo activity map in TMP, never edit the canonical TV."""
 import copy
 import json
+import math
+
+import yaml
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -14,7 +17,7 @@ def fresh(metric, selector):
     return f'({metric}{{{selector}}} and (time() - timestamp({metric}{{{selector}}}) < 90))'
 
 
-def queries(window='$__range'):
+def query():
     job = 'job="socrat-argocd"'
     app = fresh('argocd_app_info', job)
     base = f'(0 * max by(name) ({app}))'
@@ -36,20 +39,48 @@ def queries(window='$__range'):
               state(2, 'sync_status="OutOfSync"'), sync(1, 'Succeeded'), base]
     activity = f'(({" or ".join(states)}) and on(name) {base}) and on() {gate}'
 
-    # Select one cohort at range end, not a different top-k at every step.
-    # Issues outrank sync volume. Only positive scores; quiet apps do not pad rows.
-    issue_minutes = f'sum_over_time((({activity}) >= bool 2)[{window}:1m] @ end())'
-    current_issue = f'last_over_time(({activity})[1m:1m] @ end()) >= 2'
-    counters = f'sum by(name) (increase(argocd_app_sync_total{{{job}}}[{window}] @ end()))'
-    zero = f'(0 * max by(name) (argocd_app_info{{{job}}} @ end()))'
-    volume = f'({counters} or {zero})'
-    history_score = f'(({issue_minutes}) or {zero})'
-    severity = f'(({current_issue}) or {zero})'
-    # Current issues first; then issue samples + sync volume. A transient unknown
-    # must not crowd out all the apps that actually synced during the period.
-    score = f'({volume} + on(name) (5 * {history_score}) + on(name) (1000000 * {severity}))'
-    cohort = f'topk(8, {score} > 0)'
-    return activity, cohort, f'({activity}) and on(name) ({cohort})'
+    return activity
+
+
+def application_names():
+    names = []
+    paths = sorted((ROOT / 'deploy/argocd/apps').glob('*.yaml')) + [ROOT / 'deploy/argocd/root.yaml']
+    for path in paths:
+        for doc in yaml.safe_load_all(path.read_text()):
+            if isinstance(doc, dict) and doc.get('kind') == 'Application':
+                names.append(doc['metadata']['name'])
+    if len(names) != len(set(names)):
+        raise ValueError('Duplicate Argo application names')
+    return sorted(names)
+
+
+ALIASES = {
+    'alertmanager': 'Alerts', 'argo-cd': 'Argo', 'cert-manager': 'Certs',
+    'cnpg-operator': 'CNPG', 'format-quorum': 'Quorum', 'grafana-mcp': 'Gf MCP',
+    'img-proxy': 'Img proxy', 'kube-state-metrics': 'KSM', 'litellm-infra': 'LLM infra',
+    'monitoring-k3s': 'Mon K3s', 'monitoring-llm': 'Mon LLM', 'node-exporter': 'Node exp',
+    'nvidia-device-plugin': 'NVIDIA', 'open-terminal': 'Terminal', 'open-webui': 'WebUI',
+    'private-gateway': 'Priv GW', 'prometheus': 'Prom', 'prometheus-operator': 'Prom Op',
+    'pyroscope': 'Pyroscope', 'socrat-bot': 'Bot', 'socrat-home': 'Home',
+    'spi-triage': 'SPI', 'traefik-edge': 'Edge', 'uptime-kuma': 'Kuma',
+    'vpn-transit': 'VPN MSK', 'wiki-runtime': 'Wiki',
+}
+
+
+def tile(name, label, left, top, width=57, height=40, color=None):
+    return {
+        'name': name, 'type': 'rectangle',
+        'placement': {'left': left, 'top': top, 'width': width, 'height': height, 'rotation': 0},
+        'constraint': {'horizontal': 'scale', 'vertical': 'scale'},
+        'background': {'color': {'fixed': color or '#555555', **({} if color else {'field': name})}},
+        'border': {'width': 1, 'radius': 5, 'color': {'fixed': '#424B58'}},
+        'config': {'align': 'center', 'valign': 'middle', 'size': 10 if color else 11,
+                   'color': {'fixed': '#FFFFFF'},
+                   'text': {'mode': 'fixed', 'fixed': label, **({} if color else {'field': name})}},
+        'links': [] if color else [{'title': name + ' · Open in Argo CD',
+                                   'url': 'https://argocd.socrat.alchemmist.xyz/applications/argocd/' + name,
+                                   'targetBlank': True}],
+    }
 
 
 def build():
@@ -57,7 +88,7 @@ def build():
     d.pop('id', None)
     d.pop('version', None)
     d.update(uid='socrat-traffic-light-tmp-lab', title='Traffic Light · TMP Lab',
-             description='Argo activity by application: syncs, drift and health transitions. Canonical TV unchanged.',
+             description='All Git-managed Argo applications in one native Canvas mosaic. Canonical TV unchanged.',
              tags=d.get('tags', []) + ['temporary', 'sandbox'])
     d['panels'] = [p for p in d['panels'] if p['id'] != 909]
     states = {
@@ -69,24 +100,36 @@ def build():
         '5': {'text': 'Unhealthy', 'color': '#D02B4C'},
         '6': {'text': 'Unknown', 'color': '#808080'},
     }
+    names = application_names()
+    columns = 7
+    rows = math.ceil(len(names) / columns)
+    labels = [ALIASES.get(name, name) for name in names]
+    if len(set(labels)) != len(labels):
+        raise ValueError('Ambiguous mosaic aliases')
+    elements = [tile(name, label, (i % columns) * 60, 26 + (i // columns) * 44)
+                for i, (name, label) in enumerate(zip(names, labels))]
+    for i, (code, label) in enumerate([('0', 'Quiet'), ('1', 'Sync'), ('2', 'Drift'),
+                                       ('3', 'Work'), ('4', 'Fail'), ('5', 'Down'), ('6', '?')]):
+        elements.append(tile('Legend ' + code, label, i * 60, 0, height=18, color=states[code]['color']))
     d['panels'].append({
-        'id': 972, 'title': 'Argo CD · changes by app · top 8', 'type': 'state-timeline', 'datasource': DS,
+        'id': 973, 'title': 'Argo CD · all apps', 'type': 'canvas', 'datasource': DS,
         'gridPos': {'x': 12, 'y': 8, 'w': 6, 'h': 8},
-        'description': 'One row per app, time left to right. Up to eight apps with activity/issues in the selected range; current issues rank first, then issue time and sync volume; cohort is fixed at range end. Dark = quiet, cyan = successful sync detected in the preceding 10m, amber = drift, violet = Progressing/Suspended, bright red = failed/error sync in preceding 10m, dark red = Degraded/Missing, grey = Unknown. Priority: unknown > unhealthy > sync failure > progressing/paused > drift > successful sync > quiet. Higher-priority states can hide a concurrent sync. Colors are observed/inferred states, not exact operation durations. Sync does NOT imply a Pod redeploy; Argo health is not a generic rollout/restart event feed. Missing/stale telemetry is a gap. No rows can mean no qualifying activity or unavailable telemetry; it is not an all-clear statement. Hover for app/time/state, click to investigate in Argo.',
-        'interval': '1m', 'maxDataPoints': 720,
-        'targets': [{'datasource': DS, 'expr': queries()[2], 'legendFormat': '{{name}}', 'refId': 'A',
-                     'instant': False, 'range': True, 'format': 'time_series', 'interval': '1m'}],
-        'fieldConfig': {'defaults': {'noValue': 'No telemetry', 'color': {'mode': 'palette-classic'},
-                                    'mappings': [{'type': 'value', 'options': states}],
-                                    'custom': {'axisPlacement': 'left', 'axisWidth': 125, 'fillOpacity': 100,
-                                               'lineWidth': 0, 'spanNulls': False, 'insertNulls': 90000,
-                                               'hideFrom': {'legend': False, 'tooltip': False, 'viz': False}},
-                                    'links': [{'title': 'Open application in Argo CD',
-                                               'url': 'https://argocd.socrat.alchemmist.xyz/applications/argocd/${__field.labels.name}',
-                                               'targetBlank': True}]}, 'overrides': []},
-        'options': {'rowHeight': 0.82, 'mergeValues': True, 'showValue': 'auto', 'alignValue': 'center',
-                    'legend': {'showLegend': True, 'displayMode': 'list', 'placement': 'bottom'},
-                    'tooltip': {'mode': 'single', 'sort': 'none'}},
+        'description': 'One fixed cell per Git-managed Argo application, alphabetical; no top-k or scrolling. Short names on cells, full names and mapped states in native hover. Quiet is subdued; cyan = successful sync in preceding 10m, amber = drift, violet = Progressing/Suspended, bright red = failed sync in preceding 10m, dark red = Degraded/Missing, grey = Unknown/missing/stale data. Priority: unknown > unhealthy > failed sync > progressing/paused > drift > recent success > quiet. Current state only, not history. Sync is not proof of a Pod redeploy. Click a cell to open its app. Inventory comes from Git; regenerate when apps are added/removed.',
+        'targets': [{'datasource': DS, 'expr': query(), 'legendFormat': '{{name}}', 'refId': 'A',
+                     'instant': True, 'range': False, 'format': 'time_series'}],
+        'fieldConfig': {'defaults': {'noValue': 'No telemetry', 'color': {'mode': 'thresholds'},
+                                    'mappings': [{'type': 'value', 'options': states},
+                                                 {'type': 'special', 'options': {'match': 'null+nan',
+                                                  'result': {'text': 'No telemetry', 'color': '#555555'}}}],
+                                    'thresholds': {'mode': 'absolute', 'steps': [
+                                        {'value': None if k == '0' else int(k), 'color': v['color']}
+                                        for k, v in states.items()]}}, 'overrides': []},
+        'options': {'inlineEditing': False, 'panZoom': False, 'showAdvancedTypes': False,
+                    'zoomToContent': True, 'tooltip': {'mode': 'single', 'disableForOneClick': False},
+                    'root': {'name': 'Argo mosaic', 'type': 'frame',
+                             'placement': {'width': 420, 'height': 26 + rows * 44},
+                             'background': {'color': {'fixed': 'transparent'}},
+                             'elements': elements}},
     })
     d['panels'].sort(key=lambda p: (p['gridPos']['y'], p['gridPos']['x']))
     return d

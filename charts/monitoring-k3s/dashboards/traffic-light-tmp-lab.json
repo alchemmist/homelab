@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "Argo activity by application: syncs, drift and health transitions. Canonical TV unchanged.",
+  "description": "All Git-managed Argo applications in one native Canvas mosaic. Canonical TV unchanged.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -2844,9 +2844,9 @@
       "type": "timeseries"
     },
     {
-      "id": 972,
-      "title": "Argo CD · changes by app · top 8",
-      "type": "state-timeline",
+      "id": 973,
+      "title": "Argo CD · all apps",
+      "type": "canvas",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -2857,29 +2857,26 @@
         "w": 6,
         "h": 8
       },
-      "description": "One row per app, time left to right. Up to eight apps with activity/issues in the selected range; current issues rank first, then issue time and sync volume; cohort is fixed at range end. Dark = quiet, cyan = successful sync detected in the preceding 10m, amber = drift, violet = Progressing/Suspended, bright red = failed/error sync in preceding 10m, dark red = Degraded/Missing, grey = Unknown. Priority: unknown > unhealthy > sync failure > progressing/paused > drift > successful sync > quiet. Higher-priority states can hide a concurrent sync. Colors are observed/inferred states, not exact operation durations. Sync does NOT imply a Pod redeploy; Argo health is not a generic rollout/restart event feed. Missing/stale telemetry is a gap. No rows can mean no qualifying activity or unavailable telemetry; it is not an all-clear statement. Hover for app/time/state, click to investigate in Argo.",
-      "interval": "1m",
-      "maxDataPoints": 720,
+      "description": "One fixed cell per Git-managed Argo application, alphabetical; no top-k or scrolling. Short names on cells, full names and mapped states in native hover. Quiet is subdued; cyan = successful sync in preceding 10m, amber = drift, violet = Progressing/Suspended, bright red = failed sync in preceding 10m, dark red = Degraded/Missing, grey = Unknown/missing/stale data. Priority: unknown > unhealthy > failed sync > progressing/paused > drift > recent success > quiet. Current state only, not history. Sync is not proof of a Pod redeploy. Click a cell to open its app. Inventory comes from Git; regenerate when apps are added/removed.",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "((((6 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) < 90)))) or (6 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",sync_status!~\"Synced|OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",sync_status!~\"Synced|OutOfSync\"}) < 90)))) or (5 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing\"}) < 90)))) or (4 + 0 * (sum by(name) (increase(argocd_app_sync_total{job=\"socrat-argocd\",phase=~\"Failed|Error\"}[10m]) and (time() - timestamp(argocd_app_sync_total{job=\"socrat-argocd\",phase=~\"Failed|Error\"}) < 90)) > 0)) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status=~\"Progressing|Suspended\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=~\"Progressing|Suspended\"}) < 90)))) or (2 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",sync_status=\"OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",sync_status=\"OutOfSync\"}) < 90)))) or (1 + 0 * (sum by(name) (increase(argocd_app_sync_total{job=\"socrat-argocd\",phase=~\"Succeeded\"}[10m]) and (time() - timestamp(argocd_app_sync_total{job=\"socrat-argocd\",phase=~\"Succeeded\"}) < 90)) > 0)) or (0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))))) and on(name) (0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1)) and on(name) (topk(8, ((sum by(name) (increase(argocd_app_sync_total{job=\"socrat-argocd\"}[$__range] @ end())) or (0 * max by(name) (argocd_app_info{job=\"socrat-argocd\"} @ end()))) + on(name) (5 * ((sum_over_time((((((6 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) < 90)))) or (6 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",sync_status!~\"Synced|OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",sync_status!~\"Synced|OutOfSync\"}) < 90)))) or (5 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing\"}) < 90)))) or (4 + 0 * (sum by(name) (increase(argocd_app_sync_total{job=\"socrat-argocd\",phase=~\"Failed|Error\"}[10m]) and (time() - timestamp(argocd_app_sync_total{job=\"socrat-argocd\",phase=~\"Failed|Error\"}) < 90)) > 0)) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status=~\"Progressing|Suspended\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=~\"Progressing|Suspended\"}) < 90)))) or (2 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",sync_status=\"OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",sync_status=\"OutOfSync\"}) < 90)))) or (1 + 0 * (sum by(name) (increase(argocd_app_sync_total{job=\"socrat-argocd\",phase=~\"Succeeded\"}[10m]) and (time() - timestamp(argocd_app_sync_total{job=\"socrat-argocd\",phase=~\"Succeeded\"}) < 90)) > 0)) or (0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))))) and on(name) (0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1)) >= bool 2)[$__range:1m] @ end())) or (0 * max by(name) (argocd_app_info{job=\"socrat-argocd\"} @ end())))) + on(name) (1000000 * ((last_over_time(((((6 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) < 90)))) or (6 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",sync_status!~\"Synced|OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",sync_status!~\"Synced|OutOfSync\"}) < 90)))) or (5 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing\"}) < 90)))) or (4 + 0 * (sum by(name) (increase(argocd_app_sync_total{job=\"socrat-argocd\",phase=~\"Failed|Error\"}[10m]) and (time() - timestamp(argocd_app_sync_total{job=\"socrat-argocd\",phase=~\"Failed|Error\"}) < 90)) > 0)) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status=~\"Progressing|Suspended\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=~\"Progressing|Suspended\"}) < 90)))) or (2 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",sync_status=\"OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",sync_status=\"OutOfSync\"}) < 90)))) or (1 + 0 * (sum by(name) (increase(argocd_app_sync_total{job=\"socrat-argocd\",phase=~\"Succeeded\"}[10m]) and (time() - timestamp(argocd_app_sync_total{job=\"socrat-argocd\",phase=~\"Succeeded\"}) < 90)) > 0)) or (0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))))) and on(name) (0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1))[1m:1m] @ end()) >= 2) or (0 * max by(name) (argocd_app_info{job=\"socrat-argocd\"} @ end()))))) > 0))",
+          "expr": "(((6 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) < 90)))) or (6 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",sync_status!~\"Synced|OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",sync_status!~\"Synced|OutOfSync\"}) < 90)))) or (5 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing\"}) < 90)))) or (4 + 0 * (sum by(name) (increase(argocd_app_sync_total{job=\"socrat-argocd\",phase=~\"Failed|Error\"}[10m]) and (time() - timestamp(argocd_app_sync_total{job=\"socrat-argocd\",phase=~\"Failed|Error\"}) < 90)) > 0)) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status=~\"Progressing|Suspended\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=~\"Progressing|Suspended\"}) < 90)))) or (2 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",sync_status=\"OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",sync_status=\"OutOfSync\"}) < 90)))) or (1 + 0 * (sum by(name) (increase(argocd_app_sync_total{job=\"socrat-argocd\",phase=~\"Succeeded\"}[10m]) and (time() - timestamp(argocd_app_sync_total{job=\"socrat-argocd\",phase=~\"Succeeded\"}) < 90)) > 0)) or (0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))))) and on(name) (0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1)",
           "legendFormat": "{{name}}",
           "refId": "A",
-          "instant": false,
-          "range": true,
-          "format": "time_series",
-          "interval": "1m"
+          "instant": true,
+          "range": false,
+          "format": "time_series"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "noValue": "No telemetry",
           "color": {
-            "mode": "palette-classic"
+            "mode": "thresholds"
           },
           "mappings": [
             {
@@ -2914,44 +2911,2709 @@
                   "color": "#808080"
                 }
               }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null+nan",
+                "result": {
+                  "text": "No telemetry",
+                  "color": "#555555"
+                }
+              }
             }
           ],
-          "custom": {
-            "axisPlacement": "left",
-            "axisWidth": 125,
-            "fillOpacity": 100,
-            "lineWidth": 0,
-            "spanNulls": false,
-            "insertNulls": 90000,
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            }
-          },
-          "links": [
-            {
-              "title": "Open application in Argo CD",
-              "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/${__field.labels.name}",
-              "targetBlank": true
-            }
-          ]
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "#252C36"
+              },
+              {
+                "value": 1,
+                "color": "#56D6E7"
+              },
+              {
+                "value": 2,
+                "color": "#FFB357"
+              },
+              {
+                "value": 3,
+                "color": "#B877D9"
+              },
+              {
+                "value": 4,
+                "color": "#FF5263"
+              },
+              {
+                "value": 5,
+                "color": "#D02B4C"
+              },
+              {
+                "value": 6,
+                "color": "#808080"
+              }
+            ]
+          }
         },
         "overrides": []
       },
       "options": {
-        "rowHeight": 0.82,
-        "mergeValues": true,
-        "showValue": "auto",
-        "alignValue": "center",
-        "legend": {
-          "showLegend": true,
-          "displayMode": "list",
-          "placement": "bottom"
-        },
+        "inlineEditing": false,
+        "panZoom": false,
+        "showAdvancedTypes": false,
+        "zoomToContent": true,
         "tooltip": {
           "mode": "single",
-          "sort": "none"
+          "disableForOneClick": false
+        },
+        "root": {
+          "name": "Argo mosaic",
+          "type": "frame",
+          "placement": {
+            "width": 420,
+            "height": 334
+          },
+          "background": {
+            "color": {
+              "fixed": "transparent"
+            }
+          },
+          "elements": [
+            {
+              "name": "alertmanager",
+              "type": "rectangle",
+              "placement": {
+                "left": 0,
+                "top": 26,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "alertmanager"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Alerts",
+                  "field": "alertmanager"
+                }
+              },
+              "links": [
+                {
+                  "title": "alertmanager · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/alertmanager",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "argo-cd",
+              "type": "rectangle",
+              "placement": {
+                "left": 60,
+                "top": 26,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "argo-cd"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Argo",
+                  "field": "argo-cd"
+                }
+              },
+              "links": [
+                {
+                  "title": "argo-cd · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/argo-cd",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "authentik",
+              "type": "rectangle",
+              "placement": {
+                "left": 120,
+                "top": 26,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "authentik"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "authentik",
+                  "field": "authentik"
+                }
+              },
+              "links": [
+                {
+                  "title": "authentik · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/authentik",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "blog",
+              "type": "rectangle",
+              "placement": {
+                "left": 180,
+                "top": 26,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "blog"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "blog",
+                  "field": "blog"
+                }
+              },
+              "links": [
+                {
+                  "title": "blog · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/blog",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "cats",
+              "type": "rectangle",
+              "placement": {
+                "left": 240,
+                "top": 26,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "cats"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "cats",
+                  "field": "cats"
+                }
+              },
+              "links": [
+                {
+                  "title": "cats · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/cats",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "cert-manager",
+              "type": "rectangle",
+              "placement": {
+                "left": 300,
+                "top": 26,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "cert-manager"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Certs",
+                  "field": "cert-manager"
+                }
+              },
+              "links": [
+                {
+                  "title": "cert-manager · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/cert-manager",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "cnpg-operator",
+              "type": "rectangle",
+              "placement": {
+                "left": 360,
+                "top": 26,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "cnpg-operator"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "CNPG",
+                  "field": "cnpg-operator"
+                }
+              },
+              "links": [
+                {
+                  "title": "cnpg-operator · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/cnpg-operator",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "format-quorum",
+              "type": "rectangle",
+              "placement": {
+                "left": 0,
+                "top": 70,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "format-quorum"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Quorum",
+                  "field": "format-quorum"
+                }
+              },
+              "links": [
+                {
+                  "title": "format-quorum · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/format-quorum",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "grafana",
+              "type": "rectangle",
+              "placement": {
+                "left": 60,
+                "top": 70,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "grafana"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "grafana",
+                  "field": "grafana"
+                }
+              },
+              "links": [
+                {
+                  "title": "grafana · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/grafana",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "grafana-mcp",
+              "type": "rectangle",
+              "placement": {
+                "left": 120,
+                "top": 70,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "grafana-mcp"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Gf MCP",
+                  "field": "grafana-mcp"
+                }
+              },
+              "links": [
+                {
+                  "title": "grafana-mcp · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/grafana-mcp",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "harbor",
+              "type": "rectangle",
+              "placement": {
+                "left": 180,
+                "top": 70,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "harbor"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "harbor",
+                  "field": "harbor"
+                }
+              },
+              "links": [
+                {
+                  "title": "harbor · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/harbor",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "img-proxy",
+              "type": "rectangle",
+              "placement": {
+                "left": 240,
+                "top": 70,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "img-proxy"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Img proxy",
+                  "field": "img-proxy"
+                }
+              },
+              "links": [
+                {
+                  "title": "img-proxy · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/img-proxy",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "kube-state-metrics",
+              "type": "rectangle",
+              "placement": {
+                "left": 300,
+                "top": 70,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "kube-state-metrics"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "KSM",
+                  "field": "kube-state-metrics"
+                }
+              },
+              "links": [
+                {
+                  "title": "kube-state-metrics · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/kube-state-metrics",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "litellm",
+              "type": "rectangle",
+              "placement": {
+                "left": 360,
+                "top": 70,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "litellm"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "litellm",
+                  "field": "litellm"
+                }
+              },
+              "links": [
+                {
+                  "title": "litellm · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/litellm",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "litellm-infra",
+              "type": "rectangle",
+              "placement": {
+                "left": 0,
+                "top": 114,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "litellm-infra"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "LLM infra",
+                  "field": "litellm-infra"
+                }
+              },
+              "links": [
+                {
+                  "title": "litellm-infra · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/litellm-infra",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "lms",
+              "type": "rectangle",
+              "placement": {
+                "left": 60,
+                "top": 114,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "lms"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "lms",
+                  "field": "lms"
+                }
+              },
+              "links": [
+                {
+                  "title": "lms · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/lms",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "loki",
+              "type": "rectangle",
+              "placement": {
+                "left": 120,
+                "top": 114,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "loki"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "loki",
+                  "field": "loki"
+                }
+              },
+              "links": [
+                {
+                  "title": "loki · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/loki",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "monitoring-k3s",
+              "type": "rectangle",
+              "placement": {
+                "left": 180,
+                "top": 114,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "monitoring-k3s"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Mon K3s",
+                  "field": "monitoring-k3s"
+                }
+              },
+              "links": [
+                {
+                  "title": "monitoring-k3s · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/monitoring-k3s",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "monitoring-llm",
+              "type": "rectangle",
+              "placement": {
+                "left": 240,
+                "top": 114,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "monitoring-llm"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Mon LLM",
+                  "field": "monitoring-llm"
+                }
+              },
+              "links": [
+                {
+                  "title": "monitoring-llm · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/monitoring-llm",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "monori",
+              "type": "rectangle",
+              "placement": {
+                "left": 300,
+                "top": 114,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "monori"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "monori",
+                  "field": "monori"
+                }
+              },
+              "links": [
+                {
+                  "title": "monori · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/monori",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "n8n",
+              "type": "rectangle",
+              "placement": {
+                "left": 360,
+                "top": 114,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "n8n"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "n8n",
+                  "field": "n8n"
+                }
+              },
+              "links": [
+                {
+                  "title": "n8n · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/n8n",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "netbird",
+              "type": "rectangle",
+              "placement": {
+                "left": 0,
+                "top": 158,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "netbird"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "netbird",
+                  "field": "netbird"
+                }
+              },
+              "links": [
+                {
+                  "title": "netbird · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/netbird",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "node-exporter",
+              "type": "rectangle",
+              "placement": {
+                "left": 60,
+                "top": 158,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "node-exporter"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Node exp",
+                  "field": "node-exporter"
+                }
+              },
+              "links": [
+                {
+                  "title": "node-exporter · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/node-exporter",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "nvidia-device-plugin",
+              "type": "rectangle",
+              "placement": {
+                "left": 120,
+                "top": 158,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "nvidia-device-plugin"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "NVIDIA",
+                  "field": "nvidia-device-plugin"
+                }
+              },
+              "links": [
+                {
+                  "title": "nvidia-device-plugin · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/nvidia-device-plugin",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "open-terminal",
+              "type": "rectangle",
+              "placement": {
+                "left": 180,
+                "top": 158,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "open-terminal"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Terminal",
+                  "field": "open-terminal"
+                }
+              },
+              "links": [
+                {
+                  "title": "open-terminal · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/open-terminal",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "open-webui",
+              "type": "rectangle",
+              "placement": {
+                "left": 240,
+                "top": 158,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "open-webui"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "WebUI",
+                  "field": "open-webui"
+                }
+              },
+              "links": [
+                {
+                  "title": "open-webui · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/open-webui",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "pr-agent",
+              "type": "rectangle",
+              "placement": {
+                "left": 300,
+                "top": 158,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "pr-agent"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "pr-agent",
+                  "field": "pr-agent"
+                }
+              },
+              "links": [
+                {
+                  "title": "pr-agent · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/pr-agent",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "private-gateway",
+              "type": "rectangle",
+              "placement": {
+                "left": 360,
+                "top": 158,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "private-gateway"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Priv GW",
+                  "field": "private-gateway"
+                }
+              },
+              "links": [
+                {
+                  "title": "private-gateway · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/private-gateway",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "prometheus",
+              "type": "rectangle",
+              "placement": {
+                "left": 0,
+                "top": 202,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "prometheus"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Prom",
+                  "field": "prometheus"
+                }
+              },
+              "links": [
+                {
+                  "title": "prometheus · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/prometheus",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "prometheus-operator",
+              "type": "rectangle",
+              "placement": {
+                "left": 60,
+                "top": 202,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "prometheus-operator"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Prom Op",
+                  "field": "prometheus-operator"
+                }
+              },
+              "links": [
+                {
+                  "title": "prometheus-operator · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/prometheus-operator",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "pyroscope",
+              "type": "rectangle",
+              "placement": {
+                "left": 120,
+                "top": 202,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "pyroscope"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Pyroscope",
+                  "field": "pyroscope"
+                }
+              },
+              "links": [
+                {
+                  "title": "pyroscope · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/pyroscope",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "rancher",
+              "type": "rectangle",
+              "placement": {
+                "left": 180,
+                "top": 202,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "rancher"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "rancher",
+                  "field": "rancher"
+                }
+              },
+              "links": [
+                {
+                  "title": "rancher · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/rancher",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "remark42",
+              "type": "rectangle",
+              "placement": {
+                "left": 240,
+                "top": 202,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "remark42"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "remark42",
+                  "field": "remark42"
+                }
+              },
+              "links": [
+                {
+                  "title": "remark42 · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/remark42",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "root",
+              "type": "rectangle",
+              "placement": {
+                "left": 300,
+                "top": 202,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "root"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "root",
+                  "field": "root"
+                }
+              },
+              "links": [
+                {
+                  "title": "root · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/root",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "rustfs",
+              "type": "rectangle",
+              "placement": {
+                "left": 360,
+                "top": 202,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "rustfs"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "rustfs",
+                  "field": "rustfs"
+                }
+              },
+              "links": [
+                {
+                  "title": "rustfs · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/rustfs",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "searxng",
+              "type": "rectangle",
+              "placement": {
+                "left": 0,
+                "top": 246,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "searxng"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "searxng",
+                  "field": "searxng"
+                }
+              },
+              "links": [
+                {
+                  "title": "searxng · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/searxng",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "socrat-bot",
+              "type": "rectangle",
+              "placement": {
+                "left": 60,
+                "top": 246,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "socrat-bot"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Bot",
+                  "field": "socrat-bot"
+                }
+              },
+              "links": [
+                {
+                  "title": "socrat-bot · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/socrat-bot",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "socrat-home",
+              "type": "rectangle",
+              "placement": {
+                "left": 120,
+                "top": 246,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "socrat-home"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Home",
+                  "field": "socrat-home"
+                }
+              },
+              "links": [
+                {
+                  "title": "socrat-home · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/socrat-home",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "spi-triage",
+              "type": "rectangle",
+              "placement": {
+                "left": 180,
+                "top": 246,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "spi-triage"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "SPI",
+                  "field": "spi-triage"
+                }
+              },
+              "links": [
+                {
+                  "title": "spi-triage · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/spi-triage",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "syncthing",
+              "type": "rectangle",
+              "placement": {
+                "left": 240,
+                "top": 246,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "syncthing"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "syncthing",
+                  "field": "syncthing"
+                }
+              },
+              "links": [
+                {
+                  "title": "syncthing · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/syncthing",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "tempo",
+              "type": "rectangle",
+              "placement": {
+                "left": 300,
+                "top": 246,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "tempo"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "tempo",
+                  "field": "tempo"
+                }
+              },
+              "links": [
+                {
+                  "title": "tempo · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/tempo",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "thanos",
+              "type": "rectangle",
+              "placement": {
+                "left": 360,
+                "top": 246,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "thanos"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "thanos",
+                  "field": "thanos"
+                }
+              },
+              "links": [
+                {
+                  "title": "thanos · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/thanos",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "traefik-edge",
+              "type": "rectangle",
+              "placement": {
+                "left": 0,
+                "top": 290,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "traefik-edge"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Edge",
+                  "field": "traefik-edge"
+                }
+              },
+              "links": [
+                {
+                  "title": "traefik-edge · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/traefik-edge",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "umami",
+              "type": "rectangle",
+              "placement": {
+                "left": 60,
+                "top": 290,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "umami"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "umami",
+                  "field": "umami"
+                }
+              },
+              "links": [
+                {
+                  "title": "umami · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/umami",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "uptime-kuma",
+              "type": "rectangle",
+              "placement": {
+                "left": 120,
+                "top": 290,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "uptime-kuma"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Kuma",
+                  "field": "uptime-kuma"
+                }
+              },
+              "links": [
+                {
+                  "title": "uptime-kuma · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/uptime-kuma",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "vllm",
+              "type": "rectangle",
+              "placement": {
+                "left": 180,
+                "top": 290,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "vllm"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "vllm",
+                  "field": "vllm"
+                }
+              },
+              "links": [
+                {
+                  "title": "vllm · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/vllm",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "vpn-transit",
+              "type": "rectangle",
+              "placement": {
+                "left": 240,
+                "top": 290,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "vpn-transit"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "VPN MSK",
+                  "field": "vpn-transit"
+                }
+              },
+              "links": [
+                {
+                  "title": "vpn-transit · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/vpn-transit",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "wiki-runtime",
+              "type": "rectangle",
+              "placement": {
+                "left": 300,
+                "top": 290,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "wiki-runtime"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Wiki",
+                  "field": "wiki-runtime"
+                }
+              },
+              "links": [
+                {
+                  "title": "wiki-runtime · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/wiki-runtime",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "x-ui",
+              "type": "rectangle",
+              "placement": {
+                "left": 360,
+                "top": 290,
+                "width": 57,
+                "height": 40,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#555555",
+                  "field": "x-ui"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 11,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "x-ui",
+                  "field": "x-ui"
+                }
+              },
+              "links": [
+                {
+                  "title": "x-ui · Open in Argo CD",
+                  "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/x-ui",
+                  "targetBlank": true
+                }
+              ]
+            },
+            {
+              "name": "Legend 0",
+              "type": "rectangle",
+              "placement": {
+                "left": 0,
+                "top": 0,
+                "width": 57,
+                "height": 18,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#252C36"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 10,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Quiet"
+                }
+              },
+              "links": []
+            },
+            {
+              "name": "Legend 1",
+              "type": "rectangle",
+              "placement": {
+                "left": 60,
+                "top": 0,
+                "width": 57,
+                "height": 18,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#56D6E7"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 10,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Sync"
+                }
+              },
+              "links": []
+            },
+            {
+              "name": "Legend 2",
+              "type": "rectangle",
+              "placement": {
+                "left": 120,
+                "top": 0,
+                "width": 57,
+                "height": 18,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#FFB357"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 10,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Drift"
+                }
+              },
+              "links": []
+            },
+            {
+              "name": "Legend 3",
+              "type": "rectangle",
+              "placement": {
+                "left": 180,
+                "top": 0,
+                "width": 57,
+                "height": 18,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#B877D9"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 10,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Work"
+                }
+              },
+              "links": []
+            },
+            {
+              "name": "Legend 4",
+              "type": "rectangle",
+              "placement": {
+                "left": 240,
+                "top": 0,
+                "width": 57,
+                "height": 18,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#FF5263"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 10,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Fail"
+                }
+              },
+              "links": []
+            },
+            {
+              "name": "Legend 5",
+              "type": "rectangle",
+              "placement": {
+                "left": 300,
+                "top": 0,
+                "width": 57,
+                "height": 18,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#D02B4C"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 10,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "Down"
+                }
+              },
+              "links": []
+            },
+            {
+              "name": "Legend 6",
+              "type": "rectangle",
+              "placement": {
+                "left": 360,
+                "top": 0,
+                "width": 57,
+                "height": 18,
+                "rotation": 0
+              },
+              "constraint": {
+                "horizontal": "scale",
+                "vertical": "scale"
+              },
+              "background": {
+                "color": {
+                  "fixed": "#808080"
+                }
+              },
+              "border": {
+                "width": 1,
+                "radius": 5,
+                "color": {
+                  "fixed": "#424B58"
+                }
+              },
+              "config": {
+                "align": "center",
+                "valign": "middle",
+                "size": 10,
+                "color": {
+                  "fixed": "#FFFFFF"
+                },
+                "text": {
+                  "mode": "fixed",
+                  "fixed": "?"
+                }
+              },
+              "links": []
+            }
+          ]
         }
       }
     },
