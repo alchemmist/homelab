@@ -254,3 +254,19 @@ at receipt time and is left to its normal lifecycle, not claimed idle. Existing
 1037 job IDs/creation times and 549 terminal hashes verified unchanged, integrity/
 FK OK. Private before/after and interruption receipt retained; no forced model
 or real-job cancellation acceptance probe. Original scheduling reactivated.
+
+
+## Automatic SPI releases — 10 November 2026
+
+Owner explicitly requested removing manual production approval. The native GitHub
+Environment `alchemmist/spi-triage:spi-triage-production` is retained with its
+existing secrets, but `required_reviewers` is now empty (no wait timer/custom
+protection). This supersedes earlier manual-review requirements in dated receipts.
+The workflow itself is unchanged: passing tests/native image checks, main-only
+publication, PUBLISH_ENABLED, non-cancelling serial release concurrency, immutable
+Harbor image, canonical deploy-to-socrat action, robot Git digest commit and Argo.
+Approval removal does not make the shared worker/frontend rollout zero-downtime
+or authorize deleting history, quota resets, forced paid probes or publication.
+Private before/after environment policy receipts retained under the operator's
+`spi-auto-release-20261110` evidence directory. Do not reintroduce manual approval
+from an older migration checklist.
