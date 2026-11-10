@@ -1,5 +1,16 @@
 # Socrat: текущий контекст
 
+## Новый bootstrap: socrat-5 — не член Kubernetes
+
+Владелец выдал NATed Debian13 LXC, исходное имя testing-class; WG create/delete
+успешен, SSH22 root key-only. Новый согласованный идентификатор **socrat-5**,
+mesh **10.250.0.41/32**, peer только Moscow.40. На Москве source-scoped pre-DNAT
+изоляция+boot dependency и один persistent/runtime WG peer приняты без restart;
+старые peers и VPN relay healthy сохранены. **Handshake пока0, owner client не
+запущен; SSH/end-to-end negative isolation/K3s/LXC suitability НЕ приняты.**
+[Runbook, source, fingerprint и pending gates](../docs/socrat-5-bootstrap-20261110.md).
+Не включать socrat-5 в Socrat/full-mesh/K3s и не переигрывать one-time admission.
+
 ## Закрытие сессии: RF/NL split отложен владельцем
 
 **10 ноября: владелец решил оставить рабочую схему, серверный split не внедрять.**

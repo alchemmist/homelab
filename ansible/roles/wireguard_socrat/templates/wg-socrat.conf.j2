@@ -23,3 +23,11 @@ AllowedIPs = {{ client.address }}/32
 PersistentKeepalive = {{ wg_socrat_keepalive }}
 
 {% endfor %}
+{% for peer_name, peer in wg_socrat_bootstrap_peers.items() %}
+[Peer]
+# bootstrap-only: {{ peer_name }}; isolation owned by dedicated guard service
+PublicKey = {{ peer.public_key }}
+AllowedIPs = {{ peer.address }}/32
+PersistentKeepalive = {{ wg_socrat_keepalive }}
+
+{% endfor %}

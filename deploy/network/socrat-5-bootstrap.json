@@ -1,0 +1,13 @@
+{
+  "name": "socrat-5",
+  "gateway": "socrat-4",
+  "interface": "wg-socrat",
+  "address": "10.250.0.41",
+  "public_key": "kq9Kb6ZF9j/cuBooG3onvLfnBBjI0cTdQK26nKR4R0E=",
+  "gateway_address": "10.250.0.40",
+  "gateway_public_key": "rOXEc8nrYHuYG0D5t+LwY9jxv05zsjxt0P2scF+Sf0k=",
+  "endpoint": "91.189.82.238:51830",
+  "ssh_port": 22,
+  "ssh_host_fingerprint": "SHA256:Y4NxlDUWhjpGNGtM6/ForCgqTdhX+xjJ9Nz2mo/gx/8",
+  "scope": "bootstrap only; gateway-origin SSH and ping; no forwarding; not a Kubernetes member"
+}

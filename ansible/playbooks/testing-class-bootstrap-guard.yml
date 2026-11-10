@@ -1,0 +1,53 @@
+---
+# Install guard before admitting peer. Does NOT restart WG, K3s or VPN.
+- name: Persist source-scoped bootstrap isolation on Moscow
+  hosts: socrat-4
+  become: true
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Validate exact source intent
+      ansible.builtin.assert:
+        that:
+          - wg_socrat_bootstrap_peers['socrat-5'].address == '10.250.0.41'
+          - wg_socrat_nodes[inventory_hostname].address == '10.250.0.40'
+    - name: Install narrow guard helper
+      ansible.builtin.copy:
+        src: ../../scripts/testing-class-wg-guard.sh
+        dest: /usr/local/libexec/testing-class-wg-guard
+        owner: root
+        group: root
+        mode: '0700'
+    - name: Install guard service
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/testing-class-wg-guard.service
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Isolate testing-class WG bootstrap peer before destination NAT
+          Before=wg-quick@wg-socrat.service
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/local/libexec/testing-class-wg-guard
+          RemainAfterExit=yes
+          [Install]
+          WantedBy=multi-user.target
+    - name: Create WG dependency directory
+      ansible.builtin.file:
+        path: /etc/systemd/system/wg-quick@wg-socrat.service.d
+        state: directory
+        mode: '0755'
+    - name: Require isolation before WG can start on future boots
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/wg-quick@wg-socrat.service.d/50-testing-class-guard.conf
+        mode: '0644'
+        content: |
+          [Unit]
+          Requires=testing-class-wg-guard.service
+          After=testing-class-wg-guard.service
+    - name: Start guard without restarting running transport
+      ansible.builtin.systemd:
+        name: testing-class-wg-guard.service
+        enabled: true
+        state: started
+        daemon_reload: true

@@ -6,3 +6,5 @@ wg_socrat_extra_allowed_peer_ips:
       - "{{ hostvars['socrat-0'].homelab_ssh_private_host }}/32"
     socrat-1:
       - "{{ hostvars['socrat-1'].homelab_ssh_private_host }}/32"
+# Isolated enrollment peers, not ordinary admin clients or cluster members.
+wg_socrat_bootstrap_peers: {}

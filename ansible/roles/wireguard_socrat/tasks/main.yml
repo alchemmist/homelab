@@ -96,6 +96,24 @@
       Invalid or conflicting wg-socrat admin client {{ item.key }}. Admin client addresses must be bare IPv4 values.
   loop: "{{ wg_socrat_admin_client_items }}"
 
+- name: Validate isolated bootstrap peer scope and uniqueness
+  ansible.builtin.assert:
+    that:
+      - inventory_hostname == 'socrat-4'
+      - item.key == 'socrat-5'
+      - item.value.address == '10.250.0.41'
+      - item.value.public_key == 'kq9Kb6ZF9j/cuBooG3onvLfnBBjI0cTdQK26nKR4R0E='
+      - item.value.address not in (wg_socrat_nodes.values() | map(attribute='address') | list)
+      - item.value.address not in wg_socrat_admin_client_addresses
+      - item.value.public_key not in (wg_socrat_nodes.values() | map(attribute='public_key') | list)
+      - item.value.public_key not in wg_socrat_admin_client_keys
+  loop: "{{ wg_socrat_bootstrap_peers | dict2items }}"
+
+- name: Verify bootstrap guard before rendering admission peer
+  ansible.builtin.command: /usr/local/libexec/testing-class-wg-guard
+  when: wg_socrat_bootstrap_peers | length > 0
+  changed_when: false
+
 - name: Render wg-socrat config
   ansible.builtin.template:
     src: wg-socrat.conf.j2
