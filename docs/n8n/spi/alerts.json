@@ -33,7 +33,8 @@
         "runbook_url": "https://github.com/alchemmist/homelab/blob/main/docs/n8n/spi/setup.md",
         "spi_graphs": "{\"version\":1,\"graphs\":[{\"id\":\"primary\",\"title\":\"SPI triage stage failures\",\"dashboard_uid\":\"alerts-671a8f11c7fffa70\",\"panel_id\":9,\"variables\":{},\"before_seconds\":1800,\"after_seconds\":300},{\"id\":\"condition\",\"title\":\"SPI triage stage failures / rule evaluations\",\"dashboard_uid\":\"alerts-671a8f11c7fffa70\",\"panel_id\":10,\"variables\":{},\"before_seconds\":7200,\"after_seconds\":300}]}",
         "__dashboardUid__": "alerts-671a8f11c7fffa70",
-        "__panelId__": "9"
+        "__panelId__": "9",
+        "n8n_url": "{{ if gt $values.B.Value 0.0 }}https://n8n.socrat.alchemmist.xyz/workflow/J9akzlydrf9XZiID/executions/{{ printf \"%.0f\" $values.B.Value }}{{ end }}"
       },
       "notification_settings": {
         "receiver": "SPI triage via Socrat Alerts",
@@ -100,6 +101,27 @@
                 "type": "query"
               }
             ]
+          }
+        },
+        {
+          "refId": "B",
+          "queryType": "instant",
+          "relativeTimeRange": {
+            "from": 2400,
+            "to": 0
+          },
+          "datasourceUid": "loki",
+          "model": {
+            "datasource": {
+              "type": "loki",
+              "uid": "loki"
+            },
+            "editorMode": "code",
+            "expr": "max(max_over_time({k8s_namespace_name=\"automation\"} |= \"spi-triage\" | json | event=\"stage_failed\" | unwrap n8n_execution_id | __error__=\"\" [20m])) or vector(0)",
+            "queryType": "instant",
+            "refId": "B",
+            "intervalMs": 1000,
+            "maxDataPoints": 43200
           }
         }
       ]

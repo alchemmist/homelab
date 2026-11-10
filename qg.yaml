@@ -32,3 +32,6 @@ nodes:
       command -v helm
       uv run python -m unittest discover -s tests -p test_alert_graphs_chart.py
       uv run python scripts/alert_graphs.py --check
+  spi-execution-links:
+    title: Stable SPI alert identity and execution link metadata
+    run: uv run python -m unittest discover -s tests -p test_spi_execution_links.py

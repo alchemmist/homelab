@@ -607,3 +607,15 @@ repair test. Those paths have offline regressions only; historic executions
 13873/13897 were not rerun. Python285 tests:282pass/3optional-tokenizer skips;
 ingressJS9/9; Helm lint/render and diff checks passed. spi-evidence extraction and
 unrelated worktree edits untouched. Observation ended; no ongoing monitoring claim.
+
+### Execution navigation for stage-failure alerts
+
+`spi-triage-failures` retains its A/C condition,20-minute failure window,2-minute
+hold and existing routing. Metadata-only scalar query B reads the greatest
+validated numeric `n8n_execution_id` from owned v1 `stage_failed` logs in the
+same window. It supplies `annotations.n8n_url`, not an alert-instance label.
+For the single logical SPI slot this identifies the newest failed execution
+represented in that aggregate, not every failure in a multi-failure window.
+Handoff errors/old logs without execution context safely retain workflow
+navigation. Zero does not create a fictitious execution. No historical logs,
+notifications or terminal jobs are replayed. All n8n link labels render as `n8n`.

@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "89237b72f9b0597fb8f31d9281c37c373007474e501a8e3d1c8e3906a3976634",
+  "graphDigest": "fca7e5fcf7ee5851c31c3ec7eda567990e51172fd7fb2dffb15cde05e88ceca9",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -112,6 +112,31 @@
       },
       "timeoutMinutes": 5,
       "title": "Alert graph chart, image ownership and renderer capacity"
+    },
+    {
+      "env": {},
+      "id": "spi-execution-links",
+      "needs": [],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": true,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "default",
+      "result": {
+        "adapter": "exit-code"
+      },
+      "step": {
+        "run": "uv run python -m unittest discover -s tests -p test_spi_execution_links.py"
+      },
+      "timeoutMinutes": 5,
+      "title": "Stable SPI alert identity and execution link metadata"
     }
   ],
   "profiles": {

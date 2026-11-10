@@ -38,7 +38,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 89237b72f9b0597fb8f31d9281c37c373007474e501a8e3d1c8e3906a3976634
+          graph-digest: fca7e5fcf7ee5851c31c3ec7eda567990e51172fd7fb2dffb15cde05e88ceca9
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -83,7 +83,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 89237b72f9b0597fb8f31d9281c37c373007474e501a8e3d1c8e3906a3976634
+          graph-digest: fca7e5fcf7ee5851c31c3ec7eda567990e51172fd7fb2dffb15cde05e88ceca9
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -128,7 +128,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 89237b72f9b0597fb8f31d9281c37c373007474e501a8e3d1c8e3906a3976634
+          graph-digest: fca7e5fcf7ee5851c31c3ec7eda567990e51172fd7fb2dffb15cde05e88ceca9
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -179,7 +179,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 89237b72f9b0597fb8f31d9281c37c373007474e501a8e3d1c8e3906a3976634
+          graph-digest: fca7e5fcf7ee5851c31c3ec7eda567990e51172fd7fb2dffb15cde05e88ceca9
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -192,6 +192,51 @@ jobs:
           if-no-files-found: error
           retention-days: 7
       - name: Enforce Alert graph chart, image ownership and renderer capacity result
+        if: always()
+        shell: bash
+        env:
+          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
+        run: exit "${EXIT_CODE:-2}"
+    timeout-minutes: 5
+  spi-execution-links:
+    name: Stable SPI alert identity and execution link metadata
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: 'false'
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+      - run: uv sync --locked
+      - run: uv run python -m unittest discover -s tests -p test_spi_execution_links.py
+        name: Run Stable SPI alert identity and execution link metadata
+        id: quality-command
+        continue-on-error: true
+      - name: Collect Stable SPI alert identity and execution link metadata result
+        id: quality-result
+        if: always()
+        uses: alchemmist/quality-graph@b947f26e97ccf1c755050dfe38d98cbb688edb69
+        with:
+          operation: collect
+          node-id: spi-execution-links
+          title: Stable SPI alert identity and execution link metadata
+          adapter: exit-code
+          report-path: ''
+          command-outcome: ${{ steps.quality-command.outcome }}
+          graph-digest: fca7e5fcf7ee5851c31c3ec7eda567990e51172fd7fb2dffb15cde05e88ceca9
+          approval-findings: 'true'
+          approval-files: 'false'
+          approval-node: 'false'
+      - name: Upload Stable SPI alert identity and execution link metadata result
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: quality-result-spi-execution-links-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/quality-graph/spi-execution-links.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Enforce Stable SPI alert identity and execution link metadata result
         if: always()
         shell: bash
         env:
