@@ -1,0 +1,12 @@
+# Isolated, authenticated sandbox. Does not replace or public-share the TV dashboard.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: socrat-traffic-light-tmp-lab-dashboard
+  labels:
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: /tmp/dashboards/Sandbox
+data:
+  socrat-traffic-light-tmp-lab.json: |
+{{ .Files.Get "dashboards/traffic-light-tmp-lab.json" | indent 4 }}
