@@ -7,7 +7,9 @@ k3s_worker_swap_enabled: true
 k3s_worker_system_reserved: cpu=300m,memory=768Mi
 k3s_worker_kube_reserved: cpu=100m,memory=256Mi
 k3s_worker_server: https://10.250.0.1:6443
-k3s_worker_bootstrap_taint: homelab.io/bootstrap=true:NoSchedule
+# Explicit opt-in only: unsupported remote/unclassified PVCs are admission-denied.
+k3s_worker_taints: [homelab.io/no-nfs=true:NoSchedule]
+k3s_worker_extra_node_labels: [homelab.io/nfs=false]
 # LXC shares kernel modules with PVE host; test modules rather than load host modules.
 k3s_worker_manage_kernel_modules: false
 netbird_node_enabled: true

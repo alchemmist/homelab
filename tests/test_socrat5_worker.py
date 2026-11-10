@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class Socrat5WorkerSourceTests(unittest.TestCase):
     def test_general_admission_remains_guarded(self):
         host = yaml.safe_load((ROOT / 'ansible/inventory/host_vars/socrat-5.yml').read_text())
-        self.assertEqual(host['k3s_worker_bootstrap_taint'], 'homelab.io/bootstrap=true:NoSchedule')
+        self.assertEqual(host['k3s_worker_taints'], ['homelab.io/no-nfs=true:NoSchedule'])
         self.assertTrue(host['homelab_headless'])
         self.assertFalse(host['k3s_worker_manage_kernel_modules'])
 

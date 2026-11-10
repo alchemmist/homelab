@@ -109,6 +109,8 @@ def manifests(host, image, enrollment=False, kernel_only=False):
     if kernel_only:
         spec = documents[1]['spec']['template']['spec']
         spec['volumes'] = [v for v in spec['volumes'] if v['name'] != 'tun']
+        spec['tolerations'].append({'key': 'homelab.io/no-nfs', 'operator': 'Equal',
+                                    'value': 'true', 'effect': 'NoSchedule'})
     return documents
 
 def policy_body(source, resource):

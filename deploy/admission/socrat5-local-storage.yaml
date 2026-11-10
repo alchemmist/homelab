@@ -1,0 +1,56 @@
+# Local-only worker: opt in explicitly, never discover unsupported NFS at mount time.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: homelab-socrat5-local-storage
+  labels:
+    homelab.io/owner: socrat5-worker
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ['']
+        apiVersions: [v1]
+        operations: [CREATE, UPDATE]
+        resources: [pods]
+  variables:
+    - name: pinnedHere
+      expression: "has(object.spec.nodeName) && object.spec.nodeName == 'socrat-5'"
+    - name: pinnedElsewhere
+      expression: "has(object.spec.nodeName) && object.spec.nodeName != '' && object.spec.nodeName != 'socrat-5'"
+    - name: selectorElsewhere
+      expression: "has(object.spec.nodeSelector) && 'kubernetes.io/hostname' in object.spec.nodeSelector && object.spec.nodeSelector['kubernetes.io/hostname'] != 'socrat-5'"
+    - name: selectsHere
+      expression: "has(object.spec.nodeSelector) && 'kubernetes.io/hostname' in object.spec.nodeSelector && object.spec.nodeSelector['kubernetes.io/hostname'] == 'socrat-5'"
+    - name: toleratesLocalOnly
+      expression: >-
+        has(object.spec.tolerations) && object.spec.tolerations.exists(t,
+          (!has(t.effect) || t.effect == '' || t.effect == 'NoSchedule') &&
+          ((has(t.key) && t.key == 'homelab.io/no-nfs') ||
+           ((!has(t.key) || t.key == '') && has(t.operator) && t.operator == 'Exists')))
+    - name: canLandHere
+      expression: >-
+        variables.pinnedHere || (!variables.pinnedElsewhere && !variables.selectorElsewhere &&
+          (variables.selectsHere || variables.toleratesLocalOnly))
+  validations:
+    - expression: >-
+        !variables.canLandHere || !has(object.spec.volumes) || object.spec.volumes.all(v,
+          has(v.emptyDir) || has(v.configMap) || has(v.secret) || has(v.projected) ||
+          has(v.downwardAPI) || has(v.hostPath) || has(v.image) ||
+          (request.namespace == 'netbird-host-peers' && has(v.persistentVolumeClaim) &&
+           v.persistentVolumeClaim.claimName == 'machine-socrat-5'))
+      message: >-
+        socrat-5 is a no-NFS/local-only worker. Remote/unclassified persistent volumes
+        (including PVC and inline CSI) require a different node. Broad Exists tolerations
+        with PVCs must pin another hostname. The existing verified local NetBird identity
+        claim is the only named PVC exception.
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: homelab-socrat5-local-storage
+  labels:
+    homelab.io/owner: socrat5-worker
+spec:
+  policyName: homelab-socrat5-local-storage
+  validationActions: [Deny]

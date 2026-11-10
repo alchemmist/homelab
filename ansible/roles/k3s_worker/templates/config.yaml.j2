@@ -7,8 +7,13 @@ prefer-bundled-bin: {{ k3s_worker_prefer_bundled_bin | default(true) | bool | lo
 node-label:
   - svccontroller.k3s.cattle.io/enablelb=false
   - homelab.io/profile={{ k3s_worker_profile | default('desktop-worker') }}
+{% for label in k3s_worker_extra_node_labels | default([]) %}
+  - {{ label }}
+{% endfor %}
 node-taint:
-  - {{ k3s_worker_bootstrap_taint }}
+{% for taint in k3s_worker_taints | default([k3s_worker_bootstrap_taint]) %}
+  - {{ taint }}
+{% endfor %}
 kubelet-arg:
 {% if k3s_worker_user_namespace | default(false) | bool %}
   - feature-gates=KubeletInUserNamespace=true

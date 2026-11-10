@@ -1,0 +1,23 @@
+---
+- name: Audit or create the owned no-NFS worker admission boundary
+  hosts: socrat-0
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Install secret-free guard reconciler
+      ansible.builtin.copy:
+        src: ../../scripts/socrat5-storage-guard.py
+        dest: /usr/local/libexec/socrat5-storage-guard.py
+        mode: '0700'
+    - name: Render the public desired admission objects
+      ansible.builtin.copy:
+        content: "{{ lookup('file', '../../deploy/admission/socrat5-local-storage.yaml') | from_yaml_all | list | to_json }}"
+        dest: /var/lib/homelab-socrat5-storage-guard.json
+        mode: '0600'
+    - name: Audit only unless explicitly applying missing owned objects
+      ansible.builtin.command:
+        cmd: >-
+          python3 /usr/local/libexec/socrat5-storage-guard.py
+          --manifest /var/lib/homelab-socrat5-storage-guard.json
+          {{ '--apply' if socrat5_storage_guard_apply | default(false) | bool else '' }}
+      changed_when: false
