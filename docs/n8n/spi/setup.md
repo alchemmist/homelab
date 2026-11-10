@@ -619,3 +619,13 @@ represented in that aggregate, not every failure in a multi-failure window.
 Handoff errors/old logs without execution context safely retain workflow
 navigation. Zero does not create a fictitious execution. No historical logs,
 notifications or terminal jobs are replayed. All n8n link labels render as `n8n`.
+
+The native `Select Claimed Job` consumer also accepts
+`GITHUB_READ_NETWORK_ERROR` and `MATCH_PROGRESS_DEFERRED`. These are typed safe
+waits, not a generic error bypass. Source tests execute the SPI repository's
+exported JavaScript against the backend allowlist. Operational workflow updates
+must publish only the intended node change under the existing workflow identity;
+never recreate the workflow, mutate saved executions or restart a busy worker.
+Ordinary source pushes no longer deploy stateful SPI automatically; deployment
+requires explicit dispatch and actual natural drain, independently of whether
+GitHub environment reviewer rules happen to be configured.

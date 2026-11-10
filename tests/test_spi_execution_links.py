@@ -24,3 +24,14 @@ class ExecutionLinks(unittest.TestCase):
         self.assertIn('if gt $values.B.Value 0.0',template)
         self.assertIn('/workflow/J9akzlydrf9XZiID/executions/',template)
         self.assertNotIn('16473',template) # no hard-coded historical execution
+
+    def test_native_workflow_accepts_all_current_safe_deferred_codes(self):
+        import ast
+        import re
+        workflow=json.loads((ROOT/'docs/n8n/spi/triage-workflow.json').read_text())
+        code=next(n['parameters']['jsCode'] for n in workflow['nodes'] if n['name']=='Select Claimed Job')
+        match=re.search(r"if\(x.status==='deferred' && !(\[[^\n]+?\])\.includes\(x.code\)\)",code)
+        self.assertIsNotNone(match)
+        self.assertEqual(set(ast.literal_eval(match[1])),{
+            'LLM_ADMISSION_DEFERRED','WORKER_ADMISSION_DEFERRED','GRAPH_CAPTURE_DEFERRED',
+            'GITHUB_READ_TIMEOUT','GITHUB_READ_NETWORK_ERROR','MATCH_PROGRESS_DEFERRED'})
