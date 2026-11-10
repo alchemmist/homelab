@@ -1,21 +1,25 @@
 {
-  "uid": "socrat-traffic-light",
-  "title": "Traffic-light panel",
-  "description": "Headerless TV layout: approved absolute resource bars; CPU, memory and disk all eight grid rows high. Half-width RPS and n8n history, three unclipped n8n readouts, two Argo CD state-history lanes. Existing named service tiles and VPN sparkline retained. Fixed 24×16 grid.",
-  "tags": [
-    "socrat",
-    "tv"
-  ],
-  "timezone": "browser",
-  "schemaVersion": 39,
-  "version": 38,
-  "refresh": "5s",
-  "time": {
-    "from": "now-12h",
-    "to": "now"
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
   },
+  "description": "Headerless TV layout: approved absolute resource bars; CPU, memory and disk all eight grid rows high. Half-width RPS and n8n history, three unclipped n8n readouts, two Argo CD state-history lanes. Existing named service tiles and VPN sparkline retained. Fixed 24×16 grid.",
   "editable": true,
-  "links": [],
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "liveNow": false,
   "panels": [
     {
       "datasource": {
@@ -300,7 +304,7 @@
       },
       "gridPos": {
         "h": 2,
-        "w": 4,
+        "w": 3,
         "x": 6,
         "y": 0
       },
@@ -347,17 +351,17 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Highest GPU temperature. The sample is used only when collection succeeded in the last minute. Orange starts at 80°C and red at 90°C.",
+      "description": "Per-node absolute usage; each bar is normalized to that node’s live capacity, with relative 75% / 90% warning thresholds. CPU shows non-idle logical cores (including iowait), not GHz. Memory is total minus available. Disk is root filesystem size minus free (reserved free blocks are not used). Missing usage/capacity is not replaced with zero.",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "thresholds"
           },
-          "decimals": 0,
-          "displayName": "GPU temp",
+          "decimals": 1,
+          "min": 0,
           "noValue": "No telemetry",
           "thresholds": {
-            "mode": "absolute",
+            "mode": "percentage",
             "steps": [
               {
                 "color": "#26783D",
@@ -365,7 +369,7 @@
               },
               {
                 "color": "#A85D08",
-                "value": 80
+                "value": 75
               },
               {
                 "color": "#B42332",
@@ -373,22 +377,29 @@
               }
             ]
           },
-          "unit": "celsius"
+          "unit": "bytes"
         }
       },
       "gridPos": {
-        "h": 2,
-        "w": 4,
-        "x": 10,
+        "h": 8,
+        "w": 5,
+        "x": 9,
         "y": 0
       },
-      "id": 16,
+      "id": 23,
       "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
+        "displayMode": "basic",
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "maxVizHeight": 300,
+        "minVizHeight": 0,
+        "minVizWidth": 0,
+        "namePlacement": "top",
         "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -396,13 +407,13 @@
           "fields": "",
           "values": false
         },
-        "showPercentChange": false,
+        "showUnfilled": true,
+        "sizing": "auto",
         "text": {
-          "titleSize": 12,
-          "valueSize": 20
+          "titleSize": 16,
+          "valueSize": 16
         },
-        "textMode": "value_and_name",
-        "wideLayout": false
+        "valueMode": "color"
       },
       "pluginVersion": "13.2.4",
       "targets": [
@@ -411,14 +422,100 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(socrat_gpu_temperature_celsius and on(instance) (socrat_gpu_collection_success == 1) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60))",
-          "format": "time_series",
+          "expr": "max by(nodename) (((node_filesystem_size_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype!~\"tmpfs|overlay\"} - node_filesystem_free_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype!~\"tmpfs|overlay\"})) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\"}))",
+          "format": "table",
           "instant": true,
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max by(nodename) ((node_filesystem_size_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype!~\"tmpfs|overlay\"}) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\"}))",
+          "format": "table",
+          "instant": true,
+          "refId": "B"
         }
       ],
-      "title": "",
-      "type": "stat"
+      "title": "Disk",
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "nodename",
+            "mode": "outerTabular"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Time 1": true,
+              "Time 2": true
+            },
+            "renameByName": {
+              "Value #A": "Used",
+              "Value #B": "Capacity"
+            }
+          }
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "filters": [
+              {
+                "config": {
+                  "id": "isNotNull",
+                  "options": {}
+                },
+                "fieldName": "Used"
+              },
+              {
+                "config": {
+                  "id": "isNotNull",
+                  "options": {}
+                },
+                "fieldName": "Capacity"
+              }
+            ],
+            "match": "all",
+            "type": "include"
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "desc": false,
+                "field": "nodename"
+              }
+            ]
+          }
+        },
+        {
+          "id": "rowsToFields",
+          "options": {
+            "mappings": [
+              {
+                "fieldName": "nodename",
+                "handlerKey": "field.name"
+              },
+              {
+                "fieldName": "Used",
+                "handlerKey": "field.value"
+              },
+              {
+                "fieldName": "Capacity",
+                "handlerKey": "max"
+              }
+            ]
+          }
+        }
+      ],
+      "type": "bargauge"
     },
     {
       "datasource": {
@@ -626,10 +723,10 @@
         }
       },
       "gridPos": {
-        "x": 19,
-        "y": 0,
+        "h": 8,
         "w": 5,
-        "h": 8
+        "x": 19,
+        "y": 0
       },
       "id": 22,
       "options": {
@@ -774,10 +871,6 @@
           "mappings": [
             {
               "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -789,6 +882,10 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -871,10 +968,6 @@
           "mappings": [
             {
               "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -886,6 +979,10 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -961,17 +1058,13 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Format Quorum: http_2xx probe of http://format-quorum.format-quorum.svc.cluster.local:80/ every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
+      "description": "vLLM: http_2xx probe of http://vllm.llm.svc.cluster.local:8000/health every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
       "fieldConfig": {
         "defaults": {
-          "displayName": "Format Quorum",
+          "displayName": "vLLM",
           "mappings": [
             {
               "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -983,6 +1076,10 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -1015,7 +1112,7 @@
         "x": 4,
         "y": 2
       },
-      "id": 303,
+      "id": 319,
       "options": {
         "colorMode": "background_solid",
         "graphMode": "none",
@@ -1043,7 +1140,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceFormatQuorumUnavailable\",service_id=\"format-quorum\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceFormatQuorumUnavailable\",service_id=\"format-quorum\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"format-quorum\"})) and on() ((max(up{job=\"service-probes\",service_id=\"format-quorum\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"format-quorum\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"format-quorum\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceVllmUnavailable\",service_id=\"vllm\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceVllmUnavailable\",service_id=\"vllm\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"vllm\"})) and on() ((max(up{job=\"service-probes\",service_id=\"vllm\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"vllm\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"vllm\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
           "format": "time_series",
           "instant": true,
           "range": false,
@@ -1058,33 +1155,14 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Image Proxy: tcp_connect probe of img-proxy.img-proxy.svc.cluster.local:80 every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
+      "description": "Highest GPU temperature. The sample is used only when collection succeeded in the last minute. Orange starts at 80°C and red at 90°C.",
       "fieldConfig": {
         "defaults": {
-          "displayName": "Image Proxy",
-          "mappings": [
-            {
-              "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
-                "0": {
-                  "color": "#26783D",
-                  "text": "Healthy"
-                },
-                "1": {
-                  "color": "#A85D08",
-                  "text": "Pending"
-                },
-                "2": {
-                  "color": "#B42332",
-                  "text": "Firing"
-                }
-              },
-              "type": "value"
-            }
-          ],
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "displayName": "GPU temp",
           "noValue": "No telemetry",
           "thresholds": {
             "mode": "absolute",
@@ -1095,24 +1173,24 @@
               },
               {
                 "color": "#A85D08",
-                "value": 1
+                "value": 80
               },
               {
                 "color": "#B42332",
-                "value": 2
+                "value": 90
               }
             ]
           },
-          "unit": "short"
+          "unit": "celsius"
         }
       },
       "gridPos": {
         "h": 2,
-        "w": 2,
+        "w": 3,
         "x": 6,
         "y": 2
       },
-      "id": 304,
+      "id": 16,
       "options": {
         "colorMode": "background_solid",
         "graphMode": "none",
@@ -1128,9 +1206,10 @@
         },
         "showPercentChange": false,
         "text": {
-          "titleSize": 14
+          "titleSize": 12,
+          "valueSize": 20
         },
-        "textMode": "name",
+        "textMode": "value_and_name",
         "wideLayout": false
       },
       "pluginVersion": "13.2.4",
@@ -1140,301 +1219,9 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceImageProxyUnavailable\",service_id=\"image-proxy\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceImageProxyUnavailable\",service_id=\"image-proxy\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"image-proxy\"})) and on() ((max(up{job=\"service-probes\",service_id=\"image-proxy\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"image-proxy\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"image-proxy\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "expr": "max(socrat_gpu_temperature_celsius and on(instance) (socrat_gpu_collection_success == 1) and on(instance) ((time() - socrat_gpu_collection_timestamp_seconds) < 60))",
           "format": "time_series",
           "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "LMS: http_2xx probe of http://lms.lms.svc.cluster.local:80/ every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
-      "fieldConfig": {
-        "defaults": {
-          "displayName": "LMS",
-          "mappings": [
-            {
-              "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
-                "0": {
-                  "color": "#26783D",
-                  "text": "Healthy"
-                },
-                "1": {
-                  "color": "#A85D08",
-                  "text": "Pending"
-                },
-                "2": {
-                  "color": "#B42332",
-                  "text": "Firing"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": 0
-              },
-              {
-                "color": "#A85D08",
-                "value": 1
-              },
-              {
-                "color": "#B42332",
-                "value": 2
-              }
-            ]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {
-        "h": 2,
-        "w": 2,
-        "x": 8,
-        "y": 2
-      },
-      "id": 305,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 14
-        },
-        "textMode": "name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceLmsUnavailable\",service_id=\"lms\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceLmsUnavailable\",service_id=\"lms\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"lms\"})) and on() ((max(up{job=\"service-probes\",service_id=\"lms\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"lms\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"lms\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
-          "format": "time_series",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "Monori: http_2xx probe of http://monori.monori.svc.cluster.local:80/ every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
-      "fieldConfig": {
-        "defaults": {
-          "displayName": "Monori",
-          "mappings": [
-            {
-              "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
-                "0": {
-                  "color": "#26783D",
-                  "text": "Healthy"
-                },
-                "1": {
-                  "color": "#A85D08",
-                  "text": "Pending"
-                },
-                "2": {
-                  "color": "#B42332",
-                  "text": "Firing"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": 0
-              },
-              {
-                "color": "#A85D08",
-                "value": 1
-              },
-              {
-                "color": "#B42332",
-                "value": 2
-              }
-            ]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {
-        "h": 2,
-        "w": 2,
-        "x": 10,
-        "y": 2
-      },
-      "id": 306,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 14
-        },
-        "textMode": "name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceMonoriUnavailable\",service_id=\"monori\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceMonoriUnavailable\",service_id=\"monori\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"monori\"})) and on() ((max(up{job=\"service-probes\",service_id=\"monori\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"monori\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"monori\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
-          "format": "time_series",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "Monori API: http_2xx probe of http://back.monori.svc.cluster.local:8000/openapi.json every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
-      "fieldConfig": {
-        "defaults": {
-          "displayName": "Monori API",
-          "mappings": [
-            {
-              "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
-                "0": {
-                  "color": "#26783D",
-                  "text": "Healthy"
-                },
-                "1": {
-                  "color": "#A85D08",
-                  "text": "Pending"
-                },
-                "2": {
-                  "color": "#B42332",
-                  "text": "Firing"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": 0
-              },
-              {
-                "color": "#A85D08",
-                "value": 1
-              },
-              {
-                "color": "#B42332",
-                "value": 2
-              }
-            ]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {
-        "h": 2,
-        "w": 2,
-        "x": 12,
-        "y": 2
-      },
-      "id": 307,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 14
-        },
-        "textMode": "name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceMonoriApiUnavailable\",service_id=\"monori-api\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceMonoriApiUnavailable\",service_id=\"monori-api\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"monori-api\"})) and on() ((max(up{job=\"service-probes\",service_id=\"monori-api\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"monori-api\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"monori-api\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
-          "format": "time_series",
-          "instant": true,
-          "range": false,
           "refId": "A"
         }
       ],
@@ -1453,10 +1240,6 @@
           "mappings": [
             {
               "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -1468,6 +1251,10 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -1550,10 +1337,6 @@
           "mappings": [
             {
               "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -1565,6 +1348,10 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -1647,10 +1434,6 @@
           "mappings": [
             {
               "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -1662,6 +1445,10 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -1737,17 +1524,13 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Umami: http_2xx probe of http://umami.umami.svc.cluster.local:80/api/heartbeat every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
+      "description": "Format Quorum: http_2xx probe of http://format-quorum.format-quorum.svc.cluster.local:80/ every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
       "fieldConfig": {
         "defaults": {
-          "displayName": "Umami",
+          "displayName": "Format Quorum",
           "mappings": [
             {
               "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -1759,6 +1542,10 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -1787,11 +1574,11 @@
       },
       "gridPos": {
         "h": 2,
-        "w": 2,
+        "w": 3,
         "x": 6,
         "y": 4
       },
-      "id": 311,
+      "id": 303,
       "options": {
         "colorMode": "background_solid",
         "graphMode": "none",
@@ -1819,298 +1606,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceUmamiUnavailable\",service_id=\"umami\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceUmamiUnavailable\",service_id=\"umami\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"umami\"})) and on() ((max(up{job=\"service-probes\",service_id=\"umami\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"umami\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"umami\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
-          "format": "time_series",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "Status: http_2xx probe of http://uptime-kuma.uptime-kuma.svc.cluster.local:80/api/status-page/socrat every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
-      "fieldConfig": {
-        "defaults": {
-          "displayName": "Status",
-          "mappings": [
-            {
-              "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
-                "0": {
-                  "color": "#26783D",
-                  "text": "Healthy"
-                },
-                "1": {
-                  "color": "#A85D08",
-                  "text": "Pending"
-                },
-                "2": {
-                  "color": "#B42332",
-                  "text": "Firing"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": 0
-              },
-              {
-                "color": "#A85D08",
-                "value": 1
-              },
-              {
-                "color": "#B42332",
-                "value": 2
-              }
-            ]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {
-        "h": 2,
-        "w": 2,
-        "x": 8,
-        "y": 4
-      },
-      "id": 312,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 14
-        },
-        "textMode": "name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceStatusUnavailable\",service_id=\"status\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceStatusUnavailable\",service_id=\"status\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"status\"})) and on() ((max(up{job=\"service-probes\",service_id=\"status\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"status\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"status\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
-          "format": "time_series",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "Wiki: http_2xx probe of http://wiki-runtime-wiki.wiki.svc.cluster.local:8080/healthz every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
-      "fieldConfig": {
-        "defaults": {
-          "displayName": "Wiki",
-          "mappings": [
-            {
-              "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
-                "0": {
-                  "color": "#26783D",
-                  "text": "Healthy"
-                },
-                "1": {
-                  "color": "#A85D08",
-                  "text": "Pending"
-                },
-                "2": {
-                  "color": "#B42332",
-                  "text": "Firing"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": 0
-              },
-              {
-                "color": "#A85D08",
-                "value": 1
-              },
-              {
-                "color": "#B42332",
-                "value": 2
-              }
-            ]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {
-        "h": 2,
-        "w": 2,
-        "x": 10,
-        "y": 4
-      },
-      "id": 313,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 14
-        },
-        "textMode": "name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceWikiUnavailable\",service_id=\"wiki\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceWikiUnavailable\",service_id=\"wiki\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"wiki\"})) and on() ((max(up{job=\"service-probes\",service_id=\"wiki\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"wiki\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"wiki\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
-          "format": "time_series",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "LiteLLM: http_2xx probe of http://litellm.llm.svc.cluster.local:4000/health/readiness every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
-      "fieldConfig": {
-        "defaults": {
-          "displayName": "LiteLLM",
-          "mappings": [
-            {
-              "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
-                "0": {
-                  "color": "#26783D",
-                  "text": "Healthy"
-                },
-                "1": {
-                  "color": "#A85D08",
-                  "text": "Pending"
-                },
-                "2": {
-                  "color": "#B42332",
-                  "text": "Firing"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": 0
-              },
-              {
-                "color": "#A85D08",
-                "value": 1
-              },
-              {
-                "color": "#B42332",
-                "value": 2
-              }
-            ]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {
-        "h": 2,
-        "w": 2,
-        "x": 12,
-        "y": 4
-      },
-      "id": 314,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 14
-        },
-        "textMode": "name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceLitellmUnavailable\",service_id=\"litellm\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceLitellmUnavailable\",service_id=\"litellm\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"litellm\"})) and on() ((max(up{job=\"service-probes\",service_id=\"litellm\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"litellm\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"litellm\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceFormatQuorumUnavailable\",service_id=\"format-quorum\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceFormatQuorumUnavailable\",service_id=\"format-quorum\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"format-quorum\"})) and on() ((max(up{job=\"service-probes\",service_id=\"format-quorum\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"format-quorum\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"format-quorum\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
           "format": "time_series",
           "instant": true,
           "range": false,
@@ -2132,10 +1628,6 @@
           "mappings": [
             {
               "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -2147,6 +1639,10 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -2229,10 +1725,6 @@
           "mappings": [
             {
               "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -2244,6 +1736,10 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -2271,7 +1767,7 @@
         }
       },
       "gridPos": {
-        "h": 1,
+        "h": 2,
         "w": 2,
         "x": 2,
         "y": 6
@@ -2326,10 +1822,6 @@
           "mappings": [
             {
               "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -2341,6 +1833,10 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -2416,394 +1912,6 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "SearXNG: http_2xx probe of http://searxng.llm.svc.cluster.local:8080/healthz every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
-      "fieldConfig": {
-        "defaults": {
-          "displayName": "SearXNG",
-          "mappings": [
-            {
-              "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
-                "0": {
-                  "color": "#26783D",
-                  "text": "Healthy"
-                },
-                "1": {
-                  "color": "#A85D08",
-                  "text": "Pending"
-                },
-                "2": {
-                  "color": "#B42332",
-                  "text": "Firing"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": 0
-              },
-              {
-                "color": "#A85D08",
-                "value": 1
-              },
-              {
-                "color": "#B42332",
-                "value": 2
-              }
-            ]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {
-        "h": 2,
-        "w": 2,
-        "x": 6,
-        "y": 6
-      },
-      "id": 318,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 14
-        },
-        "textMode": "name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceSearxngUnavailable\",service_id=\"searxng\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceSearxngUnavailable\",service_id=\"searxng\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"searxng\"})) and on() ((max(up{job=\"service-probes\",service_id=\"searxng\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"searxng\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"searxng\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
-          "format": "time_series",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "vLLM: http_2xx probe of http://vllm.llm.svc.cluster.local:8000/health every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
-      "fieldConfig": {
-        "defaults": {
-          "displayName": "vLLM",
-          "mappings": [
-            {
-              "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
-                "0": {
-                  "color": "#26783D",
-                  "text": "Healthy"
-                },
-                "1": {
-                  "color": "#A85D08",
-                  "text": "Pending"
-                },
-                "2": {
-                  "color": "#B42332",
-                  "text": "Firing"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": 0
-              },
-              {
-                "color": "#A85D08",
-                "value": 1
-              },
-              {
-                "color": "#B42332",
-                "value": 2
-              }
-            ]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {
-        "h": 2,
-        "w": 2,
-        "x": 8,
-        "y": 6
-      },
-      "id": 319,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 14
-        },
-        "textMode": "name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceVllmUnavailable\",service_id=\"vllm\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceVllmUnavailable\",service_id=\"vllm\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"vllm\"})) and on() ((max(up{job=\"service-probes\",service_id=\"vllm\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"vllm\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"vllm\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
-          "format": "time_series",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "Rancher: http_2xx probe of http://rancher.cattle-system.svc.cluster.local:80/healthz every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
-      "fieldConfig": {
-        "defaults": {
-          "displayName": "Rancher",
-          "mappings": [
-            {
-              "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
-                "0": {
-                  "color": "#26783D",
-                  "text": "Healthy"
-                },
-                "1": {
-                  "color": "#A85D08",
-                  "text": "Pending"
-                },
-                "2": {
-                  "color": "#B42332",
-                  "text": "Firing"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": 0
-              },
-              {
-                "color": "#A85D08",
-                "value": 1
-              },
-              {
-                "color": "#B42332",
-                "value": 2
-              }
-            ]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {
-        "h": 2,
-        "w": 2,
-        "x": 10,
-        "y": 6
-      },
-      "id": 320,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 14
-        },
-        "textMode": "name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceRancherUnavailable\",service_id=\"rancher\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceRancherUnavailable\",service_id=\"rancher\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"rancher\"})) and on() ((max(up{job=\"service-probes\",service_id=\"rancher\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"rancher\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"rancher\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
-          "format": "time_series",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "Grafana: http_2xx probe of http://kube-prometheus-stack-grafana.cattle-monitoring-system.svc.cluster.local:80/api/health every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
-      "fieldConfig": {
-        "defaults": {
-          "displayName": "Grafana",
-          "mappings": [
-            {
-              "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
-                "0": {
-                  "color": "#26783D",
-                  "text": "Healthy"
-                },
-                "1": {
-                  "color": "#A85D08",
-                  "text": "Pending"
-                },
-                "2": {
-                  "color": "#B42332",
-                  "text": "Firing"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": 0
-              },
-              {
-                "color": "#A85D08",
-                "value": 1
-              },
-              {
-                "color": "#B42332",
-                "value": 2
-              }
-            ]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {
-        "h": 2,
-        "w": 2,
-        "x": 12,
-        "y": 6
-      },
-      "id": 321,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 14
-        },
-        "textMode": "name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceGrafanaUnavailable\",service_id=\"grafana\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceGrafanaUnavailable\",service_id=\"grafana\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"grafana\"})) and on() ((max(up{job=\"service-probes\",service_id=\"grafana\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"grafana\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"grafana\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
-          "format": "time_series",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
       "description": "Alertmanager: http_2xx probe of http://kube-prometheus-stack-alertmanager.cattle-monitoring-system.svc.cluster.local:9093/-/ready every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
       "fieldConfig": {
         "defaults": {
@@ -2811,10 +1919,6 @@
           "mappings": [
             {
               "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -2826,6 +1930,10 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -2853,10 +1961,10 @@
         }
       },
       "gridPos": {
-        "h": 1,
-        "w": 2,
-        "x": 2,
-        "y": 7
+        "h": 2,
+        "w": 3,
+        "x": 6,
+        "y": 6
       },
       "id": 323,
       "options": {
@@ -2908,10 +2016,6 @@
           "mappings": [
             {
               "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -2923,6 +2027,10 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -3005,10 +2113,6 @@
           "mappings": [
             {
               "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -3020,6 +2124,10 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -3102,10 +2210,6 @@
           "mappings": [
             {
               "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -3117,6 +2221,10 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -3192,405 +2300,51 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "LiteLLM DB: tcp_connect probe of litellm-postgres.llm.svc.cluster.local:5432 every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
-      "fieldConfig": {
-        "defaults": {
-          "displayName": "LiteLLM DB",
-          "mappings": [
-            {
-              "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
-                "0": {
-                  "color": "#26783D",
-                  "text": "Healthy"
-                },
-                "1": {
-                  "color": "#A85D08",
-                  "text": "Pending"
-                },
-                "2": {
-                  "color": "#B42332",
-                  "text": "Firing"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": 0
-              },
-              {
-                "color": "#A85D08",
-                "value": 1
-              },
-              {
-                "color": "#B42332",
-                "value": 2
-              }
-            ]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {
-        "h": 2,
-        "w": 2,
-        "x": 6,
-        "y": 8
-      },
-      "id": 327,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 14
-        },
-        "textMode": "name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceLitellmDbUnavailable\",service_id=\"litellm-db\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceLitellmDbUnavailable\",service_id=\"litellm-db\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"litellm-db\"})) and on() ((max(up{job=\"service-probes\",service_id=\"litellm-db\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"litellm-db\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"litellm-db\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
-          "format": "time_series",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "Umami DB: tcp_connect probe of umami-db.umami.svc.cluster.local:5432 every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
-      "fieldConfig": {
-        "defaults": {
-          "displayName": "Umami DB",
-          "mappings": [
-            {
-              "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
-                "0": {
-                  "color": "#26783D",
-                  "text": "Healthy"
-                },
-                "1": {
-                  "color": "#A85D08",
-                  "text": "Pending"
-                },
-                "2": {
-                  "color": "#B42332",
-                  "text": "Firing"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": 0
-              },
-              {
-                "color": "#A85D08",
-                "value": 1
-              },
-              {
-                "color": "#B42332",
-                "value": 2
-              }
-            ]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {
-        "h": 2,
-        "w": 2,
-        "x": 8,
-        "y": 8
-      },
-      "id": 328,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 14
-        },
-        "textMode": "name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceUmamiDbUnavailable\",service_id=\"umami-db\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceUmamiDbUnavailable\",service_id=\"umami-db\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"umami-db\"})) and on() ((max(up{job=\"service-probes\",service_id=\"umami-db\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"umami-db\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"umami-db\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
-          "format": "time_series",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "n8n: http_2xx probe of http://n8n.automation.svc.cluster.local:80/healthz every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
-      "fieldConfig": {
-        "defaults": {
-          "displayName": "n8n",
-          "mappings": [
-            {
-              "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
-                "0": {
-                  "color": "#26783D",
-                  "text": "Healthy"
-                },
-                "1": {
-                  "color": "#A85D08",
-                  "text": "Pending"
-                },
-                "2": {
-                  "color": "#B42332",
-                  "text": "Firing"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": 0
-              },
-              {
-                "color": "#A85D08",
-                "value": 1
-              },
-              {
-                "color": "#B42332",
-                "value": 2
-              }
-            ]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {
-        "h": 1,
-        "w": 2,
-        "x": 10,
-        "y": 8
-      },
-      "id": 335,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 14
-        },
-        "textMode": "name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceN8nUnavailable\",service_id=\"n8n\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceN8nUnavailable\",service_id=\"n8n\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"n8n\"})) and on() ((max(up{job=\"service-probes\",service_id=\"n8n\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"n8n\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"n8n\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
-          "format": "time_series",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "Authentik: http_2xx probe of http://authentik-server.identity.svc.cluster.local:80/-/health/live/ every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
-      "fieldConfig": {
-        "defaults": {
-          "displayName": "Authentik",
-          "mappings": [
-            {
-              "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
-                "0": {
-                  "color": "#26783D",
-                  "text": "Healthy"
-                },
-                "1": {
-                  "color": "#A85D08",
-                  "text": "Pending"
-                },
-                "2": {
-                  "color": "#B42332",
-                  "text": "Firing"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": 0
-              },
-              {
-                "color": "#A85D08",
-                "value": 1
-              },
-              {
-                "color": "#B42332",
-                "value": 2
-              }
-            ]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {
-        "h": 1,
-        "w": 2,
-        "x": 12,
-        "y": 8
-      },
-      "id": 336,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 14
-        },
-        "textMode": "name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceAuthentikUnavailable\",service_id=\"authentik\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceAuthentikUnavailable\",service_id=\"authentik\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"authentik\"})) and on() ((max(up{job=\"service-probes\",service_id=\"authentik\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"authentik\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"authentik\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
-          "format": "time_series",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "Per-node absolute usage; each bar is normalized to that node’s live capacity, with relative 75% / 90% warning thresholds. CPU shows non-idle logical cores (including iowait), not GHz. Memory is total minus available. Disk is root filesystem size minus free (reserved free blocks are not used). Missing usage/capacity is not replaced with zero.",
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
-          "decimals": 1,
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisGridShow": true,
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "bars",
+            "fillOpacity": 85,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 0,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
           "min": 0,
-          "noValue": "No telemetry",
+          "noValue": "Collecting history",
           "thresholds": {
-            "mode": "percentage",
+            "mode": "absolute",
             "steps": [
               {
                 "color": "#26783D",
@@ -3606,43 +2360,82 @@
               }
             ]
           },
-          "unit": "bytes"
-        }
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "success"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#26783D",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#B42332",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "other"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#8e8e8e",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
-        "x": 14,
-        "y": 8,
-        "w": 5,
-        "h": 8
+        "h": 4,
+        "w": 7,
+        "x": 6,
+        "y": 8
       },
-      "id": 23,
+      "id": 920,
+      "interval": "30s",
       "options": {
-        "displayMode": "basic",
+        "graphTooltip": 1,
         "legend": {
           "calcs": [],
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": false
         },
-        "maxVizHeight": 300,
-        "minVizHeight": 0,
-        "minVizWidth": 0,
-        "namePlacement": "top",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "desc"
         },
-        "showUnfilled": true,
-        "sizing": "auto",
-        "text": {
-          "titleSize": 16,
-          "valueSize": 16
-        },
-        "valueMode": "color"
+        "xAxis": {
+          "axisBorderShow": false,
+          "axisGridShow": true,
+          "axisPlacement": "auto"
+        }
       },
       "pluginVersion": "13.2.4",
       "targets": [
@@ -3651,100 +2444,307 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by(nodename) (((node_filesystem_size_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype!~\"tmpfs|overlay\"} - node_filesystem_free_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype!~\"tmpfs|overlay\"})) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\"}))",
-          "format": "table",
-          "instant": true,
+          "expr": "max by(status) (socrat_n8n_starts_window{window=\"300\",status=~\"success|error|other\"}) and on() (max(socrat_n8n_collection_success) == 1) and on() (time() - max(socrat_n8n_collection_timestamp_seconds) < 90)",
+          "format": "time_series",
+          "instant": false,
+          "legendFormat": "{{status}}",
+          "range": true,
           "refId": "A"
+        }
+      ],
+      "title": "",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Monori: http_2xx probe of http://monori.monori.svc.cluster.local:80/ every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "Monori",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "#26783D",
+                  "text": "Healthy"
+                },
+                "1": {
+                  "color": "#A85D08",
+                  "text": "Pending"
+                },
+                "2": {
+                  "color": "#B42332",
+                  "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "noValue": "No telemetry",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": 0
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 2,
+        "x": 13,
+        "y": 8
+      },
+      "id": 306,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
         },
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 14
+        },
+        "textMode": "name",
+        "wideLayout": false
+      },
+      "pluginVersion": "13.2.4",
+      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by(nodename) ((node_filesystem_size_bytes{job=\"node-exporter\",mountpoint=\"/\",fstype!~\"tmpfs|overlay\"}) * on(instance) group_left(nodename) max by (instance, nodename) (node_uname_info{job=\"node-exporter\"}))",
-          "format": "table",
+          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceMonoriUnavailable\",service_id=\"monori\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceMonoriUnavailable\",service_id=\"monori\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"monori\"})) and on() ((max(up{job=\"service-probes\",service_id=\"monori\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"monori\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"monori\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "format": "time_series",
           "instant": true,
-          "refId": "B"
+          "range": false,
+          "refId": "A"
         }
       ],
-      "title": "Disk",
-      "transformations": [
-        {
-          "id": "joinByField",
-          "options": {
-            "byField": "nodename",
-            "mode": "outerTabular"
-          }
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true,
-              "Time 1": true,
-              "Time 2": true
-            },
-            "renameByName": {
-              "Value #A": "Used",
-              "Value #B": "Capacity"
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Monori API: http_2xx probe of http://back.monori.svc.cluster.local:8000/openapi.json every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "Monori API",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "#26783D",
+                  "text": "Healthy"
+                },
+                "1": {
+                  "color": "#A85D08",
+                  "text": "Pending"
+                },
+                "2": {
+                  "color": "#B42332",
+                  "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                }
+              },
+              "type": "value"
             }
-          }
-        },
-        {
-          "id": "filterByValue",
-          "options": {
-            "filters": [
+          ],
+          "noValue": "No telemetry",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
               {
-                "config": {
-                  "id": "isNotNull",
-                  "options": {}
-                },
-                "fieldName": "Used"
+                "color": "#26783D",
+                "value": 0
               },
               {
-                "config": {
-                  "id": "isNotNull",
-                  "options": {}
-                },
-                "fieldName": "Capacity"
-              }
-            ],
-            "match": "all",
-            "type": "include"
-          }
-        },
-        {
-          "id": "sortBy",
-          "options": {
-            "sort": [
+                "color": "#A85D08",
+                "value": 1
+              },
               {
-                "desc": false,
-                "field": "nodename"
+                "color": "#B42332",
+                "value": 2
               }
             ]
-          }
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 2,
+        "x": 15,
+        "y": 8
+      },
+      "id": 307,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
         },
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 14
+        },
+        "textMode": "name",
+        "wideLayout": false
+      },
+      "pluginVersion": "13.2.4",
+      "targets": [
         {
-          "id": "rowsToFields",
-          "options": {
-            "mappings": [
-              {
-                "fieldName": "nodename",
-                "handlerKey": "field.name"
-              },
-              {
-                "fieldName": "Used",
-                "handlerKey": "field.value"
-              },
-              {
-                "fieldName": "Capacity",
-                "handlerKey": "max"
-              }
-            ]
-          }
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceMonoriApiUnavailable\",service_id=\"monori-api\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceMonoriApiUnavailable\",service_id=\"monori-api\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"monori-api\"})) and on() ((max(up{job=\"service-probes\",service_id=\"monori-api\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"monori-api\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"monori-api\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "refId": "A"
         }
       ],
-      "type": "bargauge"
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "LMS: http_2xx probe of http://lms.lms.svc.cluster.local:80/ every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "LMS",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "#26783D",
+                  "text": "Healthy"
+                },
+                "1": {
+                  "color": "#A85D08",
+                  "text": "Pending"
+                },
+                "2": {
+                  "color": "#B42332",
+                  "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "noValue": "No telemetry",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": 0
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 2,
+        "x": 17,
+        "y": 8
+      },
+      "id": 305,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 14
+        },
+        "textMode": "name",
+        "wideLayout": false
+      },
+      "pluginVersion": "13.2.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceLmsUnavailable\",service_id=\"lms\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceLmsUnavailable\",service_id=\"lms\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"lms\"})) and on() ((max(up{job=\"service-probes\",service_id=\"lms\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"lms\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"lms\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "type": "stat"
     },
     {
       "datasource": {
@@ -3758,10 +2758,6 @@
           "mappings": [
             {
               "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "STALE"
-                },
                 "0": {
                   "color": "#26783D",
                   "text": "OK"
@@ -3777,6 +2773,10 @@
                 "3": {
                   "color": "#B42332",
                   "text": "DOWN"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "STALE"
                 }
               },
               "type": "value"
@@ -3859,10 +2859,6 @@
           "mappings": [
             {
               "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "STALE"
-                },
                 "0": {
                   "color": "#26783D",
                   "text": "OK"
@@ -3878,6 +2874,10 @@
                 "3": {
                   "color": "#B42332",
                   "text": "DOWN"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "STALE"
                 }
               },
               "type": "value"
@@ -3960,10 +2960,6 @@
           "mappings": [
             {
               "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "STALE"
-                },
                 "0": {
                   "color": "#26783D",
                   "text": "OK"
@@ -3979,6 +2975,10 @@
                 "3": {
                   "color": "#B42332",
                   "text": "DOWN"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "STALE"
                 }
               },
               "type": "value"
@@ -4061,10 +3061,6 @@
           "mappings": [
             {
               "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "STALE"
-                },
                 "0": {
                   "color": "#26783D",
                   "text": "OK"
@@ -4080,6 +3076,10 @@
                 "3": {
                   "color": "#B42332",
                   "text": "DOWN"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "STALE"
                 }
               },
               "type": "value"
@@ -4248,10 +3248,6 @@
           "mappings": [
             {
               "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -4263,6 +3259,10 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -4345,10 +3345,6 @@
           "mappings": [
             {
               "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
                 "0": {
                   "color": "#26783D",
                   "text": "Healthy"
@@ -4360,6 +3356,10 @@
                 "2": {
                   "color": "#B42332",
                   "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
                 }
               },
               "type": "value"
@@ -4435,200 +3435,6 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Harbor: http_2xx probe of http://harbor-core.harbor.svc.cluster.local:80/api/v2.0/ping every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
-      "fieldConfig": {
-        "defaults": {
-          "displayName": "Harbor",
-          "mappings": [
-            {
-              "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
-                "0": {
-                  "color": "#26783D",
-                  "text": "Healthy"
-                },
-                "1": {
-                  "color": "#A85D08",
-                  "text": "Pending"
-                },
-                "2": {
-                  "color": "#B42332",
-                  "text": "Firing"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": 0
-              },
-              {
-                "color": "#A85D08",
-                "value": 1
-              },
-              {
-                "color": "#B42332",
-                "value": 2
-              }
-            ]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {
-        "h": 1,
-        "w": 2,
-        "x": 10,
-        "y": 9
-      },
-      "id": 337,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 14
-        },
-        "textMode": "name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceHarborUnavailable\",service_id=\"harbor\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceHarborUnavailable\",service_id=\"harbor\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"harbor\"})) and on() ((max(up{job=\"service-probes\",service_id=\"harbor\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"harbor\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"harbor\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
-          "format": "time_series",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "Argo CD: http_3xx probe of http://argo-cd-argocd-server.argocd.svc.cluster.local:80/healthz every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
-      "fieldConfig": {
-        "defaults": {
-          "displayName": "Argo CD",
-          "mappings": [
-            {
-              "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                },
-                "0": {
-                  "color": "#26783D",
-                  "text": "Healthy"
-                },
-                "1": {
-                  "color": "#A85D08",
-                  "text": "Pending"
-                },
-                "2": {
-                  "color": "#B42332",
-                  "text": "Firing"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": 0
-              },
-              {
-                "color": "#A85D08",
-                "value": 1
-              },
-              {
-                "color": "#B42332",
-                "value": 2
-              }
-            ]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {
-        "h": 1,
-        "w": 2,
-        "x": 12,
-        "y": 9
-      },
-      "id": 338,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 14
-        },
-        "textMode": "name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceArgocdUnavailable\",service_id=\"argocd\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceArgocdUnavailable\",service_id=\"argocd\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"argocd\"})) and on() ((max(up{job=\"service-probes\",service_id=\"argocd\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"argocd\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"argocd\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
-          "format": "time_series",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
       "description": "Public entrance availability cube. Home IP is the apartment connection (109.173.40.247), VPS IP is the cloud edge (109.120.141.60), both probed over TCP 443 by the blackbox exporter every minute. Green = the address answers; orange = probe failures pending alert; red = the SocratServiceEdge*Unavailable alert is firing; grey = No telemetry, probe or rule evaluation is stale. A red cube also means the entrance path is down even when specific service tiles stay green, because those are probed inside the cluster.",
       "fieldConfig": {
         "defaults": {
@@ -4636,10 +3442,6 @@
           "mappings": [
             {
               "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "STALE"
-                },
                 "0": {
                   "color": "#26783D",
                   "text": "OK"
@@ -4651,6 +3453,10 @@
                 "2": {
                   "color": "#B42332",
                   "text": "DOWN"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "STALE"
                 }
               },
               "type": "value"
@@ -4733,10 +3539,6 @@
           "mappings": [
             {
               "options": {
-                "-2": {
-                  "color": "#555555",
-                  "text": "STALE"
-                },
                 "0": {
                   "color": "#26783D",
                   "text": "OK"
@@ -4748,6 +3550,10 @@
                 "2": {
                   "color": "#B42332",
                   "text": "DOWN"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "STALE"
                 }
               },
               "type": "value"
@@ -4817,6 +3623,710 @@
       ],
       "title": "",
       "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Umami: http_2xx probe of http://umami.umami.svc.cluster.local:80/api/heartbeat every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "Umami",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "#26783D",
+                  "text": "Healthy"
+                },
+                "1": {
+                  "color": "#A85D08",
+                  "text": "Pending"
+                },
+                "2": {
+                  "color": "#B42332",
+                  "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "noValue": "No telemetry",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": 0
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 2,
+        "x": 0,
+        "y": 10
+      },
+      "id": 311,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 14
+        },
+        "textMode": "name",
+        "wideLayout": false
+      },
+      "pluginVersion": "13.2.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceUmamiUnavailable\",service_id=\"umami\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceUmamiUnavailable\",service_id=\"umami\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"umami\"})) and on() ((max(up{job=\"service-probes\",service_id=\"umami\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"umami\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"umami\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Image Proxy: tcp_connect probe of img-proxy.img-proxy.svc.cluster.local:80 every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "Image Proxy",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "#26783D",
+                  "text": "Healthy"
+                },
+                "1": {
+                  "color": "#A85D08",
+                  "text": "Pending"
+                },
+                "2": {
+                  "color": "#B42332",
+                  "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "noValue": "No telemetry",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": 0
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 2,
+        "x": 2,
+        "y": 10
+      },
+      "id": 304,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 14
+        },
+        "textMode": "name",
+        "wideLayout": false
+      },
+      "pluginVersion": "13.2.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceImageProxyUnavailable\",service_id=\"image-proxy\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceImageProxyUnavailable\",service_id=\"image-proxy\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"image-proxy\"})) and on() ((max(up{job=\"service-probes\",service_id=\"image-proxy\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"image-proxy\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"image-proxy\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "SearXNG: http_2xx probe of http://searxng.llm.svc.cluster.local:8080/healthz every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "SearXNG",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "#26783D",
+                  "text": "Healthy"
+                },
+                "1": {
+                  "color": "#A85D08",
+                  "text": "Pending"
+                },
+                "2": {
+                  "color": "#B42332",
+                  "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "noValue": "No telemetry",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": 0
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 2,
+        "x": 4,
+        "y": 10
+      },
+      "id": 318,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 14
+        },
+        "textMode": "name",
+        "wideLayout": false
+      },
+      "pluginVersion": "13.2.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceSearxngUnavailable\",service_id=\"searxng\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceSearxngUnavailable\",service_id=\"searxng\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"searxng\"})) and on() ((max(up{job=\"service-probes\",service_id=\"searxng\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"searxng\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"searxng\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Grafana: http_2xx probe of http://kube-prometheus-stack-grafana.cattle-monitoring-system.svc.cluster.local:80/api/health every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "Grafana",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "#26783D",
+                  "text": "Healthy"
+                },
+                "1": {
+                  "color": "#A85D08",
+                  "text": "Pending"
+                },
+                "2": {
+                  "color": "#B42332",
+                  "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "noValue": "No telemetry",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": 0
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 2,
+        "x": 13,
+        "y": 10
+      },
+      "id": 321,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 14
+        },
+        "textMode": "name",
+        "wideLayout": false
+      },
+      "pluginVersion": "13.2.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceGrafanaUnavailable\",service_id=\"grafana\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceGrafanaUnavailable\",service_id=\"grafana\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"grafana\"})) and on() ((max(up{job=\"service-probes\",service_id=\"grafana\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"grafana\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"grafana\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Status: http_2xx probe of http://uptime-kuma.uptime-kuma.svc.cluster.local:80/api/status-page/socrat every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "Status",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "#26783D",
+                  "text": "Healthy"
+                },
+                "1": {
+                  "color": "#A85D08",
+                  "text": "Pending"
+                },
+                "2": {
+                  "color": "#B42332",
+                  "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "noValue": "No telemetry",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": 0
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 2,
+        "x": 15,
+        "y": 10
+      },
+      "id": 312,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 14
+        },
+        "textMode": "name",
+        "wideLayout": false
+      },
+      "pluginVersion": "13.2.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceStatusUnavailable\",service_id=\"status\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceStatusUnavailable\",service_id=\"status\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"status\"})) and on() ((max(up{job=\"service-probes\",service_id=\"status\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"status\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"status\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Umami DB: tcp_connect probe of umami-db.umami.svc.cluster.local:5432 every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "Umami DB",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "#26783D",
+                  "text": "Healthy"
+                },
+                "1": {
+                  "color": "#A85D08",
+                  "text": "Pending"
+                },
+                "2": {
+                  "color": "#B42332",
+                  "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "noValue": "No telemetry",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": 0
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 2,
+        "x": 17,
+        "y": 10
+      },
+      "id": 328,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 14
+        },
+        "textMode": "name",
+        "wideLayout": false
+      },
+      "pluginVersion": "13.2.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceUmamiDbUnavailable\",service_id=\"umami-db\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceUmamiDbUnavailable\",service_id=\"umami-db\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"umami-db\"})) and on() ((max(up{job=\"service-probes\",service_id=\"umami-db\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"umami-db\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"umami-db\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "axisPlacement": "auto",
+            "fillOpacity": 90,
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineWidth": 0,
+            "spanNulls": false
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "#26783D",
+                  "text": "Ready"
+                },
+                "1": {
+                  "color": "#5794F2",
+                  "text": "Progressing / paused"
+                },
+                "2": {
+                  "color": "#A85D08",
+                  "text": "Git drift"
+                },
+                "3": {
+                  "color": "#B42332",
+                  "text": "Unhealthy / unknown"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "noValue": "No telemetry",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": 0
+              },
+              {
+                "color": "#5794F2",
+                "value": 1
+              },
+              {
+                "color": "#A85D08",
+                "value": 2
+              },
+              {
+                "color": "#B42332",
+                "value": 3
+              }
+            ]
+          }
+        }
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 5,
+        "x": 19,
+        "y": 10
+      },
+      "id": 909,
+      "options": {
+        "alignValue": "center",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "mergeValues": true,
+        "rowHeight": 0.8,
+        "showValue": "never",
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "13.2.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "2 * clamp_max((count(argocd_app_info{job=\"socrat-argocd\",sync_status!=\"Synced\"}) or (0 * count(argocd_app_info{job=\"socrat-argocd\"}))), 1) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1)",
+          "format": "time_series",
+          "instant": false,
+          "legendFormat": "Argo · Git",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max((3 * argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing|Unknown\"}) or argocd_app_info{job=\"socrat-argocd\",health_status=~\"Progressing|Suspended\"} or (0 * argocd_app_info{job=\"socrat-argocd\",health_status=\"Healthy\"}) or (3 * argocd_app_info{job=\"socrat-argocd\"})) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1)",
+          "format": "time_series",
+          "instant": false,
+          "legendFormat": "Argo · Apps",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "",
+      "type": "state-timeline"
     },
     {
       "datasource": {
@@ -4970,10 +4480,10 @@
         ]
       },
       "gridPos": {
-        "x": 0,
-        "y": 10,
+        "h": 4,
         "w": 7,
-        "h": 4
+        "x": 0,
+        "y": 12
       },
       "id": 334,
       "options": {
@@ -5061,6 +4571,448 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#5794F2",
+            "mode": "fixed"
+          },
+          "decimals": 0,
+          "displayName": "n8n · running",
+          "noValue": "No telemetry",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 3,
+        "x": 7,
+        "y": 12
+      },
+      "id": 925,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 14,
+          "valueSize": 32
+        },
+        "textMode": "value_and_name",
+        "wideLayout": false
+      },
+      "pluginVersion": "13.2.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(socrat_n8n_starts_window{window=\"0\",status=\"running\"}) and on() (max(socrat_n8n_collection_success) == 1) and on() (time() - max(socrat_n8n_collection_timestamp_seconds) < 90)",
+          "format": "time_series",
+          "instant": true,
+          "legendFormat": "n8n · running",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "displayName": "n8n · errors/h",
+          "noValue": "No telemetry",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": 0
+              },
+              {
+                "color": "#B42332",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 3,
+        "x": 10,
+        "y": 12
+      },
+      "id": 924,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 14,
+          "valueSize": 32
+        },
+        "textMode": "value_and_name",
+        "wideLayout": false
+      },
+      "pluginVersion": "13.2.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(socrat_n8n_starts_window{window=\"3600\",status=\"error\"}) and on() (max(socrat_n8n_collection_success) == 1) and on() (time() - max(socrat_n8n_collection_timestamp_seconds) < 90)",
+          "format": "time_series",
+          "instant": true,
+          "legendFormat": "n8n · errors/h",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "LiteLLM: http_2xx probe of http://litellm.llm.svc.cluster.local:4000/health/readiness every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "LiteLLM",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "#26783D",
+                  "text": "Healthy"
+                },
+                "1": {
+                  "color": "#A85D08",
+                  "text": "Pending"
+                },
+                "2": {
+                  "color": "#B42332",
+                  "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "noValue": "No telemetry",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": 0
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 2,
+        "x": 13,
+        "y": 12
+      },
+      "id": 314,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 14
+        },
+        "textMode": "name",
+        "wideLayout": false
+      },
+      "pluginVersion": "13.2.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceLitellmUnavailable\",service_id=\"litellm\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceLitellmUnavailable\",service_id=\"litellm\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"litellm\"})) and on() ((max(up{job=\"service-probes\",service_id=\"litellm\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"litellm\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"litellm\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Wiki: http_2xx probe of http://wiki-runtime-wiki.wiki.svc.cluster.local:8080/healthz every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "Wiki",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "#26783D",
+                  "text": "Healthy"
+                },
+                "1": {
+                  "color": "#A85D08",
+                  "text": "Pending"
+                },
+                "2": {
+                  "color": "#B42332",
+                  "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "noValue": "No telemetry",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": 0
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 2,
+        "x": 15,
+        "y": 12
+      },
+      "id": 313,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 14
+        },
+        "textMode": "name",
+        "wideLayout": false
+      },
+      "pluginVersion": "13.2.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceWikiUnavailable\",service_id=\"wiki\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceWikiUnavailable\",service_id=\"wiki\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"wiki\"})) and on() ((max(up{job=\"service-probes\",service_id=\"wiki\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"wiki\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"wiki\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Rancher: http_2xx probe of http://rancher.cattle-system.svc.cluster.local:80/healthz every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "Rancher",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "#26783D",
+                  "text": "Healthy"
+                },
+                "1": {
+                  "color": "#A85D08",
+                  "text": "Pending"
+                },
+                "2": {
+                  "color": "#B42332",
+                  "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "noValue": "No telemetry",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": 0
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 2,
+        "x": 17,
+        "y": 12
+      },
+      "id": 320,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 14
+        },
+        "textMode": "name",
+        "wideLayout": false
+      },
+      "pluginVersion": "13.2.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceRancherUnavailable\",service_id=\"rancher\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceRancherUnavailable\",service_id=\"rancher\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"rancher\"})) and on() ((max(up{job=\"service-probes\",service_id=\"rancher\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"rancher\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"rancher\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "description": "Active VPN clients now, with recent history shown as an area sparkline; same metric freshness checks as before.",
       "fieldConfig": {
         "defaults": {
@@ -5083,10 +5035,10 @@
         }
       },
       "gridPos": {
-        "x": 19,
-        "y": 12,
+        "h": 4,
         "w": 5,
-        "h": 4
+        "x": 19,
+        "y": 12
       },
       "id": 907,
       "options": {
@@ -5132,49 +5084,110 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "",
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisGridShow": true,
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "bars",
-            "fillOpacity": 85,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 0,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "showValues": false,
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "normal"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
+            "fixedColor": "#5794F2",
+            "mode": "fixed"
           },
           "decimals": 0,
-          "min": 0,
+          "displayName": "n8n · starts/h",
+          "noValue": "No telemetry",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": 0
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 4,
+        "x": 7,
+        "y": 14
+      },
+      "id": 923,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "vertical",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 14,
+          "valueSize": 32
+        },
+        "textMode": "value_and_name",
+        "wideLayout": false
+      },
+      "pluginVersion": "13.2.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(socrat_n8n_starts_window{window=\"3600\"}) and on() (max(socrat_n8n_collection_success) == 1) and on() (time() - max(socrat_n8n_collection_timestamp_seconds) < 90)",
+          "format": "time_series",
+          "instant": true,
+          "legendFormat": "n8n · starts/h",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "n8n: http_2xx probe of http://n8n.automation.svc.cluster.local:80/healthz every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "n8n",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "#26783D",
+                  "text": "Healthy"
+                },
+                "1": {
+                  "color": "#A85D08",
+                  "text": "Pending"
+                },
+                "2": {
+                  "color": "#B42332",
+                  "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "noValue": "No telemetry",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -5184,263 +5197,127 @@
               },
               {
                 "color": "#A85D08",
-                "value": 75
+                "value": 1
               },
               {
                 "color": "#B42332",
-                "value": 90
+                "value": 2
               }
             ]
           },
-          "unit": "short",
-          "noValue": "Collecting history"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "success"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#26783D"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "error"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#B42332"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "other"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#8e8e8e"
-                }
-              }
-            ]
-          }
-        ]
+          "unit": "short"
+        }
       },
       "gridPos": {
-        "x": 7,
-        "y": 10,
-        "w": 7,
-        "h": 4
+        "h": 2,
+        "w": 2,
+        "x": 11,
+        "y": 14
       },
-      "id": 920,
+      "id": 335,
       "options": {
-        "graphTooltip": 1,
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
         },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "desc"
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 14
         },
-        "xAxis": {
-          "axisBorderShow": false,
-          "axisGridShow": true,
-          "axisPlacement": "auto"
-        }
+        "textMode": "name",
+        "wideLayout": false
       },
       "pluginVersion": "13.2.4",
       "targets": [
         {
-          "refId": "A",
-          "expr": "max by(status) (socrat_n8n_starts_window{window=\"300\",status=~\"success|error|other\"}) and on() (max(socrat_n8n_collection_success) == 1) and on() (time() - max(socrat_n8n_collection_timestamp_seconds) < 90)",
-          "format": "time_series",
-          "instant": false,
-          "range": true,
-          "legendFormat": "{{status}}",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
-          }
+          },
+          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceN8nUnavailable\",service_id=\"n8n\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceN8nUnavailable\",service_id=\"n8n\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"n8n\"})) and on() ((max(up{job=\"service-probes\",service_id=\"n8n\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"n8n\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"n8n\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "refId": "A"
         }
       ],
       "title": "",
-      "type": "timeseries",
-      "interval": "30s"
+      "type": "stat"
     },
     {
-      "id": 909,
-      "title": "",
-      "description": "",
-      "type": "state-timeline",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "gridPos": {
-        "x": 19,
-        "y": 10,
-        "w": 5,
-        "h": 2
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "2 * clamp_max((count(argocd_app_info{job=\"socrat-argocd\",sync_status!=\"Synced\"}) or (0 * count(argocd_app_info{job=\"socrat-argocd\"}))), 1) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1)",
-          "format": "time_series",
-          "range": true,
-          "instant": false,
-          "legendFormat": "Argo · Git"
-        },
-        {
-          "refId": "B",
-          "expr": "max((3 * argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing|Unknown\"}) or argocd_app_info{job=\"socrat-argocd\",health_status=~\"Progressing|Suspended\"} or (0 * argocd_app_info{job=\"socrat-argocd\",health_status=\"Healthy\"}) or (3 * argocd_app_info{job=\"socrat-argocd\"})) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1)",
-          "format": "time_series",
-          "range": true,
-          "instant": false,
-          "legendFormat": "Argo · Apps"
-        }
-      ],
+      "description": "Authentik: http_2xx probe of http://authentik-server.identity.svc.cluster.local:80/-/health/live/ every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "noValue": "No telemetry",
+          "displayName": "Authentik",
           "mappings": [
             {
-              "type": "value",
               "options": {
                 "0": {
-                  "text": "Ready",
-                  "color": "#26783D"
+                  "color": "#26783D",
+                  "text": "Healthy"
                 },
                 "1": {
-                  "text": "Progressing / paused",
-                  "color": "#5794F2"
+                  "color": "#A85D08",
+                  "text": "Pending"
                 },
                 "2": {
-                  "text": "Git drift",
-                  "color": "#A85D08"
+                  "color": "#B42332",
+                  "text": "Firing"
                 },
-                "3": {
-                  "text": "Unhealthy / unknown",
-                  "color": "#B42332"
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
                 }
-              }
+              },
+              "type": "value"
             }
           ],
+          "noValue": "No telemetry",
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
                 "color": "#26783D",
-                "value": null
-              },
-              {
-                "color": "#5794F2",
-                "value": 1
+                "value": 0
               },
               {
                 "color": "#A85D08",
-                "value": 2
+                "value": 1
               },
               {
                 "color": "#B42332",
-                "value": 3
+                "value": 2
               }
             ]
           },
-          "custom": {
-            "fillOpacity": 90,
-            "lineWidth": 0,
-            "spanNulls": false
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "showValue": "never",
-        "mergeValues": true,
-        "alignValue": "center",
-        "rowHeight": 0.8,
-        "legend": {
-          "showLegend": false,
-          "displayMode": "list",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
+          "unit": "short"
         }
-      }
-    },
-    {
-      "id": 923,
-      "title": "",
-      "description": "",
-      "type": "stat",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
       },
       "gridPos": {
-        "x": 0,
-        "y": 14,
-        "w": 5,
-        "h": 2
+        "h": 1,
+        "w": 2,
+        "x": 13,
+        "y": 14
       },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum(socrat_n8n_starts_window{window=\"3600\"}) and on() (max(socrat_n8n_collection_success) == 1) and on() (time() - max(socrat_n8n_collection_timestamp_seconds) < 90)",
-          "format": "time_series",
-          "instant": true,
-          "range": false,
-          "legendFormat": "n8n · starts/h",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "decimals": 0,
-          "noValue": "No telemetry",
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "#5794F2"
-          },
-          "displayName": "n8n · starts/h"
-        }
-      },
+      "id": 336,
       "options": {
-        "colorMode": "value",
+        "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
-        "orientation": "vertical",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -5448,72 +5325,96 @@
           "fields": "",
           "values": false
         },
-        "textMode": "value_and_name",
+        "showPercentChange": false,
         "text": {
-          "valueSize": 32,
           "titleSize": 14
         },
+        "textMode": "name",
         "wideLayout": false
-      }
+      },
+      "pluginVersion": "13.2.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceAuthentikUnavailable\",service_id=\"authentik\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceAuthentikUnavailable\",service_id=\"authentik\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"authentik\"})) and on() ((max(up{job=\"service-probes\",service_id=\"authentik\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"authentik\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"authentik\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "type": "stat"
     },
     {
-      "id": 924,
-      "title": "",
-      "description": "",
-      "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "gridPos": {
-        "x": 5,
-        "y": 14,
-        "w": 4,
-        "h": 2
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum(socrat_n8n_starts_window{window=\"3600\",status=\"error\"}) and on() (max(socrat_n8n_collection_success) == 1) and on() (time() - max(socrat_n8n_collection_timestamp_seconds) < 90)",
-          "format": "time_series",
-          "instant": true,
-          "range": false,
-          "legendFormat": "n8n · errors/h",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
+      "description": "Harbor: http_2xx probe of http://harbor-core.harbor.svc.cluster.local:80/api/v2.0/ping every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "decimals": 0,
+          "displayName": "Harbor",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "#26783D",
+                  "text": "Healthy"
+                },
+                "1": {
+                  "color": "#A85D08",
+                  "text": "Pending"
+                },
+                "2": {
+                  "color": "#B42332",
+                  "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                }
+              },
+              "type": "value"
+            }
+          ],
           "noValue": "No telemetry",
-          "color": {
-            "mode": "thresholds"
-          },
-          "displayName": "n8n · errors/h",
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
                 "color": "#26783D",
-                "value": null
+                "value": 0
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
               },
               {
                 "color": "#B42332",
-                "value": 1
+                "value": 2
               }
             ]
-          }
+          },
+          "unit": "short"
         }
       },
+      "gridPos": {
+        "h": 1,
+        "w": 2,
+        "x": 15,
+        "y": 14
+      },
+      "id": 337,
       "options": {
-        "colorMode": "value",
+        "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
-        "orientation": "vertical",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -5521,60 +5422,96 @@
           "fields": "",
           "values": false
         },
-        "textMode": "value_and_name",
+        "showPercentChange": false,
         "text": {
-          "valueSize": 32,
           "titleSize": 14
         },
+        "textMode": "name",
         "wideLayout": false
-      }
+      },
+      "pluginVersion": "13.2.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceHarborUnavailable\",service_id=\"harbor\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceHarborUnavailable\",service_id=\"harbor\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"harbor\"})) and on() ((max(up{job=\"service-probes\",service_id=\"harbor\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"harbor\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"harbor\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "type": "stat"
     },
     {
-      "id": 925,
-      "title": "",
-      "description": "",
-      "type": "stat",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "gridPos": {
-        "x": 9,
-        "y": 14,
-        "w": 5,
-        "h": 2
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "max(socrat_n8n_starts_window{window=\"0\",status=\"running\"}) and on() (max(socrat_n8n_collection_success) == 1) and on() (time() - max(socrat_n8n_collection_timestamp_seconds) < 90)",
-          "format": "time_series",
-          "instant": true,
-          "range": false,
-          "legendFormat": "n8n · running",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          }
-        }
-      ],
+      "description": "Argo CD: http_3xx probe of http://argo-cd-argocd-server.argocd.svc.cluster.local:80/healthz every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "decimals": 0,
+          "displayName": "Argo CD",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "#26783D",
+                  "text": "Healthy"
+                },
+                "1": {
+                  "color": "#A85D08",
+                  "text": "Pending"
+                },
+                "2": {
+                  "color": "#B42332",
+                  "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                }
+              },
+              "type": "value"
+            }
+          ],
           "noValue": "No telemetry",
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "#5794F2"
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": 0
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
           },
-          "displayName": "n8n · running"
+          "unit": "short"
         }
       },
+      "gridPos": {
+        "h": 1,
+        "w": 2,
+        "x": 13,
+        "y": 15
+      },
+      "id": 338,
       "options": {
-        "colorMode": "value",
+        "colorMode": "background_solid",
         "graphMode": "none",
         "justifyMode": "center",
-        "orientation": "vertical",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -5582,15 +5519,139 @@
           "fields": "",
           "values": false
         },
-        "textMode": "value_and_name",
+        "showPercentChange": false,
         "text": {
-          "valueSize": 32,
           "titleSize": 14
         },
+        "textMode": "name",
         "wideLayout": false
-      }
+      },
+      "pluginVersion": "13.2.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceArgocdUnavailable\",service_id=\"argocd\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceArgocdUnavailable\",service_id=\"argocd\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"argocd\"})) and on() ((max(up{job=\"service-probes\",service_id=\"argocd\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"argocd\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"argocd\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "LiteLLM DB: tcp_connect probe of litellm-postgres.llm.svc.cluster.local:5432 every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "LiteLLM DB",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "#26783D",
+                  "text": "Healthy"
+                },
+                "1": {
+                  "color": "#A85D08",
+                  "text": "Pending"
+                },
+                "2": {
+                  "color": "#B42332",
+                  "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "noValue": "No telemetry",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": 0
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 1,
+        "w": 2,
+        "x": 15,
+        "y": 15
+      },
+      "id": 327,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 14
+        },
+        "textMode": "name",
+        "wideLayout": false
+      },
+      "pluginVersion": "13.2.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceLitellmDbUnavailable\",service_id=\"litellm-db\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceLitellmDbUnavailable\",service_id=\"litellm-db\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"litellm-db\"})) and on() ((max(up{job=\"service-probes\",service_id=\"litellm-db\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"litellm-db\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"litellm-db\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "type": "stat"
     }
   ],
+  "preload": false,
+  "refresh": "5s",
+  "schemaVersion": 42,
+  "tags": [
+    "socrat",
+    "tv"
+  ],
+  "time": {
+    "from": "now-12h",
+    "to": "now"
+  },
   "timepicker": {
     "hidden": true,
     "refresh_intervals": [
@@ -5606,23 +5667,12 @@
       "1d"
     ]
   },
+  "timezone": "browser",
+  "title": "Traffic-light panel",
+  "uid": "socrat-traffic-light",
+  "version": 38,
+  "links": [],
   "templating": {
     "list": []
-  },
-  "annotations": {
-    "list": [
-      {
-        "builtIn": 1,
-        "datasource": {
-          "type": "grafana",
-          "uid": "-- Grafana --"
-        },
-        "enable": true,
-        "hide": true,
-        "iconColor": "rgba(0, 211, 255, 1)",
-        "name": "Annotations & Alerts",
-        "type": "dashboard"
-      }
-    ]
   }
 }
