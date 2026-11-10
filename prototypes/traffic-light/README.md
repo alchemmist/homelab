@@ -65,3 +65,15 @@ delete only that verified ConfigMap with UID/resourceVersion preconditions and
 verify sidecar/provisioning removes the old Grafana dashboard. No blanket prune,
 folder deletion, direct Grafana mutation or changes to the canonical public share.
 Earlier rejected experiments remain only in Git history.
+
+### Deployment receipt
+
+Canonical reconciled and inspected at1920×1080 using the existing TV URL in an
+isolated read-only browser; the state query returned HTTP200. Live comparison
+proved all non909 panels and all nonversion dashboard settings unchanged;
+canonical909 equals approved live TMP975 except ID. Tests30/30 and scoped Helm
+diff passed. Argo's sole initial OutOfSync item was the retired TMP ConfigMap
+(requiresPruning), not a failed canonical apply. Deleted that exact ConfigMap using
+its captured UID+resourceVersion in DeleteOptions; API returned Success for the
+same UID. Argo then Synced/Healthy. Grafana read API confirms TMP UID404 Not Found.
+Canonical public UID/share and TV configuration were not recreated or mutated.
