@@ -40,11 +40,18 @@ def queries():
             '(time() - timestamp(up{job="socrat-argocd"}) < 90)) == 1)')
     # A partially stale scrape must not silently become a smaller healthy total.
     complete = f'(count({apps}) == count(max by(name) ({raw})))'
+    # One query computes the partition once, rather than five heavy copies on a
+    # dashboard refreshing every5s. Numeric state labels keep Ready at stack base.
+    counts = f'count_values("state", {state_expr})'
+    zeros = [f'label_replace((0 * count({apps})), "state", "{code}", "", "")'
+             for _, code, _ in STATES]
+    full_query = f'(({counts} or {" or ".join(zeros)}) and on() {gate}) and on() {complete}'
     result = []
     for name, code, color in STATES:
-        expr = f'((count({state_expr} == {code}) or (0 * count({state_expr}))) and on() {gate}) and on() {complete}'
+        # Used for isolated per-category PromQL assertions, not dashboard targets.
+        expr = f'sum(({full_query}) and on(state) label_replace(vector(1), "state", "{code}", "", ""))'
         result.append((name, expr, color))
-    return state_expr, result
+    return state_expr, result, full_query
 
 
 def build():
@@ -61,9 +68,8 @@ def build():
         'gridPos': {'x': 12, 'y': 8, 'w': 6, 'h': 7},
         'description': 'Stacked application counts by observed Argo state over the selected range, sampled every15s. root excluded. Dark green = Healthy+Synced; blue = Progressing/Suspended; amber = drift; red = Degraded/Missing; grey = Unknown/unrecognized states. Each app contributes once. Priority: Unhealthy > Unknown > Progressing/paused > drift > Ready. Latest timestamp wins over older state label sets. Fresh zeros require app telemetry; missing/down/partially stale scrapes remain gaps. All applications are counted, not top-k. Progressing is not proof of a Pod rollout; Suspended is paused. A changing total may reflect added/removed apps or unavailable inventory after lookback expiry. Hover shows counts, not individual app names or root cause. No sync counter/event smoothing.',
         'interval': '15s', 'maxDataPoints': 10000,
-        'targets': [{'datasource': DS, 'expr': expr, 'legendFormat': name, 'refId': chr(65 + i),
-                     'instant': False, 'range': True, 'format': 'time_series', 'interval': '15s'}
-                    for i, (name, expr, _) in enumerate(groups)],
+        'targets': [{'datasource': DS, 'expr': queries()[2], 'legendFormat': '{{state}}', 'refId': 'A',
+                     'instant': False, 'range': True, 'format': 'time_series', 'interval': '15s'}],
         'fieldConfig': {'defaults': {'unit': 'short', 'decimals': 0, 'min': 0, 'noValue': 'No telemetry',
                                     'color': {'mode': 'palette-classic'},
                                     'custom': {'drawStyle': 'line', 'lineInterpolation': 'stepAfter', 'lineWidth': 1,
@@ -75,9 +81,10 @@ def build():
                                                'scaleDistribution': {'type': 'linear'},
                                                'thresholdsStyle': {'mode': 'off'},
                                                'hideFrom': {'legend': False, 'tooltip': False, 'viz': False}}},
-                        'overrides': [{'matcher': {'id': 'byName', 'options': name}, 'properties': [
+                        'overrides': [{'matcher': {'id': 'byName', 'options': str(code)}, 'properties': [
+                            {'id': 'displayName', 'value': name},
                             {'id': 'color', 'value': {'mode': 'fixed', 'fixedColor': color}}]}
-                                      for name, _, color in groups]},
+                                      for name, code, color in STATES]},
         'options': {'legend': {'showLegend': True, 'displayMode': 'list', 'placement': 'bottom', 'calcs': []},
                     'tooltip': {'mode': 'all', 'sort': 'desc', 'hideZeros': True}},
     })

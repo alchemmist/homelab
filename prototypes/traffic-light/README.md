@@ -13,7 +13,10 @@ space, no heading or Y-axis caption. Bottom legend contains five state categorie
 not application names. History follows the dashboard's12h range. Queries keep15s
 step and10000-point budget. Areas are normally stacked (absolute app counts),
 85% fill, step-after interpolation, not smoothed. Zero-based Y axis; no percentage
-normalization or baseline truncation.
+normalization or baseline truncation. A single PromQL target computes the
+partition once for all five series, avoiding five expensive copies on a dashboard
+that refreshes every5s. Numeric state labels keep Ready at the stack base; native
+field overrides provide readable legend names and fixed colors.
 
 - **Ready**, dark green: Healthy+Synced.
 - **Progressing / paused**, bright blue: Progressing or Suspended health. The latter

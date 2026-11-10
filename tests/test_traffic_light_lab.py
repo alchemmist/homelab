@@ -37,7 +37,9 @@ class TrafficLightLabTest(unittest.TestCase):
         self.assertEqual(p['title'], '')
         self.assertEqual(p['interval'], '15s')
         self.assertGreaterEqual(p['maxDataPoints'], 8641)
-        self.assertEqual([t['legendFormat'] for t in p['targets']], [s[0] for s in lab.STATES])
+        self.assertEqual(len(p['targets']), 1)
+        self.assertEqual(p['targets'][0]['legendFormat'], '{{state}}')
+        self.assertIn('count_values(', p['targets'][0]['expr'])
         for t in p['targets']:
             self.assertTrue(t['range'])
             self.assertFalse(t['instant'])
