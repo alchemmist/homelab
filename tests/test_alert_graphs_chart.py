@@ -14,7 +14,7 @@ class AlertGraphsChartTests(unittest.TestCase):
                 '--namespace', 'cattle-monitoring-system']
         if enabled:
             args += ['--set', 'alertGraphs.enabled=true', '--set', 'alertGraphs.existingSecret=graph-test-only',
-                     '--set', 'alertGraphs.image.digest=sha256:' + 'a'*64,
+                     '--set', 'gateway.digest=sha256:' + 'a'*64,
                      '--set', 'grafana.imageRenderer.enabled=true',
                      '--set', 'grafana.imageRenderer.image.sha=' + 'b'*64,
                      '--set', 'alertGraphs.panels.service-health:12[0]=service']
@@ -55,7 +55,7 @@ class AlertGraphsChartTests(unittest.TestCase):
                     self.assertEqual(container['resources']['limits']['memory'],'2Gi')
 
     def test_requires_immutable_image(self):
-        result = self.render(True, ['--set', 'alertGraphs.image.digest=latest'])
+        result = self.render(True, ['--set', 'gateway.digest=latest'])
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('immutable', result.stderr)
 

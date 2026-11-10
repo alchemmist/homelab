@@ -143,9 +143,9 @@ not a claim that historical queue backlog or unrelated incidents were repaired.
 
 The canonical stateless gateway image is now `deploy/grafana/values.yaml`, loaded
 last by the existing Grafana Argo Application. Its chart mirror has the same
-`alertGraphs.image.{tag,digest}` contract. The full SPI image publisher's explicit
+`gateway.{tag,digest}` contract. The full SPI image publisher's explicit
 `deploy_target=alert-graphs` uses `deploy-to-socrat@v1`, `app=grafana`,
-`component=alertGraphs`: only those image fields change. Stateful SPI worker
+`component=gateway`: only those image fields change. Stateful SPI worker
 images/PVCs/native ownership are not part of this target; their ordinary release
 still needs a real natural drain. No image override or source ConfigMap is used.
 
@@ -157,3 +157,7 @@ throttling Chromium behind a 1-CPU cap during an alert burst. Capacity was check
 on the existing socrat-1 owner; no placement, network, TLS or human auth changes.
 The gateway's Telegram deadline must independently allow 15 seconds; extra CPU
 or more bot retries alone is not a reliable substitute for fixing its old 4s cap.
+
+The release component is deliberately lowercase `gateway`: the native v1 deploy
+action rejects camelCase component names. The existing alertGraphs enable/policy/
+credential controls remain unchanged; only the canonical image block is renamed.

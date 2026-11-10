@@ -178,13 +178,15 @@ grafana:
 # No application source is mirrored into a homelab ConfigMap.
 alertGraphs:
   enabled: false
-  image:
-    repository: harbor.socrat.alchemmist.xyz/homelab/spi-triage
-    tag: b70462de66a3ffcfad6c3b86c74d8c45664080ca
-    digest: sha256:eb830c98ccd6d19ef8535fcb5be003d783cb4aeb98d18fe64e66c1f51a37f64a
   imagePullSecrets: []
   existingSecret: ''
   panels: {}
   # Bot runs hostNetwork. Populate only exact observed/verified source /32s;
   # never open the gateway to all nodes or all pods to work around CNI.
   botSourceCIDRs: []
+
+# Lowercase component accepted by deploy-to-socrat@v1.
+gateway:
+  repository: harbor.socrat.alchemmist.xyz/homelab/spi-triage
+  tag: b70462de66a3ffcfad6c3b86c74d8c45664080ca
+  digest: sha256:eb830c98ccd6d19ef8535fcb5be003d783cb4aeb98d18fe64e66c1f51a37f64a
