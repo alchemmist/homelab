@@ -26,41 +26,33 @@ class TrafficLightLabTest(unittest.TestCase):
         for p in original['panels']:
             if p['id'] != 909:
                 self.assertEqual(self.panels[p['id']], p)
-        self.assertEqual(set(self.panels) - {p['id'] for p in original['panels']}, {973})
+        self.assertEqual(set(self.panels) - {p['id'] for p in original['panels']}, {974})
         self.assertNotIn(909, self.panels)
-        self.assertFalse(set(self.panels) & set(range(950, 973)))
+        self.assertFalse(set(self.panels) & set(range(950, 974)))
 
-    def test_mosaic_includes_every_git_app_once_without_topk(self):
-        p = self.panels[973]
-        self.assertEqual(p['type'], 'canvas')
+    def test_line_chart_all_apps_except_root_without_legend_or_stacking(self):
+        p = self.panels[974]
+        self.assertEqual(p['type'], 'timeseries')
         self.assertEqual(p['gridPos'], {'x': 12, 'y': 8, 'w': 6, 'h': 8})
         self.assertEqual(p['targets'][0]['legendFormat'], '{{name}}')
-        self.assertTrue(p['targets'][0]['instant'])
+        self.assertFalse(p['targets'][0]['instant'])
+        self.assertTrue(p['targets'][0]['range'])
+        self.assertIn('name!="root"', p['targets'][0]['expr'])
+        self.assertIn('phase="Succeeded"', p['targets'][0]['expr'])
+        self.assertIn('[15m]', p['targets'][0]['expr'])
         self.assertNotIn('topk', p['targets'][0]['expr'])
-        self.assertNotIn('$__range', p['targets'][0]['expr'])
-        self.assertFalse(p['options']['panZoom'])
-        self.assertFalse(p['options']['inlineEditing'])
-        elements = [e for e in p['options']['root']['elements'] if not e['name'].startswith('Legend ')]
-        self.assertEqual(sorted(e['name'] for e in elements), lab.application_names())
-        occupied = set()
-        labels = []
-        for e in elements:
-            self.assertEqual(e['background']['color']['field'], e['name'])
-            self.assertEqual(e['background']['color']['fixed'], '#555555')
-            self.assertEqual(e['config']['text']['field'], e['name'])
-            self.assertTrue(e['links'][0]['url'].endswith('/' + e['name']))
-            self.assertNotIn((e['placement']['left'], e['placement']['top']), occupied)
-            occupied.add((e['placement']['left'], e['placement']['top']))
-            placement = e['placement']
-            for edge in ('left', 'right', 'top', 'bottom'):
-                self.assertGreaterEqual(placement[edge], 0)
-                self.assertLessEqual(placement[edge], 100)
-            self.assertLess(placement['left'] + placement['right'], 100)
-            self.assertLess(placement['top'] + placement['bottom'], 100)
-            self.assertNotIn('width', placement)  # Scale uses percentage edge offsets.
-            labels.append(e['config']['text']['fixed'])
-        self.assertEqual(len(labels), len(set(labels)))
-        self.assertLessEqual(max(map(len, labels)), 10)
+        self.assertFalse(p['options']['legend']['showLegend'])
+        custom = p['fieldConfig']['defaults']['custom']
+        self.assertEqual(custom['drawStyle'], 'line')
+        self.assertEqual(custom['fillOpacity'], 0)
+        self.assertEqual(custom['stacking']['mode'], 'none')
+        self.assertFalse(custom['spanNulls'])
+        overrides = p['fieldConfig']['overrides']
+        self.assertEqual(sorted(o['matcher']['options'] for o in overrides), lab.application_names())
+        self.assertNotIn('root', lab.application_names())
+        self.assertEqual(len({lab.application_color(n) for n in lab.application_names()}), len(lab.application_names()))
+        for o in overrides:
+            self.assertEqual(o['properties'][0]['value']['fixedColor'], lab.application_color(o['matcher']['options']))
 
     @unittest.skipUnless(shutil.which('helm'), 'helm needed for apply-size regression')
     def test_rendered_apply_annotation_stays_below_kubernetes_limit(self):
@@ -85,37 +77,28 @@ class TrafficLightLabTest(unittest.TestCase):
         self.assertEqual(len(self.panels), len(self.dashboard['panels']))
 
     @unittest.skipUnless(shutil.which('promtool'), 'promtool needed for PromQL semantics')
-    def test_promql_priority_all_apps_gaps_and_sync_pulse(self):
+    def test_promql_root_retired_failures_quiet_pulse_and_telemetry(self):
         def series(name, values='1+0x30'):
             return {'series': name, 'values': values}
-        def app(name, health='Healthy', sync='Synced'):
-            return series(f'argocd_app_info{{job="socrat-argocd",name="{name}",health_status="{health}",sync_status="{sync}"}}')
+        def app(name):
+            return series(f'argocd_app_info{{job="socrat-argocd",name="{name}"}}')
         def counter(name, phase='Succeeded', values='0+1x30'):
             return series(f'argocd_app_sync_total{{job="socrat-argocd",name="{name}",phase="{phase}"}}', values)
-        def samples(values):
-            return [{'labels': '{name="' + n + '"}', 'value': v} for n, v in values.items()]
-        activity = lab.query()
+        def check(values, when='30m'):
+            return {'expr': lab.query(), 'eval_time': when, 'exp_samples': [
+                {'labels': '{name="' + name + '"}', 'value': value} for name, value in values.items()]}
         up = series('up{job="socrat-argocd"}')
-        inputs = [up, app('quiet'), app('sync'), counter('sync'),
-                  app('drift', sync='OutOfSync'), counter('drift'),
-                  app('working', 'Progressing', 'OutOfSync'), counter('working'),
-                  app('failed'), counter('failed', 'Failed'),
-                  app('unhealthy', 'Degraded', 'OutOfSync'), counter('unhealthy', 'Failed'),
-                  app('unknown', 'Unknown', 'Unknown')]
-        values = {'quiet': 0, 'sync': 1, 'drift': 2, 'working': 3, 'failed': 4, 'unhealthy': 5, 'unknown': 6}
         cases = [
-            {'interval': '1m', 'input_series': inputs, 'promql_expr_test': [
-                {'expr': activity, 'eval_time': '30m', 'exp_samples': samples(values)}]},
-            {'interval': '1m', 'input_series': [], 'promql_expr_test': [
-                {'expr': activity, 'eval_time': '30m', 'exp_samples': []}]},
-            {'interval': '1m', 'input_series': [series(up['series'], '1'), series(app('quiet')['series'], '1')],
-             'promql_expr_test': [{'expr': activity, 'eval_time': '3m', 'exp_samples': []}]},
+            {'interval': '1m', 'input_series': [up, app('active'), counter('active'),
+                app('quiet'), app('failed'), counter('failed', 'Failed'), app('root'), counter('root'), counter('retired')],
+             'promql_expr_test': [check({'active': 15, 'quiet': 0, 'failed': 0})]},
+            {'interval': '1m', 'input_series': [], 'promql_expr_test': [check({})]},
+            {'interval': '1m', 'input_series': [series(up['series'], '1'), series(app('old')['series'], '1')],
+             'promql_expr_test': [check({}, '3m')]},
             {'interval': '1m', 'input_series': [series(up['series'], '0+0x30'), app('quiet')],
-             'promql_expr_test': [{'expr': activity, 'eval_time': '30m', 'exp_samples': []}]},
+             'promql_expr_test': [check({})]},
             {'interval': '1m', 'input_series': [up, app('pulse'), counter('pulse', values='0+0x10 1+0x19')],
-             'promql_expr_test': [
-                 {'expr': activity, 'eval_time': '12m', 'exp_samples': samples({'pulse': 1})},
-                 {'expr': activity, 'eval_time': '22m', 'exp_samples': samples({'pulse': 0})}]},
+             'promql_expr_test': [check({'pulse': 1}, '12m'), check({'pulse': 0}, '30m')]},
         ]
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / 'queries.yaml'

@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Build an app-level Argo activity map in TMP, never edit the canonical TV."""
+"""Build only the TMP Argo per-application sync line chart; never edit TV."""
+import colorsys
 import copy
+import hashlib
 import json
-import math
+from pathlib import Path
 
 import yaml
-from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / 'charts/monitoring-k3s/dashboards/traffic-light.json'
@@ -18,28 +19,14 @@ def fresh(metric, selector):
 
 
 def query():
-    job = 'job="socrat-argocd"'
-    app = fresh('argocd_app_info', job)
-    base = f'(0 * max by(name) ({app}))'
+    selector = 'job="socrat-argocd",name!="root"'
+    counter = f'argocd_app_sync_total{{{selector},phase="Succeeded"}}'
+    apps = f'max by(name) ({fresh("argocd_app_info", selector)})'
+    increments = f'sum by(name) (increase({counter}[15m]) and (time() - timestamp({counter}) < 90))'
     gate = '(max(up{job="socrat-argocd"} == 1 and (time() - timestamp(up{job="socrat-argocd"}) < 90)) == 1)'
-
-    def state(value, selector):
-        return f'({value} * max by(name) ({fresh("argocd_app_info", job + "," + selector)}))'
-
-    def sync(value, phase):
-        counter = f'argocd_app_sync_total{{{job},phase=~"{phase}"}}'
-        changed = f'sum by(name) (increase({counter}[10m]) and (time() - timestamp({counter}) < 90)) > 0'
-        return f'({value} + 0 * ({changed}))'
-
-    # Left-biased union after aggregation gives explicit state precedence.
-    states = [state(6, 'health_status!~"Healthy|Progressing|Suspended|Degraded|Missing"'),
-              state(6, 'sync_status!~"Synced|OutOfSync"'),
-              state(5, 'health_status=~"Degraded|Missing"'), sync(4, 'Failed|Error'),
-              state(3, 'health_status=~"Progressing|Suspended"'),
-              state(2, 'sync_status="OutOfSync"'), sync(1, 'Succeeded'), base]
-    activity = f'(({" or ".join(states)}) and on(name) {base}) and on() {gate}'
-
-    return activity
+    # Fresh apps without an initialized success counter are represented at zero.
+    # Retired counter label sets cannot create ghost application lines.
+    return f'(({increments} or (0 * {apps})) and on(name) {apps}) and on() {gate}'
 
 
 def application_names():
@@ -51,36 +38,16 @@ def application_names():
                 names.append(doc['metadata']['name'])
     if len(names) != len(set(names)):
         raise ValueError('Duplicate Argo application names')
-    return sorted(names)
+    return sorted(name for name in names if name != 'root')
 
 
-ALIASES = {
-    'alertmanager': 'Alerts', 'argo-cd': 'Argo', 'authentik': 'Auth', 'cert-manager': 'Certs',
-    'cnpg-operator': 'CNPG', 'format-quorum': 'Quorum', 'grafana-mcp': 'Gf MCP',
-    'img-proxy': 'Img proxy', 'kube-state-metrics': 'KSM', 'litellm-infra': 'LLM infra',
-    'monitoring-k3s': 'Mon K3s', 'monitoring-llm': 'Mon LLM', 'node-exporter': 'Node exp',
-    'nvidia-device-plugin': 'NVIDIA', 'open-terminal': 'Term', 'open-webui': 'WebUI',
-    'private-gateway': 'Priv GW', 'prometheus': 'Prom', 'prometheus-operator': 'Prom Op',
-    'pyroscope': 'Pyro', 'remark42': 'Remark', 'syncthing': 'Syncth', 'socrat-bot': 'Bot', 'socrat-home': 'Home',
-    'spi-triage': 'SPI', 'traefik-edge': 'Edge', 'uptime-kuma': 'Kuma',
-    'vpn-transit': 'VPN MSK', 'wiki-runtime': 'Wiki',
-}
-
-
-def tile(name, label, left, top, width=57, height=40, color=None):
-    return {
-        'name': name, 'type': 'rectangle',
-        'placement': {'left': left, 'top': top, 'width': width, 'height': height, 'rotation': 0},
-        'constraint': {'horizontal': 'scale', 'vertical': 'scale'},
-        'background': {'color': {'fixed': color or '#555555', **({} if color else {'field': name})}},
-        'border': {'width': 1, 'radius': 5, 'color': {'fixed': '#424B58'}},
-        'config': {'align': 'center', 'valign': 'middle', 'size': 10 if color else 11,
-                   'color': {'fixed': '#FFFFFF'},
-                   'text': {'mode': 'fixed', 'fixed': label, **({} if color else {'field': name})}},
-        'links': [] if color else [{'title': name + ' · Open in Argo CD',
-                                   'url': 'https://argocd.socrat.alchemmist.xyz/applications/argocd/' + name,
-                                   'targetBlank': True, 'oneClick': True}],
-    }
+def application_color(name):
+    # Stable per name: adding/removing or reordering another app changes no color.
+    digest = hashlib.sha256(name.encode()).digest()
+    hue = int.from_bytes(digest[:4], 'big') / 2**32
+    saturation = 0.64 + digest[4] / 255 * 0.20
+    red, green, blue = colorsys.hls_to_rgb(hue, 0.64, saturation)
+    return '#{:02X}{:02X}{:02X}'.format(round(red * 255), round(green * 255), round(blue * 255))
 
 
 def build():
@@ -88,57 +55,35 @@ def build():
     d.pop('id', None)
     d.pop('version', None)
     d.update(uid='socrat-traffic-light-tmp-lab', title='Traffic Light · TMP Lab',
-             description='All Git-managed Argo applications in one native Canvas mosaic. Canonical TV unchanged.',
+             description='Argo successful syncs by application, rolling 15m, root excluded. Canonical TV unchanged.',
              tags=d.get('tags', []) + ['temporary', 'sandbox'])
     d['panels'] = [p for p in d['panels'] if p['id'] != 909]
-    states = {
-        '0': {'text': 'Quiet', 'color': '#252C36'},
-        '1': {'text': 'Sync OK', 'color': '#56D6E7'},
-        '2': {'text': 'Git drift', 'color': '#FFB357'},
-        '3': {'text': 'Progressing / paused', 'color': '#B877D9'},
-        '4': {'text': 'Sync failed', 'color': '#FF5263'},
-        '5': {'text': 'Unhealthy', 'color': '#D02B4C'},
-        '6': {'text': 'Unknown', 'color': '#808080'},
-    }
-    names = application_names()
-    columns = 7
-    rows = math.ceil(len(names) / columns)
-    labels = [ALIASES.get(name, name) for name in names]
-    if len(set(labels)) != len(labels):
-        raise ValueError('Ambiguous mosaic aliases')
-    elements = [tile(name, label, (i % columns) * 60, 26 + (i // columns) * 44)
-                for i, (name, label) in enumerate(zip(names, labels))]
-    for i, (code, label) in enumerate([('0', 'Quiet'), ('1', 'Sync'), ('2', 'Drift'),
-                                       ('3', 'Work'), ('4', 'Fail'), ('5', 'Down'), ('6', '?')]):
-        elements.append(tile('Legend ' + code, label, i * 60, 0, height=18, color=states[code]['color']))
-    # Grafana's Scale constraints store edge offsets in percentages, not pixels.
-    canvas_height = 26 + rows * 44
-    for element in elements:
-        p = element['placement']
-        element['placement'] = {'left': p['left'] / 420 * 100,
-                                'right': (420 - p['left'] - p['width']) / 420 * 100,
-                                'top': p['top'] / canvas_height * 100,
-                                'bottom': (canvas_height - p['top'] - p['height']) / canvas_height * 100,
-                                'rotation': 0}
     d['panels'].append({
-        'id': 973, 'title': 'Argo CD · all apps', 'type': 'canvas', 'datasource': DS,
+        'id': 974, 'title': 'Argo CD · syncs by app · 15m', 'type': 'timeseries', 'datasource': DS,
         'gridPos': {'x': 12, 'y': 8, 'w': 6, 'h': 8},
-        'description': 'One fixed cell per Git-managed Argo application, alphabetical; no top-k or scrolling. Short names on cells, full names in native hover; state colors are explained by the legend. Quiet is subdued; cyan = successful sync in preceding 10m, amber = drift, violet = Progressing/Suspended, bright red = failed sync in preceding 10m, dark red = Degraded/Missing, grey = Unknown/missing/stale data. Priority: unknown > unhealthy > failed sync > progressing/paused > drift > recent success > quiet. Current state only, not history. Sync is not proof of a Pod redeploy. Click a cell to open its app. Inventory comes from Git; regenerate when apps are added/removed.',
+        'description': 'Each color is an application; root is excluded. Estimated successful Argo syncs in the preceding 15 minutes, sampled every minute across the selected dashboard range. A sync may apply configuration without redeploying Pods. This is a rolling count, not a lifetime counter, exact event log or failure chart. Lines overlap when values coincide; hover selects an application. Fresh applications with no initialized success counter show zero. Retired apps excluded using fresh app_info; missing/stale app or scrape telemetry stays a gap. Known app colors are pinned by name; regenerate overrides for new Git apps. No legend or top-k.',
+        'interval': '1m', 'maxDataPoints': 720,
         'targets': [{'datasource': DS, 'expr': query(), 'legendFormat': '{{name}}', 'refId': 'A',
-                     'instant': True, 'range': False, 'format': 'time_series'}],
-        'fieldConfig': {'defaults': {'noValue': 'No telemetry', 'color': {'mode': 'thresholds'},
-                                    'mappings': [{'type': 'value', 'options': states},
-                                                 {'type': 'special', 'options': {'match': 'null+nan',
-                                                  'result': {'text': 'No telemetry', 'color': '#555555'}}}],
-                                    'thresholds': {'mode': 'absolute', 'steps': [
-                                        {'value': None if k == '0' else int(k), 'color': v['color']}
-                                        for k, v in states.items()]}}, 'overrides': []},
-        'options': {'inlineEditing': False, 'panZoom': False, 'showAdvancedTypes': False,
-                    'zoomToContent': True, 'tooltip': {'mode': 'single', 'disableForOneClick': False},
-                    'root': {'name': 'Argo mosaic', 'type': 'frame',
-                             'placement': {'width': 420, 'height': 26 + rows * 44},
-                             'background': {'color': {'fixed': 'transparent'}},
-                             'elements': elements}},
+                     'instant': False, 'range': True, 'format': 'time_series', 'interval': '1m'}],
+        'fieldConfig': {'defaults': {'unit': 'short', 'decimals': 0, 'min': 0, 'noValue': 'No telemetry',
+                                    'color': {'mode': 'palette-classic'},
+                                    'links': [{'title': 'Open application in Argo CD',
+                                               'url': 'https://argocd.socrat.alchemmist.xyz/applications/argocd/${__field.labels.name}',
+                                               'targetBlank': True}],
+                                    'custom': {'drawStyle': 'line', 'lineInterpolation': 'linear', 'lineWidth': 2,
+                                               'fillOpacity': 0, 'gradientMode': 'none', 'showPoints': 'never',
+                                               'spanNulls': False, 'insertNulls': 90000,
+                                               'stacking': {'mode': 'none', 'group': 'A'},
+                                               'axisPlacement': 'left', 'axisLabel': 'Syncs / 15m',
+                                               'axisBorderShow': False, 'axisGridShow': True, 'axisSoftMax': 2,
+                                               'scaleDistribution': {'type': 'linear'},
+                                               'thresholdsStyle': {'mode': 'off'},
+                                               'hideFrom': {'legend': False, 'tooltip': False, 'viz': False}}},
+                        'overrides': [{'matcher': {'id': 'byName', 'options': name}, 'properties': [
+                            {'id': 'color', 'value': {'mode': 'fixed', 'fixedColor': application_color(name)}}]}
+                                      for name in application_names()]},
+        'options': {'legend': {'showLegend': False, 'displayMode': 'list', 'placement': 'bottom', 'calcs': []},
+                    'tooltip': {'mode': 'single', 'sort': 'none'}},
     })
     d['panels'].sort(key=lambda p: (p['gridPos']['y'], p['gridPos']['x']))
     return d
