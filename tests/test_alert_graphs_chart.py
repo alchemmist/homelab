@@ -40,7 +40,8 @@ class AlertGraphsChartTests(unittest.TestCase):
 
     def test_release_values_render_real_valid_images(self):
         result=self.render(False, ['-f','charts/grafana/alert-graphs.policy.values.yaml',
-                                  '-f','charts/grafana/alert-graphs.runtime.values.yaml'])
+                                  '-f','charts/grafana/alert-graphs.runtime.values.yaml',
+                                  '-f','deploy/grafana/values.yaml'])
         self.assertEqual(result.returncode,0,result.stderr)
         self.assertNotIn('@sha256:sha256:',result.stdout)
         import yaml,re
@@ -49,6 +50,9 @@ class AlertGraphsChartTests(unittest.TestCase):
             for container in doc['spec']['template']['spec']['containers']:
                 if container['name'] in ('gateway','grafana-image-renderer'):
                     self.assertRegex(container['image'],r'@sha256:[a-f0-9]{64}$')
+                if container['name']=='grafana-image-renderer':
+                    self.assertEqual(str(container['resources']['limits']['cpu']),'4')
+                    self.assertEqual(container['resources']['limits']['memory'],'2Gi')
 
     def test_requires_immutable_image(self):
         result = self.render(True, ['--set', 'alertGraphs.image.digest=latest'])

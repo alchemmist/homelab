@@ -37,7 +37,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: cbfe8a2a052bc9d51b3504635f3acec3eab9d6db609e128d9e9f231ff54d8c04
+          graph-digest: 89237b72f9b0597fb8f31d9281c37c373007474e501a8e3d1c8e3906a3976634
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -82,7 +82,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: cbfe8a2a052bc9d51b3504635f3acec3eab9d6db609e128d9e9f231ff54d8c04
+          graph-digest: 89237b72f9b0597fb8f31d9281c37c373007474e501a8e3d1c8e3906a3976634
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -127,7 +127,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: cbfe8a2a052bc9d51b3504635f3acec3eab9d6db609e128d9e9f231ff54d8c04
+          graph-digest: 89237b72f9b0597fb8f31d9281c37c373007474e501a8e3d1c8e3906a3976634
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -140,6 +140,57 @@ jobs:
           if-no-files-found: error
           retention-days: 7
       - name: Enforce Offline workflow policy regressions result
+        if: always()
+        shell: bash
+        env:
+          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
+        run: exit "${EXIT_CODE:-2}"
+    timeout-minutes: 5
+  alert-graph-delivery:
+    name: Alert graph chart, image ownership and renderer capacity
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: 'false'
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+      - run: uv sync --locked
+      - run: 'command -v helm
+
+          uv run python -m unittest discover -s tests -p test_alert_graphs_chart.py
+
+          uv run python scripts/alert_graphs.py --check
+
+          '
+        name: Run Alert graph chart, image ownership and renderer capacity
+        id: quality-command
+        continue-on-error: true
+      - name: Collect Alert graph chart, image ownership and renderer capacity result
+        id: quality-result
+        if: always()
+        uses: alchemmist/quality-graph@b947f26e97ccf1c755050dfe38d98cbb688edb69
+        with:
+          operation: collect
+          node-id: alert-graph-delivery
+          title: Alert graph chart, image ownership and renderer capacity
+          adapter: exit-code
+          report-path: ''
+          command-outcome: ${{ steps.quality-command.outcome }}
+          graph-digest: 89237b72f9b0597fb8f31d9281c37c373007474e501a8e3d1c8e3906a3976634
+          approval-findings: 'true'
+          approval-files: 'false'
+          approval-node: 'false'
+      - name: Upload Alert graph chart, image ownership and renderer capacity result
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: quality-result-alert-graph-delivery-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/quality-graph/alert-graph-delivery.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Enforce Alert graph chart, image ownership and renderer capacity result
         if: always()
         shell: bash
         env:

@@ -26,6 +26,7 @@ spec:
       valueFiles:
       - alert-graphs.policy.values.yaml
       - alert-graphs.runtime.values.yaml
+      - ../../deploy/grafana/values.yaml
       parameters: []
   - repoURL: https://github.com/alchemmist/homelab.git
     targetRevision: main

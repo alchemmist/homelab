@@ -138,3 +138,22 @@ not a claim that historical queue backlog or unrelated incidents were repaired.
 - Harbor, Grafana, SPI and bot are **Synced/Healthy**; all4 nodes Ready. Gateway
   and both consumer flags are enabled in deployment overrides (chart defaults
   remain off). Private backup/credential/acceptance artifacts remain outside Git.
+
+## Gateway-only maintenance release and renderer headroom
+
+The canonical stateless gateway image is now `deploy/grafana/values.yaml`, loaded
+last by the existing Grafana Argo Application. Its chart mirror has the same
+`alertGraphs.image.{tag,digest}` contract. The full SPI image publisher's explicit
+`deploy_target=alert-graphs` uses `deploy-to-socrat@v1`, `app=grafana`,
+`component=alertGraphs`: only those image fields change. Stateful SPI worker
+images/PVCs/native ownership are not part of this target; their ordinary release
+still needs a real natural drain. No image override or source ConfigMap is used.
+
+The shared isolated renderer retains its fixed node, scoped credentials and at
+most two renders. Its CPU request/limit are 500m/4 and memory request/limit are
+512Mi/2Gi, with a matching bounded memory-admission ceiling and 256Mi headroom.
+This provides headroom for the two reserved gateway slots rather than repeatedly
+throttling Chromium behind a 1-CPU cap during an alert burst. Capacity was checked
+on the existing socrat-1 owner; no placement, network, TLS or human auth changes.
+The gateway's Telegram deadline must independently allow 15 seconds; extra CPU
+or more bot retries alone is not a reliable substitute for fixing its old 4s cap.
