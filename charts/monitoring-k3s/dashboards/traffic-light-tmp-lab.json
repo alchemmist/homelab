@@ -2857,7 +2857,7 @@
         "w": 6,
         "h": 8
       },
-      "description": "One fixed cell per Git-managed Argo application, alphabetical; no top-k or scrolling. Short names on cells, full names and mapped states in native hover. Quiet is subdued; cyan = successful sync in preceding 10m, amber = drift, violet = Progressing/Suspended, bright red = failed sync in preceding 10m, dark red = Degraded/Missing, grey = Unknown/missing/stale data. Priority: unknown > unhealthy > failed sync > progressing/paused > drift > recent success > quiet. Current state only, not history. Sync is not proof of a Pod redeploy. Click a cell to open its app. Inventory comes from Git; regenerate when apps are added/removed.",
+      "description": "One fixed cell per Git-managed Argo application, alphabetical; no top-k or scrolling. Short names on cells, full names in native hover; state colors are explained by the legend. Quiet is subdued; cyan = successful sync in preceding 10m, amber = drift, violet = Progressing/Suspended, bright red = failed sync in preceding 10m, dark red = Degraded/Missing, grey = Unknown/missing/stale data. Priority: unknown > unhealthy > failed sync > progressing/paused > drift > recent success > quiet. Current state only, not history. Sync is not proof of a Pod redeploy. Click a cell to open its app. Inventory comes from Git; regenerate when apps are added/removed.",
       "targets": [
         {
           "datasource": {
@@ -2878,13 +2878,6 @@
           "color": {
             "mode": "thresholds"
           },
-          "links": [
-            {
-              "title": "State: ${__value.text}",
-              "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/${__field.labels.name}",
-              "targetBlank": true
-            }
-          ],
           "mappings": [
             {
               "type": "value",

@@ -16,7 +16,7 @@ No custom CSS/JS or public share is introduced.
 
 Each cell has an unambiguous short name, a field-bound background and a direct
 link to that exact app in Argo CD. The field binding uses the full application
-name. Native hover uses that field to expose full name and mapped state. The
+name. Native hover exposes the full name; the legend explains the current state color. The
 small legend is embedded at the top of Canvas. Inline editing and pan/zoom are
 disabled; scale constraints and zoom-to-content fit the whole mosaic.
 
@@ -57,13 +57,25 @@ create elements dynamically merely because another Prometheus series appears.
 
 ## Validation
 
-29 dashboard tests, including promtool tests for all state priorities, inclusion
+30 dashboard tests, including promtool tests for all state priorities, inclusion
 of quiet apps, pulse expiry and missing/stale/down scrapes. All49 names matched
 live and the instant query returned49 values. Native source schema/rectangle
 config reviewed against Grafana13.2.4. Full Helm render must change only the
 existing TMP ConfigMap payload; canonical JSON/public share/TV remain unchanged.
-Browser visual inspection is a separate acceptance step, not proven by these
-API/geometry tests. Physical-TV acceptance remains the owner's next check.
+Rendered-browser checks completed at1920×1080 and1440×900 using a separate
+headless Chrome context with the existing Viewer bearer restricted to the Grafana
+origin; no shared browser profile was touched. Inspected screenshots: all49 cells
+fit without scrolling; shortened overflowing aliases at1440; verified full-name
+hover for monitoring-k3s. Native tooltip repeats the fixed short cell text rather
+than a textual mapped state; use the visible legend/color and Argo link for state
+details. Physical-TV readability remains the owner's acceptance step.
+
+Initial deployment failed on Kubernetes'262144-byte annotation limit. Only the TMP
+ConfigMap template now minifies its embedded JSON, keeping last-applied metadata
+below the limit; a Helm size regression test covers it. Initial Canvas Scale
+placement incorrectly used pixels; source review and browser inspection corrected
+it to native percentage edge offsets, now also tested. No failed deployment or
+uninspected browser result is claimed as successful.
 
 ## Rebuild / ownership
 
