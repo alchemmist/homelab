@@ -43,8 +43,10 @@ point-in-time observation. No production rollout was triggered to create data.
 per-name colors, grid, rendered ConfigMap size and promtool semantics for root/
 retired exclusion, never-initialized/quiet apps, failed-only counters, stale/down
 telemetry and expiry of the15m rolling window. Helm render changes only the TMP
-ConfigMap payload. Browser inspection is performed separately; physical-TV
-acceptance remains with the owner.
+ConfigMap payload. Inspected the deployed chart in an isolated read-only Viewer
+browser at1920×1080: colored line peaks visible, legend absent, no rendering
+error. Hovering a peak showed `monitoring-k3s`, timestamp and value4. Shared
+browser profile was not touched. Physical-TV acceptance remains with the owner.
 
 ## Build / ownership
 
