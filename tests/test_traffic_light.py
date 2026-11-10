@@ -48,8 +48,8 @@ class TrafficLightLayoutTest(unittest.TestCase):
         ids = {item['id'] for item in self.dashboard['panels']}
         self.assertNotIn(325, ids)
         self.assertNotIn(326, ids)
-        self.assertEqual(panel_by_id(self.dashboard, 327)['gridPos']['x'], 15)
-        self.assertEqual(panel_by_id(self.dashboard, 328)['gridPos']['x'], 17)
+        self.assertEqual(panel_by_id(self.dashboard, 327)['gridPos']['x'], 2)
+        self.assertEqual(panel_by_id(self.dashboard, 328)['gridPos']['x'], 0)
 
     def test_panels_use_the_integer_tv_grid(self):
         for panel in self.dashboard['panels']:
@@ -70,7 +70,9 @@ class TrafficLightLayoutTest(unittest.TestCase):
                 occupied[assert_key] = panel['id']
         holes = [(x, y) for y in range(16) for x in range(24)
                  if (x, y) not in occupied]
-        self.assertEqual(holes, [(17, 8), (17, 9), (18, 9)])  # spare node-row space
+        approved = json.loads((ROOT / 'tests/fixtures/traffic-light-owner-layout.json').read_text())
+        self.assertEqual({str(p['id']): p['gridPos'] for p in self.dashboard['panels']}, approved)
+        self.assertEqual(len(holes), 46)  # intentional whitespace in owner layout
 
     def test_cpu_temperature_bar_removed(self):
         ids = {panel['id'] for panel in self.dashboard['panels']}
@@ -92,10 +94,10 @@ class TrafficLightLayoutTest(unittest.TestCase):
         self.assertEqual(up['gridPos'], {'x': 23, 'y': 8, 'w': 1, 'h': 2})
         self.assertEqual(up['fieldConfig']['defaults']['displayName'], 'UP')
         chart = panel_by_id(self.dashboard, 907)
-        self.assertEqual(chart['gridPos'], {'x': 19, 'y': 12, 'w': 5, 'h': 4})
+        self.assertEqual(chart['gridPos'], {'x': 18, 'y': 10, 'w': 6, 'h': 4})
         self.assertEqual(chart['type'], 'stat')
         history = panel_by_id(self.dashboard, 909)
-        self.assertEqual(history['gridPos'], {'x': 19, 'y': 10, 'w': 5, 'h': 2})
+        self.assertEqual(history['gridPos'], {'x': 12, 'y': 8, 'w': 6, 'h': 2})
         self.assertEqual(history['type'], 'state-timeline')
 
     def test_unmodified_resource_columns(self):
@@ -119,8 +121,8 @@ class TrafficLightLayoutTest(unittest.TestCase):
 
     def test_rps_and_n8n_share_a_shorter_graph_row(self):
         panel = panel_by_id(self.dashboard, 334)
-        self.assertEqual(panel['gridPos'], {'x': 0, 'y': 12, 'w': 7, 'h': 4})
-        self.assertEqual(panel_by_id(self.dashboard, 920)['gridPos'], {'x': 6, 'y': 8, 'w': 7, 'h': 4})
+        self.assertEqual(panel['gridPos'], {'x': 0, 'y': 12, 'w': 6, 'h': 4})
+        self.assertEqual(panel_by_id(self.dashboard, 920)['gridPos'], {'x': 6, 'y': 8, 'w': 6, 'h': 4})
 
 
 class TrafficLightQueriesTest(unittest.TestCase):
@@ -183,7 +185,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
     def test_vpn_preserves_latest_manual_stat_visualization(self):
         panel = panel_by_id(self.dashboard, 907)
         self.assertEqual(panel['type'], 'stat')
-        self.assertEqual(panel['gridPos']['y'] + panel['gridPos']['h'], 16)
+        self.assertEqual(panel['gridPos']['y'] + panel['gridPos']['h'], 14)
         self.assertEqual(panel['fieldConfig']['defaults']['min'], 0)
         self.assertNotIn('max', panel['fieldConfig']['defaults'])
 
@@ -264,11 +266,11 @@ class TrafficLightQueriesTest(unittest.TestCase):
 
     def test_platform_tiles_fill_the_gap_under_grafana(self):
         expected = {
-            335: ('n8n', 'SocratServiceN8nUnavailable', {'x': 11, 'y': 14, 'w': 2, 'h': 2}),
-            336: ('authentik', 'SocratServiceAuthentikUnavailable', {'x': 13, 'y': 14, 'w': 2, 'h': 1}),
-            337: ('harbor', 'SocratServiceHarborUnavailable', {'x': 15, 'y': 14, 'w': 2, 'h': 1}),
-            338: ('argocd', 'SocratServiceArgocdUnavailable', {'x': 13, 'y': 15, 'w': 2, 'h': 1}),
-            339: ('socrat-bot', 'SocratServiceSocratBotUnavailable', {'x': 0, 'y': 6, 'w': 2, 'h': 2}),
+            335: ('n8n', 'SocratServiceN8nUnavailable', {'x': 10, 'y': 14, 'w': 2, 'h': 2}),
+            336: ('authentik', 'SocratServiceAuthentikUnavailable', {'x': 22, 'y': 14, 'w': 2, 'h': 1}),
+            337: ('harbor', 'SocratServiceHarborUnavailable', {'x': 18, 'y': 14, 'w': 2, 'h': 1}),
+            338: ('argocd', 'SocratServiceArgocdUnavailable', {'x': 18, 'y': 15, 'w': 2, 'h': 1}),
+            339: ('socrat-bot', 'SocratServiceSocratBotUnavailable', {'x': 7, 'y': 5, 'w': 2, 'h': 1}),
         }
         for panel_id, (service_id, alert, grid) in expected.items():
             panel = panel_by_id(self.dashboard, panel_id)
