@@ -55,13 +55,13 @@ def application_names():
 
 
 ALIASES = {
-    'alertmanager': 'Alerts', 'argo-cd': 'Argo', 'cert-manager': 'Certs',
+    'alertmanager': 'Alerts', 'argo-cd': 'Argo', 'authentik': 'Auth', 'cert-manager': 'Certs',
     'cnpg-operator': 'CNPG', 'format-quorum': 'Quorum', 'grafana-mcp': 'Gf MCP',
     'img-proxy': 'Img proxy', 'kube-state-metrics': 'KSM', 'litellm-infra': 'LLM infra',
     'monitoring-k3s': 'Mon K3s', 'monitoring-llm': 'Mon LLM', 'node-exporter': 'Node exp',
-    'nvidia-device-plugin': 'NVIDIA', 'open-terminal': 'Terminal', 'open-webui': 'WebUI',
+    'nvidia-device-plugin': 'NVIDIA', 'open-terminal': 'Term', 'open-webui': 'WebUI',
     'private-gateway': 'Priv GW', 'prometheus': 'Prom', 'prometheus-operator': 'Prom Op',
-    'pyroscope': 'Pyroscope', 'socrat-bot': 'Bot', 'socrat-home': 'Home',
+    'pyroscope': 'Pyro', 'remark42': 'Remark', 'syncthing': 'Syncth', 'socrat-bot': 'Bot', 'socrat-home': 'Home',
     'spi-triage': 'SPI', 'traefik-edge': 'Edge', 'uptime-kuma': 'Kuma',
     'vpn-transit': 'VPN MSK', 'wiki-runtime': 'Wiki',
 }
@@ -127,6 +127,9 @@ def build():
         'targets': [{'datasource': DS, 'expr': query(), 'legendFormat': '{{name}}', 'refId': 'A',
                      'instant': True, 'range': False, 'format': 'time_series'}],
         'fieldConfig': {'defaults': {'noValue': 'No telemetry', 'color': {'mode': 'thresholds'},
+                                    'links': [{'title': 'State: ${__value.text}',
+                                               'url': 'https://argocd.socrat.alchemmist.xyz/applications/argocd/${__field.labels.name}',
+                                               'targetBlank': True}],
                                     'mappings': [{'type': 'value', 'options': states},
                                                  {'type': 'special', 'options': {'match': 'null+nan',
                                                   'result': {'text': 'No telemetry', 'color': '#555555'}}}],

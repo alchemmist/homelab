@@ -51,9 +51,26 @@ class TrafficLightLabTest(unittest.TestCase):
             self.assertTrue(e['links'][0]['url'].endswith('/' + e['name']))
             self.assertNotIn((e['placement']['left'], e['placement']['top']), occupied)
             occupied.add((e['placement']['left'], e['placement']['top']))
+            placement = e['placement']
+            for edge in ('left', 'right', 'top', 'bottom'):
+                self.assertGreaterEqual(placement[edge], 0)
+                self.assertLessEqual(placement[edge], 100)
+            self.assertLess(placement['left'] + placement['right'], 100)
+            self.assertLess(placement['top'] + placement['bottom'], 100)
+            self.assertNotIn('width', placement)  # Scale uses percentage edge offsets.
             labels.append(e['config']['text']['fixed'])
         self.assertEqual(len(labels), len(set(labels)))
         self.assertLessEqual(max(map(len, labels)), 10)
+
+    @unittest.skipUnless(shutil.which('helm'), 'helm needed for apply-size regression')
+    def test_rendered_apply_annotation_stays_below_kubernetes_limit(self):
+        import yaml
+        chart = ROOT / 'charts/monitoring-k3s'
+        rendered = subprocess.check_output(['helm', 'template', 'monitoring-k3s', str(chart),
+                    '-n', 'cattle-monitoring-system', '-f', str(chart / 'alert-graphs.values.yaml')], text=True)
+        cm = next(x for x in yaml.safe_load_all(rendered) if x and x.get('metadata', {}).get('name') == 'socrat-traffic-light-tmp-lab-dashboard')
+        self.assertLess(len(json.dumps(cm, separators=(',', ':')).encode()), 240000)
+        self.assertEqual(json.loads(next(iter(cm['data'].values()))), self.dashboard)
 
     def test_nonoverlapping_tv_grid(self):
         occupied = {}

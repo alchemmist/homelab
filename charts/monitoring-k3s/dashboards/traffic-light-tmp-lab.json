@@ -2878,6 +2878,13 @@
           "color": {
             "mode": "thresholds"
           },
+          "links": [
+            {
+              "title": "State: ${__value.text}",
+              "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/${__field.labels.name}",
+              "targetBlank": true
+            }
+          ],
           "mappings": [
             {
               "type": "value",
@@ -3115,7 +3122,7 @@
                 },
                 "text": {
                   "mode": "fixed",
-                  "fixed": "authentik",
+                  "fixed": "Auth",
                   "field": "authentik"
                 }
               },
@@ -4193,7 +4200,7 @@
                 },
                 "text": {
                   "mode": "fixed",
-                  "fixed": "Terminal",
+                  "fixed": "Term",
                   "field": "open-terminal"
                 }
               },
@@ -4487,7 +4494,7 @@
                 },
                 "text": {
                   "mode": "fixed",
-                  "fixed": "Pyroscope",
+                  "fixed": "Pyro",
                   "field": "pyroscope"
                 }
               },
@@ -4585,7 +4592,7 @@
                 },
                 "text": {
                   "mode": "fixed",
-                  "fixed": "remark42",
+                  "fixed": "Remark",
                   "field": "remark42"
                 }
               },
@@ -4928,7 +4935,7 @@
                 },
                 "text": {
                   "mode": "fixed",
-                  "fixed": "syncthing",
+                  "fixed": "Syncth",
                   "field": "syncthing"
                 }
               },
