@@ -27,7 +27,7 @@ class EdgeCrdTests(unittest.TestCase):
     def test_vpn_middleware_uses_existing_discovery_without_wider_watches(self):
         m=next(d for d in self.resources if d['kind']=='Middleware' and d['metadata']['name']=='traefik-edge-vpn-msk-only')
         self.assertEqual(m['metadata']['namespace'],'argocd')
-        self.assertEqual(m['spec']['ipAllowList']['sourceRange'],['10.251.4.1/32','10.250.0.40/32','127.0.0.1/32'])
+        self.assertEqual(m['spec']['ipAllowList']['sourceRange'],['10.250.0.40/32','127.0.0.1/32'])
         self.assertNotIn('ipStrategy',m['spec']['ipAllowList'])
         ingress=next(d for d in self.resources if d['kind']=='Ingress' and d['metadata']['name']=='traefik-edge-trojan-transit')
         self.assertEqual(ingress['metadata']['annotations']['traefik.ingress.kubernetes.io/router.middlewares'],'argocd-traefik-edge-vpn-msk-only@kubernetescrd')

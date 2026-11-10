@@ -1,3 +1,7 @@
+- name: Refuse retired duplicate-channel provisioning
+  ansible.builtin.fail:
+    msg: Dedicated wg-vpn-transit retired; use existing wg-socrat and mesh runtime playbook.
+
 ---
 - name: Limit transit setup to the two approved endpoints
   ansible.builtin.assert:

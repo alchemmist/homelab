@@ -1,4 +1,7 @@
 > **Production update:** this document retains historical staging evidence.
+
+> Transport/runtime superseded10Nov: [accepted shared mesh + Pod/native](vpn-mesh-runtime-20261110.md).
+> This dated document preserves the earlier cutover evidence, not current commands to replay.
 > DNS/Hosts and known HOME flows were subsequently switched; current acceptance
 > and resolved shared443/watchdog incident are in
 > [production cutover](vpn-production-cutover-20261109.md). Do not replay staging.

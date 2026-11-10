@@ -1,5 +1,8 @@
 # Production VPN cutover — 2026-11-09
 
+> Transport/runtime superseded10Nov: [accepted shared mesh + Pod/native](vpn-mesh-runtime-20261110.md).
+> This dated document preserves the earlier cutover evidence, not current commands to replay.
+
 ## Accepted production boundary
 
 `vpn.alchemmist.xyz` and native 3x-ui Hosts now advertise **Moscow91.189.82.238**;

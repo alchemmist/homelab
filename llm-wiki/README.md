@@ -1,6 +1,6 @@
 # LLM wiki: карта актуального контекста Socrat
 
-Актуализация **9 ноября 2026** (production Moscow VPN cutover и resolved watchdog incident; SPI service extraction; observer — 8 ноября, остальные срезы датированы в своих разделах). Это рабочая память для сопровождения homelab,
+Актуализация **10 ноября 2026** (production Moscow VPN Pod/native, shared mesh и приёмка fallback; SPI service extraction; observer — 8 ноября, остальные срезы датированы в своих разделах). Это рабочая память для сопровождения homelab,
 не public wiki content и не набор команд для автоматического повторения миграций.
 Git/manifests задают intent; runtime определяется отдельной проверкой.
 

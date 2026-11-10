@@ -13,7 +13,7 @@ def test_no_api_only_failover_and_failure_threshold(ctl,monkeypatch):
  calls=[];monkeypatch.setattr(c,'healthy',lambda:False);monkeypatch.setattr(c,'activate',lambda why:calls.append(why))
  for _ in range(3):c.tick()
  assert calls==[];c.tick();assert len(calls)==1
- monkeypatch.setattr(c,'healthy',lambda:True);c.tick();assert c.state['failures']==0
+ monkeypatch.setattr(c,'healthy',lambda:True);c.tick();assert c.state['failures']==0 and c.state['grace_until']==0
 
 def test_prepared_and_native_are_sticky(ctl,monkeypatch):
  m,c=ctl;calls=[];monkeypatch.setattr(c,'activate',lambda why:calls.append(why));c.tick();assert calls==[]
@@ -51,3 +51,25 @@ def test_deployment_single_host_no_api_token_and_native_boot_fence():
  controller=(ROOT/'scripts/vpn-transit-failover.py').read_text()
  assert "AGENT='k3s-agent.service'" in controller and "'k3s.service'" not in controller
  assert 'flock' in controller and 'fsync' in controller and 'free_ports()' in controller
+
+
+def test_tcp_time_wait_reuse_never_allows_a_live_owner_or_udp_reuse():
+    m=module('vpn-transit-failover')
+    import socket
+    with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as owner:
+        owner.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+        owner.bind(('0.0.0.0',0));owner.listen();port=owner.getsockname()[1]
+        with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as challenger:
+            challenger.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+            with pytest.raises(OSError):
+                challenger.bind(('0.0.0.0',port));challenger.listen(1)
+    source=(ROOT/'scripts/vpn-transit-failover.py').read_text()
+    assert 'if typ==socket.SOCK_STREAM:s.setsockopt' in source
+
+
+def test_machine_https_exception_is_exact_not_a_human_acl_relaxation():
+    host=yaml.safe_load((ROOT/'ansible/inventory/host_vars/socrat-2.yml').read_text())
+    defaults=yaml.safe_load((ROOT/'ansible/roles/wireguard_private_web/defaults/main.yml').read_text())
+    assert host['wireguard_private_web_passthrough_sources']==['10.250.0.40']
+    assert defaults['wireguard_private_web_passthrough_sources']==[]
+    assert host['public_dns_extra_listen']==['10.250.0.2@5354']

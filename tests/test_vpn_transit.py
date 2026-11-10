@@ -36,7 +36,7 @@ def test_transport_never_advertises_a_default_route_or_mutates_old_interface():
     play = yaml.safe_load((ROOT / 'ansible/playbooks/vpn-transit-transport.yml').read_text())
     assert play[0]['hosts'] == 'socrat-2:socrat-4'
     tasks = (ROOT / 'ansible/roles/vpn_transit/tasks/main.yml').read_text()
-    assert 'wg-socrat' not in tasks
+    assert 'Refuse retired duplicate-channel provisioning' in tasks
     assert 'wg-quick@wg-vpn-transit' in tasks
 
 
@@ -89,7 +89,7 @@ def test_exit_fence_never_blocks_shared_https_or_dns():
 
 def test_private_authoritative_listener_and_tcp_certificate_identity_preserved():
     values=yaml.safe_load((ROOT/'ansible/inventory/host_vars/socrat-2.yml').read_text())
-    assert values['public_dns_extra_listen']==['10.251.4.2@53']
+    assert values['public_dns_extra_listen']==['10.250.0.2@5354']
     assert values['public_dns_transit_listener_enabled'] is True
     client=(ROOT/'ansible/roles/wireguard_tcp_transport/templates/client.yaml.j2').read_text()
     assert 'wg_tcp_client_address | default(wg_tcp_server_address)' in client
@@ -101,7 +101,7 @@ def test_native_recovery_gate_keeps_real_loopback_health_and_subscription_routes
     from jinja2 import Environment
     edge=yaml.safe_load((ROOT/'charts/traefik-edge/values.yaml').read_text())
     rendered=Environment().from_string((ROOT/'ansible/roles/vpn_failover/templates/Caddyfile.j2').read_text()).render(vpn_failover_edge=edge)
-    assert 'not remote_ip 10.251.4.1/32 10.250.0.40/32 127.0.0.1/32' in rendered
+    assert 'not remote_ip 10.250.0.40/32 127.0.0.1/32' in rendered
     assert 'respond @trojan_denied "Forbidden" 403' in rendered
     assert 'reverse_proxy @trojan 127.0.0.1:32087' in rendered
     assert 'reverse_proxy @subscriptions 127.0.0.1:12096' in rendered

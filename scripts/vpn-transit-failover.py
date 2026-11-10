@@ -30,6 +30,7 @@ def free_ports():
     # Match Go TCP listeners: TIME_WAIT is not a live port owner. Never reuse UDP.
     if typ==socket.SOCK_STREAM:s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
     s.bind(('0.0.0.0',port))
+    if typ==socket.SOCK_STREAM:s.listen(1)
  return True
 
 def identity(pid,cid):
@@ -139,6 +140,7 @@ class Controller:
    self.save(boot_id=boot,grace_until=time.time()+120)
   ok=self.healthy()
   if not ok and time.time()<self.state.get('grace_until',0):return
+  if ok:self.save(grace_until=0)
   n=0 if ok else self.state.get('failures',0)+1
   self.save(healthy=ok,failures=n)
   if n>=4:self.activate('four consecutive actual data-path failures')

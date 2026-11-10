@@ -1,5 +1,30 @@
 # VPN: актуальный production и исторический hardening
 
+## Текущий транспорт — 10 ноября 2026 (supersedes прежний отдельный WG)
+
+Пользовательский relay Москвы теперь **Pod `vpn-transit` на socrat-4** под Argo;
+при реальном отказе — независимый fenced systemd fallback. Оба используют тот же
+Xray и конфиг. Общий `wg-socrat`:Москва10.250.0.40→NL10.250.0.2; отдельный
+`wg-vpn-transit` остановлен/disabled на обеих нодах, ключи/конфиги архивированы.
+Management51832UDP/51840TCP остаётся отдельным systemd-relay, независимо от Pod.
+DNS:.40:53→.2:5354, старый dnsmasq.2:53 не трогали. Только machine.40 исключён из
+старого private-web443 DNAT; human/admin ACL не расширены. Trojan допускает
+только mesh.40/32 и точный health-loopback127.0.0.1/32.
+
+Реальный timer автоматически восстановил native relay после остановки только
+московского worker-agent и его relay-контейнера; затем штатный failback вернул Pod.
+Все пять HOME профилей приняты в Pod/native/fallback и **после удаления отдельного
+WG**;17 клиентов/91 bindings/подписки84URI/77JSON/ключи сохранены, fixture cleanup
+подтверждён. Кластер:3 healthy voters/hashKV equal revision17514049,5Ready/noMemoryPressure.
+134 tests+14 subtests, новые private archives2/4 off-host SHA verified.
+Это не zero-downtime rollout: исправлены TIME_WAIT guard, management source IP и
+Pod bind-capability; не скрывать ошибки/короткую недоступность, не приписывать
+результаты native-fallback probe первому неудачному Pod. [Подробности и операции](../docs/vpn-mesh-runtime-20261110.md).
+API loss при работающем relay не вызывает переключения; native sticky до явного
+failback. Mobile/AWG/полный DR/reboot/HA не доказаны. Подписка/публичный вход прежние,
+Mac/Tunnelblick/default routes не менялись. Подготовительные apply не переигрывать.
+
+
 ## Актуально: production VPN через Москву, 9 ноября 2026
 
 **Клиенты/HOME → Москва91.189.82.238 → NL109.120.141.60**. URL подписки

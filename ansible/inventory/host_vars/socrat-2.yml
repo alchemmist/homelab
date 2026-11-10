@@ -13,7 +13,7 @@ homelab_ssh_direct_host: 109.120.141.60
 homelab_ssh_direct_port: 22
 
 # Private authoritative listener for the encrypted Moscow DNS hop.
-public_dns_extra_listen: ["10.251.4.2@53"]
+public_dns_extra_listen: ["10.250.0.2@5354"]
 public_dns_transit_listener_enabled: true
 
 # Measured native etcd catch-up exceeds180s over the Moscow management relay.

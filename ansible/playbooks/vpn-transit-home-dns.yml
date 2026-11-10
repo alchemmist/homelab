@@ -9,7 +9,7 @@
         dest: /etc/homelab-vpn-transit/dns.json
         mode: '0644'
         content: |
-          {"log":{"loglevel":"warning"},"inbounds":[{"tag":"private-dns-tcp","listen":"10.250.0.40","port":53,"protocol":"tunnel","settings":{"rewriteAddress":"10.251.4.2","rewritePort":53,"allowedNetwork":"tcp","followRedirect":false}},{"tag":"private-dns-udp","listen":"10.250.0.40","port":53,"protocol":"tunnel","settings":{"rewriteAddress":"10.251.4.2","rewritePort":53,"allowedNetwork":"udp","followRedirect":false}}],"outbounds":[{"protocol":"freedom"}]}
+          {"log":{"loglevel":"warning"},"inbounds":[{"tag":"private-dns-tcp","listen":"10.250.0.40","port":53,"protocol":"tunnel","settings":{"rewriteAddress":"10.250.0.2","rewritePort":5354,"allowedNetwork":"tcp","followRedirect":false}},{"tag":"private-dns-udp","listen":"10.250.0.40","port":53,"protocol":"tunnel","settings":{"rewriteAddress":"10.250.0.2","rewritePort":5354,"allowedNetwork":"udp","followRedirect":false}}],"outbounds":[{"protocol":"freedom","sendThrough":"10.250.0.40"}]}
     - name: Validate DNS relay before activation
       ansible.builtin.command: /usr/local/libexec/xray-transit run -test -config /etc/homelab-vpn-transit/dns.json
       changed_when: false
@@ -20,8 +20,8 @@
         content: |
           [Unit]
           Description=Private fixed-destination HOME Moscow NL authoritative DNS relay
-          Requires=wg-quick@wg-vpn-transit.service wg-quick@wg-socrat.service
-          After=wg-quick@wg-vpn-transit.service wg-quick@wg-socrat.service
+          Requires=wg-quick@wg-socrat.service
+          After=wg-quick@wg-socrat.service
           [Service]
           DynamicUser=yes
           AmbientCapabilities=CAP_NET_BIND_SERVICE

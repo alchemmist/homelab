@@ -39,7 +39,7 @@
   when: public_dns_transit_listener_enabled | default(false) | bool
   block:
     - ansible.builtin.stat:
-        path: /etc/wireguard/wg-vpn-transit.conf
+        path: /etc/wireguard/wg-socrat.conf
       register: dns_transit_config
     - ansible.builtin.assert:
         that:
@@ -54,8 +54,8 @@
         mode: '0644'
         content: |
           [Unit]
-          Requires=wg-quick@wg-vpn-transit.service
-          After=wg-quick@wg-vpn-transit.service
+          Requires=wg-quick@wg-socrat.service
+          After=wg-quick@wg-socrat.service
       notify: Reload systemd
 
 - name: Configure Knot

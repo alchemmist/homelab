@@ -1,6 +1,6 @@
 # Публичный DNS alchemmist.xyz
 
-Актуализировано **9 ноября 2026** (VPN cutover; старые приёмки датированы ниже). Текущий сетевой итог: [network-access.md](network-access.md). Это схема и результаты выполненных приёмок, не непрерывный healthcheck и не инструкция повторить migration apply.
+Актуализировано **10 ноября 2026** (VPN cutover; старые приёмки датированы ниже). Текущий сетевой итог: [network-access.md](network-access.md). Это схема и результаты выполненных приёмок, не непрерывный healthcheck и не инструкция повторить migration apply.
 
 ## Адреса и делегирование
 
@@ -22,9 +22,9 @@
 FAILOVER, находится в STATIC_A: при отказе Москвы не публиковать NL/HOME как
 скрытый fallback. Прочие records проверены на всех четырёх health-комбинациях;
 NS1 HOME и принятый NS2/glue NL не менялись, registrar не пересылался.
-NL authoritative Knot дополнительно слушает private10.251.4.2:53; московский
-private relay10.250.0.40:53 передаёт TCP/UDP по отдельному WG. Один scoped NL Knot
-restart был нужен для listener, public listener сохранён; startup dependency на WG.
+NL authoritative Knot дополнительно слушает private10.250.0.2:5354; московский
+private relay10.250.0.40:53 передаёт TCP/UDP по существующему wg-socrat (отдельный wg-vpn-transit retired). Scoped NL Knot
+restarts потребовались при смене listener; старый dnsmasq mesh:53 сохранён, public listener сохранён; startup dependency на WG.
 Никакого Mac resolver override. Это не HA/partition-consistency гарантия трёх writers.
 [Production evidence/incident](../docs/vpn-production-cutover-20261109.md).
 
