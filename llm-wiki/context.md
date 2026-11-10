@@ -1,5 +1,28 @@
 # Socrat: текущий контекст
 
+## Закрытие сессии: RF/NL split отложен владельцем
+
+**10 ноября: владелец решил оставить рабочую схему, серверный split не внедрять.**
+VPN-трафик по-прежнему Москва → NL → Интернет; существующий Happ bypass сохранён.
+Read-only настройки панели: routing/onadd `Alchemmist VPN`, GlobalProxy=true,
+49 DirectSites, DirectIp/ProxySites/ProxyIp пусты; активность на каждом телефоне не
+проверялась. Это не серверный GeoIP split. Исследование — reference, **не pending
+implementation и не разрешение переносить VPN termination на Москву**.
+[Исследование и альтернативы](../docs/vpn-split-routing-research-20261110.md).
+
+При закрытии сессии fresh read-only на Москве: именно `vpn-transit-655857b776-9mt9v`
+SANDBOX_READY; watchdog kubernetes/healthy, data_path_healthy=true, failures=0,
+agent_active=true, native_active=false, fallback_marker=false. Конфиг user.json
+совпадает по содержимому с Git: tunnel TCP80/443/32053/32083/32084 и
+UDP443/32085/32086 →10.250.0.2, freedom sendThrough10.250.0.40.
+Это локальный статус/штатная TLS-проверка пути, **не новая полная проверка клиентов,
+etcd/WAL/всего кластера или DR**. Никаких activate/failback/перезапусков не выполняли.
+
+[Как устроен Pod, границы Xray/3x-ui и ownership](../docs/vpn-mesh-runtime-20261110.md#what-the-pod-actually-does).
+Public wiki: [VPN](../wiki/content/network/vpn.md). Секреты и recovery receipts
+остаются вне Git; подготовительные/migration apply не повторять.
+
+
 ## Текущий транспорт — 10 ноября 2026 (supersedes прежний отдельный WG)
 
 Пользовательский relay Москвы теперь **Pod `vpn-transit` на socrat-4** под Argo;
@@ -197,7 +220,9 @@ Prometheus-компонентов повторно проверены все 77 
 
 ## Топология и данные
 
-- K3s/etcd: голосуют ноды **0/2/3**, кворум два. Нода1 control-plane без голоса etcd.
+- Последняя принятая native-проверка etcd: исходные voters **0/1/2**, кворум два;
+  members `socrat-0-36692c46`, `socrat-1-2398a245`, `socrat-2-eb4ac34e`.
+  Прежнюю запись «0/2/3, нода1 без голоса» не использовать как текущую топологию.
 - socrat-0: дом/RTX3090, vLLM/LLM, Authentik/PG, Wiki PVC, Kuma MariaDB и NFS.
   На проверке Prometheus pod также на socrat-0, не выводить placement из имени app.
 - socrat-1: Grafana, Loki/Tempo/Pyroscope и часть приложений на проверке.

@@ -4,6 +4,11 @@
 не public wiki content и не набор команд для автоматического повторения миграций.
 Git/manifests задают intent; runtime определяется отдельной проверкой.
 
+**Session closeout:** RF/NL server split explicitly deferred by owner; current
+Moscow → NL egress and existing Happ bypass remain. See current context and
+[vpn-transit internals](../docs/vpn-mesh-runtime-20261110.md#what-the-pod-actually-does).
+Research is not a pending deployment task. Private recovery evidence remains off-Git.
+
 ## Начать здесь
 
 1. [Текущий контекст](context.md) — краткая схема, ограничения и порядок работы.

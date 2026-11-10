@@ -1,5 +1,28 @@
 # VPN: актуальный production и исторический hardening
 
+## Закрытие сессии: RF/NL split отложен владельцем
+
+**10 ноября: владелец решил оставить рабочую схему, серверный split не внедрять.**
+VPN-трафик по-прежнему Москва → NL → Интернет; существующий Happ bypass сохранён.
+Read-only настройки панели: routing/onadd `Alchemmist VPN`, GlobalProxy=true,
+49 DirectSites, DirectIp/ProxySites/ProxyIp пусты; активность на каждом телефоне не
+проверялась. Это не серверный GeoIP split. Исследование — reference, **не pending
+implementation и не разрешение переносить VPN termination на Москву**.
+[Исследование и альтернативы](../docs/vpn-split-routing-research-20261110.md).
+
+При закрытии сессии fresh read-only на Москве: именно `vpn-transit-655857b776-9mt9v`
+SANDBOX_READY; watchdog kubernetes/healthy, data_path_healthy=true, failures=0,
+agent_active=true, native_active=false, fallback_marker=false. Конфиг user.json
+совпадает по содержимому с Git: tunnel TCP80/443/32053/32083/32084 и
+UDP443/32085/32086 →10.250.0.2, freedom sendThrough10.250.0.40.
+Это локальный статус/штатная TLS-проверка пути, **не новая полная проверка клиентов,
+etcd/WAL/всего кластера или DR**. Никаких activate/failback/перезапусков не выполняли.
+
+[Как устроен Pod, границы Xray/3x-ui и ownership](../docs/vpn-mesh-runtime-20261110.md#what-the-pod-actually-does).
+Public wiki: [VPN](../wiki/content/network/vpn.md). Секреты и recovery receipts
+остаются вне Git; подготовительные/migration apply не повторять.
+
+
 ## Текущий транспорт — 10 ноября 2026 (supersedes прежний отдельный WG)
 
 Пользовательский relay Москвы теперь **Pod `vpn-transit` на socrat-4** под Argo;
@@ -260,7 +283,7 @@ owner authorization. Do not silently shift VPN users onto HOME IP (risks all hom
 infra endpoints). Mobile failure is owner-reported. Root-cause incident still open;
 accepted config migration is not evidence of ongoing availability/IP-ban immunity.
 
-## Следующий этап: RF/NL policy research, 10 ноября — не внедрено
+## Справочное исследование RF/NL, 10 ноября — отложено владельцем
 
 [Исследование источников, рисков и архитектуры](../docs/vpn-split-routing-research-20261110.md).
 Native read-only подтвердил: панель уже выдаёт intent Happ routing/onadd с49

@@ -128,3 +128,78 @@ sudo systemctl status homelab-vpn-management-relay homelab-vpn-transit-watchdog.
 not health checks; do not execute simply because an old runbook contains them.
 The image archive can be reproduced from the verified static binary; do not replace
 it with an unpinned registry image or remove the independent native management path.
+
+## What the Pod actually does
+
+Session closeout10November: owner explicitly deferred RF/NL destination split.
+Keep accepted runtime, NL internet exit and existing Happ client bypass. Split
+research is reference, not an unfinished implementation or deployment approval.
+
+The Rancher Pod `vpn-transit-655857b776-9mt9v` is an ordinary Deployment replica,
+not a 3x-ui instance, VPN user database, management agent or custom crypto daemon.
+One container `relay` runs exact pinned static **Xray-core26.10.21** from a minimal
+scratch image (no shell/package manager):
+
+```text
+/usr/local/bin/xray run -config /etc/relay/user.json
+```
+
+`user.json` is Ansible-owned `/etc/homelab-vpn-transit/user.json`, read-only hostPath.
+Its standard Xray `tunnel` inbounds and `freedom` outbound implement fixed-target
+TCP/UDP forwarding:
+
+| Public Moscow listeners | Action |
+| --- | --- |
+| TCP80,443,32053,32083,32084 | Rewrite destination address to10.250.0.2, preserve destination listener port |
+| UDP443,32085,32086 | Same fixed address/port forwarding, per-flow return traffic |
+| All outbound relay sockets | Bind source10.250.0.40; host route selects existing wg-socrat |
+
+A configured forwarded UDP443 is not proof of a particular protocol/listener there.
+Authenticated AWG acceptance remains separate/unproven. `freedom` here means open
+a normal socket to the **rewritten NL private address**, not direct Moscow internet
+exit for the user's visited website. No sniffing on Moscow, no VLESS/Trojan/WG user
+authentication or client TLS/REALITY termination there. TCP transport is proxied
+(two TCP legs); outer VPN payload passes through without decrypting it. Original
+client IP is not transparently preserved or injected via HTTP headers.
+
+```text
+Client → Moscow public port
+  → Xray tunnel inbound → freedom socket, source10.250.0.40
+  → kernel wg-socrat route → encrypted WireGuard to NL
+  →10.250.0.2:same-port → existing NL VPN listener / HTTPS ingress
+  → VPN authentication/termination in NL → NL internet exit
+```
+
+This is standard Xray forwarding over standard kernel WireGuard, not a newly
+invented tunnel protocol. 3x-ui manages the existing NL Xray/users/subscriptions;
+it does not orchestrate this Pod, mesh or failover. We do not use a built-in
+3x-ui multi-node cluster or a second writable panel. Xray supports broader
+inbound/outbound chains, but they are not automatically our deployed architecture.
+
+`hostNetwork:true` uses host ports and the host's WG route without a Service,
+NodePort, Ingress or CNI data-path requirement for these relay sockets. It does not
+mean independent of the host/mesh/provider. Argo owns Deployment/reconciliation;
+Ansible owns native prerequisites/config/image. Pod resources: request50m/48Mi,
+limit400m/192Mi, GOMEMLIMIT96MiB (Go runtime target, not hard total process limit).
+UID0 only to bind low ports with NET_BIND_SERVICE; all other capabilities dropped,
+no NET_ADMIN, no API token, read-only FS. Kubernetes TCP443 readiness is shallow;
+the external-to-Pod node-local watchdog also checks real TLS/WS and backend TCP.
+
+Independent systemd timer checks actual data path. Four consecutive failures,
+with bounded boot grace, initiate fenced native recovery. Stop only Moscow worker
+agent, validate/terminate only the owned relay process, refuse unknown port owners,
+then start identical Xray/config natively. Never run two port owners. API loss
+alone leaves functioning relay running. Recovery is sticky until explicit bounded
+failback. This protects against certain local Pod/agent/cluster failures, not dead
+VPS/provider, failed shared WG, all NL failures or a promise of seamless sessions.
+Existing connections may break during handoff; full reboot/DR/HA not accepted.
+
+Management UDP51832/TCP51840 and authoritative DNS transit run in separate native
+services, not in this user relay Pod. Their source/boot dependencies differ; do
+not merge them back, bind management to.40 or recreate retired wg-vpn-transit.
+
+Fresh closeout read-only on Moscow: exact Rancher sandbox above READY; watchdog
+mode=kubernetes, healthy=true, data_path_healthy=true, failures=0, agent active,
+native inactive, marker absent. Shared config matches Git by parsed content.
+This is not a new five-profile/full-cluster/WAL/DR acceptance; earlier receipts
+remain dated. No restart/failover or configuration mutation performed for closeout.

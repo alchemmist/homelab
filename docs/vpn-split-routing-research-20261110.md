@@ -1,5 +1,9 @@
 # RF/NL split routing — research, 10 November 2026
 
+**Owner decision after research: DEFERRED. Keep the accepted Moscow → NL runtime
+and existing Happ bypass unchanged. This document is reference only, not pending
+work, approval to move termination, or authorization to resume implementation.**
+
 **Research only. No production routing, credentials, subscriptions, DNS, ports,
 Pod or native services changed. This is not a deployment recipe or acceptance.**
 
