@@ -78,6 +78,10 @@ def manifests(host, image, enrollment=False, kernel_only=False):
         'volumeMounts': [{'name': 'state', 'mountPath': '/etc/netbird'},
                         {'name': 'tun', 'mountPath': '/dev/net/tun'}]}
     if kernel_only:
+        # A fresh Docker entrypoint starts an interactive SSO `up` and races
+        # the one-off controller enrollment. Run only the service daemon.
+        container['command'] = ['netbird']
+        container['args'] = ['service', 'run']
         container['volumeMounts'] = [v for v in container['volumeMounts'] if v['name'] != 'tun']
     if enrollment:
         container['env'].append({'name': 'NB_SETUP_KEY', 'valueFrom': {

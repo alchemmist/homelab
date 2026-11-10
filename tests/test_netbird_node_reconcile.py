@@ -102,6 +102,15 @@ class Fake(n.Runtime):
 class ReconcileTest(unittest.TestCase):
     def seed(self): return {'nodes': {'socrat-4': {'id': 'peer4'}}}
 
+    def test_kernel_only_daemon_has_no_tun_or_interactive_sso(self):
+        pvc, deployment = n.manifests('socrat-5', IMAGE, kernel_only=True)
+        spec = deployment['spec']['template']['spec']
+        self.assertEqual(spec['containers'][0]['command'], ['netbird'])
+        self.assertEqual(spec['containers'][0]['args'], ['service', 'run'])
+        self.assertEqual([v['name'] for v in spec['volumes']], ['state'])
+        self.assertEqual([v['name'] for v in spec['containers'][0]['volumeMounts']], ['state'])
+        self.assertNotIn('privileged', spec['containers'][0]['securityContext'])
+
     def test_inventory_is_generic_but_not_arbitrary_network_access(self):
         for values in [{'socrat-4': '10.250.0.4'}, {'other': '10.250.0.9'}, {'socrat-4': '0.0.0.0/0'},
                        {'socrat-4': '10.250.0.9/32'}, {'socrat-4': '10.250.0.255'},

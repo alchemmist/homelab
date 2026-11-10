@@ -1505,6 +1505,11 @@ resources:
           volumeMounts:
           - name: state
             mountPath: /etc/netbird
+          command:
+          - netbird
+          args:
+          - service
+          - run
         volumes:
         - name: state
           persistentVolumeClaim:
