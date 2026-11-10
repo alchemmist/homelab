@@ -79,7 +79,7 @@ def tile(name, label, left, top, width=57, height=40, color=None):
                    'text': {'mode': 'fixed', 'fixed': label, **({} if color else {'field': name})}},
         'links': [] if color else [{'title': name + ' · Open in Argo CD',
                                    'url': 'https://argocd.socrat.alchemmist.xyz/applications/argocd/' + name,
-                                   'targetBlank': True}],
+                                   'targetBlank': True, 'oneClick': True}],
     }
 
 
@@ -111,6 +111,15 @@ def build():
     for i, (code, label) in enumerate([('0', 'Quiet'), ('1', 'Sync'), ('2', 'Drift'),
                                        ('3', 'Work'), ('4', 'Fail'), ('5', 'Down'), ('6', '?')]):
         elements.append(tile('Legend ' + code, label, i * 60, 0, height=18, color=states[code]['color']))
+    # Grafana's Scale constraints store edge offsets in percentages, not pixels.
+    canvas_height = 26 + rows * 44
+    for element in elements:
+        p = element['placement']
+        element['placement'] = {'left': p['left'] / 420 * 100,
+                                'right': (420 - p['left'] - p['width']) / 420 * 100,
+                                'top': p['top'] / canvas_height * 100,
+                                'bottom': (canvas_height - p['top'] - p['height']) / canvas_height * 100,
+                                'rotation': 0}
     d['panels'].append({
         'id': 973, 'title': 'Argo CD · all apps', 'type': 'canvas', 'datasource': DS,
         'gridPos': {'x': 12, 'y': 8, 'w': 6, 'h': 8},

@@ -2985,10 +2985,10 @@
               "name": "alertmanager",
               "type": "rectangle",
               "placement": {
-                "left": 0,
-                "top": 26,
-                "width": 57,
-                "height": 40,
+                "left": 0.0,
+                "right": 86.42857142857143,
+                "top": 7.784431137724551,
+                "bottom": 80.23952095808383,
                 "rotation": 0
               },
               "constraint": {
@@ -3025,7 +3025,8 @@
                 {
                   "title": "alertmanager · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/alertmanager",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -3033,10 +3034,10 @@
               "name": "argo-cd",
               "type": "rectangle",
               "placement": {
-                "left": 60,
-                "top": 26,
-                "width": 57,
-                "height": 40,
+                "left": 14.285714285714285,
+                "right": 72.14285714285714,
+                "top": 7.784431137724551,
+                "bottom": 80.23952095808383,
                 "rotation": 0
               },
               "constraint": {
@@ -3073,7 +3074,8 @@
                 {
                   "title": "argo-cd · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/argo-cd",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -3081,10 +3083,10 @@
               "name": "authentik",
               "type": "rectangle",
               "placement": {
-                "left": 120,
-                "top": 26,
-                "width": 57,
-                "height": 40,
+                "left": 28.57142857142857,
+                "right": 57.85714285714286,
+                "top": 7.784431137724551,
+                "bottom": 80.23952095808383,
                 "rotation": 0
               },
               "constraint": {
@@ -3121,7 +3123,8 @@
                 {
                   "title": "authentik · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/authentik",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -3129,10 +3132,10 @@
               "name": "blog",
               "type": "rectangle",
               "placement": {
-                "left": 180,
-                "top": 26,
-                "width": 57,
-                "height": 40,
+                "left": 42.857142857142854,
+                "right": 43.57142857142857,
+                "top": 7.784431137724551,
+                "bottom": 80.23952095808383,
                 "rotation": 0
               },
               "constraint": {
@@ -3169,7 +3172,8 @@
                 {
                   "title": "blog · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/blog",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -3177,10 +3181,10 @@
               "name": "cats",
               "type": "rectangle",
               "placement": {
-                "left": 240,
-                "top": 26,
-                "width": 57,
-                "height": 40,
+                "left": 57.14285714285714,
+                "right": 29.28571428571429,
+                "top": 7.784431137724551,
+                "bottom": 80.23952095808383,
                 "rotation": 0
               },
               "constraint": {
@@ -3217,7 +3221,8 @@
                 {
                   "title": "cats · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/cats",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -3225,10 +3230,10 @@
               "name": "cert-manager",
               "type": "rectangle",
               "placement": {
-                "left": 300,
-                "top": 26,
-                "width": 57,
-                "height": 40,
+                "left": 71.42857142857143,
+                "right": 15.0,
+                "top": 7.784431137724551,
+                "bottom": 80.23952095808383,
                 "rotation": 0
               },
               "constraint": {
@@ -3265,7 +3270,8 @@
                 {
                   "title": "cert-manager · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/cert-manager",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -3273,10 +3279,10 @@
               "name": "cnpg-operator",
               "type": "rectangle",
               "placement": {
-                "left": 360,
-                "top": 26,
-                "width": 57,
-                "height": 40,
+                "left": 85.71428571428571,
+                "right": 0.7142857142857143,
+                "top": 7.784431137724551,
+                "bottom": 80.23952095808383,
                 "rotation": 0
               },
               "constraint": {
@@ -3313,7 +3319,8 @@
                 {
                   "title": "cnpg-operator · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/cnpg-operator",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -3321,10 +3328,10 @@
               "name": "format-quorum",
               "type": "rectangle",
               "placement": {
-                "left": 0,
-                "top": 70,
-                "width": 57,
-                "height": 40,
+                "left": 0.0,
+                "right": 86.42857142857143,
+                "top": 20.958083832335326,
+                "bottom": 67.06586826347305,
                 "rotation": 0
               },
               "constraint": {
@@ -3361,7 +3368,8 @@
                 {
                   "title": "format-quorum · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/format-quorum",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -3369,10 +3377,10 @@
               "name": "grafana",
               "type": "rectangle",
               "placement": {
-                "left": 60,
-                "top": 70,
-                "width": 57,
-                "height": 40,
+                "left": 14.285714285714285,
+                "right": 72.14285714285714,
+                "top": 20.958083832335326,
+                "bottom": 67.06586826347305,
                 "rotation": 0
               },
               "constraint": {
@@ -3409,7 +3417,8 @@
                 {
                   "title": "grafana · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/grafana",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -3417,10 +3426,10 @@
               "name": "grafana-mcp",
               "type": "rectangle",
               "placement": {
-                "left": 120,
-                "top": 70,
-                "width": 57,
-                "height": 40,
+                "left": 28.57142857142857,
+                "right": 57.85714285714286,
+                "top": 20.958083832335326,
+                "bottom": 67.06586826347305,
                 "rotation": 0
               },
               "constraint": {
@@ -3457,7 +3466,8 @@
                 {
                   "title": "grafana-mcp · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/grafana-mcp",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -3465,10 +3475,10 @@
               "name": "harbor",
               "type": "rectangle",
               "placement": {
-                "left": 180,
-                "top": 70,
-                "width": 57,
-                "height": 40,
+                "left": 42.857142857142854,
+                "right": 43.57142857142857,
+                "top": 20.958083832335326,
+                "bottom": 67.06586826347305,
                 "rotation": 0
               },
               "constraint": {
@@ -3505,7 +3515,8 @@
                 {
                   "title": "harbor · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/harbor",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -3513,10 +3524,10 @@
               "name": "img-proxy",
               "type": "rectangle",
               "placement": {
-                "left": 240,
-                "top": 70,
-                "width": 57,
-                "height": 40,
+                "left": 57.14285714285714,
+                "right": 29.28571428571429,
+                "top": 20.958083832335326,
+                "bottom": 67.06586826347305,
                 "rotation": 0
               },
               "constraint": {
@@ -3553,7 +3564,8 @@
                 {
                   "title": "img-proxy · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/img-proxy",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -3561,10 +3573,10 @@
               "name": "kube-state-metrics",
               "type": "rectangle",
               "placement": {
-                "left": 300,
-                "top": 70,
-                "width": 57,
-                "height": 40,
+                "left": 71.42857142857143,
+                "right": 15.0,
+                "top": 20.958083832335326,
+                "bottom": 67.06586826347305,
                 "rotation": 0
               },
               "constraint": {
@@ -3601,7 +3613,8 @@
                 {
                   "title": "kube-state-metrics · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/kube-state-metrics",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -3609,10 +3622,10 @@
               "name": "litellm",
               "type": "rectangle",
               "placement": {
-                "left": 360,
-                "top": 70,
-                "width": 57,
-                "height": 40,
+                "left": 85.71428571428571,
+                "right": 0.7142857142857143,
+                "top": 20.958083832335326,
+                "bottom": 67.06586826347305,
                 "rotation": 0
               },
               "constraint": {
@@ -3649,7 +3662,8 @@
                 {
                   "title": "litellm · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/litellm",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -3657,10 +3671,10 @@
               "name": "litellm-infra",
               "type": "rectangle",
               "placement": {
-                "left": 0,
-                "top": 114,
-                "width": 57,
-                "height": 40,
+                "left": 0.0,
+                "right": 86.42857142857143,
+                "top": 34.13173652694611,
+                "bottom": 53.89221556886228,
                 "rotation": 0
               },
               "constraint": {
@@ -3697,7 +3711,8 @@
                 {
                   "title": "litellm-infra · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/litellm-infra",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -3705,10 +3720,10 @@
               "name": "lms",
               "type": "rectangle",
               "placement": {
-                "left": 60,
-                "top": 114,
-                "width": 57,
-                "height": 40,
+                "left": 14.285714285714285,
+                "right": 72.14285714285714,
+                "top": 34.13173652694611,
+                "bottom": 53.89221556886228,
                 "rotation": 0
               },
               "constraint": {
@@ -3745,7 +3760,8 @@
                 {
                   "title": "lms · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/lms",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -3753,10 +3769,10 @@
               "name": "loki",
               "type": "rectangle",
               "placement": {
-                "left": 120,
-                "top": 114,
-                "width": 57,
-                "height": 40,
+                "left": 28.57142857142857,
+                "right": 57.85714285714286,
+                "top": 34.13173652694611,
+                "bottom": 53.89221556886228,
                 "rotation": 0
               },
               "constraint": {
@@ -3793,7 +3809,8 @@
                 {
                   "title": "loki · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/loki",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -3801,10 +3818,10 @@
               "name": "monitoring-k3s",
               "type": "rectangle",
               "placement": {
-                "left": 180,
-                "top": 114,
-                "width": 57,
-                "height": 40,
+                "left": 42.857142857142854,
+                "right": 43.57142857142857,
+                "top": 34.13173652694611,
+                "bottom": 53.89221556886228,
                 "rotation": 0
               },
               "constraint": {
@@ -3841,7 +3858,8 @@
                 {
                   "title": "monitoring-k3s · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/monitoring-k3s",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -3849,10 +3867,10 @@
               "name": "monitoring-llm",
               "type": "rectangle",
               "placement": {
-                "left": 240,
-                "top": 114,
-                "width": 57,
-                "height": 40,
+                "left": 57.14285714285714,
+                "right": 29.28571428571429,
+                "top": 34.13173652694611,
+                "bottom": 53.89221556886228,
                 "rotation": 0
               },
               "constraint": {
@@ -3889,7 +3907,8 @@
                 {
                   "title": "monitoring-llm · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/monitoring-llm",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -3897,10 +3916,10 @@
               "name": "monori",
               "type": "rectangle",
               "placement": {
-                "left": 300,
-                "top": 114,
-                "width": 57,
-                "height": 40,
+                "left": 71.42857142857143,
+                "right": 15.0,
+                "top": 34.13173652694611,
+                "bottom": 53.89221556886228,
                 "rotation": 0
               },
               "constraint": {
@@ -3937,7 +3956,8 @@
                 {
                   "title": "monori · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/monori",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -3945,10 +3965,10 @@
               "name": "n8n",
               "type": "rectangle",
               "placement": {
-                "left": 360,
-                "top": 114,
-                "width": 57,
-                "height": 40,
+                "left": 85.71428571428571,
+                "right": 0.7142857142857143,
+                "top": 34.13173652694611,
+                "bottom": 53.89221556886228,
                 "rotation": 0
               },
               "constraint": {
@@ -3985,7 +4005,8 @@
                 {
                   "title": "n8n · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/n8n",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -3993,10 +4014,10 @@
               "name": "netbird",
               "type": "rectangle",
               "placement": {
-                "left": 0,
-                "top": 158,
-                "width": 57,
-                "height": 40,
+                "left": 0.0,
+                "right": 86.42857142857143,
+                "top": 47.30538922155689,
+                "bottom": 40.7185628742515,
                 "rotation": 0
               },
               "constraint": {
@@ -4033,7 +4054,8 @@
                 {
                   "title": "netbird · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/netbird",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -4041,10 +4063,10 @@
               "name": "node-exporter",
               "type": "rectangle",
               "placement": {
-                "left": 60,
-                "top": 158,
-                "width": 57,
-                "height": 40,
+                "left": 14.285714285714285,
+                "right": 72.14285714285714,
+                "top": 47.30538922155689,
+                "bottom": 40.7185628742515,
                 "rotation": 0
               },
               "constraint": {
@@ -4081,7 +4103,8 @@
                 {
                   "title": "node-exporter · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/node-exporter",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -4089,10 +4112,10 @@
               "name": "nvidia-device-plugin",
               "type": "rectangle",
               "placement": {
-                "left": 120,
-                "top": 158,
-                "width": 57,
-                "height": 40,
+                "left": 28.57142857142857,
+                "right": 57.85714285714286,
+                "top": 47.30538922155689,
+                "bottom": 40.7185628742515,
                 "rotation": 0
               },
               "constraint": {
@@ -4129,7 +4152,8 @@
                 {
                   "title": "nvidia-device-plugin · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/nvidia-device-plugin",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -4137,10 +4161,10 @@
               "name": "open-terminal",
               "type": "rectangle",
               "placement": {
-                "left": 180,
-                "top": 158,
-                "width": 57,
-                "height": 40,
+                "left": 42.857142857142854,
+                "right": 43.57142857142857,
+                "top": 47.30538922155689,
+                "bottom": 40.7185628742515,
                 "rotation": 0
               },
               "constraint": {
@@ -4177,7 +4201,8 @@
                 {
                   "title": "open-terminal · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/open-terminal",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -4185,10 +4210,10 @@
               "name": "open-webui",
               "type": "rectangle",
               "placement": {
-                "left": 240,
-                "top": 158,
-                "width": 57,
-                "height": 40,
+                "left": 57.14285714285714,
+                "right": 29.28571428571429,
+                "top": 47.30538922155689,
+                "bottom": 40.7185628742515,
                 "rotation": 0
               },
               "constraint": {
@@ -4225,7 +4250,8 @@
                 {
                   "title": "open-webui · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/open-webui",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -4233,10 +4259,10 @@
               "name": "pr-agent",
               "type": "rectangle",
               "placement": {
-                "left": 300,
-                "top": 158,
-                "width": 57,
-                "height": 40,
+                "left": 71.42857142857143,
+                "right": 15.0,
+                "top": 47.30538922155689,
+                "bottom": 40.7185628742515,
                 "rotation": 0
               },
               "constraint": {
@@ -4273,7 +4299,8 @@
                 {
                   "title": "pr-agent · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/pr-agent",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -4281,10 +4308,10 @@
               "name": "private-gateway",
               "type": "rectangle",
               "placement": {
-                "left": 360,
-                "top": 158,
-                "width": 57,
-                "height": 40,
+                "left": 85.71428571428571,
+                "right": 0.7142857142857143,
+                "top": 47.30538922155689,
+                "bottom": 40.7185628742515,
                 "rotation": 0
               },
               "constraint": {
@@ -4321,7 +4348,8 @@
                 {
                   "title": "private-gateway · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/private-gateway",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -4329,10 +4357,10 @@
               "name": "prometheus",
               "type": "rectangle",
               "placement": {
-                "left": 0,
-                "top": 202,
-                "width": 57,
-                "height": 40,
+                "left": 0.0,
+                "right": 86.42857142857143,
+                "top": 60.47904191616767,
+                "bottom": 27.54491017964072,
                 "rotation": 0
               },
               "constraint": {
@@ -4369,7 +4397,8 @@
                 {
                   "title": "prometheus · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/prometheus",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -4377,10 +4406,10 @@
               "name": "prometheus-operator",
               "type": "rectangle",
               "placement": {
-                "left": 60,
-                "top": 202,
-                "width": 57,
-                "height": 40,
+                "left": 14.285714285714285,
+                "right": 72.14285714285714,
+                "top": 60.47904191616767,
+                "bottom": 27.54491017964072,
                 "rotation": 0
               },
               "constraint": {
@@ -4417,7 +4446,8 @@
                 {
                   "title": "prometheus-operator · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/prometheus-operator",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -4425,10 +4455,10 @@
               "name": "pyroscope",
               "type": "rectangle",
               "placement": {
-                "left": 120,
-                "top": 202,
-                "width": 57,
-                "height": 40,
+                "left": 28.57142857142857,
+                "right": 57.85714285714286,
+                "top": 60.47904191616767,
+                "bottom": 27.54491017964072,
                 "rotation": 0
               },
               "constraint": {
@@ -4465,7 +4495,8 @@
                 {
                   "title": "pyroscope · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/pyroscope",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -4473,10 +4504,10 @@
               "name": "rancher",
               "type": "rectangle",
               "placement": {
-                "left": 180,
-                "top": 202,
-                "width": 57,
-                "height": 40,
+                "left": 42.857142857142854,
+                "right": 43.57142857142857,
+                "top": 60.47904191616767,
+                "bottom": 27.54491017964072,
                 "rotation": 0
               },
               "constraint": {
@@ -4513,7 +4544,8 @@
                 {
                   "title": "rancher · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/rancher",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -4521,10 +4553,10 @@
               "name": "remark42",
               "type": "rectangle",
               "placement": {
-                "left": 240,
-                "top": 202,
-                "width": 57,
-                "height": 40,
+                "left": 57.14285714285714,
+                "right": 29.28571428571429,
+                "top": 60.47904191616767,
+                "bottom": 27.54491017964072,
                 "rotation": 0
               },
               "constraint": {
@@ -4561,7 +4593,8 @@
                 {
                   "title": "remark42 · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/remark42",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -4569,10 +4602,10 @@
               "name": "root",
               "type": "rectangle",
               "placement": {
-                "left": 300,
-                "top": 202,
-                "width": 57,
-                "height": 40,
+                "left": 71.42857142857143,
+                "right": 15.0,
+                "top": 60.47904191616767,
+                "bottom": 27.54491017964072,
                 "rotation": 0
               },
               "constraint": {
@@ -4609,7 +4642,8 @@
                 {
                   "title": "root · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/root",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -4617,10 +4651,10 @@
               "name": "rustfs",
               "type": "rectangle",
               "placement": {
-                "left": 360,
-                "top": 202,
-                "width": 57,
-                "height": 40,
+                "left": 85.71428571428571,
+                "right": 0.7142857142857143,
+                "top": 60.47904191616767,
+                "bottom": 27.54491017964072,
                 "rotation": 0
               },
               "constraint": {
@@ -4657,7 +4691,8 @@
                 {
                   "title": "rustfs · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/rustfs",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -4665,10 +4700,10 @@
               "name": "searxng",
               "type": "rectangle",
               "placement": {
-                "left": 0,
-                "top": 246,
-                "width": 57,
-                "height": 40,
+                "left": 0.0,
+                "right": 86.42857142857143,
+                "top": 73.65269461077844,
+                "bottom": 14.37125748502994,
                 "rotation": 0
               },
               "constraint": {
@@ -4705,7 +4740,8 @@
                 {
                   "title": "searxng · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/searxng",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -4713,10 +4749,10 @@
               "name": "socrat-bot",
               "type": "rectangle",
               "placement": {
-                "left": 60,
-                "top": 246,
-                "width": 57,
-                "height": 40,
+                "left": 14.285714285714285,
+                "right": 72.14285714285714,
+                "top": 73.65269461077844,
+                "bottom": 14.37125748502994,
                 "rotation": 0
               },
               "constraint": {
@@ -4753,7 +4789,8 @@
                 {
                   "title": "socrat-bot · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/socrat-bot",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -4761,10 +4798,10 @@
               "name": "socrat-home",
               "type": "rectangle",
               "placement": {
-                "left": 120,
-                "top": 246,
-                "width": 57,
-                "height": 40,
+                "left": 28.57142857142857,
+                "right": 57.85714285714286,
+                "top": 73.65269461077844,
+                "bottom": 14.37125748502994,
                 "rotation": 0
               },
               "constraint": {
@@ -4801,7 +4838,8 @@
                 {
                   "title": "socrat-home · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/socrat-home",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -4809,10 +4847,10 @@
               "name": "spi-triage",
               "type": "rectangle",
               "placement": {
-                "left": 180,
-                "top": 246,
-                "width": 57,
-                "height": 40,
+                "left": 42.857142857142854,
+                "right": 43.57142857142857,
+                "top": 73.65269461077844,
+                "bottom": 14.37125748502994,
                 "rotation": 0
               },
               "constraint": {
@@ -4849,7 +4887,8 @@
                 {
                   "title": "spi-triage · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/spi-triage",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -4857,10 +4896,10 @@
               "name": "syncthing",
               "type": "rectangle",
               "placement": {
-                "left": 240,
-                "top": 246,
-                "width": 57,
-                "height": 40,
+                "left": 57.14285714285714,
+                "right": 29.28571428571429,
+                "top": 73.65269461077844,
+                "bottom": 14.37125748502994,
                 "rotation": 0
               },
               "constraint": {
@@ -4897,7 +4936,8 @@
                 {
                   "title": "syncthing · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/syncthing",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -4905,10 +4945,10 @@
               "name": "tempo",
               "type": "rectangle",
               "placement": {
-                "left": 300,
-                "top": 246,
-                "width": 57,
-                "height": 40,
+                "left": 71.42857142857143,
+                "right": 15.0,
+                "top": 73.65269461077844,
+                "bottom": 14.37125748502994,
                 "rotation": 0
               },
               "constraint": {
@@ -4945,7 +4985,8 @@
                 {
                   "title": "tempo · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/tempo",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -4953,10 +4994,10 @@
               "name": "thanos",
               "type": "rectangle",
               "placement": {
-                "left": 360,
-                "top": 246,
-                "width": 57,
-                "height": 40,
+                "left": 85.71428571428571,
+                "right": 0.7142857142857143,
+                "top": 73.65269461077844,
+                "bottom": 14.37125748502994,
                 "rotation": 0
               },
               "constraint": {
@@ -4993,7 +5034,8 @@
                 {
                   "title": "thanos · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/thanos",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -5001,10 +5043,10 @@
               "name": "traefik-edge",
               "type": "rectangle",
               "placement": {
-                "left": 0,
-                "top": 290,
-                "width": 57,
-                "height": 40,
+                "left": 0.0,
+                "right": 86.42857142857143,
+                "top": 86.82634730538922,
+                "bottom": 1.1976047904191618,
                 "rotation": 0
               },
               "constraint": {
@@ -5041,7 +5083,8 @@
                 {
                   "title": "traefik-edge · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/traefik-edge",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -5049,10 +5092,10 @@
               "name": "umami",
               "type": "rectangle",
               "placement": {
-                "left": 60,
-                "top": 290,
-                "width": 57,
-                "height": 40,
+                "left": 14.285714285714285,
+                "right": 72.14285714285714,
+                "top": 86.82634730538922,
+                "bottom": 1.1976047904191618,
                 "rotation": 0
               },
               "constraint": {
@@ -5089,7 +5132,8 @@
                 {
                   "title": "umami · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/umami",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -5097,10 +5141,10 @@
               "name": "uptime-kuma",
               "type": "rectangle",
               "placement": {
-                "left": 120,
-                "top": 290,
-                "width": 57,
-                "height": 40,
+                "left": 28.57142857142857,
+                "right": 57.85714285714286,
+                "top": 86.82634730538922,
+                "bottom": 1.1976047904191618,
                 "rotation": 0
               },
               "constraint": {
@@ -5137,7 +5181,8 @@
                 {
                   "title": "uptime-kuma · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/uptime-kuma",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -5145,10 +5190,10 @@
               "name": "vllm",
               "type": "rectangle",
               "placement": {
-                "left": 180,
-                "top": 290,
-                "width": 57,
-                "height": 40,
+                "left": 42.857142857142854,
+                "right": 43.57142857142857,
+                "top": 86.82634730538922,
+                "bottom": 1.1976047904191618,
                 "rotation": 0
               },
               "constraint": {
@@ -5185,7 +5230,8 @@
                 {
                   "title": "vllm · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/vllm",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -5193,10 +5239,10 @@
               "name": "vpn-transit",
               "type": "rectangle",
               "placement": {
-                "left": 240,
-                "top": 290,
-                "width": 57,
-                "height": 40,
+                "left": 57.14285714285714,
+                "right": 29.28571428571429,
+                "top": 86.82634730538922,
+                "bottom": 1.1976047904191618,
                 "rotation": 0
               },
               "constraint": {
@@ -5233,7 +5279,8 @@
                 {
                   "title": "vpn-transit · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/vpn-transit",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -5241,10 +5288,10 @@
               "name": "wiki-runtime",
               "type": "rectangle",
               "placement": {
-                "left": 300,
-                "top": 290,
-                "width": 57,
-                "height": 40,
+                "left": 71.42857142857143,
+                "right": 15.0,
+                "top": 86.82634730538922,
+                "bottom": 1.1976047904191618,
                 "rotation": 0
               },
               "constraint": {
@@ -5281,7 +5328,8 @@
                 {
                   "title": "wiki-runtime · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/wiki-runtime",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -5289,10 +5337,10 @@
               "name": "x-ui",
               "type": "rectangle",
               "placement": {
-                "left": 360,
-                "top": 290,
-                "width": 57,
-                "height": 40,
+                "left": 85.71428571428571,
+                "right": 0.7142857142857143,
+                "top": 86.82634730538922,
+                "bottom": 1.1976047904191618,
                 "rotation": 0
               },
               "constraint": {
@@ -5329,7 +5377,8 @@
                 {
                   "title": "x-ui · Open in Argo CD",
                   "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/x-ui",
-                  "targetBlank": true
+                  "targetBlank": true,
+                  "oneClick": true
                 }
               ]
             },
@@ -5337,10 +5386,10 @@
               "name": "Legend 0",
               "type": "rectangle",
               "placement": {
-                "left": 0,
-                "top": 0,
-                "width": 57,
-                "height": 18,
+                "left": 0.0,
+                "right": 86.42857142857143,
+                "top": 0.0,
+                "bottom": 94.61077844311377,
                 "rotation": 0
               },
               "constraint": {
@@ -5377,10 +5426,10 @@
               "name": "Legend 1",
               "type": "rectangle",
               "placement": {
-                "left": 60,
-                "top": 0,
-                "width": 57,
-                "height": 18,
+                "left": 14.285714285714285,
+                "right": 72.14285714285714,
+                "top": 0.0,
+                "bottom": 94.61077844311377,
                 "rotation": 0
               },
               "constraint": {
@@ -5417,10 +5466,10 @@
               "name": "Legend 2",
               "type": "rectangle",
               "placement": {
-                "left": 120,
-                "top": 0,
-                "width": 57,
-                "height": 18,
+                "left": 28.57142857142857,
+                "right": 57.85714285714286,
+                "top": 0.0,
+                "bottom": 94.61077844311377,
                 "rotation": 0
               },
               "constraint": {
@@ -5457,10 +5506,10 @@
               "name": "Legend 3",
               "type": "rectangle",
               "placement": {
-                "left": 180,
-                "top": 0,
-                "width": 57,
-                "height": 18,
+                "left": 42.857142857142854,
+                "right": 43.57142857142857,
+                "top": 0.0,
+                "bottom": 94.61077844311377,
                 "rotation": 0
               },
               "constraint": {
@@ -5497,10 +5546,10 @@
               "name": "Legend 4",
               "type": "rectangle",
               "placement": {
-                "left": 240,
-                "top": 0,
-                "width": 57,
-                "height": 18,
+                "left": 57.14285714285714,
+                "right": 29.28571428571429,
+                "top": 0.0,
+                "bottom": 94.61077844311377,
                 "rotation": 0
               },
               "constraint": {
@@ -5537,10 +5586,10 @@
               "name": "Legend 5",
               "type": "rectangle",
               "placement": {
-                "left": 300,
-                "top": 0,
-                "width": 57,
-                "height": 18,
+                "left": 71.42857142857143,
+                "right": 15.0,
+                "top": 0.0,
+                "bottom": 94.61077844311377,
                 "rotation": 0
               },
               "constraint": {
@@ -5577,10 +5626,10 @@
               "name": "Legend 6",
               "type": "rectangle",
               "placement": {
-                "left": 360,
-                "top": 0,
-                "width": 57,
-                "height": 18,
+                "left": 85.71428571428571,
+                "right": 0.7142857142857143,
+                "top": 0.0,
+                "bottom": 94.61077844311377,
                 "rotation": 0
               },
               "constraint": {
