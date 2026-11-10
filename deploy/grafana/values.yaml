@@ -2,5 +2,5 @@
 # Updated by deploy-to-socrat@v1, app=grafana, component=gateway.
 gateway:
   repository: harbor.socrat.alchemmist.xyz/homelab/spi-triage
-  tag: b70462de66a3ffcfad6c3b86c74d8c45664080ca
-  digest: sha256:eb830c98ccd6d19ef8535fcb5be003d783cb4aeb98d18fe64e66c1f51a37f64a
+  tag: f7e712ec38d544b835c9f66114a8661767984007
+  digest: sha256:90d4e03023fd4b043d58f0c42461d43fc2fcdc8a07bb24bf62177f6c9afe877c
