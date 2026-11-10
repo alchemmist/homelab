@@ -6,8 +6,10 @@
 успешен, SSH22 root key-only. Новый согласованный идентификатор **socrat-5**,
 mesh **10.250.0.41/32**, peer только Moscow.40. На Москве source-scoped pre-DNAT
 изоляция+boot dependency и один persistent/runtime WG peer приняты без restart;
-старые peers и VPN relay healthy сохранены. **Handshake пока0, owner client не
-запущен; SSH/end-to-end negative isolation/K3s/LXC suitability НЕ приняты.**
+старые peers и VPN relay healthy сохранены. **Owner запустил WG: handshake/ping приняты; native SSH root по independently
+pinned ED25519 принят, Ansible pipelining работает. Один negative TCP443 probe
+из.41 к Moscow.40 получил timeout. Полная mesh/failure/isolation matrix и
+K3s/LXC suitability НЕ приняты.**
 [Runbook, source, fingerprint и pending gates](../docs/socrat-5-bootstrap-20261110.md).
 Не включать socrat-5 в Socrat/full-mesh/K3s и не переигрывать one-time admission.
 

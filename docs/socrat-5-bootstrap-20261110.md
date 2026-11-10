@@ -53,3 +53,37 @@ onto gateway to obtain access. Hostname may be changed to socrat-5 after SSH.
 LXC nested-container/cgroup/mount/CNI suitability for K3s is a separate unproven gate;
 no automatic privileged-container expansion, K3s install or cluster membership.
 The earlier session's accepted VPN runtime and deferred RF/NL split remain unchanged.
+
+## Subsequent SSH acceptance (supersedes handshake0/pending SSH above)
+
+Owner started client: actual ping replies, handshake and counters accepted.
+Gateway keyscan ED25519 matched independently supplied fingerprint exactly; strict
+native SSH authenticated root using controller's existing personal_server key.
+Scoped ProxyCommand runs only SSH TCP forwarding through pinned Moscow; no agent
+forwarding/private key copied to gateway and no global SSH/Mac routes changes.
+Guest read-only facts: current hostname testing-class, Debian LXC/x86_64,10 CPUs
+visible,40GiB MemTotal,1GiB swap,98GiB root filesystem (92GiB available),cgroup2fs.
+Guest-visible resources are not proof of physical reservation/nesting viability.
+WG and SSH active, expected WG public key/only.40 AllowedIPs, no k3s binary.
+
+Ansible root command accepted with pipelining. A controller known-hosts path with
+spaces initially failed strict gateway lookup; corrected only scoped pin-file
+path, never weakened checking. SFTP/SCP transfer warnings on initial non-pipelined
+command; pipelining subsequently works, no SSH restart/package workaround.
+Controlled guest-source.41 TCP connect to gateway.40:443 timed out as intended;
+this is ONE negative case, not complete transit/peer failure acceptance.
+
+Durable private controller access inventory/evidence at
+`~/Library/Application Support/homelab/socrat5-bootstrap/`; explicit bootstrap_only
+group, NOT Socrat/cluster membership. Dedicated pinned trust file
+`~/.ssh/known_hosts.d/socrat5-bootstrap`, no global config edits.
+Temporary scripts not required for this durable access. Root private key stays
+on controller, user's WG private key stays on guest. No hostname/config/packages/
+services changes on guest beyond owner actions; no K3s install or mesh expansion.
+
+Owner clarified full intent: socrat-5 is a general future cluster node, unrelated
+to VPN transit. Moscow peer is temporary bootstrap, not final hub architecture.
+Next design/accept full inter-node connectivity and real redundant paths including
+NAT-to-NAT constraints; do not claim WireGuard automatically relays/re-routes or
+that current one-peer isolation permits K3s. Preserve existing mesh endpoints/
+management independence; no key rotation or blind reexecution of admission.
