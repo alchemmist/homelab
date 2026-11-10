@@ -137,3 +137,33 @@ Runtime access is currently unavailable: default kubeconfig reaches obsolete/
 unreachable `192.168.0.23:6443`; SSH stops at missing trusted host key. No runtime
 provider/Secret/ingress or image was changed and no production gate approved.
 This receipt does not claim a live migration or human-login acceptance.
+
+
+## Runtime checkpoint — 10 November 2026, cutover held
+
+- DNS was applied only to the three existing authoritative nodes; Google and
+  Cloudflare independently resolve the exact SPI name. There is no wildcard.
+- A fresh encrypted IdP backup was authenticated and its PG dump/archive structure
+  checked off-cluster (not a full restore test). Native SPI provider/application,
+  empty app operator group and admission bindings were created and read back;
+  exact discovery issuer/RS256/S256 and frontend-only Secret/journal match verified.
+- Git commits `793e053` and `a7def56` hold this child Application auto-sync and stage
+  the native flag/mount/route. The live child hold was confirmed. Do not manually
+  sync this incomplete desired state: the native image is not yet committed.
+- The bounded drain attempt found logical owner/execution `15619` still active.
+  n8n filtered lists can be transiently empty during Wait/resume; they are NOT
+  idle evidence without direct SQLite owner/inflight/processing/paid readback.
+- Operator error: a shell sequence submitted protected publication approval after
+  the preceding drain assertion failed. Run `42716258046` was immediately cancelled;
+  publish-and-deploy is cancelled, no robot image update occurred, hold remains
+  active, and worker/frontend still run the original `eb830c98...` digest. Future
+  approval must be inside the same fail-closed control flow as all verified gates,
+  never a following unguarded shell command.
+- The bounded maintenance attempt was closed by reactivating the same original
+  workflow in place; its current execution/Wait was not cancelled, reset or replayed.
+  Normal durable intake/new scheduling resumes. No model budgets/leases were reset.
+- Next: obtain a stable complete natural drain, keep the Git-owned hold, capture
+  private idle integrity/history readback, rerun standard CI publication with fresh
+  guarded approval, verify the combined digest+flag+Secret revision, then release
+  only the child hold and perform exact-digest/history/TLS/native-login acceptance.
+  Until then HTTPS/native UI is NOT accepted as working.
