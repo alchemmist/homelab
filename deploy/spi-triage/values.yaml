@@ -23,8 +23,8 @@ legacyImagePullSecrets:
 bundleEnabled: true
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/spi-triage
-  tag: 2215c10a9080ff76d5775045058d469a3758e889
-  digest: sha256:3decd9718166f64ad83a25aac59de1c4dc0f7bb1e37923118257e2a9ac36d04d
+  tag: c7c7942ac76a0b74ef69cb34b39364108308e3c3
+  digest: sha256:6356ec327f5cfe3d438589778c68ae6cca735b0ef379e43fccd260e3d7ef9960
 imagePullSecrets:
 - name: spi-triage-harbor-pull
 
