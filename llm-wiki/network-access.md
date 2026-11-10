@@ -108,7 +108,7 @@ PUT/POST/PATCH/DELETE405. [Приёмка](../docs/identity/native-browser-auth.
 | Независимое восстановление Mac | Standalone WireGuard, обычно выключен; owner client `.4` |
 | Обязательный рабочий VPN Mac | Tunnelblick, не выключать и не перенастраивать |
 
-Межнодовый `wg-socrat` остаётся отдельной сетью Kubernetes/узлов: переход человеческого доступа на NetBird его не заменяет. Обычные SSH aliases закреплены за внутренними адресами и pinned host keys, без public fallback/ProxyJump. Не чинить SSH удалением known_hosts, ослаблением TLS/host-key checks или изменением корпоративных маршрутов.
+Межнодовый `wg-socrat` остаётся отдельной сетью Kubernetes/узлов: переход человеческого доступа на NetBird его не заменяет. С 2026-11-10 по указанию владельца обычные SSH aliases 0/1/2/4 используют публичные SSH endpoints; только непубличные 3/5 идут через ProxyJump socrat-0. Pinned host keys сохранены. См. актуальную таблицу в docs/mac-private-ssh.md. Не чинить SSH удалением known_hosts, ослаблением TLS/host-key checks или изменением корпоративных маршрутов.
 
 Tunnelblick в приёмках сохранял тот же процесс (тогда PID 40769). Это историческое доказательство, не вечный PID для будущих команд: перед новыми действиями сверить актуальный процесс. Глобальный DNS, corporate resolvers/routes и VPN-профили Mac не менять; cache flush/HUP не использовать.
 

@@ -1,5 +1,13 @@
 # Socrat: текущий контекст
 
+## SSH management policy — owner override 2026-11-10
+
+Ordinary Mac aliases 0/1/2/4 now use public SSH directly (HOME WAN forwarded
+2222/2223, NL .60:2222, Moscow :2222). Only private workers3/5 use ProxyJump0.
+All six real SSH logins accepted; strict pins retained, no Mac route/DNS/VPN
+changes. Do not restore the older internal-only alias policy.
+[Current table](../docs/mac-private-ssh.md).
+
 ## socrat-5 full headless setup — IN PROGRESS
 
 Owner authorized general worker, not VPN transit. Account/shell/verified bottom,
