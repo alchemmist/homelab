@@ -17,3 +17,6 @@ wireguard_private_http_enabled: false
 wireguard_private_http_public_port: 80
 wireguard_private_http_proxy_port: 18080
 wireguard_private_web_pod_cidrs: []
+
+# Machine relay only; not a human/private-web authorization grant.
+wireguard_private_web_passthrough_sources: []

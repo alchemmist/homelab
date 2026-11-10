@@ -31,7 +31,7 @@ fi
     printf 'add table ip %s\n' "$table"
     printf 'add chain ip %s prerouting { type nat hook prerouting priority -110; policy accept; }\n' "$table"
     printf 'add chain ip %s output { type nat hook output priority -110; policy accept; }\n' "$table"
-    printf 'add rule ip %s prerouting iifname %s ip daddr %s tcp dport %s dnat to %s:%s\n' "$table" "$interface" "$node_address" "$public_port" "$node_address" "$proxy_port"
+    printf 'add rule ip %s prerouting iifname %s {% if wireguard_private_web_passthrough_sources | default([]) | length %}ip saddr != { {{ wireguard_private_web_passthrough_sources | join(", ") }} } {% endif %}ip daddr %s tcp dport %s dnat to %s:%s\n' "$table" "$interface" "$node_address" "$public_port" "$node_address" "$proxy_port"
     printf 'add rule ip %s output ip daddr %s tcp dport %s dnat to %s:%s\n' "$table" "$node_address" "$public_port" "$node_address" "$proxy_port"
 {% for cidr in wireguard_private_web_pod_cidrs %}
     printf 'add rule ip %s prerouting iifname cni0 ip saddr %s ip daddr %s tcp dport %s dnat to %s:%s\n' "$table" {{ cidr | quote }} "$node_address" "$public_port" "$node_address" "$proxy_port"

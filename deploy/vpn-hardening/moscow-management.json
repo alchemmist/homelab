@@ -34,8 +34,7 @@
   "outbounds": [
     {
       "tag": "fixed-destination",
-      "protocol": "freedom",
-      "sendThrough": "10.250.0.40"
+      "protocol": "freedom"
     }
   ]
 }

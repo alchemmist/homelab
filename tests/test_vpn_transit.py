@@ -10,6 +10,7 @@ def test_fixed_destinations_and_public_backend_protection():
     config = json.loads((ROOT / 'deploy/vpn-hardening/moscow-transit.json').read_text())
     management = json.loads((ROOT / 'deploy/vpn-hardening/moscow-management.json').read_text())
     assert config['outbounds'] == [{'tag': 'fixed-destination', 'protocol': 'freedom', 'sendThrough': '10.250.0.40'}]
+    assert 'sendThrough' not in management['outbounds'][0]
     ports = set()
     for inbound in config['inbounds'] + management['inbounds']:
         assert inbound['protocol'] == 'tunnel'

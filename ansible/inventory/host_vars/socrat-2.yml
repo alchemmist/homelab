@@ -19,3 +19,6 @@ public_dns_transit_listener_enabled: true
 # Measured native etcd catch-up exceeds180s over the Moscow management relay.
 # Bound service startup, never disable corruption/health checks.
 vpn_failover_kubernetes_start_timeout_seconds: 600
+
+# Exact machine exception: relay HTTPS must reach Traefik, not human private web.
+wireguard_private_web_passthrough_sources: ["10.250.0.40"]

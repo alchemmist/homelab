@@ -26,7 +26,10 @@ def active(unit):return run(['systemctl','is-active','--quiet',unit],check=False
 def free_ports():
  for typ,ports in [(socket.SOCK_STREAM,TCP),(socket.SOCK_DGRAM,UDP)]:
   for port in ports:
-   with socket.socket(socket.AF_INET,typ) as s:s.bind(('0.0.0.0',port))
+   with socket.socket(socket.AF_INET,typ) as s:
+    # Match Go TCP listeners: TIME_WAIT is not a live port owner. Never reuse UDP.
+    if typ==socket.SOCK_STREAM:s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+    s.bind(('0.0.0.0',port))
  return True
 
 def identity(pid,cid):
