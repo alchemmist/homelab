@@ -259,3 +259,14 @@ Keep old IP/control path until parallel cutover; no provider purchase/replace wi
 owner authorization. Do not silently shift VPN users onto HOME IP (risks all home/
 infra endpoints). Mobile failure is owner-reported. Root-cause incident still open;
 accepted config migration is not evidence of ongoing availability/IP-ban immunity.
+
+## Следующий этап: RF/NL policy research, 10 ноября — не внедрено
+
+[Исследование источников, рисков и архитектуры](../docs/vpn-split-routing-research-20261110.md).
+Native read-only подтвердил: панель уже выдаёт intent Happ routing/onadd с49
+DirectSites (не отдельный GeoIP-классификатор); активность на телефонах не проверена.
+Серверный runtime пока только api/private-block/default NL. Предложение — RF default,
+явный проверяемый foreign allowlist, no cross-country fail-open. Москва пока opaque
+relay: настоящая классификация на ней требует переноса VPN termination/auth/accounting.
+Менее инвазивная альтернатива — правила в NL и private Moscow egress с лишним сетевым
+кругом; это не считать классификацией на Москве. Production/ключи/подписки не менялись.
