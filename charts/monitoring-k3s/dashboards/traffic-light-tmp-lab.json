@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "Argo successful sync increments between raw samples at 15s resolution, root excluded. Canonical TV unchanged.",
+  "description": "Argo application state landscape over the dashboard range, root excluded. Canonical TV unchanged.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -2844,7 +2844,7 @@
       "type": "timeseries"
     },
     {
-      "id": 974,
+      "id": 975,
       "title": "",
       "type": "timeseries",
       "datasource": {
@@ -2857,7 +2857,7 @@
         "w": 6,
         "h": 7
       },
-      "description": "Successful sync count between the last two observed counter samples, not a rolling 15-minute total. Raw Argo samples were verified 15s apart; query step is 15s. A 45s lookback only finds the last two samples; it does not sum or smooth 45s of activity. Counter resets contribute the current value after reset. Sync is not necessarily a Pod redeploy. No exact event timestamp or activity before the first observation can be recovered. Longer gaps can aggregate multiple operations into one observation. Known counters without two recent samples remain gaps; apps with no initialized success counter show zero while app/scrape telemetry is fresh. root and retired apps excluded. No legend; hover for app/time/count.",
+      "description": "Stacked application counts by observed Argo state over the selected range, sampled every15s. root excluded. Dark green = Healthy+Synced; blue = Progressing/Suspended; amber = drift; red = Degraded/Missing; grey = Unknown/unrecognized states. Each app contributes once. Priority: Unhealthy > Unknown > Progressing/paused > drift > Ready. Latest timestamp wins over older state label sets. Fresh zeros require app telemetry; missing/down/partially stale scrapes remain gaps. All applications are counted, not top-k. Progressing is not proof of a Pod rollout; Suspended is paused. A changing total may reflect added/removed apps or unavailable inventory after lookback expiry. Hover shows counts, not individual app names or root cause. No sync counter/event smoothing.",
       "interval": "15s",
       "maxDataPoints": 10000,
       "targets": [
@@ -2866,9 +2866,61 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "((sum by(name) (((idelta(argocd_app_sync_total{job=\"socrat-argocd\",name!=\"root\",phase=\"Succeeded\"}[45s]) >= 0) or ((0 + argocd_app_sync_total{job=\"socrat-argocd\",name!=\"root\",phase=\"Succeeded\"}) and (idelta(argocd_app_sync_total{job=\"socrat-argocd\",name!=\"root\",phase=\"Succeeded\"}[45s]) < 0))) and (time() - timestamp(argocd_app_sync_total{job=\"socrat-argocd\",name!=\"root\",phase=\"Succeeded\"}) < 90)) or ((0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) < 90)))) unless on(name) count by(name) (argocd_app_sync_total{job=\"socrat-argocd\",name!=\"root\",phase=\"Succeeded\"}))) and on(name) max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) < 90)))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1)",
-          "legendFormat": "{{name}}",
+          "expr": "((count(((4 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (2 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (1 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}))))))) == 0) or (0 * count(((4 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (2 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (1 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))))))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1)) and on() (count(max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) == count(max by(name) (argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))",
+          "legendFormat": "Ready",
           "refId": "A",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "interval": "15s"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "((count(((4 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (2 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (1 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}))))))) == 2) or (0 * count(((4 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (2 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (1 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))))))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1)) and on() (count(max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) == count(max by(name) (argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))",
+          "legendFormat": "Progressing / paused",
+          "refId": "B",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "interval": "15s"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "((count(((4 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (2 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (1 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}))))))) == 1) or (0 * count(((4 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (2 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (1 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))))))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1)) and on() (count(max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) == count(max by(name) (argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))",
+          "legendFormat": "Git drift",
+          "refId": "C",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "interval": "15s"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "((count(((4 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (2 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (1 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}))))))) == 4) or (0 * count(((4 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (2 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (1 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))))))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1)) and on() (count(max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) == count(max by(name) (argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))",
+          "legendFormat": "Unhealthy",
+          "refId": "D",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "interval": "15s"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "((count(((4 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (2 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (1 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}))))))) == 3) or (0 * count(((4 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (2 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (1 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))))))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1)) and on() (count(max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) == count(max by(name) (argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))",
+          "legendFormat": "Unknown",
+          "refId": "E",
           "instant": false,
           "range": true,
           "format": "time_series",
@@ -2884,31 +2936,23 @@
           "color": {
             "mode": "palette-classic"
           },
-          "links": [
-            {
-              "title": "Open application in Argo CD",
-              "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/${__field.labels.name}",
-              "targetBlank": true
-            }
-          ],
           "custom": {
             "drawStyle": "line",
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "fillOpacity": 0,
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 1,
+            "fillOpacity": 85,
             "gradientMode": "none",
             "showPoints": "never",
             "spanNulls": false,
             "insertNulls": 45000,
             "stacking": {
-              "mode": "none",
-              "group": "A"
+              "mode": "normal",
+              "group": "argo-state"
             },
             "axisPlacement": "left",
             "axisLabel": "",
             "axisBorderShow": false,
             "axisGridShow": true,
-            "axisSoftMax": 2,
             "scaleDistribution": {
               "type": "linear"
             },
@@ -2926,14 +2970,14 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "alertmanager"
+              "options": "Ready"
             },
             "properties": [
               {
                 "id": "color",
                 "value": {
                   "mode": "fixed",
-                  "fixedColor": "#EA985C"
+                  "fixedColor": "#173B2B"
                 }
               }
             ]
@@ -2941,14 +2985,14 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "argo-cd"
+              "options": "Progressing / paused"
             },
             "properties": [
               {
                 "id": "color",
                 "value": {
                   "mode": "fixed",
-                  "fixedColor": "#EB5BC9"
+                  "fixedColor": "#5794F2"
                 }
               }
             ]
@@ -2956,14 +3000,14 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "authentik"
+              "options": "Git drift"
             },
             "properties": [
               {
                 "id": "color",
                 "value": {
                   "mode": "fixed",
-                  "fixedColor": "#EA765C"
+                  "fixedColor": "#FFB357"
                 }
               }
             ]
@@ -2971,14 +3015,14 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "blog"
+              "options": "Unhealthy"
             },
             "properties": [
               {
                 "id": "color",
                 "value": {
                   "mode": "fixed",
-                  "fixedColor": "#EF57CD"
+                  "fixedColor": "#F2495C"
                 }
               }
             ]
@@ -2986,659 +3030,14 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "cats"
+              "options": "Unknown"
             },
             "properties": [
               {
                 "id": "color",
                 "value": {
                   "mode": "fixed",
-                  "fixedColor": "#EA5CDD"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "cert-manager"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#E660B0"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "cnpg-operator"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#E562DF"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "format-quorum"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#68DE76"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "grafana"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#C561E6"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "grafana-mcp"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#DFCB68"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "harbor"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#A963E3"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "img-proxy"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#6B64E2"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "kube-state-metrics"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#64E2AF"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "litellm"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#E661CE"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "litellm-infra"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#E59662"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "lms"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#60BFE6"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "loki"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#5E9AE8"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "monitoring-k3s"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#68DEA2"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "monitoring-llm"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#8E56F0"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "monori"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#E46263"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "n8n"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#65E18E"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "netbird"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#E8CB5E"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "node-exporter"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#E4CC63"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "nvidia-device-plugin"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#EB5B96"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "open-terminal"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#5CCCEA"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "open-webui"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#E65EE9"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "pr-agent"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#65E195"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "private-gateway"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#E46A63"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "prometheus"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#DFAB68"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "prometheus-operator"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#7659EE"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "pyroscope"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#7265E1"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "rancher"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#E36863"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "remark42"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#6396E3"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "rustfs"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#61DAE5"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "searxng"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#57EFE7"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "socrat-bot"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#E85EC2"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "socrat-home"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#E5AF62"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "spi-triage"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#5CE8EB"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "syncthing"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#E462C4"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "tempo"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#67BAE0"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "thanos"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#C160E6"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "traefik-edge"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#945CEA"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "umami"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#E1D365"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "uptime-kuma"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#76E067"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "vllm"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#EE599D"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "vpn-transit"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#DFA667"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "wiki-runtime"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#9158EF"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "x-ui"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#B65FE7"
+                  "fixedColor": "#808080"
                 }
               }
             ]
@@ -3647,14 +3046,15 @@
       },
       "options": {
         "legend": {
-          "showLegend": false,
+          "showLegend": true,
           "displayMode": "list",
           "placement": "bottom",
           "calcs": []
         },
         "tooltip": {
-          "mode": "single",
-          "sort": "none"
+          "mode": "all",
+          "sort": "desc",
+          "hideZeros": true
         }
       }
     },

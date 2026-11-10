@@ -1,58 +1,50 @@
 #!/usr/bin/env python3
-"""Build only the TMP Argo per-application sync line chart; never edit TV."""
-import colorsys
+"""Build only the TMP Argo state landscape, never edit the canonical TV."""
 import copy
-import hashlib
 import json
 from pathlib import Path
-
-import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / 'charts/monitoring-k3s/dashboards/traffic-light.json'
 OUTPUT = ROOT / 'charts/monitoring-k3s/dashboards/traffic-light-tmp-lab.json'
 DS = {'type': 'prometheus', 'uid': 'prometheus'}
+STATES = [('Ready', 0, '#173B2B'), ('Progressing / paused', 2, '#5794F2'),
+          ('Git drift', 1, '#FFB357'), ('Unhealthy', 4, '#F2495C'), ('Unknown', 3, '#808080')]
 
 
-def fresh(metric, selector):
-    return f'({metric}{{{selector}}} and (time() - timestamp({metric}{{{selector}}}) < 90))'
-
-
-def query():
+def queries():
     selector = 'job="socrat-argocd",name!="root"'
-    counter = f'argocd_app_sync_total{{{selector},phase="Succeeded"}}'
-    apps = f'max by(name) ({fresh("argocd_app_info", selector)})'
-    # Last two raw samples, not extrapolated rolling increase. Reset between
-    # those samples contributes the current counter value, never a negative spike.
-    delta = f'idelta({counter}[45s])'
-    per_counter = f'(({delta} >= 0) or ((0 + {counter}) and ({delta} < 0)))'
-    increments = f'sum by(name) ({per_counter} and (time() - timestamp({counter}) < 90))'
-    gate = '(max(up{job="socrat-argocd"} == 1 and (time() - timestamp(up{job="socrat-argocd"}) < 90)) == 1)'
-    # Zero only for apps with no initialized success counter. If a known counter
-    # lacks two recent samples, retain a gap instead of inventing a quiet zero.
-    uninitialized = f'((0 * {apps}) unless on(name) count by(name) ({counter}))'
-    return f'(({increments} or {uninitialized}) and on(name) {apps}) and on() {gate}'
+    raw = f'argocd_app_info{{{selector}}}'
+    newest = f'max by(name) (timestamp({raw}))'
 
+    def latest(extra=''):
+        metric = f'argocd_app_info{{{selector}{"," + extra if extra else ""}}}'
+        # Discard old label sets lingering after a state change in OTLP storage.
+        return f'({metric} and (time() - timestamp({metric}) < 90) and (timestamp({metric}) == on(name) group_left {newest}))'
 
-def application_names():
-    names = []
-    paths = sorted((ROOT / 'deploy/argocd/apps').glob('*.yaml')) + [ROOT / 'deploy/argocd/root.yaml']
-    for path in paths:
-        for doc in yaml.safe_load_all(path.read_text()):
-            if isinstance(doc, dict) and doc.get('kind') == 'Application':
-                names.append(doc['metadata']['name'])
-    if len(names) != len(set(names)):
-        raise ValueError('Duplicate Argo application names')
-    return sorted(name for name in names if name != 'root')
+    apps = f'max by(name) ({latest()})'
+    def state(code, extra):
+        return f'({code} * max by(name) ({latest(extra)}))'
 
-
-def application_color(name):
-    # Stable per name: adding/removing or reordering another app changes no color.
-    digest = hashlib.sha256(name.encode()).digest()
-    hue = int.from_bytes(digest[:4], 'big') / 2**32
-    saturation = 0.64 + digest[4] / 255 * 0.20
-    red, green, blue = colorsys.hls_to_rgb(hue, 0.64, saturation)
-    return '#{:02X}{:02X}{:02X}'.format(round(red * 255), round(green * 255), round(blue * 255))
+    # Union is left-biased after aggregation by name: exactly one code per app.
+    state_expr = '(' + ' or '.join([
+        state(4, 'health_status=~"Degraded|Missing"'),
+        state(3, 'health_status!~"Healthy|Progressing|Suspended|Degraded|Missing"'),
+        state(3, 'sync_status!~"Synced|OutOfSync"'),
+        state(2, 'health_status=~"Progressing|Suspended"'),
+        state(1, 'sync_status="OutOfSync"'),
+        state(0, 'health_status="Healthy",sync_status="Synced"'),
+        f'(3 * {apps})',
+    ]) + ')'
+    gate = ('(max(up{job="socrat-argocd"} == 1 and '
+            '(time() - timestamp(up{job="socrat-argocd"}) < 90)) == 1)')
+    # A partially stale scrape must not silently become a smaller healthy total.
+    complete = f'(count({apps}) == count(max by(name) ({raw})))'
+    result = []
+    for name, code, color in STATES:
+        expr = f'((count({state_expr} == {code}) or (0 * count({state_expr}))) and on() {gate}) and on() {complete}'
+        result.append((name, expr, color))
+    return state_expr, result
 
 
 def build():
@@ -60,35 +52,34 @@ def build():
     d.pop('id', None)
     d.pop('version', None)
     d.update(uid='socrat-traffic-light-tmp-lab', title='Traffic Light · TMP Lab',
-             description='Argo successful sync increments between raw samples at 15s resolution, root excluded. Canonical TV unchanged.',
+             description='Argo application state landscape over the dashboard range, root excluded. Canonical TV unchanged.',
              tags=d.get('tags', []) + ['temporary', 'sandbox'])
     d['panels'] = [p for p in d['panels'] if p['id'] != 909]
+    groups = queries()[1]
     d['panels'].append({
-        'id': 974, 'title': '', 'type': 'timeseries', 'datasource': DS,
+        'id': 975, 'title': '', 'type': 'timeseries', 'datasource': DS,
         'gridPos': {'x': 12, 'y': 8, 'w': 6, 'h': 7},
-        'description': 'Successful sync count between the last two observed counter samples, not a rolling 15-minute total. Raw Argo samples were verified 15s apart; query step is 15s. A 45s lookback only finds the last two samples; it does not sum or smooth 45s of activity. Counter resets contribute the current value after reset. Sync is not necessarily a Pod redeploy. No exact event timestamp or activity before the first observation can be recovered. Longer gaps can aggregate multiple operations into one observation. Known counters without two recent samples remain gaps; apps with no initialized success counter show zero while app/scrape telemetry is fresh. root and retired apps excluded. No legend; hover for app/time/count.',
+        'description': 'Stacked application counts by observed Argo state over the selected range, sampled every15s. root excluded. Dark green = Healthy+Synced; blue = Progressing/Suspended; amber = drift; red = Degraded/Missing; grey = Unknown/unrecognized states. Each app contributes once. Priority: Unhealthy > Unknown > Progressing/paused > drift > Ready. Latest timestamp wins over older state label sets. Fresh zeros require app telemetry; missing/down/partially stale scrapes remain gaps. All applications are counted, not top-k. Progressing is not proof of a Pod rollout; Suspended is paused. A changing total may reflect added/removed apps or unavailable inventory after lookback expiry. Hover shows counts, not individual app names or root cause. No sync counter/event smoothing.',
         'interval': '15s', 'maxDataPoints': 10000,
-        'targets': [{'datasource': DS, 'expr': query(), 'legendFormat': '{{name}}', 'refId': 'A',
-                     'instant': False, 'range': True, 'format': 'time_series', 'interval': '15s'}],
+        'targets': [{'datasource': DS, 'expr': expr, 'legendFormat': name, 'refId': chr(65 + i),
+                     'instant': False, 'range': True, 'format': 'time_series', 'interval': '15s'}
+                    for i, (name, expr, _) in enumerate(groups)],
         'fieldConfig': {'defaults': {'unit': 'short', 'decimals': 0, 'min': 0, 'noValue': 'No telemetry',
                                     'color': {'mode': 'palette-classic'},
-                                    'links': [{'title': 'Open application in Argo CD',
-                                               'url': 'https://argocd.socrat.alchemmist.xyz/applications/argocd/${__field.labels.name}',
-                                               'targetBlank': True}],
-                                    'custom': {'drawStyle': 'line', 'lineInterpolation': 'linear', 'lineWidth': 2,
-                                               'fillOpacity': 0, 'gradientMode': 'none', 'showPoints': 'never',
+                                    'custom': {'drawStyle': 'line', 'lineInterpolation': 'stepAfter', 'lineWidth': 1,
+                                               'fillOpacity': 85, 'gradientMode': 'none', 'showPoints': 'never',
                                                'spanNulls': False, 'insertNulls': 45000,
-                                               'stacking': {'mode': 'none', 'group': 'A'},
+                                               'stacking': {'mode': 'normal', 'group': 'argo-state'},
                                                'axisPlacement': 'left', 'axisLabel': '',
-                                               'axisBorderShow': False, 'axisGridShow': True, 'axisSoftMax': 2,
+                                               'axisBorderShow': False, 'axisGridShow': True,
                                                'scaleDistribution': {'type': 'linear'},
                                                'thresholdsStyle': {'mode': 'off'},
                                                'hideFrom': {'legend': False, 'tooltip': False, 'viz': False}}},
                         'overrides': [{'matcher': {'id': 'byName', 'options': name}, 'properties': [
-                            {'id': 'color', 'value': {'mode': 'fixed', 'fixedColor': application_color(name)}}]}
-                                      for name in application_names()]},
-        'options': {'legend': {'showLegend': False, 'displayMode': 'list', 'placement': 'bottom', 'calcs': []},
-                    'tooltip': {'mode': 'single', 'sort': 'none'}},
+                            {'id': 'color', 'value': {'mode': 'fixed', 'fixedColor': color}}]}
+                                      for name, _, color in groups]},
+        'options': {'legend': {'showLegend': True, 'displayMode': 'list', 'placement': 'bottom', 'calcs': []},
+                    'tooltip': {'mode': 'all', 'sort': 'desc', 'hideZeros': True}},
     })
     d['panels'].sort(key=lambda p: (p['gridPos']['y'], p['gridPos']['x']))
     return d

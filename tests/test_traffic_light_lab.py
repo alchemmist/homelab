@@ -26,39 +26,33 @@ class TrafficLightLabTest(unittest.TestCase):
         for p in original['panels']:
             if p['id'] != 909:
                 self.assertEqual(self.panels[p['id']], p)
-        self.assertEqual(set(self.panels) - {p['id'] for p in original['panels']}, {974})
+        self.assertEqual(set(self.panels) - {p['id'] for p in original['panels']}, {975})
         self.assertNotIn(909, self.panels)
-        self.assertFalse(set(self.panels) & set(range(950, 974)))
+        self.assertFalse(set(self.panels) & set(range(950, 975)))
 
-    def test_line_chart_all_apps_except_root_without_legend_or_stacking(self):
-        p = self.panels[974]
+    def test_landscape_is_stacked_with_five_stable_categories(self):
+        p = self.panels[975]
         self.assertEqual(p['type'], 'timeseries')
         self.assertEqual(p['gridPos'], {'x': 12, 'y': 8, 'w': 6, 'h': 7})
-        self.assertEqual(p['targets'][0]['legendFormat'], '{{name}}')
-        self.assertFalse(p['targets'][0]['instant'])
-        self.assertTrue(p['targets'][0]['range'])
-        self.assertIn('name!="root"', p['targets'][0]['expr'])
-        self.assertIn('phase="Succeeded"', p['targets'][0]['expr'])
-        self.assertIn('idelta(', p['targets'][0]['expr'])
-        self.assertIn('[45s]', p['targets'][0]['expr'])
-        self.assertNotIn('increase(', p['targets'][0]['expr'])
         self.assertEqual(p['title'], '')
         self.assertEqual(p['interval'], '15s')
-        self.assertEqual(p['targets'][0]['interval'], '15s')
         self.assertGreaterEqual(p['maxDataPoints'], 8641)
-        self.assertNotIn('topk', p['targets'][0]['expr'])
-        self.assertFalse(p['options']['legend']['showLegend'])
+        self.assertEqual([t['legendFormat'] for t in p['targets']], [s[0] for s in lab.STATES])
+        for t in p['targets']:
+            self.assertTrue(t['range'])
+            self.assertFalse(t['instant'])
+            self.assertEqual(t['interval'], '15s')
+            self.assertIn('name!="root"', t['expr'])
+            self.assertNotIn('argocd_app_sync_total', t['expr'])
+            self.assertNotIn('topk', t['expr'])
+        self.assertTrue(p['options']['legend']['showLegend'])
+        self.assertEqual(p['options']['tooltip']['mode'], 'all')
         custom = p['fieldConfig']['defaults']['custom']
-        self.assertEqual(custom['drawStyle'], 'line')
-        self.assertEqual(custom['fillOpacity'], 0)
-        self.assertEqual(custom['stacking']['mode'], 'none')
+        self.assertGreater(custom['fillOpacity'], 0)
+        self.assertEqual(custom['stacking']['mode'], 'normal')
+        self.assertEqual(custom['lineInterpolation'], 'stepAfter')
         self.assertFalse(custom['spanNulls'])
-        overrides = p['fieldConfig']['overrides']
-        self.assertEqual(sorted(o['matcher']['options'] for o in overrides), lab.application_names())
-        self.assertNotIn('root', lab.application_names())
-        self.assertEqual(len({lab.application_color(n) for n in lab.application_names()}), len(lab.application_names()))
-        for o in overrides:
-            self.assertEqual(o['properties'][0]['value']['fixedColor'], lab.application_color(o['matcher']['options']))
+        self.assertEqual(len(p['fieldConfig']['overrides']), 5)
 
     @unittest.skipUnless(shutil.which('helm'), 'helm needed for apply-size regression')
     def test_rendered_apply_annotation_stays_below_kubernetes_limit(self):
@@ -83,35 +77,38 @@ class TrafficLightLabTest(unittest.TestCase):
         self.assertEqual(len(self.panels), len(self.dashboard['panels']))
 
     @unittest.skipUnless(shutil.which('promtool'), 'promtool needed for PromQL semantics')
-    def test_promql_root_retired_failures_quiet_pulse_and_telemetry(self):
+    def test_promql_partition_latest_labels_and_telemetry_gaps(self):
         def series(name, values='1+0x120'):
             return {'series': name, 'values': values}
-        def app(name):
-            return series(f'argocd_app_info{{job="socrat-argocd",name="{name}"}}')
-        def counter(name, phase='Succeeded', values='0+1x120'):
-            return series(f'argocd_app_sync_total{{job="socrat-argocd",name="{name}",phase="{phase}"}}', values)
-        def check(values, when='30m'):
-            return {'expr': lab.query(), 'eval_time': when, 'exp_samples': [
-                {'labels': '{name="' + name + '"}', 'value': value} for name, value in values.items()]}
+        def app(name, health='Healthy', sync='Synced', values='1+0x120'):
+            return series(f'argocd_app_info{{job="socrat-argocd",name="{name}",health_status="{health}",sync_status="{sync}"}}', values)
+        def checks(counts, when='30m'):
+            return [{'expr': expr, 'eval_time': when,
+                     'exp_samples': [] if n is None else [{'labels': '{}', 'value': n}]}
+                    for (_, expr, _), n in zip(lab.queries()[1], counts)]
         up = series('up{job="socrat-argocd"}')
+        mixed = [up, app('a'), app('b', sync='OutOfSync'), app('c', 'Progressing', 'OutOfSync'),
+                 app('d', 'Suspended'), app('e', 'Degraded', 'OutOfSync'), app('f', 'Unknown'),
+                 app('g', sync='FutureStatus'), app('root', 'Degraded')]
         cases = [
-            {'interval': '15s', 'input_series': [up, app('active'), counter('active'),
-                app('quiet'), app('failed'), counter('failed', 'Failed'), app('root'), counter('root'), counter('retired')],
-             'promql_expr_test': [check({'active': 1, 'quiet': 0, 'failed': 0})]},
-            {'interval': '15s', 'input_series': [], 'promql_expr_test': [check({})]},
-            {'interval': '15s', 'input_series': [series(up['series'], '1'), series(app('old')['series'], '1')],
-             'promql_expr_test': [check({}, '3m')]},
-            {'interval': '15s', 'input_series': [series(up['series'], '0+0x120'), app('quiet')],
-             'promql_expr_test': [check({})]},
-            {'interval': '15s', 'input_series': [up, app('pulse'), counter('pulse', values='0+0x40 1+0x79')],
-             'promql_expr_test': [check({'pulse': 1}, '10m15s'), check({'pulse': 0}, '30m')]},
+            {'interval': '15s', 'input_series': mixed, 'promql_expr_test': checks([1, 2, 1, 1, 2])},
+            {'interval': '15s', 'input_series': [up, app('a')], 'promql_expr_test': checks([1, 0, 0, 0, 0])},
+            {'interval': '15s', 'input_series': [], 'promql_expr_test': checks([None]*5)},
+            {'interval': '15s', 'input_series': [series(up['series'], '0+0x120'), app('a')],
+             'promql_expr_test': checks([None]*5)},
+            {'interval': '15s', 'input_series': [up, app('a', values='1')],
+             'promql_expr_test': checks([None]*5, '3m')},
+            # A fresh healthy app cannot hide a second app with stale telemetry.
+            {'interval': '15s', 'input_series': [up, app('a'), app('b', values='1')],
+             'promql_expr_test': checks([None]*5, '3m')},
+            # The old Healthy label set lingers but the new Degraded one is newer.
+            {'interval': '15s', 'input_series': [up, app('a', values='1+0x4'),
+                app('a', 'Degraded', 'OutOfSync', values='_ _ _ _ _ 1+0x115')],
+             'promql_expr_test': checks([0, 0, 0, 1, 0], '1m30s')},
+            # Contradictory same-timestamp label sets still count one app, red wins.
+            {'interval': '15s', 'input_series': [up, app('a'), app('a', 'Degraded')],
+             'promql_expr_test': checks([0, 0, 0, 1, 0])},
         ]
-        cases.extend([
-            {'interval': '15s', 'input_series': [up, app('reset'), counter('reset', values='10+0x40 2+0x79')],
-             'promql_expr_test': [check({'reset': 2}, '10m15s'), check({'reset': 0}, '10m30s')]},
-            {'interval': '15s', 'input_series': [up, app('gap'), counter('gap', values='1')],
-             'promql_expr_test': [check({}, '1m')]},
-        ])
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / 'queries.yaml'
             path.write_text(json.dumps({'rule_files': [], 'evaluation_interval': '15s', 'tests': cases}))
