@@ -79,6 +79,8 @@ def main():
                     if 'typeChecking' in current.get('status', {}):
                         break
                     time.sleep(1)
+                if 'typeChecking' not in current.get('status', {}):
+                    raise ValueError('CEL type checking not complete; binding not created')
                 if current.get('status', {}).get('typeChecking', {}).get('expressionWarnings'):
                     raise ValueError('CEL type warnings; binding not created')
     print(json.dumps({'operations': len(missing), 'apply': args.apply,

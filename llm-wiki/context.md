@@ -12,20 +12,24 @@ changes. Do not restore the older internal-only alias policy.
 
 Owner authorized general worker, not VPN transit. Account/shell/verified bottom,
 SSH2222+preserved22 and metadata welcome configured; direct WG to all five peers
-accepted, temporary Moscow isolation retired. K3s agent joined,6Ready,5 still has
-bootstrap NoSchedule. LXC uses native usernamespace kubelet mode and node-local
+accepted, temporary Moscow isolation retired. K3s agent joined,6Ready;5 has dedicated
+no-NFS scheduling taint (bootstrap gate retired). LXC uses native usernamespace kubelet mode and node-local
 legacy netfilter after actual DNS failure/EMSGSIZE; policies not disabled.
 NetBird5 ready with key-free restart; direct ordinary SSH/no jumps and password
 sudo accepted. Native OTel up1/uname and Loki329/10min counts accepted. Direct
 peers0/1/2/3 remain reachable during scoped Moscow WG failure. Own fixtures cleaned.
-**BLOCKED full admission:** NFS mount EPERM (unprivileged UID map0->100000, NFS TCP
-reachable) and negative NetworkPolicy deny test failed (cause unproven). Keep5
-bootstrap NoSchedule. Need provider/Proxmox decision (VM recommended for full NFS
-worker), policy fix/acceptance, and verification of requested30Mbit cap on host.
-No container privilege expansion or host migration attempted. Do not replay
-failed enrollment: old unconsumed/revoked key inspected; guarded recovery and
-successful ready binding already accepted. Selected36 tests passed, broad suite
-not clean because pytest missing. Moscow relay remains healthy.
+**Owner-approved no-NFS profile now accepted:** bootstrap gate replaced with
+`homelab.io/no-nfs=true:NoSchedule`, label nfs=false; explicit toleration required.
+Native owned admission policy rejects remote/unclassified persistent volumes
+for5, except verified local NetBird identity PVC. No existing NFS PV/RBAC changes.
+NetworkPolicy cause/fix: missing existing NetBird/VXLAN mark guard on new5;
+installed role, now included in worker play and required/reapplied before every
+agent start. Real deny/allow and same-/cross-node wrong-label tests passed without
+network/K3s restart or policy weakening. Nonroot scheduler-selected Job with
+emptyDir/DNS/HTTP passed. Owned fixtures removed,6Ready, NetBird Argo Healthy,
+direct SSH accepted. Root UID map remains unprivileged; no VM needed for the
+accepted restricted profile.30Mbit Proxmox cap, physical reboot/HA/NAT rebinding
+remain unverified. Do not replay earlier failed enrollment or bootstrap admission.
 [Current setup and remaining gates](../docs/socrat-5-worker-20261110.md).
 
 ## Исторический bootstrap socrat-5 — superseded by worker setup above
@@ -39,7 +43,7 @@ pinned ED25519 принят, Ansible pipelining работает. Один negat
 из.41 к Moscow.40 получил timeout. Полная mesh/failure/isolation matrix и
 K3s/LXC suitability НЕ приняты.**
 [Runbook, source, fingerprint и pending gates](../docs/socrat-5-bootstrap-20261110.md).
-Исторический bootstrap завершён и superseded:5 уже в Socrat/K3s. Не переигрывать one-time admission; обычный scheduling всё ещё заблокирован taint до acceptance.
+Исторический bootstrap завершён и superseded:5 уже в Socrat/K3s. Не переигрывать one-time admission; для5 обычный scheduling требует no-NFS toleration и storage admission guard.
 
 ## Закрытие сессии: RF/NL split отложен владельцем
 

@@ -40,4 +40,4 @@ class Socrat5WorkerSourceTests(unittest.TestCase):
         text = (ROOT / 'docs/socrat-5-worker-20261110.md').read_text()
         self.assertIn('Negative NetworkPolicy acceptance failed', text)
         self.assertIn('NFS mount denied', text)
-        self.assertIn('do not remove bootstrap NoSchedule', text)
+        self.assertIn('Owner-approved no-NFS profile', text)

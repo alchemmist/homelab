@@ -4,7 +4,38 @@
   become: true
   gather_facts: true
   any_errors_fatal: true
+  pre_tasks:
+    - name: Require the owned storage admission boundary before worker provisioning
+      ansible.builtin.command:
+        cmd: >-
+          python3 /usr/local/libexec/socrat5-storage-guard.py
+          --manifest /var/lib/homelab-socrat5-storage-guard.json
+      delegate_to: socrat-0
+      register: socrat5_storage_boundary
+      changed_when: false
+      failed_when: >-
+        socrat5_storage_boundary.rc != 0 or
+        (socrat5_storage_boundary.stdout | from_json).operations != 0
   roles:
     # Required for NetBird/VXLAN mark separation before starting pod networking.
     - k3s_overlay_marks
     - k3s_worker
+  post_tasks:
+    - name: Prepare new-worker-only fail-closed overlay dependency
+      ansible.builtin.file:
+        path: /etc/systemd/system/k3s-agent.service.d
+        state: directory
+        mode: '0755'
+    - name: Require the overlay mark boundary before this worker starts
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/k3s-agent.service.d/45-overlay-policy-guard.conf
+        mode: '0644'
+        content: |
+          [Unit]
+          Requires=homelab-k3s-overlay-marks.service
+          After=homelab-k3s-overlay-marks.service
+          [Service]
+          ExecStartPre=/usr/local/sbin/homelab-k3s-overlay-marks --apply
+    - name: Reload new-worker unit dependencies without restarting it
+      ansible.builtin.systemd_service:
+        daemon_reload: true

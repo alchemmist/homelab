@@ -6,7 +6,7 @@ wallpaper, monitor autostart, second VPN relay or control-plane/etcd enrollment.
 Password/hash inputs are private controller files only, never this repository.
 This supersedes bootstrap-only boundaries in socrat-5-bootstrap-20261110.md.
 
-## Accepted so far (general workload admission BLOCKED)
+## Functional acceptance: no-NFS worker profile
 
 - Owner account with agreed private password, additive public key, zsh/Starship;
   hostname socrat-5. Official project-pinned bottom0.14.9 .deb checksum verified,
@@ -26,7 +26,8 @@ This supersedes bootstrap-only boundaries in socrat-5-bootstrap-20261110.md.
   feature gate, no fake kmsg device and no host kernel log exposure.
 - K3s exact existing version v1.36.5+k3s1 joined as agent only. LXC skips module
   loading (shared PVE kernel), preserves swap, fail-swap-on=false. Six nodes Ready;
-  new worker remains bootstrap NoSchedule until all acceptance completes.
+  new worker initially remained bootstrap NoSchedule pending acceptance;
+  current no-NFS admission is described below.
 - Native nft backend failed large kube-proxy/policy transactions with EMSGSIZE
   (known unprivileged user-namespace limitation, k3s issue9769). Inspected evidence,
   archived both backend rules, selected stock iptables/ip6tables legacy on THIS
@@ -35,6 +36,87 @@ This supersedes bootstrap-only boundaries in socrat-5-bootstrap-20261110.md.
 - Real busybox Pods ran on0+5; bidirectional Pod HTTP succeeded. Initial cluster
   DNS failed before legacy fix; same existing probes then resolved Kubernetes DNS
   through ServiceIP10.43.0.10. Node Ready alone was not treated as acceptance.
+
+
+## Owner-approved no-NFS profile — current state
+
+Owner explicitly accepted keeping5 without NFS. No Proxmox privilege expansion
+or VM migration is required for this profile. Bootstrap taint was replaced,
+with node UID/resourceVersion CAS, by `homelab.io/no-nfs=true:NoSchedule` and
+label `homelab.io/nfs=false`. Other nodes/taints and existing NFS PVs unchanged.
+
+This is an **explicit-opt-in stateless/local ephemeral worker**, not unrestricted
+placement for every application. New compatible workloads use:
+
+```yaml
+nodeSelector:
+  kubernetes.io/hostname: socrat-5
+tolerations:
+  - key: homelab.io/no-nfs
+    operator: Equal
+    value: "true"
+    effect: NoSchedule
+```
+
+`emptyDir`, config/secret/projected/downwardAPI, image and existing local hostPath
+volumes are accepted. HostPath remains subject to normal namespace security;
+this policy grants no privileges. General PVC, direct NFS, inline CSI and other
+unclassified persistent backends are rejected for Pods targeting/tolerating5.
+The sole named PVC exception is the already bound, local-path, node5-pinned
+NetBird identity `netbird-host-peers/machine-socrat-5`; UID/ownership preserved.
+Ordinary local PVC support would need separate explicit classification, not a
+blanket exception. Broad Exists tolerations plus persistent storage must pin a
+different hostname; direct nodeName5 cannot bypass storage validation.
+
+The native ValidatingAdmissionPolicy/binding are owned by
+`deploy/admission/socrat5-local-storage.yaml`; audit-only-by-default guarded
+reconciler/playbook refuses foreign ownership or drift, creates only absent
+objects with preimages and native absent-object CAS. Run
+`socrat-5-storage-guard.yml -e socrat5_storage_guard_apply=true` explicitly for
+a new installation; the worker play refuses to provision until the exact live
+storage boundary audits operations0. No existing app policy
+or RBAC was broadened. Existing broad-toleration persistent Pod audit found0
+unconstrained candidates. Six live server-side dry-run cases accepted/rejected
+as intended, including no-NFS PVC rejection, another node allowed and the
+verified system-local identity exception. Unopted scheduler probe stayed Pending
+with untolerated taints; the initial assertion expected an overly specific error
+string, but retained native conditions/spec established the actual negative case.
+
+### NetworkPolicy: root cause fixed, not a platform exception
+
+The pre-existing NetBird/VXLAN transport-mark interaction was missing its guard
+on the new node. Incoming transport mark overlapped kube-router allow bit,
+bypassing policy rejection. See `k3s-networkpolicy-overlay-marks.md` for the
+previous independently proven mechanism. We applied the existing owned guard
+only on5; live deny immediately began rejecting both directions. The worker play
+now installs that role before K3s; a5-only systemd dependency and ExecStartPre
+ensure the guard is applied/verified on every agent start, failing closed.
+No WG, NetBird, K3s or application restart was required for this correction.
+
+Actual isolated-namespace matrix:
+- deny-all ingress: cross-node HTTP blocked0->5 and5->0;
+- explicit namespace-local label+TCP8080 allow: both directions succeeded;
+- wrong-label source on0: blocked to5;
+- wrong-label source on5: blocked to5.
+
+An ordinary scheduler-selected (not nodeName-forced) Job on5 succeeded with
+UID65534, all capabilities dropped, read-only rootfs, CPU/memory limits,
+emptyDir read/write, Kubernetes DNS and cross-node HTTP. First immediate attempt
+failed HTTP; retained failed Job/preimages, then a separately named Job with
+bounded startup retry passed. The one-off startup timing was not independently
+traced; wrong-label negative cases remained blocked. No conntrack
+flush or policy bypass. Dedicated test namespace/Jobs/policies removed with
+UID/resourceVersion deletion guards. NetBird Git deployment tolerates the
+no-NFS taint, remains available and Argo Healthy; direct SSH still works.
+
+Selected58 unittest cases passed, including storage-guard ownership/defaults/
+drift and worker safety tests. Existing pytest-based overlay tests could not be
+collected in the available interpreter (pytest missing); live guard audit is
+operations0 and the real policy matrix above passed.
+
+**Remaining external limitation:** requested30Mbit/s hypervisor cap is not
+verified without Proxmox access. No saturation test, guessed guest ingress
+limit, physical reboot/HA or NAT-rebinding acceptance claimed.
 
 ## Source/ownership
 
@@ -82,13 +164,13 @@ canonical nodename/instance, no existing CA/leaf rotation or history reset.
   Dedicated owned fixtures and policies removed with UID/resourceVersion guards.
   Temporary binary-only socrat5-otel-transfer HTTP service expired after10min;
   its own failed transient state cleared. It is not a telemetry pipeline.
-- Final:6Ready, bootstrap taints preserved only on constrained4 and pending5;
+- At the earlier blocked checkpoint:6Ready, bootstrap taints on constrained4 and pending5;
   Moscow relay kubernetes/healthy, native inactive, no fallback marker.
 - Selected36 bootstrap/NetBird tests passed. Broader unittest discovery encountered
   missing pytest for one module (135 other cases including4 skips); not a full
   suite pass. No dependency installation or skipped-test masking performed.
 
-## Real blockers — do not remove bootstrap NoSchedule
+## Historical findings — superseded by the no-NFS acceptance above
 
 1. **NFS mount denied by LXC user namespace.** Native read-only NFSv4 mount returned
    Operation not permitted; NFS server192.168.0.23:2049 is TCP-reachable. UID map
@@ -107,7 +189,7 @@ canonical nodename/instance, no existing CA/leaf rotation or history reset.
    on CT net0; no Proxmox-host access is configured here. Guest link speed does not
    prove the hypervisor cap. No saturation test or fake guest-only ingress guarantee.
 
-Full worker acceptance remains BLOCKED, not complete. Need Proxmox/provider
-platform decision, network-policy acceptance and verified bandwidth cap before
-lifting bootstrap taint. Physical reboot, general HA/DR and NAT rebinding survival
-also remain outside the proven scope.
+Unrestricted NFS-capable worker acceptance is NOT claimed. The owner-approved
+no-NFS profile above is functional and replaces the bootstrap gate; network
+policy is now accepted with the guard. Hypervisor bandwidth verification,
+physical reboot, general HA/DR and NAT rebinding remain outside the proven scope.
