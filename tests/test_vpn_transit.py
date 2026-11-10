@@ -8,15 +8,16 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_fixed_destinations_and_public_backend_protection():
     config = json.loads((ROOT / 'deploy/vpn-hardening/moscow-transit.json').read_text())
-    assert config['outbounds'] == [{'tag': 'fixed-destination', 'protocol': 'freedom'}]
+    management = json.loads((ROOT / 'deploy/vpn-hardening/moscow-management.json').read_text())
+    assert config['outbounds'] == [{'tag': 'fixed-destination', 'protocol': 'freedom', 'sendThrough': '10.250.0.40'}]
     ports = set()
-    for inbound in config['inbounds']:
+    for inbound in config['inbounds'] + management['inbounds']:
         assert inbound['protocol'] == 'tunnel'
         assert inbound['settings']['followRedirect'] is False
         assert not inbound.get('sniffing', {}).get('enabled', False)
         ports.update(int(p) for p in str(inbound['port']).split(','))
         if inbound['tag'].startswith('vpn-'):
-            assert inbound['settings']['rewriteAddress'] == '10.251.4.2'
+            assert inbound['settings']['rewriteAddress'] == '10.250.0.2'
             assert 'rewritePort' not in inbound['settings']
         else:
             assert inbound['tag'] in {'management-wg-relay', 'management-wg-tcp-relay'}
@@ -99,7 +100,7 @@ def test_native_recovery_gate_keeps_real_loopback_health_and_subscription_routes
     from jinja2 import Environment
     edge=yaml.safe_load((ROOT/'charts/traefik-edge/values.yaml').read_text())
     rendered=Environment().from_string((ROOT/'ansible/roles/vpn_failover/templates/Caddyfile.j2').read_text()).render(vpn_failover_edge=edge)
-    assert 'not remote_ip 10.251.4.1/32 127.0.0.1/32' in rendered
+    assert 'not remote_ip 10.251.4.1/32 10.250.0.40/32 127.0.0.1/32' in rendered
     assert 'respond @trojan_denied "Forbidden" 403' in rendered
     assert 'reverse_proxy @trojan 127.0.0.1:32087' in rendered
     assert 'reverse_proxy @subscriptions 127.0.0.1:12096' in rendered

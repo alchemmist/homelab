@@ -7,6 +7,8 @@
   vars_files:
     - ../vars/vpn-transit.yml
   tasks:
+    - ansible.builtin.fail:
+        msg: Legacy combined relay deployment retired; use vpn-transit-mesh-runtime.yml and controlled handoff.
     - name: Create public fixed-destination config directory
       ansible.builtin.file:
         path: /etc/homelab-vpn-transit

@@ -1,0 +1,4 @@
+apiVersion: v2
+name: vpn-transit
+version: 0.1.0
+description: Moscow user relay, independent native management transport and fenced native fallback

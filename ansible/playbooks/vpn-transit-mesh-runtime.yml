@@ -1,0 +1,141 @@
+---
+- name: Prepare offline Pod/native user relay and independent management on Moscow
+  hosts: socrat-4
+  become: true
+  gather_facts: false
+  vars_files: [../vars/vpn-transit.yml]
+  vars:
+    edge: "{{ lookup('file', playbook_dir + '/../../charts/traefik-edge/values.yaml') | from_yaml }}"
+  tasks:
+    - name: Require prepared WG route, never mutate the mesh
+      ansible.builtin.command: ip route get 10.250.0.2
+      register: mesh_route
+      changed_when: false
+      failed_when: "'dev wg-socrat' not in mesh_route.stdout or 'src 10.250.0.40' not in mesh_route.stdout"
+    - name: Verify original static relay binary
+      ansible.builtin.command: sha256sum /usr/local/libexec/xray-transit
+      register: binary
+      changed_when: false
+      failed_when: vpn_transit_xray_sha256 not in binary.stdout
+    - name: Check new runtime files are not uncertain prior work
+      ansible.builtin.stat:
+        path: '{{ item }}'
+      loop:
+        - /etc/homelab-vpn-transit/user.json
+        - /etc/homelab-vpn-transit/management.json
+        - /etc/homelab-vpn-transit/failover.json
+        - /var/lib/homelab-vpn-transit/mesh-runtime-prepared.json
+      register: prior
+    - ansible.builtin.assert:
+        that: prior.results | selectattr('stat.exists') | list | length == 0
+        fail_msg: Prior preparation exists; inspect receipt, do not blindly replay.
+    - name: Copy public shared configs, not identities or private keys
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/../../deploy/vpn-hardening/{{ item.src }}'
+        dest: '/etc/homelab-vpn-transit/{{ item.dest }}'
+        mode: '0644'
+      loop:
+        - {src: moscow-transit.json, dest: user.json}
+        - {src: moscow-management.json, dest: management.json}
+    - name: Validate both exact native configurations
+      ansible.builtin.command: '/usr/local/libexec/xray-transit run -test -config /etc/homelab-vpn-transit/{{ item }}.json'
+      loop: [user, management]
+      changed_when: false
+    - name: Install independent node-local tools
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/../../scripts/{{ item }}.py'
+        dest: '/usr/local/libexec/{{ item }}.py'
+        mode: '0700'
+      loop: [vpn-transit-image, vpn-transit-failover]
+    - name: Build deterministic offline image from same exact binary as native fallback
+      ansible.builtin.command: python3 /usr/local/libexec/vpn-transit-image.py /usr/local/libexec/xray-transit /var/tmp/homelab-vpn-transit-image.tar
+      register: image_build
+    - name: Import offline image into existing worker containerd only
+      ansible.builtin.command: k3s ctr images import /var/tmp/homelab-vpn-transit-image.tar
+    - name: Configure real data-path probe without user credentials
+      ansible.builtin.copy:
+        dest: /etc/homelab-vpn-transit/failover.json
+        mode: '0600'
+        content: '{{ {"binary_sha256": vpn_transit_xray_sha256, "ws_path": (edge.routes | selectattr("name", "equalto", "trojan") | first).path} | to_nice_json }}'
+    - name: Install split relay units, do not activate or stop existing traffic
+      ansible.builtin.copy:
+        dest: '/etc/systemd/system/{{ item.name }}.service'
+        mode: '0644'
+        content: |
+          [Unit]
+          Description={{ item.name }}; independent of cluster control-plane
+          After=network-online.target wg-quick@wg-socrat.service
+          {% if item.name == 'homelab-vpn-transit-native' %}
+          Requires=wg-quick@wg-socrat.service
+          {% endif %}
+          [Service]
+          {% if item.name == 'homelab-vpn-transit-native' %}
+          ExecCondition=+/usr/bin/test -e /var/lib/homelab-vpn-transit/relay-failover/fallback.active
+          {% endif %}
+          DynamicUser=yes
+          AmbientCapabilities=CAP_NET_BIND_SERVICE
+          CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+          NoNewPrivileges=yes
+          ProtectSystem=strict
+          ProtectHome=yes
+          PrivateTmp=yes
+          Environment=GOMEMLIMIT={{ item.go_memory }}
+          ExecStart=/usr/local/libexec/xray-transit run -config /etc/homelab-vpn-transit/{{ item.config }}.json
+          Restart=on-failure
+          RestartSec=5s
+          MemoryMax={{ item.memory }}
+          MemorySwapMax=0
+          LimitNOFILE=65536
+          [Install]
+          WantedBy=multi-user.target
+      loop:
+        - {name: homelab-vpn-management-relay, config: management, memory: 100663296, go_memory: 48MiB}
+        - {name: homelab-vpn-transit-native, config: user, memory: 201326592, go_memory: 96MiB}
+    - name: Create agent boot fence drop-in
+      ansible.builtin.file:
+        path: /etc/systemd/system/k3s-agent.service.d
+        state: directory
+        mode: '0755'
+    - ansible.builtin.copy:
+        dest: /etc/systemd/system/k3s-agent.service.d/40-vpn-relay-fallback.conf
+        mode: '0644'
+        content: |
+          [Service]
+          ExecCondition=/usr/bin/test ! -e /var/lib/homelab-vpn-transit/relay-failover/fallback.active
+    - name: Install watchdog oneshot, only controls worker relay
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/homelab-vpn-transit-watchdog.service
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Actual local TLS WebSocket user relay health; sticky fenced native recovery
+          After=network-online.target
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/bin/python3 /usr/local/libexec/vpn-transit-failover.py tick
+          TimeoutStartSec=100
+          UMask=0077
+    - ansible.builtin.copy:
+        dest: /etc/systemd/system/homelab-vpn-transit-watchdog.timer
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Bounded local relay data-path watchdog
+          [Timer]
+          OnBootSec=30s
+          OnUnitInactiveSec=15s
+          AccuracySec=1s
+          [Install]
+          WantedBy=timers.target
+    - name: Reload only unit definitions without restarting anything
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+    - ansible.builtin.file:
+        path: /var/lib/homelab-vpn-transit
+        state: directory
+        mode: "0700"
+    - name: Seal preparation receipt; runtime not activated
+      ansible.builtin.copy:
+        dest: /var/lib/homelab-vpn-transit/mesh-runtime-prepared.json
+        mode: '0600'
+        content: '{{ {"prepared":true,"image":image_build.stdout | from_json,"activated":false} | to_nice_json }}'

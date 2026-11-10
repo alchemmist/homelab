@@ -1,0 +1,8 @@
+# Provision native prerequisites/offline image before increasing replicas.
+replicas: 0
+nodeName: socrat-4
+image: localhost/homelab/vpn-transit:a27e3f95ab6ce270
+binarySHA256: a27e3f95ab6ce270956d0cecd32eda4686a811afc71c64a6a734a3dede14883e
+resources:
+  requests: {cpu: 50m, memory: 48Mi}
+  limits: {cpu: 400m, memory: 192Mi}

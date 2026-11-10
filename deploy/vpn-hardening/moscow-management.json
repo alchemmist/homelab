@@ -1,0 +1,41 @@
+{
+  "log": {
+    "loglevel": "warning"
+  },
+  "inbounds": [
+    {
+      "tag": "management-wg-relay",
+      "listen": "0.0.0.0",
+      "port": 51832,
+      "protocol": "tunnel",
+      "settings": {
+        "rewriteAddress": "109.120.141.60",
+        "rewritePort": 51830,
+        "allowedNetwork": "udp",
+        "followRedirect": false
+      }
+    },
+    {
+      "tag": "management-wg-tcp-relay",
+      "listen": "0.0.0.0",
+      "port": 51840,
+      "protocol": "tunnel",
+      "settings": {
+        "rewriteAddress": "109.120.141.60",
+        "rewritePort": 51840,
+        "allowedNetwork": "tcp",
+        "followRedirect": false
+      },
+      "sniffing": {
+        "enabled": false
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "tag": "fixed-destination",
+      "protocol": "freedom",
+      "sendThrough": "10.250.0.40"
+    }
+  ]
+}
