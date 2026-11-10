@@ -56,8 +56,12 @@ root exclusion, fresh healthy zeros, absent/down/stale/partially stale telemetry
 newer status replacing lingering older labels and same-timestamp contradictions.
 Helm comparison must change only the existing TMP ConfigMap payload.
 
-Browser inspection is a separate acceptance step. Physical-TV readability and
-owner visual approval remain separate from query/unit-test success.
+Inspected the deployed native chart at1920×1080 in a separate read-only Viewer
+browser context: dark healthy baseline, blue transition area and brief amber/red/
+grey excursions render; the five-name legend fits in two rows, no heading.
+The native query returned HTTP200. Browser acceptance waits for the chart response,
+not network-idle (dashboard refreshes every5s). Shared browser profiles untouched.
+Physical-TV readability and owner visual approval remain separate from these checks.
 
 ## Build / ownership
 
