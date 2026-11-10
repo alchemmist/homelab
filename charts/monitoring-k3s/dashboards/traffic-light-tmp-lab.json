@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "Argo-only visual sandbox: application state ring and sync activity. Canonical TV dashboard unchanged.",
+  "description": "Argo activity by application: syncs, drift and health transitions. Canonical TV unchanged.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -2844,9 +2844,9 @@
       "type": "timeseries"
     },
     {
-      "id": 970,
-      "title": "Argo CD · application states",
-      "type": "piechart",
+      "id": 972,
+      "title": "Argo CD · changes by app · top 8",
+      "type": "state-timeline",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -2855,188 +2855,103 @@
         "x": 12,
         "y": 8,
         "w": 6,
-        "h": 4
+        "h": 8
       },
-      "description": "Current app state distribution. One app = one slice contribution. Ready: Healthy+Synced; drift: Healthy but not Synced; Working includes Progressing and Suspended; Unhealthy: Degraded/Missing; Unknown: other health states. Nonhealthy health takes priority over sync drift. Missing/stale telemetry is not a healthy ring. Hover for counts.",
+      "description": "One row per app, time left to right. Up to eight apps with activity/issues in the selected range; current issues rank first, then issue time and sync volume; cohort is fixed at range end. Dark = quiet, cyan = successful sync detected in the preceding 10m, amber = drift, violet = Progressing/Suspended, bright red = failed/error sync in preceding 10m, dark red = Degraded/Missing, grey = Unknown. Priority: unknown > unhealthy > sync failure > progressing/paused > drift > successful sync > quiet. Higher-priority states can hide a concurrent sync. Colors are observed/inferred states, not exact operation durations. Sync does NOT imply a Pod redeploy; Argo health is not a generic rollout/restart event feed. Missing/stale telemetry is a gap. No rows can mean no qualifying activity or unavailable telemetry; it is not an all-clear statement. Hover for app/time/state, click to investigate in Argo.",
+      "interval": "1m",
+      "maxDataPoints": 720,
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "((count((argocd_app_info{job=\"socrat-argocd\",health_status=\"Healthy\",sync_status=\"Synced\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=\"Healthy\",sync_status=\"Synced\"}) < 90))) or (0 * count((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1))",
-          "legendFormat": "Ready",
+          "expr": "((((6 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) < 90)))) or (6 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",sync_status!~\"Synced|OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",sync_status!~\"Synced|OutOfSync\"}) < 90)))) or (5 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing\"}) < 90)))) or (4 + 0 * (sum by(name) (increase(argocd_app_sync_total{job=\"socrat-argocd\",phase=~\"Failed|Error\"}[10m]) and (time() - timestamp(argocd_app_sync_total{job=\"socrat-argocd\",phase=~\"Failed|Error\"}) < 90)) > 0)) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status=~\"Progressing|Suspended\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=~\"Progressing|Suspended\"}) < 90)))) or (2 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",sync_status=\"OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",sync_status=\"OutOfSync\"}) < 90)))) or (1 + 0 * (sum by(name) (increase(argocd_app_sync_total{job=\"socrat-argocd\",phase=~\"Succeeded\"}[10m]) and (time() - timestamp(argocd_app_sync_total{job=\"socrat-argocd\",phase=~\"Succeeded\"}) < 90)) > 0)) or (0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))))) and on(name) (0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1)) and on(name) (topk(8, ((sum by(name) (increase(argocd_app_sync_total{job=\"socrat-argocd\"}[$__range] @ end())) or (0 * max by(name) (argocd_app_info{job=\"socrat-argocd\"} @ end()))) + on(name) (5 * ((sum_over_time((((((6 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) < 90)))) or (6 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",sync_status!~\"Synced|OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",sync_status!~\"Synced|OutOfSync\"}) < 90)))) or (5 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing\"}) < 90)))) or (4 + 0 * (sum by(name) (increase(argocd_app_sync_total{job=\"socrat-argocd\",phase=~\"Failed|Error\"}[10m]) and (time() - timestamp(argocd_app_sync_total{job=\"socrat-argocd\",phase=~\"Failed|Error\"}) < 90)) > 0)) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status=~\"Progressing|Suspended\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=~\"Progressing|Suspended\"}) < 90)))) or (2 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",sync_status=\"OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",sync_status=\"OutOfSync\"}) < 90)))) or (1 + 0 * (sum by(name) (increase(argocd_app_sync_total{job=\"socrat-argocd\",phase=~\"Succeeded\"}[10m]) and (time() - timestamp(argocd_app_sync_total{job=\"socrat-argocd\",phase=~\"Succeeded\"}) < 90)) > 0)) or (0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))))) and on(name) (0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1)) >= bool 2)[$__range:1m] @ end())) or (0 * max by(name) (argocd_app_info{job=\"socrat-argocd\"} @ end())))) + on(name) (1000000 * ((last_over_time(((((6 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) < 90)))) or (6 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",sync_status!~\"Synced|OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",sync_status!~\"Synced|OutOfSync\"}) < 90)))) or (5 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing\"}) < 90)))) or (4 + 0 * (sum by(name) (increase(argocd_app_sync_total{job=\"socrat-argocd\",phase=~\"Failed|Error\"}[10m]) and (time() - timestamp(argocd_app_sync_total{job=\"socrat-argocd\",phase=~\"Failed|Error\"}) < 90)) > 0)) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status=~\"Progressing|Suspended\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=~\"Progressing|Suspended\"}) < 90)))) or (2 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",sync_status=\"OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",sync_status=\"OutOfSync\"}) < 90)))) or (1 + 0 * (sum by(name) (increase(argocd_app_sync_total{job=\"socrat-argocd\",phase=~\"Succeeded\"}[10m]) and (time() - timestamp(argocd_app_sync_total{job=\"socrat-argocd\",phase=~\"Succeeded\"}) < 90)) > 0)) or (0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))))) and on(name) (0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1))[1m:1m] @ end()) >= 2) or (0 * max by(name) (argocd_app_info{job=\"socrat-argocd\"} @ end()))))) > 0))",
+          "legendFormat": "{{name}}",
           "refId": "A",
-          "instant": true,
-          "range": false,
-          "format": "time_series"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "((count((argocd_app_info{job=\"socrat-argocd\",health_status=\"Healthy\",sync_status!=\"Synced\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=\"Healthy\",sync_status!=\"Synced\"}) < 90))) or (0 * count((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1))",
-          "legendFormat": "Git drift",
-          "refId": "B",
-          "instant": true,
-          "range": false,
-          "format": "time_series"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "((count((argocd_app_info{job=\"socrat-argocd\",health_status=~\"Progressing|Suspended\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=~\"Progressing|Suspended\"}) < 90))) or (0 * count((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1))",
-          "legendFormat": "Working",
-          "refId": "C",
-          "instant": true,
-          "range": false,
-          "format": "time_series"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "((count((argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing\"}) < 90))) or (0 * count((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1))",
-          "legendFormat": "Unhealthy",
-          "refId": "D",
-          "instant": true,
-          "range": false,
-          "format": "time_series"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "((count((argocd_app_info{job=\"socrat-argocd\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) < 90))) or (0 * count((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1))",
-          "legendFormat": "Unknown",
-          "refId": "E",
-          "instant": true,
-          "range": false,
-          "format": "time_series"
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "interval": "1m"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
-          "decimals": 0,
-          "min": 0,
+          "noValue": "No telemetry",
           "color": {
             "mode": "palette-classic"
           },
-          "noValue": "No telemetry",
-          "mappings": [],
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Quiet",
+                  "color": "#252C36"
+                },
+                "1": {
+                  "text": "Sync OK",
+                  "color": "#56D6E7"
+                },
+                "2": {
+                  "text": "Git drift",
+                  "color": "#FFB357"
+                },
+                "3": {
+                  "text": "Progressing / paused",
+                  "color": "#B877D9"
+                },
+                "4": {
+                  "text": "Sync failed",
+                  "color": "#FF5263"
+                },
+                "5": {
+                  "text": "Unhealthy",
+                  "color": "#D02B4C"
+                },
+                "6": {
+                  "text": "Unknown",
+                  "color": "#808080"
+                }
+              }
+            }
+          ],
+          "custom": {
+            "axisPlacement": "left",
+            "axisWidth": 125,
+            "fillOpacity": 100,
+            "lineWidth": 0,
+            "spanNulls": false,
+            "insertNulls": 90000,
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
           "links": [
             {
-              "title": "Open Argo CD",
-              "url": "https://argocd.socrat.alchemmist.xyz/applications",
+              "title": "Open application in Argo CD",
+              "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/${__field.labels.name}",
               "targetBlank": true
             }
           ]
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Ready"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#73BF69"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Git drift"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#FFB357"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Working"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#5794F2"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Unhealthy"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#F2495C"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Unknown"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#808080"
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "options": {
-        "pieType": "donut",
-        "displayLabels": [],
-        "sort": "none",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
+        "rowHeight": 0.82,
+        "mergeValues": true,
+        "showValue": "auto",
+        "alignValue": "center",
         "legend": {
           "showLegend": true,
           "displayMode": "list",
-          "placement": "bottom",
-          "values": []
+          "placement": "bottom"
         },
         "tooltip": {
           "mode": "single",
-          "sort": "none",
-          "hideZeros": true
+          "sort": "none"
         }
       }
     },
@@ -5060,146 +4975,6 @@
       ],
       "title": "",
       "type": "stat"
-    },
-    {
-      "id": 971,
-      "title": "Argo CD · sync activity · 15m buckets",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 12,
-        "w": 6,
-        "h": 4
-      },
-      "description": "Estimated completed sync operations per 15-minute window over the dashboard range. Green: Succeeded; orange: Failed; red: Error. Query step is 15m, matching the increase window. Counter resets handled by increase; fractional counts are estimates, not exact event logs. Fresh quiet periods are zero; stale/missing telemetry stays a gap. Automatic reconciliation without a sync does not count.",
-      "interval": "15m",
-      "maxDataPoints": 48,
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "(sum by(phase) (increase(argocd_app_sync_total{job=\"socrat-argocd\"}[15m]) and (time() - timestamp(argocd_app_sync_total{job=\"socrat-argocd\"}) < 90))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1)",
-          "legendFormat": "{{phase}}",
-          "refId": "A",
-          "instant": false,
-          "range": true,
-          "format": "time_series",
-          "interval": "15m"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "decimals": 0,
-          "min": 0,
-          "noValue": "No telemetry",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "links": [
-            {
-              "title": "Open Argo CD",
-              "url": "https://argocd.socrat.alchemmist.xyz/applications",
-              "targetBlank": true
-            }
-          ],
-          "custom": {
-            "drawStyle": "bars",
-            "barAlignment": 0,
-            "barWidthFactor": 0.8,
-            "fillOpacity": 90,
-            "lineWidth": 0,
-            "gradientMode": "opacity",
-            "stacking": {
-              "mode": "normal",
-              "group": "sync"
-            },
-            "axisPlacement": "left",
-            "axisLabel": "",
-            "axisBorderShow": false,
-            "axisGridShow": true,
-            "spanNulls": false,
-            "showPoints": "never",
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            },
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            }
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Succeeded"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#73BF69"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Failed"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#FFB357"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Error"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#F2495C"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "options": {
-        "legend": {
-          "showLegend": true,
-          "displayMode": "list",
-          "placement": "bottom",
-          "calcs": []
-        },
-        "tooltip": {
-          "mode": "all",
-          "sort": "desc",
-          "hideZeros": true
-        }
-      }
     },
     {
       "datasource": {

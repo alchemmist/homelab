@@ -17,29 +17,29 @@ class TrafficLightLabTest(unittest.TestCase):
         self.dashboard = lab.build()
         self.panels = {p['id']: p for p in self.dashboard['panels']}
 
-    def test_generated_copy_is_current_and_has_separate_identity(self):
+    def test_generated_copy_and_unchanged_original_panels(self):
         self.assertEqual(json.loads(lab.OUTPUT.read_text()), self.dashboard)
         self.assertEqual(self.dashboard['uid'], 'socrat-traffic-light-tmp-lab')
         self.assertNotIn('id', self.dashboard)
         self.assertNotIn('version', self.dashboard)
-
-    def test_only_argo_is_changed_no_extra_blocks(self):
         original = json.loads(lab.SOURCE.read_text())
         for p in original['panels']:
             if p['id'] != 909:
                 self.assertEqual(self.panels[p['id']], p)
-        ids = {p['id'] for p in original['panels']}
-        self.assertEqual(set(self.panels) - ids, {970, 971})
+        self.assertEqual(set(self.panels) - {p['id'] for p in original['panels']}, {972})
         self.assertNotIn(909, self.panels)
-        self.assertEqual(self.panels[970]['type'], 'piechart')
-        self.assertEqual(self.panels[971]['type'], 'timeseries')
-        self.assertEqual(self.panels[970]['options']['pieType'], 'donut')
-        for pid in (970, 971):
-            for t in self.panels[pid]['targets']:
-                self.assertIn('socrat-argocd', t['expr'])
-                self.assertNotIn('litellm', t['expr'])
-        self.assertEqual(self.panels[971]['interval'], '15m')
-        self.assertIn('[15m]', self.panels[971]['targets'][0]['expr'])
+        self.assertFalse(set(self.panels) & set(range(950, 972)))
+
+    def test_map_has_named_apps_fixed_cohort_and_honest_semantics(self):
+        p = self.panels[972]
+        self.assertEqual(p['type'], 'state-timeline')
+        self.assertEqual(p['gridPos'], {'x': 12, 'y': 8, 'w': 6, 'h': 8})
+        self.assertEqual(p['targets'][0]['legendFormat'], '{{name}}')
+        self.assertIn('@ end()', p['targets'][0]['expr'])
+        self.assertIn('topk(8', p['targets'][0]['expr'])
+        self.assertIn('Sync does NOT imply a Pod redeploy', p['description'])
+        self.assertFalse(p['fieldConfig']['defaults']['custom']['spanNulls'])
+        self.assertEqual(p['fieldConfig']['defaults']['mappings'][0]['options']['0']['color'], '#252C36')
 
     def test_nonoverlapping_tv_grid(self):
         occupied = {}
@@ -54,36 +54,40 @@ class TrafficLightLabTest(unittest.TestCase):
         self.assertEqual(len(self.panels), len(self.dashboard['panels']))
 
     @unittest.skipUnless(shutil.which('promtool'), 'promtool needed for PromQL semantics')
-    def test_promql_categories_are_disjoint_and_gaps_not_healthy(self):
-        def series(name, values='1+0x3'):
+    def test_promql_priority_cohort_gaps_and_sync_pulse(self):
+        def series(name, values='1+0x30'):
             return {'series': name, 'values': values}
+        def app(name, health='Healthy', sync='Synced'):
+            return series(f'argocd_app_info{{job="socrat-argocd",name="{name}",health_status="{health}",sync_status="{sync}"}}')
+        def counter(name, phase='Succeeded', values='0+1x30'):
+            return series(f'argocd_app_sync_total{{job="socrat-argocd",name="{name}",phase="{phase}"}}', values)
+        def samples(values):
+            return [{'labels': '{name="' + n + '"}', 'value': v} for n, v in values.items()]
+        activity, cohort, selected = lab.queries('30m')
         up = series('up{job="socrat-argocd"}')
-        samples = [up]
-        for name, health, sync in [('a', 'Healthy', 'Synced'), ('b', 'Healthy', 'OutOfSync'),
-                                   ('c', 'Progressing', 'OutOfSync'), ('d', 'Degraded', 'OutOfSync'),
-                                   ('e', 'Unknown', 'Unknown')]:
-            samples.append(series(f'argocd_app_info{{job="socrat-argocd",name="{name}",health_status="{health}",sync_status="{sync}"}}'))
-        def checks(values, when='2m'):
-            return [{'expr': t['expr'], 'eval_time': when,
-                     'exp_samples': [] if v is None else [{'labels': '{}', 'value': v}]}
-                    for t, v in zip(self.panels[970]['targets'], values)]
+        inputs = [up, app('quiet'), app('sync'), counter('sync'),
+                  app('drift', sync='OutOfSync'), counter('drift'),
+                  app('working', 'Progressing', 'OutOfSync'), counter('working'),
+                  app('failed'), counter('failed', 'Failed'),
+                  app('unhealthy', 'Degraded', 'OutOfSync'), counter('unhealthy', 'Failed'),
+                  app('unknown', 'Unknown', 'Unknown')]
+        values = {'quiet': 0, 'sync': 1, 'drift': 2, 'working': 3, 'failed': 4, 'unhealthy': 5, 'unknown': 6}
         cases = [
-            {'interval': '1m', 'input_series': samples, 'promql_expr_test': checks([1]*5)},
-            {'interval': '1m', 'input_series': samples[:2], 'promql_expr_test': checks([1, 0, 0, 0, 0])},
-            {'interval': '1m', 'input_series': [], 'promql_expr_test': checks([None]*5)},
-            {'interval': '1m', 'input_series': [series(s['series'], '1') for s in samples],
-             'promql_expr_test': checks([None]*5, '3m')},
-            {'interval': '1m', 'input_series': [series(up['series'], '0+0x3')] + samples[1:],
-             'promql_expr_test': checks([None]*5)},
+            {'interval': '1m', 'input_series': inputs, 'promql_expr_test': [
+                {'expr': activity, 'eval_time': '30m', 'exp_samples': samples(values)},
+                {'expr': selected, 'eval_time': '30m', 'exp_samples': samples({n: v for n, v in values.items() if n != 'quiet'})}]},
+            {'interval': '1m', 'input_series': [], 'promql_expr_test': [
+                {'expr': activity, 'eval_time': '30m', 'exp_samples': []},
+                {'expr': selected, 'eval_time': '30m', 'exp_samples': []}]},
+            {'interval': '1m', 'input_series': [series(up['series'], '1'), series(app('quiet')['series'], '1')],
+             'promql_expr_test': [{'expr': activity, 'eval_time': '3m', 'exp_samples': []}]},
+            {'interval': '1m', 'input_series': [series(up['series'], '0+0x30'), app('quiet')],
+             'promql_expr_test': [{'expr': activity, 'eval_time': '30m', 'exp_samples': []}]},
+            {'interval': '1m', 'input_series': [up, app('pulse'), counter('pulse', values='0+0x10 1+0x19')],
+             'promql_expr_test': [
+                 {'expr': activity, 'eval_time': '12m', 'exp_samples': samples({'pulse': 1})},
+                 {'expr': activity, 'eval_time': '22m', 'exp_samples': samples({'pulse': 0})}]},
         ]
-        activity = self.panels[971]['targets'][0]['expr']
-        for values, expect in [('0+0x15', 0), ('0+1x15', 15)]:
-            cases.append({'interval': '1m', 'input_series': [series(up['series'], '1+0x15'),
-                          series('argocd_app_sync_total{job="socrat-argocd",phase="Succeeded",name="a"}', values)],
-                          'promql_expr_test': [{'expr': activity, 'eval_time': '15m',
-                            'exp_samples': [{'labels': '{phase="Succeeded"}', 'value': expect}]}]})
-        cases.append({'interval': '1m', 'input_series': [], 'promql_expr_test': [
-            {'expr': activity, 'eval_time': '15m', 'exp_samples': []}]})
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / 'queries.yaml'
             path.write_text(json.dumps({'rule_files': [], 'evaluation_interval': '1m', 'tests': cases}))
