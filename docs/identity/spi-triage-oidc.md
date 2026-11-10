@@ -270,3 +270,36 @@ or authorize deleting history, quota resets, forced paid probes or publication.
 Private before/after environment policy receipts retained under the operator's
 `spi-auto-release-20261110` evidence directory. Do not reintroduce manual approval
 from an older migration checklist.
+
+
+## Sortable continuous queue — live verification, 10 November 2026 11:53 UTC
+
+UI source `9ff3cddaeb9103b40308b68df89def2cbaf106f4` shipped through automatic
+CI 42795355732. A later successful automatic backend release CI 42809093946,
+source `f9c16ab4c3d66af767d3606bd83cb003d98b1039`, retains that UI unchanged.
+Current canonical chart/deployment digest is
+`sha256:857dee9ff8f8adf81163e30a9a0703cd96e51348784732e92e7e7997115f0322`.
+All four live frontend files hash-match the tested UI source. Worker/UI 1/1,
+zero container restarts, Argo Synced/Healthy/Succeeded. No live image override.
+
+From the real UI pod, all four server-side sort modes returned 200 (0.217–0.527s).
+The real pending list traversed 10 bounded cursor pages / 483 distinct jobs, globally
+Created ascending with no duplicate IDs. Strict public TLS/root-to-native-login
+chain 200; anonymous and spoofed-group list/cancel calls 401. Personal browser
+MFA/authorized UI browsing remains unobserved: shared Playwright profile busy,
+not killed/bypassed. Real-pointer selection, text copying, edge auto-scroll and
+mass cancellation were exercised only in temporary SQLite/browser fixtures;
+production queue was NOT bulk-cancelled for acceptance.
+
+SQLite integrity/FK OK; all 1037 baseline IDs/creation times and 549 older terminal
+record hashes preserved. Post-rollout inspection found execution 16507 terminal
+error at 11:40:39, coinciding with replacement worker creation; its analyze owner
+still running although the sole Recreate worker is newer than that execution.
+After those fresh preconditions, only that orphan was closed through fenced native
+Store.fail/failure_callback as WRITE_NEEDS_REVIEW (job dead, owner failed). Its
+payload/checkpoint/history and every paid reservation row were preserved; no
+model replay, quota reset or forced publication. Original workflow remains active.
+The active paid reservation retained normal expiry 12:09:31 UTC; claim/paid progress
+is not asserted while that conservative accounting hold remains. Private proofs
+in operator `spi-queue-ui-20261110` evidence directory. Root UI available at
+https://spi.socrat.alchemmist.xyz/; legacy URLs remain aliases/redirects only.
