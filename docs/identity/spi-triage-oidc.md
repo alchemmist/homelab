@@ -323,3 +323,28 @@ WRITE_NEEDS_REVIEW, not replayed. Payload/checkpoint/intent/history and all paid
 ledger rows preserved. No GitHub publication/reconciliation forced. This remains
 a shared-worker rollout limitation, not a zero-disruption claim. Private geometry,
 precondition and closeout receipts: operator `spi-queue-ui-toolbar-20261110`.
+
+
+## Single-request batch cancellation — 10 November 2026
+
+Source `2215c10a9080ff76d5775045058d469a3758e889`, automatic CI 42836844028 passed;
+current digest `sha256:3decd9718166f64ad83a25aac59de1c4dc0f7bb1e37923118257e2a9ac36d04d`.
+Frontend/worker ready, Argo Synced/Healthy/Succeeded; live script/BFF hash-match
+source. Native batch route authenticates then rejects empty input 400 before any
+write; public anonymous batch 401. No production cancellation acceptance probe.
+
+`/api/cancel-batch` replaces the frontend per-item loop. Up to 4000 exact IDs and
+expected versions, one bounded 512000-byte request, one write transaction and
+set-based audit/UPDATE; active/Wait/owned/publication and changed versions skip.
+Audit errors roll back all eligible changes. Confirmed IDs disappear immediately
+from the loaded list, using reply counts; no full-list fetch on the critical path.
+Lost/malformed replies do not hide rows or trigger automatic replay. Legacy single
+routes retained for open tabs. No new identities/secrets or paid-accounting reset.
+
+378 host tests (five optional skips), native no-skip gate passed. Real isolated
+browser + temporary SQLite: 401 rows/one protected active; 400 pending cancelled
+with one batch request, zero single-cancel requests, zero post-action list calls;
+SQL 0.0086s, local HTTP 10.4ms. Fixture timing, not a production latency guarantee.
+Current natural execution 16795 started after rollout and remains running; no
+workflow pause or manual orphan closeout was required for this release.
+Private proofs retained in operator `spi-batch-cancel-20261110` directory.
