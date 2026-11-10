@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "Private sandbox: Argo attention board, LiteLLM usage and infrastructure readiness. Canonical TV dashboard is unchanged.",
+  "description": "Argo-only visual sandbox: application state ring and sync activity. Canonical TV dashboard unchanged.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -2397,100 +2397,6 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Deployment readiness only: rustfs/rustfs. Green = available replicas meet desired and desired > 0; orange = not ready or scaled off; grey = stale/missing. NOT an end-to-end S3 request, authenticated download or VPN data-path/native-fallback test.",
-      "fieldConfig": {
-        "defaults": {
-          "displayName": "RustFS",
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "0": {
-                  "text": "Ready",
-                  "color": "#26783D"
-                },
-                "1": {
-                  "text": "Not ready",
-                  "color": "#FFB357"
-                },
-                "-2": {
-                  "text": "No telemetry",
-                  "color": "#555555"
-                }
-              }
-            }
-          ],
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#73BF69",
-                "value": null
-              },
-              {
-                "color": "#F2495C",
-                "value": 1
-              }
-            ]
-          },
-          "unit": "short",
-          "decimals": 0,
-          "color": {
-            "mode": "thresholds"
-          }
-        }
-      },
-      "gridPos": {
-        "x": 6,
-        "y": 6,
-        "w": 3,
-        "h": 1
-      },
-      "id": 957,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 14
-        },
-        "textMode": "name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "((clamp_max((max((kube_deployment_status_replicas_available{namespace=\"rustfs\",deployment=\"rustfs\"} and (time() - timestamp(kube_deployment_status_replicas_available{namespace=\"rustfs\",deployment=\"rustfs\"}) < 90))) < bool max((kube_deployment_spec_replicas{namespace=\"rustfs\",deployment=\"rustfs\"} and (time() - timestamp(kube_deployment_spec_replicas{namespace=\"rustfs\",deployment=\"rustfs\"}) < 90)))) + (max((kube_deployment_spec_replicas{namespace=\"rustfs\",deployment=\"rustfs\"} and (time() - timestamp(kube_deployment_spec_replicas{namespace=\"rustfs\",deployment=\"rustfs\"}) < 90))) == bool 0), 1)) or vector(-2))",
-          "legendFormat": "RustFS",
-          "refId": "A",
-          "instant": true,
-          "range": false,
-          "format": "time_series"
-        }
-      ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
       "description": "Blog: http_2xx probe of http://blog.blog.svc.cluster.local:80/ every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
       "fieldConfig": {
         "defaults": {
@@ -2578,100 +2484,6 @@
           "instant": true,
           "range": false,
           "refId": "A"
-        }
-      ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "Deployment readiness only: vpn-transit/vpn-transit. Green = available replicas meet desired and desired > 0; orange = not ready or scaled off; grey = stale/missing. NOT an end-to-end S3 request, authenticated download or VPN data-path/native-fallback test.",
-      "fieldConfig": {
-        "defaults": {
-          "displayName": "VPN relay · MSK",
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "0": {
-                  "text": "Ready",
-                  "color": "#26783D"
-                },
-                "1": {
-                  "text": "Not ready",
-                  "color": "#FFB357"
-                },
-                "-2": {
-                  "text": "No telemetry",
-                  "color": "#555555"
-                }
-              }
-            }
-          ],
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#73BF69",
-                "value": null
-              },
-              {
-                "color": "#F2495C",
-                "value": 1
-              }
-            ]
-          },
-          "unit": "short",
-          "decimals": 0,
-          "color": {
-            "mode": "thresholds"
-          }
-        }
-      },
-      "gridPos": {
-        "x": 6,
-        "y": 7,
-        "w": 3,
-        "h": 1
-      },
-      "id": 958,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 14
-        },
-        "textMode": "name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "((clamp_max((max((kube_deployment_status_replicas_available{namespace=\"vpn-transit\",deployment=\"vpn-transit\"} and (time() - timestamp(kube_deployment_status_replicas_available{namespace=\"vpn-transit\",deployment=\"vpn-transit\"}) < 90))) < bool max((kube_deployment_spec_replicas{namespace=\"vpn-transit\",deployment=\"vpn-transit\"} and (time() - timestamp(kube_deployment_spec_replicas{namespace=\"vpn-transit\",deployment=\"vpn-transit\"}) < 90)))) + (max((kube_deployment_spec_replicas{namespace=\"vpn-transit\",deployment=\"vpn-transit\"} and (time() - timestamp(kube_deployment_spec_replicas{namespace=\"vpn-transit\",deployment=\"vpn-transit\"}) < 90))) == bool 0), 1)) or vector(-2))",
-          "legendFormat": "VPN relay · MSK",
-          "refId": "A",
-          "instant": true,
-          "range": false,
-          "format": "time_series"
         }
       ],
       "title": "",
@@ -3032,237 +2844,182 @@
       "type": "timeseries"
     },
     {
+      "id": 970,
+      "title": "Argo CD · application states",
+      "type": "piechart",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
-      },
-      "description": "Applications both Synced and Healthy now. Missing or stale collector data is not a healthy zero.",
-      "fieldConfig": {
-        "defaults": {
-          "displayName": "Argo · ready",
-          "mappings": [
-            {
-              "type": "special",
-              "options": {
-                "match": "null+nan",
-                "result": {
-                  "text": "No telemetry",
-                  "color": "#808080"
-                }
-              }
-            }
-          ],
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#73BF69",
-                "value": null
-              },
-              {
-                "color": "#F2495C",
-                "value": 1
-              }
-            ]
-          },
-          "unit": "short",
-          "decimals": 0,
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "#73BF69"
-          }
-        }
       },
       "gridPos": {
         "x": 12,
         "y": 8,
-        "w": 2,
-        "h": 2
+        "w": 6,
+        "h": 4
       },
-      "id": 950,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 13,
-          "valueSize": 30
-        },
-        "textMode": "value_and_name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
+      "description": "Current app state distribution. One app = one slice contribution. Ready: Healthy+Synced; drift: Healthy but not Synced; Working includes Progressing and Suspended; Unhealthy: Degraded/Missing; Unknown: other health states. Nonhealthy health takes priority over sync drift. Missing/stale telemetry is not a healthy ring. Hover for counts.",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "((count((argocd_app_info{job=\"socrat-argocd\",sync_status=\"Synced\",health_status=\"Healthy\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",sync_status=\"Synced\",health_status=\"Healthy\"}) < 90))) or (0 * count((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1))",
-          "legendFormat": "Argo · ready",
+          "expr": "((count((argocd_app_info{job=\"socrat-argocd\",health_status=\"Healthy\",sync_status=\"Synced\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=\"Healthy\",sync_status=\"Synced\"}) < 90))) or (0 * count((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1))",
+          "legendFormat": "Ready",
           "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "((count((argocd_app_info{job=\"socrat-argocd\",health_status=\"Healthy\",sync_status!=\"Synced\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=\"Healthy\",sync_status!=\"Synced\"}) < 90))) or (0 * count((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1))",
+          "legendFormat": "Git drift",
+          "refId": "B",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "((count((argocd_app_info{job=\"socrat-argocd\",health_status=~\"Progressing|Suspended\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=~\"Progressing|Suspended\"}) < 90))) or (0 * count((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1))",
+          "legendFormat": "Working",
+          "refId": "C",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "((count((argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing\"}) < 90))) or (0 * count((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1))",
+          "legendFormat": "Unhealthy",
+          "refId": "D",
+          "instant": true,
+          "range": false,
+          "format": "time_series"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "((count((argocd_app_info{job=\"socrat-argocd\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) < 90))) or (0 * count((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1))",
+          "legendFormat": "Unknown",
+          "refId": "E",
           "instant": true,
           "range": false,
           "format": "time_series"
         }
       ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "Applications not Synced, including unknown sync status. This is drift, not necessarily a service outage.",
       "fieldConfig": {
         "defaults": {
-          "displayName": "Git · drift",
-          "mappings": [
-            {
-              "type": "special",
-              "options": {
-                "match": "null+nan",
-                "result": {
-                  "text": "No telemetry",
-                  "color": "#808080"
-                }
-              }
-            }
-          ],
+          "unit": "short",
+          "decimals": 0,
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
           "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
+          "mappings": [],
+          "links": [
+            {
+              "title": "Open Argo CD",
+              "url": "https://argocd.socrat.alchemmist.xyz/applications",
+              "targetBlank": true
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Ready"
+            },
+            "properties": [
               {
-                "color": "#73BF69",
-                "value": null
-              },
-              {
-                "color": "#F2495C",
-                "value": 1
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#73BF69"
+                }
               }
             ]
           },
-          "unit": "short",
-          "decimals": 0,
-          "color": {
-            "mode": "thresholds"
-          }
-        }
-      },
-      "gridPos": {
-        "x": 14,
-        "y": 8,
-        "w": 2,
-        "h": 2
-      },
-      "id": 951,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 13,
-          "valueSize": 30
-        },
-        "textMode": "value_and_name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "((count((argocd_app_info{job=\"socrat-argocd\",sync_status!=\"Synced\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",sync_status!=\"Synced\"}) < 90))) or (0 * count((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1))",
-          "legendFormat": "Git · drift",
-          "refId": "A",
-          "instant": true,
-          "range": false,
-          "format": "time_series"
-        }
-      ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "Non-Healthy applications, including Progressing and Suspended. Inspect the table below; not every attention state is a failure.",
-      "fieldConfig": {
-        "defaults": {
-          "displayName": "Apps · attention",
-          "mappings": [
-            {
-              "type": "special",
-              "options": {
-                "match": "null+nan",
-                "result": {
-                  "text": "No telemetry",
-                  "color": "#808080"
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Git drift"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FFB357"
                 }
-              }
-            }
-          ],
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#73BF69",
-                "value": null
-              },
-              {
-                "color": "#FFB357",
-                "value": 1
               }
             ]
           },
-          "unit": "short",
-          "decimals": 0,
-          "color": {
-            "mode": "thresholds"
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Working"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Unhealthy"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#F2495C"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Unknown"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#808080"
+                }
+              }
+            ]
           }
-        }
+        ]
       },
-      "gridPos": {
-        "x": 16,
-        "y": 8,
-        "w": 2,
-        "h": 2
-      },
-      "id": 952,
       "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
+        "pieType": "donut",
+        "displayLabels": [],
+        "sort": "none",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -3270,31 +3027,18 @@
           "fields": "",
           "values": false
         },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 13,
-          "valueSize": 30
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "values": []
         },
-        "textMode": "value_and_name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "((count((argocd_app_info{job=\"socrat-argocd\",health_status!=\"Healthy\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status!=\"Healthy\"}) < 90))) or (0 * count((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1))",
-          "legendFormat": "Apps · attention",
-          "refId": "A",
-          "instant": true,
-          "range": false,
-          "format": "time_series"
+        "tooltip": {
+          "mode": "single",
+          "sort": "none",
+          "hideZeros": true
         }
-      ],
-      "title": "",
-      "type": "stat"
+      }
     },
     {
       "datasource": {
@@ -4761,141 +4505,6 @@
       "type": "stat"
     },
     {
-      "id": 953,
-      "title": "Argo · attention now",
-      "type": "table",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 10,
-        "w": 6,
-        "h": 2
-      },
-      "description": "Up to three affected apps. Status names identify where to investigate, not a root-cause diagnosis. Counters above include all apps. Click through to Argo CD for events and details.",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "(topk(3, max by(name,health_status,sync_status) ((((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))) and on(name) (argocd_app_info{job=\"socrat-argocd\",sync_status!=\"Synced\"} or argocd_app_info{job=\"socrat-argocd\",health_status!=\"Healthy\"})))) or label_replace((0 * count((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90)))) unless on() count((((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90))) and on(name) (argocd_app_info{job=\"socrat-argocd\",sync_status!=\"Synced\"} or argocd_app_info{job=\"socrat-argocd\",health_status!=\"Healthy\"}))), \"name\", \"All apps healthy + synced\", \"\", \"\")) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1)",
-          "legendFormat": "",
-          "refId": "A",
-          "instant": true,
-          "range": false,
-          "format": "table"
-        }
-      ],
-      "transformations": [
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true,
-              "Value": true,
-              "__name__": true
-            },
-            "indexByName": {
-              "name": 0,
-              "sync_status": 1,
-              "health_status": 2
-            },
-            "renameByName": {
-              "name": "Application",
-              "sync_status": "Git",
-              "health_status": "Health"
-            }
-          }
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "noValue": "—",
-          "custom": {
-            "align": "left",
-            "cellOptions": {
-              "type": "auto"
-            }
-          },
-          "links": [
-            {
-              "title": "Open Argo CD",
-              "url": "https://argocd.socrat.alchemmist.xyz/applications",
-              "targetBlank": true
-            }
-          ]
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "Git|Health"
-            },
-            "properties": [
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "color-background"
-                }
-              },
-              {
-                "id": "mappings",
-                "value": [
-                  {
-                    "type": "value",
-                    "options": {
-                      "Synced": {
-                        "text": "Synced",
-                        "color": "#73BF69"
-                      },
-                      "Healthy": {
-                        "text": "Healthy",
-                        "color": "#73BF69"
-                      },
-                      "OutOfSync": {
-                        "text": "Drift",
-                        "color": "#FFB357"
-                      },
-                      "Progressing": {
-                        "text": "Progressing",
-                        "color": "#5794F2"
-                      },
-                      "Suspended": {
-                        "text": "Paused",
-                        "color": "#FFB357"
-                      },
-                      "Degraded": {
-                        "text": "Degraded",
-                        "color": "#F2495C"
-                      },
-                      "Missing": {
-                        "text": "Missing",
-                        "color": "#F2495C"
-                      },
-                      "Unknown": {
-                        "text": "Unknown",
-                        "color": "#808080"
-                      }
-                    }
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      },
-      "options": {
-        "showHeader": false,
-        "cellHeight": "sm",
-        "footer": {
-          "show": false
-        }
-      }
-    },
-    {
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -4961,189 +4570,6 @@
           "legendFormat": "Clients",
           "range": true,
           "refId": "A"
-        }
-      ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "Deployment readiness only: identity/rustfs-gateway. Green = available replicas meet desired and desired > 0; orange = not ready or scaled off; grey = stale/missing. NOT an end-to-end S3 request, authenticated download or VPN data-path/native-fallback test.",
-      "fieldConfig": {
-        "defaults": {
-          "displayName": "S3 reader",
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "0": {
-                  "text": "Ready",
-                  "color": "#26783D"
-                },
-                "1": {
-                  "text": "Not ready",
-                  "color": "#FFB357"
-                },
-                "-2": {
-                  "text": "No telemetry",
-                  "color": "#555555"
-                }
-              }
-            }
-          ],
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#73BF69",
-                "value": null
-              },
-              {
-                "color": "#F2495C",
-                "value": 1
-              }
-            ]
-          },
-          "unit": "short",
-          "decimals": 0,
-          "color": {
-            "mode": "thresholds"
-          }
-        }
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 11,
-        "w": 2,
-        "h": 1
-      },
-      "id": 959,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 14
-        },
-        "textMode": "name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "((clamp_max((max((kube_deployment_status_replicas_available{namespace=\"identity\",deployment=\"rustfs-gateway\"} and (time() - timestamp(kube_deployment_status_replicas_available{namespace=\"identity\",deployment=\"rustfs-gateway\"}) < 90))) < bool max((kube_deployment_spec_replicas{namespace=\"identity\",deployment=\"rustfs-gateway\"} and (time() - timestamp(kube_deployment_spec_replicas{namespace=\"identity\",deployment=\"rustfs-gateway\"}) < 90)))) + (max((kube_deployment_spec_replicas{namespace=\"identity\",deployment=\"rustfs-gateway\"} and (time() - timestamp(kube_deployment_spec_replicas{namespace=\"identity\",deployment=\"rustfs-gateway\"}) < 90))) == bool 0), 1)) or vector(-2))",
-          "legendFormat": "S3 reader",
-          "refId": "A",
-          "instant": true,
-          "range": false,
-          "format": "time_series"
-        }
-      ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "Estimated client requests in the last five minutes. Zero with fresh scrape is valid quiet time; absent scrape is No telemetry.",
-      "fieldConfig": {
-        "defaults": {
-          "displayName": "LLM · req/5m",
-          "mappings": [
-            {
-              "type": "special",
-              "options": {
-                "match": "null+nan",
-                "result": {
-                  "text": "No telemetry",
-                  "color": "#808080"
-                }
-              }
-            }
-          ],
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#73BF69",
-                "value": null
-              },
-              {
-                "color": "#F2495C",
-                "value": 1
-              }
-            ]
-          },
-          "unit": "short",
-          "decimals": 0,
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "#B877D9"
-          }
-        }
-      },
-      "gridPos": {
-        "x": 2,
-        "y": 11,
-        "w": 2,
-        "h": 1
-      },
-      "id": 960,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 13,
-          "valueSize": 30
-        },
-        "textMode": "value_and_name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "sum(increase(litellm_proxy_total_requests_metric_total[5m])) and on() (max(up{job=\"litellm\"} == 1 and (time() - timestamp(up{job=\"litellm\"}) < 90)) == 1)",
-          "legendFormat": "LLM · req/5m",
-          "refId": "A",
-          "instant": true,
-          "range": false,
-          "format": "time_series"
         }
       ],
       "title": "",
@@ -5636,67 +5062,144 @@
       "type": "stat"
     },
     {
+      "id": 971,
+      "title": "Argo CD · sync activity · 15m buckets",
+      "type": "timeseries",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
-      },
-      "description": "Top four named virtual keys by input + output tokens over rolling 24h. Usage is not money and aliases are not necessarily people. Includes cached input and provider accounting semantics. Prometheus increase is an estimate; no database billing reconciliation. Unnamed aliases excluded. Private lab only: never public-shared automatically.",
-      "fieldConfig": {
-        "defaults": {
-          "min": 0,
-          "unit": "short",
-          "decimals": 1,
-          "noValue": "No usage telemetry",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "mappings": []
-        },
-        "overrides": []
       },
       "gridPos": {
         "x": 12,
         "y": 12,
         "w": 6,
-        "h": 3
+        "h": 4
       },
-      "id": 954,
-      "options": {
-        "orientation": "horizontal",
-        "displayMode": "basic",
-        "namePlacement": "top",
-        "valueMode": "text",
-        "showUnfilled": false,
-        "sizing": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "text": {
-          "titleSize": 13,
-          "valueSize": 17
-        }
-      },
-      "pluginVersion": "13.2.4",
+      "description": "Estimated completed sync operations per 15-minute window over the dashboard range. Green: Succeeded; orange: Failed; red: Error. Query step is 15m, matching the increase window. Counter resets handled by increase; fractional counts are estimates, not exact event logs. Fresh quiet periods are zero; stale/missing telemetry stays a gap. Automatic reconciliation without a sync does not count.",
+      "interval": "15m",
+      "maxDataPoints": 48,
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "topk(4, sum by(api_key_alias) (increase(litellm_total_tokens_metric_total{api_key_alias!~\"None|null|^$\"}[24h]))) and on() (max(up{job=\"litellm\"} == 1 and (time() - timestamp(up{job=\"litellm\"}) < 90)) == 1)",
-          "legendFormat": "{{api_key_alias}}",
+          "expr": "(sum by(phase) (increase(argocd_app_sync_total{job=\"socrat-argocd\"}[15m]) and (time() - timestamp(argocd_app_sync_total{job=\"socrat-argocd\"}) < 90))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1)",
+          "legendFormat": "{{phase}}",
           "refId": "A",
-          "instant": true,
-          "range": false,
-          "format": "time_series"
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "interval": "15m"
         }
       ],
-      "title": "LiteLLM · tokens by key · 24h",
-      "type": "bargauge"
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "min": 0,
+          "noValue": "No telemetry",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "links": [
+            {
+              "title": "Open Argo CD",
+              "url": "https://argocd.socrat.alchemmist.xyz/applications",
+              "targetBlank": true
+            }
+          ],
+          "custom": {
+            "drawStyle": "bars",
+            "barAlignment": 0,
+            "barWidthFactor": 0.8,
+            "fillOpacity": 90,
+            "lineWidth": 0,
+            "gradientMode": "opacity",
+            "stacking": {
+              "mode": "normal",
+              "group": "sync"
+            },
+            "axisPlacement": "left",
+            "axisLabel": "",
+            "axisBorderShow": false,
+            "axisGridShow": true,
+            "spanNulls": false,
+            "showPoints": "never",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Succeeded"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#73BF69"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Failed"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FFB357"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Error"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#F2495C"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "all",
+          "sort": "desc",
+          "hideZeros": true
+        }
+      }
     },
     {
       "datasource": {
@@ -6157,184 +5660,6 @@
           "instant": true,
           "range": false,
           "refId": "A"
-        }
-      ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "Reported 24h spend, shown only when all emitted provider capture ratios are fresh and equal to 1. Currently zero spend counters + NaN capture ratio: pricing is unverified, not proven free usage. Even valid ratios are not invoice reconciliation.",
-      "fieldConfig": {
-        "defaults": {
-          "displayName": "USD · 24h",
-          "mappings": [
-            {
-              "type": "special",
-              "options": {
-                "match": "null+nan",
-                "result": {
-                  "text": "Unverified",
-                  "color": "#808080"
-                }
-              }
-            }
-          ],
-          "noValue": "Unverified",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#73BF69",
-                "value": null
-              },
-              {
-                "color": "#F2495C",
-                "value": 1
-              }
-            ]
-          },
-          "unit": "currencyUSD",
-          "decimals": 2,
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "#808080"
-          }
-        }
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 15,
-        "w": 3,
-        "h": 1
-      },
-      "id": 955,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 13,
-          "valueSize": 30
-        },
-        "textMode": "value_and_name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "sum(increase(litellm_spend_metric_total[24h])) and on() (max(up{job=\"litellm\"} == 1 and (time() - timestamp(up{job=\"litellm\"}) < 90)) == 1) and on() (count(((litellm_spend_capture_rate{} and (time() - timestamp(litellm_spend_capture_rate{}) < 90)) >= 1) and ((litellm_spend_capture_rate{} and (time() - timestamp(litellm_spend_capture_rate{}) < 90)) <= 1)) == count(litellm_spend_capture_rate))",
-          "legendFormat": "USD · 24h",
-          "refId": "A",
-          "instant": true,
-          "range": false,
-          "format": "time_series"
-        }
-      ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "Estimated client proxy requests over rolling 24h, including unnamed keys; not provider retries. Rolling history remains informative overnight.",
-      "fieldConfig": {
-        "defaults": {
-          "displayName": "Requests · 24h",
-          "mappings": [
-            {
-              "type": "special",
-              "options": {
-                "match": "null+nan",
-                "result": {
-                  "text": "No telemetry",
-                  "color": "#808080"
-                }
-              }
-            }
-          ],
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#73BF69",
-                "value": null
-              },
-              {
-                "color": "#F2495C",
-                "value": 1
-              }
-            ]
-          },
-          "unit": "short",
-          "decimals": 0,
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "#8AB8FF"
-          }
-        }
-      },
-      "gridPos": {
-        "x": 15,
-        "y": 15,
-        "w": 3,
-        "h": 1
-      },
-      "id": 956,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 13,
-          "valueSize": 30
-        },
-        "textMode": "value_and_name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "sum(increase(litellm_proxy_total_requests_metric_total[24h])) and on() (max(up{job=\"litellm\"} == 1 and (time() - timestamp(up{job=\"litellm\"}) < 90)) == 1)",
-          "legendFormat": "Requests · 24h",
-          "refId": "A",
-          "instant": true,
-          "range": false,
-          "format": "time_series"
         }
       ],
       "title": "",
