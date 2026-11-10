@@ -363,3 +363,14 @@ image: 341 tests/zero skips; GET-only live Authentik plan succeeded. No live wri
 or protected publication approval: operator kubeconfig is unreachable and SSH
 lacks its trusted saved host key. See [SPI OIDC runbook](../docs/identity/spi-triage-oidc.md)
 for activation, bounded five-minute local sessions and explicit acceptance gates.
+
+## SPI queue runtime closeout — 10 November 2026 UTC
+
+Native SPI frontend is now live at `https://spi.socrat.alchemmist.xyz/queue/`.
+Exact DNS record, app-owned verified Let's Encrypt TLS and dedicated native OIDC
+provider/client are active. Worker/frontend use canonical immutable digest
+`sha256:d8a57a175afff1e1596a8e73832b0ea994abb617c56f7945357ab5d6b9002112`;
+original workflow resumed, same PVC/history preserved, Argo Synced/Healthy.
+Prepared/blocked checkpoints above are historical. Real personal MFA/callback
+acceptance remains unobserved (busy shared browser); no bypass or synthetic human
+identity was used. Full evidence/limits: [runtime receipt](../docs/identity/spi-triage-oidc.md#final-runtime-receipt--10-november-2026-utc).

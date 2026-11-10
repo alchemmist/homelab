@@ -1,4 +1,7 @@
-# SPI Triage: standalone native OIDC (prepared, not live)
+# SPI Triage: standalone native OIDC (live)
+
+Runtime cutover completed on 10 November 2026 UTC; see the final receipt below.
+Earlier prepared/held checkpoints are historical, not the current runtime state.
 
 Read `llm-wiki/identity-integrations.md`, `identity-architecture.md`,
 `identity-current-state.md`, `cluster-deploy.md`, published wiki `/platform/deploy/`
@@ -167,3 +170,49 @@ This receipt does not claim a live migration or human-login acceptance.
   guarded approval, verify the combined digest+flag+Secret revision, then release
   only the child hold and perform exact-digest/history/TLS/native-login acceptance.
   Until then HTTPS/native UI is NOT accepted as working.
+
+
+## Final runtime receipt — 10 November 2026 UTC
+
+- URL: **https://spi.socrat.alchemmist.xyz/queue/**; `/` redirects into the native
+  login flow. Exact A record resolves through Google and Cloudflare; no wildcard
+  was created. App-owned certificate `automation/spi-queue-tls` is Ready, issued
+  by Let's Encrypt YR1, expires 7 February 2027 23:27:17 UTC. Ordinary hostname/SNI/
+  trust-chain verification succeeds, without DNS overrides or TLS bypass.
+- Native confidential SPI provider/application and frontend-only client Secret
+  were created against the reviewed catalog. Exact issuer, RS256, S256, client
+  journal/Secret match verified. `/login` returns the exact Authentik authorize
+  endpoint with code/PKCE/state/nonce and Secure HttpOnly host-only state cookie.
+  Anonymous API POST is JSON401; forged group headers do not authorize the UI.
+  No user/password/MFA/member changes, outpost assignment or client rotation.
+- Canonical source `2c6774bf5ab49a871ed6a1059ca174c32d419e3d`, successful standard
+  CI 42716258046 retry, image
+  `harbor.socrat.alchemmist.xyz/homelab/spi-triage@sha256:d8a57a175afff1e1596a8e73832b0ea994abb617c56f7945357ab5d6b9002112`.
+  The standard action made the robot image commit; no manual image override.
+  Combined image/flag/Secret verified under the Git-owned hold; release-only
+  commit `8a39ad5` restored the original auto-sync policy, prune still false.
+  Worker/frontend are Ready on that digest; old worker UID absent. Same PVC.
+- Owner explicitly authorized stopping active work to prioritize completion.
+  The retry was approved as an interrupted-release exception, not false idle.
+  In the event execution 15619 finished successfully itself; its job is complete,
+  stage 4, owner complete. Post-rollout owners/processing/paid were all zero before
+  restoring the original workflow. No active job had to be cancelled, leases/
+  budgets reset, historical execution replayed or publication forced.
+- Verified SQLite integrity/FK and preservation of all 890 prior job IDs/creation
+  times plus 532 complete terminal-record hashes. Consistent private snapshot
+  retained in the PVC and on the operator node. Interrupted off-cluster transfers
+  were removed as invalid, never labelled verified; existing backups retained.
+  Separate encrypted IdP backup was verified off-cluster before provisioning.
+- Original workflow `J9akzlydrf9XZiID` reactivated in place. Normal scheduling and
+  durable intake resumed; unrelated workflows were never paused. Exactly two
+  unused old SPI proxy middlewares were retired after whole-cluster reference
+  checks, saved private preimages and UID/resourceVersion deletion preconditions.
+  No blanket prune. SPI Argo Application Synced/Healthy, no unsynced resources.
+- **Acceptance limit:** real personal browser MFA/consent/callback/authorized queue
+  browsing has not been observed by the assistant. Shared Playwright profile was
+  busy; no browser session was killed, credentials guessed, MFA bypassed or test
+  account granted access. Public TLS/native redirects/anonymous denial, offline
+  signed-token HTTP flow and real backend/history checks are verified. The user
+  can now open the URL and sign in normally; do not misstate this as already
+  witnessed end-to-end personal SSO acceptance. Sessions remain capped at 5 minutes,
+  no silent refresh/global logout; those limits were not changed by deployment.

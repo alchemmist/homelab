@@ -106,3 +106,16 @@ Never run the Kuma-only helper for SPI. No apply has occurred: SSH to socrat-0/1
 stops at missing trusted pinned host keys. Restore verified normal operator
 access before Ansible become/preflight; do not bypass trust checks or alter
 workstation DNS/VPN/routes. DNS readiness alone does not activate native OIDC.
+
+## SPI DNS applied — 10 November 2026 UTC
+
+The exact `spi.socrat` record was applied with the dedicated standard Ansible
+whole-fleet preflight and serial refresh on existing authorities socrat-0/1/2.
+All three approved the same SPI-only plan hash; all four health-state deltas
+retain every unrelated record. Google and Cloudflare DoH independently return
+HOME 109.173.40.247 / VPS 109.120.141.60, TTL 60. No wildcard/registrar delegation,
+daemon/node restart, local DNS/VPN/routes change. Inventory contains five cluster
+nodes; that does not expand the three-node authoritative DNS deployment.
+Use the existing trusted homelab known-hosts file for Ansible IP-based targets,
+as configured for the restored normal SSH aliases; never disable host checking.
+Earlier missing-trust/prepared receipts above are historical.
