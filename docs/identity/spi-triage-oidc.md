@@ -303,3 +303,23 @@ The active paid reservation retained normal expiry 12:09:31 UTC; claim/paid prog
 is not asserted while that conservative accounting hold remains. Private proofs
 in operator `spi-queue-ui-20261110` evidence directory. Root UI available at
 https://spi.socrat.alchemmist.xyz/; legacy URLs remain aliases/redirects only.
+
+
+## Selection toolbar layout correction — 10 November 2026
+
+UI source `d5dcfb9547f62437d216109a6a471e0a3910ce9a`, automatic CI 42817360877
+succeeded; image `sha256:bec6a7e389a03128cbd6ff8a469650cd700c69e38e1bde8e3b29bda707d41603`.
+Native worker/UI rolled out, Argo Synced/Healthy/Succeeded; live stylesheet hash
+matches source. Bulk actions now float at the bottom, outside document flow.
+Browser fixture measured identical table/first-row coordinates, scroll and body
+height before selection, during selection and after clearing. Drag hit-testing
+passes through the overlay; real drag and edge auto-scroll retained. 372 local
+tests passed (five optional host skips); native CI passed its no-skip gate.
+
+Shared-image rollout again interrupted an existing execution 16613 at publish;
+n8n terminal error confirmed and only ready replacement worker newer than that
+execution. Its orphan owner was closed via fenced native fail/failure callback as
+WRITE_NEEDS_REVIEW, not replayed. Payload/checkpoint/intent/history and all paid
+ledger rows preserved. No GitHub publication/reconciliation forced. This remains
+a shared-worker rollout limitation, not a zero-disruption claim. Private geometry,
+precondition and closeout receipts: operator `spi-queue-ui-toolbar-20261110`.
