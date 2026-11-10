@@ -337,7 +337,7 @@
       "description": "Non-idle logical CPU cores and total logical cores observed by node-exporter. CPU usage is averaged over the rate interval; capacity is host CPU capacity, not Kubernetes allocatable CPU. Duplicate exporter identities are averaged per node and CPU. Missing measurements are not replaced with zero. Offline nodes can remain visible until their last series becomes stale.",
       "id": 27,
       "title": "CPU utilization",
-      "type": "bargauge",
+      "type": "gauge",
       "gridPos": {
         "x": 0,
         "y": 6,
@@ -402,18 +402,12 @@
           ],
           "fields": ""
         },
-        "orientation": "horizontal",
-        "displayMode": "basic",
-        "valueMode": "text",
-        "showUnfilled": true,
-        "namePlacement": "left",
-        "sizing": "manual",
-        "minVizWidth": 8,
-        "minVizHeight": 28,
-        "maxVizHeight": 36,
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
         "text": {
-          "titleSize": 14,
-          "valueSize": 14
+          "titleSize": 12,
+          "valueSize": 28
         }
       },
       "transformations": [
@@ -500,7 +494,7 @@
       "description": "Host memory in use, calculated as total minus MemAvailable, and total physical memory. Reclaimable cache remains available. This is actual host usage, not pod requests or Kubernetes allocatable memory. Duplicate exporter identities are averaged per node. Missing measurements are not replaced with zero. Offline nodes can remain visible until their last series becomes stale.",
       "id": 28,
       "title": "Memory utilization",
-      "type": "bargauge",
+      "type": "gauge",
       "gridPos": {
         "x": 8,
         "y": 6,
@@ -565,18 +559,12 @@
           ],
           "fields": ""
         },
-        "orientation": "horizontal",
-        "displayMode": "basic",
-        "valueMode": "text",
-        "showUnfilled": true,
-        "namePlacement": "left",
-        "sizing": "manual",
-        "minVizWidth": 8,
-        "minVizHeight": 28,
-        "maxVizHeight": 36,
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
         "text": {
-          "titleSize": 14,
-          "valueSize": 14
+          "titleSize": 12,
+          "valueSize": 28
         }
       },
       "transformations": [
@@ -663,7 +651,7 @@
       "description": "Used and total capacity of ext2/3/4, XFS, Btrfs and ZFS filesystems reported by node-exporter. Each device is counted once per node, even if mounted several times. Used is size minus free, so reserved free blocks are not counted as used. Remote, temporary and overlay filesystems are excluded. Totals describe filesystems, not raw disk capacity or replicated application data. Missing measurements are not replaced with zero. Offline nodes can remain visible until their last series becomes stale.",
       "id": 29,
       "title": "Local filesystems utilization",
-      "type": "bargauge",
+      "type": "gauge",
       "gridPos": {
         "x": 16,
         "y": 6,
@@ -728,18 +716,12 @@
           ],
           "fields": ""
         },
-        "orientation": "horizontal",
-        "displayMode": "basic",
-        "valueMode": "text",
-        "showUnfilled": true,
-        "namePlacement": "left",
-        "sizing": "manual",
-        "minVizWidth": 8,
-        "minVizHeight": 28,
-        "maxVizHeight": 36,
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
         "text": {
-          "titleSize": 14,
-          "valueSize": 14
+          "titleSize": 12,
+          "valueSize": 28
         }
       },
       "transformations": [
