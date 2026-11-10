@@ -48,8 +48,8 @@ class TrafficLightLayoutTest(unittest.TestCase):
         ids = {item['id'] for item in self.dashboard['panels']}
         self.assertNotIn(325, ids)
         self.assertNotIn(326, ids)
-        self.assertEqual(panel_by_id(self.dashboard, 327)['gridPos']['x'], 6)
-        self.assertEqual(panel_by_id(self.dashboard, 328)['gridPos']['x'], 8)
+        self.assertEqual(panel_by_id(self.dashboard, 327)['gridPos']['x'], 15)
+        self.assertEqual(panel_by_id(self.dashboard, 328)['gridPos']['x'], 17)
 
     def test_panels_use_the_integer_tv_grid(self):
         for panel in self.dashboard['panels']:
@@ -70,17 +70,17 @@ class TrafficLightLayoutTest(unittest.TestCase):
                 occupied[assert_key] = panel['id']
         holes = [(x, y) for y in range(16) for x in range(24)
                  if (x, y) not in occupied]
-        self.assertEqual(holes, [])
+        self.assertEqual(holes, [(17, 8), (17, 9), (18, 9)])  # spare node-row space
 
     def test_cpu_temperature_bar_removed(self):
         ids = {panel['id'] for panel in self.dashboard['panels']}
         self.assertNotIn(24, ids)
 
     def test_cluster_health_column_layout(self):
-        digits = ['0', '1', '2', '3']
-        for i, panel_id in enumerate((901, 902, 903, 904)):
+        digits = ['0', '1', '2', '3', '4']
+        for i, panel_id in enumerate((901, 902, 903, 904, 926)):
             panel = panel_by_id(self.dashboard, panel_id)
-            self.assertEqual(panel['gridPos'], {'x': 19 + i, 'y': 8, 'w': 1, 'h': 1})
+            self.assertEqual(panel['gridPos'], {'x': 18 + i, 'y': 8, 'w': 1, 'h': 1})
             self.assertEqual(panel['fieldConfig']['defaults']['displayName'], digits[i])
             self.assertEqual(len(panel['targets']), 1)
         for i, (panel_id, name) in enumerate(((905, 'Home IP'), (906, 'VPS IP'))):
@@ -103,10 +103,10 @@ class TrafficLightLayoutTest(unittest.TestCase):
         memory = panel_by_id(self.dashboard, 22)
         disk = panel_by_id(self.dashboard, 23)
         for panel in (cpu, memory, disk):
-            self.assertEqual(panel['gridPos']['x'] in (14, 19), True)
+            self.assertEqual(panel['gridPos']['x'] in (9, 14, 19), True)
         self.assertEqual(cpu['gridPos'], {'x': 14, 'y': 0, 'w': 5, 'h': 8})
         self.assertEqual(memory['gridPos'], {'x': 19, 'y': 0, 'w': 5, 'h': 8})
-        self.assertEqual(disk['gridPos'], {'x': 14, 'y': 8, 'w': 5, 'h': 8})
+        self.assertEqual(disk['gridPos'], {'x': 9, 'y': 0, 'w': 5, 'h': 8})
 
 
     def test_ingress_chart_preserves_live_rps_queries(self):
@@ -119,8 +119,8 @@ class TrafficLightLayoutTest(unittest.TestCase):
 
     def test_rps_and_n8n_share_a_shorter_graph_row(self):
         panel = panel_by_id(self.dashboard, 334)
-        self.assertEqual(panel['gridPos'], {'x': 0, 'y': 10, 'w': 7, 'h': 4})
-        self.assertEqual(panel_by_id(self.dashboard, 920)['gridPos'], {'x': 7, 'y': 10, 'w': 7, 'h': 4})
+        self.assertEqual(panel['gridPos'], {'x': 0, 'y': 12, 'w': 7, 'h': 4})
+        self.assertEqual(panel_by_id(self.dashboard, 920)['gridPos'], {'x': 6, 'y': 8, 'w': 7, 'h': 4})
 
 
 class TrafficLightQueriesTest(unittest.TestCase):
@@ -129,10 +129,10 @@ class TrafficLightQueriesTest(unittest.TestCase):
 
     def node_panel(self, node):
         digit = node.rsplit('-', 1)[1]
-        return panel_by_id(self.dashboard, 901 + int(digit))
+        return panel_by_id(self.dashboard, 926 if int(digit) == 4 else 901 + int(digit))
 
     def test_node_tiles_reference_each_node_with_health_priorities(self):
-        for node in ('socrat-0', 'socrat-1', 'socrat-2', 'socrat-3'):
+        for node in ('socrat-0', 'socrat-1', 'socrat-2', 'socrat-3', 'socrat-4'):
             expr = self.node_panel(node)['targets'][0]['expr']
             self.assertIn(f'node="{node}"', expr)
             self.assertIn('condition="Ready",status="true"}', expr)
@@ -142,7 +142,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
 
     def test_node_tiles_map_every_state_to_color_semantics(self):
         colors = {'0': '#26783D', '1': '#A85D08', '2': '#B42332', '3': '#B42332', '-2': '#555555'}
-        for node in ('socrat-0', 'socrat-1', 'socrat-2', 'socrat-3'):
+        for node in ('socrat-0', 'socrat-1', 'socrat-2', 'socrat-3', 'socrat-4'):
             mappings = self.node_panel(node)['fieldConfig']['defaults']['mappings'][0]['options']
             for value, color in colors.items():
                 self.assertIn(value, mappings)
@@ -264,10 +264,10 @@ class TrafficLightQueriesTest(unittest.TestCase):
 
     def test_platform_tiles_fill_the_gap_under_grafana(self):
         expected = {
-            335: ('n8n', 'SocratServiceN8nUnavailable', {'x': 10, 'y': 8, 'w': 2, 'h': 1}),
-            336: ('authentik', 'SocratServiceAuthentikUnavailable', {'x': 12, 'y': 8, 'w': 2, 'h': 1}),
-            337: ('harbor', 'SocratServiceHarborUnavailable', {'x': 10, 'y': 9, 'w': 2, 'h': 1}),
-            338: ('argocd', 'SocratServiceArgocdUnavailable', {'x': 12, 'y': 9, 'w': 2, 'h': 1}),
+            335: ('n8n', 'SocratServiceN8nUnavailable', {'x': 11, 'y': 14, 'w': 2, 'h': 2}),
+            336: ('authentik', 'SocratServiceAuthentikUnavailable', {'x': 13, 'y': 14, 'w': 2, 'h': 1}),
+            337: ('harbor', 'SocratServiceHarborUnavailable', {'x': 15, 'y': 14, 'w': 2, 'h': 1}),
+            338: ('argocd', 'SocratServiceArgocdUnavailable', {'x': 13, 'y': 15, 'w': 2, 'h': 1}),
             339: ('socrat-bot', 'SocratServiceSocratBotUnavailable', {'x': 0, 'y': 6, 'w': 2, 'h': 2}),
         }
         for panel_id, (service_id, alert, grid) in expected.items():
@@ -290,7 +290,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
                 self.assertTrue(panel.get('description', '').strip(), f'panel {panel["id"]}')
 
     def test_row_panels_have_unique_target_ids_and_series_names(self):
-        for panel_id in (901, 902, 903, 904, 905, 906):
+        for panel_id in (901, 902, 903, 904, 926, 905, 906):
             panel = panel_by_id(self.dashboard, panel_id)
             ref_ids = [t['refId'] for t in panel['targets']]
             self.assertEqual(len(ref_ids), len(set(ref_ids)), f'panel {panel_id} duplicate refIds')

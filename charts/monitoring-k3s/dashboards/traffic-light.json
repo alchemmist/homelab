@@ -2654,103 +2654,6 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "LMS: http_2xx probe of http://lms.lms.svc.cluster.local:80/ every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
-      "fieldConfig": {
-        "defaults": {
-          "displayName": "LMS",
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "color": "#26783D",
-                  "text": "Healthy"
-                },
-                "1": {
-                  "color": "#A85D08",
-                  "text": "Pending"
-                },
-                "2": {
-                  "color": "#B42332",
-                  "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": 0
-              },
-              {
-                "color": "#A85D08",
-                "value": 1
-              },
-              {
-                "color": "#B42332",
-                "value": 2
-              }
-            ]
-          },
-          "unit": "short"
-        }
-      },
-      "gridPos": {
-        "h": 2,
-        "w": 2,
-        "x": 17,
-        "y": 8
-      },
-      "id": 305,
-      "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 14
-        },
-        "textMode": "name",
-        "wideLayout": false
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceLmsUnavailable\",service_id=\"lms\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceLmsUnavailable\",service_id=\"lms\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"lms\"})) and on() ((max(up{job=\"service-probes\",service_id=\"lms\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"lms\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"lms\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
-          "format": "time_series",
-          "instant": true,
-          "range": false,
-          "refId": "A"
-        }
-      ],
-      "title": "",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
       "description": "Single-node health cube inside the numbered node row. Green = Ready with no disk or memory pressure; orange = DiskPressure or MemoryPressure; red = NotReady; grey = No telemetry, the node metric is stale or missing.",
       "fieldConfig": {
         "defaults": {
@@ -2806,7 +2709,7 @@
       "gridPos": {
         "h": 1,
         "w": 1,
-        "x": 19,
+        "x": 18,
         "y": 8
       },
       "id": 901,
@@ -2907,7 +2810,7 @@
       "gridPos": {
         "h": 1,
         "w": 1,
-        "x": 20,
+        "x": 19,
         "y": 8
       },
       "id": 902,
@@ -3008,7 +2911,7 @@
       "gridPos": {
         "h": 1,
         "w": 1,
-        "x": 21,
+        "x": 20,
         "y": 8
       },
       "id": 903,
@@ -3109,7 +3012,7 @@
       "gridPos": {
         "h": 1,
         "w": 1,
-        "x": 22,
+        "x": 21,
         "y": 8
       },
       "id": 904,
@@ -3141,6 +3044,107 @@
             "uid": "prometheus"
           },
           "expr": "((2 * (1 - (max(kube_node_status_condition{node=\"socrat-3\",condition=\"Ready\",status=\"true\"}) or vector(0)))) + max(kube_node_status_condition{node=\"socrat-3\",condition=~\"DiskPressure|MemoryPressure\",status=\"true\"} or vector(0))) and on() (time() - max(timestamp(kube_node_status_condition{node=\"socrat-3\"})) < 120) or vector(-2)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Single-node health cube inside the numbered node row. Green = Ready with no disk or memory pressure; orange = DiskPressure or MemoryPressure; red = NotReady; grey = No telemetry, the node metric is stale or missing.",
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "4",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "#26783D",
+                  "text": "OK"
+                },
+                "1": {
+                  "color": "#A85D08",
+                  "text": "PRESSURE"
+                },
+                "2": {
+                  "color": "#B42332",
+                  "text": "DOWN"
+                },
+                "3": {
+                  "color": "#B42332",
+                  "text": "DOWN"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "STALE"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "noValue": "No telemetry",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": 0
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 1,
+        "w": 1,
+        "x": 22,
+        "y": 8
+      },
+      "id": 926,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 14
+        },
+        "textMode": "name",
+        "wideLayout": false
+      },
+      "pluginVersion": "13.2.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "((2 * (1 - (max(kube_node_status_condition{node=\"socrat-4\",condition=\"Ready\",status=\"true\"}) or vector(0)))) + max(kube_node_status_condition{node=\"socrat-4\",condition=~\"DiskPressure|MemoryPressure\",status=\"true\"} or vector(0))) and on() (time() - max(timestamp(kube_node_status_condition{node=\"socrat-4\"})) < 120) or vector(-2)",
           "format": "time_series",
           "instant": true,
           "range": false,
@@ -5437,6 +5441,103 @@
             "uid": "prometheus"
           },
           "expr": "(max(2 * ALERTS{alertname=\"SocratServiceHarborUnavailable\",service_id=\"harbor\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceHarborUnavailable\",service_id=\"harbor\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"harbor\"})) and on() ((max(up{job=\"service-probes\",service_id=\"harbor\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"harbor\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"harbor\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "LMS: http_2xx probe of http://lms.lms.svc.cluster.local:80/ every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "LMS",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "#26783D",
+                  "text": "Healthy"
+                },
+                "1": {
+                  "color": "#A85D08",
+                  "text": "Pending"
+                },
+                "2": {
+                  "color": "#B42332",
+                  "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "noValue": "No telemetry",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": 0
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "x": 17,
+        "y": 14,
+        "w": 2,
+        "h": 2
+      },
+      "id": 305,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 14
+        },
+        "textMode": "name",
+        "wideLayout": false
+      },
+      "pluginVersion": "13.2.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceLmsUnavailable\",service_id=\"lms\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceLmsUnavailable\",service_id=\"lms\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"lms\"})) and on() ((max(up{job=\"service-probes\",service_id=\"lms\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"lms\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"lms\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
           "format": "time_series",
           "instant": true,
           "range": false,

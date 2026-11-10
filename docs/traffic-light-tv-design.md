@@ -229,3 +229,18 @@ five or more nodes compress each row. Queries, dynamic maxima, absolute units,
 thresholds and layout are unchanged. All four temporary dashboards and their
 provisioning sources are retired. Canonical UID/public share and TV settings
 are preserved. No additional CSS/JavaScript or plugins were introduced.
+
+## Owner layout capture and fifth-node tile — 10 November 2026
+
+Captured the freshly owner-edited Grafana dashboard in a separate commit before
+making further changes. API-returned panel content/layout and dashboard settings
+are preserved; source-only defaults omitted by the API are retained.
+
+Added panel 926 for `socrat-4`, cloned from the existing node health tile, with the
+same Ready/pressure/freshness query and unknown-state mapping. The numbered row
+now occupies x=18..22, y=8 (0..4); UP stays at x=23. LMS (305) moves to the vacant
+x=17,y=14,w=2,h=2 slot below the service tiles. No other panel content or placement
+changes relative to the owner snapshot. The three spare cells near the node row
+are intentional. Resource top labels, canonical UID, public share and Fully
+settings remain untouched. Node count/UP color thresholds are unchanged in this
+scoped change; they are not a dynamic etcd quorum assessment.
