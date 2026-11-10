@@ -65,14 +65,14 @@ def build():
     groups = queries()[1]
     d['panels'].append({
         'id': 975, 'title': '', 'type': 'timeseries', 'datasource': DS,
-        'gridPos': {'x': 12, 'y': 8, 'w': 6, 'h': 7},
+        'gridPos': {'x': 12, 'y': 8, 'w': 6, 'h': 6},
         'description': 'Stacked application counts by observed Argo state over the selected range, sampled every15s. root excluded. Dark green = Healthy+Synced; blue = Progressing/Suspended; amber = drift; red = Degraded/Missing; grey = Unknown/unrecognized states. Each app contributes once. Priority: Unhealthy > Unknown > Progressing/paused > drift > Ready. Latest timestamp wins over older state label sets. Fresh zeros require app telemetry; missing/down/partially stale scrapes remain gaps. All applications are counted, not top-k. Progressing is not proof of a Pod rollout; Suspended is paused. A changing total may reflect added/removed apps or unavailable inventory after lookback expiry. Hover shows counts, not individual app names or root cause. No sync counter/event smoothing.',
         'interval': '15s', 'maxDataPoints': 10000,
         'targets': [{'datasource': DS, 'expr': queries()[2], 'legendFormat': '{{state}}', 'refId': 'A',
                      'instant': False, 'range': True, 'format': 'time_series', 'interval': '15s'}],
         'fieldConfig': {'defaults': {'unit': 'short', 'decimals': 0, 'min': 0, 'noValue': 'No telemetry',
                                     'color': {'mode': 'palette-classic'},
-                                    'custom': {'drawStyle': 'line', 'lineInterpolation': 'stepAfter', 'lineWidth': 1,
+                                    'custom': {'drawStyle': 'line', 'lineInterpolation': 'stepAfter', 'lineWidth': 0,
                                                'fillOpacity': 85, 'gradientMode': 'none', 'showPoints': 'never',
                                                'spanNulls': False, 'insertNulls': 45000,
                                                'stacking': {'mode': 'normal', 'group': 'argo-state'},

@@ -8,7 +8,7 @@ for, root excluded, no per-app top-k or 48-line legend.
 
 ## Display / meaning
 
-Panel975 replaces old canonical Argo909 only in TMP. Same compact x12,y8,w6,h7
+Panel975 replaces old canonical Argo909 only in TMP. Same compact x12,y8,w6,h6
 space, no heading or Y-axis caption. Bottom legend contains five state categories,
 not application names. History follows the dashboard's12h range. Queries keep15s
 step and10000-point budget. Areas are normally stacked (absolute app counts),
@@ -79,3 +79,10 @@ No custom CSS/JS/plugins, public-share, TV, collector, alert, network or canonic
 JSON changes. Existing unrelated worktree changes belong to another task and are
 not included. Experiments950–974 remain only in Git history. Retirement requires
 source removal and exact reviewed ConfigMap cleanup because prune is false.
+
+## Owner acceptance / compact refinement
+
+Owner approved the state landscape. Height reduced7→6 grid rows; legend retained.
+Native lineWidth=0 removes outlines for all areas: a zero-height Unhealthy layer
+no longer draws a misleading red roof at the cumulative total. Nonzero unhealthy
+intervals retain red fill; counts, queries, stack order and tooltip are unchanged.

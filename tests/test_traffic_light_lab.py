@@ -33,7 +33,7 @@ class TrafficLightLabTest(unittest.TestCase):
     def test_landscape_is_stacked_with_five_stable_categories(self):
         p = self.panels[975]
         self.assertEqual(p['type'], 'timeseries')
-        self.assertEqual(p['gridPos'], {'x': 12, 'y': 8, 'w': 6, 'h': 7})
+        self.assertEqual(p['gridPos'], {'x': 12, 'y': 8, 'w': 6, 'h': 6})
         self.assertEqual(p['title'], '')
         self.assertEqual(p['interval'], '15s')
         self.assertGreaterEqual(p['maxDataPoints'], 8641)
@@ -51,6 +51,7 @@ class TrafficLightLabTest(unittest.TestCase):
         self.assertEqual(p['options']['tooltip']['mode'], 'all')
         custom = p['fieldConfig']['defaults']['custom']
         self.assertGreater(custom['fillOpacity'], 0)
+        self.assertEqual(custom['lineWidth'], 0)  # No false red roof when Unhealthy=0.
         self.assertEqual(custom['stacking']['mode'], 'normal')
         self.assertEqual(custom['lineInterpolation'], 'stepAfter')
         self.assertFalse(custom['spanNulls'])
