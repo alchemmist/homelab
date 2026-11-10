@@ -77,3 +77,19 @@ diff passed. Argo's sole initial OutOfSync item was the retired TMP ConfigMap
 its captured UID+resourceVersion in DeleteOptions; API returned Success for the
 same UID. Argo then Synced/Healthy. Grafana read API confirms TMP UID404 Not Found.
 Canonical public UID/share and TV configuration were not recreated or mutated.
+
+### Subsequent owner-approved Symlog refinement
+
+Owner requested retaining all data and zero without cropping while making small
+state deviations more visible. Canonical909 now uses native Symlog base2,
+linearThreshold1, hard min0 and no hard max. Range-query state codes were reordered
+only for drawing: Unhealthy0, Unknown1, Progressing2, drift3, Ready4. Classification
+priority and per-category counts are unchanged; the healthy majority is now the
+last/top layer, with small deviations below it expanded by the nonlinear scale.
+Colors, all five legend names, tooltip, step15s, height6 and zero outlines remain.
+No arithmetic scaling of counts: axis/tooltip still refer to applications. Layer
+thickness is no longer proportional to count; compare actual counts via tooltip.
+Generator tests assert Symlog config and stack order, alongside native promtool
+state/zero/gap/reset-label semantics. Only canonical ConfigMap909 changes; Overview
+and CPU/Memory/Disk Traffic Light resource bars are unaffected. Earlier exact TMP
+promotion receipts above describe the promotion before this requested refinement.

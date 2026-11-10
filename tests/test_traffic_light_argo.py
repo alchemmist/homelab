@@ -51,6 +51,9 @@ class TrafficLightArgoTest(unittest.TestCase):
         self.assertGreater(custom['fillOpacity'], 0)
         self.assertEqual(custom['lineWidth'], 0)  # No false red roof when Unhealthy=0.
         self.assertEqual(custom['stacking']['mode'], 'normal')
+        self.assertEqual(custom['scaleDistribution'], {'type': 'symlog', 'log': 2, 'linearThreshold': 1})
+        self.assertEqual([s[0] for s in sorted(lab.STATES, key=lambda s: s[1])],
+                         ['Unhealthy', 'Unknown', 'Progressing / paused', 'Git drift', 'Ready'])
         self.assertEqual(custom['lineInterpolation'], 'stepAfter')
         self.assertFalse(custom['spanNulls'])
         self.assertEqual(len(p['fieldConfig']['overrides']), 5)
