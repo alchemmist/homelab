@@ -33,13 +33,19 @@ class TrafficLightLabTest(unittest.TestCase):
     def test_line_chart_all_apps_except_root_without_legend_or_stacking(self):
         p = self.panels[974]
         self.assertEqual(p['type'], 'timeseries')
-        self.assertEqual(p['gridPos'], {'x': 12, 'y': 8, 'w': 6, 'h': 8})
+        self.assertEqual(p['gridPos'], {'x': 12, 'y': 8, 'w': 6, 'h': 7})
         self.assertEqual(p['targets'][0]['legendFormat'], '{{name}}')
         self.assertFalse(p['targets'][0]['instant'])
         self.assertTrue(p['targets'][0]['range'])
         self.assertIn('name!="root"', p['targets'][0]['expr'])
         self.assertIn('phase="Succeeded"', p['targets'][0]['expr'])
-        self.assertIn('[15m]', p['targets'][0]['expr'])
+        self.assertIn('idelta(', p['targets'][0]['expr'])
+        self.assertIn('[45s]', p['targets'][0]['expr'])
+        self.assertNotIn('increase(', p['targets'][0]['expr'])
+        self.assertEqual(p['title'], '')
+        self.assertEqual(p['interval'], '15s')
+        self.assertEqual(p['targets'][0]['interval'], '15s')
+        self.assertGreaterEqual(p['maxDataPoints'], 8641)
         self.assertNotIn('topk', p['targets'][0]['expr'])
         self.assertFalse(p['options']['legend']['showLegend'])
         custom = p['fieldConfig']['defaults']['custom']
@@ -78,31 +84,37 @@ class TrafficLightLabTest(unittest.TestCase):
 
     @unittest.skipUnless(shutil.which('promtool'), 'promtool needed for PromQL semantics')
     def test_promql_root_retired_failures_quiet_pulse_and_telemetry(self):
-        def series(name, values='1+0x30'):
+        def series(name, values='1+0x120'):
             return {'series': name, 'values': values}
         def app(name):
             return series(f'argocd_app_info{{job="socrat-argocd",name="{name}"}}')
-        def counter(name, phase='Succeeded', values='0+1x30'):
+        def counter(name, phase='Succeeded', values='0+1x120'):
             return series(f'argocd_app_sync_total{{job="socrat-argocd",name="{name}",phase="{phase}"}}', values)
         def check(values, when='30m'):
             return {'expr': lab.query(), 'eval_time': when, 'exp_samples': [
                 {'labels': '{name="' + name + '"}', 'value': value} for name, value in values.items()]}
         up = series('up{job="socrat-argocd"}')
         cases = [
-            {'interval': '1m', 'input_series': [up, app('active'), counter('active'),
+            {'interval': '15s', 'input_series': [up, app('active'), counter('active'),
                 app('quiet'), app('failed'), counter('failed', 'Failed'), app('root'), counter('root'), counter('retired')],
-             'promql_expr_test': [check({'active': 15, 'quiet': 0, 'failed': 0})]},
-            {'interval': '1m', 'input_series': [], 'promql_expr_test': [check({})]},
-            {'interval': '1m', 'input_series': [series(up['series'], '1'), series(app('old')['series'], '1')],
+             'promql_expr_test': [check({'active': 1, 'quiet': 0, 'failed': 0})]},
+            {'interval': '15s', 'input_series': [], 'promql_expr_test': [check({})]},
+            {'interval': '15s', 'input_series': [series(up['series'], '1'), series(app('old')['series'], '1')],
              'promql_expr_test': [check({}, '3m')]},
-            {'interval': '1m', 'input_series': [series(up['series'], '0+0x30'), app('quiet')],
+            {'interval': '15s', 'input_series': [series(up['series'], '0+0x120'), app('quiet')],
              'promql_expr_test': [check({})]},
-            {'interval': '1m', 'input_series': [up, app('pulse'), counter('pulse', values='0+0x10 1+0x19')],
-             'promql_expr_test': [check({'pulse': 1}, '12m'), check({'pulse': 0}, '30m')]},
+            {'interval': '15s', 'input_series': [up, app('pulse'), counter('pulse', values='0+0x40 1+0x79')],
+             'promql_expr_test': [check({'pulse': 1}, '10m15s'), check({'pulse': 0}, '30m')]},
         ]
+        cases.extend([
+            {'interval': '15s', 'input_series': [up, app('reset'), counter('reset', values='10+0x40 2+0x79')],
+             'promql_expr_test': [check({'reset': 2}, '10m15s'), check({'reset': 0}, '10m30s')]},
+            {'interval': '15s', 'input_series': [up, app('gap'), counter('gap', values='1')],
+             'promql_expr_test': [check({}, '1m')]},
+        ])
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / 'queries.yaml'
-            path.write_text(json.dumps({'rule_files': [], 'evaluation_interval': '1m', 'tests': cases}))
+            path.write_text(json.dumps({'rule_files': [], 'evaluation_interval': '15s', 'tests': cases}))
             result = subprocess.run(['promtool', 'test', 'rules', str(path)], capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 

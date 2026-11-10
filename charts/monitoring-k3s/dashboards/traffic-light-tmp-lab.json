@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "Argo successful syncs by application, rolling 15m, root excluded. Canonical TV unchanged.",
+  "description": "Argo successful sync increments between raw samples at 15s resolution, root excluded. Canonical TV unchanged.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -2845,7 +2845,7 @@
     },
     {
       "id": 974,
-      "title": "Argo CD · syncs by app · 15m",
+      "title": "",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -2855,24 +2855,24 @@
         "x": 12,
         "y": 8,
         "w": 6,
-        "h": 8
+        "h": 7
       },
-      "description": "Each color is an application; root is excluded. Estimated successful Argo syncs in the preceding 15 minutes, sampled every minute across the selected dashboard range. A sync may apply configuration without redeploying Pods. This is a rolling count, not a lifetime counter, exact event log or failure chart. Lines overlap when values coincide; hover selects an application. Fresh applications with no initialized success counter show zero. Retired apps excluded using fresh app_info; missing/stale app or scrape telemetry stays a gap. Known app colors are pinned by name; regenerate overrides for new Git apps. No legend or top-k.",
-      "interval": "1m",
-      "maxDataPoints": 720,
+      "description": "Successful sync count between the last two observed counter samples, not a rolling 15-minute total. Raw Argo samples were verified 15s apart; query step is 15s. A 45s lookback only finds the last two samples; it does not sum or smooth 45s of activity. Counter resets contribute the current value after reset. Sync is not necessarily a Pod redeploy. No exact event timestamp or activity before the first observation can be recovered. Longer gaps can aggregate multiple operations into one observation. Known counters without two recent samples remain gaps; apps with no initialized success counter show zero while app/scrape telemetry is fresh. root and retired apps excluded. No legend; hover for app/time/count.",
+      "interval": "15s",
+      "maxDataPoints": 10000,
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "((sum by(name) (increase(argocd_app_sync_total{job=\"socrat-argocd\",name!=\"root\",phase=\"Succeeded\"}[15m]) and (time() - timestamp(argocd_app_sync_total{job=\"socrat-argocd\",name!=\"root\",phase=\"Succeeded\"}) < 90)) or (0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) < 90))))) and on(name) max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) < 90)))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1)",
+          "expr": "((sum by(name) (((idelta(argocd_app_sync_total{job=\"socrat-argocd\",name!=\"root\",phase=\"Succeeded\"}[45s]) >= 0) or ((0 + argocd_app_sync_total{job=\"socrat-argocd\",name!=\"root\",phase=\"Succeeded\"}) and (idelta(argocd_app_sync_total{job=\"socrat-argocd\",name!=\"root\",phase=\"Succeeded\"}[45s]) < 0))) and (time() - timestamp(argocd_app_sync_total{job=\"socrat-argocd\",name!=\"root\",phase=\"Succeeded\"}) < 90)) or ((0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) < 90)))) unless on(name) count by(name) (argocd_app_sync_total{job=\"socrat-argocd\",name!=\"root\",phase=\"Succeeded\"}))) and on(name) max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) < 90)))) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1)",
           "legendFormat": "{{name}}",
           "refId": "A",
           "instant": false,
           "range": true,
           "format": "time_series",
-          "interval": "1m"
+          "interval": "15s"
         }
       ],
       "fieldConfig": {
@@ -2899,13 +2899,13 @@
             "gradientMode": "none",
             "showPoints": "never",
             "spanNulls": false,
-            "insertNulls": 90000,
+            "insertNulls": 45000,
             "stacking": {
               "mode": "none",
               "group": "A"
             },
             "axisPlacement": "left",
-            "axisLabel": "Syncs / 15m",
+            "axisLabel": "",
             "axisBorderShow": false,
             "axisGridShow": true,
             "axisSoftMax": 2,

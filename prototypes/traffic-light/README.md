@@ -1,52 +1,59 @@
-# Traffic Light · TMP Lab — per-application sync lines
+# Traffic Light · TMP Lab — raw-cadence per-app sync lines
 
-Owner-selected proposal,2026-11-10: replace the mosaic with an ordinary native
-Time series chart, one colored line per Argo application, **root excluded**, no
-legend. No other added blocks or changes to canonical TV.
+Current owner request: maximum available time precision, no graph title, slightly
+less height. Native Time series panel974 at x12,y8,w6,h7 (previouslyh8), no title,
+legend or Y-axis caption. root remains excluded; stable per-app colors preserved.
+All other panels and canonical/public TV remain unchanged.
 
 <https://grafana.socrat.alchemmist.xyz/d/socrat-traffic-light-tmp-lab?kiosk=1>
 
-## Meaning and presentation
+## Actual precision, not assumed precision
 
-Panel974 fills x12,y8,w6,h8. Y = estimated successful syncs in the **preceding15m**;
-X = dashboard range (currently12h). Sampled every minute. Lines are unstacked,
-no area fill or smoothing,2px width. Single-series hover shows the application
-name/value and supports a link to that application in Argo CD. The legend is
-hidden as requested. Colors are explicitly pinned by full name using a stable
-hash-derived color, independent of other applications' presence/order.
+A bounded raw Prometheus range-vector query for monitoring-k3s returned timestamps
+exactly15s apart (four points in1m). Argo is currently collected every15s, **not5s**.
+No exporter/collector change is part of this dashboard request. Set both panel and
+target interval to15s, maxDataPoints10000; the12h query returns2881 samples per app
+rather than the previous721 samples. Longer ranges can still force a larger step.
 
-This is a rolling count, not a lifetime total or non-overlapping15m buckets.
-`increase` handles resets and extrapolates between scrapes, so counts can be
-fractional; displayed zero decimals are presentation, not exact event accounting.
-A successful sync does not necessarily redeploy Pods. Failed syncs, restarts and
-rollouts are NOT plotted or inferred as successes.
+Y is now the successful sync counter increment **between the last two raw
+samples**, normally15s apart. No15m rolling window, rate normalization or
+extrapolated fractional events. The45s lookback only locates the last two samples;
+it does NOT accumulate or smooth45s of activity. PromQL uses idelta with an
+explicit counter-reset branch: nonnegative delta is retained; a negative delta
+means a reset and contributes the current counter value instead. Multiple
+underlying counter series are reset-corrected individually before summing by app.
 
-All fresh app_info names except root are included. Two current applications had
-no initialized successful-sync counter; they get zero while app telemetry and
-the Argo scrape are fresh. Retired counter label sets are excluded. Missing/stale
-app or scraper telemetry produces gaps, not a healthy zero. This cannot establish
-counter completeness if a producer silently omits a previously emitted counter
-while continuing to emit fresh app_info. No changes to exporters or ingestion.
+A value1 means one success was observed between those samples, not that a deploy
+lasted15s. Actual operation timestamp within that interval, operations before the
+first observation, and increments lost at reset/collection outage cannot be
+reconstructed. A delayed sample can aggregate a longer interval into one point.
+This remains Argo successful sync activity, NOT a Pod rollout/restart/failure log.
 
-Quiet applications coincide at zero; equal positive series can overlap too. This
-is an inherent limitation of a many-line chart, not filtering or a top-k cap. Many
-colors may be similar. Hover is the way to identify a line; color is identity,
-not severity. New apps appear through the dynamic query; regenerate overrides to
-pin their colors. Long dashboard ranges can downsample short peaks.
+Fresh app_info gates inclusion; retired apps/root are excluded. Apps with no
+initialized successful-sync counter can show zero. A known counter lacking two
+recent samples stays a gap, not a fabricated zero. Missing/stale app or scraper
+telemetry also produces gaps. Gaps are not connected;45s disconnect threshold.
+A silently vanished counter can eventually become indistinguishable from an
+uninitialized one while app_info remains fresh; no completeness guarantee.
 
-## Validation and acceptance
+Lines are unstacked, no fill/smoothing; equal/quiet values overlap. Single-series
+hover identifies the app, sample time and increment. Colors are pinned by name
+and independent of app order. New dynamic app series appear automatically;
+regenerate overrides to pin their colors. No legend/top-k or extra blocks.
 
-Live12h/1m query returned48 applications, none named root. Observed nonzero lines
-included grafana, monitoring-k3s, socrat-bot, spi-triage and thanos. This is a
-point-in-time observation. No production rollout was triggered to create data.
-30 tests cover canonical panel preservation, native line/no legend settings,
-per-name colors, grid, rendered ConfigMap size and promtool semantics for root/
-retired exclusion, never-initialized/quiet apps, failed-only counters, stale/down
-telemetry and expiry of the15m rolling window. Helm render changes only the TMP
-ConfigMap payload. Inspected the deployed chart in an isolated read-only Viewer
-browser at1920×1080: colored line peaks visible, legend absent, no rendering
-error. Hovering a peak showed `monitoring-k3s`, timestamp and value4. Shared
-browser profile was not touched. Physical-TV acceptance remains with the owner.
+## Evidence / tests
+
+The12h/15s live query returned48 app lines without root. Observed positive sample
+counts were2 grafana,10 monitoring-k3s,2 socrat-bot,4 spi-triage,12 thanos; every
+positive sample had value1 rather than the previous extrapolated~1.017. These are
+point-in-time observations, not exhaustive exact deployment counts.
+
+30 tests include native promtool cases at15s evaluation/sample cadence for root/
+retired exclusion, quiet/failed-only apps, short pulse expiry, stale/down data,
+known-counter gaps and counter resets. Generated-copy/original-panel checks,
+height/title/step/point-budget checks, grid and Helm apply-size regression pass.
+Publication changes only the existing TMP ConfigMap payload. Rendered-browser
+inspection is a separate check; physical-TV acceptance remains with the owner.
 
 ## Build / ownership
 
@@ -58,10 +65,9 @@ helm template monitoring-k3s charts/monitoring-k3s -n cattle-monitoring-system \
 ```
 
 Separate UID `socrat-traffic-light-tmp-lab`, ConfigMap
-`socrat-traffic-light-tmp-lab-dashboard`, Sandbox folder. Existing TMP template
-minifies embedded JSON to stay below Kubernetes last-applied annotation limits.
-Git → monitoring-k3s Argo auto-sync. No custom JS/CSS/plugin, public sharing, TV
-settings, alerts, datasource or network changes. Canonical panel909 remains on
-canonical; TMP removes it and adds only974. Previous experiments950–973 are gone
-from TMP, retained only in Git history. Retirement requires source removal and
-exact reviewed ConfigMap cleanup because automatic prune is false.
+`socrat-traffic-light-tmp-lab-dashboard`, Sandbox folder. Template minifies JSON to
+stay below Kubernetes last-applied annotation limit. Git → monitoring-k3s Argo
+auto-sync only. No custom CSS/JS/plugin, public-share, TV-setting, datasource,
+collector, alert or network changes. Canonical909 stays on canonical; TMP replaces
+it with974. Experiments950–973 remain only in Git history. Retirement requires
+source removal and exact reviewed ConfigMap cleanup because prune is false.

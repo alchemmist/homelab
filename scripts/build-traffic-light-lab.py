@@ -22,11 +22,16 @@ def query():
     selector = 'job="socrat-argocd",name!="root"'
     counter = f'argocd_app_sync_total{{{selector},phase="Succeeded"}}'
     apps = f'max by(name) ({fresh("argocd_app_info", selector)})'
-    increments = f'sum by(name) (increase({counter}[15m]) and (time() - timestamp({counter}) < 90))'
+    # Last two raw samples, not extrapolated rolling increase. Reset between
+    # those samples contributes the current counter value, never a negative spike.
+    delta = f'idelta({counter}[45s])'
+    per_counter = f'(({delta} >= 0) or ((0 + {counter}) and ({delta} < 0)))'
+    increments = f'sum by(name) ({per_counter} and (time() - timestamp({counter}) < 90))'
     gate = '(max(up{job="socrat-argocd"} == 1 and (time() - timestamp(up{job="socrat-argocd"}) < 90)) == 1)'
-    # Fresh apps without an initialized success counter are represented at zero.
-    # Retired counter label sets cannot create ghost application lines.
-    return f'(({increments} or (0 * {apps})) and on(name) {apps}) and on() {gate}'
+    # Zero only for apps with no initialized success counter. If a known counter
+    # lacks two recent samples, retain a gap instead of inventing a quiet zero.
+    uninitialized = f'((0 * {apps}) unless on(name) count by(name) ({counter}))'
+    return f'(({increments} or {uninitialized}) and on(name) {apps}) and on() {gate}'
 
 
 def application_names():
@@ -55,16 +60,16 @@ def build():
     d.pop('id', None)
     d.pop('version', None)
     d.update(uid='socrat-traffic-light-tmp-lab', title='Traffic Light · TMP Lab',
-             description='Argo successful syncs by application, rolling 15m, root excluded. Canonical TV unchanged.',
+             description='Argo successful sync increments between raw samples at 15s resolution, root excluded. Canonical TV unchanged.',
              tags=d.get('tags', []) + ['temporary', 'sandbox'])
     d['panels'] = [p for p in d['panels'] if p['id'] != 909]
     d['panels'].append({
-        'id': 974, 'title': 'Argo CD · syncs by app · 15m', 'type': 'timeseries', 'datasource': DS,
-        'gridPos': {'x': 12, 'y': 8, 'w': 6, 'h': 8},
-        'description': 'Each color is an application; root is excluded. Estimated successful Argo syncs in the preceding 15 minutes, sampled every minute across the selected dashboard range. A sync may apply configuration without redeploying Pods. This is a rolling count, not a lifetime counter, exact event log or failure chart. Lines overlap when values coincide; hover selects an application. Fresh applications with no initialized success counter show zero. Retired apps excluded using fresh app_info; missing/stale app or scrape telemetry stays a gap. Known app colors are pinned by name; regenerate overrides for new Git apps. No legend or top-k.',
-        'interval': '1m', 'maxDataPoints': 720,
+        'id': 974, 'title': '', 'type': 'timeseries', 'datasource': DS,
+        'gridPos': {'x': 12, 'y': 8, 'w': 6, 'h': 7},
+        'description': 'Successful sync count between the last two observed counter samples, not a rolling 15-minute total. Raw Argo samples were verified 15s apart; query step is 15s. A 45s lookback only finds the last two samples; it does not sum or smooth 45s of activity. Counter resets contribute the current value after reset. Sync is not necessarily a Pod redeploy. No exact event timestamp or activity before the first observation can be recovered. Longer gaps can aggregate multiple operations into one observation. Known counters without two recent samples remain gaps; apps with no initialized success counter show zero while app/scrape telemetry is fresh. root and retired apps excluded. No legend; hover for app/time/count.',
+        'interval': '15s', 'maxDataPoints': 10000,
         'targets': [{'datasource': DS, 'expr': query(), 'legendFormat': '{{name}}', 'refId': 'A',
-                     'instant': False, 'range': True, 'format': 'time_series', 'interval': '1m'}],
+                     'instant': False, 'range': True, 'format': 'time_series', 'interval': '15s'}],
         'fieldConfig': {'defaults': {'unit': 'short', 'decimals': 0, 'min': 0, 'noValue': 'No telemetry',
                                     'color': {'mode': 'palette-classic'},
                                     'links': [{'title': 'Open application in Argo CD',
@@ -72,9 +77,9 @@ def build():
                                                'targetBlank': True}],
                                     'custom': {'drawStyle': 'line', 'lineInterpolation': 'linear', 'lineWidth': 2,
                                                'fillOpacity': 0, 'gradientMode': 'none', 'showPoints': 'never',
-                                               'spanNulls': False, 'insertNulls': 90000,
+                                               'spanNulls': False, 'insertNulls': 45000,
                                                'stacking': {'mode': 'none', 'group': 'A'},
-                                               'axisPlacement': 'left', 'axisLabel': 'Syncs / 15m',
+                                               'axisPlacement': 'left', 'axisLabel': '',
                                                'axisBorderShow': False, 'axisGridShow': True, 'axisSoftMax': 2,
                                                'scaleDistribution': {'type': 'linear'},
                                                'thresholdsStyle': {'mode': 'off'},
