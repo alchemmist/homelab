@@ -12,7 +12,8 @@
       ansible.builtin.assert:
         that:
           - inventory_hostname == 'socrat-5'
-          - socrat5_owner_password_hash is match('^[$]6[$]')
+          - socrat5_owner_password_hash is match('^[$](6|y)[$]')
+          - socrat5_root_password_hash is match('^[$](6|y)[$]')
           - socrat5_owner_public_key is match('^ssh-ed25519 ')
       no_log: true
     - name: Preserve initial system state once
@@ -40,6 +41,11 @@
         groups: sudo
         append: true
         password: '{{ socrat5_owner_password_hash }}'
+      no_log: true
+    - name: Maintain explicitly requested root password without changing SSH authentication
+      ansible.builtin.user:
+        name: root
+        password: '{{ socrat5_root_password_hash }}'
       no_log: true
     - name: Add owner public key without deleting any existing keys
       ansible.posix.authorized_key:

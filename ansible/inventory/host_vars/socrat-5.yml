@@ -18,3 +18,8 @@ k3s_worker_prefer_bundled_bin: false
 wg_socrat_interface_prefix: 32
 # Kernel WG is available; LXC does not grant the optional userspace TUN device.
 netbird_kernel_wireguard_only: true
+# Existing apiserver-advertised HOME addresses and the cluster NFS server.
+wg_socrat_extra_allowed_peer_ips:
+  socrat-5:
+    socrat-0: [192.168.0.23/32]
+    socrat-1: [192.168.0.24/32]

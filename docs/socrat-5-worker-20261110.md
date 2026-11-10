@@ -6,7 +6,7 @@ wallpaper, monitor autostart, second VPN relay or control-plane/etcd enrollment.
 Password/hash inputs are private controller files only, never this repository.
 This supersedes bootstrap-only boundaries in socrat-5-bootstrap-20261110.md.
 
-## Accepted so far (setup still in progress)
+## Accepted so far (general workload admission BLOCKED)
 
 - Owner account with agreed private password, additive public key, zsh/Starship;
   hostname socrat-5. Official project-pinned bottom0.14.9 .deb checksum verified,
@@ -50,10 +50,64 @@ controller reconciles scoped machine identity, never human setup keys or MFA.
 Telemetry must use independent leaf only, native durable queues/fsync/privacy,
 canonical nodename/instance, no existing CA/leaf rotation or history reset.
 
-## Pending (do not claim full completion yet)
+## Additional acceptance — owner continuation
 
-NetBird reconciliation/actual machine access, native telemetry+Grafana/Loki,
-private owner sudo/ordinary local ssh alias, deeper pod-policy/NFS checks, bounded
-no-Moscow path proof, removal of5 bootstrap taint, cleanup owned fixtures, final
-regression/health and private backups. Physical reboot, general HA/DR and NAT
-rebinding survival remain separate even when functional setup is complete.
+- NetBird5 machine enrollment is ready, one-off key retired; agent identity and
+  original Deployment/PVC survived key-free operational Pod restart. LXC uses
+  kernel WireGuard without the ungranted userspace TUN device or additional host
+  privileges. Daemon-only command prevents Docker entrypoint interactive-SSO race.
+- First enrollment failed before authentication: old setup key revoked/used0,
+  peer5 absent, fresh NeedsLogin, original node/Deployment/PVC UIDs intact. Only
+  after those independent checks, private preimage/CAS/receipt cleared the failed
+  enrolling entry. Other bindings retained; no blind retry or identity rotation.
+- NetBird installed its own .41 route on Mac; real `ssh socrat-5` works directly
+  as alchemmist. All ordinary aliases now have no SSH jumps. Public0/1/2/4 entries
+  remain independent of mesh/Kubernetes; private3/5 use NetBird. No manual Mac
+  DNS/routes/tunnel changes. Private bootstrap recovery inventory is separate.
+- Both root/alchemmist have owner-requested password, verified privately against
+  native hashes; real password-required sudo succeeded. Root SSH remains key-only.
+  Interactive zsh and bottom0.14.9 accepted; no GUI/display monitoring installed.
+- Native OTel metrics accepted through Grafana: up1 and uname nodename socrat-5,
+  canonical instance10.250.0.41:9100. Loki native mTLS count query observed329
+  host records/10min without fetching log bodies. Collector/exporter/credentials
+  timer active; independent leaf, fsync/durable queues/privacy retained. This is
+  new-host delivery acceptance, not revalidation/reset of historical storage.
+- Corrected exact HOME host routes .23/.24 through their existing WG peers on5
+  for advertised API/NFS addresses; persistent preimage/CAS, no WG restart.
+- Controlled failure: only5 outbound UDP to Moscow WG endpoint temporarily
+  dropped with independent timed rollback. Moscow .40 unreachable while direct
+  pings to0/1/2/3 succeeded, k3s agent remained active and direct management
+  survived. Test rule removed. Not proof of physical outage/reboot/NAT rebinding.
+- Bidirectional real Pod HTTP and Kubernetes ServiceIP DNS passed again.
+  Dedicated owned fixtures and policies removed with UID/resourceVersion guards.
+  Temporary binary-only socrat5-otel-transfer HTTP service expired after10min;
+  its own failed transient state cleared. It is not a telemetry pipeline.
+- Final:6Ready, bootstrap taints preserved only on constrained4 and pending5;
+  Moscow relay kubernetes/healthy, native inactive, no fallback marker.
+- Selected36 bootstrap/NetBird tests passed. Broader unittest discovery encountered
+  missing pytest for one module (135 other cases including4 skips); not a full
+  suite pass. No dependency installation or skipped-test masking performed.
+
+## Real blockers — do not remove bootstrap NoSchedule
+
+1. **NFS mount denied by LXC user namespace.** Native read-only NFSv4 mount returned
+   Operation not permitted; NFS server192.168.0.23:2049 is TCP-reachable. UID map
+   is0->100000/65536, AppArmor unconfined. This is not a missing network route.
+   Existing cluster NFS PVs have no node affinity excluding5, so normal admission
+   could place workloads that cannot mount their storage. No data was read/written.
+   Do not suggest nesting alone as a proven fix or grant a privileged container as
+   a workaround. A VM is the recommended full-worker platform; provider/host
+   decision is needed. No VM migration/reinstallation authorized or attempted.
+2. **Negative NetworkPolicy acceptance failed.** In isolated fixture namespace,
+   deny-all Ingress did not prevent cross-node HTTP, including longer retry window.
+   Both policies removed; positive HTTP restored/retained. Cause not established;
+   do not attribute to LXC without further evidence, and do not claim enforcement.
+   Policy configuration was not disabled to hide the failure.
+3. **30Mbit/s Proxmox cap not verified.** Owner received UI instruction rate3.75MB/s
+   on CT net0; no Proxmox-host access is configured here. Guest link speed does not
+   prove the hypervisor cap. No saturation test or fake guest-only ingress guarantee.
+
+Full worker acceptance remains BLOCKED, not complete. Need Proxmox/provider
+platform decision, network-policy acceptance and verified bandwidth cap before
+lifting bootstrap taint. Physical reboot, general HA/DR and NAT rebinding survival
+also remain outside the proven scope.

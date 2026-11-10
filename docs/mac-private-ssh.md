@@ -11,14 +11,14 @@ supersedes the internal-only alias policy in the historical sections below.
 | socrat-1 | 109.173.40.247:2223 (existing router forwarding) | none |
 | socrat-2 | 109.120.141.60:2222 | none |
 | socrat-4 | 91.189.82.238:2222 | none |
-| socrat-3 | 10.250.0.5:2222 | socrat-0 |
-| socrat-5 | 10.250.0.41:2222 | socrat-0 |
+| socrat-3 | 10.250.0.5:2222 | none (NetBird) |
+| socrat-5 | 10.250.0.41:2222 | none (NetBird) |
 
 All six ordinary aliases were authenticated and returned the expected hostname
 and alchemmist user. Existing host-key pins and strict checking retained.
 No Mac routes, DNS, VPN configuration or server services were changed. Public
 entries do not require the inter-node WG/Kubernetes path; private workers still
-depend on their jump host and its network path. Port22 on the current NL IP
+depend on NetBird and its network path, not an SSH jump host. Port22 on the current NL IP
 remains an explicitly named alternative, not the retired .97 address.
 
 ## Historical internal-access setup

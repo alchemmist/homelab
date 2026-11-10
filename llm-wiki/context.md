@@ -3,7 +3,7 @@
 ## SSH management policy — owner override 2026-11-10
 
 Ordinary Mac aliases 0/1/2/4 now use public SSH directly (HOME WAN forwarded
-2222/2223, NL .60:2222, Moscow :2222). Only private workers3/5 use ProxyJump0.
+2222/2223, NL .60:2222, Moscow :2222). Private workers3/5 use direct NetBird, ProxyJump none.
 All six real SSH logins accepted; strict pins retained, no Mac route/DNS/VPN
 changes. Do not restore the older internal-only alias policy.
 [Current table](../docs/mac-private-ssh.md).
@@ -15,10 +15,20 @@ SSH2222+preserved22 and metadata welcome configured; direct WG to all five peers
 accepted, temporary Moscow isolation retired. K3s agent joined,6Ready,5 still has
 bootstrap NoSchedule. LXC uses native usernamespace kubelet mode and node-local
 legacy netfilter after actual DNS failure/EMSGSIZE; policies not disabled.
-**Do not declare complete: NetBird, telemetry, final admission/acceptance pending.**
+NetBird5 ready with key-free restart; direct ordinary SSH/no jumps and password
+sudo accepted. Native OTel up1/uname and Loki329/10min counts accepted. Direct
+peers0/1/2/3 remain reachable during scoped Moscow WG failure. Own fixtures cleaned.
+**BLOCKED full admission:** NFS mount EPERM (unprivileged UID map0->100000, NFS TCP
+reachable) and negative NetworkPolicy deny test failed (cause unproven). Keep5
+bootstrap NoSchedule. Need provider/Proxmox decision (VM recommended for full NFS
+worker), policy fix/acceptance, and verification of requested30Mbit cap on host.
+No container privilege expansion or host migration attempted. Do not replay
+failed enrollment: old unconsumed/revoked key inspected; guarded recovery and
+successful ready binding already accepted. Selected36 tests passed, broad suite
+not clean because pytest missing. Moscow relay remains healthy.
 [Current setup and remaining gates](../docs/socrat-5-worker-20261110.md).
 
-## Новый bootstrap: socrat-5 — не член Kubernetes
+## Исторический bootstrap socrat-5 — superseded by worker setup above
 
 Владелец выдал NATed Debian13 LXC, исходное имя testing-class; WG create/delete
 успешен, SSH22 root key-only. Новый согласованный идентификатор **socrat-5**,
@@ -29,7 +39,7 @@ pinned ED25519 принят, Ansible pipelining работает. Один negat
 из.41 к Moscow.40 получил timeout. Полная mesh/failure/isolation matrix и
 K3s/LXC suitability НЕ приняты.**
 [Runbook, source, fingerprint и pending gates](../docs/socrat-5-bootstrap-20261110.md).
-Не включать socrat-5 в Socrat/full-mesh/K3s и не переигрывать one-time admission.
+Исторический bootstrap завершён и superseded:5 уже в Socrat/K3s. Не переигрывать one-time admission; обычный scheduling всё ещё заблокирован taint до acceptance.
 
 ## Закрытие сессии: RF/NL split отложен владельцем
 
