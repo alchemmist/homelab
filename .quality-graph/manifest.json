@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "cbfe8a2a052bc9d51b3504635f3acec3eab9d6db609e128d9e9f231ff54d8c04",
+  "graphDigest": "89237b72f9b0597fb8f31d9281c37c373007474e501a8e3d1c8e3906a3976634",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -87,6 +87,31 @@
       },
       "timeoutMinutes": 5,
       "title": "Offline workflow policy regressions"
+    },
+    {
+      "env": {},
+      "id": "alert-graph-delivery",
+      "needs": [],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": true,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "default",
+      "result": {
+        "adapter": "exit-code"
+      },
+      "step": {
+        "run": "command -v helm\nuv run python -m unittest discover -s tests -p test_alert_graphs_chart.py\nuv run python scripts/alert_graphs.py --check\n"
+      },
+      "timeoutMinutes": 5,
+      "title": "Alert graph chart, image ownership and renderer capacity"
     }
   ],
   "profiles": {

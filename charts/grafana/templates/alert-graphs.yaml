@@ -1,8 +1,8 @@
 {{- if .Values.alertGraphs.enabled }}
-{{- $repository := required "alertGraphs.image.repository is required" .Values.alertGraphs.image.repository }}
-{{- $digest := required "alertGraphs.image.digest is required" .Values.alertGraphs.image.digest }}
+{{- $repository := required "gateway.repository is required" .Values.gateway.repository }}
+{{- $digest := required "gateway.digest is required" .Values.gateway.digest }}
 {{- if not (regexMatch "^sha256:[a-f0-9]{64}$" $digest) }}
-{{- fail "alertGraphs.image.digest must be an immutable sha256 digest" }}
+{{- fail "gateway.digest must be an immutable sha256 digest" }}
 {{- end }}
 {{- $secret := required "alertGraphs.existingSecret is required" .Values.alertGraphs.existingSecret }}
 {{- if not .Values.grafana.imageRenderer.enabled }}

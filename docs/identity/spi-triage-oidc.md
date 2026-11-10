@@ -25,7 +25,7 @@ review; no person is assigned automatically by this change.
 
 Native confidential client, exact HTTPS callback and issuer, PKCE S256/state/nonce,
 RS256 verification and signed groups. Canonical host `spi.socrat.alchemmist.xyz`,
-callback `/oauth/callback`, launch `/queue/`. Owner/platform legacy access retained;
+callback `/oauth/callback`, canonical UI `/`. Legacy `/queue/` links redirect to `/`. Owner/platform legacy access retained;
 new `app-spi-triage-operator` maps to queue operator only. No observer grant. Email
 is not a subject. See application `docs/queue-oidc.md` for full session/role rules.
 
@@ -216,3 +216,41 @@ This receipt does not claim a live migration or human-login acceptance.
   can now open the URL and sign in normally; do not misstate this as already
   witnessed end-to-end personal SSO acceptance. Sessions remain capped at 5 minutes,
   no silent refresh/global logout; those limits were not changed by deployment.
+
+
+## Root-domain UI correction — 10 November 2026 08:46 UTC
+
+Canonical UI is **https://spi.socrat.alchemmist.xyz/**. Authenticated root directly
+serves the page; OAuth callback returns to `/`, assets are `/app.js` and
+`/style.css`, browser API is `/api/list` and `/api/cancel`. `/queue/` is only a
+backward-compatible redirect, not a second UI. Old API paths remain authenticated
+fixed aliases for open tabs. No issuer/callback/role/Secret change was needed.
+
+User reported intermittent Bad Gateway after initial successful sign-in. At
+inspection time public redirect and the real frontend-to-worker read-only queue
+request worked (200); no current SPI service 502 metric was observed. Do not
+present the exact historical failure cause as established. A proven code path
+that could generate proxy 502 was corrected: exhausted eight-slot capacity now
+returns explicit bounded HTTP 503/Retry-After instead of silently closing the
+socket. Sanitized failure logs record exception class only, never cookies,
+OAuth URLs, tokens, request/response bodies or private queue contents.
+
+Source `3dd2194b34897cc02e175c48c79afa59daf3e29a`, passing native CI 42784212030,
+347 tests with zero native skips, canonical action robot commit `ba771b6`, image
+`sha256:ce569e2483e7e69f0390eb99cb56c290b48a5429fca25243ac44f711a8fd3224`.
+Initial CI failures caught a test-thread cleanup race and missing workflow
+fixture in the native test image; both fixed without skipping tests/raising
+production limits. Worker/frontend rolled out normally; live root assets verified.
+
+Only original new SPI claims were paused, then restored after readback. Under
+explicit prior permission to stop active runs, execution 16303 was interrupted
+at match by the shared-image rollout and remains in n8n history with status error.
+After proving the old worker UID absent and that execution terminal, its exact
+running owner/job was transitioned through native `Store.fail`/failure callback
+with `WRITE_NEEDS_REVIEW`, preventing automatic replay of the ambiguous paid call.
+Payload, stage/checkpoint, intent and all paid admission rows stayed byte-for-byte
+unchanged; no quota or reservation reset. The paid reservation was still active
+at receipt time and is left to its normal lifecycle, not claimed idle. Existing
+1037 job IDs/creation times and 549 terminal hashes verified unchanged, integrity/
+FK OK. Private before/after and interruption receipt retained; no forced model
+or real-job cancellation acceptance probe. Original scheduling reactivated.

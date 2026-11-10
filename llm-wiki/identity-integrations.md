@@ -374,3 +374,15 @@ original workflow resumed, same PVC/history preserved, Argo Synced/Healthy.
 Prepared/blocked checkpoints above are historical. Real personal MFA/callback
 acceptance remains unobserved (busy shared browser); no bypass or synthetic human
 identity was used. Full evidence/limits: [runtime receipt](../docs/identity/spi-triage-oidc.md#final-runtime-receipt--10-november-2026-utc).
+
+### SPI canonical root correction — 10 November 2026 08:46 UTC
+
+Use **https://spi.socrat.alchemmist.xyz/** directly, not `/queue/`. Native callback
+returns to root; old bookmarks redirect there. Root release passed 347 native
+tests, image `sha256:ce569e2483e7e69f0390eb99cb56c290b48a5429fca25243ac44f711a8fd3224`.
+Explicit overload responses replace silent connection-close 502 and sanitized
+upstream error diagnostics are enabled. Exact historical reported 502 cause not
+proven. Original workflow resumed; execution 16303 stopped under prior owner
+authorization, kept for review/no automatic replay; paid reservations not cleared.
+1037 job identities and 549 prior terminal hashes preserved. Full dated receipt
+in [SPI runbook](../docs/identity/spi-triage-oidc.md).

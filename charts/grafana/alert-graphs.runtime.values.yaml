@@ -18,11 +18,11 @@ grafana:
         type: RuntimeDefault
     resources:
       requests:
-        cpu: 100m
-        memory: 256Mi
+        cpu: 500m
+        memory: 512Mi
       limits:
-        cpu: '1'
-        memory: 1Gi
+        cpu: '4'
+        memory: 2Gi
     env:
       HTTP_HOST: '0.0.0.0'
       # Upstream request logger otherwise includes ephemeral Grafana renderKey.
@@ -32,16 +32,13 @@ grafana:
       XDG_CACHE_HOME: /tmp/.chromium
       RATE_LIMIT_MIN_LIMIT: '1'
       RATE_LIMIT_MAX_LIMIT: '2'
-      RATE_LIMIT_MAX_AVAILABLE: '1073741824'
-      RATE_LIMIT_HEADROOM: '134217728'
+      RATE_LIMIT_MAX_AVAILABLE: '2147483648'
+      RATE_LIMIT_HEADROOM: '268435456'
       BROWSER_READINESS_PRIOR_WAIT: '0s'
 
 alertGraphs:
   enabled: true
   existingSecret: socrat-alert-graphs-auth
-  image:
-    repository: harbor.socrat.alchemmist.xyz/homelab/spi-triage
-    digest: sha256:eb830c98ccd6d19ef8535fcb5be003d783cb4aeb98d18fe64e66c1f51a37f64a
   imagePullSecrets:
     - name: alert-graphs-harbor-pull
   nodeSelector:

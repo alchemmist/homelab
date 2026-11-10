@@ -1,0 +1,6 @@
+# Canonical independently deployable stateless gateway image; no SPI worker rollout.
+# Updated by deploy-to-socrat@v1, app=grafana, component=gateway.
+gateway:
+  repository: harbor.socrat.alchemmist.xyz/homelab/spi-triage
+  tag: f7e712ec38d544b835c9f66114a8661767984007
+  digest: sha256:90d4e03023fd4b043d58f0c42461d43fc2fcdc8a07bb24bf62177f6c9afe877c
