@@ -9,4 +9,4 @@ metadata:
     grafana_folder: /tmp/dashboards/Sandbox
 data:
   socrat-traffic-light-tmp-lab.json: |
-{{ .Files.Get "dashboards/traffic-light-tmp-lab.json" | indent 4 }}
+{{ .Files.Get "dashboards/traffic-light-tmp-lab.json" | fromJson | toJson | indent 4 }}
