@@ -16,3 +16,5 @@ k3s_worker_user_namespace: true
 # nft large transactions fail inside userns; retain policies via supported legacy backend.
 k3s_worker_prefer_bundled_bin: false
 wg_socrat_interface_prefix: 32
+# Kernel WG is available; LXC does not grant the optional userspace TUN device.
+netbird_kernel_wireguard_only: true

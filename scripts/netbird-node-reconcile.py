@@ -53,10 +53,11 @@ def validate_config(c):
     require(isinstance(c.get('reserved_addresses'), list), 'reserved client address inventory required')
     reserved = {str(ipaddress.ip_address(v)) for v in c['reserved_addresses']}
     require(not set(ips) & reserved, 'node address collides with a human/device WG client')
+    require(set(c.get('kernel_only_nodes', [])) <= set(c['nodes']), 'kernel-only nodes must be admitted inventory nodes')
     return c
 
 
-def manifests(host, image, enrollment=False):
+def manifests(host, image, enrollment=False, kernel_only=False):
     require(re.fullmatch(r'socrat-[0-9]+', host), 'invalid node')
     name = 'machine-' + host
     labels = {'app': name}
@@ -76,10 +77,12 @@ def manifests(host, image, enrollment=False):
             'seccompProfile': {'type': 'RuntimeDefault'}},
         'volumeMounts': [{'name': 'state', 'mountPath': '/etc/netbird'},
                         {'name': 'tun', 'mountPath': '/dev/net/tun'}]}
+    if kernel_only:
+        container['volumeMounts'] = [v for v in container['volumeMounts'] if v['name'] != 'tun']
     if enrollment:
         container['env'].append({'name': 'NB_SETUP_KEY', 'valueFrom': {
             'secretKeyRef': {'name': name+'-enrollment', 'key': 'setup-key'}}})
-    return [
+    documents = [
         {'apiVersion': 'v1', 'kind': 'PersistentVolumeClaim',
          'metadata': {'name': name, 'namespace': NS},
          'spec': {'accessModes': ['ReadWriteOnce'], 'storageClassName': 'local-path',
@@ -98,6 +101,11 @@ def manifests(host, image, enrollment=False):
                          {'name': 'state', 'persistentVolumeClaim': {'claimName': name}},
                          {'name': 'tun', 'hostPath': {'path': '/dev/net/tun', 'type': 'CharDevice'}}]}}}}]
 
+
+    if kernel_only:
+        spec = documents[1]['spec']['template']['spec']
+        spec['volumes'] = [v for v in spec['volumes'] if v['name'] != 'tun']
+    return documents
 
 def policy_body(source, resource):
     return {'name': 'admin-wg-'+resource, 'enabled': True,
@@ -316,7 +324,7 @@ class Runtime:
         return p, status
 
     def verify_deployment(self, host, d):
-        expected = manifests(host, self.config['image'])[1]
+        expected = manifests(host, self.config['image'], kernel_only=host in self.config.get('kernel_only_nodes', []))[1]
         spec = d['spec']['template']['spec']; want = expected['spec']['template']['spec']
         require(d['spec']['replicas'] == 1 and spec['nodeSelector'] == want['nodeSelector']
                 and spec['hostNetwork'] and spec['automountServiceAccountToken'] is False

@@ -49,7 +49,7 @@ def desired(values, inventory, image):
             node.require(found == expected_keys, 'partial Git identity resources; no silent repair')
             continue
         node.require(not found, 'unbound existing Git resources; explicit review required')
-        docs = node.manifests(host, image)
+        docs = node.manifests(host, image, kernel_only=hostvars[host].get('netbird_kernel_wireguard_only', False))
         docs[0]['metadata']['annotations'] = {'argocd.argoproj.io/sync-options': 'Prune=false,Delete=false'}
         resources.extend(docs)
         values['nodes'][host] = address

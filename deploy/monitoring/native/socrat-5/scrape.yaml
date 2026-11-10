@@ -1,0 +1,14 @@
+scrape_configs:
+- job_name: node-exporter
+  relabel_configs:
+  - replacement: 10.250.0.41:9100
+    source_labels:
+    - instance
+    target_label: instance
+  scrape_interval: 15s
+  static_configs:
+  - labels:
+      instance: 10.250.0.41:9100
+      node: socrat-5
+    targets:
+    - 127.0.0.1:19100

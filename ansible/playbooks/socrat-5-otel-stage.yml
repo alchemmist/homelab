@@ -1,0 +1,21 @@
+---
+- name: Stage only public SHA-pinned telemetry executables over direct WireGuard
+  hosts: socrat-5
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Create staging directory
+      ansible.builtin.file:
+        path: /var/tmp/homelab-socrat5-native
+        state: directory
+        mode: '0755'
+    - name: Download exact stock executables, no shell installer
+      ansible.builtin.get_url:
+        url: 'http://10.250.0.1:18195/{{ item.name }}'
+        dest: '/var/tmp/homelab-socrat5-native/{{ item.name }}'
+        checksum: 'sha256:{{ item.sha }}'
+        mode: '0755'
+        timeout: 120
+      loop:
+        - {name: otelcol-contrib, sha: 57911a9d902cfe2c287dac09fcee4b054630b4ec248fa190a3115d860a32f81f}
+        - {name: node_exporter, sha: 1108f7453ecfe4a72f131c73b69537c171840ad4f1713a2402328ad56cf12e09}

@@ -60,6 +60,16 @@
         src: '{{ otel_production_bundle }}/{{ inventory_hostname }}.yaml'
         dest: /etc/homelab-otel/scrape.yaml
         mode: '0644'
+    - name: Create native textfile source and read-only namespace mountpoint
+      ansible.builtin.file:
+        path: '{{ item }}'
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      loop:
+        - /var/lib/node_exporter/textfile_collector
+        - /host/root/var/lib/node_exporter/textfile_collector
     - name: Install persistent independent host exporter
       ansible.builtin.copy:
         dest: /etc/systemd/system/homelab-otel-node-exporter.service

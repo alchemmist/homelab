@@ -1,0 +1,20 @@
+---
+- name: Add only new worker leaf identity without replaying full telemetry bootstrap
+  hosts: socrat-0
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Install secret-free one-time leaf helper
+      ansible.builtin.copy:
+        src: ../../scripts/socrat5-otel-leaf-bootstrap.py
+        dest: /usr/local/libexec/socrat5-otel-leaf-bootstrap.py
+        mode: '0700'
+    - name: Create only5 leaf and scoped reader, refuses any existing enrollment
+      ansible.builtin.command: python3 /usr/local/libexec/socrat5-otel-leaf-bootstrap.py
+    - name: Fetch only new host bootstrap material to private controller scope
+      ansible.builtin.fetch:
+        src: '/var/lib/homelab-recovery/20261110-socrat5-otel-leaf/socrat-5/{{ item }}'
+        dest: '{{ socrat5_otel_credentials }}/socrat-5/{{ item }}'
+        flat: true
+      no_log: true
+      loop: [token.json, kubernetes-ca.crt, credentials.json]
