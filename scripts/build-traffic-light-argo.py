@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Build only the TMP Argo state landscape, never edit the canonical TV."""
+"""Maintain the owner-approved Argo landscape in canonical panel909."""
 import copy
 import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / 'charts/monitoring-k3s/dashboards/traffic-light.json'
-OUTPUT = ROOT / 'charts/monitoring-k3s/dashboards/traffic-light-tmp-lab.json'
+OUTPUT = SOURCE
 DS = {'type': 'prometheus', 'uid': 'prometheus'}
 STATES = [('Ready', 0, '#173B2B'), ('Progressing / paused', 2, '#5794F2'),
           ('Git drift', 1, '#FFB357'), ('Unhealthy', 4, '#F2495C'), ('Unknown', 3, '#808080')]
@@ -56,15 +56,9 @@ def queries():
 
 def build():
     d = copy.deepcopy(json.loads(SOURCE.read_text()))
-    d.pop('id', None)
-    d.pop('version', None)
-    d.update(uid='socrat-traffic-light-tmp-lab', title='Traffic Light · TMP Lab',
-             description='Argo application state landscape over the dashboard range, root excluded. Canonical TV unchanged.',
-             tags=d.get('tags', []) + ['temporary', 'sandbox'])
     d['panels'] = [p for p in d['panels'] if p['id'] != 909]
-    groups = queries()[1]
     d['panels'].append({
-        'id': 975, 'title': '', 'type': 'timeseries', 'datasource': DS,
+        'id': 909, 'title': '', 'type': 'timeseries', 'datasource': DS,
         'gridPos': {'x': 12, 'y': 8, 'w': 6, 'h': 6},
         'description': 'Stacked application counts by observed Argo state over the selected range, sampled every15s. root excluded. Dark green = Healthy+Synced; blue = Progressing/Suspended; amber = drift; red = Degraded/Missing; grey = Unknown/unrecognized states. Each app contributes once. Priority: Unhealthy > Unknown > Progressing/paused > drift > Ready. Latest timestamp wins over older state label sets. Fresh zeros require app telemetry; missing/down/partially stale scrapes remain gaps. All applications are counted, not top-k. Progressing is not proof of a Pod rollout; Suspended is paused. A changing total may reflect added/removed apps or unavailable inventory after lookback expiry. Hover shows counts, not individual app names or root cause. No sync counter/event smoothing.',
         'interval': '15s', 'maxDataPoints': 10000,

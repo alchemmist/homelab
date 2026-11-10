@@ -2844,126 +2844,187 @@
       "type": "timeseries"
     },
     {
+      "id": 909,
+      "title": "",
+      "type": "timeseries",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "axisPlacement": "auto",
-            "fillOpacity": 90,
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineWidth": 0,
-            "spanNulls": false
-          },
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "color": "#26783D",
-                  "text": "Ready"
-                },
-                "1": {
-                  "color": "#5794F2",
-                  "text": "Progressing / paused"
-                },
-                "2": {
-                  "color": "#A85D08",
-                  "text": "Git drift"
-                },
-                "3": {
-                  "color": "#B42332",
-                  "text": "Unhealthy / unknown"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "noValue": "No telemetry",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": 0
-              },
-              {
-                "color": "#5794F2",
-                "value": 1
-              },
-              {
-                "color": "#A85D08",
-                "value": 2
-              },
-              {
-                "color": "#B42332",
-                "value": 3
-              }
-            ]
-          }
-        }
-      },
       "gridPos": {
-        "h": 2,
-        "w": 6,
         "x": 12,
-        "y": 8
+        "y": 8,
+        "w": 6,
+        "h": 6
       },
-      "id": 909,
-      "options": {
-        "alignValue": "center",
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "mergeValues": true,
-        "rowHeight": 0.8,
-        "showValue": "never",
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "pluginVersion": "13.2.4",
+      "description": "Stacked application counts by observed Argo state over the selected range, sampled every15s. root excluded. Dark green = Healthy+Synced; blue = Progressing/Suspended; amber = drift; red = Degraded/Missing; grey = Unknown/unrecognized states. Each app contributes once. Priority: Unhealthy > Unknown > Progressing/paused > drift > Ready. Latest timestamp wins over older state label sets. Fresh zeros require app telemetry; missing/down/partially stale scrapes remain gaps. All applications are counted, not top-k. Progressing is not proof of a Pod rollout; Suspended is paused. A changing total may reflect added/removed apps or unavailable inventory after lookback expiry. Hover shows counts, not individual app names or root cause. No sync counter/event smoothing.",
+      "interval": "15s",
+      "maxDataPoints": 10000,
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "2 * clamp_max((count(argocd_app_info{job=\"socrat-argocd\",sync_status!=\"Synced\"}) or (0 * count(argocd_app_info{job=\"socrat-argocd\"}))), 1) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1)",
-          "format": "time_series",
+          "expr": "((count_values(\"state\", ((4 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Degraded|Missing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status!~\"Synced|OutOfSync\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (2 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=~\"Progressing|Suspended\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (1 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",sync_status=\"OutOfSync\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\",health_status=\"Healthy\",sync_status=\"Synced\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))))) or label_replace((0 * count(max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}))))))), \"state\", \"0\", \"\", \"\") or label_replace((0 * count(max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}))))))), \"state\", \"2\", \"\", \"\") or label_replace((0 * count(max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}))))))), \"state\", \"1\", \"\", \"\") or label_replace((0 * count(max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}))))))), \"state\", \"4\", \"\", \"\") or label_replace((0 * count(max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}))))))), \"state\", \"3\", \"\", \"\")) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1)) and on() (count(max by(name) ((argocd_app_info{job=\"socrat-argocd\",name!=\"root\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))))) == count(max by(name) (argocd_app_info{job=\"socrat-argocd\",name!=\"root\"})))",
+          "legendFormat": "{{state}}",
+          "refId": "A",
           "instant": false,
-          "legendFormat": "Argo · Git",
           "range": true,
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "max((3 * argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing|Unknown\"}) or argocd_app_info{job=\"socrat-argocd\",health_status=~\"Progressing|Suspended\"} or (0 * argocd_app_info{job=\"socrat-argocd\",health_status=\"Healthy\"}) or (3 * argocd_app_info{job=\"socrat-argocd\"})) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1)",
           "format": "time_series",
-          "instant": false,
-          "legendFormat": "Argo · Apps",
-          "range": true,
-          "refId": "B"
+          "interval": "15s"
         }
       ],
-      "title": "",
-      "type": "state-timeline"
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "min": 0,
+          "noValue": "No telemetry",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 0,
+            "fillOpacity": 85,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": false,
+            "insertNulls": 45000,
+            "stacking": {
+              "mode": "normal",
+              "group": "argo-state"
+            },
+            "axisPlacement": "left",
+            "axisLabel": "",
+            "axisBorderShow": false,
+            "axisGridShow": true,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "0"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Ready"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#173B2B"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "2"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Progressing / paused"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5794F2"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "1"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Git drift"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#FFB357"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "4"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Unhealthy"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#F2495C"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "3"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Unknown"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#808080"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "all",
+          "sort": "desc",
+          "hideZeros": true
+        }
+      }
     },
     {
       "datasource": {

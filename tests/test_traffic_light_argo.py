@@ -7,31 +7,29 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('traffic_lab', ROOT / 'scripts/build-traffic-light-lab.py')
+spec = importlib.util.spec_from_file_location('traffic_lab', ROOT / 'scripts/build-traffic-light-argo.py')
 lab = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(lab)
 
 
-class TrafficLightLabTest(unittest.TestCase):
+class TrafficLightArgoTest(unittest.TestCase):
     def setUp(self):
         self.dashboard = lab.build()
         self.panels = {p['id']: p for p in self.dashboard['panels']}
 
     def test_generated_copy_and_unchanged_original_panels(self):
         self.assertEqual(json.loads(lab.OUTPUT.read_text()), self.dashboard)
-        self.assertEqual(self.dashboard['uid'], 'socrat-traffic-light-tmp-lab')
-        self.assertNotIn('id', self.dashboard)
-        self.assertNotIn('version', self.dashboard)
+        self.assertEqual(self.dashboard['uid'], 'socrat-traffic-light')
         original = json.loads(lab.SOURCE.read_text())
         for p in original['panels']:
             if p['id'] != 909:
                 self.assertEqual(self.panels[p['id']], p)
-        self.assertEqual(set(self.panels) - {p['id'] for p in original['panels']}, {975})
-        self.assertNotIn(909, self.panels)
-        self.assertFalse(set(self.panels) & set(range(950, 975)))
+        self.assertEqual({k: v for k, v in original.items() if k != 'panels'},
+                         {k: v for k, v in self.dashboard.items() if k != 'panels'})
+        self.assertFalse(set(self.panels) & set(range(950, 976)))
 
     def test_landscape_is_stacked_with_five_stable_categories(self):
-        p = self.panels[975]
+        p = self.panels[909]
         self.assertEqual(p['type'], 'timeseries')
         self.assertEqual(p['gridPos'], {'x': 12, 'y': 8, 'w': 6, 'h': 6})
         self.assertEqual(p['title'], '')
@@ -63,7 +61,9 @@ class TrafficLightLabTest(unittest.TestCase):
         chart = ROOT / 'charts/monitoring-k3s'
         rendered = subprocess.check_output(['helm', 'template', 'monitoring-k3s', str(chart),
                     '-n', 'cattle-monitoring-system', '-f', str(chart / 'alert-graphs.values.yaml')], text=True)
-        cm = next(x for x in yaml.safe_load_all(rendered) if x and x.get('metadata', {}).get('name') == 'socrat-traffic-light-tmp-lab-dashboard')
+        docs = [x for x in yaml.safe_load_all(rendered) if x]
+        self.assertNotIn('socrat-traffic-light-tmp-lab-dashboard', [x['metadata']['name'] for x in docs])
+        cm = next(x for x in docs if x['metadata']['name'] == 'socrat-traffic-light-dashboard')
         self.assertLess(len(json.dumps(cm, separators=(',', ':')).encode()), 240000)
         self.assertEqual(json.loads(next(iter(cm['data'].values()))), self.dashboard)
 

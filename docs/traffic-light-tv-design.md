@@ -244,3 +244,23 @@ changes relative to the owner snapshot. The three spare cells near the node row
 are intentional. Resource top labels, canonical UID, public share and Fully
 settings remain untouched. Node count/UP color thresholds are unchanged in this
 scoped change; they are not a dynamic etcd quorum assessment.
+
+## Owner-approved Argo landscape promotion — 10 November 2026
+
+Owner approved TMP state landscape, compact height6 and outline-free fills with
+legend, and explicitly requested canonical promotion and TMP deletion. Panel909
+now contains the exact approved live TMP975 config except ID. Geometry x12,y8,w6,h6;
+all other panels/top-level source settings remain unchanged. The fixture records
+22 intentionally empty cells (formerly46; area grows by24 cells). Canonical UID,
+public share, TV URL and Fully settings retained. Fresh live source comparison
+found only API normalization differences, no uncaptured owner edits.
+
+Native stacked state counts: Ready, Git drift, Progressing/paused, Unknown,
+Unhealthy. These are applications, not Pod counts or rollout events. One category
+per app, root excluded,15s query step. lineWidth0 avoids a zero-height red layer
+looking like many unhealthy apps at the stack's cumulative boundary. Full
+semantics/maintenance/retirement: `prototypes/traffic-light/README.md`.
+
+Maintain with `scripts/build-traffic-light-argo.py`; TMP sources/template retired.
+Prune remains false; cleanup is only the exact obsolete TMP ConfigMap, with atomic
+UID/resourceVersion preconditions, after canonical reconciliation and inspection.

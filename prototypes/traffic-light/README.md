@@ -1,88 +1,67 @@
-# Traffic Light · TMP Lab — Argo state landscape
+# Traffic Light — approved Argo landscape (TMP retired)
 
-Owner-approved direction,2026-11-10: replace sparse sync-event lines with a native
-**stacked area history of application states**. All applications are accounted
-for, root excluded, no per-app top-k or 48-line legend.
+Owner approved the compact stacked application-state history and explicitly
+requested promotion to the canonical Traffic Light and deletion of TMP.
 
-<https://grafana.socrat.alchemmist.xyz/d/socrat-traffic-light-tmp-lab?kiosk=1>
+<https://grafana.socrat.alchemmist.xyz/d/socrat-traffic-light?kiosk=1&hideLogo=1&autofitpanels=true>
 
-## Display / meaning
+## Production panel909
 
-Panel975 replaces old canonical Argo909 only in TMP. Same compact x12,y8,w6,h6
-space, no heading or Y-axis caption. Bottom legend contains five state categories,
-not application names. History follows the dashboard's12h range. Queries keep15s
-step and10000-point budget. Areas are normally stacked (absolute app counts),
-85% fill, step-after interpolation, not smoothed. Zero-based Y axis; no percentage
-normalization or baseline truncation. A single PromQL target computes the
-partition once for all five series, avoiding five expensive copies on a dashboard
-that refreshes every5s. Numeric state labels keep Ready at the stack base; native
-field overrides provide readable legend names and fixed colors.
+The approved live TMP975 is copied exactly, except ID909 replaces the existing
+canonical Argo panel. x12,y8,w6,h6, no title, legend retained. Native Time series,
+normal absolute-count stacking,85% area fill, step-after interpolation. No outlines
+(lineWidth0), so zero Unhealthy does not draw a misleading red roof. Nonzero
+Unhealthy retains its red fill. Other panels, UID, dashboard metadata, public share
+and Fully Kiosk/TV settings are unchanged.
 
 - **Ready**, dark green: Healthy+Synced.
-- **Progressing / paused**, bright blue: Progressing or Suspended health. The latter
-  is paused, not necessarily an update or failure.
-- **Git drift**, amber: OutOfSync, unless higher-priority health takes precedence.
+- **Git drift**, amber: OutOfSync (cluster differs from Git), unless higher-priority
+  state takes precedence; not necessarily unhealthy.
+- **Progressing / paused**, blue: Progressing or Suspended health. Progressing means
+  not yet ready; Suspended means paused, not necessarily active work.
+- **Unknown**, grey: unknown/unrecognized health or sync state, not confirmed failure.
 - **Unhealthy**, red: Degraded or Missing.
-- **Unknown**, grey: unrecognized/unknown health or sync state.
 
-Exactly one contribution per app. Priority: Unhealthy > Unknown > Progressing/
-paused > drift > Ready. Latest sample timestamp for each app wins over older
-state label sets that may linger in OTLP storage; same-time contradictions still
-resolve to one category. root is excluded from every query.
+Counts are Argo applications, not Pods, sync operations or verified rollouts.
+One contribution per app; root excluded. Priority: Unhealthy > Unknown >
+Progressing/paused > drift > Ready. Latest timestamp wins over lingering old label
+sets; simultaneous contradictions resolve to one category. All apps, not top-k.
+Hover shows category counts, not app names/root cause. Area thickness is the count;
+the upper boundary is cumulative, not the count of the top category alone.
 
-Y = how many apps are observed in a state at that moment. Colored regions show
-when the healthy majority gives way to transitions or problems and then recovers.
-This is NOT a sync count, Pod rollout count, per-app audit log, uptime percentage,
-or root-cause diagnosis. Hover shows the timestamp and category counts, not the
-names of the affected apps. Shorter-than-scrape transitions may be missed.
+Single PromQL target computes all categories,15s step/10000-point budget,12h
+selected history. Missing/down/partially stale scrape telemetry yields gaps, not
+healthy zeros; nulls are not connected. Missing inventory beyond lookback can lower
+the observed total, indistinguishable from deletion without separate inventory.
+No collector, scrape cadence or production rollout change.
 
-Fresh zero categories require actual app telemetry. Scrape failure, absent app
-metrics or partially stale inventory produce gaps in all five queries. Nulls are
-not connected;45s disconnect threshold. If an app disappears beyond Prometheus'
-lookback, a changing observed total cannot alone distinguish deletion from a
-producer silently losing that app. No completeness/availability guarantee.
-
-## Validation
-
-Live12h/15s queries yielded real variation: Ready41–48, Progressing/paused0–6,
-drift0–1, Unhealthy0–1, Unknown0–6 during the bounded audit. No test failure or
-production rollout was triggered to manufacture colors. These are historical
-observations, not claims of a current cluster outage.
-
-30 tests cover generated-copy/canonical-panel preservation, native area stacking,
-state colors, title/height/cadence, grid and rendered apply size. Native promtool
-cases verify mixed states, no double-counting of simultaneous drift/Progressing,
-root exclusion, fresh healthy zeros, absent/down/stale/partially stale telemetry,
-newer status replacing lingering older labels and same-timestamp contradictions.
-Helm comparison must change only the existing TMP ConfigMap payload.
-
-Inspected the deployed native chart at1920×1080 in a separate read-only Viewer
-browser context: dark healthy baseline, blue transition area and brief amber/red/
-grey excursions render; the five-name legend fits in two rows, no heading.
-The native query returned HTTP200. Browser acceptance waits for the chart response,
-not network-idle (dashboard refreshes every5s). Shared browser profiles untouched.
-Physical-TV readability and owner visual approval remain separate from these checks.
-
-## Build / ownership
+## Maintenance / tests
 
 ```sh
-python3 scripts/build-traffic-light-lab.py
+python3 scripts/build-traffic-light-argo.py
 python3 -m unittest discover -s tests -p 'test_traffic_light*.py'
 helm template monitoring-k3s charts/monitoring-k3s -n cattle-monitoring-system \
   -f charts/monitoring-k3s/alert-graphs.values.yaml
 ```
 
-Separate UID `socrat-traffic-light-tmp-lab`, ConfigMap
-`socrat-traffic-light-tmp-lab-dashboard`, Sandbox folder. Template compacts JSON
-below Kubernetes last-applied annotation limit. Git → monitoring-k3s Argo auto-sync.
-No custom CSS/JS/plugins, public-share, TV, collector, alert, network or canonical
-JSON changes. Existing unrelated worktree changes belong to another task and are
-not included. Experiments950–974 remain only in Git history. Retirement requires
-source removal and exact reviewed ConfigMap cleanup because prune is false.
+30 tests cover canonical-panel preservation, geometry, title/legend/fill/zero
+outline, colors/cadence, Helm size/no TMP rendering, PromQL partition, root
+exclusion, healthy zeros, absent/down/stale/partially stale telemetry, newer state
+replacing old labels and contradictory same-time states.
 
-## Owner acceptance / compact refinement
+Live canonical was compared with Git before promotion; differences were only
+Grafana API default normalization, no uncaptured owner edits. Promotion checks
+prove all top-level source settings and all non909 panels unchanged and panel909
+identical to approved live TMP975 except ID. Helm diff is exactly canonical
+ConfigMap payload update plus removal of TMP ConfigMap from desired manifests.
 
-Owner approved the state landscape. Height reduced7→6 grid rows; legend retained.
-Native lineWidth=0 removes outlines for all areas: a zero-height Unhealthy layer
-no longer draws a misleading red roof at the cumulative total. Nonzero unhealthy
-intervals retain red fill; counts, queries, stack order and tooltip are unchanged.
+## Retirement
+
+Removed TMP JSON, Helm template and lab generator/test names. TMP UID was
+`socrat-traffic-light-tmp-lab`; ConfigMap was
+`socrat-traffic-light-tmp-lab-dashboard` in `cattle-monitoring-system`, Sandbox
+folder. Automated prune remains false: after canonical reconciliation/inspection,
+delete only that verified ConfigMap with UID/resourceVersion preconditions and
+verify sidecar/provisioning removes the old Grafana dashboard. No blanket prune,
+folder deletion, direct Grafana mutation or changes to the canonical public share.
+Earlier rejected experiments remain only in Git history.

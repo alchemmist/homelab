@@ -72,7 +72,7 @@ class TrafficLightLayoutTest(unittest.TestCase):
                  if (x, y) not in occupied]
         approved = json.loads((ROOT / 'tests/fixtures/traffic-light-owner-layout.json').read_text())
         self.assertEqual({str(p['id']): p['gridPos'] for p in self.dashboard['panels']}, approved)
-        self.assertEqual(len(holes), 46)  # intentional whitespace in owner layout
+        self.assertEqual(len(holes), 22)  # intentional whitespace in owner layout
 
     def test_cpu_temperature_bar_removed(self):
         ids = {panel['id'] for panel in self.dashboard['panels']}
@@ -97,8 +97,8 @@ class TrafficLightLayoutTest(unittest.TestCase):
         self.assertEqual(chart['gridPos'], {'x': 18, 'y': 10, 'w': 6, 'h': 4})
         self.assertEqual(chart['type'], 'stat')
         history = panel_by_id(self.dashboard, 909)
-        self.assertEqual(history['gridPos'], {'x': 12, 'y': 8, 'w': 6, 'h': 2})
-        self.assertEqual(history['type'], 'state-timeline')
+        self.assertEqual(history['gridPos'], {'x': 12, 'y': 8, 'w': 6, 'h': 6})
+        self.assertEqual(history['type'], 'timeseries')
 
     def test_unmodified_resource_columns(self):
         cpu = panel_by_id(self.dashboard, 21)
@@ -189,22 +189,18 @@ class TrafficLightQueriesTest(unittest.TestCase):
         self.assertEqual(panel['fieldConfig']['defaults']['min'], 0)
         self.assertNotIn('max', panel['fieldConfig']['defaults'])
 
-    def test_argocd_has_two_readable_state_history_lanes(self):
+    def test_argocd_has_approved_state_landscape(self):
         panel = panel_by_id(self.dashboard, 909)
-        self.assertEqual(panel['type'], 'state-timeline')
-        self.assertEqual(len(panel['targets']), 2)
-        self.assertEqual([t['legendFormat'] for t in panel['targets']], ['Argo · Git', 'Argo · Apps'])
-        self.assertIn('sync_status!="Synced"', panel['targets'][0]['expr'])
-        self.assertIn('Degraded|Missing|Unknown', panel['targets'][1]['expr'])
-        for target in panel['targets']:
-            self.assertFalse(target['instant'])
-            self.assertTrue(target['range'])
-            self.assertIn('timestamp(up{job="socrat-argocd"}) < 90', target['expr'])
-        self.assertFalse(panel['fieldConfig']['defaults']['custom']['spanNulls'])
-        self.assertEqual(panel['options']['showValue'], 'never')
+        self.assertEqual(panel['type'], 'timeseries')
+        self.assertEqual(len(panel['targets']), 1)
+        self.assertTrue(panel['options']['legend']['showLegend'])
+        self.assertEqual(panel['fieldConfig']['defaults']['custom']['lineWidth'], 0)
+        self.assertEqual(panel['fieldConfig']['defaults']['custom']['stacking']['mode'], 'normal')
+        self.assertIn('count_values(', panel['targets'][0]['expr'])
+        self.assertIn('name!="root"', panel['targets'][0]['expr'])
 
     def test_new_activity_visuals_have_no_headers_legends_or_period_badges(self):
-        for panel_id in (909, 920, 923, 924, 925):
+        for panel_id in (920, 923, 924, 925):
             panel = panel_by_id(self.dashboard, panel_id)
             self.assertEqual(panel.get('title', ''), '')
             self.assertEqual(panel.get('description', ''), '')
