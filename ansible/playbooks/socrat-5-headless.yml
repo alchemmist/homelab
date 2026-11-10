@@ -1,0 +1,61 @@
+---
+- name: Prepare explicitly authorized headless LXC worker owner and terminal
+  hosts: socrat-5
+  gather_facts: true
+  become: true
+  any_errors_fatal: true
+  vars:
+    # Metadata welcome is activated only after Kubernetes registration.
+    homelab_welcome_enabled: false
+  pre_tasks:
+    - name: Require private owner inputs and exact node
+      ansible.builtin.assert:
+        that:
+          - inventory_hostname == 'socrat-5'
+          - socrat5_owner_password_hash is match('^[$]6[$]')
+          - socrat5_owner_public_key is match('^ssh-ed25519 ')
+      no_log: true
+    - name: Preserve initial system state once
+      ansible.builtin.shell: |
+        set -eu
+        out=/var/lib/homelab-recovery/20261110-socrat5-owner
+        install -d -m 700 "$out"
+        test ! -e "$out/before.tar" || exit 0
+        umask 077
+        tar -cf "$out/before.tar" /etc/passwd /etc/shadow /etc/group /etc/gshadow /etc/ssh /etc/hosts /etc/hostname /etc/wireguard
+      args:
+        creates: /var/lib/homelab-recovery/20261110-socrat5-owner/before.tar
+      no_log: true
+    - name: Install headless tools only, no GUI/session/wallpaper roles
+      ansible.builtin.apt:
+        name: [sudo, zsh, starship, tmux, ca-certificates, curl, git, jq, rsync, python3, iproute2, iputils-ping, conntrack, iptables, nfs-common, open-iscsi, kmod]
+        update_cache: true
+        cache_valid_time: 3600
+        state: present
+    - name: Create owner with normal password-based sudo
+      ansible.builtin.user:
+        name: alchemmist
+        create_home: true
+        shell: /usr/bin/zsh
+        groups: sudo
+        append: true
+        password: '{{ socrat5_owner_password_hash }}'
+      no_log: true
+    - name: Add owner public key without deleting any existing keys
+      ansible.posix.authorized_key:
+        user: alchemmist
+        key: '{{ socrat5_owner_public_key }}'
+        exclusive: false
+    - name: Set agreed node hostname
+      ansible.builtin.hostname:
+        name: socrat-5
+    - name: Maintain local hostname resolution
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        regexp: '^127[.]0[.]1[.]1\s'
+        line: '127.0.1.1 socrat-5'
+    - name: Validate sudo syntax
+      ansible.builtin.command: visudo -c
+      changed_when: false
+  roles:
+    - starship

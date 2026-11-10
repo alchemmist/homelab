@@ -1,6 +1,6 @@
 # Managed by homelab Ansible. Do not edit manually.
 [Interface]
-Address = {{ wg_socrat_nodes[inventory_hostname].address }}/24
+Address = {{ wg_socrat_nodes[inventory_hostname].address }}/{{ wg_socrat_interface_prefix | default(24) }}
 ListenPort = {{ wg_socrat_port }}
 PrivateKey = {{ wg_socrat_private_key }}
 

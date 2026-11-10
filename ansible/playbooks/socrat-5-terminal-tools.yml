@@ -1,0 +1,48 @@
+---
+- name: Install verified headless interactive monitor without desktop roles
+  hosts: socrat-5
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Create trusted package cache
+      ansible.builtin.file:
+        path: /var/cache/homelab
+        state: directory
+        mode: '0755'
+    - name: Fetch existing project-pinned official bottom package
+      ansible.builtin.get_url:
+        url: https://github.com/ClementTsang/bottom/releases/download/0.14.9/bottom_0.14.9-1_amd64.deb
+        checksum: sha256:e8312526746c1190c3433e6ce0843f64c6e0c501003ee377552745c040dc6d56
+        dest: /var/cache/homelab/bottom_0.14.9-1_amd64.deb
+        mode: '0644'
+    - name: Install verified monitor
+      ansible.builtin.apt:
+        deb: /var/cache/homelab/bottom_0.14.9-1_amd64.deb
+    - name: Install user terminal configuration directory
+      ansible.builtin.file:
+        path: /home/alchemmist/.config/bottom
+        state: directory
+        owner: alchemmist
+        group: alchemmist
+        mode: '0755'
+    - name: Configure descending CPU sort, no screen sessions or autostart
+      ansible.builtin.copy:
+        dest: /home/alchemmist/.config/bottom/bottom.toml
+        owner: alchemmist
+        group: alchemmist
+        mode: '0644'
+        content: |
+          [processes]
+          default_sort = "CPU%"
+          sort_order = "Descending"
+    - name: Keep simple tmux defaults for manual sessions
+      ansible.builtin.copy:
+        dest: /home/alchemmist/.tmux.conf
+        force: false
+        owner: alchemmist
+        group: alchemmist
+        mode: '0644'
+        content: |
+          set -g mouse on
+          set -g history-limit 20000
+          set -g default-terminal "screen-256color"

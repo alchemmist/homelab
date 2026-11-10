@@ -1,0 +1,25 @@
+---
+- name: Use supported legacy netfilter only in this user-namespaced LXC
+  hosts: socrat-5
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Preserve old backend state without flushing or replaying rules
+      ansible.builtin.shell: |
+        set -eu
+        d=/var/lib/homelab-recovery/20261110-socrat5-netfilter
+        test ! -e "$d" || { echo 'STOP: inspect existing backend transition receipt'; exit 1; }
+        install -d -m 700 "$d"
+        umask 077
+        iptables-nft-save > "$d/nft.before"
+        iptables-legacy-save > "$d/legacy.before"
+        update-alternatives --query iptables > "$d/iptables.before"
+        update-alternatives --query ip6tables > "$d/ip6tables.before"
+    - name: Select existing legacy IPv4 tools (including save and restore slaves)
+      community.general.alternatives:
+        name: iptables
+        path: /usr/sbin/iptables-legacy
+    - name: Select consistent existing legacy IPv6 tools
+      community.general.alternatives:
+        name: ip6tables
+        path: /usr/sbin/ip6tables-legacy

@@ -15,8 +15,10 @@ TasksMax=infinity
 TimeoutStartSec=0
 Restart=always
 RestartSec=5s
+{% if k3s_worker_manage_kernel_modules | default(true) | bool %}
 ExecStartPre=/sbin/modprobe br_netfilter
 ExecStartPre=/sbin/modprobe overlay
+{% endif %}
 ExecStart=/usr/local/bin/k3s agent
 
 [Install]

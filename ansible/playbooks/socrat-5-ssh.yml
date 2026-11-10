@@ -1,0 +1,10 @@
+---
+- name: Migrate only new node to standard SSH port, preserve bootstrap22
+  hosts: socrat-5
+  become: true
+  gather_facts: false
+  vars:
+    homelab_ssh_bootstrap_port: 22
+    homelab_ssh_preserve_ports: [22]
+  roles:
+    - ssh

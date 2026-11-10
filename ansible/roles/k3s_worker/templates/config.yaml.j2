@@ -3,13 +3,16 @@ token-file: /etc/rancher/k3s/worker-token
 node-name: {{ k3s_worker_name }}
 node-ip: {{ k3s_worker_ip }}
 flannel-iface: wg-socrat
-prefer-bundled-bin: true
+prefer-bundled-bin: {{ k3s_worker_prefer_bundled_bin | default(true) | bool | lower }}
 node-label:
   - svccontroller.k3s.cattle.io/enablelb=false
   - homelab.io/profile={{ k3s_worker_profile | default('desktop-worker') }}
 node-taint:
   - {{ k3s_worker_bootstrap_taint }}
 kubelet-arg:
+{% if k3s_worker_user_namespace | default(false) | bool %}
+  - feature-gates=KubeletInUserNamespace=true
+{% endif %}
 {% if k3s_worker_swap_enabled | default(false) | bool %}
   - fail-swap-on=false
 {% endif %}

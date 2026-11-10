@@ -1,0 +1,18 @@
+---
+# General headless LXC worker; no desktop/wallpaper/display autostart roles.
+homelab_boot_k3s_service: k3s-agent.service
+homelab_headless: true
+k3s_worker_profile: headless-worker
+k3s_worker_swap_enabled: true
+k3s_worker_system_reserved: cpu=300m,memory=768Mi
+k3s_worker_kube_reserved: cpu=100m,memory=256Mi
+k3s_worker_server: https://10.250.0.1:6443
+k3s_worker_bootstrap_taint: homelab.io/bootstrap=true:NoSchedule
+# LXC shares kernel modules with PVE host; test modules rather than load host modules.
+k3s_worker_manage_kernel_modules: false
+netbird_node_enabled: true
+homelab_ssh_preserve_ports: [22]
+k3s_worker_user_namespace: true
+# nft large transactions fail inside userns; retain policies via supported legacy backend.
+k3s_worker_prefer_bundled_bin: false
+wg_socrat_interface_prefix: 32

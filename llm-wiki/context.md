@@ -1,5 +1,15 @@
 # Socrat: текущий контекст
 
+## socrat-5 full headless setup — IN PROGRESS
+
+Owner authorized general worker, not VPN transit. Account/shell/verified bottom,
+SSH2222+preserved22 and metadata welcome configured; direct WG to all five peers
+accepted, temporary Moscow isolation retired. K3s agent joined,6Ready,5 still has
+bootstrap NoSchedule. LXC uses native usernamespace kubelet mode and node-local
+legacy netfilter after actual DNS failure/EMSGSIZE; policies not disabled.
+**Do not declare complete: NetBird, telemetry, final admission/acceptance pending.**
+[Current setup and remaining gates](../docs/socrat-5-worker-20261110.md).
+
 ## Новый bootstrap: socrat-5 — не член Kubernetes
 
 Владелец выдал NATed Debian13 LXC, исходное имя testing-class; WG create/delete

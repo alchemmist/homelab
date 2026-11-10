@@ -7,7 +7,7 @@ class BootstrapTests(unittest.TestCase):
   m=json.loads((ROOT/'deploy/network/socrat-5-bootstrap.json').read_text())
   v={}
   for f in ['ansible/roles/wireguard_socrat/defaults/main.yml','ansible/inventory/group_vars/Socrat.yml','ansible/inventory/host_vars/socrat-4.yml']:v.update(yaml.safe_load((ROOT/f).read_text()))
-  self.assertEqual(v['wg_socrat_bootstrap_peers'][m['name']],{'address':m['address'],'public_key':m['public_key']})
+  self.assertEqual({k:v['wg_socrat_nodes'][m['name']][k] for k in ['address','public_key']},{'address':m['address'],'public_key':m['public_key']})
   v.update(inventory_hostname='socrat-4',wg_socrat_private_key='TEST_ONLY_NOT_A_KEY')
   rendered=Environment(undefined=StrictUndefined).from_string((ROOT/'ansible/roles/wireguard_socrat/templates/wg-socrat.conf.j2').read_text()).render(v)
   self.assertEqual(rendered.count(m['public_key']),1)

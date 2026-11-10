@@ -9,5 +9,5 @@
   "endpoint": "91.189.82.238:51830",
   "ssh_port": 22,
   "ssh_host_fingerprint": "SHA256:Y4NxlDUWhjpGNGtM6/ForCgqTdhX+xjJ9Nz2mo/gx/8",
-  "scope": "bootstrap only; gateway-origin SSH and ping; no forwarding; not a Kubernetes member"
+  "scope": "general headless worker, full direct WireGuard peers; bootstrap isolation retired after direct-link acceptance"
 }

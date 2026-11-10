@@ -9,8 +9,6 @@ k3s_worker_eviction_memory: 128Mi
 # Retain admission taint: only explicitly reviewed infrastructure may tolerate it.
 k3s_worker_bootstrap_taint: homelab.io/bootstrap=true:NoSchedule
 wg_socrat_admin_clients: {}
-# Not a cluster node or admin client: isolated NATed LXC pending SSH acceptance.
-wg_socrat_bootstrap_peers:
-  socrat-5:
-    address: 10.250.0.41
-    public_key: kq9Kb6ZF9j/cuBooG3onvLfnBBjI0cTdQK26nKR4R0E=
+# No NetBird enrollment on the constrained relay worker; do not expand admission
+# merely because another general-purpose node is enrolled.
+netbird_node_enabled: false

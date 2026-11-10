@@ -1,0 +1,8 @@
+---
+- name: Join only the headless worker with bootstrap scheduling protection
+  hosts: socrat-5
+  become: true
+  gather_facts: true
+  any_errors_fatal: true
+  roles:
+    - k3s_worker

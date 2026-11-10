@@ -8,6 +8,7 @@ nodes:
   socrat-1: 10.250.0.3
   socrat-2: 10.250.0.2
   socrat-3: 10.250.0.5
+  socrat-5: 10.250.0.41
 resources:
 - apiVersion: apps/v1
   kind: Deployment
@@ -1174,7 +1175,6 @@ resources:
           cidr: 109.120.141.60/32
       - ipBlock:
           cidr: 10.250.0.2/32
-      # VPS host-network ingress reaches home pods from its Flannel tunnel IP.
       - ipBlock:
           cidr: 10.42.0.0/32
       - ipBlock:
@@ -1411,3 +1411,107 @@ resources:
       cattle.io/status: '{"Conditions":[{"Type":"ResourceQuotaInit","Status":"True","Message":"","LastUpdateTime":"2026-11-03T09:37:33Z"},{"Type":"InitialRolesPopulated","Status":"True","Message":"","LastUpdateTime":"2026-11-03T09:37:33Z"}]}'
       lifecycle.cattle.io/create.namespace-auth: 'true'
       argocd.argoproj.io/sync-options: Prune=false,Delete=false
+- apiVersion: v1
+  kind: PersistentVolumeClaim
+  metadata:
+    name: machine-socrat-5
+    namespace: netbird-host-peers
+    annotations:
+      argocd.argoproj.io/sync-options: Prune=false,Delete=false
+  spec:
+    accessModes:
+    - ReadWriteOnce
+    storageClassName: local-path
+    resources:
+      requests:
+        storage: 64Mi
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: machine-socrat-5
+    namespace: netbird-host-peers
+  spec:
+    replicas: 1
+    strategy:
+      type: Recreate
+    selector:
+      matchLabels: &id001
+        app: machine-socrat-5
+    template:
+      metadata:
+        labels: *id001
+      spec:
+        hostNetwork: true
+        dnsPolicy: ClusterFirstWithHostNet
+        automountServiceAccountToken: false
+        nodeSelector:
+          kubernetes.io/hostname: socrat-5
+        tolerations:
+        - key: homelab.io/bootstrap
+          operator: Equal
+          value: 'true'
+          effect: NoSchedule
+        containers:
+        - name: peer
+          image: netbirdio/netbird:0.82.0@sha256:eca5b274c635bfbb04ec6724a0712d1146190dd450eea199eeb83916fdd94965
+          env:
+          - name: NB_MANAGEMENT_URL
+            value: https://netbird.socrat.alchemmist.xyz
+          - name: NB_HOSTNAME
+            value: machine-socrat-5
+          - name: NB_INTERFACE_NAME
+            value: nb-host
+          - name: NB_WIREGUARD_PORT
+            value: '51871'
+          - name: NB_DISABLE_CLIENT_ROUTES
+            value: 'true'
+          - name: NB_DISABLE_SERVER_ROUTES
+            value: 'false'
+          - name: NB_DISABLE_DNS
+            value: 'true'
+          - name: NB_DISABLE_IPV6
+            value: 'true'
+          - name: NB_DISABLE_FIREWALL
+            value: 'false'
+          - name: NB_ALLOW_SERVER_SSH
+            value: 'false'
+          - name: NB_CONFIG
+            value: /etc/netbird/config.json
+          - name: NB_LOG_LEVEL
+            value: warn
+          - name: NB_LOG_FILE
+            value: /dev/null
+          - name: NB_ENABLE_CAPTURE
+            value: 'false'
+          resources:
+            requests:
+              memory: 32Mi
+              cpu: 10m
+            limits:
+              memory: 96Mi
+              cpu: 500m
+          securityContext:
+            runAsUser: 0
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+              add:
+              - NET_ADMIN
+              - NET_RAW
+              - BPF
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+          - name: state
+            mountPath: /etc/netbird
+          - name: tun
+            mountPath: /dev/net/tun
+        volumes:
+        - name: state
+          persistentVolumeClaim:
+            claimName: machine-socrat-5
+        - name: tun
+          hostPath:
+            path: /dev/net/tun
+            type: CharDevice
