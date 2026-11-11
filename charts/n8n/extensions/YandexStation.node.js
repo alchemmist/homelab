@@ -12,8 +12,8 @@ class YandexStation {
     logEvent('yandex-calendar',check?'session_check_ok':'announcement_ok',{sessionRefreshed:result.sessionRefreshed});
     out.push({json:result,pairedItem:{item:i}});
    }catch(e){
-    const code=e instanceof YandexError?e.code:'UNEXPECTED_FAILURE';logEvent('yandex-calendar',check?'session_check_failed':'announcement_failed',{code});
-    throw new Error('Yandex Calendar: '+code+'; see docs/n8n/setup.md');
+    const code=e instanceof YandexError?e.code:'UNEXPECTED_FAILURE';logEvent('yandex-calendar',check?'session_check_failed':'announcement_failed',{code,phase:e.phase,transportCode:e.transportCode});
+    throw new Error('Yandex Calendar: '+code+(e.phase?'; phase='+e.phase:'')+(e.transportCode?'; transport='+e.transportCode:'')+'; see docs/n8n/setup.md');
    }
   }
   return [out];

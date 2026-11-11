@@ -145,3 +145,24 @@ backups and encryption key; Retain/keep annotations are not recurring backups.
 - `node --test tests/yandex-session/client.test.js`: nine client tests, covering
   renewal/403/revocation/sanitization/lost response/serialization/dedup/cookies.
 - Six calendar tests and thirteen blog tests remain green (28 total).
+
+## Yandex scoped DNS transport (18611 correction)
+
+The native Yandex client now uses Node's verified HTTPS transport with a scoped
+IPv4 c-ares resolver (750ms, two DNS tries), rather than libc getaddrinfo's slow
+A/AAAA/search-domain path. It queries the exact official hostname; no public IP,
+Pod IP or replacement public DNS server is pinned. The existing cluster DNS is
+used. Native certificate validation/SNI, endpoint allowlist, manual redirects,
+cookies, auth headers, cancellation and10-second per-request ceiling remain.
+Only DNS resolution can retry before connecting; HTTP calls, especially speech
+execution POST, are NOT retried. Streamed/decompressed responses retain the5MB cap.
+
+Error events now include allowlisted fixed `phase` and `transportCode` fields,
+never request/response bodies, exception messages, Cookie, CSRF, track IDs or tokens.
+The legacy NETWORK_OR_TIMEOUT classification remains compatible with alerts.
+Unauthenticated HEAD probes from the actual n8n Pod using this transport reached
+all three Yandex origins in73–173ms; this is connectivity/TLS evidence, NOT an
+authenticated session or speech acceptance. The global cluster DNS/network root
+cause is not claimed fixed. Stateful n8n rollout requires actual independent
+native/owner/processing/paid natural drain; an active paid SPI call cannot be
+interrupted to deploy this change. No production workflow is manually replayed.

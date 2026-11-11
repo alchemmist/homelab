@@ -1,7 +1,8 @@
 'use strict';
 const {createHash}=require('crypto');
+const {transport:nativeTransport}=require('./yandex-transport');
 const sessions=new Map(), locks=new Map(), announced=new Map();
-class YandexError extends Error { constructor(code){super(code);this.code=code;} }
+class YandexError extends Error { constructor(code,phase,transportCode){super(code);this.code=code;this.phase=phase;this.transportCode=transportCode;} }
 class CookieJar {
  constructor(){this.values=new Map();}
  accept(url,headers){
@@ -22,7 +23,7 @@ class CookieJar {
  header(url){const u=new URL(url);return [...this.values.values()].filter(c=>c.expires>Date.now()&&(c.hostOnly?u.hostname===c.domain:u.hostname===c.domain||u.hostname.endsWith('.'+c.domain))&&u.pathname.startsWith(c.path)).sort((a,b)=>b.path.length-a.path.length).map(c=>c.name+'='+c.value).join('; ');}
 }
 const allowed=new Set(['mobileproxy.passport.yandex.net','passport.yandex.ru','passport.yandex.com','passport.yandex.by','passport.yandex.kz','passport.yandex.uz','yandex.ru','www.yandex.ru','iot.quasar.yandex.ru']);
-async function request(url,options={},jar,signal,transport=fetch){
+async function request(url,options={},jar,signal,transport=nativeTransport,phase='UNKNOWN'){
  const u=new URL(url);if(u.protocol!=='https:'||!allowed.has(u.hostname))throw new YandexError('UNSAFE_AUTH_ENDPOINT');
  if(signal?.aborted)throw new YandexError('CANCELLED');
  try{
@@ -32,25 +33,25 @@ async function request(url,options={},jar,signal,transport=fetch){
   const text=await r.text();if(text.length>5000000)throw new YandexError('RESPONSE_TOO_LARGE');
   let data;try{data=JSON.parse(text);}catch{}
   return {status:r.status,data,text};
- }catch(e){if(e instanceof YandexError)throw e;throw new YandexError(signal?.aborted?'CANCELLED':'NETWORK_OR_TIMEOUT');}
+ }catch(e){if(e instanceof YandexError)throw e;const raw=e.code||e.cause?.code;if(raw==='RESPONSE_TOO_LARGE')throw new YandexError('RESPONSE_TOO_LARGE',phase);const code=['EAI_AGAIN','ETIMEOUT','ENOTFOUND','ENODATA','ECONNREFUSED','ECONNRESET','ETIMEDOUT','CERT_HAS_EXPIRED','ERR_TLS_CERT_ALTNAME_INVALID','ABORT_ERR'].includes(raw)?raw:undefined;throw new YandexError(signal?.aborted?'CANCELLED':'NETWORK_OR_TIMEOUT',phase,code);}
 }
 function ok(r,code){if(r.status<200||r.status>=300||r.data?.status!=='ok')throw new YandexError(code);return r.data;}
 async function fresh(credentials,signal,transport){
  const jar=new CookieJar();
- const auth=ok(await request('https://mobileproxy.passport.yandex.net/1/bundle/auth/x_token/',{method:'POST',headers:{'Ya-Consumer-Authorization':'OAuth '+credentials.xToken,'Content-Type':'application/x-www-form-urlencoded'},body:'type=x-token&retpath=https%3A%2F%2Fwww.yandex.ru'},jar,signal,transport),'X_TOKEN_REJECTED');
+ const auth=ok(await request('https://mobileproxy.passport.yandex.net/1/bundle/auth/x_token/',{method:'POST',headers:{'Ya-Consumer-Authorization':'OAuth '+credentials.xToken,'Content-Type':'application/x-www-form-urlencoded'},body:'type=x-token&retpath=https%3A%2F%2Fwww.yandex.ru'},jar,signal,transport,'X_TOKEN'),'X_TOKEN_REJECTED');
  let host;try{host=new URL(auth.passport_host);}catch{throw new YandexError('INVALID_PASSPORT_HOST');}
  if(!allowed.has(host.hostname)||!host.hostname.startsWith('passport.')||host.protocol!=='https:'||host.username||host.password)throw new YandexError('INVALID_PASSPORT_HOST');
- const login=await request(host.origin+'/auth/session/?'+new URLSearchParams({track_id:auth.track_id}),{},jar,signal,transport);
+ const login=await request(host.origin+'/auth/session/?'+new URLSearchParams({track_id:auth.track_id}),{},jar,signal,transport,'SESSION_LOGIN');
  if(![200,302,303].includes(login.status))throw new YandexError('SESSION_LOGIN_FAILED');
- const state=await request('https://yandex.ru/iot?storage=1',{},jar,signal,transport);
+ const state=await request('https://yandex.ru/iot?storage=1',{},jar,signal,transport,'SESSION_STATE');
  if(state.status!==200||!state.data?.storage?.user?.uid)throw new YandexError('SESSION_NOT_AUTHENTICATED');
- const page=await request('https://yandex.ru/iot',{},jar,signal,transport),match=page.text.match(/"csrfToken2":"([^"\n]+)"/);
+ const page=await request('https://yandex.ru/iot',{},jar,signal,transport,'CSRF_PAGE'),match=page.text.match(/"csrfToken2":"([^"\n]+)"/);
  if(page.status!==200||!match)throw new YandexError('CSRF_NOT_AVAILABLE');
  let csrf;try{csrf=JSON.parse('"'+match[1]+'"');}catch{throw new YandexError('CSRF_NOT_AVAILABLE');}
  return {jar,csrf,until:Date.now()+6*60*60*1000};
 }
 function payload(credentials,text){return {name:'Calendar reminders',icon:'home',triggers:[{trigger:{type:'scenario.trigger.voice',value:'календарные напоминания из автоматики'}}],steps:[{type:'scenarios.steps.actions.v2',parameters:{items:[{id:credentials.deviceId,type:'step.action.item.device',value:{id:credentials.deviceId,item_type:'device',capabilities:[{type:'devices.capabilities.quasar',state:{instance:'volume',value:{value:5}}},{type:'devices.capabilities.quasar',state:{instance:'tts',value:{text,whisper:false,lang:'ru'}}}]}}]}}]};}
-async function operation(credentials,{text='',check=false,forceRefresh=false,dedupKey='',signal,transport=fetch}={}){
+async function operation(credentials,{text='',check=false,forceRefresh=false,dedupKey='',signal,transport=nativeTransport}={}){
  if(typeof credentials.xToken!=='string'||!credentials.xToken)throw new YandexError('MISSING_X_TOKEN');
  for(const field of ['deviceId','scenarioId'])if(!/^[a-zA-Z0-9_-]{1,128}$/.test(credentials[field]||''))throw new YandexError('INVALID_DEVICE_CONFIGURATION');
  if(!check&&(typeof text!=='string'||!text.trim()||text.length>2000))throw new YandexError('INVALID_ANNOUNCEMENT_TEXT');
@@ -62,7 +63,7 @@ async function operation(credentials,{text='',check=false,forceRefresh=false,ded
   if(!check&&dedupKey&&announced.get(announcementKey)>Date.now()-48*60*60*1000)return {status:'ok',operation:'announce',alreadyAnnounced:true,sessionRefreshed:false};
   let session=sessions.get(key),refreshed=false;
   if(forceRefresh||!session||session.until<=Date.now()){session=await fresh(credentials,signal,transport);sessions.set(key,session);refreshed=true;}
-  const put=()=>request('https://iot.quasar.yandex.ru/m/v4/user/scenarios/'+credentials.scenarioId,{method:'PUT',headers:{'x-csrf-token':session.csrf,'Content-Type':'application/json'},body:JSON.stringify(payload(credentials,check?'Напоминания календаря готовы.':text))},session.jar,signal,transport);
+  const put=()=>request('https://iot.quasar.yandex.ru/m/v4/user/scenarios/'+credentials.scenarioId,{method:'PUT',headers:{'x-csrf-token':session.csrf,'Content-Type':'application/json'},body:JSON.stringify(payload(credentials,check?'Напоминания календаря готовы.':text))},session.jar,signal,transport,'SCENARIO_UPDATE');
   let r=await put();
   if([401,403].includes(r.status)){
    sessions.delete(key);session=await fresh(credentials,signal,transport);sessions.set(key,session);refreshed=true;r=await put();
@@ -70,7 +71,7 @@ async function operation(credentials,{text='',check=false,forceRefresh=false,ded
   try{ok(r,'SCENARIO_UPDATE_FAILED');}catch(e){sessions.delete(key);throw e;}
   if(check)return {status:'ok',operation:'check',sessionRefreshed:refreshed};
   // Never retry execution: a lost response could mean the speech already played.
-  const played=await request('https://iot.quasar.yandex.ru/m/user/scenarios/'+credentials.scenarioId+'/actions',{method:'POST',headers:{'x-csrf-token':session.csrf}},session.jar,signal,transport);
+  const played=await request('https://iot.quasar.yandex.ru/m/user/scenarios/'+credentials.scenarioId+'/actions',{method:'POST',headers:{'x-csrf-token':session.csrf}},session.jar,signal,transport,'SCENARIO_EXECUTE');
   if([401,403].includes(played.status))sessions.delete(key);
   ok(played,'ANNOUNCEMENT_NOT_CONFIRMED');
   if(dedupKey)announced.set(announcementKey,Date.now());
