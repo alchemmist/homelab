@@ -5941,14 +5941,6 @@
                 "-2": {
                   "text": "No telemetry",
                   "color": "#808080"
-                },
-                "-1": {
-                  "text": "Never succeeded",
-                  "color": "#808080"
-                },
-                "-3": {
-                  "text": "Job missing",
-                  "color": "#808080"
                 }
               }
             }
@@ -6038,10 +6030,6 @@
                 },
                 "-1": {
                   "text": "Low sample",
-                  "color": "#808080"
-                },
-                "-3": {
-                  "text": "Job missing",
                   "color": "#808080"
                 }
               }
@@ -6137,14 +6125,6 @@
               "options": {
                 "-2": {
                   "text": "No telemetry",
-                  "color": "#808080"
-                },
-                "-1": {
-                  "text": "Never succeeded",
-                  "color": "#808080"
-                },
-                "-3": {
-                  "text": "Job missing",
                   "color": "#808080"
                 }
               }
@@ -6411,7 +6391,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Worst node per resource: CPU, memory and I/O PSI some waiting ratio averaged5m. This is time with at least one stalled task, NOT utilization, queue length or fraction of all tasks. Complete fresh node inventory required; no missing node silently excluded. Display amber follows existing contention boundaries25%CPU/10%memory+I/O; actual alert additionally requires10m. Names show the responsible node; no fixed node ordering.",
+      "description": "Worst node per resource: CPU, memory and I/O PSI some waiting ratio averaged5m. This is time with at least one stalled task, NOT utilization, queue length or fraction of all tasks. Complete fresh node inventory required; no missing node silently excluded. Display amber follows existing contention boundaries25%CPU/10%memory+I/O; actual alert additionally requires10m. Names show resource and node digit (CPU · 4 = socrat-4); short labels avoid native name clipping on TV. No fixed node ordering.",
       "gridPos": {
         "x": 12,
         "y": 10,
@@ -6446,7 +6426,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "^cpu"
+              "options": "^CPU"
             },
             "properties": [
               {
@@ -6498,11 +6478,11 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "topk by(resource) (1, ((socrat:node_pressure_waiting:ratio5m and on(node) (max by(node) (label_replace(up{job=\"node-exporter\"} * on(instance) group_left(nodename) node_uname_info{job=\"node-exporter\"}, \"node\", \"$1\", \"nodename\", \"(.+)\")) == 1) and on(node) (max by(node) (label_replace((node_scrape_collector_success{job=\"node-exporter\",collector=\"pressure\"} == 1) * on(instance) group_left(nodename) node_uname_info{job=\"node-exporter\"}, \"node\", \"$1\", \"nodename\", \"(.+)\")) == 1) and on(node) (time() - socrat:node_exporter_last_success_timestamp_seconds < 90) and (time() - timestamp(socrat:node_pressure_waiting:ratio5m) < 90))) and on(resource) (count by(resource) ((socrat:node_pressure_waiting:ratio5m and on(node) (max by(node) (label_replace(up{job=\"node-exporter\"} * on(instance) group_left(nodename) node_uname_info{job=\"node-exporter\"}, \"node\", \"$1\", \"nodename\", \"(.+)\")) == 1) and on(node) (max by(node) (label_replace((node_scrape_collector_success{job=\"node-exporter\",collector=\"pressure\"} == 1) * on(instance) group_left(nodename) node_uname_info{job=\"node-exporter\"}, \"node\", \"$1\", \"nodename\", \"(.+)\")) == 1) and on(node) (time() - socrat:node_exporter_last_success_timestamp_seconds < 90) and (time() - timestamp(socrat:node_pressure_waiting:ratio5m) < 90))) == on() group_left count(count by(node) (kube_node_info{job=\"kube-state-metrics\"})))) and on() ((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90)) and on() (time() - max(timestamp(kube_node_info{job=\"kube-state-metrics\"})) < 90)",
+          "expr": "label_replace(label_replace(label_replace(label_replace(topk by(resource) (1, ((socrat:node_pressure_waiting:ratio5m and on(node) (max by(node) (label_replace(up{job=\"node-exporter\"} * on(instance) group_left(nodename) node_uname_info{job=\"node-exporter\"}, \"node\", \"$1\", \"nodename\", \"(.+)\")) == 1) and on(node) (max by(node) (label_replace((node_scrape_collector_success{job=\"node-exporter\",collector=\"pressure\"} == 1) * on(instance) group_left(nodename) node_uname_info{job=\"node-exporter\"}, \"node\", \"$1\", \"nodename\", \"(.+)\")) == 1) and on(node) (time() - socrat:node_exporter_last_success_timestamp_seconds < 90) and (time() - timestamp(socrat:node_pressure_waiting:ratio5m) < 90))) and on(resource) (count by(resource) ((socrat:node_pressure_waiting:ratio5m and on(node) (max by(node) (label_replace(up{job=\"node-exporter\"} * on(instance) group_left(nodename) node_uname_info{job=\"node-exporter\"}, \"node\", \"$1\", \"nodename\", \"(.+)\")) == 1) and on(node) (max by(node) (label_replace((node_scrape_collector_success{job=\"node-exporter\",collector=\"pressure\"} == 1) * on(instance) group_left(nodename) node_uname_info{job=\"node-exporter\"}, \"node\", \"$1\", \"nodename\", \"(.+)\")) == 1) and on(node) (time() - socrat:node_exporter_last_success_timestamp_seconds < 90) and (time() - timestamp(socrat:node_pressure_waiting:ratio5m) < 90))) == on() group_left count(count by(node) (kube_node_info{job=\"kube-state-metrics\"})))) and on() ((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90)) and on() (time() - max(timestamp(kube_node_info{job=\"kube-state-metrics\"})) < 90), \"short_node\", \"$1\", \"node\", \"socrat-(.+)\"), \"resource_label\", \"CPU\", \"resource\", \"cpu\"), \"resource_label\", \"RAM\", \"resource\", \"memory\"), \"resource_label\", \"I/O\", \"resource\", \"io\")",
           "instant": true,
           "range": false,
           "format": "time_series",
-          "legendFormat": "{{resource}} · {{node}}"
+          "legendFormat": "{{resource_label}} · {{short_node}}"
         }
       ]
     }

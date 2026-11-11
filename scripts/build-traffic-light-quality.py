@@ -21,6 +21,10 @@ def stat(pid, name, grid, expr, unit, description, trend=False, bands=None, deci
     mappings = {'-2': {'text': 'No telemetry', 'color': '#808080'},
                 '-1': {'text': 'Low sample' if pid == 932 else 'Never succeeded', 'color': '#808080'},
                 '-3': {'text': 'Job missing', 'color': '#808080'}}
+    if pid in (931, 933):
+        mappings = {'-2': mappings['-2']}
+    elif pid == 932:
+        mappings.pop('-3')
     defaults = {'displayName': name, 'unit': unit, 'decimals': decimals, 'min': 0,
                 'noValue': 'No telemetry', 'color': {'mode': 'thresholds'} if bands else {'mode': 'fixed', 'fixedColor': '#5794F2'},
                 'mappings': [{'type': 'value', 'options': mappings}],
@@ -81,15 +85,18 @@ def panels():
     raw = f'({psi} and on(node) ({node_up}) and on(node) ({pressure_ok}) and on(node) (time() - socrat:node_exporter_last_success_timestamp_seconds < 90) and (time() - timestamp({psi}) < 90))'
     complete = f'count by(resource) ({raw}) == on() group_left count(count by(node) (kube_node_info{{job="kube-state-metrics"}}))'
     expr = f'topk by(resource) (1, ({raw}) and on(resource) ({complete})) and on() ({fresh_job("kube-state-metrics")}) and on() {fresh_metric("kube_node_info{job=\"kube-state-metrics\"}")}'
+    expr = f'label_replace({expr}, "short_node", "$1", "node", "socrat-(.+)")'
+    for resource, label in [('cpu', 'CPU'), ('memory', 'RAM'), ('io', 'I/O')]:
+        expr = f'label_replace({expr}, "resource_label", "{label}", "resource", "{resource}")'
     result.append({'id': 930, 'type': 'bargauge', 'title': 'Resource wait', 'datasource': DS,
-                   'description': 'Worst node per resource: CPU, memory and I/O PSI some waiting ratio averaged5m. This is time with at least one stalled task, NOT utilization, queue length or fraction of all tasks. Complete fresh node inventory required; no missing node silently excluded. Display amber follows existing contention boundaries25%CPU/10%memory+I/O; actual alert additionally requires10m. Names show the responsible node; no fixed node ordering.',
+                   'description': 'Worst node per resource: CPU, memory and I/O PSI some waiting ratio averaged5m. This is time with at least one stalled task, NOT utilization, queue length or fraction of all tasks. Complete fresh node inventory required; no missing node silently excluded. Display amber follows existing contention boundaries25%CPU/10%memory+I/O; actual alert additionally requires10m. Names show resource and node digit (CPU · 4 = socrat-4); short labels avoid native name clipping on TV. No fixed node ordering.',
                    'gridPos': {'x': 12, 'y': 10, 'w': 4, 'h': 4},
                    'fieldConfig': {'defaults': {'unit': 'percentunit', 'min': 0, 'max': 1, 'decimals': 0, 'noValue': 'No telemetry', 'color': {'mode': 'thresholds'},
                    'thresholds': {'mode': 'absolute', 'steps': [{'color': '#5794F2', 'value': None}, {'color': '#FFB357', 'value': .10}]}},
-                   'overrides': [{'matcher': {'id': 'byRegexp', 'options': '^cpu'}, 'properties': [{'id': 'thresholds', 'value': {'mode': 'absolute', 'steps': [{'color': '#5794F2', 'value': None}, {'color': '#FFB357', 'value': .25}]}}]}]},
+                   'overrides': [{'matcher': {'id': 'byRegexp', 'options': '^CPU'}, 'properties': [{'id': 'thresholds', 'value': {'mode': 'absolute', 'steps': [{'color': '#5794F2', 'value': None}, {'color': '#FFB357', 'value': .25}]}}]}]},
                    'options': {'orientation': 'horizontal', 'displayMode': 'gradient', 'valueMode': 'color', 'namePlacement': 'left', 'showUnfilled': True,
                                'sizing': 'manual', 'minVizHeight': 0, 'minVizWidth': 0, 'maxVizHeight': 100, 'reduceOptions': {'values': False, 'calcs': ['last'], 'fields': ''}, 'text': {'titleSize': 10, 'valueSize': 14}},
-                   'targets': [{'refId': 'A', 'datasource': DS, 'expr': expr, 'instant': True, 'range': False, 'format': 'time_series', 'legendFormat': '{{resource}} · {{node}}'}]})
+                   'targets': [{'refId': 'A', 'datasource': DS, 'expr': expr, 'instant': True, 'range': False, 'format': 'time_series', 'legendFormat': '{{resource_label}} · {{short_node}}'}]})
     return result
 
 
