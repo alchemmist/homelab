@@ -105,3 +105,10 @@ Home IP nowy6/y7. Panel907 width8→7, stillx16,y10,h4.102 intentionally empty c
 Pulled live dashboard without additional design/query changes; updated geometry
 fixture and assertions.32 tests passed. Supersedes earlier node5/IP positions and
 empty-cell count. Existing strip and remaining owner edits retained.
+
+TV/public thickness correction: width factors already1; fresh real public scene
+at1920×1080 had strip canvas only27px withh1. Changed only909 gridPos.h1→2,
+x0,y19,w12 unchanged.21-row fit,114 empty cells; other saved geometry untouched.
+Preserved Fully settings, existing presentation assets, query/data and all owner
+edits. Device ADB/Termux unavailable in current LAN; no physical-TV verification
+or reload possible yet. New geometry needs page reload, not merely5s metric refresh.
