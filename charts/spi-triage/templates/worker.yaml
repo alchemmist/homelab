@@ -188,6 +188,9 @@ metadata:
   labels:
     app: spi-triage
 spec:
+  {{- if .Values.serviceClusterIP }}
+  clusterIP: {{ .Values.serviceClusterIP | quote }}
+  {{- end }}
   selector:
     app: spi-triage
   ports:
