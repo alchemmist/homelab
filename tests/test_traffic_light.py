@@ -64,15 +64,15 @@ class TrafficLightLayoutTest(unittest.TestCase):
         for panel in self.dashboard['panels']:
             grid = panel['gridPos']
             self.assertLessEqual(grid['x'] + grid['w'], 24)
-            self.assertLessEqual(grid['y'] + grid['h'], 16)
+            self.assertLessEqual(grid['y'] + grid['h'], 20)
             for assert_key in cells(grid):
                 self.assertNotIn(assert_key, occupied, f'panel {panel["id"]} overlaps {occupied.get(assert_key)}')
                 occupied[assert_key] = panel['id']
-        holes = [(x, y) for y in range(16) for x in range(24)
+        holes = [(x, y) for y in range(20) for x in range(24)
                  if (x, y) not in occupied]
         approved = json.loads((ROOT / 'tests/fixtures/traffic-light-owner-layout.json').read_text())
         self.assertEqual({str(p['id']): p['gridPos'] for p in self.dashboard['panels']}, approved)
-        self.assertEqual(len(holes), 52)  # intentional whitespace in owner layout
+        self.assertEqual(len(holes), 99)  # intentional whitespace in owner layout
 
     def test_cpu_temperature_bar_removed(self):
         ids = {panel['id'] for panel in self.dashboard['panels']}
@@ -82,22 +82,20 @@ class TrafficLightLayoutTest(unittest.TestCase):
         digits = ['0', '1', '2', '3', '4']
         for i, panel_id in enumerate((901, 902, 903, 904, 926)):
             panel = panel_by_id(self.dashboard, panel_id)
-            self.assertEqual(panel['gridPos'], {'x': 18 + i, 'y': 8, 'w': 1, 'h': 1})
+            self.assertEqual(panel['gridPos'], {'x': 23, 'y': i, 'w': 1, 'h': 1})
             self.assertEqual(panel['fieldConfig']['defaults']['displayName'], digits[i])
             self.assertEqual(len(panel['targets']), 1)
         for i, (panel_id, name) in enumerate(((905, 'Home IP'), (906, 'VPS IP'))):
             panel = panel_by_id(self.dashboard, panel_id)
-            self.assertEqual(panel['gridPos'], {'x': 19 + i * 2, 'y': 9, 'w': 2, 'h': 1})
+            self.assertEqual(panel['gridPos'], {'x': 23, 'y': 6 - i, 'w': 1, 'h': 1})
             self.assertEqual(panel['fieldConfig']['defaults']['displayName'], name)
             self.assertEqual(len(panel['targets']), 1)
-        up = panel_by_id(self.dashboard, 908)
-        self.assertEqual(up['gridPos'], {'x': 23, 'y': 8, 'w': 1, 'h': 2})
-        self.assertEqual(up['fieldConfig']['defaults']['displayName'], 'UP')
+        self.assertNotIn(908, {p['id'] for p in self.dashboard['panels']})  # Owner removed UP.
         chart = panel_by_id(self.dashboard, 907)
-        self.assertEqual(chart['gridPos'], {'x': 18, 'y': 10, 'w': 6, 'h': 4})
+        self.assertEqual(chart['gridPos'], {'x': 16, 'y': 10, 'w': 8, 'h': 4})
         self.assertEqual(chart['type'], 'stat')
         history = panel_by_id(self.dashboard, 909)
-        self.assertEqual(history['gridPos'], {'x': 12, 'y': 8, 'w': 6, 'h': 1})
+        self.assertEqual(history['gridPos'], {'x': 0, 'y': 19, 'w': 12, 'h': 1})
         self.assertEqual(history['type'], 'barchart')
 
     def test_unmodified_resource_columns(self):
@@ -105,10 +103,10 @@ class TrafficLightLayoutTest(unittest.TestCase):
         memory = panel_by_id(self.dashboard, 22)
         disk = panel_by_id(self.dashboard, 23)
         for panel in (cpu, memory, disk):
-            self.assertEqual(panel['gridPos']['x'] in (9, 14, 19), True)
-        self.assertEqual(cpu['gridPos'], {'x': 14, 'y': 0, 'w': 5, 'h': 8})
-        self.assertEqual(memory['gridPos'], {'x': 19, 'y': 0, 'w': 5, 'h': 8})
-        self.assertEqual(disk['gridPos'], {'x': 9, 'y': 0, 'w': 5, 'h': 8})
+            self.assertEqual(panel['gridPos']['x'] in (8, 13, 18), True)
+        self.assertEqual(cpu['gridPos'], {'x': 13, 'y': 0, 'w': 5, 'h': 10})
+        self.assertEqual(memory['gridPos'], {'x': 18, 'y': 0, 'w': 5, 'h': 10})
+        self.assertEqual(disk['gridPos'], {'x': 8, 'y': 0, 'w': 5, 'h': 10})
 
 
     def test_ingress_chart_preserves_live_rps_queries(self):
@@ -121,8 +119,8 @@ class TrafficLightLayoutTest(unittest.TestCase):
 
     def test_rps_and_n8n_share_a_shorter_graph_row(self):
         panel = panel_by_id(self.dashboard, 334)
-        self.assertEqual(panel['gridPos'], {'x': 0, 'y': 12, 'w': 6, 'h': 4})
-        self.assertEqual(panel_by_id(self.dashboard, 920)['gridPos'], {'x': 6, 'y': 8, 'w': 6, 'h': 4})
+        self.assertEqual(panel['gridPos'], {'x': 0, 'y': 15, 'w': 6, 'h': 4})
+        self.assertEqual(panel_by_id(self.dashboard, 920)['gridPos'], {'x': 6, 'y': 12, 'w': 6, 'h': 3})
 
 
 class TrafficLightQueriesTest(unittest.TestCase):
@@ -225,7 +223,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
             expected.pop('gridPos')
             self.assertEqual(actual, expected)
         heights = [panel_by_id(self.dashboard, i)['gridPos']['h'] for i in (21, 22, 23)]
-        self.assertEqual(heights, [8, 8, 8])
+        self.assertEqual(heights, [10, 10, 10])
 
     def test_absolute_resource_values_and_dynamic_capacity(self):
         for panel_id, unit in [(21, 'suffix: cores'), (22, 'bytes'), (23, 'bytes')]:
@@ -250,24 +248,16 @@ class TrafficLightQueriesTest(unittest.TestCase):
         self.assertEqual(panel_by_id(self.dashboard, 925)['targets'][0]['legendFormat'], 'n8n · running')
         self.assertIn('window="0"', panel_by_id(self.dashboard, 925)['targets'][0]['expr'])
 
-    def test_up_tile_counts_ready_nodes_with_quorum_thresholds(self):
-        up = panel_by_id(self.dashboard, 908)
-        expr = up['targets'][0]['expr']
-        self.assertIn('sum(kube_node_status_condition{condition="Ready",status="true"})', expr)
-        self.assertIn('or vector(-2)', expr)
-        self.assertIn('< 120', expr)
-        steps = up['fieldConfig']['defaults']['thresholds']['steps']
-        self.assertEqual(steps[0]['color'], '#B42332')
-        self.assertEqual(steps[1], {'color': '#A85D08', 'value': 3})
-        self.assertEqual(steps[2], {'color': '#26783D', 'value': 4})
+    def test_owner_removed_up_tile(self):
+        self.assertNotIn(908, {p['id'] for p in self.dashboard['panels']})
 
     def test_platform_tiles_fill_the_gap_under_grafana(self):
         expected = {
-            335: ('n8n', 'SocratServiceN8nUnavailable', {'x': 10, 'y': 14, 'w': 2, 'h': 2}),
-            336: ('authentik', 'SocratServiceAuthentikUnavailable', {'x': 22, 'y': 14, 'w': 2, 'h': 1}),
-            337: ('harbor', 'SocratServiceHarborUnavailable', {'x': 18, 'y': 14, 'w': 2, 'h': 1}),
-            338: ('argocd', 'SocratServiceArgocdUnavailable', {'x': 18, 'y': 15, 'w': 2, 'h': 1}),
-            339: ('socrat-bot', 'SocratServiceSocratBotUnavailable', {'x': 7, 'y': 5, 'w': 2, 'h': 1}),
+            335: ('n8n', 'SocratServiceN8nUnavailable', {'x': 10, 'y': 17, 'w': 2, 'h': 2}),
+            336: ('authentik', 'SocratServiceAuthentikUnavailable', {'x': 4, 'y': 9, 'w': 2, 'h': 2}),
+            337: ('harbor', 'SocratServiceHarborUnavailable', {'x': 0, 'y': 13, 'w': 2, 'h': 2}),
+            338: ('argocd', 'SocratServiceArgocdUnavailable', {'x': 2, 'y': 11, 'w': 2, 'h': 2}),
+            339: ('socrat-bot', 'SocratServiceSocratBotUnavailable', {'x': 0, 'y': 10, 'w': 2, 'h': 2}),
         }
         for panel_id, (service_id, alert, grid) in expected.items():
             panel = panel_by_id(self.dashboard, panel_id)

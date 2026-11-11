@@ -56,40 +56,11 @@ def queries():
 
 
 def build():
+    # Owner-edited canonical JSON owns all geometry and other panel settings.
+    # This maintainer must not reconstruct a panel and overwrite manual edits.
     d = copy.deepcopy(json.loads(SOURCE.read_text()))
-    d['panels'] = [p for p in d['panels'] if p['id'] != 909]
-    expr = f'label_replace(({queries()[2]}), "bar", "Argo", "", "")'
-    order = ['bar\\state', '4', '2', '5', '3', '0', '1']
-    d['panels'].append({
-        'id': 909, 'title': '', 'transparent': True, 'type': 'barchart', 'datasource': DS,
-        'gridPos': {'x': 12, 'y': 8, 'w': 6, 'h': 1},
-        'description': 'Current Argo Applications, not history or Pod counts. Latest observed app_info only; raw samples were verified15s apart, dashboard refresh5s. No averaging/window/increase. root excluded. One segment per state, proportional to application count: Ready=Healthy+Synced; Progressing=not yet ready; Suspended=paused; drift=OutOfSync; Unhealthy=Degraded/Missing; Unknown=unknown/unrecognized state. Priority Unhealthy > Unknown > Progressing > Suspended > drift > Ready. Latest timestamp wins over lingering old label sets. Missing/down/partially stale telemetry gives no data, never a healthy green zero.90s freshness guard is a stale-data limit, not aggregation. Hover shows current counts. No proof of Pod rollout or full service health.',
-        'interval': '15s', 'maxDataPoints': 1,
-        'targets': [{'datasource': DS, 'expr': expr, 'legendFormat': '{{state}}', 'refId': 'A',
-                     'instant': True, 'range': False, 'format': 'table'}],
-        'transformations': [
-            {'id': 'groupingToMatrix', 'options': {'columnField': 'state', 'rowField': 'bar', 'valueField': 'Value'}},
-            {'id': 'organize', 'options': {'indexByName': {name: i for i, name in enumerate(order)}}},
-        ],
-        'fieldConfig': {'defaults': {'unit': 'short', 'decimals': 0, 'min': 0, 'max': 1, 'noValue': 'No telemetry',
-                                    'color': {'mode': 'palette-classic'},
-                                    'custom': {'lineWidth': 0, 'fillOpacity': 100, 'gradientMode': 'none',
-                                               'axisPlacement': 'hidden', 'axisLabel': '',
-                                               'axisBorderShow': False, 'axisGridShow': False,
-                                               'scaleDistribution': {'type': 'linear'},
-                                               'thresholdsStyle': {'mode': 'off'},
-                                               'hideFrom': {'legend': False, 'tooltip': False, 'viz': False}}},
-                        'overrides': [{'matcher': {'id': 'byName', 'options': str(code)}, 'properties': [
-                            {'id': 'displayName', 'value': name},
-                            {'id': 'color', 'value': {'mode': 'fixed', 'fixedColor': color}}]}
-                                      for name, code, color in STATES]},
-        'options': {'orientation': 'horizontal', 'stacking': 'percent', 'xField': 'bar\\state',
-                    'groupWidth': 0.7, 'barWidth': 0.7, 'barRadius': 0, 'showValue': 'never',
-                    'fullHighlight': True, 'xTickLabelRotation': 0, 'xTickLabelSpacing': 0,
-                    'legend': {'showLegend': False, 'displayMode': 'list', 'placement': 'bottom', 'calcs': []},
-                    'tooltip': {'mode': 'all', 'sort': 'desc', 'hideZeros': True}},
-    })
-    d['panels'].sort(key=lambda p: (p['gridPos']['y'], p['gridPos']['x']))
+    panel = next(p for p in d['panels'] if p['id'] == 909)
+    panel['options'].update(groupWidth=0.7, barWidth=0.7)
     return d
 
 
