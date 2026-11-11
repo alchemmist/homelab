@@ -91,3 +91,11 @@ Both width factors now1 for maximum native visible strip thickness, preserving
 module bounds and raw current-state query. `build()` now updates thickness in the
 existing canonical panel without rebuilding or resetting owner-edited geometry.
 This supersedes earlier historical position/thickness/cell-count notes above.
+
+Owner-layout refinement acceptance:32 tests passed and scoped Helm diff changes
+only canonical ConfigMap. Live before/after comparison (normalizing empty API
+defaults) confirms all existing owner panels/settings retained, except requested
+909 width factors, plus new927. Node5 health query returns0 (OK), not stale fallback.
+Inspected actual deployed TV URL at1920×1080 in isolated Viewer browser: right
+column includes green5 and bottom Argo strip fills its existing module height;
+current instant query HTTP200, Ready48. Physical television itself not inspected.
