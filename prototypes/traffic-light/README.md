@@ -304,3 +304,22 @@ panels/settings and newownergeometry, aborts onoverlap instead of movingpanels.
 GrafanaAPI; isolated1024CSS preview used fresh native-query response snapshots,
 NOT synthetic production activity or physicalTV proof. ScopedHelm onlycanonical
 TrafficLightCM; nativeCollector/exporters/CSS/Fully/Argoapps otherwise unchanged.
+
+Physicalquality acceptance8091d22b:63 panels, existing57 unchanged,49nativeArgo
+fills retained; actualWebView1024×575/DPR2. All6 newpanel rects and EVERY rendered
+text range fully inside panel/viewport. Firstrealcheck caught nativeleftname
+ellipsis; shortened only930 labels toCPU·4/RAM·2/I/O·3 usingPromQL label_replace,
+keeping fullnode labels and CPU25%override. Removed unusedstatemappings to retain
+existing <240000 serializedConfigMap regression guard; did NOT relax size limit.
+55focused tests pass. monitoring-k3sSynced/Healthy; onlycanonicaldashboardCM changed.
+
+Final actualPNGprivate/tmp/tv-quality-final-fit.png inspected, independent scanline
+counts49coloredArgo fills; nativeUIXML verifiedAI andbackup labels on screen.
+Low sample shown honestly (<20observations), not fake0; queue0 is legitimate with
+healthyfreshmetrics. Addedno workload probes/exporters/alerts/CSS/productionload.
+Debugoriginalfalse restored, socket absent, ADB/SSHforward removed, ownUIXMLsdeleted.
+Returning from Fullysettings transiently changed visualzoom and cropped page;
+resolved via ONLY Fullyrestart after confirming no pending settingsimport, with
+all saved zoom/font/VPN/DNS/presentation settings unchanged. Rechecked REAL final
+fit AFTER cleanup/restart (not the earliercroppedPNG). TVleftloaded andforeground.
+Private nativeAPI reads used after MCP fetchtimeouts; no credentials/logs exposed.

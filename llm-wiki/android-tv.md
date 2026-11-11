@@ -387,3 +387,37 @@ Ready = Healthy+Synced; синий = Progressing; красный = Degraded/Miss
 Код TV-fix: `c6121e19`, интеграция с concurrent main: `f37bdda6`, физическая
 приёмка/cleanup: `f459af38`. MoscowIP и ручная раскладка также сохранены в Git;
 не возвращать старые принудительные размерыw24/h2 при следующей генерации.
+
+## Quality panels in owner-approved free space —11November2026
+
+Owner authorized research-based additions; code7e77376, integrated0218340f and
+TVreadability8091d22b. Sixnativepanels930–935 use88of93emptycells, leaving5;
+old57panels, manualpositions/publicshare/Argo909 anditsCSS unchanged.20rows,63panels.
+Generator `scripts/build-traffic-light-quality.py` aborts on overlap, preserves
+unrelatedmodel and newownergeometry. Updated layoutfixture and55focusedtests.
+
+-930(x12,y10,w4,h4): worst-node PSI some CPU/RAM/I/O5m, NOTutilization; require
+ complete freshnodeinventory/up/pressurecollector. LabelsCPU·4 etc use node digits
+ to avoid nativeellipsis; full labels retained. Amber25%CPU/10%RAM+I/O matches
+ existingresourcecontentionboundary, NOT its10m firingduration.
+-931/932/933(x12/16/20,y14,w4,h4): localvLLM currentwaiting+1htrend, estimatedTTFTp95
+ over15m with≥20observations, outputtokens/s5m+1htrend. Low sample vsNo telemetry
+ distinct; lateststatus with up/sample90sguards, no missing→healthyzero. Bluequeue
+ andthroughputinformational. TTFT10/60s bands guidance, not agreedSLO. Notremote
+ LiteLLMmodels, perrequestgeneration speed or fullstreamedHTTPduration/billing.
+-934/935(x12/18,y18,w6,h2): LMS/n8n lastsuccessfulCronJobage; bands6/8h and24/26h.
+ Missingjob/never succeeded/staletelemetry distinct. SuccessfulJob does NOT prove
+ archive integrity/offhostcopy/restore. No unnecessarybackup-age sparkline.
+
+ScopedHelmONLYcanonicalTrafficLightCM; no exporter/Collector/backend/alert/CSS
+changes orsyntheticproductionactivity. Nativequeriesaccepted; actualTVall6panels
+andtext bounds fit;49Argo fills visible. Nativeleftlabels originallyellipsized,
+fixedwith shortlabels andmanualsizing, noextraCSS. ConfigMapsizeguard<240000 retained.
+Real final screenshot `/tmp/tv-quality-final-fit.png`, pairedDOMreceipt
+`/tmp/tv-quality-dom-safe.json`; finalPNG also independently counts49Argo fills.
+
+Cleanup originaldebugfalse verified, socket/forwards/UIXMLremoved. Fullysettings
+return briefly reset visualzoom/cropped page; savedpreferences untouched. One
+Fully-onlyrestart with fresh NO_PENDING_IMPORT check restoredfit; FINALscreenshot
+was rechecked afterrestart. SavedFully55%/font75%/network/VPN unchanged. Do not
+finish acceptance on a pre-cleanup screenshot: check finaldevice after closingmenus.
