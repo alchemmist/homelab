@@ -540,3 +540,91 @@ Initial CI also exposed the known overly tight media heartbeat test deadline
 (120ms for two real DB renewals). `ffd52ec` extends its TEST-only deadline to1s,
 retaining deadline, concurrent exclusion, finite lease, heartbeat and cleanup
 assertions. Production media behavior did not change in this follow-up.
+
+## SPI edits preserve alert keyboards — production fix (2026-11-11)
+
+User reported `SocratControlPlaneOnBattery` / socrat-1 at10:17:50 Europe/Moscow:
+photo, Level20, SPI link, missing Mute/Escalate. Root source defect was a special
+SPI branch in `escalation.prepare_work` that built an edit body WITHOUT
+`reply_markup`, bypassing shared desired keyboard logic. Native-photo adaptation
+then emitted `editMessageCaption` without buttons. Source regression tests fail
+on the original baseline; a real owner-only isolated Telegram negative control
+proved that omitting markup removes the server-side keyboard.
+
+Fix `449d5de` removes that bypass: SPI updates/retries use shared authoritative
+`CardDelivery.buttons`, current pending silence actions, and escalation policy.
+Current-generation active eligible cards keep buttons across text/caption/media
+edits, graph upgrades and overflow replacement. Resolved/muted/old-generation
+cards explicitly have no actions. SPI equal-text/revision retries still edit and
+can repair missing keyboards; old generation/identity/ownership fences remain.
+Parent review found a diagnostic-failure cleanup issue; follow-up `0c95540` makes
+logging best-effort so a failed handler cannot override success or leak heartbeat.
+New regression checks both accepted result and no remaining tasks inside the loop.
+
+Released head `0c95540b71c9d28da0bc250324f3a146639c82af` via normal CI/GitOps:
+https://github.com/alchemmist/socrat-bot/actions/runs/42984357610 . **303 passed,
+17 skipped** in CI, matching parent's final Docker PostgreSQL17 suite. All three
+deployments rolled out; healthz OK, Argo Synced/Healthy at `e449702`.
+Image `sha256:021be4ee3c6165e79ca90c21362dee6794f1586ad2b3de84e7db5ccbd09ee2e8`.
+No migration: existing schema stays `0018_graph_jobs`. Protected pre-release dump
+outside Git. Original homelab checkout has concurrent n8n migration edits; this
+handoff used an isolated worktree and did not alter them.
+
+### Actual incident evidence / repair boundary
+
+Read-only production query located the immutable SPI-episode key (card reference
+`8d9abee4626d6dff8e22`) and five saved photo copies. At08:02Z the incident was
+firing/generation1/Level20, users enabled, no mute marker, desired buttons15m/30m/1h,
+three pending silence actions created around07:17:46Z, applied=desired content
+revision4 and link revision1. SPI outbox entries were done. This supports the
+reported missing-display problem rather than missing action intent. Existing HTTP
+logs do NOT contain historic payload/markup, so exact historical Telegram request
+attribution is not claimed from logs alone. Outbox `available_at` is not a delivery
+timestamp and must not be used as one.
+
+A targeted repair script was prepared to reapply the same SPI URL/revision through
+the fixed endpoint to ONLY these five saved copies, requiring identical caption,
+graph, identities, active generation and expected markup. Preflight found that the
+incident had meanwhile naturally become RESOLVED, all five copies already at
+revision6. It aborted BEFORE enqueue/DB mutation/Telegram HTTP. Do NOT claim these
+five active keyboards were manually repaired: restoring Mute/Escalate on their
+now-closed cards would be wrong. No replacement/rebroadcast was performed.
+
+### Live acceptance / OTel logs
+
+`/tmp/socrat-alert-keyboard-live-smoke.py` ran the released image with temporary
+SQLite and strict transport guards allowing only marked owner-only test photos and
+their returned IDs. Observed real Bot API keyboard counts4 →0 (deliberate omitted
+markup negative control) →4 (same-revision fixed SPI retry) →4 (newer SPI URL),
+always same photo ID; all test messages deleted. A first harness attempt used an
+unchanged URL for the newer revision and treated Telegram's legitimate not-modified
+response as failure; cleaned that photo and corrected the harness to vary the URL.
+No production incident mutations or other-recipient test sends.
+
+Existing OTel ingestion was already working: mTLS query from provisioned Grafana
+Loki datasource found171 bot records in07:16–07:23Z under
+`{service_name="socrat-bot"}`. No infrastructure reconfiguration/exporter was needed.
+Old records only had HTTP status/duration, insufficient for button attribution.
+Added static `card delivery` JSON events with allowlisted kind/method/outcome,
+generation/content/link revisions, button_count, and20-hex SHA256 card_ref. No raw
+key, chat IDs, callbacks, URLs, message text, secrets, exception strings or payloads.
+`accepted` means durable dispatcher completion, not independent client rendering.
+
+A separate owner-only OTel producer probe (`/tmp/socrat-keyboard-otel-probe.py`)
+routed its actual delivery logger to PID1 stdout: kubectl-exec stdout by itself is
+not a container log stream. The ordinary agent→OTLP→Loki pipeline retained two
+probe events (`fc144ef931adbdb72859`), sendPhoto and SPI editMessageCaption, both
+accepted/button_count4. Its single photo was deleted; isolated SQLite only. Loki
+also contained unrelated concurrent real dispatcher events with button_count4;
+those are not smoke DB records or parent-generated real alert writes.
+
+Grafana Explore / Loki query:
+
+```logql
+{service_name="socrat-bot"} |= "card delivery" | json
+```
+
+Local evidence: `/tmp/socrat-keyboard-production-evidence*.json` (0600),
+`/tmp/socrat-loki-evidence.jsonl`, `/tmp/socrat-loki-keyboard-probe-confirmation.jsonl`.
+No secrets were printed; Grafana-provisioned mTLS leaf credentials stayed inside
+that container in anonymous in-memory file descriptors for read-only Loki queries.
