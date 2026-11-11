@@ -39,6 +39,24 @@ dry-run jobs are not replayed. Set SPI writeEnabled=false to pause publication
 without changing Telegram delivery or the blog policy.
 Operator progress checklist: `/tmp/socrat-spi-implementation-plan.md` on the agent host.
 
+## Bounded report generation
+
+New reports use the canonical
+[bounded-generation contract](https://github.com/alchemmist/spi-triage/blob/main/docs/bounded-reports.md)
+to address LLM_MODEL_OUTPUT_TRUNCATED (including17941), without raising the2500
+output-token allowance or buying extra regenerations. The generation schema caps
+prose lengths/list counts, constrains candidate numbers and keeps exact citations.
+It was checked offline against the deployed xgrammar0.2.7 compiler: maxLength is
+ignored alongside pattern, so only facts use a regex with its own length bound.
+Plain prose uses native length constraints. A truncated finish still fails closed.
+
+Historical complete reports and full stored logs/graphs/evidence are not shortened.
+Original analysis/admission/repair/owner limits and the20-topic/no-new-issue policy
+remain. No native workflow/credential patch is needed. Stateful replacement still
+requires actual natural drain, independently of successful CI or any unrelated
+n8n replacement. An external n8n interruption is not successful-drain evidence;
+resume the retained work naturally and recheck logical/native/paid state first.
+
 ## Architecture
 
 Original Socrat Alerts retains its workflow identity and Telegram path. Its native
