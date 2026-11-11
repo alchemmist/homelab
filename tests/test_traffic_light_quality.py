@@ -42,6 +42,14 @@ class QualityPanelsTest(unittest.TestCase):
         built=Q.build(self.d)
         self.assertEqual(next(p for p in built['panels'] if p['id']==931)['gridPos'],panel['gridPos'])
 
+    def test_manual_return_to_legacy_width_is_also_authoritative(self):
+        grids={931:{'x':12,'y':14,'w':4,'h':4},932:{'x':16,'y':14,'w':4,'h':4}}
+        for p in self.d['panels']:
+            if p['id'] in grids:p['gridPos']=grids[p['id']]
+        built=Q.build(self.d)
+        for p in built['panels']:
+            if p['id'] in grids:self.assertEqual(p['gridPos'],grids[p['id']])
+
     def test_will_not_move_owner_panels_to_force_space(self):
         self.d['panels'][0]['gridPos'] = {'x':12,'y':14,'w':4,'h':4}
         with self.assertRaises(ValueError): Q.build(self.d)

@@ -132,10 +132,7 @@ def build(source=None):
             occupied.update((x,y) for x in range(g['x'], g['x']+g['w']) for y in range(g['y'], g['y']+g['h']))
     for p in additions:
         if p['id'] in existing:
-            old = existing[p['id']]['gridPos']
-            prior_owned = {931: {'x':12,'y':14,'w':4,'h':4}, 932: {'x':16,'y':14,'w':4,'h':4}}
-            if old != prior_owned.get(p['id']):
-                p['gridPos'] = copy.deepcopy(old)
+            p['gridPos'] = copy.deepcopy(existing[p['id']]['gridPos'])
         g = p['gridPos']
         for x in range(g['x'],g['x']+g['w']):
             for y in range(g['y'],g['y']+g['h']):

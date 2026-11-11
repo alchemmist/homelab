@@ -323,3 +323,16 @@ resolved via ONLY Fullyrestart after confirming no pending settingsimport, with
 all saved zoom/font/VPN/DNS/presentation settings unchanged. Rechecked REAL final
 fit AFTER cleanup/restart (not the earliercroppedPNG). TVleftloaded andforeground.
 Private nativeAPI reads used after MCP fetchtimeouts; no credentials/logs exposed.
+
+Current owner correction (featurec84e31dd) supersedes above AI/PSI expansion:
+930HTTPworst3business5xx/1h;931RustFS RX/TXpurple,932Harborregistry RX/TXteal,
+both x12/18,y14,w6,h4;934/935backupages remain;933retired.62panels/5holes.
+Original57panels/settings/909CSS/VPN exact unchanged. Bothnetworkdirections5mB/s
+with1hNativeStat sparklines; realcAdvisor counters, notS3objects/OCIcounts. Complete
+freshcurrentPodcoverage and latestNoTelemetry sentinel; last reducer. HTTP0 only
+fromfreshobservedcounter, missingbackendnothealthy. No nativeHarbor/RustFS business
+scrape enabled/no workloads restarted. Currentsemantics/physicalacceptance and
+safety details in llm-wiki/android-tv.md#current-service-diverse-layout--owner-correction11november2026.
+60focusedtests; scopedHelmONLYTrafficLightCM, sizeguardretained. FinalactualTVPNG
+/tmp/tv-services-final-fit.png afterdebugcleanup/restart inspected;4RX/TX labels,
+units/backups fit,49Argo runs counted, purple/teal pixels confirmed. No newblue.

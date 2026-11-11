@@ -421,3 +421,51 @@ return briefly reset visualzoom/cropped page; savedpreferences untouched. One
 Fully-onlyrestart with fresh NO_PENDING_IMPORT check restoredfit; FINALscreenshot
 was rechecked afterrestart. SavedFully55%/font75%/network/VPN unchanged. Do not
 finish acceptance on a pre-cleanup screenshot: check finaldevice after closingmenus.
+
+## Current service-diverse layout — owner correction11November2026
+
+Supersedes preceding AI-heavy/PSI expansion. Owner rejected blue for newgraphs
+(VPN already blue) and wanted RustFS/Harbor/other applications, not threeAIcards.
+Featurec84e31dd: ONLY previouslyadded930–935 scope changed. Original57panels,
+Argo909/nativecolors/CSS/share/VPN and alloriginalpositions/settings exact unchanged.
+62panels,20rows,5emptycells. No exporter/backend/alert/CSS/Fullypreference changes.
+
+Current additions:
+-930 x12,y10,w4,h4: estimatedHTTP5xx/1h worst3 observed businessbackends, allowlist10:
+ Monori,LMS,Harborcore,Wiki,Evidencegateway,Authentik,Blog,Cats,Umami,SearXNG. Explicitly
+ excludesGrafana/VPN/infrastructure. Zero only from fresh observedrequestcounter;
+ missingbackend omitted, NOT healthy0; Traefikup/fresh90s. Nonzero red,0neutralgray.
+ Zero ties arbitrary; not an availability guarantee or exacteventcount/SLO.
+ RustFS-labelled HTTPbackend means Evidencegateway, NOT internalS3.
+-931 x12,y14,w6,h4: RustFS podeth0RX/TX, purple#B877D9.
+-932 x18,y14,w6,h4: HarborREGISTRYpod eth0RX/TX, teal#2EBFA5 (notallHarborcomponents).
+ BothnativeStats with separateRX/TX names/numbers and1harea sparklines;5m byte rate,
+ includesinternaltraffic/protocol/probes, NOTobjectcount/S3operationcount/pullpush
+ count orservicehealth. Individual sparkline auto-scales: compare values, notheights.
+ cAdvisor metrics lackcontainer label (sandbox counters); don't filtercontainer=POD.
+ Bothdirectionseries and freshcurrentPodinventory coverage90s required. label_join
+ preservesmetricidentity before timestamp(): rawRX/TXotherwisecollapse identical
+ labelsets when timestamp drops__name__. Latestmissing sentinel-2 per direction and
+ last reducer prevents stale-lastgood/absent→zero. Read-only missing/partialcounter
+ negativequeries both returned2×-2 as expected; no syntheticproduction activity.
+-934/935backupages remain x12/18,y18,w6,h2, unchangedmeaning/thresholds.933retired;
+ reservedIDS retains933 so generator removes its oldownedAIpanel. PSI930was replaced
+ byserviceerrors to permit readable6-column networkblocks aligned withbackupcolumns.
+
+No native RustFS/Harbor businessmetrics scrape exists on inspected datasource;
+never fabricate object counts, scanstatus, OCIpullpush counts orPVCquota percent.
+Do NOT enable exporters/restart workloads or use privileged app credentials merely
+because a dashboard expansion was approved. Those require separate scoped work.
+
+FreshmanualAPIcheck matched sourcebeforeedit. ScopedHelm onlyTrafficLightCM.
+42dashboardtests +18TVstyle tests=60 focusedpasses, unchanged <240000CMsizeguard.
+Generator preserves ALLfuturemanualgeometry, including a return toprior4-column
+sizes; expansion changed OWNEDdefaultcoordinates once, not a permanentforce rule.
+
+ActualTVacceptance: WebView1024×575,DPR2; all5widgets/everytextrange contained;
+62panels,49Argo fills. Private `/tmp/tv-services-dom-safe.json` and FINALactual
+`/tmp/tv-services-final-fit.png`: inspected afterdebugfalse restoration/Fully-only
+restart (pendingimportcheck), no clippedlabels/valueunits/backupbottomrow. Native
+UIXML verifies all4RX/TX names. IndependentPNGscanline counted49Argo runs; pixels
+confirm purpleRustFS/tealHarbor. Originaldebugfalse restored/socketabsent, forwards
+closed/ownXMLremoved; saved55%/font75%/networksettings unchanged. TVforeground.

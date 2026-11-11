@@ -559,3 +559,11 @@ Fresh native3-voter/common-leader/hashKV agreement and5Ready/noMemoryPressure;
 all5 canonical metrics fresh. Five private native archives off-host SHA verified.
 Details, replay/custody and honest mobile/AWG/source-IP/HA limits:
 [production cutover](../docs/vpn-production-cutover-20261109.md).
+
+TV11November owner correction: latest service-diverse dashboard supersedes AI-heavy
+free-space fill. Only own930–935 revised: purpleRustFS RX/TX, tealHarborregistry RX/TX,
+worst3businessHTTP5xx/1h, LMS/n8nbackupages.62panels, original57/Argo909CSS/VPN/share
+unchanged. ActualfinalTVfit checked afterdebugfalse cleanup/Fully-onlyrestart;
+49Argo fills physicallycounted. No nativeRustFS/Harbor business scrape: networkbytes
+are NOT object/pullpush counts; no exporter/backend/CSS changes. Fullsemantics,
+currentpositions and60focusedtest acceptance: llm-wiki/android-tv.md latestsection.
