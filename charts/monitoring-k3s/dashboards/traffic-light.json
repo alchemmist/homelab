@@ -5911,28 +5911,29 @@
       "id": 931,
       "type": "stat",
       "title": "",
-      "transparent": false,
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Local vLLM waiting requests, not GPU utilization or remote LiteLLM queue. Current value with 1h trend; blue is informational, not an alert. Fresh up/sample guard90s. Missing latest data is explicit No telemetry (-2), never a healthy zero. last reducer keeps latest state, not lastNotNull.",
+      "description": "RustFS storage pod RX/TX bytes/s5m, last1h; includes internal traffic/overhead, NOT object or OCI counts/availability. Fresh cAdvisor/current Pod coverage90s. Latest missing=-2/No telemetry, never zero. Independent sparkline scales: compare numbers, not heights.",
       "gridPos": {
         "x": 12,
         "y": 14,
-        "w": 4,
+        "w": 6,
         "h": 4
       },
+      "timeFrom": "1h",
+      "hideTimeOverride": true,
       "fieldConfig": {
         "defaults": {
-          "displayName": "AI · waiting",
-          "unit": "short",
-          "decimals": 0,
+          "displayName": "RustFS · ${__field.labels.direction}",
+          "unit": "Bps",
           "min": 0,
+          "decimals": 0,
           "noValue": "No telemetry",
           "color": {
             "mode": "fixed",
-            "fixedColor": "#5794F2"
+            "fixedColor": "#B877D9"
           },
           "mappings": [
             {
@@ -5944,16 +5945,7 @@
                 }
               }
             }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#5794F2",
-                "value": null
-              }
-            ]
-          }
+          ]
         },
         "overrides": []
       },
@@ -5962,11 +5954,11 @@
         "graphMode": "area",
         "justifyMode": "center",
         "orientation": "vertical",
-        "textMode": "value_and_name",
         "wideLayout": false,
+        "textMode": "value_and_name",
         "text": {
-          "titleSize": 13,
-          "valueSize": 30
+          "titleSize": 12,
+          "valueSize": 26
         },
         "reduceOptions": {
           "values": false,
@@ -5976,8 +5968,6 @@
           "fields": ""
         }
       },
-      "timeFrom": "1h",
-      "hideTimeOverride": true,
       "targets": [
         {
           "refId": "A",
@@ -5985,8 +5975,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(sum(vllm:num_requests_waiting{job=\"vllm\"}) and on() (((max(up{job=\"vllm\"}) == 1) and on() (time() - max(timestamp(up{job=\"vllm\"})) < 90)) and on() (time() - max(timestamp(vllm:num_requests_waiting{job=\"vllm\"})) < 90))) or vector(-2)",
-          "legendFormat": "AI · waiting",
+          "expr": "((sum by(direction)((label_replace(rate(container_network_receive_bytes_total{namespace=\"rustfs\",pod=~\"rustfs-.*\",interface=\"eth0\",job=\"kubelet\"}[5m]), \"direction\", \"RX\", \"pod\", \".+\") or label_replace(rate(container_network_transmit_bytes_total{namespace=\"rustfs\",pod=~\"rustfs-.*\",interface=\"eth0\",job=\"kubelet\"}[5m]), \"direction\", \"TX\", \"pod\", \".+\")) and ignoring(direction,d) (label_join({__name__=~\"container_network_(receive|transmit)_bytes_total\",namespace=\"rustfs\",pod=~\"rustfs-.*\",interface=\"eth0\",job=\"kubelet\"}, \"d\", \"\", \"__name__\") and (time()-timestamp(label_join({__name__=~\"container_network_(receive|transmit)_bytes_total\",namespace=\"rustfs\",pod=~\"rustfs-.*\",interface=\"eth0\",job=\"kubelet\"}, \"d\", \"\", \"__name__\"))<90) and on(instance) (up{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\"}==1) and on(namespace,pod) (kube_pod_info{namespace=\"rustfs\",pod=~\"rustfs-.*\"} and (time()-timestamp(kube_pod_info{namespace=\"rustfs\",pod=~\"rustfs-.*\"})<90)))) and on() (count((label_join({__name__=~\"container_network_(receive|transmit)_bytes_total\",namespace=\"rustfs\",pod=~\"rustfs-.*\",interface=\"eth0\",job=\"kubelet\"}, \"d\", \"\", \"__name__\") and (time()-timestamp(label_join({__name__=~\"container_network_(receive|transmit)_bytes_total\",namespace=\"rustfs\",pod=~\"rustfs-.*\",interface=\"eth0\",job=\"kubelet\"}, \"d\", \"\", \"__name__\"))<90) and on(instance) (up{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\"}==1) and on(namespace,pod) (kube_pod_info{namespace=\"rustfs\",pod=~\"rustfs-.*\"} and (time()-timestamp(kube_pod_info{namespace=\"rustfs\",pod=~\"rustfs-.*\"})<90)))) == on() (2*count((kube_pod_info{namespace=\"rustfs\",pod=~\"rustfs-.*\"} and (time()-timestamp(kube_pod_info{namespace=\"rustfs\",pod=~\"rustfs-.*\"})<90)))))) and on() ((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90))) or on(direction) (label_replace(vector(-2), \"direction\", \"RX\", \"__name__\", \".*\") or label_replace(vector(-2), \"direction\", \"TX\", \"__name__\", \".*\"))",
+          "legendFormat": "{{direction}}",
           "format": "time_series",
           "instant": false,
           "range": true,
@@ -5998,126 +5988,29 @@
       "id": 932,
       "type": "stat",
       "title": "",
-      "transparent": false,
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Local vLLM estimated time to first token p95 over15m, not full streamed-response duration or remote models. Require at least20 histogram observations; otherwise Low sample, not zero. Fresh count/bucket/up guards90s. Display bands10s/60s are visual guidance, not an agreed SLO or firing alert.",
+      "description": "Harbor registry pod only RX/TX bytes/s5m, last1h; includes internal traffic/overhead, NOT object or OCI counts/availability. Fresh cAdvisor/current Pod coverage90s. Latest missing=-2/No telemetry, never zero. Independent sparkline scales: compare numbers, not heights.",
       "gridPos": {
-        "x": 16,
+        "x": 18,
         "y": 14,
-        "w": 4,
+        "w": 6,
         "h": 4
-      },
-      "fieldConfig": {
-        "defaults": {
-          "displayName": "AI · first token p95",
-          "unit": "s",
-          "decimals": 1,
-          "min": 0,
-          "noValue": "No telemetry",
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "-2": {
-                  "text": "No telemetry",
-                  "color": "#808080"
-                },
-                "-1": {
-                  "text": "Low sample",
-                  "color": "#808080"
-                }
-              }
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#5794F2",
-                "value": null
-              },
-              {
-                "color": "#FFB357",
-                "value": 10
-              },
-              {
-                "color": "#F2495C",
-                "value": 60
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "vertical",
-        "textMode": "value_and_name",
-        "wideLayout": false,
-        "text": {
-          "titleSize": 13,
-          "valueSize": 30
-        },
-        "reduceOptions": {
-          "values": false,
-          "calcs": [
-            "last"
-          ],
-          "fields": ""
-        }
       },
       "timeFrom": "1h",
       "hideTimeOverride": true,
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "((((histogram_quantile(0.95, sum by(le) (rate(vllm:time_to_first_token_seconds_bucket{job=\"vllm\"}[15m])))) and on() (sum(increase(vllm:time_to_first_token_seconds_count{job=\"vllm\"}[15m])) >= 20)) or (vector(-1) and on() (sum(increase(vllm:time_to_first_token_seconds_count{job=\"vllm\"}[15m])) < 20))) and on() (((max(up{job=\"vllm\"}) == 1) and on() (time() - max(timestamp(up{job=\"vllm\"})) < 90)) and on() (time() - max(timestamp(vllm:time_to_first_token_seconds_count{job=\"vllm\"})) < 90) and on() (time() - max(timestamp(vllm:time_to_first_token_seconds_bucket{job=\"vllm\"})) < 90))) or vector(-2)",
-          "legendFormat": "AI · first token p95",
-          "format": "time_series",
-          "instant": true,
-          "range": false,
-          "interval": "15s"
-        }
-      ]
-    },
-    {
-      "id": 933,
-      "type": "stat",
-      "title": "",
-      "transparent": false,
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "Local vLLM aggregate generated tokens/s, rolling5m rate with1h trend. Not per-request speed, input tokens, concurrency or a billing measure. Zero while idle is valid only with fresh healthy telemetry; absent/down/stale produces No telemetry.",
-      "gridPos": {
-        "x": 20,
-        "y": 14,
-        "w": 4,
-        "h": 4
-      },
       "fieldConfig": {
         "defaults": {
-          "displayName": "AI · output tok/s",
-          "unit": "short",
-          "decimals": 1,
+          "displayName": "Harbor · ${__field.labels.direction}",
+          "unit": "Bps",
           "min": 0,
+          "decimals": 0,
           "noValue": "No telemetry",
           "color": {
             "mode": "fixed",
-            "fixedColor": "#5794F2"
+            "fixedColor": "#2EBFA5"
           },
           "mappings": [
             {
@@ -6129,16 +6022,7 @@
                 }
               }
             }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#5794F2",
-                "value": null
-              }
-            ]
-          }
+          ]
         },
         "overrides": []
       },
@@ -6147,11 +6031,11 @@
         "graphMode": "area",
         "justifyMode": "center",
         "orientation": "vertical",
-        "textMode": "value_and_name",
         "wideLayout": false,
+        "textMode": "value_and_name",
         "text": {
-          "titleSize": 13,
-          "valueSize": 30
+          "titleSize": 12,
+          "valueSize": 26
         },
         "reduceOptions": {
           "values": false,
@@ -6161,8 +6045,6 @@
           "fields": ""
         }
       },
-      "timeFrom": "1h",
-      "hideTimeOverride": true,
       "targets": [
         {
           "refId": "A",
@@ -6170,12 +6052,88 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(sum(rate(vllm:generation_tokens_total{job=\"vllm\"}[5m])) and on() (((max(up{job=\"vllm\"}) == 1) and on() (time() - max(timestamp(up{job=\"vllm\"})) < 90)) and on() (time() - max(timestamp(vllm:generation_tokens_total{job=\"vllm\"})) < 90))) or vector(-2)",
-          "legendFormat": "AI · output tok/s",
+          "expr": "((sum by(direction)((label_replace(rate(container_network_receive_bytes_total{namespace=\"harbor\",pod=~\"harbor-registry-.*\",interface=\"eth0\",job=\"kubelet\"}[5m]), \"direction\", \"RX\", \"pod\", \".+\") or label_replace(rate(container_network_transmit_bytes_total{namespace=\"harbor\",pod=~\"harbor-registry-.*\",interface=\"eth0\",job=\"kubelet\"}[5m]), \"direction\", \"TX\", \"pod\", \".+\")) and ignoring(direction,d) (label_join({__name__=~\"container_network_(receive|transmit)_bytes_total\",namespace=\"harbor\",pod=~\"harbor-registry-.*\",interface=\"eth0\",job=\"kubelet\"}, \"d\", \"\", \"__name__\") and (time()-timestamp(label_join({__name__=~\"container_network_(receive|transmit)_bytes_total\",namespace=\"harbor\",pod=~\"harbor-registry-.*\",interface=\"eth0\",job=\"kubelet\"}, \"d\", \"\", \"__name__\"))<90) and on(instance) (up{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\"}==1) and on(namespace,pod) (kube_pod_info{namespace=\"harbor\",pod=~\"harbor-registry-.*\"} and (time()-timestamp(kube_pod_info{namespace=\"harbor\",pod=~\"harbor-registry-.*\"})<90)))) and on() (count((label_join({__name__=~\"container_network_(receive|transmit)_bytes_total\",namespace=\"harbor\",pod=~\"harbor-registry-.*\",interface=\"eth0\",job=\"kubelet\"}, \"d\", \"\", \"__name__\") and (time()-timestamp(label_join({__name__=~\"container_network_(receive|transmit)_bytes_total\",namespace=\"harbor\",pod=~\"harbor-registry-.*\",interface=\"eth0\",job=\"kubelet\"}, \"d\", \"\", \"__name__\"))<90) and on(instance) (up{job=\"kubelet\",metrics_path=\"/metrics/cadvisor\"}==1) and on(namespace,pod) (kube_pod_info{namespace=\"harbor\",pod=~\"harbor-registry-.*\"} and (time()-timestamp(kube_pod_info{namespace=\"harbor\",pod=~\"harbor-registry-.*\"})<90)))) == on() (2*count((kube_pod_info{namespace=\"harbor\",pod=~\"harbor-registry-.*\"} and (time()-timestamp(kube_pod_info{namespace=\"harbor\",pod=~\"harbor-registry-.*\"})<90)))))) and on() ((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90))) or on(direction) (label_replace(vector(-2), \"direction\", \"RX\", \"__name__\", \".*\") or label_replace(vector(-2), \"direction\", \"TX\", \"__name__\", \".*\"))",
+          "legendFormat": "{{direction}}",
           "format": "time_series",
           "instant": false,
           "range": true,
           "interval": "15s"
+        }
+      ]
+    },
+    {
+      "id": 930,
+      "type": "bargauge",
+      "title": "HTTP · 5xx / h",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Worst3 of10 observed business backends by estimated5xx/1h. RustFS = Evidence gateway, not internal S3. No Grafana/VPN. Zero only from fresh requests; missing backend omitted, NOT healthy. Traefik up/fresh90s. Zero ties arbitrary. Red >0, not SLO/alert.",
+      "gridPos": {
+        "x": 12,
+        "y": 10,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "decimals": 0,
+          "noValue": "No telemetry",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#C8CDD3",
+                "value": null
+              },
+              {
+                "color": "#F2495C",
+                "value": 0.001
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "valueMode": "color",
+        "namePlacement": "left",
+        "showUnfilled": true,
+        "sizing": "manual",
+        "minVizHeight": 0,
+        "minVizWidth": 0,
+        "maxVizHeight": 100,
+        "text": {
+          "titleSize": 10,
+          "valueSize": 14
+        },
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "last"
+          ],
+          "fields": ""
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "label_replace(topk(3, (sum by(exported_service)(increase(traefik_service_requests_total{exported_service=~\"(monori-monori-80|lms-lms-80|harbor-harbor-core-80|wiki-wiki-runtime-wiki-http|identity-rustfs-gateway-8080|identity-authentik-server-80|blog-blog-80|cats-cats-80|umami-umami-80|llm-searxng-8080)@kubernetes\",code=~\"5..\"}[1h])) or on(exported_service) (0*max by(exported_service) (traefik_service_requests_total{exported_service=~\"(monori-monori-80|lms-lms-80|harbor-harbor-core-80|wiki-wiki-runtime-wiki-http|identity-rustfs-gateway-8080|identity-authentik-server-80|blog-blog-80|cats-cats-80|umami-umami-80|llm-searxng-8080)@kubernetes\"} and (time()-timestamp(traefik_service_requests_total{exported_service=~\"(monori-monori-80|lms-lms-80|harbor-harbor-core-80|wiki-wiki-runtime-wiki-http|identity-rustfs-gateway-8080|identity-authentik-server-80|blog-blog-80|cats-cats-80|umami-umami-80|llm-searxng-8080)@kubernetes\"})<90)))) and on() ((min(up{job=\"traefik\"})==1) and on() (time()-min(timestamp(up{job=\"traefik\"}))<90))), \"app\", \"$1\", \"exported_service\", \"[^-]+-([^-]+)-.*\")",
+          "instant": true,
+          "range": false,
+          "format": "time_series",
+          "legendFormat": "{{app}}"
         }
       ]
     },
@@ -6188,7 +6146,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Age of last successful lms/lms-database-backup CronJob. A successful Job is NOT proof of archive integrity, off-host copy or successful restore. Bands: warning6h, overdue8h. Missing job/never succeeded/no telemetry distinct; up and sample freshness90s.",
+      "description": "Last successful lms/lms-database-backup age; NOT proof of archive integrity/offhost copy/restore. Bands6/8h. Missing/never succeeded/no telemetry distinct; up/sample fresh90s.",
       "gridPos": {
         "x": 12,
         "y": 18,
@@ -6263,8 +6221,6 @@
           "fields": ""
         }
       },
-      "timeFrom": "1h",
-      "hideTimeOverride": true,
       "targets": [
         {
           "refId": "A",
@@ -6272,7 +6228,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(((((((time() - max(kube_cronjob_status_last_successful_time{namespace=\"lms\",cronjob=\"lms-database-backup\"} > 0)) and on() (time() - max(timestamp(kube_cronjob_status_last_successful_time{namespace=\"lms\",cronjob=\"lms-database-backup\"})) < 90)) or (vector(-1) unless on() count(kube_cronjob_status_last_successful_time{namespace=\"lms\",cronjob=\"lms-database-backup\"} > 0))) and on() (count(kube_cronjob_info{namespace=\"lms\",cronjob=\"lms-database-backup\"}) > 0)) and on() (((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90)) and on() (time() - max(timestamp(kube_cronjob_info{namespace=\"lms\",cronjob=\"lms-database-backup\"})) < 90))) or (vector(-3) unless on() (count(kube_cronjob_info{namespace=\"lms\",cronjob=\"lms-database-backup\"}) > 0))) and on() ((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90))) or vector(-2)",
+          "expr": "(((((((time() - max(kube_cronjob_status_last_successful_time{namespace=\"lms\",cronjob=\"lms-database-backup\"} > 0)) and on() (time() - max(timestamp(kube_cronjob_status_last_successful_time{namespace=\"lms\",cronjob=\"lms-database-backup\"})) < 90)) or (vector(-1) unless on() count(kube_cronjob_status_last_successful_time{namespace=\"lms\",cronjob=\"lms-database-backup\"} > 0))) and on() (count(kube_cronjob_info{namespace=\"lms\",cronjob=\"lms-database-backup\"}) > 0)) and on() ((time() - max(timestamp(kube_cronjob_info{namespace=\"lms\",cronjob=\"lms-database-backup\"})) < 90))) or (vector(-3) unless on() (count(kube_cronjob_info{namespace=\"lms\",cronjob=\"lms-database-backup\"}) > 0))) and on() ((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90))) or vector(-2)",
           "legendFormat": "LMS · backup age",
           "format": "time_series",
           "instant": true,
@@ -6290,7 +6246,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Age of last successful automation/n8n-backup CronJob. A successful Job is NOT proof of archive integrity, off-host copy or successful restore. Bands: warning24h, overdue26h. Missing job/never succeeded/no telemetry distinct; up and sample freshness90s.",
+      "description": "Last successful automation/n8n-backup age; NOT proof of archive integrity/offhost copy/restore. Bands24/26h. Missing/never succeeded/no telemetry distinct; up/sample fresh90s.",
       "gridPos": {
         "x": 18,
         "y": 18,
@@ -6365,8 +6321,6 @@
           "fields": ""
         }
       },
-      "timeFrom": "1h",
-      "hideTimeOverride": true,
       "targets": [
         {
           "refId": "A",
@@ -6374,115 +6328,12 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(((((((time() - max(kube_cronjob_status_last_successful_time{namespace=\"automation\",cronjob=\"n8n-backup\"} > 0)) and on() (time() - max(timestamp(kube_cronjob_status_last_successful_time{namespace=\"automation\",cronjob=\"n8n-backup\"})) < 90)) or (vector(-1) unless on() count(kube_cronjob_status_last_successful_time{namespace=\"automation\",cronjob=\"n8n-backup\"} > 0))) and on() (count(kube_cronjob_info{namespace=\"automation\",cronjob=\"n8n-backup\"}) > 0)) and on() (((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90)) and on() (time() - max(timestamp(kube_cronjob_info{namespace=\"automation\",cronjob=\"n8n-backup\"})) < 90))) or (vector(-3) unless on() (count(kube_cronjob_info{namespace=\"automation\",cronjob=\"n8n-backup\"}) > 0))) and on() ((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90))) or vector(-2)",
+          "expr": "(((((((time() - max(kube_cronjob_status_last_successful_time{namespace=\"automation\",cronjob=\"n8n-backup\"} > 0)) and on() (time() - max(timestamp(kube_cronjob_status_last_successful_time{namespace=\"automation\",cronjob=\"n8n-backup\"})) < 90)) or (vector(-1) unless on() count(kube_cronjob_status_last_successful_time{namespace=\"automation\",cronjob=\"n8n-backup\"} > 0))) and on() (count(kube_cronjob_info{namespace=\"automation\",cronjob=\"n8n-backup\"}) > 0)) and on() ((time() - max(timestamp(kube_cronjob_info{namespace=\"automation\",cronjob=\"n8n-backup\"})) < 90))) or (vector(-3) unless on() (count(kube_cronjob_info{namespace=\"automation\",cronjob=\"n8n-backup\"}) > 0))) and on() ((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90))) or vector(-2)",
           "legendFormat": "n8n · backup age",
           "format": "time_series",
           "instant": true,
           "range": false,
           "interval": "15s"
-        }
-      ]
-    },
-    {
-      "id": 930,
-      "type": "bargauge",
-      "title": "Resource wait",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "description": "Worst node per resource: CPU, memory and I/O PSI some waiting ratio averaged5m. This is time with at least one stalled task, NOT utilization, queue length or fraction of all tasks. Complete fresh node inventory required; no missing node silently excluded. Display amber follows existing contention boundaries25%CPU/10%memory+I/O; actual alert additionally requires10m. Names show resource and node digit (CPU · 4 = socrat-4); short labels avoid native name clipping on TV. No fixed node ordering.",
-      "gridPos": {
-        "x": 12,
-        "y": 10,
-        "w": 4,
-        "h": 4
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "percentunit",
-          "min": 0,
-          "max": 1,
-          "decimals": 0,
-          "noValue": "No telemetry",
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#5794F2",
-                "value": null
-              },
-              {
-                "color": "#FFB357",
-                "value": 0.1
-              }
-            ]
-          }
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "^CPU"
-            },
-            "properties": [
-              {
-                "id": "thresholds",
-                "value": {
-                  "mode": "absolute",
-                  "steps": [
-                    {
-                      "color": "#5794F2",
-                      "value": null
-                    },
-                    {
-                      "color": "#FFB357",
-                      "value": 0.25
-                    }
-                  ]
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "options": {
-        "orientation": "horizontal",
-        "displayMode": "gradient",
-        "valueMode": "color",
-        "namePlacement": "left",
-        "showUnfilled": true,
-        "sizing": "manual",
-        "minVizHeight": 0,
-        "minVizWidth": 0,
-        "maxVizHeight": 100,
-        "reduceOptions": {
-          "values": false,
-          "calcs": [
-            "last"
-          ],
-          "fields": ""
-        },
-        "text": {
-          "titleSize": 10,
-          "valueSize": 14
-        }
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "label_replace(label_replace(label_replace(label_replace(topk by(resource) (1, ((socrat:node_pressure_waiting:ratio5m and on(node) (max by(node) (label_replace(up{job=\"node-exporter\"} * on(instance) group_left(nodename) node_uname_info{job=\"node-exporter\"}, \"node\", \"$1\", \"nodename\", \"(.+)\")) == 1) and on(node) (max by(node) (label_replace((node_scrape_collector_success{job=\"node-exporter\",collector=\"pressure\"} == 1) * on(instance) group_left(nodename) node_uname_info{job=\"node-exporter\"}, \"node\", \"$1\", \"nodename\", \"(.+)\")) == 1) and on(node) (time() - socrat:node_exporter_last_success_timestamp_seconds < 90) and (time() - timestamp(socrat:node_pressure_waiting:ratio5m) < 90))) and on(resource) (count by(resource) ((socrat:node_pressure_waiting:ratio5m and on(node) (max by(node) (label_replace(up{job=\"node-exporter\"} * on(instance) group_left(nodename) node_uname_info{job=\"node-exporter\"}, \"node\", \"$1\", \"nodename\", \"(.+)\")) == 1) and on(node) (max by(node) (label_replace((node_scrape_collector_success{job=\"node-exporter\",collector=\"pressure\"} == 1) * on(instance) group_left(nodename) node_uname_info{job=\"node-exporter\"}, \"node\", \"$1\", \"nodename\", \"(.+)\")) == 1) and on(node) (time() - socrat:node_exporter_last_success_timestamp_seconds < 90) and (time() - timestamp(socrat:node_pressure_waiting:ratio5m) < 90))) == on() group_left count(count by(node) (kube_node_info{job=\"kube-state-metrics\"})))) and on() ((max(up{job=\"kube-state-metrics\"}) == 1) and on() (time() - max(timestamp(up{job=\"kube-state-metrics\"})) < 90)) and on() (time() - max(timestamp(kube_node_info{job=\"kube-state-metrics\"})) < 90), \"short_node\", \"$1\", \"node\", \"socrat-(.+)\"), \"resource_label\", \"CPU\", \"resource\", \"cpu\"), \"resource_label\", \"RAM\", \"resource\", \"memory\"), \"resource_label\", \"I/O\", \"resource\", \"io\")",
-          "instant": true,
-          "range": false,
-          "format": "time_series",
-          "legendFormat": "{{resource_label}} · {{short_node}}"
         }
       ]
     }
