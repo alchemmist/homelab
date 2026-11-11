@@ -336,3 +336,10 @@ safety details in llm-wiki/android-tv.md#current-service-diverse-layout--owner-c
 60focusedtests; scopedHelmONLYTrafficLightCM, sizeguardretained. FinalactualTVPNG
 /tmp/tv-services-final-fit.png afterdebugcleanup/restart inspected;4RX/TX labels,
 units/backups fit,49Argo runs counted, purple/teal pixels confirmed. No newblue.
+
+Latestownerdecision eb238f5e supersedesHTTPpanel:930 is ONEcompactpinkAIStat
+(currentqueue +localTTFTp95/15m with20-observationLow sample guard). HTTPworst3
+removed, other61panels includingRustFS/Harbor/backups exact unchanged. Missing
+sourceboth-2, no fake0; no inventedlatencySLO.60focusedtests, scopedHelmONLYdashboard
+CM, ArgoSynced/Healthy. ActualfinalTV `/tmp/tv-ai-final-fit.png` inspected: bothAI
+labels fit, HTTPabsent,49Argo fills, pinkAI; debugremainedfalse/preferencesunchanged.

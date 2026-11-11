@@ -562,7 +562,8 @@ Details, replay/custody and honest mobile/AWG/source-IP/HA limits:
 
 TV11November owner correction: latest service-diverse dashboard supersedes AI-heavy
 free-space fill. Only own930–935 revised: purpleRustFS RX/TX, tealHarborregistry RX/TX,
-worst3businessHTTP5xx/1h, LMS/n8nbackupages.62panels, original57/Argo909CSS/VPN/share
+compactpinkAIqueue+TTFTp95/15m, LMS/n8nbackupages (HTTPworst3removed by owner).
+62panels, original57/Argo909CSS/VPN/share
 unchanged. ActualfinalTVfit checked afterdebugfalse cleanup/Fully-onlyrestart;
 49Argo fills physicallycounted. No nativeRustFS/Harbor business scrape: networkbytes
 are NOT object/pullpush counts; no exporter/backend/CSS changes. Fullsemantics,

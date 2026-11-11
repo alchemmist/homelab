@@ -469,3 +469,31 @@ restart (pendingimportcheck), no clippedlabels/valueunits/backupbottomrow. Nativ
 UIXML verifies all4RX/TX names. IndependentPNGscanline counted49Argo runs; pixels
 confirm purpleRustFS/tealHarbor. Originaldebugfalse restored/socketabsent, forwards
 closed/ownXMLremoved; saved55%/font75%/networksettings unchanged. TVforeground.
+
+## Current compact AI restoration —11November2026, eb238f5e
+
+Owner explicitly removedHTTPworst3 and approved ONEcompactAIblock inits place.
+ONLY930changed; other61panels/modelsettings/geometry exact unchanged.62panels,
+5holes. RustFS purple/Harborteal/backups/Argo909/publicshare/VPN retained.
+930 x12,y10,w4,h4 nowNativeStat withtwo instantaneous targets, no extra sparkline:
+- AI · queue: current localvLLM waitingrequests, per-seriesfresh/up filtering.
+- AI · TTFTp95: estimatedlocalfirst-tokenp95 over15m, require≥20estimatedhistogram
+ observations; otherwiseLow sample. NotremoteLiteLLM/fullstreamduration. Up/count/
+ bucketfreshness90s; negative/NaN/infinitequantile excluded. Missing=-2No telemetry,
+ lowsample=-1; no absent→healthy0. Unitseconds onTTFTonly; queueplaincount.
+ Pink#E0A6DC informational, no inventedSLO/alert; graymissing/lowsample. Lastreducer.
+ HTTPquery/allowlist removedfromgenerator, notmerelyhidden. Generatorpreservesmanual
+ geometry; no newCSS/exporter/backend/Collector/restart changes.
+
+NativeGrafanaAPIacceptedbothqueries; queue0/TTFTLow sample onacceptance, not a
+claimofzerolatency. Read-only missing-source negativequeryboth-2.42dashboardtests
++18TVstyle=60focusedpasses; ConfigMapsizeguardunchanged. Freshmanualcapture matched
+sourcebeforeedit. ScopedHelmONLYTrafficLightCM. ArgoSynced/Healthy and liveGrafana
+model930Stat/2targets independentlyverified (revisionfieldalone initiallypreceded
+Synced; waited foractualSynced beforefinalacceptance).
+
+ActualTV reloadedviaFully-onlyrestart afterpendingimportcheck, preferences55%/
+font75%/debugfalse unchanged. NoCDP/debug toggle needed. NativeUIXMLhasbothAIlabels,
+all4RustFS/HarborRXTX labels, bothbackupages, HTTPtitleabsent. FinalactualPNG
+`/tmp/tv-ai-final-fit.png` visuallyinspected, independent49Argo-run count andpink
+AIpixelcheck. OwnUIXMLdeleted, socketabsent, Fullyforeground. No otherpanels moved.
