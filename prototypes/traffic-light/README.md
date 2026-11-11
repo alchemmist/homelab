@@ -70,3 +70,10 @@ panel option enabled. These are display bounds on normalized stacking; hover sti
 shows original counts, e.g. Ready48, not48% or a clipped value1. Mixed-color rendering
 was checked only in an isolated browser response fixture, never by changing Argo
 apps or production telemetry. Live data is checked separately without that fixture.
+
+Acceptance: inspected the final deployed bar at1920×1080 in an isolated Viewer
+browser on real data (HTTP200): Ready48, other categories0; full-width green thin
+strip, hover retains count48. No history or visible legend/axis/title. Compared
+live dashboard before/after: only909 differs; all nonversion settings and other
+panels match.32 tests passed, Argo Synced/Healthy. Physical-TV acceptance remains
+owner-side. Local synthetic mixed-state rendering was separate from this live check.
