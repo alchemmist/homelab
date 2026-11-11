@@ -8,6 +8,23 @@ All six real SSH logins accepted; strict pins retained, no Mac route/DNS/VPN
 changes. Do not restore the older internal-only alias policy.
 [Current table](../docs/mac-private-ssh.md).
 
+## socrat-5 workload migration — 2026-11-11
+
+Owner authorized PR Agent, Rancher replica and n8n migration, plus daily compressed
+versioned n8n backups to socrat-3. PR Agent and n8n moved to5 without NFS. n8n
+copied offline to new static Retain node5-local PV/PVC `automation/n8n-socrat5`;
+legacy claim remains on1 for rollback. Storage admission gained only this named
+verified-local claim exception; foreign PVC/inline NFS negative probes denied.
+Daily CronJob `automation/n8n-backup`,03:15 Europe/Moscow, uses SQLite online backup,
+integrity check and pinned restricted SSH to `socrat-3:/home/alchemmist/backups/n8n`.
+Two test versions (~19MiB) accepted; offline archive SHA/SQLite/counts/key presence
+verified. No automatic archive deletion; private storage, not at-rest encryption.
+n8n 7 workflows/10 credentials/1 user/5 active preserved; healthz ok. No production
+workflow manually run. **Rancher attempt failed:** native jailer needs device nodes,
+`mknod` denied inside unprivileged LXC. Startup budget extension did not fix it;
+rolled desired placement/probes back to0/1, no jail/security/privilege bypass.
+Socrat4 untouched. [Evidence, limits, restore](../docs/n8n/worker5-migration-20261111.md).
+
 ## socrat-5 full headless setup — IN PROGRESS
 
 Owner authorized general worker, not VPN transit. Account/shell/verified bottom,
@@ -21,7 +38,8 @@ peers0/1/2/3 remain reachable during scoped Moscow WG failure. Own fixtures clea
 **Owner-approved no-NFS profile now accepted:** bootstrap gate replaced with
 `homelab.io/no-nfs=true:NoSchedule`, label nfs=false; explicit toleration required.
 Native owned admission policy rejects remote/unclassified persistent volumes
-for5, except verified local NetBird identity PVC. No existing NFS PV/RBAC changes.
+for5, except verified local NetBird identity PVC and the explicitly migrated node5-local
+n8n PVC (11 November; see above). No existing NFS PV/RBAC changes.
 NetworkPolicy cause/fix: missing existing NetBird/VXLAN mark guard on new5;
 installed role, now included in worker play and required/reapplied before every
 agent start. Real deny/allow and same-/cross-node wrong-label tests passed without

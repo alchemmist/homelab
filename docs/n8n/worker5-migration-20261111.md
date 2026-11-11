@@ -104,3 +104,9 @@ reached native jailer and exited status2 (`mknod: Operation not permitted` confi
 inside pod). The stalled older Argo sync operation was scoped-terminated via its
 status phase so newer committed desired state could reconcile; no blanket sync,
 prune, image override, healthcheck disabling or privileges added.
+
+Final fresh acceptance: Rancher rollback completed, both replicas Ready on0/1,
+no Rancher pod on5; all three Argo Applications Synced/Healthy. PR Agent and n8n
+Running/Ready on5 without restarts. Public n8n healthz ok, Rancher ping pong.
+Node top at acceptance: socrat1 8514Mi (56%), vs9969Mi before migration; worker5
+2197Mi (5%). These are point-in-time readings, not peak/steady-state guarantees.
