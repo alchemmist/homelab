@@ -172,3 +172,18 @@ opens the matching app. No permanent text. Authenticated normal + kiosk preview
 verified49 named links sorted identically to49 real query frames, native title
 attributes resolved and first/middle/last target hover succeeds. TV public mode
 remains intentionally noninteractive; user hover works on ordinary signed-in route.
+
+Post-deployeb7cd6a3 acceptance: actual public query and signed-in normal/kiosk
+routes return49 unique app frames, names exactly equal live K8s Application names.
+All49 native link titles resolved; hovered EACH of49 targets successfully in normal
+and kiosk at1920×1080 AND1440×900. All targets fully inside panel (no clipping).
+Normal narrow viewport requires scrolling panel into view before lazy queries run;
+not a missing-data failure. Public actual scene and55%-viewport emulation render49
+colored blocks, each completely inside panel, no visible text/borders. Native public
+block height76.66px at1920×1080. No query interception/fixtures in live acceptance.
+Live dashboard comparison ignoring empty defaults/version confirms only909 changed;
+32 tests pass, scoped Helm only canonical CM, Argo Synced/Healthy.
+
+Device status changed during this run: documented192.168.0.19:5555 now responds but
+ADB saysunauthorized (SSH useralchemmist). Model cannot be verified until authorized.
+No authorization bypass, key reset, Fully reload or physical screenshot performed.

@@ -241,3 +241,15 @@ and kiosk routes; TV public opt-in remains noninteractive by existing policy.
 No Fully settings, public share URL, presentation assets, VPN or other panels changed.
 After deployment reload Fully for geometry/query changes; no claim of physical TV
 verification while documented ADB access is unavailable.
+
+Приёмкаeb7cd6a3:49 actual query frames=49 named K8s Applications. Signed-in normal
+и kiosk: по49 resolved native browser-title links, наведение проверено на КАЖДОМ
+из49 блоков при1920×1080 и1440×900, все bounds внутри панели. Public1920 и55%-
+emulation:49 целиком видимых блоков; native высота76.66px.32 tests, ArgoSynced/Healthy;
+live diff only909. Это browser acceptance, не физический TV screenshot.
+
+15:16MSK11Nov: адрес из wiki192.168.0.19:5555 теперь отвечает, но adb devices
+показываетunauthorized (socrat-0 SSH useralchemmist); модель ещё не подтверждена.
+Не обходили авторизацию, не сбрасывали ключи/настройки, не reload Fully через ADB.
+Для реального device screenshot требуется разрешённый ADB; для новой геометрии
+уже открытой страницы — reload Fully. Не считать адрес сам по себе проверкой модели.
