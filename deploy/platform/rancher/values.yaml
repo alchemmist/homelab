@@ -32,3 +32,10 @@ extraTolerations:
     operator: Equal
     value: "true"
     effect: NoSchedule
+
+# Cold catalog restoration on the remote LXC must finish before startup checks
+# hand over to the unchanged liveness/readiness probes. Keep a bounded 10m budget.
+startupProbe:
+  failureThreshold: 60
+  periodSeconds: 10
+  timeoutSeconds: 5

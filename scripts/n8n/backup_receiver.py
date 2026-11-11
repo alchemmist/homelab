@@ -5,6 +5,8 @@ import hashlib
 import os
 from pathlib import Path
 import sys
+import gzip
+import tarfile
 import uuid
 
 
@@ -30,7 +32,18 @@ def main():
             os.fsync(out.fileno())
         if size < 32:
             raise ValueError('empty/truncated archive')
-        # No unpacking of untrusted paths. Atomic publication only after EOF.
+        # Fully validate gzip CRC before publishing. Never extract remote paths.
+        with gzip.open(partial, 'rb') as compressed:
+            expanded = 0
+            while chunk := compressed.read(1024 * 1024):
+                expanded += len(chunk)
+                if expanded > 4 * 1024**3:
+                    raise ValueError('expanded archive exceeds limit')
+        with tarfile.open(partial, 'r:gz') as archive:
+            names = {m.name.removeprefix('./') for m in archive.getmembers()}
+            if not {'data/database.sqlite', 'manifest.json', 'encryption-key'} <= names:
+                raise ValueError('missing recovery state')
+        # Atomic publication only after successful transfer and archive validation.
         partial.rename(directory / name)
         with (directory / (name + '.sha256')).open('x') as out:
             out.write(digest.hexdigest() + '  ' + name + '\n')
