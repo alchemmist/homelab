@@ -38,12 +38,14 @@ spec:
           has(v.emptyDir) || has(v.configMap) || has(v.secret) || has(v.projected) ||
           has(v.downwardAPI) || has(v.hostPath) || has(v.image) ||
           (request.namespace == 'netbird-host-peers' && has(v.persistentVolumeClaim) &&
-           v.persistentVolumeClaim.claimName == 'machine-socrat-5'))
+           v.persistentVolumeClaim.claimName == 'machine-socrat-5') ||
+          (request.namespace == 'automation' && has(v.persistentVolumeClaim) &&
+           v.persistentVolumeClaim.claimName == 'n8n-socrat5'))
       message: >-
         socrat-5 is a no-NFS/local-only worker. Remote/unclassified persistent volumes
         (including PVC and inline CSI) require a different node. Broad Exists tolerations
-        with PVCs must pin another hostname. The existing verified local NetBird identity
-        claim is the only named PVC exception.
+        with PVCs must pin another hostname. Only the verified node5-local NetBird identity and n8n migration claims
+        are named PVC exceptions.
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding
