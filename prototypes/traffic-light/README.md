@@ -77,3 +77,6 @@ strip, hover retains count48. No history or visible legend/axis/title. Compared
 live dashboard before/after: only909 differs; all nonversion settings and other
 panels match.32 tests passed, Argo Synced/Healthy. Physical-TV acceptance remains
 owner-side. Local synthetic mixed-state rendering was separate from this live check.
+
+Owner thickness refinement: groupWidth/barWidth increased0.2→0.4, approximately
+ doubling visible thickness. Panel remains x12,y8,w6,h1; no layout/query changes.

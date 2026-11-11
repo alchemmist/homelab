@@ -35,8 +35,8 @@ class TrafficLightArgoTest(unittest.TestCase):
         self.assertEqual(p['title'], '')
         self.assertTrue(p['transparent'])
         self.assertEqual(p['fieldConfig']['defaults']['max'], 1)  # Percent scale must fill its width.
-        self.assertLessEqual(p['options']['groupWidth'], 0.25)
-        self.assertLessEqual(p['options']['barWidth'], 0.25)
+        self.assertEqual(p['options']['groupWidth'], 0.4)
+        self.assertEqual(p['options']['barWidth'], 0.4)
         self.assertEqual(p['interval'], '15s')
         self.assertEqual(p['maxDataPoints'], 1)
         self.assertEqual(len(p['targets']), 1)
