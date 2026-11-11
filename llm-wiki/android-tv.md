@@ -206,3 +206,10 @@ Refresh5s обновляет метрики, но не гарантирует п
 страницей. После layout rollout обновить страницу в Fully; не считать постоянно
 открытую вкладку обновлённой только по движению значений. Не менять масштаб всего
 дашборда ради одной полосы и не запускать полный TV provisioning для reload.
+
+После rollout9a47ee49 fresh anonymous public browser verified: canvas27→76px при
+1920×1080 (≈2.8×). Emulated55% viewport3491×1964,DSF0.55: canvas72→160CSSpx;
+это только эмуляция масштаба, не замер устройства. Public909 query HTTP200.
+32 tests passed, scoped Helm diff only canonical ConfigMap, Argo Synced/Healthy.
+Live exact dashboard comparison (excluding version) confirms only909.h changed.
+Физический TV/его открытая вкладка по-прежнему не проверены и не перезагружены.
