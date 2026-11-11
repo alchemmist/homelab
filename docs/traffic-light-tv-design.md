@@ -264,3 +264,15 @@ semantics/maintenance/retirement: `prototypes/traffic-light/README.md`.
 Maintain with `scripts/build-traffic-light-argo.py`; TMP sources/template retired.
 Prune remains false; cleanup is only the exact obsolete TMP ConfigMap, with atomic
 UID/resourceVersion preconditions, after canonical reconciliation and inspection.
+
+## Current-state Argo strip — 11 November 2026 (supersedes landscape)
+
+Owner rejected historical/Symlog view and requested a single thin current-state
+bar. Panel909 is now a native horizontal percent-stacked Bar chart fed by one
+instant table query, shaped into one row via groupingToMatrix/organize. x12,y8,w6,h1;
+no heading, legend, axes or value labels. Six current state categories: Ready,
+Progressing, Suspended, drift, Unhealthy, Unknown; no history/window. Measured raw
+cadence15s with existing5s dashboard refresh; no change to collector or dashboard
+settings. Freshness guard prevents unavailable telemetry becoming a healthy zero.
+All other panels preserved;30 freed cells remain empty,52 intentional holes in
+owner-layout fixture. Overview gauges and Traffic Light resource bars unchanged.

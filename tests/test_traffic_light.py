@@ -72,7 +72,7 @@ class TrafficLightLayoutTest(unittest.TestCase):
                  if (x, y) not in occupied]
         approved = json.loads((ROOT / 'tests/fixtures/traffic-light-owner-layout.json').read_text())
         self.assertEqual({str(p['id']): p['gridPos'] for p in self.dashboard['panels']}, approved)
-        self.assertEqual(len(holes), 22)  # intentional whitespace in owner layout
+        self.assertEqual(len(holes), 52)  # intentional whitespace in owner layout
 
     def test_cpu_temperature_bar_removed(self):
         ids = {panel['id'] for panel in self.dashboard['panels']}
@@ -97,8 +97,8 @@ class TrafficLightLayoutTest(unittest.TestCase):
         self.assertEqual(chart['gridPos'], {'x': 18, 'y': 10, 'w': 6, 'h': 4})
         self.assertEqual(chart['type'], 'stat')
         history = panel_by_id(self.dashboard, 909)
-        self.assertEqual(history['gridPos'], {'x': 12, 'y': 8, 'w': 6, 'h': 6})
-        self.assertEqual(history['type'], 'timeseries')
+        self.assertEqual(history['gridPos'], {'x': 12, 'y': 8, 'w': 6, 'h': 1})
+        self.assertEqual(history['type'], 'barchart')
 
     def test_unmodified_resource_columns(self):
         cpu = panel_by_id(self.dashboard, 21)
@@ -189,14 +189,15 @@ class TrafficLightQueriesTest(unittest.TestCase):
         self.assertEqual(panel['fieldConfig']['defaults']['min'], 0)
         self.assertNotIn('max', panel['fieldConfig']['defaults'])
 
-    def test_argocd_has_approved_state_landscape(self):
+    def test_argocd_has_current_state_strip(self):
         panel = panel_by_id(self.dashboard, 909)
-        self.assertEqual(panel['type'], 'timeseries')
+        self.assertEqual(panel['type'], 'barchart')
         self.assertEqual(len(panel['targets']), 1)
-        self.assertTrue(panel['options']['legend']['showLegend'])
+        self.assertFalse(panel['options']['legend']['showLegend'])
         self.assertEqual(panel['fieldConfig']['defaults']['custom']['lineWidth'], 0)
-        self.assertEqual(panel['fieldConfig']['defaults']['custom']['stacking']['mode'], 'normal')
-        self.assertIn('count_values(', panel['targets'][0]['expr'])
+        self.assertEqual(panel['options']['stacking'], 'percent')
+        self.assertTrue(panel['targets'][0]['instant'])
+        self.assertFalse(panel['targets'][0]['range'])
         self.assertIn('name!="root"', panel['targets'][0]['expr'])
 
     def test_new_activity_visuals_have_no_headers_legends_or_period_badges(self):
