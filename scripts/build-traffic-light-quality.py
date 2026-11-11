@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / 'charts/monitoring-k3s/dashboards/traffic-light.json'
 DS = {'type': 'prometheus', 'uid': 'prometheus'}
-IDS = {930, 931, 932, 933, 934, 935}
+IDS = {930, 931, 932, 933, 934, 935, 936}
 
 
 def fresh_job(job):
@@ -94,13 +94,43 @@ def ai_quality():
                 for ref,expr,name in [('A',queue,'AI · queue'),('B',latency,'AI · TTFT p95')]]}
 
 
+def cascade_summary():
+    selector = 'namespace="cattle-monitoring-system",cronjob="thanos-cascade"'
+    success = f'kube_cronjob_status_last_successful_time{{{selector}}}'
+    age = f'((time()-max({success}>0)) and on() {fresh_metric(success)} and on() ({fresh_job("kube-state-metrics")})) or vector(-2)'
+    pod_re = 'thanos-compactor(-5m|-1h)?-[0-9a-f]+-.+'
+    def live(metric):
+        return f'({metric} and (time()-timestamp({metric})<90) and on(instance) (up{{job="cattle-monitoring-system/thanos"}}==1))'
+    todo = 'thanos_compact_todo_downsample_blocks{job="cattle-monitoring-system/thanos",pod=~"thanos-compactor-[0-9a-f]+-.+"}'
+    backlog = f'max({live(todo)}) or vector(-2)'
+    halted = 'thanos_compact_halted{job="cattle-monitoring-system/thanos",pod=~"'+pod_re+'"}'
+    stages = f'max by(stage)(label_replace({live(halted)},"stage","$1","pod","(thanos-compactor(-5m|-1h)?)-[0-9a-f]+-.+"))'
+    halted = f'(sum({stages}) and on() (count({stages})==3)) or vector(-2)'
+    samples = 'prometheus_tsdb_head_samples_appended_total{pod="prometheus-kube-prometheus-stack-prometheus-0",container="prometheus"}'
+    ingest = f'(max(rate({samples}[5m])) and on() {fresh_metric(samples)} and on() ({fresh_job("kube-prometheus-stack-prometheus")})) or vector(-2)'
+    return {'id':936,'type':'stat','title':'','datasource':DS,
+            'description':'Thanos cascade: last successful hourly copy age (not sidecar upload); raw downsampling todo blocks (not bytes or ETA); halted compactors, all3 stages fresh required; Prometheus appended samples/s5m (not end-to-end delivery). Missing/stale90s = No telemetry, not0. Raw compactor is intentionally paused during the copy: temporary missing is not a fabricated failure. Age3h/6h bands match Metrics dashboard. No archive/DR integrity guarantee.',
+            'gridPos':{'x':16,'y':18,'w':8,'h':2},
+            'fieldConfig':{'defaults':{'unit':'short','min':0,'decimals':0,'noValue':'No telemetry',
+                'color':{'mode':'fixed','fixedColor':'#E0B860'},
+                'mappings':[{'type':'value','options':{'-2':{'text':'No data','color':'#808080'}}}]},
+                'overrides':[
+                    {'matcher':{'id':'byName','options':'Cascade age'},'properties':[{'id':'unit','value':'s'},{'id':'color','value':{'mode':'thresholds'}},{'id':'thresholds','value':{'mode':'absolute','steps':[{'color':'#E0B860','value':None},{'color':'#FFB357','value':10800},{'color':'#F2495C','value':21600}]}}]},
+                    {'matcher':{'id':'byName','options':'Halted'},'properties':[{'id':'color','value':{'mode':'thresholds'}},{'id':'thresholds','value':{'mode':'absolute','steps':[{'color':'#E0B860','value':None},{'color':'#F2495C','value':1}]}}]},
+                    {'matcher':{'id':'byName','options':'Samples/s'},'properties':[{'id':'decimals','value':1}]}]},
+            'options':{'colorMode':'value','graphMode':'none','justifyMode':'center','orientation':'vertical','wideLayout':False,
+                'textMode':'value_and_name','text':{'titleSize':11,'valueSize':20},'reduceOptions':{'values':False,'calcs':['last'],'fields':''}},
+            'targets':[{'refId':ref,'datasource':DS,'expr':expr,'legendFormat':name,'instant':True,'range':False,'format':'time_series'}
+                for ref,expr,name in [('A',age,'Cascade age'),('B',backlog,'Downsample'),('C',halted,'Halted'),('D',ingest,'Samples/s')]]}
+
+
 def panels():
     result = [traffic(931, 'RustFS', 'rustfs', 'rustfs-.*', '#B877D9'),
               traffic(932, 'Harbor', 'harbor', 'harbor-registry-.*', '#2EBFA5'),
-              ai_quality()]
+              ai_quality(), cascade_summary()]
     for pid, namespace, job, label, warning, limit in [
-        (934, 'lms', 'lms-database-backup', 'LMS · backup age', 6*3600, 8*3600),
-        (935, 'automation', 'n8n-backup', 'n8n · backup age', 24*3600, 26*3600),
+        (934, 'lms', 'lms-database-backup', 'LMS backup', 6*3600, 8*3600),
+        (935, 'automation', 'n8n-backup', 'n8n backup', 24*3600, 26*3600),
     ]:
         selector = f'namespace="{namespace}",cronjob="{job}"'
         success = f'kube_cronjob_status_last_successful_time{{{selector}}}'
@@ -111,10 +141,17 @@ def panels():
         # Existing job without a success is distinct from missing job and dead KSM.
         value = f'(({age}) or (vector(-1) unless on() count({success} > 0))) and on() ({exists})'
         expr = f'((({value}) and on() ({guard})) or (vector(-3) unless on() ({exists}))) and on() ({fresh_job("kube-state-metrics")})'
-        result.append(stat(pid, label, {'x': 12 if pid == 934 else 18, 'y': 18, 'w': 6, 'h': 2},
+        result.append(stat(pid, label, {'x': 12 if pid == 934 else 14, 'y': 18, 'w': 2, 'h': 2},
                            f'({expr}) or vector(-2)', 's',
                            f'Last successful {namespace}/{job} age; NOT proof of archive integrity/offhost copy/restore. Bands{warning//3600}/{limit//3600}h. Missing/never succeeded/no telemetry distinct; up/sample fresh90s.',
                            bands=[{'color': '#26783D', 'value': None}, {'color': '#FFB357', 'value': warning}, {'color': '#F2495C', 'value': limit}]))
+    for p in result:
+        if p['id'] in (934,935):
+            p['options']['text']={'titleSize':11,'valueSize':20}
+            p['fieldConfig']['defaults']['noValue']='No data'
+            states=p['fieldConfig']['defaults']['mappings'][0]['options']
+            for code,label in [('-2','No data'),('-1','Never'),('-3','Missing')]:
+                states[code]['text']=label
     return result
 
 
@@ -141,7 +178,15 @@ def build(source=None):
 
 
 def write(d):
-    SOURCE.write_text(json.dumps(d, ensure_ascii=False, indent=2)+'\n')
+    # Compact generated widgets only; keep original owner panels byte-formatted.
+    # This reduces actual ConfigMap/annotation bytes without relaxing the size guard.
+    text=json.dumps(d,ensure_ascii=False,indent=2)
+    for p in d['panels']:
+        if p['id'] not in IDS:continue
+        block='\n'.join('    '+line for line in json.dumps(p,ensure_ascii=False,indent=2).splitlines())
+        assert text.count(block)==1
+        text=text.replace(block,'    '+json.dumps(p,ensure_ascii=False,separators=(',',':')),1)
+    SOURCE.write_text(text+'\n')
 
 
 if __name__ == '__main__':

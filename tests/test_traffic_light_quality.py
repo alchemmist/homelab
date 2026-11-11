@@ -104,6 +104,21 @@ class QualityPanelsTest(unittest.TestCase):
             self.assertEqual(self.p[i]['options']['graphMode'],'area')
         self.assertNotIn('socrat:node_pressure',json.dumps([self.p[i] for i in Q.IDS & self.p.keys()]))
 
+    def test_cascade_six_values_fit_bottom_without_new_css(self):
+        self.assertEqual(self.p[931]['gridPos']['h'],4)
+        self.assertEqual(self.p[932]['gridPos']['h'],4)
+        for i,x in [(934,12),(935,14)]:
+            self.assertEqual(self.p[i]['gridPos'],{'x':x,'y':18,'w':2,'h':2})
+        p=self.p[936];self.assertEqual(p['gridPos'],{'x':16,'y':18,'w':8,'h':2})
+        self.assertEqual(len(p['targets']),4)
+        for t in p['targets']:
+            self.assertTrue(t['instant']);self.assertIn('or vector(-2)',t['expr'])
+            self.assertIn('timestamp(',t['expr']);self.assertIn('up{',t['expr'])
+        expr=' '.join(t['expr'] for t in p['targets'])
+        for token in ['thanos-cascade','todo_downsample_blocks','compact_halted','count(',')==3','head_samples_appended_total','[5m]']:
+            self.assertIn(token,expr)
+        self.assertIn('not end-to-end',p['description'])
+
     def test_backup_success_not_restore_claim(self):
         for i in [934,935]:
             p=self.p[i];self.assertIn('NOT proof',p['description'])
