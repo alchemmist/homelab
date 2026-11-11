@@ -1,6 +1,6 @@
 image: pragent/pr-agent:0.49.0-github_app
 replicaCount: 1
-nodeName: socrat-1
+nodeName: socrat-5
 host: pr-agent.socrat.alchemmist.xyz
 tlsSecret: pr-agent-tls
 clusterIssuer: letsencrypt-http01
@@ -41,3 +41,9 @@ resources:
   limits:
     cpu: "1"
     memory: 2Gi
+
+tolerations:
+  - key: homelab.io/no-nfs
+    operator: Equal
+    value: "true"
+    effect: NoSchedule

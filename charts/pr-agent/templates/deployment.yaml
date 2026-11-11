@@ -16,6 +16,8 @@ spec:
     spec:
       automountServiceAccountToken: false
       enableServiceLinks: false
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
       nodeSelector:
         kubernetes.io/hostname: {{ .Values.nodeName | quote }}
       securityContext:

@@ -7,7 +7,7 @@ extraNodeSelectorTerms:
   operator: In
   values:
   - socrat-0
-  - socrat-1
+  - socrat-5
 hostname: rancher.socrat.alchemmist.xyz
 ingress:
   enabled: false
@@ -26,3 +26,9 @@ resources:
   requests:
     cpu: 250m
     memory: 1Gi
+
+extraTolerations:
+  - key: homelab.io/no-nfs
+    operator: Equal
+    value: "true"
+    effect: NoSchedule
