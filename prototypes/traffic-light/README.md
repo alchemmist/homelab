@@ -284,3 +284,23 @@ no token repeated here, no unauthorizedshare rotation. Explicit page.unrouteAll
 wait + catch/suppressed private request details added to temporary verifier;
 rerun completes cleanly. Viewer bearer not printed in this run. Capability renewal
 is a separate owner decision; do not silently invalidate the TV URL.
+
+Owner-approved quality expansion: nativepanels930–935 use ONLY88 formerly empty
+cells, leaving5. Existing57panels, settings/publicshare and909CSS untouched;20rows.
+930Resourcewait x12,y10,w4,h4: worst-node CPU/memory/I/O PSI some ratio5m, complete
+fresh nodeinventory/up/pressurecollector guards; manual native sizing avoids clips,
+leftnames; amber25%CPU/10%memory+I/O matches existingboundaries, not10m alert status.
+931–933 x12/16/20,y14,w4,h4: localvLLM waitingcurrent+1htrend; TTFTp95 over15m only
+with≥20 observations (Low sample distinct from No telemetry); rolling5m generated
+tokens/s+1htrend. Not remoteLLM metrics/billing/full streamedHTTP duration. TTFT10/60s
+visualbands are guidance, not owner-agreedSLO.934/935 x12/18,y18,w6,h2: lastsuccessful
+LMS/n8n backupJob age, missing/never-successful/staletelemetry distinct; no restore
+or offhost-integrity claim. Thresholds6/8h LMS,24/26h n8n. Explicitlatest -2 sentinel
+and last reducer prevent oldrange values masquerading as fresh; no absent→green0.
+
+Generator scripts/build-traffic-light-quality.py idempotent, preserves unrelated
+panels/settings and newownergeometry, aborts onoverlap instead of movingpanels.
+37dashboardtests +18TVstyle tests passed. All6 PromQLqueries accepted bynative
+GrafanaAPI; isolated1024CSS preview used fresh native-query response snapshots,
+NOT synthetic production activity or physicalTV proof. ScopedHelm onlycanonical
+TrafficLightCM; nativeCollector/exporters/CSS/Fully/Argoapps otherwise unchanged.

@@ -72,7 +72,7 @@ class TrafficLightLayoutTest(unittest.TestCase):
                  if (x, y) not in occupied]
         approved = json.loads((ROOT / 'tests/fixtures/traffic-light-owner-layout.json').read_text())
         self.assertEqual({str(p['id']): p['gridPos'] for p in self.dashboard['panels']}, approved)
-        self.assertEqual(len(holes), 93)  # intentional whitespace in owner layout
+        self.assertEqual(len(holes), 5)  # intentional whitespace in owner layout
 
     def test_cpu_temperature_bar_removed(self):
         ids = {panel['id'] for panel in self.dashboard['panels']}
@@ -244,7 +244,8 @@ class TrafficLightQueriesTest(unittest.TestCase):
 
     def test_activity_replaces_incident_list_and_latency(self):
         for panel in self.dashboard['panels']:
-            self.assertNotIn('histogram_quantile', str(panel.get('targets')))
+            if panel['id'] != 932:  # Owner-approved local AI TTFT, not retired global HTTP latency.
+                self.assertNotIn('histogram_quantile', str(panel.get('targets')))
             self.assertNotEqual(panel['type'], 'table')
         self.assertEqual(panel_by_id(self.dashboard, 925)['targets'][0]['legendFormat'], 'n8n · running')
         self.assertIn('window="0"', panel_by_id(self.dashboard, 925)['targets'][0]['expr'])
