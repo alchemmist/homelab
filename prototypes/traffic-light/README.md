@@ -224,3 +224,10 @@ is PENDING: current SSH user has no noninteractive sudo for the existing isolate
 Collector activationplaybook. Do not claim live probe success fromArgoSync alone;
 unavailable telemetry must remain grey, not fabricatedgreen. No broadPod/Prometheus
 restart, privilegeddebug workaround, sudo bypass or TVpresentation change approved.
+Live receiptb29ae9dd: monitoring-k3sSynced/Healthy; GrafanaAPI has928MoscowIP at
+x23,y8,w1,h1. Its actual PromQL result=-2 (No telemetry), consistent with NOT yet
+activating nativeCollectorjob. Scoped Helm4resources: canonicaldashboardCM,
+service-probeServiceMonitor and rule, exporterDeployment onlychecksum/probes
+annotation changed.40 focused tests passed. CollectorCM/runtime NOT patched or
+restarted; existingprobe exporter rolled by its own Helm checksum. Completion
+blocked on legitimate sudo for existing isolated native activation, not onArgo.
