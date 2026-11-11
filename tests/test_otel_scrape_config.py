@@ -40,6 +40,9 @@ class ScrapeConfigTests(unittest.TestCase):
         self.assertEqual(original, before)
         self.assertEqual(result['scrape_configs'][0]['params']['target'], ['109.120.141.60:443'])
         self.assertEqual(result['scrape_configs'][1], other)
+        self.assertEqual(len(result['scrape_configs']), 3)
+        self.assertEqual(result['scrape_configs'][2]['params']['target'], ['91.189.82.238:443'])
+        self.assertIn({'target_label': 'service_id', 'replacement': 'edge-moscow'}, result['scrape_configs'][2]['relabel_configs'])
         self.assertEqual(SCRAPE.refresh_public_edge_probe(result), result)
 
 

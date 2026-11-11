@@ -105,6 +105,39 @@ def refresh_public_edge_probe(scrape):
             if job.get('params', {}).get('module') != ['tcp_connect']:
                 raise ValueError('Unexpected VPS edge probe module')
             job['params']['target'] = [endpoint]
+    return add_moscow_edge_probe(result)
+
+
+def add_moscow_edge_probe(scrape):
+    """Persist new public Moscow probe in otherwise frozen native scrape bundles."""
+    result = copy.deepcopy(scrape)
+    targets = yaml.safe_load((ROOT / 'charts/monitoring-k3s/values.yaml').read_text())['serviceProbes']['targets']
+    prefix = 'serviceMonitor/cattle-monitoring-system/monitoring-service-probes/'
+    def owns(job, identity):
+        return job.get('job_name', '').startswith(prefix) and any(
+            r.get('target_label') == 'service_id' and r.get('replacement') == identity
+            for r in job.get('relabel_configs', []))
+    jobs = result.get('scrape_configs', [])
+    existing = [j for j in jobs if owns(j, 'edge-moscow')]
+    source = [j for j in jobs if owns(j, 'edge-vps')]
+    if not source:
+        return result
+    if len(source) != 1 or len(existing) > 1:
+        raise ValueError('Ambiguous public edge scrape ownership')
+    target = next(t for t in targets if t['id'] == 'edge-moscow')
+    if existing:
+        if existing[0].get('params') != {'module': ['tcp_connect'], 'target': [target['url']]}:
+            raise ValueError('Moscow probe differs from owned catalog')
+        return result
+    job = copy.deepcopy(source[0])
+    job['job_name'] = prefix + str(1 + targets.index(target))
+    if any(j['job_name'] == job['job_name'] for j in jobs):
+        raise ValueError('Moscow scrape endpoint index collision')
+    job['params'] = {'module': ['tcp_connect'], 'target': [target['url']]}
+    for rule in job['relabel_configs']:
+        if rule.get('target_label') in ('service_id', 'service_group'):
+            rule['replacement'] = 'edge-moscow'
+    jobs.append(job)
     return result
 
 

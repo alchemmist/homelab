@@ -204,4 +204,9 @@ serviceProbes:
     url: http://socrat-bot.socrat-bot.svc.cluster.local:8080/healthz
     module: http_2xx
     alertName: SocratServiceSocratBotUnavailable
+  - id: edge-moscow
+    title: Moscow IP
+    url: 91.189.82.238:443
+    module: tcp_connect
+    alertName: SocratServiceEdgeMoscowUnavailable
 otelBackendExternalIP: 10.250.0.3

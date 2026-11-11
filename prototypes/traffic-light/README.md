@@ -212,3 +212,15 @@ Owner manual recapture:322h1;323y8;312y9/h1;920y10/h5;909w12/h1.
 Preserve owner compact layout; generator must not force full-width/h2 back.
 20rows,94 intentional emptycells before adding Moscow indicator. Native fixed10px
 Bar gauge gaps remain a known compact-TV limitation; no CSS change approved.
+
+Moscow IP: new nativeStat928 atx23,y8,w1,h1 underHomeIP; source91.189.82.238:443,
+service_id=edge-moscow, alertSocratServiceEdgeMoscowUnavailable, same grey/stale,
+pending,down,ready semantics as existingpublic edges. TCP443 reachability from
+blackbox, NOT authenticatedVPN/client or whole-nodehealth. No other panel altered.
+Frozen nativeCollector bundles need additivejob as well asServiceMonitor; maintained
+refresh_public_edge_probe now appends exact catalog-drivenjob cloned from owned
+VPS blackboxjob, rejects conflicts, preserves oldjobs, idempotent. Native activation
+is PENDING: current SSH user has no noninteractive sudo for the existing isolated
+Collector activationplaybook. Do not claim live probe success fromArgoSync alone;
+unavailable telemetry must remain grey, not fabricatedgreen. No broadPod/Prometheus
+restart, privilegeddebug workaround, sudo bypass or TVpresentation change approved.

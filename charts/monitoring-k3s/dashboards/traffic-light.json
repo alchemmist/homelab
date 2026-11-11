@@ -5809,6 +5809,103 @@
         }
       },
       "pluginVersion": "13.2.4"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Public Moscow entrance 91.189.82.238:443 (socrat-4), TCP reachability from the cluster blackbox exporter, not authenticated VPN or whole-node health. Green=reachable; orange=probe failure pending; red=unavailability alert firing; grey=missing/stale probe or rule telemetry. Same freshness and alert semantics as Home IP / VPS IP.",
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "Moscow IP",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "#26783D",
+                  "text": "OK"
+                },
+                "1": {
+                  "color": "#A85D08",
+                  "text": "PENDING"
+                },
+                "2": {
+                  "color": "#B42332",
+                  "text": "DOWN"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "STALE"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "noValue": "No telemetry",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": 0
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "x": 23,
+        "y": 8,
+        "w": 1,
+        "h": 1
+      },
+      "id": 928,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 14
+        },
+        "textMode": "name",
+        "wideLayout": false
+      },
+      "pluginVersion": "13.2.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceEdgeMoscowUnavailable\",service_id=\"edge-moscow\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceEdgeMoscowUnavailable\",service_id=\"edge-moscow\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"edge-moscow\"})) and on() ((max(up{job=\"service-probes\",service_id=\"edge-moscow\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"edge-moscow\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"edge-moscow\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "type": "stat"
     }
   ],
   "preload": false,
