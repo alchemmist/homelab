@@ -31,7 +31,7 @@ class TrafficLightArgoTest(unittest.TestCase):
     def test_current_strip_is_single_instant_bar_without_chrome(self):
         p = self.panels[909]
         self.assertEqual(p['type'], 'barchart')
-        self.assertEqual(p['gridPos'], {'x': 0, 'y': 19, 'w': 12, 'h': 2})
+        self.assertEqual(p['gridPos'], {'x': 0, 'y': 19, 'w': 12, 'h': 1})
         self.assertEqual(p['title'], '')
         self.assertTrue(p['transparent'])
         self.assertEqual(p['fieldConfig']['defaults']['max'], 1)  # Percent scale must fill its width.
@@ -74,7 +74,7 @@ class TrafficLightArgoTest(unittest.TestCase):
         for p in self.dashboard['panels']:
             g = p['gridPos']
             self.assertLessEqual(g['x'] + g['w'], 24)
-            self.assertLessEqual(g['y'] + g['h'], 21)
+            self.assertLessEqual(g['y'] + g['h'], 20)
             for x in range(g['x'], g['x'] + g['w']):
                 for y in range(g['y'], g['y'] + g['h']):
                     self.assertNotIn((x, y), occupied)
