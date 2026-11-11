@@ -55,12 +55,51 @@ def queries():
     return state_expr, result, full_query
 
 
+def application_query():
+    """One positive status code per fresh Application; NOT a percentage/count."""
+    raw = 'argocd_app_info{job="socrat-argocd",name!="root"}'
+    fresh = f'({raw} and (time() - timestamp({raw}) < 90))'
+    gate = ('(max(up{job="socrat-argocd"} == 1 and '
+            '(time() - timestamp(up{job="socrat-argocd"}) < 90)) == 1)')
+    complete = f'(count(max by(name) ({fresh})) == count(max by(name) ({raw})))'
+    return f'(({queries()[0]} + 1) and on() {gate}) and on() {complete}'
+
+
 def build():
-    # Owner-edited canonical JSON owns all geometry and other panel settings.
-    # This maintainer must not reconstruct a panel and overwrite manual edits.
     d = copy.deepcopy(json.loads(SOURCE.read_text()))
     panel = next(p for p in d['panels'] if p['id'] == 909)
-    panel['options'].update(groupWidth=1, barWidth=1)
+    grid = dict(panel['gridPos'], h=1)
+    panel.clear()
+    panel.update({
+        'id': 909, 'title': '', 'transparent': True, 'type': 'bargauge',
+        'datasource': DS, 'gridPos': grid,
+        'description': 'Current Argo Applications, not Pods/history. One equal full block per Application, alphabetically ordered by name; color encodes latest status. Numeric codes1..6 are categorical, not utilization or readiness percentage; max1 intentionally saturates every present block to the same size. Ready=Healthy+Synced, Progressing, Suspended, Git drift=OutOfSync, Unhealthy=Degraded/Missing, Unknown. Latest timestamp wins, priority Unhealthy > Unknown > Progressing > Suspended > drift > Ready. root excluded. Freshness90s and up/inventory completeness guards: unavailable/down/partially stale telemetry produces no data, never green fabricated blocks. Raw sampling15s; dashboard refresh5s. Native Bar gauge solid value-mapped colors, not LCD subdivisions: each whole block corresponds to one Application.',
+        'interval': '15s', 'maxDataPoints': 1,
+        'targets': [{'datasource': DS, 'expr': application_query(), 'legendFormat': '{{name}}',
+                     'refId': 'A', 'instant': True, 'range': False, 'format': 'time_series'}],
+        'transformations': [
+            {'id': 'seriesToRows', 'options': {}},
+            {'id': 'sortBy', 'options': {'sort': [{'field': 'Metric', 'desc': False}]}},
+            {'id': 'rowsToFields', 'options': {'mappings': [
+                {'fieldName': 'Metric', 'handlerKey': 'field.name'},
+                {'fieldName': 'Value', 'handlerKey': 'field.value'}]}},
+        ],
+        'fieldConfig': {'defaults': {
+            'min': 0, 'max': 1, 'decimals': 0, 'unit': 'short', 'noValue': 'No telemetry',
+            'color': {'mode': 'fixed', 'fixedColor': '#808080'},
+            'mappings': [{'type': 'value', 'options': {str(code + 1): {'text': name, 'color': color}
+                                                    for name, code, color in STATES}}],
+            'thresholds': {'mode': 'absolute', 'steps': [
+                {'value': None, 'color': '#808080'}] + [
+                {'value': code + 1, 'color': color} for _, code, color in sorted(STATES, key=lambda s: s[1])]},
+        }, 'overrides': []},
+        'options': {'orientation': 'vertical', 'displayMode': 'gradient',
+                    'valueMode': 'hidden', 'namePlacement': 'hidden', 'textMode': 'none',
+                    'showUnfilled': False, 'sizing': 'auto', 'minVizWidth': 0, 'minVizHeight': 0,
+                    'maxVizHeight': 300,
+                    'reduceOptions': {'values': False, 'calcs': ['lastNotNull'], 'fields': ''},
+                    'legend': {'showLegend': False, 'displayMode': 'list', 'placement': 'bottom', 'calcs': []}},
+    })
     return d
 
 

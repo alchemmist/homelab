@@ -112,3 +112,29 @@ x0,y19,w12 unchanged.21-row fit,114 empty cells; other saved geometry untouched.
 Preserved Fully settings, existing presentation assets, query/data and all owner
 edits. Device ADB/Termux unavailable in current LAN; no physical-TV verification
 or reload possible yet. New geometry needs page reload, not merely5s metric refresh.
+
+## Current owner-approved direction: per-Application Bar gauge
+
+Owner rejected continuous state-count strip and requested h1 battery-like blocks.
+Captured live manual909.h1 first (e5c33ed). Native bargauge909 now x0,y19,w12,h1,
+transparent, hidden values/names/legend, no unfilled area. One vertical equal-full
+block per Application, sorted alphabetically via seriesToRows→sortBy(Metric)→
+rowsToFields. One instant query, no history/count aggregation/averaging. Latest
+priority classification retained; codes1..6 = original codes+1. Positive categorical
+codes saturate display max1 equally; NOT readiness percentages or utilization.
+Value mappings encode all6 state colors. Up/fresh90s/inventory completeness guards
+still yield no data on absent/down/partial stale telemetry; no fabricated blocks.
+
+Native Gradient display with fixed color mode + value mappings gives SOLID fills,
+not a multistate gradient; avoids Basic mode's inherent2px outline and translucent
+fill. Retro LCD subdivisions are NOT applications, so not used. Minimum size0,
+name/value hidden: no reserved text area. Native Bar gauge has built-in outer
+padding and10px inter-bar spacing without a supported override; no fake padding
+option, plugins, CSS or Fully injection added. Header/title/legend absent.
+
+Isolated browser-only48-app mixed-status fixture verified exact colors and stable
+alphabetical order (reversed input frames), no production data/workload mutations.
+Live bounded query independently returned48 unique app names, all code5=Ready.
+32 tests pass, including extended promtool positive per-app code/gap/overlap tests.
+Physical-TV access remains blocked as documented; actual public route checked
+separately after deployment. Reload Fully page to pick up new visualization.

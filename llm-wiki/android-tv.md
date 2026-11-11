@@ -213,3 +213,16 @@ Refresh5s обновляет метрики, но не гарантирует п
 32 tests passed, scoped Helm diff only canonical ConfigMap, Argo Synced/Healthy.
 Live exact dashboard comparison (excluding version) confirms only909.h changed.
 Физический TV/его открытая вкладка по-прежнему не проверены и не перезагружены.
+
+### Superseding Argo design: per-Application Bar gauge, h1
+
+Owner rejected thick h2 continuous strip. Captured live h1 and replaced only909
+with native Bar gauge: one equal vertical block per Application, stable alphabetical
+name order, state colors, hidden names/values/legend, transparent, no unfilled area.
+Min size0; built-in Grafana spacing remains (not configurable without CSS). Gradient
+mode + fixed color mappings gives solid borderless blocks; Basic's2px cap and LCD
+multiple-cells-per-Application deliberately avoided. One instant latest-status
+query with same root/freshness/completeness guards; categorical positive codes,
+NOT counts/percentage. Geometry x0,y19,w12,h1; grid back20 rows/102 empty cells.
+Native panel only: existing TV public URL/Fully/VPN/presentation scripts untouched.
+Physical-TV ADB still unavailable at last check. New viz needs reload in Fully.

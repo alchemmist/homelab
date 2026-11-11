@@ -28,34 +28,39 @@ class TrafficLightArgoTest(unittest.TestCase):
                          {k: v for k, v in self.dashboard.items() if k != 'panels'})
         self.assertFalse(set(self.panels) & set(range(950, 976)))
 
-    def test_current_strip_is_single_instant_bar_without_chrome(self):
+    def test_current_strip_is_per_application_native_bar_gauge_without_chrome(self):
         p = self.panels[909]
-        self.assertEqual(p['type'], 'barchart')
+        self.assertEqual(p['type'], 'bargauge')
         self.assertEqual(p['gridPos'], {'x': 0, 'y': 19, 'w': 12, 'h': 1})
         self.assertEqual(p['title'], '')
         self.assertTrue(p['transparent'])
-        self.assertEqual(p['fieldConfig']['defaults']['max'], 1)  # Percent scale must fill its width.
-        self.assertEqual(p['options']['groupWidth'], 1)
-        self.assertEqual(p['options']['barWidth'], 1)
+        self.assertEqual(p['fieldConfig']['defaults']['min'], 0)
+        self.assertEqual(p['fieldConfig']['defaults']['max'], 1)  # Positive categorical codes: equal full blocks.
         self.assertEqual(p['interval'], '15s')
         self.assertEqual(p['maxDataPoints'], 1)
         self.assertEqual(len(p['targets']), 1)
         t = p['targets'][0]
         self.assertTrue(t['instant'])
         self.assertFalse(t['range'])
-        self.assertEqual(t['format'], 'table')
+        self.assertEqual(t['format'], 'time_series')
+        self.assertEqual(t['legendFormat'], '{{name}}')
+        self.assertEqual(t['expr'], lab.application_query())
+        for forbidden in ['argocd_app_sync_total', 'topk', 'increase(', 'count_values(']:
+            self.assertNotIn(forbidden, t['expr'])
         self.assertIn('name!="root"', t['expr'])
-        self.assertNotIn('argocd_app_sync_total', t['expr'])
-        self.assertNotIn('topk', t['expr'])
-        self.assertNotIn('increase(', t['expr'])
         self.assertFalse(p['options']['legend']['showLegend'])
-        self.assertEqual(p['options']['orientation'], 'horizontal')
-        self.assertEqual(p['options']['stacking'], 'percent')
-        self.assertEqual(p['options']['showValue'], 'never')
-        self.assertEqual(p['fieldConfig']['defaults']['custom']['axisPlacement'], 'hidden')
-        self.assertEqual(p['fieldConfig']['defaults']['custom']['lineWidth'], 0)
-        self.assertEqual(len(p['fieldConfig']['overrides']), 6)
-        self.assertEqual(p['transformations'][0]['id'], 'groupingToMatrix')
+        self.assertEqual(p['options']['orientation'], 'vertical')
+        self.assertEqual(p['options']['displayMode'], 'gradient')
+        self.assertEqual(p['options']['valueMode'], 'hidden')
+        self.assertEqual(p['options']['namePlacement'], 'hidden')
+        self.assertEqual(p['options']['textMode'], 'none')
+        self.assertFalse(p['options']['showUnfilled'])
+        self.assertEqual(p['options']['minVizWidth'], 0)
+        self.assertEqual(p['options']['minVizHeight'], 0)
+        self.assertEqual([t['id'] for t in p['transformations']], ['seriesToRows', 'sortBy', 'rowsToFields'])
+        self.assertEqual(p['transformations'][1]['options']['sort'], [{'field': 'Metric', 'desc': False}])
+        mappings = p['fieldConfig']['defaults']['mappings'][0]['options']
+        self.assertEqual(mappings, {str(code+1): {'text': name, 'color': color} for name, code, color in lab.STATES})
 
     @unittest.skipUnless(shutil.which('helm'), 'helm needed for apply-size regression')
     def test_rendered_apply_annotation_stays_below_kubernetes_limit(self):
@@ -116,6 +121,16 @@ class TrafficLightArgoTest(unittest.TestCase):
             {'interval': '15s', 'input_series': [up, app('a'), app('a', 'Degraded')],
              'promql_expr_test': checks([0, 0, 0, 1, 0])},
         ]
+        def app_check(values, when='30m'):
+            return {'expr': lab.application_query(), 'eval_time': when,
+                    'exp_samples': [{'labels': '{name="' + name + '"}', 'value': value}
+                                    for name, value in values]}
+        cases[0]['promql_expr_test'].append(app_check([('a', 5), ('b', 4), ('c', 3), ('d', 6), ('e', 1), ('f', 2), ('g', 2)]))
+        cases[1]['promql_expr_test'].append(app_check([('a', 5)]))
+        for case in cases[2:6]:
+            case['promql_expr_test'].append(app_check([], case['promql_expr_test'][0]['eval_time']))
+        for case in cases[6:]:
+            case['promql_expr_test'].append(app_check([('a', 1)], case['promql_expr_test'][0]['eval_time']))
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / 'queries.yaml'
             path.write_text(json.dumps({'rule_files': [], 'evaluation_interval': '15s', 'tests': cases}))

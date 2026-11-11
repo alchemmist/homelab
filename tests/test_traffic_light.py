@@ -96,7 +96,7 @@ class TrafficLightLayoutTest(unittest.TestCase):
         self.assertEqual(chart['type'], 'stat')
         history = panel_by_id(self.dashboard, 909)
         self.assertEqual(history['gridPos'], {'x': 0, 'y': 19, 'w': 12, 'h': 1})
-        self.assertEqual(history['type'], 'barchart')
+        self.assertEqual(history['type'], 'bargauge')
 
     def test_unmodified_resource_columns(self):
         cpu = panel_by_id(self.dashboard, 21)
@@ -189,11 +189,11 @@ class TrafficLightQueriesTest(unittest.TestCase):
 
     def test_argocd_has_current_state_strip(self):
         panel = panel_by_id(self.dashboard, 909)
-        self.assertEqual(panel['type'], 'barchart')
+        self.assertEqual(panel['type'], 'bargauge')
         self.assertEqual(len(panel['targets']), 1)
         self.assertFalse(panel['options']['legend']['showLegend'])
-        self.assertEqual(panel['fieldConfig']['defaults']['custom']['lineWidth'], 0)
-        self.assertEqual(panel['options']['stacking'], 'percent')
+        self.assertEqual(panel['options']['valueMode'], 'hidden')
+        self.assertEqual(panel['options']['namePlacement'], 'hidden')
         self.assertTrue(panel['targets'][0]['instant'])
         self.assertFalse(panel['targets'][0]['range'])
         self.assertIn('name!="root"', panel['targets'][0]['expr'])
