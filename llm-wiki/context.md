@@ -568,3 +568,12 @@ unchanged. ActualfinalTVfit checked afterdebugfalse cleanup/Fully-onlyrestart;
 49Argo fills physicallycounted. No nativeRustFS/Harbor business scrape: networkbytes
 are NOT object/pullpush counts; no exporter/backend/CSS changes. Fullsemantics,
 currentpositions and60focusedtest acceptance: llm-wiki/android-tv.md latestsection.
+
+LatestTV cascadefooter11November supersedes the two-wide-backup arrangement:
+934/935 noww2,h2 atx12/14,y18;936x16,w8,h2 addsfour goldfigures (cascadeJobage,
+rawdownsampletodo, haltedcount only3freshstages, append samples/s5m).63panels;AI,
+RustFS/Harborh4+curves/VPN/Argo/share andother60existingpanels exact unchanged.
+Trialh3 hidnativecurves, so packed WIDTHinstead, no newCSS. No data gray, not0.
+ActualfinalTVfit checked afterdebugfalse cleanup/Fully-onlyrestart;49Argofills,
+61focusedtests, onlydashboardCM render. No pipeline/Job/retention change orDRclaim.
+Details/evidence: android-tv.md latestMetricscascadefooter section.

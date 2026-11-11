@@ -497,3 +497,50 @@ font75%/debugfalse unchanged. NoCDP/debug toggle needed. NativeUIXMLhasbothAIlab
 all4RustFS/HarborRXTX labels, bothbackupages, HTTPtitleabsent. FinalactualPNG
 `/tmp/tv-ai-final-fit.png` visuallyinspected, independent49Argo-run count andpink
 AIpixelcheck. OwnUIXMLdeleted, socketabsent, Fullyforeground. No otherpanels moved.
+
+## Metrics cascade numeric footer —11November2026,94ff1c6/f24f7e12
+
+Owner asked for more cascade numbers in the backupfooter, keepingAIas-is. Studied
+live `socrat-metrics`/Metrics (37panels), source JSON, currentThanos values/cascade.py
+and nativeCronJob/deployments. Existing pipeline: Collector→Prometheus0(12h local)
+→sidecar/raw0→rawcompactor5m/1h→hourlyCronJob(:30Europe/Moscow,Forbid)→5mshelf1/
+1hshelf3. Raw5d/5m30d/hour730d intent; coarse-copy coverage gates before cleanup.
+Age of CronJob success is NOT live-sample freshness, lastsidecarupload or proof
+of DR/archiveintegrity. No jobs manuallyrun, no pipeline/exporter/retention changes.
+
+Finalfooter SAME y18/h2/12-column area,6numbers instead of2:
+-934LMSbackup x12,w2;935n8nbackup x14,w2. Names shortened, fonts11/20, existing
+ queries/thresholds/meaning preserved. Graystate labels shorter: No data/Never/
+ Missing; no missing→0. Last successfulJob remains NOTproof of restore.
+-936 x16,w8,h2: fourfieldsNativeStat, gold#E0B860, fonts11/20:
+ Cascadeage = seconds since hourlyCronJob success (warn3h/red6h asMetrics);
+ Downsample = rawcompactor todo blocks (informational, NOTbytes/ETA);
+ Halted = sum(max per stage halt flag) only with ALL3 fresh stages (red≥1);
+ Samples/s = maxPrometheusappend rate5m, NOTall-producer/end-to-end delivery.
+ Everyfield fresh90s/up gated, missing=-2→grayNo data, latest last reducer.
+ Rawcompactor intentionally pauses during copy; missing duringthat period is NOT
+ fabricatedhalt/failure. Missingone stage must never yield healthy0.
+
+Tried owner-suggested RustFS/Harborh3: nativeStat automaticallyhid sparklines.
+Therefore retainedh4 ANDoriginalfonts/queries/colors; no newCSS. Got all6footer
+numbers through WIDTHpacking/groupedStat instead. AI930 and ALL60 other existing
+panels/settings exact unchanged.63panels/20rows/5holes;only934/935 resized/relabeled,
+936added. Generator preserves futuremanualgeometry/aborts onoverlap. Generated
+OWNEDwidgets930–936 compact-JSONencoded ONLY to retain actualConfigMapbyte budget;
+original57panel formatting intact, unchanged <240000renderedsize regressionguard.
+Human-readable authoritative expressions/options remain in generator. Otherassets
+and Metricsdashboard itself untouched; scopedHelmONLYcanonicalTrafficLightCM.
+
+43dashboardtests+18TVstyle=61focusedpasses. NativeAPIpositive values verified;
+fourmissing-sourcequeriesall-2, two-stagecompactorquery-2 (not0). Freshmanualmodel
+captured/matched beforeedit. ConcurrentSPIcommits merged normally, VPNdirtyfiles
+untouched. ArgoSynced/Healthy atfeaturemergef24f7e12; no blanket sync/prune.
+
+PhysicalTV: actualWebView1024×575/DPR2 allnewlabel/value/unit ranges fit; final
+NativeUIXML has6footernames, all4trafficnames, AIlabels. Inspected actualPNG AFTER
+originaldebugfalse restore/Fully-onlyrestart withpendingimportcheck:
+`/tmp/tv-cascade-final-fit.png`; DOM `/tmp/tv-cascade-dom-safe.json`.49Argo fills
+independently counted, goldnumericpixels confirmed; nativeRustFS/Harbor curves
+stillvisible, no scroll/clipping. Fully55%/font75%/network unchanged; socketabsent,
+forwards closed, ownXMLremoved, Fullyforeground. At finalimage age48min/todo0/
+halted0/~48.3ksamples/s are time-bound observations, not all-clusterhealthy/DR claims.

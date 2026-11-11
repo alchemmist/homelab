@@ -343,3 +343,15 @@ removed, other61panels includingRustFS/Harbor/backups exact unchanged. Missing
 sourceboth-2, no fake0; no inventedlatencySLO.60focusedtests, scopedHelmONLYdashboard
 CM, ArgoSynced/Healthy. ActualfinalTV `/tmp/tv-ai-final-fit.png` inspected: bothAI
 labels fit, HTTPabsent,49Argo fills, pinkAI; debugremainedfalse/preferencesunchanged.
+
+Latestcascadefooter94ff1c6/f24f7e12: existingbackuprow y18/h2 nowhas6numbers.
+934LMSbackup x12,w2;935n8nbackup x14,w2;936x16,w8 NativeStat4fields: lastsuccessful
+hourlycascadeage, rawdownsampletodo, haltedcompactors (all3 freshrequired), appended
+samples/s5m. Gold, no newblue. No data gray, no absent→0. Age3h/6h bands fromMetrics.
+Tried RustFS/Harborh3 butnativeStat hidcurves; retainedoriginalh4/fonts/colors/queries
+ratherthannewCSS. AIunchanged. Only934/935/936 modelchanges;60others exact,63panels,
+5holes. Own generatedwidgets compactencoded for actualConfigMapbudget, original57
+formatting intact; testlimit240000 notrelaxed.61focusedtests; scopedHelmONLYdashboard
+CM, no cascadeJob/backend/exporter/retention mutations. FinalactualTVPNG
+/tmp/tv-cascade-final-fit.png inspected AFTERdebugcleanup/restart;6labels/units fit,
+49Argo fills, goldpixels andbothtrafficcurves visible. Fullsemantics inTVwiki.
