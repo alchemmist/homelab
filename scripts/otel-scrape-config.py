@@ -130,7 +130,8 @@ def add_moscow_edge_probe(scrape):
             raise ValueError('Moscow probe differs from owned catalog')
         return result
     job = copy.deepcopy(source[0])
-    job['job_name'] = prefix + str(1 + targets.index(target))
+    # Frozen bundles retain historical endpoint indices; catalog indices can collide.
+    job['job_name'] = prefix + 'edge-moscow'
     if any(j['job_name'] == job['job_name'] for j in jobs):
         raise ValueError('Moscow scrape endpoint index collision')
     job['params'] = {'module': ['tcp_connect'], 'target': [target['url']]}

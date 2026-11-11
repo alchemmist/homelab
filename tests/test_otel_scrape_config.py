@@ -3,6 +3,7 @@ import importlib.util
 import json
 from pathlib import Path
 import unittest
+import yaml
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -45,6 +46,19 @@ class ScrapeConfigTests(unittest.TestCase):
         self.assertIn({'target_label': 'service_id', 'replacement': 'edge-moscow'}, result['scrape_configs'][2]['relabel_configs'])
         self.assertEqual(SCRAPE.refresh_public_edge_probe(result), result)
 
+
+    def test_moscow_job_does_not_reuse_frozen_numeric_endpoint_indices(self):
+        targets = yaml.safe_load((SCRAPE.ROOT / 'charts/monitoring-k3s/values.yaml').read_text())['serviceProbes']['targets']
+        index = 1 + next(i for i, t in enumerate(targets) if t['id'] == 'edge-moscow')
+        prefix = 'serviceMonitor/cattle-monitoring-system/monitoring-service-probes/'
+        old = {'job_name': prefix + str(index), 'params': {'target': ['legacy:443']}}
+        vps = {'job_name': prefix + '26', 'params': {'module': ['tcp_connect'], 'target': ['109.120.141.60:443']},
+               'relabel_configs': [{'target_label': 'service_id', 'replacement': 'edge-vps'}]}
+        original = {'scrape_configs': [vps, old]}
+        result = SCRAPE.add_moscow_edge_probe(original)
+        self.assertEqual(result['scrape_configs'][:2], original['scrape_configs'])
+        self.assertEqual(result['scrape_configs'][2]['job_name'], prefix + 'edge-moscow')
+        self.assertEqual(SCRAPE.add_moscow_edge_probe(result), result)
 
     def test_ownership_discovery_labels_and_relabeling_are_preserved(self):
         source, targets = fixtures()
