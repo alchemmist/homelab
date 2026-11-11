@@ -138,3 +138,12 @@ Live bounded query independently returned48 unique app names, all code5=Ready.
 32 tests pass, including extended promtool positive per-app code/gap/overlap tests.
 Physical-TV access remains blocked as documented; actual public route checked
 separately after deployment. Reload Fully page to pick up new visualization.
+
+Deployed acceptance2e1c05ce: actual anonymous public scene (no interception),
+1920×1080 and55%-viewport emulation both returned48 unique app frames and rendered
+exactly48 blocks. Visible panel text empty; borders0px. Native blocks9.64×27.91px;
+emulated26×72.09CSSpx. Live snapshot47 green Ready +1 grey Unknown (not synthetic).
+Actual public screenshot inspected. Live normalized before/after confirms only909
+changed and all other owner panels/settings retained. Argo Synced/Healthy.
+Physical device/reload still not verified; mixed6-color renderer fixture was a
+separate browser-only test, never production metric/app mutation.
