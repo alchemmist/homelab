@@ -31,7 +31,7 @@ class TrafficLightArgoTest(unittest.TestCase):
     def test_current_strip_is_per_application_native_bar_gauge_without_chrome(self):
         p = self.panels[909]
         self.assertEqual(p['type'], 'bargauge')
-        self.assertEqual(p['gridPos'], {'x': 0, 'y': 19, 'w': 12, 'h': 1})
+        self.assertEqual(p['gridPos'], {'x': 0, 'y': 19, 'w': 12, 'h': 2})
         self.assertEqual(p['title'], '')
         self.assertTrue(p['transparent'])
         self.assertEqual(p['fieldConfig']['defaults']['min'], 0)
@@ -47,7 +47,7 @@ class TrafficLightArgoTest(unittest.TestCase):
         self.assertEqual(t['expr'], lab.application_query())
         for forbidden in ['argocd_app_sync_total', 'topk', 'increase(', 'count_values(']:
             self.assertNotIn(forbidden, t['expr'])
-        self.assertIn('name!="root"', t['expr'])
+        self.assertNotIn('name!="root"', t['expr'])
         self.assertFalse(p['options']['legend']['showLegend'])
         self.assertEqual(p['options']['orientation'], 'vertical')
         self.assertEqual(p['options']['displayMode'], 'gradient')
@@ -55,10 +55,15 @@ class TrafficLightArgoTest(unittest.TestCase):
         self.assertEqual(p['options']['namePlacement'], 'hidden')
         self.assertEqual(p['options']['textMode'], 'none')
         self.assertFalse(p['options']['showUnfilled'])
+        self.assertEqual(p['options']['sizing'], 'manual')  # Auto ignores zero min width and clips narrow panels.
         self.assertEqual(p['options']['minVizWidth'], 0)
         self.assertEqual(p['options']['minVizHeight'], 0)
         self.assertEqual([t['id'] for t in p['transformations']], ['seriesToRows', 'sortBy', 'rowsToFields'])
         self.assertEqual(p['transformations'][1]['options']['sort'], [{'field': 'Metric', 'desc': False}])
+        link, = p['fieldConfig']['defaults']['links']
+        self.assertEqual(link['title'], '${__field.name}')
+        self.assertEqual(link['url'], 'https://argocd.socrat.alchemmist.xyz/applications/argocd/${__field.name}')
+        self.assertTrue(link['targetBlank'])
         mappings = p['fieldConfig']['defaults']['mappings'][0]['options']
         self.assertEqual(mappings, {str(code+1): {'text': name, 'color': color} for name, code, color in lab.STATES})
 
@@ -79,7 +84,7 @@ class TrafficLightArgoTest(unittest.TestCase):
         for p in self.dashboard['panels']:
             g = p['gridPos']
             self.assertLessEqual(g['x'] + g['w'], 24)
-            self.assertLessEqual(g['y'] + g['h'], 20)
+            self.assertLessEqual(g['y'] + g['h'], 21)
             for x in range(g['x'], g['x'] + g['w']):
                 for y in range(g['y'], g['y'] + g['h']):
                     self.assertNotIn((x, y), occupied)
@@ -125,7 +130,7 @@ class TrafficLightArgoTest(unittest.TestCase):
             return {'expr': lab.application_query(), 'eval_time': when,
                     'exp_samples': [{'labels': '{name="' + name + '"}', 'value': value}
                                     for name, value in values]}
-        cases[0]['promql_expr_test'].append(app_check([('a', 5), ('b', 4), ('c', 3), ('d', 6), ('e', 1), ('f', 2), ('g', 2)]))
+        cases[0]['promql_expr_test'].append(app_check([('a', 5), ('b', 4), ('c', 3), ('d', 6), ('e', 1), ('f', 2), ('g', 2), ('root', 1)]))
         cases[1]['promql_expr_test'].append(app_check([('a', 5)]))
         for case in cases[2:6]:
             case['promql_expr_test'].append(app_check([], case['promql_expr_test'][0]['eval_time']))

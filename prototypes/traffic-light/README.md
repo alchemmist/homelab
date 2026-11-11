@@ -147,3 +147,28 @@ Actual public screenshot inspected. Live normalized before/after confirms only90
 changed and all other owner panels/settings retained. Argo Synced/Healthy.
 Physical device/reload still not verified; mixed6-color renderer fixture was a
 separate browser-only test, never production metric/app mutation.
+
+## Inventory/fit/hover correction, latest request
+
+Bounded live K8s inventory49 Applications. Actual public909 query returned48
+unique names; set difference was exactlyroot, with no other missing/extra apps.
+Official MCP Prometheus query was temporarily blocked by its Grafana-service DNS
+lookup, so comparison used actual successful public panel-query frames instead.
+Current per-app query now includesroot so total matches Argo (49 at this snapshot).
+Historical `queries()` count tests retain default exclude-root semantics; current
+`application_query()` explicitly usesinclude_root=True with completeness/freshness
+across ALL Applications. Tests verifyroot is classified, not just added as zero.
+
+Native Auto sizing ignores customminVizWidth0, uses default8. With48 bars, a narrow
+signed-in panel showed last targets outside its right edge; DOM count alone was
+insufficient acceptance. Sizing nowmanual,minVizWidth0,minVizHeight0. Browser tests
+must verify every colored block AND link target is fully inside its panel, not
+merely count DOM nodes. Native10px gaps remain. No CSS/JS/plugin changes.
+
+Owner-requested height2 atx0,y19,w12;21-row fit and114 empty cells. One native data
+link per field: title${__field.name}, URL Argo/applications/argocd/${__field.name},
+targetBlank. Standard browser title on hover, not a custom Grafana tooltip; click
+opens the matching app. No permanent text. Authenticated normal + kiosk preview
+verified49 named links sorted identically to49 real query frames, native title
+attributes resolved and first/middle/last target hover succeeds. TV public mode
+remains intentionally noninteractive; user hover works on ordinary signed-in route.

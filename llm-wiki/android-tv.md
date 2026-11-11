@@ -226,3 +226,18 @@ query with same root/freshness/completeness guards; categorical positive codes,
 NOT counts/percentage. Geometry x0,y19,w12,h1; grid back20 rows/102 empty cells.
 Native panel only: existing TV public URL/Fully/VPN/presentation scripts untouched.
 Physical-TV ADB still unavailable at last check. New viz needs reload in Fully.
+
+### Latest correction:49 apps, h2, native hover, no clipped blocks
+
+Argo live inventory49; previous public blocks48 differed only byroot. Include root
+now in current per-app query (not a fabricated extra block), so totals match.
+Changed native Bar gauge sizingAuto→manual withminimum width0: Auto had ignored
+zero and used8px, clipping last blocks in narrower signed-in panels. Acceptance
+must check bounds of all blocks, not just DOM count. Native10px gaps unchanged.
+Height2 restored atowner request, x0,y19,w12;114 empty cells/21 rows. Names/values
+still hidden. Single native data link gives browser-title Application name on
+hover and opens the matching Argo Application on click. Works on normal signed-in
+and kiosk routes; TV public opt-in remains noninteractive by existing policy.
+No Fully settings, public share URL, presentation assets, VPN or other panels changed.
+After deployment reload Fully for geometry/query changes; no claim of physical TV
+verification while documented ADB access is unavailable.

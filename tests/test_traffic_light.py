@@ -64,15 +64,15 @@ class TrafficLightLayoutTest(unittest.TestCase):
         for panel in self.dashboard['panels']:
             grid = panel['gridPos']
             self.assertLessEqual(grid['x'] + grid['w'], 24)
-            self.assertLessEqual(grid['y'] + grid['h'], 20)
+            self.assertLessEqual(grid['y'] + grid['h'], 21)
             for assert_key in cells(grid):
                 self.assertNotIn(assert_key, occupied, f'panel {panel["id"]} overlaps {occupied.get(assert_key)}')
                 occupied[assert_key] = panel['id']
-        holes = [(x, y) for y in range(20) for x in range(24)
+        holes = [(x, y) for y in range(21) for x in range(24)
                  if (x, y) not in occupied]
         approved = json.loads((ROOT / 'tests/fixtures/traffic-light-owner-layout.json').read_text())
         self.assertEqual({str(p['id']): p['gridPos'] for p in self.dashboard['panels']}, approved)
-        self.assertEqual(len(holes), 102)  # intentional whitespace in owner layout
+        self.assertEqual(len(holes), 114)  # intentional whitespace in owner layout
 
     def test_cpu_temperature_bar_removed(self):
         ids = {panel['id'] for panel in self.dashboard['panels']}
@@ -95,7 +95,7 @@ class TrafficLightLayoutTest(unittest.TestCase):
         self.assertEqual(chart['gridPos'], {'x': 16, 'y': 10, 'w': 7, 'h': 4})
         self.assertEqual(chart['type'], 'stat')
         history = panel_by_id(self.dashboard, 909)
-        self.assertEqual(history['gridPos'], {'x': 0, 'y': 19, 'w': 12, 'h': 1})
+        self.assertEqual(history['gridPos'], {'x': 0, 'y': 19, 'w': 12, 'h': 2})
         self.assertEqual(history['type'], 'bargauge')
 
     def test_unmodified_resource_columns(self):
@@ -196,7 +196,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
         self.assertEqual(panel['options']['namePlacement'], 'hidden')
         self.assertTrue(panel['targets'][0]['instant'])
         self.assertFalse(panel['targets'][0]['range'])
-        self.assertIn('name!="root"', panel['targets'][0]['expr'])
+        self.assertNotIn('name!="root"', panel['targets'][0]['expr'])
 
     def test_new_activity_visuals_have_no_headers_legends_or_period_badges(self):
         for panel_id in (920, 923, 924, 925):
