@@ -277,3 +277,19 @@ Debugging (originalfalse); CDP идёт через authorized ADB и SSHloopback
 Scoped native fix:909 width12→24 в пустую правую половину нижней строки, x0,y19,h2
 unchanged. Other panels/settings untouched, no CSS/JS/plugin/zoom/DPI changes.90
 empty cells remain. New regression requires≥8CSSpx per49 bars atviewport1024.
+
+Приёмка0a5f53fb выполнена НА ФИЗИЧЕСКОМ ТВ после Page.reload его WebView:
+49 native bars/49 app links, panel1014CSSpx, eachbar10.523CSSpx vs0.10156 before;
+height28.578CSSpx unchanged. Final ADB screenshot1920×1080 после выключенияdebug
+проверен визуально и поPNG scanline1025:49 отдельных цветных участков шириной
+18–20physicalpx. Это не fixture/emulation. Скриншоты/DOM evidence private/tmp:
+`tv-actual-gauge-before.png`, `tv-actual-gauge-final.png`, `tv-dom-before-width.json`,
+`tv-dom-after-width.json`.33 tests pass; exact live dashboard diff only909.w,
+scoped Helm only canonical CM, ArgoSynced/Healthy. No unrelated dirty VPN files touched.
+
+Cleanup verified: Webview Contents Debugging вернули в исходноеfalse через UI;
+/proc/net/unix больше не показываетdebug socket; ADB forward19222 removed, SSH
+loopback tunnel closed, own temporaryuiautomator XML deleted. Fully foreground,
+actual updated dashboard already loaded: owner reload not needed for this release.
+Fully zoom/fonts/desktop/wideViewport, DNS/VPN/remote keys/HDMI unchanged. Initial
+scale55 is not a substitute for measuring actual viewport/DPR on the device.

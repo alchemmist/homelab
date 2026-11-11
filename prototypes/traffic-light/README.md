@@ -198,3 +198,12 @@ unit regression requires49 visible≥8CSSpx bars at1024/1440/1920. No data/workl
 mutation or new CSS/JS/plugin. Fully55/font75/desktop/wideViewport kept unchanged.
 Debugging temporarily enabled through UI for read-only DOM audit, to be restored
 false and SSH/ADB forwards removed after real screenshot acceptance.
+
+Physical acceptance0a5f53fb: real TV WebView after reload49 bars and49 named app
+links; w24 panel1014CSSpx, every bar10.523CSSpx vs0.10156before; height28.578CSSpx
+unchanged. Final ADB screenshot visually inspected and independently PNG scanline
+counted49 colored runs of18–20physicalpixels.33 tests pass; exact live dashboard
+comparison changes ONLY909.w12→24; scoped Helm only canonical CM, ArgoSynced/Healthy.
+Debugging originalfalse restored via native UI, debug socket absent, ADB/SSHforwards
+removed. Fully foreground and actual updated TV page left loaded, no owner reload
+needed. No zoom/font/VPN/DNS/remote/HDMI changes; unrelated dirty VPN work untouched.
