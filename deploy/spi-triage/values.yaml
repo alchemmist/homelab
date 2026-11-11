@@ -1,3 +1,4 @@
+serviceClusterIP: 10.43.194.185 # Native SPI RPC contract; preserves existing Service UID/VIP.
 # Canonical full-service cluster values. No secret values.
 tokenAccountingMode: local-qwen-v1
 durableWaitEnabled: true
