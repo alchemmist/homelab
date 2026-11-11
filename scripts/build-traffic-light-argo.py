@@ -84,7 +84,7 @@ def build():
                             {'id': 'color', 'value': {'mode': 'fixed', 'fixedColor': color}}]}
                                       for name, code, color in STATES]},
         'options': {'orientation': 'horizontal', 'stacking': 'percent', 'xField': 'bar\\state',
-                    'groupWidth': 0.4, 'barWidth': 0.4, 'barRadius': 0, 'showValue': 'never',
+                    'groupWidth': 0.7, 'barWidth': 0.7, 'barRadius': 0, 'showValue': 'never',
                     'fullHighlight': True, 'xTickLabelRotation': 0, 'xTickLabelSpacing': 0,
                     'legend': {'showLegend': False, 'displayMode': 'list', 'placement': 'bottom', 'calcs': []},
                     'tooltip': {'mode': 'all', 'sort': 'desc', 'hideZeros': True}},
