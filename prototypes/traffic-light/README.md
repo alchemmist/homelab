@@ -99,3 +99,9 @@ defaults) confirms all existing owner panels/settings retained, except requested
 Inspected actual deployed TV URL at1920×1080 in isolated Viewer browser: right
 column includes green5 and bottom Argo strip fills its existing module height;
 current instant query HTTP200, Ready48. Physical television itself not inspected.
+
+Latest owner-only recapture: node5 now immediately follows4 atx23,y5; VPS IP and
+Home IP nowy6/y7. Panel907 width8→7, stillx16,y10,h4.102 intentionally empty cells.
+Pulled live dashboard without additional design/query changes; updated geometry
+fixture and assertions.32 tests passed. Supersedes earlier node5/IP positions and
+empty-cell count. Existing strip and remaining owner edits retained.

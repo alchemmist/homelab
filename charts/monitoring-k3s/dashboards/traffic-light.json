@@ -2417,10 +2417,10 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Public entrance availability cube. Home IP is the apartment connection (109.173.40.247), VPS IP is the cloud edge (109.120.141.60), both probed over TCP 443 by the blackbox exporter every minute. Green = the address answers; orange = probe failures pending alert; red = the SocratServiceEdge*Unavailable alert is firing; grey = No telemetry, probe or rule evaluation is stale. A red cube also means the entrance path is down even when specific service tiles stay green, because those are probed inside the cluster.",
+      "description": "Single-node health cube inside the right-hand node column. Green = Ready with no disk or memory pressure; orange = DiskPressure or MemoryPressure; red = NotReady; grey = No telemetry, the node metric is stale or missing.",
       "fieldConfig": {
         "defaults": {
-          "displayName": "VPS IP",
+          "displayName": "5",
           "mappings": [
             {
               "options": {
@@ -2430,9 +2430,13 @@
                 },
                 "1": {
                   "color": "#A85D08",
-                  "text": "PENDING"
+                  "text": "PRESSURE"
                 },
                 "2": {
+                  "color": "#B42332",
+                  "text": "DOWN"
+                },
+                "3": {
                   "color": "#B42332",
                   "text": "DOWN"
                 },
@@ -2466,12 +2470,12 @@
         }
       },
       "gridPos": {
-        "h": 1,
-        "w": 1,
         "x": 23,
-        "y": 5
+        "y": 5,
+        "w": 1,
+        "h": 1
       },
-      "id": 906,
+      "id": 927,
       "options": {
         "colorMode": "background_solid",
         "graphMode": "none",
@@ -2499,7 +2503,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceEdgeVpsUnavailable\",service_id=\"edge-vps\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceEdgeVpsUnavailable\",service_id=\"edge-vps\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"edge-vps\"})) and on() ((max(up{job=\"service-probes\",service_id=\"edge-vps\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"edge-vps\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"edge-vps\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "expr": "((2 * (1 - (max(kube_node_status_condition{node=\"socrat-5\",condition=\"Ready\",status=\"true\"}) or vector(0)))) + max(kube_node_status_condition{node=\"socrat-5\",condition=~\"DiskPressure|MemoryPressure\",status=\"true\"} or vector(0))) and on() (time() - max(timestamp(kube_node_status_condition{node=\"socrat-5\"})) < 120) or vector(-2)",
           "format": "time_series",
           "instant": true,
           "range": false,
@@ -2905,7 +2909,7 @@
       "description": "Public entrance availability cube. Home IP is the apartment connection (109.173.40.247), VPS IP is the cloud edge (109.120.141.60), both probed over TCP 443 by the blackbox exporter every minute. Green = the address answers; orange = probe failures pending alert; red = the SocratServiceEdge*Unavailable alert is firing; grey = No telemetry, probe or rule evaluation is stale. A red cube also means the entrance path is down even when specific service tiles stay green, because those are probed inside the cluster.",
       "fieldConfig": {
         "defaults": {
-          "displayName": "Home IP",
+          "displayName": "VPS IP",
           "mappings": [
             {
               "options": {
@@ -2956,7 +2960,7 @@
         "x": 23,
         "y": 6
       },
-      "id": 905,
+      "id": 906,
       "options": {
         "colorMode": "background_solid",
         "graphMode": "none",
@@ -2984,7 +2988,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceEdgeHomeUnavailable\",service_id=\"edge-home\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceEdgeHomeUnavailable\",service_id=\"edge-home\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"edge-home\"})) and on() ((max(up{job=\"service-probes\",service_id=\"edge-home\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"edge-home\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"edge-home\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceEdgeVpsUnavailable\",service_id=\"edge-vps\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceEdgeVpsUnavailable\",service_id=\"edge-vps\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"edge-vps\"})) and on() ((max(up{job=\"service-probes\",service_id=\"edge-vps\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"edge-vps\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"edge-vps\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
           "format": "time_series",
           "instant": true,
           "range": false,
@@ -3193,10 +3197,10 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Single-node health cube inside the right-hand node column. Green = Ready with no disk or memory pressure; orange = DiskPressure or MemoryPressure; red = NotReady; grey = No telemetry, the node metric is stale or missing.",
+      "description": "Public entrance availability cube. Home IP is the apartment connection (109.173.40.247), VPS IP is the cloud edge (109.120.141.60), both probed over TCP 443 by the blackbox exporter every minute. Green = the address answers; orange = probe failures pending alert; red = the SocratServiceEdge*Unavailable alert is firing; grey = No telemetry, probe or rule evaluation is stale. A red cube also means the entrance path is down even when specific service tiles stay green, because those are probed inside the cluster.",
       "fieldConfig": {
         "defaults": {
-          "displayName": "5",
+          "displayName": "Home IP",
           "mappings": [
             {
               "options": {
@@ -3206,13 +3210,9 @@
                 },
                 "1": {
                   "color": "#A85D08",
-                  "text": "PRESSURE"
+                  "text": "PENDING"
                 },
                 "2": {
-                  "color": "#B42332",
-                  "text": "DOWN"
-                },
-                "3": {
                   "color": "#B42332",
                   "text": "DOWN"
                 },
@@ -3246,12 +3246,12 @@
         }
       },
       "gridPos": {
-        "x": 23,
-        "y": 7,
+        "h": 1,
         "w": 1,
-        "h": 1
+        "x": 23,
+        "y": 7
       },
-      "id": 927,
+      "id": 905,
       "options": {
         "colorMode": "background_solid",
         "graphMode": "none",
@@ -3279,7 +3279,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "((2 * (1 - (max(kube_node_status_condition{node=\"socrat-5\",condition=\"Ready\",status=\"true\"}) or vector(0)))) + max(kube_node_status_condition{node=\"socrat-5\",condition=~\"DiskPressure|MemoryPressure\",status=\"true\"} or vector(0))) and on() (time() - max(timestamp(kube_node_status_condition{node=\"socrat-5\"})) < 120) or vector(-2)",
+          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceEdgeHomeUnavailable\",service_id=\"edge-home\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceEdgeHomeUnavailable\",service_id=\"edge-home\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"edge-home\"})) and on() ((max(up{job=\"service-probes\",service_id=\"edge-home\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"edge-home\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"edge-home\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
           "format": "time_series",
           "instant": true,
           "range": false,
@@ -4190,7 +4190,7 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 8,
+        "w": 7,
         "x": 16,
         "y": 10
       },

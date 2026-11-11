@@ -72,7 +72,7 @@ class TrafficLightLayoutTest(unittest.TestCase):
                  if (x, y) not in occupied]
         approved = json.loads((ROOT / 'tests/fixtures/traffic-light-owner-layout.json').read_text())
         self.assertEqual({str(p['id']): p['gridPos'] for p in self.dashboard['panels']}, approved)
-        self.assertEqual(len(holes), 98)  # intentional whitespace in owner layout
+        self.assertEqual(len(holes), 102)  # intentional whitespace in owner layout
 
     def test_cpu_temperature_bar_removed(self):
         ids = {panel['id'] for panel in self.dashboard['panels']}
@@ -82,17 +82,17 @@ class TrafficLightLayoutTest(unittest.TestCase):
         digits = ['0', '1', '2', '3', '4', '5']
         for i, panel_id in enumerate((901, 902, 903, 904, 926, 927)):
             panel = panel_by_id(self.dashboard, panel_id)
-            self.assertEqual(panel['gridPos'], {'x': 23, 'y': 7 if i == 5 else i, 'w': 1, 'h': 1})
+            self.assertEqual(panel['gridPos'], {'x': 23, 'y': i, 'w': 1, 'h': 1})
             self.assertEqual(panel['fieldConfig']['defaults']['displayName'], digits[i])
             self.assertEqual(len(panel['targets']), 1)
         for i, (panel_id, name) in enumerate(((905, 'Home IP'), (906, 'VPS IP'))):
             panel = panel_by_id(self.dashboard, panel_id)
-            self.assertEqual(panel['gridPos'], {'x': 23, 'y': 6 - i, 'w': 1, 'h': 1})
+            self.assertEqual(panel['gridPos'], {'x': 23, 'y': 7 - i, 'w': 1, 'h': 1})
             self.assertEqual(panel['fieldConfig']['defaults']['displayName'], name)
             self.assertEqual(len(panel['targets']), 1)
         self.assertNotIn(908, {p['id'] for p in self.dashboard['panels']})  # Owner removed UP.
         chart = panel_by_id(self.dashboard, 907)
-        self.assertEqual(chart['gridPos'], {'x': 16, 'y': 10, 'w': 8, 'h': 4})
+        self.assertEqual(chart['gridPos'], {'x': 16, 'y': 10, 'w': 7, 'h': 4})
         self.assertEqual(chart['type'], 'stat')
         history = panel_by_id(self.dashboard, 909)
         self.assertEqual(history['gridPos'], {'x': 0, 'y': 19, 'w': 12, 'h': 1})
