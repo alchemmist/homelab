@@ -1,0 +1,99 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: n8n-backup-script
+data:
+  backup.cjs: |
+{{ .Files.Get "files/backup.cjs" | indent 4 }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: n8n-backup
+spec:
+  schedule: "15 3 * * *"
+  timeZone: Europe/Moscow
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 21600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 1800
+      template:
+        metadata:
+          labels:
+            app: n8n-backup
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          enableServiceLinks: false
+          nodeSelector:
+            kubernetes.io/hostname: socrat-5
+          tolerations:
+            - key: homelab.io/no-nfs
+              operator: Equal
+              value: "true"
+              effect: NoSchedule
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: backup
+              image: {{ .Values.image | quote }}
+              command: [node, /scripts/backup.cjs]
+              securityContext:
+                readOnlyRootFilesystem: true
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: [ALL]
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                  ephemeral-storage: 512Mi
+                limits:
+                  cpu: "1"
+                  memory: 512Mi
+                  ephemeral-storage: 2Gi
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+                  readOnly: true
+                - name: script
+                  mountPath: /scripts
+                  readOnly: true
+                - name: ssh
+                  mountPath: /ssh
+                  readOnly: true
+                - name: recovery
+                  mountPath: /recovery
+                  readOnly: true
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: n8n-socrat5
+            - name: script
+              configMap:
+                name: n8n-backup-script
+            - name: ssh
+              secret:
+                secretName: n8n-backup-ssh
+                defaultMode: 0440
+            - name: recovery
+              secret:
+                secretName: {{ .Values.secretName }}
+                defaultMode: 0440
+                items:
+                  - key: encryption-key
+                    path: encryption-key
+            - name: tmp
+              emptyDir:
+                sizeLimit: 2Gi
