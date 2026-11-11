@@ -61,7 +61,7 @@ def build():
     expr = f'label_replace(({queries()[2]}), "bar", "Argo", "", "")'
     order = ['bar\\state', '4', '2', '5', '3', '0', '1']
     d['panels'].append({
-        'id': 909, 'title': '', 'type': 'barchart', 'datasource': DS,
+        'id': 909, 'title': '', 'transparent': True, 'type': 'barchart', 'datasource': DS,
         'gridPos': {'x': 12, 'y': 8, 'w': 6, 'h': 1},
         'description': 'Current Argo Applications, not history or Pod counts. Latest observed app_info only; raw samples were verified15s apart, dashboard refresh5s. No averaging/window/increase. root excluded. One segment per state, proportional to application count: Ready=Healthy+Synced; Progressing=not yet ready; Suspended=paused; drift=OutOfSync; Unhealthy=Degraded/Missing; Unknown=unknown/unrecognized state. Priority Unhealthy > Unknown > Progressing > Suspended > drift > Ready. Latest timestamp wins over lingering old label sets. Missing/down/partially stale telemetry gives no data, never a healthy green zero.90s freshness guard is a stale-data limit, not aggregation. Hover shows current counts. No proof of Pod rollout or full service health.',
         'interval': '15s', 'maxDataPoints': 1,
@@ -71,7 +71,7 @@ def build():
             {'id': 'groupingToMatrix', 'options': {'columnField': 'state', 'rowField': 'bar', 'valueField': 'Value'}},
             {'id': 'organize', 'options': {'indexByName': {name: i for i, name in enumerate(order)}}},
         ],
-        'fieldConfig': {'defaults': {'unit': 'short', 'decimals': 0, 'min': 0, 'noValue': 'No telemetry',
+        'fieldConfig': {'defaults': {'unit': 'short', 'decimals': 0, 'min': 0, 'max': 1, 'noValue': 'No telemetry',
                                     'color': {'mode': 'palette-classic'},
                                     'custom': {'lineWidth': 0, 'fillOpacity': 100, 'gradientMode': 'none',
                                                'axisPlacement': 'hidden', 'axisLabel': '',
@@ -84,7 +84,7 @@ def build():
                             {'id': 'color', 'value': {'mode': 'fixed', 'fixedColor': color}}]}
                                       for name, code, color in STATES]},
         'options': {'orientation': 'horizontal', 'stacking': 'percent', 'xField': 'bar\\state',
-                    'groupWidth': 0.65, 'barWidth': 1, 'barRadius': 0, 'showValue': 'never',
+                    'groupWidth': 0.2, 'barWidth': 0.2, 'barRadius': 0, 'showValue': 'never',
                     'fullHighlight': True, 'xTickLabelRotation': 0, 'xTickLabelSpacing': 0,
                     'legend': {'showLegend': False, 'displayMode': 'list', 'placement': 'bottom', 'calcs': []},
                     'tooltip': {'mode': 'all', 'sort': 'desc', 'hideZeros': True}},

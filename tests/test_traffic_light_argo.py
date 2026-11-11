@@ -33,6 +33,10 @@ class TrafficLightArgoTest(unittest.TestCase):
         self.assertEqual(p['type'], 'barchart')
         self.assertEqual(p['gridPos'], {'x': 12, 'y': 8, 'w': 6, 'h': 1})
         self.assertEqual(p['title'], '')
+        self.assertTrue(p['transparent'])
+        self.assertEqual(p['fieldConfig']['defaults']['max'], 1)  # Percent scale must fill its width.
+        self.assertLessEqual(p['options']['groupWidth'], 0.25)
+        self.assertLessEqual(p['options']['barWidth'], 0.25)
         self.assertEqual(p['interval'], '15s')
         self.assertEqual(p['maxDataPoints'], 1)
         self.assertEqual(len(p['targets']), 1)

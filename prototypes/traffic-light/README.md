@@ -62,3 +62,11 @@ TMP UID/ConfigMap and previews were retired earlier with exact UID/resourceVersi
 cleanup; they are not recreated. Prior timeline/line/mosaic/landscape/Symlog
 experiments remain in Git history only. No plugins, custom CSS/JS, collector
 configuration, sync/prune, rollout or global dashboard-setting changes.
+
+Native rendering refinement: percent scale is explicitly bounded0..1 so all-green
+fills100% of the width (auto-ranging with integer decimals otherwise leaves half
+empty). Both groupWidth/barWidth0.2 make the strip genuinely thin. Native transparent
+panel option enabled. These are display bounds on normalized stacking; hover still
+shows original counts, e.g. Ready48, not48% or a clipped value1. Mixed-color rendering
+was checked only in an isolated browser response fixture, never by changing Argo
+apps or production telemetry. Live data is checked separately without that fixture.

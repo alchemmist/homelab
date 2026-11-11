@@ -2846,6 +2846,7 @@
     {
       "id": 909,
       "title": "",
+      "transparent": true,
       "type": "barchart",
       "datasource": {
         "type": "prometheus",
@@ -2903,6 +2904,7 @@
           "unit": "short",
           "decimals": 0,
           "min": 0,
+          "max": 1,
           "noValue": "No telemetry",
           "color": {
             "mode": "palette-classic"
@@ -3049,8 +3051,8 @@
         "orientation": "horizontal",
         "stacking": "percent",
         "xField": "bar\\state",
-        "groupWidth": 0.65,
-        "barWidth": 1,
+        "groupWidth": 0.2,
+        "barWidth": 0.2,
         "barRadius": 0,
         "showValue": "never",
         "fullHighlight": true,
