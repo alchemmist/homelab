@@ -68,39 +68,36 @@ def traffic(pid, name, namespace, pod, color):
                         'reduceOptions': {'values': False, 'calcs': ['last'], 'fields': ''}}, 'targets': targets}
 
 
-HTTP_APPS = {
-    'monori-monori-80': 'Monori', 'lms-lms-80': 'LMS', 'harbor-harbor-core-80': 'Harbor',
-    'wiki-wiki-runtime-wiki-http': 'Wiki', 'identity-rustfs-gateway-8080': 'Evidence',
-    'identity-authentik-server-80': 'Auth', 'blog-blog-80': 'Blog', 'cats-cats-80': 'Cats',
-    'umami-umami-80': 'Umami', 'llm-searxng-8080': 'Search',
-}
-
-
-def http_errors():
-    selector = 'exported_service=~"('+'|'.join(HTTP_APPS)+')@kubernetes"'
-    base = f'traefik_service_requests_total{{{selector}}}'
-    errors = f'traefik_service_requests_total{{{selector},code=~"5.."}}'
-    # Only a freshly observed request counter can supply a legitimate 0 errors.
-    seen = f'max by(exported_service) ({base} and (time()-timestamp({base})<90))'
-    values = f'sum by(exported_service)(increase({errors}[1h])) or on(exported_service) (0*{seen})'
-    live = '(min(up{job="traefik"})==1) and on() (time()-min(timestamp(up{job="traefik"}))<90)'
-    expr = f'topk(3, ({values}) and on() ({live}))'
-    expr = f'label_replace({expr}, "app", "$1", "exported_service", "[^-]+-([^-]+)-.*")'
-    return {'id': 930, 'type': 'bargauge', 'title': 'HTTP · 5xx / h', 'datasource': DS,
-            'description': 'Worst3 of10 observed business backends by estimated5xx/1h. RustFS = Evidence gateway, not internal S3. No Grafana/VPN. Zero only from fresh requests; missing backend omitted, NOT healthy. Traefik up/fresh90s. Zero ties arbitrary. Red >0, not SLO/alert.',
-            'gridPos': {'x': 12, 'y': 10, 'w': 4, 'h': 4},
-            'fieldConfig': {'defaults': {'unit': 'short', 'min': 0, 'decimals': 0, 'noValue': 'No telemetry',
-                'color': {'mode': 'thresholds'}, 'thresholds': {'mode': 'absolute', 'steps': [{'color': '#C8CDD3', 'value': None}, {'color': '#F2495C', 'value': .001}]}}},
-            'options': {'orientation': 'horizontal', 'displayMode': 'basic', 'valueMode': 'color', 'namePlacement': 'left', 'showUnfilled': True,
-                'sizing': 'manual', 'minVizHeight': 0, 'minVizWidth': 0, 'maxVizHeight': 100,
-                'text': {'titleSize': 10, 'valueSize': 14}, 'reduceOptions': {'values': False, 'calcs': ['last'], 'fields': ''}},
-            'targets': [{'refId': 'A', 'datasource': DS, 'expr': expr, 'instant': True, 'range': False, 'format': 'time_series', 'legendFormat': '{{app}}'}]}
+def ai_quality():
+    wait = 'vllm:num_requests_waiting{job="vllm"}'
+    count = 'vllm:time_to_first_token_seconds_count{job="vllm"}'
+    bucket = 'vllm:time_to_first_token_seconds_bucket{job="vllm"}'
+    queue = f'sum({wait} and (time()-timestamp({wait})<90) and on(instance) (up{{job="vllm"}}==1))'
+    queue = f'({queue} and on() ({fresh_job("vllm")})) or vector(-2)'
+    sample = f'sum(increase({count}[15m]))'
+    q = f'histogram_quantile(0.95,sum by(le)(rate({bucket}[15m])))'
+    valid = f'(({q}) >= 0) and (({q}) < +Inf)'
+    latency = f'(({valid}) and on() ({sample}>=20)) or (vector(-1) and on() ({sample}<20))'
+    guard = f'({fresh_job("vllm")}) and on() {fresh_metric(count)} and on() {fresh_metric(bucket)}'
+    latency = f'(({latency}) and on() ({guard})) or vector(-2)'
+    return {'id': 930, 'type': 'stat', 'title': '', 'datasource': DS,
+            'description': 'Local vLLM: current waiting requests + estimated first-token p95 over15m, NOT full streamed-response duration or remote LiteLLM models. Require20 histogram observations; otherwise Low sample, not0. Up/sample freshness90s; absent/invalid=No telemetry. Pink informational, no invented SLO.',
+            'gridPos': {'x':12,'y':10,'w':4,'h':4},
+            'fieldConfig': {'defaults': {'unit':'short','min':0,'decimals':0,'noValue':'No telemetry',
+                'color': {'mode':'fixed','fixedColor':'#E0A6DC'},
+                'mappings': [{'type':'value','options':{'-2':{'text':'No telemetry','color':'#808080'},'-1':{'text':'Low sample','color':'#808080'}}}]},
+                'overrides': [{'matcher':{'id':'byName','options':'AI · TTFT p95'},'properties':[{'id':'unit','value':'s'},{'id':'decimals','value':1}]}]},
+            'options': {'colorMode':'value','graphMode':'none','justifyMode':'center','orientation':'horizontal',
+                'wideLayout':False,'textMode':'value_and_name','text':{'titleSize':11,'valueSize':22},
+                'reduceOptions':{'values':False,'calcs':['last'],'fields':''}},
+            'targets': [{'refId':ref,'datasource':DS,'expr':expr,'instant':True,'range':False,'format':'time_series','legendFormat':name}
+                for ref,expr,name in [('A',queue,'AI · queue'),('B',latency,'AI · TTFT p95')]]}
 
 
 def panels():
     result = [traffic(931, 'RustFS', 'rustfs', 'rustfs-.*', '#B877D9'),
               traffic(932, 'Harbor', 'harbor', 'harbor-registry-.*', '#2EBFA5'),
-              http_errors()]
+              ai_quality()]
     for pid, namespace, job, label, warning, limit in [
         (934, 'lms', 'lms-database-backup', 'LMS · backup age', 6*3600, 8*3600),
         (935, 'automation', 'n8n-backup', 'n8n · backup age', 24*3600, 26*3600),

@@ -244,7 +244,8 @@ class TrafficLightQueriesTest(unittest.TestCase):
 
     def test_activity_replaces_incident_list_and_latency(self):
         for panel in self.dashboard['panels']:
-            self.assertNotIn('histogram_quantile', str(panel.get('targets')))
+            if panel['id'] != 930:  # Owner-approved compact local AI block.
+                self.assertNotIn('histogram_quantile', str(panel.get('targets')))
             self.assertNotEqual(panel['type'], 'table')
         self.assertEqual(panel_by_id(self.dashboard, 925)['targets'][0]['legendFormat'], 'n8n · running')
         self.assertIn('window="0"', panel_by_id(self.dashboard, 925)['targets'][0]['expr'])

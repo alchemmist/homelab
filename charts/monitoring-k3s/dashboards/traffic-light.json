@@ -6063,13 +6063,13 @@
     },
     {
       "id": 930,
-      "type": "bargauge",
-      "title": "HTTP · 5xx / h",
+      "type": "stat",
+      "title": "",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Worst3 of10 observed business backends by estimated5xx/1h. RustFS = Evidence gateway, not internal S3. No Grafana/VPN. Zero only from fresh requests; missing backend omitted, NOT healthy. Traefik up/fresh90s. Zero ties arbitrary. Red >0, not SLO/alert.",
+      "description": "Local vLLM: current waiting requests + estimated first-token p95 over15m, NOT full streamed-response duration or remote LiteLLM models. Require20 histogram observations; otherwise Low sample, not0. Up/sample freshness90s; absent/invalid=No telemetry. Pink informational, no invented SLO.",
       "gridPos": {
         "x": 12,
         "y": 10,
@@ -6083,36 +6083,54 @@
           "decimals": 0,
           "noValue": "No telemetry",
           "color": {
-            "mode": "thresholds"
+            "mode": "fixed",
+            "fixedColor": "#E0A6DC"
           },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "-2": {
+                  "text": "No telemetry",
+                  "color": "#808080"
+                },
+                "-1": {
+                  "text": "Low sample",
+                  "color": "#808080"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "AI · TTFT p95"
+            },
+            "properties": [
               {
-                "color": "#C8CDD3",
-                "value": null
+                "id": "unit",
+                "value": "s"
               },
               {
-                "color": "#F2495C",
-                "value": 0.001
+                "id": "decimals",
+                "value": 1
               }
             ]
           }
-        }
+        ]
       },
       "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
         "orientation": "horizontal",
-        "displayMode": "basic",
-        "valueMode": "color",
-        "namePlacement": "left",
-        "showUnfilled": true,
-        "sizing": "manual",
-        "minVizHeight": 0,
-        "minVizWidth": 0,
-        "maxVizHeight": 100,
+        "wideLayout": false,
+        "textMode": "value_and_name",
         "text": {
-          "titleSize": 10,
-          "valueSize": 14
+          "titleSize": 11,
+          "valueSize": 22
         },
         "reduceOptions": {
           "values": false,
@@ -6129,11 +6147,23 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "label_replace(topk(3, (sum by(exported_service)(increase(traefik_service_requests_total{exported_service=~\"(monori-monori-80|lms-lms-80|harbor-harbor-core-80|wiki-wiki-runtime-wiki-http|identity-rustfs-gateway-8080|identity-authentik-server-80|blog-blog-80|cats-cats-80|umami-umami-80|llm-searxng-8080)@kubernetes\",code=~\"5..\"}[1h])) or on(exported_service) (0*max by(exported_service) (traefik_service_requests_total{exported_service=~\"(monori-monori-80|lms-lms-80|harbor-harbor-core-80|wiki-wiki-runtime-wiki-http|identity-rustfs-gateway-8080|identity-authentik-server-80|blog-blog-80|cats-cats-80|umami-umami-80|llm-searxng-8080)@kubernetes\"} and (time()-timestamp(traefik_service_requests_total{exported_service=~\"(monori-monori-80|lms-lms-80|harbor-harbor-core-80|wiki-wiki-runtime-wiki-http|identity-rustfs-gateway-8080|identity-authentik-server-80|blog-blog-80|cats-cats-80|umami-umami-80|llm-searxng-8080)@kubernetes\"})<90)))) and on() ((min(up{job=\"traefik\"})==1) and on() (time()-min(timestamp(up{job=\"traefik\"}))<90))), \"app\", \"$1\", \"exported_service\", \"[^-]+-([^-]+)-.*\")",
+          "expr": "(sum(vllm:num_requests_waiting{job=\"vllm\"} and (time()-timestamp(vllm:num_requests_waiting{job=\"vllm\"})<90) and on(instance) (up{job=\"vllm\"}==1)) and on() ((max(up{job=\"vllm\"}) == 1) and on() (time() - max(timestamp(up{job=\"vllm\"})) < 90))) or vector(-2)",
           "instant": true,
           "range": false,
           "format": "time_series",
-          "legendFormat": "{{app}}"
+          "legendFormat": "AI · queue"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "((((((histogram_quantile(0.95,sum by(le)(rate(vllm:time_to_first_token_seconds_bucket{job=\"vllm\"}[15m])))) >= 0) and ((histogram_quantile(0.95,sum by(le)(rate(vllm:time_to_first_token_seconds_bucket{job=\"vllm\"}[15m])))) < +Inf)) and on() (sum(increase(vllm:time_to_first_token_seconds_count{job=\"vllm\"}[15m]))>=20)) or (vector(-1) and on() (sum(increase(vllm:time_to_first_token_seconds_count{job=\"vllm\"}[15m]))<20))) and on() (((max(up{job=\"vllm\"}) == 1) and on() (time() - max(timestamp(up{job=\"vllm\"})) < 90)) and on() (time() - max(timestamp(vllm:time_to_first_token_seconds_count{job=\"vllm\"})) < 90) and on() (time() - max(timestamp(vllm:time_to_first_token_seconds_bucket{job=\"vllm\"})) < 90))) or vector(-2)",
+          "instant": true,
+          "range": false,
+          "format": "time_series",
+          "legendFormat": "AI · TTFT p95"
         }
       ]
     },

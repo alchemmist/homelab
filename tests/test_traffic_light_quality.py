@@ -75,18 +75,25 @@ class QualityPanelsTest(unittest.TestCase):
             self.assertTrue(p['hideTimeOverride'])
             self.assertIn('NOT object or OCI counts',p['description'])
 
-    def test_business_http_errors_not_infrastructure_rps(self):
-        e=self.p[930]['targets'][0]['expr']
-        for token in ['topk(3', 'code=~"5.."', '[1h]', '0*max by(exported_service)', 'timestamp(']:
-            self.assertIn(token,e)
-        self.assertNotIn('grafana',e);self.assertNotIn('vpn',e)
-        self.assertIn('missing backend omitted',self.p[930]['description'])
+    def test_one_compact_ai_block_replaces_http_errors(self):
+        p=self.p[930];self.assertEqual(p['type'],'stat')
+        self.assertEqual(p['options']['graphMode'],'none')
+        self.assertEqual(len(p['targets']),2)
+        queue,latency=[t['expr'] for t in p['targets']]
+        self.assertIn('num_requests_waiting',queue)
+        for token in ['histogram_quantile(0.95','[15m]','>=20','vector(-1)','< +Inf']:
+            self.assertIn(token,latency)
+        for expr in [queue,latency]:
+            self.assertIn('timestamp(',expr);self.assertIn('up{',expr)
+            self.assertIn('or vector(-2)',expr);self.assertNotIn('or vector(0)',expr)
+        self.assertEqual(p['fieldConfig']['overrides'][0]['properties'][0]['value'],'s')
+        self.assertNotIn('traefik_service_requests_total',json.dumps(p))
 
     def test_no_new_blue_and_no_ai_dominance(self):
         for i in Q.IDS & self.p.keys():
             p=self.p[i]
             self.assertNotIn('#5794F2',json.dumps(p))
-            self.assertNotIn('vllm:',json.dumps(p))
+            if i!=930:self.assertNotIn('vllm:',json.dumps(p))
         self.assertEqual(self.p[931]['fieldConfig']['defaults']['color']['fixedColor'],'#B877D9')
         self.assertEqual(self.p[932]['fieldConfig']['defaults']['color']['fixedColor'],'#2EBFA5')
 
