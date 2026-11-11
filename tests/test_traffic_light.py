@@ -72,7 +72,7 @@ class TrafficLightLayoutTest(unittest.TestCase):
                  if (x, y) not in occupied]
         approved = json.loads((ROOT / 'tests/fixtures/traffic-light-owner-layout.json').read_text())
         self.assertEqual({str(p['id']): p['gridPos'] for p in self.dashboard['panels']}, approved)
-        self.assertEqual(len(holes), 114)  # intentional whitespace in owner layout
+        self.assertEqual(len(holes), 90)  # intentional whitespace in owner layout
 
     def test_cpu_temperature_bar_removed(self):
         ids = {panel['id'] for panel in self.dashboard['panels']}
@@ -95,7 +95,7 @@ class TrafficLightLayoutTest(unittest.TestCase):
         self.assertEqual(chart['gridPos'], {'x': 16, 'y': 10, 'w': 7, 'h': 4})
         self.assertEqual(chart['type'], 'stat')
         history = panel_by_id(self.dashboard, 909)
-        self.assertEqual(history['gridPos'], {'x': 0, 'y': 19, 'w': 12, 'h': 2})
+        self.assertEqual(history['gridPos'], {'x': 0, 'y': 19, 'w': 24, 'h': 2})
         self.assertEqual(history['type'], 'bargauge')
 
     def test_unmodified_resource_columns(self):

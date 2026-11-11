@@ -5646,7 +5646,7 @@
       "gridPos": {
         "x": 0,
         "y": 19,
-        "w": 12,
+        "w": 24,
         "h": 2
       },
       "description": "Current Argo Applications, not Pods/history. One equal full block per Application, alphabetically ordered by name; color encodes latest status. Numeric codes1..6 are categorical, not utilization or readiness percentage; max1 intentionally saturates every present block to the same size. Ready=Healthy+Synced, Progressing, Suspended, Git drift=OutOfSync, Unhealthy=Degraded/Missing, Unknown. Latest timestamp wins, priority Unhealthy > Unknown > Progressing > Suspended > drift > Ready. root included so every Argo Application has a block. Hover shows Application name through a native single data link; click opens that Application in Argo CD. Freshness90s and up/inventory completeness guards: unavailable/down/partially stale telemetry produces no data, never green fabricated blocks. Raw sampling15s; dashboard refresh5s. Native Bar gauge solid value-mapped colors, not LCD subdivisions: each whole block corresponds to one Application.",

@@ -253,3 +253,27 @@ live diff only909. Это browser acceptance, не физический TV scree
 Не обходили авторизацию, не сбрасывали ключи/настройки, не reload Fully через ADB.
 Для реального device screenshot требуется разрешённый ADB; для новой геометрии
 уже открытой страницы — reload Fully. Не считать адрес сам по себе проверкой модели.
+
+## Реальный TV diagnosis: subpixel Bar gauge, 11 ноября 2026
+
+ADB теперь авторизован; getprop confirmsMiTV-MOOQ1/tarzan, Fully foreground. Сняты
+реальные screencap before и после reload толькоFully (pending import отсутствовал).
+Reload не исправил49 блоков, выглядевших как редкие волоски. Важно: native screencap
+пишет65 bytesvendor diagnostics передPNG; strip доPNG signature до открытия картинки.
+
+Аудит через UI: Fully initialScale55%,font75%, desktop=true, wideViewport=true,
+overview=false сохранены. РеальныйWebView156.0.8078.47, Android density320/DPR2.
+Для точного read-only DOM audit временно включена бесплатная Webview Contents
+Debugging (originalfalse); CDP идёт через authorized ADB и SSHloopback-only tunnel,
+не public port, не Fully JS injection. После приёмки вернутьdebugfalse и снятьforward.
+
+Фактический viewport innerWidth1024,innerHeight575; screen960×540CSS,visualScale0.9375.
+Не эмулироватьTV как3491CSSpx/DSF0.55: это была неверная модель. В старомw12,h2:
+панель503CSSpx, content485;49 баров с48 native gaps×10px оставляли всего5px на
+цветные части:каждый0.10156CSSpx (≈0.19 physicalpx). DOM count49 и bounds check
+проходили, но rasterization делала большинство невидимыми. Не проблема данных или
+высоты; уменьшениеminVizWidth до0 только предотвращалоclip, не обеспечивало видимость.
+
+Scoped native fix:909 width12→24 в пустую правую половину нижней строки, x0,y19,h2
+unchanged. Other panels/settings untouched, no CSS/JS/plugin/zoom/DPI changes.90
+empty cells remain. New regression requires≥8CSSpx per49 bars atviewport1024.

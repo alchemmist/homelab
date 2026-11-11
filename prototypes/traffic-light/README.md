@@ -187,3 +187,14 @@ Live dashboard comparison ignoring empty defaults/version confirms only909 chang
 Device status changed during this run: documented192.168.0.19:5555 now responds but
 ADB saysunauthorized (SSH useralchemmist). Model cannot be verified until authorized.
 No authorization bypass, key reset, Fully reload or physical screenshot performed.
+
+Physical-TV correction: real authorized ADB screenshot showed sparse hairlines,
+not49 readable blocks, even after reloading Fully. AndroidDPR2, actual page viewport
+1024×575/visualScale0.9375, NOT previous3491CSSpx emulation. Real CDP DOM49 bars:
+panel503CSSpx, content485, native48×10px gaps480, eachbar0.10156CSSpx (≈0.19 physical).
+Thus mere positive width/count/bounds acceptance was inadequate. Native fix only909
+w12→24, use otherwise-empty right half; h2,x0,y19 and other panels unchanged. New
+unit regression requires49 visible≥8CSSpx bars at1024/1440/1920. No data/workload
+mutation or new CSS/JS/plugin. Fully55/font75/desktop/wideViewport kept unchanged.
+Debugging temporarily enabled through UI for read-only DOM audit, to be restored
+false and SSH/ADB forwards removed after real screenshot acceptance.

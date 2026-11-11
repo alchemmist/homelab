@@ -68,7 +68,7 @@ def application_query():
 def build():
     d = copy.deepcopy(json.loads(SOURCE.read_text()))
     panel = next(p for p in d['panels'] if p['id'] == 909)
-    grid = dict(panel['gridPos'], h=2)
+    grid = dict(panel['gridPos'], w=24, h=2)
     panel.clear()
     panel.update({
         'id': 909, 'title': '', 'transparent': True, 'type': 'bargauge',
