@@ -308,3 +308,26 @@ samePod/volumes/allothercontainerIDs, allReady.41tests pass. SeeprototypeREADME
 receipt; no TVsettings/CSS/JS or networkchanges. Owner manual compactlayout captured
 separately3150cbd:909w12/h1, preserve that geometry (not oldforcedw24/h2). Compact
 nativeBarGauge gap limitation still unresolved; no CSS exception approved yet.
+
+### Current TV Argo spacing — owner-approved exception,11November2026
+
+The former blanket noCSS restriction is superseded ONLY for native909 on actual
+publicTVopt-in socratTv=1 + canonicalUID. Existingtraffic-light-inset.js verifies
+nativeverticalGradient/hidden-label DOM, then scopes padding8→3CSSpx/gap10→2CSSpx
+and flex width redistribution (including linkwrapper) tothatpanel. Normal private
+view/edit/kiosk, otherpanels/globalgrid gaps/Fullysettings unchanged. No plugin,
+FullyinjectJsCode, syntheticbars/statecolors/metric/JSON/layout mutations. Failclosed
+for unsupportedDOM/noData; dynamicnativeAppcount, not hardcoded49. Existingowner
+w12/h1 retained; TVdisplay no longer requires fullwidth orh2.
+
+ActualTV acceptancef37bdda6: viewport1024×575,DPR2,visualScale0.9375; same panelrect
+before/after;49bars0.10156→8.14CSSpx wide and2.64→12.65CSSpx high. Real finalADB
+screenshot1920×1080 shows49 separate14–15physicalpx fills (PNG scanline1050), visual
+inspection complete. Native colors/names/order preserved; separatemixed-state
+browserfixture also passes.76focusedtests, scopedHelm onlyGrafana-policyTVasset and
+proxyDeploymentchecksum; otherowners/SSO/routes/backend/resources unchanged.
+TemporaryWebviewdebugoriginalfalse restored, socket/ADBforward/SSHtunnel closed,
+ownuiautomatorXMLdeleted. Fullyforeground, pagealreadyreloaded—ownerreload notneeded.
+Private/tmp/tv-compact-actual-final.png and pairedDOMreceipts are realdevice evidence,
+not browseremulation. A privatepublic-share URL was emitted by temporaryPlaywright
+errorlogging; ownerinformed, no unapprovedshare rotation, verifiercleanedup.

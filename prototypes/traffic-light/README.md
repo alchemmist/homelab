@@ -264,3 +264,23 @@ names andcontainment.1920TVpreview passes; normal1920 has no compactionmarkers a
 keeps8px padding.76 focusedtests pass; reviewedhandofffixture updatedONLYGrafana
 policyCM/proxyDeployment hashes. ScopedHelm ONLY TVasset plus proxychecksum;
 Nginx/SSO/routes/Grafana/database/otherworkloads unchanged. PhysicalTV pending.
+
+PHYSICAL acceptancef37bdda6 (c6121e1feature + ordinarymerge of concurrentSPI work):
+real WebView viewport1024×575,DPR2,visualScale0.9375 unchanged; before/after EXACT
+panel rectx5,y549.34375,w502.9921875,h20.6484375.49 nativebars and49same names/order;
+width0.10156→8.14CSSpx,height2.640625→12.6484375; gap2CSSpx, padding3CSSpx. Final
+actualADB screenshot1920×1080 visually inspected and PNG scanline1050 independently
+counts49 separate colored runs14–15physicalpx wide. Still ownerw12/h1; no full-row
+stretch. No query/colors/native link/text data changes. Other panels/fonts/Fully
+scale/network untouched. Screenshotprivate/tmp/tv-compact-actual-final.png, paired
+DOMreceiptsprivate/tmp/tv-compact-dom-before.json/after.json. Debugfalse restored
+throughnativeUI; socket absent, ADBforward andSSHloopback closed, ownUIXMLdeleted;
+Fullyforeground and refreshedpage left loaded. ArgoGrafanaSynced/Healthy; HTTPasset
+byte-identical toGitsource. No backendGrafana/database/Prometheus restarts.
+
+Security diagnostic incident: closing an isolated Playwrightfixture emitted a
+private public-share URL via default route.fetch error handler. Owner informed;
+no token repeated here, no unauthorizedshare rotation. Explicit page.unrouteAll
+wait + catch/suppressed private request details added to temporary verifier;
+rerun completes cleanly. Viewer bearer not printed in this run. Capability renewal
+is a separate owner decision; do not silently invalidate the TV URL.
