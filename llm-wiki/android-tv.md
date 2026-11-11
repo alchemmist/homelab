@@ -307,7 +307,8 @@ one Collectorcontainer graceful restart with native validation+SHA/identityguard
 samePod/volumes/allothercontainerIDs, allReady.41tests pass. SeeprototypeREADME
 receipt; no TVsettings/CSS/JS or networkchanges. Owner manual compactlayout captured
 separately3150cbd:909w12/h1, preserve that geometry (not oldforcedw24/h2). Compact
-nativeBarGauge gap limitation still unresolved; no CSS exception approved yet.
+nativeBarGauge gap limitation was still unresolved at that stage; the subsequent
+owner-approved CSS fix and physical acceptance are documented below.
 
 ### Current TV Argo spacing — owner-approved exception,11November2026
 
@@ -331,3 +332,58 @@ ownuiautomatorXMLdeleted. Fullyforeground, pagealreadyreloaded—ownerreload not
 Private/tmp/tv-compact-actual-final.png and pairedDOMreceipts are realdevice evidence,
 not browseremulation. A privatepublic-share URL was emitted by temporaryPlaywright
 errorlogging; ownerinformed, no unapprovedshare rotation, verifiercleanedup.
+
+
+## Сопровождение кастомного TV-CSS для Argo
+
+**Текущее согласованное решение:** native Bar gauge909 остаётся в ручном размере
+`x0,y19,w12,h1`. Только на public TV-странице с `socratTv=1` применяется адресное
+оформление. Это явно одобренное владельцем исключение, не разрешение менять весь
+дашборд CSS-правками.
+
+- **Git-источник:** `deploy/platform/grafana/public-entry/files/traffic-light-inset.js`,
+  функция `compactArgoRules()`. Доставляется существующим Grafana policy proxy,
+  а не настройкой `injectJsCode` Fully. CSS ограничен
+  `.socrat-tv-public-grid [data-viz-panel-id="panel-909"]`.
+- **Параметры:** внутренний padding8→3 CSSpx; промежутки10→2 CSSpx. Flex заново
+  распределяет ширину ячеек; отдельно растягивается native data-link wrapper и
+  цветная заливка. Уменьшить только margin недостаточно: Grafana уже вычислила
+  субпиксельную ширину баров с учётом своих10px промежутков.
+- **Почему TV отличался:** физический экран1920×1080, но реальная страница1024CSSpx,
+  DPR2/visualScale0.9375. Не использовать старую эмуляцию3491CSSpx/масштаб0.55 как
+  доказательство. При49 приложениях прежние48 промежутков занимали480CSSpx из
+  примерно485 доступных, оставляя каждому бару лишь0.10CSSpx.
+- **Границы:** обычные signed-in просмотр/редактирование/kiosk не меняются;
+  общая сетка, другие панели, native цвета/данные/ссылки, масштабы Fully55% и
+  шрифт75% не изменены. Классы добавляются только после проверки UID, типа и
+  структуры native DOM. Нет данных/неподдерживаемый DOM — отказ от модификации,
+  а не нарисованные зелёные блоки. Число приложений динамическое, не фиксированные49.
+- **Регрессии:** `tests/test_grafana_tv_public.py` проверяет область действия,
+  защитные условия и сохранность native данных. При изменении asset требуется
+  проверить scoped Helm diff; допустимы policy ConfigMap и checksum его proxy
+  Deployment. Проверить и обновить только соответствующие два reviewed hash в
+  `tests/fixtures/public-entry-handoff.json`, не переписывать hashes других owners.
+- **Приёмка:** проверить наличие всех приложений, фактическую ширину/высоту заливок
+  и полное попадание внутрь панели. Количество DOM-элементов само по себе не
+  доказывает видимость. Нужен настоящий ADB screenshot плюс замеры в WebView;
+  preview/mixed-state fixture не выдавать за физический TV. Последний результат:
+  49 видимых блоков14–15physicalpx шириной в исходной половине строки.
+- **Обновление:** Git→Argo Application `grafana`→существующий policy proxy;
+  не перезапускать backend Grafana/Prometheus ради CSS. После доставки перечитать
+  страницу TV: metric refresh5s не заменяет загрузку новой версии JS/model.
+  Временную WebView-отладку возвращать в исходное состояние, ADB/SSH forward закрывать.
+
+### Свежесть и точный смысл Argo-цветов
+
+Это instant latest-state, не история и не среднее. Argo metrics собираются15s,
+дашборд обновляет запросы5s: обычно несколько–20s после изменения, уже отражённого
+самим Argo; это не мгновенный push и не строгая максимальная задержка. Freshness90s,
+up/inventory guards не должны выдавать устаревший/неполный набор за свежий зелёный.
+Ready = Healthy+Synced; синий = Progressing; красный = Degraded/Missing;
+оранжевый = OutOfSync/Suspended; серый = Unknown. Операция Syncing отдельно не
+отслеживается, короткий переход может пройти между сборами. Все зелёные означают
+последние свежие состояния Applications, не доказательство доступности всех сервисов.
+
+Код TV-fix: `c6121e19`, интеграция с concurrent main: `f37bdda6`, физическая
+приёмка/cleanup: `f459af38`. MoscowIP и ручная раскладка также сохранены в Git;
+не возвращать старые принудительные размерыw24/h2 при следующей генерации.

@@ -1,5 +1,15 @@
 # Socrat: текущий контекст
 
+## TV / Traffic Light — принято 11 ноября 2026
+
+Owner-approved адресный CSS только для native Argo909 на public TV opt-in:
+padding3CSSpx, gap2CSSpx, flex redistribution. Ручныеw12/h1 сохранены,49 блоков
+подтверждены реальным screenshot и WebView-замерами. Обычный ноутбук/другие панели/
+Fully55%/font75% не менялись; не возвращать прежнее растягиваниеw24/h2. MoscowIP928
+добавлен справа и работает по свежему TCP443 probe91.189.82.238. Код, scoped Helm,
+приёмка и границы: [TV-CSS и сопровождение](android-tv.md#сопровождение-кастомного-tv-css-для-argo).
+Это исключение из старого «без CSS» только для одной панели, не глобальное разрешение.
+
 ## SSH management policy — owner override 2026-11-10
 
 Ordinary Mac aliases 0/1/2/4 now use public SSH directly (HOME WAN forwarded
