@@ -7,9 +7,12 @@ No NFS enabled; no taints removed; socrat-4 unchanged.
 
 - PR Agent: `charts/pr-agent`, one Pod with gunicorn master + two workers,
   selector worker5 and exact no-NFS toleration. Existing emptyDir caches recreated.
-- Rancher: `deploy/platform/rancher/values.yaml`, two replicas, required hostname
-  anti-affinity, allowed nodes 0/5, `extraTolerations` (not `tolerations`, which the
-  upstream chart ignores). Preserve one available replica during rollout.
+- Rancher: attempted worker5, then rolled back to nodes0/1. Native jailer
+  requires device-node creation (`mknod`), denied by unprivileged LXC. No dev-mode,
+  jail disablement, privilege expansion or NFS workaround authorized/applied.
+  `extraTolerations` is the upstream field; plain `tolerations` is ignored.
+  Required anti-affinity and two replicas preserved. Startup-probe budget increase
+  did not fix the underlying jailer failure and was reverted as part of rollback.
 - n8n: `charts/n8n`, Recreate/single writer. Legacy PVC `automation/n8n` kept
   unchanged for rollback. New `n8n-socrat5` PV/PVC is static local storage,
   `Retain`, node-affinity worker5, path
@@ -82,3 +85,22 @@ loss of both machines. Backups do not include all cluster Secrets, Rancher state
 etcd, external services or complete host recovery. Static local PV's 5Gi capacity
 is a Kubernetes declaration, not an enforced filesystem quota. worker5 root is a
 loop-mounted filesystem; physical backing-store capacity is not established here.
+
+## Acceptance and incident record
+
+PR Agent received real GitHub webhooks on worker5; outbound GitHub and existing
+LiteLLM liveness both HTTP200. n8n public healthz HTTP200/ok; database identity
+counts unchanged. Two manual runs of the exact daily CronJob completed and
+published separate ~19MiB archives. On worker3 one archive was independently
+SHA256-verified, SQLite extracted into a private temporary directory and checked:
+integrity ok, 7 workflows, 10 credentials, 1 user, 5 active workflows. Recovery key
+present. This proves archive/database readability, not a full application DR drill.
+Negative server-dry-run admission probes rejected foreign PVC and inline NFS.
+Migration helper Pod removed; legacy PVC preserved. Four rendering/receiver tests
+passed. Initial Git push raced an unrelated bot deploy; fetched/rebased without
+overwriting it. Rancher cold image pull and catalogs took minutes; original
+startup budget caused restarts. With a bounded 10-minute startup budget, Rancher
+reached native jailer and exited status2 (`mknod: Operation not permitted` confirmed
+inside pod). The stalled older Argo sync operation was scoped-terminated via its
+status phase so newer committed desired state could reconcile; no blanket sync,
+prune, image override, healthcheck disabling or privileges added.

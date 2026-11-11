@@ -62,10 +62,11 @@ tolerations:
 volumes are accepted. HostPath remains subject to normal namespace security;
 this policy grants no privileges. General PVC, direct NFS, inline CSI and other
 unclassified persistent backends are rejected for Pods targeting/tolerating5.
-The sole named PVC exception is the already bound, local-path, node5-pinned
-NetBird identity `netbird-host-peers/machine-socrat-5`; UID/ownership preserved.
-Ordinary local PVC support would need separate explicit classification, not a
-blanket exception. Broad Exists tolerations plus persistent storage must pin a
+Named PVC exceptions are the already bound, local-path, node5-pinned
+NetBird identity `netbird-host-peers/machine-socrat-5` (UID/ownership preserved),
+and, since the owner-authorized 11 November migration, `automation/n8n-socrat5`: static
+Retain local PV pinned to5, no NFS. See [migration and backup](n8n/worker5-migration-20261111.md).
+Any further local PVC needs separate explicit classification, not a blanket exception. Broad Exists tolerations plus persistent storage must pin a
 different hostname; direct nodeName5 cannot bypass storage validation.
 
 The native ValidatingAdmissionPolicy/binding are owned by
