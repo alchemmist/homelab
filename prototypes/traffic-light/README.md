@@ -231,3 +231,19 @@ service-probeServiceMonitor and rule, exporterDeployment onlychecksum/probes
 annotation changed.40 focused tests passed. CollectorCM/runtime NOT patched or
 restarted; existingprobe exporter rolled by its own Helm checksum. Completion
 blocked on legitimate sudo for existing isolated native activation, not onArgo.
+
+Moscow activation ACCEPTED (supersedes pending status above),11November2026:
+sourcee5bd8332 uses stable owned /edge-moscow pool name because captured historical
+numeric endpoint indices collide with current catalog indices. Collision was
+caught BEFORE any write; regression added,41 focused tests pass. Fresh CM CAS
+UID/resourceVersion/full-data tests; append exactly onejob, all priorjobs and
+collector.yaml unchanged. Kubelet projected SHA matched candidate; nativebinary
+validate passed in actual container environment; existing exact-image/PodUID/
+containerID/fullbinarySHA guards then graceful stop of ONLY otel-cluster.
+Same PodUID/volumes; Collector restartCount+1, otherthree containerIDs unchanged,
+all Ready. Actual Grafana928 expression0=OK; probe_success1 at91.189.82.238:443,
+fresh~5seconds. monitoring-k3sSynced/Healthy at e5bd8332. This proves TCP entrance
+reachability fromblackbox, not authenticatedVPN/service/fullnode health.
+Owner-supplied sudo used through ephemeral0600 passwordfile, removed in finally;
+no credentials committed or printed. Private/tmp/moscow-activation-* receipts;
+no Prometheus/Thanos/reloader/Pod/TV/DNS/VPN changes, unrelateddirtyfiles preserved.

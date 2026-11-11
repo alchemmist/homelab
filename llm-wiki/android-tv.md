@@ -293,3 +293,18 @@ loopback tunnel closed, own temporaryuiautomator XML deleted. Fully foreground,
 actual updated dashboard already loaded: owner reload not needed for this release.
 Fully zoom/fonts/desktop/wideViewport, DNS/VPN/remote keys/HDMI unchanged. Initial
 scale55 is not a substitute for measuring actual viewport/DPR on the device.
+
+### Moscow IP cube —11November2026
+
+NativeStat928 added belowHomeIP atx23,y8,w1,h1; target91.189.82.238:443 (socrat-4),
+service_id=edge-moscow, alertSocratServiceEdgeMoscowUnavailable. Green0=TCP reachable,
+orange pending/red firing/grey-2 missing or stale telemetry as otherpublicIP tiles.
+Not whole-node or authenticatedVPN health. Frozen nativeCollector needed additive
+scrapejob too; sourcehelper inotel-scrape-config.py persists it through rebuilds.
+Stable /edge-moscow poolname avoids historicalnumeric endpointindex collision.
+Scoped native activation complete: actual panelquery0, probe_success1/fresh~5sec;
+one Collectorcontainer graceful restart with native validation+SHA/identityguards,
+samePod/volumes/allothercontainerIDs, allReady.41tests pass. SeeprototypeREADME
+receipt; no TVsettings/CSS/JS or networkchanges. Owner manual compactlayout captured
+separately3150cbd:909w12/h1, preserve that geometry (not oldforcedw24/h2). Compact
+nativeBarGauge gap limitation still unresolved; no CSS exception approved yet.
