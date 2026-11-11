@@ -3149,7 +3149,7 @@
         }
       },
       "gridPos": {
-        "h": 2,
+        "h": 1,
         "w": 2,
         "x": 6,
         "y": 7
@@ -3488,6 +3488,103 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "Alertmanager: http_2xx probe of http://kube-prometheus-stack-alertmanager.cattle-monitoring-system.svc.cluster.local:9093/-/ready every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "Alertmanager",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "#26783D",
+                  "text": "Healthy"
+                },
+                "1": {
+                  "color": "#A85D08",
+                  "text": "Pending"
+                },
+                "2": {
+                  "color": "#B42332",
+                  "text": "Firing"
+                },
+                "-2": {
+                  "color": "#555555",
+                  "text": "No telemetry"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "noValue": "No telemetry",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#26783D",
+                "value": 0
+              },
+              {
+                "color": "#A85D08",
+                "value": 1
+              },
+              {
+                "color": "#B42332",
+                "value": 2
+              }
+            ]
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": {
+        "h": 1,
+        "w": 2,
+        "x": 6,
+        "y": 8
+      },
+      "id": 323,
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "text": {
+          "titleSize": 14
+        },
+        "textMode": "name",
+        "wideLayout": false
+      },
+      "pluginVersion": "13.2.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceAlertmanagerUnavailable\",service_id=\"alertmanager\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceAlertmanagerUnavailable\",service_id=\"alertmanager\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"alertmanager\"})) and on() ((max(up{job=\"service-probes\",service_id=\"alertmanager\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"alertmanager\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"alertmanager\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "format": "time_series",
+          "instant": true,
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
       "description": "Image Proxy: tcp_connect probe of img-proxy.img-proxy.svc.cluster.local:80 every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
       "fieldConfig": {
         "defaults": {
@@ -3779,10 +3876,10 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Alertmanager: http_2xx probe of http://kube-prometheus-stack-alertmanager.cattle-monitoring-system.svc.cluster.local:9093/-/ready every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
+      "description": "Status: http_2xx probe of http://uptime-kuma.uptime-kuma.svc.cluster.local:80/api/status-page/socrat every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
       "fieldConfig": {
         "defaults": {
-          "displayName": "Alertmanager",
+          "displayName": "Status",
           "mappings": [
             {
               "options": {
@@ -3833,7 +3930,7 @@
         "x": 6,
         "y": 9
       },
-      "id": 323,
+      "id": 312,
       "options": {
         "colorMode": "background_solid",
         "graphMode": "none",
@@ -3861,7 +3958,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceAlertmanagerUnavailable\",service_id=\"alertmanager\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceAlertmanagerUnavailable\",service_id=\"alertmanager\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"alertmanager\"})) and on() ((max(up{job=\"service-probes\",service_id=\"alertmanager\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"alertmanager\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"alertmanager\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceStatusUnavailable\",service_id=\"status\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceStatusUnavailable\",service_id=\"status\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"status\"})) and on() ((max(up{job=\"service-probes\",service_id=\"status\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"status\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"status\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
           "format": "time_series",
           "instant": true,
           "range": false,
@@ -4070,34 +4167,49 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Status: http_2xx probe of http://uptime-kuma.uptime-kuma.svc.cluster.local:80/api/status-page/socrat every 30 seconds, with an 8-second timeout. Firing after 2 minutes of failed probes. Green means successful check, orange means a failed check awaiting the firing duration, red means Firing, and gray means no fresh probe or rule evaluation. Click to open this service alert. Checks run inside the cluster; TCP confirms a listening port only, and these checks do not verify public DNS, external ingress or an authenticated VPN tunnel.",
       "fieldConfig": {
         "defaults": {
-          "displayName": "Status",
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "color": "#26783D",
-                  "text": "Healthy"
-                },
-                "1": {
-                  "color": "#A85D08",
-                  "text": "Pending"
-                },
-                "2": {
-                  "color": "#B42332",
-                  "text": "Firing"
-                },
-                "-2": {
-                  "color": "#555555",
-                  "text": "No telemetry"
-                }
-              },
-              "type": "value"
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisGridShow": true,
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "bars",
+            "fillOpacity": 85,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 0,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "showValues": false,
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
             }
-          ],
-          "noValue": "No telemetry",
+          },
+          "decimals": 0,
+          "min": 0,
+          "noValue": "Collecting history",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -4107,43 +4219,90 @@
               },
               {
                 "color": "#A85D08",
-                "value": 1
+                "value": 75
               },
               {
                 "color": "#B42332",
-                "value": 2
+                "value": 90
               }
             ]
           },
           "unit": "short"
-        }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "success"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#26783D",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#B42332",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "other"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#8e8e8e",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
-        "h": 2,
-        "w": 2,
+        "h": 5,
+        "w": 6,
         "x": 6,
         "y": 10
       },
-      "id": 312,
+      "id": 920,
+      "interval": "30s",
       "options": {
-        "colorMode": "background_solid",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "horizontal",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
+        "graphTooltip": 1,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
         },
-        "showPercentChange": false,
-        "text": {
-          "titleSize": 14
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "desc"
         },
-        "textMode": "name",
-        "wideLayout": false
+        "xAxis": {
+          "axisBorderShow": false,
+          "axisGridShow": true,
+          "axisPlacement": "auto"
+        }
       },
       "pluginVersion": "13.2.4",
       "targets": [
@@ -4152,15 +4311,16 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceStatusUnavailable\",service_id=\"status\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceStatusUnavailable\",service_id=\"status\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"status\"})) and on() ((max(up{job=\"service-probes\",service_id=\"status\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"status\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"status\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "expr": "max by(status) (socrat_n8n_starts_window{window=\"300\",status=~\"success|error|other\"}) and on() (max(socrat_n8n_collection_success) == 1) and on() (time() - max(socrat_n8n_collection_timestamp_seconds) < 90)",
           "format": "time_series",
-          "instant": true,
-          "range": false,
+          "instant": false,
+          "legendFormat": "{{status}}",
+          "range": true,
           "refId": "A"
         }
       ],
       "title": "",
-      "type": "stat"
+      "type": "timeseries"
     },
     {
       "datasource": {
@@ -4620,166 +4780,6 @@
       ],
       "title": "",
       "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisGridShow": true,
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "bars",
-            "fillOpacity": 85,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 0,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "showValues": false,
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "normal"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "decimals": 0,
-          "min": 0,
-          "noValue": "Collecting history",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#26783D",
-                "value": 0
-              },
-              {
-                "color": "#A85D08",
-                "value": 75
-              },
-              {
-                "color": "#B42332",
-                "value": 90
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "success"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#26783D",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "error"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#B42332",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "other"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#8e8e8e",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 6,
-        "x": 6,
-        "y": 12
-      },
-      "id": 920,
-      "interval": "30s",
-      "options": {
-        "graphTooltip": 1,
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "single",
-          "sort": "desc"
-        },
-        "xAxis": {
-          "axisBorderShow": false,
-          "axisGridShow": true,
-          "axisPlacement": "auto"
-        }
-      },
-      "pluginVersion": "13.2.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "max by(status) (socrat_n8n_starts_window{window=\"300\",status=~\"success|error|other\"}) and on() (max(socrat_n8n_collection_success) == 1) and on() (time() - max(socrat_n8n_collection_timestamp_seconds) < 90)",
-          "format": "time_series",
-          "instant": false,
-          "legendFormat": "{{status}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "",
-      "type": "timeseries"
     },
     {
       "datasource": {
@@ -5646,8 +5646,8 @@
       "gridPos": {
         "x": 0,
         "y": 19,
-        "w": 24,
-        "h": 2
+        "w": 12,
+        "h": 1
       },
       "description": "Current Argo Applications, not Pods/history. One equal full block per Application, alphabetically ordered by name; color encodes latest status. Numeric codes1..6 are categorical, not utilization or readiness percentage; max1 intentionally saturates every present block to the same size. Ready=Healthy+Synced, Progressing, Suspended, Git drift=OutOfSync, Unhealthy=Degraded/Missing, Unknown. Latest timestamp wins, priority Unhealthy > Unknown > Progressing > Suspended > drift > Ready. root included so every Argo Application has a block. Hover shows Application name through a native single data link; click opens that Application in Argo CD. Freshness90s and up/inventory completeness guards: unavailable/down/partially stale telemetry produces no data, never green fabricated blocks. Raw sampling15s; dashboard refresh5s. Native Bar gauge solid value-mapped colors, not LCD subdivisions: each whole block corresponds to one Application.",
       "interval": "15s",
@@ -5659,11 +5659,11 @@
             "uid": "prometheus"
           },
           "expr": "((((0 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=~\"Degraded|Missing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\"})))))) or (1 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",health_status!~\"Healthy|Progressing|Suspended|Degraded|Missing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\"})))))) or (1 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",sync_status!~\"Synced|OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",sync_status!~\"Synced|OutOfSync\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",sync_status!~\"Synced|OutOfSync\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\"})))))) or (2 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status=\"Progressing\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=\"Progressing\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=\"Progressing\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\"})))))) or (5 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status=\"Suspended\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=\"Suspended\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=\"Suspended\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\"})))))) or (3 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",sync_status=\"OutOfSync\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",sync_status=\"OutOfSync\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",sync_status=\"OutOfSync\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\"})))))) or (4 * max by(name) ((argocd_app_info{job=\"socrat-argocd\",health_status=\"Healthy\",sync_status=\"Synced\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=\"Healthy\",sync_status=\"Synced\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\",health_status=\"Healthy\",sync_status=\"Synced\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\"})))))) or (1 * max by(name) ((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90) and (timestamp(argocd_app_info{job=\"socrat-argocd\"}) == on(name) group_left max by(name) (timestamp(argocd_app_info{job=\"socrat-argocd\"}))))))) + 1) and on() (max(up{job=\"socrat-argocd\"} == 1 and (time() - timestamp(up{job=\"socrat-argocd\"}) < 90)) == 1)) and on() (count(max by(name) ((argocd_app_info{job=\"socrat-argocd\"} and (time() - timestamp(argocd_app_info{job=\"socrat-argocd\"}) < 90)))) == count(max by(name) (argocd_app_info{job=\"socrat-argocd\"})))",
-          "legendFormat": "{{name}}",
-          "refId": "A",
+          "format": "time_series",
           "instant": true,
+          "legendFormat": "{{name}}",
           "range": false,
-          "format": "time_series"
+          "refId": "A"
         }
       ],
       "transformations": [
@@ -5676,8 +5676,8 @@
           "options": {
             "sort": [
               {
-                "field": "Metric",
-                "desc": false
+                "desc": false,
+                "field": "Metric"
               }
             ]
           }
@@ -5711,72 +5711,72 @@
           },
           "links": [
             {
+              "targetBlank": true,
               "title": "${__field.name}",
-              "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/${__field.name}",
-              "targetBlank": true
+              "url": "https://argocd.socrat.alchemmist.xyz/applications/argocd/${__field.name}"
             }
           ],
           "mappings": [
             {
-              "type": "value",
               "options": {
-                "5": {
-                  "text": "Ready",
-                  "color": "#26783D"
-                },
-                "3": {
-                  "text": "Progressing",
-                  "color": "#5794F2"
-                },
-                "4": {
-                  "text": "Git drift",
-                  "color": "#FFB357"
-                },
                 "1": {
-                  "text": "Unhealthy",
-                  "color": "#F2495C"
+                  "color": "#F2495C",
+                  "text": "Unhealthy"
                 },
                 "2": {
-                  "text": "Unknown",
-                  "color": "#808080"
+                  "color": "#808080",
+                  "text": "Unknown"
+                },
+                "3": {
+                  "color": "#5794F2",
+                  "text": "Progressing"
+                },
+                "4": {
+                  "color": "#FFB357",
+                  "text": "Git drift"
+                },
+                "5": {
+                  "color": "#26783D",
+                  "text": "Ready"
                 },
                 "6": {
-                  "text": "Suspended",
-                  "color": "#FFB357"
+                  "color": "#FFB357",
+                  "text": "Suspended"
                 }
-              }
+              },
+              "type": "value"
             }
           ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "value": null,
-                "color": "#808080"
+                "color": "#808080",
+                "value": 0
               },
               {
-                "value": 1,
-                "color": "#F2495C"
+                "color": "#F2495C",
+                "value": 1
               },
               {
-                "value": 2,
-                "color": "#808080"
+                "color": "#808080",
+                "value": 2
               },
               {
-                "value": 3,
-                "color": "#5794F2"
+                "color": "#5794F2",
+                "value": 3
               },
               {
-                "value": 4,
-                "color": "#FFB357"
+                "color": "#FFB357",
+                "value": 4
               },
               {
-                "value": 5,
-                "color": "#26783D"
+                "color": "#26783D",
+                "value": 5
               },
               {
-                "value": 6,
-                "color": "#FFB357"
+                "color": "#FFB357",
+                "value": 6
               }
             ]
           }
@@ -5807,7 +5807,8 @@
           "placement": "bottom",
           "calcs": []
         }
-      }
+      },
+      "pluginVersion": "13.2.4"
     }
   ],
   "preload": false,

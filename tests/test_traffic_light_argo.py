@@ -31,7 +31,7 @@ class TrafficLightArgoTest(unittest.TestCase):
     def test_current_strip_is_per_application_native_bar_gauge_without_chrome(self):
         p = self.panels[909]
         self.assertEqual(p['type'], 'bargauge')
-        self.assertEqual(p['gridPos'], {'x': 0, 'y': 19, 'w': 24, 'h': 2})
+        self.assertEqual(p['gridPos'], {'x': 0, 'y': 19, 'w': 12, 'h': 1})
         self.assertEqual(p['title'], '')
         self.assertTrue(p['transparent'])
         self.assertEqual(p['fieldConfig']['defaults']['min'], 0)
@@ -67,16 +67,13 @@ class TrafficLightArgoTest(unittest.TestCase):
         mappings = p['fieldConfig']['defaults']['mappings'][0]['options']
         self.assertEqual(mappings, {str(code+1): {'text': name, 'color': color} for name, code, color in lab.STATES})
 
-    def test_actual_tv_viewport_leaves_visible_application_width(self):
-        # Measured on physical TV: DPR2, innerWidth1024, panel padding18px.
-        # Native Bar gauge has fixed10px gaps; >0 width was not sufficient:
-        # former w12 panel had49 DOM bars only0.10CSSpx wide (nearly invisible).
-        p = self.panels[909]
-        for viewport in [1024, 1440, 1920]:
-            with self.subTest(viewport=viewport):
-                panel_width = (viewport - 10 + 8) / 24 * p['gridPos']['w'] - 8
-                bar_width = (panel_width - 18 - 10 * (49 - 1)) / 49
-                self.assertGreaterEqual(bar_width, 8, '49 bars must have visible width, not just fit DOM bounds')
+    def test_generator_preserves_manual_argo_geometry_and_thresholds(self):
+        original = json.loads(lab.SOURCE.read_text())
+        owner = next(p for p in original['panels'] if p['id'] == 909)
+        panel = self.panels[909]
+        self.assertEqual(panel['gridPos'], owner['gridPos'])
+        self.assertEqual(panel.get('pluginVersion'), owner.get('pluginVersion'))
+        self.assertEqual(panel['fieldConfig']['defaults']['thresholds'], owner['fieldConfig']['defaults']['thresholds'])
 
     @unittest.skipUnless(shutil.which('helm'), 'helm needed for apply-size regression')
     def test_rendered_apply_annotation_stays_below_kubernetes_limit(self):
@@ -95,7 +92,7 @@ class TrafficLightArgoTest(unittest.TestCase):
         for p in self.dashboard['panels']:
             g = p['gridPos']
             self.assertLessEqual(g['x'] + g['w'], 24)
-            self.assertLessEqual(g['y'] + g['h'], 21)
+            self.assertLessEqual(g['y'] + g['h'], 20)
             for x in range(g['x'], g['x'] + g['w']):
                 for y in range(g['y'], g['y'] + g['h']):
                     self.assertNotIn((x, y), occupied)

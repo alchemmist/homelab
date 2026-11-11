@@ -68,7 +68,9 @@ def application_query():
 def build():
     d = copy.deepcopy(json.loads(SOURCE.read_text()))
     panel = next(p for p in d['panels'] if p['id'] == 909)
-    grid = dict(panel['gridPos'], w=24, h=2)
+    grid = copy.deepcopy(panel['gridPos'])  # Owner geometry is authoritative.
+    plugin_version = panel.get('pluginVersion')
+    thresholds = copy.deepcopy(panel['fieldConfig']['defaults'].get('thresholds'))
     panel.clear()
     panel.update({
         'id': 909, 'title': '', 'transparent': True, 'type': 'bargauge',
@@ -103,6 +105,10 @@ def build():
                     'reduceOptions': {'values': False, 'calcs': ['lastNotNull'], 'fields': ''},
                     'legend': {'showLegend': False, 'displayMode': 'list', 'placement': 'bottom', 'calcs': []}},
     })
+    if plugin_version is not None:
+        panel['pluginVersion'] = plugin_version
+    if thresholds is not None:
+        panel['fieldConfig']['defaults']['thresholds'] = thresholds
     return d
 
 

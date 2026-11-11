@@ -64,15 +64,15 @@ class TrafficLightLayoutTest(unittest.TestCase):
         for panel in self.dashboard['panels']:
             grid = panel['gridPos']
             self.assertLessEqual(grid['x'] + grid['w'], 24)
-            self.assertLessEqual(grid['y'] + grid['h'], 21)
+            self.assertLessEqual(grid['y'] + grid['h'], 20)
             for assert_key in cells(grid):
                 self.assertNotIn(assert_key, occupied, f'panel {panel["id"]} overlaps {occupied.get(assert_key)}')
                 occupied[assert_key] = panel['id']
-        holes = [(x, y) for y in range(21) for x in range(24)
+        holes = [(x, y) for y in range(20) for x in range(24)
                  if (x, y) not in occupied]
         approved = json.loads((ROOT / 'tests/fixtures/traffic-light-owner-layout.json').read_text())
         self.assertEqual({str(p['id']): p['gridPos'] for p in self.dashboard['panels']}, approved)
-        self.assertEqual(len(holes), 90)  # intentional whitespace in owner layout
+        self.assertEqual(len(holes), 94)  # intentional whitespace in owner layout
 
     def test_cpu_temperature_bar_removed(self):
         ids = {panel['id'] for panel in self.dashboard['panels']}
@@ -95,7 +95,7 @@ class TrafficLightLayoutTest(unittest.TestCase):
         self.assertEqual(chart['gridPos'], {'x': 16, 'y': 10, 'w': 7, 'h': 4})
         self.assertEqual(chart['type'], 'stat')
         history = panel_by_id(self.dashboard, 909)
-        self.assertEqual(history['gridPos'], {'x': 0, 'y': 19, 'w': 24, 'h': 2})
+        self.assertEqual(history['gridPos'], {'x': 0, 'y': 19, 'w': 12, 'h': 1})
         self.assertEqual(history['type'], 'bargauge')
 
     def test_unmodified_resource_columns(self):
@@ -120,7 +120,7 @@ class TrafficLightLayoutTest(unittest.TestCase):
     def test_rps_and_n8n_share_a_shorter_graph_row(self):
         panel = panel_by_id(self.dashboard, 334)
         self.assertEqual(panel['gridPos'], {'x': 0, 'y': 15, 'w': 6, 'h': 4})
-        self.assertEqual(panel_by_id(self.dashboard, 920)['gridPos'], {'x': 6, 'y': 12, 'w': 6, 'h': 3})
+        self.assertEqual(panel_by_id(self.dashboard, 920)['gridPos'], {'x': 6, 'y': 10, 'w': 6, 'h': 5})
 
 
 class TrafficLightQueriesTest(unittest.TestCase):

@@ -207,3 +207,8 @@ comparison changes ONLY909.w12→24; scoped Helm only canonical CM, ArgoSynced/H
 Debugging originalfalse restored via native UI, debug socket absent, ADB/SSHforwards
 removed. Fully foreground and actual updated TV page left loaded, no owner reload
 needed. No zoom/font/VPN/DNS/remote/HDMI changes; unrelated dirty VPN work untouched.
+
+Owner manual recapture:322h1;323y8;312y9/h1;920y10/h5;909w12/h1.
+Preserve owner compact layout; generator must not force full-width/h2 back.
+20rows,94 intentional emptycells before adding Moscow indicator. Native fixed10px
+Bar gauge gaps remain a known compact-TV limitation; no CSS change approved.
