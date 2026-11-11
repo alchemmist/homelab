@@ -60,7 +60,7 @@ def build():
     # This maintainer must not reconstruct a panel and overwrite manual edits.
     d = copy.deepcopy(json.loads(SOURCE.read_text()))
     panel = next(p for p in d['panels'] if p['id'] == 909)
-    panel['options'].update(groupWidth=0.7, barWidth=0.7)
+    panel['options'].update(groupWidth=1, barWidth=1)
     return d
 
 

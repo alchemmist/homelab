@@ -276,3 +276,19 @@ cadence15s with existing5s dashboard refresh; no change to collector or dashboar
 settings. Freshness guard prevents unavailable telemetry becoming a healthy zero.
 All other panels preserved;30 freed cells remain empty,52 intentional holes in
 owner-layout fixture. Overview gauges and Traffic Light resource bars unchanged.
+
+## Fresh owner layout capture + sixth node — 11 November 2026
+
+Captured all live owner changes in a separate commit before refinements. Current
+24×20 owner grid: right node column atx23, resource bars x8/13/18,w5,h10; Argo strip
+x0,y19,w12,h1. Owner removed UP908; retained that removal and all link/template
+changes. Existing IP tiles stay atx23,y5/y6. New socrat-5 tile927 is cloned from926
+with only node selector/name/description/id/position changed; free x23,y7,w1,h1
+slot avoids moving either IP tile or any other owner panel. Query retains Ready,
+pressure and telemetry freshness semantics.98 intentionally empty grid cells.
+
+Argo groupWidth/barWidth both1 (maximum native thickness inside its existing
+module), no height/position change, no TV or kiosk-setting changes. Maintainer
+script now preserves owner panel geometry/content rather than reconstructing909.
+Overview and Traffic Light resource metrics/visual options unchanged. Physical-TV
+acceptance is owner-side; browser fit check does not prove device readability.

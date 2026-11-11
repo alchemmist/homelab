@@ -72,17 +72,17 @@ class TrafficLightLayoutTest(unittest.TestCase):
                  if (x, y) not in occupied]
         approved = json.loads((ROOT / 'tests/fixtures/traffic-light-owner-layout.json').read_text())
         self.assertEqual({str(p['id']): p['gridPos'] for p in self.dashboard['panels']}, approved)
-        self.assertEqual(len(holes), 99)  # intentional whitespace in owner layout
+        self.assertEqual(len(holes), 98)  # intentional whitespace in owner layout
 
     def test_cpu_temperature_bar_removed(self):
         ids = {panel['id'] for panel in self.dashboard['panels']}
         self.assertNotIn(24, ids)
 
     def test_cluster_health_column_layout(self):
-        digits = ['0', '1', '2', '3', '4']
-        for i, panel_id in enumerate((901, 902, 903, 904, 926)):
+        digits = ['0', '1', '2', '3', '4', '5']
+        for i, panel_id in enumerate((901, 902, 903, 904, 926, 927)):
             panel = panel_by_id(self.dashboard, panel_id)
-            self.assertEqual(panel['gridPos'], {'x': 23, 'y': i, 'w': 1, 'h': 1})
+            self.assertEqual(panel['gridPos'], {'x': 23, 'y': 7 if i == 5 else i, 'w': 1, 'h': 1})
             self.assertEqual(panel['fieldConfig']['defaults']['displayName'], digits[i])
             self.assertEqual(len(panel['targets']), 1)
         for i, (panel_id, name) in enumerate(((905, 'Home IP'), (906, 'VPS IP'))):
@@ -129,10 +129,10 @@ class TrafficLightQueriesTest(unittest.TestCase):
 
     def node_panel(self, node):
         digit = node.rsplit('-', 1)[1]
-        return panel_by_id(self.dashboard, 926 if int(digit) == 4 else 901 + int(digit))
+        return panel_by_id(self.dashboard, 927 if int(digit) == 5 else 926 if int(digit) == 4 else 901 + int(digit))
 
     def test_node_tiles_reference_each_node_with_health_priorities(self):
-        for node in ('socrat-0', 'socrat-1', 'socrat-2', 'socrat-3', 'socrat-4'):
+        for node in ('socrat-0', 'socrat-1', 'socrat-2', 'socrat-3', 'socrat-4', 'socrat-5'):
             expr = self.node_panel(node)['targets'][0]['expr']
             self.assertIn(f'node="{node}"', expr)
             self.assertIn('condition="Ready",status="true"}', expr)
@@ -142,7 +142,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
 
     def test_node_tiles_map_every_state_to_color_semantics(self):
         colors = {'0': '#26783D', '1': '#A85D08', '2': '#B42332', '3': '#B42332', '-2': '#555555'}
-        for node in ('socrat-0', 'socrat-1', 'socrat-2', 'socrat-3', 'socrat-4'):
+        for node in ('socrat-0', 'socrat-1', 'socrat-2', 'socrat-3', 'socrat-4', 'socrat-5'):
             mappings = self.node_panel(node)['fieldConfig']['defaults']['mappings'][0]['options']
             for value, color in colors.items():
                 self.assertIn(value, mappings)
@@ -279,7 +279,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
                 self.assertTrue(panel.get('description', '').strip(), f'panel {panel["id"]}')
 
     def test_row_panels_have_unique_target_ids_and_series_names(self):
-        for panel_id in (901, 902, 903, 904, 926, 905, 906):
+        for panel_id in (901, 902, 903, 904, 926, 927, 905, 906):
             panel = panel_by_id(self.dashboard, panel_id)
             ref_ids = [t['refId'] for t in panel['targets']]
             self.assertEqual(len(ref_ids), len(set(ref_ids)), f'panel {panel_id} duplicate refIds')

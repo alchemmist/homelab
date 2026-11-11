@@ -80,3 +80,14 @@ owner-side. Local synthetic mixed-state rendering was separate from this live ch
 
 Owner thickness refinement: groupWidth/barWidth increased0.2→0.4, approximately
  doubling visible thickness. Panel remains x12,y8,w6,h1; no layout/query changes.
+
+## Superseding owner layout capture — 11 November 2026
+
+Owner manually rearranged live Traffic Light; captured separately before changes.
+Current layout24×20: resourcesh10 atx8/13/18, right node columnx23, Argo strip
+x0,y19,w12,h1. UP908 stays removed per owner. New node927 (socrat-5) is cloned from
+node4926, in free x23,y7; IP tiles and all other owner panels stay put.98 empty cells.
+Both width factors now1 for maximum native visible strip thickness, preserving
+module bounds and raw current-state query. `build()` now updates thickness in the
+existing canonical panel without rebuilding or resetting owner-edited geometry.
+This supersedes earlier historical position/thickness/cell-count notes above.
