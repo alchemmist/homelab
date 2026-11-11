@@ -247,3 +247,20 @@ reachability fromblackbox, not authenticatedVPN/service/fullnode health.
 Owner-supplied sudo used through ephemeral0600 passwordfile, removed in finally;
 no credentials committed or printed. Private/tmp/moscow-activation-* receipts;
 no Prometheus/Thanos/reloader/Pod/TV/DNS/VPN changes, unrelateddirtyfiles preserved.
+
+Owner-approved TV-only CSS exception (supersedes prior no-CSS restriction for
+this one panel): publicopt-in socratTv=1 + canonicalUID + native909 vertical
+Gradient/hiddenlabels and verified native DOM only. Existing TV asset now marks
+native row/cells/fills, padding8→3px, gap10→2px. Flex redistributes widths AND link
+wrappers fill cells; changing margin alone leaves native JS-computed subpixel
+widths. No generatedbars, colors/data/query/fieldconfig/links/layout edits. All
+native states remain intact; unsupportedDOM/duplicateNames/noData fail closed.
+Normal signed-in viewing/editing/kiosk and unrelated dashboards unchanged.
+
+Preview acceptance: actualCSSviewport1024×575/DSF1.875 gives49 bars8.140625×12.640625
+CSSpx in existingw12/h1, gap2px; before0.09375×2.640625. All other panel bounds
+identical. Live49 and isolatedmixed-statefixture preserve nativecolors, alphabetical
+names andcontainment.1920TVpreview passes; normal1920 has no compactionmarkers and
+keeps8px padding.76 focusedtests pass; reviewedhandofffixture updatedONLYGrafana
+policyCM/proxyDeployment hashes. ScopedHelm ONLY TVasset plus proxychecksum;
+Nginx/SSO/routes/Grafana/database/otherworkloads unchanged. PhysicalTV pending.

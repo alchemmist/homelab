@@ -80,3 +80,39 @@ def test_no_dedicated_tv_alias_or_internal_vpn_in_helpers():
         assert 'setWireguardAlwaysOn' not in s
         assert '"alchemmist-tv"' in s
         assert ':open_public' in s and '->launchDestination()V' in s
+
+@pytest.mark.skipif(not shutil.which('node'), reason='Node is needed for JS runtime contract')
+@pytest.mark.parametrize('mode', ['public', 'normal', 'auth_kiosk', 'wrong_uid', 'horizontal', 'missing_fill', 'duplicate_name'])
+def test_compact_argo_is_guarded_public_tv_only_and_preserves_native_data(mode):
+    script = r'''
+const fs=require('fs'),vm=require('vm'),mode=process.argv[1],styles={};
+const node=(style={})=>({style,children:[],classes:new Set(),classList:{add(c){this.owner.classes.add(c)}}});
+const wire=n=>{n.classList.owner=n;return n};
+const content=wire(node()),layout=wire(node()),row=wire(node({flexDirection:'row'}));
+const fills=[],cells=[];
+for(let i=0;i<3;i++){
+ const fill=wire(node({background:'rgb(38, 120, 61)',width:'0.1px',height:'2px'}));fills.push(fill);
+ const cell=wire(node());cell.querySelectorAll=s=>s==='a[title]'?[{title:mode==='duplicate_name'?'same':'app-'+i}]:mode==='missing_fill'?[]:[fill];cells.push(cell);
+}
+row.children=cells;layout.firstElementChild=row;
+const root={querySelector:s=>s.includes('panel content')?content:layout};
+const grid={style:{width:'503px'},parentElement:{style:{}},clientWidth:503,classList:{add(){}}};
+const item={style:{transform:'translate(0px, 0px)',width:'503px',height:'30px'},parentElement:grid,getAttribute(){return 'grid-item-909'}};
+const page={querySelectorAll:()=>[item]};
+const model={uid:mode==='wrong_uid'?'other':'socrat-traffic-light',panels:[{id:909,type:'bargauge',gridPos:{x:0,y:0,w:12,h:1},options:{orientation:mode==='horizontal'?'horizontal':'vertical',displayMode:'gradient',namePlacement:'hidden',valueMode:'hidden'}}]};
+const document={getElementById:id=>styles[id],createElement:()=>({textContent:''}),head:{appendChild(s){styles[s.id]=s}},documentElement:{},querySelector:s=>s.includes('panel-909')?root:page,querySelectorAll:s=>s.includes('react-grid-item')?[item]:[]};
+const context={location:{pathname:['normal','auth_kiosk'].includes(mode)?'/d/socrat-traffic-light':'/public-dashboards/'+'a'.repeat(32),search:mode==='normal'?'':mode==='auth_kiosk'?'?kiosk=1&autofitpanels=true':'?socratTv=1'},document,window:{addEventListener(){}},MutationObserver:function(){this.observe=()=>{}},XMLHttpRequest:function(){this.open=()=>{};this.send=()=>{this.status=200;this.responseText=JSON.stringify({dashboard:model});this.onload()}}};
+vm.runInNewContext(fs.readFileSync(process.argv[2],'utf8'),context);
+console.log(JSON.stringify({css:styles['socrat-tv-inset']?.textContent||'',marked:row.classes.has('socrat-tv-argo-row'),fills:fills.map(n=>n.style),saved:model.panels[0].gridPos}));
+'''
+    r = subprocess.run(['node', '-e', script, mode, str(JS)], check=True, capture_output=True, text=True)
+    result = json.loads(r.stdout)
+    assert result['marked'] == (mode == 'public')
+    assert ('gap:2px!important' in result['css']) == (mode == 'public')
+    assert result['fills'] == [{'background': 'rgb(38, 120, 61)', 'width': '0.1px', 'height': '2px'}] * 3
+    assert result['saved'] == {'x': 0, 'y': 0, 'w': 12, 'h': 1}
+    if mode == 'public':
+        assert '.socrat-tv-public-grid [data-viz-panel-id="panel-909"] ' in result['css']
+        assert 'padding:3px!important' in result['css']
+        assert 'flex:1 1 0!important' in result['css']
+        assert 'socrat-tv-argo-cell a[data-testid="data-testid Data link"]' in result['css']

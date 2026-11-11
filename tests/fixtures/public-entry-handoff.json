@@ -5,7 +5,7 @@
   },
   "ConfigMap/identity/public-web-grafana-policy": {
     "owner": "grafana",
-    "sha256": "0dd9ebb76e7e21ce888a773f8e4c1c37ba075997b3d60f8521711ef3d14c60f6"
+    "sha256": "735902354084346ab998136bd33ab3682dfba0c44d56ee9638877fe2ba46b525"
   },
   "ConfigMap/syncthing/public-web-syncthing-policy": {
     "owner": "syncthing",
@@ -21,7 +21,7 @@
   },
   "Deployment/identity/public-web-grafana-proxy": {
     "owner": "grafana",
-    "sha256": "7dd9dd4eb16cc61e1c24d5092cfd44e1b5a3d64aca60c1c53916193ed0aa425f"
+    "sha256": "12467404f178d2f582fa534b775288829a24d9be1053696afb246a13bd28ffaf"
   },
   "Deployment/syncthing/public-web-syncthing-proxy": {
     "owner": "syncthing",

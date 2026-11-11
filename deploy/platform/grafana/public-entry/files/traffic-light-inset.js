@@ -63,10 +63,53 @@
     }
     return css;
   }
+  function compactArgoRules() {
+    // Owner-approved exception: public TV only, never normal desktop/edit/kiosk.
+    // Grafana subtracts fixed10px gaps BEFORE rendering each bar. Changing margins
+    // alone leaves subpixel fills: flex must also redistribute the available width.
+    if (!publicTv || !model || model.uid !== "socrat-traffic-light" || !Array.isArray(model.panels)) return "";
+    var saved = null;
+    for (var i = 0; i < model.panels.length; i++) if (model.panels[i].id === 909) saved = model.panels[i];
+    if (!saved || saved.type !== "bargauge" || !saved.options ||
+        saved.options.orientation !== "vertical" || saved.options.displayMode !== "gradient" ||
+        saved.options.namePlacement !== "hidden" || saved.options.valueMode !== "hidden") return "";
+    var root = document.querySelector('.socrat-tv-public-grid [data-viz-panel-id="panel-909"]');
+    if (!root || typeof root.querySelector !== "function") return "";
+    var content = root.querySelector('[data-testid="data-testid panel content"]');
+    var layout = root.querySelector('[data-testid="data-testid viz-layout"]');
+    var row = layout && layout.firstElementChild;
+    if (!content || !row || row.style.flexDirection !== "row" || !row.children.length) return "";
+    var cells = [], fills = [], names = Object.create(null);
+    for (i = 0; i < row.children.length; i++) {
+      var cell = row.children[i], links = cell.querySelectorAll('a[title]');
+      var divs = cell.querySelectorAll('div'), colored = [];
+      for (var j = 0; j < divs.length; j++) if (divs[j].style.background || divs[j].style.backgroundColor) colored.push(divs[j]);
+      // Fail closed if Grafana changes its DOM: no guessed selectors, fabricated
+      // bars, state colors or positional matching against a fixed inventory.
+      if (links.length !== 1 || !links[0].title || names[links[0].title] ||
+          colored.length !== 1 || colored[0].children.length) return "";
+      names[links[0].title] = true; cells.push(cell); fills.push(colored[0]);
+    }
+    content.classList.add("socrat-tv-argo-content");
+    layout.classList.add("socrat-tv-argo-layout");
+    row.classList.add("socrat-tv-argo-row");
+    for (i = 0; i < cells.length; i++) {
+      cells[i].classList.add("socrat-tv-argo-cell");
+      fills[i].classList.add("socrat-tv-argo-fill");
+    }
+    var scope = '.socrat-tv-public-grid [data-viz-panel-id="panel-909"] ';
+    return scope + '.socrat-tv-argo-content{padding:3px!important;}' +
+      scope + '.socrat-tv-argo-layout{width:100%!important;height:100%!important;}' +
+      scope + '.socrat-tv-argo-row{width:100%!important;height:100%!important;gap:2px!important;justify-content:flex-start!important;}' +
+      scope + '.socrat-tv-argo-cell{flex:1 1 0!important;min-width:0!important;width:0!important;height:100%!important;margin:0!important;}' +
+      scope + '.socrat-tv-argo-cell>div{height:100%!important;}' +
+      scope + '.socrat-tv-argo-cell a[data-testid="data-testid Data link"]{flex:1 1 0!important;min-width:0!important;width:100%!important;}' +
+      scope + '.socrat-tv-argo-fill{width:100%!important;height:100%!important;}';
+  }
   function apply() {
     var style = document.getElementById(id);
     if (!style) { style = document.createElement("style"); style.id = id; (document.head || document.documentElement).appendChild(style); }
-    var css = legacy + ((publicTv || authTv) ? publicRules() : "");
+    var css = legacy + ((publicTv || authTv) ? publicRules() : "") + compactArgoRules();
     if (style.textContent !== css) style.textContent = css;
     var nodes = document.querySelectorAll('[class*="body-wrapper"]');
     for (var i = 0; i < nodes.length; i++) {
