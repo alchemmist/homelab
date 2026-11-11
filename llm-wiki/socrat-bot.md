@@ -628,3 +628,70 @@ Local evidence: `/tmp/socrat-keyboard-production-evidence*.json` (0600),
 `/tmp/socrat-loki-evidence.jsonl`, `/tmp/socrat-loki-keyboard-probe-confirmation.jsonl`.
 No secrets were printed; Grafana-provisioned mTLS leaf credentials stayed inside
 that container in anonymous in-memory file descriptors for read-only Loki queries.
+
+## Captured-panel Chart link + Node label — released (2026-11-11)
+
+User requested an additional **Chart** link for the specific Telegram screenshot,
+not another graph of the same alert, and **Nodes → Node**. Released bot
+`1d6eafada876bb07780e8d73d7f6065199888ccd`, CI43013309887:
+https://github.com/alchemmist/socrat-bot/actions/runs/43013309887 . CI and parent's
+independent Docker PostgreSQL17 suite **306 passed,17 skipped**. Quality Graph push
+run43013309832 also succeeded. All three deployments rolled out, healthz OK,
+Argo Synced/Healthy at `66e20b2`, schema **0019_graph_source**. Protected pre-migration
+dump saved outside Git. Image digest:
+`sha256:5de85582133909ce1655e607becadac92306f8d3997b3d270db4f96d7f1d659f`.
+Independent exact-diff review approved. Original homelab Litellm edit was preserved;
+this documentation commit uses an isolated worktree.
+
+### Contract / applied-image consistency
+
+Visible **Chart** is additive, outside the4-provider selection cap; other Alert,
+Node, Rancher, Logs, SPI links are not displaced. Provider key `nodes` remains
+compatible but visible label is singular **Node**. Chart uses trusted fixed
+Grafana origin and interactive `/d-solo/<dashboard_uid>/_`, with exact panelId,
+from/to milliseconds, resolved var-* bindings, UTC and light theme. No auth token
+query, new arbitrary URL fetch, or anonymous-access widening.
+
+Gateway currently exposes only PNG/checksum/render digest/from/to/mode, not source
+panel metadata. After supervisor decision, bot mirrors the bounded gateway graph
+contract (attributed to SPI d5ab410), selects the same first fully validated graph,
+and reconstructs the request from immutable job payload. Canonical digest must
+match accepted X-Render-Digest; response from/to/mode must also match for attribution.
+Golden firing/resolved digests were independently generated from authoritative SPI
+contract. Missing/drifting provenance safely omits Chart but retains an otherwise
+verified PNG; do not silently infer an arbitrary panel. Update mirror/parity tests
+if gateway contract evolves. Fixed human Grafana origin requires reviewed changes
+when moving Grafana.
+
+Migration0019 adds nullable `GraphSnapshot.chart_url`, stored with accepted PNG in
+the existing fenced graph-result transaction. Initial photo/late text-to-photo
+upgrade gets its own source; desired pending/failed replacement retains the old
+photo's source; successful editMessageMedia swaps image and Chart together.
+SPI/note/mute rendering replaces the owned Chart projection, never duplicates it.
+Caption accounting includes the new link; text-only overflow fallback removes
+Chart. Keyboard behavior and generation/revision/identity/lease fences remain.
+No screenshot provenance is invented for arbitrary caller-supplied inline images.
+Legacy snapshots intentionally remain NULL, with no historical replay/backfill or
+mass Telegram edits: old screenshots without saved verified provenance do not gain
+Chart automatically. New captures and subsequent successful image refreshes do.
+
+### Actual release acceptance
+
+`/tmp/socrat-chart-link-live-smoke.py` used production READ ONLY to select owner
+identity and immutable existing graph-job payload with multiple graph specifications;
+all mailing/card state for the test lived in temporary SQLite. It made two real
+fixed-gateway render requests, firing and resolved, verifying content/digest/window
+headers and primary panel selection, then guarded real Telegram traffic to one
+marked owner test photo and its returned ID. Confirmed native text-link entity
+**Chart** had the exact source URL, Node label (not Nodes), all four preexisting
+provider links retained beyond cap, SPI edit retained Chart/buttons, and resolved
+photo+Chart replacement used the SAME message ID with empty terminal keyboard.
+Observed operations: sendPhoto, editMessageCaption, editMessageMedia. The one test
+photo was deleted; no real incident mutation, production DB writes, or sends to
+other recipients. An earlier harness preflight assumed Logs matched bare node
+labels; corrected synthetic workload labels before any Telegram traffic.
+
+This was a real gateway/Telegram protocol acceptance, not a browser Grafana-login
+or visual screenshot-comparison acceptance. README, OpenAPI explanatory comment,
+wiki renderer, generated quality graph workflow/manifest, migration-head assertions
+and source/transport regressions were updated in bot Git.
