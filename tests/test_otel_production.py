@@ -18,7 +18,10 @@ class ProductionSafetyTests(unittest.TestCase):
         boot = module('otel-production-bootstrap')
         resources = boot.resources({'requiredSecretKeys': []}, '10.43.1.2', {})
         roles = [r for r in resources if r['kind'] == 'Role' and r['metadata']['name'].startswith('otel-host-')]
-        self.assertEqual(len(roles), 4)
+        self.assertEqual(
+            {r['metadata']['name'] for r in roles},
+            {'otel-host-' + node for node in boot.NODES},
+        )
         for role in roles:
             for rule in role['rules']:
                 self.assertNotIn('*', rule['verbs'])

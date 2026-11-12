@@ -130,6 +130,23 @@
           [Install]
           WantedBy=multi-user.target
       notify: Restart validated host agent
+    - name: Preserve single-CPU telemetry tuning on Moscow
+      ansible.builtin.file:
+        path: /etc/systemd/system/homelab-otel-agent.service.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      when: inventory_hostname == 'socrat-4'
+    - name: Install Moscow-only Collector parallelism override
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/../files/otel/socrat4-cpu.conf'
+        dest: /etc/systemd/system/homelab-otel-agent.service.d/20-single-cpu.conf
+        owner: root
+        group: root
+        mode: '0644'
+      when: inventory_hostname == 'socrat-4'
+      notify: Restart validated host agent
     - name: Validate installed host agent configuration before restart
       ansible.builtin.command:
         argv:
