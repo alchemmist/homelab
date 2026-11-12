@@ -12,6 +12,9 @@
       - python3
     state: present
     update_cache: true
+    # A new authority must not auto-start the package's wildcard listener before
+    # its reviewed explicit-address configuration is installed.
+    policy_rc_d: "{{ public_dns_install_policy_rc_d | default(omit) }}"
   when: ansible_os_family == 'Debian'
 
 - name: Install Knot DNS on Arch
@@ -62,6 +65,8 @@
   ansible.builtin.template:
     src: knot.conf.j2
     dest: /etc/knot/knot.conf
+    validate: "{{ public_dns_config_validate | default(omit) }}"
+    backup: "{{ public_dns_config_backup | default(false) }}"
     owner: root
     group: knot
     mode: "0640"

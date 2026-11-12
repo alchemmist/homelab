@@ -87,8 +87,10 @@ def render(serial, home_up, vps_up):
         "@ IN SOA ns1.alchemmist.xyz. hostmaster.alchemmist.xyz. (%d 60 30 604800 60)" % serial,
         "@ IN NS ns1.alchemmist.xyz.",
         "@ IN NS ns2.alchemmist.xyz.",
+        "@ IN NS ns3.alchemmist.xyz.",
         "ns1 IN A %s" % HOME,
         "ns2 IN A %s" % VPS,
+        "ns3 IN A 91.189.82.238",
         "@ IN MX 10 mail.alchemmist.xyz.",
     ]
     for value in TXT:

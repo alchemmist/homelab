@@ -60,7 +60,7 @@ def test_rustfs_names_additive_without_changes_to_existing_records():
         new = zone.render(123, home, vps).splitlines()
         # Independently approved concurrent SPI DNS addition is also historical-fixture scope.
         names = ('rustfs.socrat IN A ', 'spi-evidence.socrat IN A ', 'kuma.socrat IN A ', 'tv IN A ', 'spi.socrat IN A ')
-        assert [line for line in new if not line.startswith(names)] == prior['render'](123, home, vps).splitlines()
+        assert [line for line in new if not line.startswith(names) and line not in ("@ IN NS ns3.alchemmist.xyz.", "ns3 IN A 91.189.82.238")] == prior['render'](123, home, vps).splitlines()
         for name in ('rustfs.socrat', 'spi-evidence.socrat'):
             for address in zone.healthy_addresses(home, vps):
                 assert new.count(f'{name} IN A {address}') == 1

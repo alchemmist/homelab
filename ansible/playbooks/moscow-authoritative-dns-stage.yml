@@ -1,0 +1,97 @@
+---
+# Fresh-host staging only: no registrar mutation or web-IP changes.
+# The renderer now includes the independently accepted ns3 NS/A addition.
+# Default is read-only. Live apply additionally requires the SHA256 of the
+# reviewed source renderer and normal interactive sudo authentication.
+- name: Stage an independent public authoritative DNS on Moscow
+  hosts: socrat-4
+  gather_facts: true
+  become: false
+  any_errors_fatal: true
+  vars:
+    moscow_dns_apply: false
+    moscow_dns_approved_renderer_sha256: ''
+    public_dns_install_policy_rc_d: 101
+    public_dns_config_validate: /usr/sbin/knotc -c %s conf-check
+    public_dns_config_backup: true
+    public_dns_listen:
+      socrat-4: ['91.189.82.238@53']
+    public_dns_local_probe:
+      socrat-4: 91.189.82.238
+  tasks:
+    - name: Require the intended Debian host and public address
+      ansible.builtin.assert:
+        that:
+          - inventory_hostname == 'socrat-4'
+          - ansible_facts.os_family == 'Debian'
+          - "'91.189.82.238' in ansible_facts.all_ipv4_addresses"
+          - public_dns_listen['socrat-4'] == ['91.189.82.238@53']
+
+    - name: Inspect public and existing internal DNS listeners without privileges
+      ansible.builtin.command: ss -H -lntu
+      register: moscow_dns_listeners
+      changed_when: false
+      check_mode: false
+
+    - name: Require the internal relay and an unused public DNS listener
+      ansible.builtin.assert:
+        that:
+          - "'10.250.0.40:53 ' in moscow_dns_listeners.stdout"
+          - "'91.189.82.238:53 ' not in moscow_dns_listeners.stdout"
+          - "'0.0.0.0:53 ' not in moscow_dns_listeners.stdout"
+          - "'*:53 ' not in moscow_dns_listeners.stdout"
+          - "'[::]:53 ' not in moscow_dns_listeners.stdout"
+        fail_msg: Listener drift detected; inspect before installation, do not stop another service.
+
+    - name: Inspect package state without changing the host
+      ansible.builtin.package_facts:
+        manager: apt
+
+    - name: Require a fresh staged installation rather than overwriting an authority
+      ansible.builtin.assert:
+        that:
+          - "'knot' not in ansible_facts.packages"
+        fail_msg: Knot is already installed; this one-time staging play is not a reconciliation tool.
+
+    - name: Compute the local renderer digest
+      ansible.builtin.stat:
+        path: '{{ playbook_dir }}/../../scripts/public_dns_zone.py'
+        checksum_algorithm: sha256
+      delegate_to: localhost
+      register: moscow_dns_renderer
+
+    - name: Report read-only preflight and required approval
+      ansible.builtin.debug:
+        msg:
+          phase: staging-only
+          renderer_sha256: '{{ moscow_dns_renderer.stat.checksum }}'
+          public_listener: '91.189.82.238:53 TCP+UDP'
+          preserved_relay: '10.250.0.40:53'
+          changes_registrar: false
+          publishes_ns3: true
+          adds_web_address: false
+          apply: '{{ moscow_dns_apply | bool }}'
+
+    - name: Apply only the reviewed new authority
+      when: moscow_dns_apply | bool
+      become: true
+      block:
+        - name: Require exact renderer approval and ordinary sudo
+          ansible.builtin.assert:
+            that:
+              - moscow_dns_approved_renderer_sha256 | length == 64
+              - moscow_dns_approved_renderer_sha256 == moscow_dns_renderer.stat.checksum
+        - name: Install explicit-address Knot and a local on-disk zone
+          ansible.builtin.include_role:
+            name: public_authoritative_dns
+        - name: Flush DNS-only handlers before acceptance
+          ansible.builtin.meta: flush_handlers
+        - name: Verify the staged configuration
+          ansible.builtin.command: /usr/sbin/knotc conf-check
+          changed_when: false
+        - name: Verify the local zone loaded
+          ansible.builtin.command: /usr/sbin/knotc zone-status alchemmist.xyz
+          changed_when: false
+        - name: Verify both the old relay and new authority are active
+          ansible.builtin.command: systemctl is-active knot homelab-vpn-dns-transit
+          changed_when: false
