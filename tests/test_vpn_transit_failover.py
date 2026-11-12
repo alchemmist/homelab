@@ -113,3 +113,26 @@ def test_late_native_acceptance_requires_prerequisites(ctl,monkeypatch):
     monkeypatch.setattr(c,'prerequisites',refuse)
     with pytest.raises(RuntimeError,match='prerequisite drift'):c.tick()
     assert c.state['mode']=='transition-to-native' and c.marker.exists()
+
+
+def test_native_primary_requires_healthy_fenced_native_and_is_sticky(ctl,monkeypatch):
+ m,c=ctl;monkeypatch.setattr(c,'prerequisites',lambda:None)
+ monkeypatch.setattr(m,'active',lambda unit:unit==m.NATIVE)
+ monkeypatch.setattr(c,'healthy',lambda:True)
+ with pytest.raises(AssertionError):c.promote()
+ m.atomic(c.marker,{'native':True});c.save(mode='native');c.promote()
+ assert c.state['mode']=='native-primary' and c.marker.exists()
+ c.tick();assert c.state['mode']=='native-primary'
+ with pytest.raises(AssertionError):c.failback()
+ with pytest.raises(AssertionError):c.activate('accidental fallback replay')
+ c.demote();assert c.state['mode']=='native' and c.marker.exists()
+
+
+def test_unhealthy_primary_never_restarts_agent_or_releases_fence(ctl,monkeypatch):
+ m,c=ctl;monkeypatch.setattr(c,'prerequisites',lambda:None)
+ m.atomic(c.marker,{'native':True});c.save(mode='native-primary')
+ monkeypatch.setattr(m,'active',lambda unit:unit==m.NATIVE)
+ monkeypatch.setattr(c,'healthy',lambda:False)
+ monkeypatch.setattr(m,'run',lambda *a,**k:pytest.fail('must not change lifecycle'))
+ c.tick();assert not c.state['healthy'] and c.marker.exists()
+ with pytest.raises(AssertionError):c.demote()

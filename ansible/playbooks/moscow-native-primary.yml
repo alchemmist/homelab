@@ -1,0 +1,115 @@
+---
+# Explicit phases. Default prepares/tests the controller but NEVER hands off traffic.
+# promote must follow actual native-path acceptance; it does not remove a Node.
+- name: Guarded Moscow native-primary preparation and handoff
+  hosts: socrat-4
+  become: true
+  gather_facts: false
+  any_errors_fatal: true
+  vars:
+    ansible_host: socrat-4
+    ansible_port: 2222
+    ansible_ssh_common_args: '-o ProxyJump=none -o StrictHostKeyChecking=yes'
+    phase: '{{ moscow_native_phase | default("preflight") }}'
+    recovery_root: /var/lib/homelab-recovery/20261112-moscow-native-primary
+    tool: /usr/local/libexec/vpn-transit-failover.py
+    expected_old_tool: 3f130631c493cf60feed9cc5dd1ee970b233c278fb9cf685a00f32e915f03d19
+    expected_new_tool: '{{ lookup("file", playbook_dir + "/../../scripts/vpn-transit-failover.py", rstrip=false) | hash("sha256") }}'
+  tasks:
+    - ansible.builtin.assert:
+        that:
+          - inventory_hostname == 'socrat-4'
+          - phase in ['preflight','activate','promote']
+          - phase != 'promote' or (moscow_native_data_path_accepted | default(false) | bool)
+    - name: Refuse handoff if any unexpected workload appeared on Moscow
+      ansible.builtin.command:
+        argv: [kubectl, get, pods, -A, '--field-selector=spec.nodeName=socrat-4', -o, json]
+      delegate_to: socrat-0
+      vars:
+        ansible_host: socrat-0
+        ansible_port: 2222
+      changed_when: false
+      register: workloads
+      no_log: true
+    - ansible.builtin.assert:
+        that:
+          - ((workloads.stdout | from_json)['items'] | map(attribute='metadata.namespace') | sort | list) == ['cattle-monitoring-system','vpn-transit']
+          - ((workloads.stdout | from_json)['items'] | map(attribute='metadata.ownerReferences') | map('first') | map(attribute='kind') | sort | list) == ['DaemonSet','ReplicaSet']
+        fail_msg: 'Unexpected workload set on Moscow; stop and inspect before handoff.'
+    - ansible.builtin.stat:
+        path: '{{ item.path }}'
+        checksum_algorithm: sha256
+      loop:
+        - {path: /usr/local/libexec/xray-transit, sha: a27e3f95ab6ce270956d0cecd32eda4686a811afc71c64a6a734a3dede14883e}
+        - {path: /etc/homelab-vpn-transit/user.json, sha: c1e7d7cf08f43dc3bfd71ca87b08e339029c95d02115e533034a9ed2a8048e11}
+      register: immutable
+    - ansible.builtin.assert:
+        that: item.stat.checksum == item.item.sha
+      loop: '{{ immutable.results }}'
+      loop_control:
+        label: '{{ item.item.path }}'
+    - ansible.builtin.stat:
+        path: '{{ tool }}'
+        checksum_algorithm: sha256
+      register: controller_file
+    - ansible.builtin.assert:
+        that: controller_file.stat.checksum in [expected_old_tool, expected_new_tool]
+    - ansible.builtin.command: python3 /usr/local/libexec/vpn-transit-failover.py status
+      changed_when: false
+      register: before
+    - ansible.builtin.assert:
+        that:
+          - (before.stdout | from_json).data_path_healthy
+          - (before.stdout | from_json).mode == ('native' if phase == 'promote' else 'kubernetes')
+          - (before.stdout | from_json).agent_active == (phase != 'promote')
+          - (before.stdout | from_json).native_active == (phase == 'promote')
+          - (before.stdout | from_json).fallback_marker == (phase == 'promote')
+    - ansible.builtin.command: /usr/local/libexec/xray-transit run -test -config /etc/homelab-vpn-transit/user.json
+      changed_when: false
+    - ansible.builtin.file:
+        path: '{{ recovery_root }}'
+        state: directory
+        owner: root
+        group: root
+        mode: '0700'
+    - name: Keep the initial controller and state without overwriting receipts
+      ansible.builtin.copy:
+        src: '{{ item.src }}'
+        dest: '{{ recovery_root }}/{{ item.dest }}'
+        remote_src: true
+        force: false
+        mode: '0600'
+      loop:
+        - {src: /usr/local/libexec/vpn-transit-failover.py, dest: controller-before.py}
+        - {src: /var/lib/homelab-vpn-transit/relay-failover/state.json, dest: state-before.json}
+    - ansible.builtin.copy:
+        src: '{{ playbook_dir }}/../../scripts/vpn-transit-failover.py'
+        dest: '{{ tool }}'
+        owner: root
+        group: root
+        mode: '0700'
+        validate: 'python3 -c "import sys; compile(open(sys.argv[1]).read(), sys.argv[1], ''exec'')" %s'
+    - name: Explicit fenced handoff; never replay this after an uncertain failure
+      ansible.builtin.command: python3 /usr/local/libexec/vpn-transit-failover.py activate
+      when: phase == 'activate'
+      changed_when: true
+      async: 180
+      poll: 3
+    - name: Accept already-tested native as the primary; keep the worker fence
+      ansible.builtin.command: python3 /usr/local/libexec/vpn-transit-failover.py promote
+      when: phase == 'promote'
+      changed_when: true
+    - ansible.builtin.command: python3 /usr/local/libexec/vpn-transit-failover.py status
+      changed_when: false
+      register: after
+    - ansible.builtin.assert:
+        that:
+          - (after.stdout | from_json).data_path_healthy
+          - (after.stdout | from_json).mode == {'preflight':'kubernetes','activate':'native','promote':'native-primary'}[phase]
+          - (after.stdout | from_json).agent_active == (phase == 'preflight')
+          - (after.stdout | from_json).native_active == (phase != 'preflight')
+          - (after.stdout | from_json).fallback_marker == (phase != 'preflight')
+    - ansible.builtin.copy:
+        content: '{{ after.stdout }}'
+        dest: '{{ recovery_root }}/{{ phase }}-accepted.json'
+        mode: '0600'

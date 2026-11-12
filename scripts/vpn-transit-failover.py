@@ -89,6 +89,7 @@ class Controller:
   r=run(['ip','route','get','10.250.0.2']).stdout
   assert 'dev wg-socrat' in r and 'src 10.250.0.40' in r
  def activate(self,reason):
+  assert self.state['mode']!='native-primary', 'Native primary cannot be reactivated as fallback'
   self.prerequisites()
   processes=[]
   try:processes=pod_processes()
@@ -113,6 +114,20 @@ class Controller:
   assert self.healthy()
   self.save(mode='native',failures=0,healthy=True)
   self.receipt('native-accepted',reason=reason,owned_containers_fenced=len(unique))
+ def promote(self):
+  """Explicitly accept a healthy fenced native relay as the permanent primary."""
+  self.prerequisites()
+  assert self.marker.exists() and self.state['mode']=='native'
+  assert not active(AGENT) and active(NATIVE) and self.healthy()
+  self.save(mode='native-primary',failures=0,healthy=True)
+  self.receipt('native-primary-accepted')
+ def demote(self):
+  """Explicit rollback preparation; never starts a worker or releases its fence."""
+  self.prerequisites()
+  assert self.marker.exists() and self.state['mode']=='native-primary'
+  assert not active(AGENT) and active(NATIVE) and self.healthy()
+  self.save(mode='native',failures=0,healthy=True)
+  self.receipt('native-primary-demoted')
  def failback(self):
   self.prerequisites();assert self.marker.exists() and self.state['mode']=='native'
   self.save(mode='transition-to-kubernetes',healthy=False)
@@ -159,7 +174,7 @@ class Controller:
 
 def main():
  os.umask(0o077);ROOT.mkdir(mode=0o700,parents=True,exist_ok=True)
- p=argparse.ArgumentParser();p.add_argument('action',choices=['tick','status','activate','failback']);a=p.parse_args()
+ p=argparse.ArgumentParser();p.add_argument('action',choices=['tick','status','activate','failback','promote','demote']);a=p.parse_args()
  with (ROOT/'lock').open('a') as lock:
   try:fcntl.flock(lock,fcntl.LOCK_EX | (fcntl.LOCK_NB if a.action=='tick' else 0))
   except BlockingIOError:return
