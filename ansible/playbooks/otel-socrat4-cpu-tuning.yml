@@ -1,0 +1,95 @@
+---
+# Apply only the reviewed CPU override, not the production-agent installer.
+- name: Tune telemetry parallelism on the one-vCPU Moscow gateway
+  hosts: socrat-4
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  vars:
+    ansible_host: socrat-4
+    ansible_port: 2222
+    ansible_ssh_common_args: '-o ProxyJump=none -o StrictHostKeyChecking=yes'
+    override_path: /etc/systemd/system/homelab-otel-agent.service.d/20-single-cpu.conf
+    protected_files:
+      - path: /etc/systemd/system/homelab-otel-agent.service
+        sha256: 9d4e959e94812f664c742da447a7a07e29ba629e95d98ff0321cbfee48909f45
+      - path: /etc/homelab-otel/agent.yaml
+        sha256: d246fafdf1b0f08a6ddb254bb8a89e5572f11c4c3ce33e98ef4dd48a31d781f9
+      - path: /etc/homelab-otel/scrape.yaml
+        sha256: 7b580cb2bc73bc3cec47c0994ca5b8bb10bc2da74844f8d5350dd3bf05adc2ab
+  tasks:
+    - ansible.builtin.assert:
+        that: inventory_hostname == 'socrat-4'
+    - ansible.builtin.command: getconf _NPROCESSORS_ONLN
+      register: cpu_count
+      changed_when: false
+    - ansible.builtin.assert:
+        that: cpu_count.stdout == '1'
+    - ansible.builtin.stat:
+        path: '{{ item.path }}'
+        checksum_algorithm: sha256
+      loop: '{{ protected_files }}'
+      register: preimages
+    - ansible.builtin.assert:
+        that: item.stat.checksum == item.item.sha256
+        fail_msg: 'STOP: configuration drift; inspect rather than replay.'
+      loop: '{{ preimages.results }}'
+      loop_control:
+        label: '{{ item.item.path }}'
+    - ansible.builtin.stat:
+        path: '{{ override_path }}'
+      register: old_override
+    - ansible.builtin.assert:
+        that: not old_override.stat.exists
+        fail_msg: 'STOP: override already exists; inspect before reapplying.'
+    - name: Require a healthy agent before touching the service
+      ansible.builtin.uri:
+        url: http://127.0.0.1:13133/
+        status_code: 200
+    - ansible.builtin.file:
+        path: /etc/systemd/system/homelab-otel-agent.service.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+    - name: Install only the reviewed one-line environment override
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/../files/otel/socrat4-cpu.conf'
+        dest: '{{ override_path }}'
+        owner: root
+        group: root
+        mode: '0644'
+    - name: Activate only the telemetry-agent override
+      block:
+        - ansible.builtin.systemd_service:
+            name: homelab-otel-agent.service
+            daemon_reload: true
+            state: restarted
+        - ansible.builtin.uri:
+            url: http://127.0.0.1:13133/
+            status_code: 200
+          register: health
+          retries: 12
+          delay: 5
+          until: health.status | default(0) == 200
+      rescue:
+        - name: Remove only the new override on failed acceptance
+          ansible.builtin.file:
+            path: '{{ override_path }}'
+            state: absent
+        - ansible.builtin.systemd_service:
+            name: homelab-otel-agent.service
+            daemon_reload: true
+            state: restarted
+        - ansible.builtin.fail:
+            msg: 'New override failed acceptance; previous service configuration restored. Inspect telemetry.'
+    - ansible.builtin.stat:
+        path: '{{ item.path }}'
+        checksum_algorithm: sha256
+      loop: '{{ protected_files }}'
+      register: postimages
+    - ansible.builtin.assert:
+        that: item.stat.checksum == item.item.sha256
+      loop: '{{ postimages.results }}'
+      loop_control:
+        label: '{{ item.item.path }}'
