@@ -1,5 +1,20 @@
 # Socrat: текущий контекст
 
+## Moscow is now a native-primary network host — 12 November 2026
+
+Accepted migration: Kubernetes now has5Ready nodes0/1/2/3/5; Moscow4 remains a
+managed network host, not a worker. Same pinned Xray/config, native-primary mode,
+worker boot disabled, persistent fence retained, relay desired replicas0 in GitOps.
+Five authenticated HOME protocols passed before/after handoff; temporary fixture/
+tokens removed, originals preserved. All30directed inter-host ICMP/SSH paths
+passed. Native DNS/management/telemetry continue; no WG/control-plane restart,
+network flush or uninstall. Rollback data retained. Available RAM~544MiB versus
+~350MiB earlier; CPU PSI~42% and SocratNodeResourceContention STILL firing at
+WG RX4.56MB/s. No alert weakening. Public NL UDP53 timed out from Mac at closeout.
+Source published through db14a58e. [Acceptance, architecture and rollback](../docs/moscow-native-primary-20261112.md).
+Earlier6Ready/Pod-primary notes below are historical, not the current target.
+
+
 ## TV / Traffic Light — принято 11 ноября 2026
 
 Owner-approved адресный CSS только для native Argo909 на public TV opt-in:
