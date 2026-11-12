@@ -1,0 +1,528 @@
+{
+  "uid": "socrat-network",
+  "title": "Socrat / Network",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": false,
+  "tags": [
+    "socrat",
+    "network"
+  ],
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Что показывает эта карта",
+      "type": "text",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "**Живые данные существующего Thanos. Без новых агентов и плагинов.**\n\n**Зелёная/красная связь** — результат существующей проверки из одного cluster-prober, не связь между всеми нодами. TCP443 ≠ работающее приложение. **Серые связи нода → pod** — только размещение, не наблюдаемый трафик. Ready ≠ исправная сеть.\n\nДанные графов старше **120 секунд** исключаются: исчезновение связи / No data означает неизвестность, не восстановление. Проверяйте возраст телеметрии ниже. Метрики WG-пиров/handshake сейчас не собираются: маршруты WG → GOST → relay эта версия **не обнаруживает**.\n\nМеняйте группу проверок и namespace сверху; обновление каждые 30 секунд."
+      }
+    },
+    {
+      "id": 2,
+      "title": "Ready по нодам · не проверка mesh",
+      "type": "stat",
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 12,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "Нет свежих данных",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Not Ready",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "Ready",
+                  "color": "green"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name",
+        "colorMode": "background"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "refId": "A",
+          "expr": "max by(node) (kube_node_status_condition{condition=\"Ready\",status=\"true\"} and (time() - timestamp(kube_node_status_condition{condition=\"Ready\",status=\"true\"}) < 120))",
+          "instant": true,
+          "range": false,
+          "format": "time_series",
+          "legendFormat": "{{node}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Возраст последних данных · секунды",
+      "type": "stat",
+      "gridPos": {
+        "x": 12,
+        "y": 5,
+        "w": 12,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "Нет данных",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 120,
+                "color": "red"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "refId": "A",
+          "expr": "max(time() - timestamp(probe_success{job=\"service-probes\"}))",
+          "instant": true,
+          "range": false,
+          "format": "time_series",
+          "legendFormat": "Service probes"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "refId": "B",
+          "expr": "max(time() - timestamp(kube_node_status_condition{condition=\"Ready\",status=\"true\"}))",
+          "instant": true,
+          "range": false,
+          "format": "time_series",
+          "legendFormat": "Node conditions"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Доступность входов / сервисов · одна точка наблюдения",
+      "type": "nodeGraph",
+      "gridPos": {
+        "x": 0,
+        "y": 9,
+        "w": 24,
+        "h": 12
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Probe failed"
+                },
+                "1": {
+                  "text": "Probe passed"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "zoomMode": "cooperative"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "refId": "edges",
+          "expr": "max by (id, source, target, color, detail__endpoint, detail__observer) (label_replace(label_replace(label_replace(label_replace(label_replace((label_replace(((probe_success{job=\"service-probes\",service_group=~\"${probe_group:regex}\"} and (time() - timestamp(probe_success{job=\"service-probes\",service_group=~\"${probe_group:regex}\"}) < 120)) == 1), \"color\", \"#73BF69\", \"service_id\", \"(.*)\") or label_replace(((probe_success{job=\"service-probes\",service_group=~\"${probe_group:regex}\"} and (time() - timestamp(probe_success{job=\"service-probes\",service_group=~\"${probe_group:regex}\"}) < 120)) == 0), \"color\", \"#F2495C\", \"service_id\", \"(.*)\")), \"target\", \"$1\", \"service_id\", \"(.*)\"), \"id\", \"probe:$1\", \"service_id\", \"(.*)\"), \"source\", \"cluster-prober\", \"service_id\", \"(.*)\"), \"detail__endpoint\", \"$1\", \"instance\", \"(.*)\"), \"detail__observer\", \"$1\", \"pod\", \"(.*)\"))",
+          "instant": true,
+          "range": false,
+          "format": "table",
+          "legendFormat": "{{node}} {{instance}}"
+        }
+      ],
+      "description": "Edges are active synthetic checks, not routes. Green=last fresh probe passed, red=failed. No edge if telemetry is older than 120s. Observer pod is available in edge details.",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "id",
+                "source",
+                "target",
+                "color",
+                "detail__endpoint",
+                "detail__observer",
+                "Value"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "Value": "mainstat"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Нода → запущенный Pod · размещение, не трафик",
+      "type": "nodeGraph",
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 24,
+        "h": 12
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "zoomMode": "cooperative"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "refId": "edges",
+          "expr": "max by(id,source,target) (label_join(label_join(label_replace((max by (node, namespace, pod) (kube_pod_info{namespace=~\"${namespace:regex}\",node!=\"\"} and (time() - timestamp(kube_pod_info{namespace=~\"${namespace:regex}\",node!=\"\"}) < 120)) and on(namespace,pod) max by(namespace,pod) (kube_pod_status_phase{phase=\"Running\"} == 1)), \"source\", \"$1\", \"node\", \"(.*)\"), \"target\", \"/\", \"namespace\", \"pod\"), \"id\", \"->\", \"source\", \"target\"))",
+          "instant": true,
+          "range": false,
+          "format": "table",
+          "legendFormat": "{{node}} {{instance}}"
+        }
+      ],
+      "description": "Dynamically discovered Kubernetes placement. Gray edges do not imply network health or traffic. Includes only Running pods with fresh kube_pod_info.",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "id",
+                "source",
+                "target",
+                "Value"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "Value": "mainstat"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "WG: входящий трафик по интерфейсу",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 0,
+        "y": 33,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "refId": "A",
+          "expr": "rate(node_network_receive_bytes_total{job=\"node-exporter\",device=\"wg-socrat\"}[$__rate_interval])",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "legendFormat": "{{node}} {{instance}}"
+        }
+      ],
+      "description": "Interface totals, not per-peer traffic. No inference about direct versus relayed transport."
+    },
+    {
+      "id": 7,
+      "title": "WG: исходящий трафик по интерфейсу",
+      "type": "timeseries",
+      "gridPos": {
+        "x": 12,
+        "y": 33,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "refId": "A",
+          "expr": "rate(node_network_transmit_bytes_total{job=\"node-exporter\",device=\"wg-socrat\"}[$__rate_interval])",
+          "instant": false,
+          "range": true,
+          "format": "time_series",
+          "legendFormat": "{{node}} {{instance}}"
+        }
+      ],
+      "description": "Interface totals, not per-peer traffic. No inference about direct versus relayed transport."
+    },
+    {
+      "id": 8,
+      "title": "Результат каждой выбранной проверки · свежие данные",
+      "type": "table",
+      "gridPos": {
+        "x": 0,
+        "y": 41,
+        "w": 24,
+        "h": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Failed",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "Passed",
+                  "color": "green"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {},
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "refId": "A",
+          "expr": "max by(service_id,instance) ((probe_success{job=\"service-probes\",service_group=~\"${probe_group:regex}\"} and (time() - timestamp(probe_success{job=\"service-probes\",service_group=~\"${probe_group:regex}\"}) < 120)))",
+          "instant": true,
+          "range": false,
+          "format": "table",
+          "legendFormat": "{{node}} {{instance}}"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "service_id": "Проверка",
+              "instance": "Назначение",
+              "Value": "Результат"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "probe_group",
+        "label": "Группа проверок",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": "label_values(probe_success{job=\"service-probes\"}, service_group)",
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": [
+            "edge-home",
+            "edge-vps",
+            "edge-moscow",
+            "vpn"
+          ],
+          "value": [
+            "edge-home",
+            "edge-vps",
+            "edge-moscow",
+            "vpn"
+          ]
+        }
+      },
+      {
+        "name": "namespace",
+        "label": "Namespace",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": "label_values(kube_pod_info, namespace)",
+        "refresh": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "text": [
+            "vpn-transit",
+            "automation",
+            "kube-system"
+          ],
+          "value": [
+            "vpn-transit",
+            "automation",
+            "kube-system"
+          ]
+        }
+      }
+    ]
+  },
+  "links": []
+}
