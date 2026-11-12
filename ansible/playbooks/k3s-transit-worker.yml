@@ -4,5 +4,13 @@
   gather_facts: true
   become: true
   any_errors_fatal: true
+  pre_tasks:
+    - name: Never re-enroll a fenced native-primary gateway
+      ansible.builtin.stat:
+        path: /var/lib/homelab-vpn-transit/relay-failover/fallback.active
+      register: native_fence
+    - ansible.builtin.assert:
+        that: not native_fence.stat.exists
+        fail_msg: 'Native gateway is fenced. Use the explicit, reviewed rollback instead of worker enrollment.'
   roles:
     - k3s_worker
