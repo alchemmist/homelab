@@ -1,6 +1,6 @@
 services:
   - name: wireguard-transport
-    addr: '{{ wg_tcp_server_address }}:{{ wg_tcp_port }}'
+    addr: '0.0.0.0:{{ wg_tcp_port }}'
     handler:
       type: relay
       auth:

@@ -22,7 +22,8 @@ def test_fixed_destinations_and_public_backend_protection():
             assert 'rewritePort' not in inbound['settings']
         else:
             assert inbound['tag'] in {'management-wg-relay', 'management-wg-tcp-relay'}
-            assert inbound['settings']['rewriteAddress'] == '109.120.141.60'
+            # Accepted incident workaround: reconnect inside Moscow's live WG.
+            assert inbound['settings']['rewriteAddress'] == '10.250.0.2'
             assert inbound['settings']['rewritePort'] in {51830, 51840}
     assert not ports & {22, 2222, 12096, 18082, 32063, 32087}
     assert ports == {80, 443, 32053, 32083, 32084, 32085, 32086, 51832, 51840}

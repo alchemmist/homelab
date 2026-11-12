@@ -9,7 +9,7 @@
       "port": 51832,
       "protocol": "tunnel",
       "settings": {
-        "rewriteAddress": "109.120.141.60",
+        "rewriteAddress": "10.250.0.2",
         "rewritePort": 51830,
         "allowedNetwork": "udp",
         "followRedirect": false
@@ -21,7 +21,7 @@
       "port": 51840,
       "protocol": "tunnel",
       "settings": {
-        "rewriteAddress": "109.120.141.60",
+        "rewriteAddress": "10.250.0.2",
         "rewritePort": 51840,
         "allowedNetwork": "tcp",
         "followRedirect": false
