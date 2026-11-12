@@ -73,3 +73,43 @@ def test_machine_https_exception_is_exact_not_a_human_acl_relaxation():
     assert host['wireguard_private_web_passthrough_sources']==['10.250.0.40']
     assert defaults['wireguard_private_web_passthrough_sources']==[]
     assert host['public_dns_extra_listen']==['10.250.0.2@5354']
+
+
+def test_late_native_health_reconciles_without_replaying_lifecycle(ctl, monkeypatch):
+    m,c=ctl; m.atomic(c.marker,{'reason':'four failures'})
+    c.save(mode='transition-to-native',failures=4,healthy=False)
+    monkeypatch.setattr(m,'active',lambda unit:unit==m.NATIVE)
+    monkeypatch.setattr(c,'healthy',lambda:True)
+    calls=[];monkeypatch.setattr(c,'prerequisites',lambda:calls.append('verified'))
+    monkeypatch.setattr(m,'run',lambda *a,**kw:pytest.fail('no lifecycle replay'))
+    c.tick()
+    assert c.state['mode']=='native' and c.state['failures']==0 and c.state['healthy']
+    assert c.marker.exists() and calls==['verified']
+    receipts=list(m.ROOT.glob('*-native-reconciled.json'));assert len(receipts)==1
+    c.tick();assert len(list(m.ROOT.glob('*-native-reconciled.json')))==1
+
+
+@pytest.mark.parametrize('native,healthy',[(False,True),(True,False),(False,False)])
+def test_unhealthy_native_transition_stays_fenced(ctl,monkeypatch,native,healthy):
+    m,c=ctl;m.atomic(c.marker,{});c.save(mode='transition-to-native',failures=4)
+    monkeypatch.setattr(m,'active',lambda unit:native if unit==m.NATIVE else False)
+    monkeypatch.setattr(c,'healthy',lambda:healthy)
+    monkeypatch.setattr(c,'prerequisites',lambda:pytest.fail('no transition acceptance'))
+    c.tick();assert c.state['mode']=='transition-to-native' and not c.state['healthy']
+    assert c.marker.exists()
+
+
+def test_late_native_acceptance_refuses_active_agent(ctl,monkeypatch):
+    m,c=ctl;m.atomic(c.marker,{});c.save(mode='transition-to-native')
+    monkeypatch.setattr(m,'active',lambda unit:True);monkeypatch.setattr(c,'healthy',lambda:True)
+    with pytest.raises(RuntimeError,match='Agent active'):c.tick()
+    assert c.state['mode']=='transition-to-native' and c.marker.exists()
+
+
+def test_late_native_acceptance_requires_prerequisites(ctl,monkeypatch):
+    m,c=ctl;m.atomic(c.marker,{});c.save(mode='transition-to-native')
+    monkeypatch.setattr(m,'active',lambda unit:unit==m.NATIVE);monkeypatch.setattr(c,'healthy',lambda:True)
+    def refuse():raise RuntimeError('prerequisite drift')
+    monkeypatch.setattr(c,'prerequisites',refuse)
+    with pytest.raises(RuntimeError,match='prerequisite drift'):c.tick()
+    assert c.state['mode']=='transition-to-native' and c.marker.exists()
