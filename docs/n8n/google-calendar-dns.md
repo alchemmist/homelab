@@ -42,3 +42,17 @@ fail closed, no force restart. Preserve snapshots/settings/static/pin/credential
 PV/image/key. Observe a new naturally scheduled Calendar execution after rollout;
 HEAD/tests/Argo alone are not natural acceptance. This file is a preparation
 receipt, not a deployment success claim.
+
+## Retry12 November13:11–13:15 UTC
+
+Node recovered Ready and API accessible. All original related activities were
+confirmed true before retry. Related SPI/Yandex/Calendar admissions temporarily
+paused; tests passed again. Natural global drain did NOT empty over125seconds:
+remaining29 SocratAlerts/failure-handler executions; no force rollout/alert mute.
+All three original activities restored true through native API.
+
+Code is published with `googleDnsEnabled: false`; both module inclusion and
+NODE_OPTIONS are gated, so the complete default rendered manifest, including
+ConfigMap checksum/Pod template, is EXACTLY the pre-fix version. No production
+restart or active DNS fix is claimed. To activate, obtain a fresh global natural
+drain and set googleDnsEnabled true in Git; Argo remains the sole deploy owner.

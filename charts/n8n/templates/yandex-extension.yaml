@@ -4,6 +4,8 @@ metadata:
   name: n8n-yandex-extension
 data:
 {{- range $path, $_ := .Files.Glob "extensions/*.js" }}
+{{- if or $.Values.googleDnsEnabled (not (hasPrefix "google-dns" (base $path))) }}
   {{ base $path }}: |
 {{ $.Files.Get $path | indent 4 }}
+{{- end }}
 {{- end }}

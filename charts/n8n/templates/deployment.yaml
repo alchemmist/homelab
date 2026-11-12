@@ -33,8 +33,10 @@ spec:
         - name: n8n
           image: {{ .Values.image | quote }}
           env:
+            {{- if .Values.googleDnsEnabled }}
             - name: NODE_OPTIONS
               value: '--require=/opt/n8n/yandex-extension/google-dns-preload.js'
+            {{- end }}
             - name: EXECUTIONS_TIMEOUT_MAX
               value: '21600'
             - name: N8N_CUSTOM_EXTENSIONS
