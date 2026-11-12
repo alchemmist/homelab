@@ -1,5 +1,6 @@
-# Provision native prerequisites/offline image before increasing replicas.
-replicas: 1
+# Moscow is a native-primary gateway. Keep rollback Pod/image source, not a
+# scheduled workload. Restore only during the explicitly fenced rollback.
+replicas: 0
 nodeName: socrat-4
 image: localhost/homelab/vpn-transit:a27e3f95ab6ce270
 binarySHA256: a27e3f95ab6ce270956d0cecd32eda4686a811afc71c64a6a734a3dede14883e
