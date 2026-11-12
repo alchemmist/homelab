@@ -1,0 +1,81 @@
+---
+# One-time finalization AFTER native-primary and authenticated data-path acceptance.
+# Removes only the retired Node object and verified local leftover pod processes.
+- name: Retire the fenced Moscow worker without uninstalling or flushing networking
+  hosts: socrat-4
+  gather_facts: false
+  become: true
+  any_errors_fatal: true
+  vars:
+    ansible_host: socrat-4
+    ansible_port: 2222
+    ansible_ssh_common_args: '-o ProxyJump=none -o StrictHostKeyChecking=yes'
+    recovery_root: /var/lib/homelab-recovery/20261112-moscow-native-primary
+    old_node_uid: cedaede1-6156-4c90-8965-e8b6d8ac0810
+  tasks:
+    - ansible.builtin.assert:
+        that:
+          - inventory_hostname == 'socrat-4'
+          - moscow_retire_worker_confirm | default(false) | bool
+          - moscow_native_data_path_accepted | default(false) | bool
+    - ansible.builtin.command: kubectl -n vpn-transit get deployment vpn-transit -o json
+      delegate_to: socrat-0
+      vars: {ansible_host: socrat-0, ansible_port: 2222}
+      register: deployment
+      changed_when: false
+      no_log: true
+    - ansible.builtin.assert:
+        that: (deployment.stdout | from_json).spec.replicas == 0
+        fail_msg: 'STOP: GitOps must first retire the pod desired state.'
+    - name: Persist the reviewed pre-retirement pod identities for exact ownership
+      ansible.builtin.copy:
+        src: '{{ moscow_worker_pod_plan }}'
+        dest: '{{ recovery_root }}/worker-pods.json'
+        mode: '0600'
+      no_log: true
+    - ansible.builtin.copy:
+        src: '{{ playbook_dir }}/../../scripts/moscow-retire-worker-runtime.py'
+        dest: /usr/local/libexec/moscow-retire-worker-runtime.py
+        owner: root
+        group: root
+        mode: '0700'
+    - name: Preview exact owned processes; reject any unknown workload or shim
+      ansible.builtin.command: python3 /usr/local/libexec/moscow-retire-worker-runtime.py {{ recovery_root }}/worker-pods.json
+      changed_when: false
+      register: preview
+    - ansible.builtin.debug:
+        var: preview.stdout
+    - name: Stop only the verified leftover pod tasks and their runtime shims
+      ansible.builtin.command: python3 /usr/local/libexec/moscow-retire-worker-runtime.py {{ recovery_root }}/worker-pods.json --apply
+      register: retirement
+      changed_when: true
+    - ansible.builtin.copy:
+        content: '{{ retirement.stdout }}'
+        dest: '{{ recovery_root }}/runtime-retirement.json'
+        mode: '0600'
+    - name: Disable worker boot; keep the existing native fence and all rollback data
+      ansible.builtin.systemd_service:
+        name: k3s-agent.service
+        enabled: false
+    - name: Delete only the retired Node with a server-side UID precondition
+      ansible.builtin.command:
+        argv: [kubectl, delete, '--raw=/api/v1/nodes/socrat-4', -f, '-']
+        stdin: '{{ {"apiVersion":"v1","kind":"DeleteOptions","preconditions":{"uid":old_node_uid},"propagationPolicy":"Background"} | to_json }}'
+      delegate_to: socrat-0
+      vars: {ansible_host: socrat-0, ansible_port: 2222}
+      changed_when: true
+      no_log: true
+    - ansible.builtin.command: python3 /usr/local/libexec/vpn-transit-failover.py status
+      register: final
+      changed_when: false
+    - ansible.builtin.assert:
+        that:
+          - (final.stdout | from_json).mode == 'native-primary'
+          - (final.stdout | from_json).data_path_healthy
+          - (final.stdout | from_json).native_active
+          - not (final.stdout | from_json).agent_active
+          - (final.stdout | from_json).fallback_marker
+    - ansible.builtin.copy:
+        content: '{{ final.stdout }}'
+        dest: '{{ recovery_root }}/host-only-accepted.json'
+        mode: '0600'
