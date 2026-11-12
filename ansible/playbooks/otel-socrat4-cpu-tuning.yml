@@ -38,10 +38,16 @@
         label: '{{ item.item.path }}'
     - ansible.builtin.stat:
         path: '{{ override_path }}'
+        checksum_algorithm: sha256
       register: old_override
+    - ansible.builtin.command: systemctl show homelab-otel-agent.service -p DropInPaths --value
+      register: loaded_overrides
+      changed_when: false
     - ansible.builtin.assert:
-        that: not old_override.stat.exists
-        fail_msg: 'STOP: override already exists; inspect before reapplying.'
+        that:
+          - not old_override.stat.exists or ((otel_socrat4_resume_staged_override | default(false) | bool) and old_override.stat.checksum == (lookup('file', playbook_dir + '/../files/otel/socrat4-cpu.conf', rstrip=false) | hash('sha256')))
+          - loaded_overrides.stdout == ''
+        fail_msg: 'STOP: override exists or has been activated; inspect before reapplying. Explicit resume accepts only the exact staged, not-yet-loaded file.'
     - name: Require a healthy agent before touching the service
       ansible.builtin.uri:
         url: http://127.0.0.1:13133/
