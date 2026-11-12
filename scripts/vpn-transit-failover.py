@@ -133,7 +133,17 @@ class Controller:
  def tick(self):
   if self.state['mode']=='prepared':return
   if self.marker.exists():
-   self.save(healthy=active(NATIVE) and self.healthy());return
+   ok=active(NATIVE) and self.healthy()
+   # A late healthy native relay may outlive activate()'s bounded probe window.
+   # Reconcile bookkeeping only: never replay activation, remove the fence or
+   # start an agent. Unknown states and unhealthy transitions remain fenced.
+   if self.state['mode']=='transition-to-native' and ok:
+    if active(AGENT):raise RuntimeError('Agent active during fenced native transition')
+    self.prerequisites()
+    self.receipt('native-reconciled',reason='native healthy after activation deadline')
+    self.save(mode='native',failures=0,healthy=True)
+   else:self.save(healthy=ok)
+   return
   if self.state['mode']!='kubernetes':raise RuntimeError('Uncertain transition; inspect receipts, do not replay')
   boot=boot_id()
   if self.state.get('boot_id')!=boot:
