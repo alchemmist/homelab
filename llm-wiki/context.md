@@ -1,5 +1,21 @@
 # Socrat: текущий контекст
 
+## Network/DNS recovery — 12 November 2026 current closeout
+
+All6Ready at15:08UTC. Moscow watchdog late-native transition repaired and explicit
+failback accepted; Pod relay1/1, nativeoff/markerabsent, actual data-path healthy.
+NS3 local host Knot and all4writer records live; .xyz parent NS/glue verified.
+No third general web A added; Moscow80/443 still forwards to NL. Mesh audit from
+all6hosts passed30directed inter-node ICMP/SSH paths but0/1/3↔NL still depends on
+Moscow;5↔NL direct WG observed. Native NB5 intermittent, viaMoscowSSH works.
+Local etcd scheduled snapshots exist on all3voters (~75MB, latest09:00UTC); no
+restore/off-host verification.137tests+15subtests; source/runtime matched for
+DNS, relay config and watchdog. Local source commits08c4534/c60b16d/40ddc42;
+no push or broad reconciliation. NL provider console remains unverified.
+[Dependency map and next gates](../docs/network-dependency-audit-20261112.md),
+[watchdog recovery](../docs/moscow-relay-recovery-20261112.md),
+[DNS rollout](../docs/moscow-authoritative-dns-stage-20261112.md).
+
 ## TV / Traffic Light — принято 11 ноября 2026
 
 Owner-approved адресный CSS только для native Argo909 на public TV opt-in:
