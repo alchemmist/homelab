@@ -1,5 +1,18 @@
 # Socrat: текущий контекст
 
+## Alert delivery restored — 12 November,16:35UTC
+
+Critical Alertmanager delivery failures were real HTTP503 from n8n's durable SPI
+handoff, with intermittent internal DNS/EAI_AGAIN from n8n5. Pod/ServiceIP HTTP
+worked. Narrow CoreDNS rollout moved replicas from1/3 to0/3, preserved2replicas
+with maxUnavailable0, updated verified0/1 Addon manifest writers with CAS/hash
+checks; source1474d79c. No n8n/node restart or workflow execution.18DNS checks
+passed6–14ms; natural Alertmanager retries logged Notify success, including the
+critical delivery alert. At16:37UTC the rule still firing due its15minute window;
+no failure-counter growth over2minutes. Normal-state readback still pending.
+This avoids an unhealthy DNS path; underlying UDP loss is not root-cause closed.
+[Recovery, evidence and rollback limits](../docs/alertmanager-dns-recovery-20261112.md).
+
 ## Network/DNS recovery — 12 November 2026 current closeout
 
 All6Ready at15:08UTC. Moscow watchdog late-native transition repaired and explicit

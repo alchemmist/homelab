@@ -1,3 +1,8 @@
+> **Later DNS update:** CoreDNS availability recovery at16:35UTC moved replicas
+> from1/3 to0/3 and restored natural Alertmanager delivery. See
+> [recovery and acceptance](alertmanager-dns-recovery-20261112.md). The earlier
+> connectivity samples below are historical, not sustained health guarantees.
+
 # Six-node network dependency audit — 12 November 2026
 
 ## Scope and evidence quality
