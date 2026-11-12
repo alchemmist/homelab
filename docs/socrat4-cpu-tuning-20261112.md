@@ -1,3 +1,7 @@
+> **Superseded operational state:** Moscow became a native-primary host, outside
+> Kubernetes, on12November2026. See [acceptance and rollback](moscow-native-primary-20261112.md).
+> Historical evidence below is not a current cutover procedure.
+
 # Moscow telemetry CPU tuning — 2026-11-12
 
 ## Scope and applied source

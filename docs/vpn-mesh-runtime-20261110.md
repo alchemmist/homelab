@@ -1,3 +1,7 @@
+> **Superseded operational state:** Moscow became a native-primary host, outside
+> Kubernetes, on12November2026. See [acceptance and rollback](moscow-native-primary-20261112.md).
+> Historical evidence below is not a current cutover procedure.
+
 # Moscow relay: mesh reuse and Pod/native lifecycle
 
 ## Historical preparation — completed; final acceptance below
