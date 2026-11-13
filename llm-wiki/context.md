@@ -1,5 +1,30 @@
 # Socrat: текущий контекст
 
+## Fixed Moscow chain + native readiness —13November2026, CURRENT
+
+Owner ABANDONED HOME/direct-NL/node5 user fallback. Only clients→Moscow4→NL;
+K3S primary, systemd fallback. Keep4 a worker; never retire/delete it for CPU.
+Audit found stale NL native image6c7… vs live/source1628…; staged cached image,
+passed isolated copied-DB/cert namespace smoke, cleanup verified, atomically
+exchanged dormant root under watchdog lock, old image retained. No NL Pod/server
+restart/live DB migration. Both boot fences/timers/native assets audited positive.
+Native component observers installed2/4; existing exporter+sole OTel/mTLS path.
+Mode9 now composite: K3S green both checks; OS amber any native; K3S amber partial
+check failure; OFF only positive no-data-sockets evidence; NO DATA missing/stale/
+conflicting evidence. Explore details; layout/auth/alert thresholds unchanged.
+Moscow observer uses watchdog cached health+real timestamp, no extra TLS per tick.
+IMPORTANT UNPLANNED EVENT08:37UTC: existing4watchdog reached4failed path checks,
+stopped/fenced its agent, activated native. NOT an operator outage test. Cause
+unknown; do not blame/exonerate changes or infer Kubernetes failure from TLS loss.
+NL briefly NotReady then recovered without restart. Final:4present/NotReady while
+fenced,5others Ready;4native/check1 and2K3S/check1; actual Mode9=1/OS. DO NOT blindly
+failback to paint green; explicit return and authenticated tests need short window.
+Source through8c9ee2ae;77tests+2subtests before final doc. Escalation/private fetched
+config removed. [English evidence/limits](../docs/vpn-runtime-readiness-20261113.md).
+Older6Ready/K3S claims below precede this automatic transition. HOME investigation
+below is historical/abandoned, not authorization to add5 to user traffic.
+
+
 ## VPN HOME fallback investigation —13November2026: NOT YET DEPLOYED
 
 IMPORTANT CORRECTION: earlier direct NL443 claim was wrong: HOME OUTPUT DNAT
