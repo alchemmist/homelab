@@ -19,6 +19,7 @@ def test_promotion_preserves_old_image_and_never_manages_services():
     assert "'state':'intent'" in s
     assert "assert not RECEIPT.exists()" in s
     assert 'os.fsync' in s
+    assert s.count('os.open(RECEIPT.parent,os.O_DIRECTORY)')==2
     for forbidden in ["'stop'","'start'","'restart'","'tick'","'activate'","'failback'"]:
         assert forbidden not in s
 
