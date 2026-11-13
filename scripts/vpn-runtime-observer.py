@@ -61,21 +61,46 @@ def classify(profile,status,agent,native,marker):
     if status.get('mode')=='kubernetes' and not marker and agent and not any(native):return 0
     return -1
 
-def observe(profile,proc=Path('/proc')):
+def units_snapshot(units):
+    result=command(['systemctl','show',*units,'-p','Id','-p','LoadState','-p','ActiveState'],5)
+    if result.returncode:raise ValueError('Unobservable unit set')
+    states={}
+    for block in result.stdout.strip().split('\n\n'):
+        fields=dict(line.split('=',1) for line in block.splitlines() if '=' in line)
+        if fields.get('LoadState')!='loaded':raise ValueError('Unloaded unit')
+        states[fields['Id']]=fields['ActiveState']=='active'
+    if set(states)!=set(units):raise ValueError('Incomplete unit set')
+    return states
+
+
+def observe(profile,proc=Path('/proc'),live_check=False):
     before=Path(profile['marker']).exists()
-    result=command(profile['command'])
-    if result.returncode not in (0,1):raise ValueError('Status command failed')
-    status=json.loads(result.stdout)
+    cached=profile['component']=='relay' and not live_check
+    if cached:
+        # Reuse the watchdog's actual persisted check. Do not add another TLS
+        # handshake/CLI lock to the constrained Moscow relay every30seconds.
+        path=Path(profile['marker']).parent/'state.json'
+        stamp=path.stat();status=json.loads(path.read_text());after=path.stat()
+        if (stamp.st_ino,stamp.st_mtime_ns)!=(after.st_ino,after.st_mtime_ns):raise ValueError('Concurrent state write')
+        if type(status.get('healthy')) is not bool:raise ValueError('Missing cached health')
+        status['data_path_healthy']=status['healthy'];observed=stamp.st_mtime
+    else:
+        result=command(profile['command'])
+        if result.returncode not in (0,1):raise ValueError('Status command failed')
+        status=json.loads(result.stdout);observed=time.time()
     key='data_path_healthy' if profile['component']=='relay' else 'healthy'
     if type(status.get(key)) is not bool:raise ValueError('Missing health observation')
-    agent=active(profile['agent']);native=[active(u) for u in profile['native']]
+    states=units_snapshot([profile['agent'],*profile['native']])
+    agent=states[profile['agent']];native=[states[u] for u in profile['native']]
     marker=Path(profile['marker']).exists()
     if marker!=before:raise ValueError('Concurrent runtime transition')
+    if cached:status.update(agent_active=agent,native_active=all(native),fallback_marker=marker)
     runtime=classify(profile,status,agent,native,marker)
     tcp=listening(proc,'tcp');udp=listening(proc,'udp')
     off=not (tcp & profile['tcp'] or udp & profile['udp'])
     return {'runtime':runtime,'check_success':int(status[key]),'off':int(off),
-            'observation_success':1,'observed_timestamp_seconds':time.time()}
+            'observation_success':1,'observed_timestamp_seconds':observed}
+
 
 def write_metrics(path,component,values):
     lines=[]
@@ -91,7 +116,7 @@ def write_metrics(path,component,values):
         if os.path.exists(name):os.unlink(name)
 
 def audit(host,profile,expected_image=None):
-    observation=observe(profile)
+    observation=observe(profile,live_check=True)
     native_units=[command(['systemctl','cat',unit],5).stdout for unit in profile['native']]
     agent=command(['systemctl','cat',profile['agent']],5).stdout
     if host=='socrat-4':

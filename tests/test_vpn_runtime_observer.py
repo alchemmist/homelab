@@ -42,3 +42,17 @@ def test_observer_has_no_recovery_or_mutating_command():
     s=(ROOT/'scripts/vpn-runtime-observer.py').read_text()
     for forbidden in ["'tick'","'activate'","'failback'","'demote'","'start'","'stop'","'restart'","'kubectl'","'nft'"]:
         assert forbidden not in s
+
+def test_moscow_reuses_actual_watchdog_observation_without_more_tls_or_lock(tmp_path):
+    from types import SimpleNamespace
+    profile=dict(m.PROFILES['socrat-4'],marker=str(tmp_path/'fallback.active'))
+    (tmp_path/'state.json').write_text(json.dumps({'mode':'kubernetes','healthy':True}))
+    net=tmp_path/'net';net.mkdir()
+    for name in ['tcp','tcp6','udp','udp6']:(net/name).write_text('header\n')
+    (net/'tcp').write_text('header\n0: 00000000:01BB 00000000:0000 0A\n')
+    def run(args,timeout=30):
+        assert args[:2]==['systemctl','show']
+        return SimpleNamespace(returncode=0,stdout='Id=k3s-agent.service\nLoadState=loaded\nActiveState=active\n\nId=homelab-vpn-transit-native.service\nLoadState=loaded\nActiveState=inactive\n')
+    with patch.object(m,'command',side_effect=run):out=m.observe(profile,proc=tmp_path)
+    assert out['runtime']==0 and out['check_success']==1 and out['off']==0
+    assert out['observed_timestamp_seconds']==(tmp_path/'state.json').stat().st_mtime

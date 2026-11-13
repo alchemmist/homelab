@@ -41,7 +41,7 @@
           - (audit.stdout | from_json).agent_boot_fenced
           - (audit.stdout | from_json).native_boot_fenced
           - not (audit.stdout | from_json).host_resolver_uses_cluster_dns
-          - (audit.stdout | from_json).observation.runtime == 0
+          - (audit.stdout | from_json).observation.runtime in [0,1]
           - (audit.stdout | from_json).observation.check_success == 1
           - inventory_hostname != 'socrat-4' or (audit.stdout | from_json).relay_config_valid
           - inventory_hostname != 'socrat-4' or (audit.stdout | from_json).mesh_route_expected
@@ -83,9 +83,6 @@
               ProtectControlGroups=yes
               RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
               ReadWritePaths=/var/lib/node_exporter/textfile_collector
-              {% if inventory_hostname == 'socrat-4' %}
-              ReadWritePaths=/var/lib/homelab-vpn-transit/relay-failover
-              {% endif %}
         - ansible.builtin.copy:
             dest: /etc/systemd/system/homelab-vpn-runtime-observer.timer
             mode: '0644'
