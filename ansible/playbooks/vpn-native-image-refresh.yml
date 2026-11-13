@@ -1,0 +1,74 @@
+---
+# Stage + isolated copy-only smoke; promotion requires a separate explicit phase.
+- name: Refresh stale NL standby image without restarting the working VPN
+  hosts: socrat-2
+  become: true
+  gather_facts: false
+  any_errors_fatal: true
+  vars:
+    ansible_host: socrat-2
+    ansible_port: 2222
+    ansible_ssh_common_args: '-o Hostname=10.250.0.2 -o ProxyJump=socrat-4 -o StrictHostKeyChecking=yes'
+    phase: '{{ vpn_native_refresh_phase | default("stage") }}'
+    root: /opt/homelab-vpn-failover
+    candidate: /opt/homelab-vpn-failover/staged-20261113
+    recovery: /var/lib/homelab-recovery/20261113-vpn-native-image
+    old_image: ghcr.io/mhsanaei/3x-ui@sha256:6c7e73c5bc4b6d7d70866616f78d6c9866b4904defad3077c1e2b5c1c89c2ec1
+    image: '{{ (lookup("file", playbook_dir + "/../../charts/x-ui/values.yaml") | from_yaml).instances.primary.image }}'
+  tasks:
+    - ansible.builtin.assert:
+        that:
+          - phase in ['stage','promote']
+          - phase != 'promote' or (vpn_native_refresh_confirmed | default(false) | bool)
+    - ansible.builtin.stat:
+        path: /var/lib/homelab-vpn-failover/active
+      register: latch
+    - ansible.builtin.assert:
+        that: not latch.stat.exists
+    - ansible.builtin.command: cat {{ root }}/primary/.homelab-image
+      changed_when: false
+      register: before
+    - ansible.builtin.assert:
+        that: before.stdout | trim == old_image
+    - ansible.builtin.file:
+        path: '{{ recovery }}'
+        state: directory
+        mode: '0700'
+    - ansible.builtin.copy:
+        src: '../roles/vpn_failover/files/{{ item }}'
+        dest: '{{ recovery }}/{{ item }}'
+        mode: '0700'
+      loop: [prepare_runtime.py, smoke_test.py]
+    - when: phase == 'stage'
+      block:
+        - ansible.builtin.stat:
+            path: '{{ candidate }}'
+          register: staging
+        - ansible.builtin.assert:
+            that: not staging.stat.exists
+            fail_msg: Existing candidate/attempt: inspect privately; do not replay.
+        - ansible.builtin.file:
+            path: '{{ candidate }}'
+            state: directory
+            mode: '0700'
+        - name: Copy only the already-cached pinned image into an isolated candidate
+          ansible.builtin.command: python3 {{ recovery }}/prepare_runtime.py {{ image }} {{ candidate }}/primary
+          async: 240
+          poll: 3
+        - name: Validate candidate on copied DB/certs in isolated network namespace
+          ansible.builtin.command: python3 {{ recovery }}/smoke_test.py --runtime-root {{ candidate }}
+          async: 180
+          poll: 3
+          register: smoke
+        - ansible.builtin.copy:
+            content: '{{ smoke.stdout }}'
+            dest: '{{ recovery }}/stage-accepted.json'
+            mode: '0600'
+    - when: phase == 'promote'
+      block:
+        - ansible.builtin.copy:
+            src: ../../scripts/vpn-native-image-promote.py
+            dest: '{{ recovery }}/promote.py'
+            mode: '0700'
+        - name: Atomic locked directory exchange; no unit or workload restart
+          ansible.builtin.command: python3 {{ recovery }}/promote.py --candidate {{ candidate }} --old-image {{ old_image }} --new-image {{ image }}
