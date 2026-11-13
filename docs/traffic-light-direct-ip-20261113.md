@@ -1,5 +1,12 @@
 # Traffic Light: native Moscow and direct HOME IP checks
 
+> **Correction: original direct-NL inference below is withdrawn.** OUTPUT DNAT
+> still sent the original exporter through Moscow. Corrected UID19091 exemption
+> and v2 measurements now show NL TCP443 timeout from HOME, HOME/Moscow success.
+> See [correction and fallback gates](vpn-home-fallback-20261113.md). Route lookup
+> alone was not direct-egress proof. Historical acceptance below predates this fix.
+
+
 > **Later correction:** socrat-4 has been returned to Kubernetes at owner request.
 > Panel926 again uses real Kubernetes readiness; the direct-IP checks below
 > remain current. See [worker return](moscow-worker-return-20261113.md).
