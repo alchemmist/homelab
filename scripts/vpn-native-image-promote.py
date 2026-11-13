@@ -62,6 +62,7 @@ def promote(candidate,old_image,new_image):
         with os.fdopen(fd,'w') as stream:
             json.dump({'state':'intent','old_image':old_image,'new_image':new_image},stream)
             stream.flush();os.fsync(stream.fileno())
+        fd=os.open(RECEIPT.parent,os.O_DIRECTORY);os.fsync(fd);os.close(fd)
         libc=ctypes.CDLL(None,use_errno=True)
         fn=libc.renameat2
         fn.argtypes=[ctypes.c_int,ctypes.c_char_p,ctypes.c_int,ctypes.c_char_p,ctypes.c_uint]
@@ -78,6 +79,7 @@ def promote(candidate,old_image,new_image):
         with os.fdopen(fd,'w') as stream:
             json.dump(receipt,stream);stream.flush();os.fsync(stream.fileno())
         os.replace(temporary,RECEIPT)
+        fd=os.open(RECEIPT.parent,os.O_DIRECTORY);os.fsync(fd);os.close(fd)
         print(json.dumps(receipt))
 
 if __name__=='__main__':
