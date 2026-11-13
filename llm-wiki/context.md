@@ -706,3 +706,24 @@ Trialh3 hidnativecurves, so packed WIDTHinstead, no newCSS. No data gray, not0.
 ActualfinalTVfit checked afterdebugfalse cleanup/Fully-onlyrestart;49Argofills,
 61focusedtests, onlydashboardCM render. No pipeline/Job/retention change orDRclaim.
 Details/evidence: android-tv.md latestMetricscascadefooter section.
+
+### Eight-warning review and n8n backup repair — 2026-11-13
+
+Current audit: six KubeJobFailed (one n8n backup, four historical SPI/wiki broker,
+one historical Thanos cascade), two Moscow cloud-init service failures from Nov9.
+Broker/cascade fresh scheduled successes confirmed; exact historical transport
+causes remain bounded. CPU contention warning not firing in this snapshot, not
+proof of permanent capacity resolution. No alert silences/history weakening,
+failed-Job deletion or cloud-init reset/replay.
+
+`983223f0` fixes n8n backup hashing: live SQLite526041088B exceeded safe full-file
+allocation under512Mi container limit; now64KiB streaming SHA, same online backup,
+integrity, key and pinned receiver.37tests passed including528Mi synthetic hash.
+Argo Synced/source ConfigMap exact. One exact-template operational backup Job
+`n8n-backup-stream-20261113-1552` succeeded15:51:32UTC; socrat3 archive SHA sidecar,
+manifest DB hash, offline SQLite integrity and key presence independently verified;
+private extracted copy removed. Existing n8n Pod not restarted,6Ready. Not full DR.
+Next scheduled backup remains unverified; manual success does not clear old failed
+Jobs or advance CronJob status. Moscow root-only bootcmd/log review still blocked
+by unavailable sudo; no password retained. Details and eight-series disposition:
+[active alert review](../docs/active-alert-review-20261113.md).
