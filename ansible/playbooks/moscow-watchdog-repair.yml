@@ -32,7 +32,7 @@
         that: >-
           item.status.conditions | selectattr('type','equalto','Ready') |
           selectattr('status','equalto','True') | list | length == 1
-      loop: '{{ (voters.stdout | from_json).items }}'
+      loop: '{{ (voters.stdout | from_json)["items"] }}'
       loop_control:
         label: '{{ item.metadata.name }}'
     - ansible.builtin.command: python3 /usr/local/libexec/vpn-transit-failover.py status
