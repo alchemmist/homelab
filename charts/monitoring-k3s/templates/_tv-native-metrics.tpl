@@ -35,7 +35,7 @@ receivers:
             - target_label: probe_observer
               replacement: {{ $.Values.publicIpProbes.node | quote }}
             - target_label: probe_path
-              replacement: direct-home-wan
+              replacement: direct-home-wan-v2
             - target_label: instance
               replacement: {{ .url | quote }}
 {{- end }}

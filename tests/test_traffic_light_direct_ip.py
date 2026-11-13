@@ -23,6 +23,7 @@ class DirectIpTest(unittest.TestCase):
         def obj(kind,name):return next(d for d in docs if d['kind']==kind and d['metadata']['name']==name)
         pod=obj('Deployment','socrat-public-ip-probes')['spec']['template']['spec']
         self.assertTrue(pod['hostNetwork']);self.assertFalse(pod['automountServiceAccountToken'])
+        self.assertEqual(pod['securityContext']['runAsUser'],19091)
         self.assertEqual(pod['nodeSelector'],{'kubernetes.io/hostname':'socrat-0'})
         c=pod['containers'][0]
         self.assertIn('--web.listen-address=192.168.0.23:19116',c['args'])
@@ -62,7 +63,7 @@ class DirectIpTest(unittest.TestCase):
         add(e,[ready(1,0)],-2)
         for pid,sid in [(905,'edge-home'),(906,'edge-vps'),(928,'edge-moscow')]:
             e=panel(pid)['targets'][0]['expr']
-            lab=f'job="public-ip-probes",service_id="{sid}",probe_observer="socrat-0",probe_path="direct-home-wan"'
+            lab=f'job="public-ip-probes",service_id="{sid}",probe_observer="socrat-0",probe_path="direct-home-wan-v2"'
             add(e,[series('up',1,lab),series('probe_success',1,lab)],0)
             add(e,[series('up',1,lab),series('probe_success',0,lab)],2)
             add(e,[series('up',0,lab),series('probe_success',1,lab)],-2)
