@@ -20,7 +20,6 @@ def test_cas_migration_preserves_receipts_and_rejects_unreviewed_drift():
     assert 'assert without == before' in source
     assert 'assert not receipt.exists()' in source
     assert "assert output_rules[0]['comment']" in source
-    assert 'assert old' not in source or True
     assert "assert (ROOT / 'rules.nft').read_text() == old" in source
     assert "assert added[0]['rule']['expr'] == expected_expr" in source
     assert 'delete table' not in source and 'flush ruleset' not in source

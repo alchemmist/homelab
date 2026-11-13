@@ -168,7 +168,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
             self.assertNotIn('ALERTS', expr)
             self.assertIn('job="public-ip-probes"', expr)
             self.assertIn('probe_observer="socrat-0"', expr)
-            self.assertIn('probe_path="direct-home-wan"', expr)
+            self.assertIn('probe_path="direct-home-wan-v2"', expr)
             self.assertIn(f'id: {service_id}\n', text)
             self.assertIn(alert, text)
 

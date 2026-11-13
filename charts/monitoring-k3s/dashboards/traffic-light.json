@@ -2906,7 +2906,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Direct public IPv4 TCP443 from HOME socrat-0, source192.168.0.23 via physical eno1 / home router, stock host-network blackbox. No DNS, TLS, application/VPN check, SOCKS proxy or Moscow relay. Green=TCP connect succeeds; red=fresh TCP connect failure; grey=missing/stale probe collection. Independent of service-probes and service/VPN alerts. This is one Russian HOME ISP vantage, not all Russia. ICMP may be blocked while TCP443 works. Home IP is a router hairpin check, not an external internet check. Route changes require revalidating physical WAN egress.",
+      "description": "Direct public IPv4 TCP443 from HOME socrat-0, source192.168.0.23 via physical eno1 / home router, stock host-network blackbox UID19091 with verified probe-only OUTPUT DNAT exemption. No DNS, TLS, application/VPN check, SOCKS proxy or Moscow relay. Green=TCP connect succeeds; red=fresh TCP connect failure; grey=missing/stale probe collection. Independent of service-probes and service/VPN alerts. This is one Russian HOME ISP vantage, not all Russia. ICMP may be blocked while TCP443 works. Home IP is a router hairpin check, not an external internet check. Route changes require revalidating physical WAN egress.",
       "fieldConfig": {
         "defaults": {
           "displayName": "VPS IP",
@@ -2984,7 +2984,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "((2 * (1 - max(probe_success{job=\"public-ip-probes\",service_id=\"edge-vps\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan\"}))) and on() (max(up{job=\"public-ip-probes\",service_id=\"edge-vps\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan\"}) == 1) and on() (time() - max(timestamp(up{job=\"public-ip-probes\",service_id=\"edge-vps\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"public-ip-probes\",service_id=\"edge-vps\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan\"})) < 90)) or vector(-2)",
+          "expr": "((2 * (1 - max(probe_success{job=\"public-ip-probes\",service_id=\"edge-vps\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan-v2\"}))) and on() (max(up{job=\"public-ip-probes\",service_id=\"edge-vps\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan-v2\"}) == 1) and on() (time() - max(timestamp(up{job=\"public-ip-probes\",service_id=\"edge-vps\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan-v2\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"public-ip-probes\",service_id=\"edge-vps\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan-v2\"})) < 90)) or vector(-2)",
           "format": "time_series",
           "instant": true,
           "range": false,
@@ -3193,7 +3193,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Direct public IPv4 TCP443 from HOME socrat-0, source192.168.0.23 via physical eno1 / home router, stock host-network blackbox. No DNS, TLS, application/VPN check, SOCKS proxy or Moscow relay. Green=TCP connect succeeds; red=fresh TCP connect failure; grey=missing/stale probe collection. Independent of service-probes and service/VPN alerts. This is one Russian HOME ISP vantage, not all Russia. ICMP may be blocked while TCP443 works. Home IP is a router hairpin check, not an external internet check. Route changes require revalidating physical WAN egress.",
+      "description": "Direct public IPv4 TCP443 from HOME socrat-0, source192.168.0.23 via physical eno1 / home router, stock host-network blackbox UID19091 with verified probe-only OUTPUT DNAT exemption. No DNS, TLS, application/VPN check, SOCKS proxy or Moscow relay. Green=TCP connect succeeds; red=fresh TCP connect failure; grey=missing/stale probe collection. Independent of service-probes and service/VPN alerts. This is one Russian HOME ISP vantage, not all Russia. ICMP may be blocked while TCP443 works. Home IP is a router hairpin check, not an external internet check. Route changes require revalidating physical WAN egress.",
       "fieldConfig": {
         "defaults": {
           "displayName": "Home IP",
@@ -3271,7 +3271,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "((2 * (1 - max(probe_success{job=\"public-ip-probes\",service_id=\"edge-home\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan\"}))) and on() (max(up{job=\"public-ip-probes\",service_id=\"edge-home\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan\"}) == 1) and on() (time() - max(timestamp(up{job=\"public-ip-probes\",service_id=\"edge-home\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"public-ip-probes\",service_id=\"edge-home\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan\"})) < 90)) or vector(-2)",
+          "expr": "((2 * (1 - max(probe_success{job=\"public-ip-probes\",service_id=\"edge-home\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan-v2\"}))) and on() (max(up{job=\"public-ip-probes\",service_id=\"edge-home\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan-v2\"}) == 1) and on() (time() - max(timestamp(up{job=\"public-ip-probes\",service_id=\"edge-home\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan-v2\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"public-ip-probes\",service_id=\"edge-home\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan-v2\"})) < 90)) or vector(-2)",
           "format": "time_series",
           "instant": true,
           "range": false,
@@ -5807,7 +5807,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Direct public IPv4 TCP443 from HOME socrat-0, source192.168.0.23 via physical eno1 / home router, stock host-network blackbox. No DNS, TLS, application/VPN check, SOCKS proxy or Moscow relay. Green=TCP connect succeeds; red=fresh TCP connect failure; grey=missing/stale probe collection. Independent of service-probes and service/VPN alerts. This is one Russian HOME ISP vantage, not all Russia. ICMP may be blocked while TCP443 works. Home IP is a router hairpin check, not an external internet check. Route changes require revalidating physical WAN egress.",
+      "description": "Direct public IPv4 TCP443 from HOME socrat-0, source192.168.0.23 via physical eno1 / home router, stock host-network blackbox UID19091 with verified probe-only OUTPUT DNAT exemption. No DNS, TLS, application/VPN check, SOCKS proxy or Moscow relay. Green=TCP connect succeeds; red=fresh TCP connect failure; grey=missing/stale probe collection. Independent of service-probes and service/VPN alerts. This is one Russian HOME ISP vantage, not all Russia. ICMP may be blocked while TCP443 works. Home IP is a router hairpin check, not an external internet check. Route changes require revalidating physical WAN egress.",
       "fieldConfig": {
         "defaults": {
           "displayName": "Moscow IP",
@@ -5885,7 +5885,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "((2 * (1 - max(probe_success{job=\"public-ip-probes\",service_id=\"edge-moscow\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan\"}))) and on() (max(up{job=\"public-ip-probes\",service_id=\"edge-moscow\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan\"}) == 1) and on() (time() - max(timestamp(up{job=\"public-ip-probes\",service_id=\"edge-moscow\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"public-ip-probes\",service_id=\"edge-moscow\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan\"})) < 90)) or vector(-2)",
+          "expr": "((2 * (1 - max(probe_success{job=\"public-ip-probes\",service_id=\"edge-moscow\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan-v2\"}))) and on() (max(up{job=\"public-ip-probes\",service_id=\"edge-moscow\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan-v2\"}) == 1) and on() (time() - max(timestamp(up{job=\"public-ip-probes\",service_id=\"edge-moscow\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan-v2\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"public-ip-probes\",service_id=\"edge-moscow\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan-v2\"})) < 90)) or vector(-2)",
           "format": "time_series",
           "instant": true,
           "range": false,
