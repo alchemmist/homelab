@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -46,10 +48,16 @@ def launch(unit, properties, executable, *arguments):
     run(*command, executable, *arguments)
 
 
-def main():
+def main(runtime_root=ROOT):
     if os.geteuid() != 0:
         raise RuntimeError('Smoke test requires root')
     os.umask(0o077)
+    runtime_root = Path(runtime_root)
+    if runtime_root != ROOT:
+        if runtime_root.is_symlink() or runtime_root.parent != ROOT or not runtime_root.name.startswith('staged-'):
+            raise RuntimeError('Unowned candidate runtime root')
+    workloads = [(name, db, cert, acme, runtime_root / name / 'app/bin', zone)
+                 for name, db, cert, acme, _, zone in WORKLOADS]
     namespaces = json.loads(run('ip', '-j', 'netns', 'list'))
     if any(item['name'] == NAMESPACE for item in namespaces):
         raise RuntimeError('Smoke namespace already exists; refusing to modify it')
@@ -62,7 +70,7 @@ def main():
     namespace_created = False
     cleanup_errors = []
     try:
-        for name, db, cert, acme, binaries, zone in WORKLOADS:
+        for name, db, cert, acme, binaries, zone in workloads:
             target = temporary / name
             target.mkdir()
             (target / 'db').mkdir()
@@ -82,11 +90,11 @@ def main():
         namespace_created = True
         run('ip', '-n', NAMESPACE, 'link', 'set', 'lo', 'up')
         run('ip', '-n', NAMESPACE, 'address', 'add', '172.18.0.1/16', 'dev', 'lo')
-        for name, db, cert, acme, binaries, zone in WORKLOADS:
+        for name, db, cert, acme, binaries, zone in workloads:
             target = temporary / name
             unit = 'homelab-vpn-smoke-' + name + '.service'
             properties = [
-                'RootDirectory=' + str(ROOT / name),
+                'RootDirectory=' + str(runtime_root / name),
                 'MountAPIVFS=yes',
                 'WorkingDirectory=/app',
                 'BindPaths=' + ' '.join(str(target / source) + ':' + destination for source, destination in [('db', '/etc/x-ui'), ('cert', '/root/cert'), ('acme', '/root/.acme.sh'), ('bin', '/app/bin')]),
@@ -105,7 +113,7 @@ def main():
             if time.monotonic() >= deadline:
                 raise RuntimeError('Isolated native VPN health checks did not pass')
             time.sleep(2)
-        print(json.dumps({'healthy': True, 'runtime': 'isolated native primary and Caddy', 'production_runtime_changed': False}))
+        proof = {'healthy': True, 'runtime': 'isolated native primary and Caddy', 'production_runtime_changed': False}
     finally:
         for unit in reversed(started):
             try:
@@ -127,9 +135,21 @@ def main():
             raise RuntimeError('; '.join(cleanup_errors) + '; private artifacts retained at ' + str(temporary))
 
 
+    if runtime_root != ROOT:
+        proof.update(image=(runtime_root / 'primary/.homelab-image').read_text().strip(),
+                     ui_sha256=hashlib.sha256((runtime_root / 'primary/app/x-ui').read_bytes()).hexdigest(),
+                     accepted_at=time.time(), cleanup_verified=True)
+        receipt = runtime_root / '.isolated-smoke-accepted.json'
+        with receipt.open('x') as stream:
+            json.dump(proof, stream);stream.flush();os.fsync(stream.fileno())
+    print(json.dumps(proof))
+
+
 if __name__ == '__main__':
     try:
-        main()
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--runtime-root', type=Path, default=ROOT)
+        main(parser.parse_args().runtime_root)
     except Exception as error:
         print(json.dumps({'error': str(error)}))
         raise SystemExit(1)
