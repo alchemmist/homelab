@@ -10,6 +10,7 @@ def ctl(tmp_path,monkeypatch):
  return m,m.Controller()
 def test_no_api_only_failover_and_failure_threshold(ctl,monkeypatch):
  m,c=ctl;monkeypatch.setattr(m,'boot_id',lambda:'test-boot');c.save(mode='kubernetes',boot_id='test-boot',grace_until=0)
+ monkeypatch.setattr(c,'recovery_scope',lambda:{'recover_local':True,'scope':'local-listener-failed'})
  calls=[];monkeypatch.setattr(c,'healthy',lambda:False);monkeypatch.setattr(c,'activate',lambda why:calls.append(why))
  for _ in range(3):c.tick()
  assert calls==[];c.tick();assert len(calls)==1
@@ -136,3 +137,70 @@ def test_unhealthy_primary_never_restarts_agent_or_releases_fence(ctl,monkeypatc
  monkeypatch.setattr(m,'run',lambda *a,**k:pytest.fail('must not change lifecycle'))
  c.tick();assert not c.state['healthy'] and c.marker.exists()
  with pytest.raises(AssertionError):c.demote()
+
+
+@pytest.mark.parametrize('agent,listeners,upstream,recover,scope',[
+ (True,True,False,False,'upstream-or-path-unhealthy'),
+ (True,True,True,True,'local-path-failed-upstream-healthy'),
+ (True,False,False,True,'local-listener-failed'),
+ (False,True,False,True,'local-agent-inactive'),
+])
+def test_failure_scope_uses_direct_upstream_not_api(ctl,monkeypatch,agent,listeners,upstream,recover,scope):
+ m,c=ctl;monkeypatch.setattr(m,'active',lambda unit:agent)
+ monkeypatch.setattr(m,'local_listeners_respond',lambda:listeners)
+ def check(config,host,source,detail):
+  assert host=='10.250.0.2' and source==('10.250.0.40',0)
+  if not upstream:raise TimeoutError()
+  return True
+ monkeypatch.setattr(m,'probe',check)
+ d=c.recovery_scope();assert d['recover_local']==recover and d['scope']==scope
+
+
+def test_upstream_failure_never_fences_worker_or_releases_marker(ctl,monkeypatch):
+ m,c=ctl;monkeypatch.setattr(m,'boot_id',lambda:'boot')
+ c.save(mode='kubernetes',boot_id='boot',grace_until=0)
+ monkeypatch.setattr(c,'healthy',lambda:False)
+ monkeypatch.setattr(c,'recovery_scope',lambda:{'recover_local':False,'scope':'upstream-or-path-unhealthy'})
+ monkeypatch.setattr(c,'activate',lambda why:pytest.fail('must not fence healthy local listeners for upstream failure'))
+ for _ in range(12):c.tick()
+ assert c.state['mode']=='kubernetes' and not c.state['healthy'] and not c.marker.exists()
+ assert c.state['failures']==4
+ assert len(list(m.ROOT.glob('*-failure-classified.json')))==1
+ # Upstream recovers but local TLS path remains bad: now a local recovery is justified.
+ calls=[];monkeypatch.setattr(c,'activate',lambda why:calls.append(why))
+ monkeypatch.setattr(c,'recovery_scope',lambda:{'recover_local':True,'scope':'local-path-failed-upstream-healthy'})
+ c.tick();assert len(calls)==1
+
+
+def test_probe_failure_records_stage_not_private_path(ctl,monkeypatch):
+ m,c=ctl
+ def fail(*a,**kw):raise TimeoutError()
+ monkeypatch.setattr(m.socket,'create_connection',fail)
+ assert not c.healthy()
+ assert c.last_probe['stage']=='tcp' and c.last_probe['port']==32053
+ assert c.last_probe['error']=='TimeoutError' and '/test' not in json.dumps(c.last_probe)
+
+
+def test_boot_grace_never_refreshes_old_green_health_or_carries_failure_count(ctl,monkeypatch):
+ m,c=ctl;c.save(mode='kubernetes',healthy=True,failures=3,boot_id='old')
+ monkeypatch.setattr(m,'boot_id',lambda:'new')
+ monkeypatch.setattr(c,'healthy',lambda:False)
+ monkeypatch.setattr(c,'activate',lambda _:pytest.fail('boot grace'))
+ c.tick();assert c.state['healthy'] is False and c.state['failures']==0
+ c.tick();assert c.state['healthy'] is False and c.state['failures']==0
+
+
+def test_failed_websocket_diagnostic_does_not_store_private_path(ctl,monkeypatch):
+ m,c=ctl
+ class Connection:
+  def __enter__(self):return self
+  def __exit__(self,*args):pass
+  def sendall(self,data):assert b'/test' in data
+  def recv(self,n):return b'HTTP/1.1 403 Forbidden\r\n'
+ class Context:
+  def wrap_socket(self,s,server_hostname):
+   assert server_hostname=='vpn.alchemmist.xyz';return Connection()
+ monkeypatch.setattr(m.socket,'create_connection',lambda *a,**kw:Connection())
+ monkeypatch.setattr(m.ssl,'create_default_context',lambda:Context())
+ assert not c.healthy() and c.last_probe['http_status']==403 and c.last_probe['stage']=='websocket'
+ assert '/test' not in json.dumps(c.last_probe)

@@ -12,3 +12,8 @@ wg_socrat_admin_clients: {}
 # No NetBird enrollment on the constrained relay worker; do not expand admission
 # merely because another general-purpose node is enrolled.
 netbird_node_enabled: false
+# K3s advertises HOME API LAN addresses after WG bootstrap. Route only these /32.
+wg_socrat_extra_allowed_peer_ips:
+  socrat-4:
+    socrat-0: [192.168.0.23/32]
+    socrat-1: [192.168.0.24/32]

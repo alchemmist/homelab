@@ -1,5 +1,25 @@
 # Socrat: текущий контекст
 
+## Unplanned fallback repair investigation —13Nov2026, NEWEST / PENDING SUDO
+
+Concrete Moscow defect: HOME advertised API addresses192.168.0.23/.24 currently
+route to eth0 default and actual TCP6443 times out. WG APIs10.250.0.1/.3 succeed
+~18–25ms.4hostvars lacked the extra /32 AllowedIPs already used by workers3/5;
+our worker-return preflight missed it. This explains agent API timeouts but does
+NOT prove every TLS failure/NL transport interruption. Before fallback, HOME0
+could not reach NL2380 and NL lost API/leader access;0/1 continued commits/quorum.
+Source prepared: exactly2API /32 additions (boot+live helper without restart/key
+changes), watcher direct-upstream attribution before stopping still-listening local
+worker, sanitized per-stage failure diagnostics, no stale-green health in boot
+grace. New scoped moscow-watchdog-repair.yml: defaultpreflight, confirmedapply,
+separateconfirmedreturn via existing failback/native rollback; no Node deletion or
+NL stop.148tests+2subtests, syntax passed. NOT APPLIED: sudo -n unavailable;
+previous password file deleted/value absent in current context. Await private
+Ansible vars-file PATH, not chat password. Current4OS/check1/NotReady,2K3S/check1;
+other5Ready. Do not report resolved or bypass current fences/credentials.
+[Evidence and gate](../docs/moscow-unplanned-fallback-20261113.md).
+
+
 ## Fixed Moscow chain + native readiness —13November2026, CURRENT
 
 Owner ABANDONED HOME/direct-NL/node5 user fallback. Only clients→Moscow4→NL;
