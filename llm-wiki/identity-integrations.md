@@ -125,7 +125,11 @@ Owner подтвердил рабочий вход. Нативный Generic OID
 
 - launch: `https://llm.alchemmist.xyz/sso/key/generate`;
 - callback: `https://llm.alchemmist.xyz/sso/callback`;
-- provider `homelab-litellm`, app `litellm`, production admission `homelab-owner`;
+- provider `homelab-litellm`, app `litellm`, production admission `homelab-owner`
+  plus the reviewed exact UUID binding for `vladislav` (non-admin `internal_user`);
+  `deploy/identity/litellm-users.json` is the dedicated controller's subject allowlist;
+  this is not automatic access for every Authentik user. See current onboarding
+  and verification limits at the top of `docs/litellm.md`;
 - custom scope mapping `homelab-litellm-reviewed-identity`, scope `litellm_identity`;
 - Secret `llm/socrat-authentik-litellm`, Generic SSO env; Helm optional Secret refs.
 

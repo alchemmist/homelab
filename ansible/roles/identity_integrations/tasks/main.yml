@@ -37,6 +37,13 @@
     mode: '0600'
   when: "'litellm' in identity_oidc_services"
 
+- name: Copy reviewed non-admin LiteLLM subjects
+  ansible.builtin.copy:
+    src: '{{ playbook_dir }}/../../deploy/identity/litellm-users.json'
+    dest: /home/alchemmist/.cache/homelab-authentik/litellm-users.json
+    mode: '0600'
+  when: "'litellm' in identity_oidc_services"
+
 - name: Copy reviewed LiteLLM native OIDC controller
   ansible.builtin.copy:
     src: litellm_oidc.py

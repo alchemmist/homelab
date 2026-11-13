@@ -9,6 +9,7 @@ import secrets
 import socket
 import subprocess
 import urllib.request
+import uuid
 
 HOST = 'auth.socrat.alchemmist.xyz'
 BASE = 'https://' + HOST
@@ -16,13 +17,14 @@ OWNER_ID = 'socrat-admin'
 MAPPING = 'homelab-litellm-reviewed-identity'
 
 
-def identity_expression(owner_uid, owner_email):
+def identity_expression(owner_uid, owner_email, user_uuids=()):
     # Identities/roles are selected by reviewed immutable subject, never email.
     return ('uid = str(request.user.uuid)\n'
             'owner = uid.replace("-", "") == ' + repr(owner_uid.replace('-', '')) + '\n'
+            'member = uid in ' + repr(sorted(user_uuids)) + '\n'
             'return {"litellm_user_id": ' + repr(OWNER_ID) + ' if owner else "authentik:" + uid,\n'
             ' "litellm_user_email": ' + repr(owner_email) + ' if owner else uid + "@sso.socrat.alchemmist.xyz",\n'
-            ' "litellm_user_role": "proxy_admin" if owner else "internal_user_viewer"}\n')
+            ' "litellm_user_role": "proxy_admin" if owner else ("internal_user" if member else "internal_user_viewer")}\n')
 
 
 def main():
@@ -89,6 +91,20 @@ asyncio.run(main())
         raise RuntimeError('Owner UUID differs from explicit reviewed account mapping')
     if not group or owner['pk'] not in group.get('users', []):
         raise RuntimeError('Reviewed owner group boundary missing')
+    grants = json.loads((args.root / 'litellm-users.json').read_text())
+    if not isinstance(grants, dict):
+        raise RuntimeError('Invalid reviewed LiteLLM grants')
+    granted_users = []
+    for username, grant in grants.items():
+        uid = str(uuid.UUID(grant['idpUserUuid']))
+        if uid == owner['uuid'] or grant != {'idpUserUuid': uid, 'litellmRole': 'internal_user'}:
+            raise RuntimeError('Unreviewed user privilege or owner override')
+        subject = one('core/users/', 'username', username)
+        if not subject or subject['uuid'] != uid or not subject['is_active'] or subject.get('is_superuser'):
+            raise RuntimeError('Reviewed LiteLLM subject missing, inactive, privileged or rebound')
+        granted_users.append(subject)
+    if len({u['uuid'] for u in granted_users}) != len(granted_users):
+        raise RuntimeError('Duplicate LiteLLM subject')
     if not args.apply:
         print('Preflight passed: native OIDC available, reviewed owner and owner-only local password boundary; no changes')
         return
@@ -115,7 +131,7 @@ asyncio.run(main())
         private(client_path, clients, overwrite=True)
     mapping = one('propertymappings/provider/scope/', 'name', MAPPING)
     settings = {'name': MAPPING, 'scope_name': 'litellm_identity',
-                'expression': identity_expression(owner['uuid'], owner_rows[0]['user_email'])}
+                'expression': identity_expression(owner['uuid'], owner_rows[0]['user_email'], [u['uuid'] for u in granted_users])}
     if not mapping or any(mapping.get(k) != v for k, v in settings.items()):
         mapping = api('PATCH' if mapping else 'POST', 'propertymappings/provider/scope/' + (mapping['pk'] + '/' if mapping else ''), settings)
     scopes = api('GET', 'propertymappings/provider/scope/?page_size=100')['results']
@@ -141,10 +157,19 @@ asyncio.run(main())
         'group': 'Socrat', 'policy_engine_mode': 'any'}
     app = api('PATCH' if app else 'POST', 'core/applications/' + ('litellm/' if app else ''), settings)
     bindings = api('GET', 'policies/bindings/?target=' + app['pk'] + '&page_size=100')['results']
-    if any(b.get('group') != group['pk'] for b in bindings):
+    approved_pks = {u['pk'] for u in granted_users}
+    def accepted_binding(b):
+        target_ok = (b.get('group') == group['pk'] and b.get('user') is None) or (b.get('group') is None and b.get('user') in approved_pks)
+        return target_ok and b.get('policy') is None and b.get('enabled') is True and b.get('negate') is False and b.get('failure_result') is False and not b.get('expires')
+    if any(not accepted_binding(b) for b in bindings):
         raise RuntimeError('Unexpected application admission binding; review before rollout')
-    if not bindings:
+    if len({(b.get('group'), b.get('user')) for b in bindings}) != len(bindings):
+        raise RuntimeError('Duplicate application admission binding')
+    if not any(b.get('group') == group['pk'] for b in bindings):
         api('POST', 'policies/bindings/', {'target': app['pk'], 'group': group['pk'], 'order': 0, 'enabled': True, 'failure_result': False})
+    for subject in granted_users:
+        if not any(b.get('user') == subject['pk'] for b in bindings):
+            api('POST', 'policies/bindings/', {'target': app['pk'], 'user': subject['pk'], 'order': 90, 'enabled': True, 'negate': False, 'failure_result': False})
     secret = {'apiVersion': 'v1', 'kind': 'Secret', 'metadata': {'name': 'socrat-authentik-litellm', 'namespace': 'llm'}, 'type': 'Opaque', 'stringData': {
         'GENERIC_CLIENT_ID': clients['litellm']['client_id'], 'GENERIC_CLIENT_SECRET': clients['litellm']['client_secret'],
         'GENERIC_AUTHORIZATION_ENDPOINT': BASE + '/application/o/authorize/',

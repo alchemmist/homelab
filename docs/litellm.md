@@ -1,4 +1,40 @@
-# LiteLLM gateway
+# LiteLLM
+
+## Reviewed user onboarding: vladislav
+
+The active external Authentik user `vladislav` is explicitly provisioned as a
+non-admin LiteLLM `internal_user`. The binding uses the immutable IdP UUID
+`3c9ccdc4-139e-4657-8960-f1356aaff45d`, with LiteLLM ID and SSO ID
+`authentik:3c9ccdc4-139e-4657-8960-f1356aaff45d`. Email is the existing synthetic
+UUID-address convention, not an identity-merge key. Login remains native Authentik
+MFA + consent + PKCE at <https://llm.alchemmist.xyz/sso/key/generate>.
+
+`deploy/identity/litellm-users.json` is the exact reviewed non-admin subject
+allowlist. The dedicated LiteLLM controller verifies username/UUID/active state,
+keeps the owner mapping unchanged, maps only these subjects to `internal_user`,
+and preserves/adds exact user admission bindings. The foundation service catalog
+still lists the legacy owner group; these user bindings belong to the dedicated
+controller, not the generic group/lifecycle controller. No `homelab-owner`
+membership or automatic grant to every new Authentik user is involved.
+
+The account was created immediately with the supported `/user/new` API,
+`auto_create_key=false`, without password/invite changes, SQL writes, generated
+API keys or restarts. Three users were verified afterward; both prior user
+records, deployment and identity/master-key Secrets were unchanged. Preimages
+and operation receipts are private on socrat-0 under
+`~/.cache/homelab-authentik/litellm-vladislav-lf37lj5w/`.
+Eight offline identity tests and the updated controller's read-only preflight
+passed. Vladislav's real browser login/MFA acceptance is still pending; no one
+logged in as him or reset his credentials.
+
+This is explicit onboarding of one existing subject, not background synchronization
+on Authentik account creation. Future grants need review and capacity checks;
+current free-tier gate remains five total users. Removing a grant must separately
+remove its admission binding and revoke active LiteLLM sessions/API keys; deleting
+an allowlist row alone is not complete offboarding. Do not blindly delete a user
+who has acquired data or keys. Earlier owner-only descriptions below describe the
+original rollout and are superseded only for this reviewed subject.
+ gateway
 
 The official `oci://ghcr.io/berriai/litellm-helm` chart is pinned to 1.105.1. A single CPU-only proxy on socrat-0 forwards `qwen3.8-27b` directly to the vLLM Service. Open WebUI connects through a dedicated `open-webui` virtual key restricted to Qwen. The credential is stored in Secret `llm/open-webui-litellm`. A NetworkPolicy permits vLLM ingress only from LiteLLM pods; node traffic remains governed by Kubernetes host networking semantics.
 

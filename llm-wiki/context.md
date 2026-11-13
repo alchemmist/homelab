@@ -1,5 +1,18 @@
 # Socrat: текущий контекст
 
+## LiteLLM: reviewed vladislav onboarding — CURRENT
+
+Owner authorized onboarding of the existing active external Authentik user
+`vladislav`. Exact immutable UUID → `authentik:<uuid>` / `internal_user`, immediate
+account creation via supported API with no key, plus exact user app-admission
+binding. Owner mapping/group and two prior users unchanged; now 3 users. No
+password/MFA change, SQL writes, Secrets change or restart. New dedicated
+`deploy/identity/litellm-users.json` allowlist and reconciler preserve this grant;
+not a grant to every newly created Authentik user. 8 tests + read-only live
+preflight passed. Real Vladislav browser login remains untested. Details/private
+receipt location and offboarding caveats: [LiteLLM](../docs/litellm.md). Earlier
+owner-only descriptions are superseded only for this reviewed UUID.
+
 ## Moscow repair APPLIED and K3S restored —13Nov2026, CURRENT
 
 Owner authorized live repair.9d7ee7d4 source + f5f6aa36 preflight JSON-index fix
