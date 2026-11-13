@@ -1,5 +1,20 @@
 # Socrat: текущий контекст
 
+## Traffic Light direct IP/native Moscow fix — 13 November 2026
+
+Panel926 now uses native host up/memory/root-space metrics, not removed Kubernetes
+Ready4. IP cubes905/906/928 use distinct public-ip-probes, stock hostNetwork
+exporter on HOME0, LAN source192.168.0.23, literal public TCP443. Verified direct
+physical route via192.168.0.1/eno1; no VPN/service-alert coupling. Existing TV OTel
+sidecar owns these3jobs with unchanged mTLS. Argo Synced/Healthy bb5b1e05; all
+three fresh direct probes1 and actual four panel expressions0/green. Native
+Grafana API model matches, all63panel geometries retained;56tests+promtool/lint.
+Public NL TCP443 works directly from HOME0/1; ICMP and public2222 do not answer,
+not proof of whole-IP or all-Russia blocking. TV ADB has no connected device;
+physical page needs refresh, no visual acceptance claimed. See
+[contract/evidence](../docs/traffic-light-direct-ip-20261113.md).
+
+
 ## Moscow is now a native-primary network host — 12 November 2026
 
 Accepted migration: Kubernetes now has5Ready nodes0/1/2/3/5; Moscow4 remains a
