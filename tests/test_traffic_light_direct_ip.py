@@ -41,12 +41,12 @@ class DirectIpTest(unittest.TestCase):
         self.assertEqual({j['job_name'] for j in jobs if j not in direct},{'socrat-n8n-activity','socrat-argocd'})
         self.assertIn('checksum/native-pipeline',obj('Deployment','socrat-n8n-activity')['spec']['template']['metadata']['annotations'])
 
-    def test_host4_no_longer_claims_kubernetes_readiness(self):
+    def test_host4_is_a_real_kubernetes_worker_again(self):
         e=panel(926)['targets'][0]['expr']
-        self.assertNotIn('kube_node',e)
-        for metric in ['up{','node_memory_MemAvailable_bytes','node_filesystem_avail_bytes','timestamp(','or vector(-2)']:
-            self.assertIn(metric,e)
-        self.assertIn('NOT Kubernetes',panel(926)['description'])
+        self.assertIn('kube_node_status_condition',e)
+        self.assertIn('node="socrat-4"',e)
+        self.assertIn('timestamp(',e)
+        self.assertIn('or vector(-2)',e)
 
     @unittest.skipUnless(shutil.which('promtool'),'promtool required')
     def test_actual_panel_expressions_down_pressure_stale_and_no_vpn_coupling(self):
@@ -54,15 +54,12 @@ class DirectIpTest(unittest.TestCase):
         def add(expr,data,value,when='3m'):
             cases.append({'interval':'15s','input_series':data,'promql_expr_test':[{'expr':expr,'eval_time':when,'exp_samples':[{'labels':'{}','value':value}]}]})
         e=panel(926)['targets'][0]['expr']
-        good=[series('up',1),series('node_memory_MemAvailable_bytes',60),series('node_memory_MemTotal_bytes',100),series('node_filesystem_avail_bytes',60,labels='job="node-exporter",node="socrat-4",mountpoint="/"'),series('node_filesystem_size_bytes',100,labels='job="node-exporter",node="socrat-4",mountpoint="/"')]
-        add(e,good,0)
-        pressure=[dict(s) for s in good];pressure[1]['values']='5x20';add(e,pressure,1)
-        pressure=[dict(s) for s in good];pressure[3]['values']='5x20';add(e,pressure,1)
-        add(e,[series('up',0)],2)
-        add(e,[], -2)
-        add(e,good[:1],-2)
-        stale=[dict(s,values=s['values'].split('x')[0]) for s in good];add(e,stale,-2)
-        zero=[dict(s) for s in good];zero[4]['values']='0x20';add(e,zero,-2)
+        ready=lambda value,samples=20:series('kube_node_status_condition',value,'node="socrat-4",condition="Ready",status="true"',samples)
+        add(e,[ready(1)],0)
+        add(e,[ready(0)],2)
+        add(e,[ready(1),series('kube_node_status_condition',1,'node="socrat-4",condition="MemoryPressure",status="true"')],1)
+        add(e,[],-2)
+        add(e,[ready(1,0)],-2)
         for pid,sid in [(905,'edge-home'),(906,'edge-vps'),(928,'edge-moscow')]:
             e=panel(pid)['targets'][0]['expr']
             lab=f'job="public-ip-probes",service_id="{sid}",probe_observer="socrat-0",probe_path="direct-home-wan"'
