@@ -174,7 +174,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "VPN execution mode on the VPS. Green K3s means 3xUI is running as the Kubernetes service. Amber Fallback means native systemd mode is latched after Kubernetes stopped serving it. Red Off means the mode metric from socrat-2 is missing or stale, so the VPN host is not reporting a running mode.",
+      "description": "Current NL backend runtime latch only: K3S=not latched, OS=native fallback latched. Missing or stale telemetry is NO DATA, never proof of OFF. This signal is not whole-chain VPN health or Moscow/HOME ingress selection; composite component and route monitoring is pending. OFF is reserved for positively established total data-path failure, not synthesized from missing metrics.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -187,15 +187,19 @@
               "options": {
                 "0": {
                   "color": "#26783D",
-                  "text": "K3s"
+                  "text": "K3S"
                 },
                 "1": {
                   "color": "#A85D08",
-                  "text": "Fallback"
+                  "text": "OS"
                 },
                 "2": {
                   "color": "#B42332",
-                  "text": "Off"
+                  "text": "OFF"
+                },
+                "-2": {
+                  "color": "#666666",
+                  "text": "NO DATA"
                 }
               },
               "type": "value"
@@ -257,7 +261,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(socrat_vpn_fallback_active{job=\"node-exporter\"} and (time() - timestamp(socrat_vpn_fallback_active{job=\"node-exporter\"}) < 30)) or vector(2)",
+          "expr": "max(socrat_vpn_fallback_active{job=\"node-exporter\"} and (time() - timestamp(socrat_vpn_fallback_active{job=\"node-exporter\"}) < 30)) or vector(-2)",
           "format": "time_series",
           "instant": true,
           "refId": "A"

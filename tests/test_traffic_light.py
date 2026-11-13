@@ -36,14 +36,15 @@ class TrafficLightLayoutTest(unittest.TestCase):
         defaults = panel['fieldConfig']['defaults']
         self.assertEqual(defaults['displayName'], 'VPN mode')
         states = defaults['mappings'][0]['options']
-        self.assertEqual(states['0'], {'text': 'K3s', 'color': '#26783D'})
-        self.assertEqual(states['1'], {'text': 'Fallback', 'color': '#A85D08'})
-        self.assertEqual(states['2'], {'text': 'Off', 'color': '#B42332'})
+        self.assertEqual(states['0'], {'text': 'K3S', 'color': '#26783D'})
+        self.assertEqual(states['1'], {'text': 'OS', 'color': '#A85D08'})
+        self.assertEqual(states['2'], {'text': 'OFF', 'color': '#B42332'})
         expr = panel['targets'][0]['expr']
         self.assertIn('socrat_vpn_fallback_active', expr)
         self.assertIn('timestamp(', expr)
         self.assertIn('< 30', expr)
-        self.assertIn('or vector(2)', expr)
+        self.assertIn('or vector(-2)', expr)
+        self.assertEqual(states['-2']['text'], 'NO DATA')
         self.assertTrue(panel['targets'][0]['instant'])
         ids = {item['id'] for item in self.dashboard['panels']}
         self.assertNotIn(325, ids)
