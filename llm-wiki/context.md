@@ -1,5 +1,24 @@
 # Socrat: текущий контекст
 
+## VPN HOME fallback investigation —13November2026: NOT YET DEPLOYED
+
+IMPORTANT CORRECTION: earlier direct NL443 claim was wrong: HOME OUTPUT DNAT
+silently sent literal NL targets via Moscow. Corrected f1163873/45841353 with
+probe-only UID19091 exemption on0, exact CAS+boot receipts; ordinary traffic
+unchanged. Exporter uses new direct-home-wan-v2 provenance. Actual direct probes:
+NL443=0/timeouts, HOME443=1, Moscow443=1. Do NOT claim NL reachable directly from
+HOME or infer all-Russia/global blocking. Existing Moscow authenticated proof valid.
+Bounded direct UDP51843 diagnostic also negative; no matching datagram/response.
+Files/responder cleaned; existing mesh/ports/control-plane untouched,6Ready/relay1.
+HOME0→5→NL strictly pinned SSH works without Moscow, candidate native transport
+but NOT user-data reserve; private443 from5 refused (ACL review needed). HOME raw
+VPN public ports not yet established; router mappings require verification.
+Mode9 missing/stale now NO DATA not OFF (db1263e6), positive native latch OS.
+Still NL-only mode signal: composite two-axis mode/automatic HOME switching and
+return NOT implemented. Need topology decision before adding5 to user path.
+Temporary escalation file removed. [English evidence and gates](../docs/vpn-home-fallback-20261113.md).
+
+
 ## Moscow WORKER RESTORED —13November2026, owner requirement
 
 Owner rejects permanent removal as optimization: socrat-4 MUST remain worker.
@@ -15,7 +34,7 @@ acceptance not claimed. [English acceptance](../docs/moscow-worker-return-202611
 Older native-primary and native cube4 entries below are historical/superseded.
 
 
-## Traffic Light direct IP/native Moscow fix — 13 November 2026
+## Historical: initial IP probe fix13Nov, direct-NL inference WITHDRAWN above
 
 Panel926 now uses native host up/memory/root-space metrics, not removed Kubernetes
 Ready4. IP cubes905/906/928 use distinct public-ip-probes, stock hostNetwork
