@@ -2025,7 +2025,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Single-node health cube inside the numbered node row. Green = Ready with no disk or memory pressure; orange = DiskPressure or MemoryPressure; red = NotReady; grey = No telemetry, the node metric is stale or missing.",
+      "description": "Native host socrat-4, NOT Kubernetes Ready: Moscow is outside Kubernetes. Green=fresh native node-exporter up1 with available memory and root filesystem space >=10%; orange=either below10%; red=fresh native exporter up0; grey=missing/stale collection or required host metrics. CPU contention is a separate warning, as on the other node cubes. No invented Kubernetes readiness or authenticated VPN health.",
       "fieldConfig": {
         "defaults": {
           "displayName": "4",
@@ -2111,7 +2111,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "((2 * (1 - (max(kube_node_status_condition{node=\"socrat-4\",condition=\"Ready\",status=\"true\"}) or vector(0)))) + max(kube_node_status_condition{node=\"socrat-4\",condition=~\"DiskPressure|MemoryPressure\",status=\"true\"} or vector(0))) and on() (time() - max(timestamp(kube_node_status_condition{node=\"socrat-4\"})) < 120) or vector(-2)",
+          "expr": "(2 * (1 - max(up{job=\"node-exporter\",node=\"socrat-4\"})) and on() (max(up{job=\"node-exporter\",node=\"socrat-4\"}) == 0) and on() (time() - max(timestamp(up{job=\"node-exporter\",node=\"socrat-4\"})) < 120)) or (max((node_memory_MemAvailable_bytes{job=\"node-exporter\",node=\"socrat-4\"} / node_memory_MemTotal_bytes{job=\"node-exporter\",node=\"socrat-4\"} < bool 0.1) or (node_filesystem_avail_bytes{job=\"node-exporter\",node=\"socrat-4\",mountpoint=\"/\"} / node_filesystem_size_bytes{job=\"node-exporter\",node=\"socrat-4\",mountpoint=\"/\"} < bool 0.1)) and on() (max(up{job=\"node-exporter\",node=\"socrat-4\"}) == 1) and on() (time() - max(timestamp(up{job=\"node-exporter\",node=\"socrat-4\"})) < 120) and on() (min(node_memory_MemTotal_bytes{job=\"node-exporter\",node=\"socrat-4\"}) > 0) and on() (min(node_filesystem_size_bytes{job=\"node-exporter\",node=\"socrat-4\",mountpoint=\"/\"}) > 0) and on() (time() - max(timestamp(node_memory_MemAvailable_bytes{job=\"node-exporter\",node=\"socrat-4\"})) < 120) and on() (time() - max(timestamp(node_memory_MemTotal_bytes{job=\"node-exporter\",node=\"socrat-4\"})) < 120) and on() (time() - max(timestamp(node_filesystem_avail_bytes{job=\"node-exporter\",node=\"socrat-4\",mountpoint=\"/\"})) < 120) and on() (time() - max(timestamp(node_filesystem_size_bytes{job=\"node-exporter\",node=\"socrat-4\",mountpoint=\"/\"})) < 120)) or vector(-2)",
           "format": "time_series",
           "instant": true,
           "range": false,
@@ -2906,7 +2906,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Public entrance availability cube. Home IP is the apartment connection (109.173.40.247), VPS IP is the cloud edge (109.120.141.60), both probed over TCP 443 by the blackbox exporter every minute. Green = the address answers; orange = probe failures pending alert; red = the SocratServiceEdge*Unavailable alert is firing; grey = No telemetry, probe or rule evaluation is stale. A red cube also means the entrance path is down even when specific service tiles stay green, because those are probed inside the cluster.",
+      "description": "Direct public IPv4 TCP443 from HOME socrat-0, source192.168.0.23 via physical eno1 / home router, stock host-network blackbox. No DNS, TLS, application/VPN check, SOCKS proxy or Moscow relay. Green=TCP connect succeeds; red=fresh TCP connect failure; grey=missing/stale probe collection. Independent of service-probes and service/VPN alerts. This is one Russian HOME ISP vantage, not all Russia. ICMP may be blocked while TCP443 works. Home IP is a router hairpin check, not an external internet check. Route changes require revalidating physical WAN egress.",
       "fieldConfig": {
         "defaults": {
           "displayName": "VPS IP",
@@ -2916,10 +2916,6 @@
                 "0": {
                   "color": "#26783D",
                   "text": "OK"
-                },
-                "1": {
-                  "color": "#A85D08",
-                  "text": "PENDING"
                 },
                 "2": {
                   "color": "#B42332",
@@ -2988,7 +2984,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceEdgeVpsUnavailable\",service_id=\"edge-vps\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceEdgeVpsUnavailable\",service_id=\"edge-vps\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"edge-vps\"})) and on() ((max(up{job=\"service-probes\",service_id=\"edge-vps\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"edge-vps\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"edge-vps\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "expr": "((2 * (1 - max(probe_success{job=\"public-ip-probes\",service_id=\"edge-vps\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan\"}))) and on() (max(up{job=\"public-ip-probes\",service_id=\"edge-vps\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan\"}) == 1) and on() (time() - max(timestamp(up{job=\"public-ip-probes\",service_id=\"edge-vps\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"public-ip-probes\",service_id=\"edge-vps\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan\"})) < 90)) or vector(-2)",
           "format": "time_series",
           "instant": true,
           "range": false,
@@ -3197,7 +3193,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Public entrance availability cube. Home IP is the apartment connection (109.173.40.247), VPS IP is the cloud edge (109.120.141.60), both probed over TCP 443 by the blackbox exporter every minute. Green = the address answers; orange = probe failures pending alert; red = the SocratServiceEdge*Unavailable alert is firing; grey = No telemetry, probe or rule evaluation is stale. A red cube also means the entrance path is down even when specific service tiles stay green, because those are probed inside the cluster.",
+      "description": "Direct public IPv4 TCP443 from HOME socrat-0, source192.168.0.23 via physical eno1 / home router, stock host-network blackbox. No DNS, TLS, application/VPN check, SOCKS proxy or Moscow relay. Green=TCP connect succeeds; red=fresh TCP connect failure; grey=missing/stale probe collection. Independent of service-probes and service/VPN alerts. This is one Russian HOME ISP vantage, not all Russia. ICMP may be blocked while TCP443 works. Home IP is a router hairpin check, not an external internet check. Route changes require revalidating physical WAN egress.",
       "fieldConfig": {
         "defaults": {
           "displayName": "Home IP",
@@ -3207,10 +3203,6 @@
                 "0": {
                   "color": "#26783D",
                   "text": "OK"
-                },
-                "1": {
-                  "color": "#A85D08",
-                  "text": "PENDING"
                 },
                 "2": {
                   "color": "#B42332",
@@ -3279,7 +3271,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceEdgeHomeUnavailable\",service_id=\"edge-home\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceEdgeHomeUnavailable\",service_id=\"edge-home\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"edge-home\"})) and on() ((max(up{job=\"service-probes\",service_id=\"edge-home\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"edge-home\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"edge-home\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "expr": "((2 * (1 - max(probe_success{job=\"public-ip-probes\",service_id=\"edge-home\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan\"}))) and on() (max(up{job=\"public-ip-probes\",service_id=\"edge-home\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan\"}) == 1) and on() (time() - max(timestamp(up{job=\"public-ip-probes\",service_id=\"edge-home\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"public-ip-probes\",service_id=\"edge-home\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan\"})) < 90)) or vector(-2)",
           "format": "time_series",
           "instant": true,
           "range": false,
@@ -5815,7 +5807,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Public Moscow entrance 91.189.82.238:443 (socrat-4), TCP reachability from the cluster blackbox exporter, not authenticated VPN or whole-node health. Green=reachable; orange=probe failure pending; red=unavailability alert firing; grey=missing/stale probe or rule telemetry. Same freshness and alert semantics as Home IP / VPS IP.",
+      "description": "Direct public IPv4 TCP443 from HOME socrat-0, source192.168.0.23 via physical eno1 / home router, stock host-network blackbox. No DNS, TLS, application/VPN check, SOCKS proxy or Moscow relay. Green=TCP connect succeeds; red=fresh TCP connect failure; grey=missing/stale probe collection. Independent of service-probes and service/VPN alerts. This is one Russian HOME ISP vantage, not all Russia. ICMP may be blocked while TCP443 works. Home IP is a router hairpin check, not an external internet check. Route changes require revalidating physical WAN egress.",
       "fieldConfig": {
         "defaults": {
           "displayName": "Moscow IP",
@@ -5825,10 +5817,6 @@
                 "0": {
                   "color": "#26783D",
                   "text": "OK"
-                },
-                "1": {
-                  "color": "#A85D08",
-                  "text": "PENDING"
                 },
                 "2": {
                   "color": "#B42332",
@@ -5897,7 +5885,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(max(2 * ALERTS{alertname=\"SocratServiceEdgeMoscowUnavailable\",service_id=\"edge-moscow\",alertstate=\"firing\"} or ALERTS{alertname=\"SocratServiceEdgeMoscowUnavailable\",service_id=\"edge-moscow\",alertstate=\"pending\"})) or ((1 - max(probe_success{job=\"service-probes\",service_id=\"edge-moscow\"})) and on() ((max(up{job=\"service-probes\",service_id=\"edge-moscow\"}) == 1) and on() (time() - max(timestamp(up{job=\"service-probes\",service_id=\"edge-moscow\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"service-probes\",service_id=\"edge-moscow\"})) < 90) and on() (time() - max(prometheus_rule_group_last_evaluation_timestamp_seconds{rule_group=~\".*;socrat.services.availability\"}) < 90))) or vector(-2)",
+          "expr": "((2 * (1 - max(probe_success{job=\"public-ip-probes\",service_id=\"edge-moscow\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan\"}))) and on() (max(up{job=\"public-ip-probes\",service_id=\"edge-moscow\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan\"}) == 1) and on() (time() - max(timestamp(up{job=\"public-ip-probes\",service_id=\"edge-moscow\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan\"})) < 90) and on() (time() - max(timestamp(probe_success{job=\"public-ip-probes\",service_id=\"edge-moscow\",probe_observer=\"socrat-0\",probe_path=\"direct-home-wan\"})) < 90)) or vector(-2)",
           "format": "time_series",
           "instant": true,
           "range": false,

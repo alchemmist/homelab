@@ -132,7 +132,7 @@ class TrafficLightQueriesTest(unittest.TestCase):
         return panel_by_id(self.dashboard, 927 if int(digit) == 5 else 926 if int(digit) == 4 else 901 + int(digit))
 
     def test_node_tiles_reference_each_node_with_health_priorities(self):
-        for node in ('socrat-0', 'socrat-1', 'socrat-2', 'socrat-3', 'socrat-4', 'socrat-5'):
+        for node in ('socrat-0', 'socrat-1', 'socrat-2', 'socrat-3', 'socrat-5'):
             expr = self.node_panel(node)['targets'][0]['expr']
             self.assertIn(f'node="{node}"', expr)
             self.assertIn('condition="Ready",status="true"}', expr)
@@ -165,7 +165,10 @@ class TrafficLightQueriesTest(unittest.TestCase):
         ):
             expr = panel_by_id(self.dashboard, panel_id)['targets'][0]['expr']
             self.assertIn(f'service_id="{service_id}"', expr)
-            self.assertIn(alert, expr)
+            self.assertNotIn('ALERTS', expr)
+            self.assertIn('job="public-ip-probes"', expr)
+            self.assertIn('probe_observer="socrat-0"', expr)
+            self.assertIn('probe_path="direct-home-wan"', expr)
             self.assertIn(f'id: {service_id}\n', text)
             self.assertIn(alert, text)
 
