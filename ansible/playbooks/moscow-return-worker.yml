@@ -1,0 +1,101 @@
+---
+# Explicit inverse of native-primary retirement. Never enroll/uninstall/flush.
+- name: Return preserved Moscow worker with fenced VPN handoff
+  hosts: socrat-4
+  become: true
+  gather_facts: false
+  any_errors_fatal: true
+  vars:
+    ansible_host: socrat-4
+    ansible_port: 2222
+    ansible_ssh_common_args: '-o ProxyJump=none -o StrictHostKeyChecking=yes'
+    phase: '{{ moscow_return_phase | default("preflight") }}'
+    recovery_root: /var/lib/homelab-recovery/20261113-moscow-return-worker
+    tool: /usr/local/libexec/vpn-transit-failover.py
+  tasks:
+    - ansible.builtin.assert:
+        that:
+          - inventory_hostname == 'socrat-4'
+          - phase in ['preflight','apply']
+          - phase != 'apply' or (moscow_return_confirmed | default(false) | bool)
+    - ansible.builtin.stat:
+        path: '{{ item.path }}'
+        checksum_algorithm: sha256
+      loop:
+        - {path: /usr/local/libexec/vpn-transit-failover.py, sha: 81fa706264d5d9f5b86f3b7423fc1e9bf3324e955e57594297b1ad25edad35be}
+        - {path: /usr/local/libexec/xray-transit, sha: a27e3f95ab6ce270956d0cecd32eda4686a811afc71c64a6a734a3dede14883e}
+        - {path: /etc/homelab-vpn-transit/user.json, sha: c1e7d7cf08f43dc3bfd71ca87b08e339029c95d02115e533034a9ed2a8048e11}
+      register: immutable
+    - ansible.builtin.assert:
+        that: item.stat.checksum == item.item.sha
+      loop: '{{ immutable.results }}'
+      loop_control:
+        label: '{{ item.item.path }}'
+    - ansible.builtin.command: python3 {{ tool }} status
+      changed_when: false
+      register: before
+    - ansible.builtin.assert:
+        that:
+          - (before.stdout | from_json).mode == 'native-primary'
+          - (before.stdout | from_json).data_path_healthy
+          - (before.stdout | from_json).native_active
+          - not (before.stdout | from_json).agent_active
+          - (before.stdout | from_json).fallback_marker
+    - name: Require desired relay1 before releasing the worker fence
+      ansible.builtin.command: kubectl -n vpn-transit get deployment vpn-transit -o json
+      delegate_to: socrat-0
+      become: false
+      vars:
+        ansible_host: socrat-0
+        ansible_port: 2222
+      changed_when: false
+      register: relay
+    - ansible.builtin.assert:
+        that:
+          - (relay.stdout | from_json).spec.replicas == 1
+          - (relay.stdout | from_json).spec.template.spec.nodeSelector['kubernetes.io/hostname'] == 'socrat-4'
+    - name: Verify inverse boot fences without changing units
+      ansible.builtin.shell: |
+        set -eu
+        systemctl cat k3s-agent | grep -F 'ExecCondition=/usr/bin/test ! -e /var/lib/homelab-vpn-transit/relay-failover/fallback.active'
+        systemctl cat homelab-vpn-transit-native | grep -F 'ExecCondition=+/usr/bin/test -e /var/lib/homelab-vpn-transit/relay-failover/fallback.active'
+        test -s /var/lib/rancher/k3s/agent/client-kubelet.crt
+        test -s /var/lib/rancher/k3s/agent/containerd/io.containerd.metadata.v1.bolt/meta.db
+      changed_when: false
+    - when: phase == 'apply'
+      block:
+        - ansible.builtin.file:
+            path: '{{ recovery_root }}'
+            state: directory
+            mode: '0700'
+        - ansible.builtin.copy:
+            content: '{{ before.stdout }}'
+            dest: '{{ recovery_root }}/before.json'
+            mode: '0600'
+            force: false
+        - name: Demote only; retain live native path and persistent fence
+          ansible.builtin.command: python3 {{ tool }} demote
+          changed_when: true
+        - name: Enable boot but do not bypass the fence or start the agent here
+          ansible.builtin.systemd_service:
+            name: k3s-agent
+            enabled: true
+        - name: Transfer ports through the existing locked failback and native rollback
+          ansible.builtin.command: python3 {{ tool }} failback
+          async: 300
+          poll: 3
+          changed_when: true
+        - ansible.builtin.command: python3 {{ tool }} status
+          changed_when: false
+          register: after
+        - ansible.builtin.copy:
+            content: '{{ after.stdout }}'
+            dest: '{{ recovery_root }}/after.json'
+            mode: '0600'
+        - ansible.builtin.assert:
+            that:
+              - (after.stdout | from_json).mode == 'kubernetes'
+              - (after.stdout | from_json).data_path_healthy
+              - (after.stdout | from_json).agent_active
+              - not (after.stdout | from_json).native_active
+              - not (after.stdout | from_json).fallback_marker
