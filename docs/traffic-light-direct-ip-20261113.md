@@ -72,3 +72,23 @@ without viewing that TV.
 Rollback: revert this scoped source change through GitOps. The old service-probes
 and native host telemetry remain intact. No PVCs, runtime credentials, native
 agent configs or VPN state are modified by this change.
+
+## Accepted runtime at06:01UTC
+
+Published source bb5b1e05; Argo monitoring-k3s Synced/Healthy at that exact revision,
+operation Succeeded. The direct exporter is1/1Ready on0, hostIP192.168.0.23;
+existing TV activity/metrics pod rolled to2/2Ready. All three direct probe_success
+and collection up series are1 with the expected observer/path/target labels.
+The provisioned Grafana API model matches all four new expressions and all63
+panel geometries are unchanged. Actual panel queries905/906/926/928 all returned0
+(green). Direct exporter checks returned1 for all three addresses, including NL.
+The original source's alert-based service probes/rules remain intact.
+
+56focused tests passed, plus the existing promtool traffic-light rules suite and
+Helm lint. Only monitoring Deployment/ConfigMap/policy source changed; no native
+agent, VPN, control-plane or storage operation was performed.
+
+Physical TV not visually accepted: the existing socrat-0 user ADB server listed
+no connected devices. Did not reconnect/reset ADB authorization, change TV
+preferences, import settings or restart another foreground app. The already-open
+TV page needs an ordinary refresh to load the new dashboard model.
