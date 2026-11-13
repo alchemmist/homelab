@@ -2025,7 +2025,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "Native host socrat-4, NOT Kubernetes Ready: Moscow is outside Kubernetes. Green=fresh native node-exporter up1 with available memory and root filesystem space >=10%; orange=either below10%; red=fresh native exporter up0; grey=missing/stale collection or required host metrics. CPU contention is a separate warning, as on the other node cubes. No invented Kubernetes readiness or authenticated VPN health.",
+      "description": "Single-node health cube inside the numbered node row. Green = Ready with no disk or memory pressure; orange = DiskPressure or MemoryPressure; red = NotReady; grey = No telemetry, the node metric is stale or missing.",
       "fieldConfig": {
         "defaults": {
           "displayName": "4",
@@ -2111,7 +2111,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(2 * (1 - max(up{job=\"node-exporter\",node=\"socrat-4\"})) and on() (max(up{job=\"node-exporter\",node=\"socrat-4\"}) == 0) and on() (time() - max(timestamp(up{job=\"node-exporter\",node=\"socrat-4\"})) < 120)) or (max((node_memory_MemAvailable_bytes{job=\"node-exporter\",node=\"socrat-4\"} / node_memory_MemTotal_bytes{job=\"node-exporter\",node=\"socrat-4\"} < bool 0.1) or (node_filesystem_avail_bytes{job=\"node-exporter\",node=\"socrat-4\",mountpoint=\"/\"} / node_filesystem_size_bytes{job=\"node-exporter\",node=\"socrat-4\",mountpoint=\"/\"} < bool 0.1)) and on() (max(up{job=\"node-exporter\",node=\"socrat-4\"}) == 1) and on() (time() - max(timestamp(up{job=\"node-exporter\",node=\"socrat-4\"})) < 120) and on() (min(node_memory_MemTotal_bytes{job=\"node-exporter\",node=\"socrat-4\"}) > 0) and on() (min(node_filesystem_size_bytes{job=\"node-exporter\",node=\"socrat-4\",mountpoint=\"/\"}) > 0) and on() (time() - max(timestamp(node_memory_MemAvailable_bytes{job=\"node-exporter\",node=\"socrat-4\"})) < 120) and on() (time() - max(timestamp(node_memory_MemTotal_bytes{job=\"node-exporter\",node=\"socrat-4\"})) < 120) and on() (time() - max(timestamp(node_filesystem_avail_bytes{job=\"node-exporter\",node=\"socrat-4\",mountpoint=\"/\"})) < 120) and on() (time() - max(timestamp(node_filesystem_size_bytes{job=\"node-exporter\",node=\"socrat-4\",mountpoint=\"/\"})) < 120)) or vector(-2)",
+          "expr": "((2 * (1 - (max(kube_node_status_condition{node=\"socrat-4\",condition=\"Ready\",status=\"true\"}) or vector(0)))) + max(kube_node_status_condition{node=\"socrat-4\",condition=~\"DiskPressure|MemoryPressure\",status=\"true\"} or vector(0))) and on() (time() - max(timestamp(kube_node_status_condition{node=\"socrat-4\"})) < 120) or vector(-2)",
           "format": "time_series",
           "instant": true,
           "range": false,
