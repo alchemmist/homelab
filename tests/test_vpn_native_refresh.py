@@ -27,5 +27,5 @@ def test_isolated_smoke_copies_db_and_never_promotes_it():
     assert "source.as_uri() + '?mode=ro'" in s
     assert 'runtime_root / name' in s
     assert "runtime_root / '.isolated-smoke-accepted.json'" in s
-    assert s.index("'cleanup_verified'") if "'cleanup_verified'" in s else 'cleanup_verified=True' in s
+    assert 'cleanup_verified=True' in s
     assert s.index("receipt = runtime_root") > s.index('if cleanup_errors:')

@@ -46,7 +46,7 @@
           register: staging
         - ansible.builtin.assert:
             that: not staging.stat.exists
-            fail_msg: Existing candidate/attempt: inspect privately; do not replay.
+            fail_msg: 'Existing candidate/attempt: inspect privately; do not replay.'
         - ansible.builtin.file:
             path: '{{ candidate }}'
             state: directory
