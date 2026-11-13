@@ -22,7 +22,11 @@ def command(args):
     return subprocess.check_output(args, text=True, stderr=subprocess.PIPE)
 
 
-def rules():
+DIRECT_PROBE_UID = 19091
+DIRECT_PROBE_COMMENT = "homelab-direct-ip-probe"
+
+
+def rules(direct_probe=None):
     body = '''
  ip daddr 109.120.141.60 tcp dport 53 counter dnat ip to 10.250.0.40:53
  ip daddr 109.120.141.60 udp dport 53 counter dnat ip to 10.250.0.40:53
@@ -30,9 +34,14 @@ def rules():
  ip daddr 109.120.141.60 udp dport { 443, 32085, 32086 } counter dnat ip to 91.189.82.238
  ip daddr 109.120.141.60 udp dport 51830 counter dnat ip to 91.189.82.238:51832
 '''
+    if direct_probe is None:
+        direct_probe = socket.gethostname() == 'socrat-0'
+    bypass = (' ip daddr 109.120.141.60 tcp dport 443 meta skuid '
+              + str(DIRECT_PROBE_UID) + ' counter return comment "'
+              + DIRECT_PROBE_COMMENT + '"\n') if direct_probe else ''
     return ('table inet ' + TABLE + ' {\n'
             ' chain prerouting { type nat hook prerouting priority dstnat; policy accept;\n' + body + ' }\n'
-            ' chain output { type nat hook output priority dstnat; policy accept;\n' + body + ' }\n'
+            ' chain output { type nat hook output priority dstnat; policy accept;\n' + bypass + body + ' }\n'
             ' chain postrouting { type nat hook postrouting priority srcnat; policy accept;\n'
             ' ip daddr 10.250.0.40 tcp dport 53 counter masquerade\n'
             ' ip daddr 10.250.0.40 udp dport 53 counter masquerade\n }\n}\n')
@@ -47,6 +56,52 @@ def projection():
             return {k: clean(x) for k, x in v.items() if k not in ('handle', 'packets', 'bytes')}
         return v
     return clean(value)
+
+
+def upgrade_direct_probe():
+    """One-shot CAS migration of HOME0's owned table; no flush/delete/reload."""
+    assert os.geteuid() == 0 and socket.gethostname() == 'socrat-0'
+    os.umask(0o077)
+    old = rules(direct_probe=False)
+    assert (ROOT / 'rules.nft').read_text() == old, 'Not the reviewed legacy source'
+    before = projection()
+    assert before == json.loads((ROOT / 'expected.json').read_text()), 'Live drift: stop'
+    assert json.loads((ROOT / 'accepted.json').read_text())['rules_sha256'] == hashlib.sha256(old.encode()).hexdigest()
+    receipt = ROOT / 'direct-probe-upgrade'
+    assert not receipt.exists(), 'Existing attempt: inspect receipts, never replay'
+    receipt.mkdir(mode=0o700)
+    for name in ('rules.nft', 'expected.json', 'accepted.json'):
+        (receipt / (name + '.before')).write_bytes((ROOT / name).read_bytes())
+    batch = ('insert rule inet ' + TABLE + ' output ip daddr ' + EXIT
+             + ' tcp dport 443 meta skuid ' + str(DIRECT_PROBE_UID)
+             + ' counter return comment "' + DIRECT_PROBE_COMMENT + '"\n')
+    (receipt / 'insert.nft').write_text(batch)
+    command(['nft', '-c', '-f', str(receipt / 'insert.nft')])
+    command(['nft', '-f', str(receipt / 'insert.nft')])
+    after = projection()
+    added = [v for v in after['nftables'] if v.get('rule', {}).get('comment') == DIRECT_PROBE_COMMENT]
+    expected_expr = [
+        {'match': {'op': '==', 'left': {'payload': {'protocol': 'ip', 'field': 'daddr'}}, 'right': EXIT}},
+        {'match': {'op': '==', 'left': {'payload': {'protocol': 'tcp', 'field': 'dport'}}, 'right': 443}},
+        {'match': {'op': '==', 'left': {'meta': {'key': 'skuid'}}, 'right': DIRECT_PROBE_UID}},
+        {'counter': {}}, {'return': None}]
+    assert len(added) == 1 and added[0]['rule']['chain'] == 'output'
+    assert added[0]['rule']['expr'] == expected_expr, 'Unexpected inserted rule: inspect'
+    without = dict(after, nftables=[v for v in after['nftables'] if v not in added])
+    assert without == before, 'Unrelated change: inspect'
+    output_rules = [v['rule'] for v in after['nftables'] if v.get('rule', {}).get('chain') == 'output']
+    assert output_rules[0]['comment'] == DIRECT_PROBE_COMMENT
+    new = rules(direct_probe=True)
+    (ROOT / 'rules.nft').write_text(new)
+    (ROOT / 'expected.json').write_text(json.dumps(after, sort_keys=True))
+    accepted = {'rules_sha256': hashlib.sha256(new.encode()).hexdigest(),
+                'only_owned_table_added': True, 'direct_probe_uid': DIRECT_PROBE_UID,
+                'only_home0_local_tcp443_probe_bypasses_moscow': True}
+    (ROOT / 'accepted.json').write_text(json.dumps(accepted, sort_keys=True))
+    (receipt / 'accepted.json').write_text(json.dumps(accepted, sort_keys=True))
+    assert projection() == after
+    print(json.dumps({'direct_probe_upgrade': True, 'uid': DIRECT_PROBE_UID,
+                      'ordinary_traffic_unchanged': True}))
 
 
 def run(boot=False):
@@ -90,5 +145,9 @@ if __name__ == '__main__':
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--apply', action='store_true')
     group.add_argument('--boot', action='store_true')
+    group.add_argument('--upgrade-direct-probe', action='store_true')
     args = parser.parse_args()
-    run(boot=args.boot)
+    if args.upgrade_direct_probe:
+        upgrade_direct_probe()
+    else:
+        run(boot=args.boot)
