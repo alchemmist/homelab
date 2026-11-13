@@ -1,0 +1,86 @@
+{{- if .Values.publicIpProbes.enabled }}
+# Direct public-IP measurements: a private LAN-bound stock exporter on HOME0.
+# Literal targets, no HTTP/SNI/DNS/proxy, source LAN IP, host main routing table.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: socrat-public-ip-probes
+data:
+  blackbox.yml: |
+    modules:
+      direct_tcp:
+        prober: tcp
+        timeout: 3s
+        tcp:
+          preferred_ip_protocol: ip4
+          ip_protocol_fallback: false
+          source_ip_address: {{ .Values.publicIpProbes.sourceAddress | quote }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: socrat-public-ip-probes
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: socrat-public-ip-probes
+  template:
+    metadata:
+      labels:
+        app: socrat-public-ip-probes
+      annotations:
+        checksum/config: {{ .Values.publicIpProbes | toJson | sha256sum }}
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.publicIpProbes.node | quote }}
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: blackbox-exporter
+          image: {{ .Values.serviceProbes.image | quote }}
+          args:
+            - --config.file=/etc/blackbox/blackbox.yml
+            - {{ printf "--web.listen-address=%s:%v" .Values.publicIpProbes.sourceAddress .Values.publicIpProbes.port | quote }}
+          ports:
+            - name: http-metrics
+              containerPort: {{ .Values.publicIpProbes.port }}
+          readinessProbe:
+            httpGet:
+              host: {{ .Values.publicIpProbes.sourceAddress | quote }}
+              path: /-/healthy
+              port: http-metrics
+          livenessProbe:
+            httpGet:
+              host: {{ .Values.publicIpProbes.sourceAddress | quote }}
+              path: /-/healthy
+              port: http-metrics
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 5m
+              memory: 16Mi
+            limits:
+              memory: 64Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/blackbox
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: socrat-public-ip-probes
+{{- end }}
