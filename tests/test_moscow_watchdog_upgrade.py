@@ -39,3 +39,9 @@ def test_repair_is_separate_explicit_phases_and_keeps_membership():
  assert 'moscow_watchdog_repair_confirmed' in source and 'default("preflight")' in source
  assert "phase == 'return'" in source and 'controller.stat.checksum == new_sha' in source
  assert 'failback' in source and 'kubectl delete' not in source and 'wg-quick' not in source
+
+
+def test_voter_json_items_is_key_not_dict_method():
+ source=(ROOT/'ansible/playbooks/moscow-watchdog-repair.yml').read_text()
+ assert '(voters.stdout | from_json)["items"]' in source
+ assert '(voters.stdout | from_json).items' not in source
