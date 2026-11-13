@@ -1,6 +1,8 @@
-> **Superseded operational state:** Moscow became a native-primary host, outside
-> Kubernetes, on12November2026. See [acceptance and rollback](moscow-native-primary-20261112.md).
-> Historical evidence below is not a current cutover procedure.
+> **Current-state correction:** permanent worker retirement12Nov was reversed
+> at owner request13Nov. Moscow remains a worker; systemd is fallback only.
+> A later unplanned automatic native transition and new composite monitoring are
+> recorded in [current readiness](vpn-runtime-readiness-20261113.md). Historical
+> evidence below is not a command to replay or proof of current Ready state.
 
 # Moscow relay: mesh reuse and Pod/native lifecycle
 

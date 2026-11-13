@@ -1,5 +1,10 @@
 # HOME VPN fallback: inspection, probe correction and remaining gates
 
+> **Abandoned by owner:** no HOME/direct-NL/node5 user fallback. The current
+> target is fixed Moscow→NL with K3S/systemd runtime recovery only. See
+> [current readiness and monitoring](vpn-runtime-readiness-20261113.md).
+
+
 ## Owner's target, not deployed failover
 
 Primary client→Moscow4→NL; backup client→HOME0→NL, automatic return after stable
