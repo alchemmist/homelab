@@ -61,14 +61,34 @@ def terminate_owned(i):
  now=identity(pid,i['cid'])
  if now==i:os.kill(pid,signal.SIGKILL)
 
-def probe(config):
- # Actual TLS/WebSocket path through the relay to NL; no XFF and no credentials.
- for port in (32053,32083,32084):
-  with socket.create_connection(('127.0.0.1',port),timeout=2):pass
- with socket.create_connection(('127.0.0.1',443),timeout=3) as s:
-  with ssl.create_default_context().wrap_socket(s,server_hostname='vpn.alchemmist.xyz') as t:
-   req=('GET '+config['ws_path']+' HTTP/1.1\r\nHost: vpn.alchemmist.xyz\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n')
-   t.sendall(req.encode());line=t.recv(1024).split(b'\r\n')[0];assert b' 101 ' in line
+def probe(config,host='127.0.0.1',source=None,detail=None):
+ # Same strict TLS/WS identity and ACLs on the local and direct upstream path.
+ d=detail if detail is not None else {}
+ d.update(at=time.time(),stage='connect',ok=False)
+ try:
+  for port in (32053,32083,32084):
+   d.update(stage='tcp',port=port)
+   with socket.create_connection((host,port),timeout=2,source_address=source):pass
+  d.update(stage='tcp',port=443)
+  with socket.create_connection((host,443),timeout=3,source_address=source) as sock:
+   d['stage']='tls'
+   with ssl.create_default_context().wrap_socket(sock,server_hostname='vpn.alchemmist.xyz') as t:
+    d['stage']='websocket'
+    req=('GET '+config['ws_path']+' HTTP/1.1\r\nHost: vpn.alchemmist.xyz\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n')
+    t.sendall(req.encode());line=t.recv(1024).split(b'\r\n')[0]
+    # Record only the numeric HTTP status, never the private path/response body.
+    parts=line.split();d['http_status']=int(parts[1]) if len(parts)>1 and parts[1].isdigit() else 0
+    assert d['http_status']==101
+  d.update(stage='complete',ok=True);return True
+ except (OSError,AssertionError,ssl.SSLError) as e:
+  d.update(error=type(e).__name__,errno=getattr(e,'errno',None));raise
+
+
+def local_listeners_respond():
+ for port in (32053,32083,32084,443):
+  try:
+   with socket.create_connection(('127.0.0.1',port),timeout=1):pass
+  except OSError:return False
  return True
 
 class Controller:
@@ -80,8 +100,20 @@ class Controller:
  def receipt(self,action,**fields):
   v={'action':action,'at':time.time(),**fields};atomic(ROOT/(str(time.time_ns())+'-'+action+'.json'),v)
  def healthy(self):
-  try:probe(self.config);return True
+  self.last_probe={}
+  try:probe(self.config,detail=self.last_probe);return True
   except (OSError,AssertionError,ssl.SSLError):return False
+ def recovery_scope(self):
+  # Only after the existing four failures. An upstream outage is not evidence
+  # that stopping a still-listening local worker can improve the data path.
+  if not active(AGENT):return {'recover_local':True,'scope':'local-agent-inactive'}
+  if not local_listeners_respond():return {'recover_local':True,'scope':'local-listener-failed'}
+  detail={}
+  try:
+   probe(self.config,host='10.250.0.2',source=('10.250.0.40',0),detail=detail)
+   return {'recover_local':True,'scope':'local-path-failed-upstream-healthy','upstream_probe':detail}
+  except (OSError,AssertionError,ssl.SSLError):
+   return {'recover_local':False,'scope':'upstream-or-path-unhealthy','upstream_probe':detail}
  def prerequisites(self):
   assert hashlib.sha256(pathlib.Path('/usr/local/libexec/xray-transit').read_bytes()).hexdigest()==self.config['binary_sha256']
   assert active('homelab-vpn-management-relay.service')
@@ -157,18 +189,26 @@ class Controller:
     self.prerequisites()
     self.receipt('native-reconciled',reason='native healthy after activation deadline')
     self.save(mode='native',failures=0,healthy=True)
-   else:self.save(healthy=ok)
+   else:self.save(healthy=ok,last_probe=getattr(self,'last_probe',{}))
    return
   if self.state['mode']!='kubernetes':raise RuntimeError('Uncertain transition; inspect receipts, do not replay')
   boot=boot_id()
   if self.state.get('boot_id')!=boot:
-   self.save(boot_id=boot,grace_until=time.time()+120)
+   self.save(boot_id=boot,grace_until=time.time()+120,healthy=False,failures=0)
   ok=self.healthy()
-  if not ok and time.time()<self.state.get('grace_until',0):return
+  if not ok and time.time()<self.state.get('grace_until',0):
+   self.save(healthy=False,last_probe=getattr(self,'last_probe',{}));return
   if ok:self.save(grace_until=0)
   n=0 if ok else self.state.get('failures',0)+1
-  self.save(healthy=ok,failures=n)
-  if n>=4:self.activate('four consecutive actual data-path failures')
+  self.save(healthy=ok,failures=min(n,4),last_probe=getattr(self,'last_probe',{}))
+  if ok:
+   if self.state.get('failure_scope'):self.save(failure_scope=None)
+  elif n>=4:
+   diagnosis=self.recovery_scope()
+   if self.state.get('failure_scope')!=diagnosis['scope']:
+    self.receipt('failure-classified',**diagnosis,local_probe=getattr(self,'last_probe',{}))
+   self.save(failure_scope=diagnosis['scope'],failure_diagnosis=diagnosis)
+   if diagnosis['recover_local']:self.activate('four data-path failures; '+diagnosis['scope'])
  def status(self):
   return {**self.state,'native_active':active(NATIVE),'agent_active':active(AGENT),'fallback_marker':self.marker.exists(),'data_path_healthy':self.healthy()}
 
