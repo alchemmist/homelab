@@ -1,5 +1,25 @@
 # Socrat: текущий контекст
 
+## Moscow repair APPLIED and K3S restored —13Nov2026, CURRENT
+
+Owner authorized live repair.9d7ee7d4 source + f5f6aa36 preflight JSON-index fix
+applied: exact2API /32 WG AllowedIPs/boot routes, no key/interface restart; new
+upstream-aware watchdog SHAce600551…496e8f installed under lock. Existing fenced
+failback accepted09:57:59UTC. Current6NodesReady,4agent active/enabled, native
+inactive, marker absent, modekubernetes/healthy/failures0. At315s post-return no
+proxy connection errors, agent NRestarts0; actual established connection to
+192.168.0.23:6443. Config verified only2AllowedIPs lines changed.
+Fresh compositeVPNmode=0/K3S, BOTH runtime0/check1/off0. Argo VPN+monitoring
+Synced/Healthy. Five authenticated HOME→literalMoscow→NL protocols passed65536B,
+HTTP200/common checksum/NLexit: REALITY/Trojan/32083/32084/userspaceWG. Owned
+fixture/tokens cleaned, originals/config preserved. Temporary escalation file and
+local fixture configs/binary removed.149tests+2subtests; short stability sample,
+NOT long-term/no-more-failures or full-cluster/reboot/AWG/mobile acceptance.
+Prior pending-sudo/4NotReady sections below are superseded. Underlying transient
+NL transport cause still unproven; do not claim routing alone explains every TLS
+failure. [Applied evidence](../docs/moscow-unplanned-fallback-20261113.md).
+
+
 ## Unplanned fallback repair investigation —13Nov2026, NEWEST / PENDING SUDO
 
 Concrete Moscow defect: HOME advertised API addresses192.168.0.23/.24 currently

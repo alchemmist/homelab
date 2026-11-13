@@ -1,13 +1,12 @@
 # Unplanned Moscow fallback13November: investigation and pending repair
 
-## Status: source tested; NOT applied to hosts
+## Status: repair APPLIED; K3S restored and five protocols accepted
 
-Owner requested investigation and repair, not an intentional outage test. Do not
-report the incident resolved until deployment, fenced worker return, authenticated
-VPN checks and a stability observation have completed. Noninteractive sudo is
-unavailable; previous temporary escalation files were deleted. No password value
-is retained in current working context. Await an operator-provided private vars
-file/path; do not recover credentials from logs or publish them.
+Owner authorized application13November. At09:57:59UTC the existing fenced
+failback accepted Moscow Kubernetes execution. Both API /32 routes and the new
+watchdog were applied before handoff. Current state supersedes the earlier
+source-only/sudo-blocked gate. See the applied acceptance below. No password is
+published or retained in the operation's temporary file.
 
 ## Confirmed observations
 
@@ -98,3 +97,48 @@ operator-private `vpn-unplanned-fallback-20261113/`. No raw private config, keys
 credentials or unreviewed logs are committed. At last readback both checks=1,
 Moscow native/runtime1, NL K3S/runtime0, Moscow still fenced/NotReady. Source-only
 fixes do not change that current operational state.
+
+## Applied acceptance —13November09:57–10:03UTC
+
+- Fixed the preflight Ansible dictionary-method ambiguity (`items` must be an
+  explicit JSON key); first failed preflight changed no host state. Published
+  f5f6aa36 and added regression test before proceeding.
+- Preflight, confirmed apply and separate confirmed return all completed. No
+  replay of a partially accepted mutation. Route accepted hashes:
+  before78e5579c3fb13b38697be240f93db6838fdb6df769f05fd486465517426a3d33;
+  afterd886b5d7d31575d64918e2b88403576d37e678a58f2fac1c7315810c9acb7db7.
+- New controller SHA
+  ce600551dcdb2323a8da5a95f3268d3a7e74d01dfbc3d712fd56491f1e496e8f
+  installed under existing lock while native stayed active. No watchdog disable,
+  key/endpoint rotation, interface restart or alert weakening.
+- Live and boot config changed only the two expected AllowedIPs lines. Both LAN
+  API routes now use wg-socrat/source10.250.0.40, and actual TCP probes passed.
+  Established agent TCP connection10.250.0.40→192.168.0.23:6443 subsequently observed.
+- Worker handoff accepted09:57:59UTC. At315seconds post-return: mode=kubernetes,
+  healthy/data_path_healthy=true, failures0, agent active/enabled, native inactive,
+  marker absent; last strict WebSocket status101. No proxy connection errors in
+  agent journal since acceptance, NRestarts0. This is a short observation, not a
+  long-term stability guarantee or claim that all underlying transport causes
+  have been established.
+- All6Nodes Ready, membership preserved; vpn-transit-655857b776-ld95j Running1/1,
+  restarts0 on4. Argo vpn-transit and monitoring-k3s Synced/Healthy at f5f6aa36.
+- Actual composite PromQL returns0/K3S. Fresh runtime0/check1/off0/observation1
+  for BOTH relay and backend. No physical TV/browser inspection claimed.
+- Fresh read-only session preview approved before owned temporary fixture:
+  vpn83-watchdog-repair-20261113 on2, corresponding HOME session on0. REALITY,
+  Trojan, VLESS32083/32084 and userspace WireGuard all authenticated through
+  literal public Moscow91.189.82.238. Each returned HTTP200/65536B, SHA256
+  34dd6758c2908cf5be0e411173f61877f8faf2dcdcfed135b5a5fa90577447bc,
+  NL IPv4 exit109.120.141.60. HOME WAN source and route/resolver preservation
+  verified. Not mobile/AWG/global-cluster/reboot acceptance.
+- Cleanup receipt confirms fixture_removed, temporary_tokens_removed,
+  original_tokens_preserved and proxy_config_preserved. Temporary controller
+  fixture files and escalation file removed; operation logs checked for no copy
+  of the supplied escalation value. Selected private evidence retained under
+  operator-private vpn-unplanned-fallback-20261113/applied/.
+
+Current scoped suite after preflight regression:149tests+2subtests. Historical
+source-only and NotReady statements above describe the pre-application interval,
+not the accepted current state. NL transport interruption cause remains open;
+fixing the observed routing/control-policy defects is not a retrospective proof
+of a single cause for every earlier failed TLS check.
