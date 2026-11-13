@@ -1,5 +1,20 @@
 # Socrat: текущий контекст
 
+## Moscow WORKER RESTORED —13November2026, owner requirement
+
+Owner rejects permanent removal as optimization: socrat-4 MUST remain worker.
+All6nodes Ready; agent active/enabled; VPN Pod1/1, native relay inactive/fence
+absent, controller kubernetes/healthy. Source30091cb7; TV4 Kubernetes Ready
+restored467c7e95; mode9 and4actual queries0green; both Argo apps Synced/Healthy.
+Five authenticated HOME protocols passed65536B/checksum/NLexit; owned fixture/
+tokens cleaned, original config preserved, escalation file deleted. Retain
+bootstrap admission taint/GOMAXPROCS1/native fallback. CPU pressure NOT solved;
+no alert weakening. More CPU/RAM acceptable; do NOT retire this worker again.
+Separate ingress failover via HOME0 still NOT implemented. Physical TV visual
+acceptance not claimed. [English acceptance](../docs/moscow-worker-return-20261113.md).
+Older native-primary and native cube4 entries below are historical/superseded.
+
+
 ## Traffic Light direct IP/native Moscow fix — 13 November 2026
 
 Panel926 now uses native host up/memory/root-space metrics, not removed Kubernetes
@@ -15,7 +30,7 @@ physical page needs refresh, no visual acceptance claimed. See
 [contract/evidence](../docs/traffic-light-direct-ip-20261113.md).
 
 
-## Moscow is now a native-primary network host — 12 November 2026
+## Historical, superseded13Nov: Moscow native-primary —12November2026
 
 Accepted migration: Kubernetes now has5Ready nodes0/1/2/3/5; Moscow4 remains a
 managed network host, not a worker. Same pinned Xray/config, native-primary mode,

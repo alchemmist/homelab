@@ -1,5 +1,9 @@
 # Moscow native-primary gateway — 12 November 2026
 
+> **Historical: superseded13November.** Owner requires Moscow as a worker.
+> Worker and Kubernetes relay restored; systemd is fallback, not primary.
+> See [return acceptance](moscow-worker-return-20261113.md).
+
 ## Accepted change, not CPU-alert closure
 
 Moscow (`socrat-4`) is now a native network host, NOT a Kubernetes worker.

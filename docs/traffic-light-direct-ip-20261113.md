@@ -1,5 +1,9 @@
 # Traffic Light: native Moscow and direct HOME IP checks
 
+> **Later correction:** socrat-4 has been returned to Kubernetes at owner request.
+> Panel926 again uses real Kubernetes readiness; the direct-IP checks below
+> remain current. See [worker return](moscow-worker-return-20261113.md).
+
 ## Contract corrected on13November2026
 
 - Panel926 (digit4) no longer asks Kubernetes for a removed worker. It reads
