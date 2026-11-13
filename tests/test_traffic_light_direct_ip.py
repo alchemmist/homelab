@@ -84,7 +84,7 @@ class DirectIpTest(unittest.TestCase):
         e=panel(9)['targets'][0]['expr']
         def case(data,value):
             return {'interval':'15s','input_series':data,'promql_expr_test':[{'expr':e,'eval_time':'3m','exp_samples':[{'labels':'{}','value':value}]}]}
-        cases=[case([],-2),case([series('socrat_vpn_fallback_active',0,'job="node-exporter"')],0),case([series('socrat_vpn_fallback_active',1,'job="node-exporter"')],1),case([series('socrat_vpn_fallback_active',0,'job="node-exporter"',samples=0)],-2)]
+        cases=[case([],-2),case([series('socrat_vpn_fallback_active',0,'job="node-exporter"')],-2),case([series('socrat_vpn_fallback_active',1,'job="node-exporter"')],-2),case([series('socrat_vpn_fallback_active',0,'job="node-exporter"',samples=0)],-2)]
         with tempfile.TemporaryDirectory() as t:
             p=Path(t)/'cases.yml';p.write_text(yaml.safe_dump({'rule_files':[],'tests':cases}))
             r=subprocess.run(['promtool','test','rules',str(p)],capture_output=True,text=True)

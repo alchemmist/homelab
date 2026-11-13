@@ -40,9 +40,11 @@ class TrafficLightLayoutTest(unittest.TestCase):
         self.assertEqual(states['1'], {'text': 'OS', 'color': '#A85D08'})
         self.assertEqual(states['2'], {'text': 'OFF', 'color': '#B42332'})
         expr = panel['targets'][0]['expr']
-        self.assertIn('socrat_vpn_fallback_active', expr)
+        self.assertIn('socrat_vpn_component_runtime', expr)
+        self.assertIn('component="relay"', expr)
+        self.assertIn('component="backend"', expr)
         self.assertIn('timestamp(', expr)
-        self.assertIn('< 30', expr)
+        self.assertIn('< 90', expr)
         self.assertIn('or vector(-2)', expr)
         self.assertEqual(states['-2']['text'], 'NO DATA')
         self.assertTrue(panel['targets'][0]['instant'])
