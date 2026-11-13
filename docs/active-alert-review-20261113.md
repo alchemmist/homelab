@@ -68,3 +68,35 @@ production acceptance are recorded separately below when actually completed.
 4. Inspect cloud-init bootcmd and relevant root-only logs privately with authorized
    privilege. Do not expose cloud user-data, rerun all cloud-init stages, reboot,
    or reset the failed state before understanding the command and next-boot effect.
+
+## Applied acceptance — 15:51 UTC
+
+Published correction `983223f0`. Argo n8n observed that exact revision Synced;
+the live backup ConfigMap matches the committed source byte-for-byte, SHA-256
+`5ecd0d63a4e7d48fd859660ed1de79592ea247dc9573369b38f71142fa13606c`.
+The existing failed Job still makes Application health Degraded, as expected.
+
+One isolated acceptance Job from the exact existing backup CronJob template,
+`automation/n8n-backup-stream-20261113-1552`, completed successfully at
+15:51:32 UTC, succeeded=1, with no failed attempt. The named Job is an operational
+backup only, not a production n8n business-workflow invocation. It uses the
+existing source PVC read-only and existing restricted off-host destination.
+
+Receiver published a 45,826,325-byte versioned archive on socrat-3. Independently
+verified there, without exporting private recovery material:
+
+- archive SHA-256 matches its sidecar:
+  `74ca11f7eb08a5bef7450549813aa5039d1f207b2eee85db8a5d3a0d52da8a70`;
+- extracted snapshot is 526,041,088 bytes and its SHA-256 matches the manifest;
+- offline read-only SQLite `PRAGMA integrity_check` returns `ok`;
+- recovery key member is present and nonempty; no key value printed;
+- private temporary extracted copy removed; retained archive unchanged.
+
+The existing n8n Pod remains Running/Ready (age 28 hours, last restart 23 hours
+before inspection), and all six nodes remain Ready. No application restart,
+source-database change, host service reset or alert-rule edit was made. This is
+backup readability acceptance, not a full application restore drill. The next
+natural scheduled backup still needs observation; an ad-hoc Job does not update
+the CronJob's last-success timestamp. Six old failed Jobs and the two cloud-init
+failed states remain deliberately visible pending evidence-preserving cleanup and
+privileged bootcmd diagnosis respectively.
