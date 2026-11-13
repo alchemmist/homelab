@@ -3,14 +3,23 @@
 const fs = require('fs');
 const path = require('path');
 const cp = require('child_process');
-const sqlite = require('/usr/local/lib/node_modules/n8n/node_modules/sqlite3');
 const crypto = require('crypto');
 const root = '/tmp/n8n-backup';
 const data = path.join(root, 'data');
 const source = '/data';
 const fail = () => { console.error('n8n backup failed; inspect job privately'); process.exitCode = 1; };
 
+// Keep hashing bounded even when a snapshot exceeds the container memory limit.
+async function sha256File(file) {
+  const hash = crypto.createHash('sha256');
+  for await (const chunk of fs.createReadStream(file, { highWaterMark: 64 * 1024 })) {
+    hash.update(chunk);
+  }
+  return hash.digest('hex');
+}
+
 async function main() {
+  const sqlite = require('/usr/local/lib/node_modules/n8n/node_modules/sqlite3');
   fs.mkdirSync(data, { recursive: true, mode: 0o700 });
   // Copy non-database state first. Execution logs are diagnostic, not recovery state.
   fs.cpSync(source, data, { recursive: true, filter: p => {
@@ -36,7 +45,7 @@ async function main() {
   fs.writeFileSync(path.join(root, 'manifest.json'), JSON.stringify({
     createdAt: new Date().toISOString(), sourceNode: 'socrat-5',
     database: 'SQLite online backup; integrity_check=ok',
-    databaseSha256: crypto.createHash('sha256').update(fs.readFileSync(path.join(data, 'database.sqlite'))).digest('hex'),
+    databaseSha256: await sha256File(path.join(data, 'database.sqlite')),
     note: 'Non-database files copied online; not a transactionally atomic snapshot of external services.'
   }, null, 2));
   fs.copyFileSync('/ssh/id_ed25519', '/tmp/id_ed25519');
@@ -54,4 +63,5 @@ async function main() {
   await Promise.all([ended(tar), ended(ssh)]);
   console.log('n8n SQLite snapshot integrity verified; archive transferred to socrat-3');
 }
-main().catch(fail);
+if (require.main === module) main().catch(fail);
+module.exports = { sha256File };
