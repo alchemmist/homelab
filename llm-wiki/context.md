@@ -727,3 +727,29 @@ Next scheduled backup remains unverified; manual success does not clear old fail
 Jobs or advance CronJob status. Moscow root-only bootcmd/log review still blocked
 by unavailable sudo; no password retained. Details and eight-series disposition:
 [active alert review](../docs/active-alert-review-20261113.md).
+
+### Moscow cloud-init / HOME0 page-fault repair — 2026-11-14
+
+Supersedes root-access blocker in the prior eight-warning review. Owner supplied
+sudo for scoped repair; no credential file retained. Cloud-init failure was
+provider bootcmd recreating/reformatting/re-enabling already-active `/swap.img`.
+Guarded override bootcmd=[] leaves fstab/systemd ownership; only corrected module
+validated exit0, active swap inode/mtime/size unchanged. Two stale failed service
+flags reset after validation; alerts cleared. Historical cloud-init result retained,
+no full provisioning replay/reboot, SSH/network/agent unchanged.
+
+Prometheus chart/CR8Gi but stale admission imposed actual cgroup3Gi; anon~2.6Gi
+left little file cache, causing direct reclaim/refaults despite host~7Gi available.
+Scoped policy RAM correction + native existing-Pod resize to **request3Gi/limit8Gi**;
+source catalog request4→3 because full4 would not fit node reservations. No restart,
+same Pod/containers/start times/PID; actual cgroup8Gi. First admission apply rolled
+back safely on stale-cache dry-run; reviewed guarded retry recorded2/3→3/8Gi.
+No broad profile reconcile, cache drop, metrics deletion/retention/scrape changes
+or alert weakening. Host5m majorfault~940→4.14/s; alert cleared, short sample only.
+Existing preflight now checks admitted Pod and runtime status, not just CR intent.
+82tests+12subtests passed,1skipped; independent HEAD reproduction of unrelated
+old Grafana ownership fixture failure documented. Sources493de518/80ce10ab;
+full receipts/boundaries: [dated acceptance](../docs/cloud-init-and-prometheus-memory-20261114.md).
+Separate concurrent socrat5 migration8c919024 quiesces n8n/PR Agent; do not undo
+its desired0 or cordon. Final remaining alerts: owner-acknowledged battery + n8n
+unavailable during that separate source change. All6Ready,5SchedulingDisabled.

@@ -96,3 +96,65 @@ The first Prometheus preflight refused unsupported indentation **before mutation
 parser was hardened for the actual renderer and regression-tested.
 
 Applied and post-change evidence is appended only after actual execution.
+
+## Applied acceptance
+
+Source repair `493de518`; admission-propagation hardening `80ce10ab`.
+
+Moscow repair completed: corrected bootcmd module exit=0; original swap inode,
+mtime and size preserved, swap remains active, fstab/provider config unchanged.
+Both cloud-init units are now inactive/Result=success rather than failed; k3s
+agent remains active. The two systemd-failure alerts cleared. Historical
+cloud-init result files were not rewritten to pretend the old boot succeeded.
+No full provisioning replay or reboot was performed.
+
+The first memory apply correctly rolled admission back before Pod mutation when
+an immediate future-Pod check still saw old settings. Independently verified
+exact policy spec restoration and unchanged live Pod budgets. Hardening adds a
+bounded 20-second dry-run convergence check and a single explicitly guarded retry
+only after the prior exact rollback/no-Pod-mutation receipt. On the reviewed retry,
+recorded admission responses were **2Gi/3Gi, then 3Gi/8Gi**, demonstrating actual
+cache propagation rather than assuming that an API patch was immediately active.
+The retry changed only the two approved RAM scalars; a full spec comparison
+confirmed no unrelated admission policy change.
+
+In-place resize accepted and effective runtime independently verified:
+
+- same Pod UID `0eac998e-c6a5-40b0-8627-fb27737de9a8`;
+- same container IDs, start times and restart counts for all four containers;
+- same Prometheus PID 1442661, Ready=true;
+- actual cgroup `memory.max=8589934592` (8 GiB), request 3 GiB;
+- first 5-second process sample ~61.8 major faults/s versus ~589/s before;
+- no new cgroup memory.max events in that sample;
+- cgroup memory PSI avg10 about 0.07% after versus 5.62% before;
+- later independent all-process sample: host ~0.2 major faults/s, no swap in/out;
+- at 12:30 UTC node 5-minute major-fault rate ~4.14/s versus ~940/s before,
+  swap-in ~0.119 pages/s, swap-out zero. `NodeMemoryMajorPagesFaults` cleared
+  without changing its threshold, expression or duration.
+
+Short-window mean query evaluation improved from ~36 to ~24 ms, queue means
+remained negligible. The samples support repair of the observed cgroup cache
+thrashing; they are not long-term capacity or workload-peak guarantees. The
+reservation preflight at apply left about 1.02 GB allocatable request headroom;
+future added workloads still require a separate budget check.
+
+The old scrape guard examined only the Prometheus CR and therefore could accept
+8-GiB intent despite 3-GiB runtime. It now also reads actual admitted Pods and
+container runtime status in the existing Ansible preflight. New tests reject
+chart-8/Pod-3, spec-8/runtime-3 and missing runtime. Read-only live check passes.
+No legacy Helm install or broad monitoring-role replay was performed.
+
+Validation: **82 tests passed, 1 skipped, 12 subtests passed** across the repair,
+budget, resource rollout and Prometheus guard suites. A broader ownership suite
+has a separate pre-existing Grafana `public-web-grafana-policy` fixture hash
+mismatch. Reproduced independently with HEAD test/fixture and unchanged HEAD
+chart/deploy inputs; not masked or updated as part of this repair. YAML parsing
+of the updated task/catalog passed; full legacy role execution was not used.
+
+A separate concurrent socrat-5 migration source commit `8c919024` quiesces n8n
+and PR Agent. At final inspection socrat-5 is Ready/SchedulingDisabled and n8n
+Deployment desired replicas=0. The resulting n8n unavailable alert is distinct
+from this memory repair; do not reverse that independent source intent. The
+remaining observed alerts were on-battery (explicitly acknowledged by owner) and
+n8n unavailable. All six nodes report Ready; this is not a claim that every
+application is serving during the separate migration.
