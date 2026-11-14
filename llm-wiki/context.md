@@ -1,5 +1,18 @@
 # Socrat: текущий контекст
 
+## socrat-5 CT104 → VM105 cutover PAUSED — 14Nov2026, CURRENT
+
+Owner approved the cutover, then requested operation without worker5 until the
+next evening after RuDesktop exhausted its two-hour daily allowance. CT104 was
+cleanly shut down and onboot disabled; retain CT/disks. VM K3s/WG startup remains
+masked and authorization marker absent; final cold-payload transfer completion is
+UNKNOWN. Never start CT alongside the same identities in VM. Cold vzdump verified.
+PR Agent restored via GitOps to socrat-1, Running/Ready1, public HTTP200. n8n stays
+at replicas0: latest accessible off-host backup is 14Nov00:15UTC, approximately
+12h before shutdown; owner acceptance REQUIRED before stale-data restoration.
+No PV/PVC/Node deletion, n8n Secret change, mesh reenrollment or global pruning.
+[Cutover checkpoint and recovery gates](../docs/socrat5-vm-migration-20261114.md).
+
 ## Moscow repair APPLIED and K3S restored —13Nov2026, CURRENT
 
 Owner authorized live repair.9d7ee7d4 source + f5f6aa36 preflight JSON-index fix
