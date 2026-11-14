@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import time
 
 NS = 'cattle-monitoring-system'
 NAME = 'prometheus-kube-prometheus-stack-prometheus-0'
@@ -149,10 +150,32 @@ def memory_capacity(node, pods):
             'allocatable_bytes': int(alloc), 'projected_remaining_bytes': int(alloc - projected)}
 
 
+def wait_future_admission(sts, timeout=20):
+    deadline = time.monotonic() + timeout
+    samples = []
+    while True:
+        future = kubectl(['create', '--dry-run=server', '-f', '-', '-o', 'json'], probe(sts))
+        ram = future['spec']['containers'][0]['resources']
+        samples.append({'request': ram['requests']['memory'], 'limit': ram['limits']['memory']})
+        if ram['requests']['memory'] in ('3Gi', '3072Mi') and ram['limits']['memory'] in ('8Gi', '8192Mi'):
+            return future, samples
+        if time.monotonic() >= deadline:
+            raise RuntimeError('Future-Pod admission did not converge: ' + json.dumps(samples))
+        time.sleep(1)
+
+
 def main():
+    global RECEIPT
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--apply', action='store_true')
+    parser.add_argument('--retry-after-rollback', action='store_true',
+                        help='One reviewed retry, only after exact admission rollback and no Pod mutation')
     args = parser.parse_args()
+    previous = RECEIPT
+    if args.retry_after_rollback:
+        require((previous / 'admission-rolled-back.json').exists() and
+                not (previous / 'resize-accepted.private.json').exists(), 'No safe rolled-back attempt')
+        RECEIPT = previous.with_name(previous.name + '-retry')
     require(not RECEIPT.exists(), 'Prior attempt exists; inspect receipt, do not replay')
     policy = kubectl(['get', 'mutatingadmissionpolicy', POLICY, '-o', 'json'])
     pod = kubectl(['-n', NS, 'get', 'pod', NAME, '-o', 'json'])
@@ -163,6 +186,13 @@ def main():
     node = kubectl(['get', 'node', 'socrat-0', '-o', 'json'])
     pods = kubectl(['get', 'pods', '-A', '--field-selector=spec.nodeName=socrat-0', '-o', 'json'])['items']
     capacity = memory_capacity(node, pods)
+    if args.retry_after_rollback:
+        old_policy = json.loads((previous / 'before-policy.private.json').read_text())
+        old_pod = json.loads((previous / 'before-pod.private.json').read_text())
+        require(old_policy['metadata']['uid'] == policy['metadata']['uid'] and
+                old_policy['spec'] == policy['spec'], 'Prior policy was not exactly restored')
+        require(old_pod['metadata']['uid'] == pod['metadata']['uid'] and
+                old_pod['spec']['containers'] == pod['spec']['containers'], 'Pod changed since rollback')
     pp = policy_patch(policy)
     rp = resize_patch(pod)
     statuses = {c['name']: c['containerID'] for c in pod['status']['containerStatuses']}
@@ -185,11 +215,10 @@ def main():
     updated = kubectl(['patch', 'mutatingadmissionpolicy', POLICY, '--type=json', '-p', json.dumps(pp), '-o', 'json'])
     save('policy-applied.private.json', updated)
     try:
-        future = kubectl(['create', '--dry-run=server', '-f', '-', '-o', 'json'], probe(sts))
-        future_ram = future['spec']['containers'][0]['resources']
-        require(future_ram['requests']['memory'] in ('3Gi', '3072Mi') and
-                future_ram['limits']['memory'] in ('8Gi', '8192Mi'), 'Future-Pod admission did not converge')
-    except Exception:
+        future, samples = wait_future_admission(sts)
+        save('admission-propagation.json', samples)
+    except Exception as error:
+        save('admission-failed.private.json', {'error': str(error)})
         current = kubectl(['get', 'mutatingadmissionpolicy', POLICY, '-o', 'json'])
         reverse = copy.deepcopy(pp)
         reverse[1]['value'] = current['metadata']['resourceVersion']

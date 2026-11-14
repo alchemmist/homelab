@@ -165,3 +165,21 @@ def test_capacity_gate_includes_request_growth_and_ignores_failed_pods():
 def test_capacity_gate_stops_before_mutation_if_request_growth_does_not_fit():
     with pytest.raises(RuntimeError, match='Insufficient node reservation'):
         PROM.memory_capacity({'status': {'allocatable': {'memory': '2500Mi'}}}, [pod()])
+
+
+def test_admission_cache_propagation_is_bounded_and_verified(monkeypatch):
+    responses = iter([{'requests': {'memory': '2Gi'}, 'limits': {'memory': '3Gi'}},
+                      {'requests': {'memory': '3Gi'}, 'limits': {'memory': '8Gi'}}])
+    monkeypatch.setattr(PROM, 'probe', lambda sts: {})
+    monkeypatch.setattr(PROM, 'kubectl', lambda *args: {'spec': {'containers': [{'resources': next(responses)}]}})
+    monkeypatch.setattr(PROM.time, 'sleep', lambda _: None)
+    _, samples = PROM.wait_future_admission({})
+    assert samples == [{'request': '2Gi', 'limit': '3Gi'}, {'request': '3Gi', 'limit': '8Gi'}]
+
+
+def test_admission_nonconvergence_is_failure(monkeypatch):
+    monkeypatch.setattr(PROM, 'probe', lambda sts: {})
+    monkeypatch.setattr(PROM, 'kubectl', lambda *args: {'spec': {'containers': [{'resources': {
+        'requests': {'memory': '2Gi'}, 'limits': {'memory': '3Gi'}}}]}})
+    with pytest.raises(RuntimeError, match='did not converge'):
+        PROM.wait_future_admission({}, timeout=0)
