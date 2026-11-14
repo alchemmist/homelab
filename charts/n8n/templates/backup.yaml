@@ -30,7 +30,7 @@ spec:
           automountServiceAccountToken: false
           enableServiceLinks: false
           nodeSelector:
-            kubernetes.io/hostname: socrat-5
+            kubernetes.io/hostname: {{ .Values.nodeName | quote }}
           tolerations:
             - key: homelab.io/no-nfs
               operator: Equal
@@ -47,6 +47,11 @@ spec:
             - name: backup
               image: {{ .Values.image | quote }}
               command: [node, /scripts/backup.cjs]
+              env:
+                - name: N8N_BACKUP_SOURCE_NODE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: spec.nodeName
               securityContext:
                 readOnlyRootFilesystem: true
                 allowPrivilegeEscalation: false
@@ -79,7 +84,7 @@ spec:
           volumes:
             - name: data
               persistentVolumeClaim:
-                claimName: n8n-socrat5
+                claimName: {{ .Values.persistence.claimName | quote }}
             - name: script
               configMap:
                 name: n8n-backup-script

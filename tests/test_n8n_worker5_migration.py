@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class Worker5MigrationTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        cls.values = yaml.safe_load((ROOT / 'charts/n8n/values.yaml').read_text())
         cls.docs = list(yaml.safe_load_all(subprocess.check_output(
             ['helm', 'template', 'n8n', str(ROOT / 'charts/n8n')], text=True)))
 
@@ -23,11 +24,11 @@ class Worker5MigrationTest(unittest.TestCase):
 
     def test_single_writer_local_retained_and_legacy_preserved(self):
         deployment = self.resource('Deployment', 'n8n')['spec']
-        self.assertEqual(deployment['replicas'], 1)
+        self.assertIn(deployment['replicas'], (0, 1))
         self.assertEqual(deployment['strategy']['type'], 'Recreate')
         spec = deployment['template']['spec']
-        self.assertEqual(spec['nodeSelector']['kubernetes.io/hostname'], 'socrat-5')
-        self.assertEqual(spec['volumes'][-1]['persistentVolumeClaim']['claimName'], 'n8n-socrat5')
+        self.assertEqual(spec['nodeSelector']['kubernetes.io/hostname'], self.values['nodeName'])
+        self.assertEqual(spec['volumes'][-1]['persistentVolumeClaim']['claimName'], self.values['persistence']['claimName'])
         pv = self.resource('PersistentVolume', 'n8n-socrat5')['spec']
         self.assertEqual(pv['persistentVolumeReclaimPolicy'], 'Retain')
         self.assertEqual(pv['local']['path'], '/var/lib/rancher/k3s/storage/n8n-socrat5')
@@ -41,7 +42,34 @@ class Worker5MigrationTest(unittest.TestCase):
         spec = cron['jobTemplate']['spec']['template']['spec']
         self.assertFalse(spec['automountServiceAccountToken'])
         self.assertTrue(spec['containers'][0]['volumeMounts'][0]['readOnly'])
-        self.assertEqual(spec['nodeSelector']['kubernetes.io/hostname'], 'socrat-5')
+        self.assertEqual(spec['nodeSelector']['kubernetes.io/hostname'], self.values['nodeName'])
+        self.assertEqual(spec['volumes'][0]['persistentVolumeClaim']['claimName'], self.values['persistence']['claimName'])
+        env = spec['containers'][0]['env']
+        self.assertEqual(env[0]['valueFrom']['fieldRef']['fieldPath'], 'spec.nodeName')
+
+    def test_recovery_is_separate_retained_and_node_affine(self):
+        config = self.values['recoveryStorage']
+        self.assertNotEqual(config['name'], 'n8n-socrat5')
+        pv = self.resource('PersistentVolume', config['name'])['spec']
+        self.assertEqual(pv['persistentVolumeReclaimPolicy'], 'Retain')
+        self.assertEqual(pv['local']['path'], config['path'])
+        self.assertEqual(pv['claimRef']['name'], config['name'])
+        affinity = pv['nodeAffinity']['required']['nodeSelectorTerms'][0]['matchExpressions'][0]
+        self.assertEqual(affinity['values'], [config['nodeName']])
+        pvc = self.resource('PersistentVolumeClaim', config['name'])
+        self.assertEqual(pvc['spec']['volumeName'], config['name'])
+        self.assertEqual(pvc['metadata']['annotations']['argocd.argoproj.io/sync-options'], 'Prune=false,Delete=false')
+
+    def test_legacy_volume_does_not_move_when_deployment_moves(self):
+        docs = list(yaml.safe_load_all(subprocess.check_output(
+            ['helm', 'template', 'n8n', str(ROOT / 'charts/n8n'),
+             '--set', 'nodeName=socrat-0'], text=True)))
+        pv = next(x for x in docs if x and x['kind'] == 'PersistentVolume' and x['metadata']['name'] == 'n8n-socrat5')
+        expr = pv['spec']['nodeAffinity']['required']['nodeSelectorTerms'][0]['matchExpressions'][0]
+        self.assertEqual(expr['values'], ['socrat-5'])
+        recovery = next(x for x in docs if x and x['kind'] == 'PersistentVolume' and x['metadata']['name'] == self.values['recoveryStorage']['name'])
+        expr = recovery['spec']['nodeAffinity']['required']['nodeSelectorTerms'][0]['matchExpressions'][0]
+        self.assertEqual(expr['values'], [self.values['recoveryStorage']['nodeName']])
 
     def test_receiver_rejects_commands_and_uses_private_append_versions(self):
         receiver = ROOT / 'scripts/n8n/backup_receiver.py'

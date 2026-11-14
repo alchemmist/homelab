@@ -43,7 +43,7 @@ async function main() {
   fs.copyFileSync('/recovery/encryption-key', path.join(root, 'encryption-key'));
   fs.chmodSync(path.join(root, 'encryption-key'), 0o600);
   fs.writeFileSync(path.join(root, 'manifest.json'), JSON.stringify({
-    createdAt: new Date().toISOString(), sourceNode: 'socrat-5',
+    createdAt: new Date().toISOString(), sourceNode: process.env.N8N_BACKUP_SOURCE_NODE || 'unknown',
     database: 'SQLite online backup; integrity_check=ok',
     databaseSha256: await sha256File(path.join(data, 'database.sqlite')),
     note: 'Non-database files copied online; not a transactionally atomic snapshot of external services.'

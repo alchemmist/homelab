@@ -2,10 +2,10 @@
 googleDnsEnabled: false
 replicaCount: 0
 image: docker.io/n8nio/n8n@sha256:624a1f10f37119a73eca34c0cbd358668aebf0068d320ad5eae584f9d35aa314
-nodeName: socrat-5
+nodeName: socrat-1
 secretName: n8n-secrets
 persistence:
-  claimName: n8n-socrat5
+  claimName: n8n-recovery-20261114
   storageClass: local-path
   size: 5Gi
 host: n8n.socrat.alchemmist.xyz
@@ -25,3 +25,12 @@ tolerations:
     operator: Equal
     value: "true"
     effect: NoSchedule
+
+# Owner-approved restore from 2026-11-14T00:15Z; worker5's original PV/PVC retained.
+# Keep these volume coordinates fixed even if Deployment placement changes later.
+recoveryStorage:
+  enabled: true
+  name: n8n-recovery-20261114
+  nodeName: socrat-1
+  path: /home/alchemmist/.local/share/homelab/n8n-recovery-20261114/data
+  size: 5Gi
