@@ -23,7 +23,7 @@ def memory_bytes(value):
     return int(float(text))
 
 
-def problems(document):
+def problems(document, pods=None):
     if not document:
         return ['Prometheus is not installed']
     items = document.get('items') if isinstance(document, dict) and 'items' in document else [document]
@@ -36,11 +36,29 @@ def problems(document):
     limit = (spec.get('resources') or {}).get('limits', {}).get('memory', '0')
     if memory_bytes(limit) < memory_bytes('8Gi'):
         found.append('Prometheus memory limit is below 8Gi')
+    if pods is not None:
+        running = [p for p in pods.get('items', []) if p.get('status', {}).get('phase') == 'Running']
+        if not running:
+            found.append('No running Prometheus Pod to verify effective memory')
+        for pod in running:
+            containers = [c for c in pod.get('spec', {}).get('containers', []) if c['name'] == 'prometheus']
+            statuses = [c for c in pod.get('status', {}).get('containerStatuses', []) if c['name'] == 'prometheus']
+            if len(containers) != 1 or len(statuses) != 1:
+                found.append('Prometheus Pod container/status is missing or ambiguous')
+                continue
+            if not statuses[0].get('ready'):
+                found.append('Prometheus container is not Ready')
+            for label, resources in [('Pod spec', containers[0].get('resources', {})),
+                                     ('runtime status', statuses[0].get('resources', {}))]:
+                if memory_bytes(resources.get('limits', {}).get('memory', '0')) < memory_bytes('8Gi'):
+                    found.append('Effective Prometheus ' + label + ' memory limit is below 8Gi')
     return found
 
 
 def main():
-    found = problems(json.load(sys.stdin))
+    document = json.load(sys.stdin)
+    found = (problems(document['prometheus'], document['pods'])
+             if 'prometheus' in document and 'pods' in document else problems(document))
     if found:
         print('; '.join(found), file=sys.stderr)
         return 1

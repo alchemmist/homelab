@@ -200,3 +200,20 @@ for request-only12Gi→10Gi, preserving limit, UID/container/process/GPU allocat
 Require fresh preimage/CAS, server dry-run, future-Pod admission behavior, same
 process identity, actual effective resources and natural scheduled jobs/freshness.
 Do not restart the model again merely to make a template look correct.
+
+## 2026-11-14 Prometheus: correct the effective cgroup ceiling
+
+The old admission profile still injected a 3-GiB ceiling despite chart/CR/StatefulSet
+8-GiB intent. Actual cgroup memory.max events/direct reclaim and file refaults
+caused the major-page-fault warning while the host still had ~7 GiB available.
+Only Prometheus RAM admission scalars were reconciled; **current effective request
+3 GiB, limit 8 GiB**. Catalog request changes 4→3 GiB because a full 4-GiB effective
+request would exceed current socrat-0 reservations; 3 GiB covers the observed
+~2.6-GiB anonymous baseline and fits. Other profiles and CPU/storage settings were
+not reconciled. Existing Pod was resized through its native resize subresource,
+without restart. No retention or alert weakening. Fresh future-Pod dry-run and
+actual cgroup limit verified. Details, rollback/propagation receipt and measured
+post-change improvement: [dated acceptance](cloud-init-and-prometheus-memory-20261114.md).
+The upstream template may still declare 4 GiB request; actual Pod resources remain
+owned by admission as documented above. Capacity under simultaneous peaks is not
+proved by the short acceptance sample.

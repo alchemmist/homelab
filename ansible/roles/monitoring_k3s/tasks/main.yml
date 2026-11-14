@@ -40,10 +40,16 @@
   register: monitoring_k3s_prometheus
   changed_when: false
 
+- name: Read actual Prometheus Pods after CREATE-time admission
+  ansible.builtin.command:
+    argv: ["{{ monitoring_k3s_binary | default('/usr/local/bin/k3s') }}", kubectl, --kubeconfig, "{{ monitoring_k3s_kubeconfig }}", -n, "{{ monitoring_k3s_namespace }}", get, pods, -l, app.kubernetes.io/name=prometheus, -o, json]
+  register: monitoring_k3s_prometheus_pods
+  changed_when: false
+
 - name: Refuse five-second probes until Prometheus can take them
   ansible.builtin.command:
     argv: [python3, "{{ monitoring_k3s_remote_dir }}/prometheus_scrape_guard.py"]
-    stdin: "{{ monitoring_k3s_prometheus.stdout }}"
+    stdin: "{{ {'prometheus': monitoring_k3s_prometheus.stdout | from_json, 'pods': monitoring_k3s_prometheus_pods.stdout | from_json} | to_json }}"
   changed_when: false
 
 - name: Install private K3s metrics integration

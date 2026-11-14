@@ -75,3 +75,25 @@ class ScrapeGuardTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class EffectiveMemoryGuardTests(unittest.TestCase):
+    def documents(self, spec_limit='8Gi', runtime_limit='8Gi'):
+        cr = {'items': [{'spec': {'scrapeInterval': '5s', 'resources': {'limits': {'memory': '8Gi'}}}}]}
+        pods = {'items': [{'spec': {'containers': [{'name': 'prometheus', 'resources': {'limits': {'memory': spec_limit}}}]},
+                           'status': {'phase': 'Running', 'containerStatuses': [{'name': 'prometheus', 'ready': True,
+                               'resources': {'limits': {'memory': runtime_limit}}}]}}]}
+        return cr, pods
+
+    def test_eight_gib_cr_cannot_hide_three_gib_admission(self):
+        self.assertTrue(GUARD.problems(*self.documents('3Gi', '3Gi')))
+
+    def test_resize_spec_without_effective_runtime_is_not_acceptance(self):
+        self.assertTrue(GUARD.problems(*self.documents('8Gi', '3Gi')))
+
+    def test_eight_gib_effective_runtime_passes(self):
+        self.assertEqual(GUARD.problems(*self.documents()), [])
+
+    def test_missing_runtime_does_not_pass(self):
+        cr, _ = self.documents()
+        self.assertTrue(GUARD.problems(cr, {'items': []}))
