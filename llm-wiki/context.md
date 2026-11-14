@@ -1,5 +1,20 @@
 # Socrat: текущий контекст
 
+## n8n RESTORED on socrat-1 —14Nov2026, CURRENT
+
+Owner explicitly accepted the14Nov00:15UTC backup (~12h behind CT shutdown).
+n8n now runs one Ready replica on1, separate Retain PV/PVC n8n-recovery-20261114;
+original worker5 volumes and n8n Secret UID/data unchanged.7workflows/10credentials/
+1user,6active workflows activated; healthz200/ok, unauthenticated API401, restarts0.
+PR Agent Ready1 on1 too. This restored DB is NOW AUTHORITATIVE; do NOT switch back
+to worker5's older DB without fresh consistent migration of new writes from1.
+Daily03:15MSK backup follows current node/claim. Exact-CronJob check succeeded;
+independent archive/DB integrity and sourceNode1 verified on3.6tests+Helm lint
+passed. No manual workflow execution, SQL reset, browser login or every-credential
+operation claimed. CT104 stopped/onboot0, node5 cordoned, VM activation not done;
+final cold-payload transfer completion still UNKNOWN due RuDesktop daily limit.
+[Recovery proof and resume gates](../docs/socrat5-vm-migration-20261114.md).
+
 ## socrat-5 CT104 → VM105 cutover PAUSED — 14Nov2026, CURRENT
 
 Owner approved the cutover, then requested operation without worker5 until the
