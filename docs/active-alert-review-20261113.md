@@ -100,3 +100,33 @@ natural scheduled backup still needs observation; an ad-hoc Job does not update
 the CronJob's last-success timestamp. Six old failed Jobs and the two cloud-init
 failed states remain deliberately visible pending evidence-preserving cleanup and
 privileged bootcmd diagnosis respectively.
+
+## Follow-up and scoped cleanup — 2026-11-14
+
+Owner requested proceeding with correction. The natural daily n8n backup
+succeeded November 14 00:15:33 UTC, confirming the fix beyond the ad-hoc test.
+All affected broker/cascade CronJobs also have fresh November 14 successes.
+
+Before deleting any object, validated all six original failed Job UIDs against
+privately retained evidence, terminal Failed=True, no active Pods recorded in Job
+status, matching CronJob ownership and newer successful execution within 36h.
+Then deleted only those six explicitly named terminal failed Jobs. Private
+pre-cleanup evidence includes six Job records and eight available Pod/log records;
+private deletion receipt retained. No CronJob, active workload, PVC, schedule,
+credential, alert rule or history limit was changed. n8n is now Synced/Healthy.
+All six nodes remain Ready. Subsequent alert evaluation has no KubeJobFailed.
+
+Fresh checks also identified two other current warnings, not part of the former
+eight: socrat-1 reports ACAD online=0, BATT Discharging, capacity 41%; physical
+power inspection is required. socrat-0 reports high major page faults; a bounded
+three-second process sample attributes about 589/s to Prometheus and zero to the
+sampled k3s-server and OTel processes. Host has about 7 GiB available memory,
+2.3 GiB allocated swap, and no swap-in/out during the short vmstat sample. This
+does not establish a RAM shortage or justify disabling the warning, dropping
+caches, restarting Prometheus, changing retention, or moving etcd workloads.
+
+At the final snapshot four warnings remain: the two existing cloud-init units,
+one major-page-fault warning and one on-battery warning. Root-only cloud-init
+logs/user-data remain inaccessible with current permissions (`sudo -n` fails).
+The exact bootcmd must be inspected privately before repair/reset; no provisioning
+replay or failed-state suppression has occurred.
