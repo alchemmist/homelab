@@ -1,0 +1,43 @@
+{{- if .Values.recoveryStorage.enabled }}
+# Separate restored dataset. Never repoint or delete the worker5 source volume.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .Values.recoveryStorage.name | quote }}
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+spec:
+  capacity:
+    storage: {{ .Values.recoveryStorage.size | quote }}
+  volumeMode: Filesystem
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  local:
+    path: {{ .Values.recoveryStorage.path | quote }}
+  claimRef:
+    namespace: {{ .Release.Namespace | quote }}
+    name: {{ .Values.recoveryStorage.name | quote }}
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: [{{ .Values.recoveryStorage.nodeName | quote }}]
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.recoveryStorage.name | quote }}
+  annotations:
+    helm.sh/resource-policy: keep
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: ""
+  volumeName: {{ .Values.recoveryStorage.name | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.recoveryStorage.size | quote }}
+{{- end }}

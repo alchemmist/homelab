@@ -1,5 +1,11 @@
 # Интеграции Authentik и добавление нового сервиса
 
+> **Текущий B2C контракт:** [отдельные app-группы и native роли](application-access.md).
+> Восемь включённых ролей для LiteLLM, Open WebUI, Grafana, Wiki и LMS;
+> остальные reserved группы не означают допуск. Internal/External не является
+> app permission. Старые owner-only/подготовительные срезы ниже — история;
+> browser E2E и мгновенный отзыв всех сессий/ключей не заявлены.
+
 > Текущий срез7 ноября: [логины, первый вход и native роли](identity-current-state.md),
 > [NetBird/сеть](network-access.md), [владельцы мониторинга](observability-current.md).
 > Датированные rollout/smoke ниже — история своего этапа, не общая readiness.

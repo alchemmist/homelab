@@ -2,12 +2,19 @@
 
 ## State
 
-Prepared in Git source; **not deployed and not browser-accepted yet**. No new
+**Deployed through GitOps on12November2026**, source ecf0c89f.
+Argo monitoring-k3s confirmed Synced/Healthy at that revision; the authenticated
+Grafana read API returned UID socrat-network with all8expected panels.
+**Browser visual acceptance is still pending:** the inspection browser reached
+the normal Authentik sign-in form and had no Grafana user session. Native SSO was
+not bypassed or weakened.
+
+No new
 agents, exporters, plugins, datasources, storage, public shares or alert rules.
 Dashboard owner is the existing monitoring-k3s Argo application, not charts/grafana.
 
 Source: `charts/monitoring-k3s/dashboards/network.json`, UID `socrat-network`,
-title `Socrat / Network`. Once provisioned, URL is
+title `Socrat / Network`. Published URL is
 `https://grafana.socrat.alchemmist.xyz/d/socrat-network` under existing native auth.
 No anonymous/public dashboard publication is intended.
 
@@ -55,9 +62,10 @@ introducing a parallel platform or a custom topology service.
 
 ## Publication and browser acceptance
 
-1. Review and publish the scoped source through the normal GitOps path. Current
-   branch also contains earlier locally committed recovery changes; do not push
-   them unintentionally or run blanket sync/prune.
+1. Publication completed from a clean origin/main worktree, cherry-picking only
+   the dashboard commit. Other locally committed incident/DNS/watchdog changes
+   were NOT pushed. Existing newer remote n8n/SPI changes were preserved. No
+   blanket sync/prune or Grafana restart was performed.
 2. Verify only the additional `socrat-network-dashboard` ConfigMap and the
    dashboard sidecar import are required. No Grafana restart is expected.
 3. Open the UID under normal authenticated Grafana access. Check both Node Graph

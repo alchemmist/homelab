@@ -1,6 +1,7 @@
 # LLM wiki: карта актуального контекста Socrat
 
-Актуализация **10 ноября 2026** (production Moscow VPN Pod/native, shared mesh и приёмка fallback; SPI service extraction; observer — 8 ноября, остальные срезы датированы в своих разделах). Это рабочая память для сопровождения homelab,
+Авторизация обновлена в текущем closeout: [B2C app-группы](application-access.md).
+Сетевой обзор: актуализация **10 ноября 2026** (production Moscow VPN Pod/native, shared mesh и приёмка fallback; SPI service extraction; observer — 8 ноября, остальные срезы датированы в своих разделах). Это рабочая память для сопровождения homelab,
 не public wiki content и не набор команд для автоматического повторения миграций.
 Git/manifests задают intent; runtime определяется отдельной проверкой.
 
@@ -29,7 +30,7 @@ Research is not a pending deployment task. Private recovery evidence remains off
 | Публичный SSH key, обычный Linux account и отзыв | [SSH user](ssh-user.md), [host/RBAC](identity-host-access.md) |
 | Observer: обычное групповое подключение, Danila, отзыв доступа | [Native observer](native-observer.md), [приёмка](../docs/identity/observer-acceptance-20261108.md) |
 | Главный identity справочник и ежедневные операции | [Identity](identity.md), [операции](identity-operations.md) |
-| B2C: отдельные app-группы, автоматическое создание и native роли | [App access groups](../docs/identity/app-access-groups.md) |
+| B2C: отдельные app-группы, автоматическое создание и native роли | [Текущий контракт](application-access.md), [технический runbook](../docs/identity/app-access-groups.md) |
 | OIDC, native app roles, gateway exceptions | [Архитектура](identity-architecture.md), [интеграции](identity-integrations.md), [диагностика](identity-gateway-troubleshooting.md) |
 | Optional disabled SSH-key integration | [UUID/key assignments](identity-ssh-keys.md) |
 | Theme, native UI и recovery | [Frontend](identity-frontend.md), [backup/recovery](identity-recovery.md) |

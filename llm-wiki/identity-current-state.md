@@ -1,5 +1,11 @@
 # Identity: текущий статус и первый вход
 
+> **Текущий B2C контракт:** [отдельные app-группы и native роли](application-access.md).
+> Восемь включённых ролей для LiteLLM, Open WebUI, Grafana, Wiki и LMS;
+> остальные reserved группы не означают допуск. Internal/External не является
+> app permission. Старые owner-only/подготовительные срезы ниже — история;
+> browser E2E и мгновенный отзыв всех сессий/ключей не заявлены.
+
 ## Текущее дополнение — observer принят 8 ноября
 
 `homelab-observer` даёт нативный viewer-доступ к **Rancher, Grafana, Wiki, Argo CD**.

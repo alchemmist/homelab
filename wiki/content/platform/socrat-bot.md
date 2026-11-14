@@ -1,6 +1,6 @@
 ---
 title: "Socrat Bot"
-weight: 40
+weight: 35
 ---
 
 Команда `/unsubscribe` и кнопка **Unsubscribe** отключают алерты, сохраняя одобрение владельца.
@@ -31,6 +31,10 @@ receive mode не переигрывает существующие firing; но
 карточек используют общий DB lease и content revisions, включая SPI, notes и mute.
 Эскалация сохраняет actor/time и durable outbox; Telegram timeout может дать
 повтор доставки (at least once).
+
+Нативный снимок Grafana содержит дополнительную ссылку **Chart** на снятую панель
+с фиксированным окном и переменными. Для произвольных inline images источник не
+угадывается. Ключ провайдера `nodes` сохранён, видимая подпись — **Node**.
 
 ## Куда ходить
 

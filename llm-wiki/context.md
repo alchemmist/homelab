@@ -17,12 +17,13 @@ JIT/login and universal session/key revocation are NOT proven. Reserved Harbor,
 Rancher/Argo/n8n/NetBird/SPI groups are NOT usable B2C grants. Details/triggers/
 private receipts: [app access groups](../docs/identity/app-access-groups.md).
 Old hard-allowlisted `prepare_app_iam.py` is historical, not current onboarding.
-Functional source `e38b9053` is local; NOT pushed. Strict fetch succeeded but
-histories diverge with unrelated DNS/network and n8n recovery work. Merge-tree
-preview (no actual merge) found conflicts in `docs/grafana-network-overview.md`
-and this context. Preserve both histories; do not force/reset or blindly publish
-unrelated local changes. Other origin/main checkouts do not yet have IAM hooks;
-reviewed normal source integration remains pending. Live access is already applied.
+Functional source: `e38b9053`. Owner subsequently authorized wiki refresh and
+publication of all completed work. Local/shared histories integrated by normal
+merge, preserving newer remote n8n recovery authority and deployed Grafana status,
+plus local DNS/network receipts. No force/reset, runtime migration or blanket
+sync/prune. Source publication is tracked by the closeout commit and origin/main;
+initial publication-blocker notes are historical. Current B2C entrypoint:
+[application access](application-access.md).
 
 ## LiteLLM: reviewed vladislav onboarding — HISTORICAL, superseded by group migration
 
@@ -36,6 +37,34 @@ not a grant to every newly created Authentik user. 8 tests + read-only live
 preflight passed. Real Vladislav browser login remains untested. Details/private
 receipt location and offboarding caveats: [LiteLLM](../docs/litellm.md). Earlier
 owner-only descriptions are superseded only for this reviewed UUID.
+
+## n8n RESTORED on socrat-1 —14Nov2026, CURRENT
+
+Owner explicitly accepted the14Nov00:15UTC backup (~12h behind CT shutdown).
+n8n now runs one Ready replica on1, separate Retain PV/PVC n8n-recovery-20261114;
+original worker5 volumes and n8n Secret UID/data unchanged.7workflows/10credentials/
+1user,6active workflows activated; healthz200/ok, unauthenticated API401, restarts0.
+PR Agent Ready1 on1 too. This restored DB is NOW AUTHORITATIVE; do NOT switch back
+to worker5's older DB without fresh consistent migration of new writes from1.
+Daily03:15MSK backup follows current node/claim. Exact-CronJob check succeeded;
+independent archive/DB integrity and sourceNode1 verified on3.6tests+Helm lint
+passed. No manual workflow execution, SQL reset, browser login or every-credential
+operation claimed. CT104 stopped/onboot0, node5 cordoned, VM activation not done;
+final cold-payload transfer completion still UNKNOWN due RuDesktop daily limit.
+[Recovery proof and resume gates](../docs/socrat5-vm-migration-20261114.md).
+
+## socrat-5 CT104 → VM105 cutover PAUSED — 14Nov2026; n8n paragraph superseded above
+
+Owner approved the cutover, then requested operation without worker5 until the
+next evening after RuDesktop exhausted its two-hour daily allowance. CT104 was
+cleanly shut down and onboot disabled; retain CT/disks. VM K3s/WG startup remains
+masked and authorization marker absent; final cold-payload transfer completion is
+UNKNOWN. Never start CT alongside the same identities in VM. Cold vzdump verified.
+PR Agent restored via GitOps to socrat-1, Running/Ready1, public HTTP200. n8n stays
+at replicas0: latest accessible off-host backup is 14Nov00:15UTC, approximately
+12h before shutdown; owner acceptance REQUIRED before stale-data restoration.
+No PV/PVC/Node deletion, n8n Secret change, mesh reenrollment or global pruning.
+[Cutover checkpoint and recovery gates](../docs/socrat5-vm-migration-20261114.md).
 
 ## Moscow repair APPLIED and K3S restored —13Nov2026, CURRENT
 
@@ -194,6 +223,7 @@ no push or broad reconciliation. NL provider console remains unverified.
 [Dependency map and next gates](../docs/network-dependency-audit-20261112.md),
 [watchdog recovery](../docs/moscow-relay-recovery-20261112.md),
 [DNS rollout](../docs/moscow-authoritative-dns-stage-20261112.md).
+
 
 ## TV / Traffic Light — принято 11 ноября 2026
 
