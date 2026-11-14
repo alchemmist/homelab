@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 import sys
 import urllib.request
-from app_iam import LEGACY_GROUPS, GROUP_MARKER, app_groups, admission_groups, rows, validate_group, validate_bindings
+from app_iam import LEGACY_GROUPS, GROUP_MARKER, app_groups, admission_groups, rows, validate_group, validate_bindings, standard_scope_ids
 
 root=Path(sys.argv[1])
 credentials=json.loads((root/'credentials.json').read_text())
@@ -120,7 +120,7 @@ flows=api('GET','flows/instances/?page_size=100')['results']
 flow={x['slug']:x['pk'] for x in flows}
 cert=unique('crypto/certificatekeypairs/','name','authentik Self-signed Certificate')
 scopes=api('GET','propertymappings/provider/scope/?page_size=100')['results']
-mapping=[x['pk'] for x in scopes if x['scope_name'] in ['openid','profile','email']]
+mapping=standard_scope_ids(scopes)
 if len(mapping)!=3 or not cert:raise RuntimeError('OIDC defaults missing')
 groups_scope=unique('propertymappings/provider/scope/','name','homelab-groups')
 groups_settings={'name':'homelab-groups','scope_name':'groups',
@@ -133,6 +133,8 @@ clients_path=root/'oidc-clients.json'
 clients=json.loads(clients_path.read_text()) if clients_path.exists() else {}
 proxy_ids=[]
 for slug,service in services.items():
+    if service.get("managedBy"):
+        continue
     provider=None
     if service.get('proxy'):
         provider=unique('providers/proxy/','name','homelab-'+slug)
@@ -156,6 +158,13 @@ for slug,service in services.items():
             fd=os.open(clients_path,os.O_CREAT|os.O_WRONLY|os.O_TRUNC,0o600)
             with os.fdopen(fd,'w') as f:json.dump(clients,f)
         service_mapping=list(mapping)
+        app_profile=unique('propertymappings/provider/scope/','name','homelab-app-'+slug+'-profile')
+        app_groups_scope=unique('propertymappings/provider/scope/','name','homelab-app-'+slug+'-groups')
+        if app_profile:
+            if app_profile.get('scope_name')!='profile' or not app_groups_scope or app_groups_scope.get('scope_name')!='groups':
+                raise RuntimeError('Incomplete managed app scopes: '+slug)
+            service_mapping=[pk for pk in service_mapping if pk not in [r['pk'] for r in scopes if r['scope_name']=='profile']]+[app_profile['pk']]
+
         for mapping_name in service.get('extraScopeMappings', []):
             custom_mapping=unique('propertymappings/provider/scope/','name',mapping_name)
             if not custom_mapping:
@@ -166,7 +175,7 @@ for slug,service in services.items():
             service_mapping.append(custom_mapping['pk'])
         if service_mapping is None:continue
         if service.get('groupsScope'):
-            service_mapping.append(groups_scope['pk'])
+            service_mapping.append((app_groups_scope or groups_scope)['pk'])
         if slug=='grafana':
             offline=next((x for x in scopes if x.get('scope_name')=='offline_access'), None)
             if not offline:raise RuntimeError('offline_access scope missing')

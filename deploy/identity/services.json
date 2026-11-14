@@ -23,7 +23,11 @@
         "assignable": true
       }
     },
-    "groupsScope": true
+    "groupsScope": true,
+    "accessManagement": {
+      "state": "ready",
+      "reason": "Reviewed native OIDC role adapter"
+    }
   },
   "harbor": {
     "name": "Harbor",
@@ -41,11 +45,15 @@
     "appRoles": {
       "user": {
         "nativeRole": "project membership managed in Harbor",
-        "assignable": true
+        "assignable": false
       }
     },
     "groupsScope": true,
-    "observerAdmissionRequiresBootstrap": true
+    "observerAdmissionRequiresBootstrap": true,
+    "accessManagement": {
+      "state": "blocked",
+      "reason": "Native project grants and bounded CLI/session revocation require separate acceptance"
+    }
   },
   "rancher": {
     "name": "Rancher",
@@ -66,7 +74,11 @@
         "assignable": false
       }
     },
-    "groupsScope": true
+    "groupsScope": true,
+    "accessManagement": {
+      "state": "blocked",
+      "reason": "Staff-only native group RBAC/cache adapter required; no B2C cluster access"
+    }
   },
   "open-webui": {
     "name": "Open WebUI",
@@ -90,7 +102,19 @@
         "assignable": true
       }
     },
-    "groupsScope": true
+    "groupsScope": true,
+    "accessManagement": {
+      "state": "ready",
+      "reason": "Reviewed native OIDC role adapter",
+      "claimAliases": {
+        "app-open-webui-user": [
+          "homelab-observer"
+        ],
+        "homelab-chat-user": [
+          "homelab-observer"
+        ]
+      }
+    }
   },
   "wiki": {
     "name": "Wiki",
@@ -116,7 +140,11 @@
         "assignable": true
       }
     },
-    "groupsScope": true
+    "groupsScope": true,
+    "accessManagement": {
+      "state": "ready",
+      "reason": "Reviewed native OIDC role adapter"
+    }
   },
   "litellm": {
     "name": "LiteLLM",
@@ -132,9 +160,18 @@
       "homelab-litellm-reviewed-identity"
     ],
     "icon": "service-icons/litellm-69eaed389008.svg",
-    "admission": "reviewed-subject-only",
-    "appRoles": {},
-    "groupsScope": true
+    "admission": "native-oidc-app-group",
+    "appRoles": {
+      "user": {
+        "nativeRole": "internal_user",
+        "assignable": true
+      }
+    },
+    "groupsScope": true,
+    "accessManagement": {
+      "state": "ready",
+      "reason": "Reviewed native OIDC role adapter"
+    }
   },
   "lms": {
     "name": "LMS",
@@ -153,9 +190,64 @@
     "admission": "native-oidc",
     "appRoles": {
       "student": {
-        "nativeRole": "student; group lms-students. Teachers use lms-teachers.",
+        "nativeRole": "student",
+        "assignable": true
+      },
+      "teacher": {
+        "nativeRole": "teacher",
+        "assignable": true
+      }
+    },
+    "accessManagement": {
+      "state": "ready",
+      "reason": "Reviewed native OIDC role adapter",
+      "claimAliases": {
+        "app-lms-student": [
+          "lms-students"
+        ],
+        "app-lms-teacher": [
+          "lms-teachers"
+        ]
+      }
+    }
+  },
+  "argocd": {
+    "name": "Argo CD",
+    "url": "https://argocd.socrat.alchemmist.xyz/",
+    "groups": [
+      "homelab-owner",
+      "homelab-platform-operator",
+      "homelab-observer"
+    ],
+    "appRoles": {
+      "viewer": {
+        "nativeRole": "reviewed native read-only RBAC required",
         "assignable": false
       }
+    },
+    "groupsScope": true,
+    "accessManagement": {
+      "state": "blocked",
+      "reason": "Existing dedicated Argo controller owns provider/RBAC; staff integration, not automatic B2C permission"
+    },
+    "managedBy": "argocd_oidc"
+  },
+  "n8n": {
+    "name": "n8n",
+    "url": "https://n8n.socrat.alchemmist.xyz/",
+    "groups": [
+      "homelab-owner"
+    ],
+    "appRoles": {
+      "user": {
+        "nativeRole": "Native account/invitation required; no assumed SSO/JIT",
+        "assignable": false
+      }
+    },
+    "managedBy": "native-n8n",
+    "accessManagement": {
+      "state": "blocked",
+      "reason": "No reviewed native OIDC/JIT provisioning; app group does not create an n8n account"
     }
   }
 }

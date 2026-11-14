@@ -53,6 +53,24 @@ class LiteLLMIdentityTests(unittest.TestCase):
         namespace['request'].user.uuid = '00000000-0000-0000-0000-000000000001'
         self.assertEqual(namespace['mapping']()['litellm_user_role'], 'internal_user_viewer')
 
+    def test_app_group_controls_role_without_per_user_uuid_grant(self):
+        module = controller()
+        owner = 'ad03842b-12a5-41e1-b875-fb712657e326'
+        other = 'ed03842b-12a5-41e1-b875-fb712657e326'
+        memberships = []
+        user = SimpleNamespace(uuid=other, ak_groups=SimpleNamespace(all=lambda: memberships))
+        namespace = {'request': SimpleNamespace(user=user)}
+        expression = module.identity_expression(owner, 'owner@example.org', (), 'app-litellm-user')
+        exec('def mapping():\n' + textwrap.indent(expression, '    '), namespace)
+        self.assertEqual(namespace['mapping']()['litellm_user_role'], 'internal_user_viewer')
+        memberships.append(SimpleNamespace(name='app-litellm-user'))
+        self.assertEqual(namespace['mapping']()['litellm_user_role'], 'internal_user')
+        self.assertEqual(namespace['mapping']()['litellm_user_id'], 'authentik:' + other)
+        memberships.clear()
+        self.assertEqual(namespace['mapping']()['litellm_user_role'], 'internal_user_viewer')
+        user.uuid = owner
+        self.assertEqual(namespace['mapping']()['litellm_user_role'], 'proxy_admin')
+
     def test_catalog_is_owner_only_and_explicit_native_oidc(self):
         service = json.loads((ROOT / 'deploy/identity/services.json').read_text())['litellm']
         self.assertEqual(service['groups'], ['homelab-owner'])

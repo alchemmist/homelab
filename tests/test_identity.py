@@ -27,7 +27,7 @@ class FakeAuthentik:
                 'default-authentication-flow','default-provider-authorization-explicit-consent',
                 'default-provider-invalidation-flow','default-provider-authorization-implicit-consent']],
             'crypto/certificatekeypairs/':[{'pk':'cert','name':'authentik Self-signed Certificate'}],
-            'propertymappings/provider/scope/':[{'pk':s,'scope_name':s} for s in ['openid','profile','email','offline_access']]}
+            'propertymappings/provider/scope/':[{'pk':s,'scope_name':s,'name':"authentik default OAuth Mapping: OpenID '"+s+"'"} for s in ['openid','profile','email','offline_access']]}
         self.requests=[]
 
     def __call__(self,req,timeout=60):
@@ -118,7 +118,7 @@ class IdentityTests(unittest.TestCase):
             grafana=next(p for p in api.data['providers/oauth2/'] if p['name']=='homelab-grafana')
             self.assertIn('offline_access', grafana['property_mappings'])
             self.assertEqual(len(api.data['core/applications/']),6)
-            self.assertEqual(len(api.data['policies/bindings/']),sum(len(admission_groups(slug,service)) for slug,service in json.loads((root/'services.json').read_text()).items() if slug!='litellm'))
+            self.assertEqual(len(api.data['policies/bindings/']),sum(len(admission_groups(slug,service)) for slug,service in json.loads((root/'services.json').read_text()).items() if slug!='litellm' and not service.get('managedBy')))
             for method,path,body,query in api.requests:
                 if method=='GET' and path=='core/applications/':
                     self.assertEqual(query['superuser_full_list'],['true'])
@@ -193,8 +193,9 @@ class RolloutRegressionTests(unittest.TestCase):
         import hashlib,xml.etree.ElementTree as ET
         manifest=json.loads((ROOT/'assets/service-icons/sources.json').read_text())
         services=json.loads((ROOT/'deploy/identity/services.json').read_text())
-        self.assertEqual(len(services),7)
-        for slug,service in services.items():
+        managed = {slug: service for slug, service in services.items() if not service.get('managedBy')}
+        self.assertEqual(len(managed),7)
+        for slug,service in managed.items():
             data=(ROOT/'assets/service-icons'/f'{slug}.svg').read_bytes()
             digest=hashlib.sha256(data).hexdigest()
             self.assertEqual(digest,manifest['files'][f'{slug}.svg']['sha256'])
@@ -217,7 +218,10 @@ class RolloutRegressionTests(unittest.TestCase):
 
     def test_n8n_native_login_and_machine_paths_have_no_idp_gate(self):
         services=json.loads((ROOT/'deploy/identity/services.json').read_text())
-        self.assertNotIn('n8n',services)
+        self.assertEqual(services['n8n']['managedBy'], 'native-n8n')
+        self.assertEqual(services['n8n']['accessManagement']['state'], 'blocked')
+        self.assertNotIn('proxy', services['n8n'])
+        self.assertNotIn('redirect', services['n8n'])
         self.assertNotIn('uptime-kuma',services)
         resources=list(yaml.safe_load_all((ROOT/'charts/n8n/templates/access.yaml').read_text()))
         self.assertEqual(len(resources),1)

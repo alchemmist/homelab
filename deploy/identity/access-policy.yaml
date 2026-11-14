@@ -32,6 +32,12 @@ applicationIAM:
   lifecycle: deploy/identity/lifecycle.json
   reviewedSubjectLinks: deploy/identity/account-mappings.json
   groupPattern: app-<service>-<role>
+  groupReconciler: ansible/roles/authentik/files/reconcile_app_access.py
+  registrationHook: identity_app_access
+  groupCreation: automatic-on-ansible-registration-or-next-reconcile
+  unknownApplications: empty-reserved-user-group-no-admission
+  b2cMembershipAuthority: Authentik-UI-no-scheduled-human-lifecycle
+  unsupportedNativeAdapters: fail-closed-reserved-groups
   legacyGroups: preserve-no-automatic-migration
   admission: additive-any-group-bindings-not-native-rbac
   nativeRoles: explicit-per-service-no-implicit-admin

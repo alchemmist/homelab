@@ -58,3 +58,9 @@
   register: litellm_oidc_result
   changed_when: "'rolling update started' in litellm_oidc_result.stdout"
   when: "'litellm' in identity_oidc_services"
+
+- name: Automatically reconcile application groups after native integration
+  ansible.builtin.include_role:
+    name: identity_app_access
+  vars:
+    identity_app_access_apply: true

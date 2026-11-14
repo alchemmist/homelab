@@ -1,6 +1,24 @@
 # Socrat: текущий контекст
 
-## LiteLLM: reviewed vladislav onboarding — CURRENT
+## Per-app B2C groups — CURRENT
+
+Applied: 8 isolated app roles for LiteLLM, Open WebUI, Grafana viewer/editor,
+Wiki reader/editor, LMS student/teacher. Dynamic catalog/discovery reconciler
+creates non-privileged groups; Ansible registration/integration hook applies
+reviewed admission automatically, unknown/native-unsupported apps remain closed.
+No always-on writer, no automatic human group grants or per-human Git requirement.
+Vladislav now ONLY `app-litellm-user`; original LiteLLM account preserved, direct
+binding/UUID role exception removed. Native scope/admission tests passed 8 cases
+with a disabled fixture (deleted), owner role preserved; live LMS role function
+passed. 125 selected offline tests (124 pass/1 skip) + Ansible syntax and live
+isolated plan (`changed=0`), final live plan empty. Only Wiki
+restarted to read its native role map; no cluster/VPN/host changes. Full browser
+JIT/login and universal session/key revocation are NOT proven. Reserved Harbor,
+Rancher/Argo/n8n/NetBird/SPI groups are NOT usable B2C grants. Details/triggers/
+private receipts: [app access groups](../docs/identity/app-access-groups.md).
+Old hard-allowlisted `prepare_app_iam.py` is historical, not current onboarding.
+
+## LiteLLM: reviewed vladislav onboarding — HISTORICAL, superseded by group migration
 
 Owner authorized onboarding of the existing active external Authentik user
 `vladislav`. Exact immutable UUID → `authentik:<uuid>` / `internal_user`, immediate

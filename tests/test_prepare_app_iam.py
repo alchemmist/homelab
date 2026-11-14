@@ -69,7 +69,13 @@ class FakeAPI:
 
 class PreparationTests(unittest.TestCase):
     def setUp(self):
-        self.services = json.loads((ROOT / 'deploy/identity/services.json').read_text())
+        # Frozen historical migration tool, NOT the current dynamic reconciler.
+        # Its hard allowlist must continue rejecting the expanded live catalog.
+        current = json.loads((ROOT / 'deploy/identity/services.json').read_text())
+        self.services = {slug: {
+            'groups': current.get(slug, {}).get('groups', ['homelab-owner']),
+            'appRoles': {role: {'assignable': True} for role in roles},
+        } for slug, roles in prep.ALLOWLIST.items()}
         self.reviewed = json.loads((ROOT / 'deploy/identity/account-mappings.json').read_text())
         self.api = FakeAPI(self.services, self.reviewed)
         self.temp = tempfile.TemporaryDirectory()
@@ -90,6 +96,12 @@ class PreparationTests(unittest.TestCase):
         with prep.locked(self.root):
             return prep.apply_plan(self.api, self.root, self.services, self.reviewed,
                                    stage, self.evidence, approval)
+
+    def test_current_dynamic_catalog_is_not_a_legacy_migration_apply(self):
+        current = json.loads((ROOT / 'deploy/identity/services.json').read_text())
+        with self.assertRaisesRegex(RuntimeError, 'Catalog allowlist changed'):
+            prep.build_plan(self.api, current, self.reviewed)
+        self.assertEqual(self.api.writes, 0)
 
     def test_full_plan_is_get_only_paginated_and_sanitized(self):
         before = copy.deepcopy(self.api.data)

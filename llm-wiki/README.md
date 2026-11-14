@@ -29,6 +29,7 @@ Research is not a pending deployment task. Private recovery evidence remains off
 | Публичный SSH key, обычный Linux account и отзыв | [SSH user](ssh-user.md), [host/RBAC](identity-host-access.md) |
 | Observer: обычное групповое подключение, Danila, отзыв доступа | [Native observer](native-observer.md), [приёмка](../docs/identity/observer-acceptance-20261108.md) |
 | Главный identity справочник и ежедневные операции | [Identity](identity.md), [операции](identity-operations.md) |
+| B2C: отдельные app-группы, автоматическое создание и native роли | [App access groups](../docs/identity/app-access-groups.md) |
 | OIDC, native app roles, gateway exceptions | [Архитектура](identity-architecture.md), [интеграции](identity-integrations.md), [диагностика](identity-gateway-troubleshooting.md) |
 | Optional disabled SSH-key integration | [UUID/key assignments](identity-ssh-keys.md) |
 | Theme, native UI и recovery | [Frontend](identity-frontend.md), [backup/recovery](identity-recovery.md) |

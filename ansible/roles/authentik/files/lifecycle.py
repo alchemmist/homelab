@@ -56,7 +56,7 @@ def build_plan(api, services, manifest, reviewed):
     applications = unique(rows(api, 'core/applications/?superuser_full_list=true'), 'slug')
     for slug, service in services.items():
         # Portal-only apps and subject-only integrations do not become generic SSO.
-        if not service.get('appRoles'):
+        if service.get('managedBy') or not service.get('appRoles'):
             continue
         app = applications.get(slug)
         if not app or app.get('policy_engine_mode') != 'any':

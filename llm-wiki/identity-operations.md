@@ -1,5 +1,18 @@
 # Authentik: пользователи, доступы и ежедневные операции
 
+## Текущий B2C доступ: отдельные группы приложений
+
+Использовать [актуальную таблицу и правила app-групп](../docs/identity/app-access-groups.md).
+Действуют `app-litellm-user`, `app-open-webui-user`, `app-grafana-viewer/editor`,
+`app-wiki-reader/editor`, `app-lms-student/teacher`. Группы создаются общим Ansible
+hook при штатной регистрации приложения; доступ человеку выдаётся членством в UI
+Authentik, native аккаунт обычно создаётся при первом входе. External поддержан.
+`homelab-observer` — прежний пакет нескольких staff-сервисов, не группа по умолчанию
+для B2C. `homelab-owner`, Authentik Admins/Read-only и platform-operator клиентам
+не выдавать. Зарезервированные неподдерживаемые группы не дают вход.
+Описания owner-only LiteLLM и только подготовленных app-групп ниже — история;
+полный browser/JIT/revocation acceptance всех новых групп пока не заявлен.
+
 > Текущий срез7 ноября: [логины, первый вход и native роли](identity-current-state.md),
 > [NetBird/сеть](network-access.md), [владельцы мониторинга](observability-current.md).
 > Датированные rollout/smoke ниже — история своего этапа, не общая readiness.

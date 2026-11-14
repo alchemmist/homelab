@@ -1,0 +1,12 @@
+---
+- name: Reconcile application-specific access without deploying Authentik
+  hosts: socrat-0
+  gather_facts: false
+  become: false
+  any_errors_fatal: true
+  environment:
+    K3S_CONFIG_FILE: /dev/null
+  vars:
+    identity_app_access_apply: false
+  roles:
+    - identity_app_access

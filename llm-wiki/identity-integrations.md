@@ -126,10 +126,10 @@ Owner подтвердил рабочий вход. Нативный Generic OID
 - launch: `https://llm.alchemmist.xyz/sso/key/generate`;
 - callback: `https://llm.alchemmist.xyz/sso/callback`;
 - provider `homelab-litellm`, app `litellm`, production admission `homelab-owner`
-  plus the reviewed exact UUID binding for `vladislav` (non-admin `internal_user`);
-  `deploy/identity/litellm-users.json` is the dedicated controller's subject allowlist;
-  this is not automatic access for every Authentik user. See current onboarding
-  and verification limits at the top of `docs/litellm.md`;
+  or **`app-litellm-user`**. Members receive `internal_user`, identity remains
+  `authentik:<UUID>`. Vladislav migrated to the group without replacing his account;
+  former user binding removed, `litellm-users.json` empty. Not every Authentik user
+  receives access. See [current systemic app groups](../docs/identity/app-access-groups.md);
 - custom scope mapping `homelab-litellm-reviewed-identity`, scope `litellm_identity`;
 - Secret `llm/socrat-authentik-litellm`, Generic SSO env; Helm optional Secret refs.
 
@@ -140,8 +140,10 @@ Owner подтвердил рабочий вход. Нативный Generic OID
 Mapping выбирает existing `socrat-admin` / `proxy_admin` **по reviewed IdP UUID**
 из account mapping и private journal, не по email/username. Нужный existing email
 подставляется после выбора immutable identity. Другие UUID получают отдельный
-`authentik:<uuid>` / `internal_user_viewer` и synthetic address под собственным
-`sso.socrat.alchemmist.xyz`; это тестируемая безопасная ветка, а не production grant observers.
+`authentik:<uuid>` и synthetic address под собственным `sso.socrat.alchemmist.xyz`.
+Член `app-litellm-user` получает `internal_user`; без неё безопасная ветка —
+`internal_user_viewer`, но application admission при этом не выдаётся. Observer
+не превращается в пользователя LiteLLM автоматически.
 Адреса под `.invalid` были отвергнуты upstream email-validator — не использовать
 их там, где runtime ожидает валидируемую email-domain модель.
 

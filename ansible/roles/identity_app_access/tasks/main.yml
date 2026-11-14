@@ -1,0 +1,36 @@
+---
+# Safe app-only hook: no Helm, provider secret rotation, people or MFA changes.
+- name: Copy catalog and bounded app-access reconciler
+  ansible.builtin.copy:
+    src: '{{ item.src }}'
+    dest: '/home/alchemmist/.cache/homelab-authentik/{{ item.name }}'
+    mode: '0600'
+    backup: true
+  loop:
+    - {src: '{{ playbook_dir }}/../../deploy/identity/services.json', name: services.json}
+    - {src: '{{ role_path }}/../authentik/files/app_iam.py', name: app_iam.py}
+    - {src: '{{ role_path }}/../authentik/files/reconcile_app_access.py', name: reconcile_app_access.py}
+
+- name: Plan automatic application groups and reviewed native admission
+  ansible.builtin.command:
+    argv:
+      - python3
+      - /home/alchemmist/.cache/homelab-authentik/reconcile_app_access.py
+      - /home/alchemmist/.cache/homelab-authentik
+  register: app_access_plan
+  changed_when: false
+
+- name: Apply only the freshly planned bounded application changes
+  ansible.builtin.command:
+    argv:
+      - python3
+      - /home/alchemmist/.cache/homelab-authentik/reconcile_app_access.py
+      - /home/alchemmist/.cache/homelab-authentik
+      - --apply
+      - --confirm-sha256
+      - '{{ (app_access_plan.stdout | from_json).sha256 }}'
+  when:
+    - identity_app_access_apply | default(false) | bool
+    - (app_access_plan.stdout | from_json).operations | length > 0
+  register: app_access_apply
+  changed_when: true

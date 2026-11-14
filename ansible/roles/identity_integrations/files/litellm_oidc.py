@@ -17,12 +17,13 @@ OWNER_ID = 'socrat-admin'
 MAPPING = 'homelab-litellm-reviewed-identity'
 
 
-def identity_expression(owner_uid, owner_email, user_uuids=()):
+def identity_expression(owner_uid, owner_email, user_uuids=(), user_group=None):
     # Identities/roles are selected by reviewed immutable subject, never email.
     return ('uid = str(request.user.uuid)\n'
             'owner = uid.replace("-", "") == ' + repr(owner_uid.replace('-', '')) + '\n'
             'member = uid in ' + repr(sorted(user_uuids)) + '\n'
-            'return {"litellm_user_id": ' + repr(OWNER_ID) + ' if owner else "authentik:" + uid,\n'
+            + (('member = member or ' + repr(user_group) + ' in [group.name for group in request.user.ak_groups.all()]\n') if user_group else '')
+            + 'return {"litellm_user_id": ' + repr(OWNER_ID) + ' if owner else "authentik:" + uid,\n'
             ' "litellm_user_email": ' + repr(owner_email) + ' if owner else uid + "@sso.socrat.alchemmist.xyz",\n'
             ' "litellm_user_role": "proxy_admin" if owner else ("internal_user" if member else "internal_user_viewer")}\n')
 
@@ -105,6 +106,11 @@ asyncio.run(main())
         granted_users.append(subject)
     if len({u['uuid'] for u in granted_users}) != len(granted_users):
         raise RuntimeError('Duplicate LiteLLM subject')
+    access_group = one('core/groups/', 'name', 'app-litellm-user')
+    if (not access_group or access_group.get('is_superuser') is not False or
+            access_group.get('parents') != [] or access_group.get('children') != [] or
+            access_group.get('roles') != [] or access_group.get('attributes') != {'homelab_app_iam': 1}):
+        raise RuntimeError('Reviewed non-privileged LiteLLM app group missing or drifted')
     if not args.apply:
         print('Preflight passed: native OIDC available, reviewed owner and owner-only local password boundary; no changes')
         return
@@ -131,11 +137,18 @@ asyncio.run(main())
         private(client_path, clients, overwrite=True)
     mapping = one('propertymappings/provider/scope/', 'name', MAPPING)
     settings = {'name': MAPPING, 'scope_name': 'litellm_identity',
-                'expression': identity_expression(owner['uuid'], owner_rows[0]['user_email'], [u['uuid'] for u in granted_users])}
+                'expression': identity_expression(owner['uuid'], owner_rows[0]['user_email'], [u['uuid'] for u in granted_users], 'app-litellm-user')}
     if not mapping or any(mapping.get(k) != v for k, v in settings.items()):
         mapping = api('PATCH' if mapping else 'POST', 'propertymappings/provider/scope/' + (mapping['pk'] + '/' if mapping else ''), settings)
     scopes = api('GET', 'propertymappings/provider/scope/?page_size=100')['results']
-    mappings = [r['pk'] for r in scopes if r['scope_name'] in ['openid', 'profile', 'email']] + [mapping['pk']]
+    mappings = []
+    for scope in ['openid', 'profile', 'email']:
+        matches = [r for r in scopes if r.get('scope_name') == scope and
+                   r.get('name') == "authentik default OAuth Mapping: OpenID '" + scope + "'"]
+        if len(matches) != 1:
+            raise RuntimeError('Missing/ambiguous exact default scope; never mix app profile mappings')
+        mappings.append(matches[0]['pk'])
+    mappings.append(mapping['pk'])
     flows = {r['slug']: r['pk'] for r in api('GET', 'flows/instances/?page_size=100')['results']}
     cert = one('crypto/certificatekeypairs/', 'name', 'authentik Self-signed Certificate')
     provider = one('providers/oauth2/', 'name', 'homelab-litellm')
@@ -159,7 +172,7 @@ asyncio.run(main())
     bindings = api('GET', 'policies/bindings/?target=' + app['pk'] + '&page_size=100')['results']
     approved_pks = {u['pk'] for u in granted_users}
     def accepted_binding(b):
-        target_ok = (b.get('group') == group['pk'] and b.get('user') is None) or (b.get('group') is None and b.get('user') in approved_pks)
+        target_ok = (b.get('group') in {group['pk'], access_group['pk']} and b.get('user') is None) or (b.get('group') is None and b.get('user') in approved_pks)
         return target_ok and b.get('policy') is None and b.get('enabled') is True and b.get('negate') is False and b.get('failure_result') is False and not b.get('expires')
     if any(not accepted_binding(b) for b in bindings):
         raise RuntimeError('Unexpected application admission binding; review before rollout')
@@ -167,6 +180,8 @@ asyncio.run(main())
         raise RuntimeError('Duplicate application admission binding')
     if not any(b.get('group') == group['pk'] for b in bindings):
         api('POST', 'policies/bindings/', {'target': app['pk'], 'group': group['pk'], 'order': 0, 'enabled': True, 'failure_result': False})
+    if not any(b.get('group') == access_group['pk'] for b in bindings):
+        api('POST', 'policies/bindings/', {'target': app['pk'], 'group': access_group['pk'], 'order': 100, 'enabled': True, 'negate': False, 'failure_result': False})
     for subject in granted_users:
         if not any(b.get('user') == subject['pk'] for b in bindings):
             api('POST', 'policies/bindings/', {'target': app['pk'], 'user': subject['pk'], 'order': 90, 'enabled': True, 'negate': False, 'failure_result': False})

@@ -107,3 +107,9 @@
   loop_control:
     label: '{{ item.metadata.name }}'
   changed_when: true
+
+- name: Automatically prepare catalog application groups after registration
+  ansible.builtin.include_role:
+    name: identity_app_access
+  vars:
+    identity_app_access_apply: true

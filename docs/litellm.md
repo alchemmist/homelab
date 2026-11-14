@@ -1,6 +1,18 @@
 # LiteLLM
 
-## Reviewed user onboarding: vladislav
+## Current: group-based user access
+
+Assign **`app-litellm-user`** in Authentik. Native SSO maps members to
+`internal_user` and creates an immutable-UUID account at first successful login;
+other application accounts/access are not granted. No per-human account mapping
+is required. Owner UUID → `socrat-admin` / `proxy_admin` remains protected.
+Vladislav has migrated to this group; his original account is preserved, his
+individual admission binding was removed and `litellm-users.json` is now empty.
+This supersedes the manual allowlist onboarding below. Licensing/capacity gates
+remain; removing membership does not revoke existing API keys automatically.
+See [systemic app groups, verification and limits](identity/app-access-groups.md).
+
+## Historical reviewed user onboarding: vladislav
 
 The active external Authentik user `vladislav` is explicitly provisioned as a
 non-admin LiteLLM `internal_user`. The binding uses the immutable IdP UUID

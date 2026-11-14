@@ -7,7 +7,8 @@ LEGACY_GROUPS = ['homelab-owner', 'homelab-platform-operator',
 
 
 def app_groups(services):
-    return {f'app-{slug}-{role}': settings
+    return {f'app-{slug}-{role}': {**settings, 'assignable': settings.get('assignable') is True and
+                                      service.get('accessManagement', {}).get('state', 'ready') == 'ready'}
             for slug, service in services.items()
             for role, settings in service.get('appRoles', {}).items()}
 
@@ -15,7 +16,9 @@ def app_groups(services):
 def admission_groups(slug, service):
     # Legacy membership remains valid; this is admission, NOT native RBAC.
     return service.get('groups', ['homelab-owner']) + [
-        f'app-{slug}-{role}' for role in service.get('appRoles', {})]
+        f'app-{slug}-{role}' for role, settings in service.get('appRoles', {}).items()
+        if settings.get('assignable') is True and
+        service.get('accessManagement', {}).get('state', 'ready') == 'ready']
 
 
 def rows(api, path):
@@ -58,3 +61,15 @@ def validate_bindings(bindings, allowed):
             raise RuntimeError('Application binding drift; review UI policy before reconciliation')
         seen.add(group)
     return seen
+
+
+def standard_scope_ids(scopes, required=('openid', 'profile', 'email')):
+    """Select exact upstream defaults, never arbitrary same-scope app mappings."""
+    result = []
+    for scope in required:
+        name = "authentik default OAuth Mapping: OpenID '" + scope + "'"
+        selected = [m for m in scopes if m.get('name') == name and m.get('scope_name') == scope]
+        if len(selected) != 1:
+            raise RuntimeError('Missing/ambiguous default OIDC scope: ' + scope)
+        result.append(selected[0]['pk'])
+    return result

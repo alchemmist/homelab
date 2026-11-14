@@ -51,6 +51,11 @@ class AppIAMTests(unittest.TestCase):
         helper = identity.IdentityTests(); helper.setup_root(root)
         self.reviewed = json.loads((ROOT / 'deploy/identity/account-mappings.json').read_text())
         self.fake = identity.FakeAuthentik(); helper.setup_reviewed(root, self.fake)
+        # This fixture includes the separately activated LiteLLM scope; the full
+        # foundation intentionally refuses to invent its reviewed identity map.
+        self.fake.data['propertymappings/provider/scope/'].append({
+            'pk': 'litellm-identity', 'name': 'homelab-litellm-reviewed-identity',
+            'scope_name': 'litellm_identity'})
         helper.configure(root, self.fake)
         self.api = LifecycleAPI(self.fake)
         self.services = json.loads((root / 'services.json').read_text())
