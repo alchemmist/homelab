@@ -17,6 +17,12 @@ JIT/login and universal session/key revocation are NOT proven. Reserved Harbor,
 Rancher/Argo/n8n/NetBird/SPI groups are NOT usable B2C grants. Details/triggers/
 private receipts: [app access groups](../docs/identity/app-access-groups.md).
 Old hard-allowlisted `prepare_app_iam.py` is historical, not current onboarding.
+Functional source `e38b9053` is local; NOT pushed. Strict fetch succeeded but
+histories diverge with unrelated DNS/network and n8n recovery work. Merge-tree
+preview (no actual merge) found conflicts in `docs/grafana-network-overview.md`
+and this context. Preserve both histories; do not force/reset or blindly publish
+unrelated local changes. Other origin/main checkouts do not yet have IAM hooks;
+reviewed normal source integration remains pending. Live access is already applied.
 
 ## LiteLLM: reviewed vladislav onboarding — HISTORICAL, superseded by group migration
 

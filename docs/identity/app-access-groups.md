@@ -178,6 +178,20 @@ No broad restart, SQL writes, real credential changes, VPN/host/network mutation
 or cluster-wide synchronization/pruning was performed. An unrelated cached full
 foundation script had a different hash and was left untouched/not executed.
 
+## Source publication checkpoint
+
+The live configuration, private cached controllers and isolated Ansible plan are
+applied/verified. Functional source commit: `e38b9053` (preceded by the original
+manual onboarding commit `3d8b7fe1`). Shared-branch publication is **pending**:
+strict-host-pinned `git fetch origin` succeeded, but local and remote histories
+are divergent and contain unrelated DNS/network and n8n recovery work.
+A non-working-tree `git merge-tree` preview found conflicts in
+`docs/grafana-network-overview.md` and `llm-wiki/context.md`. No actual merge,
+force/reset, checkout change or push was performed. The working tree was clean.
+Do not publish the unrelated local history blindly as part of this IAM change.
+Until normal reviewed integration, other checkouts of origin/main do not yet have
+these automatic Ansible hooks; use this reviewed local source for IAM deployment.
+
 ## Removing access
 
 Removing an app group blocks new SSO admission; existing local/session and API-key
