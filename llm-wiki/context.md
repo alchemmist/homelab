@@ -37,9 +37,11 @@ Socket.IO handshake200 is NOT proof of admin access; event authorization unteste
 Search is public200. Older Kuma/Syncthing/Search personal-MFA claims below are
 superseded for these current public routes. Grafana/Argo/Harbor/LiteLLM/LMS/SPI/Wiki
 actual SSO endpoints redirect to Authentik; Wiki public read remains intentional.
-RustFS root ForwardAuth, Reader own session check. Chat503, live replicas0:
-not changed or restarted, cause/owner decision not established. No blanket gate,
-provider/user/Secret changes or workflow/API writes. Decisions for human/machine
+RustFS root ForwardAuth, Reader own session check. Historical Chat503/replicas0
+snapshot was DURING the owner-approved VM105 handoff, not a continuing outage:
+WebUI is now Ready on5 and native OIDC HTTPS/PKCE redirect passes (handoff above).
+The audit itself did not change/restart apps or write workflows/APIs; no blanket
+gate, provider/user/Secret changes were made. Decisions for human/machine
 path separation and desired gates remain PENDING. [Audit and evidence](browser-auth-audit.md).
 
 ## blog + socrat-home moved off2 —15Nov, accepted
