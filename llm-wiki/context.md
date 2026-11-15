@@ -24,7 +24,11 @@ update/CSRF/mismatch/success tests passed; fixture deleted. Owner now reports
 HTTPS redirects (no internal :8080). Argo verified at4216e51c Synced/Healthy;
 authenticated External HTTP redirect probe passed. Full real-human password
 change/logout/re-login/MFA cycle not independently confirmed. Native submit label Continue,
-heading Update password. [Runbook](password-self-service.md). Supersedes earlier
+heading Update password. Authentik Dashboard now has providerless English
+**Change password** card in **Account**, no new groups/provider/admission bindings.
+Declarative metadata + bounded controller + standalone Ansible playbook committed;
+External /if/user/ restriction unchanged; direct link remains usable.
+[Runbook](password-self-service.md). Supersedes earlier
 incorrect External /if/user/ guidance; no real human password/MFA changes.
 
 ## n8n Google reconnect COMPLETED15Nov; intermittent latency NOT closed

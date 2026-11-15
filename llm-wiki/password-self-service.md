@@ -63,3 +63,24 @@ SQL workaround, cluster-wide sync/prune или изменения app admission 
 Исходники мини-сервиса/flow: `d21935e8`; документация первого этапа `9407b4c4`.
 Все эти изменения опубликованы в origin/main. Текущий closeout меняет только
 документацию, не запускает новую смену пароля, rollout или вход за человека.
+
+## Authentik Application Dashboard
+
+Registered providerless application **Change password**, category **Account**,
+launch URL `https://auth.socrat.alchemmist.xyz/change-password`. All card metadata
+is English. No new OAuth provider, credentials, user memberships, admin rights or
+admission bindings: this is a self-service link, not an app-role grant. The route
+and native flow still require authentication. Users able to open the Authentik
+Dashboard can see the card; this does not lift External `/if/user/` restrictions.
+External users should keep the direct link.
+
+Declarative metadata: `deploy/identity/password-self-service-application.json`.
+Bounded additive registration: `ansible/roles/authentik/files/password_application.py`.
+Standalone plan/apply playbook: `ansible/playbooks/password-self-service-application.yml`
+(use existing pinned `ansible_host=socrat-0` alias on owner Mac; apply only with
+`password_application_apply=true`). No full Authentik bootstrap is required.
+Existing drift stops rather than overwriting. Live create/detail GET verified;
+second run made no changes. Private receipt on0:
+`~/.cache/homelab-authentik/password-dashboard-166gap0q`.
+This is an Authentik dashboard registration, separate from the Argo Application;
+no new Kubernetes deployment was needed for the card.
