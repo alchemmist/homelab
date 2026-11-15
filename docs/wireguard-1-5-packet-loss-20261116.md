@@ -1,5 +1,11 @@
 # Direct WireGuard1↔5: confirmed underlay loss,16Nov2026
 
+**Later owner clarification and stronger controls:**5has no public inbound endpoint;
+the observed public address is NAT egress only. Plain UDP also loses packets.
+Complete A/B: direct WAN→1received82/100, via wired0→LAN1received100/100.
+See [follow-up, root-cause limits and no-public5 repair design](wireguard-1-5-nat-followup-20261116.md).
+The workaround is a proposal, not deployed; exact router/upstream fault still open.
+
 ## Result and operational boundary
 
 The immediate cause of slow multi-MB UI assets and renderer deadlines is real

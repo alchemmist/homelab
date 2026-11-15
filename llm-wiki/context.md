@@ -1,5 +1,30 @@
 # Socrat: текущий контекст
 
+##1↔5 NAT-only follow-up —16Nov, CURRENT
+
+OWNER CLARIFICATION:5has NO public reachable API/address/listener, inbound access
+is through WG.94.29.124.139 was NAT EGRESS only; never propose public5listener.
+Same-flow plain UDP128byte test:5sent40,node1received28, simultaneous WG40/28,
+zero capture drops. Not just WG decryption/MTU. Full100packet alternating A/B:
+direct5->homeWAN51831->Wi-Fi1=82/100;5->homeWAN51830->wired0=100/100; fixed
+LAN0->Wi-Fi1=100/100. Only tagged synthetic payloads temporarily relayed, no real
+WG/production packets rerouted, no public port opened, no identity/route changes.
+Confirms working candidate path via0, narrows direct WAN-forwarding-to1 problem;
+port-specific upstream vs router/NAT/hardware forwarding/AP root defect still NOT
+proven.3-end capture did NOT see misdelivery0 but node0 capture drops make that
+negative inconclusive. ARP announcements/neighbor MACs normal in bounded window.
+Production workaround DESIGN only:5outbound authenticated SSH to existing0TCP2222
+(3banner probes0.023–0.031sec), dedicated restricted transport key/user, fixed
+loopback UDP-over-stream bridge to1LAN, only5peer1loopback endpoint, same WG keys/
+AllowedIPs/end-to-end ciphertext, no public5inbound/new public port. Requires
+explicit0dependency/HOL trade-off, supervision, canary and operational approval;
+NOT deployed, never copy operator private SSH key. Router-native repair needs
+router admin access/counters and WAN/LAN capture or Ethernet A/B; credentials not
+located, don't guess defaults or request password in chat. Existing1<->2relay
+unchanged. All exact /run probes/results cleaned on0/1, private receipts retained.
+[Full evidence and repair options](../docs/wireguard-1-5-nat-followup-20261116.md).
+No retry of prior three-app moves; unrelated Venice API/monitoring work untouched.
+
 ##1↔5 network diagnosis —16Nov01:34MSK, CURRENT
 
 Direct WAN UDP toward1 has confirmed underlay loss, BEFORE WG decryption, not just
