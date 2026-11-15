@@ -695,3 +695,31 @@ This was a real gateway/Telegram protocol acceptance, not a browser Grafana-logi
 or visual screenshot-comparison acceptance. README, OpenAPI explanatory comment,
 wiki renderer, generated quality graph workflow/manifest, migration-head assertions
 and source/transport regressions were updated in bot Git.
+
+## Adjacent request: public shared LLM activity (2026-11-15)
+
+Implemented directly without subagents, in an isolated homelab worktree, not bot
+code. Existing foreign uncommitted primary-dashboard/rules edits were untouched.
+Dashboard `socrat-llm-activity-public`: one full-width panel, completed LiteLLM
+requests/minute grouped solely by `api_key_alias`, refresh10s, default1h, legend
+selection and public time picker. Native public sharing enabled with annotations
+off; organization anonymous access remains disabled. Query deliberately excludes
+empty/None aliases and aggregates away key hashes, user IDs, email and other labels.
+No model inference calls, key changes, metrics config changes, restarts or auth
+relaxations. Source commits0729bbbf/0767a0cd; focused tests2passed, Helm render OK.
+Grafana sidecar consumed GitOps ConfigMap. Exact tracked panels validated before
+share creation; private operator-owned before/after/uncertain receipts and URL under
+socrat-0 `~/.local/state/homelab-grafana-llm-public/`. Native sharing URL provided to
+operator, not committed here. Existing TV public share untouched.
+
+Important limitation explicitly told user: existing `litellm_in_flight_requests`
+has NO api_key_alias label; rate of `litellm_requests_metric_total` is completed
+activity, NOT exact current per-key concurrency. A long unfinished call isn't
+visible until completion. Zero doesn't prove free; missing samples aren't zero.
+Dashboard title/description disclose this. Accurate per-key in-flight attribution
+would need separately reviewed gateway instrumentation, not fabricated labels.
+
+Acceptance: unauthenticated public page200, public dashboard JSON200 with exactUID
+and exactly1panel, public panel-query POST200 with live timeseries; normal API
+search and dashboard APIs401. No credentials sent to public route. Browser visual
+check not completed: shared Playwright profile busy; did not close/steal it.
