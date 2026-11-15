@@ -38,7 +38,7 @@ class MigrationTests(unittest.TestCase):
   self.assertEqual(changed,[('Deployment','litellm')])
   d=after[('Deployment','litellm')];self.assertEqual(d['spec']['replicas'],1)
   self.assertEqual(d['spec']['template']['spec']['terminationGracePeriodSeconds'],7260)
-  s=d['spec']['template']['spec'];self.assertEqual(s['nodeSelector'],{'kubernetes.io/hostname':'socrat-5'})
+  s=d['spec']['template']['spec'];self.assertEqual(s['nodeSelector'],{'kubernetes.io/hostname':'socrat-0'})
   self.assertEqual(s['hostAliases'],[{'ip':'10.43.218.222','hostnames':['auth.socrat.alchemmist.xyz']}])
   self.assertTrue(any(k[0]=='Job' for k in before));self.assertFalse(any(k[0]=='Job' for k in after))
   broken=dict(v);broken['image']=dict(v['image']);broken['image']['tag']='not-reviewed-next-version'

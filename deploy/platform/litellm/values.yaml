@@ -120,8 +120,9 @@ migrationJob:
     requests:
       cpu: 100m
       memory: 512Mi
+# Real browser bulk assets across1->5 stalled; keep gateway on0 pending network repair.
 nodeSelector:
-  kubernetes.io/hostname: socrat-5
+  kubernetes.io/hostname: socrat-0
 numWorkers: 1
 proxy_config:
   general_settings:
