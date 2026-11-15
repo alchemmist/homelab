@@ -1,5 +1,10 @@
 # Интеграции Authentik и добавление нового сервиса
 
+> **Live auth audit15Nov:** [actual browser/API boundaries](browser-auth-audit.md).
+> Current public Kuma Admin/Syncthing/Search routes do not have the previously
+> described Authentik MFA gate. Native service login is not Authentik SSO. Native
+> OIDC apps may serve public HTML but deny private APIs. No auth changes applied.
+
 > **Текущий B2C контракт:** [отдельные app-группы и native роли](application-access.md).
 > Восемь включённых ролей для LiteLLM, Open WebUI, Grafana, Wiki и LMS;
 > остальные reserved группы не означают допуск. Internal/External не является

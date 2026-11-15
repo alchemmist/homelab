@@ -1,0 +1,405 @@
+{
+  "scope": "Anonymous GET, TLS verification enabled, no credentials/cookies, redirects not followed, bounded response sampling; not browser authorization acceptance",
+  "checks": [
+    {
+      "service": "n8n",
+      "url": "https://n8n.socrat.alchemmist.xyz/",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "www_authenticate": "",
+      "redirect": "",
+      "title": "n8n.io - Workflow Automation"
+    },
+    {
+      "service": "n8n",
+      "url": "https://n8n.socrat.alchemmist.xyz/rest/workflows",
+      "status": 401,
+      "content_type": "application/json; charset=utf-8",
+      "www_authenticate": "",
+      "redirect": "",
+      "denial_response": true
+    },
+    {
+      "service": "n8n",
+      "url": "https://n8n.socrat.alchemmist.xyz/rest/credentials",
+      "status": 401,
+      "content_type": "application/json; charset=utf-8",
+      "www_authenticate": "",
+      "redirect": "",
+      "denial_response": true
+    },
+    {
+      "service": "umami",
+      "url": "https://umami.alchemmist.xyz/",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "www_authenticate": "",
+      "redirect": "",
+      "title": "Umami"
+    },
+    {
+      "service": "umami",
+      "url": "https://umami.alchemmist.xyz/api/websites",
+      "status": 401,
+      "content_type": "application/json",
+      "www_authenticate": "",
+      "redirect": "",
+      "denial_response": true
+    },
+    {
+      "service": "kuma",
+      "url": "https://kuma.socrat.alchemmist.xyz/",
+      "status": 302,
+      "content_type": "text/plain; charset=utf-8",
+      "www_authenticate": "",
+      "redirect": "/dashboard"
+    },
+    {
+      "service": "kuma",
+      "url": "https://kuma.socrat.alchemmist.xyz/dashboard",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "www_authenticate": "",
+      "redirect": "",
+      "title": "Uptime Kuma"
+    },
+    {
+      "service": "kuma",
+      "url": "https://kuma.socrat.alchemmist.xyz/socket.io/?EIO=4&transport=polling",
+      "status": 200,
+      "content_type": "text/plain; charset=UTF-8",
+      "www_authenticate": "",
+      "redirect": ""
+    },
+    {
+      "service": "kuma",
+      "url": "https://status.alchemmist.xyz/",
+      "status": 302,
+      "content_type": "text/html",
+      "www_authenticate": "",
+      "redirect": "/status/socrat",
+      "title": "302 Found"
+    },
+    {
+      "service": "kuma",
+      "url": "https://status.alchemmist.xyz/socket.io/?EIO=4&transport=polling",
+      "status": 404,
+      "content_type": "text/html",
+      "www_authenticate": "",
+      "redirect": "",
+      "title": "404 Not Found"
+    },
+    {
+      "service": "syncthing",
+      "url": "https://0.socrat.alchemmist.xyz/sync/",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "www_authenticate": "",
+      "redirect": "",
+      "title": ""
+    },
+    {
+      "service": "syncthing",
+      "url": "https://0.socrat.alchemmist.xyz/sync/rest/system/status",
+      "status": 403,
+      "content_type": "text/plain; charset=utf-8",
+      "www_authenticate": "",
+      "redirect": ""
+    },
+    {
+      "service": "syncthing",
+      "url": "https://0.socrat.alchemmist.xyz/rest/system/status",
+      "status": 403,
+      "content_type": "text/plain; charset=utf-8",
+      "www_authenticate": "",
+      "redirect": ""
+    },
+    {
+      "service": "syncthing",
+      "url": "https://1.socrat.alchemmist.xyz/sync/",
+      "status": 410,
+      "content_type": "application/json",
+      "www_authenticate": "",
+      "redirect": "",
+      "denial_response": true
+    },
+    {
+      "service": "search",
+      "url": "https://search.socrat.alchemmist.xyz/",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "www_authenticate": "",
+      "redirect": "",
+      "title": "Socrat Search"
+    },
+    {
+      "service": "grafana",
+      "url": "https://grafana.socrat.alchemmist.xyz/",
+      "status": 302,
+      "content_type": "text/html; charset=utf-8",
+      "www_authenticate": "",
+      "redirect": "/login",
+      "title": ""
+    },
+    {
+      "service": "grafana",
+      "url": "https://grafana.socrat.alchemmist.xyz/api/search",
+      "status": 401,
+      "content_type": "application/json; charset=UTF-8",
+      "www_authenticate": "",
+      "redirect": "",
+      "denial_response": true
+    },
+    {
+      "service": "grafana",
+      "url": "https://grafana.socrat.alchemmist.xyz/login/generic_oauth",
+      "status": 302,
+      "content_type": "text/html; charset=utf-8",
+      "www_authenticate": "",
+      "redirect": "https://auth.socrat.alchemmist.xyz/application/o/authorize/",
+      "title": ""
+    },
+    {
+      "service": "argocd",
+      "url": "https://argocd.socrat.alchemmist.xyz/",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "www_authenticate": "",
+      "redirect": "",
+      "title": "Argo CD"
+    },
+    {
+      "service": "argocd",
+      "url": "https://argocd.socrat.alchemmist.xyz/api/v1/applications",
+      "status": 401,
+      "content_type": "application/json",
+      "www_authenticate": "",
+      "redirect": "",
+      "denial_response": true
+    },
+    {
+      "service": "argocd",
+      "url": "https://argocd.socrat.alchemmist.xyz/auth/login",
+      "status": 303,
+      "content_type": "text/html; charset=utf-8",
+      "www_authenticate": "",
+      "redirect": "https://auth.socrat.alchemmist.xyz/application/o/authorize/",
+      "title": ""
+    },
+    {
+      "service": "rancher",
+      "url": "https://rancher.socrat.alchemmist.xyz/",
+      "status": 200,
+      "content_type": "application/json",
+      "www_authenticate": "",
+      "redirect": ""
+    },
+    {
+      "service": "rancher",
+      "url": "https://rancher.socrat.alchemmist.xyz/v3/clusters",
+      "status": 401,
+      "content_type": "application/json",
+      "www_authenticate": "",
+      "redirect": "",
+      "denial_response": true
+    },
+    {
+      "service": "harbor",
+      "url": "https://harbor.socrat.alchemmist.xyz/",
+      "status": 200,
+      "content_type": "text/html",
+      "www_authenticate": "",
+      "redirect": "",
+      "title": "Harbor"
+    },
+    {
+      "service": "harbor",
+      "url": "https://harbor.socrat.alchemmist.xyz/api/v2.0/users/current",
+      "status": 401,
+      "content_type": "application/json; charset=utf-8",
+      "www_authenticate": "",
+      "redirect": "",
+      "denial_response": true
+    },
+    {
+      "service": "chat",
+      "url": "https://chat.alchemmist.xyz/",
+      "status": 503,
+      "content_type": "text/plain; charset=utf-8",
+      "www_authenticate": "",
+      "redirect": ""
+    },
+    {
+      "service": "chat",
+      "url": "https://chat.alchemmist.xyz/api/v1/auths/",
+      "status": 503,
+      "content_type": "text/plain; charset=utf-8",
+      "www_authenticate": "",
+      "redirect": ""
+    },
+    {
+      "service": "chat",
+      "url": "https://chat.alchemmist.xyz/oauth/oidc/login",
+      "status": 503,
+      "content_type": "text/plain; charset=utf-8",
+      "www_authenticate": "",
+      "redirect": ""
+    },
+    {
+      "service": "litellm",
+      "url": "https://llm.alchemmist.xyz/sso/key/generate",
+      "status": 303,
+      "content_type": "",
+      "www_authenticate": "",
+      "redirect": "https://auth.socrat.alchemmist.xyz/application/o/authorize/"
+    },
+    {
+      "service": "litellm",
+      "url": "https://llm.alchemmist.xyz/user/list",
+      "status": 401,
+      "content_type": "application/json",
+      "www_authenticate": "",
+      "redirect": "",
+      "denial_response": true
+    },
+    {
+      "service": "litellm",
+      "url": "https://llm.alchemmist.xyz/v1/models",
+      "status": 401,
+      "content_type": "application/json",
+      "www_authenticate": "",
+      "redirect": "",
+      "denial_response": true
+    },
+    {
+      "service": "lms",
+      "url": "https://lms.alchemmist.xyz/",
+      "status": 303,
+      "content_type": "",
+      "www_authenticate": "",
+      "redirect": "/auth/login"
+    },
+    {
+      "service": "wiki",
+      "url": "https://wiki.socrat.alchemmist.xyz/",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "www_authenticate": "",
+      "redirect": "",
+      "title": "Socrat Wiki \u00b7 Socrat Wiki"
+    },
+    {
+      "service": "spi",
+      "url": "https://spi.socrat.alchemmist.xyz/queue/",
+      "status": 302,
+      "content_type": "application/json; charset=utf-8",
+      "www_authenticate": "",
+      "redirect": "/login"
+    },
+    {
+      "service": "spi",
+      "url": "https://spi.socrat.alchemmist.xyz/api/queue",
+      "status": 302,
+      "content_type": "application/json; charset=utf-8",
+      "www_authenticate": "",
+      "redirect": "/login"
+    },
+    {
+      "service": "rustfs",
+      "url": "https://rustfs.socrat.alchemmist.xyz/",
+      "status": 302,
+      "content_type": "",
+      "www_authenticate": "",
+      "redirect": "https://auth.socrat.alchemmist.xyz/application/o/authorize/"
+    },
+    {
+      "service": "rustfs",
+      "url": "https://rustfs.socrat.alchemmist.xyz/spi/v1/",
+      "status": 401,
+      "content_type": "text/plain; charset=utf-8",
+      "www_authenticate": "",
+      "redirect": ""
+    },
+    {
+      "service": "netbird",
+      "url": "https://netbird.socrat.alchemmist.xyz/",
+      "status": 200,
+      "content_type": "text/html",
+      "www_authenticate": "",
+      "redirect": "",
+      "title": "NetBird Dashboard"
+    },
+    {
+      "service": "netbird",
+      "url": "https://netbird.socrat.alchemmist.xyz/api/users",
+      "status": 401,
+      "content_type": "application/json; charset=UTF-8",
+      "www_authenticate": "",
+      "redirect": "",
+      "denial_response": true
+    },
+    {
+      "service": "password",
+      "url": "https://auth.socrat.alchemmist.xyz/change-password",
+      "status": 302,
+      "content_type": "text/html",
+      "www_authenticate": "",
+      "redirect": "https://auth.socrat.alchemmist.xyz/if/flow/default-authentication-flow/",
+      "title": "302 Found"
+    },
+    {
+      "service": "public",
+      "url": "https://alchemmist.xyz/",
+      "status": 200,
+      "content_type": "text/html",
+      "www_authenticate": "",
+      "redirect": "",
+      "title": "Personal blog of Anton Grishin"
+    },
+    {
+      "service": "public",
+      "url": "https://cats.alchemmist.xyz/",
+      "status": 200,
+      "content_type": "text/html",
+      "www_authenticate": "",
+      "redirect": "",
+      "title": "Funny cats"
+    },
+    {
+      "service": "public",
+      "url": "https://fq.alchemmist.xyz/",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "www_authenticate": "",
+      "redirect": "",
+      "title": "FQ"
+    },
+    {
+      "service": "public",
+      "url": "https://monori.alchemmist.xyz/",
+      "status": 200,
+      "content_type": "text/html",
+      "www_authenticate": "",
+      "redirect": "",
+      "title": "monori"
+    },
+    {
+      "service": "public",
+      "url": "https://wishlist.alchemmist.xyz/",
+      "status": 200,
+      "content_type": "text/html",
+      "www_authenticate": "",
+      "redirect": "",
+      "title": "wishlist"
+    },
+    {
+      "service": "public",
+      "url": "https://socrat.alchemmist.xyz/",
+      "status": 200,
+      "content_type": "text/html",
+      "www_authenticate": "",
+      "redirect": "",
+      "title": "welcome to socrat cluster"
+    }
+  ]
+}

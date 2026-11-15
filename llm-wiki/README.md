@@ -29,6 +29,7 @@ Research is not a pending deployment task. Private recovery evidence remains off
 | VPN: Москва frontend → NL backend, сохранённые клиенты, реальные границы | [Текущий production и история](vpn-hardening.md), [приёмка/инцидент](../docs/vpn-production-cutover-20261109.md) |
 | Публичный SSH key, обычный Linux account и отзыв | [SSH user](ssh-user.md), [host/RBAC](identity-host-access.md) |
 | Observer: обычное групповое подключение, Danila, отзыв доступа | [Native observer](native-observer.md), [приёмка](../docs/identity/observer-acceptance-20261108.md) |
+| Реальная защита сервисов: Authentik / собственный login / публичные маршруты | [Live browser-auth audit](browser-auth-audit.md) |
 | Главный identity справочник и ежедневные операции | [Identity](identity.md), [операции](identity-operations.md) |
 | B2C: отдельные app-группы, автоматическое создание и native роли | [Текущий контракт](application-access.md), [технический runbook](../docs/identity/app-access-groups.md) |
 | External: смена своего пароля без доступа к внутреннему кабинету | [Password self-service](password-self-service.md) |

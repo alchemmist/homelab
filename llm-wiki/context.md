@@ -1,5 +1,19 @@
 # Socrat: текущий контекст
 
+## Browser authentication audit —15Nov2026, CURRENT
+
+Read-only live routes +46 anonymous GET checks distinguish actual auth from
+Dashboard cards. n8n/Umami/Kuma Admin/Syncthing/VPN have NO current Authentik gate;
+n8n and Umami private sample APIs401, Syncthing status APIs403. Native Kuma
+Socket.IO handshake200 is NOT proof of admin access; event authorization untested.
+Search is public200. Older Kuma/Syncthing/Search personal-MFA claims below are
+superseded for these current public routes. Grafana/Argo/Harbor/LiteLLM/LMS/SPI/Wiki
+actual SSO endpoints redirect to Authentik; Wiki public read remains intentional.
+RustFS root ForwardAuth, Reader own session check. Chat503, live replicas0:
+not changed or restarted, cause/owner decision not established. No blanket gate,
+provider/user/Secret changes or workflow/API writes. Decisions for human/machine
+path separation and desired gates remain PENDING. [Audit and evidence](browser-auth-audit.md).
+
 ## blog + socrat-home moved off2 —15Nov, accepted
 
 Owner approved replacing node2 replicas with VM105, retaining two replicas each.

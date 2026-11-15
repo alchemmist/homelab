@@ -1,5 +1,10 @@
 # Identity: текущий статус и первый вход
 
+> **Live auth audit15Nov:** [actual browser/API boundaries](browser-auth-audit.md).
+> Current public Kuma Admin/Syncthing/Search routes do not have the previously
+> described Authentik MFA gate. Native service login is not Authentik SSO. Native
+> OIDC apps may serve public HTML but deny private APIs. No auth changes applied.
+
 **External пароль:** [страница смены пароля](password-self-service.md) —
 https://auth.socrat.alchemmist.xyz/change-password; `/if/user/` для External закрыт.
 
