@@ -1,5 +1,5 @@
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/wishlist
-  tag: c8bd66933cd93f4c454609dfb8b93f5a2e98dc1e
-  digest: sha256:7a0bc9bb42d497d2bd68168897de3aae0c5364a02066437ca66044fc80ea4f1b
+  tag: 5edccd3c810e7ee2dabce5c79b2a5a833b470458
+  digest: sha256:a60c9db7d33cb988547f6566deb978acca740e8b42ae5eed38efec17c92459f7
   pullPolicy: IfNotPresent
