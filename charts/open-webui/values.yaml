@@ -1,6 +1,6 @@
-replicaCount: 0
+replicaCount: 1
 image: ghcr.io/open-webui/open-webui:v0.12.3-slim@sha256:5adfb0355bbe4a5860c0ba9482cc0b40f573de3749a21a64cf4789391a14fffc
-nodeName: socrat-0
+nodeName: socrat-5
 webuiUrl: https://chat.alchemmist.xyz
 https:
   certificateEnabled: true
@@ -16,7 +16,7 @@ auth:
   secret: open-webui-auth
   secretKey: secret-key
 persistence:
-  claimName: open-webui-data
+  claimName: open-webui-socrat5
   storageClass: local-path
   size: 5Gi
 resources:

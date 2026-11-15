@@ -1,6 +1,6 @@
-replicaCount: 0
+replicaCount: 1
 image: ghcr.io/open-webui/open-terminal:0.14.1@sha256:03af3bd6c71af3548cbaef874f72d0a8ebd7daa813e0f08d3bdfe8f865f65212
-nodeName: socrat-1
+nodeName: socrat-5
 secretName: open-terminal-api
 storageClass: local-path
 storage: 10Gi
@@ -25,7 +25,7 @@ resources:
     memory: 4Gi
     ephemeral-storage: 5Gi
 
-claimName: open-terminal-data
+claimName: open-terminal-socrat5
 
 # New VM data is separate from the retained, never-deleted legacy claim.
 migrationStorage:
