@@ -4,3 +4,6 @@ extraNodeSelectorTerms:
   - key: kubernetes.io/hostname
     operator: In
     values: {{ rancher_placement_nodes | to_json }}
+extraEnv:
+  - name: SSL_CERT_FILE
+    value: {{ rancher_ssl_cert_file | to_json }}

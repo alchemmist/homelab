@@ -6,7 +6,7 @@ extraNodeSelectorTerms:
 - key: kubernetes.io/hostname
   operator: In
   values:
-  - socrat-5
+  - socrat-1
 hostname: rancher.socrat.alchemmist.xyz
 ingress:
   enabled: false
@@ -16,7 +16,7 @@ letsEncrypt:
   email: antropophag@gmail.com
   ingress:
     class: traefik
-# Owner explicitly accepted a single non-HA server on VM105.
+# Single non-HA server;15Nov recovery returns it to1 until VM105 IdP routing is fixed.
 replicas: 1
 resources:
   limits:
@@ -25,3 +25,8 @@ resources:
     cpu: 250m
     memory: 1Gi
 
+
+# Use the existing image OS roots; SSL_CERT_DIR alone points at Rancher TLS files.
+extraEnv:
+  - name: SSL_CERT_FILE
+    value: /var/lib/ca-certificates/ca-bundle.pem

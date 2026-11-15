@@ -28,15 +28,20 @@ class VMApplicationPlacementTests(unittest.TestCase):
         self.assertEqual(values['secretName'], 'pr-agent')
         self.assertEqual(values['replicaCount'], 1)
 
-    def test_rancher_single_replica_is_pinned_to_vm_by_owner_request(self):
+    def test_rancher_single_replica_recovery_preserves_native_oidc_trust(self):
         values = document('deploy/platform/rancher/values.yaml')
         role = document('ansible/roles/rancher_placement/defaults/main.yml')
         self.assertEqual(values['replicas'], 1)
         self.assertEqual(values['antiAffinity'], 'required')
         self.assertEqual(values['extraNodeSelectorTerms'], [{
-            'key': 'kubernetes.io/hostname', 'operator': 'In', 'values': ['socrat-5']}])
+            'key': 'kubernetes.io/hostname', 'operator': 'In', 'values': ['socrat-1']}])
         self.assertNotIn('nodeSelector', values)
-        self.assertEqual(role['rancher_placement_nodes'], ['socrat-5'])
+        self.assertEqual(role['rancher_placement_nodes'], ['socrat-1'])
         self.assertEqual(role['rancher_replicas'], 1)
         self.assertEqual(role['rancher_chart_version'], '2.15.2')
         self.assertFalse(values['ingress']['enabled'])
+
+        self.assertEqual(values['extraEnv'],[{'name':'SSL_CERT_FILE',
+                         'value':'/var/lib/ca-certificates/ca-bundle.pem'}])
+        self.assertEqual(role['rancher_ssl_cert_file'],values['extraEnv'][0]['value'])
+        self.assertNotIn('CATTLE_INSECURE_SKIP_VERIFY',str(values))
