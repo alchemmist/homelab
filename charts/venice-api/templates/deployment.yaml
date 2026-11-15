@@ -40,6 +40,8 @@ spec:
                 secretKeyRef:
                   name: venice-api-env
                   key: API_KEY
+            - name: HOST
+              value: "0.0.0.0"
             - name: HEADLESS
               value: "true"
             - name: COOKIES_FILE
