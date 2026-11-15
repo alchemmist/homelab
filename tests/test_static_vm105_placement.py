@@ -39,6 +39,14 @@ class StaticVMPlacementTests(unittest.TestCase):
                 self.assertNotIn('nodeName', pod)
                 self.assertNotIn('nodeSelector', pod)
 
+    def test_rolling_update_cannot_deadlock_on_two_required_domains(self):
+        for name in ['blog', 'socrat-home']:
+            with self.subTest(app=name):
+                strategy = self.render(name)['spec']['strategy']
+                self.assertEqual(strategy['type'], 'RollingUpdate')
+                self.assertEqual(strategy['rollingUpdate'], {
+                    'maxSurge': 0, 'maxUnavailable': 1})
+
     def test_images_unchanged_and_no_persistent_data_added(self):
         for name in ['blog', 'socrat-home']:
             with self.subTest(app=name):
