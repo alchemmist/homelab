@@ -1,5 +1,8 @@
 # Authentik: пользователи, доступы и ежедневные операции
 
+**External пароль:** [страница смены пароля](password-self-service.md) —
+https://auth.socrat.alchemmist.xyz/change-password; `/if/user/` для External закрыт.
+
 > **Текущий B2C контракт:** [отдельные app-группы и native роли](application-access.md).
 > Восемь включённых ролей для LiteLLM, Open WebUI, Grafana, Wiki и LMS;
 > остальные reserved группы не означают допуск. Internal/External не является

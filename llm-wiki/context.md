@@ -1,5 +1,17 @@
 # Socrat: текущий контекст
 
+## External password self-service — CURRENT
+
+Argo `password-self-service` Synced/Healthy: /change-password on auth domain.
+Separate nonroot nginx mini-page checks native Authentik cookie, redirects to
+normal login and back; same-origin iframe renders native authenticated-only
+password/repeat flow in existing theme/random background. No admin token or
+password processing in mini-service, External/groups unchanged. Native fixture
+update/CSRF/mismatch/success tests passed; fixture deleted. Browser unavailable
+(profile busy), real user/visual acceptance pending. Native submit label Continue,
+heading Update password. [Runbook](password-self-service.md). Supersedes earlier
+incorrect External /if/user/ guidance; no real human password/MFA changes.
+
 ## n8n Google reconnect COMPLETED15Nov; intermittent latency NOT closed
 
 User reconnected SAME Google Calendar account/ePyhkBESw5Ue7EH3 at16:22UTC.

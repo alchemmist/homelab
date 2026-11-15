@@ -1,5 +1,8 @@
 # Авторизация приложений: текущий B2C контракт
 
+**External пароль:** [страница смены пароля](password-self-service.md) —
+https://auth.socrat.alchemmist.xyz/change-password; `/if/user/` для External закрыт.
+
 Это актуальная точка входа для выдачи доступа отдельным людям. Исторические
 owner-only/observer bootstrap описания не заменяют этот контракт. Технический
 runbook и private receipt references: [app access groups](../docs/identity/app-access-groups.md).
