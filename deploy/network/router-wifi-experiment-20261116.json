@@ -1,0 +1,14 @@
+{
+  "scope": "Rotek RX-23302 authenticated admin UI, 5GHz wlan_id=1 only",
+  "status": "staged-reversible-experiment-not-accepted-repair",
+  "parameter": "aggregation",
+  "expectedBefore": "enable",
+  "experiment": "disable",
+  "rollback": "enable",
+  "baseline": {"wg5to1Packets": 40, "received": 28, "lossPercent": 30},
+  "applyEndpoint": "/boafrm/formAdvanceSetup",
+  "preserve": ["all other WLAN settings", "WPA settings and keys", "WAN and NAT", "port forwards", "firewall", "WireGuard identities and AllowedIPs", "application placement"],
+  "backup": "full native vendor backup in private controller directory; never commit credentials or binary configuration",
+  "acceptance": "repeat host loss and real bulk Pod transfers, restore original aggregation if no improvement",
+  "limits": "No router reboot/reset/firmware update or wholesale port-forward changes. Radio apply can briefly reconnect 5GHz clients."
+}
