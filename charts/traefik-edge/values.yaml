@@ -28,6 +28,7 @@ watchNamespaces:
   - umami
   - uptime-kuma
   - wiki
+  - wishlist
   - traefik-edge
 apiEndpoint: https://127.0.0.1:6444
 listenHost: ""

@@ -47,6 +47,7 @@ FAILOVER = [
     "status",
     "umami",
     "wiki.socrat",
+    "wishlist",
 ]
 
 # Names that have a single published address and must not move.

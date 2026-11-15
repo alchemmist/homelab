@@ -23,6 +23,7 @@ HOSTS = (
     "status.alchemmist.xyz",
     "umami.alchemmist.xyz",
     "wiki.socrat.alchemmist.xyz",
+    "wishlist.alchemmist.xyz",
     "vpn.alchemmist.xyz",
 )
 PROBES = {
