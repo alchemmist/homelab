@@ -2,9 +2,9 @@ replicaCount: 2
 
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/cats
-  tag: b632c7edd985135b49dc4fe28a957809b2e9edb4
+  tag: 079390c7bf05a76eb823990a28275eef181d63d9
   # Verified digest of the existing healthy replica; prewarm new nodes before rollout.
-  digest: sha256:caae392ecb9eabc1cac06df1c30bf00fe64b9fc3551fdd79f419b81c300cc71f
+  digest: sha256:af42b0edabcbbfa0541b6ee427ec8ba649ea7aa72429f7245f95c8dbfdb61a18
   pullPolicy: IfNotPresent
   fallback: alchemmist/cats:latest
 
