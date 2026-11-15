@@ -28,6 +28,10 @@ spec:
       {{- end }}
       automountServiceAccountToken: false
       enableServiceLinks: false
+      {{- with .Values.hostAliases }}
+      hostAliases:
+{{ toYaml . | indent 8 }}
+      {{- end }}
       nodeSelector:
         kubernetes.io/hostname: {{ .Values.nodeName | quote }}
       {{- if or .Values.toolGuard.enabled (and .Values.migrationStorage.enabled (eq .Values.persistence.claimName .Values.migrationStorage.name)) }}

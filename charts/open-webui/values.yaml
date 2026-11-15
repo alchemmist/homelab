@@ -79,3 +79,9 @@ migrationStorage:
   nodeName: socrat-5
   path: /mnt/files/homelab/open-webui/data
   size: 5Gi
+
+# Keep native HTTPS issuer/SNI; avoid unreliable public-edge hairpin from VM105.
+# Must match the existing kube-system/traefik ClusterIP; not a node/Mac DNS change.
+hostAliases:
+  - ip: 10.43.218.222
+    hostnames: [auth.socrat.alchemmist.xyz]
