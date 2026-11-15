@@ -8,9 +8,10 @@ metadata:
 spec:
   project: default
   sources:
-    - repoURL: ghcr.io/berriai
-      chart: litellm-helm
-      targetRevision: 1.105.1
+    # Same pinned upstream1.105.1, only scoped hostAliases/Job placement support.
+    - repoURL: https://github.com/alchemmist/homelab.git
+      path: charts/litellm
+      targetRevision: main
       helm:
         valueFiles:
           - $values/deploy/platform/litellm/values.yaml
