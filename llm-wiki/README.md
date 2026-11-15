@@ -31,6 +31,7 @@ Research is not a pending deployment task. Private recovery evidence remains off
 | Observer: обычное групповое подключение, Danila, отзыв доступа | [Native observer](native-observer.md), [приёмка](../docs/identity/observer-acceptance-20261108.md) |
 | Главный identity справочник и ежедневные операции | [Identity](identity.md), [операции](identity-operations.md) |
 | B2C: отдельные app-группы, автоматическое создание и native роли | [Текущий контракт](application-access.md), [технический runbook](../docs/identity/app-access-groups.md) |
+| External: смена своего пароля без доступа к внутреннему кабинету | [Password self-service](password-self-service.md) |
 | OIDC, native app roles, gateway exceptions | [Архитектура](identity-architecture.md), [интеграции](identity-integrations.md), [диагностика](identity-gateway-troubleshooting.md) |
 | Optional disabled SSH-key integration | [UUID/key assignments](identity-ssh-keys.md) |
 | Theme, native UI и recovery | [Frontend](identity-frontend.md), [backup/recovery](identity-recovery.md) |

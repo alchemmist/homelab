@@ -1,13 +1,5 @@
 # External: самостоятельная смена пароля
 
-## Исправление browser framing
-
-Первоначальный iframe браузер блокировал: нативный flow отдаёт
-`X-Frame-Options: DENY`. Мини-сервис исправлен на top-level redirect после
-проверки сессии. `/change-password` остаётся входной ссылкой; после входа адрес
-меняется на `/if/flow/socrat-change-password/`. Защита от framing не ослаблялась.
-Ниже iframe-описание первоначальной реализации историческое и заменено этим fix.
-
 Адрес: **https://auth.socrat.alchemmist.xyz/change-password**.
 Пользователь остаётся External, admin/staff группы не нужны. `/if/user/` у
 External закрыт самим Authentik; прежнее обещание открыть там настройки неверно.
@@ -16,9 +8,10 @@ External закрыт самим Authentik; прежнее обещание от
 источник `charts/password-self-service`, namespace identity. nginx проверяет
 действующую cookie-сессию через Authentik `/api/v3/core/users/me/` без admin token;
 анонимный посетитель направляется в штатный authentication flow с возвратом на
-`/change-password`. Ошибки проверки не разрешают доступ. Страница same-origin
-встраивает нативный `socrat-change-password` flow в полноэкранный iframe: он
+`/change-password`. Ошибки проверки не разрешают доступ. После проверки сессии мини-сервис
+перенаправляет в том же окне на `/if/flow/socrat-change-password/`. Нативный flow
 использует существующие domain Brand/CSS/случайный фон и password/repeat prompts.
+Iframe больше нет; адрес `/change-password` служит постоянной входной ссылкой.
 Нативная кнопка пока называется Continue/Продолжить, заголовок — Update password.
 После обновления появляется подтверждение; Continue завершает сеанс штатным
 logout flow и возвращает к странице (потребуется войти с новым паролем).
@@ -46,14 +39,27 @@ Authenticated fixture session создавалась native test helper — эт
 login/MFA E2E**. Первые прогоны harness исправлены под подписанные Authentik cookies,
 custom CSRF header и цепочку redirects; права/защиты production не ослаблялись.
 Браузерный инструмент не стартовал: профиль занят другой сессией; её не закрывали.
-Визуальная browser-приёмка и настоящий вход пользователя остаются для проверки.
+После двух исправлений владелец сообщил: «ага, вроде заработало». Это
+подтверждение работоспособности страницы со стороны владельца, не доказательство
+полного password-change/logout/re-login/MFA цикла каждого External-пользователя.
+Успешную смену реального пароля не заявлять без отдельного подтверждения.
 Пароль Владислава/других реальных людей не меняли, MFA не сбрасывали.
 
 Private preimages: socrat-0 `~/.cache/homelab-authentik/password-self-service-*`;
 initial apply `password-self-service-6nds08hm`. Никакого полного Authentik restart,
 SQL workaround, cluster-wide sync/prune или изменения app admission не было.
 
-Authenticated-route correction: nginx expanded relative redirect into its internal
-http://auth...:8080 address behind TLS termination. Both redirects now use the
-constant public HTTPS origin, never request-supplied Host/next. Synthetic External
-session HTTP probe reproduced the wrong Location; no real user session used.
+## Исправления, которые нельзя откатывать
+
+1. `6a2c14b5`: первоначальный iframe блокировался нативным
+   `X-Frame-Options: DENY`. Теперь только top-level redirect; защиту Authentik
+   от framing не отключать и не удалять заголовок.
+2. `4216e51c`: относительный nginx redirect после успешной проверки сессии
+   раскрывал внутренний `http://auth…:8080`. Оба redirect используют константный
+   публичный HTTPS origin; Host/next посетителя не выбирают адрес назначения.
+   Повторный HTTP probe с временной External-сессией подтвердил корректный
+   `Location`; Argo Synced/Healthy именно на `4216e51c`.
+
+Исходники мини-сервиса/flow: `d21935e8`; документация первого этапа `9407b4c4`.
+Все эти изменения опубликованы в origin/main. Текущий closeout меняет только
+документацию, не запускает новую смену пароля, rollout или вход за человека.

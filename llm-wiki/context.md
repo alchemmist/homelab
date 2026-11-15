@@ -7,8 +7,11 @@ Separate nonroot nginx mini-page checks native Authentik cookie, redirects to
 normal login and back; top-level redirect (iframe blocked by native X-Frame-Options DENY) renders authenticated-only
 password/repeat flow in existing theme/random background. No admin token or
 password processing in mini-service, External/groups unchanged. Native fixture
-update/CSRF/mismatch/success tests passed; fixture deleted. Browser unavailable
-(profile busy), real user/visual acceptance pending. Native submit label Continue,
+update/CSRF/mismatch/success tests passed; fixture deleted. Owner now reports
+“вроде заработало” after fixes: no iframe (native DENY preserved), constant public
+HTTPS redirects (no internal :8080). Argo verified at4216e51c Synced/Healthy;
+authenticated External HTTP redirect probe passed. Full real-human password
+change/logout/re-login/MFA cycle not independently confirmed. Native submit label Continue,
 heading Update password. [Runbook](password-self-service.md). Supersedes earlier
 incorrect External /if/user/ guidance; no real human password/MFA changes.
 
