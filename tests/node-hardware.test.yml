@@ -117,7 +117,7 @@ tests:
   input_series:
   - *id002
   - series: node_pressure_cpu_waiting_seconds_total{job="node-exporter",instance="host:9100"}
-    values: 0+18x40
+    values: 0+36x40
   alert_rule_test:
   - eval_time: 10m
     alertname: SocratNodeResourceContention
@@ -131,7 +131,7 @@ tests:
         resource: cpu
       exp_annotations:
         summary: Tasks are persistently waiting for a node resource.
-        description: 'Node test-node has sustained cpu PSI some pressure for 10m: above 25% for CPU or 10% for memory or I/O,
+        description: 'Node test-node has sustained cpu PSI some pressure for 10m: above 50% for CPU or 25% for memory or I/O,
           averaged over 5m. This measures time with at least one stalled task, not resource utilization or Kubernetes eviction
           pressure.'
         rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/test-node
@@ -140,7 +140,7 @@ tests:
   input_series:
   - *id002
   - series: node_pressure_memory_waiting_seconds_total{job="node-exporter",instance="host:9100"}
-    values: 0+9x40
+    values: 0+18x40
   alert_rule_test:
   - eval_time: 10m
     alertname: SocratNodeResourceContention
@@ -154,7 +154,7 @@ tests:
         resource: memory
       exp_annotations:
         summary: Tasks are persistently waiting for a node resource.
-        description: 'Node test-node has sustained memory PSI some pressure for 10m: above 25% for CPU or 10% for memory or
+        description: 'Node test-node has sustained memory PSI some pressure for 10m: above 50% for CPU or 25% for memory or
           I/O, averaged over 5m. This measures time with at least one stalled task, not resource utilization or Kubernetes
           eviction pressure.'
         rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/test-node
@@ -163,7 +163,7 @@ tests:
   input_series:
   - *id002
   - series: node_pressure_io_waiting_seconds_total{job="node-exporter",instance="host:9100"}
-    values: 0+9x40
+    values: 0+18x40
   alert_rule_test:
   - eval_time: 10m
     alertname: SocratNodeResourceContention
@@ -177,7 +177,7 @@ tests:
         resource: io
       exp_annotations:
         summary: Tasks are persistently waiting for a node resource.
-        description: 'Node test-node has sustained io PSI some pressure for 10m: above 25% for CPU or 10% for memory or I/O,
+        description: 'Node test-node has sustained io PSI some pressure for 10m: above 50% for CPU or 25% for memory or I/O,
           averaged over 5m. This measures time with at least one stalled task, not resource utilization or Kubernetes eviction
           pressure.'
         rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/test-node

@@ -14,7 +14,7 @@ RULE = {
     'query': 'socrat:node_pressure_waiting:ratio5m{resource="cpu"} > 0.25 or socrat:node_pressure_waiting:ratio5m{resource=~"memory|io"} > 0.1',
     'labels': {'severity': 'warning'},
     'annotations': {
-        'description': 'Node {{ $labels.node }} has sustained {{ $labels.resource }} PSI some pressure for 10m: above 25% for CPU or 10% for memory or I/O, averaged over 5m. This measures time with at least one stalled task, not resource utilization or Kubernetes eviction pressure.',
+        'description': 'Node {{ $labels.node }} has sustained {{ $labels.resource }} PSI some pressure for 10m: above 50% for CPU or 25% for memory or I/O, averaged over 5m. This measures time with at least one stalled task, not resource utilization or Kubernetes eviction pressure.',
         'rancher_url': 'https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ $labels.node }}',
         'summary': 'Tasks are persistently waiting for a node resource.',
     },

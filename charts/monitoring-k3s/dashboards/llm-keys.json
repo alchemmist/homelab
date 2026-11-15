@@ -1,0 +1,211 @@
+{
+  "uid": "socrat-llm-keys",
+  "title": "LLM key activity",
+  "description": "Who is using the shared LiteLLM model. pi is shown as vladislav. antex-agent and pi-agent are shown as alchemmist. Hashed keys, emails, and client addresses are not shown. Dollar spend is zero on the local model, so usage is tokens and requests.",
+  "tags": [
+    "Primary"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5s",
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "editable": false,
+  "links": [
+    {
+      "title": "LLM",
+      "url": "/d/socrat-llm",
+      "type": "link",
+      "keepTime": true
+    }
+  ],
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Requests by API key",
+      "type": "timeseries",
+      "description": "Number of LiteLLM requests in each time step, by API key alias.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (api_key_alias) (label_replace(label_replace(increase(litellm_requests_metric_total{job=\"litellm\",api_key_alias!=\"\",api_key_alias!=\"None\"}[$__interval]), \"api_key_alias\", \"vladislav\", \"api_key_alias\", \"^pi$\"), \"api_key_alias\", \"alchemmist\", \"api_key_alias\", \"^(antex-agent|pi-agent)$\"))",
+          "legendFormat": "{{api_key_alias}}",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisLabel": "requests"
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Usage over the last 30 days",
+      "type": "table",
+      "description": "Total tokens and requests by key for the last 30 days. This does not follow the time picker. Local models report zero dollar spend, so tokens are the load.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 10,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sort_desc(sum by (api_key_alias) (label_replace(label_replace(increase(litellm_total_tokens_metric_total{job=\"litellm\",api_key_alias!=\"\",api_key_alias!=\"None\"}[30d]), \"api_key_alias\", \"vladislav\", \"api_key_alias\", \"^pi$\"), \"api_key_alias\", \"alchemmist\", \"api_key_alias\", \"^(antex-agent|pi-agent)$\")))",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (api_key_alias) (label_replace(label_replace(increase(litellm_requests_metric_total{job=\"litellm\",api_key_alias!=\"\",api_key_alias!=\"None\"}[30d]), \"api_key_alias\", \"vladislav\", \"api_key_alias\", \"^pi$\"), \"api_key_alias\", \"alchemmist\", \"api_key_alias\", \"^(antex-agent|pi-agent)$\"))",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Time 1": true,
+              "Time 2": true
+            },
+            "renameByName": {
+              "api_key_alias": "Key",
+              "Value #A": "Tokens",
+              "Value #B": "Requests"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Tokens"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Requests"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Tokens",
+            "desc": true
+          }
+        ],
+        "footer": {
+          "show": false
+        }
+      }
+    }
+  ]
+}
