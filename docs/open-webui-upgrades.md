@@ -1,5 +1,13 @@
 # Open WebUI upgrades
 
+> **15Nov migration supersedes node0 data assumptions below.** The authoritative
+> WebUI now runs on socrat-5 with `open-webui-socrat5`, dedicated data path
+> `/mnt/files/homelab/open-webui/data`. Original node0 `open-webui-data` is a STALE
+> retained recovery copy. The existing upgrade playbook is node0/old-PVC-specific
+> and fails closed against the current deployment; adapt its backup path/execution
+> for VM105 before using it. Never bypass its assertions, back up the old claim as
+> if current, or repoint a writer to the old copy. [Current handoff/rollback](llm-apps-vm105-20261115.md).
+
 The Helm chart pins the official `ghcr.io/open-webui/open-webui` slim image by
 version and manifest digest. Update `charts/open-webui/values.yaml` and the chart
 version and `appVersion` in `Chart.yaml` together.

@@ -1,6 +1,8 @@
-# Open Terminal on socrat-1
+# Open Terminal on socrat-5
 
-Open Terminal 0.14.1 runs as one CPU-only pod in namespace `llm`, pinned to `socrat-1`. The official full image is pinned by digest. Its 10Gi local-path PVC persists `/home/user` and is retained on Helm uninstall. Local-path capacity is nominal, not a hard quota. The container has a 2 CPU / 4Gi memory limit and a 5Gi ephemeral-storage limit. Installed packages outside `/home/user` do not persist across recreation.
+Open Terminal 0.14.1 runs as one CPU-only pod in namespace `llm`, pinned to `socrat-5`. The official full image is pinned by digest. Its explicit Retain local PV/PVC `open-terminal-socrat5` persists `/home/user` from the VM dedicated data disk `/mnt/files/homelab/open-terminal/data`. The nominal 10Gi capacity is not a hard quota. The container has a 6 CPU / 4Gi memory limit and a 5Gi ephemeral-storage limit. Installed packages outside `/home/user` do not persist across recreation.
+
+**15Nov current authority:** all workspace files moved and verified before activation; original `open-terminal-data` claim/PV remains on socrat-1 as a stale recovery copy, never a concurrent writer. Init guard requires the verified migration marker and existing AGENTS.md. Native API key/integration/access restrictions preserved. [Handoff, backup and rollback](llm-apps-vm105-20261115.md). Older dated validation on socrat-1 below is historical.
 
 The service is internal: `http://open-terminal.llm.svc.cluster.local:8000`. There is no ingress, NodePort, host filesystem mount, Docker socket, or Kubernetes service-account token. NetworkPolicy permits inbound traffic only from Open WebUI pods and outbound traffic to cluster DNS and public HTTP/HTTPS destinations, excluding private and link-local networks. The image's passwordless sudo applies inside the container only.
 

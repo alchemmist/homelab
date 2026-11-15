@@ -1,5 +1,33 @@
 # Socrat: текущий контекст
 
+## Four app handoff to VM105 —15Nov, CURRENT
+
+Open WebUI + Open Terminal + SearXNG + Umami APP now single Ready/restart0 instances
+on5; four Argo apps Synced/Healthy. Umami PostgreSQL stays0; WebUI private HTTPS
+redirect adapter stays0 with original10.250.0.1:18080. Compute/data moved, routes,
+images and7existing Secrets/UIDs/data preserved. WebUI users3/chats21/files131;
+Terminal2.5GB/8314entries restored and cold hashes/owners/modes/xattrs matched.
+New Retain local PV/PVC open-webui-socrat5 and open-terminal-socrat5 use dedicated
+/mnt/files/homelab/{open-webui,open-terminal}/data. Original claims/PVs retained,
+UIDs unchanged, old PV reclamation tightened to Retain; old data is STALE recovery,
+never restart/repoint blindly. Node5 now sole authority; rollback needs fresh handoff.
+Native OIDC initially timed out through public edge; WebUI-only hostAliases now
+maps auth.socrat.alchemmist.xyz to existing Traefik Service10.43.218.222 with SAME
+HTTPS issuer/SNI/callback/PKCE/roles. Discovery TLS and login redirect pass; update
+alias if that Service IP changes. No global DNS/VPN or TLS bypass. Real-user login
+not impersonated. Native SDK/mTLS/env and7200sec graceful shutdown preserved.
+WebUI->saved Terminal authenticated file read/hash and LiteLLM model list pass;
+Terminal anonymous401/untrusted Pod ingress/private API egress denied, PyPI200.
+Umami SELECT1 on old DB succeeds; public TLS roots and native auth boundaries pass.
+Search yields Bing results BUT Brave429 on5 (old1 comparison Brave works/Bing timeout);
+not both engines healthy, not solved by migration, no engine disabled/alert muted.
+Cold full archives on0 plus verified VM staging; controller Terminal partial is NOT
+backup. One-off artifact-only transfer key/receiver/private file removed. Own helpers
+cleaned. Main WebUI/Terminal downtime~20:34–21:34MSK due transport; OIDC rollout21:51.
+VM regular backup/cold-boot/full restore still unproven; legacy node0 WebUI upgrade
+playbook fails closed and needs VM-aware backup adaptation before use.
+[Acceptance/backups/rollback](../docs/llm-apps-vm105-20261115.md).
+
 ## Browser authentication audit —15Nov2026, CURRENT
 
 Read-only live routes +46 anonymous GET checks distinguish actual auth from
