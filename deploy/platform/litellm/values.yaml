@@ -8,6 +8,8 @@ db:
     usernameKey: username
   useExisting: true
 envVars:
+  # Keep the original runtime schema-update fence even with the hook disabled.
+  DISABLE_SCHEMA_UPDATE: "true"
   FORWARDED_ALLOW_IPS: 127.0.0.1,10.42.0.0/16,10.250.0.0/24
   LITELLM_TELEMETRY: "False"
   PROXY_BASE_URL: https://llm.alchemmist.xyz

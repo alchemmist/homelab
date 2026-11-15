@@ -33,7 +33,7 @@ class MigrationTests(unittest.TestCase):
    self.assertEqual(hashlib.sha256(s).hexdigest(),digest,name)
  def test_litellm_only_deployment_changes_no_migration_job_or_config_or_secrets(self):
   v=load('deploy/platform/litellm/values.yaml');after=render('charts/litellm',v,'litellm','llm')
-  old=dict(v);old['nodeSelector']={'kubernetes.io/hostname':'socrat-0'};old['hostAliases']=[];old['migrationJob']=dict(old['migrationJob']);old['migrationJob'].pop('placementOnlyImage',None);old['migrationJob']['enabled']=True
+  old=dict(v);old['nodeSelector']={'kubernetes.io/hostname':'socrat-0'};old['hostAliases']=[];old['migrationJob']=dict(old['migrationJob']);old['migrationJob'].pop('placementOnlyImage',None);old['migrationJob']['enabled']=True;old['envVars']=dict(old['envVars']);old['envVars'].pop('DISABLE_SCHEMA_UPDATE',None)
   before=render('charts/litellm',old,'litellm','llm');changed=[k for k in before if k in after and before[k]!=after[k]]
   self.assertEqual(changed,[('Deployment','litellm')])
   d=after[('Deployment','litellm')];self.assertEqual(d['spec']['replicas'],1)
@@ -43,7 +43,7 @@ class MigrationTests(unittest.TestCase):
   self.assertTrue(any(k[0]=='Job' for k in before));self.assertFalse(any(k[0]=='Job' for k in after))
   broken=dict(v);broken['image']=dict(v['image']);broken['image']['tag']='not-reviewed-next-version'
   with self.assertRaises(subprocess.CalledProcessError):render('charts/litellm',broken,'litellm','llm')
-  self.assertEqual(v['image']['tag'],'1.105.1');self.assertEqual(v['masterkeySecretName'],'litellm-env')
+  self.assertEqual(v['envVars']['DISABLE_SCHEMA_UPDATE'].lower(),'true');self.assertEqual(v['image']['tag'],'1.105.1');self.assertEqual(v['masterkeySecretName'],'litellm-env')
  def test_app_source_keeps_version_and_selective_sync_safety(self):
   a=load('deploy/argocd/apps/litellm.yaml')['spec'];self.assertEqual(a['sources'][0]['path'],'charts/litellm')
   self.assertFalse(a['syncPolicy']['automated']['prune']);self.assertIn('ApplyOutOfSyncOnly=true',a['syncPolicy']['syncOptions'])
