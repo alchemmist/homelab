@@ -69,3 +69,13 @@ class FourAppMigrationTests(unittest.TestCase):
         policy=obj(docs,'NetworkPolicy','open-terminal-isolation')['spec']
         self.assertEqual(policy['ingress'][0]['from'],[{'podSelector':{'matchLabels':{'app':'open-webui'}}}])
         self.assertEqual(obj(docs,'Service','open-terminal')['spec']['type'],'ClusterIP')
+
+    def test_idp_internal_tls_route_is_scoped_to_webui_pod(self):
+        docs=render('open-webui')
+        spec=obj(docs,'Deployment','open-webui')['spec']['template']['spec']
+        self.assertEqual(spec['hostAliases'],[{'ip':'10.43.218.222','hostnames':['auth.socrat.alchemmist.xyz']}])
+        self.assertNotIn('hostAliases',obj(docs,'Deployment','open-webui-gateway')['spec']['template']['spec'])
+        env={e['name']:e for e in spec['containers'][0]['env']}
+        self.assertEqual(env['WEBUI_AUTH']['value'],'True')
+        self.assertEqual(env['WEBUI_AUTH_COOKIE_SECURE']['value'],'True')
+        self.assertNotIn('NODE_TLS_REJECT_UNAUTHORIZED',env)
