@@ -1,5 +1,38 @@
 # Socrat: текущий контекст
 
+## LMS move accepted; LiteLLM/renderer recovered —16Nov00:52MSK, CURRENT
+
+Only LMS web worker accepted on5 from this three-component attempt. Same image,
+Recreate single worker, empty submissions before/after, read-only original DB OK;
+no data/PVC copy. Existing lms-data claim remains retained/unmounted. Per-Pod
+hostAliases auth.socrat.alchemmist.xyz ->10.43.218.222 preserves HTTPS issuer/SNI,
+callback/PKCE/groups. Real clean Chrome reaches full Authentik LMS login form.
+LiteLLM RETURNED0 after repeated large UI JS stalls on5; image-renderer RETURNED1
+after real alert render429/500/timeouts on5. Green Pods and one successful PNG had
+been insufficient. Final three apps Ready/restart0/Synced/Healthy; Grafana and both
+checked DB Deployment UID/spec unchanged,10Secrets UID/data equal, all original
+PVC UIDs preserved. Final existing WebUI key models200; LiteLLM clean Chrome
+SSO button now reaches full IdP form; renderer1 real PNG200/12840bytes/1000x500.
+No paid inference, user impersonation, artificial exercise or workflow rerun.
+Native final human LMS account/grant confirmation remains with owner.
+Bulk path measured: same229044byte JS Pod0->Pod5 0.072/0.150sec, Pod1->Pod5
+5.753/15.345sec; public assets sometimes partial after15sec. Node1 WG/flannel
+MTU65456/65406 observed, node5 Flannel1370; exact root cause NOT proven. A narrow
+node5 MSS1240 experiment did not improve it; both exact owned rules removed,
+absence verified and script deleted. No permanent network/MTU/WG/DNS change.
+Defer additional bulk/UI-heavy moves until1<->5 overlay path is diagnosed; do not
+mistake free CPU/RAM for networking acceptance or clear other node5 traffic classes.
+LiteLLM remains1.105.1, exact pinned upstream chart now at charts/litellm with two
+minimal template extensions and all165stock hashes. Default render byte identical.
+No-hook placement guard pins image, normal upgrades MUST review/re-enable migration
+handling. Explicit original DISABLE_SCHEMA_UPDATE=true retained; zero newly applied
+or unfinished Prisma migrations during handoff; latest Argo operation had no Job.
+Main Ansible now uses canonical platform values/local chart; legacy monitoring
+OCI upgrade refuses to undo Git-owned configuration. Full browser/API/SQL receipts,
+rollback chronology and limits: [handoff](../docs/vm105-lms-litellm-renderer-20261116.md).
+All five probes removed, no forced production delete/blanket sync or unrelated
+monitoring edits. Earlier four-app5 data authority and Rancher1 recovery unchanged.
+
 ## Rancher login recovery —15Nov22:29MSK, CURRENT
 
 Rancher temporarily RETURNED to socrat-1, single non-HA replica; node5 rollout

@@ -37,7 +37,9 @@ worker loss and may need resubmission; exactly-once execution is not promised.
 Node not-ready/unreachable eviction tolerations are 60 seconds instead of the
 default 300. Expected web recovery still includes node detection, scheduling and
 startup. No full-node outage RTO measurement has been performed in production.
-The pod can use socrat-0/1/3, not the reserved etcd/VPN node.
+The application moved to socrat-5 on16Nov; database placement is unchanged.
+The earlier0/1/3 web eligibility is superseded by the production webNodes override.
+See [current move and transport limitations](vm105-lms-litellm-renderer-20261116.md).
 
 Source inspection confirmed the current runtime is PostgreSQL-only; `/data` was
 an unused SQLite-era mount. Production sets `persistence.mountInApp: false`:

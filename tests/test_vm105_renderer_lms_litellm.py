@@ -17,6 +17,9 @@ class MigrationTests(unittest.TestCase):
  def test_lms_single_worker_and_original_database_and_identity(self):
   v=load('charts/lms/values.yaml');v.update(load('deploy/lms/values.yaml'))
   docs=render('charts/lms',v,'lms','lms');d=docs[('Deployment','lms')]
+  old=dict(v);old['webNodes']=['socrat-0','socrat-1','socrat-3'];old['hostAliases']=[]
+  baseline=render('charts/lms',old,'lms','lms')
+  self.assertEqual([k for k in docs if docs[k]!=baseline[k]],[('Deployment','lms')])
   self.assertEqual(d['spec']['strategy'],{'type':'Recreate'});self.assertEqual(d['spec']['replicas'],1)
   s=d['spec']['template']['spec'];self.assertEqual(s['affinity']['nodeAffinity']['requiredDuringSchedulingIgnoredDuringExecution']['nodeSelectorTerms'][0]['matchExpressions'][0]['values'],['socrat-5'])
   self.assertEqual(s['hostAliases'],[{'ip':'10.43.218.222','hostnames':['auth.socrat.alchemmist.xyz']}])
