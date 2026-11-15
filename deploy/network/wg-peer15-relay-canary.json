@@ -1,0 +1,32 @@
+{
+  "status": "staged-bounded-real-WG-canary-not-production",
+  "relayHost": "socrat-0",
+  "bind": "10.250.0.1:51835",
+  "allowClient": "10.250.0.41:51830",
+  "fixedSource": "192.168.0.23:51836",
+  "fixedDestination": "192.168.0.24:51830",
+  "onlyTemporaryEndpointChange": {
+    "host": "socrat-5",
+    "peer": "socrat-1",
+    "before": "109.173.40.247:51831",
+    "during": "10.250.0.1:51835"
+  },
+  "limits": [
+    "DynamicUser/no capabilities/no secrets on relay",
+    "No new public router forwards/listeners",
+    "No WG key/AllowedIPs/node identity changes",
+    "No application migrations",
+    "Preserve1-to2TLS transport",
+    "RuntimeMaxSec240 on temporary relay",
+    "Controller finally restores endpoint and rewarms original direct path"
+  ],
+  "acceptance": [
+    "real WG loss test",
+    "DF and larger payload sizes",
+    "Pod bulk tests before any persistent acceptance"
+  ],
+  "tradeoffs": [
+    "explicit node0 dependency for1-to5",
+    "extra WG nesting and potential MTU/fragmentation; verify not assume"
+  ]
+}

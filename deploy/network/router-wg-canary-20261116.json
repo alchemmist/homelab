@@ -1,5 +1,5 @@
 {
-  "status": "staged-provisional-port-path-experiment",
+  "status": "reverted-no-improvement",
   "purpose": "Separate current UDP51831 flow/translation from WAN-to-WiFi path without changing existing forward",
   "rule": {
     "name": "wg5-to1-canary",
@@ -25,5 +25,12 @@
     "all application placement"
   ],
   "rollback": "Restore5peer1 endpoint51831, delete ONLY exact canary row and verify canonical preimage",
-  "diagnostic": "Firmware rejects a second forward to same backend51830; use bounded exact-payload echo on192.168.0.24:51835 before any WG endpoint change"
+  "diagnostic": "Firmware rejects a second forward to same backend51830; use bounded exact-payload echo on192.168.0.24:51835 before any WG endpoint change",
+  "result": {
+    "plaintextEchoSent": 100,
+    "received": 63,
+    "lostPercent": 37,
+    "all10OriginalRowsRestored": true,
+    "actualWGEndpointWasNotChanged": true
+  }
 }
