@@ -218,6 +218,6 @@ Native public sharing only (no anonymous org Viewer). Run
 `scripts/grafana-llm-public.py` on socrat-0 with the repository layout, first audit,
 then `--apply --approve-plan-hash <fresh hash>`. It checks the complete panel
 against the tracked JSON before publishing; backups/ownership receipts and URL
-are root-private in `/var/lib/homelab-grafana-llm-public/`. Time selection is
+are operator-private (0700) in `~/.local/state/homelab-grafana-llm-public/`. Time selection is
 allowed; annotations are disabled. The public URL is shareable read-only access.
 Do not publish the existing full LLM dashboard or relax datasource/API gates.

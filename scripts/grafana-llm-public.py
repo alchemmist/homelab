@@ -2,12 +2,12 @@
 """Audit/create native public sharing for ONE shared-model activity dashboard, no anonymous org."""
 import argparse,base64,fcntl,hashlib,json,os,subprocess,urllib.request,urllib.error
 from pathlib import Path
-UID='socrat-llm-activity-public';STATE=Path('/var/lib/homelab-grafana-llm-public')
+UID='socrat-llm-activity-public';STATE=Path.home()/'.local/state/homelab-grafana-llm-public'
 def need(ok,msg):
     if not ok:raise RuntimeError(msg)
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--apply',action='store_true');p.add_argument('--approve-plan-hash');a=p.parse_args();os.umask(0o077)
-    need(not STATE.is_symlink(),'Unsafe state');STATE.mkdir(mode=0o700,exist_ok=True);need(STATE.stat().st_uid==0 and not STATE.stat().st_mode&0o077,'Unsafe state ownership')
+    need(not STATE.is_symlink(),'Unsafe state');STATE.mkdir(mode=0o700,parents=True,exist_ok=True);need(STATE.stat().st_uid==os.geteuid() and not STATE.stat().st_mode&0o077,'Unsafe state ownership')
     with (STATE/'lock').open('a') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX);need(not (STATE/'uncertain.json').exists(),'Uncertain previous publication; inspect privately')
         cmd=['kubectl','-n','cattle-monitoring-system'];secret=json.loads(subprocess.check_output(cmd+['get','secret','socrat-grafana-admin','-o','json'],stderr=subprocess.DEVNULL))['data'];ip=subprocess.check_output(cmd+['get','svc','kube-prometheus-stack-grafana','-o','jsonpath={.spec.clusterIP}'],text=True)
