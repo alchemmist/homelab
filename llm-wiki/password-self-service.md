@@ -52,3 +52,8 @@ custom CSRF header и цепочку redirects; права/защиты producti
 Private preimages: socrat-0 `~/.cache/homelab-authentik/password-self-service-*`;
 initial apply `password-self-service-6nds08hm`. Никакого полного Authentik restart,
 SQL workaround, cluster-wide sync/prune или изменения app admission не было.
+
+Authenticated-route correction: nginx expanded relative redirect into its internal
+http://auth...:8080 address behind TLS termination. Both redirects now use the
+constant public HTTPS origin, never request-supplied Host/next. Synthetic External
+session HTTP probe reproduced the wrong Location; no real user session used.
