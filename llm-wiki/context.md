@@ -15,7 +15,15 @@ exact owned legacy admission policy/binding retired (UID/RV preconditions). Actu
 nfs-shared RWX PVC on5 passed nonroot write/fsync/read + second-Pod remount/read;
 test resources removed, existing Retain semantics preserved (empty test backing
 directory only). Persistent K3s+Ansible profile updated; no restart required.
-n8n/PR Agent STAY on1; restored n8n DB there authoritative.
+Subsequent explicit owner-authorized application handoff COMPLETED:
+PR Agent+n8n Ready on5; Rancher Ready2 on1/5 (server replica removed from0),
+all3Argo apps Synced/Healthy. n8n's FINAL quiesced socrat-1 dataset copied/hash/
+integrity/key checked to ORIGINAL n8n-socrat5 PV/PVC on VM, actual data on2TiB
+/mnt/files with persistent bind and fail-closed K3s mount dependencies.7workflows/
+10credentials/1user/6active preserved, key/Secret/PV/PVC identities unchanged.
+VM105 n8n DB NOW AUTHORITATIVE with new writes; retained node1 dataset is stale,
+never blindly restart it. New online backup from5 to3 independently verified.
+[Application handoff/current rollback boundary](../docs/socrat5-app-handoff-20261115.md).
 CT104 was already ABSENT on re-entry (not deleted by this assistant); cold backup
 retained/verified. Proxmox onboot1/agent1 set; full VM stop/start to instantiate
 agent channel and reboot acceptance still PENDING approval. Regular VM backup

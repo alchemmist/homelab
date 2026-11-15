@@ -19,12 +19,30 @@ class Socrat5WorkerSourceTests(unittest.TestCase):
 
     def test_native_nfs_does_not_recreate_the_lxc_storage_guard(self):
         play = yaml.safe_load((ROOT / 'ansible/playbooks/socrat-5-worker.yml').read_text())[0]
-        legacy, native = play['pre_tasks']
+        legacy = next(t for t in play['pre_tasks'] if t['name'] == 'Require the owned storage admission boundary before worker provisioning')
+        native = next(t for t in play['pre_tasks'] if t['name'] == 'Require obsolete no-NFS binding to be retired for native NFS workers')
         self.assertIn('not (k3s_worker_nfs_enabled', legacy['when'])
         self.assertIn('k3s_worker_nfs_enabled', native['when'])
         self.assertIn('validatingadmissionpolicybinding', native['ansible.builtin.command']['cmd'])
         guard = yaml.safe_load((ROOT / 'ansible/playbooks/socrat-5-storage-guard.yml').read_text())[0]
         self.assertIn('k3s_worker_nfs_enabled', guard['pre_tasks'][0]['ansible.builtin.assert']['that'])
+
+    def test_original_n8n_pv_requires_dedicated_data_mounts(self):
+        host = yaml.safe_load((ROOT / 'ansible/inventory/host_vars/socrat-5.yml').read_text())
+        self.assertEqual(host['k3s_worker_data_bind_mounts'], [{
+            'source': '/mnt/files/homelab/n8n-socrat5/data',
+            'target': '/var/lib/rancher/k3s/storage/n8n-socrat5'}])
+        self.assertEqual(host['k3s_worker_required_mounts'], [
+            '/mnt/files', '/var/lib/rancher/k3s/storage/n8n-socrat5'])
+        play = yaml.safe_load((ROOT / 'ansible/playbooks/socrat-5-worker.yml').read_text())[0]
+        tasks = play['pre_tasks']
+        mount = next(t for t in tasks if 'ansible.posix.mount' in t)['ansible.posix.mount']
+        self.assertEqual(mount['opts'], 'bind,x-systemd.requires-mounts-for=/mnt/files')
+        self.assertEqual(mount['state'], 'mounted')
+        dropin = next(t for t in tasks if t.get('ansible.builtin.copy', {}).get('dest', '').endswith('50-worker-data-mounts.conf'))
+        self.assertIn('RequiresMountsFor=', dropin['ansible.builtin.copy']['content'])
+        self.assertIn('ExecStartPre=/usr/bin/mountpoint --quiet', dropin['ansible.builtin.copy']['content'])
+        self.assertIn('database.sqlite', tasks[0]['ansible.builtin.stat']['path'])
 
     def test_exact_advertised_home_routes_only(self):
         host = yaml.safe_load((ROOT / 'ansible/inventory/host_vars/socrat-5.yml').read_text())

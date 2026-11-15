@@ -12,6 +12,14 @@ k3s_worker_server: https://10.250.0.1:6443
 k3s_worker_nfs_enabled: true
 k3s_worker_taints: []
 k3s_worker_extra_node_labels: [homelab.io/nfs=true]
+# Preserve original n8n PV/PVC coordinates; actual data lives on the dedicated disk.
+# Source must already contain the verified restored dataset before provisioning.
+k3s_worker_data_bind_mounts:
+  - source: /mnt/files/homelab/n8n-socrat5/data
+    target: /var/lib/rancher/k3s/storage/n8n-socrat5
+k3s_worker_required_mounts:
+  - /mnt/files
+  - /var/lib/rancher/k3s/storage/n8n-socrat5
 # VM owns its kernel: load bridge/overlay modules; never reapply the LXC workaround.
 k3s_worker_manage_kernel_modules: true
 netbird_node_enabled: true

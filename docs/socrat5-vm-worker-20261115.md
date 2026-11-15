@@ -31,9 +31,11 @@ WireGuard SSH so RuDesktop is no longer needed for guest administration.
 - WG, K3s, overlay-mark guard, native exporter/collector and credential timer
   persistently enabled. No failed systemd units and clean dpkg audit at check.
 
-n8n and PR Agent remain Ready on socrat-1. The restored, actively written n8n
-recovery dataset on1 is authoritative. Old CT n8n data was NOT restored/activated
-on VM. Do not move applications by blindly reverting claimName/nodeName.
+At initial worker acceptance n8n/PR Agent remained on1. Subsequently the owner
+explicitly authorized application handoff: n8n/PR Agent now Ready on5, Rancher
+Ready2 on1/5. Final quiesced node1 n8n dataset—not CT's old DB—was consistently
+transferred and verified before activation. **VM105 n8n DB is now authoritative**;
+node1 retained recovery dataset is stale. See [current handoff/rollback boundary](socrat5-app-handoff-20261115.md).
 
 ## Preservation and source-state recovery
 
@@ -120,7 +122,8 @@ saving private evidence; failed early probes retained in the private receipt.
   Test Pods/PVC/PV/namespace removed. Existing NFS Retain semantics preserved;
   empty backing test directory left under `/srv/k8s-nfs/` (no user data in it).
   Private receipt `~/Library/Application Support/homelab/vm105-nfs-20261115`.
-  Applications n8n/PR Agent remain on1; no production PVC was changed.
+  At that NFS acceptance step n8n/PR Agent were still on1. Subsequently migrated
+  by the separately authorized consistent handoff above; original PVC IDs kept.
 - Root migration keys are temporary: original desktop key expiry16Nov23:59:59Z,
   added restricted direct Mac migration key expiry17Nov23:59:59Z. Remove after the
   remaining acceptance; do not leave permanent passwordless sudo to replace them.

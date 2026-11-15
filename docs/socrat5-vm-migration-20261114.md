@@ -1,11 +1,20 @@
 # socrat-5 migration checkpoint — 14 November 2026
 
-## CURRENT: owner-approved n8n recovery on socrat-1
+## CURRENT UPDATE —15Nov: consistent application handoff completed
+
+n8n and PR Agent now Ready on socrat-5; Rancher replicas Ready on1/5.
+Final quiesced node1 database copied with hash/integrity/encryption-key checks
+before sole-writer activation on VM's original n8n-socrat5 PV/PVC. **VM105 DB is
+now authoritative**; node1 retained copy must not be started without a NEW
+consistent handoff. See [acceptance and backup receipts](socrat5-app-handoff-20261115.md).
+
+## HISTORICAL —14Nov owner-approved n8n recovery on socrat-1
 
 Owner explicitly accepted the ~12-hour rollback from14Nov00:15UTC. The restored
-DB has accepted new writes and is NOW AUTHORITATIVE. Tomorrow: quiesce the sole
-writer and consistently migrate fresh state from1 before moving n8n again. Do
-not blindly revert claim/node, merge SQLite files or start an old writer. Retain
+DB accepted new writes and WAS authoritative until the15Nov handoff. At that
+checkpoint the next step was to quiesce the sole writer and consistently migrate
+fresh state from1. Do not blindly revert claim/node, merge SQLite files or start
+an old writer. Retain
 source datasets for potential reviewed recovery of missing history; no automatic
 history merge was attempted.
 
