@@ -6,7 +6,6 @@ extraNodeSelectorTerms:
 - key: kubernetes.io/hostname
   operator: In
   values:
-  - socrat-1
   - socrat-5
 hostname: rancher.socrat.alchemmist.xyz
 ingress:
@@ -17,7 +16,8 @@ letsEncrypt:
   email: antropophag@gmail.com
   ingress:
     class: traefik
-replicas: 2
+# Owner explicitly accepted a single non-HA server on VM105.
+replicas: 1
 resources:
   limits:
     memory: 3Gi
