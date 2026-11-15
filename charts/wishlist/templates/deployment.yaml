@@ -39,8 +39,6 @@ spec:
               value: /data
             - name: PUBLIC_URL
               value: https://{{ .Values.ingress.host }}
-            - name: AUTH_REQUIRED_GROUP
-              value: app-wishlist-user
             - name: S3_ENDPOINT
               value: http://rustfs.rustfs.svc.cluster.local:9000
             - name: S3_BUCKET
