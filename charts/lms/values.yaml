@@ -51,3 +51,7 @@ tracing:
 profiling:
   enabled: false
   endpoint: http://pyroscope.cattle-monitoring-system.svc.cluster.local:4040
+
+# Application only; database placement is independently owned.
+webNodes: [socrat-0, socrat-1, socrat-3]
+hostAliases: []

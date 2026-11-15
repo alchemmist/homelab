@@ -19,3 +19,9 @@ database:
 replicaCount: 1
 persistence:
   mountInApp: false
+
+webNodes: [socrat-5]
+# Same issuer/certificate/SNI, narrow in-Pod route through the existing ingress.
+hostAliases:
+  - ip: 10.43.218.222
+    hostnames: [auth.socrat.alchemmist.xyz]
