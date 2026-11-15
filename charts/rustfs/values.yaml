@@ -34,3 +34,7 @@ spiWriter:
 # Public cat photos only. Anonymous GetObject; reachable from the cats app, not the internet.
 catsMedia:
   enabled: false
+
+# Wishlist gift photos. Reachable from the wishlist app, not from other namespaces.
+wishlistMedia:
+  enabled: false
