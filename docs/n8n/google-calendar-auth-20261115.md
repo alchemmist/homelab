@@ -1,6 +1,36 @@
 # Current n8n Calendar failure —15Nov2026
 
-## Diagnosis, NOT repaired yet
+## CURRENT: user reconnected Google; OAuth recovered, latency caveat remains
+
+User completed native Reconnect on15Nov; SAME credential ID updated16:22:44UTC.
+Natural Calendar executions46584–46587,46589–46590,46593–46594 succeeded
+16:24–16:33UTC (~1second each). At16:34UTC:8successes/2canceled since16:24;
+last error-start remains16:22:44UTC, before credential update at16:22:44.714. No manual workflow run, graph/credential replacement or restart.
+
+Not unconditional end-to-end acceptance:46588 and46592 lasted110seconds then
+canceled; the newer run completed cancellation at16:33:34UTC. Existing workflow
+executionTimeout=110 confirmed through native API. One simultaneous DNS probe in actual Pod resolves
+both Google hosts successfully: libc43–47ms, c-ares13–22ms. That sample does NOT
+rule out intermittent DNS/HTTP stalls or establish their cause. Six separate
+unauthenticated official-Google HEAD probes with normal TLS/agent:false reproduced
+one6500ms deadline between TCP connect and secureConnect; DNS lookup34–77ms.
+Six additional explicit-family4 probes also reproduced one such TLS deadline,
+other five completed220–314ms (expected unauthenticated HTTP403). Thus an
+IPv6-only explanation is NOT supported, and DNS preload/IPv4 forcing is not a
+proven remedy. No credentials used by probes, no calendar reads/speech/business
+workflow runs. Root cause of intermittent TLS delay and its exact relation to
+110second native cancellations remain unproven. DNS preload remains disabled;
+no timeout increase, alert mute, network reroute or forced retry performed.
+
+New exact-CronJob n8n-post-google-reconnect-20261115 succeeded on5, delivered to3:
+n8n-20261115T162959Z-7f3481063ad2.tar.gz,46287026bytes,0600;
+SHA256b8a6fa0a87b00fcabf9d6f0769a3a3fd19c3c80a7a114eaa9d4663e0e8f61d04.
+Independent archive/sidecar/DB hash/integrity/sourceNode5/unchanged encryption key
+and7workflows/10credentials/1user checks passed. New encrypted OAuth state backed
+up. Private receipt: vm105-apps-20261115/post-google-reconnect-backup-verified.json
+under ~/Library/Application Support/homelab.
+
+## Initial diagnosis before user reconnect
 
 Owner requested fixing continuous n8n errors after application migration.
 Read-only execution audit identifies native Google OAuth `invalid_grant`, mapped
@@ -30,7 +60,7 @@ n8n-errors-20261115-ilbwe_pr.
 
 ## Required interactive step and acceptance
 
-User must open existing native n8n Credentials -> Google Calendar account ->
+Completed by user; instructions retained for recurrence: open existing native n8n Credentials -> Google Calendar account ->
 Sign in with Google/Reconnect and complete consent with the intended account.
 Do not ask for password/token in chat or substitute a new credential/workflow ID.
 Native callback remains https://n8n.socrat.alchemmist.xyz/rest/oauth2-credential/callback.
