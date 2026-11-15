@@ -30,3 +30,7 @@ authViaTraefik: false
 # Dedicated SPI writer only; no reader/root credentials shared with SPI.
 spiWriter:
   enabled: false
+
+# Public cat photos only. Anonymous GetObject; reachable from the cats app, not the internet.
+catsMedia:
+  enabled: false

@@ -52,6 +52,14 @@ class Chart(unittest.TestCase):
         self.assertEqual(policy['ingress'], [{'from': [{'namespaceSelector': {'matchLabels': {'kubernetes.io/metadata.name': 'automation'}}, 'podSelector': {'matchLabels': {'app': 'spi-triage'}}}], 'ports': [{'port': 9000, 'protocol': 'TCP'}]}])
         self.assertEqual(resource(render('rustfs', 'enabled=true'), 'NetworkPolicy', 'rustfs-isolation')['spec']['ingress'], [])
 
+    def test_cats_media_is_a_separate_peer(self):
+        docs = render('rustfs', 'enabled=true', 'catsMedia.enabled=true', 'spiWriter.enabled=true')
+        policy = resource(docs, 'NetworkPolicy', 'rustfs-isolation')['spec']
+        peers = [rule['from'] for rule in policy['ingress']]
+        self.assertIn([{'namespaceSelector': {'matchLabels': {'kubernetes.io/metadata.name': 'cats'}}, 'podSelector': {'matchLabels': {'app.kubernetes.io/name': 'cats'}}}], peers)
+        self.assertIn([{'namespaceSelector': {'matchLabels': {'kubernetes.io/metadata.name': 'automation'}}, 'podSelector': {'matchLabels': {'app': 'spi-triage'}}}], peers)
+        self.assertEqual(resource(render('rustfs', 'enabled=true'), 'NetworkPolicy', 'rustfs-isolation')['spec']['ingress'], [])
+
 
 if __name__ == '__main__':
     unittest.main()

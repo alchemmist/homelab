@@ -160,6 +160,12 @@ spec:
           podSelector: {matchLabels: {app: spi-triage}}
       ports: [{port: 9000, protocol: TCP}]
     {{- end }}
+    {{- if .Values.catsMedia.enabled }}
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: cats}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: cats}}
+      ports: [{port: 9000, protocol: TCP}]
+    {{- end }}
     {{- if .Values.gateway.enabled }}
     - from:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: {{ .Values.gateway.namespace }}}}
@@ -172,7 +178,7 @@ spec:
           podSelector: {matchLabels: {app: rustfs-console-http}}
       ports: [{port: 9001, protocol: TCP}]
     {{- end }}
-    {{- if not (or .Values.gateway.enabled .Values.browserRoutes.enabled .Values.spiWriter.enabled) }}
+    {{- if not (or .Values.gateway.enabled .Values.browserRoutes.enabled .Values.spiWriter.enabled .Values.catsMedia.enabled) }}
     []
     {{- end }}
   {{- if .Values.oidc.enabled }}
