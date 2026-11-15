@@ -2,8 +2,8 @@ replicaCount: 1
 
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/wishlist
-  tag: 24e744afe663157be2993be449b27df7e211f5a1
-  digest: sha256:f307e290dd4d49d647531c1654f105eeeca607881d048c20ca536f758247f14e
+  tag: d31f035535a54026da46d7ed603687c38e0c1987
+  digest: sha256:4ad3fbcfb62f68d0503b59e9c1420bcdba325cbf34327c3b1bc39e4d1d746832
   pullPolicy: IfNotPresent
 
 imagePullSecrets:
