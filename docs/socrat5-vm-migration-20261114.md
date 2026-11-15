@@ -2,7 +2,8 @@
 
 ## CURRENT UPDATE —15Nov: consistent application handoff completed
 
-n8n and PR Agent now Ready on socrat-5; Rancher replicas Ready on1/5.
+n8n and PR Agent now Ready on socrat-5; Rancher subsequently reduced by explicit
+owner request to1Ready replica ONLY on5 (no HA; prior1/5 placement historical).
 Final quiesced node1 database copied with hash/integrity/encryption-key checks
 before sole-writer activation on VM's original n8n-socrat5 PV/PVC. **VM105 DB is
 now authoritative**; node1 retained copy must not be started without a NEW

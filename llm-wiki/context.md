@@ -16,7 +16,9 @@ nfs-shared RWX PVC on5 passed nonroot write/fsync/read + second-Pod remount/read
 test resources removed, existing Retain semantics preserved (empty test backing
 directory only). Persistent K3s+Ansible profile updated; no restart required.
 Subsequent explicit owner-authorized application handoff COMPLETED:
-PR Agent+n8n Ready on5; Rancher Ready2 on1/5 (server replica removed from0),
+PR Agent+n8n Ready on5; Rancher initially Ready2 on1/5, then owner explicitly
+requested removing node1 replica: NOW Ready1 exclusively on5 (no HA),
+server replicas removed from0/1; hostname affinity permits ONLY5,
 all3Argo apps Synced/Healthy. n8n's FINAL quiesced socrat-1 dataset copied/hash/
 integrity/key checked to ORIGINAL n8n-socrat5 PV/PVC on VM, actual data on2TiB
 /mnt/files with persistent bind and fail-closed K3s mount dependencies.7workflows/

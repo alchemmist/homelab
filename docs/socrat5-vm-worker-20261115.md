@@ -33,7 +33,8 @@ WireGuard SSH so RuDesktop is no longer needed for guest administration.
 
 At initial worker acceptance n8n/PR Agent remained on1. Subsequently the owner
 explicitly authorized application handoff: n8n/PR Agent now Ready on5, Rancher
-Ready2 on1/5. Final quiesced node1 n8n dataset—not CT's old DB—was consistently
+initially Ready2 on1/5, then explicitly reduced by owner to Ready1 ONLY5 (no HA).
+Final quiesced node1 n8n dataset—not CT's old DB—was consistently
 transferred and verified before activation. **VM105 n8n DB is now authoritative**;
 node1 retained recovery dataset is stale. See [current handoff/rollback boundary](socrat5-app-handoff-20261115.md).
 

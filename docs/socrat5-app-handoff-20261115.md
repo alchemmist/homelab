@@ -9,7 +9,7 @@ socrat-5. Actual starting placement was PR Agent+n8n on1, Rancher replicas on0/1
 |---|---|---|
 | PR Agent | socrat-5,1replica | Ready1, restart0 |
 | n8n | socrat-5,1replica/Recreate, original n8n-socrat5 PVC | Ready1, restart0 |
-| Rancher server | socrat-1+socrat-5,2replicas | Ready2, restart0, required hostname anti-affinity |
+| Rancher server | socrat-5,1replica (subsequent owner request) | Ready1, restart0; eligible hostname only5; NO HA |
 
 **The VM105 n8n database is NOW authoritative and accepting new writes.** Its
 contents came from the final quiesced socrat-1 recovery dataset, NOT the older
@@ -68,12 +68,18 @@ data~2TiB free (~519MiB used). Virtual2TiB QCOW2 capacity is not reserved space.
 
 ## Rancher placement and access
 
-GitOps chart version2.15.2,2replicas, required anti-affinity retained; eligible
-hosts now1/5. Existing healthy1 served during5's~5minute image pull/startup.
+Initial handoff: GitOps chart version2.15.2,2replicas, required anti-affinity
+retained; eligible hosts1/5. Existing healthy1 served during5's~5minute image pull/startup.
 No Rancher PVC/local datastore to migrate: server state remains in Kubernetes.
-Helm/Ansible alternate placement defaults changed to1/5 too; removed obsolete
-unused nodeSelector0 value. No auth features, RBAC, TLS, MCM/Fleet, webhook or
-control-plane/etcd membership changes. Public entry/observer policy unchanged.
+Initial Helm/Ansible alternate placement defaults changed to1/5 too; removed
+obsolete unused nodeSelector0 value. Subsequently owner explicitly requested
+removing node1 replica: replicas1, eligible hostname ONLY5 in GitOps and Ansible.
+Reconciled to rancher-657cc447c5-4tzlj on5, Ready1/restart0, ArgoHealthy/Synced;
+old Pods on1/5 removed. NO HA: stopping/failing node5 interrupts Rancher panel,
+not Kubernetes control-plane/workloads elsewhere. Source ba0f0011; private
+preimage under ~/Library/Application Support/homelab/rancher-single-vm105-69c1veq1.
+No auth features, RBAC, TLS, MCM/Fleet, webhook or control-plane/etcd membership
+changes. Public entry/observer policy unchanged.
 
 Public TLS probes: n8n /healthz200/root200/unauthenticated API401;
 PR Agent root200; Rancher /ping200/unauthenticated /v3/users401.
