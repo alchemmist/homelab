@@ -1,5 +1,24 @@
 # Socrat: текущий контекст
 
+## socrat-5 native VM worker ACTIVE —15Nov2026, CURRENT
+
+VM105 now original Node UID bb08e55e-04aa-4049-8348-6572b80b771e, Ready/uncordoned,
+Debian13/native6.12, K3s1.36.5, WG10.250.0.41, original SSH keys22/2222 and
+NetBird100.100.9.130/state. Direct Mac SSH verified; zsh/Starship/tmux/bottom ready.
+Native telemetry queue/cursors/fsync restored, sending/refused0, credential timer
+renewed same scoped SA; exporter parent permissions fixed, no failed units.
+Pod DNS both CoreDNS+ClusterIP passes;8/8 RustFS negative policy checks pass.
+WG5→NL uses existing Moscow relay; only runtime peer5 Endpoint on3 refreshed for
+VM's new NAT port, no peer keys/AllowedIPs/firewall/other-node restart. No-NFS
+protections retained. n8n/PR Agent STAY on1; restored n8n DB there authoritative.
+CT104 was already ABSENT on re-entry (not deleted by this assistant); cold backup
+retained/verified. Proxmox onboot1/agent1 set; full VM stop/start to instantiate
+agent channel and reboot acceptance still PENDING approval. Regular VM backup
+coverage/NFS Pod acceptance not verified. Temporary restricted root migration
+keys expire16/17Nov; remove after acceptance. Do not restore104 alongside105.
+[Runtime evidence, boundaries and remaining gates](../docs/socrat5-vm-worker-20261115.md).
+Earlier paused/CT-active/node5-offline notes are historical, not current state.
+
 ## Per-app B2C groups — CURRENT
 
 Applied: 8 isolated app roles for LiteLLM, Open WebUI, Grafana viewer/editor,

@@ -24,7 +24,8 @@ wg_socrat_peer_endpoints:
   socrat-5:
     socrat-0: 109.173.40.247:51830
     socrat-1: 109.173.40.247:51831
-    socrat-2: 109.120.141.60:51830
+    # Same verified Moscow -> NL UDP relay used by HOME0 and worker3.
+    socrat-2: 91.189.82.238:51832
     socrat-3: 46.8.146.172:46559
   socrat-4:
     socrat-0: 109.173.40.247:51830

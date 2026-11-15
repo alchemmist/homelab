@@ -1,5 +1,5 @@
 ---
-- name: Prepare explicitly authorized headless LXC worker owner and terminal
+- name: Prepare explicitly authorized headless Debian worker owner and terminal
   hosts: socrat-5
   gather_facts: true
   become: true

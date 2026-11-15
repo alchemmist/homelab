@@ -68,7 +68,15 @@
         group: root
         mode: '0755'
       loop:
+        # Explicit parent modes matter on fresh hosts provisioned under umask 0077.
+        # UID65534 must traverse the dedicated read-only textfile namespace.
+        - /var/lib/node_exporter
         - /var/lib/node_exporter/textfile_collector
+        - /host
+        - /host/root
+        - /host/root/var
+        - /host/root/var/lib
+        - /host/root/var/lib/node_exporter
         - /host/root/var/lib/node_exporter/textfile_collector
     - name: Install persistent independent host exporter
       ansible.builtin.copy:

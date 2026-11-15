@@ -1,5 +1,6 @@
 ---
-# General headless LXC worker; no desktop/wallpaper/display autostart roles.
+# Native Debian KVM worker (VM105); no desktop/wallpaper/display autostart roles.
+# Original Node/WG/SSH/NetBird identities retained; applications remain on socrat-1.
 homelab_boot_k3s_service: k3s-agent.service
 homelab_headless: true
 k3s_worker_profile: headless-worker
@@ -10,15 +11,15 @@ k3s_worker_server: https://10.250.0.1:6443
 # Explicit opt-in only: unsupported remote/unclassified PVCs are admission-denied.
 k3s_worker_taints: [homelab.io/no-nfs=true:NoSchedule]
 k3s_worker_extra_node_labels: [homelab.io/nfs=false]
-# LXC shares kernel modules with PVE host; test modules rather than load host modules.
-k3s_worker_manage_kernel_modules: false
+# VM owns its kernel: load bridge/overlay modules; never reapply the LXC workaround.
+k3s_worker_manage_kernel_modules: true
 netbird_node_enabled: true
 homelab_ssh_preserve_ports: [22]
-k3s_worker_user_namespace: true
-# nft large transactions fail inside userns; retain policies via supported legacy backend.
+k3s_worker_user_namespace: false
+# Preserve the verified legacy backend during migration; do not combine backend changes.
 k3s_worker_prefer_bundled_bin: false
 wg_socrat_interface_prefix: 32
-# Kernel WG is available; LXC does not grant the optional userspace TUN device.
+# Retain the working kernel-WireGuard implementation; native VM also has /dev/net/tun.
 netbird_kernel_wireguard_only: true
 # Existing apiserver-advertised HOME addresses and the cluster NFS server.
 wg_socrat_extra_allowed_peer_ips:
