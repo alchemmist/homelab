@@ -1,3 +1,6 @@
+# HISTORICAL LXC boundary, retired after native VM NFS acceptance on2026-11-15.
+# Do not apply to NFS-enabled VM105. Guard playbook explicitly refuses recreation.
+# Kept for historical recovery/source contract tests, not an active GitOps object.
 # Local-only worker: opt in explicitly, never discover unsupported NFS at mount time.
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy

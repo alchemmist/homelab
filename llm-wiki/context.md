@@ -9,12 +9,17 @@ Native telemetry queue/cursors/fsync restored, sending/refused0, credential time
 renewed same scoped SA; exporter parent permissions fixed, no failed units.
 Pod DNS both CoreDNS+ClusterIP passes;8/8 RustFS negative policy checks pass.
 WG5→NL uses existing Moscow relay; only runtime peer5 Endpoint on3 refreshed for
-VM's new NAT port, no peer keys/AllowedIPs/firewall/other-node restart. No-NFS
-protections retained. n8n/PR Agent STAY on1; restored n8n DB there authoritative.
+VM's new NAT port, no peer keys/AllowedIPs/firewall/other-node restart. Owner then
+explicitly authorized FULL NFS admission: homelab.io/nfs=true, no no-NFS taint;
+exact owned legacy admission policy/binding retired (UID/RV preconditions). Actual
+nfs-shared RWX PVC on5 passed nonroot write/fsync/read + second-Pod remount/read;
+test resources removed, existing Retain semantics preserved (empty test backing
+directory only). Persistent K3s+Ansible profile updated; no restart required.
+n8n/PR Agent STAY on1; restored n8n DB there authoritative.
 CT104 was already ABSENT on re-entry (not deleted by this assistant); cold backup
 retained/verified. Proxmox onboot1/agent1 set; full VM stop/start to instantiate
 agent channel and reboot acceptance still PENDING approval. Regular VM backup
-coverage/NFS Pod acceptance not verified. Temporary restricted root migration
+coverage not verified; NFS Pod/PVC acceptance PASSED. Temporary restricted root migration
 keys expire16/17Nov; remove after acceptance. Do not restore104 alongside105.
 [Runtime evidence, boundaries and remaining gates](../docs/socrat5-vm-worker-20261115.md).
 Earlier paused/CT-active/node5-offline notes are historical, not current state.

@@ -16,6 +16,20 @@
       failed_when: >-
         socrat5_storage_boundary.rc != 0 or
         (socrat5_storage_boundary.stdout | from_json).operations != 0
+      when: not (k3s_worker_nfs_enabled | default(false) | bool)
+    - name: Require obsolete no-NFS binding to be retired for native NFS workers
+      ansible.builtin.command:
+        cmd: >-
+          kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml get
+          validatingadmissionpolicybinding homelab-socrat5-local-storage
+          --ignore-not-found -o name
+      delegate_to: socrat-0
+      register: socrat5_retired_storage_boundary
+      changed_when: false
+      failed_when: >-
+        socrat5_retired_storage_boundary.rc != 0 or
+        socrat5_retired_storage_boundary.stdout | trim != ''
+      when: k3s_worker_nfs_enabled | default(false) | bool
   roles:
     # Required for NetBird/VXLAN mark separation before starting pod networking.
     - k3s_overlay_marks

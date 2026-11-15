@@ -7,13 +7,24 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class Socrat5WorkerSourceTests(unittest.TestCase):
-    def test_general_admission_remains_guarded(self):
+    def test_native_vm_has_full_nfs_admission(self):
         host = yaml.safe_load((ROOT / 'ansible/inventory/host_vars/socrat-5.yml').read_text())
-        self.assertEqual(host['k3s_worker_taints'], ['homelab.io/no-nfs=true:NoSchedule'])
+        self.assertEqual(host['k3s_worker_taints'], [])
+        self.assertTrue(host['k3s_worker_nfs_enabled'])
+        self.assertEqual(host['k3s_worker_extra_node_labels'], ['homelab.io/nfs=true'])
         self.assertTrue(host['homelab_headless'])
         self.assertTrue(host['k3s_worker_manage_kernel_modules'])
         self.assertFalse(host['k3s_worker_user_namespace'])
         self.assertFalse(host['k3s_worker_prefer_bundled_bin'])
+
+    def test_native_nfs_does_not_recreate_the_lxc_storage_guard(self):
+        play = yaml.safe_load((ROOT / 'ansible/playbooks/socrat-5-worker.yml').read_text())[0]
+        legacy, native = play['pre_tasks']
+        self.assertIn('not (k3s_worker_nfs_enabled', legacy['when'])
+        self.assertIn('k3s_worker_nfs_enabled', native['when'])
+        self.assertIn('validatingadmissionpolicybinding', native['ansible.builtin.command']['cmd'])
+        guard = yaml.safe_load((ROOT / 'ansible/playbooks/socrat-5-storage-guard.yml').read_text())[0]
+        self.assertIn('k3s_worker_nfs_enabled', guard['pre_tasks'][0]['ansible.builtin.assert']['that'])
 
     def test_exact_advertised_home_routes_only(self):
         host = yaml.safe_load((ROOT / 'ansible/inventory/host_vars/socrat-5.yml').read_text())

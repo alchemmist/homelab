@@ -3,6 +3,11 @@
   hosts: socrat-0
   gather_facts: false
   become: true
+  pre_tasks:
+    - name: Refuse to recreate the retired LXC no-NFS boundary on native VM105
+      ansible.builtin.assert:
+        that: not (hostvars['socrat-5'].k3s_worker_nfs_enabled | default(false) | bool)
+        fail_msg: Native socrat-5 has NFS enabled; this historical local-only guard must remain retired.
   tasks:
     - name: Install secret-free guard reconciler
       ansible.builtin.copy:

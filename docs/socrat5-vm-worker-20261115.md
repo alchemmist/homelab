@@ -23,8 +23,11 @@ WireGuard SSH so RuDesktop is no longer needed for guest administration.
   password. No NOPASSWD, root-password reset or daemon password-policy change.
 - No LXC KubeletInUserNamespace workaround; native overlay/br_netfilter module
   loading enabled. Verified legacy iptables retained; no backend migration.
-- Existing no-NFS taint/label/admission guard retained. Actual NFS Pod/PVC
-  acceptance and removal of no-NFS protection are NOT part of this acceptance.
+- Owner subsequently explicitly authorized full NFS admission: label
+  `homelab.io/nfs=true`, no no-NFS taint; legacy local-only admission policy/binding
+  retired with ownership/spec checks and UID/resourceVersion delete preconditions.
+  New nfs-shared PVC tested from two nonroot Pods on5: write/fsync/read, then new
+  Pod mount/read/own-test-file deletion. Native statfs magic0x6969 confirmed NFS.
 - WG, K3s, overlay-mark guard, native exporter/collector and credential timer
   persistently enabled. No failed systemd units and clean dpkg audit at check.
 
@@ -110,7 +113,14 @@ saving private evidence; failed early probes retained in the private receipt.
   newly configured QEMU channel. Other guests/global networking unchanged.
 - Physical boot/SSH/WG/K3s/NetBird/telemetry/data mount acceptance not performed.
 - Regular VM backup-job inclusion and independent full-VM restore not verified.
-- No real NFS Pod test or no-NFS protection removal authorized/performed.
+- NFS gate CLOSED successfully by subsequent explicit owner authorization:
+  dynamic RWX PVC, write/fsync/read and remount/read tests passed on5. Persistent
+  K3s config and inventory both nfs=true/no no-NFS taint; no K3s restart needed.
+  Only exact owned historical policy+binding removed; unrelated policies untouched.
+  Test Pods/PVC/PV/namespace removed. Existing NFS Retain semantics preserved;
+  empty backing test directory left under `/srv/k8s-nfs/` (no user data in it).
+  Private receipt `~/Library/Application Support/homelab/vm105-nfs-20261115`.
+  Applications n8n/PR Agent remain on1; no production PVC was changed.
 - Root migration keys are temporary: original desktop key expiry16Nov23:59:59Z,
   added restricted direct Mac migration key expiry17Nov23:59:59Z. Remove after the
   remaining acceptance; do not leave permanent passwordless sudo to replace them.
@@ -124,8 +134,11 @@ Private guest preimages: `/root/homelab-vm105-network-activation-20261114`,
 Private controller receipts:
 `~/Library/Application Support/homelab/vm105-worker-20261115`.
 
-Selected source checks:19 worker/bootstrap/storage tests +6 n8n rendering/retention
+Initial source checks:19 worker/bootstrap/storage tests +6 n8n rendering/retention
 checks passed; worker playbook syntax and git diff whitespace checks passed.
+Subsequent NFS activation:20 worker/bootstrap/storage tests +6 n8n tests passed,
+plus worker and historical-guard playbook syntax; includes native full-admission
+and guard-recreation refusal contracts.
 First test invocation used the wrong Python without Jinja2 and syntax invocation
 omitted ANSIBLE_ROLES_PATH; corrected using installed Ansible Python/roles path.
 No full repository test-suite or reboot/HA claim.
