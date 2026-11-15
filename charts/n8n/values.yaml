@@ -1,11 +1,11 @@
 # Enable only after asserted global natural n8n/SPI drain. False renders the original runtime exactly.
 googleDnsEnabled: false
-replicaCount: 0
+replicaCount: 1
 image: docker.io/n8nio/n8n@sha256:624a1f10f37119a73eca34c0cbd358668aebf0068d320ad5eae584f9d35aa314
-nodeName: socrat-1
+nodeName: socrat-5
 secretName: n8n-secrets
 persistence:
-  claimName: n8n-recovery-20261114
+  claimName: n8n-socrat5
   storageClass: local-path
   size: 5Gi
 host: n8n.socrat.alchemmist.xyz
@@ -20,14 +20,11 @@ resources:
 ingress:
   enabled: true
 
-tolerations:
-  - key: homelab.io/no-nfs
-    operator: Equal
-    value: "true"
-    effect: NoSchedule
+tolerations: []
 
-# Owner-approved restore from 2026-11-14T00:15Z; worker5's original PV/PVC retained.
-# Keep these volume coordinates fixed even if Deployment placement changes later.
+# Preserved socrat-1 recovery dataset; quiesced/freshly copied to VM105 on15Nov.
+# Retain these rollback coordinates unchanged. Active original n8n-socrat5 PV/PVC
+# now contains the final consistent socrat-1 dataset on the VM's dedicated data disk.
 recoveryStorage:
   enabled: true
   name: n8n-recovery-20261114
