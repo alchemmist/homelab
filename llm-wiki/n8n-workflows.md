@@ -1,5 +1,14 @@
 # n8n: правила разработки, эксплуатации и авторизации workflow
 
+## CURRENT15Nov: Google Calendar OAuth repair pending
+
+Текущий повторяющийся отказ Get Upcoming Events — Google `invalid_grant`/EAUTH,
+не прежний DNS-сбой. Последний успех14Nov22:31МСК, ошибки с22:32МСК, до переноса
+на VM. Пользователю нужно переподключить существующий **Google Calendar account**
+в native Credentials; интерактивный consent не подменять токеном из чата/SQL.
+Yandex maintenance успешен. Ничего не отключено/не очищено; после consent проверить
+следующий плановый Calendar execution и новый backup. [Доказательства и границы](../docs/n8n/google-calendar-auth-20261115.md).
+
 Контракт для агентов и оператора. Актуализировано: **3 ноября 2026**.
 Связанный документ: [архитектура автоматизаций умного дома](smart-home-automation.md).
 

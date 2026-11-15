@@ -1,5 +1,10 @@
 # Native Google Calendar DNS transport
 
+>15Nov CURRENT: recurring Calendar failures are now Google OAuth
+>`invalid_grant`/EAUTH, not the historical DNS error below. The preload remains
+>disabled and is not a fix for revoked/expired authorization.
+>See [current diagnosis and user consent requirement](google-calendar-auth-20261115.md).
+
 19841/19875 and later failures were native EAI_AGAIN, not OAuth401/403 or invalid_grant.
 Actual n8n libc default lookups exceeded6.5s; exact c-ares A queries usually took
 10–70ms. ndots5/search/A+AAAA expansion magnifies exposure. Upstream packet loss

@@ -1,5 +1,17 @@
 # Socrat: текущий контекст
 
+## n8n continuous Calendar errors —15Nov, repair BLOCKED on Google consent
+
+Read-only audit after owner repair request: Get Upcoming Events fails every minute
+with native Google OAuth invalid_grant/EAUTH, NOT current DNS EAI_AGAIN. Last
+Calendar success14Nov19:31UTC; failures from19:32UTC, before VM migration. Existing
+credential Google Calendar account (ePyhkBESw5Ue7EH3) needs user's native Google
+Reconnect/consent; no password/token via chat, no SQL reset, no new credential ID.
+Yandex maintenance/Alerts succeed; n8n Pod healthy is NOT Calendar acceptance.
+No workflows/credentials/alerts modified or muted. googleDnsEnabled stays false.
+After user consent, observe natural Calendar execution (no manual speech run),
+then new off-node backup. [Diagnosis/evidence](../docs/n8n/google-calendar-auth-20261115.md).
+
 ## socrat-5 native VM worker ACTIVE —15Nov2026, CURRENT
 
 VM105 now original Node UID bb08e55e-04aa-4049-8348-6572b80b771e, Ready/uncordoned,
