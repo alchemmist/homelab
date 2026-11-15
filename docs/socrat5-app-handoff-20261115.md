@@ -1,5 +1,10 @@
 # PR Agent, n8n and Rancher handoff to VM105 —15Nov2026
 
+> **22:29MSK15Nov UPDATE:** Rancher alone returned to **socrat-1**, one non-HA
+> replica, to restore native OIDC. Earlier Rancher-on5 acceptance was incomplete
+> (health/API checks did not exercise login). Other accepted node5 workloads stay.
+> [Recovery evidence](rancher-login-recovery-20261115.md).
+
 ## CURRENT authority and placement
 
 Owner explicitly requested moving PR Agent/n8n/Rancher to the now NFS-enabled

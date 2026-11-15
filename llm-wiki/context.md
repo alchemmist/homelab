@@ -1,5 +1,26 @@
 # Socrat: текущий контекст
 
+## Rancher login recovery —15Nov22:29MSK, CURRENT
+
+Rancher temporarily RETURNED to socrat-1, single non-HA replica; node5 rollout
+was NOT accepted for native login. Pod Healthy/ping200/API401 had missed OIDC.
+Actual native /v1-oidc/genericoidc on5 generated a BAD relative /v1-oidc/?client_id...
+redirect because Rancher2.15.2 ignores FetchAuthURL discovery errors there.
+From5 public IdP IPv4 TCP connection times out; IPv6 has no AAAA (not IPv6-only).
+Same exact image on1 connects but default CA lookup fails; existing image OS bundle
+/var/lib/ca-certificates/ca-bundle.pem works. Source now pins Rancher1 and sets
+ONLY SSL_CERT_FILE to that existing bundle; TLS verification stays ON, no new CA,
+issuer/client/Secret/users/roles/accessMode/callback changes. Full authconfig JSON
+before/after EXACTLY unchanged; Deployment UID/image/prior env retained. Actual
+new Rancher Pod IdP discovery200;3real public login starts now redirect to HTTPS
+Authentik with S256 and exact previous client/callback. Real user login awaits
+owner confirmation, not impersonated. No local-password workaround/auth bypass.
+Other four moved apps, n8n, PR Agent, blog/home remain on5. Do NOT move Rancher
+back to5 until actual IdP transport AND complete native login have been proven;
+private internal test works only with the existing OS CA bundle, but upstream
+Rancher chart2.15.2 has no hostAliases value (unlike our WebUI chart).
+[Recovery, receipts and limits](../docs/rancher-login-recovery-20261115.md).
+
 ## Four app handoff to VM105 —15Nov, CURRENT
 
 Open WebUI + Open Terminal + SearXNG + Umami APP now single Ready/restart0 instances

@@ -1,5 +1,10 @@
 # socrat-5 native VM worker — 15 November 2026
 
+> **22:29MSK15Nov UPDATE:** Rancher alone returned to **socrat-1**, one non-HA
+> replica, to restore native OIDC. Earlier Rancher-on5 acceptance was incomplete
+> (health/API checks did not exercise login). Other accepted node5 workloads stay.
+> [Recovery evidence](rancher-login-recovery-20261115.md).
+
 ## Current runtime acceptance
 
 Owner authorized completing VM105 as the replacement worker, prioritizing direct
