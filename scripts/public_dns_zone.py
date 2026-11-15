@@ -46,6 +46,7 @@ FAILOVER = [
     "sso.socrat",
     "status",
     "umami",
+    "venice.socrat",
     "wiki.socrat",
     "wishlist",
 ]

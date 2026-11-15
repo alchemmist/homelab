@@ -1,0 +1,25 @@
+image:
+  repository: harbor.socrat.alchemmist.xyz/homelab/venice-api
+  tag: "903b4a8"
+  digest: ""
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+service:
+  port: 8080
+  targetPort: 8080
+ingress:
+  className: traefik
+  host: venice.socrat.alchemmist.xyz
+  tlsSecretName: venice-api-tls
+  clusterIssuer: letsencrypt-http01
+resources:
+  requests:
+    cpu: 200m
+    memory: 1Gi
+  limits:
+    memory: 3Gi
+imagePullSecrets:
+  - venice-api-harbor-pull
+nodeSelector:
+  kubernetes.io/hostname: socrat-5

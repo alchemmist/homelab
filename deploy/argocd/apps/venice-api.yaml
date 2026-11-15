@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: venice-api
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/alchemmist/homelab.git
+    targetRevision: main
+    path: charts/venice-api
+    helm:
+      releaseName: venice-api
+      valueFiles:
+        - ../../deploy/venice-api/values.yaml
+      parameters: []
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: venice-api
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
