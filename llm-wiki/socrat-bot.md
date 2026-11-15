@@ -723,3 +723,84 @@ Acceptance: unauthenticated public page200, public dashboard JSON200 with exactU
 and exactly1panel, public panel-query POST200 with live timeseries; normal API
 search and dashboard APIs401. No credentials sent to public route. Browser visual
 check not completed: shared Playwright profile busy; did not close/steal it.
+
+## User interests + multi-select welcome — released 2026-11-15
+
+User requested replacement of mutually exclusive VPN/user terminology and feature
+booleans with independent, extensible interests. Implemented directly, NO subagents,
+in socrat-bot checkout; foreign homelab nodes/rules/dashboard changes untouched.
+
+- `/start` in private chat: **Welcome to Socrat Bot!** / **I'm interested in…**,
+  persistent independent **VPN** and **Alerts** checkboxes, any combination. Buttons
+  carry explicit desired on/off states, not blind inversions (callback retries safe).
+- `user_interests(user_id,topic,enabled)` is the only source of feature preferences.
+  Composite PK, user FK/cascade. Disabled rows retained, so opting out during
+  approval is unambiguous. Future topics added to `interests.INTERESTS`, not user
+  columns. Renderer consumes arbitrary selected topic sets. Unknown callbacks denied.
+- Approval is authority, NOT preference: Alerts delivery/action checks require both
+  selected interest and durable `alerts_approved`, plus previous tier constraints.
+  First-time interest is saved/checked/pending and asks owner; no alerts until
+  approved. Approval never opts someone back in. Off preserves approval; approved
+  on needs no fresh owner and no backlog. Owner explicit opt-out survives /start.
+- VPN only controls VPN-mailing audience, not actual VPN access; panel link codes,
+  existing panel identities and original-copy mailing editing semantics preserved.
+  A link alone does not opt into mailings. `/clients` retained, visible heading now
+  **Interested in VPN**. Roles owner/user express authority, not feature membership.
+  Legacy vpn role normalized. Native formatting, graph Chart, keyboard/fencing/
+  receipts/retries behavior retained. Old commands and callback buttons accepted.
+  Old pre-migration approval callbacks can grant permission but cannot invent a
+  selected interest: if old request never persisted selection, choose Alerts in
+  the new /start afterward. This is deliberate safe behavior.
+
+### Two actual releases, not a destructive rolling schema swap
+
+1. Bot **6206a9f3a1c0ba7d9331b28ac4eecfcea417e42a**, CI43751135469,
+   schema **0020_user_interests**. Exact old VPN and enabled Alerts flags backfilled,
+   permanent approval retained (old enabled subscribers recognized as approved,
+   matching old ensure_user behavior). Temporary PostgreSQL bidirectional triggers
+   kept old pods compatible while new pods started; old delivery saw selection AND
+   approval, not just a pending checkbox. All THREE application deployments observed
+   fully on image `sha256:e2a42b6af39c686718b7c98bd2d164cb6180735c56ac92a706e2473434fb7d3a`,
+   no other old application pods; SQL comparison found0VPN and0Alerts projection
+   mismatches BEFORE step2 was pushed.
+2. Bot **7b56f890f2ed888c50a16edc8f0692971b35994b**, CI43751823314,
+   schema **0021_interest_contract**. Dropped BOTH old users columns `uses_vpn` and
+   `alerts_enabled`, temporary triggers/function; normalized any last legacy roles.
+   Verified live old-column count0, legacy vpn-role count0, temporary trigger count0.
+   Final image `sha256:a2218fd95c9efa9e0c103b77548fdc96f50e10f93466a6fb54d4a0c70d388fd9`.
+   All3rollouts completed; healthz OK; Argo Synced/Healthy at a2df4d8.
+
+Rollback is documented in bot `docs/user-interests.md`: downgrade schema BEFORE
+pre-0020 code. 0021 downgrade reconstructs legacy projection and temporary triggers;
+0020 downgrade reconstructs old flags/roles but inherently cannot represent unknown
+future topics or separate pending interests, so keep backup. Never squash the
+release boundary for an existing pre-0020 deployment.
+
+### Tests / backups / real acceptance
+
+Final independent isolated local PostgreSQL17 UTC full suite **316passed17skipped**;
+CI identical. PostgreSQL service was a dedicated mktemp initdb on localhost55440
+(native host tools because Podman socket offline), stopped/removed afterward; no
+existing PostgreSQL services/containers changed. Focused SQLite+PG migration/tests16
+passed, including populated0019→0020→0021, legacy bridge, owner-off preservation,
+permissions/flags, future-topic survival through contract downgrade/re-upgrade,
+private-only controls, duplicates, pending opt-out/approval and unrelated flags.
+Ruff scoped, compileall, diff-check and QualityGraph validation passed; final
+QualityGraph CI43751823280 success. No independent subagent review per user request.
+
+Full pre-expand pg_dump saved privately outsideGit, verified EXACT32401635bytes +
+matching remote/local SHA256 bba97142d38439acc95a72c88459ab476d0c5550b427d8cf98760f5867da7ad9,
+pg_restore-list parsed. Network websocket cut large transfers; used verified1MiB
+chunks, not a partial dump. Earlier failed dump explicitly renamed `.partial`.
+Separate current users+user_interests pre-contract custom dump (6159bytes) retained.
+Backups in ~/.local/state/socrat-backups; remote temporary full dump removed.
+
+`/tmp/socrat-interests-live-smoke.py` ran at BOTH released versions: production
+READ ONLY owner lookup; all user/state changes in temporary isolatedSQLite; one
+marked actual owner Telegram welcome, four same-ID checkbox edits, verify independent
+VPN/Alerts audience logic and approval preservation; known test message deleted
+in finally. No sends to other users, no production user/preference mutations.
+Webhook side-effects and command-menu reconciliation disabled in harness to avoid
+n8n events or scope changes; production application unchanged. Pending/approval
+non-owner paths exercised in SQLite+PG unit tests, not other recipients' real chats.
+No migration-time sends, bulk welcome edits or historical alert/mailing repairs.
