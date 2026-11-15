@@ -38,3 +38,6 @@ imagePullSecrets:
 
 homepageIndex:
   enabled: true
+
+# Optional hard eligibility; production placement is owned by deploy values.
+nodeAffinity: {}

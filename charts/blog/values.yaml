@@ -20,3 +20,9 @@ resources:
 
 imagePullSecrets:
   - blog-harbor-pull
+
+# Optional hard eligibility; production placement is owned by deploy values.
+nodeAffinity: {}
+
+podAntiAffinity:
+  enabled: true

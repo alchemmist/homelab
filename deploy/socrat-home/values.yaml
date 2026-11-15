@@ -6,3 +6,12 @@ image:
 
 imagePullSecrets:
   - socrat-home-harbor-pull
+
+# Owner-approved replacement of socrat-2 by VM105; retain the other replica.
+nodeAffinity:
+  requiredDuringSchedulingIgnoredDuringExecution:
+    nodeSelectorTerms:
+      - matchExpressions:
+          - key: kubernetes.io/hostname
+            operator: In
+            values: [socrat-1, socrat-5]
