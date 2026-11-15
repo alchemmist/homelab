@@ -102,7 +102,9 @@ ingress:
 masterkeySecretKey: LITELLM_MASTER_KEY
 masterkeySecretName: litellm-env
 migrationJob:
-  enabled: true
+  # Placement-only change; last migration already succeeded. No new migration Job.
+  placementOnlyImage: ghcr.io/berriai/litellm:1.105.1
+  enabled: false
   hooks:
     argocd:
       enabled: false
