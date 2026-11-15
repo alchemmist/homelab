@@ -1,5 +1,13 @@
 # External: самостоятельная смена пароля
 
+## Исправление browser framing
+
+Первоначальный iframe браузер блокировал: нативный flow отдаёт
+`X-Frame-Options: DENY`. Мини-сервис исправлен на top-level redirect после
+проверки сессии. `/change-password` остаётся входной ссылкой; после входа адрес
+меняется на `/if/flow/socrat-change-password/`. Защита от framing не ослаблялась.
+Ниже iframe-описание первоначальной реализации историческое и заменено этим fix.
+
 Адрес: **https://auth.socrat.alchemmist.xyz/change-password**.
 Пользователь остаётся External, admin/staff группы не нужны. `/if/user/` у
 External закрыт самим Authentik; прежнее обещание открыть там настройки неверно.

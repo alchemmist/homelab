@@ -4,7 +4,7 @@
 
 Argo `password-self-service` Synced/Healthy: /change-password on auth domain.
 Separate nonroot nginx mini-page checks native Authentik cookie, redirects to
-normal login and back; same-origin iframe renders native authenticated-only
+normal login and back; top-level redirect (iframe blocked by native X-Frame-Options DENY) renders authenticated-only
 password/repeat flow in existing theme/random background. No admin token or
 password processing in mini-service, External/groups unchanged. Native fixture
 update/CSRF/mismatch/success tests passed; fixture deleted. Browser unavailable
