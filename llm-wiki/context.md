@@ -1,5 +1,17 @@
 # Socrat: текущий контекст
 
+## blog + socrat-home moved off2 —15Nov, accepted
+
+Owner approved replacing node2 replicas with VM105, retaining two replicas each.
+NOW blog on0+5; socrat-home on1+5. Owning deploy values enforce eligible hostname
+pairs; both charts required anti-affinity, rolling maxSurge0/maxUnavailable1.
+Initial blog surge deadlock corrected in Git (old0/new5 stayed Ready); both now
+rolled out, Argo Synced/Healthy, four Ready/restart0 Pods, no blog/home Pods on2.
+Individual Pod HTML + two Ready endpoints each verified. Repeated public HTTPS
+roots200 (blog/www/home), home favicon/wallpaper/font200. Images/Secrets/routes/
+content unchanged; no DB/PVC transfer, VPN/etcd/other apps untouched. Source
+019276cd +9a931d46. [Acceptance/rollback](../docs/static-apps-vm105-20261115.md).
+
 ## External password self-service — CURRENT
 
 Argo `password-self-service` Synced/Healthy: /change-password on auth domain.
