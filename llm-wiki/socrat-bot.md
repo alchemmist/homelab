@@ -804,3 +804,61 @@ Webhook side-effects and command-menu reconciliation disabled in harness to avoi
 n8n events or scope changes; production application unchanged. Pending/approval
 non-owner paths exercised in SQLite+PG unit tests, not other recipients' real chats.
 No migration-time sends, bulk welcome edits or historical alert/mailing repairs.
+
+## LLM interest + group-first mailings — released 2026-11-15
+
+Direct implementation (no subagents), bot commit
+`040d5ff6e38af47c8af299e47f1b1c8b5b061fd0`. CI43759527607 and QualityGraph43759527673
+success; independently executed PostgreSQL17 UTC full suite **328passed17skipped**,
+CI identical. Isolated native initdb on localhost55440 stopped/removed after tests;
+Podman remained offline and no existing database service was changed. Source docs:
+`docs/mailing-groups.md`, README, OpenAPI + public wiki renderer updated. Homelab
+handoff via isolated worktree; concurrent nodes/rules/version-checker edits untouched.
+
+- `/start` adds independent **LLM** checkbox alongside VPN/Alerts. No automatic
+  historical LLM opt-ins, no API keys issued, no role/approval changes.
+- Owner/private `/mailing` → choose ONE **VPN / Alerts / LLM** group → send text →
+  native formatted preview → existing date/hour/**Now** controls. `/mailing TEXT`
+  remains shortcut but also requires explicit group choice. New pending group/text
+  composition replaces only previous unfinished composition, not scheduled rows.
+  **Cancel** supported before text. All state in DB, no transient PTB user_data.
+  Group selector is one-shot; stale clicks cannot retarget. Commands aren't bodies.
+- Migration **0022_mailing_groups** adds nullable `Broadcast.audience_group` with
+  server/Python VPN default for ALL legacy sent/scheduled/choosing/preview rows.
+  NULL only for unselected/cancelled new interactive drafts. Stored group drives
+  every immediate/scheduled/legacy approval send; invalid/NULL group fails closed,
+  never falls back to VPN/all. Recipients are current SEND-time members, as before.
+  Alerts additionally requires permanent owner approval, not pending selection.
+  Internal plaintext POST/v1/broadcasts retains legacy VPN default; audience API
+  now adds `llm`. UI/history/control summaries show group. Editing retains ONLY
+  original confirmed copies; never re-derives audience or replaces failed edits.
+- Rolling safety: new interactive rows use **group_choosing/group_scheduled**, NOT
+  old choosing/scheduled, so pre-release VPN-only pods cannot mistakenly dispatch
+  an LLM/Alerts group to VPN during overlap/rollback. New worker supports both old
+  and new schedule statuses, atomic claims and owner-scoped picker admission.
+  Regression explicitly checks old worker selectors cannot see group rows.
+  Downgrade refuses while composing/new picker/schedule states or active non-VPN
+  rows exist. Finish/cancel deliberately first, never retarget to VPN to bypass.
+  Downgrade necessarily loses completed-history group metadata; keep backup.
+
+Release image:
+`sha256:74727b6d85f78bef88996f47918c928d2ae1b27f23bc2c43d7029b4929906aa6`.
+All THREE rollouts completed, healthz OK, production schema0022; query found no
+NULL group outside allowed unselected/cancelled states. Protected full pg_dump
+before migration **32650968bytes**, remote/local SHA256 matched:
+`da7ccea1f38a49ccd303f7df6822f71b081ff79979d842b040ebae545a6b37c1`;
+pg_restore-list parsed, private backup outside Git. Chunked transfer avoids known
+kubectl websocket truncation; remote dump and temporary chunks removed.
+
+Actual `/tmp/socrat-mailing-groups-live-smoke.py`: production READ ONLY owner lookup,
+then fresh isolatedSQLite for ALL composition/users/copies. Guarded owner-only
+Telegram start verified3checkboxes, checkedLLM, selectedLLM BEFORE native emoji+
+hidden-link text, actual Now delivery to sole owner and saved receipt, repeatNow
+no duplicate, formatting-only edit kept original receipt ID. Second VPN draft
+used actual day/hour controls and saved future schedule only in isolatedDB. EIGHT
+returned test IDs deleted in finally; zero production DB writes, zero other
+recipient sends. Test disabled command-menu sync and action webhooks, so no n8n
+side effects. Non-owner/privacy, disjoint/multi-interest audiences, Alerts approval,
+current-membership scheduled dispatch, populated legacy backfill and restart/stale
+controls covered on SQLite+PG. Real scheduled ticker/multi-recipient sends were
+not exercised against production users.
