@@ -1,0 +1,5 @@
+image:
+  repository: harbor.socrat.alchemmist.xyz/homelab/wishlist
+  tag: pending
+  digest: ""
+  pullPolicy: IfNotPresent

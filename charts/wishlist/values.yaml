@@ -1,14 +1,17 @@
-replicaCount: 2
+replicaCount: 1
 
 image:
-  repository: docker.io/library/nginx
-  tag: stable-alpine
-  digest: sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311
+  repository: harbor.socrat.alchemmist.xyz/homelab/wishlist
+  tag: pending
+  digest: ""
   pullPolicy: IfNotPresent
+
+imagePullSecrets:
+  - wishlist-harbor-pull
 
 service:
   port: 80
-  targetPort: 80
+  targetPort: 8000
 
 ingress:
   className: traefik
@@ -16,19 +19,11 @@ ingress:
   tlsSecretName: wishlist-tls
   clusterIssuer: letsencrypt-http01
 
+nodeName: socrat-0
+
 resources:
   requests:
-    cpu: 10m
-    memory: 16Mi
-  limits:
+    cpu: 20m
     memory: 64Mi
-
-topologySpreadConstraints:
-  enabled: true
-  maxSkew: 1
-  topologyKey: kubernetes.io/hostname
-  whenUnsatisfiable: ScheduleAnyway
-
-nodeAffinity:
-  excludeHostnames:
-    - socrat-2
+  limits:
+    memory: 256Mi

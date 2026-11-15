@@ -13,6 +13,8 @@ spec:
     path: charts/wishlist
     helm:
       releaseName: wishlist
+      valueFiles:
+        - ../../deploy/wishlist/values.yaml
   destination:
     namespace: wishlist
     server: https://kubernetes.default.svc
