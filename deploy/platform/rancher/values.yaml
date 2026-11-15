@@ -6,8 +6,8 @@ extraNodeSelectorTerms:
 - key: kubernetes.io/hostname
   operator: In
   values:
-  - socrat-0
   - socrat-1
+  - socrat-5
 hostname: rancher.socrat.alchemmist.xyz
 ingress:
   enabled: false
@@ -17,8 +17,6 @@ letsEncrypt:
   email: antropophag@gmail.com
   ingress:
     class: traefik
-nodeSelector:
-  kubernetes.io/hostname: socrat-0
 replicas: 2
 resources:
   limits:
