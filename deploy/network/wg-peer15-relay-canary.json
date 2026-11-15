@@ -1,5 +1,5 @@
 {
-  "status": "staged-bounded-real-WG-canary-not-production",
+  "status": "real-WG-canary-passed-bulk-pending",
   "relayHost": "socrat-0",
   "bind": "10.250.0.1:51835",
   "allowClient": "10.250.0.41:51830",
@@ -17,7 +17,7 @@
     "No WG key/AllowedIPs/node identity changes",
     "No application migrations",
     "Preserve1-to2TLS transport",
-    "RuntimeMaxSec240 on temporary relay",
+    "RuntimeMaxSec600 on temporary relay",
     "Controller finally restores endpoint and rewarms original direct path"
   ],
   "acceptance": [
@@ -28,5 +28,12 @@
   "tradeoffs": [
     "explicit node0 dependency for1-to5",
     "extra WG nesting and potential MTU/fragmentation; verify not assume"
-  ]
+  ],
+  "firstResult": {
+    "wg5to1Small": "60/60",
+    "wg5to1DF1172": "20/20",
+    "wg5to1DF1392": "20/20",
+    "wg1to5Small": "40/40",
+    "endpointRestored": true
+  }
 }
