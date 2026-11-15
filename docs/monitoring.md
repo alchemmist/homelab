@@ -202,3 +202,22 @@ The Nodes header has an Open node in Rancher dashboard link that interpolates th
 Native datasource-managed rule identifiers include the rule file UID, group, name and a definition fingerprint. The monitoring_k3s role therefore installs rules first, waits for the live Prometheus definitions to match the Kubernetes definitions, and generates nodeAlertLinks Helm values before publishing the final dashboard. Expressions are canonicalized through Prometheus format_query. Link generation follows the pinned Grafana13.2.4 identifier format and checks current feature toggles; verify compatibility when upgrading Grafana. Reapply monitoring_k3s after changing alert definitions, including rules from monitoring_base. Source JSON retains name-search fallback links for standalone chart rendering; the managed deployment replaces these with direct links.
 
 The resolver refuses missing or stale rule definitions rather than emitting an outdated link. Tests cover native fingerprint fixtures, query normalization, severity variants and convergence after rule/UID changes. Rule expressions and evaluation behavior are unchanged by this navigation feature.
+
+### Public shared-model activity
+
+`socrat-llm-activity-public` is an intentionally separate one-panel dashboard,
+provisioned by `templates/llm-activity-public.yaml`. It displays **completed
+requests/minute** by `api_key_alias`, aggregating away all other labels before
+Grafana returns data. Key aliases are public display names: never put credentials,
+emails or sensitive information in aliases. It exposes no prompts or responses.
+Zero is NOT proof of idle: unfinished long calls are absent until completion, and
+missing/stale samples remain gaps. LiteLLM's existing in-flight gauge has no key
+labels, so this first version deliberately does not claim per-key concurrency.
+
+Native public sharing only (no anonymous org Viewer). Run
+`scripts/grafana-llm-public.py` on socrat-0 with the repository layout, first audit,
+then `--apply --approve-plan-hash <fresh hash>`. It checks the complete panel
+against the tracked JSON before publishing; backups/ownership receipts and URL
+are operator-private (0700) in `~/.local/state/homelab-grafana-llm-public/`. Time selection is
+allowed; annotations are disabled. The public URL is shareable read-only access.
+Do not publish the existing full LLM dashboard or relax datasource/API gates.

@@ -1,0 +1,13 @@
+# Kept separate from primary dashboards: intentionally limited public projection.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: socrat-llm-activity-public-dashboard
+  labels:
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: /tmp/dashboards/Shared
+    argocd.argoproj.io/sync-wave: "0"
+data:
+  socrat-llm-activity-public.json: |
+{{ .Files.Get "dashboards/llm-activity-public.json" | indent 4 }}

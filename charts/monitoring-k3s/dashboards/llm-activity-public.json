@@ -1,0 +1,87 @@
+{
+  "uid": "socrat-llm-activity-public",
+  "title": "Shared LLM \u00b7 key activity",
+  "description": "Public activity overview for people sharing the local model. Completed requests/minute by key alias, not live concurrency. Long running requests appear only after completion. No prompts, responses, key hashes or credentials are exposed.",
+  "tags": [
+    "Shared LLM"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "editable": false,
+  "links": [],
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Activity by key \u00b7 completed requests/min",
+      "type": "timeseries",
+      "description": "One line per API key alias. Click legend names to show/hide lines; use the time picker to change the interval. Updated every 10 seconds from metrics scraped approximately every 30 seconds. This counts completed calls, including recorded failures, not in-flight work: zero does not guarantee the model is free. A missing series means unknown/no observations, not zero.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 22
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (api_key_alias) (rate(litellm_requests_metric_total{job=\"litellm\",api_key_alias!=\"\",api_key_alias!=\"None\"}[$__rate_interval])) * 60",
+          "legendFormat": "{{api_key_alias}}",
+          "instant": false,
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix:req/min",
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "noValue": "No data",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisLabel": "completed requests/min"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    }
+  ]
+}
