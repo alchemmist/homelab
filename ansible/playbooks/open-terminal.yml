@@ -1,5 +1,5 @@
 ---
-- name: Deploy the internal Open Terminal workspace on socrat-1
+- name: Deploy the internal Open Terminal workspace on socrat-5
   hosts: socrat-0
   gather_facts: false
   become: false
@@ -7,7 +7,7 @@
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
   tasks:
     - name: Verify the target node is ready
-      ansible.builtin.command: kubectl wait --for=condition=Ready node/socrat-1 --timeout=30s
+      ansible.builtin.command: kubectl wait --for=condition=Ready node/socrat-5 --timeout=30s
       changed_when: false
     - name: Copy the secret initializer
       ansible.builtin.copy:

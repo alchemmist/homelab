@@ -1,0 +1,39 @@
+{{- if .Values.migrationStorage.enabled }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .Values.migrationStorage.name }}
+spec:
+  capacity:
+    storage: {{ .Values.migrationStorage.size }}
+  volumeMode: Filesystem
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  claimRef:
+    namespace: {{ .Release.Namespace }}
+    name: {{ .Values.migrationStorage.name }}
+  local:
+    path: {{ .Values.migrationStorage.path | quote }}
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: [{{ .Values.migrationStorage.nodeName | quote }}]
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.migrationStorage.name }}
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: ""
+  volumeName: {{ .Values.migrationStorage.name }}
+  resources:
+    requests:
+      storage: {{ .Values.migrationStorage.size }}
+{{- end }}

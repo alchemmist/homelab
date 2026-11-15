@@ -21,7 +21,7 @@ spec:
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
       nodeSelector:
-        kubernetes.io/hostname: {{ .Values.nodeName | quote }}
+        kubernetes.io/hostname: {{ .Values.gateway.nodeName | default .Values.nodeName | quote }}
       containers:
         - name: nginx
           image: {{ .Values.gateway.image | quote }}

@@ -1,3 +1,4 @@
+replicaCount: 0
 image: ghcr.io/open-webui/open-webui:v0.12.3-slim@sha256:5adfb0355bbe4a5860c0ba9482cc0b40f573de3749a21a64cf4789391a14fffc
 nodeName: socrat-0
 webuiUrl: https://chat.alchemmist.xyz
@@ -15,6 +16,7 @@ auth:
   secret: open-webui-auth
   secretKey: secret-key
 persistence:
+  claimName: open-webui-data
   storageClass: local-path
   size: 5Gi
 resources:
@@ -31,6 +33,8 @@ ingress:
   tlsSecret: open-webui-tls
   clusterIssuer: letsencrypt-http01
 gateway:
+  # Retain the original private redirect listener/address while the app moves.
+  nodeName: socrat-0
   redirectHttps: true
   image: nginx:1.28-alpine@sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236
   address: 10.250.0.1
@@ -67,3 +71,11 @@ publicEntry:
     service: open-webui
     port: 8080
     authorization: native-oidc
+
+# New VM data is separate from the retained, never-deleted legacy claim.
+migrationStorage:
+  enabled: true
+  name: open-webui-socrat5
+  nodeName: socrat-5
+  path: /mnt/files/homelab/open-webui/data
+  size: 5Gi

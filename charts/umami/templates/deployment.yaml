@@ -31,6 +31,7 @@ spec:
   template:
     metadata: { labels: { app: umami } }
     spec:
+      nodeSelector: { kubernetes.io/hostname: {{ .Values.nodeName | quote }} }
       containers:
       - name: umami
         image: {{ .Values.umamiImage }}

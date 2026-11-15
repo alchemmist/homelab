@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: open-webui
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicaCount }}
   strategy:
     type: Recreate
   selector:
@@ -30,8 +30,18 @@ spec:
       enableServiceLinks: false
       nodeSelector:
         kubernetes.io/hostname: {{ .Values.nodeName | quote }}
-      {{- if .Values.toolGuard.enabled }}
+      {{- if or .Values.toolGuard.enabled (and .Values.migrationStorage.enabled (eq .Values.persistence.claimName .Values.migrationStorage.name)) }}
       initContainers:
+        {{- if and .Values.migrationStorage.enabled (eq .Values.persistence.claimName .Values.migrationStorage.name) }}
+        - name: require-verified-migration
+          image: {{ .Values.image | quote }}
+          command: [python, -c]
+          args:
+            - "import pathlib,json; p=pathlib.Path('/data'); assert json.loads((p/'.homelab-vm105-migration-verified.json').read_text())['verified']; assert (p/'webui.db').open('rb').read(16)==b'SQLite format 3'+bytes([0])"
+          volumeMounts:
+            - {name: data, mountPath: /data, readOnly: true}
+        {{- end }}
+        {{- if .Values.toolGuard.enabled }}
         - name: prepare-tool-guard
           image: {{ .Values.image | quote }}
           command: [python, /guard/patch_tool_guard.py]
@@ -42,6 +52,7 @@ spec:
               readOnly: true
             - name: patched-middleware
               mountPath: /patched
+        {{- end }}
       {{- end }}
       containers:
         - name: open-webui
@@ -152,4 +163,4 @@ spec:
         {{- end }}
         - name: data
           persistentVolumeClaim:
-            claimName: open-webui-data
+            claimName: {{ .Values.persistence.claimName }}

@@ -29,7 +29,7 @@ kind: Deployment
 metadata:
   name: open-terminal
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicaCount }}
   strategy:
     type: Recreate
   selector:
@@ -51,6 +51,16 @@ spec:
       enableServiceLinks: false
       nodeSelector:
         kubernetes.io/hostname: {{ .Values.nodeName }}
+      {{- if and .Values.migrationStorage.enabled (eq .Values.claimName .Values.migrationStorage.name) }}
+      initContainers:
+        - name: require-verified-migration
+          image: {{ .Values.image | quote }}
+          command: [python, -c]
+          args:
+            - "import pathlib,json; p=pathlib.Path('/data'); assert json.loads((p/'.homelab-vm105-migration-verified.json').read_text())['verified']; assert (p/'AGENTS.md').stat().st_size>0"
+          volumeMounts:
+            - {name: data, mountPath: /data, readOnly: true}
+      {{- end }}
       containers:
         - name: open-terminal
           image: {{ .Values.image | quote }}
@@ -130,4 +140,4 @@ spec:
         {{- end }}
         - name: data
           persistentVolumeClaim:
-            claimName: open-terminal-data
+            claimName: {{ .Values.claimName }}

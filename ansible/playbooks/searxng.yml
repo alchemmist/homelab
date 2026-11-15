@@ -7,7 +7,7 @@
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
   tasks:
     - name: Verify the search node is ready
-      ansible.builtin.command: kubectl wait --for=condition=Ready node/socrat-1 --timeout=30s
+      ansible.builtin.command: kubectl wait --for=condition=Ready node/socrat-5 --timeout=30s
       changed_when: false
     - name: Ensure the search namespace and persistent secret
       ansible.builtin.command:

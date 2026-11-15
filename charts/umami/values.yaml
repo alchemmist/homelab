@@ -6,3 +6,6 @@ tlsSecret: umami-tls
 # Existing external Secret; chart must never create an empty placeholder.
 secretName: umami-env
 clusterIssuer: letsencrypt-http01
+
+# App only; the authoritative PostgreSQL data stays on socrat-0.
+nodeName: socrat-5
