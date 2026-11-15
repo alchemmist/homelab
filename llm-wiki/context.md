@@ -1,5 +1,34 @@
 # Socrat: текущий контекст
 
+##1↔5 network diagnosis —16Nov01:34MSK, CURRENT
+
+Direct WAN UDP toward1 has confirmed underlay loss, BEFORE WG decryption, not just
+Flannel/app issues. Correct host1 WG address10.250.0.3 (not.11), Arch laptop with
+wlan0, NOT an OpenVZ container.5 peer1 endpoint109.173.40.247:51831 ->home NAT ->
+192.168.0.24:51830. Mesh does NOT automatically use peer2's TCP/TLS relay for5.
+40packet controls:1->5 WG32.5% loss,1->0 WG/LAN and1->router0%; separate0->5
+40packet0%;5->1 tiny packets15–50% in bounded runs. At20% loss guest5 RX/TX
+0.131/0.280Mbps, far below30Mbps cap, guest drops0. Not a CPU/RAM shortage.
+Matched header-only two-end capture:5 sent20encrypted UDP probes,1 wlan received
+17exact matching transport receiver-index/counters; same3ICMP requests missing;
+all17received decrypted/replied. Reverse overlapping encrypted counters20/20
+arrived5. Packet-socket capture drops0. Fault localized between5 virtual NIC TX
+and1 physical NIC RX, includes hypervisor/underlay/NAT/AP; exact device/firmware/
+provider cause NOT proven. Node1 Wi-Fi-39dBm, power-saveOFF; LAN controls healthy.
+Existing k3s-ha.md ALREADY documents unrepaired1<->VPS directWAN UDP failure,
+MTU/offload/port/band experiments ineffective, TCP healthy. Existing authenticated
+pinned GOST TLS workaround covers ONLY1<->2, not5. Preserve its guard/timer/auth.
+Separate WG MTU65456/Flannel65406 on1 over1500wlan is real; localhost relay and
+wg-quick auto-MTU are plausible provenance, not captured startup proof. Don't
+pretend this explains tiny-packet loss or restart mesh/K3s/resize live Pod veths
+without a reviewed maintenance/rollback procedure. Prior MSS trial fully removed.
+No production network or app placement changes this diagnosis; one bounded
+hostNetwork NET_RAW-only no-SA/no-mount header capture Pod deleted. NetBird policies
+not expanded. Detailed [evidence and next decisions](../docs/wireguard-1-5-packet-loss-20261116.md):
+physical Ethernet/router capture A/B or separately approved scoped1<->5 TLS
+transport; preserve identities, no arbitrary relay or broad route/firewall opening.
+LMS stays5, LiteLLM0, renderer1, Rancher1; additional moves remain gated.
+
 ## LMS move accepted; LiteLLM/renderer recovered —16Nov00:52MSK, CURRENT
 
 Only LMS web worker accepted on5 from this three-component attempt. Same image,

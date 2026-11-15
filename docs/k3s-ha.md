@@ -57,6 +57,12 @@ The following transport and home-ingress sections describe the existing home-nod
 
 ### Home laptop to VPS transport
 
+**16Nov follow-up:** the same direct WAN UDP failure class also affects1↔5.
+A matched two-end capture found missing encrypted packets before node1 WireGuard
+decryption; the existing TLS workaround below protects only1↔2, not other peers.
+See [measurements, exact limits and next decisions](wireguard-1-5-packet-loss-20261116.md).
+No physical fault repair, relay expansion or network restart was done in that investigation.
+
 Direct WAN UDP between `socrat-1` and the VPS exhibited severe 40–100% packet loss, including raw UDP probes. The `socrat-0`–VPS path and local LAN UDP were healthy. MTU, offload, port and 2.4 GHz experiments did not resolve this; the original Wi-Fi configuration was restored. A TCP probe completed twenty 16 KiB transfers cleanly. The underlying router/Wi-Fi fault is not repaired.
 
 The `wireguard_tcp_transport` role is deployed as a transport workaround for the independent `socrat-1`–VPS path. It uses GOST 3.3.0 with authenticated TLS and a fixed UDP relay:
