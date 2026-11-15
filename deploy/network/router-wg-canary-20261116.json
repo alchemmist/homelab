@@ -1,0 +1,27 @@
+{
+  "status": "staged-provisional-port-path-experiment",
+  "purpose": "Separate current UDP51831 flow/translation from WAN-to-WiFi path without changing existing forward",
+  "rule": {
+    "name": "wg5-to1-canary",
+    "interface": "WAN2",
+    "protocol": "udp",
+    "external_port": 51835,
+    "destination_address": "192.168.0.24",
+    "destination_port": 51830,
+    "remote_source_ipv4": "94.29.124.139"
+  },
+  "endpointOnlyDuringCanary": {
+    "node": "socrat-5",
+    "peer": "socrat-1",
+    "old": "109.173.40.247:51831",
+    "temporary": "109.173.40.247:51835"
+  },
+  "preserve": [
+    "all existing forwarding rows",
+    "WG keys, node addresses, AllowedIPs",
+    "all other peer endpoints",
+    "no public inbound listener on5",
+    "all application placement"
+  ],
+  "rollback": "Restore5peer1 endpoint51831, delete ONLY exact canary row and verify canonical preimage"
+}
