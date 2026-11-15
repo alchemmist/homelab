@@ -58,6 +58,14 @@ def main():
                      or values.get('strategy') != desired_strategy
                      or values.get('terminationGracePeriodSeconds', 90) < 7260)
     if needs_upgrade:
+        # VM105 native issuer routing is owned by the pinned Git chart. An OCI
+        # upgrade using the stale Helm-release values would silently undo it.
+        application = run(['k3s', 'kubectl', '--kubeconfig', args.kubeconfig,
+                           '-n', 'argocd', 'get', 'application', args.release,
+                           '--ignore-not-found', '-o', 'json'])
+        if application.strip() and any(source.get('path') == 'charts/litellm'
+                                       for source in json.loads(application).get('spec', {}).get('sources', [])):
+            raise RuntimeError('LiteLLM is Git-chart managed; update canonical deploy/platform/litellm/values.yaml, not the legacy OCI release')
         vllm = kube('get', 'service', 'vllm')['spec']['clusterIP']
         deadline = time.monotonic() + args.idle_timeout
         idle_samples = 0

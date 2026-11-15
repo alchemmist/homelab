@@ -23,7 +23,7 @@
         mode: preserve
     - name: Copy gateway values
       ansible.builtin.copy:
-        src: ../../deploy/litellm/values.yaml
+        src: ../../deploy/platform/litellm/values.yaml
         dest: '{{ homelab_user_home }}/tmp-charts/litellm-values.yaml'
         mode: '0644'
     - name: Deploy database and certificate
@@ -31,9 +31,14 @@
         helm upgrade --install litellm-infra {{ homelab_user_home }}/tmp-charts/litellm-infra
         -n llm --wait --timeout 10m
       changed_when: true
-    - name: Deploy official LiteLLM chart
+    - name: Copy pinned upstream chart with native IdP route extension
+      ansible.builtin.copy:
+        src: ../../charts/litellm/
+        dest: '{{ homelab_user_home }}/tmp-charts/litellm/'
+        mode: preserve
+    - name: Deploy pinned LiteLLM chart with placement and migration guards
       ansible.builtin.command: >-
-        helm upgrade --install litellm oci://ghcr.io/berriai/litellm-helm --version 1.105.1
+        helm upgrade --install litellm {{ homelab_user_home }}/tmp-charts/litellm
         -n llm -f {{ homelab_user_home }}/tmp-charts/litellm-values.yaml
         --wait --timeout 20m
       changed_when: true

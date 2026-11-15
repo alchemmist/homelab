@@ -48,3 +48,11 @@ class MigrationTests(unittest.TestCase):
   a=load('deploy/argocd/apps/litellm.yaml')['spec'];self.assertEqual(a['sources'][0]['path'],'charts/litellm')
   self.assertFalse(a['syncPolicy']['automated']['prune']);self.assertIn('ApplyOutOfSyncOnly=true',a['syncPolicy']['syncOptions'])
   self.assertEqual(load('charts/litellm/Chart.yaml')['version'],'1.105.1')
+
+ def test_ansible_cannot_silently_revert_to_old_node_or_oci_chart(self):
+  s=(R/'ansible/playbooks/litellm.yml').read_text()
+  self.assertIn('src: ../../deploy/platform/litellm/values.yaml',s)
+  self.assertIn('src: ../../charts/litellm/',s)
+  self.assertNotIn('oci://ghcr.io/berriai/litellm-helm',s)
+  g=(R/'ansible/roles/monitoring_llm_gateway/files/configure_gateway.py').read_text()
+  self.assertLess(g.index("source.get('path') == 'charts/litellm'"),g.index("run(helm + ['upgrade'"))

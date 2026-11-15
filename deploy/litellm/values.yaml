@@ -1,3 +1,5 @@
+# LEGACY SNAPSHOT, NOT DEPLOY INPUT: canonical values are deploy/platform/litellm/values.yaml.
+# VM105 needs the pinned charts/litellm extension; do not deploy this old node0 snapshot.
 fullnameOverride: litellm
 replicaCount: 1
 numWorkers: 1
