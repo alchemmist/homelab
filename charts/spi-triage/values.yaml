@@ -40,3 +40,8 @@ imagePullSecrets:
 graphs:
   enabled: false
   existingSecret: spi-graph-client
+
+workerReplicas: 1
+dataClaim: spi-triage-data
+requireExistingData: false
+maintenanceIngressPaused: false

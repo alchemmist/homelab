@@ -17,7 +17,7 @@ kind: Deployment
 metadata:
   name: spi-triage
 spec:
-  replicas: 1
+  replicas: {{ .Values.workerReplicas }}
   strategy:
     type: Recreate
   selector:
@@ -49,6 +49,19 @@ spec:
         fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
+      {{- if .Values.requireExistingData }}
+      initContainers:
+        - name: require-existing-spi
+          image: {{ include "spi-triage.image" . | quote }}
+          command: [python, -B, -c]
+          args:
+            - >-
+              from pathlib import Path;
+              p=Path('/data/spi.sqlite');
+              assert p.is_file() and p.open('rb').read(16)==b'SQLite format 3\x00', 'Existing SPI job database required'
+          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
+          volumeMounts: [{name: data, mountPath: /data, readOnly: true}]
+      {{- end }}
       containers:
         - name: worker
           image: {{ include "spi-triage.image" . | quote }}
@@ -175,7 +188,7 @@ spec:
         {{- end }}
         - name: data
           persistentVolumeClaim:
-            claimName: spi-triage-data
+            claimName: {{ .Values.dataClaim }}
         - name: github
           secret:
             secretName: spi-github-installation
@@ -193,6 +206,9 @@ spec:
   {{- end }}
   selector:
     app: spi-triage
+    {{- if .Values.maintenanceIngressPaused }}
+    homelab.io/maintenance-serving: enabled
+    {{- end }}
   ports:
     - name: http
       port: 8080

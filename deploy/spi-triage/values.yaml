@@ -38,3 +38,6 @@ imagePullSecrets:
 graphs:
   enabled: true
   existingSecret: spi-graph-client
+
+# Quiesce only ingress; keep old server alive until idle checkpoint.
+maintenanceIngressPaused: true
