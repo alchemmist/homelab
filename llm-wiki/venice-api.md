@@ -295,3 +295,54 @@ Long-running work should remain bounded and inspected, with normal Pi permission
 Detailed adapter contract: `venice-api/docs/pi-agent-protocol.md`. Private real Pi
 journals/preimages/fixtures: controller `~/venice-auth/agent-adapter-20261116/`;
 no credentials or private transcript payloads committed here.
+
+### Follow-up: ordinary owner's Pi configuration, not a minimal harness
+
+Owner requested stronger acceptance. Pi1.5.2 was run with its **normal real user
+configuration**, no isolated agent dir and no no-extensions/no-mcp/no-skills flags,
+against public `litellm/venice-deepseek`. Its system advertised13 tools, including
+codemode. Work was restricted to a new disposable controller fixture.
+
+- Initial normal Pi session: actual bash inspected files; a real unittest run
+  found2 failures out of3; edit corrected the Decimal tax formula; rerun3/3 passed;
+  write created REPORT.md. Five tool calls; no model protocol errors. The initial
+  model command echoed EXIT=1/0 after unittest (outer shell exit0), so the failure
+  evidence is actual unittest output, not that wrapper's shell status.
+- Reopened the same saved session: actual codemode invoked nested local read and
+  bash tools; tests passed; write created CONTINUATION.md. No model protocol errors.
+- Three more separate read calls consumed32466 bytes of synthetic context;
+  returned all three end markers and nonzero usage, no model errors.
+- Manual compaction via actual Pi RPC succeeded: tokensBefore15896,
+  estimatedTokensAfter13468, reported summary-call usage4474/1310. Afterwards
+  real bash read the corrected file and ran unwrapped unittest: all3 passed,
+  actual structured exit_code0, final answer and agent_settled completed.
+- Active-command cancellation through RPC: local bash started a harmless Python
+  sleep and printed12345; abort returned `Command aborted`, agent_settled aborted
+  true. In the SAME Pi process, the next task ran unittest successfully with raw
+  exit_code0 and settled normally. Completion marker67890 was never produced.
+- Independent comparison confirms the fixture test file was NOT weakened/edited.
+
+Only Venice's compaction settings were tuned in the existing dirty dotfiles:
+`compaction.modelOverrides["litellm/venice-deepseek"]` now reserveTokens12000,
+keepRecentTokens6000, rather than retaining the global20000-token recent window
+inside this32768-context model. Other model/default settings were preserved;
+preimage is private; no dotfiles commit/push. Small-session manual compaction
+first returned the honest `Nothing to compact (session too small)`; the successful
+check above used the larger synthetic context and does not imply automatic
+multi-hour compaction has been soak-certified.
+
+Public connectivity is a separate remaining limitation: one intermediate RPC
+follow-up got repeated Node UND_ERR_CONNECT_TIMEOUT before model completion.
+Controller ordinary DNS resolved HOME109.173.40.247 and VPS109.120.141.60.
+Two credential-free forced-IP Host/SNI/TLS checks returned401 from HOME while
+VPS TCP443 timed out. This is THIS vantage's reachability result, NOT proof of
+worldwide VPS outage or stale DNS. The existing public DNS runbook already warns
+about partial reachability/failover limitations. No DNS/VPN/route/ingress changes
+were made; normal subsequent Pi sessions succeeded. Network failure must not be
+presented as a function-call failure, nor hidden under an hours-long reliability
+claim.
+
+Private evidence: `~/venice-auth/agent-adapter-20261116/normal-pi-acceptance/`,
+including real session/tool events, compaction and abort RPC receipts, unchanged
+test hash and generated reports. This strengthens actual normal Pi compatibility;
+it still does not certify every one of13 tools or unattended multi-hour work.
