@@ -1,5 +1,9 @@
 {
   "dashboards": {
+    "alerts-02b1bb4d009e59f4": {
+      "SocratSoftwareUpdateAvailable": 1,
+      "SocratSoftwareUpdateCheckFailed": 3
+    },
     "alerts-0327c814398fa1f9": {
       "ThanosCascadeStale": 1,
       "ThanosCompactorHalted": 3,

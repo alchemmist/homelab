@@ -108,5 +108,9 @@ alertGraphAnnotations:
     / rule evaluations","dashboard_uid":"alerts-8bcf7e7a450f9592","panel_id":74,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
   SocratServiceXUiUnavailable: '{"version":1,"graphs":[{"id":"primary","title":"SocratServiceXUiUnavailable","dashboard_uid":"alerts-8bcf7e7a450f9592","panel_id":75,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratServiceXUiUnavailable
     / rule evaluations","dashboard_uid":"alerts-8bcf7e7a450f9592","panel_id":76,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
+  SocratSoftwareUpdateAvailable: '{"version":1,"graphs":[{"id":"primary","title":"SocratSoftwareUpdateAvailable","dashboard_uid":"alerts-02b1bb4d009e59f4","panel_id":1,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratSoftwareUpdateAvailable
+    / rule evaluations","dashboard_uid":"alerts-02b1bb4d009e59f4","panel_id":2,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
+  SocratSoftwareUpdateCheckFailed: '{"version":1,"graphs":[{"id":"primary","title":"SocratSoftwareUpdateCheckFailed","dashboard_uid":"alerts-02b1bb4d009e59f4","panel_id":3,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratSoftwareUpdateCheckFailed
+    / rule evaluations","dashboard_uid":"alerts-02b1bb4d009e59f4","panel_id":4,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
   SocratVPNFallbackActive: '{"version":1,"graphs":[{"id":"primary","title":"SocratVPNFallbackActive","dashboard_uid":"alerts-5ff273a38f679e5c","panel_id":1,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratVPNFallbackActive
     / rule evaluations","dashboard_uid":"alerts-5ff273a38f679e5c","panel_id":2,"variables":{},"before_seconds":7200,"after_seconds":300}]}'

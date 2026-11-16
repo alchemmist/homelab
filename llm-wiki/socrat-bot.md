@@ -13,7 +13,7 @@ Release contract matches [cluster-deploy.md](cluster-deploy.md): the image lives
 
 Three layers. Secrets do not go through Git.
 
-1. **Bot repository** `alchemmist/socrat-bot` builds one image, `harbor.socrat.alchemmist.xyz/homelab/socrat-bot`. Three processes share it: `python -m socrat_bot`, `python -m socrat_bot.updater`, and `python -m socrat_bot.broker`. The Telegram token, Postgres password, and `INTERNAL_TOKEN` live only in the cluster Secret `socrat-bot-env`. The chart does not render that Secret.
+1. **Bot repository** `alchemmist/socrat-bot` builds one image, `harbor.socrat.alchemmist.xyz/homelab/socrat-bot`. The chart runs one process, `python -m socrat_bot`. Version checks are Prometheus alerts, not bot-side upgrades. The Telegram token, Postgres password, and `INTERNAL_TOKEN` live only in the cluster Secret `socrat-bot-env`. The chart does not render that Secret.
 2. **Homelab** holds the chart, values, and Application. `deploy-to-socrat` changes only root `image.tag` and `image.digest`. Postgres stays under `postgres.image` (`postgres:17`).
 3. **n8n** receives the Alertmanager webhook and calls internal `POST /v1/messages`. The bot token is not stored in Grafana. `X-Internal-Token` is the n8n credential `Socrat bot internal`.
 
@@ -21,8 +21,7 @@ Three layers. Secrets do not go through Git.
 
 - Public Telegram webhook: `https://bot.socrat.alchemmist.xyz/telegram/webhook`. Ingress exposes only `/telegram`.
 - Internal API: `http://socrat-bot.socrat-bot.svc:8080`.
-- The bot and sudo-broker use the host network on `socrat-2` (host ports 8082 and 8081) because pod egress from `socrat-3` cannot reach `api.telegram.org`. Services still publish port 8080.
-- xui-updater stays on the pod network and probes the 3X-UI Service on port 2053.
+- The bot uses the host network on `socrat-2` (host port 8082) because pod egress from `socrat-3` cannot reach `api.telegram.org`. The Service still publishes port 8080.
 
 ## Where it lives
 

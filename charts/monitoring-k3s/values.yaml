@@ -215,3 +215,95 @@ serviceProbes:
     module: tcp_connect
     alertName: SocratServiceEdgeMoscowUnavailable
 otelBackendExternalIP: 10.250.0.3
+
+# current must match the version pinned in that application's chart.
+# The checker compares it with the newest stable GitHub release and does not upgrade anything.
+updateWatch:
+  enabled: true
+  image: python:3.13-alpine@sha256:7984cf56ceaddebe4fefeb75d64000b9f45d8b77b11a09b24524da6cdc3af0c8
+  node: socrat-1
+  intervalSeconds: "21600"
+  timeoutSeconds: "20"
+  targets:
+    - id: open-webui
+      title: Open WebUI
+      current: "0.12.3"
+      github: open-webui/open-webui
+      namespace: llm
+      deployment: open-webui
+      container: open-webui
+    - id: x-ui
+      title: 3x-ui
+      current: "3.10.2"
+      github: MHSanaei/3x-ui
+      namespace: x-ui
+      deployment: x-ui
+      container: primary
+    - id: open-terminal
+      title: Open Terminal
+      current: "0.14.1"
+      github: open-webui/open-terminal
+    - id: n8n
+      title: n8n
+      current: "1.123.87"
+      github: n8n-io/n8n
+    - id: authentik
+      title: Authentik
+      current: "2026.8.5"
+      github: goauthentik/authentik
+    - id: litellm
+      title: LiteLLM
+      current: "1.105.1"
+      github: BerriAI/litellm
+    - id: searxng
+      title: SearXNG
+      current: "2026.10.19"
+      github: searxng/searxng
+    - id: remark42
+      title: Remark42
+      current: "1.17.1"
+      github: umputun/remark42
+    - id: uptime-kuma
+      title: Uptime Kuma
+      current: "2.5.7"
+      github: louislam/uptime-kuma
+    - id: syncthing
+      title: Syncthing
+      current: "2.1.3"
+      github: syncthing/syncthing
+    - id: traefik
+      title: Traefik
+      current: "3.7.13"
+      github: traefik/traefik
+    - id: cert-manager
+      title: cert-manager
+      current: "1.16.2"
+      github: cert-manager/cert-manager
+    - id: harbor
+      title: Harbor
+      current: "2.15.4"
+      github: goharbor/harbor
+    - id: rancher
+      title: Rancher
+      current: "2.15.2"
+      github: rancher/rancher
+    - id: grafana
+      title: Grafana
+      current: "13.2.4"
+      github: grafana/grafana
+    - id: pyroscope
+      title: Pyroscope
+      current: "2.4.2"
+      github: grafana/pyroscope
+    - id: thanos
+      title: Thanos
+      current: "0.42.4"
+      github: thanos-io/thanos
+    - id: netbird
+      title: NetBird
+      current: "0.82.0"
+      github: netbirdio/netbird
+    - id: nvidia-device-plugin
+      title: NVIDIA device plugin
+      current: "0.20.1"
+      github: NVIDIA/k8s-device-plugin

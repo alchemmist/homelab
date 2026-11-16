@@ -2512,6 +2512,68 @@
   },
   {
     "owner": "monitoring-k3s",
+    "resource": "monitoring-update-watch",
+    "group": "socrat.software.updates",
+    "alert": "SocratSoftwareUpdateAvailable",
+    "expr": "socrat_software_update_available{job=\"monitoring-update-watch\"} == 1",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "SocratSoftwareUpdateAvailable",
+          "dashboard_uid": "alerts-02b1bb4d009e59f4",
+          "panel_id": 1,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "SocratSoftwareUpdateAvailable / rule evaluations",
+          "dashboard_uid": "alerts-02b1bb4d009e59f4",
+          "panel_id": 2,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
+    "resource": "monitoring-update-watch",
+    "group": "socrat.software.updates",
+    "alert": "SocratSoftwareUpdateCheckFailed",
+    "expr": "socrat_software_update_check_success{job=\"monitoring-update-watch\"} == 0",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "SocratSoftwareUpdateCheckFailed",
+          "dashboard_uid": "alerts-02b1bb4d009e59f4",
+          "panel_id": 3,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "SocratSoftwareUpdateCheckFailed / rule evaluations",
+          "dashboard_uid": "alerts-02b1bb4d009e59f4",
+          "panel_id": 4,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
     "resource": "monitoring-k3s-shared-registry",
     "group": "socrat.vpn.health",
     "alert": "SocratVPNFallbackActive",

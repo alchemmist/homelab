@@ -1,0 +1,170 @@
+{{- if .Values.updateWatch.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: monitoring-update-watch
+data:
+  targets.json: |
+{{ .Values.updateWatch.targets | toJson | indent 4 }}
+  update_watch.py: |
+{{ .Files.Get "files/update_watch.py" | indent 4 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: monitoring-update-watch
+  labels:
+    app: monitoring-update-watch
+    jobLabel: monitoring-update-watch
+spec:
+  selector:
+    app: monitoring-update-watch
+  ports:
+    - name: http-metrics
+      port: 8080
+      targetPort: http-metrics
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: monitoring-update-watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: monitoring-update-watch
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: monitoring-update-watch
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: monitoring-update-watch
+subjects:
+  - kind: ServiceAccount
+    name: monitoring-update-watch
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: monitoring-update-watch
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: monitoring-update-watch
+  template:
+    metadata:
+      annotations:
+        checksum/catalog: {{ .Values.updateWatch.targets | toJson | sha256sum }}
+      labels:
+        app: monitoring-update-watch
+    spec:
+      serviceAccountName: monitoring-update-watch
+      automountServiceAccountToken: true
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.updateWatch.node }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: update-watch
+          image: {{ .Values.updateWatch.image | quote }}
+          command: ["python3", "/etc/update-watch/update_watch.py"]
+          env:
+            - name: UPDATE_WATCH_INTERVAL_SECONDS
+              value: {{ .Values.updateWatch.intervalSeconds | quote }}
+            - name: UPDATE_WATCH_TIMEOUT_SECONDS
+              value: {{ .Values.updateWatch.timeoutSeconds | quote }}
+          ports:
+            - name: http-metrics
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: http-metrics
+            initialDelaySeconds: 15
+            periodSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: http-metrics
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 64Mi
+          volumeMounts:
+            - name: catalog
+              mountPath: /etc/update-watch
+              readOnly: true
+      volumes:
+        - name: catalog
+          configMap:
+            name: monitoring-update-watch
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: monitoring-update-watch
+  labels:
+    release: {{ .Values.prometheusRelease }}
+spec:
+  jobLabel: jobLabel
+  selector:
+    matchLabels:
+      app: monitoring-update-watch
+  endpoints:
+    - port: http-metrics
+      interval: 60s
+      scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: monitoring-update-watch
+  labels:
+    release: {{ .Values.prometheusRelease }}
+spec:
+  groups:
+    - name: socrat.software.updates
+      rules:
+        - alert: SocratSoftwareUpdateAvailable
+          expr: socrat_software_update_available{job="monitoring-update-watch"} == 1
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "SocratSoftwareUpdateAvailable" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
+            summary: '{{ `{{ $labels.title }}` }} has a newer stable release.'
+            description: '{{ `{{ $labels.title }}` }} is pinned at {{ `{{ $labels.current }}` }} and the newest stable GitHub release is {{ `{{ $labels.latest }}` }}. Shown in Grafana with the other Prometheus alerts. The running image tag is used when it contains a version; otherwise updateWatch current is the installed version. This alert does not upgrade the workload.'
+        - alert: SocratSoftwareUpdateCheckFailed
+          expr: socrat_software_update_check_success{job="monitoring-update-watch"} == 0
+          for: 6h
+          labels:
+            severity: warning
+          annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "SocratSoftwareUpdateCheckFailed" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
+            summary: Software update check failed.
+            description: '{{ `{{ $labels.app }}` }} could not be compared with GitHub releases for 6 hours. No update notification is emitted for that application until the lookup succeeds.'
+{{- end }}
