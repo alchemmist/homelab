@@ -42,6 +42,8 @@ alertGraphAnnotations:
     / rule evaluations","dashboard_uid":"alerts-8bcf7e7a450f9592","panel_id":10,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
   SocratServiceEdgeHomeUnavailable: '{"version":1,"graphs":[{"id":"primary","title":"SocratServiceEdgeHomeUnavailable","dashboard_uid":"alerts-8bcf7e7a450f9592","panel_id":11,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratServiceEdgeHomeUnavailable
     / rule evaluations","dashboard_uid":"alerts-8bcf7e7a450f9592","panel_id":12,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
+  SocratServiceEdgeMoscowUnavailable: '{"version":1,"graphs":[{"id":"primary","title":"SocratServiceEdgeMoscowUnavailable","dashboard_uid":"alerts-8bcf7e7a450f9592","panel_id":77,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratServiceEdgeMoscowUnavailable
+    / rule evaluations","dashboard_uid":"alerts-8bcf7e7a450f9592","panel_id":78,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
   SocratServiceEdgeVpsUnavailable: '{"version":1,"graphs":[{"id":"primary","title":"SocratServiceEdgeVpsUnavailable","dashboard_uid":"alerts-8bcf7e7a450f9592","panel_id":13,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratServiceEdgeVpsUnavailable
     / rule evaluations","dashboard_uid":"alerts-8bcf7e7a450f9592","panel_id":14,"variables":{},"before_seconds":7200,"after_seconds":300}]}'
   SocratServiceFormatQuorumUnavailable: '{"version":1,"graphs":[{"id":"primary","title":"SocratServiceFormatQuorumUnavailable","dashboard_uid":"alerts-8bcf7e7a450f9592","panel_id":15,"variables":{},"before_seconds":1800,"after_seconds":300},{"id":"condition","title":"SocratServiceFormatQuorumUnavailable

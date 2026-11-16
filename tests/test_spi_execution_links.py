@@ -34,4 +34,6 @@ class ExecutionLinks(unittest.TestCase):
         self.assertIsNotNone(match)
         self.assertEqual(set(ast.literal_eval(match[1])),{
             'LLM_ADMISSION_DEFERRED','WORKER_ADMISSION_DEFERRED','GRAPH_CAPTURE_DEFERRED',
-            'GITHUB_READ_TIMEOUT','GITHUB_READ_NETWORK_ERROR','MATCH_PROGRESS_DEFERRED'})
+            'GITHUB_READ_TIMEOUT','GITHUB_READ_NETWORK_ERROR','MATCH_PROGRESS_DEFERRED','STORAGE_TRANSIENT'})
+        # Existing production contract admits storage retries ONLY in Publish.
+        self.assertIn("if(x.status==='deferred' && x.code==='STORAGE_TRANSIENT' && x.stage!=='publish') throw new Error('INVALID_SPI_WAIT_CODE');", code)

@@ -1,0 +1,252 @@
+{
+  "dashboards": {
+    "alerts-0327c814398fa1f9": {
+      "ThanosCascadeStale": 1,
+      "ThanosCompactorHalted": 3,
+      "ThanosCompactorScaledDown": 5,
+      "ThanosFiveDiskLow": 7,
+      "ThanosRawDiskLow": 9,
+      "ThanosScrapeNodeMemoryLow": 11,
+      "ThanosSidecarDown": 13
+    },
+    "alerts-1025f972a9e83dc0": {
+      "PrometheusBadConfig": 1,
+      "PrometheusDuplicateTimestamps": 3,
+      "PrometheusErrorSendingAlertsToAnyAlertmanager": 5,
+      "PrometheusErrorSendingAlertsToSomeAlertmanagers": 7,
+      "PrometheusHighQueryLoad": 9,
+      "PrometheusKubernetesListWatchFailures": 11,
+      "PrometheusLabelLimitHit": 13,
+      "PrometheusMissingRuleEvaluations": 15,
+      "PrometheusNotConnectedToAlertmanagers": 17,
+      "PrometheusNotIngestingSamples": 19,
+      "PrometheusNotificationQueueRunningFull": 21,
+      "PrometheusOutOfOrderTimestamps": 23,
+      "PrometheusRemoteStorageFailures": 25,
+      "PrometheusRemoteWriteBehind": 27,
+      "PrometheusRemoteWriteDesiredShards": 29,
+      "PrometheusRuleFailures": 31,
+      "PrometheusSDRefreshFailure": 33,
+      "PrometheusScrapeBodySizeLimitHit": 35,
+      "PrometheusScrapeSampleLimitHit": 37,
+      "PrometheusTSDBCompactionsFailing": 39,
+      "PrometheusTSDBReloadsFailing": 41,
+      "PrometheusTargetLimitHit": 43,
+      "PrometheusTargetSyncFailure": 45
+    },
+    "alerts-20141aa19b599ed2": {
+      "LokiRetentionFailed": 1,
+      "LokiRetentionMetricsMissing": 3,
+      "LokiRetentionSuccessStale": 5
+    },
+    "alerts-21116c7cdd670d44": {
+      "KubeMemoryOvercommit": 1
+    },
+    "alerts-2c6c096d53241ff0": {
+      "KubeAPIDown": 1,
+      "KubeAPIInstanceUnreachable": 3,
+      "KubeAPITerminatedRequests": 5,
+      "KubeAggregatedAPIDown": 7,
+      "KubeAggregatedAPIErrors": 9,
+      "KubeClientCertificateExpiration": 11
+    },
+    "alerts-34da2721f95716a0": {
+      "NodeCPUHighUsage": 1,
+      "NodeClockNotSynchronising": 3,
+      "NodeClockSkewDetected": 5,
+      "NodeDiskIOSaturation": 7,
+      "NodeFileDescriptorLimit": 9,
+      "NodeFilesystemAlmostOutOfFiles": 11,
+      "NodeFilesystemAlmostOutOfSpace": 13,
+      "NodeFilesystemFilesFillingUp": 15,
+      "NodeFilesystemSpaceFillingUp": 17,
+      "NodeHighNumberConntrackEntriesUsed": 19,
+      "NodeMemoryHighUtilization": 21,
+      "NodeMemoryMajorPagesFaults": 23,
+      "NodeNetworkReceiveErrs": 25,
+      "NodeNetworkTransmitErrs": 27,
+      "NodeSystemSaturation": 29,
+      "NodeSystemdServiceCrashlooping": 31,
+      "NodeSystemdServiceFailed": 33,
+      "NodeTextFileCollectorScrapeError": 35
+    },
+    "alerts-45608093acd53723": {
+      "SocratContainerOOMKilled": 1,
+      "SocratContainerRestartsFrequent": 3
+    },
+    "alerts-5a5665aada7ae623": {
+      "CPUThrottlingHigh": 1,
+      "KubeCPUOvercommit": 3,
+      "KubeCPUQuotaOvercommit": 5,
+      "KubeMemoryQuotaOvercommit": 7,
+      "KubeQuotaAlmostFull": 9,
+      "KubeQuotaExceeded": 11,
+      "KubeQuotaFullyUsed": 13
+    },
+    "alerts-5ff273a38f679e5c": {
+      "SocratVPNFallbackActive": 1
+    },
+    "alerts-671a8f11c7fffa70": {
+      "SPI Telegram links pending": 1,
+      "SPI triage jobs require operator review": 3,
+      "SPI triage queue is stale": 5,
+      "SPI triage scheduling heartbeat missing": 7,
+      "SPI triage stage failures": 9
+    },
+    "alerts-7430fe41891aca8c": {
+      "KubeNodeEviction": 1,
+      "KubeNodeReadinessFlapping": 3,
+      "KubeNodeUnreachable": 5,
+      "KubeletDown": 7,
+      "KubeletInstanceUnreachable": 9,
+      "KubeletPlegDurationHigh": 11,
+      "KubeletPodStartUpLatencyHigh": 13,
+      "KubeletTooManyPods": 15
+    },
+    "alerts-74abc29f7bedb572": {
+      "InfoInhibitor": 1,
+      "TargetDown": 3,
+      "Watchdog": 5
+    },
+    "alerts-78cc217981bbb8aa": {
+      "KubeNodeNotReady": 1,
+      "KubeNodePressure": 3,
+      "SocratNodeMetricsStale": 5,
+      "SocratNodeSchedulingDisabled": 7
+    },
+    "alerts-7d7d207ba84d886a": {
+      "KubeAPIErrorBudgetBurn": 1
+    },
+    "alerts-8bcf7e7a450f9592": {
+      "SocratServiceAlertmanagerUnavailable": 1,
+      "SocratServiceArgocdUnavailable": 3,
+      "SocratServiceAuthentikUnavailable": 5,
+      "SocratServiceBlogUnavailable": 7,
+      "SocratServiceCatsUnavailable": 9,
+      "SocratServiceEdgeHomeUnavailable": 11,
+      "SocratServiceEdgeMoscowUnavailable": 77,
+      "SocratServiceEdgeVpsUnavailable": 13,
+      "SocratServiceFormatQuorumUnavailable": 15,
+      "SocratServiceGrafanaMcpUnavailable": 17,
+      "SocratServiceGrafanaUnavailable": 19,
+      "SocratServiceHarborUnavailable": 21,
+      "SocratServiceImageProxyUnavailable": 23,
+      "SocratServiceLitellmBrandingUnavailable": 25,
+      "SocratServiceLitellmDbUnavailable": 27,
+      "SocratServiceLitellmUnavailable": 29,
+      "SocratServiceLmsUnavailable": 31,
+      "SocratServiceMonoriApiUnavailable": 33,
+      "SocratServiceMonoriSyncUnavailable": 35,
+      "SocratServiceMonoriUnavailable": 37,
+      "SocratServiceN8nUnavailable": 39,
+      "SocratServiceNfsUnavailable": 41,
+      "SocratServiceOpenTerminalUnavailable": 43,
+      "SocratServiceOpenWebuiUnavailable": 45,
+      "SocratServiceProbeCollectorUnavailable": 47,
+      "SocratServicePrometheusUnavailable": 49,
+      "SocratServiceRancherUnavailable": 51,
+      "SocratServiceRemark42Unavailable": 53,
+      "SocratServiceSearxngUnavailable": 55,
+      "SocratServiceSocratBotUnavailable": 57,
+      "SocratServiceSocratHomeUnavailable": 59,
+      "SocratServiceStatusUnavailable": 61,
+      "SocratServiceSyncthingUnavailable": 63,
+      "SocratServiceUmamiDbUnavailable": 65,
+      "SocratServiceUmamiUnavailable": 67,
+      "SocratServiceVllmUnavailable": 69,
+      "SocratServiceVpnUnavailable": 71,
+      "SocratServiceWikiUnavailable": 73,
+      "SocratServiceXUiUnavailable": 75
+    },
+    "alerts-925d6eacc71e120f": {
+      "LMSDatabaseBackupOverdue": 1,
+      "LMSDatabaseQuorumAtRisk": 3,
+      "LMSDatabaseRedundancyDegraded": 5,
+      "LMSWebUnavailable": 7
+    },
+    "alerts-9943c0b05432b778": {
+      "SocratNodeCPUStealHigh": 1,
+      "SocratNodeCPUTemperatureHigh": 3,
+      "SocratNodeResourceContention": 5,
+      "SocratNodeThermalThrottling": 7
+    },
+    "alerts-9e50577fca7fb4a0": {
+      "ConfigReloaderSidecarErrors": 1
+    },
+    "alerts-a1ef80fa0cf7f7e1": {
+      "KubePersistentVolumeErrors": 1,
+      "KubePersistentVolumeFillingUp": 3,
+      "KubePersistentVolumeInodesFillingUp": 5
+    },
+    "alerts-ba089cb9438969be": {
+      "SocratControlPlaneBatteryLow": 1,
+      "SocratControlPlaneOnBattery": 3,
+      "SocratEtcdQuorumHealthUnproven": 5,
+      "SocratEtcdVoterHealthUnavailable": 7
+    },
+    "alerts-c5f085c6ec7f515d": {
+      "SocratNodeCertificateExpiration": 1
+    },
+    "alerts-d1db138bd72af1c7": {
+      "Yandex calendar session or announcement failed": 1,
+      "Yandex session maintenance heartbeat missing": 3
+    },
+    "alerts-d486b10853256e89": {
+      "HomelabObserverMembershipNotReconciled": 1,
+      "HomelabObserverMembershipWorkerMissing": 3
+    },
+    "alerts-d739e5df9d1a0f2a": {
+      "PrometheusOperatorListErrors": 1,
+      "PrometheusOperatorNodeLookupErrors": 3,
+      "PrometheusOperatorNotReady": 5,
+      "PrometheusOperatorReconcileErrors": 7,
+      "PrometheusOperatorRejectedResources": 9,
+      "PrometheusOperatorStatusUpdateErrors": 11,
+      "PrometheusOperatorSyncFailed": 13,
+      "PrometheusOperatorWatchErrors": 15
+    },
+    "alerts-d9237e4a729e6dc1": {
+      "NodeNetworkInterfaceFlapping": 1
+    },
+    "alerts-e085dc9b9c4b8bcb": {
+      "KubeStateMetricsListErrors": 1,
+      "KubeStateMetricsShardingMismatch": 3,
+      "KubeStateMetricsShardsMissing": 5,
+      "KubeStateMetricsWatchErrors": 7
+    },
+    "alerts-e717d88c8dfac5eb": {
+      "AlertmanagerClusterCrashlooping": 1,
+      "AlertmanagerClusterDown": 3,
+      "AlertmanagerClusterFailedPeers": 5,
+      "AlertmanagerClusterFailedToSendAlerts": 7,
+      "AlertmanagerConfigInconsistent": 9,
+      "AlertmanagerFailedReload": 11,
+      "AlertmanagerFailedToSendAlerts": 13,
+      "AlertmanagerMembersInconsistent": 15
+    },
+    "alerts-eddfd167d259fd2e": {
+      "KubeContainerWaiting": 1,
+      "KubeDaemonSetMisScheduled": 3,
+      "KubeDaemonSetNotScheduled": 5,
+      "KubeDaemonSetRolloutStuck": 7,
+      "KubeDeploymentGenerationMismatch": 9,
+      "KubeDeploymentReplicasMismatch": 11,
+      "KubeDeploymentRolloutStuck": 13,
+      "KubeHpaMaxedOut": 15,
+      "KubeHpaReplicasMismatch": 17,
+      "KubeJobFailed": 19,
+      "KubeJobNotCompleted": 21,
+      "KubePdbNotEnoughHealthyPods": 23,
+      "KubePodCrashLooping": 25,
+      "KubePodNotReady": 27,
+      "KubeStatefulSetGenerationMismatch": 29,
+      "KubeStatefulSetReplicasMismatch": 31,
+      "KubeStatefulSetUpdateNotRolledOut": 33
+    },
+    "alerts-fecd28c436b33c6a": {
+      "KubeClientErrors": 1,
+      "KubeVersionMismatch": 3
+    }
+  },
+  "schemaVersion": 1
+}
