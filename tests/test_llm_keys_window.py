@@ -15,3 +15,10 @@ def test_requests_window_is_independent_of_time_picker():
     assert 'must not be summed' in p['description']
     table = next(p for p in d['panels'] if p['id'] == 4)
     assert all('[30d]' in t['expr'] for t in table['targets'])
+
+
+def test_temporary_acceptance_keys_are_not_user_activity():
+    d = json.loads((Path(__file__).resolve().parents[1] / 'charts/monitoring-k3s/dashboards/llm-keys.json').read_text())
+    targets = [t for p in d['panels'] for t in p.get('targets', [])]
+    assert len(targets) == 3
+    assert all('api_key_alias!~"venice-acceptance-.*"' in t['expr'] for t in targets)

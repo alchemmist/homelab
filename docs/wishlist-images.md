@@ -33,3 +33,46 @@ image.load/decode and upload receive timing. Shared sampler/privacy are unchange
 Research evidence (16photo Save17.076s; per-file S3put0.287–3.570s; media slow
 streaming) is in Wishlist AUDIT.md; not a claim all delay is storage or a throughput
 benchmark. Live delivery and rendering acceptance must be recorded after enabling.
+
+## Live acceptance — 2026-11-16
+
+Application1e5e35b, Quality43935991777 and release43936660784(attempt2) successful:
+77pytest +160browser checks; native codec contracts and audit clean. Transient
+Harbor TLS handshake timeout required rerun; no TLS bypass/credential changes.
+Both checked-digest Deployments Ready. Actual private RPC→lossless master/q90
+preview→S3 write/read→cleanup tested with synthetic pixels (1200×1800 master,
+480×720 preview, exact decoded master pixels); retained14-span Tempo trace
+`f8ce472228afc6e7a4bd2f3d921322c7`. Deliberate2.1s retention delay in probe is NOT
+a latency benchmark. Grafana MCP confirms Collector up1; browser image spans
+previously retained in123-span trace with exact Loki correlation.
+
+Additive one-time backfill persisted **53 v2 preview objects** in S3; original
+objects/DB keys untouched. Source bytes46,193,502 vs previews2,025,542 (~22.8×
+less for browsing all53); no authenticated session or real gift mutation. New
+anonymous Chromium client:53/53 HTTP200,53/53 slides decoded/selected, zero master
+network requests, all media network responseEnd~1.80s, first three covers~0.54s.
+Earlier forced empty server cache: first three~1.94s, all53 successful using
+durable S3 previews. Times are local measurements, not a network-independent SLA.
+
+Cache is disposable, derivatives now durable: a later app restart need not
+re-read/re-encode those legacy originals. Normal read-time legacy generation
+remains cache-only if a missing derivative is encountered. Original format
+snapshot:36PNG/10WebP/7JPEG. The user’s real16-photo Save was researched but NOT
+replayed under the owner’s identity; new receive/engine/bytes/cache spans expose
+future bottlenecks. Original upload bandwidth is not reduced by server conversion.
+
+Initial rollout exposed Recreate image-pull downtime; fixed via optimizer wave-1
+(image on same node before web wave0). Do not claim zero-downtime SQLite HA.
+Historical extraneous ConfigMap/wishlist remains OutOfSync/not pruned. Both actual
+Deployments, private service/policy, resource limits, isolated scratch/cache and
+end-to-end payload/telemetry delivery independently checked. Structured evidence:
+`deploy/monitoring/migration-evidence/wishlist-images-20261116.json`.
+
+Final raw Tempo verification confirmed numeric `image.input.bytes`,
+`image.output.bytes`, and `image.engine.milliseconds` survived the central privacy
+scrubber for both master/preview. An anonymous12-byte empty telemetry POST with a
+deliberate2.2s client-body delay returned204; trace
+`1a845075e48f62279d6c99e7edc3a40e` retained actual
+`wishlist.upload.bytes=12` and `wishlist.upload.receive_seconds=2.100554...`.
+This explicitly verifies the renamed receive fields end-to-end; artificial slow
+probe is NOT an upload benchmark and did not create/change any gift.

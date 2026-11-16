@@ -1,0 +1,188 @@
+{
+  "acceptedAt": "2026-11-16T19:24:30.636695+00:00",
+  "applicationCommit": "1e5e35b6946f59e55967651bd6fe479106a49e5b",
+  "imageDigest": "sha256:182152a2a99d04fa99fb72a2ad9f90234b55b82b9c037be180dcbe2a7b81eb03",
+  "qualityRun": 43935991777,
+  "releaseRun": 43936660784,
+  "releaseAttempt": 2,
+  "tests": {
+    "pytest": 77,
+    "browser": 160,
+    "nativeSharpContract": "passed",
+    "focusedHomelab": 6
+  },
+  "researchBefore": {
+    "saveTrace": "d4ee505c2beea3d00306d989edf0ae42",
+    "photos": 16,
+    "saveMilliseconds": 17075.7,
+    "s3PutPerPhotoMilliseconds": [
+      286.9,
+      3570.0
+    ],
+    "s3PutSumOverlappingMilliseconds": 20843.5,
+    "dbCommitSumMilliseconds": 105.6,
+    "validationSumMilliseconds": 152.8,
+    "readTrace": "9237714527e834b24218dbb13a0de6b8",
+    "readMilliseconds": 15587,
+    "storageOpenMilliseconds": 190.7,
+    "streamMilliseconds": 13686.3,
+    "notAllSaveTimeAttributedToS3": true
+  },
+  "durableAdditivePreviewBackfill": {
+    "traceId": "30f60e25b75169f3d72e7dd3c866eea4",
+    "photos": 53,
+    "created": 53,
+    "existing": 0,
+    "errors": 0,
+    "sourceBytes": 46193502,
+    "previewBytes": 2025542,
+    "seconds": 29.64,
+    "databaseMutated": false,
+    "originalObjectsRewrittenOrDeleted": false,
+    "durableDerivativeVersion": 2
+  },
+  "finalAnonymousBrowser": {
+    "anonymous": true,
+    "authenticatedSessionUsed": false,
+    "databaseMutated": false,
+    "items": 19,
+    "photos": 53,
+    "finishedUnique": 53,
+    "statusCounts": {
+      "200": 53
+    },
+    "failedRequests": [],
+    "allPreview": true,
+    "originalNetworkRequests": 0,
+    "allSlidesDecodedAndSelectable": 53,
+    "firstThreeCoversMs": 538,
+    "longestMediaRequestMs": 213.3999999910593,
+    "allMediaNetworkResponseEndMs": 1796.2000000029802,
+    "observedWallMs": 10595,
+    "postLoadValidationIncluded": true,
+    "encodedMediaBytes": 2025542,
+    "browserImageLoadSpans": 38,
+    "browserImageDecodeSpans": 38,
+    "failedImageSpans": 0,
+    "traceIds": [
+      "150c206df9c5cdc73bf9b32346ff1934"
+    ]
+  },
+  "earlierForcedColdServerCache": {
+    "photos": 53,
+    "firstThreeCoversMilliseconds": 1943,
+    "selectedAndDecoded": 53,
+    "http200": 53,
+    "originalNetworkRequests": 0,
+    "databaseMutated": false,
+    "s3Mutated": false,
+    "note": "Only disposable cache entries were evicted, then all 53 read back from durable S3 previews."
+  },
+  "syntheticLiveWriteReadDeleteProbe": {
+    "traceId": "f8ce472228afc6e7a4bd2f3d921322c7",
+    "synthetic": true,
+    "latencyBenchmark": false,
+    "pipelineSeconds": 0.279,
+    "masterSize": [
+      1200,
+      1800
+    ],
+    "previewSize": [
+      480,
+      720
+    ],
+    "inputBytes": 12742,
+    "masterBytes": 274,
+    "previewBytes": 936,
+    "exactDecodedPixels": true,
+    "databaseMutated": false
+  },
+  "tempoAcceptance": {
+    "finalSyntheticTrace": "f8ce472228afc6e7a4bd2f3d921322c7",
+    "retainedSpans": 14,
+    "namesPresent": [
+      "image.optimize.master",
+      "image.optimize.preview",
+      "s3.put",
+      "storage.put"
+    ],
+    "earlierAnonymousImageBrowserTrace": "8fd8f57610559c088409b3871a995f2a",
+    "earlierBrowserTraceSpans": 123,
+    "earlierImageLoadSpans": 26,
+    "earlierImageDecodeSpans": 26,
+    "exactEarlierBrowserTraceLokiRecords": 1,
+    "collectorUp": 1
+  },
+  "runtime": {
+    "webReady": true,
+    "optimizerReady": true,
+    "optimizerNonRoot": true,
+    "optimizerReadOnlyRoot": true,
+    "optimizerServiceAccountToken": false,
+    "optimizerMemoryLimit": "2Gi",
+    "optimizerScratchLimit": "4Gi",
+    "optimizerEgress": [],
+    "optimizerServiceType": "ClusterIP",
+    "onlyWishlistNamespacePodLabelPeerIngress": true,
+    "webCacheSeparateEmptyDir": "2Gi",
+    "sqlitePvc": "wishlist-socrat5",
+    "optimizerImagePulledBeforeWebRecreate": true,
+    "historicalExtraneousConfigMapNotPruned": true
+  },
+  "boundaries": [
+    "Fresh browser contexts, production URL; wall times are local observations, not a universal SLA. Final browser wall includes extra selection/validation wait; network responseEnd is recorded separately.",
+    "Lossless master and display-only q90 preview are distinct. JPEG/WebP lossless masters can grow; no post-change real owner Save throughput benchmark was claimed.",
+    "Existing originals and DB image keys were never rewritten/deleted. 53 versioned additive preview objects persisted; synthetic probe objects deleted.",
+    "Existing shared 30s tail sampling/normal10% and bounded queues retained. Fast browser capture is not a lossless telemetry audit.",
+    "Initial image pull during Recreate caused temporary503; sync-wave-1 now warms same-node optimizer image before stopping web. Single-pod SQLite is not zero-downtime HA.",
+    "Historical extraneous ConfigMap/wishlist still OutOfSync. Desired Deployments/Service/NetworkPolicy and actual payload/trace delivery were verified; no blanket prune."
+  ],
+  "numericAttributePrivacyAcceptance": {
+    "imageProcessingNumericAttributesSurvivedPrivacy": [
+      {
+        "name": "image.optimize.master",
+        "attributes": {
+          "image.engine.milliseconds": {
+            "doubleValue": 67.65
+          },
+          "image.input.bytes": {
+            "intValue": "12742"
+          },
+          "image.output.bytes": {
+            "intValue": "274"
+          }
+        }
+      },
+      {
+        "name": "image.optimize.preview",
+        "attributes": {
+          "image.engine.milliseconds": {
+            "doubleValue": 63.75
+          },
+          "image.input.bytes": {
+            "intValue": "274"
+          },
+          "image.output.bytes": {
+            "intValue": "936"
+          }
+        }
+      }
+    ],
+    "receiveProbe": {
+      "traceId": "1a845075e48f62279d6c99e7edc3a40e",
+      "status": 204,
+      "syntheticDelaySeconds": 2.2,
+      "latencyBenchmark": false,
+      "bodyBytes": 12,
+      "attributes": {
+        "wishlist.upload.bytes": {
+          "intValue": "12"
+        },
+        "wishlist.upload.receive_seconds": {
+          "doubleValue": 2.100554156990256
+        }
+      }
+    },
+    "databaseMutated": false
+  }
+}

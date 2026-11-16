@@ -60,7 +60,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (api_key_alias) (label_replace(label_replace(increase(litellm_requests_metric_total{job=\"litellm\",api_key_alias!=\"\",api_key_alias!=\"None\"}[1m]), \"api_key_alias\", \"vladislav\", \"api_key_alias\", \"^pi$\"), \"api_key_alias\", \"alchemmist\", \"api_key_alias\", \"^(antex-agent|pi-agent)$\"))",
+          "expr": "sum by (api_key_alias) (label_replace(label_replace(increase(litellm_requests_metric_total{job=\"litellm\",api_key_alias!=\"\",api_key_alias!=\"None\",api_key_alias!~\"venice-acceptance-.*\"}[1m]), \"api_key_alias\", \"vladislav\", \"api_key_alias\", \"^pi$\"), \"api_key_alias\", \"alchemmist\", \"api_key_alias\", \"^(antex-agent|pi-agent)$\"))",
           "legendFormat": "{{api_key_alias}}",
           "instant": false,
           "format": "time_series"
@@ -121,13 +121,13 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sort_desc(sum by (api_key_alias) (label_replace(label_replace(increase(litellm_total_tokens_metric_total{job=\"litellm\",api_key_alias!=\"\",api_key_alias!=\"None\"}[30d]), \"api_key_alias\", \"vladislav\", \"api_key_alias\", \"^pi$\"), \"api_key_alias\", \"alchemmist\", \"api_key_alias\", \"^(antex-agent|pi-agent)$\")))",
+          "expr": "sort_desc(sum by (api_key_alias) (label_replace(label_replace(increase(litellm_total_tokens_metric_total{job=\"litellm\",api_key_alias!=\"\",api_key_alias!=\"None\",api_key_alias!~\"venice-acceptance-.*\"}[30d]), \"api_key_alias\", \"vladislav\", \"api_key_alias\", \"^pi$\"), \"api_key_alias\", \"alchemmist\", \"api_key_alias\", \"^(antex-agent|pi-agent)$\")))",
           "instant": true,
           "format": "table"
         },
         {
           "refId": "B",
-          "expr": "sum by (api_key_alias) (label_replace(label_replace(increase(litellm_requests_metric_total{job=\"litellm\",api_key_alias!=\"\",api_key_alias!=\"None\"}[30d]), \"api_key_alias\", \"vladislav\", \"api_key_alias\", \"^pi$\"), \"api_key_alias\", \"alchemmist\", \"api_key_alias\", \"^(antex-agent|pi-agent)$\"))",
+          "expr": "sum by (api_key_alias) (label_replace(label_replace(increase(litellm_requests_metric_total{job=\"litellm\",api_key_alias!=\"\",api_key_alias!=\"None\",api_key_alias!~\"venice-acceptance-.*\"}[30d]), \"api_key_alias\", \"vladislav\", \"api_key_alias\", \"^pi$\"), \"api_key_alias\", \"alchemmist\", \"api_key_alias\", \"^(antex-agent|pi-agent)$\"))",
           "instant": true,
           "format": "table"
         }
