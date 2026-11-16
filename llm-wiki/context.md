@@ -111,3 +111,12 @@ WebUI lifecycle/HTTPS/tool-guard and Terminal browser-cleanup entrypoints now
 refuse before all remote tasks/imports; chart-owned protection remains unchanged.
 Old-PVC backup/upgrade instructions are not a fallback. Within the literal Helm
 gate only k3s/storage-nfs remain review-required; no maintenance was performed.
+
+2026-11-16 LLM key activity short-range No data fixed (50de2fac): Requests by API
+key used increase(counter[$__interval]); small pickers/pixel step made lookback5s,
+insufficient counter samples. Live reproduction:5s empty,15s/1m populated. Replaced
+ONLY panel1 lookback with fixed[1m], described rolling/extrapolated requests/minute,
+not nonoverlapping buckets (do not sum adjacentpoints).30daytable unchanged; owner
+live panels matchedGit before edit. Range queries5m/30m/1h/3h populated afterfix;
+ArgoSyncedHealthy, GrafanaAPI serves exactfixedpanels. Regression test
+ tests/test_llm_keys_window.py; no backend/collector mutation or missing→0 fallback.
