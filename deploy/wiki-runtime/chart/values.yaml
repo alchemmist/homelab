@@ -47,3 +47,5 @@ oidcSecret: ""
 
 observerMembership:
   enabled: false
+
+hostAliases: []

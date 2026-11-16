@@ -30,8 +30,9 @@ spec:
         runAsGroup: 1000
         runAsNonRoot: true
         fsGroup: 1000
-      {{- if .Values.observerMembership.enabled }}
+      {{- if or .Values.observerMembership.enabled .Values.persistence.requireExistingData }}
       initContainers:
+        {{- if .Values.observerMembership.enabled }}
         - name: preserve-native-oidc
           image: "{{ .Values.image.repository }}@{{ required "Pinned image digest required for native OIDC preservation" .Values.image.digest }}"
           command: [python, -c, "import shutil; shutil.copyfile('/app/runtime/oidc.py', '/observer-native/oidc.py')"]
@@ -41,6 +42,23 @@ spec:
             limits: {cpu: 100m, memory: 128Mi}
           volumeMounts:
             - {name: observer-native, mountPath: /observer-native}
+        {{- end }}
+        {{- if .Values.persistence.requireExistingData }}
+        - name: require-existing-wiki
+          image: "{{ .Values.image.repository }}@{{ .Values.image.digest }}"
+          command: [python, -c]
+          args:
+            - >-
+              from pathlib import Path;
+              p=Path('/data/accounts.sqlite3');
+              assert p.is_file() and p.open('rb').read(16)==b'SQLite format 3\x00', 'Existing wiki accounts required';
+              assert Path('/data/repository/.git').is_dir() and Path('/data/live/current').is_dir(), 'Existing repository/publication required'
+          volumeMounts: [{name: data, mountPath: /data, readOnly: true}]
+        {{- end }}
+      {{- end }}
+      {{- with .Values.hostAliases }}
+      hostAliases:
+        {{- toYaml . | nindent 8 }}
       {{- end }}
       containers:
         - name: wiki
