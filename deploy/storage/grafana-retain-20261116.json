@@ -1,0 +1,25 @@
+{
+  "persistentVolume": "pvc-cd9b0a0f-2794-466e-9f48-52b9cc884b8d",
+  "patch": [
+    {
+      "op": "test",
+      "path": "/metadata/uid",
+      "value": "9058a4fe-b085-4545-9f26-6ab7303c5079"
+    },
+    {
+      "op": "test",
+      "path": "/spec/claimRef/uid",
+      "value": "cd9b0a0f-2794-466e-9f48-52b9cc884b8d"
+    },
+    {
+      "op": "test",
+      "path": "/spec/persistentVolumeReclaimPolicy",
+      "value": "Delete"
+    },
+    {
+      "op": "replace",
+      "path": "/spec/persistentVolumeReclaimPolicy",
+      "value": "Retain"
+    }
+  ]
+}
