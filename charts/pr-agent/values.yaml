@@ -28,19 +28,22 @@ handlePushTrigger: true
 pushCommands: '["/review"]'
 # Publish describe/review as GitHub checks: in progress while the agent runs, then success or failure.
 publishAsCheckRun: true
-gunicornWorkers: "2"
+gunicornWorkers: "6"
 # Match LiteLLM's request_timeout. The webhook returns immediately, but each model
 # call used to give up after 120s while the proxy would still be waiting in queue.
 aiTimeout: "7200"
 # 0 disables gunicorn's silent-worker kill. A queued review may run for the full AI timeout.
+# A short timeout would abort that review: the worker stops heartbeating while a model call runs.
 gunicornTimeout: "0"
+# DEBUG logs the entire webhook body on the request path and delays the ack.
+logLevel: INFO
 resources:
   requests:
-    cpu: 100m
-    memory: 768Mi
+    cpu: 200m
+    memory: 1Gi
   limits:
-    cpu: "1"
-    memory: 2Gi
+    cpu: "2"
+    memory: 3Gi
 
 tolerations:
   - key: homelab.io/no-nfs
