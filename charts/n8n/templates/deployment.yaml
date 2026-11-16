@@ -33,7 +33,10 @@ spec:
         - name: n8n
           image: {{ .Values.image | quote }}
           env:
-            {{- if .Values.googleDnsEnabled }}
+            {{- if .Values.googleTransportEnabled }}
+            - name: NODE_OPTIONS
+              value: '--require=/opt/n8n/yandex-extension/google-transport-preload.js'
+            {{- else if .Values.googleDnsEnabled }}
             - name: NODE_OPTIONS
               value: '--require=/opt/n8n/yandex-extension/google-dns-preload.js'
             {{- end }}
