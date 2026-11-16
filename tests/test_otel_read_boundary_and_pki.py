@@ -26,7 +26,7 @@ class ReadBoundaryTests(unittest.TestCase):
         pki = load('otel-application-pki')
         resources = pki.resources()
         certificates = [item for item in resources if item['kind'] == 'Certificate']
-        self.assertEqual(len(certificates), 5)
+        self.assertEqual({c['spec']['commonName'] for c in certificates}, {'otel-app-' + app for app in ('harbor','litellm','vllm','open-webui','lms','wishlist')})
         for certificate in certificates:
             self.assertEqual(certificate['spec']['usages'], ['digital signature', 'client auth'])
             self.assertEqual(certificate['spec']['privateKey']['rotationPolicy'], 'Always')
@@ -35,7 +35,7 @@ class ReadBoundaryTests(unittest.TestCase):
         self.assertEqual(rule['verbs'], ['get'])
         self.assertNotIn('otel-root-ca', rule['resourceNames'])
         self.assertNotIn('otel-tls-socrat-0', rule['resourceNames'])
-        self.assertEqual(len(rule['resourceNames']), 5)
+        self.assertEqual(set(rule['resourceNames']), {c['spec']['secretName'] for c in certificates})
 
     def test_rbac_evaluation_error_is_not_certified_as_denial(self):
         pki = load('otel-application-pki')

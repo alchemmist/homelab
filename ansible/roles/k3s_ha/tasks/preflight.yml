@@ -3,7 +3,7 @@
   ansible.builtin.stat:
     path: /var/lib/homelab-k3s-rebalance/complete
   delegate_to: "{{ k3s_ha_primary }}"
-  become_method: sudo
+  become_method: ansible.builtin.sudo
   register: k3s_ha_rebalanced
 
 - name: Refuse to restore the obsolete home-majority configuration

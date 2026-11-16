@@ -1,11 +1,10 @@
----
 - name: Require the validated socrat-3 installation target
   ansible.builtin.assert:
     that:
-      - inventory_hostname == 'socrat-3'
-      - ansible_facts.distribution == 'Debian'
-      - ansible_facts.distribution_major_version == '13'
-      - ansible_facts.board_name == 'MS-16GP'
+    - inventory_hostname == 'socrat-3'
+    - ansible_facts.distribution == 'Debian'
+    - ansible_facts.distribution_major_version == '13'
+    - ansible_facts.board_name == 'MS-16GP'
 
 - name: Verify the running Ethernet module is the validated candidate
   ansible.builtin.shell: |
@@ -29,9 +28,9 @@
 - name: Install DKMS and automatic matching header updates
   ansible.builtin.apt:
     name:
-      - dkms
-      - linux-headers-amd64
-      - linux-headers-6.12.111+deb13-amd64
+    - dkms
+    - linux-headers-amd64
+    - linux-headers-6.12.111+deb13-amd64
     state: present
 
 - name: Create the versioned DKMS source directory
@@ -47,13 +46,13 @@
     remote_src: true
     mode: '0644'
   loop:
-    - Makefile
-    - main.c
-    - ethtool.c
-    - hw.c
-    - alx.h
-    - hw.h
-    - reg.h
+  - Makefile
+  - main.c
+  - ethtool.c
+  - hw.c
+  - alx.h
+  - hw.h
+  - reg.h
   register: homelab_alx_dkms_source
 
 - name: Configure DKMS automatic rebuilds
@@ -101,6 +100,7 @@
 
 - name: Verify the normal boot image resolves the protected Ethernet driver
   ansible.builtin.shell: |
+    set -o pipefail
     set -eu
     work=$(mktemp -d)
     trap 'rm -rf "$work"' EXIT
@@ -117,3 +117,5 @@
         exit 1
     fi
   changed_when: false
+  args:
+    executable: /bin/bash

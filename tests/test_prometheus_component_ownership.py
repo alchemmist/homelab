@@ -56,7 +56,7 @@ def test_offline_source_is_immutable_shared_code_not_shared_ownership():
         app=yaml.safe_load((ROOT/f'deploy/argocd/apps/{name}.yaml').read_text())
         assert app['spec']['project']=='default'
         assert app['spec']['source']['path']=='charts/'+name
-        assert app['spec']['source']['helm']=={'releaseName':'kube-prometheus-stack','parameters':[]}
+        assert app['spec']['source']['helm']=={'releaseName':'kube-prometheus-stack','parameters':[], 'valueFiles':['alert-graphs.values.yaml']}
         assert app['spec']['syncPolicy']['automated']=={'prune':False,'selfHeal':True}
 
 def test_aggregate_application_and_values_are_gone():

@@ -39,7 +39,7 @@ class DirectIpTest(unittest.TestCase):
         self.assertEqual({j['params']['target'][0] for j in direct},{'109.173.40.247:443','109.120.141.60:443','91.189.82.238:443'})
         self.assertTrue(all(j['static_configs'][0]['targets']==['192.168.0.23:19116'] for j in direct))
         self.assertEqual(native['exporters']['otlp']['tls']['cert_file'],'/tls/tls.crt')
-        self.assertEqual({j['job_name'] for j in jobs if j not in direct},{'socrat-n8n-activity','socrat-argocd'})
+        self.assertEqual({j['job_name'] for j in jobs if j not in direct},{'socrat-n8n-activity','socrat-argocd','wishlist'})
         self.assertIn('checksum/native-pipeline',obj('Deployment','socrat-n8n-activity')['spec']['template']['metadata']['annotations'])
 
     def test_host4_is_a_real_kubernetes_worker_again(self):

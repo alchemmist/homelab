@@ -205,9 +205,10 @@ class NativeAPIResponseTests(unittest.TestCase):
             ):
                 api.call("POST", "core/groups/", {})
 
-    def test_production_native_activation_stays_disabled_until_release(self):
+    def test_production_uses_accepted_native_oidc_activation(self):
         values = yaml.safe_load((ROOT / "deploy/spi-triage/values.yaml").read_text())
-        self.assertIs(values["queueUI"]["oidc"]["enabled"], False)
+        self.assertIs(values["queueUI"]["oidc"]["enabled"], True)
+        self.assertEqual(values["queueUI"]["oidc"]["existingSecret"], "spi-queue-oidc")
 
 
 class NativeOIDCDefaultTests(unittest.TestCase):

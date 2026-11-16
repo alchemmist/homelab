@@ -231,10 +231,10 @@ def contract_hash(target):
     return digest("\0".join(parts))
 
 
-def check(shard, count, *, validate=True):
-    selected = [t for t in targets() if int(digest(t["id"]), 16) % count == shard]
+def check(*, validate=True):
+    selected = targets()
     if not selected:
-        raise ValueError("Empty chart shard")
+        raise ValueError("No local chart targets")
     findings = []
     inventory = []
     for target in selected:
@@ -328,23 +328,17 @@ def check(shard, count, *, validate=True):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--shard", type=int, required=True)
-    parser.add_argument("--count", type=int, default=4)
     parser.add_argument("--schema-inventory", action="store_true")
     parser.add_argument("--record-debt")
     args = parser.parse_args()
-    output = ROOT / f"reports/charts-{args.shard}.json"
+    output = ROOT / "reports/manifests.json"
     try:
-        if not 0 <= args.shard < args.count:
-            raise ValueError("Invalid shard")
-        findings, count, inventory = check(
-            args.shard, args.count, validate=not args.schema_inventory
-        )
+        findings, count, inventory = check(validate=not args.schema_inventory)
         if args.schema_inventory:
             print(json.dumps(inventory))
             return 0
         return report(
-            f"charts-{args.shard}",
+            "manifests",
             findings,
             count,
             output,

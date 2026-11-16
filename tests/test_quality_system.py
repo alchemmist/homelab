@@ -139,13 +139,10 @@ def test_native_producer_payload_matches_released_quality_graph_schema(tmp_path)
     jsonschema.validate(json.loads(output.read_text()), schema)
 
 
-def test_chart_shards_are_stable_when_another_target_is_added():
-    from common import digest
+def test_manifest_validation_is_not_artificially_sharded():
+    import inspect
 
-    original = charts.targets()
-    assignments = {t["id"]: int(digest(t["id"]), 16) % 4 for t in original}
-    expanded = original + [{"id": "a-new-chart"}]
-    assert all(int(digest(t["id"]), 16) % 4 == assignments[t["id"]] for t in expanded[:-1])
+    assert list(inspect.signature(charts.check).parameters) == ["validate"]
 
 
 def test_helm_parameters_cannot_inject_a_post_renderer():
@@ -218,3 +215,35 @@ def test_dependency_audit_uses_installed_environment_and_deduplicates(monkeypatc
     assert "--no-deps" not in calls[0]
     assert "--disable-pip" not in calls[0]
     assert "--local" in calls[0]
+
+
+def test_nonsecret_tokenizer_exception_cannot_hide_other_values(tmp_path, monkeypatch):
+    import lint
+
+    p = tmp_path / "services/spi-tokenizer/Dockerfile"
+    p.parent.mkdir(parents=True)
+    p.write_text("ENV TOKENIZERS_PARALLELISM=false RAYON_NUM_THREADS=1 PYTHONPATH=/app")
+    monkeypatch.setattr(lint, "ROOT", tmp_path)
+    item = {"code": "DL3064", "line": 1}
+    assert lint.nonsecret_tokenizer_option("services/spi-tokenizer/Dockerfile", item)
+    p.write_text("ENV TOKENIZERS_PARALLELISM=credential")
+    assert not lint.nonsecret_tokenizer_option("services/spi-tokenizer/Dockerfile", item)
+
+
+def test_graph_is_cost_layered_and_titles_are_semantic():
+    import yaml
+
+    graph = yaml.safe_load((ROOT / "qg.yaml").read_text())["nodes"]
+    assert len({n["title"] for n in graph.values()}) == len(graph)
+    cheap = {"python", "yaml", "shell", "workflow", "secrets", "docker", "javascript", "tests-fast"}
+    for node in cheap:
+        assert graph[node]["needs"] == ["graph"]
+    for node in ("ownership", "manifests", "ansible", "tests-medium"):
+        assert set(graph[node]["needs"]) == cheap
+    assert set(graph["tests-cluster"]["needs"]) == {
+        "ownership",
+        "manifests",
+        "ansible",
+        "tests-medium",
+    }
+    assert not any("shard" in n for n in graph)

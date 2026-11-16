@@ -10,7 +10,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 ANSIBLE = ROOT / 'ansible'
-NODES = {f'socrat-{i}' for i in range(4)}
+NODES = {f'socrat-{i}' for i in range(6)}
 
 
 class InventoryStructureTests(unittest.TestCase):

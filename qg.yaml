@@ -11,7 +11,7 @@ profiles:
     runner: ubuntu-24.04
     timeout-minutes: 5
     setup:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         persist-credentials: 'false'
     - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
@@ -20,31 +20,27 @@ profiles:
     runner: ubuntu-24.04
     timeout-minutes: 5
     setup:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         persist-credentials: 'false'
     - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
     - run: uv sync --locked
-    - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
+    - uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e
       with:
         version: v3.19.0
   quality-helm:
     runner: ubuntu-24.04
     timeout-minutes: 10
     setup:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       with:
         persist-credentials: 'false'
         fetch-depth: '0'
     - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
     - run: uv sync --locked
-    - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
+    - uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e
       with:
         version: v3.19.0
-  quality-tools:
-    extends: quality-helm
-    setup:
-    - run: uv run python scripts/quality/install_tools.py --tools actionlint kubeconform gitleaks shellcheck kube-linter
   quality-docker:
     extends: default
     timeout-minutes: 5
@@ -56,379 +52,184 @@ profiles:
     - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f
       with:
         node-version: 24.11.1
+  quality-cluster:
+    extends: quality-helm
+    timeout-minutes: 15
+    setup:
+    - run: uv run python scripts/quality/install_tools.py --tools kind kubectl
+  quality-shell:
+    extends: default
+    setup:
+    - run: uv run python scripts/quality/install_tools.py --tools shellcheck
+  quality-delivery:
+    extends: default
+    setup:
+    - run: uv run python scripts/quality/install_tools.py --tools actionlint
+  quality-secrets:
+    extends: default
+    setup:
+    - run: uv run python scripts/quality/install_tools.py --tools gitleaks
+  quality-manifests:
+    extends: quality-helm
+    setup:
+    - run: uv run python scripts/quality/install_tools.py --tools kubeconform kube-linter
+  quality-ansible:
+    extends: default
+    setup:
+    - run: uv run python scripts/quality/install_collections.py
 nodes:
-  graph-freshness:
-    title: Quality Graph declaration freshness
-    run: uv run qg validate
-  workflow-failure-policy:
-    title: n8n workflow failure notification policy
-    run: uv run python scripts/n8n/check_failure_alerts.py
-  workflow-policy-tests:
-    title: Offline workflow policy regressions
-    run: uv run python -m unittest discover -s tests -p test_n8n_failure_alert_policy.py
-  alert-graph-delivery:
-    profile: infrastructure
-    title: Alert graph chart, image ownership and renderer capacity
-    run: 'command -v helm
+  graph:
+    title: Graph integrity
+    profile: default
+    run: 'uv run qg validate
 
-      uv run python -m unittest discover -s tests -p test_alert_graphs_chart.py
-
-      uv run python -m unittest discover -s tests -p test_alert_graph_panel_ids.py
-
-      uv run python scripts/alert_graphs.py --check
-
-      '
-  spi-execution-links:
-    title: Stable SPI alert identity and execution link metadata
-    run: uv run python -m unittest discover -s tests -p test_spi_execution_links.py
-  infrastructure-contracts:
-    title: Offline infrastructure ownership, placement and issuer contracts
-    profile: infrastructure
-    run: 'command -v helm
-
-      uv run python scripts/check_infrastructure_contracts.py
-
-      uv run python scripts/check_source_pointers.py
-
-      uv run python -m unittest discover -s tests -p test_source_pointers.py
-
-      uv run python -m unittest discover -s tests -p test_wg_peer15_relay.py
-
-      uv run python scripts/check_operational_entrypoints.py
-
-      uv run python -m unittest discover -s tests -p test_operational_entrypoints.py
-
-      uv run python scripts/check_vendor_contracts.py
-
-      uv run python -m unittest discover -s tests -p test_vendor_contracts.py
-
-      uv run python -m unittest discover -s tests -p test_vm105_renderer_lms_litellm.py
-
-      uv run python -m unittest discover -s tests -p test_target_placement_ownership.py
-
-      uv run python -m unittest discover -s tests -p test_infrastructure_contracts.py
-
-      uv run python -m unittest discover -s tests -p test_vm105_management.py
-
-      uv run python -m unittest discover -s tests -p test_socrat5_app_placement.py
-
-      uv run python -m unittest discover -s tests -p test_argocd_refresh.py
-
-      uv run python -m unittest discover -s tests -p test_refactor_acceptance.py
-
-      uv run python -m unittest discover -s tests -p test_deployment_ownership.py
-
-      uv run python -m unittest discover -s tests -p test_gateway_readonly.py
-
-      '
-  wishlist-observability:
-    title: Wishlist private metrics and dedicated OTel identity
-    profile: infrastructure
-    run: 'helm lint charts/wishlist -f deploy/wishlist/values.yaml
-
-      uv run python -m unittest tests.test_wishlist_observability tests.test_otel_application_credentials tests.test_otel_application_registry
-      tests.test_otel_application_leaf_rotation
-
-      '
-  quality-contracts:
-    title: Quality framework, schema/tool locks and test inventory
-    run: 'uv run python scripts/quality/contracts.py
-
-      uv run python scripts/check_source_pointers.py'
+      uv run python scripts/quality/contracts.py'
     policy: &id001
       blocking: true
       approvals:
         findings: false
         files: false
         node: false
-  quality-implementation:
-    title: CI implementation lint and formatting (no legacy baseline)
-    run: 'uv run ruff check --config quality/ruff.toml scripts/quality tests/test_quality_system.py
-
-      uv run ruff format --check --config quality/ruff.toml scripts/quality tests/test_quality_system.py'
-    policy: *id001
-  lint-python:
-    title: Python correctness, security and modernization ratchet
+  python:
+    title: Python correctness
     profile: default
-    needs:
-    - quality-contracts
     run: uv run python scripts/quality/lint.py python
+    policy: *id001
+    needs:
+    - graph
     results:
       native: reports/python.json
-  lint-yaml:
-    title: Non-template YAML syntax, duplicate keys and hygiene
+  yaml:
+    title: YAML structure
     profile: default
-    needs:
-    - quality-contracts
     run: uv run python scripts/quality/lint.py yaml
+    policy: *id001
+    needs:
+    - graph
     results:
       native: reports/yaml.json
-  lint-shell:
-    title: ShellCheck static source diagnostics
-    profile: quality-tools
-    needs:
-    - quality-contracts
+  shell:
+    title: Shell safety
+    profile: quality-shell
     run: uv run python scripts/quality/lint.py shell
+    policy: *id001
+    needs:
+    - graph
     results:
       native: reports/shell.json
-  lint-actions:
-    title: Offline GitHub Actions security / trusted publisher boundary
-    profile: default
-    needs:
-    - quality-contracts
-    run: uv run python scripts/quality/lint.py actions
-    results:
-      native: reports/actions.json
+  workflow:
+    title: Delivery security
+    profile: quality-delivery
+    run: uv run python scripts/quality/lint.py workflow
     policy: *id001
-  lint-actionlint:
-    title: GitHub Actions semantics and expression validation
-    profile: quality-tools
     needs:
-    - quality-contracts
-    run: uv run python scripts/quality/lint.py actionlint
+    - graph
     results:
-      native: reports/actionlint.json
-    policy: *id001
-  lint-ansible:
-    title: Ansible safety profile (tool compatibility diagnosis)
-    profile: default
-    needs:
-    - quality-contracts
-    run: uv run python scripts/quality/lint.py ansible
-    results:
-      native: reports/ansible.json
-    policy:
-      blocking: false
-      approvals:
-        findings: false
-        files: false
-        node: false
-  lint-docker:
-    title: Dockerfile best practices (Hadolint)
-    profile: quality-docker
-    needs:
-    - quality-contracts
-    run: uv run python scripts/quality/lint.py docker
-    results:
-      native: reports/docker.json
-  lint-secrets:
-    title: Tracked-tree secret scan with exact reviewed false positives
-    profile: quality-tools
-    needs:
-    - quality-contracts
+      native: reports/workflow.json
+  secrets:
+    title: Credential hygiene
+    profile: quality-secrets
     run: uv run python scripts/quality/lint.py secrets
+    policy: *id001
+    needs:
+    - graph
     results:
       native: reports/secrets.json
+  docker:
+    title: Container recipes
+    profile: quality-docker
+    run: uv run python scripts/quality/lint.py docker
     policy: *id001
-  lint-javascript:
-    title: JavaScript syntax, parse-only Node 24
-    profile: quality-javascript
     needs:
-    - quality-contracts
+    - graph
+    results:
+      native: reports/docker.json
+  javascript:
+    title: JavaScript syntax
+    profile: quality-javascript
     run: uv run python scripts/quality/lint.py javascript
+    policy: *id001
+    needs:
+    - graph
     results:
       native: reports/javascript.json
-  charts-0:
-    title: Helm consumed values / strict schemas / Kubernetes policy shard 1/4
-    profile: quality-tools
-    needs:
-    - quality-contracts
-    run: uv run python scripts/quality/charts.py --shard 0
-    results:
-      native: reports/charts-0.json
+  tests-fast:
+    title: Unit tests
+    profile: default
+    run: uv run python scripts/quality/tests.py fast --isolate-network
     policy: *id001
-  charts-1:
-    title: Helm consumed values / strict schemas / Kubernetes policy shard 2/4
-    profile: quality-tools
     needs:
-    - quality-contracts
-    run: uv run python scripts/quality/charts.py --shard 1
+    - graph
     results:
-      native: reports/charts-1.json
+      junit: reports/tests-fast.xml
+  ownership:
+    title: Ownership contracts
+    profile: quality-helm
+    run: 'uv run python scripts/check_infrastructure_contracts.py
+
+      uv run python scripts/check_source_pointers.py
+
+      uv run python scripts/check_operational_entrypoints.py
+
+      uv run python scripts/check_vendor_contracts.py
+
+      uv run python scripts/alert_graphs.py --check
+
+      uv run python scripts/n8n/check_failure_alerts.py'
     policy: *id001
-  charts-2:
-    title: Helm consumed values / strict schemas / Kubernetes policy shard 3/4
-    profile: quality-tools
-    needs:
-    - quality-contracts
-    run: uv run python scripts/quality/charts.py --shard 2
-    results:
-      native: reports/charts-2.json
+    needs: &id002
+    - python
+    - yaml
+    - shell
+    - workflow
+    - secrets
+    - docker
+    - javascript
+    - tests-fast
+  manifests:
+    title: Manifest validation
+    profile: quality-manifests
+    run: uv run python scripts/quality/charts.py
     policy: *id001
-  charts-3:
-    title: Helm consumed values / strict schemas / Kubernetes policy shard 4/4
-    profile: quality-tools
-    needs:
-    - quality-contracts
-    run: uv run python scripts/quality/charts.py --shard 3
+    needs: *id002
     results:
-      native: reports/charts-3.json
+      native: reports/manifests.json
+  ansible:
+    title: Playbook safety
+    profile: quality-ansible
+    run: uv run python scripts/quality/lint.py ansible
     policy: *id001
-  tests-framework:
-    title: 'Offline pytest + unittest: framework'
-    profile: quality-helm
-    needs:
-    - quality-contracts
-    run: uv run python scripts/quality/tests.py framework --isolate-network
+    needs: *id002
     results:
-      junit: reports/tests-framework.xml
-  tests-ownership:
-    title: 'Offline pytest + unittest: ownership'
+      native: reports/ansible.json
+  tests-medium:
+    title: Integration tests
     profile: quality-helm
-    needs:
-    - quality-contracts
-    run: uv run python scripts/quality/tests.py ownership --isolate-network
+    run: uv run python scripts/quality/tests.py medium --isolate-network
+    policy: *id001
+    needs: *id002
     results:
-      junit: reports/tests-ownership.xml
-  tests-placement:
-    title: 'Offline pytest + unittest: placement'
-    profile: quality-helm
+      junit: reports/tests-medium.xml
+  tests-cluster:
+    title: Cluster lifecycle
+    profile: quality-cluster
+    run: uv run python scripts/quality/tests.py cluster
+    policy: *id001
     needs:
-    - quality-contracts
-    run: uv run python scripts/quality/tests.py placement --isolate-network
+    - ownership
+    - manifests
+    - ansible
+    - tests-medium
     results:
-      junit: reports/tests-placement.xml
-  tests-identity:
-    title: 'Offline pytest + unittest: identity'
-    profile: quality-helm
-    needs:
-    - quality-contracts
-    run: uv run python scripts/quality/tests.py identity --isolate-network
-    results:
-      junit: reports/tests-identity.xml
-  tests-alerts:
-    title: 'Offline pytest + unittest: alerts'
-    profile: quality-helm
-    needs:
-    - quality-contracts
-    run: uv run python scripts/quality/tests.py alerts --isolate-network
-    results:
-      junit: reports/tests-alerts.xml
-  tests-workflows:
-    title: 'Offline pytest + unittest: workflows'
-    profile: quality-helm
-    needs:
-    - quality-contracts
-    run: uv run python scripts/quality/tests.py workflows --isolate-network
-    results:
-      junit: reports/tests-workflows.xml
-  tests-webui:
-    title: 'Offline pytest + unittest: webui'
-    profile: quality-helm
-    needs:
-    - quality-contracts
-    run: uv run python scripts/quality/tests.py webui --isolate-network
-    results:
-      junit: reports/tests-webui.xml
-  tests-browser:
-    title: 'Offline pytest + unittest: browser'
-    profile: quality-helm
-    needs:
-    - quality-contracts
-    run: uv run python scripts/quality/tests.py browser --isolate-network
-    results:
-      junit: reports/tests-browser.xml
-  tests-otel-contracts:
-    title: 'Offline pytest + unittest: otel-contracts'
-    profile: quality-helm
-    needs:
-    - quality-contracts
-    run: uv run python scripts/quality/tests.py otel-contracts --isolate-network
-    results:
-      junit: reports/tests-otel-contracts.xml
-  tests-observability:
-    title: 'Offline pytest + unittest: observability'
-    profile: quality-helm
-    needs:
-    - quality-contracts
-    run: uv run python scripts/quality/tests.py observability --isolate-network
-    results:
-      junit: reports/tests-observability.xml
-  tests-frontend:
-    title: 'Offline pytest + unittest: frontend'
-    profile: quality-helm
-    needs:
-    - quality-contracts
-    run: uv run python scripts/quality/tests.py frontend --isolate-network
-    results:
-      junit: reports/tests-frontend.xml
-  tests-public-entry:
-    title: 'Offline pytest + unittest: public-entry'
-    profile: quality-helm
-    needs:
-    - quality-contracts
-    run: uv run python scripts/quality/tests.py public-entry --isolate-network
-    results:
-      junit: reports/tests-public-entry.xml
-  tests-platform:
-    title: 'Offline pytest + unittest: platform'
-    profile: quality-helm
-    needs:
-    - quality-contracts
-    run: uv run python scripts/quality/tests.py platform --isolate-network
-    results:
-      junit: reports/tests-platform.xml
-  tests-rustfs-policy:
-    title: 'Offline pytest + unittest: rustfs-policy'
-    profile: quality-helm
-    needs:
-    - quality-contracts
-    run: uv run python scripts/quality/tests.py rustfs-policy --isolate-network
-    results:
-      junit: reports/tests-rustfs-policy.xml
-  tests-identity-policy:
-    title: 'Offline pytest + unittest: identity-policy'
-    profile: quality-helm
-    needs:
-    - quality-contracts
-    run: uv run python scripts/quality/tests.py identity-policy --isolate-network
-    results:
-      junit: reports/tests-identity-policy.xml
-  tests-workload-placement:
-    title: 'Offline pytest + unittest: workload-placement'
-    profile: quality-helm
-    needs:
-    - quality-contracts
-    run: uv run python scripts/quality/tests.py workload-placement --isolate-network
-    results:
-      junit: reports/tests-workload-placement.xml
-  tests-spi-policy:
-    title: 'Offline pytest + unittest: spi-policy'
-    profile: quality-helm
-    needs:
-    - quality-contracts
-    run: uv run python scripts/quality/tests.py spi-policy --isolate-network
-    results:
-      junit: reports/tests-spi-policy.xml
-  tests-monitoring-policy:
-    title: 'Offline pytest + unittest: monitoring-policy'
-    profile: quality-helm
-    needs:
-    - quality-contracts
-    run: uv run python scripts/quality/tests.py monitoring-policy --isolate-network
-    results:
-      junit: reports/tests-monitoring-policy.xml
-  tests-otel-offline-policy:
-    title: 'Offline pytest + unittest: otel-offline-policy'
-    profile: quality-helm
-    needs:
-    - quality-contracts
-    run: uv run python scripts/quality/tests.py otel-offline-policy --isolate-network
-    results:
-      junit: reports/tests-otel-offline-policy.xml
-  tests-frontend-policy:
-    title: 'Offline pytest + unittest: frontend-policy'
-    profile: quality-helm
-    needs:
-    - quality-contracts
-    run: uv run python scripts/quality/tests.py frontend-policy --isolate-network
-    results:
-      junit: reports/tests-frontend-policy.xml
-  python-dependency-audit:
-    title: Python toolchain vulnerability feed (online; main only)
-    events:
-    - push
+      junit: reports/tests-cluster.xml
+  dependencies:
+    title: Dependency audit
+    profile: default
     run: uv run python scripts/quality/lint.py dependencies
+    policy: *id001
+    needs:
+    - tests-cluster
     results:
       native: reports/dependencies.json
-    policy: *id001
+    events:
+    - push

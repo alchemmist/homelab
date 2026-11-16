@@ -254,14 +254,14 @@
         - name: Transfer leadership if needed and commit removal of socrat-1
           ansible.builtin.command: python3 /var/lib/homelab-k3s-rebalance/etcd_members.py remove-socrat-1
           delegate_to: socrat-0
-          become_method: sudo
+          become_method: ansible.builtin.sudo
           register: rebalance_remove
           changed_when: (rebalance_remove.stdout | from_json).changed
       rescue:
         - name: Inspect committed membership before choosing recovery
           ansible.builtin.command: python3 /var/lib/homelab-k3s-rebalance/etcd_members.py inspect
           delegate_to: socrat-0
-          become_method: sudo
+          become_method: ansible.builtin.sudo
           register: rebalance_failed_members
           changed_when: false
           failed_when: false
@@ -349,7 +349,7 @@
         dest: /var/lib/homelab-k3s-rebalance/verified.snapshot
         mode: '0600'
       delegate_to: socrat-3
-      become_method: su
+      become_method: ansible.builtin.su
 
     - name: Mark the new topology as authoritative
       ansible.builtin.copy:

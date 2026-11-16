@@ -49,8 +49,6 @@ class LiteLLMRolloutTests(unittest.TestCase):
             home = Path(directory)
             evidence = home / 'deploy/monitoring/migration-evidence'
             evidence.mkdir(parents=True)
-            source = ROOT / 'deploy/monitoring/migration-evidence/litellm-proxy-sdk-canary-20261101.json'
-            (evidence / source.name).write_text(source.read_text())
             (evidence.parent / 'otel-application-scope.json').write_text(json.dumps({'dedicatedClientCertificates': {}}))
             output = home / 'Library/Application Support/homelab/otel-controller/must-not-exist'
             with patch.object(module, 'ROOT', home), patch.object(module.Path, 'home', return_value=home), patch.object(module.BOOTSTRAP, 'kube') as kube:

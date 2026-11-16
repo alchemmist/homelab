@@ -21,7 +21,10 @@ def main():
     args = parser.parse_args()
     catalog = json.loads((ROOT / "quality/test-suites.json").read_text())
     paths = catalog["suites"][args.suite]
-    if not paths or any(not p.startswith("tests/test_") or ".." in Path(p).parts for p in paths):
+    if not paths or any(
+        not p.startswith("tests/") or not Path(p).name.startswith("test_") or ".." in Path(p).parts
+        for p in paths
+    ):
         raise ValueError("Invalid test suite")
     output = ROOT / f"reports/tests-{args.suite}.xml"
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -67,7 +70,7 @@ def main():
             *argv,
         ]
     return subprocess.run(  # noqa: S603 -- fixed tool/test argv, no shell or operational execution
-        argv, cwd=ROOT, env=env, check=False, timeout=240
+        argv, cwd=ROOT, env=env, check=False, timeout=840 if args.suite == "cluster" else 240
     ).returncode
 
 

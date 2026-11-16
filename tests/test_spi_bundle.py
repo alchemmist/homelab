@@ -31,7 +31,7 @@ class FullServiceBundleTests(unittest.TestCase):
         self.assertEqual(dep['spec']['replicas'],1)
         self.assertEqual(dep['spec']['strategy'],{'type':'Recreate'})
         pod=dep['spec']['template']['spec']
-        self.assertIn({'name':'data','persistentVolumeClaim':{'claimName':'spi-triage-data'}},pod['volumes'])
+        self.assertIn({'name':'data','persistentVolumeClaim':{'claimName':'spi-triage-socrat5'}},pod['volumes'])
         frontend=docs['Deployment','automation','spi-queue-ui']['spec']['template']['spec']
         self.assertFalse(frontend['automountServiceAccountToken'])
         self.assertNotIn('envFrom',frontend['containers'][0])

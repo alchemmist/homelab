@@ -11,10 +11,13 @@ SPEC = importlib.util.spec_from_file_location('otel_preflight', ROOT / 'scripts/
 PREFLIGHT = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(PREFLIGHT)
 GIB = 1024 ** 3
+# The operational policy was deliberately retired in 258374b6. Pure evaluator tests
+# use its archived fixture, never restore it to the production configuration path.
+POLICY_FIXTURE = ROOT / 'tests/fixtures/retired-otel/policy.json'
 
 
 def fixtures():
-    policy = json.loads((ROOT / 'deploy/monitoring/otel-migration-policy.json').read_text())
+    policy = json.loads((POLICY_FIXTURE).read_text())
     for key in ('diskProjectionVerified', 'backupVerified', 'historyRoundtripVerified', 'historySourceIntegrityVerified', 'sourceRegistryVerified'):
         policy[key] = True
     inventory = {
@@ -29,13 +32,16 @@ def fixtures():
 
 
 class MigrationPreflightTests(unittest.TestCase):
+    def test_retired_operational_policy_is_not_resurrected(self):
+        self.assertFalse(PREFLIGHT.DEFAULT_POLICY.exists())
+
     def test_ready_with_verified_prerequisites_and_capacity(self):
         policy, inventory = fixtures()
         self.assertTrue(PREFLIGHT.evaluate(policy, inventory, now=1000)['readyForCutover'])
 
-    def test_default_policy_never_authorizes_cutover(self):
+    def test_historical_default_policy_never_authorizes_cutover(self):
         _, inventory = fixtures()
-        policy = json.loads(PREFLIGHT.DEFAULT_POLICY.read_text())
+        policy = json.loads(POLICY_FIXTURE.read_text())
         result = PREFLIGHT.evaluate(policy, inventory, now=1000)
         self.assertFalse(result['readyForCutover'])
         self.assertEqual(len([error for error in result['errors'] if 'prerequisite' in error]), 4)
@@ -52,7 +58,7 @@ class MigrationPreflightTests(unittest.TestCase):
             self.assertIn('Unverified prerequisite: historySourceIntegrityVerified', result['errors'])
 
     def test_integrity_gate_links_to_the_unrepaired_source_incident(self):
-        policy = json.loads(PREFLIGHT.DEFAULT_POLICY.read_text())
+        policy = json.loads(POLICY_FIXTURE.read_text())
         self.assertFalse(policy['historySourceIntegrityVerified'])
         evidence = json.loads((ROOT / policy['historySourceIntegrityEvidence']).read_text())
         self.assertFalse(evidence['sourceIntegrityVerified'])
@@ -60,8 +66,8 @@ class MigrationPreflightTests(unittest.TestCase):
         self.assertFalse(evidence['productionHistoryModified'])
         self.assertFalse(evidence['checksumChecksBypassed'])
 
-    def test_backup_assertion_has_a_verified_receipt(self):
-        policy = json.loads(PREFLIGHT.DEFAULT_POLICY.read_text())
+    def test_historical_backup_receipt_format_is_consistent(self):
+        policy = json.loads(POLICY_FIXTURE.read_text())
         self.assertTrue(policy['backupVerified'])
         receipt = json.loads((ROOT / policy['backupEvidence']).read_text())
         self.assertTrue(receipt['verified'])
@@ -163,7 +169,7 @@ class MigrationPreflightTests(unittest.TestCase):
         self.assertNotIn('private-token', json.dumps(result))
 
     def test_contract_preserves_archive_and_tv_defaults(self):
-        contract = json.loads(PREFLIGHT.DEFAULT_POLICY.read_text())['contract']
+        contract = json.loads(POLICY_FIXTURE.read_text())['contract']
         self.assertFalse(contract['replaceProductionHistory'])
         self.assertFalse(contract['modifyCascadePolicy'])
         self.assertEqual(contract['historicalDownsampled'], 'native-thanos-preserved')

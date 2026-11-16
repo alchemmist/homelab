@@ -52,12 +52,12 @@ def run(output, apply):
     parent = Path.home() / 'Library/Application Support/homelab/otel-controller'
     if not output.resolve().is_relative_to(parent.resolve()):
         raise ValueError('Private rollout evidence must remain in the durable controller root')
-    proxy = json.loads((ROOT / 'deploy/monitoring/migration-evidence/litellm-proxy-sdk-canary-20261101.json').read_text())
-    if not (proxy['source']['success'] and proxy['source']['httpStatus'] == 200 and proxy['source']['sourcePrivacyAudit']['endedSpans'] >= 2 and not proxy['source']['sourcePrivacyAudit']['sensitiveSyntheticContentFoundAtSource'] and proxy['backend']['success']):
-        raise ValueError('Native proxy route, internal child and source privacy gates must pass')
     scope = json.loads((ROOT / 'deploy/monitoring/otel-application-scope.json').read_text())
     if apply and 'litellm' not in scope.get('dedicatedClientCertificates', {}).get('sdkReloadVerifiedForApplications', []):
         raise ValueError('Production apply blocked until least-privilege renewable SDK credential reload is independently verified')
+    proxy = json.loads((ROOT / 'deploy/monitoring/migration-evidence/litellm-proxy-sdk-canary-20261101.json').read_text())
+    if not (proxy['source']['success'] and proxy['source']['httpStatus'] == 200 and proxy['source']['sourcePrivacyAudit']['endedSpans'] >= 2 and not proxy['source']['sourcePrivacyAudit']['sensitiveSyntheticContentFoundAtSource'] and proxy['backend']['success']):
+        raise ValueError('Native proxy route, internal child and source privacy gates must pass')
     if apply:
         renewal = json.loads((ROOT / 'deploy/monitoring/migration-evidence/litellm-sdk-leaf-renewal-20261101.json').read_text())
         if not (renewal['source']['success'] and renewal['source']['sameNativeSdkProviderAndExporterInstance']

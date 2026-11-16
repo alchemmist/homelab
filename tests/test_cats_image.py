@@ -14,12 +14,12 @@ class CatsImageTest(unittest.TestCase):
 
     def test_default_image_is_immutable_and_cacheable(self):
         manifest = self.render()
-        self.assertIn('image: alchemmist/cats@sha256:a85ce9a2ade6edad537e920303b171c8a7dd5c60ce072edf981ff2fe4b52b4b8', manifest)
+        self.assertIn('image: harbor.socrat.alchemmist.xyz/homelab/cats@sha256:af42b0edabcbbfa0541b6ee427ec8ba649ea7aa72429f7245f95c8dbfdb61a18', manifest)
         self.assertIn('imagePullPolicy: IfNotPresent', manifest)
         self.assertNotIn('image: alchemmist/cats:latest', manifest)
 
     def test_empty_digest_preserves_explicit_tag_support(self):
-        manifest = self.render('--set', 'image.digest=', '--set', 'image.tag=test-version')
+        manifest = self.render('--set', 'image.digest=', '--set', 'image.fallback=alchemmist/cats:test-version')
         self.assertIn('image: alchemmist/cats:test-version', manifest)
 
 

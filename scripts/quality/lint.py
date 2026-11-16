@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import shutil
 import tempfile
@@ -31,8 +32,21 @@ def sarif(data, prefix=""):
     return result
 
 
+def nonsecret_tokenizer_option(path, item):
+    # DL3064 matches TOKENIZERS as though it were a credential. This exact
+    # public runtime option line contains no secret; any edit loses the exception.
+    if path != "services/spi-tokenizer/Dockerfile" or item["code"] != "DL3064":
+        return False
+    line = (ROOT / path).read_text().splitlines()[item["line"] - 1]
+    return line == "ENV TOKENIZERS_PARALLELISM=false RAYON_NUM_THREADS=1 PYTHONPATH=/app"
+
+
 def check(tool):
     names = owned(tracked())
+    if tool == "workflow":
+        security, count = check("actions")
+        expressions, _ = check("actionlint")
+        return security + expressions, count
     if tool == "python":
         files = [p for p in names if p.endswith(".py")]
         data = json.loads(
@@ -49,9 +63,25 @@ def check(tool):
                 allowed=(0, 1),
             ).stdout
         )
-        return [
+        result = [
             finding(i["code"], i["filename"], i["location"]["row"], i["message"]) for i in data
-        ], len(files)
+        ]
+        # Formatting is strict for the maintained CI implementation, not mass
+        # rewriting unrelated operational files to appease a new formatter.
+        for path in files:
+            if (
+                path.startswith(("scripts/quality/", "tests/kubernetes/"))
+                or path == "tests/test_quality_system.py"
+            ):
+                formatted = command(
+                    ["ruff", "format", "--check", "--config", "quality/ruff.toml", path],
+                    allowed=(0, 1),
+                )
+                if formatted.returncode:
+                    result.append(
+                        finding("ci-format", path, 1, "CI implementation needs Ruff formatting")
+                    )
+        return result, len(files)
     if tool == "yaml":
         from yamllint import linter
         from yamllint.config import YamlLintConfig
@@ -98,6 +128,8 @@ def check(tool):
             result.append(finding(i["kind"], i["filepath"], i["line"], i["message"]))
         return result, len([p for p in names if p.startswith(".github/workflows/")])
     if tool == "ansible":
+        os.environ["ANSIBLE_CONFIG"] = str(ROOT / "ansible/ansible.cfg")
+        os.environ["ANSIBLE_COLLECTIONS_PATH"] = str(ROOT / ".quality-tools/collections")
         data = json.loads(
             command(
                 [
@@ -131,7 +163,11 @@ def check(tool):
                     allowed=(0, 1),
                 ).stdout
             )
-            result.extend(finding(i["code"], path, i["line"], i["message"]) for i in data)
+            result.extend(
+                finding(i["code"], path, i["line"], i["message"])
+                for i in data
+                if not nonsecret_tokenizer_option(path, i)
+            )
         return result, len(files)
     if tool == "javascript":
         files = [p for p in names if p.endswith(".js")]
@@ -231,6 +267,7 @@ def main():
     parser.add_argument(
         "tool",
         choices=[
+            "workflow",
             "python",
             "yaml",
             "shell",

@@ -21,7 +21,7 @@ class SyncthingSchedulingTests(unittest.TestCase):
     def render(self, overrides):
         with tempfile.TemporaryDirectory() as directory:
             values = Path(directory) / 'values.json'
-            values.write_text(json.dumps(overrides))
+            values.write_text(json.dumps({'nodeSelector': {}, **overrides, 'privateGui': {'enabled': True, 'gatewayOnlyNodes': [], **overrides.get('privateGui', {})}}))
             return subprocess.run(
                 [HELM, 'template', 'syncthing', str(ROOT / 'charts/syncthing'), '-f', str(values)],
                 capture_output=True, text=True, timeout=30,
@@ -38,7 +38,7 @@ class SyncthingSchedulingTests(unittest.TestCase):
         ]}}]:
             with self.subTest(overrides=overrides):
                 resources = self.resources(overrides)
-                pod = next(item for item in resources if item['kind'] == 'DaemonSet')['spec']['template']['spec']
+                pod = next(item for item in resources if item['kind'] == 'Deployment' and item['metadata']['name']=='syncthing')['spec']['template']['spec']
                 configuration = next(item for item in resources if item['kind'] == 'ConfigMap')['data']
                 terms = pod['affinity']['nodeAffinity']['requiredDuringSchedulingIgnoredDuringExecution']['nodeSelectorTerms']
                 eligible = set()
@@ -48,18 +48,18 @@ class SyncthingSchedulingTests(unittest.TestCase):
                     self.assertEqual(selector['operator'], 'In')
                     self.assertEqual(len(selector['values']), 1)
                     eligible.update(selector['values'])
-                self.assertEqual(eligible, {name.removesuffix('.conf') for name in configuration})
+                self.assertEqual(eligible, {name.removesuffix('.conf') for name in configuration if name.endswith('.conf')})
                 self.assertNotIn('socrat-3', eligible)
 
     def test_explicit_node_selector_remains_an_additional_constraint(self):
-        resources = self.resources({'nodeSelector': {'homelab.io/storage': 'true'}})
-        pod = next(item for item in resources if item['kind'] == 'DaemonSet')['spec']['template']['spec']
-        self.assertEqual(pod['nodeSelector'], {'homelab.io/storage': 'true'})
+        resources = self.resources({'nodeSelector': {'homelab.io/storage': 'true', 'kubernetes.io/hostname': 'socrat-0'}})
+        pod = next(item for item in resources if item['kind'] == 'Deployment' and item['metadata']['name']=='syncthing')['spec']['template']['spec']
+        self.assertEqual(pod['nodeSelector'], {'homelab.io/storage': 'true', 'kubernetes.io/hostname': 'socrat-0'})
         self.assertIn('nodeAffinity', pod['affinity'])
 
     def test_public_gui_does_not_require_private_node_configuration(self):
         resources = self.resources({'privateGui': {'enabled': False, 'nodes': []}})
-        pod = next(item for item in resources if item['kind'] == 'DaemonSet')['spec']['template']['spec']
+        pod = next(item for item in resources if item['kind'] == 'Deployment' and item['metadata']['name']=='syncthing')['spec']['template']['spec']
         self.assertNotIn('affinity', pod)
 
     def test_private_gui_rejects_empty_enrollment(self):

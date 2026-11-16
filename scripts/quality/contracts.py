@@ -76,6 +76,10 @@ def check():
                 re.fullmatch(
                     "https://github.com/[\\w-]+/[\\w-]+/releases/download/v[\\d.]+/[\\w.-]+",
                     record["url"],
+                )
+                or re.fullmatch(
+                    r"https://dl\.k8s\.io/release/v1\.36\.4/bin/(linux/amd64|darwin/arm64)/kubectl",
+                    record["url"],
                 ),
                 "Quality integrity contract failed",
             )
@@ -84,7 +88,11 @@ def check():
                 "Quality integrity contract failed",
             )
     inventory = json.loads((ROOT / "quality/test-suites.json").read_text())
-    actual = {p for p in tracked() if p.startswith("tests/test_") and p.endswith(".py")}
+    actual = {
+        p
+        for p in tracked()
+        if p.startswith("tests/") and Path(p).name.startswith("test_") and p.endswith(".py")
+    }
     scheduled = [p for paths in inventory["suites"].values() for p in paths]
     require(len(scheduled) == len(set(scheduled)), "Test assigned to multiple suites")
     deferred = set(inventory["notScheduled"])
@@ -103,8 +111,9 @@ def check():
     graph = yaml.safe_load((ROOT / "qg.yaml").read_text())
     for suite in inventory["suites"]:
         node = graph["nodes"]["tests-" + suite]
+        isolation = "" if suite == "cluster" else " --isolate-network"
         require(
-            node["run"] == f"uv run python scripts/quality/tests.py {suite} --isolate-network",
+            node["run"] == f"uv run python scripts/quality/tests.py {suite}{isolation}",
             "Test suite execution contract drift",
         )
         require(

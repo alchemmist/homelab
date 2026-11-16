@@ -12,871 +12,346 @@ concurrency:
   group: quality-graph-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  graph-freshness:
-    name: Quality Graph declaration freshness
+  graph:
+    name: Graph integrity
     runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: 'false'
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
       - run: uv sync --locked
-      - run: uv run qg validate
-        name: Run Quality Graph declaration freshness
+      - run: 'uv run qg validate
+
+          uv run python scripts/quality/contracts.py'
+        name: Run Graph integrity
         id: quality-command
         continue-on-error: true
-      - name: Collect Quality Graph declaration freshness result
+      - name: Collect Graph integrity result
         id: quality-result
         if: always()
         uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
         with:
           operation: collect
-          node-id: graph-freshness
-          title: Quality Graph declaration freshness
+          node-id: graph
+          title: Graph integrity
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: Upload Quality Graph declaration freshness result
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-graph-freshness-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/graph-freshness.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: Enforce Quality Graph declaration freshness result
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    timeout-minutes: 5
-  workflow-failure-policy:
-    name: n8n workflow failure notification policy
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - run: uv run python scripts/n8n/check_failure_alerts.py
-        name: Run n8n workflow failure notification policy
-        id: quality-command
-        continue-on-error: true
-      - name: Collect n8n workflow failure notification policy result
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: workflow-failure-policy
-          title: n8n workflow failure notification policy
-          adapter: exit-code
-          report-path: ''
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: Upload n8n workflow failure notification policy result
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-workflow-failure-policy-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/workflow-failure-policy.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: Enforce n8n workflow failure notification policy result
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    timeout-minutes: 5
-  workflow-policy-tests:
-    name: Offline workflow policy regressions
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - run: uv run python -m unittest discover -s tests -p test_n8n_failure_alert_policy.py
-        name: Run Offline workflow policy regressions
-        id: quality-command
-        continue-on-error: true
-      - name: Collect Offline workflow policy regressions result
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: workflow-policy-tests
-          title: Offline workflow policy regressions
-          adapter: exit-code
-          report-path: ''
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: Upload Offline workflow policy regressions result
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-workflow-policy-tests-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/workflow-policy-tests.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: Enforce Offline workflow policy regressions result
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    timeout-minutes: 5
-  alert-graph-delivery:
-    name: Alert graph chart, image ownership and renderer capacity
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        with:
-          version: v3.19.0
-      - run: 'command -v helm
-
-          uv run python -m unittest discover -s tests -p test_alert_graphs_chart.py
-
-          uv run python -m unittest discover -s tests -p test_alert_graph_panel_ids.py
-
-          uv run python scripts/alert_graphs.py --check
-
-          '
-        name: Run Alert graph chart, image ownership and renderer capacity
-        id: quality-command
-        continue-on-error: true
-      - name: Collect Alert graph chart, image ownership and renderer capacity result
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: alert-graph-delivery
-          title: Alert graph chart, image ownership and renderer capacity
-          adapter: exit-code
-          report-path: ''
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: Upload Alert graph chart, image ownership and renderer capacity result
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-alert-graph-delivery-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/alert-graph-delivery.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: Enforce Alert graph chart, image ownership and renderer capacity result
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    timeout-minutes: 5
-  spi-execution-links:
-    name: Stable SPI alert identity and execution link metadata
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - run: uv run python -m unittest discover -s tests -p test_spi_execution_links.py
-        name: Run Stable SPI alert identity and execution link metadata
-        id: quality-command
-        continue-on-error: true
-      - name: Collect Stable SPI alert identity and execution link metadata result
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: spi-execution-links
-          title: Stable SPI alert identity and execution link metadata
-          adapter: exit-code
-          report-path: ''
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: Upload Stable SPI alert identity and execution link metadata result
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-spi-execution-links-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/spi-execution-links.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: Enforce Stable SPI alert identity and execution link metadata result
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    timeout-minutes: 5
-  infrastructure-contracts:
-    name: Offline infrastructure ownership, placement and issuer contracts
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        with:
-          version: v3.19.0
-      - run: 'command -v helm
-
-          uv run python scripts/check_infrastructure_contracts.py
-
-          uv run python scripts/check_source_pointers.py
-
-          uv run python -m unittest discover -s tests -p test_source_pointers.py
-
-          uv run python -m unittest discover -s tests -p test_wg_peer15_relay.py
-
-          uv run python scripts/check_operational_entrypoints.py
-
-          uv run python -m unittest discover -s tests -p test_operational_entrypoints.py
-
-          uv run python scripts/check_vendor_contracts.py
-
-          uv run python -m unittest discover -s tests -p test_vendor_contracts.py
-
-          uv run python -m unittest discover -s tests -p test_vm105_renderer_lms_litellm.py
-
-          uv run python -m unittest discover -s tests -p test_target_placement_ownership.py
-
-          uv run python -m unittest discover -s tests -p test_infrastructure_contracts.py
-
-          uv run python -m unittest discover -s tests -p test_vm105_management.py
-
-          uv run python -m unittest discover -s tests -p test_socrat5_app_placement.py
-
-          uv run python -m unittest discover -s tests -p test_argocd_refresh.py
-
-          uv run python -m unittest discover -s tests -p test_refactor_acceptance.py
-
-          uv run python -m unittest discover -s tests -p test_deployment_ownership.py
-
-          uv run python -m unittest discover -s tests -p test_gateway_readonly.py
-
-          '
-        name: Run Offline infrastructure ownership, placement and issuer contracts
-        id: quality-command
-        continue-on-error: true
-      - name: Collect Offline infrastructure ownership, placement and issuer contracts result
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: infrastructure-contracts
-          title: Offline infrastructure ownership, placement and issuer contracts
-          adapter: exit-code
-          report-path: ''
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: Upload Offline infrastructure ownership, placement and issuer contracts result
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-infrastructure-contracts-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/infrastructure-contracts.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: Enforce Offline infrastructure ownership, placement and issuer contracts result
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    timeout-minutes: 5
-  wishlist-observability:
-    name: Wishlist private metrics and dedicated OTel identity
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        with:
-          version: v3.19.0
-      - run: 'helm lint charts/wishlist -f deploy/wishlist/values.yaml
-
-          uv run python -m unittest tests.test_wishlist_observability tests.test_otel_application_credentials tests.test_otel_application_registry tests.test_otel_application_leaf_rotation
-
-          '
-        name: Run Wishlist private metrics and dedicated OTel identity
-        id: quality-command
-        continue-on-error: true
-      - name: Collect Wishlist private metrics and dedicated OTel identity result
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: wishlist-observability
-          title: Wishlist private metrics and dedicated OTel identity
-          adapter: exit-code
-          report-path: ''
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: Upload Wishlist private metrics and dedicated OTel identity result
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-wishlist-observability-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/wishlist-observability.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: Enforce Wishlist private metrics and dedicated OTel identity result
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    timeout-minutes: 5
-  quality-contracts:
-    name: Quality framework, schema/tool locks and test inventory
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - run: 'uv run python scripts/quality/contracts.py
-
-          uv run python scripts/check_source_pointers.py'
-        name: Run Quality framework, schema/tool locks and test inventory
-        id: quality-command
-        continue-on-error: true
-      - name: Collect Quality framework, schema/tool locks and test inventory result
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: quality-contracts
-          title: Quality framework, schema/tool locks and test inventory
-          adapter: exit-code
-          report-path: ''
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
+          graph-digest: bf908d457cc74cbb66f72a8a5f673a207329395bb15f710af04e25758734bdf5
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
-      - name: Upload Quality framework, schema/tool locks and test inventory result
+      - name: Upload Graph integrity result
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: quality-result-quality-contracts-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/quality-contracts.json
+          name: quality-result-graph-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/quality-graph/graph.json
           if-no-files-found: error
           retention-days: 7
-      - name: Enforce Quality framework, schema/tool locks and test inventory result
+      - name: Enforce Graph integrity result
         if: always()
         shell: bash
         env:
           EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
         run: exit "${EXIT_CODE:-2}"
     timeout-minutes: 5
-  quality-implementation:
-    name: CI implementation lint and formatting (no legacy baseline)
+  python:
+    name: Python correctness
     runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - run: 'uv run ruff check --config quality/ruff.toml scripts/quality tests/test_quality_system.py
-
-          uv run ruff format --check --config quality/ruff.toml scripts/quality tests/test_quality_system.py'
-        name: Run CI implementation lint and formatting (no legacy baseline)
-        id: quality-command
-        continue-on-error: true
-      - name: Collect CI implementation lint and formatting (no legacy baseline) result
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: quality-implementation
-          title: CI implementation lint and formatting (no legacy baseline)
-          adapter: exit-code
-          report-path: ''
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'false'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: Upload CI implementation lint and formatting (no legacy baseline) result
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-quality-implementation-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/quality-implementation.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: Enforce CI implementation lint and formatting (no legacy baseline) result
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    timeout-minutes: 5
-  lint-python:
-    name: Python correctness, security and modernization ratchet
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: 'false'
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
       - run: uv sync --locked
       - run: uv run python scripts/quality/lint.py python
-        name: Run Python correctness, security and modernization ratchet
+        name: Run Python correctness
         id: quality-command
         continue-on-error: true
-      - name: Collect Python correctness, security and modernization ratchet result
+      - name: Collect Python correctness result
         id: quality-result
         if: always()
         uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
         with:
           operation: collect
-          node-id: lint-python
-          title: Python correctness, security and modernization ratchet
+          node-id: python
+          title: Python correctness
           adapter: native
           report-path: reports/python.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
+          graph-digest: bf908d457cc74cbb66f72a8a5f673a207329395bb15f710af04e25758734bdf5
+          approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
-      - name: Upload Python correctness, security and modernization ratchet result
+      - name: Upload Python correctness result
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: quality-result-lint-python-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/lint-python.json
+          name: quality-result-python-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/quality-graph/python.json
           if-no-files-found: error
           retention-days: 7
-      - name: Enforce Python correctness, security and modernization ratchet result
+      - name: Enforce Python correctness result
         if: always()
         shell: bash
         env:
           EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
         run: exit "${EXIT_CODE:-2}"
     needs:
-      - quality-contracts
+      - graph
     timeout-minutes: 5
-  lint-yaml:
-    name: Non-template YAML syntax, duplicate keys and hygiene
+  yaml:
+    name: YAML structure
     runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: 'false'
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
       - run: uv sync --locked
       - run: uv run python scripts/quality/lint.py yaml
-        name: Run Non-template YAML syntax, duplicate keys and hygiene
+        name: Run YAML structure
         id: quality-command
         continue-on-error: true
-      - name: Collect Non-template YAML syntax, duplicate keys and hygiene result
+      - name: Collect YAML structure result
         id: quality-result
         if: always()
         uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
         with:
           operation: collect
-          node-id: lint-yaml
-          title: Non-template YAML syntax, duplicate keys and hygiene
+          node-id: yaml
+          title: YAML structure
           adapter: native
           report-path: reports/yaml.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
+          graph-digest: bf908d457cc74cbb66f72a8a5f673a207329395bb15f710af04e25758734bdf5
+          approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
-      - name: Upload Non-template YAML syntax, duplicate keys and hygiene result
+      - name: Upload YAML structure result
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: quality-result-lint-yaml-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/lint-yaml.json
+          name: quality-result-yaml-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/quality-graph/yaml.json
           if-no-files-found: error
           retention-days: 7
-      - name: Enforce Non-template YAML syntax, duplicate keys and hygiene result
+      - name: Enforce YAML structure result
         if: always()
         shell: bash
         env:
           EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
         run: exit "${EXIT_CODE:-2}"
     needs:
-      - quality-contracts
+      - graph
     timeout-minutes: 5
-  lint-shell:
-    name: ShellCheck static source diagnostics
+  shell:
+    name: Shell safety
     runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: 'false'
-          fetch-depth: '0'
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
       - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        with:
-          version: v3.19.0
-      - run: uv run python scripts/quality/install_tools.py --tools actionlint kubeconform gitleaks shellcheck kube-linter
+      - run: uv run python scripts/quality/install_tools.py --tools shellcheck
       - run: uv run python scripts/quality/lint.py shell
-        name: Run ShellCheck static source diagnostics
+        name: Run Shell safety
         id: quality-command
         continue-on-error: true
-      - name: Collect ShellCheck static source diagnostics result
+      - name: Collect Shell safety result
         id: quality-result
         if: always()
         uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
         with:
           operation: collect
-          node-id: lint-shell
-          title: ShellCheck static source diagnostics
+          node-id: shell
+          title: Shell safety
           adapter: native
           report-path: reports/shell.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: Upload ShellCheck static source diagnostics result
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-lint-shell-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/lint-shell.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: Enforce ShellCheck static source diagnostics result
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    needs:
-      - quality-contracts
-    timeout-minutes: 10
-  lint-actions:
-    name: Offline GitHub Actions security / trusted publisher boundary
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - run: uv run python scripts/quality/lint.py actions
-        name: Run Offline GitHub Actions security / trusted publisher boundary
-        id: quality-command
-        continue-on-error: true
-      - name: Collect Offline GitHub Actions security / trusted publisher boundary result
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: lint-actions
-          title: Offline GitHub Actions security / trusted publisher boundary
-          adapter: native
-          report-path: reports/actions.json
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
+          graph-digest: bf908d457cc74cbb66f72a8a5f673a207329395bb15f710af04e25758734bdf5
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
-      - name: Upload Offline GitHub Actions security / trusted publisher boundary result
+      - name: Upload Shell safety result
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: quality-result-lint-actions-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/lint-actions.json
+          name: quality-result-shell-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/quality-graph/shell.json
           if-no-files-found: error
           retention-days: 7
-      - name: Enforce Offline GitHub Actions security / trusted publisher boundary result
+      - name: Enforce Shell safety result
         if: always()
         shell: bash
         env:
           EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
         run: exit "${EXIT_CODE:-2}"
     needs:
-      - quality-contracts
+      - graph
     timeout-minutes: 5
-  lint-actionlint:
-    name: GitHub Actions semantics and expression validation
+  workflow:
+    name: Delivery security
     runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: 'false'
-          fetch-depth: '0'
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
       - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        with:
-          version: v3.19.0
-      - run: uv run python scripts/quality/install_tools.py --tools actionlint kubeconform gitleaks shellcheck kube-linter
-      - run: uv run python scripts/quality/lint.py actionlint
-        name: Run GitHub Actions semantics and expression validation
+      - run: uv run python scripts/quality/install_tools.py --tools actionlint
+      - run: uv run python scripts/quality/lint.py workflow
+        name: Run Delivery security
         id: quality-command
         continue-on-error: true
-      - name: Collect GitHub Actions semantics and expression validation result
+      - name: Collect Delivery security result
         id: quality-result
         if: always()
         uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
         with:
           operation: collect
-          node-id: lint-actionlint
-          title: GitHub Actions semantics and expression validation
+          node-id: workflow
+          title: Delivery security
           adapter: native
-          report-path: reports/actionlint.json
+          report-path: reports/workflow.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
+          graph-digest: bf908d457cc74cbb66f72a8a5f673a207329395bb15f710af04e25758734bdf5
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
-      - name: Upload GitHub Actions semantics and expression validation result
+      - name: Upload Delivery security result
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: quality-result-lint-actionlint-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/lint-actionlint.json
+          name: quality-result-workflow-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/quality-graph/workflow.json
           if-no-files-found: error
           retention-days: 7
-      - name: Enforce GitHub Actions semantics and expression validation result
+      - name: Enforce Delivery security result
         if: always()
         shell: bash
         env:
           EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
         run: exit "${EXIT_CODE:-2}"
     needs:
-      - quality-contracts
-    timeout-minutes: 10
-  lint-ansible:
-    name: Ansible safety profile (tool compatibility diagnosis)
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - run: uv run python scripts/quality/lint.py ansible
-        name: Run Ansible safety profile (tool compatibility diagnosis)
-        id: quality-command
-        continue-on-error: true
-      - name: Collect Ansible safety profile (tool compatibility diagnosis) result
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: lint-ansible
-          title: Ansible safety profile (tool compatibility diagnosis)
-          adapter: native
-          report-path: reports/ansible.json
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'false'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: Upload Ansible safety profile (tool compatibility diagnosis) result
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-lint-ansible-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/lint-ansible.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: Enforce Ansible safety profile (tool compatibility diagnosis) result
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    needs:
-      - quality-contracts
+      - graph
     timeout-minutes: 5
-  lint-docker:
-    name: Dockerfile best practices (Hadolint)
+  secrets:
+    name: Credential hygiene
     runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: 'false'
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+      - run: uv sync --locked
+      - run: uv run python scripts/quality/install_tools.py --tools gitleaks
+      - run: uv run python scripts/quality/lint.py secrets
+        name: Run Credential hygiene
+        id: quality-command
+        continue-on-error: true
+      - name: Collect Credential hygiene result
+        id: quality-result
+        if: always()
+        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
+        with:
+          operation: collect
+          node-id: secrets
+          title: Credential hygiene
+          adapter: native
+          report-path: reports/secrets.json
+          command-outcome: ${{ steps.quality-command.outcome }}
+          graph-digest: bf908d457cc74cbb66f72a8a5f673a207329395bb15f710af04e25758734bdf5
+          approval-findings: 'false'
+          approval-files: 'false'
+          approval-node: 'false'
+      - name: Upload Credential hygiene result
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: quality-result-secrets-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/quality-graph/secrets.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Enforce Credential hygiene result
+        if: always()
+        shell: bash
+        env:
+          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
+        run: exit "${EXIT_CODE:-2}"
+    needs:
+      - graph
+    timeout-minutes: 5
+  docker:
+    name: Container recipes
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: 'false'
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
       - run: uv sync --locked
       - run: uv run python scripts/quality/install_tools.py --tools hadolint
       - run: uv run python scripts/quality/lint.py docker
-        name: Run Dockerfile best practices (Hadolint)
+        name: Run Container recipes
         id: quality-command
         continue-on-error: true
-      - name: Collect Dockerfile best practices (Hadolint) result
+      - name: Collect Container recipes result
         id: quality-result
         if: always()
         uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
         with:
           operation: collect
-          node-id: lint-docker
-          title: Dockerfile best practices (Hadolint)
+          node-id: docker
+          title: Container recipes
           adapter: native
           report-path: reports/docker.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: Upload Dockerfile best practices (Hadolint) result
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-lint-docker-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/lint-docker.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: Enforce Dockerfile best practices (Hadolint) result
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    needs:
-      - quality-contracts
-    timeout-minutes: 5
-  lint-secrets:
-    name: Tracked-tree secret scan with exact reviewed false positives
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-          fetch-depth: '0'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        with:
-          version: v3.19.0
-      - run: uv run python scripts/quality/install_tools.py --tools actionlint kubeconform gitleaks shellcheck kube-linter
-      - run: uv run python scripts/quality/lint.py secrets
-        name: Run Tracked-tree secret scan with exact reviewed false positives
-        id: quality-command
-        continue-on-error: true
-      - name: Collect Tracked-tree secret scan with exact reviewed false positives result
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: lint-secrets
-          title: Tracked-tree secret scan with exact reviewed false positives
-          adapter: native
-          report-path: reports/secrets.json
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
+          graph-digest: bf908d457cc74cbb66f72a8a5f673a207329395bb15f710af04e25758734bdf5
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
-      - name: Upload Tracked-tree secret scan with exact reviewed false positives result
+      - name: Upload Container recipes result
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: quality-result-lint-secrets-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/lint-secrets.json
+          name: quality-result-docker-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/quality-graph/docker.json
           if-no-files-found: error
           retention-days: 7
-      - name: Enforce Tracked-tree secret scan with exact reviewed false positives result
+      - name: Enforce Container recipes result
         if: always()
         shell: bash
         env:
           EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
         run: exit "${EXIT_CODE:-2}"
     needs:
-      - quality-contracts
-    timeout-minutes: 10
-  lint-javascript:
-    name: JavaScript syntax, parse-only Node 24
+      - graph
+    timeout-minutes: 5
+  javascript:
+    name: JavaScript syntax
     runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: 'false'
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
@@ -885,1266 +360,380 @@ jobs:
         with:
           node-version: 24.11.1
       - run: uv run python scripts/quality/lint.py javascript
-        name: Run JavaScript syntax, parse-only Node 24
+        name: Run JavaScript syntax
         id: quality-command
         continue-on-error: true
-      - name: Collect JavaScript syntax, parse-only Node 24 result
+      - name: Collect JavaScript syntax result
         id: quality-result
         if: always()
         uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
         with:
           operation: collect
-          node-id: lint-javascript
-          title: JavaScript syntax, parse-only Node 24
+          node-id: javascript
+          title: JavaScript syntax
           adapter: native
           report-path: reports/javascript.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
+          graph-digest: bf908d457cc74cbb66f72a8a5f673a207329395bb15f710af04e25758734bdf5
+          approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
-      - name: Upload JavaScript syntax, parse-only Node 24 result
+      - name: Upload JavaScript syntax result
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: quality-result-lint-javascript-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/lint-javascript.json
+          name: quality-result-javascript-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/quality-graph/javascript.json
           if-no-files-found: error
           retention-days: 7
-      - name: Enforce JavaScript syntax, parse-only Node 24 result
+      - name: Enforce JavaScript syntax result
         if: always()
         shell: bash
         env:
           EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
         run: exit "${EXIT_CODE:-2}"
     needs:
-      - quality-contracts
+      - graph
     timeout-minutes: 5
-  charts-0:
-    name: Helm consumed values / strict schemas / Kubernetes policy shard 1/4
+  tests-fast:
+    name: Unit tests
     runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: 'false'
-          fetch-depth: '0'
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
       - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        with:
-          version: v3.19.0
-      - run: uv run python scripts/quality/install_tools.py --tools actionlint kubeconform gitleaks shellcheck kube-linter
-      - run: uv run python scripts/quality/charts.py --shard 0
-        name: Run Helm consumed values / strict schemas / Kubernetes policy shard 1/4
+      - run: uv run python scripts/quality/tests.py fast --isolate-network
+        name: Run Unit tests
         id: quality-command
         continue-on-error: true
-      - name: Collect Helm consumed values / strict schemas / Kubernetes policy shard 1/4 result
+      - name: Collect Unit tests result
         id: quality-result
         if: always()
         uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
         with:
           operation: collect
-          node-id: charts-0
-          title: Helm consumed values / strict schemas / Kubernetes policy shard 1/4
-          adapter: native
-          report-path: reports/charts-0.json
+          node-id: tests-fast
+          title: Unit tests
+          adapter: junit
+          report-path: reports/tests-fast.xml
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
+          graph-digest: bf908d457cc74cbb66f72a8a5f673a207329395bb15f710af04e25758734bdf5
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
-      - name: Upload Helm consumed values / strict schemas / Kubernetes policy shard 1/4 result
+      - name: Upload Unit tests result
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: quality-result-charts-0-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/charts-0.json
+          name: quality-result-tests-fast-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/quality-graph/tests-fast.json
           if-no-files-found: error
           retention-days: 7
-      - name: Enforce Helm consumed values / strict schemas / Kubernetes policy shard 1/4 result
+      - name: Enforce Unit tests result
         if: always()
         shell: bash
         env:
           EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
         run: exit "${EXIT_CODE:-2}"
     needs:
-      - quality-contracts
-    timeout-minutes: 10
-  charts-1:
-    name: Helm consumed values / strict schemas / Kubernetes policy shard 2/4
+      - graph
+    timeout-minutes: 5
+  ownership:
+    name: Ownership contracts
     runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: 'false'
           fetch-depth: '0'
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
       - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
+      - uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e
         with:
           version: v3.19.0
-      - run: uv run python scripts/quality/install_tools.py --tools actionlint kubeconform gitleaks shellcheck kube-linter
-      - run: uv run python scripts/quality/charts.py --shard 1
-        name: Run Helm consumed values / strict schemas / Kubernetes policy shard 2/4
+      - run: 'uv run python scripts/check_infrastructure_contracts.py
+
+          uv run python scripts/check_source_pointers.py
+
+          uv run python scripts/check_operational_entrypoints.py
+
+          uv run python scripts/check_vendor_contracts.py
+
+          uv run python scripts/alert_graphs.py --check
+
+          uv run python scripts/n8n/check_failure_alerts.py'
+        name: Run Ownership contracts
         id: quality-command
         continue-on-error: true
-      - name: Collect Helm consumed values / strict schemas / Kubernetes policy shard 2/4 result
+      - name: Collect Ownership contracts result
         id: quality-result
         if: always()
         uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
         with:
           operation: collect
-          node-id: charts-1
-          title: Helm consumed values / strict schemas / Kubernetes policy shard 2/4
-          adapter: native
-          report-path: reports/charts-1.json
+          node-id: ownership
+          title: Ownership contracts
+          adapter: exit-code
+          report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
+          graph-digest: bf908d457cc74cbb66f72a8a5f673a207329395bb15f710af04e25758734bdf5
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
-      - name: Upload Helm consumed values / strict schemas / Kubernetes policy shard 2/4 result
+      - name: Upload Ownership contracts result
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: quality-result-charts-1-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/charts-1.json
+          name: quality-result-ownership-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/quality-graph/ownership.json
           if-no-files-found: error
           retention-days: 7
-      - name: Enforce Helm consumed values / strict schemas / Kubernetes policy shard 2/4 result
+      - name: Enforce Ownership contracts result
         if: always()
         shell: bash
         env:
           EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
         run: exit "${EXIT_CODE:-2}"
     needs:
-      - quality-contracts
+      - python
+      - yaml
+      - shell
+      - workflow
+      - secrets
+      - docker
+      - javascript
+      - tests-fast
     timeout-minutes: 10
-  charts-2:
-    name: Helm consumed values / strict schemas / Kubernetes policy shard 3/4
+  manifests:
+    name: Manifest validation
     runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: 'false'
           fetch-depth: '0'
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
       - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
+      - uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e
         with:
           version: v3.19.0
-      - run: uv run python scripts/quality/install_tools.py --tools actionlint kubeconform gitleaks shellcheck kube-linter
-      - run: uv run python scripts/quality/charts.py --shard 2
-        name: Run Helm consumed values / strict schemas / Kubernetes policy shard 3/4
+      - run: uv run python scripts/quality/install_tools.py --tools kubeconform kube-linter
+      - run: uv run python scripts/quality/charts.py
+        name: Run Manifest validation
         id: quality-command
         continue-on-error: true
-      - name: Collect Helm consumed values / strict schemas / Kubernetes policy shard 3/4 result
+      - name: Collect Manifest validation result
         id: quality-result
         if: always()
         uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
         with:
           operation: collect
-          node-id: charts-2
-          title: Helm consumed values / strict schemas / Kubernetes policy shard 3/4
+          node-id: manifests
+          title: Manifest validation
           adapter: native
-          report-path: reports/charts-2.json
+          report-path: reports/manifests.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
+          graph-digest: bf908d457cc74cbb66f72a8a5f673a207329395bb15f710af04e25758734bdf5
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
-      - name: Upload Helm consumed values / strict schemas / Kubernetes policy shard 3/4 result
+      - name: Upload Manifest validation result
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: quality-result-charts-2-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/charts-2.json
+          name: quality-result-manifests-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/quality-graph/manifests.json
           if-no-files-found: error
           retention-days: 7
-      - name: Enforce Helm consumed values / strict schemas / Kubernetes policy shard 3/4 result
+      - name: Enforce Manifest validation result
         if: always()
         shell: bash
         env:
           EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
         run: exit "${EXIT_CODE:-2}"
     needs:
-      - quality-contracts
+      - python
+      - yaml
+      - shell
+      - workflow
+      - secrets
+      - docker
+      - javascript
+      - tests-fast
     timeout-minutes: 10
-  charts-3:
-    name: Helm consumed values / strict schemas / Kubernetes policy shard 4/4
+  ansible:
+    name: Playbook safety
     runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: 'false'
-          fetch-depth: '0'
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
       - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        with:
-          version: v3.19.0
-      - run: uv run python scripts/quality/install_tools.py --tools actionlint kubeconform gitleaks shellcheck kube-linter
-      - run: uv run python scripts/quality/charts.py --shard 3
-        name: Run Helm consumed values / strict schemas / Kubernetes policy shard 4/4
+      - run: uv run python scripts/quality/install_collections.py
+      - run: uv run python scripts/quality/lint.py ansible
+        name: Run Playbook safety
         id: quality-command
         continue-on-error: true
-      - name: Collect Helm consumed values / strict schemas / Kubernetes policy shard 4/4 result
+      - name: Collect Playbook safety result
         id: quality-result
         if: always()
         uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
         with:
           operation: collect
-          node-id: charts-3
-          title: Helm consumed values / strict schemas / Kubernetes policy shard 4/4
+          node-id: ansible
+          title: Playbook safety
           adapter: native
-          report-path: reports/charts-3.json
+          report-path: reports/ansible.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
+          graph-digest: bf908d457cc74cbb66f72a8a5f673a207329395bb15f710af04e25758734bdf5
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
-      - name: Upload Helm consumed values / strict schemas / Kubernetes policy shard 4/4 result
+      - name: Upload Playbook safety result
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: quality-result-charts-3-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/charts-3.json
+          name: quality-result-ansible-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/quality-graph/ansible.json
           if-no-files-found: error
           retention-days: 7
-      - name: Enforce Helm consumed values / strict schemas / Kubernetes policy shard 4/4 result
+      - name: Enforce Playbook safety result
         if: always()
         shell: bash
         env:
           EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
         run: exit "${EXIT_CODE:-2}"
     needs:
-      - quality-contracts
-    timeout-minutes: 10
-  tests-framework:
-    name: 'Offline pytest + unittest: framework'
+      - python
+      - yaml
+      - shell
+      - workflow
+      - secrets
+      - docker
+      - javascript
+      - tests-fast
+    timeout-minutes: 5
+  tests-medium:
+    name: Integration tests
     runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: 'false'
           fetch-depth: '0'
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
       - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
+      - uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e
         with:
           version: v3.19.0
-      - run: uv run python scripts/quality/tests.py framework --isolate-network
-        name: 'Run Offline pytest + unittest: framework'
+      - run: uv run python scripts/quality/tests.py medium --isolate-network
+        name: Run Integration tests
         id: quality-command
         continue-on-error: true
-      - name: 'Collect Offline pytest + unittest: framework result'
+      - name: Collect Integration tests result
         id: quality-result
         if: always()
         uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
         with:
           operation: collect
-          node-id: tests-framework
-          title: 'Offline pytest + unittest: framework'
+          node-id: tests-medium
+          title: Integration tests
           adapter: junit
-          report-path: reports/tests-framework.xml
+          report-path: reports/tests-medium.xml
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
+          graph-digest: bf908d457cc74cbb66f72a8a5f673a207329395bb15f710af04e25758734bdf5
+          approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
-      - name: 'Upload Offline pytest + unittest: framework result'
+      - name: Upload Integration tests result
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: quality-result-tests-framework-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/tests-framework.json
+          name: quality-result-tests-medium-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/quality-graph/tests-medium.json
           if-no-files-found: error
           retention-days: 7
-      - name: 'Enforce Offline pytest + unittest: framework result'
+      - name: Enforce Integration tests result
         if: always()
         shell: bash
         env:
           EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
         run: exit "${EXIT_CODE:-2}"
     needs:
-      - quality-contracts
+      - python
+      - yaml
+      - shell
+      - workflow
+      - secrets
+      - docker
+      - javascript
+      - tests-fast
     timeout-minutes: 10
-  tests-ownership:
-    name: 'Offline pytest + unittest: ownership'
+  tests-cluster:
+    name: Cluster lifecycle
     runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: 'false'
           fetch-depth: '0'
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
       - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
+      - uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e
         with:
           version: v3.19.0
-      - run: uv run python scripts/quality/tests.py ownership --isolate-network
-        name: 'Run Offline pytest + unittest: ownership'
+      - run: uv run python scripts/quality/install_tools.py --tools kind kubectl
+      - run: uv run python scripts/quality/tests.py cluster
+        name: Run Cluster lifecycle
         id: quality-command
         continue-on-error: true
-      - name: 'Collect Offline pytest + unittest: ownership result'
+      - name: Collect Cluster lifecycle result
         id: quality-result
         if: always()
         uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
         with:
           operation: collect
-          node-id: tests-ownership
-          title: 'Offline pytest + unittest: ownership'
+          node-id: tests-cluster
+          title: Cluster lifecycle
           adapter: junit
-          report-path: reports/tests-ownership.xml
+          report-path: reports/tests-cluster.xml
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
+          graph-digest: bf908d457cc74cbb66f72a8a5f673a207329395bb15f710af04e25758734bdf5
+          approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
-      - name: 'Upload Offline pytest + unittest: ownership result'
+      - name: Upload Cluster lifecycle result
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: quality-result-tests-ownership-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/tests-ownership.json
+          name: quality-result-tests-cluster-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/quality-graph/tests-cluster.json
           if-no-files-found: error
           retention-days: 7
-      - name: 'Enforce Offline pytest + unittest: ownership result'
+      - name: Enforce Cluster lifecycle result
         if: always()
         shell: bash
         env:
           EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
         run: exit "${EXIT_CODE:-2}"
     needs:
-      - quality-contracts
-    timeout-minutes: 10
-  tests-placement:
-    name: 'Offline pytest + unittest: placement'
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-          fetch-depth: '0'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        with:
-          version: v3.19.0
-      - run: uv run python scripts/quality/tests.py placement --isolate-network
-        name: 'Run Offline pytest + unittest: placement'
-        id: quality-command
-        continue-on-error: true
-      - name: 'Collect Offline pytest + unittest: placement result'
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: tests-placement
-          title: 'Offline pytest + unittest: placement'
-          adapter: junit
-          report-path: reports/tests-placement.xml
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: 'Upload Offline pytest + unittest: placement result'
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-tests-placement-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/tests-placement.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: 'Enforce Offline pytest + unittest: placement result'
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    needs:
-      - quality-contracts
-    timeout-minutes: 10
-  tests-identity:
-    name: 'Offline pytest + unittest: identity'
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-          fetch-depth: '0'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        with:
-          version: v3.19.0
-      - run: uv run python scripts/quality/tests.py identity --isolate-network
-        name: 'Run Offline pytest + unittest: identity'
-        id: quality-command
-        continue-on-error: true
-      - name: 'Collect Offline pytest + unittest: identity result'
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: tests-identity
-          title: 'Offline pytest + unittest: identity'
-          adapter: junit
-          report-path: reports/tests-identity.xml
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: 'Upload Offline pytest + unittest: identity result'
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-tests-identity-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/tests-identity.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: 'Enforce Offline pytest + unittest: identity result'
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    needs:
-      - quality-contracts
-    timeout-minutes: 10
-  tests-alerts:
-    name: 'Offline pytest + unittest: alerts'
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-          fetch-depth: '0'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        with:
-          version: v3.19.0
-      - run: uv run python scripts/quality/tests.py alerts --isolate-network
-        name: 'Run Offline pytest + unittest: alerts'
-        id: quality-command
-        continue-on-error: true
-      - name: 'Collect Offline pytest + unittest: alerts result'
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: tests-alerts
-          title: 'Offline pytest + unittest: alerts'
-          adapter: junit
-          report-path: reports/tests-alerts.xml
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: 'Upload Offline pytest + unittest: alerts result'
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-tests-alerts-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/tests-alerts.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: 'Enforce Offline pytest + unittest: alerts result'
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    needs:
-      - quality-contracts
-    timeout-minutes: 10
-  tests-workflows:
-    name: 'Offline pytest + unittest: workflows'
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-          fetch-depth: '0'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        with:
-          version: v3.19.0
-      - run: uv run python scripts/quality/tests.py workflows --isolate-network
-        name: 'Run Offline pytest + unittest: workflows'
-        id: quality-command
-        continue-on-error: true
-      - name: 'Collect Offline pytest + unittest: workflows result'
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: tests-workflows
-          title: 'Offline pytest + unittest: workflows'
-          adapter: junit
-          report-path: reports/tests-workflows.xml
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: 'Upload Offline pytest + unittest: workflows result'
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-tests-workflows-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/tests-workflows.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: 'Enforce Offline pytest + unittest: workflows result'
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    needs:
-      - quality-contracts
-    timeout-minutes: 10
-  tests-webui:
-    name: 'Offline pytest + unittest: webui'
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-          fetch-depth: '0'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        with:
-          version: v3.19.0
-      - run: uv run python scripts/quality/tests.py webui --isolate-network
-        name: 'Run Offline pytest + unittest: webui'
-        id: quality-command
-        continue-on-error: true
-      - name: 'Collect Offline pytest + unittest: webui result'
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: tests-webui
-          title: 'Offline pytest + unittest: webui'
-          adapter: junit
-          report-path: reports/tests-webui.xml
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: 'Upload Offline pytest + unittest: webui result'
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-tests-webui-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/tests-webui.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: 'Enforce Offline pytest + unittest: webui result'
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    needs:
-      - quality-contracts
-    timeout-minutes: 10
-  tests-browser:
-    name: 'Offline pytest + unittest: browser'
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-          fetch-depth: '0'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        with:
-          version: v3.19.0
-      - run: uv run python scripts/quality/tests.py browser --isolate-network
-        name: 'Run Offline pytest + unittest: browser'
-        id: quality-command
-        continue-on-error: true
-      - name: 'Collect Offline pytest + unittest: browser result'
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: tests-browser
-          title: 'Offline pytest + unittest: browser'
-          adapter: junit
-          report-path: reports/tests-browser.xml
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: 'Upload Offline pytest + unittest: browser result'
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-tests-browser-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/tests-browser.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: 'Enforce Offline pytest + unittest: browser result'
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    needs:
-      - quality-contracts
-    timeout-minutes: 10
-  tests-otel-contracts:
-    name: 'Offline pytest + unittest: otel-contracts'
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-          fetch-depth: '0'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        with:
-          version: v3.19.0
-      - run: uv run python scripts/quality/tests.py otel-contracts --isolate-network
-        name: 'Run Offline pytest + unittest: otel-contracts'
-        id: quality-command
-        continue-on-error: true
-      - name: 'Collect Offline pytest + unittest: otel-contracts result'
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: tests-otel-contracts
-          title: 'Offline pytest + unittest: otel-contracts'
-          adapter: junit
-          report-path: reports/tests-otel-contracts.xml
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: 'Upload Offline pytest + unittest: otel-contracts result'
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-tests-otel-contracts-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/tests-otel-contracts.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: 'Enforce Offline pytest + unittest: otel-contracts result'
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    needs:
-      - quality-contracts
-    timeout-minutes: 10
-  tests-observability:
-    name: 'Offline pytest + unittest: observability'
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-          fetch-depth: '0'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        with:
-          version: v3.19.0
-      - run: uv run python scripts/quality/tests.py observability --isolate-network
-        name: 'Run Offline pytest + unittest: observability'
-        id: quality-command
-        continue-on-error: true
-      - name: 'Collect Offline pytest + unittest: observability result'
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: tests-observability
-          title: 'Offline pytest + unittest: observability'
-          adapter: junit
-          report-path: reports/tests-observability.xml
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: 'Upload Offline pytest + unittest: observability result'
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-tests-observability-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/tests-observability.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: 'Enforce Offline pytest + unittest: observability result'
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    needs:
-      - quality-contracts
-    timeout-minutes: 10
-  tests-frontend:
-    name: 'Offline pytest + unittest: frontend'
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-          fetch-depth: '0'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        with:
-          version: v3.19.0
-      - run: uv run python scripts/quality/tests.py frontend --isolate-network
-        name: 'Run Offline pytest + unittest: frontend'
-        id: quality-command
-        continue-on-error: true
-      - name: 'Collect Offline pytest + unittest: frontend result'
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: tests-frontend
-          title: 'Offline pytest + unittest: frontend'
-          adapter: junit
-          report-path: reports/tests-frontend.xml
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: 'Upload Offline pytest + unittest: frontend result'
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-tests-frontend-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/tests-frontend.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: 'Enforce Offline pytest + unittest: frontend result'
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    needs:
-      - quality-contracts
-    timeout-minutes: 10
-  tests-public-entry:
-    name: 'Offline pytest + unittest: public-entry'
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-          fetch-depth: '0'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        with:
-          version: v3.19.0
-      - run: uv run python scripts/quality/tests.py public-entry --isolate-network
-        name: 'Run Offline pytest + unittest: public-entry'
-        id: quality-command
-        continue-on-error: true
-      - name: 'Collect Offline pytest + unittest: public-entry result'
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: tests-public-entry
-          title: 'Offline pytest + unittest: public-entry'
-          adapter: junit
-          report-path: reports/tests-public-entry.xml
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: 'Upload Offline pytest + unittest: public-entry result'
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-tests-public-entry-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/tests-public-entry.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: 'Enforce Offline pytest + unittest: public-entry result'
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    needs:
-      - quality-contracts
-    timeout-minutes: 10
-  tests-platform:
-    name: 'Offline pytest + unittest: platform'
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-          fetch-depth: '0'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        with:
-          version: v3.19.0
-      - run: uv run python scripts/quality/tests.py platform --isolate-network
-        name: 'Run Offline pytest + unittest: platform'
-        id: quality-command
-        continue-on-error: true
-      - name: 'Collect Offline pytest + unittest: platform result'
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: tests-platform
-          title: 'Offline pytest + unittest: platform'
-          adapter: junit
-          report-path: reports/tests-platform.xml
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: 'Upload Offline pytest + unittest: platform result'
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-tests-platform-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/tests-platform.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: 'Enforce Offline pytest + unittest: platform result'
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    needs:
-      - quality-contracts
-    timeout-minutes: 10
-  tests-rustfs-policy:
-    name: 'Offline pytest + unittest: rustfs-policy'
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-          fetch-depth: '0'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        with:
-          version: v3.19.0
-      - run: uv run python scripts/quality/tests.py rustfs-policy --isolate-network
-        name: 'Run Offline pytest + unittest: rustfs-policy'
-        id: quality-command
-        continue-on-error: true
-      - name: 'Collect Offline pytest + unittest: rustfs-policy result'
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: tests-rustfs-policy
-          title: 'Offline pytest + unittest: rustfs-policy'
-          adapter: junit
-          report-path: reports/tests-rustfs-policy.xml
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: 'Upload Offline pytest + unittest: rustfs-policy result'
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-tests-rustfs-policy-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/tests-rustfs-policy.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: 'Enforce Offline pytest + unittest: rustfs-policy result'
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    needs:
-      - quality-contracts
-    timeout-minutes: 10
-  tests-identity-policy:
-    name: 'Offline pytest + unittest: identity-policy'
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-          fetch-depth: '0'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        with:
-          version: v3.19.0
-      - run: uv run python scripts/quality/tests.py identity-policy --isolate-network
-        name: 'Run Offline pytest + unittest: identity-policy'
-        id: quality-command
-        continue-on-error: true
-      - name: 'Collect Offline pytest + unittest: identity-policy result'
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: tests-identity-policy
-          title: 'Offline pytest + unittest: identity-policy'
-          adapter: junit
-          report-path: reports/tests-identity-policy.xml
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: 'Upload Offline pytest + unittest: identity-policy result'
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-tests-identity-policy-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/tests-identity-policy.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: 'Enforce Offline pytest + unittest: identity-policy result'
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    needs:
-      - quality-contracts
-    timeout-minutes: 10
-  tests-workload-placement:
-    name: 'Offline pytest + unittest: workload-placement'
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-          fetch-depth: '0'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        with:
-          version: v3.19.0
-      - run: uv run python scripts/quality/tests.py workload-placement --isolate-network
-        name: 'Run Offline pytest + unittest: workload-placement'
-        id: quality-command
-        continue-on-error: true
-      - name: 'Collect Offline pytest + unittest: workload-placement result'
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: tests-workload-placement
-          title: 'Offline pytest + unittest: workload-placement'
-          adapter: junit
-          report-path: reports/tests-workload-placement.xml
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: 'Upload Offline pytest + unittest: workload-placement result'
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-tests-workload-placement-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/tests-workload-placement.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: 'Enforce Offline pytest + unittest: workload-placement result'
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    needs:
-      - quality-contracts
-    timeout-minutes: 10
-  tests-spi-policy:
-    name: 'Offline pytest + unittest: spi-policy'
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-          fetch-depth: '0'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        with:
-          version: v3.19.0
-      - run: uv run python scripts/quality/tests.py spi-policy --isolate-network
-        name: 'Run Offline pytest + unittest: spi-policy'
-        id: quality-command
-        continue-on-error: true
-      - name: 'Collect Offline pytest + unittest: spi-policy result'
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: tests-spi-policy
-          title: 'Offline pytest + unittest: spi-policy'
-          adapter: junit
-          report-path: reports/tests-spi-policy.xml
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: 'Upload Offline pytest + unittest: spi-policy result'
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-tests-spi-policy-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/tests-spi-policy.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: 'Enforce Offline pytest + unittest: spi-policy result'
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    needs:
-      - quality-contracts
-    timeout-minutes: 10
-  tests-monitoring-policy:
-    name: 'Offline pytest + unittest: monitoring-policy'
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-          fetch-depth: '0'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        with:
-          version: v3.19.0
-      - run: uv run python scripts/quality/tests.py monitoring-policy --isolate-network
-        name: 'Run Offline pytest + unittest: monitoring-policy'
-        id: quality-command
-        continue-on-error: true
-      - name: 'Collect Offline pytest + unittest: monitoring-policy result'
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: tests-monitoring-policy
-          title: 'Offline pytest + unittest: monitoring-policy'
-          adapter: junit
-          report-path: reports/tests-monitoring-policy.xml
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: 'Upload Offline pytest + unittest: monitoring-policy result'
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-tests-monitoring-policy-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/tests-monitoring-policy.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: 'Enforce Offline pytest + unittest: monitoring-policy result'
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    needs:
-      - quality-contracts
-    timeout-minutes: 10
-  tests-otel-offline-policy:
-    name: 'Offline pytest + unittest: otel-offline-policy'
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-          fetch-depth: '0'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        with:
-          version: v3.19.0
-      - run: uv run python scripts/quality/tests.py otel-offline-policy --isolate-network
-        name: 'Run Offline pytest + unittest: otel-offline-policy'
-        id: quality-command
-        continue-on-error: true
-      - name: 'Collect Offline pytest + unittest: otel-offline-policy result'
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: tests-otel-offline-policy
-          title: 'Offline pytest + unittest: otel-offline-policy'
-          adapter: junit
-          report-path: reports/tests-otel-offline-policy.xml
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: 'Upload Offline pytest + unittest: otel-offline-policy result'
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-tests-otel-offline-policy-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/tests-otel-offline-policy.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: 'Enforce Offline pytest + unittest: otel-offline-policy result'
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    needs:
-      - quality-contracts
-    timeout-minutes: 10
-  tests-frontend-policy:
-    name: 'Offline pytest + unittest: frontend-policy'
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: 'false'
-          fetch-depth: '0'
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        with:
-          version: v3.19.0
-      - run: uv run python scripts/quality/tests.py frontend-policy --isolate-network
-        name: 'Run Offline pytest + unittest: frontend-policy'
-        id: quality-command
-        continue-on-error: true
-      - name: 'Collect Offline pytest + unittest: frontend-policy result'
-        id: quality-result
-        if: always()
-        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
-        with:
-          operation: collect
-          node-id: tests-frontend-policy
-          title: 'Offline pytest + unittest: frontend-policy'
-          adapter: junit
-          report-path: reports/tests-frontend-policy.xml
-          command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892
-          approval-findings: 'true'
-          approval-files: 'false'
-          approval-node: 'false'
-      - name: 'Upload Offline pytest + unittest: frontend-policy result'
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: quality-result-tests-frontend-policy-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/quality-graph/tests-frontend-policy.json
-          if-no-files-found: error
-          retention-days: 7
-      - name: 'Enforce Offline pytest + unittest: frontend-policy result'
-        if: always()
-        shell: bash
-        env:
-          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
-        run: exit "${EXIT_CODE:-2}"
-    needs:
-      - quality-contracts
-    timeout-minutes: 10
+      - ownership
+      - manifests
+      - ansible
+      - tests-medium
+    timeout-minutes: 15

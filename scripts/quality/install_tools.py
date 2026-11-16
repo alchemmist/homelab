@@ -15,6 +15,8 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def install(record, destination):
     if record["name"] not in {
+        "kubectl",
+        "kind",
         "actionlint",
         "kubeconform",
         "gitleaks",

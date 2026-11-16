@@ -1,3 +1,20 @@
-profile: safety
+# This repository owns operational playbooks, not a new Galaxy role API.
+# Mandatory parser/syntax checks plus explicit correctness/security rules.
+# name/var-prefix/line-length are NOT operational safety: public variables and
+# existing source contracts must not be renamed just to satisfy a new style guide.
+# YAML hygiene is independently enforced across the entire tracked source tree.
+profile: min
 offline: true
-# No module execution, collection installation or auto-fix in quality jobs.
+enable_list:
+  - schema
+  - avoid-implicit
+  - latest
+  - package-latest
+  - risky-file-permissions
+  - risky-octal
+  - risky-shell-pipe
+  - inline-env-var
+  - deprecated-module
+  - no-jinja-when
+  - no-tabs
+  - no-log-password

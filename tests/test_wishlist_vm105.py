@@ -13,7 +13,7 @@ class WishlistMove(unittest.TestCase):
   docs=[d for d in yaml.safe_load_all(raw)if d];d=next(d for d in docs if d['kind']=='Deployment');s=d['spec']['template']['spec']
   self.assertEqual(d['spec']['replicas'],1);self.assertEqual(d['spec']['strategy'],{'type':'Recreate'})
   self.assertEqual(s['nodeSelector'],{'kubernetes.io/hostname':'socrat-5'})
-  self.assertEqual(s['volumes'][0]['persistentVolumeClaim']['claimName'],'wishlist-socrat5')
+  self.assertEqual(next(v for v in s['volumes'] if v['name']=='data')['persistentVolumeClaim']['claimName'],'wishlist-socrat5')
   self.assertEqual(s['containers'][0]['image'],s['initContainers'][0]['image'])
   self.assertEqual(s['hostAliases'],[{'ip':'10.43.218.222','hostnames':['auth.socrat.alchemmist.xyz']}])
   guard=s['initContainers'][0]['args'][0]

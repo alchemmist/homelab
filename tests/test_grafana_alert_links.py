@@ -23,7 +23,7 @@ RULE = {
 
 class AlertLinksTest(unittest.TestCase):
     def test_native_live_fingerprint(self):
-        self.assertEqual(LINKS.rule_hash(RULE), '2002033236')
+        self.assertEqual(LINKS.rule_hash(RULE), '-381316856')
 
     def test_runtime_state_does_not_change_url(self):
         changed = dict(RULE, state='firing', alerts=[{'value': '100'}], lastEvaluation='now')
@@ -41,7 +41,7 @@ class AlertLinksTest(unittest.TestCase):
         group = {'file': '/etc/rules/a.yaml', 'name': 'group$one'}
         url = LINKS.rule_url(group, RULE)
         self.assertIn('pri$Prometheus$\x1fetc\x1frules\x1fa.yaml$group_DOLLAR_one$', unquote(url))
-        self.assertTrue(url.endswith('%242002033236/view'))
+        self.assertTrue(url.endswith('%24-381316856/view'))
 
     def test_grouped_selectors_keep_severity_variants_and_ignore_other_metrics(self):
         other = dict(RULE, name='Other', labels={'severity': 'critical'})

@@ -34,7 +34,12 @@ class UnifiedOrigin(unittest.TestCase):
         gateway = next(d for d in docs if 'name: gateway\n' in d)
         self.assertIn('https://rustfs.socrat.alchemmist.xyz/outpost.goauthentik.io/auth/nginx', gateway)
         policy = next(d for d in docs if 'name: rustfs-isolation' in d)
-        self.assertNotIn('podSelector: {matchLabels: {app.kubernetes.io/name: traefik}}', policy)
+        import yaml
+        parsed = yaml.safe_load(policy)
+        for ingress in parsed['spec']['ingress']:
+            for peer in ingress['from']:
+                self.assertNotEqual(peer.get('podSelector', {}).get('matchLabels', {}).get('app.kubernetes.io/name'), 'traefik')
+            self.assertTrue({p['port'] for p in ingress['ports']} <= {9000,9001})
         self.assertNotIn('0.0.0.0/0', text)
 
     def test_activation_remains_off(self):

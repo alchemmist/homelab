@@ -22,7 +22,7 @@ def test_real_project_config_has_no_inline_credentials_and_blocks_pending_client
     assert config['socrat-grafana']['url'].endswith('/mcp')
     assert '/.pi/mcp.json' not in (ROOT/'.gitignore').read_text().splitlines()
 
-def test_all_49_applications_are_audited_with_reason():
+def test_all_current_applications_are_audited_with_reason():
     audit=json.loads((ROOT/'deploy/mcp/service-audit.json').read_text())
     declared={p.stem for p in (ROOT/'deploy/argocd/apps').glob('*.yaml')}|{'root'}
     assert {r['application'] for r in audit['applications']}==declared
@@ -62,9 +62,10 @@ def test_package_lock_and_release_checksums_are_pinned():
 
 def test_native_n8n_mcp_is_exact_service_owned_without_bypassing_ui():
     docs=list(yaml.safe_load_all((ROOT/'charts/n8n/templates/access.yaml').read_text()))
-    ui,machine=docs
-    assert ui['metadata']['namespace']=='identity'
-    assert ui['spec']['rules'][0]['http']['paths'][0]['backend']['service']['name']=='authentik-server'
+    assert len(docs)==1
+    machine=docs[0]
+    assert machine['metadata']['name']=='n8n-machine-endpoints'
+    assert machine['metadata']['namespace']=='automation'
     paths=machine['spec']['rules'][0]['http']['paths']
     mcp=[p for p in paths if p['path']=='/mcp-server/http'];assert len(mcp)==1 and mcp[0]['pathType']=='Exact'
     assert mcp[0]['backend']['service']['name']=='n8n'

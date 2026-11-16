@@ -68,10 +68,19 @@
   ansible.builtin.import_tasks: time.yml
   tags: [utilities, time]
 
-- name: Install the current Debian stable kernel
+- name: Ensure the Debian stable kernel metapackage is installed
+  ansible.builtin.apt:
+    name: linux-image-amd64
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  tags: kernel
+
+- name: Upgrade only the installed Debian stable kernel metapackage
   ansible.builtin.apt:
     name: linux-image-amd64
     state: latest
+    only_upgrade: true
     update_cache: true
     cache_valid_time: 3600
   tags: kernel
