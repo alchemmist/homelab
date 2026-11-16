@@ -14,8 +14,9 @@ Optimizer Deployment has no credentials/PVC, non-root/read-only rootfs + tempora
 scratch, no service-account token and no egress. ClusterIP8081 accepts only exact
 same-namespace Wishlist Pod labels. No ingress/NodePort; same checked image digest.
 All photo uploads fan out immediately; native CPU/transport/cgroup limits remain.
-Optimizer2GiB memory isolation protects the SQLite app; failures are retryable,
-no silent unoptimized fallback. Web app memory budget should be512MiB while the
+Optimizer2GiB memory/4GiB scratch isolation protects the SQLite app; failures are retryable,
+no silent unoptimized fallback. A prefix-scoped postStart hook removes only
+its own interrupted scratch jobs after container restarts; no PVC/account data. Web app memory budget should be512MiB while the
 pipeline is enabled. Existing data claim and client certificate stay untouched.
 
 On upload, master+preview persist in S3. On reads, atomic disk cache (toward1GiB,

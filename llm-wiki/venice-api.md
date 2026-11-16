@@ -431,3 +431,94 @@ Private receipts/preimages/Pi events/report: controller
 Venice agent/tool-registry confusion reported by the owner. Successful fixture
 runs are not a guarantee for every project/session or unattended hours. Public
 connectivity/failover limitations and approximate context accounting also remain.
+
+## Native Venice tool isolation — 16 November 2026, 19:00 UTC acceptance
+
+This supersedes the preceding hardening release's unresolved native-agent scope
+limit, but is NOT a claim of infallible model answers or multi-hour certification.
+Owner identified the blocked Pi in tmp window2, lower pane %75. Its saved log
+contains successful real host calls followed by assistant prose claiming
+Tool not found; the quoted missing bash/read/write/codemode/web_fetch errors were
+NOT actual Pi toolResult events. Do not repair a healthy local registry based on
+those assertions. The last real bash reading main.py470–700 had succeeded.
+
+### Root boundary and implementation
+
+Source **bd0f200028e36b2d5984d7f1acb1da3004897456**, native CI
+**43930013632 SUCCESS** (third attempt; first two failed Harbor login TLS before
+build/deployment). Published/deployed bridge:
+`sha256:bcf4bcb60bf422e662d80da54076a817ce90071f0e6173785d51fe6ceaa98cfb`.
+New pod `venice-browser-candidate-869456686f-k2v9c` Ready3/3, zero restarts;
+Argo Synced/Healthy. Deployed main.py/agent_protocol.py hashes match Git source.
+
+The former web-native /agents/venice runtime had its OWN tool dispatcher and
+instructions; merely asking it to emit an external JSON envelope did not isolate
+host calls. The current browser composer request is forwarded exactly ONCE to
+Venice's web-client **/api/inference/chat/agents/ad-hoc** operation, preserving
+browser authentication without extracting tokens. Payload uses explicit
+`modelId=deepseek-v4-1-flash-uncensored`, text system instructions, `tools=[]`,
+`clientTools=[]`. This disables ONLY browser-runtime tools, NOT Pi's host tools.
+The frontend-shipped ad-hoc schema was inspected and actual responses verified.
+No official paid Venice API, standalone HTTP inference client or response replay.
+
+All bridge completions, including ordinary chat and compaction, use this text
+transport. Plain/compaction instructions do not demand JSON. Agent envelopes,
+strict current schemas, history replay policy and local permission authority are
+unchanged. Only the current exact composer message is forwarded; full Pi history
+is already inside it and is NOT trimmed. Earlier browser messages/native approval
+or media tool declarations/other request fields are not forwarded.
+
+Default AGENT_INFERENCE_ORIGIN is https://outerface.venice.ai. Unknown inference
+POST/origin, composer mismatch, repeated native continuation or missing rewrite
+fails explicitly with HTTP502 / upstream_agent_transport_error, not a successful
+fake final. Routing is removed in finally, including installation cancellation.
+No native fallback, hidden repair generations or natural-language error filtering.
+The UI/private web-client schema is still an upstream maintenance dependency.
+
+### Evidence and limitations
+
+- **71 app tests** and existing **5 homelab integration tests** passed. Actual CI
+  BuildKit context remains exactly8 allowed files; image import smoke passed on
+  the same locally loaded BuildKit result before GitOps deployment.
+- Pre-release actual browser: reconstructed owner's compacted context, **82067
+  prompt bytes**, produced the correct external read request for main.py700–799.
+  Then30 sequential model-visible calls with increasing history and quoted fake
+  Tool not found file data passed. Final correctly counted30 host results. All33
+  responses (replay,30 calls,final,plain pong) were HTTP200 on ad-hoc, not venice.
+- Cancelled an active ad-hoc stream after actual response headers; route/queue
+  lock released, next request in the SAME browser session returned pong.
+- PUBLIC LiteLLM, ordinary owner's Pi/config/extensions, disposable fixture:
+  **29 actual calls**, expected missing-file read error, failing unittest exit1,
+  edit, passing unittest exit0/report,20 separate direct reads, write/read nonce
+  JSON. All20 random nonce strings matched exactly; test SHA unchanged. This was
+  not one codemode bulk-read hiding many files behind one model turn.
+- Exact owner-session COPY (original pane/session untouched, SHA unchanged): real
+  read700–799 plus real bash pwd/wc succeeded. Manual compaction of this actual
+  large context succeeded **17771 → estimated14964 tokens**; actual read and bash
+  succeeded again afterward. Fresh fixture compaction initially returned the
+  legitimate Nothing to compact (history below keepRecent6000); this refusal was
+  retained, not misreported as successful compaction.
+- Active local bash sleep aborted, same Pi process ran tests exit0 afterward.
+  Saved-session process restart performed real read and tests exit0. Separate
+  real codemode executed nested read/bash, and real host web_fetch read public
+  Python Decimal documentation. Across these live acceptance runs: **41 actual
+  tool-end events, zero model protocol errors**. Expected read/test/abort errors
+  were actual local results and did not cause fictitious registry failure.
+- Repeated public safe-budget stream/nonstream, nonfinite rejection and historical
+  schema-error correction checks passed. Open WebUI pod ordinary chat and SSE
+  both passed via its existing upstream configuration.
+
+No original tmux input/session rewrite, host tool registration/permission change,
+model/settings change, key rotation, Google reset, profile/PVC migration, Chrome
+image upgrade, Mac Chrome/tunnel runtime dependency or shared network change.
+The same public alias continues working without restarting Pi. Prior audit claims
+based on HEAD0c2bfc7 are not accepted as verified findings for current source.
+
+Receipts, exact replay, both successful and initial ineligible-compaction results,
+Pi events, protected test hashes and fixture reports are private on controller:
+`~/venice-auth/native-isolation-20261116/` (dirs0700/files0600).
+
+Remaining: private web-schema/React source extraction changes can still require
+maintenance; network failover/TLS timeouts and approximate usage remain separate.
+This bounded acceptance does not certify unattended multi-hour operation, MCP
+services not exercised here, or correctness of every natural-language claim.
