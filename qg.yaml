@@ -11,70 +11,375 @@ profiles:
     runner: ubuntu-24.04
     timeout-minutes: 5
     setup:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: "false"
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: 'false'
+    - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+    - run: uv sync --locked
   infrastructure:
     runner: ubuntu-24.04
     timeout-minutes: 5
     setup:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          persist-credentials: "false"
-      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
-      - run: uv sync --locked
-      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
-        with:
-          version: v3.19.0
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: 'false'
+    - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+    - run: uv sync --locked
+    - uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e
+      with:
+        version: v3.19.0
+  quality-helm:
+    runner: ubuntu-24.04
+    timeout-minutes: 10
+    setup:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      with:
+        persist-credentials: 'false'
+        fetch-depth: '0'
+    - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+    - run: uv sync --locked
+    - uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e
+      with:
+        version: v3.19.0
+  quality-docker:
+    extends: default
+    timeout-minutes: 5
+    setup:
+    - run: uv run python scripts/quality/install_tools.py --tools hadolint
+  quality-javascript:
+    extends: default
+    setup:
+    - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f
+      with:
+        node-version: 24.11.1
+  quality-cluster:
+    extends: quality-helm
+    timeout-minutes: 15
+    setup:
+    - run: uv run python scripts/quality/install_tools.py --tools kind kubectl
+  quality-shell:
+    extends: default
+    setup:
+    - run: uv run python scripts/quality/install_tools.py --tools shellcheck
+  quality-delivery:
+    extends: default
+    setup:
+    - run: uv run python scripts/quality/install_tools.py --tools actionlint
+  quality-secrets:
+    extends: default
+    setup:
+    - run: uv run python scripts/quality/install_tools.py --tools gitleaks
+  quality-manifests:
+    extends: quality-helm
+    setup:
+    - run: uv run python scripts/quality/install_tools.py --tools kubeconform kube-linter
+  quality-ansible:
+    extends: default
+    setup:
+    - run: uv run python scripts/quality/install_collections.py
+  quality-integration:
+    extends: quality-helm
+    setup:
+    - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f
+      with:
+        node-version: 24.11.1
+    - run: uv run python scripts/quality/install_tools.py --tools promtool
+  bootstrap-default:
+    runner: ubuntu-24.04
+    timeout-minutes: 5
+    setup:
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      with:
+        persist-credentials: 'false'
+    - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+    - run: uv sync --locked
+  bootstrap-infrastructure:
+    runner: ubuntu-24.04
+    timeout-minutes: 5
+    setup:
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      with:
+        persist-credentials: 'false'
+    - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+    - run: uv sync --locked
+    - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
+      with:
+        version: v3.19.0
 nodes:
+  graph:
+    title: Graph integrity
+    profile: default
+    run: 'uv run qg validate
+
+      uv run python scripts/quality/contracts.py'
+    policy: &id001
+      blocking: true
+      approvals:
+        findings: false
+        files: false
+        node: false
+    events:
+    - pull-request
+  python:
+    title: Python correctness
+    profile: default
+    run: uv run python scripts/quality/lint.py python
+    policy: *id001
+    needs:
+    - graph
+    results:
+      native: reports/python.json
+    events:
+    - pull-request
+  yaml:
+    title: YAML structure
+    profile: default
+    run: uv run python scripts/quality/lint.py yaml
+    policy: *id001
+    needs:
+    - graph
+    results:
+      native: reports/yaml.json
+    events:
+    - pull-request
+  shell:
+    title: Shell safety
+    profile: quality-shell
+    run: uv run python scripts/quality/lint.py shell
+    policy: *id001
+    needs:
+    - graph
+    results:
+      native: reports/shell.json
+    events:
+    - pull-request
+  workflow:
+    title: Delivery security
+    profile: quality-delivery
+    run: uv run python scripts/quality/lint.py workflow
+    policy: *id001
+    needs:
+    - graph
+    results:
+      native: reports/workflow.json
+    events:
+    - pull-request
+  secrets:
+    title: Credential hygiene
+    profile: quality-secrets
+    run: uv run python scripts/quality/lint.py secrets
+    policy: *id001
+    needs:
+    - graph
+    results:
+      native: reports/secrets.json
+    events:
+    - pull-request
+  docker:
+    title: Container recipes
+    profile: quality-docker
+    run: uv run python scripts/quality/lint.py docker
+    policy: *id001
+    needs:
+    - graph
+    results:
+      native: reports/docker.json
+    events:
+    - pull-request
+  javascript:
+    title: JavaScript syntax
+    profile: quality-javascript
+    run: uv run python scripts/quality/lint.py javascript
+    policy: *id001
+    needs:
+    - graph
+    results:
+      native: reports/javascript.json
+    events:
+    - pull-request
+  tests-fast:
+    title: Unit tests
+    profile: default
+    run: uv run python scripts/quality/tests.py fast --isolate-network
+    policy: *id001
+    needs:
+    - graph
+    results:
+      junit: reports/tests-fast.xml
+    events:
+    - pull-request
+  ownership:
+    title: Ownership contracts
+    profile: quality-helm
+    run: 'uv run python scripts/check_infrastructure_contracts.py
+
+      uv run python scripts/check_source_pointers.py
+
+      uv run python scripts/check_operational_entrypoints.py
+
+      uv run python scripts/check_vendor_contracts.py
+
+      uv run python scripts/alert_graphs.py --check
+
+      uv run python scripts/n8n/check_failure_alerts.py'
+    policy: *id001
+    needs:
+    - python
+    - yaml
+    - shell
+    - workflow
+    - secrets
+    - docker
+    - javascript
+    - tests-fast
+    events:
+    - pull-request
+  manifests:
+    title: Manifest validation
+    profile: quality-manifests
+    run: uv run python scripts/quality/charts.py
+    policy: *id001
+    needs:
+    - ownership
+    results:
+      native: reports/manifests.json
+    events:
+    - pull-request
+  ansible:
+    title: Playbook safety
+    profile: quality-ansible
+    run: uv run python scripts/quality/lint.py ansible
+    policy: *id001
+    needs:
+    - ownership
+    results:
+      native: reports/ansible.json
+    events:
+    - pull-request
+  tests-medium:
+    title: Integration tests
+    profile: quality-integration
+    run: uv run python scripts/quality/tests.py medium --isolate-network
+    policy: *id001
+    needs:
+    - ownership
+    results:
+      junit: reports/tests-medium.xml
+    events:
+    - pull-request
+  tests-cluster:
+    title: Cluster lifecycle
+    profile: quality-cluster
+    run: uv run python scripts/quality/tests.py cluster
+    policy: *id001
+    needs:
+    - manifests
+    - ansible
+    - tests-medium
+    - dependencies
+    results:
+      junit: reports/tests-cluster.xml
+    events:
+    - pull-request
+  dependencies:
+    title: Dependency audit
+    profile: default
+    run: uv run python scripts/quality/lint.py dependencies
+    policy: *id001
+    needs:
+    - ownership
+    results:
+      native: reports/dependencies.json
+    events:
+    - pull-request
   graph-freshness:
     title: Quality Graph declaration freshness
     run: uv run qg validate
+    events:
+    - push
+    profile: bootstrap-default
   workflow-failure-policy:
     title: n8n workflow failure notification policy
     run: uv run python scripts/n8n/check_failure_alerts.py
+    events:
+    - push
+    profile: bootstrap-default
   workflow-policy-tests:
     title: Offline workflow policy regressions
     run: uv run python -m unittest discover -s tests -p test_n8n_failure_alert_policy.py
+    events:
+    - push
+    profile: bootstrap-default
   alert-graph-delivery:
-    profile: infrastructure
+    profile: bootstrap-infrastructure
     title: Alert graph chart, image ownership and renderer capacity
-    run: |
-      command -v helm
+    run: 'command -v helm
+
       uv run python -m unittest discover -s tests -p test_alert_graphs_chart.py
+
       uv run python -m unittest discover -s tests -p test_alert_graph_panel_ids.py
+
       uv run python scripts/alert_graphs.py --check
+
+      '
+    events:
+    - push
   spi-execution-links:
     title: Stable SPI alert identity and execution link metadata
     run: uv run python -m unittest discover -s tests -p test_spi_execution_links.py
+    events:
+    - push
+    profile: bootstrap-default
   infrastructure-contracts:
     title: Offline infrastructure ownership, placement and issuer contracts
-    profile: infrastructure
-    run: |
-      command -v helm
+    profile: bootstrap-infrastructure
+    run: 'command -v helm
+
       uv run python scripts/check_infrastructure_contracts.py
+
       uv run python scripts/check_source_pointers.py
+
       uv run python -m unittest discover -s tests -p test_source_pointers.py
+
       uv run python -m unittest discover -s tests -p test_wg_peer15_relay.py
+
       uv run python scripts/check_operational_entrypoints.py
+
       uv run python -m unittest discover -s tests -p test_operational_entrypoints.py
+
       uv run python scripts/check_vendor_contracts.py
+
       uv run python -m unittest discover -s tests -p test_vendor_contracts.py
+
       uv run python -m unittest discover -s tests -p test_vm105_renderer_lms_litellm.py
+
       uv run python -m unittest discover -s tests -p test_target_placement_ownership.py
+
       uv run python -m unittest discover -s tests -p test_infrastructure_contracts.py
+
       uv run python -m unittest discover -s tests -p test_vm105_management.py
+
       uv run python -m unittest discover -s tests -p test_socrat5_app_placement.py
+
       uv run python -m unittest discover -s tests -p test_argocd_refresh.py
+
       uv run python -m unittest discover -s tests -p test_refactor_acceptance.py
+
       uv run python -m unittest discover -s tests -p test_deployment_ownership.py
+
       uv run python -m unittest discover -s tests -p test_gateway_readonly.py
 
+      '
+    events:
+    - push
   wishlist-observability:
     title: Wishlist private metrics and dedicated OTel identity
-    profile: infrastructure
-    run: |
-      helm lint charts/wishlist -f deploy/wishlist/values.yaml
-      uv run python -m unittest tests.test_wishlist_observability tests.test_otel_application_credentials tests.test_otel_application_registry tests.test_otel_application_leaf_rotation
+    profile: bootstrap-infrastructure
+    run: 'helm lint charts/wishlist -f deploy/wishlist/values.yaml
+
+      uv run python -m unittest tests.test_wishlist_observability tests.test_otel_application_credentials
+      tests.test_otel_application_registry tests.test_otel_application_leaf_rotation
+
+      '
+    events:
+    - push
