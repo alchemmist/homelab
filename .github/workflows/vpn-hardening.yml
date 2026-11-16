@@ -58,3 +58,4 @@ jobs:
           python3 -m unittest discover -s tests -p test_vpn_panel_session.py -v
       - name: Render counter-only policy offline
         run: python3 scripts/vpn-backend-audit.py --render
+...
