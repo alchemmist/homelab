@@ -40,6 +40,11 @@ graphs:
   existingSecret: spi-graph-client
 
 # Quiesce only ingress; keep old server alive until idle checkpoint.
-maintenanceIngressPaused: true
+maintenanceIngressPaused: false
 
-workerReplicas: 0
+workerReplicas: 1
+
+nodeName: socrat-5
+
+dataClaim: spi-triage-socrat5
+requireExistingData: true
