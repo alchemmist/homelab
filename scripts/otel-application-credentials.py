@@ -16,7 +16,7 @@ import urllib.parse
 import urllib.request
 
 SOURCE_NS = 'cattle-monitoring-system'
-DESTINATIONS = {'harbor': 'harbor', 'litellm': 'llm', 'vllm': 'llm', 'open-webui': 'llm', 'lms': 'lms'}
+DESTINATIONS = {'harbor': 'harbor', 'litellm': 'llm', 'vllm': 'llm', 'open-webui': 'llm', 'lms': 'lms', 'wishlist': 'wishlist'}
 OBSERVED_PHASE = {'stage': 'bootstrap', 'application': None}
 
 
@@ -25,7 +25,7 @@ def validate_destination(entry):
     if app not in DESTINATIONS or entry['namespace'] != DESTINATIONS[app] or entry['secret'] != 'otel-app-tls-' + app:
         raise ValueError('Unexpected application leaf destination')
     approved = {'harbor': {'harbor-core', 'harbor-jobservice', 'harbor-registry'},
-                'litellm': {'litellm'}, 'vllm': {'vllm'}, 'open-webui': {'open-webui'}, 'lms': {'lms'}}
+                'litellm': {'litellm'}, 'vllm': {'vllm'}, 'open-webui': {'open-webui'}, 'lms': {'lms'}, 'wishlist': {'wishlist'}}
     if not set(entry.get('reloadDeployments', [])) <= approved[app]:
         raise ValueError('Unexpected application reload target')
 

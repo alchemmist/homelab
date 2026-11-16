@@ -132,6 +132,19 @@
         "Live dashboard is Helm/Argo-managed; its authoritative JSON is charts/lms/files/lms-performance.json.",
         "Synthetic teacher canary profile/session deleted; no real user/grant/solution changes."
       ]
+    },
+    {
+      "namespace": "wishlist",
+      "workloads": [
+        "wishlist"
+      ],
+      "application": "wishlist",
+      "productionSdkEnabled": false,
+      "dedicatedClientCertificate": "otel-app-tls-wishlist",
+      "renewalMirrorAndRolloutMaintained": true,
+      "notes": [
+        "Wishlist SDK/chart configuration prepared; real delivery acceptance pending. No blanket cluster coverage claim."
+      ]
     }
   ],
   "requiredAcceptance": [

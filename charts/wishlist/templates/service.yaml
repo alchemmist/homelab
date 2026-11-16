@@ -13,3 +13,8 @@ spec:
     - name: http
       port: {{ .Values.service.port }}
       targetPort: http
+    {{- if .Values.observability.enabled }}
+    - name: metrics
+      port: {{ .Values.observability.metricsPort }}
+      targetPort: metrics
+    {{- end }}

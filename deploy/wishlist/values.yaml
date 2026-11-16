@@ -13,3 +13,6 @@ persistence:
 hostAliases:
   - ip: 10.43.218.222
     hostnames: [auth.socrat.alchemmist.xyz]
+
+observability:
+  enabled: true

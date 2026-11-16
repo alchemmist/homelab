@@ -9,6 +9,11 @@ receivers:
           scrape_timeout: 5s
           static_configs:
             - targets: [127.0.0.1:9189]
+        - job_name: wishlist
+          scrape_interval: 15s
+          scrape_timeout: 5s
+          static_configs:
+            - targets: [wishlist.wishlist.svc.cluster.local:8001]
         - job_name: socrat-argocd
           scrape_interval: 15s
           scrape_timeout: 5s

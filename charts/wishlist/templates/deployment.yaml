@@ -54,7 +54,23 @@ spec:
           ports:
             - name: http
               containerPort: {{ .Values.service.targetPort }}
+          {{- if .Values.observability.enabled }}
+            - name: metrics
+              containerPort: {{ .Values.observability.metricsPort }}
+          {{- end }}
           env:
+          {{- if .Values.observability.enabled }}
+            - name: METRICS_PORT
+              value: {{ .Values.observability.metricsPort | quote }}
+            - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+              value: {{ .Values.observability.tracesEndpoint | quote }}
+            - name: OTEL_EXPORTER_OTLP_TRACES_CERTIFICATE
+              value: /etc/otel-client/ca.crt
+            - name: OTEL_EXPORTER_OTLP_TRACES_CLIENT_CERTIFICATE
+              value: /etc/otel-client/tls.crt
+            - name: OTEL_EXPORTER_OTLP_TRACES_CLIENT_KEY
+              value: /etc/otel-client/tls.key
+          {{- end }}
             - name: DATA_DIR
               value: /data
             - name: PUBLIC_URL
@@ -72,7 +88,18 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data
+          {{- if .Values.observability.enabled }}
+            - name: otel-client
+              mountPath: /etc/otel-client
+              readOnly: true
+          {{- end }}
       volumes:
+      {{- if .Values.observability.enabled }}
+        - name: otel-client
+          secret:
+            secretName: {{ .Values.observability.clientSecret }}
+            defaultMode: 256
+      {{- end }}
         - name: data
           persistentVolumeClaim:
             claimName: {{ .Values.persistence.existingClaim }}
