@@ -54,6 +54,54 @@ def test_new_findings_fail_and_resolved_debt_does_not_hide_them(tmp_path):
         assert json.loads((tmp_path / "out.json").read_text())["failureKind"] == "quality"
 
 
+def test_recorded_debt_identity_cannot_mark_a_finding_passed(tmp_path):
+    f = finding("RULE", "tests/test_quality_system.py", 1, "message", "visible context")
+    debt = tmp_path / "quality/debt"
+    debt.mkdir(parents=True)
+    (debt / "python.json").write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "acceptance": False,
+                "reason": "Historical entries stay visible and cannot pass.",
+                "findings": [
+                    {
+                        "id": f["id"],
+                        "path": "tests/test_quality_system.py",
+                        "rule": "RULE",
+                    }
+                ],
+            }
+        )
+    )
+    with patch("common.ROOT", tmp_path):
+        assert report("python", [f], 1, tmp_path / "out.json")
+        payload = json.loads((tmp_path / "out.json").read_text())
+        assert payload["status"] == "failed"
+        assert payload["findings"][0]["id"] == f["id"] + ".1"
+
+
+def test_unmarked_debt_file_cannot_act_as_a_baseline(tmp_path):
+    debt = tmp_path / "quality/debt"
+    debt.mkdir(parents=True)
+    (debt / "python.json").write_text(
+        json.dumps({"version": 1, "reason": "x" * 20, "findings": []})
+    )
+    with patch("common.ROOT", tmp_path):
+        with pytest.raises(ValueError, match="non-accepting"):
+            report("python", [], 1, tmp_path / "out.json")
+
+
+def test_suppression_guard_matches_markers_and_not_its_own_source():
+    import strict_guard
+
+    assert strict_guard.line_is_suppression("value  # " + "noqa: S101")
+    assert strict_guard.line_is_suppression("shellcheck " + "disable=SC2086")
+    assert not strict_guard.line_is_suppression("process_cpu:cpu:nanoseconds")
+    text = Path(strict_guard.__file__).read_text().splitlines()
+    assert not any(strict_guard.line_is_suppression(line) for line in text)
+
+
 def test_chart_registry_covers_all_local_roots_and_consumed_values():
     values = charts.targets()
     assert len(values) >= 58

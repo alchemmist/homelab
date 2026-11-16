@@ -1,5 +1,25 @@
-# Exact checks come from checksum-locked kube-linter 0.8.3.
-# Cross-Application resources can produce legitimate dangling-reference findings;
-# exceptions are exact rendered resource/rule identities, never namespace-wide ignores.
+# kube-linter 0.8.3. Default checks stay on. Extra checks are explicit.
+# Omissions are architecture conflicts in docs/quality/strict-policy.md.
 checks:
   doNotAutoAddDefaults: false
+  include:
+    - access-to-create-pods
+    - access-to-secrets
+    - cluster-admin-role-binding
+    - dangling-horizontalpodautoscaler
+    - dangling-ingress
+    - dangling-networkpolicy
+    - dangling-networkpolicypeer-podselector
+    - dangling-servicemonitor
+    - default-service-account
+    - env-value-from
+    - no-liveness-probe
+    - no-readiness-probe
+    - non-isolated-pod
+    - privileged-ports
+    - read-secret-from-env-var
+    - scc-deny-privileged-container
+    - unsafe-proc-mount
+    - use-namespace
+    - wildcard-in-rules
+    - writable-host-mount

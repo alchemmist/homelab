@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "acceptance": false,
   "reason": "Mechanical union of the previously reviewed chart inventories; no additional finding was accepted by this migration.",
   "findings": [
     {

@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "acceptance": false,
   "reason": "Initial full owned shell source audit; static analysis only, never invoke operational shell scripts.",
   "findings": [
     {

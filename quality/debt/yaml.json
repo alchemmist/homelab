@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "acceptance": false,
   "reason": "Initial raw non-Helm YAML audit; preserve reviewed runtime intent rather than globally reformat operational sources.",
   "findings": [
     {

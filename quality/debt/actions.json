@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "acceptance": false,
   "reason": "Trusted compiler-owned workflow_run publisher is deliberate; graph freshness and permission boundary checks protect it, no arbitrary publisher exemption.",
   "findings": [
     {

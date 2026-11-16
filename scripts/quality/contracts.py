@@ -122,6 +122,7 @@ def check():
     for baseline in (ROOT / "quality/debt").glob("*.json"):
         data = json.loads(baseline.read_text())
         require(data["version"] == 1 and len(data["reason"]) >= 20, "Unreviewed quality debt")
+        require(data.get("acceptance") is False, "Quality debt must not be accepted")
         ids = [f["id"] for f in data["findings"]]
         require(len(ids) == len(set(ids)), "Duplicate quality debt identities")
         for item in data["findings"]:

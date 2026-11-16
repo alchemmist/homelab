@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "acceptance": false,
   "reason": "Initial full owned-tree audit; legacy semantic findings remain visible debt, no source auto-fix. New findings block.",
   "findings": [
     {

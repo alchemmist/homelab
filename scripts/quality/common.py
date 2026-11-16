@@ -1,9 +1,10 @@
-"""Data-only reports, tracked ownership inventory and a no-new-debt ratchet."""
+"""Data-only reports, tracked ownership inventory and strict success decisions."""
 
 from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 from collections import Counter
@@ -11,8 +12,16 @@ from collections import Counter
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def use_project_tools():
+    """Prefer this worktree's pinned virtualenv and checksum-locked tool binaries."""
+    prefix = os.pathsep.join((str(ROOT / ".venv/bin"), str(ROOT / ".quality-tools/bin")))
+    current = os.environ.get("PATH", "")
+    if current.split(os.pathsep)[:2] != prefix.split(os.pathsep):
+        os.environ["PATH"] = prefix + (os.pathsep + current if current else "")
+
+
 def command(argv, *, stdin=None, allowed=(0,), timeout=120):
-    process = subprocess.run(  # noqa: S603 -- fixed tool/test argv, no shell or operational execution
+    process = subprocess.run(
         argv,
         input=stdin,
         text=True,
@@ -41,9 +50,19 @@ def tracked():
     return sorted(set(result))
 
 
-def owned(names):
+def vendor_prefixes():
     vendors = json.loads((ROOT / "deploy/contracts/vendors.json").read_text())
-    prefixes = [tree["path"] + "/" for tree in vendors["trees"]]
+    prefixes = []
+    for tree in vendors["trees"]:
+        path = str(tree["path"]).strip("/")
+        if not path or path == "." or ".." in Path(path).parts:
+            raise ValueError("Unsafe vendor path")
+        prefixes.append(path + "/")
+    return tuple(prefixes)
+
+
+def owned(names):
+    prefixes = vendor_prefixes()
     return [p for p in names if not any(p.startswith(prefix) for prefix in prefixes)]
 
 
@@ -83,69 +102,84 @@ def unique(findings):
     return result
 
 
-def report(check, findings, files, output, *, record_reason=None):
-    findings = unique(findings)
-    baseline_path = ROOT / (
-        "quality/secret-false-positives.json"
-        if check == "secrets"
-        else f"quality/debt/{check}.json"
-    )
-    if record_reason is not None:
-        import os
+def historical_debt_count(check):
+    path = ROOT / "quality/debt" / f"{check}.json"
+    if not path.is_file():
+        return 0
+    data = json.loads(path.read_text())
+    if data.get("acceptance") is not False:
+        raise ValueError("Historical debt file is not marked non-accepting")
+    return len(data.get("findings", []))
 
-        if os.environ.get("CI") or len(record_reason.strip()) < 20:
-            raise ValueError("Recording debt requires a review reason and is forbidden in CI")
-        baseline_path.parent.mkdir(parents=True, exist_ok=True)
-        baseline_path.write_text(
-            json.dumps(
-                {
-                    "version": 1,
-                    "reason": record_reason,
-                    "findings": [
-                        {
-                            "id": f["id"],
-                            "path": f["location"]["path"],
-                            "rule": f["ruleId"],
-                        }
-                        for f in findings
-                    ],
-                },
-                indent=2,
-            )
-            + "\n"
+
+def reviewed_secret_index():
+    path = ROOT / "quality/secret-false-positives.json"
+    if not path.is_file():
+        return {}
+    data = json.loads(path.read_text())
+    index = {}
+    for item in data["findings"]:
+        if item["id"] in index:
+            raise ValueError("Duplicate secret false-positive identity")
+        index[item["id"]] = item
+    return index
+
+
+def classify(check, findings):
+    findings = unique(findings)
+    if check != "secrets":
+        return findings, []
+    index = reviewed_secret_index()
+    blocking = []
+    reviewed = []
+    for item in findings:
+        prior = index.get(item["id"])
+        if (
+            prior
+            and prior["path"] == item["location"]["path"]
+            and prior["rule"] == item["ruleId"]
+        ):
+            reviewed.append(item)
+        else:
+            blocking.append(item)
+    return blocking, reviewed
+
+
+def report(check, findings, files, output, *, record_reason=None):
+    if record_reason is not None:
+        raise ValueError(
+            "Baseline regeneration is forbidden. Historical debt cannot decide success."
         )
-    baseline = json.loads(baseline_path.read_text()) if baseline_path.exists() else {"findings": []}
-    known = {f["id"] for f in baseline["findings"]}
-    if len(known) != len(baseline["findings"]):
-        raise ValueError("Duplicate debt identities")
-    active = {f["id"] for f in findings}
-    new = [f for f in findings if f["id"] not in known]
+    blocking, reviewed = classify(check, findings)
+    historical = historical_debt_count(check)
     payload = {
         "reportVersion": 0,
-        "status": "failed" if new else "passed",
+        "status": "failed" if blocking else "passed",
         "metrics": [
             {"label": "Files / targets checked", "value": str(files)},
-            {"label": "New blocking findings", "value": str(len(new))},
+            {"label": "Blocking findings", "value": str(len(blocking))},
+            {"label": "Reviewed non-secret matches", "value": str(len(reviewed))},
             {
-                "label": "Reviewed non-secret matches"
-                if check == "secrets"
-                else "Known quality debt (NOT fixed)",
-                "value": str(len(active & known)),
+                "label": "Historical debt entries ignored for success",
+                "value": str(historical),
             },
-            {"label": "Resolved debt entries", "value": str(len(known - active))},
         ],
-        "findings": new,
+        "findings": blocking,
         "notes": [
-            f"Full-tree check. Reviewed exceptions/debt: {baseline_path.relative_to(ROOT)}. "
-            "No automatic repair, suppression or baseline update in CI."
+            "Full-tree check. Historical quality/debt files do not decide success "
+            "and cannot be regenerated. Reviewed secret false positives are exact "
+            "id/path/rule matches only."
         ],
     }
-    if new:
+    if blocking:
         payload["failureKind"] = "quality"
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(payload, indent=2) + "\n")
-    print(f"{check}: {files} targets, {len(new)} NEW findings, {len(active & known)} known debt")
-    return bool(new)
+    print(
+        f"{check}: {files} targets, {len(blocking)} blocking findings, "
+        f"{len(reviewed)} reviewed non-secrets, {historical} historical entries ignored"
+    )
+    return bool(blocking)
 
 
 def failure(output, error):

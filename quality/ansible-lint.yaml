@@ -1,20 +1,41 @@
-# This repository owns operational playbooks, not a new Galaxy role API.
-# Mandatory parser/syntax checks plus explicit correctness/security rules.
-# name/var-prefix/line-length are NOT operational safety: public variables and
-# existing source contracts must not be renamed just to satisfy a new style guide.
-# YAML hygiene is independently enforced across the entire tracked source tree.
+# Profile min is the parser floor. Every other installed ansible-lint 26.11.0
+# rule is enabled below or named in docs/quality/strict-policy.md. No skip_list.
 profile: min
 offline: true
+strict: true
 enable_list:
-  - schema
   - avoid-implicit
+  - command-instead-of-module
+  - command-instead-of-shell
+  - deprecated-bare-vars
+  - deprecated-local-action
+  - deprecated-module
+  - empty-string-compare
+  - fqcn
+  - ignore-errors
+  - inline-env-var
+  - jinja
+  - jinja-template-extension
+  - key-order
   - latest
+  - literal-compare
+  - loop-var-prefix
+  - name
+  - no-changed-when
+  - no-free-form
+  - no-handler
+  - no-jinja-when
+  - no-log-password
+  - no-prompting
+  - no-relative-paths
+  - no-same-owner
+  - no-tabs
   - package-latest
+  - partial-become
+  - playbook-extension
   - risky-file-permissions
   - risky-octal
   - risky-shell-pipe
-  - inline-env-var
-  - deprecated-module
-  - no-jinja-when
-  - no-tabs
-  - no-log-password
+  - run-once
+  - sanity
+  - schema

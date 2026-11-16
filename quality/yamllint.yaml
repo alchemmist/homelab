@@ -1,8 +1,7 @@
 extends: default
 rules:
-  document-start: disable
-  line-length: disable
+  line-length:
+    max: 100
   truthy:
-    allowed-values: ['true', 'false', 'on', 'off', 'yes', 'no']
-  comments-indentation: disable
-  indentation: disable
+    allowed-values: ['true', 'false']
+    check-keys: false

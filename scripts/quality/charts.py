@@ -129,7 +129,7 @@ def render(target):
     ]
     for version in API_VERSIONS:
         args += ["--api-versions", version]
-    process = command(args, allowed=(0, 1), timeout=90)
+    process = command(args, allowed=(0, 1), timeout=180)
     if process.returncode:
         return None
     try:
@@ -239,7 +239,11 @@ def check(*, validate=True):
     inventory = []
     for target in selected:
         source = target["source"]
-        lint = command(["helm", "lint", str(target["chart"]), *arguments(target)], allowed=(0, 1))
+        lint = command(
+            ["helm", "lint", str(target["chart"]), *arguments(target)],
+            allowed=(0, 1),
+            timeout=180,
+        )
         resources = render(target)
         if lint.returncode or resources is None:
             findings.append(
@@ -329,7 +333,6 @@ def check(*, validate=True):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--schema-inventory", action="store_true")
-    parser.add_argument("--record-debt")
     args = parser.parse_args()
     output = ROOT / "reports/manifests.json"
     try:
@@ -337,13 +340,7 @@ def main():
         if args.schema_inventory:
             print(json.dumps(inventory))
             return 0
-        return report(
-            "manifests",
-            findings,
-            count,
-            output,
-            record_reason=args.record_debt,
-        )
+        return report("manifests", findings, count, output)
     except Exception as error:
         failure(output, error)
         print(

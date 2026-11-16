@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "acceptance": false,
   "reason": "Initial parse-only owned JavaScript audit under pinned Node runtime; source files are never executed by this linter.",
   "findings": []
 }

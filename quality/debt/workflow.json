@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "acceptance": false,
   "reason": "Mechanical union of existing workflow findings; no additional findings admitted.",
   "findings": [
     {
