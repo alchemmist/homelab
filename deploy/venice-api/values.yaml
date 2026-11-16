@@ -1,7 +1,7 @@
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/venice-api
-  tag: "2871a5cf154912e92df3def393cc6fb17b897da1"
-  digest: sha256:47883093d2a45815bd54e261225a20d3423789f3b07bfd851a741cd33af8d1e6
+  tag: "5fddee2bb4f3920c0ec7390a26441b881ce659d2"
+  digest: sha256:c428c512f99ffb1f6eb4a2d3ce7b556a6d980cccd72d0356e605ba9151225a50
   pullPolicy: IfNotPresent
 
 replicaCount: 1
