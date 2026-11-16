@@ -3,3 +3,6 @@ image:
   tag: cba3b089673b812560dcf3d5437a978c8ee5cb8a
   digest: sha256:3d1c016dda6e1d3ccbdda4c060511ac0c15d3888f829fe0b504990b067f886df
   pullPolicy: IfNotPresent
+
+# Controlled offline handoff: no writer while final archive is sealed/restored.
+replicaCount: 0

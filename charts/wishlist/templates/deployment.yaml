@@ -27,6 +27,26 @@ spec:
       {{- end }}
       nodeSelector:
         kubernetes.io/hostname: {{ .Values.nodeName }}
+      {{- with .Values.hostAliases }}
+      hostAliases:
+{{ toYaml . | indent 8 }}
+      {{- end }}
+      {{- if .Values.persistence.requireExistingData }}
+      initContainers:
+        - name: require-existing-wishlist
+          image: {{ .Values.image.repository }}@{{ .Values.image.digest }}
+          command: [python, -c]
+          args:
+            - >-
+              import os;
+              p='/data/wishlist.sqlite';
+              assert os.path.isfile(p) and not os.path.islink(p) and os.path.getsize(p)>16, 'Existing Wishlist database required';
+              assert open(p,'rb').read(16)==b'SQLite format 3\x00', 'Invalid Wishlist database header'
+          volumeMounts:
+            - name: data
+              mountPath: /data
+              readOnly: true
+      {{- end }}
       containers:
         - name: wishlist
           image: {{ .Values.image.repository }}{{ if .Values.image.digest }}@{{ .Values.image.digest }}{{ else }}:{{ .Values.image.tag }}{{ end }}
@@ -55,4 +75,4 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: wishlist-data
+            claimName: {{ .Values.persistence.existingClaim }}
