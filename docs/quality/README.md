@@ -84,5 +84,8 @@ No automatic fixes, runtime setting changes or deployment fallbacks are provided
 Before promotion, compare raw/effective PR results and findings, trigger a small
 probe PR from the updated base, verify native status/log links/rerun/approvals and
 fork security, then separately review required-check policy. No branch protection
-has been changed by this package. Backups, GPU/VPN work, identity reconciliation,
+has been changed by this package. Linux run43937975011exercised all42PR nodes
+and uploaded42results;30passed/12failed. The framework itself passed20tests.
+The failing expansion remains [draft PR181](https://github.com/alchemmist/homelab/pull/181),
+not the active main merge policy. Backups, GPU/VPN work, identity reconciliation,
 workflow execution and production maintenance remain outside this CI work.

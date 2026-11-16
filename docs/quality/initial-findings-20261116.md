@@ -72,3 +72,13 @@ runtime acceptance; Linux-specific tests must run in the actual Linux lane.
 
 Numbers above are dated first-pass evidence. Subsequent generated/new-source
 checks can increase or resolve counts; reports, not this receipt, are current.
+
+## Real Linux follow-up
+
+Run43937975011completed with30passing/12failing PR nodes and42result artifacts.
+The new framework test node passed20tests after fixing namespace PATH propagation.
+Existing regression mismatches remain blocking; ansible-lint remains explicitly
+advisory as a tool compatibility failure. Hadolint added8source findings, and
+concurrent PR Agent source added3Python findings plus1image-digest violation.
+These are not automatically grandfathered as old debt. See the PR dashboard and
+per-node Job Summaries for the current distinct quality/command failure evidence.
