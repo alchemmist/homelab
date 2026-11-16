@@ -85,6 +85,8 @@ Redirects are refused and credential-bearing HTTP errors are not printed.
 Offline tests cover read failures and authorization/owner drift; native helper was
 not executed. Local-only refusal/syntax checks do not constitute GPU maintenance
 or an authenticated production credential check. Backup work remains deferred.
+73 targeted offline tests passed; GitHub run43884693254 for code commitdd3533d4
+completed successfully. This result does not certify every remaining script.
 
 ## Remaining implementation gates (backup gate deferred)
 

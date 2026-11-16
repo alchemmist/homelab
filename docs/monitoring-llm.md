@@ -2,7 +2,9 @@
 
 The **LLM** dashboard (`socrat-llm`) is a primary dashboard with detailed views for
 LiteLLM, the model switcher, vLLM, NVIDIA GPU telemetry and container resources.
-It is available only through the existing private Grafana gateway.
+Use the existing authenticated Grafana entry at
+`https://grafana.socrat.alchemmist.xyz/`; native SSO/admission still applies.
+This is not an anonymously published dashboard.
 
 ## Current ownership and maintenance
 
