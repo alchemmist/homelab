@@ -25,7 +25,8 @@ uv run python scripts/check_infrastructure_contracts.py
 uv run python -m unittest discover -s tests -p test_infrastructure_contracts.py
 ```
 
-The contract validates mesh/inventory membership/addresses and nine registered
+The contract validates mesh/inventory membership/addresses, fixed relay/updater
+constants against node host_vars/mesh/public-peer identity, and nine registered
 issuer consumers. It does not prove live Service IP/UID or network reachability.
 On a reviewed endpoint change: confirm the actual Service and network path first,
 edit the canonical JSON, then run `scripts/check_infrastructure_contracts.py
@@ -56,3 +57,16 @@ has been changed. No broad test discovery against production is introduced.
 Other scripts have not been certified harmless by this table. Do not mass-delete
 recovery tools or run them to discover their purpose. Follow individual runbooks;
 retire by fail-closed guards and documentation before physical removal.
+
+## Stable alert graph identities
+
+`deploy/monitoring/alert-graph-panel-ids.json` is an append-only ID ledger, seeded
+from accepted dashboards. `scripts/alert_graphs.py` retains existing rule/panel
+IDs, allocates new odd/even pairs above the maximum and never reuses removed IDs.
+`--check` is read-only; ordinary generation appends ledger entries and regenerates
+owned files. Do not sort-renumber IDs or recreate the ledger from current names:
+historical incident graph links would point at different alerts. Unit regressions
+cover insertion before an existing sorted name, removal, duplicates and stability.
+Alert conditions, labels, thresholds and notification routing are not changed by
+this generator. The current refresh updates existing stale graph artifacts and
+adds the already-defined Edge Chrome service rule; no alerts were silenced.

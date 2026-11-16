@@ -20,6 +20,7 @@ class InfrastructureContracts(unittest.TestCase):
         c = json.loads((ROOT/'deploy/contracts/infrastructure.json').read_text())
         names = ['deploy/contracts/infrastructure.json', c['meshRegistry'], c['ansibleInventory']]
         names += [x['file'] for x in c['issuerTransport']['consumers']]
+        names += [c['relayContract'][k] for k in ['relayScript','endpointScript','frontHostVars','targetHostVars']]
         for name in names:
             p = root/name
             p.parent.mkdir(parents=True, exist_ok=True)
@@ -52,6 +53,14 @@ class InfrastructureContracts(unittest.TestCase):
             p.write_text(p.read_text().replace('ansible_host: 10.250.0.41', 'ansible_host: 10.250.0.99'))
             with self.assertRaisesRegex(ValueError, 'Inventory endpoint drift: socrat-5'):
                 contract.check(root)
+
+    def test_relay_scope_drift_is_not_automatically_rewritten(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = self.fixture(d)
+            p = root/'scripts/wg-peer15-relay.py'
+            p.write_text(p.read_text().replace("FRONT = ('10.250.0.1', 51835)", "FRONT = ('0.0.0.0', 51835)"))
+            with self.assertRaisesRegex(ValueError, 'Fixed relay topology drift'):
+                contract.check(root, write=True)
 
     def test_bootstrap_requires_opt_in_and_refuses_existing_workloads(self):
         p = yaml.safe_load((ROOT/'ansible/playbooks/argocd.yml').read_text())[0]

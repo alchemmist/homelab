@@ -71,5 +71,19 @@
         ]
       }
     ]
+  },
+  "relayContract": {
+    "relayScript": "scripts/wg-peer15-relay.py",
+    "endpointScript": "scripts/wg-peer15-endpoint.py",
+    "frontNode": "socrat-0",
+    "clientNode": "socrat-5",
+    "targetNode": "socrat-1",
+    "frontPort": 51835,
+    "clientPort": 51830,
+    "backendPort": 51836,
+    "frontHostVars": "ansible/inventory/host_vars/socrat-0.yml",
+    "targetHostVars": "ansible/inventory/host_vars/socrat-1.yml",
+    "directRecoveryEndpoint": "109.173.40.247:51831",
+    "policy": "Fixed keyless ciphertext-only relay. Check source coherence; no generation or network restart."
   }
 }
