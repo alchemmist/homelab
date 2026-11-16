@@ -1,7 +1,7 @@
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/wishlist
-  tag: e68e850a976a6bdffb0a1e760a5646e0a9d0a753
-  digest: sha256:27aed98ba5eee1f17dbb4db818c00f33827a3b258816e6709bb9dbf59b0755a7
+  tag: 693b0bf34b527c8ed6ab3b35cf337b38058fbcb7
+  digest: sha256:2db70d0e1f0efffe7af82db94b85ef1a624305c63e48ed7335d6be98c752ea83
   pullPolicy: IfNotPresent
 
 # Accepted cold restore; old NFS claim remains retained and is no rollback after new writes.
