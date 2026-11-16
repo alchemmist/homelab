@@ -130,7 +130,13 @@ def inventory():
     return rules
 
 
-def build(rules):
+def build(rules, panel_ids=None):
+    # Append-only IDs preserve historical graph URLs when sorted rule names grow.
+    panel_ids = {} if panel_ids is None else panel_ids
+    for uid, names in panel_ids.items():
+        values = list(names.values())
+        if any(type(v) is not int or v < 1 or v % 2 != 1 for v in values) or len(set(values)) != len(values):
+            raise ValueError('Invalid or duplicate persistent panel IDs: '+uid)
     grouped = defaultdict(list)
     for item in rules: grouped[(item['owner'], item['rule']['alert'])].append(item)
     dashboards, mappings, rows = {}, defaultdict(dict), []
@@ -150,7 +156,10 @@ def build(rules):
                                     'datasource': {'type': 'prometheus', 'uid': 'prometheus'}})
                 reasons.append(reason)
                 if threshold is not None: thresholds.append(threshold)
-        base = len(dashboard['panels'])+1
+        known = panel_ids.setdefault(uid, {})
+        if name not in known:
+            known[name] = max(known.values(), default=-1)+2
+        base = known[name]
         panel = {'id': base, 'type': 'timeseries', 'title': name,
             'description': 'Condition inputs for '+name+'. '+ ' '.join(sorted(set(reasons)))+
                 ' This rule-scoped panel may show multiple affected series; identify the alert target by its legend labels.',
@@ -180,8 +189,12 @@ def build(rules):
 
 
 def outputs(rules):
-    dashboards, mappings, rows = build(rules)
-    result = {}
+    registry_path = ROOT/'deploy/monitoring/alert-graph-panel-ids.json'
+    registry = json.loads(registry_path.read_text())
+    if registry['schemaVersion'] != 1:
+        raise ValueError('Unsupported panel ID registry schema')
+    dashboards, mappings, rows = build(rules, registry['dashboards'])
+    result = {registry_path: json.dumps(registry, indent=2, sort_keys=True)+'\n'}
     for uid, dashboard in dashboards.items():
         result[ROOT/'charts/monitoring-k3s/alert-dashboards'/f'{uid}.json'] = json.dumps(dashboard, indent=2)+'\n'
     result[ROOT/'docs/monitoring/alert-graphs.inventory.json'] = json.dumps(rows, indent=2)+'\n'

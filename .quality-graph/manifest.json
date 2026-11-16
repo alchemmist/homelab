@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "125601619a12ac9f3c4500d3f75447f0efe48d9b95646b4593f0010fe50bf8e8",
+  "graphDigest": "f1869c7546853a6076e0bd3c8e5e4d6a3e5cf5d5d2ddbcfea29efddd9ff53180",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -103,12 +103,12 @@
           "error"
         ]
       },
-      "profile": "default",
+      "profile": "infrastructure",
       "result": {
         "adapter": "exit-code"
       },
       "step": {
-        "run": "command -v helm\nuv run python -m unittest discover -s tests -p test_alert_graphs_chart.py\nuv run python scripts/alert_graphs.py --check\n"
+        "run": "command -v helm\nuv run python -m unittest discover -s tests -p test_alert_graphs_chart.py\nuv run python -m unittest discover -s tests -p test_alert_graph_panel_ids.py\nuv run python scripts/alert_graphs.py --check\n"
       },
       "timeoutMinutes": 5,
       "title": "Alert graph chart, image ownership and renderer capacity"
@@ -158,7 +158,7 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "command -v helm\nuv run python scripts/check_infrastructure_contracts.py\nuv run python -m unittest discover -s tests -p test_infrastructure_contracts.py\nuv run python -m unittest discover -s tests -p test_vm105_management.py\nuv run python -m unittest discover -s tests -p test_socrat5_app_placement.py\nuv run python -m unittest discover -s tests -p test_argocd_refresh.py\n"
+        "run": "command -v helm\nuv run python scripts/check_infrastructure_contracts.py\nuv run python -m unittest discover -s tests -p test_infrastructure_contracts.py\nuv run python -m unittest discover -s tests -p test_vm105_management.py\nuv run python -m unittest discover -s tests -p test_socrat5_app_placement.py\nuv run python -m unittest discover -s tests -p test_argocd_refresh.py\nuv run python -m unittest discover -s tests -p test_refactor_acceptance.py\n"
       },
       "timeoutMinutes": 5,
       "title": "Offline infrastructure ownership, placement and issuer contracts"

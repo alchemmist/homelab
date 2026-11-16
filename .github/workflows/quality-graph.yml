@@ -38,7 +38,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 125601619a12ac9f3c4500d3f75447f0efe48d9b95646b4593f0010fe50bf8e8
+          graph-digest: f1869c7546853a6076e0bd3c8e5e4d6a3e5cf5d5d2ddbcfea29efddd9ff53180
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -83,7 +83,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 125601619a12ac9f3c4500d3f75447f0efe48d9b95646b4593f0010fe50bf8e8
+          graph-digest: f1869c7546853a6076e0bd3c8e5e4d6a3e5cf5d5d2ddbcfea29efddd9ff53180
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -128,7 +128,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 125601619a12ac9f3c4500d3f75447f0efe48d9b95646b4593f0010fe50bf8e8
+          graph-digest: f1869c7546853a6076e0bd3c8e5e4d6a3e5cf5d5d2ddbcfea29efddd9ff53180
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -158,9 +158,14 @@ jobs:
           persist-credentials: 'false'
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
       - run: uv sync --locked
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
+        with:
+          version: v3.19.0
       - run: 'command -v helm
 
           uv run python -m unittest discover -s tests -p test_alert_graphs_chart.py
+
+          uv run python -m unittest discover -s tests -p test_alert_graph_panel_ids.py
 
           uv run python scripts/alert_graphs.py --check
 
@@ -179,7 +184,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 125601619a12ac9f3c4500d3f75447f0efe48d9b95646b4593f0010fe50bf8e8
+          graph-digest: f1869c7546853a6076e0bd3c8e5e4d6a3e5cf5d5d2ddbcfea29efddd9ff53180
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -224,7 +229,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 125601619a12ac9f3c4500d3f75447f0efe48d9b95646b4593f0010fe50bf8e8
+          graph-digest: f1869c7546853a6076e0bd3c8e5e4d6a3e5cf5d5d2ddbcfea29efddd9ff53180
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -269,6 +274,8 @@ jobs:
 
           uv run python -m unittest discover -s tests -p test_argocd_refresh.py
 
+          uv run python -m unittest discover -s tests -p test_refactor_acceptance.py
+
           '
         name: Run Offline infrastructure ownership, placement and issuer contracts
         id: quality-command
@@ -284,7 +291,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 125601619a12ac9f3c4500d3f75447f0efe48d9b95646b4593f0010fe50bf8e8
+          graph-digest: f1869c7546853a6076e0bd3c8e5e4d6a3e5cf5d5d2ddbcfea29efddd9ff53180
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -336,7 +343,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 125601619a12ac9f3c4500d3f75447f0efe48d9b95646b4593f0010fe50bf8e8
+          graph-digest: f1869c7546853a6076e0bd3c8e5e4d6a3e5cf5d5d2ddbcfea29efddd9ff53180
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'

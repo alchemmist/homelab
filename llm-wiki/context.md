@@ -26,9 +26,11 @@ production-операции. Датированные результаты не 
   users/roles проверены; промежуточный login incident явно сохранён.
 - `socrat-0`: остальные компоненты Argo CD, RustFS, LiteLLM database, Umami
   database, vLLM/GPU; monitoring размещение сверять по отдельным Applications.
-- `socrat-1`: Grafana и Grafana MCP по последнему принятому handoff, SPI GitHub
-  broker. Перенос Grafana и Grafana MCP на `socrat-5` теперь разрешён владельцем,
-  но **ещё не принят**. Grafana stateful: локальная БД/PVC, не просто frontend.
+- `socrat-5`: Grafana и Grafana MCP, приняты после холодного переноса.
+  [Grafana handoff](../docs/vm105-grafana-20261116.md): exact image digests,
+  identity/ACL, native SSO и настоящий MCP→Grafana→Thanos запрос проверены.
+  Grafana stateful, claim `grafana-socrat5`; старый claim на `socrat-1` stale.
+- `socrat-1`: SPI GitHub broker; остальные компоненты сверять по своим Applications.
 - `socrat-5`: n8n, PR Agent; WebUI, Terminal, SearXNG, Umami application;
   LMS, LiteLLM application, renderer; Monori frontend; blog/wiki workers,
   SPI queue UI. Blog/Home имеют распределённые реплики; не снимать anti-affinity.
@@ -54,8 +56,10 @@ production-операции. Датированные результаты не 
   native root cause не доказана. Healthy приложений не доказывает VM DR/HA.
 - Prometheus historical corruption остаётся отдельной проблемой; не чистить WAL.
   VM cold boot/full independent restore требуют отдельной maintenance-приёмки.
-- Backup coverage: n8n daily job использует актуальный claim; прочие новые
-  datasets и restore coverage требуют отдельной матрицы. Retain не backup.
+- Backup coverage: n8n daily job использует актуальный claim; последний paired
+  архив на `socrat-3` SHA-verified и его SQLite независимо восстановлен/read-only
+  integrity-checked. Один unpaired archive не принят. Остальные recurring datasets
+  ещё не закрыты: [матрица](../docs/backup-coverage-20261116.md). Retain не backup.
 - Исторические Wishlist OutOfSync, SPI failure и ограничения human callbacks /
   production telemetry-child не стирать и не объявлять исправленными без теста.
 
@@ -65,3 +69,11 @@ production-операции. Датированные результаты не 
 отдельный перенос Grafana/Grafana MCP на `socrat-5`. Исходное исследование:
 [refactoring audit](../docs/refactoring-audit-20261116.md). Не считать все пункты
 закрытыми по наличию этого файла; состояние фиксируется в реализации/приёмке.
+
+Первый пакет реализации опубликован: canonical Argo bootstrap guard, общий issuer
+контракт/generator, mesh+fixed-relay drift checks (без рестарта сети), current/history
+разделение, offline CI. Дополнительно исправлены два прежних CI-дефекта: stale SPI
+expected codes (Publish-only STORAGE_TRANSIENT сохранён, workflow не менялся) и
+устаревшие alert graphs. Append-only panel ID ledger сохраняет исторические ссылки.
+[Владельцы и обслуживание](../docs/infrastructure-contracts.md). Регулярные backup
+остальных datasets, полная Wiki publication-сверка и DR не объявлены завершёнными.

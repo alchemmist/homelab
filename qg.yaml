@@ -39,10 +39,12 @@ nodes:
     title: Offline workflow policy regressions
     run: uv run python -m unittest discover -s tests -p test_n8n_failure_alert_policy.py
   alert-graph-delivery:
+    profile: infrastructure
     title: Alert graph chart, image ownership and renderer capacity
     run: |
       command -v helm
       uv run python -m unittest discover -s tests -p test_alert_graphs_chart.py
+      uv run python -m unittest discover -s tests -p test_alert_graph_panel_ids.py
       uv run python scripts/alert_graphs.py --check
   spi-execution-links:
     title: Stable SPI alert identity and execution link metadata
@@ -57,6 +59,7 @@ nodes:
       uv run python -m unittest discover -s tests -p test_vm105_management.py
       uv run python -m unittest discover -s tests -p test_socrat5_app_placement.py
       uv run python -m unittest discover -s tests -p test_argocd_refresh.py
+      uv run python -m unittest discover -s tests -p test_refactor_acceptance.py
 
   wishlist-observability:
     title: Wishlist private metrics and dedicated OTel identity

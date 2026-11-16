@@ -299,11 +299,11 @@
               },
               {
                 "color": "gray",
-                "value": 0.1
+                "value": 0.25
               },
               {
                 "color": "gray",
-                "value": 0.25
+                "value": 0.5
               }
             ]
           }
@@ -332,7 +332,7 @@
       "targets": [
         {
           "refId": "1",
-          "expr": "socrat:node_pressure_waiting:ratio5m{resource=\"cpu\"} > 0.25 or socrat:node_pressure_waiting:ratio5m{resource=~\"memory|io\"} > 0.10",
+          "expr": "socrat:node_pressure_waiting:ratio5m{resource=\"cpu\"} > 0.50 or socrat:node_pressure_waiting:ratio5m{resource=~\"memory|io\"} > 0.25",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -361,11 +361,11 @@
               },
               {
                 "color": "gray",
-                "value": 0.1
+                "value": 0.25
               },
               {
                 "color": "gray",
-                "value": 0.25
+                "value": 0.5
               }
             ]
           }

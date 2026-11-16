@@ -34,7 +34,7 @@ No workflow, publication, bank request, production restore or key rotation.
 | SPI worker | spi-triage-socrat5 | Job/link/lease history and credentials required; no replay. Recurring coverage not established. |
 | format-quorum | Three new local datasets on socrat-5 | History/compiler assets covered by cold migration seals; recurring coverage not established. |
 | LiteLLM branding | New local dataset on socrat-5 | Original public assets verified in handoff; recurring backup owner not established. |
-| Grafana | Original local PVC on socrat-1 | Must seal full DB/plugin/state + preserve encryption key before authorized relocation. Recurring coverage not established. |
+| Grafana | grafana-socrat5; /mnt/files/homelab/grafana/data | Cold independent archive + exact restore accepted; keys/identity/ACL preserved. Old socrat-1 claim stale; recurring coverage still not established. |
 | VM105 / Kubernetes identity | Existing API/host identity and VM disks | App archives/Healthy do not prove full independent VM restore/cold boot. |
 
 Cluster also contains `lms-database-backup` every6hours with recent success. That

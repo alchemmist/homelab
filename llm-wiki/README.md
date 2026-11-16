@@ -1,7 +1,7 @@
 # LLM wiki: карта актуального контекста Socrat
 
 Авторизация обновлена в текущем closeout: [B2C app-группы](application-access.md).
-Сетевой обзор: актуализация **10 ноября 2026** (production Moscow VPN Pod/native, shared mesh и приёмка fallback; SPI service extraction; observer — 8 ноября, остальные срезы датированы в своих разделах). Это рабочая память для сопровождения homelab,
+Текущая карта размещения и source ownership: [context](context.md), обновление **16 ноября 2026**. Сетевой обзор ниже: срез **10 ноября 2026** (production Moscow VPN Pod/native, shared mesh и приёмка fallback; SPI service extraction; observer — 8 ноября, остальные срезы датированы в своих разделах). Это рабочая память для сопровождения homelab,
 не public wiki content и не набор команд для автоматического повторения миграций.
 Git/manifests задают intent; runtime определяется отдельной проверкой.
 

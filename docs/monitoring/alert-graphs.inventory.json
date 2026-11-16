@@ -1213,7 +1213,7 @@
     "resource": "monitoring-k3s-shared-registry",
     "group": "socrat.nodes.hardware",
     "alert": "SocratNodeResourceContention",
-    "expr": "socrat:node_pressure_waiting:ratio5m{resource=\"cpu\"} > 0.25 or socrat:node_pressure_waiting:ratio5m{resource=~\"memory|io\"} > 0.10",
+    "expr": "socrat:node_pressure_waiting:ratio5m{resource=\"cpu\"} > 0.50 or socrat:node_pressure_waiting:ratio5m{resource=~\"memory|io\"} > 0.25",
     "uid": null,
     "graphs": {
       "version": 1,
@@ -1480,6 +1480,37 @@
           "title": "SocratServiceEdgeHomeUnavailable / rule evaluations",
           "dashboard_uid": "alerts-8bcf7e7a450f9592",
           "panel_id": 12,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
+    "resource": "monitoring-service-availability",
+    "group": "socrat.services.availability",
+    "alert": "SocratServiceEdgeMoscowUnavailable",
+    "expr": "probe_success{job=\"service-probes\",service_id=\"edge-moscow\"} == 0",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "SocratServiceEdgeMoscowUnavailable",
+          "dashboard_uid": "alerts-8bcf7e7a450f9592",
+          "panel_id": 77,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "SocratServiceEdgeMoscowUnavailable / rule evaluations",
+          "dashboard_uid": "alerts-8bcf7e7a450f9592",
+          "panel_id": 78,
           "variables": {},
           "before_seconds": 7200,
           "after_seconds": 300
