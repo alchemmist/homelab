@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 import subprocess
+import shutil
 
 import pytest
 
@@ -32,9 +33,11 @@ def test_real_linter_rejects_unsafe_or_unresolved_tasks(tmp_path, task, rule):
             ]
         )
     )
-    result = subprocess.run(
+    executable = shutil.which("ansible-lint")
+    assert executable is not None
+    result = subprocess.run(  # noqa: S603 -- fixed parser argv; fixture plays are never executed
         [
-            "ansible-lint",
+            executable,
             "--offline",
             "--config-file",
             str(ROOT / "quality/ansible-lint.yaml"),
