@@ -1,6 +1,6 @@
 #!/bin/bash
 # Night worker for this Mac: a small Lima Linux VM that can later join k3s.
-export PATH="/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+export PATH="/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH}"
 # Defaults stay tiny so a test cannot crowd out an active desktop session.
 # Cluster join is refused until ~/.config/homelab/nightnode/config.env exists
 # and NIGHTNODE_ALLOW_JOIN=1 is set in that file.
@@ -23,9 +23,9 @@ log() { printf '%s\n' "$*"; }
 die() { printf 'nightnode: %s\n' "$*" >&2; exit 1; }
 
 load_config() {
-  if [[ -f "$CONFIG_FILE" ]]; then
+  if [[ -f "${CONFIG_FILE}" ]]; then
     # shellcheck disable=SC1090
-    source "$CONFIG_FILE"
+    source "${CONFIG_FILE}"
   fi
 }
 
@@ -33,14 +33,14 @@ memory_gib() {
   local raw="$1"
   raw="${raw%GiB}"
   raw="${raw%G}"
-  printf '%s' "$raw"
+  printf '%s' "${raw}"
 }
 
 enforce_caps() {
   local mem
-  mem="$(memory_gib "$MEMORY")"
-  [[ "$mem" =~ ^[0-9]+$ ]] || die "memory must look like 2GiB, got ${MEMORY}"
-  [[ "$CPUS" =~ ^[0-9]+$ ]] || die "cpus must be an integer, got ${CPUS}"
+  mem="$(memory_gib "${MEMORY}")"
+  [[ "${mem}" =~ ^[0-9]+$ ]] || die "memory must look like 2GiB, got ${MEMORY}"
+  [[ "${CPUS}" =~ ^[0-9]+$ ]] || die "cpus must be an integer, got ${CPUS}"
   if (( CPUS > MAX_CPUS || mem > MAX_MEMORY_GIB )); then
     die "refusing ${CPUS} cpus / ${MEMORY}: cap is ${MAX_CPUS} cpus / ${MAX_MEMORY_GIB}GiB (set NIGHTNODE_MAX_* to raise it)"
   fi
@@ -51,25 +51,25 @@ need_lima() {
 }
 
 write_lima_yaml() {
-  mkdir -p "$CONFIG_DIR"
-  chmod 700 "$CONFIG_DIR"
+  mkdir -p "${CONFIG_DIR}"
+  chmod 700 "${CONFIG_DIR}"
   sed \
     -e "s/__CPUS__/${CPUS}/" \
     -e "s/__MEMORY__/${MEMORY}/" \
     -e "s/__DISK__/${DISK}/" \
-    "$TEMPLATE" > "${LIMA_YAML}.tmp"
-  mv "${LIMA_YAML}.tmp" "$LIMA_YAML"
+    "${TEMPLATE}" > "${LIMA_YAML}.tmp"
+  mv "${LIMA_YAML}.tmp" "${LIMA_YAML}"
 }
 
 vm_status() {
-  limactl list --format '{{.Name}} {{.Status}}' 2>/dev/null | awk -v n="$NAME" '$1==n { print $2 }'
+  limactl list --format '{{.Name}} {{.Status}}' 2>/dev/null | awk -v n="${NAME}" '$1==n { print $2 }'
 }
 
 cmd_status() {
   need_lima
   local st
   st="$(vm_status || true)"
-  if [[ -z "$st" ]]; then
+  if [[ -z "${st}" ]]; then
     log "vm: absent"
   else
     log "vm: ${st} cpus=${CPUS} memory=${MEMORY} disk=${DISK}"
@@ -92,15 +92,15 @@ cmd_up() {
   write_lima_yaml
   local st
   st="$(vm_status || true)"
-  if [[ "$st" == "Running" ]]; then
+  if [[ "${st}" == "Running" ]]; then
     log "vm already running"
     return 0
   fi
   log "starting ${NAME} with ${CPUS} cpu and ${MEMORY}"
-  if [[ -z "$st" ]]; then
-    limactl create --name="$NAME" --tty=false "$LIMA_YAML"
+  if [[ -z "${st}" ]]; then
+    limactl create --name="${NAME}" --tty=false "${LIMA_YAML}"
   fi
-  limactl start "$NAME"
+  limactl start "${NAME}"
   log "vm is up; cluster join was not attempted"
 }
 
@@ -108,20 +108,20 @@ cmd_down() {
   need_lima
   local st
   st="$(vm_status || true)"
-  if command -v kubectl >/dev/null 2>&1 && kubectl get node "$NAME" >/dev/null 2>&1; then
+  if command -v kubectl >/dev/null 2>&1 && kubectl get node "${NAME}" >/dev/null 2>&1; then
     log "cordon ${NAME}"
-    kubectl cordon "$NAME" || true
+    kubectl cordon "${NAME}" || true
     log "drain ${NAME}"
-    kubectl drain "$NAME" --ignore-daemonsets --delete-emptydir-data --force --grace-period=30 --timeout=60s || true
+    kubectl drain "${NAME}" --ignore-daemonsets --delete-emptydir-data --force --grace-period=30 --timeout=60s || true
   fi
-  if [[ -n "$st" && "$st" != "Stopped" ]]; then
+  if [[ -n "${st}" && "${st}" != "Stopped" ]]; then
     log "stopping ${NAME}"
-    limactl stop "$NAME"
+    limactl stop "${NAME}"
   else
     log "vm already stopped"
   fi
   if command -v kubectl >/dev/null 2>&1; then
-    kubectl delete node "$NAME" --wait=false || true
+    kubectl delete node "${NAME}" --wait=false || true
   fi
 }
 
@@ -129,10 +129,10 @@ cmd_down() {
 cmd_menu() {
   local st resources node ip pods
   st="$(vm_status || true)"
-  [[ -n "$st" ]] || st="absent"
+  [[ -n "${st}" ]] || st="absent"
   resources=""
-  if [[ "$st" != "absent" ]]; then
-    read -r cpus mem < <(limactl list --format '{{.Name}} {{.CPUs}} {{.Memory}}' 2>/dev/null | awk -v n="$NAME" '$1==n { print $2, $3 }')
+  if [[ "${st}" != "absent" ]]; then
+    read -r cpus mem < <(limactl list --format '{{.Name}} {{.CPUs}} {{.Memory}}' 2>/dev/null | awk -v n="${NAME}" '$1==n { print $2, $3 }')
     if [[ "${mem:-}" =~ ^[0-9]+$ ]] && (( mem >= 1073741824 )); then
       mem="$(( mem / 1073741824 ))GiB"
     fi
@@ -142,17 +142,17 @@ cmd_menu() {
   ip=""
   pods="0"
   if command -v kubectl >/dev/null 2>&1; then
-    node="$(kubectl get node "$NAME" --no-headers 2>/dev/null | awk '{ print $2 }')"
-    [[ -n "$node" ]] || node="absent"
-    ip="$(kubectl get node "$NAME" -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null || true)"
-    pods="$(kubectl get pods -A --field-selector spec.nodeName="$NAME" --no-headers 2>/dev/null | wc -l | tr -d ' ')"
+    node="$(kubectl get node "${NAME}" --no-headers 2>/dev/null | awk '{ print $2 }')"
+    [[ -n "${node}" ]] || node="absent"
+    ip="$(kubectl get node "${NAME}" -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}' 2>/dev/null || true)"
+    pods="$(kubectl get pods -A --field-selector spec.nodeName="${NAME}" --no-headers 2>/dev/null | wc -l | tr -d ' ')"
   fi
   printf 'vm=%s
 resources=%s
 node=%s
 ip=%s
 pods=%s
-' "$st" "$resources" "$node" "$ip" "$pods"
+' "${st}" "${resources}" "${node}" "${ip}" "${pods}"
 }
 
 cmd_join() {
@@ -170,7 +170,7 @@ EOF
 
 load_config
 cmd="${1:-}"
-case "$cmd" in
+case "${cmd}" in
   up) cmd_up ;;
   down) cmd_down ;;
   status) cmd_status ;;
