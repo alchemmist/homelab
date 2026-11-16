@@ -1,6 +1,6 @@
 ---
 # Native Debian KVM worker (VM105); no desktop/wallpaper/display autostart roles.
-# Original Node/WG/SSH/NetBird identities retained; applications remain on socrat-1.
+# Original Node/WG/SSH/NetBird identities retained; accepted applications now run here.
 homelab_boot_k3s_service: k3s-agent.service
 homelab_headless: true
 k3s_worker_profile: headless-worker

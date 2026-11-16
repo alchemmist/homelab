@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "meshRegistry": "ansible/inventory/group_vars/Socrat.yml",
+  "ansibleInventory": "ansible/inventory/hosts.yml",
+  "sshEndpointFromPublicPeer": [
+    "socrat-4"
+  ],
+  "issuerTransport": {
+    "hostname": "auth.socrat.alchemmist.xyz",
+    "ip": "10.43.218.222",
+    "service": {
+      "namespace": "kube-system",
+      "name": "traefik"
+    },
+    "purpose": "Scoped verified native issuer transport; preserve SNI, TLS, callback and PKCE. Not cluster DNS or authorization.",
+    "consumers": [
+      {
+        "file": "charts/open-webui/values.yaml",
+        "path": [
+          "hostAliases"
+        ]
+      },
+      {
+        "file": "deploy/lms/values.yaml",
+        "path": [
+          "hostAliases"
+        ]
+      },
+      {
+        "file": "deploy/wishlist/values.yaml",
+        "path": [
+          "hostAliases"
+        ]
+      },
+      {
+        "file": "deploy/wiki-runtime/values.yaml",
+        "path": [
+          "hostAliases"
+        ]
+      },
+      {
+        "file": "deploy/spi-triage/values.yaml",
+        "path": [
+          "queueUI",
+          "hostAliases"
+        ]
+      },
+      {
+        "file": "deploy/platform/litellm/values.yaml",
+        "path": [
+          "hostAliases"
+        ]
+      },
+      {
+        "file": "deploy/platform/rancher/values.yaml",
+        "path": [
+          "hostAliases"
+        ]
+      },
+      {
+        "file": "ansible/roles/rancher_placement/defaults/main.yml",
+        "path": [
+          "rancher_host_aliases"
+        ]
+      }
+    ]
+  }
+}

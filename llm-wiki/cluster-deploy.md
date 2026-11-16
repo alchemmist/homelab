@@ -111,7 +111,7 @@ Harbor: push-учётка в секретах CI (`HARBOR_USERNAME`, `HARBOR_PAS
 
 ## Как устроен Argo CD
 
-Argo CD стоит на socrat-0. UI: `https://argocd.socrat.alchemmist.xyz`. TLS cert-manager HTTP-01, ingress Traefik, в том числе через VPS edge. Браузер входит через Authentik OIDC. Значения: `deploy/argocd/values.yaml`, playbook `ansible/playbooks/argocd.yml`.
+Argo CD размещён раздельно: application-controller на `socrat-5`, остальные компоненты на `socrat-0`. UI: `https://argocd.socrat.alchemmist.xyz`, native Authentik OIDC. Canonical values: `deploy/platform/argo-cd/values.yaml`; старый путь — compatibility symlink. `ansible/playbooks/argocd.yml` допускает только явный empty-cluster bootstrap и отказывает при существующих workloads. Текущий контракт: [context](context.md), приёмка: [management handoff](../docs/vm105-management-20261116.md).
 
 Базовая схема и NetBird:
 

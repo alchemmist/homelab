@@ -6,6 +6,7 @@ dependencies = []
 
 [dependency-groups]
 dev = [
+  "pyyaml==6.0.3",
   "quality-graph-cli==0.1.8",
   "quality-graph-github==0.1.8",
 ]

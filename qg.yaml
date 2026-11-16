@@ -16,6 +16,18 @@ profiles:
           persist-credentials: "false"
       - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
       - run: uv sync --locked
+  infrastructure:
+    runner: ubuntu-24.04
+    timeout-minutes: 5
+    setup:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: "false"
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+      - run: uv sync --locked
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
+        with:
+          version: v3.19.0
 nodes:
   graph-freshness:
     title: Quality Graph declaration freshness
@@ -35,3 +47,13 @@ nodes:
   spi-execution-links:
     title: Stable SPI alert identity and execution link metadata
     run: uv run python -m unittest discover -s tests -p test_spi_execution_links.py
+  infrastructure-contracts:
+    title: Offline infrastructure ownership, placement and issuer contracts
+    profile: infrastructure
+    run: |
+      command -v helm
+      uv run python scripts/check_infrastructure_contracts.py
+      uv run python -m unittest discover -s tests -p test_infrastructure_contracts.py
+      uv run python -m unittest discover -s tests -p test_vm105_management.py
+      uv run python -m unittest discover -s tests -p test_socrat5_app_placement.py
+      uv run python -m unittest discover -s tests -p test_argocd_refresh.py

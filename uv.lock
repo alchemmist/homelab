@@ -49,6 +49,7 @@ source = { virtual = "." }
 
 [package.dev-dependencies]
 dev = [
+    { name = "pyyaml" },
     { name = "quality-graph-cli" },
     { name = "quality-graph-github" },
 ]
@@ -57,6 +58,7 @@ dev = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "pyyaml", specifier = "==6.0.3" },
     { name = "quality-graph-cli", specifier = "==0.1.8" },
     { name = "quality-graph-github", specifier = "==0.1.8" },
 ]
