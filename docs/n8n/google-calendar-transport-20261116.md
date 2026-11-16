@@ -98,3 +98,28 @@ Evidence private /tmp/calendar-network-fix-private0700/files0600. Official
 https://developers.google.com/workspace/calendar/api/guides/errors recommends
 backoff for HTTP backend/rateerrors, NOT blanketPOST retries. n8n docs
 https://docs.n8n.io/workflows/settings/ confirm workflow timeout cancels execution.
+
+## LIVE initial acceptance —20:21UTC16Nov
+
+Code e9297126, activation9a014aa2 pushedmain after related trigger pause and
+natural last execution completion (old48685canceled by its ORIGINAL110second
+deadline20:20:34; not manually canceled). Fresh all-nativepending[] and
+SPIowner/processing/paid0 ASSERTED immediately beforepush. No native definition
+PUT, no credentials write, no alert mute or live deployment override.
+
+Argo reconciled9a014aa2 SyncedHealthy; newPod n8n-587cfcd774-spp8b on5,
+Ready/restart0. Runtime3moduleSHA256 and loadedpreload exact. Original Deployment
+UID, immutableimage, volumes/PVC identity/spec and SecretUID/dataSHA unchanged.
+All7native graphs/settings/nodeIDs/credentialreferences/pin/staticData match
+preparation snapshots EXACTLY; original activities restored (6active, handler
+inactive). Static data was only compared, never overwritten from snapshots.
+One post-push snapshot GET racednormalrollout and failed; no writes/retries were
+performed for that read. Recovery verification after readiness succeeded.
+
+First NATURALLY SCHEDULED new48686 started20:21:56UTC, completed20:22:01UTC,
+GoogleCalendar4827ms, MatchDueReminderssuccess. Two mainn8n transport diagnostics
+reported CONNECTED after2attempts on www.googleapis.com; no manual workflow,
+Calendarrequest or speech probe. This is real initial failover acceptance, not
+justHEAD/Argo. No Announce node executed in that run. Observe a longer finite
+natural window before asserting ongoing reliability; never declare all future
+provider/DNS/network/HTTP errors impossible. Historicalcancellations preserved.
