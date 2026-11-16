@@ -20,7 +20,12 @@ images:
 imagePullSecrets:
   - monori-harbor-pull
 
-# Offline phase: backend and sync stop together, frontend is untouched.
-backReplicaCount: 0
-syncReplicaCount: 0
+# Verified cold restore; single writers, original financial keys preserved.
+backReplicaCount: 1
+syncReplicaCount: 1
 statefulRecreate: true
+
+statefulNodeName: socrat-5
+requireExistingData: true
+backClaim: monori-back-socrat5
+syncClaim: monori-sync-socrat5
