@@ -1,5 +1,38 @@
 # Socrat: текущий контекст
 
+## Stateful application batch —16Nov, AUTHORIZED; Wishlist accepted
+
+Owner authorized ALL6: Wishlist →Wiki runtime →Monori back+sync →SPI worker
+→format-quorum →LiteLLM branding. This is not a new-selection wait; execute one
+at a time with cold consistent handoff and real acceptance. Current checkpoint:
+**Wishlist completed0→5**, others remain at original placements, Wiki preflight
+only (data340796KiB, Git porcelain0). No other writer stopped yet.
+
+Wishlist source40a11b0f offline/d18440a8 activate. New Retain local claim
+wishlist-socrat5 at /mnt/files/homelab/wishlist/data. Old wishlist-data UID/PV
+NFS0 retained, now stale after5 writes. Independent controller archive3855bytes,
+SHA256651ef1848505ccf4a0d50f4b21d8a9bec7379a3f2803561fc9ed2ebbce73ba1a;
+VM staging hash + restored file/owner/mode/xattr/SQLite seals match. ALL business
+table count/content hashes match before/after, integrity/FK checks pass using
+EXACT app UNICODE_NOCASE normalization. Generic missing-collation probe error
+was not database corruption; no repair/reindex/reset. Read-only WAL source
+query uses temp copies, no original writes.
+
+Wishlist1Ready/restart0 Pod5, same digest/env/resources/credentials, fail-closed
+existing DB guard. RustFS bucket/assets remain0; actual5 HEAD bucket+both2photo
+objects200. Narrow app-only issuer alias to existing Traefik, normal TLS/native
+SSO. Public landing200/full Authentik form no errors, no account impersonation
+or test reservation. Private credentials UID/data unchanged. Diagnostic Pods
+removed. **Argo Healthy but baseline OutOfSync old ConfigMap/wishlist remains**,
+not blanket-pruned to claim Synced. Current5 data authoritative.
+
+Important remaining scope: format-quorum3volumes are NFS0, so compute-only move
+would NOT move its data. Monori hostPath DirectoryOrCreate/RollingUpdate must
+be fenced for real single-writer handoff. SPI/branding old PV Delete needs owned
+Retain protection. Native queues/finance sync must drain, no fake tasks or bank
+sync to test. No full VM backup/restore/cold-boot acceptance claimed. Full
+checkpoint and remaining contract: [stateful batch](../docs/vm105-stateful-20261116.md).
+
 ## Four additional stateless moves —16Nov, CURRENT
 
 Owner approved exactly blog-updates-worker1→5, wiki-openapi-worker1→5,
