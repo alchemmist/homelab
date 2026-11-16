@@ -1,16 +1,25 @@
 #!/usr/bin/env python3
 """Read-only identity inventory. Never reads shadow, private keys, tokens or Secrets."""
+
 import argparse
-from datetime import datetime, timezone
 import json
 import os
 import subprocess
+from datetime import UTC, datetime
 
 HOSTS = {
-    'socrat-0': ['-o', 'Hostname=109.173.40.247', '-o', 'HostKeyAlias=[socrat.alchemmist.xyz]:2222', 'socrat-0'],
-    'socrat-1': ['socrat-1'], 'socrat-2': ['socrat-2'], 'socrat-3': ['socrat-3'],
+    "socrat-0": [
+        "-o",
+        "Hostname=109.173.40.247",
+        "-o",
+        "HostKeyAlias=[socrat.alchemmist.xyz]:2222",
+        "socrat-0",
+    ],
+    "socrat-1": ["socrat-1"],
+    "socrat-2": ["socrat-2"],
+    "socrat-3": ["socrat-3"],
 }
-PROBE = r'''
+PROBE = r"""
 import grp,json,os,pwd,subprocess
 users=[]
 for p in pwd.getpwall():
@@ -32,43 +41,70 @@ print(json.dumps({'users':users,'passwordlessPrivilege':sudo,
  'availableMemoryMiB':int(m['MemAvailable'].split()[0])//1024,
  'storagePath':storage,'freeStorageGiB':round(d.f_bavail*d.f_frsize/1024**3,1),
  'uninspected':['password hashes','sudoers effective policy','active WireGuard peer state','other unreadable authorized_keys']}))
-'''
+"""
+
 
 def remote(host, command):
-    return subprocess.check_output(['ssh','-o','BatchMode=yes','-o','ConnectTimeout=10',
-                                    *HOSTS[host],command],text=True,timeout=90)
+    return subprocess.check_output(
+        ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", *HOSTS[host], command],
+        text=True,
+        timeout=90,
+    )
+
 
 def collect():
     import shlex
-    result={'observedAt':datetime.now(timezone.utc).isoformat(),'nodes':{}}
+
+    result = {"observedAt": datetime.now(UTC).isoformat(), "nodes": {}}
     for host in HOSTS:
         try:
-            result['nodes'][host]=json.loads(remote(host,'python3 -c '+shlex.quote(PROBE)))
+            result["nodes"][host] = json.loads(remote(host, "python3 -c " + shlex.quote(PROBE)))
         except (subprocess.SubprocessError, ValueError, OSError):
-            result['nodes'][host]={'inspectionFailed':True}
-    prefix='env K3S_CONFIG_FILE=/dev/null kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml '
+            result["nodes"][host] = {"inspectionFailed": True}
+    prefix = "env K3S_CONFIG_FILE=/dev/null kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml "
     # Never inspect Secret objects or emit raw Pod environment variables.
-    bindings={}
-    for kind in ['clusterrolebindings','rolebindings']:
-        data=json.loads(remote('socrat-0',prefix+'get '+kind+' -A -o json'))
-        bindings[kind]=[{'name':x['metadata']['name'],'namespace':x['metadata'].get('namespace'),
-                        'roleRef':x['roleRef'],'subjects':x.get('subjects',[])} for x in data['items']]
-    result['kubernetesBindings']=bindings
-    data=json.loads(remote('socrat-0',prefix+'get deployments -A -o json'))
-    result['applications']=[{'namespace':d['metadata']['namespace'],'name':d['metadata']['name'],
-        'images':[c['image'] for c in d['spec']['template']['spec']['containers']]}
-        for d in data['items']]
-    nodes=json.loads(remote('socrat-0',prefix+'get nodes -o json'))
-    result['nodeConditions']={n['metadata']['name']:n['status']['conditions'] for n in nodes['items']}
+    bindings = {}
+    for kind in ["clusterrolebindings", "rolebindings"]:
+        data = json.loads(remote("socrat-0", prefix + "get " + kind + " -A -o json"))
+        bindings[kind] = [
+            {
+                "name": x["metadata"]["name"],
+                "namespace": x["metadata"].get("namespace"),
+                "roleRef": x["roleRef"],
+                "subjects": x.get("subjects", []),
+            }
+            for x in data["items"]
+        ]
+    result["kubernetesBindings"] = bindings
+    data = json.loads(remote("socrat-0", prefix + "get deployments -A -o json"))
+    result["applications"] = [
+        {
+            "namespace": d["metadata"]["namespace"],
+            "name": d["metadata"]["name"],
+            "images": [c["image"] for c in d["spec"]["template"]["spec"]["containers"]],
+        }
+        for d in data["items"]
+    ]
+    nodes = json.loads(remote("socrat-0", prefix + "get nodes -o json"))
+    result["nodeConditions"] = {
+        n["metadata"]["name"]: n["status"]["conditions"] for n in nodes["items"]
+    }
     return result
 
+
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--output',required=True)
-    args=p.parse_args();result=collect()
-    fd=os.open(args.output,os.O_CREAT|os.O_EXCL|os.O_WRONLY,0o600)
-    with os.fdopen(fd,'w') as f:json.dump(result,f,indent=2);f.write('\n')
-    failed=[n for n,v in result['nodes'].items() if v.get('inspectionFailed')]
-    print('Identity audit saved privately; failed hosts: '+(', '.join(failed) or 'none'))
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--output", required=True)
+    args = p.parse_args()
+    result = collect()
+    fd = os.open(args.output, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    with os.fdopen(fd, "w") as f:
+        json.dump(result, f, indent=2)
+        f.write("\n")
+    failed = [n for n, v in result["nodes"].items() if v.get("inspectionFailed")]
+    print("Identity audit saved privately; failed hosts: " + (", ".join(failed) or "none"))
     return bool(failed)
 
-if __name__=='__main__':raise SystemExit(main())
+
+if __name__ == "__main__":
+    raise SystemExit(main())

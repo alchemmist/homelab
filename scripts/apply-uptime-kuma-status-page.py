@@ -47,7 +47,9 @@ def main() -> None:
             """,
             (args.title, icon_data_uri, css, args.slug),
         )
-        status_page_id = con.execute("SELECT id FROM status_page WHERE slug = ?", (args.slug,)).fetchone()[0]
+        status_page_id = con.execute(
+            "SELECT id FROM status_page WHERE slug = ?", (args.slug,)
+        ).fetchone()[0]
         con.execute(
             """
             INSERT INTO status_page_cname(status_page_id, domain)

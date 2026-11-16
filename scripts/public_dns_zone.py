@@ -130,8 +130,20 @@ def main():
     parser.add_argument("--assume-home", choices=("probe", "up", "down"), default="probe")
     parser.add_argument("--assume-vps", choices=("probe", "up", "down"), default="probe")
     args = parser.parse_args()
-    home_up = True if args.assume_home == "up" else False if args.assume_home == "down" else probe(args.home_target, args.port, args.timeout)
-    vps_up = True if args.assume_vps == "up" else False if args.assume_vps == "down" else probe(args.vps_target, args.port, args.timeout)
+    home_up = (
+        True
+        if args.assume_home == "up"
+        else False
+        if args.assume_home == "down"
+        else probe(args.home_target, args.port, args.timeout)
+    )
+    vps_up = (
+        True
+        if args.assume_vps == "up"
+        else False
+        if args.assume_vps == "down"
+        else probe(args.vps_target, args.port, args.timeout)
+    )
     text = render(args.serial, home_up, vps_up)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     previous = args.output.read_text() if args.output.exists() else ""

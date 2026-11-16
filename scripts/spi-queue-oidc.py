@@ -63,17 +63,13 @@ class API:
     def __init__(self, credentials, write=False):
         private(credentials)
         value = json.loads(credentials.read_text())
-        self.token = value.get("AUTHENTIK_API_TOKEN") or value.get(
-            "AUTHENTIK_BOOTSTRAP_TOKEN"
-        )
+        self.token = value.get("AUTHENTIK_API_TOKEN") or value.get("AUTHENTIK_BOOTSTRAP_TOKEN")
         require(
             isinstance(self.token, str) and bool(self.token),
             "Existing automation credential required",
         )
         self.write = write
-        self.http = urllib.request.build_opener(
-            urllib.request.ProxyHandler({}), NoRedirect()
-        )
+        self.http = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
 
     def call(self, method, path, value=None):
         require(
@@ -107,9 +103,7 @@ class API:
         except urllib.error.HTTPError as error:
             status = error.code
             error.close()
-            raise RuntimeError(
-                "Native API rejected operation: HTTP " + str(status)
-            ) from None
+            raise RuntimeError("Native API rejected operation: HTTP " + str(status)) from None
         except (OSError, ValueError, urllib.error.URLError):
             raise RuntimeError(
                 "Native API transport failed; do not retry ambiguous writes"
@@ -135,8 +129,7 @@ class API:
             )
             next_page = (pagination or {}).get("next")
             require(
-                next_page is None
-                or (type(next_page) is int and next_page in (0, page + 1)),
+                next_page is None or (type(next_page) is int and next_page in (0, page + 1)),
                 "Malformed native pagination cursor",
             )
             result.extend(data["results"])
@@ -167,23 +160,16 @@ def group_valid(row):
 def inspect(api, catalog):
     provider = one(api, "providers/oauth2/", "name", catalog["provider"]["name"])
     app = one(api, "core/applications/", "slug", catalog["application"]["slug"])
-    groups = {
-        name: one(api, "core/groups/", "name", name) for name in catalog["groups"]
-    }
+    groups = {name: one(api, "core/groups/", "name", name) for name in catalog["groups"]}
     require(
         all(groups[name] for name in catalog["groups"][:2]),
         "Legacy admission groups missing",
     )
     if groups["app-spi-triage-operator"]:
         group_valid(groups["app-spi-triage-operator"])
-    flow = {
-        field: one(api, "flows/instances/", "slug", slug)
-        for field, slug in FLOWS.items()
-    }
+    flow = {field: one(api, "flows/instances/", "slug", slug) for field, slug in FLOWS.items()}
     require(all(flow.values()), "Native MFA/consent/invalidation flows missing")
-    signing = one(
-        api, "crypto/certificatekeypairs/", "name", "authentik Self-signed Certificate"
-    )
+    signing = one(api, "crypto/certificatekeypairs/", "name", "authentik Self-signed Certificate")
     require(signing and signing.get("pk"), "Reviewed signing key missing")
     scopes = api.rows("propertymappings/provider/scope/")
     openid = [
@@ -224,9 +210,7 @@ def validate_existing(api, catalog, state, provider, app, groups, settings):
             state is not None,
             "Existing SPI identity without private client journal; stop, no adoption/rotation",
         )
-        require(
-            all(groups.values()), "SPI admission group missing; manual review required"
-        )
+        require(all(groups.values()), "SPI admission group missing; manual review required")
         require(
             provider and app and app.get("provider") == provider["pk"],
             "Partial native identity; manual review required",
@@ -243,9 +227,7 @@ def validate_existing(api, catalog, state, provider, app, groups, settings):
             else:
                 require(actual == value, "Provider settings drift: " + key)
         require(
-            secrets.compare_digest(
-                provider.get("client_secret", ""), state["client_secret"]
-            ),
+            secrets.compare_digest(provider.get("client_secret", ""), state["client_secret"]),
             "Client credential drift",
         )
         require(
@@ -287,15 +269,11 @@ def main():
     args.state_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     info = args.state_dir.lstat()
     require(
-        not args.state_dir.is_symlink()
-        and info.st_uid == os.getuid()
-        and not info.st_mode & 0o077,
+        not args.state_dir.is_symlink() and info.st_uid == os.getuid() and not info.st_mode & 0o077,
         "Private state directory required",
     )
     uncertain = args.state_dir / "uncertain.json"
-    require(
-        not uncertain.exists(), "Uncertain previous write: stop for native GET review"
-    )
+    require(not uncertain.exists(), "Uncertain previous write: stop for native GET review")
     journal = args.state_dir / "credentials.json"
     state = None
     if journal.exists():
@@ -325,9 +303,7 @@ def main():
         )
         return
     require(args.approve_plan_hash == digest, "Fresh plan approval required")
-    require(
-        args.backup_receipt is not None, "Fresh encrypted IdP backup receipt required"
-    )
+    require(args.backup_receipt is not None, "Fresh encrypted IdP backup receipt required")
     private(args.backup_receipt)
     backup = json.loads(args.backup_receipt.read_text())
     from datetime import datetime

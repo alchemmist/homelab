@@ -4,14 +4,15 @@
 The default command path only validates and renders files. It does not enroll
 peers, talk to management, or change WireGuard, K3s, or OpenSSH.
 """
+
 import argparse
 import hashlib
 import ipaddress
 import json
 import os
-from pathlib import Path
 import re
 import sys
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 LOCK = ROOT / "deploy/netbird/images.lock.json"
@@ -30,18 +31,44 @@ VPS_OBSERVED_KIB = 455948
 OVERLAY_TOKEN = "__NB_OVERLAY_IP__"
 URL_TOKEN = "__MANAGEMENT_URL__"
 FORBIDDEN_IFACES = {
-    "wg-socrat", "cni0", "docker0", "eth0", "eno1", "wlan0", "enp2s0", "lo", "wt0",
+    "wg-socrat",
+    "cni0",
+    "docker0",
+    "eth0",
+    "eno1",
+    "wlan0",
+    "enp2s0",
+    "lo",
+    "wt0",
 }
 PROTECTED = [
-    "0.0.0.0/8", "10.42.0.0/16", "10.43.0.0/16", "10.250.0.0/24",
-    "172.17.0.0/16", "172.18.0.0/16", "176.98.185.0/24", "192.168.0.0/24",
+    "0.0.0.0/8",
+    "10.42.0.0/16",
+    "10.43.0.0/16",
+    "10.250.0.0/24",
+    "172.17.0.0/16",
+    "172.18.0.0/16",
+    "176.98.185.0/24",
+    "192.168.0.0/24",
 ]
 HOSTS = ("socrat-0", "socrat-2")
 EXECUTABLE_MARKERS = (
-    "/etc/wireguard", "wg-quick", "wg set", "wg addconf", "authorized_keys",
-    "sshd_config", "--privileged", "--allow-server-ssh=true", "0.0.0.0/0",
-    "10.42.0.0", "10.43.0.0", "10.250.0.0/24", "docker.sock", "/etc/ssh",
-    "ip route", "ip rule",
+    "/etc/wireguard",
+    "wg-quick",
+    "wg set",
+    "wg addconf",
+    "authorized_keys",
+    "sshd_config",
+    "--privileged",
+    "--allow-server-ssh=true",
+    "0.0.0.0/0",
+    "10.42.0.0",
+    "10.43.0.0",
+    "10.250.0.0/24",
+    "docker.sock",
+    "/etc/ssh",
+    "ip route",
+    "ip rule",
 )
 
 
@@ -109,16 +136,22 @@ def parse_mib(value):
 
 def client_image():
     item = json.loads(LOCK.read_text())["images"]["client"]
-    require(item["repository"] == "netbirdio/netbird" and item["tag"] == "0.82.0",
-            "client lock is not the pinned 0.82.0 image")
-    require(re.fullmatch(r"sha256:[0-9a-f]{64}", item["digest"]) is not None, "client digest invalid")
+    require(
+        item["repository"] == "netbirdio/netbird" and item["tag"] == "0.82.0",
+        "client lock is not the pinned 0.82.0 image",
+    )
+    require(
+        re.fullmatch(r"sha256:[0-9a-f]{64}", item["digest"]) is not None, "client digest invalid"
+    )
     return item["repository"] + ":" + item["tag"] + "@" + item["digest"]
 
 
 def _host_map(facts):
     hosts = facts["hosts"]
-    require(isinstance(hosts, list) and [h.get("name") for h in hosts] == list(HOSTS),
-            "hosts must be exactly socrat-0 then socrat-2")
+    require(
+        isinstance(hosts, list) and [h.get("name") for h in hosts] == list(HOSTS),
+        "hosts must be exactly socrat-0 then socrat-2",
+    )
     return {h["name"]: h for h in hosts}
 
 
@@ -134,67 +167,142 @@ def classify(host, address):
 
 
 def validate(facts):
-    require(isinstance(facts, dict) and facts.get("schema_version") == 1, "unsupported schema_version")
+    require(
+        isinstance(facts, dict) and facts.get("schema_version") == 1, "unsupported schema_version"
+    )
     allowed = {
-        "schema_version", "overlay_cidr", "interface", "frontend_port", "frontend_name",
-        "upstream_address", "upstream_port", "ssh_address", "ssh_port", "ssh_probe",
-        "management_url", "client_memory", "frontend_memory", "hosts",
+        "schema_version",
+        "overlay_cidr",
+        "interface",
+        "frontend_port",
+        "frontend_name",
+        "upstream_address",
+        "upstream_port",
+        "ssh_address",
+        "ssh_port",
+        "ssh_probe",
+        "management_url",
+        "client_memory",
+        "frontend_memory",
+        "hosts",
     }
     require(set(facts) == allowed, "unexpected or missing fact keys")
     overlay = ipaddress.ip_network(facts["overlay_cidr"], strict=True)
-    require(overlay.version == 4 and overlay.subnet_of(ipaddress.ip_network("100.64.0.0/10"))
-            and 16 <= overlay.prefixlen <= 24, "overlay must be a CGNAT IPv4 /16 through /24")
+    require(
+        overlay.version == 4
+        and overlay.subnet_of(ipaddress.ip_network("100.64.0.0/10"))
+        and 16 <= overlay.prefixlen <= 24,
+        "overlay must be a CGNAT IPv4 /16 through /24",
+    )
     for prefix in PROTECTED:
         require(not overlay.overlaps(ipaddress.ip_network(prefix)), "overlay overlaps " + prefix)
     iface = facts["interface"]
-    require(iface == IFACE and re.fullmatch(r"[a-z][a-z0-9-]{0,14}", iface) is not None,
-            "interface must be the dedicated nb-host name")
-    require(iface not in FORBIDDEN_IFACES and not iface.startswith("wg"), "interface collides with an existing device")
+    require(
+        iface == IFACE and re.fullmatch(r"[a-z][a-z0-9-]{0,14}", iface) is not None,
+        "interface must be the dedicated nb-host name",
+    )
+    require(
+        iface not in FORBIDDEN_IFACES and not iface.startswith("wg"),
+        "interface collides with an existing device",
+    )
     require(facts["frontend_port"] == FRONTEND_PORT, "frontend port must stay 8443")
     require(facts["frontend_name"] == GRAFANA, "frontend name must be the Grafana hostname")
-    require(facts["upstream_address"] == UPSTREAM_IP and facts["upstream_port"] == UPSTREAM_PORT,
-            "upstream must stay the verified Grafana listener 10.250.0.3:443")
-    require(facts["ssh_address"] == SSH_ADDR, "SSH target must stay the existing 10.250.0.2 address")
-    require(type(facts["ssh_port"]) is int and facts["ssh_port"] in SSH_PORTS,
-            "SSH port must be exactly one of 22 or 2222")
+    require(
+        facts["upstream_address"] == UPSTREAM_IP and facts["upstream_port"] == UPSTREAM_PORT,
+        "upstream must stay the verified Grafana listener 10.250.0.3:443",
+    )
+    require(
+        facts["ssh_address"] == SSH_ADDR, "SSH target must stay the existing 10.250.0.2 address"
+    )
+    require(
+        type(facts["ssh_port"]) is int and facts["ssh_port"] in SSH_PORTS,
+        "SSH port must be exactly one of 22 or 2222",
+    )
     probe = facts["ssh_probe"]
     if probe is not None:
-        require(set(probe) == {"address", "accepted_port", "refused_ports", "method", "login"},
-                "ssh_probe keys invalid")
-        require(probe["method"] == "tcp-connect" and probe["login"] is False, "ssh_probe must be a non-login TCP connect")
-        require(probe["address"] == SSH_ADDR and probe["accepted_port"] == facts["ssh_port"],
-                "ssh_port contradicts the TCP probe")
-        require(isinstance(probe["refused_ports"], list) and facts["ssh_port"] not in probe["refused_ports"],
-                "ssh_port was refused by the probe")
-        require(all(type(port) is int for port in probe["refused_ports"]), "refused ports must be integers")
+        require(
+            set(probe) == {"address", "accepted_port", "refused_ports", "method", "login"},
+            "ssh_probe keys invalid",
+        )
+        require(
+            probe["method"] == "tcp-connect" and probe["login"] is False,
+            "ssh_probe must be a non-login TCP connect",
+        )
+        require(
+            probe["address"] == SSH_ADDR and probe["accepted_port"] == facts["ssh_port"],
+            "ssh_port contradicts the TCP probe",
+        )
+        require(
+            isinstance(probe["refused_ports"], list)
+            and facts["ssh_port"] not in probe["refused_ports"],
+            "ssh_port was refused by the probe",
+        )
+        require(
+            all(type(port) is int for port in probe["refused_ports"]),
+            "refused ports must be integers",
+        )
     url = facts["management_url"]
     if url is not None:
-        require(re.fullmatch(r"https://[a-z0-9.-]+(:443)?", url) is not None, "management_url must be https://hostname")
+        require(
+            re.fullmatch(r"https://[a-z0-9.-]+(:443)?", url) is not None,
+            "management_url must be https://hostname",
+        )
     require(parse_mib(facts["client_memory"]) >= 32, "client memory cap too small")
     require(parse_mib(facts["frontend_memory"]) >= 16, "frontend memory cap too small")
     hosts = _host_map(facts)
-    require(len({hosts[name]["failure_domain"] for name in HOSTS}) == 2, "failure domains must differ")
+    require(
+        len({hosts[name]["failure_domain"] for name in HOSTS}) == 2, "failure domains must differ"
+    )
     for host in hosts.values():
-        require(set(host) == {
-            "name", "failure_domain", "owned", "public_addresses", "egress_iface", "snat_address",
-            "routes", "mem_available_kib", "sudo_nopass", "runtime",
-        }, "host keys invalid")
-        require(host["egress_iface"] == "wg-socrat", "egress interface is the existing mesh interface")
-        require(host["runtime"] in {None, "docker", "host"}, "runtime must be docker, host, or unknown")
-        require(type(host["sudo_nopass"]) is bool and type(host["mem_available_kib"]) is int
-                and host["mem_available_kib"] > 0, "host privilege or memory fact invalid")
+        require(
+            set(host)
+            == {
+                "name",
+                "failure_domain",
+                "owned",
+                "public_addresses",
+                "egress_iface",
+                "snat_address",
+                "routes",
+                "mem_available_kib",
+                "sudo_nopass",
+                "runtime",
+            },
+            "host keys invalid",
+        )
+        require(
+            host["egress_iface"] == "wg-socrat", "egress interface is the existing mesh interface"
+        )
+        require(
+            host["runtime"] in {None, "docker", "host"}, "runtime must be docker, host, or unknown"
+        )
+        require(
+            type(host["sudo_nopass"]) is bool
+            and type(host["mem_available_kib"]) is int
+            and host["mem_available_kib"] > 0,
+            "host privilege or memory fact invalid",
+        )
         for address in host["owned"] + host["public_addresses"] + [host["snat_address"]]:
             ipaddress.ip_address(address)
         for route in host["routes"]:
             ipaddress.ip_network(route, strict=False)
-    require(ipaddress.ip_address(SSH_ADDR) in {ipaddress.ip_address(item) for item in hosts["socrat-2"]["owned"]},
-            "socrat-2 must own 10.250.0.2; that is what makes SSH INPUT on that host")
-    require(ipaddress.ip_address(SSH_ADDR) not in {ipaddress.ip_address(item) for item in hosts["socrat-0"]["owned"]},
-            "socrat-0 must not own the SSH target")
+    require(
+        ipaddress.ip_address(SSH_ADDR)
+        in {ipaddress.ip_address(item) for item in hosts["socrat-2"]["owned"]},
+        "socrat-2 must own 10.250.0.2; that is what makes SSH INPUT on that host",
+    )
+    require(
+        ipaddress.ip_address(SSH_ADDR)
+        not in {ipaddress.ip_address(item) for item in hosts["socrat-0"]["owned"]},
+        "socrat-0 must not own the SSH target",
+    )
     require(classify(hosts["socrat-2"], SSH_ADDR) == "input", "socrat-2 delivery must be INPUT")
     require(classify(hosts["socrat-0"], SSH_ADDR) == "forward", "socrat-0 delivery must be FORWARD")
     routers = [name for name in HOSTS if classify(hosts[name], SSH_ADDR) == "forward"]
-    require(routers == ["socrat-0"], "SSH has one routing peer; socrat-2 cannot be a second router for its own address")
+    require(
+        routers == ["socrat-0"],
+        "SSH has one routing peer; socrat-2 cannot be a second router for its own address",
+    )
     return facts
 
 
@@ -210,22 +318,34 @@ def blockers_for(facts):
         if host["sudo_nopass"] is not True:
             blockers.append(name + ": noninteractive sudo unavailable")
         if host["runtime"] is None:
-            blockers.append(name + ": container runtime not proven (docker info failed on socrat-0)")
+            blockers.append(
+                name + ": container runtime not proven (docker info failed on socrat-0)"
+            )
     vps = hosts["socrat-2"]
     avail = vps["mem_available_kib"] / 1024
     need = parse_mib(facts["client_memory"]) + parse_mib(facts["frontend_memory"])
     if vps["mem_available_kib"] == VPS_OBSERVED_KIB:
         notes.append("socrat-2 MemAvailable is 446 MiB (455948 KiB)")
     else:
-        notes.append("socrat-2 MemAvailable is %.0f MiB (%d KiB)" % (avail, vps["mem_available_kib"]))
-    notes.append("client cap %s plus frontend cap %s; %d MiB headroom required on the VPS"
-                 % (facts["client_memory"], facts["frontend_memory"], HEADROOM_MIB))
+        notes.append(
+            "socrat-2 MemAvailable is %.0f MiB (%d KiB)" % (avail, vps["mem_available_kib"])
+        )
+    notes.append(
+        "client cap %s plus frontend cap %s; %d MiB headroom required on the VPS"
+        % (facts["client_memory"], facts["frontend_memory"], HEADROOM_MIB)
+    )
     if need > 128 or avail < need + HEADROOM_MIB:
-        blockers.append("socrat-2: memory caps do not fit inside 446 MiB with %d MiB headroom" % HEADROOM_MIB)
-    notes.append("SSH %s:%d is INPUT on socrat-2 and FORWARD only on socrat-0; route HA is false"
-                 % (SSH_ADDR, facts["ssh_port"]))
-    notes.append("Grafana listeners are separate overlay destinations on TCP %d, upstream %s:%d"
-                 % (FRONTEND_PORT, UPSTREAM_IP, UPSTREAM_PORT))
+        blockers.append(
+            "socrat-2: memory caps do not fit inside 446 MiB with %d MiB headroom" % HEADROOM_MIB
+        )
+    notes.append(
+        "SSH %s:%d is INPUT on socrat-2 and FORWARD only on socrat-0; route HA is false"
+        % (SSH_ADDR, facts["ssh_port"])
+    )
+    notes.append(
+        "Grafana listeners are separate overlay destinations on TCP %d, upstream %s:%d"
+        % (FRONTEND_PORT, UPSTREAM_IP, UPSTREAM_PORT)
+    )
     return blockers, notes
 
 
@@ -266,7 +386,8 @@ def _nft(host, facts):
         "add table ip %s" % TABLE,
         "add chain ip %s input { type filter hook input priority -50; policy accept; }" % TABLE,
         "add chain ip %s forward { type filter hook forward priority -50; policy accept; }" % TABLE,
-        "add chain ip %s postrouting { type nat hook postrouting priority 90; policy accept; }" % TABLE,
+        "add chain ip %s postrouting { type nat hook postrouting priority 90; policy accept; }"
+        % TABLE,
         'add rule ip %s input iifname "%s" ip daddr %s tcp dport %d ct state new,established accept'
         % (TABLE, iface, OVERLAY_TOKEN, port),
         'add rule ip %s input iifname "%s" ct state established,related accept' % (TABLE, iface),
@@ -276,11 +397,23 @@ def _nft(host, facts):
     if host["name"] == "socrat-0":
         lines.append(
             'add rule ip %s forward iifname "%s" oifname "%s" ip daddr %s tcp dport %d ct state new,established accept'
-            % (TABLE, iface, host["egress_iface"], facts["ssh_address"], facts["ssh_port"]))
-        lines.append('add rule ip %s forward oifname "%s" ct state established,related accept' % (TABLE, iface))
+            % (TABLE, iface, host["egress_iface"], facts["ssh_address"], facts["ssh_port"])
+        )
+        lines.append(
+            'add rule ip %s forward oifname "%s" ct state established,related accept'
+            % (TABLE, iface)
+        )
         lines.append(
             'add rule ip %s postrouting iifname "%s" oifname "%s" ip daddr %s tcp dport %d snat to %s'
-            % (TABLE, iface, host["egress_iface"], facts["ssh_address"], facts["ssh_port"], host["snat_address"]))
+            % (
+                TABLE,
+                iface,
+                host["egress_iface"],
+                facts["ssh_address"],
+                facts["ssh_port"],
+                host["snat_address"],
+            )
+        )
     lines.append('add rule ip %s forward iifname "%s" drop' % (TABLE, iface))
     body = "\n".join(lines) + "\n"
     return """#!/bin/sh
@@ -300,7 +433,9 @@ cat >"$tmp" <<'NFT'
 
 
 def assign_overlay(script, address, overlay_cidr):
-    require(bind_allowed(address, overlay_cidr), "overlay address is not a dedicated NetBird address")
+    require(
+        bind_allowed(address, overlay_cidr), "overlay address is not a dedicated NetBird address"
+    )
     require(script.count(OVERLAY_TOKEN) >= 1, "firewall script lost its overlay token")
     concrete = str(ipaddress.ip_address(address))
     return script.replace(OVERLAY_TOKEN, concrete)
@@ -370,7 +505,7 @@ wait "$pid"
 
 
 def _frontend_source(facts):
-    return '''# Generated listener. Binds only to an enrolled NetBird overlay address.
+    return """# Generated listener. Binds only to an enrolled NetBird overlay address.
 import os
 import select
 import socket
@@ -515,8 +650,14 @@ def serve(address):
 
 if __name__ == "__main__":
     serve(os.environ.get("NB_OVERLAY_IP", ""))
-''' % (facts["frontend_name"], facts["frontend_port"], facts["upstream_address"],
-       facts["upstream_port"], facts["overlay_cidr"], PROTECTED)
+""" % (
+        facts["frontend_name"],
+        facts["frontend_port"],
+        facts["upstream_address"],
+        facts["upstream_port"],
+        facts["overlay_cidr"],
+        PROTECTED,
+    )
 
 
 def _unit(host, facts, image, runtime):
@@ -545,14 +686,17 @@ def _unit(host, facts, image, runtime):
             "-v /etc/netbird-host-router/client.env:/etc/netbird-host-router/client.env:ro "
             "-v /usr/local/libexec/netbird-host-router/netbird-up.sh:/netbird-up.sh:ro "
             "--entrypoint=/bin/sh %s /netbird-up.sh"
-            % (facts["client_memory"], facts["client_memory"], disable, image))
+            % (facts["client_memory"], facts["client_memory"], disable, image)
+        )
     else:
-        common.extend([
-            "NoNewPrivileges=false",
-            "CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW CAP_BPF",
-            "AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW CAP_BPF",
-            "ExecStart=/usr/local/libexec/netbird-host-router/netbird-up.sh",
-        ])
+        common.extend(
+            [
+                "NoNewPrivileges=false",
+                "CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW CAP_BPF",
+                "AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW CAP_BPF",
+                "ExecStart=/usr/local/libexec/netbird-host-router/netbird-up.sh",
+            ]
+        )
     common.append("[Install]\nWantedBy=multi-user.target\n")
     return "\n".join(common)
 
@@ -617,14 +761,22 @@ def _client_env(facts):
     return "NB_MANAGEMENT_URL=%s\n" % url
 
 
-
 def assert_clean(filename, content):
     markers = EXECUTABLE_MARKERS
     if filename == "grafana-frontend.py":
         markers = (
-            "/etc/wireguard", "wg-quick", "wg set", "wg addconf", "authorized_keys",
-            "sshd_config", "--privileged", "--allow-server-ssh=true", "docker.sock", "/etc/ssh",
-            "ip route", "ip rule",
+            "/etc/wireguard",
+            "wg-quick",
+            "wg set",
+            "wg addconf",
+            "authorized_keys",
+            "sshd_config",
+            "--privileged",
+            "--allow-server-ssh=true",
+            "docker.sock",
+            "/etc/ssh",
+            "ip route",
+            "ip rule",
         )
     for marker in markers:
         require(marker not in content, "%s contains forbidden marker %s" % (filename, marker))
@@ -647,18 +799,40 @@ def render_host(host, facts, image):
         assert_clean(name, content)
         require("--allow-server-ssh=false" in files["netbird-up.sh"], "NetBird SSH must be off")
     if host["name"] == "socrat-2":
-        require("10.250.0.2" not in files["table.nft.sh"], "socrat-2 firewall must not target its own SSH address")
-        require("ip_forward" not in "\n".join(files.values()), "socrat-2 plan must not enable forwarding")
-        require("NB_DISABLE_SERVER_ROUTES=true" in files["netbird-host-router.service"],
-                "socrat-2 must disable NetBird server routes")
+        require(
+            "10.250.0.2" not in files["table.nft.sh"],
+            "socrat-2 firewall must not target its own SSH address",
+        )
+        require(
+            "ip_forward" not in "\n".join(files.values()),
+            "socrat-2 plan must not enable forwarding",
+        )
+        require(
+            "NB_DISABLE_SERVER_ROUTES=true" in files["netbird-host-router.service"],
+            "socrat-2 must disable NetBird server routes",
+        )
     else:
-        require("NB_DISABLE_SERVER_ROUTES=false" in files["netbird-host-router.service"],
-                "socrat-0 keeps server routes so the single SSH forward can be advertised")
+        require(
+            "NB_DISABLE_SERVER_ROUTES=false" in files["netbird-host-router.service"],
+            "socrat-0 keeps server routes so the single SSH forward can be advertised",
+        )
         forward = firewall_rules(files["table.nft.sh"], "forward")
-        require(any(facts["ssh_address"] in line and "dport %d" % facts["ssh_port"] in line and line.endswith("accept")
-                    for line in forward), "socrat-0 forward rule missing")
-        require(not any("dport %d" % facts["ssh_port"] in line for line in firewall_rules(files["table.nft.sh"], "input")),
-                "socrat-0 must not accept SSH on INPUT")
+        require(
+            any(
+                facts["ssh_address"] in line
+                and "dport %d" % facts["ssh_port"] in line
+                and line.endswith("accept")
+                for line in forward
+            ),
+            "socrat-0 forward rule missing",
+        )
+        require(
+            not any(
+                "dport %d" % facts["ssh_port"] in line
+                for line in firewall_rules(files["table.nft.sh"], "input")
+            ),
+            "socrat-0 must not accept SSH on INPUT",
+        )
     return files
 
 
@@ -669,7 +843,10 @@ def build(facts):
     hosts = _host_map(facts)
     rendered = {name: render_host(hosts[name], facts, image) for name in HOSTS}
     digests = {
-        name: {filename: hashlib.sha256(content.encode()).hexdigest() for filename, content in files.items()}
+        name: {
+            filename: hashlib.sha256(content.encode()).hexdigest()
+            for filename, content in files.items()
+        }
         for name, files in rendered.items()
     }
     plan = {
@@ -726,13 +903,19 @@ def write_plan(out, plan, rendered):
 def _safe_rel(rel):
     path = Path(rel)
     require(not path.is_absolute() and ".." not in path.parts, "owned path escapes")
-    require("wireguard" not in path.parts and "ssh" not in path.parts, "owned path collides with existing config")
+    require(
+        "wireguard" not in path.parts and "ssh" not in path.parts,
+        "owned path collides with existing config",
+    )
     return path
 
 
 OWNED = {
     "etc/systemd/system/netbird-host-router.service": ("netbird-host-router.service", 0o644),
-    "etc/systemd/system/netbird-grafana-frontend.service": ("netbird-grafana-frontend.service", 0o644),
+    "etc/systemd/system/netbird-grafana-frontend.service": (
+        "netbird-grafana-frontend.service",
+        0o644,
+    ),
     "etc/netbird-host-router/client.env": ("client.env", 0o644),
     "usr/local/libexec/netbird-host-router/table.nft.sh": ("table.nft.sh", 0o755),
     "usr/local/libexec/netbird-host-router/netbird-up.sh": ("netbird-up.sh", 0o755),
@@ -750,11 +933,16 @@ def apply_tree(plan_dir, root, host, overlay_ip=None):
     files = {}
     for filename, digest in plan["digests"][host].items():
         content = (plan_dir / host / filename).read_text()
-        require(hashlib.sha256(content.encode()).hexdigest() == digest, "plan file digest mismatch: " + filename)
+        require(
+            hashlib.sha256(content.encode()).hexdigest() == digest,
+            "plan file digest mismatch: " + filename,
+        )
         assert_clean(filename, content)
         files[filename] = content
     if overlay_ip is not None:
-        files["table.nft.sh"] = assign_overlay(files["table.nft.sh"], overlay_ip, plan["overlay_cidr"])
+        files["table.nft.sh"] = assign_overlay(
+            files["table.nft.sh"], overlay_ip, plan["overlay_cidr"]
+        )
     root.mkdir(parents=True, exist_ok=True)
     mapping = dict(OWNED)
     if host == "socrat-0":
@@ -776,7 +964,9 @@ def apply_tree(plan_dir, root, host, overlay_ip=None):
 
 
 def main(argv):
-    parser = argparse.ArgumentParser(description="Plan NetBird peers on existing socrat-0 and socrat-2 hosts")
+    parser = argparse.ArgumentParser(
+        description="Plan NetBird peers on existing socrat-0 and socrat-2 hosts"
+    )
     sub = parser.add_subparsers(dest="cmd", required=True)
     for name in ("check", "plan"):
         command = sub.add_parser(name)
@@ -797,7 +987,11 @@ def main(argv):
         facts = default_facts() if not args.facts else json.loads(Path(args.facts).read_text())
         plan, rendered = build(facts)
         if args.cmd == "check":
-            print(json.dumps({"apply_allowed": plan["apply_allowed"], "blockers": plan["blockers"]}, indent=2))
+            print(
+                json.dumps(
+                    {"apply_allowed": plan["apply_allowed"], "blockers": plan["blockers"]}, indent=2
+                )
+            )
             return 0 if plan["apply_allowed"] else 2
         write_plan(args.out, plan, rendered)
         print(args.out)

@@ -51,13 +51,16 @@ def delta(old, new):
     for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
         before = old.render(123, home, vps).splitlines()
         after = new.render(123, home, vps).splitlines()
-        require([x for x in after if x not in ADDED] ==
-                [x for x in before if x not in ADDED],
-                "Unrelated DNS record change; stop")
+        require(
+            [x for x in after if x not in ADDED] == [x for x in before if x not in ADDED],
+            "Unrelated DNS record change; stop",
+        )
         require(all(after.count(x) == 1 for x in ADDED), "Wrong ns3 records")
         require(all(before.count(x) in (0, 1) for x in ADDED), "Duplicate prior ns3")
-        require(not any("ns3" in x for x in before + after if x not in ADDED),
-                "Unexpected ns3 record; stop")
+        require(
+            not any("ns3" in x for x in before + after if x not in ADDED),
+            "Unexpected ns3 record; stop",
+        )
 
 
 def main():
@@ -99,9 +102,7 @@ def main():
             "after": hashlib.sha256(new).hexdigest(),
             "name": "ns3.alchemmist.xyz",
         }
-        digest = hashlib.sha256(
-            json.dumps(context, sort_keys=True).encode()
-        ).hexdigest()
+        digest = hashlib.sha256(json.dumps(context, sort_keys=True).encode()).hexdigest()
         if a.apply and changed:
             require(a.approve_plan_hash == digest, "Fresh hash approval required")
             (ROOT / "before.py").write_bytes(old)
@@ -119,12 +120,11 @@ def main():
                 ("ns3.alchemmist.xyz.", "A", "91.189.82.238"),
             ]:
                 result = subprocess.check_output(
-                    ["knotc", "zone-read", "alchemmist.xyz", owner, rrtype], text=True)
+                    ["knotc", "zone-read", "alchemmist.xyz", owner, rrtype], text=True
+                )
                 require(expected in result.split(), "New authoritative record not confirmed")
             (ROOT / "after.json").write_text(
-                json.dumps(
-                    {"renderer_sha256": context["after"], "zone_read_confirmed": True}
-                )
+                json.dumps({"renderer_sha256": context["after"], "zone_read_confirmed": True})
             )
             (ROOT / "uncertain.json").unlink()
         print(
