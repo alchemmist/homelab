@@ -11,7 +11,7 @@ credentialsRevision: ""
 grafanaUrl: http://kube-prometheus-stack-grafana.cattle-monitoring-system.svc.cluster.local
 publicHost: grafana-mcp.socrat.alchemmist.xyz
 nodeSelector:
-  kubernetes.io/hostname: socrat-1
+  kubernetes.io/hostname: socrat-5
 resources:
   requests:
     cpu: 25m
