@@ -40,4 +40,6 @@ graphs:
   existingSecret: spi-graph-client
 
 # Quiesce only ingress; keep old server alive until idle checkpoint.
-maintenanceIngressPaused: false
+maintenanceIngressPaused: true
+
+workerReplicas: 0
