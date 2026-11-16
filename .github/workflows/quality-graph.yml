@@ -30,7 +30,7 @@ jobs:
       - name: Collect Quality Graph declaration freshness result
         id: quality-result
         if: always()
-        uses: alchemmist/quality-graph@b947f26e97ccf1c755050dfe38d98cbb688edb69
+        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
         with:
           operation: collect
           node-id: graph-freshness
@@ -38,7 +38,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: dabad7b2e6dce60892d0099ff03e774cd7e52c52a9c9c32a5f2b0b0498d33001
+          graph-digest: 4d4887c38fbb0d3373ea9caeb7519ad7698536fc815223308cfbdbea1bd602b6
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -75,7 +75,7 @@ jobs:
       - name: Collect n8n workflow failure notification policy result
         id: quality-result
         if: always()
-        uses: alchemmist/quality-graph@b947f26e97ccf1c755050dfe38d98cbb688edb69
+        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
         with:
           operation: collect
           node-id: workflow-failure-policy
@@ -83,7 +83,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: dabad7b2e6dce60892d0099ff03e774cd7e52c52a9c9c32a5f2b0b0498d33001
+          graph-digest: 4d4887c38fbb0d3373ea9caeb7519ad7698536fc815223308cfbdbea1bd602b6
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -120,7 +120,7 @@ jobs:
       - name: Collect Offline workflow policy regressions result
         id: quality-result
         if: always()
-        uses: alchemmist/quality-graph@b947f26e97ccf1c755050dfe38d98cbb688edb69
+        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
         with:
           operation: collect
           node-id: workflow-policy-tests
@@ -128,7 +128,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: dabad7b2e6dce60892d0099ff03e774cd7e52c52a9c9c32a5f2b0b0498d33001
+          graph-digest: 4d4887c38fbb0d3373ea9caeb7519ad7698536fc815223308cfbdbea1bd602b6
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -176,7 +176,7 @@ jobs:
       - name: Collect Alert graph chart, image ownership and renderer capacity result
         id: quality-result
         if: always()
-        uses: alchemmist/quality-graph@b947f26e97ccf1c755050dfe38d98cbb688edb69
+        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
         with:
           operation: collect
           node-id: alert-graph-delivery
@@ -184,7 +184,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: dabad7b2e6dce60892d0099ff03e774cd7e52c52a9c9c32a5f2b0b0498d33001
+          graph-digest: 4d4887c38fbb0d3373ea9caeb7519ad7698536fc815223308cfbdbea1bd602b6
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -221,7 +221,7 @@ jobs:
       - name: Collect Stable SPI alert identity and execution link metadata result
         id: quality-result
         if: always()
-        uses: alchemmist/quality-graph@b947f26e97ccf1c755050dfe38d98cbb688edb69
+        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
         with:
           operation: collect
           node-id: spi-execution-links
@@ -229,7 +229,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: dabad7b2e6dce60892d0099ff03e774cd7e52c52a9c9c32a5f2b0b0498d33001
+          graph-digest: 4d4887c38fbb0d3373ea9caeb7519ad7698536fc815223308cfbdbea1bd602b6
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -305,7 +305,7 @@ jobs:
       - name: Collect Offline infrastructure ownership, placement and issuer contracts result
         id: quality-result
         if: always()
-        uses: alchemmist/quality-graph@b947f26e97ccf1c755050dfe38d98cbb688edb69
+        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
         with:
           operation: collect
           node-id: infrastructure-contracts
@@ -313,7 +313,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: dabad7b2e6dce60892d0099ff03e774cd7e52c52a9c9c32a5f2b0b0498d33001
+          graph-digest: 4d4887c38fbb0d3373ea9caeb7519ad7698536fc815223308cfbdbea1bd602b6
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -357,7 +357,7 @@ jobs:
       - name: Collect Wishlist private metrics and dedicated OTel identity result
         id: quality-result
         if: always()
-        uses: alchemmist/quality-graph@b947f26e97ccf1c755050dfe38d98cbb688edb69
+        uses: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
         with:
           operation: collect
           node-id: wishlist-observability
@@ -365,7 +365,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: dabad7b2e6dce60892d0099ff03e774cd7e52c52a9c9c32a5f2b0b0498d33001
+          graph-digest: 4d4887c38fbb0d3373ea9caeb7519ad7698536fc815223308cfbdbea1bd602b6
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'

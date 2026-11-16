@@ -6,9 +6,18 @@ dependencies = []
 
 [dependency-groups]
 dev = [
+  "ansible-core==2.19.8",
+  "ansible-lint==26.11.0",
+  "bandit==1.9.4",
+  "jsonschema==4.26.0",
+  "pip-audit==2.10.0",
+  "pytest==9.0.2",
   "pyyaml==6.0.3",
-  "quality-graph-cli==0.1.8",
-  "quality-graph-github==0.1.8",
+  "quality-graph-cli==0.2.0",
+  "quality-graph-github==0.2.0",
+  "ruff==0.15.12",
+  "yamllint==1.38.0",
+  "zizmor==1.22.0",
 ]
 
 [tool.uv]

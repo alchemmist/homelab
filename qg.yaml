@@ -4,7 +4,7 @@ provider:
   configuration:
     default-branch: main
     runtime:
-      action: alchemmist/quality-graph@b947f26e97ccf1c755050dfe38d98cbb688edb69
+      action: alchemmist/quality-graph@3b0cf7d8a33215d5a3bb5521b4e0e41c18e8cb7c
       upload-artifact-action: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
 profiles:
   default:
