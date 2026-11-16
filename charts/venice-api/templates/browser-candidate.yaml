@@ -66,6 +66,10 @@ spec:
               value: http://127.0.0.1:9224
             - name: AUTO_GOOGLE_LOGIN
               value: "true"
+            - name: MAX_PENDING_REQUESTS
+              value: {{ .Values.browserCandidate.maxPendingRequests | quote }}
+            - name: QUEUE_TIMEOUT
+              value: {{ .Values.browserCandidate.queueTimeout | quote }}
           ports:
             - {name: http, containerPort: 8080}
           readinessProbe:

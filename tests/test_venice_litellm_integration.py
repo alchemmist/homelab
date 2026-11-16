@@ -27,7 +27,10 @@ class VeniceLiteLLMIntegrationTests(unittest.TestCase):
 
     def test_single_browser_is_not_overloaded_or_replayed(self):
         params = self.models["venice-deepseek"]["litellm_params"]
-        self.assertEqual(params["max_parallel_requests"], 1)
+        self.assertEqual(params["max_parallel_requests"], 4)
+        browser = yaml.safe_load((ROOT / "charts/venice-api/values.yaml").read_text())["browserCandidate"]
+        self.assertEqual(params["max_parallel_requests"], browser["maxPendingRequests"])
+        self.assertEqual(browser["queueTimeout"], 180)
         self.assertEqual(params["num_retries"], 0)
         self.assertEqual(params["timeout"], 900)
         self.assertEqual(params["stream_timeout"], 900)

@@ -30,3 +30,5 @@ browserCandidate:
   bridgeEnabled: false
   bridgeImage: ""
   serveApi: false
+  maxPendingRequests: 4
+  queueTimeout: 180
