@@ -522,3 +522,106 @@ Remaining: private web-schema/React source extraction changes can still require
 maintenance; network failover/TLS timeouts and approximate usage remain separate.
 This bounded acceptance does not certify unattended multi-hour operation, MCP
 services not exercised here, or correctness of every natural-language claim.
+
+## Classic transport, raw source and controlled night run — 17 November 2026
+
+This SUPERSEDES the reliability implication of the 19:00 ad-hoc acceptance above.
+Actual owner-prompt reproduction showed that `/api/inference/chat/agents/ad-hoc`
+STILL runs Venice's internal tool loop with tools/clientTools empty. Captured
+native events reported bash Unrecognized; those were not Pi host tool failures.
+
+Releases52e9f92 through85437b7 use the browser Classic composer `/chat/classic`
+and `/api/inference/chat`, explicit deepseek-v4-1-flash-uncensored, no Venice system
+prompt, structured system prompt, web/search/scrape/X tools. Both agent paths are
+blocked. Browser authentication stays native; no token extraction, paid API or Mac
+Chrome production dependency. Source and transport remain private-UI maintenance
+boundaries, not an official API contract.
+
+A SECOND exact defect was proven: Classic's math preprocessing changes valid
+JSON shell `$?`/`${PIPESTATUS[0]}` into invalid `\$` escapes in Markdown props.
+The extractor now resolves the COMMITTED React tree to this assistant element,
+then reads only its nearest assistant-message raw content/role/id, not transformed
+Markdown. No reverse unescaping or JSON repair. Four real-frame browser replays:
+old extractor2 invalid, raw message0 invalid; no host tools executed in replays.
+Plain replies and compaction use the same raw source. Matching browser request
+completion is mandatory; UI silence alone cannot release a response.
+
+Actual extended Pi then exposed TWO Chrome OOM kills (3Gi limit, exit137;
+bridge zero restarts). NEW_CHAT_PER_REQUEST now recycles only its owned
+AUTHENTICATED page, retaining context/profile/cookies/Google/PVC. No memory-limit
+increase or profile reset. Health probes never close/launch the shared transport;
+busy probes use last authenticated state, idle probes/maintenance share the lock.
+Initial post-fix cgroup samples on1ed4587: roughly16minutes, no OOM, peak1262MiB
+of3072MiB. Later pod replacements reset the counters; NOT one uninterrupted
+multi-hour soak or proof of the exact Chrome allocator/leak mechanism.
+
+Two subsequent envelope rejections were not captured; their exact cause remains
+UNKNOWN. New protected rejection receipts retain latest8 raw assistant outputs,
+64KiB each, base64/SHA256/category/request ID, dirs0700/files0600, ephemeral bridge
+/tmp/venice-agent-rejections. No separate prompt/header/cookie/profile capture;
+model output MAY echo sensitive user context, so these are PRIVATE receipts.
+AGENT_REJECTION_DIR empty disables capture. Unsafe existing directories refused.
+
+There is now ONE explicit regeneration after a protocol rejection ONLY, from
+unchanged real host history, telling the model no Pi tools executed from that
+rejected reply. Newly validated output only; no regex/JSON patches/native fallback.
+Visible bridge notice + diagnostic ID; approximate usage counts both generations.
+Second invalid reply remains typed error, not completion. Source/transport/queue
+errors do NOT regenerate. Valid false tool-failure prose is NOT filtered.
+
+The first typed-source change in d2b324b introduced a timing regression: pending
+React placeholders were rejected while the request was still generating. The
+controlled run stopped on repeated real source errors.85437b7 waits for browser
+completion AND post-finish settlement (5s for unknown source), then fails closed
+if source remains unavailable. Pending→valid and completed→unavailable tested.
+Never return an internal sentinel as a plain reply/compaction summary.
+
+### Release and receipts
+
+Current app85437b7ab921b8f2a099bed6e648ccec9ab2d35e, CI43967475734 successful,
+90 application tests, exact8 BuildKit context guard and same-image import smoke.
+GitOps e617e4f597eeedf9ae67f1d50b61f3982e90bfca:
+`sha256:49617e87057a182eafa4413062f0382e3892c76dab325341d46d80867ceb70e5`.
+Argo native read-only MCP verified Synced/Healthy, deployment UID unchanged,
+ready/updated/available1, pod venice-browser-candidate-95997ffcc-lh8c7 Ready3/3.
+Direct kubectl from Mac later timed out; no network/DNS/VPN modifications made.
+
+Five LiteLLM/Qwen-preservation integration tests passed. Public stream/nonstream
+budget errors, nonfinite history rejection, historical-schema correction passed.
+Open WebUI plain/SSE passed after page lifecycle fix. Actual browser cancellation
+released slot/lock and same-context NEW-page pong succeeded. Injected malformed
+first output in isolated runtime probe produced visible regeneration and ONE
+validated read call after a real browser completion; ZERO host executions in that
+probe. Deliberate injection is NOT evidence about an uncaptured genuine rejection.
+Private logs/scripts/metrics: ~/venice-auth/classic-night-fix-20261116/.
+
+### Night worker, not a reliability certificate
+
+Owner authorized restarting pane%75. Exact original prompt was exercised first;
+initial bootstrap drifted into cached OFFLINE dependency installation in its own
+trial worktree (no global install), violating the proposed audit's no-install rule.
+That trial was interrupted/preserved, not claimed constraint-clean. Subsequent
+operator bootstrap supplied existing /tmp/venice-agent-venv/bin/python and an
+independent baseline75 tests/exit0 to avoid environment searching/installation.
+
+Active dedicated worktree /tmp/venice-night-audit-20261117, branch
+audit/night-20261117, snapshot a664502; its uncommitted audit fixes are NOT deployed,
+committed or pushed. Original checkout stays on released main. Worker is actual
+ordinary-config Pi litellm/venice-deepseek in RPC mode under a local supervisor
+in the SAME pane, rather than relying on a prompt as a scheduler. Saved session,
+real tool events and checkpoints persist in .night-audit. Resumes retain original
+06:00+03:00 deadline;64 followups maximum, stop on two provider failures without
+an intervening real tool result, three no-tool segments, idle/runtime limits or
+an interactive permission request. It never auto-approves permissions, executes
+model prose, commits, pushes or deploys. It is NOT an OS sandbox or semantic proof
+that reported findings/passes are correct. Review diff/tests/events in the morning.
+A temporary caffeinate idle-sleep assertion watches the supervisor PID and ends
+with it; no permanent power/network setting was changed.
+
+Across earlier controlled phases80 actual tool results, real compactions,
+red→green test/edit activity and saved-session restarts were observed, BUT also
+3 OOM-related errors,2 uncaptured envelope errors and6 pending-source regression
+errors. Those failures are retained, not converted into a zero-error acceptance.
+The final85437b7 segment is a fresh bounded observation. Multi-hour unattended
+Venice reliability and model truthfulness remain UNPROVEN. Do not equate Argo
+Healthy,90 tests or a supervised night attempt with certification.
