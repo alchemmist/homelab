@@ -77,3 +77,7 @@ expected codes (Publish-only STORAGE_TRANSIENT сохранён, workflow не �
 устаревшие alert graphs. Append-only panel ID ledger сохраняет исторические ссылки.
 [Владельцы и обслуживание](../docs/infrastructure-contracts.md). Регулярные backup
 остальных datasets, полная Wiki publication-сверка и DR не объявлены завершёнными.
+
+Поэтапный статус и открытые работы: [implementation checkpoint](../docs/infra-refactor-progress-20261116.md).
+Публичная Wiki: устаревший текст подтверждён HTTP200; [проект правки](../docs/wiki-public-refactor-proposal-20261116.md),
+публикация требует штатного native write-scoped подключения, которого в этой сессии нет.

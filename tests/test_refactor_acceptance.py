@@ -38,6 +38,17 @@ class Convergence(unittest.TestCase):
         p[0]['metadata']['deletionTimestamp']='2026-11-16T00:00:00Z'
         self.assertFalse(placement.converged(d,p,'socrat-5'))
 
+class CurrentDocumentation(unittest.TestCase):
+    def test_current_wiki_storage_matches_canonical_values(self):
+        claim=yaml.safe_load((ROOT/'deploy/wiki-runtime/values.yaml').read_text())['persistence']['existingClaim']
+        for name in ['wiki/README.md','docs/wiki.md']:
+            self.assertIn('`'+claim+'`',(ROOT/name).read_text())
+    def test_current_context_is_bounded_and_history_separate(self):
+        text=(ROOT/'llm-wiki/context.md').read_text()
+        self.assertLess(len(text.splitlines()),160)
+        self.assertIn('context-history-20261116.md',text)
+        self.assertTrue((ROOT/'llm-wiki/context-history-20261116.md').is_file())
+
 class GrafanaStorage(unittest.TestCase):
     def test_explicit_existing_data_and_retained_claims(self):
         v=yaml.safe_load((ROOT/'charts/grafana/values.yaml').read_text())['grafana']

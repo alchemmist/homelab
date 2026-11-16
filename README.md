@@ -4,6 +4,15 @@ Personal homelab automation for Socrat nodes.
 
 Ansible manages the common host baseline: persistent SSH access, hostnames, shared users, the machine-wide Starship prompt, and host workload policies. Kubernetes, networking, storage, and applications have separate playbooks.
 
+## Current infrastructure contracts
+
+Start with [current context](llm-wiki/context.md), [configuration ownership and
+checks](docs/infrastructure-contracts.md), and [backup coverage](docs/backup-coverage-20261116.md).
+Historical migration receipts are not current deployment instructions. Grafana,
+Grafana MCP, Rancher and Argo application-controller now run on `socrat-5`;
+other Argo components remain on `socrat-0`. Canonical values live at the paths
+referenced by the owning Argo Application, not old bootstrap copies.
+
 ## Identity and authorization
 
 The detailed [Socrat identity operator manual](llm-wiki/identity.md) documents
@@ -22,7 +31,7 @@ prerequisites, idempotency, credentials and the still-singleton control-plane li
 ansible/
   ansible.cfg
   inventory/
-    hosts.yml              # all four Socrat nodes and SSH connections
+    hosts.yml              # declared Socrat nodes and SSH connections
     host_vars/             # per-node configuration
     group_vars/            # shared inventory settings
     netbird-controller.yml # separate controller alias (not in Socrat)
@@ -42,11 +51,11 @@ charts/
   socrat-home/
 ```
 
-Inventory membership, variable ownership, maintenance overrides and safe inspection commands are explained in [the inventory guide](ansible/inventory/README.md). The default inventory includes all four Socrat nodes; use `--limit` to narrow a playbook run.
+Inventory membership, variable ownership, maintenance overrides and safe inspection commands are explained in [the inventory guide](ansible/inventory/README.md). The default inventory includes every declared Socrat node; use `--limit` to narrow a playbook run.
 
 ## Public SSH access
 
-All primary aliases connect to `socrat.alchemmist.xyz`. External port numbers are `2222 + node index` and are generated from inventory:
+These are explicit home-gateway **public recovery** mappings, not the normal private administrative transport. Do not derive reachability or ports from a node index: `socrat-5` has no publicly reachable inbound endpoint. Inventory and generated client configuration own connection settings:
 
 | Alias | Public endpoint | Current destination |
 | --- | --- | --- |
@@ -69,7 +78,7 @@ The first playbook configures the gateway on `socrat-0`; the second manages loca
 
 NetBird is the normal private administrative transport; standalone WireGuard is
 recovery-only and normally off. Ordinary SSH uses pinned internal aliases over
-`10.250.0.1/.3/.2/.5:2222`, never a public DNS fallback. Selected human web
+the pinned private endpoints declared in inventory/client configuration, never an implicit public DNS fallback. Selected human web
 interfaces use ordinary public HTTPS, so the Mac needs no homelab resolver files
 and the mandatory Tunnelblick session need not be changed.
 
@@ -92,7 +101,7 @@ for Ansible commands, router mappings, provisioning and remaining acceptance che
 Open `https://0.socrat.alchemmist.xyz/sync/` with ordinary public DNS/TLS. Personal
 Authentik MFA and owner/`syncthing-web-admins` admission precede the existing
 BasicAuth. The original device/data and `/sync/` compatibility are preserved;
-raw GUI/protocol ports are not published by this change. The node1 URL is gated
+raw GUI/protocol ports are not published by this change. The `socrat-1` URL is gated
 but explicitly returns410 because that node is gateway-only, not another
 Syncthing device. No writer is started to make a GUI URL work.
 

@@ -2,7 +2,7 @@
 
 ## Where to look
 
-- `hosts.yml`: the complete `Socrat` group (`socrat-0` through `socrat-3`) and SSH connection settings.
+- `hosts.yml`: the complete `Socrat` group (currently `socrat-0` through `socrat-5`) and SSH connection settings.
 - `host_vars/<node>.yml`: configuration specific to one node (boot services, desktop, storage, etc.). Ansible loads these automatically for that hostname.
 - `group_vars/Socrat.yml`: shared cluster settings, including the default public SSH hostname and WireGuard registry.
 - `group_vars/all.yml`: defaults shared by all inventory hosts.
@@ -23,24 +23,24 @@ ansible-playbook playbooks/starship.yml --list-hosts
 ansible-playbook playbooks/starship.yml --list-hosts --limit socrat-3
 ```
 
-`hosts: Socrat` selects all four nodes unless narrowed by `--limit`. It does not select the separate controller alias. These commands only inspect inventory/play scope; they do not apply changes.
+`hosts: Socrat` selects all declared nodes unless narrowed by `--limit`. It does not select the separate controller alias. These commands only inspect inventory/play scope; they do not apply changes.
 
 ## Explicit inventory and maintenance access
 
 ```sh
-# All four nodes, using the normal connections:
+# All declared nodes, using the normal connections:
 ansible-inventory -i inventory/hosts.yml --graph
 
-# All four nodes, with direct connection overrides for nodes 0/1/2:
+# All declared nodes, with direct connection overrides for `socrat-0`, `socrat-1`, `socrat-2`:
 ansible-inventory -i inventory/hosts.yml -i inventory/direct.yml --graph
 
-# All four nodes, with LAN connection overrides for nodes 0/1:
+# All declared nodes, with LAN connection overrides for `socrat-0`, `socrat-1`:
 ansible-inventory -i inventory/hosts.yml -i inventory/lan.yml --graph
 ```
 
 Explicit `-i` arguments replace the configured inventory sources. If a playbook needs the controller alias as well, also supply `-i inventory/netbird-controller.yml`.
 
-The former `socrat-3.yml` inventory was merged into `hosts.yml`; its node configuration now lives in `host_vars/socrat-3.yml`. Old commands using both inventory files should use only `-i inventory/hosts.yml`. This consolidation preserves the previous default resolved inventory; commands explicitly using only `hosts.yml` now include node 3 too. Use `--limit 'Socrat:!socrat-3'` if intentionally targeting only nodes 0/1/2.
+The former `socrat-3.yml` inventory was merged into `hosts.yml`; its node configuration now lives in `host_vars/socrat-3.yml`. Old commands using both inventory files should use only `-i inventory/hosts.yml`. This consolidation preserves the previous default resolved inventory; commands explicitly using only `hosts.yml` now include `socrat-3` too. Use `--limit 'socrat-0:socrat-1:socrat-2'` if intentionally targeting only `socrat-0`, `socrat-1`, `socrat-2`.
 
 ## Adding a node
 

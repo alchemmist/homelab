@@ -1,5 +1,18 @@
 # Наблюдаемость: источники и владельцы
 
+## Current placement delta —16 November 2026
+
+Grafana и Grafana MCP приняты на `socrat-5`, новый Grafana claim
+`grafana-socrat5`, старый claim на `socrat-1` stale/Retain. Native SSO, существующие
+идентичности и настоящий read-only MCP→Grafana→Thanos запрос проверены.
+[Полная приёмка и downtime](../docs/vm105-grafana-20261116.md).
+Prometheus/Thanos и другие backend не переносились этим изменением. Таблица
+владельцев ниже остаётся полезной, но runtime-утверждения среза7ноября не являются
+новой приёмкой всех компонентов. Источник Grafana также включает
+`deploy/storage/grafana-socrat5`; актуальные ссылки — в Application.
+
+## Historical split checkpoint —7 November 2026
+
 Актуализировано **7 ноября 2026**, после завершённых handoff Grafana/backends (`f4020d1`),
 пяти Prometheus-компонентов и runtime-проверок. Это заменяет ранний read-only срез промежуточного split.
 Не объявляет новый browser-MFA acceptance, каждый producer исправным или независимый DR.
