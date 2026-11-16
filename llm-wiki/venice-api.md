@@ -115,3 +115,57 @@ Fresh public checks after CI rollout passed: pong, four exact answer lines
 (assistant/private/DeepSeek is a model/sources preserved), SSE pong+[DONE],
 anonymous401 and health authenticated=true. VPS exit109.120.141.60 repeated.
 Argo Synced/Healthy, one production Pod3/3; old standalone deployment0/0.
+
+## LiteLLM integration — accepted 16 November 2026
+
+Users can now call model **venice-deepseek** through the existing
+https://llm.alchemmist.xyz/v1 endpoint with their own LiteLLM virtual keys.
+The original direct Venice endpoint still exists; never give its upstream key
+to ordinary LiteLLM users if access control is meant to stay in LiteLLM.
+
+Canonical change: deploy/platform/litellm/values.yaml, not the legacy snapshot
+in deploy/litellm/values.yaml. Existing Qwen route/image/database/migration fence,
+users, key rights, SSO and logging settings preserved. LiteLLM remains1.105.1,
+one worker/replica; no PostgreSQL upgrade or schema migration was enabled.
+
+- Alias venice-deepseek maps to openai/venice-agentic-deepseek-v4.1-flash-uncensored.
+- Internal api_base http://venice-api.venice-api.svc.cluster.local:8080/v1.
+- API key injected from llm/venice-bridge-upstream Secret, api-key field, into
+  VENICE_BRIDGE_API_KEY. Value is the existing bridge credential, whitespace
+  normalized; not the LiteLLM master key. No credential value in Git.
+- max_parallel_requests1 per deployment, timeout/stream_timeout900s,
+  num_retries0. Single worker/replica is material: this limiter is process-local.
+  Do not scale LiteLLM without reconsidering model concurrency. Browser's own
+  lock remains the final single-page guard.
+- Synthetic input/output token cost0: this is NOT real Venice-credit accounting.
+  Buffered SSE and browser adapter feature limits remain unchanged.
+- Existing store_prompts_in_spend_logs=true retained: request/response text can
+  be stored in LiteLLM. Integration did not silently change logging policy.
+- Keys with all-proxy-models see the new model by their existing policy. Qwen-only
+  keys were NOT expanded. No existing user/key rights were edited. When granting
+  access, select venice-deepseek in the user/key model allowlists; owner/team
+  restrictions still apply. No permanent test keys/users were created.
+
+Live acceptance THROUGH PUBLIC LITELLM, not just its provider SDK:
+- Venice-only temporary key /v1/models contains venice-deepseek, not Qwen.
+- Qwen-only temporary key -> Venice403; its Qwen inference remains HTTP200.
+- Venice non-stream pong and SSE pong+[DONE] passed, repeated after new bridge CI.
+- Two overlapping requests to the same model returned200+429: global model slot
+  works, no two browser generations admitted simultaneously.
+- All temporary keys were deleted via native /key/delete. Original key count10
+  restored, zero venice-acceptance fixtures. TTL10m was an additional safeguard.
+- LiteLLM and Venice Argo Synced/Healthy; no master/Google/upstream keys printed.
+
+Selector readiness flake found during research was fixed BEFORE prompt submission:
+bounded20s model-selector hydration wait, still fail-closed on absent/unverified
+model. No retry of sent prompts. Venice sourcec7593f4, CI43877841064 SUCCESS,
+live bridge digest09ec0fbca255ca3cc4416c60bb1eb9fa4dddc6de42d859449545ee3c850a368b.
+Twelve bridge unit tests and five dedicated static integration tests passed:
+python3 -m unittest discover -s tests -p test_venice_litellm_integration.py -v
+(from homelab). Resource manifests also passed Helm render/server dry-run.
+
+Private config/deployment preimages are on the controller under
+~/venice-auth/litellm-integration-20261116, not Git; no fixture keys remain there.
+Rollback: remove only Venice model stanza/env reference through GitOps after
+checking active calls; retain existing Qwen and database/SSO/key objects. Do not
+rotate/delete the upstream bridge credential as part of a model-only rollback.
