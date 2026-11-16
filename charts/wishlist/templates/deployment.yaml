@@ -100,9 +100,9 @@ spec:
               readOnly: true
           {{- end }}
       volumes:
-      - name: media-cache
-        emptyDir:
-          sizeLimit: 2Gi
+        - name: media-cache
+          emptyDir:
+            sizeLimit: 2Gi
       {{- if .Values.observability.enabled }}
         - name: otel-client
           secret:

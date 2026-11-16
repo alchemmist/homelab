@@ -23,7 +23,7 @@ class WishlistImages(unittest.TestCase):
         app = (ROOT/'charts/wishlist/templates/deployment.yaml').read_text()
         self.assertIn('IMAGE_OPTIMIZER_URL',app)
         self.assertIn('mountPath: /data/media-cache',app)
-        self.assertIn('sizeLimit: 2Gi',app)
+        self.assertIn('      volumes:\n        - name: media-cache\n          emptyDir:\n            sizeLimit: 2Gi',app)
     def test_native_memory_limit_no_application_job_semaphore(self):
         values=yaml.safe_load((ROOT/'charts/wishlist/values.yaml').read_text())['images']
         self.assertEqual(values['optimizerPort'],8081)
