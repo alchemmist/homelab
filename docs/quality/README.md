@@ -10,7 +10,7 @@
 - `quality/tools.lock.json`: Linux x86_64 and Darwin arm64 tool release SHA256 pins.
 - `quality/schemas.lock.json`, `quality/schemas/`: offline Kubernetes1.36schemas.
 - `quality/rules.json`: concrete selected Python/Kubernetes/YAML rule catalogue.
-- `quality/test-suites.json`:114scheduled modules in20groups;126not yet scheduled.
+- `quality/test-suites.json`:114scheduled modules in20groups;127not yet scheduled.
 - `quality/debt/`: exact legacy lint/resource identities; NOT fixed/approved-safe.
 - `quality/secret-false-positives.json`: separately reviewed non-secret matches,
   exact context hashes and reasons; no credential values or whole-path ignores.

@@ -62,6 +62,8 @@ def main():
             "-u",
             getpass.getuser(),
             "--",
+            "env",
+            "PATH=" + env["PATH"],
             *argv,
         ]
     return subprocess.run(  # noqa: S603 -- fixed tool/test argv, no shell or operational execution

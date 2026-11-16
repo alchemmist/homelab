@@ -157,3 +157,64 @@ def test_helm_parameters_cannot_inject_a_post_renderer():
     }
     with pytest.raises(ValueError):
         charts.arguments(target)
+
+
+def test_network_namespace_preserves_locked_tool_path(tmp_path, monkeypatch):
+    import importlib.util
+    from types import SimpleNamespace
+
+    spec = importlib.util.spec_from_file_location(
+        "quality_test_runner", ROOT / "scripts/quality/tests.py"
+    )
+    runner = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(runner)
+    monkeypatch.setattr(runner, "ROOT", tmp_path)
+    (tmp_path / "quality").mkdir()
+    (tmp_path / "quality/test-suites.json").write_text(
+        json.dumps({"suites": {"fixture": ["tests/test_fixture.py"]}})
+    )
+    monkeypatch.setattr(runner.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(runner.getpass, "getuser", lambda: "runner")
+    monkeypatch.setattr(sys, "argv", ["tests.py", "fixture", "--isolate-network"])
+    monkeypatch.setenv("PATH", "/locked-venv/bin:/usr/bin")
+    monkeypatch.setenv("SSH_AUTH_SOCK", "/must-not-leak")
+    calls = []
+    monkeypatch.setattr(
+        runner.subprocess,
+        "run",
+        lambda argv, **kw: calls.append((argv, kw)) or SimpleNamespace(returncode=0),
+    )
+    assert runner.main() == 0
+    argv, kw = calls[0]
+    assert "PATH=/locked-venv/bin:/usr/bin" in argv
+    assert "SSH_AUTH_SOCK" not in kw["env"]
+    assert argv[:4] == ["sudo", "-n", "unshare", "--net"]
+
+
+@pytest.mark.parametrize(
+    "image", ["example:latest", "example@sha256:short", "example@sha256:not-a-digest"]
+)
+def test_image_digest_must_be_real_sha256_shape(image):
+    resource = {"kind": "Pod", "spec": {"containers": [{"name": "test", "image": image}]}}
+    assert any(rule == "image-digest" for rule, _ in charts.policies(resource))
+    resource["spec"]["containers"][0]["image"] = "example@sha256:" + "a" * 64
+    assert not charts.policies(resource)
+
+
+def test_dependency_audit_uses_installed_environment_and_deduplicates(monkeypatch):
+    from types import SimpleNamespace
+    import lint
+
+    calls = []
+    item = {"name": "fixture", "version": "1", "vulns": [{"id": "CVE-2026-1234"}]}
+
+    def run(argv, **kwargs):
+        calls.append(argv)
+        return SimpleNamespace(stdout=json.dumps({"dependencies": [item, item]}))
+
+    monkeypatch.setattr(lint, "command", run)
+    findings, _ = lint.check("dependencies")
+    assert len(findings) == 1
+    assert "--no-deps" not in calls[0]
+    assert "--disable-pip" not in calls[0]
+    assert "--local" in calls[0]

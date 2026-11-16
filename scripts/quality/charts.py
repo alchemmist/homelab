@@ -159,7 +159,7 @@ def policies(resource):
     errors = []
     if pod is not None:
         for container in pod.get("containers", []) + pod.get("initContainers", []):
-            if "@sha256:" not in container.get("image", ""):
+            if not re.fullmatch(r".+@sha256:[0-9a-f]{64}", container.get("image", "")):
                 errors.append(
                     (
                         "image-digest",

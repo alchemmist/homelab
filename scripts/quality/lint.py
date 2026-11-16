@@ -157,8 +157,6 @@ def check(tool):
                 [
                     "pip-audit",
                     "--local",
-                    "--disable-pip",
-                    "--no-deps",
                     "--format",
                     "json",
                 ],
@@ -167,8 +165,13 @@ def check(tool):
             ).stdout
         )
         result = []
+        seen = set()
         for item in data["dependencies"]:
             for vuln in item.get("vulns", []):
+                identity = (item["name"], vuln["id"])
+                if identity in seen:
+                    continue
+                seen.add(identity)
                 result.append(
                     finding(
                         vuln["id"],
