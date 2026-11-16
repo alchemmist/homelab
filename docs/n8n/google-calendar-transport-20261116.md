@@ -123,3 +123,15 @@ Calendarrequest or speech probe. This is real initial failover acceptance, not
 justHEAD/Argo. No Announce node executed in that run. Observe a longer finite
 natural window before asserting ongoing reliability; never declare all future
 provider/DNS/network/HTTP errors impossible. Historicalcancellations preserved.
+
+### Finite follow-up acceptance
+
+At2026-11-16T20:29:26+00:00:
+8naturally scheduled post-rollout Calendar successes,48686–48693,zero
+newcanceled/error in this finite sample. Mainn8n logs show4successfulpre-HTTP
+failovers and no google_connect_failed in the inspected10minute window.
+Initial7durations0.688–4.962seconds; old recurring110secondcancellations absent
+in this window. FullDeploymentSPECcomparison identical exceptNODE_OPTIONS and
+extensionchecksum. PodReady/restart0, ArgoSyncedHealthy. Owner/processing/paid
+all0at finalcheck. Existing alert delivery and actualvoice/refreshPOST acceptance
+not manufactured; no promise of unattendedovernightorpermanentreliability.
