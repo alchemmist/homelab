@@ -282,6 +282,7 @@
     "tests/test_wireguard_private_web.py": "Not yet scheduled: requires individual dependency/side-effect/platform review; not certified by this CI expansion.",
     "tests/test_wireguard_tcp_transport.py": "Not yet scheduled: requires individual dependency/side-effect/platform review; not certified by this CI expansion.",
     "tests/test_xui_auth_gateway.py": "Not yet scheduled: requires individual dependency/side-effect/platform review; not certified by this CI expansion.",
-    "tests/test_xui_workload.py": "Not yet scheduled: requires individual dependency/side-effect/platform review; not certified by this CI expansion."
+    "tests/test_xui_workload.py": "Not yet scheduled: requires individual dependency/side-effect/platform review; not certified by this CI expansion.",
+    "tests/test_llm_keys_window.py": "Concurrent owner-added test: not yet scheduled; requires explicit dependency/side-effect review before CI adoption."
   }
 }

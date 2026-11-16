@@ -50,6 +50,8 @@ spec:
               value: {{ .Values.port | quote }}
             - name: GUNICORN_WORKERS
               value: {{ .Values.gunicornWorkers | quote }}
+            - name: CONFIG__LOG_LEVEL
+              value: {{ .Values.logLevel | quote }}
             - name: CONFIG__AI_TIMEOUT
               value: {{ .Values.aiTimeout | quote }}
             - name: CONFIG__MODEL
