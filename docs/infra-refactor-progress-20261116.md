@@ -34,7 +34,27 @@ refresh. Independent monitoring/VPN topology, credentials and app versions retai
   socrat-0/socrat-1/socrat-2 after adding nodes. Replaced by explicit three-host
   selection; removed obsolete four-node counts and index-derived public SSH claim.
 
-## Next implementation gates
+## Continuation: owner deferred backups
+
+The owner explicitly requested continuing the refactoring **without making
+backups for now**. Backup implementation/restore work below is deferred, not a
+current instruction or a closed risk. This continuation created no archives,
+schedules, receiver credentials or restore operations.
+
+- Retired `ansible/playbooks/rancher.yml`, the second competing installer that
+  still used upstream Helm, two replicas, placement/strategy patches and auxiliary
+  writes. It now has one controller-side fail task, no follow-up plays/imports,
+  no privilege escalation or credential requirement. Verified with local-only
+  Ansible invocation returning the expected refusal; no cluster connection.
+- CI now guards retired Rancher/combined-monitoring entrypoints and compares Argo
+  bootstrap version/values against its owning Application.
+- Fixed partial alias generation: every consumer is validated before any write,
+  preventing late scope errors from leaving earlier files modified. Multiple
+  registered IP scalars in one file merge correctly; regression tests cover both.
+- 44 targeted offline tests pass after merging concurrent published LiteLLM
+  changes. No network/service/storage restart or public Wiki publication.
+
+## Remaining implementation gates (backup gate deferred)
 
 1. Complete remaining backup scheduler/destination inventory; choose each app's
    supported consistency method, then implement/restore-test independent copies.
