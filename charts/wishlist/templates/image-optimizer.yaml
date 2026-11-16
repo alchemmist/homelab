@@ -1,0 +1,101 @@
+{{- if .Values.images.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-image-optimizer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: wishlist-image-optimizer
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: wishlist-image-optimizer
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.nodeName }}
+      imagePullSecrets:
+        {{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+        {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: optimizer
+          image: {{ .Values.image.repository }}{{ if .Values.image.digest }}@{{ .Values.image.digest }}{{ else }}:{{ .Values.image.tag }}{{ end }}
+          command: [node, /opt/image-optimizer/server.cjs]
+          env:
+            - name: OPTIMIZER_PORT
+              value: {{ .Values.images.optimizerPort | quote }}
+          ports:
+            - name: optimizer
+              containerPort: {{ .Values.images.optimizerPort }}
+          resources:
+{{ toYaml .Values.images.resources | indent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: optimizer
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: optimizer
+            initialDelaySeconds: 10
+            timeoutSeconds: 3
+          volumeMounts:
+            - name: work
+              mountPath: /tmp
+      volumes:
+        - name: work
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-image-optimizer
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: wishlist-image-optimizer
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: optimizer
+      port: {{ .Values.images.optimizerPort }}
+      targetPort: optimizer
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-image-optimizer
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: wishlist-image-optimizer
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: {{ .Chart.Name }}
+              app.kubernetes.io/instance: {{ .Release.Name }}
+      ports:
+        - port: {{ .Values.images.optimizerPort }}
+          protocol: TCP
+  # Binary POST only. The optimizer needs no DNS, S3, Internet or Kubernetes API.
+  egress: []
+{{- end }}

@@ -39,3 +39,13 @@ observability:
   metricsPort: 8001
   tracesEndpoint: https://10.250.0.3:44318/v1/traces
   clientSecret: otel-app-tls-wishlist
+
+images:
+  enabled: false
+  optimizerPort: 8081
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      memory: 2Gi

@@ -71,6 +71,10 @@ spec:
             - name: OTEL_EXPORTER_OTLP_TRACES_CLIENT_KEY
               value: /etc/otel-client/tls.key
           {{- end }}
+          {{- if .Values.images.enabled }}
+            - name: IMAGE_OPTIMIZER_URL
+              value: http://{{ .Release.Name }}-image-optimizer:{{ .Values.images.optimizerPort }}
+          {{- end }}
             - name: DATA_DIR
               value: /data
             - name: PUBLIC_URL
