@@ -48,6 +48,20 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: [ALL]
+          # Runs on every container start, including after OOM; no user data/PVC.
+          # The Service cannot route here until the postStart hook + readiness.
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - node
+                  - -e
+                  - >-
+                    const fs=require('node:fs');
+                    for (const name of fs.readdirSync('/tmp')) {
+                      if (name.startsWith('wishlist-image-'))
+                        fs.rmSync('/tmp/'+name,{recursive:true,force:true});
+                    }
           readinessProbe:
             httpGet:
               path: /health
@@ -63,7 +77,8 @@ spec:
               mountPath: /tmp
       volumes:
         - name: work
-          emptyDir: {}
+          emptyDir:
+            sizeLimit: 4Gi
 ---
 apiVersion: v1
 kind: Service

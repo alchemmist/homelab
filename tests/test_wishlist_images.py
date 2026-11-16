@@ -13,6 +13,9 @@ class WishlistImages(unittest.TestCase):
         self.assertNotIn('hostPort:',source)
         self.assertNotIn('secretRef:',source)
         self.assertNotIn('persistentVolumeClaim:',source)
+        self.assertIn("name.startsWith('wishlist-image-')",source)
+        self.assertIn('postStart:',source)
+        self.assertIn('sizeLimit: 4Gi',source)
         ingress = (ROOT/'charts/wishlist/templates/ingress.yaml').read_text()
         self.assertNotIn('optimizer',ingress)
     def test_app_image_and_same_namespace_only(self):
@@ -29,4 +32,5 @@ class WishlistImages(unittest.TestCase):
         values=yaml.safe_load((ROOT/'charts/wishlist/values.yaml').read_text())['images']
         self.assertEqual(values['optimizerPort'],8081)
         self.assertEqual(values['resources']['limits']['memory'],'2Gi')
+        self.assertEqual(values['resources']['limits']['ephemeral-storage'],'4Gi')
         self.assertNotIn('cpu',values['resources']['limits'])

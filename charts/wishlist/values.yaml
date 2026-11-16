@@ -49,3 +49,4 @@ images:
       memory: 256Mi
     limits:
       memory: 2Gi
+      ephemeral-storage: 4Gi
