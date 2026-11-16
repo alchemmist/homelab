@@ -2,6 +2,8 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: litellm-branding
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
 spec:
   accessModes: [ReadWriteOnce]
   storageClassName: local-path
@@ -53,7 +55,7 @@ kind: Deployment
 metadata:
   name: litellm-branding
 spec:
-  replicas: 1
+  replicas: {{ .Values.brandingReplicas }}
   strategy:
     type: Recreate
   selector:
@@ -68,12 +70,21 @@ spec:
     spec:
       automountServiceAccountToken: false
       nodeSelector:
-        kubernetes.io/hostname: {{ .Values.nodeName }}
+        kubernetes.io/hostname: {{ .Values.brandingNodeName }}
       securityContext:
         runAsUser: 101
         runAsGroup: 101
         fsGroup: 101
         runAsNonRoot: true
+      {{- if .Values.requireExistingBranding }}
+      initContainers:
+        - name: require-existing-branding
+          image: nginx:1.28-alpine@sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236
+          command: [/bin/sh, -ec]
+          args: ['for f in socrat-logo-light-v1.svg socrat-logo-dark-v1.svg socrat-icon-v1.png; do test -s "/assets/$f" || exit 1; done']
+          securityContext: {allowPrivilegeEscalation: false, capabilities: {drop: [ALL]}}
+          volumeMounts: [{name: assets, mountPath: /assets, readOnly: true}]
+      {{- end }}
       containers:
         - name: nginx
           image: nginx:1.28-alpine@sha256:a8b39bd9cf0f83869a2162827a0caf6137ddf759d50a171451b335cecc87d236
@@ -112,7 +123,7 @@ spec:
             name: litellm-branding-nginx
         - name: assets
           persistentVolumeClaim:
-            claimName: litellm-branding
+            claimName: {{ .Values.brandingClaim }}
         - name: temp
           emptyDir: {}
 ---

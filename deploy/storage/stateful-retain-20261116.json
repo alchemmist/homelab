@@ -1,0 +1,16 @@
+[
+  {
+    "namespace": "automation",
+    "claim": "spi-triage-data",
+    "name": "pvc-d064bcf5-6e99-4a59-9de5-1645ee3820b6",
+    "uid": "9981eef4-3ea9-4b0e-84a4-0d939f780f1a",
+    "policy": "Retain"
+  },
+  {
+    "namespace": "llm",
+    "claim": "litellm-branding",
+    "name": "pvc-8fe067ed-7c15-4518-b310-d0805563b5e5",
+    "uid": "6a5f5b19-7284-44f1-8e1b-bb3f1fecf891",
+    "policy": "Retain"
+  }
+]
