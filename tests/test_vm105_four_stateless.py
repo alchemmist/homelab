@@ -62,6 +62,15 @@ class PlacementTests(unittest.TestCase):
                 cron = next(x for x in docs if x and x['kind']=='CronJob')
                 self.assertEqual(cron['spec']['jobTemplate']['spec']['template']['spec']['nodeSelector'], {'kubernetes.io/hostname':'socrat-1'})
 
+    def test_endpoint_slice_null_is_a_valid_empty_drain(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('worker_handoff', R/'scripts/vm105-stateless-handoff.py')
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        for value in [{'items':[]}, {'items':[{'endpoints':None}]}, {'items':[{'endpoints':[]}]}]:
+            self.assertFalse(module.has_ready_endpoints(value))
+        self.assertTrue(module.has_ready_endpoints({'items':[{'endpoints':[{'addresses':['10.0.0.1'],'conditions':{'ready':True}}]}]}))
+        self.assertFalse(module.has_ready_endpoints({'items':[{'endpoints':[{'addresses':['10.0.0.1'],'conditions':{'ready':False}}]}]}))
+
     def test_drain_is_two_exact_services_only_and_finally_restores(self):
         p = R/'deploy/migrations/vm105-four-stateless-20261116/drain-services.yaml'
         docs = [x for x in yaml.safe_load_all(p.read_text()) if x]

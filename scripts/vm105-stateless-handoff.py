@@ -51,6 +51,11 @@ def idle(pod, seconds=900):
     raise RuntimeError('Worker did not reach a proven idle checkpoint')
 
 
+def has_ready_endpoints(slices):
+    return any(e.get('addresses') and (e.get('conditions') or {}).get('ready') is not False
+               for s in (slices.get('items') or []) for e in (s.get('endpoints') or []))
+
+
 def main():
     os.umask(0o077)
     p = argparse.ArgumentParser()
@@ -89,8 +94,7 @@ def main():
         limit = time.monotonic() + 30
         while True:
             slices = get(['get', 'endpointslices', '-n', 'automation', '-l', 'kubernetes.io/service-name='+name])
-            if not any(e.get('addresses') and e.get('conditions', {}).get('ready') is not False
-                       for s in slices['items'] for e in s.get('endpoints', [])):
+            if not has_ready_endpoints(slices):
                 break
             if time.monotonic() > limit:
                 raise RuntimeError('Service did not quiesce')
