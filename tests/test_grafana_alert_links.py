@@ -22,7 +22,9 @@ RULE = {
 
 
 class AlertLinksTest(unittest.TestCase):
-    def test_native_live_fingerprint(self):
+    # 0fd62090 changed the annotation (part of the hash), leaving its golden stale.
+    # This fixed definition is not a claim about the current live rules API.
+    def test_known_native_definition_fingerprint(self):
         self.assertEqual(LINKS.rule_hash(RULE), '-381316856')
 
     def test_runtime_state_does_not_change_url(self):

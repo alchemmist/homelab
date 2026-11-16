@@ -66,6 +66,12 @@ def test_native_n8n_mcp_is_exact_service_owned_without_bypassing_ui():
     machine=docs[0]
     assert machine['metadata']['name']=='n8n-machine-endpoints'
     assert machine['metadata']['namespace']=='automation'
+    # 57767f73 deliberately retired the external IdP proxy: UI is native n8n,
+    # not an unauthenticated machine-route shortcut through the old outpost.
+    ui=(ROOT/'charts/n8n/templates/ingress.yaml').read_text()
+    assert 'path: /' in ui and 'name: n8n' in ui
+    assert 'tls:' in ui and 'websecure' in ui
+    assert 'N8N_SECURE_COOKIE' in (ROOT/'charts/n8n/templates/deployment.yaml').read_text()
     paths=machine['spec']['rules'][0]['http']['paths']
     mcp=[p for p in paths if p['path']=='/mcp-server/http'];assert len(mcp)==1 and mcp[0]['pathType']=='Exact'
     assert mcp[0]['backend']['service']['name']=='n8n'

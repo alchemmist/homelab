@@ -1576,5 +1576,29 @@
       "trailing-spaces",
       "truthy"
     ]
+  },
+  "ansible": {
+    "tool": "ansible-lint==26.11.0",
+    "configuration": "quality/ansible-lint.yaml",
+    "profile": "min",
+    "rules": [
+      "internal-error",
+      "load-failure",
+      "parser-error",
+      "syntax-check",
+      "schema",
+      "avoid-implicit",
+      "latest",
+      "package-latest",
+      "risky-file-permissions",
+      "risky-octal",
+      "risky-shell-pipe",
+      "inline-env-var",
+      "deprecated-module",
+      "no-jinja-when",
+      "no-tabs",
+      "no-log-password"
+    ],
+    "scope": "All 358 owned Ansible YAML files; no mock modules, per-file skips or technical-debt baseline. Public variable naming is not migrated by this gate."
   }
 }

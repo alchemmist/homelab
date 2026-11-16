@@ -113,10 +113,11 @@ Old-PVC backup/upgrade instructions are not a fallback. Within the literal Helm
 gate only k3s/storage-nfs remain review-required; no maintenance was performed.
 
 Quality Graph research/expansion: compatible0.2.0compiler/provider/runtime bootstrap
-is published; minimal bootstrap55666f1b, main CI43937624526success. Detailed43-node expansion,
+is published; minimal bootstrap55666f1b, main CI43937624526success. Semantic cost-layered redesign,
 rule/tool matrix and initial failed-regression audit: [quality runbook](../docs/quality/README.md).
-This expansion is a review/probe candidate, not yet certified-green or a new
-required-check policy. No production/backup/GPU/VPN/identity operations authorized.
+Fast gates run in parallel; tool integrations precede a disposable Kind lifecycle
+job (hosted run43954132178:4passed/0skipped). Full-graph acceptance remains a
+separate PR result, not a new required-check policy. No production/backup/GPU/VPN/identity operations authorized.
 
 2026-11-16 LLM key activity short-range No data fixed (50de2fac): Requests by API
 key used increase(counter[$__interval]); small pickers/pixel step made lookback5s,

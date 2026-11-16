@@ -82,3 +82,33 @@ advisory as a tool compatibility failure. Hadolint added8source findings, and
 concurrent PR Agent source added3Python findings plus1image-digest violation.
 These are not automatically grandfathered as old debt. See the PR dashboard and
 per-node Job Summaries for the current distinct quality/command failure evidence.
+
+## Repair checkpoint after semantic redesign
+
+The previously44failing cases were individually repaired: current six-node
+inventory, migrated Wiki/SPI claims and explicit named Wishlist volume lookup;
+accepted native SPI OIDC and native n8n UI ownership; source-audit application
+coverage; authenticated RustFS ingress-vs-egress distinction; independently
+approved DNS additions; private GUI Deployment/gateway enrollment; current image
+contracts; annotation-dependent Grafana hash (0fd62090 changed its input); retired
+migration fixtures (258374b6 removed operational config, not the pure evaluator);
+early SDK reload refusal before retired canary access; and dedicated Wishlist
+client/metrics ownership. No production state was changed to match an old test.
+
+A genuinely oversized dashboard ConfigMap is now serialized compactly, preserving
+JSON content and the original240k safety bound. Seven true Docker lint defects,
+HTTPS-only/no-redirect redelivery and its existing image digest were corrected.
+The remaining Docker warning is an exact non-secret tokenizer option false
+positive, with a negative regression proving the exception cannot cover new data.
+
+Ansible's multi-document retired role caused the tool crash. The role retains its
+fail-only guard; unreachable legacy provisioning is removed. Explicit config and
+SHA-locked collections restore actual syntax checks. Four become plugin names
+are now fully qualified without changing their methods/users. All19unsafe shell
+pipelines and the kernel install/update lint issue are repaired. The full inherited
+style preset's865findings are NOT claimed repaired: see README for the explicit
+operational safety policy selection, preserving public role variable interfaces.
+
+Historical backup receipts under `tests/fixtures/retired-otel/` are Git-history
+fixtures, explicitly marked non-current. They are not new backups, restoration,
+authorization or evidence of present runtime integrity.

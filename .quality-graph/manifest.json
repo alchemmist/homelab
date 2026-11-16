@@ -6,15 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "execution": {
-    "pull-request": {
-      "dependencies": "graph"
-    },
-    "push": {
-      "dependencies": "graph"
-    }
-  },
-  "graphDigest": "bf908d457cc74cbb66f72a8a5f673a207329395bb15f710af04e25758734bdf5",
+  "graphDigest": "98d5066ac01023f71f6f6b4f24052b434d582ab6a6aba7bcb8e299c2beab19fe",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -23,10 +15,6 @@
   "nodes": [
     {
       "env": {},
-      "events": [
-        "pull-request",
-        "push"
-      ],
       "id": "graph",
       "needs": [],
       "policy": {
@@ -52,10 +40,6 @@
     },
     {
       "env": {},
-      "events": [
-        "pull-request",
-        "push"
-      ],
       "id": "python",
       "needs": [
         "graph"
@@ -84,10 +68,6 @@
     },
     {
       "env": {},
-      "events": [
-        "pull-request",
-        "push"
-      ],
       "id": "yaml",
       "needs": [
         "graph"
@@ -116,10 +96,6 @@
     },
     {
       "env": {},
-      "events": [
-        "pull-request",
-        "push"
-      ],
       "id": "shell",
       "needs": [
         "graph"
@@ -148,10 +124,6 @@
     },
     {
       "env": {},
-      "events": [
-        "pull-request",
-        "push"
-      ],
       "id": "workflow",
       "needs": [
         "graph"
@@ -180,10 +152,6 @@
     },
     {
       "env": {},
-      "events": [
-        "pull-request",
-        "push"
-      ],
       "id": "secrets",
       "needs": [
         "graph"
@@ -212,10 +180,6 @@
     },
     {
       "env": {},
-      "events": [
-        "pull-request",
-        "push"
-      ],
       "id": "docker",
       "needs": [
         "graph"
@@ -244,10 +208,6 @@
     },
     {
       "env": {},
-      "events": [
-        "pull-request",
-        "push"
-      ],
       "id": "javascript",
       "needs": [
         "graph"
@@ -276,10 +236,6 @@
     },
     {
       "env": {},
-      "events": [
-        "pull-request",
-        "push"
-      ],
       "id": "tests-fast",
       "needs": [
         "graph"
@@ -308,10 +264,6 @@
     },
     {
       "env": {},
-      "events": [
-        "pull-request",
-        "push"
-      ],
       "id": "ownership",
       "needs": [
         "python",
@@ -346,10 +298,6 @@
     },
     {
       "env": {},
-      "events": [
-        "pull-request",
-        "push"
-      ],
       "id": "manifests",
       "needs": [
         "python",
@@ -385,10 +333,6 @@
     },
     {
       "env": {},
-      "events": [
-        "pull-request",
-        "push"
-      ],
       "id": "ansible",
       "needs": [
         "python",
@@ -424,10 +368,6 @@
     },
     {
       "env": {},
-      "events": [
-        "pull-request",
-        "push"
-      ],
       "id": "tests-medium",
       "needs": [
         "python",
@@ -463,16 +403,13 @@
     },
     {
       "env": {},
-      "events": [
-        "pull-request",
-        "push"
-      ],
       "id": "tests-cluster",
       "needs": [
         "ownership",
         "manifests",
         "ansible",
-        "tests-medium"
+        "tests-medium",
+        "dependencies"
       ],
       "policy": {
         "approvals": {
@@ -498,12 +435,16 @@
     },
     {
       "env": {},
-      "events": [
-        "push"
-      ],
       "id": "dependencies",
       "needs": [
-        "tests-cluster"
+        "python",
+        "yaml",
+        "shell",
+        "workflow",
+        "secrets",
+        "docker",
+        "javascript",
+        "tests-fast"
       ],
       "policy": {
         "approvals": {

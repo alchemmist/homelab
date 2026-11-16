@@ -220,6 +220,7 @@ nodes:
     - manifests
     - ansible
     - tests-medium
+    - dependencies
     results:
       junit: reports/tests-cluster.xml
   dependencies:
@@ -227,9 +228,6 @@ nodes:
     profile: default
     run: uv run python scripts/quality/lint.py dependencies
     policy: *id001
-    needs:
-    - tests-cluster
+    needs: *id002
     results:
       native: reports/dependencies.json
-    events:
-    - push
