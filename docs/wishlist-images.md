@@ -67,3 +67,12 @@ Historical extraneous ConfigMap/wishlist remains OutOfSync/not pruned. Both actu
 Deployments, private service/policy, resource limits, isolated scratch/cache and
 end-to-end payload/telemetry delivery independently checked. Structured evidence:
 `deploy/monitoring/migration-evidence/wishlist-images-20261116.json`.
+
+Final raw Tempo verification confirmed numeric `image.input.bytes`,
+`image.output.bytes`, and `image.engine.milliseconds` survived the central privacy
+scrubber for both master/preview. An anonymous12-byte empty telemetry POST with a
+deliberate2.2s client-body delay returned204; trace
+`1a845075e48f62279d6c99e7edc3a40e` retained actual
+`wishlist.upload.bytes=12` and `wishlist.upload.receive_seconds=2.100554...`.
+This explicitly verifies the renamed receive fields end-to-end; artificial slow
+probe is NOT an upload benchmark and did not create/change any gift.

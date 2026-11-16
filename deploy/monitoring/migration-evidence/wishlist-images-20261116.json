@@ -136,5 +136,53 @@
     "Existing shared 30s tail sampling/normal10% and bounded queues retained. Fast browser capture is not a lossless telemetry audit.",
     "Initial image pull during Recreate caused temporary503; sync-wave-1 now warms same-node optimizer image before stopping web. Single-pod SQLite is not zero-downtime HA.",
     "Historical extraneous ConfigMap/wishlist still OutOfSync. Desired Deployments/Service/NetworkPolicy and actual payload/trace delivery were verified; no blanket prune."
-  ]
+  ],
+  "numericAttributePrivacyAcceptance": {
+    "imageProcessingNumericAttributesSurvivedPrivacy": [
+      {
+        "name": "image.optimize.master",
+        "attributes": {
+          "image.engine.milliseconds": {
+            "doubleValue": 67.65
+          },
+          "image.input.bytes": {
+            "intValue": "12742"
+          },
+          "image.output.bytes": {
+            "intValue": "274"
+          }
+        }
+      },
+      {
+        "name": "image.optimize.preview",
+        "attributes": {
+          "image.engine.milliseconds": {
+            "doubleValue": 63.75
+          },
+          "image.input.bytes": {
+            "intValue": "274"
+          },
+          "image.output.bytes": {
+            "intValue": "936"
+          }
+        }
+      }
+    ],
+    "receiveProbe": {
+      "traceId": "1a845075e48f62279d6c99e7edc3a40e",
+      "status": 204,
+      "syntheticDelaySeconds": 2.2,
+      "latencyBenchmark": false,
+      "bodyBytes": 12,
+      "attributes": {
+        "wishlist.upload.bytes": {
+          "intValue": "12"
+        },
+        "wishlist.upload.receive_seconds": {
+          "doubleValue": 2.100554156990256
+        }
+      }
+    },
+    "databaseMutated": false
+  }
 }
