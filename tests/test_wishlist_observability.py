@@ -23,6 +23,10 @@ class WishlistObservabilityTests(unittest.TestCase):
         pipeline = (ROOT/'charts/monitoring-k3s/templates/_tv-native-metrics.tpl').read_text()
         self.assertEqual(pipeline.count('job_name: wishlist'),1)
         self.assertEqual(pipeline.count('wishlist.wishlist.svc.cluster.local:8001'),1)
+        policy = (ROOT/'charts/monitoring-k3s/templates/activity-metrics.yaml').read_text()
+        self.assertIn('kubernetes.io/metadata.name: wishlist', policy)
+        self.assertIn('app.kubernetes.io/instance: wishlist', policy)
+        self.assertIn('port: 8001', policy)
         for path in (ROOT/'charts/wishlist/templates').glob('*'):
             self.assertNotIn('kind: ServiceMonitor',path.read_text())
 

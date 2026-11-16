@@ -162,6 +162,17 @@ spec:
     - to:
         - namespaceSelector:
             matchLabels:
+              kubernetes.io/metadata.name: wishlist
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: wishlist
+              app.kubernetes.io/instance: wishlist
+      ports:
+        - port: 8001
+          protocol: TCP
+    - to:
+        - namespaceSelector:
+            matchLabels:
               kubernetes.io/metadata.name: argocd
           podSelector:
             matchLabels:
