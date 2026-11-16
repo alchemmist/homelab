@@ -16,6 +16,8 @@ spec:
         app: blog-updates-worker
     spec:
       automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: socrat-5
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000

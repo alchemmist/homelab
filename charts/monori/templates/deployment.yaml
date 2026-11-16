@@ -73,7 +73,7 @@ spec:
         - name: {{ . }}
         {{- end }}
       {{- end }}
-      nodeSelector: { kubernetes.io/hostname: socrat-0 }
+      nodeSelector: { kubernetes.io/hostname: {{ .Values.frontNodeName | quote }} }
       containers:
       - name: front
         image: {{ include "monori.image" .Values.images.front }}

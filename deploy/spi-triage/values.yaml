@@ -10,6 +10,11 @@ s3Evidence:
   writerSecret: spi-evidence-writer
 queueUI:
   enabled: true
+  nodeName: socrat-5
+  # Preserve issuer/SNI/TLS; avoid the unreliable public-edge path from5.
+  hostAliases:
+  - ip: 10.43.218.222
+    hostnames: [auth.socrat.alchemmist.xyz]
   oidc:
     # Prepared under the Git-owned SPI reconciliation hold.
     enabled: true

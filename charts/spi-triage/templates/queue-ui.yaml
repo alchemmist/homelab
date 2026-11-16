@@ -28,6 +28,10 @@ spec:
     spec:
       automountServiceAccountToken: false
       enableServiceLinks: false
+      {{- with .Values.queueUI.hostAliases }}
+      hostAliases:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       nodeSelector:
         kubernetes.io/hostname: {{ .Values.queueUI.nodeName | quote }}
       {{- $pull := ternary .Values.imagePullSecrets .Values.legacyImagePullSecrets .Values.bundleEnabled }}

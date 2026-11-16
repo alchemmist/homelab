@@ -1,3 +1,4 @@
+frontNodeName: socrat-5
 images:
   front:
     repository: harbor.socrat.alchemmist.xyz/homelab/monori
