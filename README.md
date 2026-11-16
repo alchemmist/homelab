@@ -41,7 +41,7 @@ ansible/
     users.yml
     starship.yml
     k3s.yml
-    rancher.yml
+    rancher.yml            # retired refusal-only entrypoint; Rancher is Git-owned
     site.yml
   roles/
     base/

@@ -38,7 +38,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: f1869c7546853a6076e0bd3c8e5e4d6a3e5cf5d5d2ddbcfea29efddd9ff53180
+          graph-digest: ceffe770794009c3925ef320fd803162fe4d97cdb17cf55c4e22d53478872c7f
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -83,7 +83,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: f1869c7546853a6076e0bd3c8e5e4d6a3e5cf5d5d2ddbcfea29efddd9ff53180
+          graph-digest: ceffe770794009c3925ef320fd803162fe4d97cdb17cf55c4e22d53478872c7f
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -128,7 +128,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: f1869c7546853a6076e0bd3c8e5e4d6a3e5cf5d5d2ddbcfea29efddd9ff53180
+          graph-digest: ceffe770794009c3925ef320fd803162fe4d97cdb17cf55c4e22d53478872c7f
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -184,7 +184,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: f1869c7546853a6076e0bd3c8e5e4d6a3e5cf5d5d2ddbcfea29efddd9ff53180
+          graph-digest: ceffe770794009c3925ef320fd803162fe4d97cdb17cf55c4e22d53478872c7f
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -229,7 +229,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: f1869c7546853a6076e0bd3c8e5e4d6a3e5cf5d5d2ddbcfea29efddd9ff53180
+          graph-digest: ceffe770794009c3925ef320fd803162fe4d97cdb17cf55c4e22d53478872c7f
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -276,6 +276,8 @@ jobs:
 
           uv run python -m unittest discover -s tests -p test_refactor_acceptance.py
 
+          uv run python -m unittest discover -s tests -p test_deployment_ownership.py
+
           '
         name: Run Offline infrastructure ownership, placement and issuer contracts
         id: quality-command
@@ -291,7 +293,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: f1869c7546853a6076e0bd3c8e5e4d6a3e5cf5d5d2ddbcfea29efddd9ff53180
+          graph-digest: ceffe770794009c3925ef320fd803162fe4d97cdb17cf55c4e22d53478872c7f
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -343,7 +345,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: f1869c7546853a6076e0bd3c8e5e4d6a3e5cf5d5d2ddbcfea29efddd9ff53180
+          graph-digest: ceffe770794009c3925ef320fd803162fe4d97cdb17cf55c4e22d53478872c7f
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'

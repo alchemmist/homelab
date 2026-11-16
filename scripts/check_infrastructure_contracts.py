@@ -65,6 +65,7 @@ def check(root=ROOT, write=False):
     route = c['issuerTransport']
     ipaddress.ip_address(route['ip'])
     seen = set()
+    pending = {}
     for consumer in route['consumers']:
         file = consumer['file']
         identity = (file, tuple(consumer['path']))
@@ -91,7 +92,27 @@ def check(root=ROOT, write=False):
             if not write:
                 raise ValueError('Issuer IP drift: ' + file)
             scalar = scalar_node(node, 'ip')
-            target.write_text(text[:scalar.start_mark.index] + route['ip'] + text[scalar.end_mark.index:])
+            original, edits = pending.setdefault(target, (text, []))
+            if original != text:
+                raise ValueError('Consumer changed during validation: ' + file)
+            edits.append((scalar.start_mark.index, scalar.end_mark.index, route['ip']))
+    # Validate every consumer before changing any file. A late scope error must
+    # not leave a partly regenerated configuration behind.
+    rendered = {}
+    for target, (original, edits) in pending.items():
+        previous = len(original) + 1
+        result = original
+        for start, end, replacement in sorted(edits, reverse=True):
+            if end > previous:
+                raise ValueError('Overlapping registered issuer scalars')
+            result = result[:start] + replacement + result[end:]
+            previous = start
+        rendered[target] = result
+    for target, (original, _) in pending.items():
+        if target.read_text() != original:
+            raise ValueError('Consumer changed before regeneration: ' + str(target.relative_to(root)))
+    for target, result in rendered.items():
+        target.write_text(result)
     return len(seen)
 
 def main():

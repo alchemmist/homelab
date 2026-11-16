@@ -81,3 +81,7 @@ expected codes (Publish-only STORAGE_TRANSIENT сохранён, workflow не �
 Поэтапный статус и открытые работы: [implementation checkpoint](../docs/infra-refactor-progress-20261116.md).
 Публичная Wiki: устаревший текст подтверждён HTTP200; [проект правки](../docs/wiki-public-refactor-proposal-20261116.md),
 публикация требует штатного native write-scoped подключения, которого в этой сессии нет.
+
+Продолжение по запросу владельца: бэкапы пока не делать. Legacy Rancher installer
+выведен в fail-closed refusal-only entrypoint; CI проверяет отсутствие последующих
+plays/imports и согласованность Argo bootstrap version/values с Git Application.

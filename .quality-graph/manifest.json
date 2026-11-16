@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "f1869c7546853a6076e0bd3c8e5e4d6a3e5cf5d5d2ddbcfea29efddd9ff53180",
+  "graphDigest": "ceffe770794009c3925ef320fd803162fe4d97cdb17cf55c4e22d53478872c7f",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -158,7 +158,7 @@
         "adapter": "exit-code"
       },
       "step": {
-        "run": "command -v helm\nuv run python scripts/check_infrastructure_contracts.py\nuv run python -m unittest discover -s tests -p test_infrastructure_contracts.py\nuv run python -m unittest discover -s tests -p test_vm105_management.py\nuv run python -m unittest discover -s tests -p test_socrat5_app_placement.py\nuv run python -m unittest discover -s tests -p test_argocd_refresh.py\nuv run python -m unittest discover -s tests -p test_refactor_acceptance.py\n"
+        "run": "command -v helm\nuv run python scripts/check_infrastructure_contracts.py\nuv run python -m unittest discover -s tests -p test_infrastructure_contracts.py\nuv run python -m unittest discover -s tests -p test_vm105_management.py\nuv run python -m unittest discover -s tests -p test_socrat5_app_placement.py\nuv run python -m unittest discover -s tests -p test_argocd_refresh.py\nuv run python -m unittest discover -s tests -p test_refactor_acceptance.py\nuv run python -m unittest discover -s tests -p test_deployment_ownership.py\n"
       },
       "timeoutMinutes": 5,
       "title": "Offline infrastructure ownership, placement and issuer contracts"

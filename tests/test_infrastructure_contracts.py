@@ -38,6 +38,34 @@ class InfrastructureContracts(unittest.TestCase):
             contract.check(root, write=True)
             self.assertEqual(p.read_text(), original)
 
+    def test_late_scope_error_leaves_earlier_drifted_files_untouched(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = self.fixture(d)
+            c = json.loads((root/'deploy/contracts/infrastructure.json').read_text())
+            first = root/c['issuerTransport']['consumers'][0]['file']
+            first.write_text(first.read_text().replace('10.43.218.222', '10.43.218.223'))
+            last = root/c['issuerTransport']['consumers'][-1]['file']
+            last.write_text(last.read_text().replace('[auth.socrat.alchemmist.xyz]',
+                                                     '[auth.socrat.alchemmist.xyz, other.example]'))
+            before = {p:p.read_bytes() for p in root.rglob('*') if p.is_file()}
+            with self.assertRaisesRegex(ValueError, 'scope widened'):
+                contract.check(root, write=True)
+            self.assertEqual(before, {p:p.read_bytes() for p in before})
+
+    def test_multiple_registered_scalars_in_one_file_are_preserved(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = self.fixture(d)
+            config = root/'deploy/contracts/infrastructure.json'
+            c = json.loads(config.read_text())
+            first = c['issuerTransport']['consumers'][0]
+            p = root/first['file']
+            expected = p.read_text() + "\ncontractTestAliases:\n  - ip: 10.43.218.222\n    hostnames: [auth.socrat.alchemmist.xyz]\n"
+            p.write_text(expected.replace('10.43.218.222','10.43.218.223'))
+            c['issuerTransport']['consumers'].append({'file':first['file'],'path':['contractTestAliases']})
+            config.write_text(json.dumps(c))
+            self.assertEqual(contract.check(root, write=True), 10)
+            self.assertEqual(p.read_text(), expected)
+
     def test_scope_widening_not_regenerated(self):
         with tempfile.TemporaryDirectory() as d:
             root = self.fixture(d)

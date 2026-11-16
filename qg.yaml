@@ -60,6 +60,7 @@ nodes:
       uv run python -m unittest discover -s tests -p test_socrat5_app_placement.py
       uv run python -m unittest discover -s tests -p test_argocd_refresh.py
       uv run python -m unittest discover -s tests -p test_refactor_acceptance.py
+      uv run python -m unittest discover -s tests -p test_deployment_ownership.py
 
   wishlist-observability:
     title: Wishlist private metrics and dedicated OTel identity
