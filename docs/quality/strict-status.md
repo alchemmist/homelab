@@ -50,6 +50,18 @@ These are blocking. They are not an allowlist.
 - `tests/test_quality_system.py:162`
 - `tests/test_quality_system.py:168`
 
+## Policy delta after the initial strict snapshot
+
+The 117026 count above is the last full-tree audit. It was not rerun for this commit. Later partitions will see additional findings from rules that are now enabled: yamllint `document-end`, implicit-octal rejection, float values that omit the leading numeral, comment and document-start errors, and kube-linter `sorted-keys`. Those are applicable style checks. They do not change single-writer, replica, admission, or public role-variable behavior.
+
+`quality/strict-policy.json` records three yamllint rules that stay disabled because they conflict with another enforced rule or with load-bearing types: `key-ordering` (ansible-lint `key-order`), `empty-values` (least-privilege `permissions: {}`), and `quoted-strings` (quotes change scalar types). Ansible `var-naming`, `role-name`, and `name[prefix]` stay off because they rename external task and variable interfaces. The kube-linter replica, rolling-update, exposure, DNS, affinity, restart-policy, and unlocked-schema omissions stay off for the same architecture reasons as the initial snapshot.
+
+The mypy adapter no longer treats exit 2 as a finished audit of all 648 owned Python files. A syntax error is recorded for that file and the other files are still type-checked.
+
 ## Blockers
 
-No tool or configuration blocker remains. Kind, curated suites other than the two quality tests above, and the five source partitions were not cleaned or signed off. Missing stack checks, not counted as passes: ESLint, Prettier execution, a separate Bandit run, Vulture, and mutation tests. `quality/rules.json` is not the enforcement catalog. `qg.yaml` was not changed and was not registered through trusted-base.
+Generated `.github/workflows/quality-graph-publish.yml` is a real blocker. `quality-graph-github==0.2.0` `_publication_workflow` hardcodes `workflow_run` (`requested`, `completed`) and `issue_comment` (`created`, `edited`), plus job permissions with no comment. `qg.yaml` cannot change that surface. Hand-editing the generated file would be overwritten by `qg generate`, and this partition does not widen `actions: write`. On this tree `zizmor --persona auditor` reports `dangerous-triggers` once and `undocumented-permissions` twice for that file. Those findings are not waived. Generated workflows are not trusted code.
+
+The same zizmor run still reports `anonymous-definition` and `concurrency-limits` on `observer-profile.yml` and `vpn-hardening.yml`. Those files belong to the workflows partition, not this policy ownership.
+
+Kind, curated suites other than the two quality tests, and the five source partitions were not cleaned or signed off. Missing stack checks, not counted as passes: ESLint, Prettier execution, a separate Bandit run, and Vulture. Architecture mutation tests now cover unregistered issuer aliases, inventory and relay drift, duplicate Application identity, unclassified Helm provisioning, a retired play that stops refusing, and vendor hash drift. `quality/rules.json` is not the enforcement catalog. `qg.yaml` was not changed and was not registered through trusted-base.

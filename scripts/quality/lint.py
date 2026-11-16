@@ -157,31 +157,85 @@ def mypy_argv(files):
     ]
 
 
-def mypy_once(files, timeout):
+def mypy_status(parsed, code, text):
+    """Separate a finished type-check from a fatal run that did not cover its files."""
+    if any(
+        marker in text
+        for marker in (
+            "Duplicate module",
+            "Traceback (most recent call last)",
+            "INTERNAL ERROR",
+        )
+    ):
+        return "incomplete"
+    if code in (0, 1):
+        return "complete"
+    if code == 2 and parsed and all(item["ruleId"] == "syntax" for item in parsed):
+        return "syntax"
+    return "incomplete"
+
+
+def mypy_invoke(files, timeout):
     process = command(mypy_argv(files), allowed=(0, 1, 2), timeout=timeout)
     parsed = parse_mypy(process.stdout) + parse_mypy(process.stderr)
-    duplicate = "Duplicate module" in process.stdout or "Duplicate module" in process.stderr
-    if process.returncode == 2 and duplicate:
-        return None
-    if process.returncode == 2 and not parsed:
-        raise RuntimeError("mypy failed")
-    return parsed
+    text = process.stdout + "\n" + process.stderr
+    return parsed, mypy_status(parsed, process.returncode, text)
 
 
-def mypy_findings(files):
-    parsed = mypy_once(files, 2400)
-    if parsed is not None:
+def python_syntax_findings(files):
+    """Real parser failures. They must not abort type-checking of every other file."""
+    findings = []
+    clean = []
+    for name in files:
+        source = (ROOT / name).read_text()
+        try:
+            ast.parse(source, filename=name)
+        except (SyntaxError, ValueError) as error:
+            line = error.lineno if isinstance(error, SyntaxError) and error.lineno else 1
+            findings.append(
+                finding(
+                    "python-syntax",
+                    name,
+                    line,
+                    "Python parser rejected this file before type checking.",
+                )
+            )
+        else:
+            clean.append(name)
+    return findings, clean
+
+
+def mypy_on(files, timeout):
+    if not files:
+        return []
+    parsed, status = mypy_invoke(files, timeout)
+    if status == "complete":
         return parsed
+    if len(files) == 1:
+        if status == "syntax":
+            return parsed
+        raise RuntimeError("mypy coverage incomplete")
     groups = {}
     for name in files:
         groups.setdefault(str(Path(name).parent), []).append(name)
+    if len(groups) == 1 or len(groups) == len(files):
+        result = []
+        for name in files:
+            result.extend(mypy_on([name], min(timeout, 180)))
+        return result
     result = []
     for group in groups.values():
-        item = mypy_once(group, 300)
-        if item is None:
-            raise RuntimeError("mypy failed")
-        result.extend(item)
+        result.extend(mypy_on(group, min(timeout, 600)))
     return result
+
+
+def mypy_findings(files):
+    syntax, remaining = python_syntax_findings(files)
+    syntax_names = {item["location"]["path"] for item in syntax}
+    if syntax_names | set(remaining) != set(files) or syntax_names & set(remaining):
+        raise RuntimeError("mypy coverage incomplete")
+    # Exit 2 is a fatal mypy stop. Retry smaller sets instead of keeping a partial report.
+    return syntax + mypy_on(remaining, 2400)
 
 
 def format_findings(files):

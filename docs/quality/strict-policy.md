@@ -17,15 +17,31 @@ Monori (`/Users/antonmoss/code/monori`) is the reference for strict Python, read
 - `**/tests/**` ignores only `S101`.
 - mypy `2.4.1` uses `strict` plus `warn_unreachable`, `explicit_package_bases`, `disallow_any_explicit`, `disallow_any_unimported`, `disallow_any_decorated`, `strict_equality_for_none`, and the extra error codes in `quality/mypy.ini`.
 - The config file does not set `follow_imports`, `ignore_missing_imports`, or `disable_error_code`. The adapter passes every owned Python file and `--follow-imports=silent` so imported modules that are themselves in that set still report. Missing third-party stubs stay `import-untyped` findings. Stubs are not installed to hide them.
+- A syntax error is a source finding for that file. It is parsed first so mypy's fatal exit 2 cannot drop the rest of the owned set. If mypy still stops (`Duplicate module`, an internal traceback, or exit 2), the adapter retries by directory and then by file. A batch that exits 2 is never stored as a complete audit. `mypy coverage incomplete` is a tool failure, distinct from source findings. The owned-file count is claimed only after every file was examined.
 - There is no Ruff `exclude`. Vendor trees are omitted by `deploy/contracts/vendors.json` before invocation. Owned paths are never reclassified as vendor.
 
 ## YAML, shell, workflows, Docker, JavaScript
 
-yamllint `1.38.0` extends `default`, so `document-start`, indentation, and comment rules are on. `line-length.max` is 100, the same length Ruff uses, not the yamllint default of 80 and not a disable. Truthy values are only `true` and `false`. `check-keys: false` is required because GitHub Actions and several schemas use the key `on`, which is a truthy word and not a boolean value. Helm and Ansible templates under `/templates/` and `*.j2` are not parsed as YAML.
+yamllint `1.38.0` extends `default`. `line-length.max` is 100, the same length Ruff uses, not the yamllint default of 80. Truthy values are only `true` and `false`. `check-keys: false` is required because GitHub Actions and several schemas use the key `on`, which is a truthy word and not a boolean value. Comment, comment-indentation, document-start, and truthy findings are errors. `document-end` requires the document end marker. Implicit octal values are rejected; explicit `0o` forms stay allowed because they are the unambiguous spelling. Floats must have a numeral before the decimal point. Scientific notation, NaN, and infinity stay allowed because forbidding them would reject real numeric data. Helm and Ansible templates under `/templates/` and `*.j2` are not parsed as YAML.
+
+Three default-disabled rules stay off, each for a conflict rather than taste:
+
+- `key-ordering` cannot pass together with ansible-lint `key-order`. Task mappings use that semantic order, not Unicode alphabetical order.
+- `empty-values` flags empty mappings. `permissions: {}` is the least-privilege workflow default; treating it as a defect would pressure a wider token.
+- `quoted-strings` is not semantics-preserving. Required quotes turn booleans, numbers, and the GitHub `on` key into strings.
 
 Shellcheck uses `--enable=all` on `*.sh` and shell shebangs. Jinja templates are not shellchecked. Inline workflow scripts are parsed as Python or checked with the pinned shell dialect. An unrecognized shell is `workflow-shell-unreviewed`, not a skip.
 
-Workflow security uses `zizmor --persona auditor`. Expression syntax uses actionlint without a second shellcheck or pyflakes pass. hadolint `failure-threshold` is `style` and `ignored` is empty. The single `DL3064` exception is the exact line `ENV TOKENIZERS_PARALLELISM=false RAYON_NUM_THREADS=1 PYTHONPATH=/app` in `services/spi-tokenizer/Dockerfile`. Any other line fails. JavaScript is `node --check` only.
+Workflow security uses `zizmor --persona auditor` on the whole `.github/workflows` directory. Generated files are included. There is no rule allowlist and no generated-file waiver. Expression syntax uses actionlint without a second shellcheck or pyflakes pass. hadolint `failure-threshold` is `style` and `ignored` is empty. The single `DL3064` exception is the exact line `ENV TOKENIZERS_PARALLELISM=false RAYON_NUM_THREADS=1 PYTHONPATH=/app` in `services/spi-tokenizer/Dockerfile`. Any other line fails. JavaScript is `node --check` only.
+
+`quality-graph-github` `0.2.0` function `_publication_workflow` hardcodes `.github/workflows/quality-graph-publish.yml`. `qg.yaml` can pin the action digest. It has no field for publisher triggers, permission comments, or a narrower publisher token. The generated file is marked `DO NOT EDIT MANUALLY` and `qg generate` overwrites hand edits. The current generated surface, which remains blocking, is:
+
+- triggers: `workflow_run` types `requested` and `completed` for workflow `Quality Graph`, plus `issue_comment` types `created` and `edited`
+- top-level `permissions: {}`
+- job `publish`: `actions: read`, `checks: write`, `contents: read`, `issues: write`, `pull-requests: write`
+- job `command`: `actions: write`, `contents: read`, `issues: write`, `pull-requests: write`
+
+`zizmor --persona auditor` reports `dangerous-triggers` on that `on` block and `undocumented-permissions` on both job permission blocks, because the compiler emits no explanatory comment. Opaque generated workflows are not trusted code. This policy does not waive those results and does not widen the token. Clearing them requires a compiler change that can express the same publisher contract with a documented, reviewed permission comment and without treating `workflow_run` or `issue_comment` as invisible.
 
 Not adopted, and not counted as a pass: ESLint, Prettier execution, Bandit beside Ruff `S`, Vulture, and mutation testing. Those need a reviewed tool lock or a test-owned change. This configuration does not add them.
 
@@ -60,13 +76,14 @@ Omitted optional checks, with the conflict:
 - `no-node-affinity` and `priority-class-name` invent scheduler policy this tree does not have.
 - `required-annotation-email` and `required-label-owner` are organization metadata, not runtime controls.
 - `schema-validation` would use kube-linter's unlocked schemas. kubeconform with the checksum-locked Kubernetes 1.36.0 schemas stays authoritative.
-- `sorted-keys` is alphabetical cosmetics, not an admission property.
+
+`sorted-keys` is enabled. Alphabetical manifest keys are a consistency rule with no single-writer, replica, or admission effect. Findings stay on the manifests partition; this change does not reorder manifests.
 
 `writable-host-mount` and privileged-port checks are enabled. Reporting them does not weaken mount, existing-data, or single-writer guards, and this change does not edit those guards.
 
 ## Suppressions and secrets
 
-`scripts/quality/strict_guard.py` fails the configuration when tool pins, rule partitions, vendor prefixes, or the reviewed secret false-positive digest drift. Inline `noqa`, `type: ignore`, `nosec`, shellcheck, yamllint, hadolint, kube-linter, and ansible-lint suppressions are blocking findings. They are not a baseline. Existing hits remain for the source partitions; this change does not delete them and does not add new ones.
+`scripts/quality/strict_guard.py` fails the configuration when tool pins, rule partitions, vendor prefixes, the reviewed secret false-positive digest, the yamllint enable/disable contract, or the generated publisher surface drift. Inline `noqa`, `type: ignore`, `nosec`, shellcheck, yamllint, hadolint, kube-linter, and ansible-lint suppressions are blocking findings. They are not a baseline. Existing hits remain for the source partitions; this change does not delete them and does not add new ones. A fatal mypy run cannot be reported as full coverage of the owned Python files.
 
 Secret matches still pass only on an exact id, path, and rule in `quality/secret-false-positives.json`. The digest of that file is pinned in the strict policy.
 

@@ -1,7 +1,10 @@
 """Offline adversarial contracts for repository CI; no production commands."""
 
+import hashlib
+import importlib.util
 import json
 from pathlib import Path
+import shutil
 import sys
 from unittest.mock import patch
 
@@ -296,3 +299,348 @@ def test_graph_is_cost_layered_and_titles_are_semantic():
         "dependencies",
     }
     assert not any("shard" in n for n in graph)
+
+
+def _load_checker(name):
+    path = ROOT / "scripts" / name
+    spec = importlib.util.spec_from_file_location(name.removesuffix(".py"), path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _infra_files():
+    contract = json.loads((ROOT / "deploy/contracts/infrastructure.json").read_text())
+    names = [
+        "deploy/contracts/infrastructure.json",
+        contract["meshRegistry"],
+        contract["ansibleInventory"],
+    ]
+    relay = contract["relayContract"]
+    for key in (
+        "relayScript",
+        "endpointScript",
+        "frontHostVars",
+        "targetHostVars",
+        "serviceFile",
+        "installPlaybook",
+    ):
+        names.append(relay[key])
+    for consumer in contract["issuerTransport"]["consumers"]:
+        names.append(consumer["file"])
+    return names
+
+
+def _copy_rels(tmp_path, names):
+    for name in names:
+        target = tmp_path / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / name, target)
+
+
+def test_new_issuer_alias_is_invisible_to_the_registered_list(tmp_path):
+    """A new alias must fail even when every previously registered consumer still matches."""
+    import boundaries
+
+    infra = _load_checker("check_infrastructure_contracts.py")
+    _copy_rels(tmp_path, _infra_files())
+    rogue = tmp_path / "deploy/new-issuer-consumer/values.yaml"
+    rogue.parent.mkdir(parents=True)
+    rogue.write_text(
+        "hostAliases:\n  - ip: 10.43.218.222\n    hostnames: [auth.socrat.alchemmist.xyz]\n"
+    )
+    assert infra.check(tmp_path) == 9
+    with pytest.raises(ValueError, match="Unregistered issuer transport consumer"):
+        boundaries.check(tmp_path)
+
+
+def test_mesh_address_drift_fails_the_inventory_contract(tmp_path):
+    """Changing a mesh address without the inventory is a boundary failure."""
+    import yaml
+
+    infra = _load_checker("check_infrastructure_contracts.py")
+    _copy_rels(tmp_path, _infra_files())
+    contract = json.loads((tmp_path / "deploy/contracts/infrastructure.json").read_text())
+    mesh_path = tmp_path / contract["meshRegistry"]
+    text = mesh_path.read_text()
+    mesh = yaml.safe_load(text)["wg_socrat_nodes"]
+    reserved = set(contract["sshEndpointFromPublicPeer"]) | {
+        contract["relayContract"][key] for key in ("frontNode", "clientNode", "targetNode")
+    }
+    name = next(node for node in mesh if node not in reserved and text.count(str(mesh[node]["address"])) == 1)
+    old = str(mesh[name]["address"])
+    mesh_path.write_text(text.replace(old, "203.0.113.10", 1))
+    with pytest.raises(ValueError, match="drift"):
+        infra.check(tmp_path)
+
+
+def test_relay_lan_target_drift_fails(tmp_path):
+    """The relay target must stay on the canonical mesh address, not a substituted LAN value."""
+    import yaml
+
+    infra = _load_checker("check_infrastructure_contracts.py")
+    _copy_rels(tmp_path, _infra_files())
+    contract = json.loads((tmp_path / "deploy/contracts/infrastructure.json").read_text())
+    path = tmp_path / contract["relayContract"]["targetHostVars"]
+    text = path.read_text()
+    old = str(yaml.safe_load(text)["homelab_ssh_private_host"])
+    assert text.count(old) == 1
+    path.write_text(text.replace(old, "203.0.113.20", 1))
+    with pytest.raises(ValueError, match="relay"):
+        infra.check(tmp_path)
+
+
+def test_duplicate_issuer_alias_fails(tmp_path):
+    """A second issuer alias inside a registered consumer is still a scope failure."""
+    import yaml
+
+    infra = _load_checker("check_infrastructure_contracts.py")
+    _copy_rels(tmp_path, _infra_files())
+    path = tmp_path / "deploy/lms/values.yaml"
+    value = yaml.safe_load(path.read_text())
+    value["hostAliases"].append(dict(value["hostAliases"][0]))
+    path.write_text(yaml.safe_dump(value))
+    with pytest.raises(ValueError, match="issuer alias"):
+        infra.check(tmp_path)
+
+
+def _pointer_fixture(tmp_path, document):
+    import yaml
+
+    chart = tmp_path / "charts/demo"
+    chart.mkdir(parents=True)
+    (chart / "Chart.yaml").write_text("apiVersion: v2\nname: demo\nversion: 0.0.0\n")
+    (chart / "values.yaml").write_text("image: demo-image-1\n")
+    apps = tmp_path / "deploy/argocd/apps"
+    apps.mkdir(parents=True)
+    app = {
+        "apiVersion": "argoproj.io/v1alpha1",
+        "kind": "Application",
+        "metadata": {"name": "demo", "namespace": "argocd"},
+        "spec": {
+            "source": {
+                "repoURL": "https://example.invalid/repo.git",
+                "path": "charts/demo",
+                "targetRevision": "main",
+            }
+        },
+    }
+    (apps / "demo.yaml").write_text(yaml.safe_dump(app))
+    root_app = {
+        "apiVersion": "argoproj.io/v1alpha1",
+        "kind": "Application",
+        "metadata": {"name": "root", "namespace": "argocd"},
+        "spec": {
+            "source": {
+                "repoURL": "https://example.invalid/repo.git",
+                "path": "deploy/argocd/apps",
+                "targetRevision": "main",
+            }
+        },
+    }
+    (tmp_path / "deploy/argocd/root.yaml").write_text(yaml.safe_dump(root_app))
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs/demo.md").write_text(document)
+    contract = {
+        "schemaVersion": 1,
+        "repoURL": "https://example.invalid/repo.git",
+        "applicationDirectory": "deploy/argocd/apps",
+        "rootApplication": "deploy/argocd/root.yaml",
+        "documents": ["docs/demo.md"],
+        "currentValues": [
+            {
+                "source": "charts/demo/values.yaml",
+                "application": "demo",
+                "path": ["image"],
+                "documents": ["docs/demo.md"],
+            }
+        ],
+    }
+    (tmp_path / "deploy/contracts").mkdir()
+    (tmp_path / "deploy/contracts/source-pointers.json").write_text(json.dumps(contract))
+
+
+def test_duplicate_application_owner_fails(tmp_path):
+    """Two Application manifests with one identity are competing deployment owners."""
+    import yaml
+
+    pointers = _load_checker("check_source_pointers.py")
+    _pointer_fixture(tmp_path, "Current image is `demo-image-1`.\n")
+    first = yaml.safe_load((tmp_path / "deploy/argocd/apps/demo.yaml").read_text())
+    (tmp_path / "deploy/argocd/apps/demo-copy.yaml").write_text(yaml.safe_dump(first))
+    with pytest.raises(ValueError, match="Duplicate Application identity"):
+        pointers.check(tmp_path)
+
+
+def test_authoritative_claim_drift_fails(tmp_path):
+    """Documentation that drops the current value is not an authoritative claim."""
+    pointers = _load_checker("check_source_pointers.py")
+    _pointer_fixture(tmp_path, "Current image is `demo-image-1`.\n")
+    assert pointers.check(tmp_path)[0] == 1
+    (tmp_path / "docs/demo.md").write_text("Current image was removed.\n")
+    with pytest.raises(ValueError, match="Current documentation value drift"):
+        pointers.check(tmp_path)
+
+
+def _retired_play():
+    return [
+        {
+            "name": "Refuse competing provisioning",
+            "hosts": "localhost",
+            "gather_facts": False,
+            "become": False,
+            "any_errors_fatal": True,
+            "tasks": [
+                {
+                    "name": "Stop",
+                    "ansible.builtin.fail": {"msg": "owned by deploy/argocd/apps/demo.yaml"},
+                    "tags": ["always"],
+                }
+            ],
+        }
+    ]
+
+
+def _entrypoint_fixture(tmp_path):
+    import yaml
+
+    app = tmp_path / "deploy/argocd/apps/demo.yaml"
+    app.parent.mkdir(parents=True)
+    app.write_text("kind: Application\n")
+    play = tmp_path / "ansible/playbooks/retired.yml"
+    play.parent.mkdir(parents=True)
+    play.write_text(yaml.safe_dump(_retired_play()))
+    contract = {
+        "schemaVersion": 1,
+        "entries": [
+            {
+                "path": "ansible/playbooks/retired.yml",
+                "status": "retired",
+                "reason": "fixture refuses competing provisioning",
+                "owners": ["demo"],
+            }
+        ],
+    }
+    (tmp_path / "deploy/contracts").mkdir(parents=True)
+    (tmp_path / "deploy/contracts/operational-entrypoints.json").write_text(json.dumps(contract))
+
+
+def test_unclassified_helm_provisioning_fails(tmp_path):
+    """A new literal Helm entrypoint is competing provisioning until it is classified."""
+    ops = _load_checker("check_operational_entrypoints.py")
+    _entrypoint_fixture(tmp_path)
+    assert ops.check(tmp_path) == (1, 0)
+    (tmp_path / "ansible/playbooks/rogue.yml").write_text("name: rogue\ncommand: helm upgrade demo chart\n")
+    with pytest.raises(ValueError, match="Unclassified literal Helm entrypoints"):
+        ops.check(tmp_path)
+
+
+def test_retired_entrypoint_must_keep_refusing(tmp_path):
+    """Removing the refusal task re-opens a retired provisioning path."""
+    import yaml
+
+    ops = _load_checker("check_operational_entrypoints.py")
+    _entrypoint_fixture(tmp_path)
+    play = _retired_play()
+    play[0]["tasks"] = [{"name": "Continue", "ansible.builtin.debug": {"msg": "ran"}}]
+    (tmp_path / "ansible/playbooks/retired.yml").write_text(yaml.safe_dump(play))
+    with pytest.raises(ValueError, match="Retired entrypoint"):
+        ops.check(tmp_path)
+
+
+def test_vendor_byte_drift_fails(tmp_path):
+    """A changed vendored byte is drift, not a silent member of the trusted set."""
+    vendor = _load_checker("check_vendor_contracts.py")
+    tree = tmp_path / "vendor/demo"
+    tree.mkdir(parents=True)
+    payload = b"reviewed-bytes"
+    (tree / "file.txt").write_bytes(payload)
+    contract = {
+        "schemaVersion": 1,
+        "trees": [
+            {
+                "path": "vendor/demo",
+                "basis": "reviewed-git-baseline",
+                "reviewedCommit": "a" * 40,
+                "provenanceNote": "fixture only, not upstream trust",
+                "files": {"file.txt": hashlib.sha256(payload).hexdigest()},
+            }
+        ],
+        "links": {},
+        "linkInventoryGlobs": [],
+    }
+    (tmp_path / "deploy/contracts").mkdir(parents=True)
+    (tmp_path / "deploy/contracts/vendors.json").write_text(json.dumps(contract))
+    assert vendor.check(tmp_path) == 1
+    (tree / "file.txt").write_bytes(b"mutated")
+    with pytest.raises(ValueError, match="Vendor drift"):
+        vendor.check(tmp_path)
+
+
+def test_mypy_syntax_error_does_not_hide_another_file(tmp_path, monkeypatch):
+    """A syntax fatal must not erase type findings from the other owned file."""
+    import common
+    import lint
+
+    common.use_project_tools()
+    (tmp_path / "quality").mkdir()
+    (tmp_path / "quality/mypy.ini").write_text((ROOT / "quality/mypy.ini").read_text())
+    (tmp_path / "pkg_a").mkdir()
+    (tmp_path / "pkg_b").mkdir()
+    (tmp_path / "pkg_a/typed.py").write_text('value: int = "not-an-int"\n')
+    (tmp_path / "pkg_b/broken.py").write_text("def (\n")
+    monkeypatch.setattr(common, "ROOT", tmp_path)
+    monkeypatch.setattr(lint, "ROOT", tmp_path)
+    findings = lint.mypy_findings(["pkg_a/typed.py", "pkg_b/broken.py"])
+    paths = {item["location"]["path"] for item in findings}
+    rules = {item["ruleId"] for item in findings}
+    assert "pkg_a/typed.py" in paths
+    assert "pkg_b/broken.py" in paths
+    assert "assignment" in rules
+    assert "python-syntax" in rules
+
+
+def test_generated_publisher_findings_are_not_waived():
+    """Auditor findings on the generated publisher stay visible and untrusted."""
+    from common import command, use_project_tools
+
+    use_project_tools()
+    policy = json.loads((ROOT / "quality/strict-policy.json").read_text())["generatedWorkflows"]
+    assert policy["trusted"] is False
+    assert policy["waiver"] is False
+    process = command(
+        [
+            "zizmor",
+            "--offline",
+            "--persona",
+            "auditor",
+            "--format",
+            "sarif",
+            policy["publisher"],
+        ],
+        allowed=(0, 1),
+        timeout=60,
+    )
+    data = json.loads(process.stdout)
+    rules = {item["ruleId"] for run in data["runs"] for item in run.get("results", [])}
+    assert set(policy["zizmor"]) <= rules
+    lint_text = (ROOT / "scripts/quality/lint.py").read_text()
+    assert "quality-graph-publish" not in lint_text
+    for rule in policy["zizmor"]:
+        assert rule not in lint_text
+
+
+def test_new_suppression_marker_is_reported(tmp_path, monkeypatch):
+    """A newly added suppression marker is a finding, not configuration success."""
+    import strict_guard
+
+    (tmp_path / "owned.py").write_text("value = 1  # noqa: ANN001\n")
+    monkeypatch.setattr(strict_guard, "ROOT", tmp_path)
+    assert strict_guard.suppression_hits(["owned.py"]) == ["owned.py:1"]
+
+
+def test_strict_configuration_contract_holds():
+    """The live policy, generated publisher surface, and tool pins still match."""
+    import strict_guard
+
+    strict_guard.verify_configuration()

@@ -19,6 +19,7 @@ checks:
     - privileged-ports
     - read-secret-from-env-var
     - scc-deny-privileged-container
+    - sorted-keys
     - unsafe-proc-mount
     - use-namespace
     - wildcard-in-rules

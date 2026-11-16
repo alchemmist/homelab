@@ -5,3 +5,28 @@ rules:
   truthy:
     allowed-values: ['true', 'false']
     check-keys: false
+    level: error
+  comments:
+    level: error
+  comments-indentation:
+    level: error
+  document-start:
+    level: error
+    present: true
+  document-end:
+    level: error
+    present: true
+  octal-values:
+    forbid-implicit-octal: true
+    forbid-explicit-octal: false
+  float-values:
+    require-numeral-before-decimal: true
+    forbid-scientific-notation: false
+    forbid-nan: false
+    forbid-inf: false
+  # Unsatisfiable with ansible-lint key-order on the same mappings.
+  key-ordering: disable
+  # Empty maps are load-bearing. permissions: {} is least privilege, not a null defect.
+  empty-values: disable
+  # Required quotes change booleans, numbers, and the GitHub on key into strings.
+  quoted-strings: disable

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
 import re
 from common import ROOT, tracked
+import boundaries
 
 
 def require(condition, message):
@@ -144,6 +146,21 @@ def check():
             not Path(item["path"]).is_absolute() and ".." not in Path(item["path"]).parts,
             "Unsafe secret exception path",
         )
+    boundaries.check(ROOT)
+    for name in (
+        "check_infrastructure_contracts.py",
+        "check_source_pointers.py",
+        "check_operational_entrypoints.py",
+        "check_vendor_contracts.py",
+    ):
+        path = ROOT / "scripts" / name
+        spec = importlib.util.spec_from_file_location(name.removesuffix(".py"), path)
+        require(spec is not None and spec.loader is not None, "Missing architecture checker")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        checker = getattr(module, "check", None)
+        require(callable(checker), "Missing architecture checker")
+        checker()
     print(
         f"Quality contracts OK: {len(paths)} offline schemas, {len(scheduled)}/{len(actual)} scheduled test modules"
     )

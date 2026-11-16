@@ -114,6 +114,7 @@
       "privileged-ports",
       "read-secret-from-env-var",
       "scc-deny-privileged-container",
+      "sorted-keys",
       "unsafe-proc-mount",
       "use-namespace",
       "wildcard-in-rules",
@@ -130,9 +131,58 @@
       "required-annotation-email": "Organization email annotation. Not a security or runtime property of this repository.",
       "required-label-owner": "Organization owner label. Not a security or runtime property of this repository.",
       "restart-policy": "Requires restartPolicy Always on deployment-like objects. Jobs and CronJobs intentionally use Never or OnFailure.",
-      "schema-validation": "kube-linter ships an unlocked schema set. Checksum-locked kubeconform schemas at Kubernetes 1.36.0 remain the schema authority.",
-      "sorted-keys": "Alphabetical key order is cosmetic and fights reviewed manifest order. It is not a safety or admission property."
+      "schema-validation": "kube-linter ships an unlocked schema set. Checksum-locked kubeconform schemas at Kubernetes 1.36.0 remain the schema authority."
     }
+  },
+  "yamllint": {
+    "enabled": {
+      "line-length": {"max": 100},
+      "truthy": {"allowed-values": ["true", "false"], "check-keys": false, "level": "error"},
+      "comments": {"level": "error"},
+      "comments-indentation": {"level": "error"},
+      "document-start": {"level": "error", "present": true},
+      "document-end": {"level": "error", "present": true},
+      "octal-values": {"forbid-implicit-octal": true, "forbid-explicit-octal": false},
+      "float-values": {
+        "require-numeral-before-decimal": true,
+        "forbid-scientific-notation": false,
+        "forbid-nan": false,
+        "forbid-inf": false
+      }
+    },
+    "disabled": {
+      "key-ordering": "Unsatisfiable beside ansible-lint key-order. Task mappings use that semantic order, not Unicode alphabetical order, so both rules cannot pass on the same mapping.",
+      "empty-values": "Intentional empty mappings are load-bearing. Workflow permissions set to an empty map are least privilege; flagging that map would pressure a wider token.",
+      "quoted-strings": "Forcing quotes turns booleans, numbers, and the GitHub on key into strings. only-when-needed still rewrites intentional quotes inside templates. The rule is not semantics-preserving."
+    }
+  },
+  "generatedWorkflows": {
+    "trusted": false,
+    "waiver": false,
+    "publisher": ".github/workflows/quality-graph-publish.yml",
+    "compiler": "quality-graph-github==0.2.0 _publication_workflow",
+    "triggers": {
+      "workflow_run": {"workflows": ["Quality Graph"], "types": ["requested", "completed"]},
+      "issue_comment": {"types": ["created", "edited"]}
+    },
+    "topPermissions": {},
+    "jobs": {
+      "publish": {
+        "actions": "read",
+        "checks": "write",
+        "contents": "read",
+        "issues": "write",
+        "pull-requests": "write"
+      },
+      "command": {
+        "actions": "write",
+        "contents": "read",
+        "issues": "write",
+        "pull-requests": "write"
+      }
+    },
+    "zizmor": ["zizmor/dangerous-triggers", "zizmor/undocumented-permissions"],
+    "blocker": "The pinned compiler hardcodes workflow_run and issue_comment plus job permissions with no comment field. qg.yaml cannot narrow those triggers or document the token. Hand-editing the generated file is overwritten by qg generate. Findings stay blocking; generated workflows are not trusted code."
   },
   "vendorPaths": [
     "charts/_vendor",
