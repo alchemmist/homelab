@@ -26,3 +26,7 @@ nodeSelector:
 hostNetwork: true
 proxyServer: http://127.0.0.1:8899
 cdpUrl: http://127.0.0.1:9223
+
+browserCandidate:
+  enabled: true
+  image: harbor.socrat.alchemmist.xyz/homelab/venice-browser@sha256:10f6a5c13bfbaee22ae1648d34f454a9537e3f4da5004f7218b2035214f9708b

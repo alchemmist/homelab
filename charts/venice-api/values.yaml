@@ -23,3 +23,7 @@ imagePullSecrets:
   - venice-api-harbor-pull
 nodeSelector:
   kubernetes.io/hostname: socrat-5
+
+browserCandidate:
+  enabled: false
+  image: ""

@@ -1,0 +1,154 @@
+{{- if .Values.browserCandidate.enabled }}
+# Isolated candidate: no Service/Ingress and no hostNetwork.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: venice-browser-retain
+provisioner: rancher.io/local-path
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: venice-browser-profile
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: venice-browser-retain
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: venice-browser-candidate
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: venice-browser-candidate
+  template:
+    metadata:
+      labels:
+        app: venice-browser-candidate
+    spec:
+      hostname: venice-browser
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/hostname: socrat-5
+      terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+      imagePullSecrets:
+        - name: venice-api-harbor-pull
+      containers:
+        - name: chrome
+          image: {{ .Values.browserCandidate.image | quote }}
+          env:
+            - name: PROFILE_DIR
+              value: /data/profile
+            - name: PROXY_SERVER
+              value: socks5://127.0.0.1:1080
+            - name: CDP_PORT
+              value: "9224"
+          readinessProbe:
+            exec:
+              command: [python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9224/json/version', timeout=2).close()"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+          resources:
+            requests: {cpu: 200m, memory: 1Gi}
+            limits: {memory: 3Gi}
+          volumeMounts:
+            - {name: profile, mountPath: /data}
+            - {name: shm, mountPath: /dev/shm}
+            - {name: operator, mountPath: /operator, readOnly: true}
+        - name: egress
+          image: {{ .Values.browserCandidate.image | quote }}
+          command: [ssh]
+          args:
+            - -N
+            - -T
+            - -D
+            - 127.0.0.1:1080
+            - -i
+            - /egress/id_ed25519
+            - -p
+            - "2222"
+            - -o
+            - BatchMode=yes
+            - -o
+            - IdentitiesOnly=yes
+            - -o
+            - StrictHostKeyChecking=yes
+            - -o
+            - UserKnownHostsFile=/egress/known_hosts
+            - -o
+            - HostKeyAlias=[socrat.alchemmist.xyz]:2224
+            - -o
+            - ExitOnForwardFailure=yes
+            - -o
+            - ServerAliveInterval=15
+            - -o
+            - ServerAliveCountMax=3
+            - -o
+            - ConnectTimeout=10
+            - alchemmist@10.250.0.2
+          readinessProbe:
+            exec:
+              command: [python, -c, "import socket; socket.create_connection(('127.0.0.1',1080),2).close()"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 20m, memory: 32Mi}
+            limits: {memory: 128Mi}
+          volumeMounts:
+            - {name: egress, mountPath: /egress, readOnly: true}
+      volumes:
+        - name: profile
+          persistentVolumeClaim:
+            claimName: venice-browser-profile
+        - name: shm
+          emptyDir: {medium: Memory, sizeLimit: 1Gi}
+        - name: operator
+          secret:
+            secretName: venice-browser-operator
+            defaultMode: 0440
+        - name: egress
+          secret:
+            secretName: venice-browser-egress
+            defaultMode: 0440
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: venice-browser-candidate
+spec:
+  podSelector:
+    matchLabels:
+      app: venice-browser-candidate
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress:
+    - to:
+        - ipBlock: {cidr: 10.250.0.2/32}
+      ports:
+        - {protocol: TCP, port: 2222}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+{{- end }}
