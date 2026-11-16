@@ -33,6 +33,8 @@ def stop_signal(*_):raise SystemExit('Interrupted; restoring temporary hold')
 
 def main():
  signal.signal(signal.SIGTERM,stop_signal);signal.signal(signal.SIGINT,stop_signal)
+ d=get(['get','deployment','spi-triage','-n','automation'])
+ if d['spec']['template']['spec'].get('nodeSelector')!={'kubernetes.io/hostname':'socrat-1'}:raise RuntimeError('Historical one-way handoff refuses an already-migrated or unexpected worker')
  a=get(['get','application','spi-triage','-n','argocd'])
  if a['metadata'].get('annotations',{}).get('argocd.argoproj.io/skip-reconcile')=='true':raise RuntimeError('App already held by someone else')
  limit=time.monotonic()+1200;iteration=0

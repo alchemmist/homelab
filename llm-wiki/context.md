@@ -1,37 +1,58 @@
 # Socrat: текущий контекст
 
-## Stateful application batch —16Nov, AUTHORIZED; Wishlist accepted
+## Stateful application batch —16Nov, COMPLETE / CURRENT
 
-Owner authorized ALL6: Wishlist →Wiki runtime →Monori back+sync →SPI worker
-→format-quorum →LiteLLM branding. This is not a new-selection wait; execute one
-at a time with cold consistent handoff and real acceptance. Current checkpoint:
-**Wishlist completed0→5**, others remain at original placements, Wiki preflight
-only (data340796KiB, Git porcelain0). No other writer stopped yet.
+Owner's entire6position batch completed: Wishlist, Wiki runtime, Monori back+
+sync, SPI worker, format-quorum and LiteLLM branding all5, each single Ready
+Pod/restart0 at closeout.9new prebound Retain local PV/PVC pairs. Original
+claims/PVs retained (SPI/branding Delete explicitly protected as Retain), stale
+after5 writes. Monori frontend was already5 and unchanged. LiteLLM+Postgres
+Deployment UID/full specs unchanged; DB0. RustFS stays0, external dependency.
 
-Wishlist source40a11b0f offline/d18440a8 activate. New Retain local claim
-wishlist-socrat5 at /mnt/files/homelab/wishlist/data. Old wishlist-data UID/PV
-NFS0 retained, now stale after5 writes. Independent controller archive3855bytes,
-SHA256651ef1848505ccf4a0d50f4b21d8a9bec7379a3f2803561fc9ed2ebbce73ba1a;
-VM staging hash + restored file/owner/mode/xattr/SQLite seals match. ALL business
-table count/content hashes match before/after, integrity/FK checks pass using
-EXACT app UNICODE_NOCASE normalization. Generic missing-collation probe error
-was not database corruption; no repair/reindex/reset. Read-only WAL source
-query uses temp copies, no original writes.
+Each writer stopped before final cold backup. Independent controller archive,
+VM staging SHA and exact restored file/mode/UID/GID/xattr/SQLite seals verified
+before activation. Wiki includes accounts, accepted live snapshots/pointer,
+Git objects/history/outbox; validator and5Git SSH read passed. Original observer
+OIDC/roles/secrets preserved, scoped issuer alias verifiedTLS, public read+
+Authentik form clean. Monori all15table hashes/integrity/FK match; ALL6encrypted
+credential/session payloads decrypt with existing read-only key, no key creation
+or bank call.2connected/1error bank states pre-existed; no OTP/sync test.
 
-Wishlist1Ready/restart0 Pod5, same digest/env/resources/credentials, fail-closed
-existing DB guard. RustFS bucket/assets remain0; actual5 HEAD bucket+both2photo
-objects200. Narrow app-only issuer alias to existing Traefik, normal TLS/native
-SSO. Public landing200/full Authentik form no errors, no account impersonation
-or test reservation. Private credentials UID/data unchanged. Diagnostic Pods
-removed. **Argo Healthy but baseline OutOfSync old ConfigMap/wishlist remains**,
-not blanket-pruned to claim Synced. Current5 data authoritative.
+SPI naturally drained before successful stop; copied pending link retry state,
+not deleted backlog.1654old terminal jobs retained, no increased attempts/replay.
+Actual5health/models/Grafana/S3 health/authenticated GitHub read200. format all3
+NFS0 volumes truly copied local5; GET tests/formatter/config APIs200, no test-run
+or publication. Branding ALL4public HTTPS asset hashes match original9258704B.
+6newly moved Deployment UIDs/full container specs unchanged. Service UID/VIP/
+full specs all checked.12Secret checks:11static UID/data same; SPI GitHub token
+normal broker renewed, same UID/key names. Broker finally1; no SA/RBAC changes.
 
-Important remaining scope: format-quorum3volumes are NFS0, so compute-only move
-would NOT move its data. Monori hostPath DirectoryOrCreate/RollingUpdate must
-be fenced for real single-writer handoff. SPI/branding old PV Delete needs owned
-Retain protection. Native queues/finance sync must drain, no fake tasks or bank
-sync to test. No full VM backup/restore/cold-boot acceptance claimed. Full
-checkpoint and remaining contract: [stateful batch](../docs/vm105-stateful-20261116.md).
+**SPI collateral disclosed:** first ordinary Service pause raced new live owner;
+old worker stayed1, callbacks restored. Authoritative n8n08:39–08:43Z audit:
+1success +1error, NodeApiError/Analyze Incident/refused+timeout, consistent with
+pause. No manual rerun/edit/fake green. Later double-idle controller held ONLY
+SPI reconcile briefly, quiesced+rechecked0jobs/owners/live link leases before
+source replica0, then released hold. Helper refuses already-migrated node.
+No force deletion/grace reduction. Shared nodeName briefly affected broker
+spec5; fixed f5f8204f to independent brokerNodeName1. Last scheduled09:00Z Pod1,
+no broker execution5 observed. All five remaining Argo apps Synced Healthy;
+Wishlist baseline old ConfigMap OutOfSync persists, not blanket-pruned.
+
+Key sources: Wiki256adf5e/8517dad9; Monori328f19e8/38afbf14;
+format d10272b0/6e4e37f6; branding1f44a259/f47b2615;
+SPI ee12cbc6/c7ce5063/ee54c7be merged fbf1d12a, broker correctionf5f8204f.
+Concurrent owner Wishlist image releases merged, not owned/accepted here.
+Legacy format Ansible imperative stale-NFS deploy retired in favor of targeted
+existing Argo refresh.18targeted tests pass. All7remaining diagnostic Pods gone.
+Private0700/0600 evidence: ~/Library/Application Support/homelab/vm105-stateful-20261116/.
+
+Current5 data is authoritative; rollback AFTER writes needs fresh consistent
+reverse handoff, not old claim restart/git revert alone. No manufactured
+publication, inference, bank sync, account/MFA or workflow test. Human callback/
+editor/account acceptance remains owner-led, SDK config is not server-child
+trace proof. VM full backup/independent restore/cold boot still outstanding;
+relay0 non-HA dependence unchanged. [Full handoff, hashes, incidents and
+rollback](../docs/vm105-stateful-20261116.md).
 
 ## Four additional stateless moves —16Nov, CURRENT
 

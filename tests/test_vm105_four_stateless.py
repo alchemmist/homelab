@@ -31,7 +31,7 @@ class PlacementTests(unittest.TestCase):
         a, b = render('monori', old, 'monori'), render('monori', new, 'monori')
         self.assertEqual([k for k in a if a[k] != b[k]], [('Deployment','monori')])
         for name in ['monori-back','monori-sync']:
-            self.assertEqual(b['Deployment',name]['spec']['template']['spec']['nodeSelector'], {'kubernetes.io/hostname':'socrat-0'})
+            self.assertEqual(b['Deployment',name]['spec']['template']['spec']['nodeSelector'], {'kubernetes.io/hostname':new['statefulNodeName']})
         pod = b['Deployment','monori']['spec']['template']['spec']
         self.assertEqual(pod['nodeSelector'], {'kubernetes.io/hostname':'socrat-5'})
         self.assertNotIn('volumes', pod)

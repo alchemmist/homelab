@@ -1,5 +1,10 @@
 # VM105: four additional application-only moves —16Nov2026
 
+> Later owner-approved stateful batch also moved Monori backend+sync and SPI
+> worker/data to5. Their remaining-on0/1 protection checks below are historical
+> evidence for THIS earlier frontend-only handoff, not current placement. See
+> [current stateful handoff](vm105-stateful-20261116.md).
+
 Owner approved exactly blog-updates-worker, wiki-openapi-worker, SPI queue UI and
 Monori frontend. No stateful backend, business job or native identity migration.
 
