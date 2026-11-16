@@ -1,7 +1,7 @@
 # Disable Fleet GitOps; Rancher MCM currently requires Fleet itself (v2.15.2).
 # Full Fleet removal requires an explicit decision to disable Rancher MCM first.
 features: "continuous-delivery=false"
-antiAffinity: required
+antiAffinity: preferred
 extraNodeSelectorTerms:
 - key: kubernetes.io/hostname
   operator: In

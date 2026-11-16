@@ -1,5 +1,5 @@
 replicas: {{ rancher_replicas }}
-antiAffinity: required
+antiAffinity: preferred
 extraNodeSelectorTerms:
   - key: kubernetes.io/hostname
     operator: In
