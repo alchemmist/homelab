@@ -1,5 +1,30 @@
 # Socrat: текущий контекст
 
+## Application retry after transport repair —16Nov, CURRENT
+
+Owner authorized remaining app moves. Renderer1→5 (97be7597), LiteLLM0→5
+(896be5b7); LMS already5 unchanged. All3one Ready/restart0 Pod, Argo Synced
+Healthy. Grafana+alertGraphs adapter remain1, LiteLLM DB0, LMS DB/CNPG existing
+primary3/healthy3of3; Rancher/img-proxy/vLLM untouched. Exact images, Deployment
+UIDs,10Secrets UID/data, PVC UIDs, DB/Grafana/CNPG specs, mTLS/SDK/env/issuer
+alias preserved. LiteLLM1.105.1,7260s grace, no migration Job, explicit
+DISABLE_SCHEMA_UPDATE=true; Prisma before/after195 migrations,0unfinished.
+Old0 Pod exited naturally, no force/grace reduction, no data handoff required.
+
+Real renderer first15s-deadline request500 (cause not proved), subsequent normal
+request and six15s-deadline PNGs succeeded, latest5.1–7.5s. Do not claim zero
+render failures/SLO acceptance. Six clean-browser contexts loaded140 JS/CSS
+responses and native SSO form each, no JS/asset HTTP errors; three also had
+ERR_ABORTED login-document/branding-image cancellations (not RSC, cause unknown),
+three wholly clean. No old bulk-JS stalls. Human callback/account acceptance
+not impersonated. DB read-only SELECT1, existing WebUI key models200, LMS queue
+currentlyempty, callbacks+S256 verified. Existing synthetic invalid-model SDK
+probe400/export success; Tempo probe root seen but actual LiteLLM server child
+NOT independently verified. Do not equate preserved env with full SDK proof;
+no real/paid inference generated. No new test Pods/keys or network changes.
+Current authority, exact receipts, caveats and rollback:
+[application retry handoff](../docs/vm105-app-retry-20261116.md).
+
 ##1↔5 transport mitigation —16Nov, CURRENT
 
 Owner-authorized router admin investigation completed. Direct WAN→Wi-Fi1 UDP
@@ -26,8 +51,9 @@ cap), repeated successfully after relay-only restart. Restart caused6/120 probe
 loss briefly, then recovered; not zero-downtime acceptance. Temporary Pods,
 policy, native probes removed. Canonical inventory endpoint + relay unit/playbook
 + narrow root-only endpoint helper/backup/rollback in Git. No WG/K3s/app restart
-for transport deployment; no application migration retry. Current placement
-LMS5/LiteLLM0/renderer1 unchanged. Source/health/limitations/collateral event:
+for transport deployment; application retry was subsequently authorized and
+completed (see current application section above). Transport-only snapshot
+was LMS5/LiteLLM0/renderer1. Source/health/limitations/collateral event:
 [repair handoff](../docs/wireguard-1-5-router-repair-20261116.md).
 
 ##1↔5 NAT-only follow-up — historical, transport status superseded

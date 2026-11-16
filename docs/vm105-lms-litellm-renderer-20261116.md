@@ -1,5 +1,9 @@
 # VM105: LMS accepted; LiteLLM and renderer rolled back —16Nov2026
 
+> Historical handoff: placement below was superseded by the owner-authorized
+> [post-transport retry](vm105-app-retry-20261116.md). Renderer/LiteLLM are now5;
+> safety fences, retained data authority and DR limitations below still apply.
+
 ## Current authority, not intermediate green Pod status
 
 Owner approved image-renderer, LMS application and LiteLLM application moves.
