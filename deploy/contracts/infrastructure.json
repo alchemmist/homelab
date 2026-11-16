@@ -62,6 +62,13 @@
         "path": [
           "rancher_host_aliases"
         ]
+      },
+      {
+        "file": "deploy/grafana/values.yaml",
+        "path": [
+          "grafana",
+          "hostAliases"
+        ]
       }
     ]
   }

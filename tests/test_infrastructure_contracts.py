@@ -13,7 +13,7 @@ spec.loader.exec_module(contract)
 
 class InfrastructureContracts(unittest.TestCase):
     def test_registered_consumers_and_mesh(self):
-        self.assertEqual(contract.check(ROOT), 8)
+        self.assertEqual(contract.check(ROOT), 9)
 
     def fixture(self, directory):
         root = Path(directory)

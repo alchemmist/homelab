@@ -34,3 +34,6 @@ spec:
     helm:
       releaseName: grafana-public-entry
       parameters: []
+  - repoURL: https://github.com/alchemmist/homelab.git
+    targetRevision: main
+    path: deploy/storage/grafana-socrat5

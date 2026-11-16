@@ -148,8 +148,9 @@ grafana:
       allow_sign_up: false
       default_theme: dark
   nodeSelector:
-    kubernetes.io/hostname: socrat-1
+    kubernetes.io/hostname: socrat-5
   persistence:
+    existingClaim: grafana-socrat5
     accessModes:
     - ReadWriteOnce
     enabled: true
