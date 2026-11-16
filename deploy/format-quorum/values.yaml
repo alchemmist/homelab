@@ -8,4 +8,15 @@ imagePullSecrets:
   - format-quorum-harbor-pull
 
 # Stop the only writer for the consistent three-volume handoff.
-replicaCount: 0
+replicaCount: 1
+
+nodeSelector:
+  kubernetes.io/hostname: socrat-5
+requireExistingData: true
+persistence:
+  clang-versions:
+    existingClaim: format-quorum-clang-versions-socrat5
+  tests:
+    existingClaim: format-quorum-tests-socrat5
+  config-history:
+    existingClaim: format-quorum-config-history-socrat5
