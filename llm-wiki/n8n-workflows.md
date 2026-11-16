@@ -1,3 +1,21 @@
+## CURRENT16Nov23:22MSK: Calendar TLS address failover LIVE
+
+Follow-up research isolated a CURRENT DNS-provided GoogleIPv4 whoseTCP connects
+butTLS stalls, while7other addresses work; reproduced outsidePod and acrossTLS
+versions too. Not proof of provider/MTU/CNI fault; forcingIPv4/DNS-only insufficient.
+Read publicwiki VPN and llm-wiki network intent before selecting no-network-change
+correction. Scoped native HTTPS connection failover now enabled byGit9a014aa2:
+fresh existing-resolverDNS, originalSNI/CA, max4pre-HTTP TLS candidates under9.5s;
+HTTP receives socket only AFTER verifiedTLS. No HTTP/OAuthPOST replay, TLS bypass,
+IP pin, VPN/routing/MTU change, nodeRetryOnFail or timeout increase. IDs/credentials/
+graph/settings/pin/static/history preserved; googleDnsEnabled remainsfalse.
+
+Fresh global natural drain+SPIowner/processing/paid0 beforepush; related activities
+restored. ArgoSyncedHealthy, exactruntimehashes. Firstnatural48686 succeeded with
+Google4827ms and TWO observedpre-HTTP failovers; not a voice-delivery test or
+long-term reliability promise. Historical15Nov/12Nov failures below retained.
+[Diagnosis, design, tests and acceptance](../docs/n8n/google-calendar-transport-20261116.md).
+
 # n8n: правила разработки, эксплуатации и авторизации workflow
 
 ## CURRENT15Nov: Google Calendar OAuth recovered; latency caveat

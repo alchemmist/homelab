@@ -1,3 +1,8 @@
+> Superseded16Nov for current TLS stalls: legacy DNS-only flag remainsfalse.
+> New `googleTransportEnabled:true` performs bounded pre-HTTP verifiedTLS address
+> failover with freshDNS. See [current diagnosis/acceptance](google-calendar-transport-20261116.md).
+> Earlier outage/pause statements below are historical, NOT current activity state.
+
 # Native Google Calendar DNS transport
 
 >15Nov CURRENT: recurring Calendar failures are now Google OAuth
