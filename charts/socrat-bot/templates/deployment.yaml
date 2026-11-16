@@ -77,8 +77,6 @@ spec:
             {{- if $component.extraEnv }}
             - name: ALERTMANAGER_URL
               value: {{ $.Values.alertmanagerUrl | quote }}
-            - name: XUI_UPDATER_URL
-              value: {{ $.Values.xuiUpdaterUrl | quote }}
             {{- end }}
             {{- if eq $component.component "bot" }}
             - name: TELEGRAM_WEBHOOK_URL
@@ -87,12 +85,6 @@ spec:
               value: {{ $.Values.telegram.webhookIP | quote }}
             - name: ACTION_WEBHOOK_URL
               value: {{ $.Values.actionWebhookURL | default "" | quote }}
-            {{- end }}
-            {{- if eq $component.component "updater" }}
-            - name: XUI_PANEL_PORT
-              value: {{ $.Values.xuiPanelPort | quote }}
-            - name: XUI_HEALTH_PATH
-              value: {{ $.Values.xuiHealthPath | quote }}
             {{- end }}
           {{- include "socrat-bot.probes" $ | nindent 10 }}
           {{- with $.Values.resources }}
