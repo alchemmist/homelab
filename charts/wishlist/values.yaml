@@ -33,3 +33,9 @@ persistence:
   existingClaim: wishlist-data
   requireExistingData: false
 hostAliases: []
+
+observability:
+  enabled: false
+  metricsPort: 8001
+  tracesEndpoint: https://10.250.0.3:44318/v1/traces
+  clientSecret: otel-app-tls-wishlist

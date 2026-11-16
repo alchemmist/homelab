@@ -60,3 +60,10 @@ nodes:
       uv run python -m unittest discover -s tests -p test_socrat5_app_placement.py
       uv run python -m unittest discover -s tests -p test_argocd_refresh.py
       uv run python -m unittest discover -s tests -p test_refactor_acceptance.py
+
+  wishlist-observability:
+    title: Wishlist private metrics and dedicated OTel identity
+    profile: infrastructure
+    run: |
+      helm lint charts/wishlist -f deploy/wishlist/values.yaml
+      uv run python -m unittest tests.test_wishlist_observability tests.test_otel_application_credentials tests.test_otel_application_registry tests.test_otel_application_leaf_rotation

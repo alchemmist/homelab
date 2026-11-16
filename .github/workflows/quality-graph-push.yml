@@ -37,7 +37,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: e767d09043581e810966c4737e4beac68e7d94b83e8c06d2d7777bc0272803db
+          graph-digest: f1869c7546853a6076e0bd3c8e5e4d6a3e5cf5d5d2ddbcfea29efddd9ff53180
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -82,7 +82,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: e767d09043581e810966c4737e4beac68e7d94b83e8c06d2d7777bc0272803db
+          graph-digest: f1869c7546853a6076e0bd3c8e5e4d6a3e5cf5d5d2ddbcfea29efddd9ff53180
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -127,7 +127,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: e767d09043581e810966c4737e4beac68e7d94b83e8c06d2d7777bc0272803db
+          graph-digest: f1869c7546853a6076e0bd3c8e5e4d6a3e5cf5d5d2ddbcfea29efddd9ff53180
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -183,7 +183,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: e767d09043581e810966c4737e4beac68e7d94b83e8c06d2d7777bc0272803db
+          graph-digest: f1869c7546853a6076e0bd3c8e5e4d6a3e5cf5d5d2ddbcfea29efddd9ff53180
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -228,7 +228,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: e767d09043581e810966c4737e4beac68e7d94b83e8c06d2d7777bc0272803db
+          graph-digest: f1869c7546853a6076e0bd3c8e5e4d6a3e5cf5d5d2ddbcfea29efddd9ff53180
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -290,7 +290,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: e767d09043581e810966c4737e4beac68e7d94b83e8c06d2d7777bc0272803db
+          graph-digest: f1869c7546853a6076e0bd3c8e5e4d6a3e5cf5d5d2ddbcfea29efddd9ff53180
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -303,6 +303,58 @@ jobs:
           if-no-files-found: error
           retention-days: 7
       - name: Enforce Offline infrastructure ownership, placement and issuer contracts result
+        if: always()
+        shell: bash
+        env:
+          EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
+        run: exit "${EXIT_CODE:-2}"
+    timeout-minutes: 5
+  wishlist-observability:
+    name: Wishlist private metrics and dedicated OTel identity
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: 'false'
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+      - run: uv sync --locked
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4
+        with:
+          version: v3.19.0
+      - run: 'helm lint charts/wishlist -f deploy/wishlist/values.yaml
+
+          uv run python -m unittest tests.test_wishlist_observability tests.test_otel_application_credentials tests.test_otel_application_registry tests.test_otel_application_leaf_rotation
+
+          '
+        name: Run Wishlist private metrics and dedicated OTel identity
+        id: quality-command
+        continue-on-error: true
+      - name: Collect Wishlist private metrics and dedicated OTel identity result
+        id: quality-result
+        if: always()
+        uses: alchemmist/quality-graph@b947f26e97ccf1c755050dfe38d98cbb688edb69
+        with:
+          operation: collect
+          node-id: wishlist-observability
+          title: Wishlist private metrics and dedicated OTel identity
+          adapter: exit-code
+          report-path: ''
+          command-outcome: ${{ steps.quality-command.outcome }}
+          graph-digest: f1869c7546853a6076e0bd3c8e5e4d6a3e5cf5d5d2ddbcfea29efddd9ff53180
+          approval-findings: 'true'
+          approval-files: 'false'
+          approval-node: 'false'
+      - name: Upload Wishlist private metrics and dedicated OTel identity result
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: quality-result-wishlist-observability-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/quality-graph/wishlist-observability.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Enforce Wishlist private metrics and dedicated OTel identity result
         if: always()
         shell: bash
         env:

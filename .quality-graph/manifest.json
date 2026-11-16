@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "e767d09043581e810966c4737e4beac68e7d94b83e8c06d2d7777bc0272803db",
+  "graphDigest": "f1869c7546853a6076e0bd3c8e5e4d6a3e5cf5d5d2ddbcfea29efddd9ff53180",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -162,6 +162,31 @@
       },
       "timeoutMinutes": 5,
       "title": "Offline infrastructure ownership, placement and issuer contracts"
+    },
+    {
+      "env": {},
+      "id": "wishlist-observability",
+      "needs": [],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": true,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "infrastructure",
+      "result": {
+        "adapter": "exit-code"
+      },
+      "step": {
+        "run": "helm lint charts/wishlist -f deploy/wishlist/values.yaml\nuv run python -m unittest tests.test_wishlist_observability tests.test_otel_application_credentials tests.test_otel_application_registry tests.test_otel_application_leaf_rotation\n"
+      },
+      "timeoutMinutes": 5,
+      "title": "Wishlist private metrics and dedicated OTel identity"
     }
   ],
   "profiles": {
