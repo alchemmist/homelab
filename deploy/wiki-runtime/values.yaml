@@ -1,5 +1,5 @@
 # Single writer; zero is reserved for coordinated offline maintenance.
-replicaCount: 0
+replicaCount: 1
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/wiki-runtime
   tag: "upstream-f52cf2a-socrat-20261106"
@@ -12,9 +12,10 @@ visibility: public
 contentPrefix: wiki/content
 # Local data was migrated off socrat-3; keep exactly one writer on the SSD node.
 nodeSelector:
-  kubernetes.io/hostname: socrat-0
+  kubernetes.io/hostname: socrat-5
 persistence:
-  existingClaim: wiki-runtime-data-socrat-0
+  existingClaim: wiki-runtime-socrat5
+  requireExistingData: true
   size: 5Gi
   storageClass: local-path
 bootstrapSecret: wiki-runtime-bootstrap
@@ -82,3 +83,7 @@ staticBinaryFiles:
 
 observerMembership:
   enabled: true
+
+hostAliases:
+  - ip: 10.43.218.222
+    hostnames: [auth.socrat.alchemmist.xyz]
