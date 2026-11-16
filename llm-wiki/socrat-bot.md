@@ -33,15 +33,15 @@ Three layers. Secrets do not go through Git.
 | Alertmanager receiver | `deploy/platform/kube-prometheus-stack/values.yaml` |
 | Workflow | `docs/n8n/socrat-bot/workflow.json` |
 | Import notes | `docs/n8n/socrat-bot/setup.md` |
-| sudo client | `ansible/files/socrat-sudo`, `ansible/files/socrat_sudo`, `ansible/playbooks/socrat-sudo.yml` |
+| Version alerts | `charts/monitoring-k3s` `updateWatch`, rule `SocratSoftwareUpdateAvailable` |
 
 Application: project `default`, namespace `socrat-bot`, `parameters: []`, `prune: false`, `selfHeal: true`. Pull secret `socrat-bot-harbor-pull` is created by the operator.
 
-## sudo-broker
+## What the bot is not
 
-The broker stores a request and does not run the command. `socrat-sudo` posts `user`, `node`, and `argv` with `X-Internal-Token`. After Allow, the client runs `sudo` with that argv once. Deny and timeout do not exec. `/etc/socrat-sudo.env` on `socrat-2` is mode `0640`. The playbook does not write the token and does not change sudoers.
+The chart runs only `socrat-bot`. `socrat-bot-xui-updater` and `socrat-bot-sudo-broker` are not deployed. The bot does not upgrade 3x-ui and does not approve sudo. New upstream versions are `SocratSoftwareUpdateAvailable` in Grafana; Telegram delivery is the existing Alertmanager to n8n to `POST /v1/messages` path. `TELEGRAM_OWNER_ID` is still required for alert buttons and broadcasts.
 
-`TELEGRAM_OWNER_ID` has to be set before buttons, broadcasts, and sudo approvals work.
+Source in `alchemmist/socrat-bot` no longer contains `updater`, `broker`, or `socrat-sudo`. The cluster image stays on the digest pinned in `deploy/socrat-bot/values.yaml` until the next bot release. Ansible files `ansible/files/socrat-sudo` and `ansible/playbooks/socrat-sudo.yml` are leftover client installers; they have no broker to call.
 
 ## SPI incident triage alongside Telegram
 
@@ -58,8 +58,7 @@ are enabled after acceptance; the unrelated blog remains write-disabled.
 
 Architecture, limits, exact IDs, real issue/comment evidence and recovery:
 [spi-incident-triage.md](spi-incident-triage.md). This GitHub-token broker is distinct
-from the Telegram sudo-broker described above; do not conflate their credentials,
-permissions or approval mechanisms.
+from the removed Telegram sudo-broker. SPI does not upgrade panels and does not exec sudo.
 
 
 ### Event-driven SPI migration — PENDING

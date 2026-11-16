@@ -105,6 +105,14 @@ finalizers: это может каскадно удалить workload. Обыч
 Старые ссылки на отсутствующие в этом checkout otel-history runbooks не являются
 достаточным основанием запускать migration/delete scripts.
 
+## Software update alerts
+
+Third-party images are compared with the newest stable GitHub release by `monitoring-update-watch` in `charts/monitoring-k3s` (`updateWatch.targets`). The Prometheus rule is `SocratSoftwareUpdateAvailable` (`for: 15m`, severity warning). It uses the same Grafana alert graphs, Alertmanager, n8n workflow and socrat-bot `POST /v1/messages` path as other warning alerts. Nothing in this path upgrades a workload.
+
+Installed version comes from the running container tag when the tag contains `x.y.z`. Digest-only images use `updateWatch.targets[].current`, which must be changed in the same commit as the chart pin. Open WebUI and 3x-ui are in the catalog. Xray is not a separate Deployment; it ships inside the 3x-ui image. Apps released from this homelab's own repositories are not in the catalog.
+
+`SocratSoftwareUpdateCheckFailed` fires when a lookup stays unsuccessful for 6 hours. A failed lookup does not emit an update alert. SearXNG releases do not currently expose a stable `x.y.z` tag, so that target stays on the failed check rather than an update alert.
+
 ## Placement — наблюдение, не вечный контракт
 
 На read-only срезе: Grafana/Loki/Tempo/Pyroscope и Grafana MCP на socrat-1,
