@@ -56,6 +56,10 @@ spec:
             - name: PROXY_SERVER
               value: {{ .Values.proxyServer | quote }}
             {{- end }}
+            {{- if .Values.cdpUrl }}
+            - name: CDP_URL
+              value: {{ .Values.cdpUrl | quote }}
+            {{- end }}
           ports:
             - containerPort: {{ .Values.service.targetPort }}
           readinessProbe:

@@ -25,3 +25,4 @@ nodeSelector:
   kubernetes.io/hostname: socrat-5
 hostNetwork: true
 proxyServer: http://127.0.0.1:8899
+cdpUrl: http://127.0.0.1:9223
