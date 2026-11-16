@@ -16,6 +16,11 @@ envVars:
 environmentSecrets:
 - litellm-env
 extraEnvVars:
+- name: VENICE_BRIDGE_API_KEY
+  valueFrom:
+    secretKeyRef:
+      name: venice-bridge-upstream
+      key: api-key
 - name: VLLM_API_KEY
   valueFrom:
     secretKeyRef:
@@ -151,6 +156,21 @@ proxy_config:
       max_output_tokens: 16384
       output_cost_per_token: 0
     model_name: qwen3.8-27b
+  # Browser adapter: one shared page, buffered SSE, approximate token usage.
+  # Zero synthetic price is not a measurement of Venice subscription credits.
+  - model_name: venice-deepseek
+    litellm_params:
+      model: openai/venice-agentic-deepseek-v4.1-flash-uncensored
+      api_base: http://venice-api.venice-api.svc.cluster.local:8080/v1
+      api_key: os.environ/VENICE_BRIDGE_API_KEY
+      timeout: 900
+      stream_timeout: 900
+      max_parallel_requests: 1
+      num_retries: 0
+    model_info:
+      mode: chat
+      input_cost_per_token: 0
+      output_cost_per_token: 0
 redis:
   enabled: false
 replicaCount: 1
