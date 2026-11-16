@@ -9,9 +9,9 @@ def render(chart,values,release,ns):
   raw=subprocess.check_output(['helm','template',release,str(R/chart),'--namespace',ns,'--kube-version','1.36.5','-f',f.name],stderr=subprocess.DEVNULL,text=True)
  return {(o['kind'],o['metadata']['name']):o for o in yaml.safe_load_all(raw) if o}
 class MigrationTests(unittest.TestCase):
- def test_renderer_recovery_stays_local_to_grafana_after_failed_vm_deadlines(self):
+ def test_renderer_retry_after_transport_repair_preserves_grafana_and_adapter_placement(self):
   v=load('charts/grafana/alert-graphs.runtime.values.yaml')
-  self.assertEqual(v['grafana']['imageRenderer']['nodeSelector'],{'kubernetes.io/hostname':'socrat-1'})
+  self.assertEqual(v['grafana']['imageRenderer']['nodeSelector'],{'kubernetes.io/hostname':'socrat-5'})
   self.assertEqual(v['alertGraphs']['nodeSelector'],{'kubernetes.io/hostname':'socrat-1'})
   self.assertEqual(v['grafana']['imageRenderer']['existingSecret'],'socrat-grafana-renderer')
  def test_lms_single_worker_and_original_database_and_identity(self):
