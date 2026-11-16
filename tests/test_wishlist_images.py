@@ -20,7 +20,10 @@ class WishlistImages(unittest.TestCase):
         self.assertIn('app.kubernetes.io/name: {{ .Chart.Name }}',source)
         self.assertIn('app.kubernetes.io/instance: {{ .Release.Name }}',source)
         self.assertNotIn('namespaceSelector:',source)
-        self.assertIn('IMAGE_OPTIMIZER_URL',(ROOT/'charts/wishlist/templates/deployment.yaml').read_text())
+        app = (ROOT/'charts/wishlist/templates/deployment.yaml').read_text()
+        self.assertIn('IMAGE_OPTIMIZER_URL',app)
+        self.assertIn('mountPath: /data/media-cache',app)
+        self.assertIn('sizeLimit: 2Gi',app)
     def test_native_memory_limit_no_application_job_semaphore(self):
         values=yaml.safe_load((ROOT/'charts/wishlist/values.yaml').read_text())['images']
         self.assertEqual(values['optimizerPort'],8081)

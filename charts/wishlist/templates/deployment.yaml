@@ -92,12 +92,17 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data
+            - name: media-cache
+              mountPath: /data/media-cache
           {{- if .Values.observability.enabled }}
             - name: otel-client
               mountPath: /etc/otel-client
               readOnly: true
           {{- end }}
       volumes:
+      - name: media-cache
+        emptyDir:
+          sizeLimit: 2Gi
       {{- if .Values.observability.enabled }}
         - name: otel-client
           secret:

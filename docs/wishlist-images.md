@@ -18,7 +18,9 @@ pipeline is enabled. Existing data claim and client certificate stay untouched.
 On upload, master+preview persist in S3. On reads, atomic disk cache (toward1GiB,
 oversized active entry/concurrent writes can exceed it temporarily) serves immutable
 Content-Length/ETag/ranges. Existing originals/DB are never rewritten/deleted:
-legacy preview is generated on demand, cache-only. Cache is disposable, NOT backup
+legacy preview is generated on demand, cache-only. Cache mounts `/data/media-cache` on a separate2GiB emptyDir, NOT the1GiB
+SQLite PVC; cache pressure must not fill the authoritative DB volume. Cache is
+disposable, NOT backup
 or authoritative user data; never delete the database/WAL to clear media cache.
 
 Spans: image.optimize.master/preview, numeric in/out bytes and engine milliseconds,
