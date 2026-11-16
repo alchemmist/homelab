@@ -61,10 +61,11 @@ done)"
 
 state_is_current=0
 if [[ -f ${state_file} && -f ${release_dir}/tv-mode.apk && -f ${release_dir}/tv-grafana.apk ]]; then
-    recorded_state="$(cat "${state_file}")"
-    expected_state="$(printf '%s\n%s' "${source_sha256}" "${release_sha256}")"
-    if [[ ${recorded_state} == "${expected_state}" ]]; then
-        state_is_current=1
+    if recorded_state="$(cat "${state_file}")"; then
+        expected_state="$(printf '%s\n%s' "${source_sha256}" "${release_sha256}")"
+        if [[ ${recorded_state} == "${expected_state}" ]]; then
+            state_is_current=1
+        fi
     fi
 fi
 
