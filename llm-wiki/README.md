@@ -42,6 +42,7 @@ Research is not a pending deployment task. Private recovery evidence remains off
 | Инциденты, уведомления, workflow integration | [Socrat bot](socrat-bot.md), [SPI: полный frontend/backend repo, CI принят, runtime migration pending](spi-incident-triage.md), [n8n](n8n-workflows.md) |
 | TV/public dashboard, адресный Argo CSS и отдельный YouTube VPN | [Android TV](android-tv.md), [сопровождение TV-CSS](android-tv.md#сопровождение-кастомного-tv-css-для-argo) |
 | LMS и локальные генераторы | [LMS](lms.md), [локальная генерация](lms-generation.md) |
+| Venice browser API: серверный Chrome, профиль и первичный Google login | [Текущее состояние и границы](venice-api.md) |
 | Остальные scoped подсистемы | [RustFS](rustfs-foundation.md), [Smart home](smart-home-automation.md), [inference reliability](inference-client-reliability.md) |
 
 ## Как читать старые результаты
