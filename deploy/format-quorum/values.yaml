@@ -6,3 +6,6 @@ image:
 
 imagePullSecrets:
   - format-quorum-harbor-pull
+
+# Stop the only writer for the consistent three-volume handoff.
+replicaCount: 0

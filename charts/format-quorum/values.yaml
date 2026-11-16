@@ -37,3 +37,5 @@ resources:
 imagePullSecrets:
   - format-quorum-harbor-pull
   - ghcr-pull
+
+requireExistingData: false

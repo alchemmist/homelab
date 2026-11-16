@@ -24,6 +24,20 @@ spec:
         - name: {{ . }}
         {{- end }}
       {{- end }}
+      {{- if .Values.requireExistingData }}
+      initContainers:
+        - name: require-existing-format-data
+          image: {{ .Values.image.repository }}@{{ .Values.image.digest }}
+          command: [/bin/sh, -ec]
+          args:
+            - 'for p in /app/clang_versions /app/tests /app/config_history; do test -s "$p/.homelab-handoff-ready" || exit 1; done'
+          volumeMounts:
+          {{- range $name, $cfg := .Values.persistence }}
+            - name: {{ $name }}
+              mountPath: {{ $cfg.mountPath }}
+              readOnly: true
+          {{- end }}
+      {{- end }}
       containers:
         - name: format-quorum
           {{- $image := printf "%s:%s" .Values.image.repository .Values.image.tag -}}
@@ -50,5 +64,5 @@ spec:
 {{- range $name, $cfg := .Values.persistence }}
         - name: {{ $name }}
           persistentVolumeClaim:
-            claimName: {{ $.Release.Name }}-{{ $name }}
+            claimName: {{ default (printf "%s-%s" $.Release.Name $name) $cfg.existingClaim }}
 {{- end }}
