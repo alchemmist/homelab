@@ -6,7 +6,15 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "4d4887c38fbb0d3373ea9caeb7519ad7698536fc815223308cfbdbea1bd602b6",
+  "execution": {
+    "pull-request": {
+      "dependencies": "graph"
+    },
+    "push": {
+      "dependencies": "graph"
+    }
+  },
+  "graphDigest": "17f5ec37237e0694b046e5249844f8ae782265608fadeaf5d415b4e63a1b3892",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -15,6 +23,10 @@
   "nodes": [
     {
       "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
       "id": "graph-freshness",
       "needs": [],
       "policy": {
@@ -40,6 +52,10 @@
     },
     {
       "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
       "id": "workflow-failure-policy",
       "needs": [],
       "policy": {
@@ -65,6 +81,10 @@
     },
     {
       "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
       "id": "workflow-policy-tests",
       "needs": [],
       "policy": {
@@ -90,6 +110,10 @@
     },
     {
       "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
       "id": "alert-graph-delivery",
       "needs": [],
       "policy": {
@@ -115,6 +139,10 @@
     },
     {
       "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
       "id": "spi-execution-links",
       "needs": [],
       "policy": {
@@ -140,6 +168,10 @@
     },
     {
       "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
       "id": "infrastructure-contracts",
       "needs": [],
       "policy": {
@@ -165,6 +197,10 @@
     },
     {
       "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
       "id": "wishlist-observability",
       "needs": [],
       "policy": {
@@ -187,6 +223,1149 @@
       },
       "timeoutMinutes": 5,
       "title": "Wishlist private metrics and dedicated OTel identity"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "quality-contracts",
+      "needs": [],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "default",
+      "result": {
+        "adapter": "exit-code"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/contracts.py\nuv run python scripts/check_source_pointers.py"
+      },
+      "timeoutMinutes": 5,
+      "title": "Quality framework, schema/tool locks and test inventory"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "quality-implementation",
+      "needs": [],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "default",
+      "result": {
+        "adapter": "exit-code"
+      },
+      "step": {
+        "run": "uv run ruff check --config quality/ruff.toml scripts/quality tests/test_quality_system.py\nuv run ruff format --check --config quality/ruff.toml scripts/quality tests/test_quality_system.py"
+      },
+      "timeoutMinutes": 5,
+      "title": "CI implementation lint and formatting (no legacy baseline)"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "lint-python",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": true,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "default",
+      "result": {
+        "adapter": "native",
+        "path": "reports/python.json"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/lint.py python"
+      },
+      "timeoutMinutes": 5,
+      "title": "Python correctness, security and modernization ratchet"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "lint-yaml",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": true,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "default",
+      "result": {
+        "adapter": "native",
+        "path": "reports/yaml.json"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/lint.py yaml"
+      },
+      "timeoutMinutes": 5,
+      "title": "Non-template YAML syntax, duplicate keys and hygiene"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "lint-shell",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": true,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-tools",
+      "result": {
+        "adapter": "native",
+        "path": "reports/shell.json"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/lint.py shell"
+      },
+      "timeoutMinutes": 10,
+      "title": "ShellCheck static source diagnostics"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "lint-actions",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "default",
+      "result": {
+        "adapter": "native",
+        "path": "reports/actions.json"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/lint.py actions"
+      },
+      "timeoutMinutes": 5,
+      "title": "Offline GitHub Actions security / trusted publisher boundary"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "lint-actionlint",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-tools",
+      "result": {
+        "adapter": "native",
+        "path": "reports/actionlint.json"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/lint.py actionlint"
+      },
+      "timeoutMinutes": 10,
+      "title": "GitHub Actions semantics and expression validation"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "lint-ansible",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": false,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "default",
+      "result": {
+        "adapter": "native",
+        "path": "reports/ansible.json"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/lint.py ansible"
+      },
+      "timeoutMinutes": 5,
+      "title": "Ansible safety profile (tool compatibility diagnosis)"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "lint-docker",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": true,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-docker",
+      "result": {
+        "adapter": "native",
+        "path": "reports/docker.json"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/lint.py docker"
+      },
+      "timeoutMinutes": 5,
+      "title": "Dockerfile best practices (Hadolint)"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "lint-secrets",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-tools",
+      "result": {
+        "adapter": "native",
+        "path": "reports/secrets.json"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/lint.py secrets"
+      },
+      "timeoutMinutes": 10,
+      "title": "Tracked-tree secret scan with exact reviewed false positives"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "lint-javascript",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": true,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-javascript",
+      "result": {
+        "adapter": "native",
+        "path": "reports/javascript.json"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/lint.py javascript"
+      },
+      "timeoutMinutes": 5,
+      "title": "JavaScript syntax, parse-only Node 24"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "charts-0",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-tools",
+      "result": {
+        "adapter": "native",
+        "path": "reports/charts-0.json"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/charts.py --shard 0"
+      },
+      "timeoutMinutes": 10,
+      "title": "Helm consumed values / strict schemas / Kubernetes policy shard 1/4"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "charts-1",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-tools",
+      "result": {
+        "adapter": "native",
+        "path": "reports/charts-1.json"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/charts.py --shard 1"
+      },
+      "timeoutMinutes": 10,
+      "title": "Helm consumed values / strict schemas / Kubernetes policy shard 2/4"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "charts-2",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-tools",
+      "result": {
+        "adapter": "native",
+        "path": "reports/charts-2.json"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/charts.py --shard 2"
+      },
+      "timeoutMinutes": 10,
+      "title": "Helm consumed values / strict schemas / Kubernetes policy shard 3/4"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "charts-3",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-tools",
+      "result": {
+        "adapter": "native",
+        "path": "reports/charts-3.json"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/charts.py --shard 3"
+      },
+      "timeoutMinutes": 10,
+      "title": "Helm consumed values / strict schemas / Kubernetes policy shard 4/4"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "tests-framework",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": true,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-helm",
+      "result": {
+        "adapter": "junit",
+        "path": "reports/tests-framework.xml"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/tests.py framework --isolate-network"
+      },
+      "timeoutMinutes": 10,
+      "title": "Offline pytest + unittest: framework"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "tests-ownership",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": true,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-helm",
+      "result": {
+        "adapter": "junit",
+        "path": "reports/tests-ownership.xml"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/tests.py ownership --isolate-network"
+      },
+      "timeoutMinutes": 10,
+      "title": "Offline pytest + unittest: ownership"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "tests-placement",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": true,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-helm",
+      "result": {
+        "adapter": "junit",
+        "path": "reports/tests-placement.xml"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/tests.py placement --isolate-network"
+      },
+      "timeoutMinutes": 10,
+      "title": "Offline pytest + unittest: placement"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "tests-identity",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": true,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-helm",
+      "result": {
+        "adapter": "junit",
+        "path": "reports/tests-identity.xml"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/tests.py identity --isolate-network"
+      },
+      "timeoutMinutes": 10,
+      "title": "Offline pytest + unittest: identity"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "tests-alerts",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": true,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-helm",
+      "result": {
+        "adapter": "junit",
+        "path": "reports/tests-alerts.xml"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/tests.py alerts --isolate-network"
+      },
+      "timeoutMinutes": 10,
+      "title": "Offline pytest + unittest: alerts"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "tests-workflows",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": true,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-helm",
+      "result": {
+        "adapter": "junit",
+        "path": "reports/tests-workflows.xml"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/tests.py workflows --isolate-network"
+      },
+      "timeoutMinutes": 10,
+      "title": "Offline pytest + unittest: workflows"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "tests-webui",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": true,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-helm",
+      "result": {
+        "adapter": "junit",
+        "path": "reports/tests-webui.xml"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/tests.py webui --isolate-network"
+      },
+      "timeoutMinutes": 10,
+      "title": "Offline pytest + unittest: webui"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "tests-browser",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": true,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-helm",
+      "result": {
+        "adapter": "junit",
+        "path": "reports/tests-browser.xml"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/tests.py browser --isolate-network"
+      },
+      "timeoutMinutes": 10,
+      "title": "Offline pytest + unittest: browser"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "tests-otel-contracts",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": true,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-helm",
+      "result": {
+        "adapter": "junit",
+        "path": "reports/tests-otel-contracts.xml"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/tests.py otel-contracts --isolate-network"
+      },
+      "timeoutMinutes": 10,
+      "title": "Offline pytest + unittest: otel-contracts"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "tests-observability",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": true,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-helm",
+      "result": {
+        "adapter": "junit",
+        "path": "reports/tests-observability.xml"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/tests.py observability --isolate-network"
+      },
+      "timeoutMinutes": 10,
+      "title": "Offline pytest + unittest: observability"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "tests-frontend",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": true,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-helm",
+      "result": {
+        "adapter": "junit",
+        "path": "reports/tests-frontend.xml"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/tests.py frontend --isolate-network"
+      },
+      "timeoutMinutes": 10,
+      "title": "Offline pytest + unittest: frontend"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "tests-public-entry",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": true,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-helm",
+      "result": {
+        "adapter": "junit",
+        "path": "reports/tests-public-entry.xml"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/tests.py public-entry --isolate-network"
+      },
+      "timeoutMinutes": 10,
+      "title": "Offline pytest + unittest: public-entry"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "tests-platform",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": true,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-helm",
+      "result": {
+        "adapter": "junit",
+        "path": "reports/tests-platform.xml"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/tests.py platform --isolate-network"
+      },
+      "timeoutMinutes": 10,
+      "title": "Offline pytest + unittest: platform"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "tests-rustfs-policy",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": true,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-helm",
+      "result": {
+        "adapter": "junit",
+        "path": "reports/tests-rustfs-policy.xml"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/tests.py rustfs-policy --isolate-network"
+      },
+      "timeoutMinutes": 10,
+      "title": "Offline pytest + unittest: rustfs-policy"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "tests-identity-policy",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": true,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-helm",
+      "result": {
+        "adapter": "junit",
+        "path": "reports/tests-identity-policy.xml"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/tests.py identity-policy --isolate-network"
+      },
+      "timeoutMinutes": 10,
+      "title": "Offline pytest + unittest: identity-policy"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "tests-workload-placement",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": true,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-helm",
+      "result": {
+        "adapter": "junit",
+        "path": "reports/tests-workload-placement.xml"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/tests.py workload-placement --isolate-network"
+      },
+      "timeoutMinutes": 10,
+      "title": "Offline pytest + unittest: workload-placement"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "tests-spi-policy",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": true,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-helm",
+      "result": {
+        "adapter": "junit",
+        "path": "reports/tests-spi-policy.xml"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/tests.py spi-policy --isolate-network"
+      },
+      "timeoutMinutes": 10,
+      "title": "Offline pytest + unittest: spi-policy"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "tests-monitoring-policy",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": true,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-helm",
+      "result": {
+        "adapter": "junit",
+        "path": "reports/tests-monitoring-policy.xml"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/tests.py monitoring-policy --isolate-network"
+      },
+      "timeoutMinutes": 10,
+      "title": "Offline pytest + unittest: monitoring-policy"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "tests-otel-offline-policy",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": true,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-helm",
+      "result": {
+        "adapter": "junit",
+        "path": "reports/tests-otel-offline-policy.xml"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/tests.py otel-offline-policy --isolate-network"
+      },
+      "timeoutMinutes": 10,
+      "title": "Offline pytest + unittest: otel-offline-policy"
+    },
+    {
+      "env": {},
+      "events": [
+        "pull-request",
+        "push"
+      ],
+      "id": "tests-frontend-policy",
+      "needs": [
+        "quality-contracts"
+      ],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": true,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "quality-helm",
+      "result": {
+        "adapter": "junit",
+        "path": "reports/tests-frontend-policy.xml"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/tests.py frontend-policy --isolate-network"
+      },
+      "timeoutMinutes": 10,
+      "title": "Offline pytest + unittest: frontend-policy"
+    },
+    {
+      "env": {},
+      "events": [
+        "push"
+      ],
+      "id": "python-dependency-audit",
+      "needs": [],
+      "policy": {
+        "approvals": {
+          "files": false,
+          "findings": false,
+          "node": false
+        },
+        "blocking": true,
+        "blockingSeverities": [
+          "error"
+        ]
+      },
+      "profile": "default",
+      "result": {
+        "adapter": "native",
+        "path": "reports/dependencies.json"
+      },
+      "step": {
+        "run": "uv run python scripts/quality/lint.py dependencies"
+      },
+      "timeoutMinutes": 5,
+      "title": "Python toolchain vulnerability feed (online; main only)"
     }
   ],
   "profiles": {
@@ -241,6 +1420,124 @@
         }
       ],
       "timeoutMinutes": 5
+    },
+    "quality-docker": {
+      "env": {},
+      "permissions": {
+        "contents": "read"
+      },
+      "runner": "ubuntu-24.04",
+      "services": {},
+      "setup": [
+        {
+          "uses": "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "with": {
+            "persist-credentials": "false"
+          }
+        },
+        {
+          "uses": "astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78"
+        },
+        {
+          "run": "uv sync --locked"
+        },
+        {
+          "run": "uv run python scripts/quality/install_tools.py --tools hadolint"
+        }
+      ],
+      "timeoutMinutes": 5
+    },
+    "quality-helm": {
+      "env": {},
+      "permissions": {
+        "contents": "read"
+      },
+      "runner": "ubuntu-24.04",
+      "services": {},
+      "setup": [
+        {
+          "uses": "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "with": {
+            "fetch-depth": "0",
+            "persist-credentials": "false"
+          }
+        },
+        {
+          "uses": "astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78"
+        },
+        {
+          "run": "uv sync --locked"
+        },
+        {
+          "uses": "azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4",
+          "with": {
+            "version": "v3.19.0"
+          }
+        }
+      ],
+      "timeoutMinutes": 10
+    },
+    "quality-javascript": {
+      "env": {},
+      "permissions": {
+        "contents": "read"
+      },
+      "runner": "ubuntu-24.04",
+      "services": {},
+      "setup": [
+        {
+          "uses": "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "with": {
+            "persist-credentials": "false"
+          }
+        },
+        {
+          "uses": "astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78"
+        },
+        {
+          "run": "uv sync --locked"
+        },
+        {
+          "uses": "actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f",
+          "with": {
+            "node-version": "24.11.1"
+          }
+        }
+      ],
+      "timeoutMinutes": 5
+    },
+    "quality-tools": {
+      "env": {},
+      "permissions": {
+        "contents": "read"
+      },
+      "runner": "ubuntu-24.04",
+      "services": {},
+      "setup": [
+        {
+          "uses": "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "with": {
+            "fetch-depth": "0",
+            "persist-credentials": "false"
+          }
+        },
+        {
+          "uses": "astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78"
+        },
+        {
+          "run": "uv sync --locked"
+        },
+        {
+          "uses": "azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4",
+          "with": {
+            "version": "v3.19.0"
+          }
+        },
+        {
+          "run": "uv run python scripts/quality/install_tools.py --tools actionlint kubeconform gitleaks shellcheck kube-linter"
+        }
+      ],
+      "timeoutMinutes": 10
     }
   },
   "provider": "github",

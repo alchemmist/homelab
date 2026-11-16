@@ -1,0 +1,5 @@
+# Exact checks come from checksum-locked kube-linter 0.8.3.
+# Cross-Application resources can produce legitimate dangling-reference findings;
+# exceptions are exact rendered resource/rule identities, never namespace-wide ignores.
+checks:
+  doNotAutoAddDefaults: false

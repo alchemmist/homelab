@@ -111,3 +111,9 @@ WebUI lifecycle/HTTPS/tool-guard and Terminal browser-cleanup entrypoints now
 refuse before all remote tasks/imports; chart-owned protection remains unchanged.
 Old-PVC backup/upgrade instructions are not a fallback. Within the literal Helm
 gate only k3s/storage-nfs remain review-required; no maintenance was performed.
+
+Quality Graph research/expansion: compatible0.2.0compiler/provider/runtime bootstrap
+is published (fee084eb, main CI43930408114success). Detailed43-node expansion,
+rule/tool matrix and initial failed-regression audit: [quality runbook](../docs/quality/README.md).
+This expansion is a review/probe candidate, not yet certified-green or a new
+required-check policy. No production/backup/GPU/VPN/identity operations authorized.

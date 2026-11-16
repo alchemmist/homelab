@@ -18,3 +18,7 @@ __pycache__/
 
 # Local browser evidence may contain private session/page data.
 /.playwright-mcp/
+
+# Generated quality reports and verified local tools
+/reports/
+/.quality-tools/

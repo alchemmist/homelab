@@ -1,0 +1,3 @@
+# Explicit config prevents per-user settings from silently weakening CI.
+failure-threshold: style
+ignored: []

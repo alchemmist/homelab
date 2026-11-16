@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "reason": "Initial complete GitHub Actions parser audit; inline shell analysis stays in the parser and pinned ShellCheck is provided separately.",
+  "findings": []
+}
