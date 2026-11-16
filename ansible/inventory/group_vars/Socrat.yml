@@ -23,7 +23,10 @@ wg_socrat_peer_endpoints:
     socrat-1: socrat.alchemmist.xyz:51831
   socrat-5:
     socrat-0: 109.173.40.247:51830
-    socrat-1: 109.173.40.247:51831
+    # Keyless ciphertext relay on0: avoid lossy WAN -> Wi-Fi1 path.
+    # Explicit0 dependency; peer keys/AllowedIPs remain end-to-end1<->5.
+    # See docs/wireguard-1-5-router-repair-20261116.md for health/rollback.
+    socrat-1: 10.250.0.1:51835
     # Same verified Moscow -> NL UDP relay used by HOME0 and worker3.
     socrat-2: 91.189.82.238:51832
     socrat-3: 46.8.146.172:46559

@@ -1,0 +1,63 @@
+---
+# Installs ONLY the keyless relay on0. Does not restart WG, K3s or networking.
+# After relay health, deploy the narrow endpoint helper and run apply on5.
+# Roll back endpoint on5 BEFORE stopping relay0; see handoff document.
+- name: Install fixed peer15 transport on socrat-0
+  hosts: socrat-0
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Confirm relay is being installed on expected mesh node
+      ansible.builtin.command: ip -j -4 address show dev wg-socrat
+      register: relay_mesh_addresses
+      changed_when: false
+    - name: Validate node0 mesh identity without reading WG keys
+      ansible.builtin.assert:
+        that:
+          - inventory_hostname == 'socrat-0'
+          - "'10.250.0.1' in (relay_mesh_addresses.stdout | from_json | map(attribute='addr_info') | flatten | map(attribute='local') | list)"
+    - name: Stop only owned bounded diagnostic relay units
+      ansible.builtin.command: 'systemctl stop {{ item }}'
+      loop:
+        - homelab-wg15-relay-canary
+        - homelab-wg15-relay-canary-b
+      register: relay_canary_stop
+      changed_when: relay_canary_stop.rc == 0
+      failed_when: false
+    - name: Install fixed-address no-key relay
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/../../scripts/wg-peer15-relay.py'
+        dest: /usr/local/libexec/homelab-wg-peer15-relay.py
+        owner: root
+        group: root
+        mode: '0755'
+      notify: Restart only keyless peer15 relay
+    - name: Install sandboxed relay unit
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/../files/wg-peer15-relay.service'
+        dest: /etc/systemd/system/homelab-wg-peer15-relay.service
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Restart only keyless peer15 relay
+    - name: Apply relay-only handlers
+      ansible.builtin.meta: flush_handlers
+    - name: Ensure keyless relay enabled and started
+      ansible.builtin.systemd_service:
+        name: homelab-wg-peer15-relay.service
+        daemon_reload: true
+        enabled: true
+        state: started
+    - name: Verify relay is active
+      ansible.builtin.command: systemctl is-active homelab-wg-peer15-relay.service
+      changed_when: false
+    - name: Remove only owned transient script
+      ansible.builtin.file:
+        path: /run/homelab-wg-peer15-relay.py
+        state: absent
+  handlers:
+    - name: Restart only keyless peer15 relay
+      ansible.builtin.systemd_service:
+        name: homelab-wg-peer15-relay.service
+        daemon_reload: true
+        state: restarted
