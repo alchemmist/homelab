@@ -27,3 +27,6 @@ nodeSelector:
 browserCandidate:
   enabled: false
   image: ""
+  bridgeEnabled: false
+  bridgeImage: ""
+  serveApi: false

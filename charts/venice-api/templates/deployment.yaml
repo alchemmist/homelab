@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: {{ .Release.Name }}
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ ternary 0 (int .Values.replicaCount) .Values.browserCandidate.serveApi }}
   strategy:
     type: Recreate
   selector:
