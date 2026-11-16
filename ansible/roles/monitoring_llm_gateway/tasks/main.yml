@@ -5,13 +5,13 @@
     state: directory
     mode: "0700"
 
-- name: Install gateway monitoring reconciler
+- name: Stage the read-only gateway monitoring verifier
   ansible.builtin.copy:
     src: configure_gateway.py
     dest: "{{ monitoring_llm_gateway_workdir }}/configure_gateway.py"
     mode: "0700"
 
-- name: Enable authenticated gateway metrics while preserving current configuration
+- name: Verify existing authenticated gateway metrics without repair
   ansible.builtin.command:
     argv:
       - python3
@@ -24,8 +24,6 @@
       - "{{ monitoring_llm_gateway_chart_version }}"
       - --kubeconfig
       - "{{ monitoring_llm_gateway_kubeconfig }}"
-      - --idle-timeout
-      - "{{ monitoring_llm_gateway_idle_timeout | string }}"
       - --secret
       - "{{ monitoring_llm_gateway_metrics_secret }}"
   register: monitoring_llm_gateway_result

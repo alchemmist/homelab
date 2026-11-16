@@ -73,6 +73,19 @@ schedules, receiver credentials or restore operations.
   update, network or storage restart. Other maintenance tools still require review;
   this is not blanket certification of every script or vendor tree.
 
+## Continuation: remaining LLM entrypoints
+
+Retired `llm-vision.yml` and combined `monitoring-llm.yml` before any upgrade,
+rollback, identity import or full-group GPU host role. Existing production
+monitoring and inference resources/timers remain untouched. Gateway helper now
+verifies existing Git owner, deployed chart/master reference and exact metrics ACL
+using bounded GETs only. Missing/malformed/failed prerequisites fail closed before
+any repair; no Helm, key generation, Secret apply, rollout or idle polling remains.
+Redirects are refused and credential-bearing HTTP errors are not printed.
+Offline tests cover read failures and authorization/owner drift; native helper was
+not executed. Local-only refusal/syntax checks do not constitute GPU maintenance
+or an authenticated production credential check. Backup work remains deferred.
+
 ## Remaining implementation gates (backup gate deferred)
 
 1. Complete remaining backup scheduler/destination inventory; choose each app's

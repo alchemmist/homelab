@@ -1,94 +1,12 @@
 ---
-- name: Apply the validated multimodal inference profile
+- name: Refuse the retired vision profile installer
   hosts: socrat-0
   gather_facts: false
   become: false
   any_errors_fatal: true
-  environment:
-    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
   tasks:
-    - name: Copy the vLLM chart
-      ansible.builtin.copy:
-        src: "{{ playbook_dir }}/../../charts/{{ item }}/"
-        dest: "{{ homelab_user_home }}/tmp-charts/{{ item }}/"
-        mode: preserve
-      loop: [vllm]
-
-    - name: Validate the vLLM chart
-      ansible.builtin.command: "helm lint {{ homelab_user_home }}/tmp-charts/{{ item }}"
-      loop: [vllm]
-      changed_when: false
-
-    - name: Record the deployed inference release revisions
-      ansible.builtin.command:
-        argv: [helm, list, --namespace, llm, --filter, '^vllm$', --output, json]
-      register: vision_releases
-      changed_when: false
-
-    - name: Require the vLLM release to be deployed
-      ansible.builtin.assert:
-        that:
-          - vision_releases.stdout | from_json | length == 1
-          - vision_releases.stdout | from_json | map(attribute='status') | unique | list == ['deployed']
-
-    - name: Preserve inference rollback revisions
-      ansible.builtin.set_fact:
-        vision_previous_revisions: "{{ dict((vision_releases.stdout | from_json | map(attribute='name')) | zip(vision_releases.stdout | from_json | map(attribute='revision'))) }}"
-
-    - name: Replace the inference profile with rollback on failure
-      block:
-        - name: Deploy the multimodal backend
-          ansible.builtin.command: >-
-            helm upgrade vllm {{ homelab_user_home }}/tmp-charts/vllm --namespace llm
-            --values {{ homelab_user_home }}/tmp-charts/vllm/values.yaml
-            --wait --timeout 15m
-
-
-      rescue:
-        - name: Roll back the inference engine
-          ansible.builtin.command:
-            argv:
-              - helm
-              - rollback
-              - vllm
-              - "{{ vision_previous_revisions['vllm'] | string }}"
-              - --namespace
-              - llm
-              - --wait
-              - --timeout
-              - 15m
-          register: vision_backend_rollback
-          failed_when: false
-
-        - name: Report the failed upgrade and recovery outcome
-          ansible.builtin.fail:
-            msg: >-
-              Vision upgrade failed at {{ ansible_failed_task.name }}.
-              Recovery exit codes: backend rollback={{ vision_backend_rollback.rc }}.
-              Inspect any nonzero recovery result before retrying.
-
-    - name: Update the advertised context while preserving live LiteLLM settings
-      ansible.builtin.shell: |
-        python3 - <<'PY'
-        import json, os, subprocess
-        from pathlib import Path
-        data = json.loads(subprocess.check_output(['helm', 'get', 'values', 'litellm', '-n', 'llm', '-o', 'json']))
-        entries = [entry for entry in data['proxy_config']['model_list'] if entry['model_name'] == 'qwen3.8-27b']
-        assert len(entries) == 1
-        entries[0]['model_info']['max_input_tokens'] = 114688
-        path = Path('{{ homelab_user_home }}/tmp-charts/litellm-vision-values.json')
-        os.umask(0o077)
-        path.write_text(json.dumps(data))
-        path.chmod(0o600)
-        PY
-      tags: metadata
-
-    - name: Apply the corrected model context metadata
-      ansible.builtin.command: >-
-        helm upgrade litellm oci://ghcr.io/berriai/litellm-helm --version 1.105.1
-        --namespace llm --values {{ homelab_user_home }}/tmp-charts/litellm-vision-values.json
-        --wait --timeout 10m
-      tags: metadata
-
-- import_playbook: identity-litellm-reconcile.yml
-  tags: metadata
+    - name: Require source-owned maintenance instead of the legacy installer
+      ansible.builtin.fail:
+        msg: >-
+          Existing inference and gateway configuration belongs to deploy/argocd/apps/vllm.yaml and deploy/argocd/apps/litellm.yaml, charts/vllm, deploy/vllm/profiles and deploy/platform/litellm/values.yaml. This historical installer is retired: no GPU profile upgrade, Helm rollback, metadata-only OCI upgrade or identity reconciliation. Commit reviewed source changes; GPU maintenance and inference acceptance require separate authorization.
+      tags: [always]

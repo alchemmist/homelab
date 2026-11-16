@@ -100,7 +100,10 @@ Identity is selected by the reviewed **Authentik user UUID**, persisted in `depl
 
 Secret `llm/socrat-authentik-litellm` holds client credentials and Generic SSO environment settings. Helm values retain optional Secret references, so replay preserves SSO while a fresh deployment without this Secret can still bootstrap local recovery. The explicit integration controller creates the provider/scope/application and starts a normal graceful LiteLLM rolling update only when mounting or changing SSO environment. It does not restart vLLM, change OTel settings, reset a password, rotate master/salt/database keys or put browser redirects on machine APIs.
 
-`litellm.yml` no longer imports any reconciliation: it is refusal-only. The remaining legacy `llm-vision.yml` has an activation-gated post-Helm reconciliation path; this is not a recommendation to replay it as a general deployment entrypoint. It preserves an existing integration but does not activate SSO on a fresh install merely because Helm was run.
+`litellm.yml` and `llm-vision.yml` are both retired refusal-only entrypoints;
+neither imports identity reconciliation. Explicit identity maintenance remains a
+separate operation with its own activation and reviewed ownership requirements;
+it is not part of a model metadata update or metrics verification.
 
 Reconcile from `ansible/`:
 

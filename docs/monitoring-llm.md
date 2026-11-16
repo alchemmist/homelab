@@ -4,15 +4,15 @@ The **LLM** dashboard (`socrat-llm`) is a primary dashboard with detailed views 
 LiteLLM, the model switcher, vLLM, NVIDIA GPU telemetry and container resources.
 It is available only through the existing private Grafana gateway.
 
-## Apply
+## Current ownership and maintenance
 
-Use both inventories so the node-exporter textfile directory is prepared on all
-four nodes. From `ansible/`:
-
-```sh
-ansible-playbook -i inventory/hosts.yml playbooks/monitoring-llm.yml --ask-become-pass
-ansible-playbook playbooks/monitoring.yml --tags monitoring_base,monitoring_k3s
-```
+Scrape resources belong to Argo Application `monitoring-llm` and
+`charts/monitoring-llm`; dashboard/rules have their existing Git owners.
+`ansible/playbooks/monitoring-llm.yml` is retired and refuses before host roles,
+Helm or credential work. Do not replay this combined installer or target the full
+Socrat group for GPU maintenance. Existing timers and scrape resources are not
+removed by this source-only retirement. GPU host changes need a separately reviewed,
+explicitly scoped maintenance procedure; socrat-2 VPN workloads remain excluded.
 
 GPU collection uses a systemd timer on socrat-0 and the existing `nvidia-smi`.
 It creates no CUDA workload, GPU resource reservation or public endpoint.
@@ -22,13 +22,21 @@ sample less than 60 seconds old. The collection health and age remain visible
 when stale. Unsupported readings, including VRAM temperature on this RTX 3090,
 are not fabricated.
 
-`monitoring_llm_gateway` preserves installed LiteLLM values and models, enables
-the Prometheus callback on pinned chart 1.105.1, and keeps metrics authenticated.
-It waits for idle vLLM samples before a rolling LiteLLM update, with zero
-unavailable replicas and a 7260-second termination grace for existing requests.
-It does not restart vLLM or the model switcher. A dedicated virtual key permits
-only `/metrics`; the role checks that `/v1/models` remains denied. The key is
-stored in Secret `llm/litellm-monitoring` and is never committed.
+`monitoring_llm_gateway` now stages a **read-only verifier**, not a reconciler.
+It requires the existing Git-owned LiteLLM Application and destination, checks the
+actual Deployment chart label, and derives the master-key Secret reference from
+the Deployment rather than stale Helm-release values. It checks the existing key
+has exactly `/metrics` allowed, anonymous metrics and model access stay denied,
+and authenticated scraping works. HTTP authorization redirects are not followed.
+
+All Kubernetes commands are bounded single-resource GETs. HTTP calls are GET-only;
+no inference, vLLM idle polling, Helm invocation, rollout, key generation or Secret
+apply is present. Missing Application/Secret, malformed reads, transport errors or
+changed ownership fail closed without installation/repair. The existing restricted
+key remains in `llm/litellm-monitoring`; credentials and API error URLs are not
+printed. First-time provisioning/rotation is a separate explicitly authorized
+operation, not a fallback from verification. The obsolete `--idle-timeout` argument
+is accepted only for CLI compatibility and no longer triggers an idle wait.
 
 The `monitoring-llm` chart installs three PodMonitors in `llm` and narrowly scoped
 network policies. Only matching Prometheus pods can scrape vLLM and the queue

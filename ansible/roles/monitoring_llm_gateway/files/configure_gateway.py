@@ -1,125 +1,115 @@
+"""Read-only verification of an EXISTING Git-owned gateway and metrics key.
+No Helm fallback, inference, key creation, Secret apply or rollout on any path.
+"""
 import argparse
 import base64
+import ipaddress
 import json
 import os
-import re
 import subprocess
-import tempfile
-import time
 import urllib.error
-import urllib.request
 import urllib.parse
+import urllib.request
+
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None  # Never forward an authorization header to a redirected host.
+
+
+def verify(args, runner=None, opener=None):
+    runner = runner or subprocess.run
+    opener = opener or urllib.request.build_opener(NoRedirect()).open
+    kubectl = ['k3s', 'kubectl', '--kubeconfig', args.kubeconfig,
+               '--request-timeout=15s']
+
+    def get(namespace, kind, name):
+        result = runner(kubectl + ['-n', namespace, 'get', kind, name, '-o', 'json'],
+                        capture_output=True, text=True, timeout=30,
+                        env=dict(os.environ, K3S_CONFIG_FILE='/dev/null'))
+        if result.returncode:
+            raise RuntimeError('Required cluster read failed; no fallback is permitted')
+        return json.loads(result.stdout)
+
+    app = get('argocd', 'application', args.release)
+    spec = app['spec']
+    sources = spec.get('sources', [spec.get('source', {})])
+    matching = [s for s in sources if s.get('repoURL') == 'https://github.com/alchemmist/homelab.git'
+                and s.get('path') == 'charts/litellm']
+    if (len(matching) != 1 or spec['destination']['namespace'] != args.namespace
+            or spec['destination'].get('server') != 'https://kubernetes.default.svc'):
+        raise RuntimeError('Expected Git-owned LiteLLM source/destination missing')
+    if matching[0].get('helm', {}).get('releaseName', args.release) != args.release:
+        raise RuntimeError('Unexpected Git-owned release name')
+
+    deployment = get(args.namespace, 'deployment', args.release)
+    if deployment['metadata']['labels'].get('helm.sh/chart') != 'litellm-helm-' + args.chart_version:
+        raise RuntimeError('Deployed chart label differs; review the maintenance contract')
+    refs = [e['valueFrom']['secretKeyRef']
+            for c in deployment['spec']['template']['spec']['containers']
+            for e in c.get('env', []) if e.get('name') == 'PROXY_MASTER_KEY'
+            and 'secretKeyRef' in e.get('valueFrom', {})]
+    if len(refs) != 1:
+        raise RuntimeError('Expected one explicit deployed master-key reference')
+    service = get(args.namespace, 'service', args.release)
+    address = ipaddress.ip_address(service['spec']['clusterIP'])
+    if not address.is_private or address.is_loopback or address.is_unspecified or address.is_multicast:
+        raise RuntimeError('Expected private cluster Service address')
+    host = '[' + str(address) + ']' if address.version == 6 else str(address)
+    base = 'http://' + host + ':4000'
+
+    # Missing key is a prerequisite failure, never authorization to generate one.
+    metrics_secret = get(args.namespace, 'secret', args.secret)
+    token = base64.b64decode(metrics_secret['data']['api-key'], validate=True).decode()
+    ref = refs[0]
+    master_secret = get(args.namespace, 'secret', ref['name'])
+    master = base64.b64decode(master_secret['data'][ref['key']], validate=True).decode()
+    if not token or not master:
+        raise RuntimeError('Empty existing key; refusing repair')
+
+    def request(path, credential=None, read_json=False):
+        headers = {} if credential is None else {'Authorization': 'Bearer ' + credential}
+        req = urllib.request.Request(base + path, headers=headers, method='GET')
+        try:
+            with opener(req, timeout=30) as response:
+                if response.status != 200:
+                    return response.status, None
+                if not read_json:
+                    return 200, None
+                body = response.read(65537)
+                if len(body) > 65536:
+                    raise RuntimeError('Oversized key metadata')
+                return 200, json.loads(body)
+        except urllib.error.HTTPError as error:
+            return error.code, None
+
+    status, info = request('/key/info?' + urllib.parse.urlencode({'key': token}), master, True)
+    if status != 200 or info.get('info', {}).get('allowed_routes') != ['/metrics']:
+        raise RuntimeError('Existing key must be restricted to metrics')
+    if request('/metrics')[0] not in (401, 403):
+        raise RuntimeError('Anonymous metrics must remain denied')
+    if request('/metrics', token)[0] != 200:
+        raise RuntimeError('Existing metrics key does not work; no repair attempted')
+    if request('/v1/models', token)[0] not in (401, 403):
+        raise RuntimeError('Model API must remain denied to metrics key')
+    return False
 
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--namespace', required=True)
     parser.add_argument('--release', required=True)
     parser.add_argument('--chart-version', required=True)
     parser.add_argument('--kubeconfig', required=True)
-    parser.add_argument('--idle-timeout', type=int, default=300)
     parser.add_argument('--secret', required=True)
+    parser.add_argument('--idle-timeout', type=int, help='Deprecated compatibility argument; no idle wait or rollout occurs')
     args = parser.parse_args()
-    env = dict(os.environ, K3S_CONFIG_FILE='/dev/null')
-    kubectl = ['k3s', 'kubectl', '--kubeconfig', args.kubeconfig, '-n', args.namespace]
-    helm = ['helm', '--kubeconfig', args.kubeconfig, '-n', args.namespace]
-
-    def run(command, data=None):
-        result = subprocess.run(command, input=data, capture_output=True, text=True, env=env)
-        if result.returncode:
-            raise RuntimeError('Cluster command failed; sensitive output withheld')
-        return result.stdout
-
-    def kube(*command):
-        return json.loads(run(kubectl + list(command) + ['-o', 'json']))
-
-    def api(base, path, token=None, payload=None):
-        headers = {'Content-Type': 'application/json'}
-        if token:
-            headers['Authorization'] = 'Bearer ' + token
-        request = urllib.request.Request(base + path, headers=headers,
-                                         data=None if payload is None else json.dumps(payload).encode())
-        with urllib.request.urlopen(request, timeout=30) as response:
-            return response.read().decode()
-
-    release = json.loads(run(helm + ['list', '--filter', '^' + re.escape(args.release) + '$', '-o', 'json']))
-    if len(release) != 1 or release[0]['chart'] != 'litellm-helm-' + args.chart_version:
-        raise RuntimeError('Installed LiteLLM chart differs from the pinned monitoring integration version')
-    values = json.loads(run(helm + ['get', 'values', args.release, '-o', 'json']))
-    config = values.setdefault('proxy_config', {})
-    settings = config.setdefault('litellm_settings', {})
-    callbacks = settings.setdefault('callbacks', [])
-    if not isinstance(callbacks, list):
-        raise RuntimeError('Unsupported callback configuration; refusing to replace it')
-    changed = False
-    desired_strategy = {'type': 'RollingUpdate', 'rollingUpdate': {'maxUnavailable': 0, 'maxSurge': 1}}
-    needs_upgrade = ('prometheus' not in callbacks
-                     or settings.get('require_auth_for_metrics_endpoint') is not True
-                     or values.get('strategy') != desired_strategy
-                     or values.get('terminationGracePeriodSeconds', 90) < 7260)
-    if needs_upgrade:
-        # VM105 native issuer routing is owned by the pinned Git chart. An OCI
-        # upgrade using the stale Helm-release values would silently undo it.
-        application = run(['k3s', 'kubectl', '--kubeconfig', args.kubeconfig,
-                           '-n', 'argocd', 'get', 'application', args.release,
-                           '--ignore-not-found', '-o', 'json'])
-        if application.strip() and any(source.get('path') == 'charts/litellm'
-                                       for source in json.loads(application).get('spec', {}).get('sources', [])):
-            raise RuntimeError('LiteLLM is Git-chart managed; update canonical deploy/platform/litellm/values.yaml, not the legacy OCI release')
-        vllm = kube('get', 'service', 'vllm')['spec']['clusterIP']
-        deadline = time.monotonic() + args.idle_timeout
-        idle_samples = 0
-        while time.monotonic() < deadline:
-            metrics = api('http://' + vllm + ':8000', '/metrics')
-            samples = re.findall(r'^vllm:num_requests_(?:running|waiting)\{[^\n]*\}\s+([\d.eE+-]+)$', metrics, re.M)
-            idle_samples = idle_samples + 1 if samples and all(float(value) == 0 for value in samples) else 0
-            if idle_samples >= 3:
-                break
-            time.sleep(5)
-        else:
-            raise RuntimeError('Inference remained active; gateway rollout deferred')
-        if 'prometheus' not in callbacks:
-            callbacks.append('prometheus')
-        settings['require_auth_for_metrics_endpoint'] = True
-        values['strategy'] = desired_strategy
-        values['terminationGracePeriodSeconds'] = max(values.get('terminationGracePeriodSeconds', 90), 7260)
-        with tempfile.TemporaryDirectory(prefix='litellm-monitoring-') as directory:
-            path = os.path.join(directory, 'values.json')
-            with open(path, 'w') as stream:
-                os.chmod(path, 0o600)
-                json.dump(values, stream)
-            run(helm + ['upgrade', args.release, 'oci://ghcr.io/berriai/litellm-helm',
-                        '--version', args.chart_version, '--reuse-values', '-f', path,
-                        '--wait', '--timeout', '10m', '--atomic', '--no-hooks'])
-        changed = True
-    service = kube('get', 'service', args.release)
-    base = 'http://' + service['spec']['clusterIP'] + ':4000'
-    master_secret = kube('get', 'secret', values.get('masterkeySecretName', 'litellm-env'))
-    master = base64.b64decode(master_secret['data'][values.get('masterkeySecretKey', 'LITELLM_MASTER_KEY')]).decode()
-    existing = run(kubectl + ['get', 'secret', args.secret, '--ignore-not-found', '-o', 'json'])
-    if existing.strip():
-        token = base64.b64decode(json.loads(existing)['data']['api-key']).decode()
-        info = json.loads(api(base, '/key/info?key=' + urllib.parse.quote(token), master))
-        if info.get('info', {}).get('allowed_routes') != ['/metrics']:
-            raise RuntimeError('Existing monitoring key is not restricted to metrics')
-    else:
-        response = json.loads(api(base, '/key/generate', master,
-                                  {'key_alias': 'prometheus-monitoring', 'allowed_routes': ['/metrics']}))
-        token = response['key']
-        manifest = {'apiVersion': 'v1', 'kind': 'Secret',
-                    'metadata': {'name': args.secret, 'namespace': args.namespace},
-                    'type': 'Opaque', 'stringData': {'api-key': token}}
-        run(kubectl + ['apply', '-f', '-'], json.dumps(manifest))
-        changed = True
-    api(base, '/metrics', token)
     try:
-        api(base, '/v1/models', token)
-    except urllib.error.HTTPError as error:
-        if error.code not in (401, 403):
-            raise RuntimeError('Unexpected monitoring key permission check result') from None
-    else:
-        raise RuntimeError('Monitoring key unexpectedly permits model API access')
-    print('changed=' + str(changed).lower())
+        verify(args)
+    except Exception:
+        # HTTP/key-info errors may contain a token in their URL. Never echo them.
+        raise SystemExit('Read-only gateway verification failed; review Git ownership and existing metrics prerequisites privately. No repair or fallback attempted.') from None
+    print('changed=false')
 
 
 if __name__ == '__main__':

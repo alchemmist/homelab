@@ -60,4 +60,6 @@ class MigrationTests(unittest.TestCase):
   self.assertNotIn('helm upgrade',s)
   self.assertIn('deploy/platform/litellm/values.yaml',s)
   g=(R/'ansible/roles/monitoring_llm_gateway/files/configure_gateway.py').read_text()
-  self.assertLess(g.index("source.get('path') == 'charts/litellm'"),g.index("run(helm + ['upgrade'"))
+  self.assertIn("s.get('path') == 'charts/litellm'",g)
+  self.assertNotIn("['upgrade'",g)
+  self.assertNotIn('/key/generate',g)

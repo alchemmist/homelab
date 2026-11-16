@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class DeploymentOwnership(unittest.TestCase):
     def test_retired_entrypoints_have_no_side_effect_or_followup_play(self):
-        for name in ['rancher','litellm']:
+        for name in ['rancher','litellm','llm-vision','monitoring-llm']:
             with self.subTest(name=name):
                 plays = yaml.safe_load((ROOT/f'ansible/playbooks/{name}.yml').read_text())
                 self.assertEqual(len(plays), 1)  # No imports after a failed play.
@@ -20,8 +20,11 @@ class DeploymentOwnership(unittest.TestCase):
                 task = play['tasks'][0]
                 self.assertEqual(set(task), {'name','ansible.builtin.fail','tags'})
                 self.assertIn('always', task['tags'])
-                for path in [f'deploy/argocd/apps/{name}.yaml',f'charts/{name}',
-                             f'deploy/platform/{name}/values.yaml']:
+                paths = {
+                    'llm-vision':['deploy/argocd/apps/vllm.yaml','deploy/argocd/apps/litellm.yaml'],
+                    'monitoring-llm':['deploy/argocd/apps/monitoring-llm.yaml','charts/monitoring-llm'],
+                }.get(name, [f'deploy/argocd/apps/{name}.yaml',f'charts/{name}',f'deploy/platform/{name}/values.yaml'])
+                for path in paths:
                     self.assertIn(path, task['ansible.builtin.fail']['msg'])
                     self.assertTrue((ROOT/path).exists())
 

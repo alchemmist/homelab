@@ -37,7 +37,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: b8fec9546de226bf3434f8cb1b3967b98305a8c1dd383c047305646666d32b4e
+          graph-digest: e00018f956813039c2f0ffd483fc43df52314f552751d5212be9b3ae0e0601a1
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -82,7 +82,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: b8fec9546de226bf3434f8cb1b3967b98305a8c1dd383c047305646666d32b4e
+          graph-digest: e00018f956813039c2f0ffd483fc43df52314f552751d5212be9b3ae0e0601a1
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -127,7 +127,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: b8fec9546de226bf3434f8cb1b3967b98305a8c1dd383c047305646666d32b4e
+          graph-digest: e00018f956813039c2f0ffd483fc43df52314f552751d5212be9b3ae0e0601a1
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -183,7 +183,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: b8fec9546de226bf3434f8cb1b3967b98305a8c1dd383c047305646666d32b4e
+          graph-digest: e00018f956813039c2f0ffd483fc43df52314f552751d5212be9b3ae0e0601a1
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -228,7 +228,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: b8fec9546de226bf3434f8cb1b3967b98305a8c1dd383c047305646666d32b4e
+          graph-digest: e00018f956813039c2f0ffd483fc43df52314f552751d5212be9b3ae0e0601a1
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -285,6 +285,8 @@ jobs:
 
           uv run python -m unittest discover -s tests -p test_deployment_ownership.py
 
+          uv run python -m unittest discover -s tests -p test_gateway_readonly.py
+
           '
         name: Run Offline infrastructure ownership, placement and issuer contracts
         id: quality-command
@@ -300,7 +302,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: b8fec9546de226bf3434f8cb1b3967b98305a8c1dd383c047305646666d32b4e
+          graph-digest: e00018f956813039c2f0ffd483fc43df52314f552751d5212be9b3ae0e0601a1
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -352,7 +354,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: b8fec9546de226bf3434f8cb1b3967b98305a8c1dd383c047305646666d32b4e
+          graph-digest: e00018f956813039c2f0ffd483fc43df52314f552751d5212be9b3ae0e0601a1
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'

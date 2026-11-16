@@ -90,3 +90,8 @@ plays/imports и согласованность Argo bootstrap version/values с
 не upstream trust), retirement legacy LiteLLM installer, единый stricter placement
 checker для CLI/Ansible: current RS revision + Pod Ready gates. Read-only проверка
 Rancher/Grafana/MCP на `socrat-5` пройдена; бэкапы по-прежнему отложены владельцем.
+
+Legacy continuation: `llm-vision.yml` и combined `monitoring-llm.yml` теперь
+refusal-only до GPU/Helm/identity действий. Gateway monitoring helper — read-only
+проверка существующих owner/credentials/ACL, без install/repair fallback. Бэкапы,
+inference и production maintenance не выполнялись.

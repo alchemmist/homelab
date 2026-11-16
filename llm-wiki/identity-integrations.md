@@ -168,11 +168,10 @@ OTel env сохранены; vLLM не перезапускался. LiteLLM п�
 
 Owner DB password recovery: `/fallback/login`, маршрут HTTP 200. Пароль не
 сбрасывался; его реальная recovery-проверка не следует из подтверждения SSO.
-`litellm.yml` выведен из эксплуатации и не вызывает никаких reconciliation.
-У оставшегося legacy `llm-vision.yml` activation-gated вызов
-`identity-litellm-reconcile.yml` использует существующий activation Secret; это
-не инструкция повторять Helm deployment для сопровождения Git-owned приложения. Fresh Helm install не включает
-SSO неожиданно. Foundation не создаёт placeholder app без reviewed custom scope.
+`litellm.yml` и `llm-vision.yml` выведены из эксплуатации: оба только отказывают
+и не вызывают identity reconciliation. Отдельное identity maintenance требует
+собственной activation/ownership-проверки; метрики и model metadata не являются
+разрешением повторять bootstrap или изменять native SSO.
 Полный runbook/rollback: `docs/litellm.md`.
 
 ## 8. Argo CD

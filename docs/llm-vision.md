@@ -43,11 +43,12 @@ The backend values and the standalone profile must agree:
 
 LiteLLM calls vLLM directly. Its advertised context must match in `deploy/litellm/values.yaml` and `deploy/platform/litellm/values.yaml`.
 
-From `ansible/`, use `ansible-playbook -i inventory/hosts.yml playbooks/llm-vision.yml`.
-This requires the existing deployed vLLM, model gateway and LiteLLM releases. It
-checks that inference is idle, pauses the gateway, upgrades both profiles through
-Helm, and updates LiteLLM context metadata while preserving other live settings.
-Upgrade failures trigger recovery attempts using the previous Helm revisions.
+`ansible/playbooks/llm-vision.yml` is retired: it refuses before any GPU/backend
+upgrade, automatic Helm rollback, metadata-only OCI upgrade or identity import.
+Maintain reviewed configuration through the owning `vllm` and `litellm` Git
+Applications. The historical workflow below is not permission to restart GPU
+workloads or run inference during infrastructure refactoring. Explicit GPU/model
+maintenance needs a separate reviewed rollout and acceptance procedure.
 
 ## Verification
 

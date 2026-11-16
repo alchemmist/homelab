@@ -111,3 +111,20 @@ missing revisions and replica0 cannot produce acceptance. Both transports have
 mocked offline tests; live read-only CLI checks passed for Rancher, Grafana and
 Grafana MCP on socrat-5. The Ansible transport was syntax-checked, not executed
 against production during this package.
+
+## Remaining legacy LLM entrypoints: fail-closed continuation
+
+- `llm-vision.yml`: retired before backend/OCI upgrades, rollback or identity import.
+- `monitoring-llm.yml`: retired before full-group GPU host roles or competing scrape
+  Helm installation. Existing monitoring runtime/timers are untouched.
+- `monitoring_llm_gateway/files/configure_gateway.py`: active read-only prerequisite/
+  credential verifier. No Helm, key generation, Secret apply, idle polling or rollout
+  on any path. Reads one Git Application before credential access; verifies deployed
+  chart/reference and existing exact metrics ACL. GET-only, bounded requests,
+  redirects denied, sensitive failures suppressed. Missing prerequisites must be
+  provisioned separately under explicit authorization, not created automatically.
+
+`test_gateway_readonly.py` simulates every failed Kubernetes read, missing/changed
+owner, chart/reference drift, ACL mismatch and redirects. No production helper or
+maintenance role was run for this package. Other scripts are not certified by this
+bounded audit; in particular identity/model/host maintenance remains separately scoped.
