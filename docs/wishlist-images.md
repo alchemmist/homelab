@@ -4,7 +4,10 @@ Private Sharp/libvips binary POST adapter, shipped with the Wishlist image. Enab
 `images.enabled` only after the checked image includes `/opt/image-optimizer`.
 Do not reuse the public `img-proxy`: that service forwards to external weserv.
 Master WebP is full-resolution/lossless; preview <=480×960 is a display derivative,
-not the zoom original. JPEG conversion can increase size. ICC retained, EXIF
+not the zoom original. Preview is WebP q90/alpha100; master remains pixel-lossless.
+Preview URLs/S3 keys use a version so old lossless previews cannot pin oversized
+bytes in immutable browser caches. Optimizer resources use sync-wave-1: same-node
+image pull/readiness completes before Recreate of the SQLite app (wave0). JPEG conversion can increase size. ICC retained, EXIF
 orientation applied and metadata removed; GIF/WebP animation/alpha tested.
 
 Optimizer Deployment has no credentials/PVC, non-root/read-only rootfs + temporary

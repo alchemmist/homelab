@@ -6,6 +6,7 @@ class WishlistImages(unittest.TestCase):
     def test_private_resource_isolation_no_external_optimizer(self):
         source = (ROOT/'charts/wishlist/templates/image-optimizer.yaml').read_text()
         self.assertIn('if .Values.images.enabled',source)
+        self.assertEqual(source.count('argocd.argoproj.io/sync-wave: "-1"'),3)
         for value in ['type: ClusterIP','kind: NetworkPolicy','egress: []','automountServiceAccountToken: false','readOnlyRootFilesystem: true','runAsNonRoot: true','/opt/image-optimizer/server.cjs']:
             self.assertIn(value,source)
         self.assertNotIn('kind: Ingress',source)
