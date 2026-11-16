@@ -84,6 +84,8 @@
     "frontHostVars": "ansible/inventory/host_vars/socrat-0.yml",
     "targetHostVars": "ansible/inventory/host_vars/socrat-1.yml",
     "directRecoveryEndpoint": "109.173.40.247:51831",
-    "policy": "Fixed keyless ciphertext-only relay. Check source coherence; no generation or network restart."
+    "policy": "Fixed keyless ciphertext-only relay. Check source coherence; no generation or network restart.",
+    "serviceFile": "ansible/files/wg-peer15-relay.service",
+    "installPlaybook": "ansible/playbooks/wg-peer15-relay.yml"
   }
 }

@@ -4,6 +4,7 @@ Never contacts Kubernetes, runs workflows, reads credentials, or executes tools.
 """
 import argparse
 import ast
+import configparser
 import ipaddress
 import json
 from pathlib import Path
@@ -62,6 +63,22 @@ def check(root=ROOT, write=False):
             e.get('PEER') != mesh[relay['targetNode']]['public_key'] or
             e.get('DIRECT') != relay['directRecoveryEndpoint']):
         raise ValueError('Relay updater endpoint/peer identity drift')
+    unit = configparser.ConfigParser(interpolation=None)
+    unit.read_string((root/relay['serviceFile']).read_text())
+    service = unit['Service']
+    allow = service['IPAddressAllow'].split()
+    required = {expected['CLIENT'][0]+'/32', target_ip+'/32'}
+    if len(allow) != len(required) or set(allow) != required or service['IPAddressDeny'] != 'any':
+        raise ValueError('Relay sandbox endpoint scope drift; no automatic network regeneration')
+    for key, value in {'DynamicUser':'yes','NoNewPrivileges':'yes',
+                       'CapabilityBoundingSet':'','AmbientCapabilities':''}.items():
+        if service.get(key) != value:
+            raise ValueError('Relay sandbox privilege drift: '+key)
+    playbook = load(root/relay['installPlaybook'])
+    assertion = next(t['ansible.builtin.assert']['that'] for t in playbook[0]['tasks']
+                     if t.get('name') == 'Validate relay mesh identity without reading WG keys')
+    if not any("wg_socrat_nodes['"+relay['frontNode']+"']['address']" in line for line in assertion):
+        raise ValueError('Relay preflight must derive the address from the mesh registry')
     route = c['issuerTransport']
     ipaddress.ip_address(route['ip'])
     seen = set()

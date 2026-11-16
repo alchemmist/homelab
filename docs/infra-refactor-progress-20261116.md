@@ -88,6 +88,25 @@ or an authenticated production credential check. Backup work remains deferred.
 73 targeted offline tests passed; GitHub run43884693254 for code commitdd3533d4
 completed successfully. This result does not certify every remaining script.
 
+## Continuation: endpoint scope and current source pointers
+
+Relay's Ansible preflight no longer duplicates the front mesh address. Offline
+validation now ties systemd client/target /32 allowlist to mesh/LAN registry and
+checks existing deny/privilege constraints. Unit, runtime relay/endpoint scripts,
+ports, keys, policies and production networking unchanged; playbook syntax-only.
+
+New source-pointer checker inspects51leaf Applications/85local source/value
+pointers, `$values` refs and nine selected current documents. It rejects missing,
+escaping, ambiguous or unsupported pointers, stale claim bindings not consumed by
+the registered owner, broken local links and mismatched current values. It does
+not render VPN or other workloads, fetch remote charts or verify live state.
+
+Corrected deployment runbook's stale MCP account/client instructions: official
+read-only client and private credential setup now point to current runbook;
+server-side sync grant is explicitly preserved/not represented as revoked, and
+current default role is unassigned. Historical ConfigMap patch is not a fallback.
+RBAC/configuration/credentials were not changed. Backup work remains deferred.
+
 ## Remaining implementation gates (backup gate deferred)
 
 1. Complete remaining backup scheduler/destination inventory; choose each app's

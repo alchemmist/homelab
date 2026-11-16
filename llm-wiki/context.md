@@ -95,3 +95,8 @@ Legacy continuation: `llm-vision.yml` и combined `monitoring-llm.yml` тепе�
 refusal-only до GPU/Helm/identity действий. Gateway monitoring helper — read-only
 проверка существующих owner/credentials/ACL, без install/repair fallback. Бэкапы,
 inference и production maintenance не выполнялись.
+
+Endpoint/source-pointer continuation: relay preflight использует mesh registry;
+CI сверяет unit /32 allowlist и sandbox с canonical endpoints, без изменения unit
+или рестарта. Новый offline checker сверяет Argo local sources/values/refs и
+выбранные current-doc links/claims/default RBAC; исторические receipts исключены.

@@ -20,7 +20,7 @@ class InfrastructureContracts(unittest.TestCase):
         c = json.loads((ROOT/'deploy/contracts/infrastructure.json').read_text())
         names = ['deploy/contracts/infrastructure.json', c['meshRegistry'], c['ansibleInventory']]
         names += [x['file'] for x in c['issuerTransport']['consumers']]
-        names += [c['relayContract'][k] for k in ['relayScript','endpointScript','frontHostVars','targetHostVars']]
+        names += [c['relayContract'][k] for k in ['relayScript','endpointScript','frontHostVars','targetHostVars','serviceFile','installPlaybook']]
         for name in names:
             p = root/name
             p.parent.mkdir(parents=True, exist_ok=True)
@@ -89,6 +89,25 @@ class InfrastructureContracts(unittest.TestCase):
             p.write_text(p.read_text().replace("FRONT = ('10.250.0.1', 51835)", "FRONT = ('0.0.0.0', 51835)"))
             with self.assertRaisesRegex(ValueError, 'Fixed relay topology drift'):
                 contract.check(root, write=True)
+
+    def test_relay_sandbox_widening_or_stale_endpoint_rejected_without_writes(self):
+        for replacement in ['10.250.0.0/16','10.250.0.99/32']:
+            with tempfile.TemporaryDirectory() as d:
+                root = self.fixture(d)
+                p = root/'ansible/files/wg-peer15-relay.service'
+                p.write_text(p.read_text().replace('10.250.0.41/32',replacement))
+                before = p.read_bytes()
+                with self.assertRaisesRegex(ValueError,'sandbox endpoint scope drift'):
+                    contract.check(root, write=True)
+                self.assertEqual(p.read_bytes(),before)
+
+    def test_relay_sandbox_privilege_drift_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = self.fixture(d)
+            p = root/'ansible/files/wg-peer15-relay.service'
+            p.write_text(p.read_text().replace('CapabilityBoundingSet=','CapabilityBoundingSet=CAP_NET_ADMIN'))
+            with self.assertRaisesRegex(ValueError,'sandbox privilege drift'):
+                contract.check(root)
 
     def test_bootstrap_requires_opt_in_and_refuses_existing_workloads(self):
         p = yaml.safe_load((ROOT/'ansible/playbooks/argocd.yml').read_text())[0]

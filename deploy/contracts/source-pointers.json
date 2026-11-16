@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "repoURL": "https://github.com/alchemmist/homelab.git",
+  "applicationDirectory": "deploy/argocd/apps",
+  "documents": [
+    "README.md",
+    "llm-wiki/context.md",
+    "llm-wiki/README.md",
+    "docs/infrastructure-contracts.md",
+    "docs/wiki.md",
+    "wiki/README.md",
+    "docs/litellm.md",
+    "docs/monitoring-llm.md",
+    "llm-wiki/cluster-deploy.md"
+  ],
+  "currentValues": [
+    {
+      "source": "deploy/wiki-runtime/values.yaml",
+      "path": [
+        "persistence",
+        "existingClaim"
+      ],
+      "documents": [
+        "wiki/README.md",
+        "docs/wiki.md"
+      ],
+      "application": "wiki-runtime"
+    },
+    {
+      "source": "charts/grafana/values.yaml",
+      "path": [
+        "grafana",
+        "persistence",
+        "existingClaim"
+      ],
+      "documents": [
+        "llm-wiki/context.md"
+      ],
+      "application": "grafana"
+    },
+    {
+      "application": "argo-cd",
+      "source": "deploy/platform/argo-cd/values.yaml",
+      "path": [
+        "configs",
+        "rbac",
+        "policy.default"
+      ],
+      "documents": [
+        "llm-wiki/cluster-deploy.md"
+      ]
+    }
+  ],
+  "rootApplication": "deploy/argocd/root.yaml"
+}

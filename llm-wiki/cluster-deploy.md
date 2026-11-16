@@ -105,9 +105,25 @@ Harbor: push-учётка в секретах CI (`HARBOR_USERNAME`, `HARBOR_PAS
 
 ## Локальный API-аккаунт для агента
 
-В `deploy/platform/argo-cd/values.yaml` заведён локальный пользователь `accounts.mcp: apiKey` (в UI паролем не входит). RBAC по умолчанию `role:readonly`, плюс одна строка `p, mcp, applications, sync, */*, allow`. Создавать и удалять Application этот аккаунт не может. Токен выпускается через API Argo CD и хранится только на машине агента (`~/.pi/agent/argocd-mcp-token`). Клиент — stdio-сервер `argocd-mcp` в пользовательском `mcp.json`, URL `https://argocd.socrat.alchemmist.xyz`. Браузерный вход через Authentik от этого не меняется.
+Текущий клиент — официальный Argo CD Labs MCP из project settings, с
+`MCP_READ_ONLY=true`: диагностика, не imperative deployment. Установка и приватное
+хранение credentials описаны в [official MCP runbook](../docs/official-mcp.md).
+Не запускать credential helper для показа токена и не возвращать старый
+пользовательский wrapper из исторических инструкций.
 
-Пока Application `argo-cd` не может скачать свой чарт с `argoproj.github.io`, self-heal не подтянет этот values. До успешного sync аккаунт живёт ещё и прямой правкой `argocd-cm` / `argocd-rbac-cm`. Следующий успешный sync с `main` без этого коммита аккаунт сотрёт.
+В canonical `deploy/platform/argo-cd/values.yaml` сохранён `accounts.mcp: apiKey`,
+`g, mcp, role:readonly` и существующий server-side grant
+`p, mcp, applications, sync, */*, allow`. Это различие между возможностями
+credential и read-only режимом клиента, а не разрешение использовать sync в
+рутинной диагностике. Этот рефакторинг не меняет RBAC, не расширяет grant и не
+выдаёт клиентское ограничение за server-side запрет. Общий default —
+`role:unassigned`, а не `role:readonly`.
+
+Исторический срез7ноября описывал временную прямую правку ConfigMap, пока чарт
+не скачивался. Это не текущий способ сопровождения и не fallback при ошибке
+Application. Сопровождение аккаунта/RBAC — через canonical Git source; native
+OIDC и существующие credentials сохраняются. Принятая приёмка Argo после переноса
+описана в [management handoff](../docs/vm105-management-20261116.md).
 
 ## Как устроен Argo CD
 

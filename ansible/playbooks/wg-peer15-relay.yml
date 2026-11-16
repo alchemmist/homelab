@@ -1,7 +1,7 @@
 ---
-# Installs ONLY the keyless relay on0. Does not restart WG, K3s or networking.
-# After relay health, deploy the narrow endpoint helper and run apply on5.
-# Roll back endpoint on5 BEFORE stopping relay0; see handoff document.
+# Installs ONLY the keyless relay on socrat-0. Does not restart WG, K3s or networking.
+# After relay health, deploy the narrow endpoint helper and run apply on socrat-5.
+# Roll back endpoint on socrat-5 BEFORE stopping relay on socrat-0; see handoff document.
 - name: Install fixed peer15 transport on socrat-0
   hosts: socrat-0
   gather_facts: false
@@ -11,11 +11,11 @@
       ansible.builtin.command: ip -j -4 address show dev wg-socrat
       register: relay_mesh_addresses
       changed_when: false
-    - name: Validate node0 mesh identity without reading WG keys
+    - name: Validate relay mesh identity without reading WG keys
       ansible.builtin.assert:
         that:
           - inventory_hostname == 'socrat-0'
-          - "'10.250.0.1' in (relay_mesh_addresses.stdout | from_json | map(attribute='addr_info') | flatten | map(attribute='local') | list)"
+          - "wg_socrat_nodes['socrat-0']['address'] in (relay_mesh_addresses.stdout | from_json | map(attribute='addr_info') | flatten | map(attribute='local') | list)"
     - name: Stop only owned bounded diagnostic relay units
       ansible.builtin.command: 'systemctl stop {{ item }}'
       loop:

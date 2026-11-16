@@ -128,3 +128,39 @@ against production during this package.
 owner, chart/reference drift, ACL mismatch and redirects. No production helper or
 maintenance role was run for this package. Other scripts are not certified by this
 bounded audit; in particular identity/model/host maintenance remains separately scoped.
+
+## Source and current-document pointers
+
+`deploy/contracts/source-pointers.json` registers the root Application, local
+repository URL and selected current documents/value bindings. Run
+`uv run python scripts/check_source_pointers.py`: filesystem/YAML only, no rendering,
+network, credential helpers or runtime mutation. It checks:
+
+- root still points to the inspected Application directory;
+- unique Application identities and unambiguous source/sources/ref definitions;
+- local source directories and declared Helm Chart.yaml/value files exist;
+- `$values` refs resolve from repository root, not the referenced source's path;
+- pointers stay inside the repository, including symlink resolution;
+- selected document links exist and documented claim/default-role values still
+  match source files consumed by their registered Applications.
+
+This checkpoint covers51leaf Applications and85local source/value pointers; counts
+are descriptive, not a fixed limit. Current document bindings include Wiki/Grafana
+claims and Argo default RBAC. Historical receipts are deliberately not checked
+against today's placement. Document bindings check explicit value mentions, not
+complete prose semantics. No Markdown fragment, web-route availability, remote
+chart content, computed Helm override or live PV/data authority is certified.
+Non-main local revisions, external relative value files and missing optional
+values are explicitly rejected rather than claimed verified; extending these cases
+requires a separately reviewed contract. This is not a full Helm render validator.
+
+## Relay endpoint and sandbox scope
+
+The preflight address assertion in `wg-peer15-relay.yml` now reads the existing
+mesh registry instead of duplicating the front address. No relay code, endpoint,
+unit file or networking was changed. Offline contracts now also require the
+unit's exact client/target /32 allowlist to match registry-derived endpoints,
+IPAddressDeny=any, DynamicUser/NoNewPrivileges and empty capability sets. A stale
+address, widened CIDR or privilege drift fails even under `--write`; there is no
+network-policy generation. Original endpoint/idempotence/sandbox tests run in CI.
+The preflight playbook was syntax-checked only, never applied in this package.
