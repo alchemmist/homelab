@@ -1,5 +1,32 @@
 # Socrat: текущий контекст
 
+## Management RAM move —16Nov, COMPLETE / CURRENT
+
+Explicit owner request: Rancher1→5 and Argo application-controller0→5 accepted.
+Both exactly1Ready/restart0, Applications Synced/Healthy/operationsSucceeded.
+Argo other components remain0; webhooks0/3, Grafana1/VPN2 unchanged. Exact Argo
+chart10.11.6/Rancher2.15.2, original UIDs/full container specs preserved. Rancher
+local vendored chart adds optional Pod-only verified issuer alias; baseline
+render byte-identical upstream. Old imperative Ansible upstream upgrade retired.
+Rancher1replica preferred anti-affinity permits maxSurge1/maxUnavailable0 updates.
+
+Incident: first5 Pod preceded local chart/source propagation, ignored issuer
+alias; native login impaired approx14:12–14:22MSK despite readiness. Old required
+anti-affinity blocked replacement even after incoming preference change. Ordinary
+source-owned recovery via1 drained old rule, then final5 accepted; two UID-tested
+placement patches matched published source; no forced Pod deletion. Real final
+native discovery200,3correctHTTPS/callback/PKCE302, Authentik browser form clean;
+no owner callback impersonated.41staticSecrets exact,58identity objects same
+UID/body/count, full OIDC AuthConfig unchanged. Dynamic serving-cert leaf alone
+updated Pod SANs: same private key/CA trust, original-root verify passed.8tests
+pass; diagnostic removed. Full incident/rollback/receipts/RAM caveats:
+`docs/vm105-management-20261116.md`; this supersedes Rancher-on1 recovery below.
+
+RAM: relocated baseline consumers1428Mi(controller)+1313Mi(Rancher);14:31node0
+18457Mi58%,1 7817Mi51%,5 7197Mi18%. Host net reductions526/927Mi versus prior
+single sample are not2.7GiB proven savings; other processes/cache vary. Current
+moved Pods927/1331Mi on5. Sustained measurement/VM DR/relay HA remain separate.
+
 ## Stateful application batch —16Nov, COMPLETE / CURRENT
 
 Owner's entire6position batch completed: Wishlist, Wiki runtime, Monori back+

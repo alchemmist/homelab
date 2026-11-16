@@ -1,6 +1,10 @@
 # Rancher native login recovery —15Nov2026,22:29MSK
 
-## Current state
+> Historical15Nov recovery: placement below is superseded by the accepted
+>16Nov return to5 with verified native issuer routing. See
+> [current management handoff](vm105-management-20261116.md).
+
+## Historical recovery result
 
 Owner reported Rancher login broken after the node5 handoff. Rancher is now
 intentionally back on **socrat-1**, desired replicas1, NO HA. Only Rancher moved
