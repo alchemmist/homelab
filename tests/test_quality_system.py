@@ -238,10 +238,10 @@ def test_graph_is_cost_layered_and_titles_are_semantic():
     cheap = {"python", "yaml", "shell", "workflow", "secrets", "docker", "javascript", "tests-fast"}
     for node in cheap:
         assert graph[node]["needs"] == ["graph"]
-    for node in ("ownership", "manifests", "ansible", "tests-medium", "dependencies"):
-        assert set(graph[node]["needs"]) == cheap
+    assert set(graph["ownership"]["needs"]) == cheap
+    for node in ("manifests", "ansible", "tests-medium", "dependencies"):
+        assert graph[node]["needs"] == ["ownership"]
     assert set(graph["tests-cluster"]["needs"]) == {
-        "ownership",
         "manifests",
         "ansible",
         "tests-medium",

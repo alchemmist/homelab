@@ -40,7 +40,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
+          graph-digest: 6a4809ee5113e0ea7db6d2f895e317b0cdf9ad7cab3bafd0f4155e35c1c3d284
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -85,7 +85,7 @@ jobs:
           adapter: native
           report-path: reports/python.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
+          graph-digest: 6a4809ee5113e0ea7db6d2f895e317b0cdf9ad7cab3bafd0f4155e35c1c3d284
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -132,7 +132,7 @@ jobs:
           adapter: native
           report-path: reports/yaml.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
+          graph-digest: 6a4809ee5113e0ea7db6d2f895e317b0cdf9ad7cab3bafd0f4155e35c1c3d284
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -180,7 +180,7 @@ jobs:
           adapter: native
           report-path: reports/shell.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
+          graph-digest: 6a4809ee5113e0ea7db6d2f895e317b0cdf9ad7cab3bafd0f4155e35c1c3d284
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -228,7 +228,7 @@ jobs:
           adapter: native
           report-path: reports/workflow.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
+          graph-digest: 6a4809ee5113e0ea7db6d2f895e317b0cdf9ad7cab3bafd0f4155e35c1c3d284
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -276,7 +276,7 @@ jobs:
           adapter: native
           report-path: reports/secrets.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
+          graph-digest: 6a4809ee5113e0ea7db6d2f895e317b0cdf9ad7cab3bafd0f4155e35c1c3d284
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -324,7 +324,7 @@ jobs:
           adapter: native
           report-path: reports/docker.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
+          graph-digest: 6a4809ee5113e0ea7db6d2f895e317b0cdf9ad7cab3bafd0f4155e35c1c3d284
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -374,7 +374,7 @@ jobs:
           adapter: native
           report-path: reports/javascript.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
+          graph-digest: 6a4809ee5113e0ea7db6d2f895e317b0cdf9ad7cab3bafd0f4155e35c1c3d284
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -421,7 +421,7 @@ jobs:
           adapter: junit
           report-path: reports/tests-fast.xml
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
+          graph-digest: 6a4809ee5113e0ea7db6d2f895e317b0cdf9ad7cab3bafd0f4155e35c1c3d284
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -482,7 +482,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
+          graph-digest: 6a4809ee5113e0ea7db6d2f895e317b0cdf9ad7cab3bafd0f4155e35c1c3d284
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -541,7 +541,7 @@ jobs:
           adapter: native
           report-path: reports/manifests.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
+          graph-digest: 6a4809ee5113e0ea7db6d2f895e317b0cdf9ad7cab3bafd0f4155e35c1c3d284
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -560,14 +560,7 @@ jobs:
           EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
         run: exit "${EXIT_CODE:-2}"
     needs:
-      - python
-      - yaml
-      - shell
-      - workflow
-      - secrets
-      - docker
-      - javascript
-      - tests-fast
+      - ownership
     timeout-minutes: 10
   ansible:
     name: Playbook safety
@@ -596,7 +589,7 @@ jobs:
           adapter: native
           report-path: reports/ansible.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
+          graph-digest: 6a4809ee5113e0ea7db6d2f895e317b0cdf9ad7cab3bafd0f4155e35c1c3d284
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -615,14 +608,7 @@ jobs:
           EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
         run: exit "${EXIT_CODE:-2}"
     needs:
-      - python
-      - yaml
-      - shell
-      - workflow
-      - secrets
-      - docker
-      - javascript
-      - tests-fast
+      - ownership
     timeout-minutes: 5
   tests-medium:
     name: Integration tests
@@ -658,7 +644,7 @@ jobs:
           adapter: junit
           report-path: reports/tests-medium.xml
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
+          graph-digest: 6a4809ee5113e0ea7db6d2f895e317b0cdf9ad7cab3bafd0f4155e35c1c3d284
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -677,14 +663,7 @@ jobs:
           EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
         run: exit "${EXIT_CODE:-2}"
     needs:
-      - python
-      - yaml
-      - shell
-      - workflow
-      - secrets
-      - docker
-      - javascript
-      - tests-fast
+      - ownership
     timeout-minutes: 10
   tests-cluster:
     name: Cluster lifecycle
@@ -717,7 +696,7 @@ jobs:
           adapter: junit
           report-path: reports/tests-cluster.xml
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
+          graph-digest: 6a4809ee5113e0ea7db6d2f895e317b0cdf9ad7cab3bafd0f4155e35c1c3d284
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -736,7 +715,6 @@ jobs:
           EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
         run: exit "${EXIT_CODE:-2}"
     needs:
-      - ownership
       - manifests
       - ansible
       - tests-medium
@@ -768,7 +746,7 @@ jobs:
           adapter: native
           report-path: reports/dependencies.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
+          graph-digest: 6a4809ee5113e0ea7db6d2f895e317b0cdf9ad7cab3bafd0f4155e35c1c3d284
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -787,12 +765,5 @@ jobs:
           EXIT_CODE: ${{ steps.quality-result.outputs.exit-code }}
         run: exit "${EXIT_CODE:-2}"
     needs:
-      - python
-      - yaml
-      - shell
-      - workflow
-      - secrets
-      - docker
-      - javascript
-      - tests-fast
+      - ownership
     timeout-minutes: 5

@@ -184,7 +184,7 @@ nodes:
 
       uv run python scripts/n8n/check_failure_alerts.py'
     policy: *id001
-    needs: &id002
+    needs:
     - python
     - yaml
     - shell
@@ -198,7 +198,8 @@ nodes:
     profile: quality-manifests
     run: uv run python scripts/quality/charts.py
     policy: *id001
-    needs: *id002
+    needs:
+    - ownership
     results:
       native: reports/manifests.json
   ansible:
@@ -206,7 +207,8 @@ nodes:
     profile: quality-ansible
     run: uv run python scripts/quality/lint.py ansible
     policy: *id001
-    needs: *id002
+    needs:
+    - ownership
     results:
       native: reports/ansible.json
   tests-medium:
@@ -214,7 +216,8 @@ nodes:
     profile: quality-integration
     run: uv run python scripts/quality/tests.py medium --isolate-network
     policy: *id001
-    needs: *id002
+    needs:
+    - ownership
     results:
       junit: reports/tests-medium.xml
   tests-cluster:
@@ -223,7 +226,6 @@ nodes:
     run: uv run python scripts/quality/tests.py cluster
     policy: *id001
     needs:
-    - ownership
     - manifests
     - ansible
     - tests-medium
@@ -235,6 +237,7 @@ nodes:
     profile: default
     run: uv run python scripts/quality/lint.py dependencies
     policy: *id001
-    needs: *id002
+    needs:
+    - ownership
     results:
       native: reports/dependencies.json

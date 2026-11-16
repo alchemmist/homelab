@@ -18,9 +18,15 @@ NGINX_DIGEST = "sha256:b3c656d55d7ad751196f21b7fd2e8d4da9cb430e32f646adcf92441b7
 
 
 def run(argv, *, data=None, check=True, timeout=180):
-    return subprocess.run(  # noqa: S603 -- fixed test commands and explicit ephemeral kubeconfig/context
-        argv, input=data, text=True, capture_output=True, check=check, timeout=timeout
+    result = subprocess.run(  # noqa: S603 -- fixed test commands and explicit ephemeral kubeconfig/context
+        argv, input=data, text=True, capture_output=True, check=False, timeout=timeout
     )
+    if check and result.returncode:
+        # Only synthetic fixture commands reach this helper; no operator secrets.
+        raise RuntimeError(
+            f"Ephemeral {argv[0]} failed ({result.returncode}): {result.stderr[-3000:]}"
+        )
+    return result
 
 
 @pytest.fixture(scope="module")

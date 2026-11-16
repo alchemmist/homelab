@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import re
 import shutil
 from pathlib import Path
 import subprocess
@@ -20,6 +21,10 @@ def main():
         for item in records:
             if item["name"] not in {"community-general", "ansible-posix"}:
                 raise ValueError("Unreviewed collection")
+            if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", item["version"]) or not re.fullmatch(
+                r"[a-f0-9]{64}", item["sha256"]
+            ):
+                raise ValueError("Invalid collection version/digest")
             filename = item["name"] + "-" + item["version"] + ".tar.gz"
             data = subprocess.run(  # noqa: S603 -- fixed HTTPS artifact origin, checksum verified
                 [

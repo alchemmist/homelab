@@ -17,18 +17,20 @@ flowchart TD
     G --> J[JavaScript syntax]
     G --> U[Unit tests]
     P & Y & S & W & C & D & J & U --> O[Ownership contracts]
-    P & Y & S & W & C & D & J & U --> M[Manifest validation]
-    P & Y & S & W & C & D & J & U --> A[Playbook safety]
-    P & Y & S & W & C & D & J & U --> I[Integration tests]
-    P & Y & S & W & C & D & J & U --> V[Dependency audit]
-    O & M & A & I & V --> K[Cluster lifecycle]
+    O --> M[Manifest validation]
+    O --> A[Playbook safety]
+    O --> I[Integration tests]
+    O --> V[Dependency audit]
+    M & A & I & V --> K[Cluster lifecycle]
 ```
 
 - Graph/schema/tool/test inventory integrity is the initial prerequisite.
 - Independent fast checks run together, including unit tests. A formatter failure
   does not prevent other checks at the same level from reporting their findings.
-- External parser/tool integrations and the public advisory feed run only after
-  **every fast check succeeds**. These middle-stage checks run in parallel.
+- Ownership contracts are the real readiness gate after every fast check passes,
+  not an artificial no-op barrier. The other middle-stage checks depend on this
+  source/ownership validation and run in parallel. This keeps the graph readable
+  without an all-to-all tangle of duplicated prerequisite edges.
 - A real disposable Kubernetes cluster starts only after the entire middle stage
   passes. No `always()`, fake-success fallback or ignore approval bypasses this.
 - All node titles have distinct leading names. Helm covers all58local chart roots
