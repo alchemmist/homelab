@@ -1,0 +1,70 @@
+{
+  "collectedAt": "2026-11-16T13:05:31.743593+00:00",
+  "applicationCommit": "ab3ecbf",
+  "applicationImageDigest": "sha256:de8a83e41e63cc92f5c2d44a290265fcea5f4f95061b88b66727509b31ec0fb8",
+  "wishlistQualityRun": 43869496222,
+  "wishlistReleaseRun": 43869970117,
+  "homelabFollowupQualityRun": 43871720541,
+  "localTests": {
+    "pytest": 71,
+    "browser": 148,
+    "focusedInfrastructure": 18
+  },
+  "anonymousCanary": {
+    "traceId": "756a5b59006bba95cdbbd9cf5f355db8",
+    "spanCount": 15,
+    "serviceNames": [
+      "traefik",
+      "wishlist",
+      "wishlist-browser"
+    ],
+    "backendAncestorChain": [
+      {
+        "service": "traefik",
+        "name": "ReverseProxy"
+      },
+      {
+        "service": "traefik",
+        "name": "GET"
+      },
+      {
+        "service": "wishlist-browser",
+        "name": "browser.fetch"
+      },
+      {
+        "service": "wishlist-browser",
+        "name": "browser.page"
+      }
+    ],
+    "clientInjectedDelayMilliseconds": 2200,
+    "latencyBenchmark": false,
+    "userDataMutated": false,
+    "authenticatedSessionUsed": false,
+    "browserRelayStatuses": [
+      204,
+      204
+    ]
+  },
+  "liveAcceptance": {
+    "collectorTargetUp": 1,
+    "inventoryScrapeSuccess": 1,
+    "inventorySeriesPresent": [
+      "wishlist_users",
+      "wishlist_items",
+      "wishlist_item_images"
+    ],
+    "lokiCorrelatedRecords": 1,
+    "dashboardUid": "wishlist-performance",
+    "dashboardPanelCount": 9,
+    "privateMetricsThroughExistingCollector": true,
+    "dedicatedClientLeafReadyAndMirrored": true,
+    "caPrivateKeysRead": false,
+    "credentialsLogged": false,
+    "globalSamplerChanged": false
+  },
+  "knownBoundaries": [
+    "Existing extraneous ConfigMap/wishlist remains OutOfSync (pre-existing before stateful migration); not pruned. Desired Deployment and dashboard reconciled.",
+    "No real user photo upload or production Authentik session was used for acceptance. S3 upload spans have fixture/Stubber coverage; the reported slow real upload is not yet attributed.",
+    "Existing 30s tail sampling and bounded queues can omit late spans; not a CPU sampling profiler or an audit log."
+  ]
+}

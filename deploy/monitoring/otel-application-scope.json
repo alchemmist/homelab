@@ -139,12 +139,17 @@
         "wishlist"
       ],
       "application": "wishlist",
-      "productionSdkEnabled": false,
+      "productionSdkEnabled": true,
       "dedicatedClientCertificate": "otel-app-tls-wishlist",
       "renewalMirrorAndRolloutMaintained": true,
       "notes": [
-        "Wishlist SDK/chart configuration prepared; real delivery acceptance pending. No blanket cluster coverage claim."
-      ]
+        "Existing Collector/sampler retained; exact collector egress to Wishlist:8001 allowed.",
+        "Anonymous canary with client-side injected delay, not a latency benchmark. No user-content mutation or authenticated acceptance.",
+        "Desired resources reconciled; historical extraneous ConfigMap/wishlist remains, no prune."
+      ],
+      "productionAnonymousBrowserBackendProxyWaterfallVerified": true,
+      "productionLogCorrelationVerified": true,
+      "evidence": "deploy/monitoring/migration-evidence/wishlist-observability-20261116.json"
     }
   ],
   "requiredAcceptance": [

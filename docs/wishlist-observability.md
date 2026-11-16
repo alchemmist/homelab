@@ -37,3 +37,25 @@ second scraper, sampler, public OTLP listener or credentials in Git.
 
 Acceptance status and live evidence are recorded separately after rollout. Do not
 interpret configured exporters or a healthy Argo app as proof of Tempo delivery.
+
+## Live acceptance — 2026-11-16
+
+Application `ab3ecbf`:71pytest/148E2E, GitHub Quality43869496222 and release
+43869970117 successful. Private client leaf Ready; native mirror updated Wishlist
+only, no CA private key read. Collector egress initially blocked8001; exact
+namespace+pod selectors/port8001 rule fixed it (35311990, Quality43871720541).
+Native Collector→Thanos target up1 and inventory success1; users/items/photos
+series present. Grafana dashboard provisioned (9panels).
+
+Anonymous real Chromium canary retained15spans: wishlist-browser8, Traefik2,
+Wishlist5. Parent chain proves browser.fetch→Traefik→GET/api/me→db.connect;
+matching Loki record observed. Client harness intentionally delayed/api/me2200ms
+so the existing slow-trace policy retains the test. This is NOT a latency benchmark,
+production login test or mutation of real user gifts. Trace ID:
+`756a5b59006bba95cdbbd9cf5f355db8`. Structured evidence:
+`deploy/monitoring/migration-evidence/wishlist-observability-20261116.json`.
+
+Historical extraneous ConfigMap/wishlist still causes an Argo OutOfSync entry,
+recorded before the stateful handoff; no prune/delete or unrelated repair. Desired
+Deployment/service/dashboard reconciled. Original slow real photo upload remains
+to capture/attribute; configuration and this canary do not prove S3 throughput.

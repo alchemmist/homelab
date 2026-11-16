@@ -247,3 +247,15 @@ visible;3 old failed Jobs have no TTL and remain intentionally unchanged.15:15:
 all4 nodes Ready/no active nonready Pods; strict-TLS LMS303, Umami heartbeat200;
 observer/SPI/Wiki/Thanos natural successes fresh. Node3 I/O5m5.4%, alert cleared.
 Native checkpoint/functional receipts supersede earlier pending-gate notes above.
+
+
+## Wishlist — 2026-11-16
+
+Private8001 metrics via the existing native Collector; own renewable mTLS leaf
+and browser/backend OTel are live. Actual anonymous15-span browser→Traefik→app→DB
+trace, Loki correlation and Thanos up/inventory success1 accepted. Dashboard
+`wishlist-performance`; no second sampler/scraper, public OTLP or CA key copying.
+Exact Collector egress to Wishlist8001 is required. Existing extraneous
+ConfigMap/wishlist is NOT pruned; desired resources reconciled, not blanket Argo
+health. Real user slow upload/production login remain outside canary acceptance.
+[Runbook](../docs/wishlist-observability.md) and its JSON evidence are authoritative.
