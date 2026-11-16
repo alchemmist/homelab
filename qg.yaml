@@ -77,6 +77,13 @@ profiles:
     extends: default
     setup:
     - run: uv run python scripts/quality/install_collections.py
+  quality-integration:
+    extends: quality-helm
+    setup:
+    - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f
+      with:
+        node-version: 24.11.1
+    - run: uv run python scripts/quality/install_tools.py --tools promtool
 nodes:
   graph:
     title: Graph integrity
@@ -204,7 +211,7 @@ nodes:
       native: reports/ansible.json
   tests-medium:
     title: Integration tests
-    profile: quality-helm
+    profile: quality-integration
     run: uv run python scripts/quality/tests.py medium --isolate-network
     policy: *id001
     needs: *id002

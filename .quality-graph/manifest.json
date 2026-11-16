@@ -6,7 +6,7 @@
     ]
   },
   "defaultBranch": "main",
-  "graphDigest": "98d5066ac01023f71f6f6b4f24052b434d582ab6a6aba7bcb8e299c2beab19fe",
+  "graphDigest": "69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141",
   "graphVersion": 0,
   "labels": {
     "enabled": false
@@ -390,7 +390,7 @@
           "error"
         ]
       },
-      "profile": "quality-helm",
+      "profile": "quality-integration",
       "result": {
         "adapter": "junit",
         "path": "reports/tests-medium.xml"
@@ -659,6 +659,45 @@
           "with": {
             "version": "v3.19.0"
           }
+        }
+      ],
+      "timeoutMinutes": 10
+    },
+    "quality-integration": {
+      "env": {},
+      "permissions": {
+        "contents": "read"
+      },
+      "runner": "ubuntu-24.04",
+      "services": {},
+      "setup": [
+        {
+          "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "with": {
+            "fetch-depth": "0",
+            "persist-credentials": "false"
+          }
+        },
+        {
+          "uses": "astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78"
+        },
+        {
+          "run": "uv sync --locked"
+        },
+        {
+          "uses": "azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e",
+          "with": {
+            "version": "v3.19.0"
+          }
+        },
+        {
+          "uses": "actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f",
+          "with": {
+            "node-version": "24.11.1"
+          }
+        },
+        {
+          "run": "uv run python scripts/quality/install_tools.py --tools promtool"
         }
       ],
       "timeoutMinutes": 10

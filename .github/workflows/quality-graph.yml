@@ -40,7 +40,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 98d5066ac01023f71f6f6b4f24052b434d582ab6a6aba7bcb8e299c2beab19fe
+          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -85,7 +85,7 @@ jobs:
           adapter: native
           report-path: reports/python.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 98d5066ac01023f71f6f6b4f24052b434d582ab6a6aba7bcb8e299c2beab19fe
+          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -132,7 +132,7 @@ jobs:
           adapter: native
           report-path: reports/yaml.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 98d5066ac01023f71f6f6b4f24052b434d582ab6a6aba7bcb8e299c2beab19fe
+          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -180,7 +180,7 @@ jobs:
           adapter: native
           report-path: reports/shell.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 98d5066ac01023f71f6f6b4f24052b434d582ab6a6aba7bcb8e299c2beab19fe
+          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -228,7 +228,7 @@ jobs:
           adapter: native
           report-path: reports/workflow.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 98d5066ac01023f71f6f6b4f24052b434d582ab6a6aba7bcb8e299c2beab19fe
+          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -276,7 +276,7 @@ jobs:
           adapter: native
           report-path: reports/secrets.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 98d5066ac01023f71f6f6b4f24052b434d582ab6a6aba7bcb8e299c2beab19fe
+          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -324,7 +324,7 @@ jobs:
           adapter: native
           report-path: reports/docker.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 98d5066ac01023f71f6f6b4f24052b434d582ab6a6aba7bcb8e299c2beab19fe
+          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -374,7 +374,7 @@ jobs:
           adapter: native
           report-path: reports/javascript.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 98d5066ac01023f71f6f6b4f24052b434d582ab6a6aba7bcb8e299c2beab19fe
+          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -421,7 +421,7 @@ jobs:
           adapter: junit
           report-path: reports/tests-fast.xml
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 98d5066ac01023f71f6f6b4f24052b434d582ab6a6aba7bcb8e299c2beab19fe
+          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -482,7 +482,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 98d5066ac01023f71f6f6b4f24052b434d582ab6a6aba7bcb8e299c2beab19fe
+          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -541,7 +541,7 @@ jobs:
           adapter: native
           report-path: reports/manifests.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 98d5066ac01023f71f6f6b4f24052b434d582ab6a6aba7bcb8e299c2beab19fe
+          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -596,7 +596,7 @@ jobs:
           adapter: native
           report-path: reports/ansible.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 98d5066ac01023f71f6f6b4f24052b434d582ab6a6aba7bcb8e299c2beab19fe
+          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -639,6 +639,10 @@ jobs:
       - uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e
         with:
           version: v3.19.0
+      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f
+        with:
+          node-version: 24.11.1
+      - run: uv run python scripts/quality/install_tools.py --tools promtool
       - run: uv run python scripts/quality/tests.py medium --isolate-network
         name: Run Integration tests
         id: quality-command
@@ -654,7 +658,7 @@ jobs:
           adapter: junit
           report-path: reports/tests-medium.xml
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 98d5066ac01023f71f6f6b4f24052b434d582ab6a6aba7bcb8e299c2beab19fe
+          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -713,7 +717,7 @@ jobs:
           adapter: junit
           report-path: reports/tests-cluster.xml
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 98d5066ac01023f71f6f6b4f24052b434d582ab6a6aba7bcb8e299c2beab19fe
+          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
@@ -764,7 +768,7 @@ jobs:
           adapter: native
           report-path: reports/dependencies.json
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: 98d5066ac01023f71f6f6b4f24052b434d582ab6a6aba7bcb8e299c2beab19fe
+          graph-digest: 69433e473e222d100eb06eedac4ae3baacb13c4b44ed703f7672a178dd4e0141
           approval-findings: 'false'
           approval-files: 'false'
           approval-node: 'false'
