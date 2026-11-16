@@ -1,7 +1,7 @@
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/venice-api
   tag: "68625d59b3f95c5cf1aa727b521532de7958a72a"
-  digest: sha256:b0c9c6d9373f6e8a7a8c845bebba9c26930323525d200715fab23a565177646a
+  digest: sha256:feaf0e5f9a9f407ef1f64a90d918d5d53bcd99d36f9310546acab8703078ea2e
   pullPolicy: IfNotPresent
 
 replicaCount: 1
@@ -23,13 +23,13 @@ imagePullSecrets:
   - venice-api-harbor-pull
 nodeSelector:
   kubernetes.io/hostname: socrat-5
-hostNetwork: true
-proxyServer: http://127.0.0.1:8899
-cdpUrl: http://127.0.0.1:9223
+hostNetwork: false
+proxyServer: ""
+cdpUrl: ""
 
 browserCandidate:
   enabled: true
   bridgeEnabled: true
-  bridgeImage: harbor.socrat.alchemmist.xyz/homelab/venice-api@sha256:feaf0e5f9a9f407ef1f64a90d918d5d53bcd99d36f9310546acab8703078ea2e
-  serveApi: false
+  bridgeImage: ""
+  serveApi: true
   image: harbor.socrat.alchemmist.xyz/homelab/venice-browser@sha256:10f6a5c13bfbaee22ae1648d34f454a9537e3f4da5004f7218b2035214f9708b
