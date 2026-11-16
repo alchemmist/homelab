@@ -133,8 +133,10 @@ one worker/replica; no PostgreSQL upgrade or schema migration was enabled.
 - API key injected from llm/venice-bridge-upstream Secret, api-key field, into
   VENICE_BRIDGE_API_KEY. Value is the existing bridge credential, whitespace
   normalized; not the LiteLLM master key. No credential value in Git.
-- max_parallel_requests1 per deployment, timeout/stream_timeout900s,
-  num_retries0. Single worker/replica is material: this limiter is process-local.
+- Current admission max_parallel_requests4 per deployment, timeout/stream_timeout900s,
+  num_retries0. The bridge executes one generation and queues up to three other
+  requests, with a180s wait timeout. Single worker/replica is material: the
+  LiteLLM admission limiter is process-local.
   Do not scale LiteLLM without reconsidering model concurrency. Browser's own
   lock remains the final single-page guard.
 - Synthetic input/output token cost0: this is NOT real Venice-credit accounting.
@@ -150,8 +152,9 @@ Live acceptance THROUGH PUBLIC LITELLM, not just its provider SDK:
 - Venice-only temporary key /v1/models contains venice-deepseek, not Qwen.
 - Qwen-only temporary key -> Venice403; its Qwen inference remains HTTP200.
 - Venice non-stream pong and SSE pong+[DONE] passed, repeated after new bridge CI.
-- Two overlapping requests to the same model returned200+429: global model slot
-  works, no two browser generations admitted simultaneously.
+- Initial overlapping-request acceptance returned200+429. This exposed an
+  unsuitable fail-fast policy for Open WebUI; the bounded queue fix below
+  supersedes that policy without increasing browser generation concurrency.
 - All temporary keys were deleted via native /key/delete. Original key count10
   restored, zero venice-acceptance fixtures. TTL10m was an additional safeguard.
 - LiteLLM and Venice Argo Synced/Healthy; no master/Google/upstream keys printed.
@@ -169,3 +172,39 @@ Private config/deployment preimages are on the controller under
 Rollback: remove only Venice model stanza/env reference through GitOps after
 checking active calls; retain existing Qwen and database/SSO/key objects. Do not
 rotate/delete the upstream bridge credential as part of a model-only rollback.
+
+## Open WebUI overlapping-request incident — fixed
+
+Owner chat3ef4ad84-466b-41ab-96a6-97bdf6a9295b showed LiteLLM deployment
+max_parallel_requests1 exhaustion. Logs13:58:27/13:58:33UTC show overlapping
+requests from Open WebUI10.42.6.28; one completed and one was rejected429.
+The slot later freed. This was fail-fast admission, not proof of a stuck
+browser or permanent slot leak. Installed LiteLLM MaxParallelRequestsLimit
+explicitly raises429 and does not queue. The exact type of the first UI task
+was not established; do not present background-title generation as proven.
+
+Current design replaces that initial policy:
+- LiteLLM admits up to4 in-flight calls for venice-deepseek only.
+- Bridge MAX_PENDING_REQUESTS4 includes one active generation and three waiters.
+  Actual browser access remains serialized by the original single-page lock.
+- QUEUE_TIMEOUT180s bounds waiting; full/expired queue returns retryable busy
+  errors (HTTP429 + Retry-After5 for non-stream, typed SSE error after streaming
+  headers). It is not unbounded buffering or four browser generations.
+- Cancelled waiters/active jobs release their slots. On active cancellation,
+  the bridge attempts the visible Stop control before releasing its page lock.
+- Streaming worker is also cancelled if the initial stream is disconnected.
+- No retry of already submitted prompts, extra Google login, UI DB mutation,
+  Open WebUI restart, Qwen limit change or existing key-permission change.
+
+Venice sourcea39f5c9, CI43881708255 SUCCESS; live bridge image
+sha256:b24dfc8d19643bed01aa56538333ce4c3fe9027fc56bc1c6ce21f876d57f9045.
+Seventeen bridge unit tests passed, including overlap serialization, saturation,
+wait timeout, active/waiting cancellation and slot release. Five integration
+config gates passed with LiteLLM capacity equal to bridge capacity4.
+Both Helm manifests passed server-side dry-run and were reconciled through Git.
+
+Fresh acceptance FROM OPEN WEBUI POD with its existing upstream key and endpoint:
+one non-stream and one SSE request were started together. Both returned200/pong,
+completed in11.0/19.5s, SSE ended with[DONE]. This tests the real UI upstream route,
+not a replay of the owner's private chat or a claim of browser/UI-click acceptance.
+The existing failed chat message is unchanged; retry/regenerate it in the UI.
