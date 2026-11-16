@@ -1,5 +1,39 @@
 # Socrat: текущий контекст
 
+## Four additional stateless moves —16Nov, CURRENT
+
+Owner approved exactly blog-updates-worker1→5, wiki-openapi-worker1→5,
+spi-queue-ui3→5 and Monori frontend0→5. All4one Ready/restart0 Pod on5.
+Monori back/sync+hostPath data remain0; SPI worker/storage remains1; its broker
+unchanged. UI apps Argo Synced Healthy; workers deployed from canonical Git
+manifests (do not falsely claim Argo ownership). Source b0526df3/c186c494,
+guarded handoff fix4aecc85e. No image/business-code/resource/grace/write-mode
+changes. Services UID/VIP/full specs restored exactly.6static Secrets UID/data
+same; wiki GitHub token legitimately broker-renewed (same UID/key names).
+
+Workers quiesced via exact temporary Service selectors, old PID1 handler
+threads confirmed idle before ordinary single Recreate; no forced Pod deletion
+or workflow replay. Service pauses39.9s/48.6s, plus first2.1s attempt aborted
+before Deployment change because EndpointSlice endpoints=null. Service restored
+in finally; null handling fixed/tested before retry. n8n workflows remained
+active; read-only authoritative SQLite showed no executions during maintenance.
+Not zero-downtime acceptance for arbitrary incoming callers.
+
+Actual workers health200/GitHub authenticated GET200/models200; missing worker
+token403 (no stage runs or inference). SPI UI-only issuer hostAlias auth.socrat
+→Traefik10.43.218.222, same verified TLS/issuer/callback/S256, unchanged NP/group
+policy. New UI backend read-only list200; anonymous UI API401. Clean browser
+Authentik form, no JS/request/5xx errors. Normal process-local UI sessions may
+require login after restart, no role/account reset. Monori landing/login form
+clean; actual frontend nginx→back0 schema200/private snapshot401, public401;
+no personal account/data/import/sync touched.3unique-label preflight Pods gone.
+
+5targeted tests pass; existing SPI OIDC suite15pass/1pre-existing stale test
+expects OIDC disabled even though baseline/live already enabled. Reproduced on
+clean d11079aa, not hidden by changing auth. Relay0 dependency and all previous
+DR/telemetry caveats remain. Exact receipts, pause/rollback details:
+[four-app handoff](../docs/vm105-four-stateless-20261116.md).
+
 ## Application retry after transport repair —16Nov, CURRENT
 
 Owner authorized remaining app moves. Renderer1→5 (97be7597), LiteLLM0→5
