@@ -6,7 +6,7 @@ extraNodeSelectorTerms:
 - key: kubernetes.io/hostname
   operator: In
   values:
-  - socrat-1
+  - socrat-5
 hostname: rancher.socrat.alchemmist.xyz
 ingress:
   enabled: false
