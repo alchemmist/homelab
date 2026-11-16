@@ -100,3 +100,9 @@ Endpoint/source-pointer continuation: relay preflight использует mesh 
 CI сверяет unit /32 allowlist и sandbox с canonical endpoints, без изменения unit
 или рестарта. Новый offline checker сверяет Argo local sources/values/refs и
 выбранные current-doc links/claims/default RBAC; исторические receipts исключены.
+
+Operational continuation: Open Terminal/SearXNG/search bootstrap installers retired
+before keys/Helm/imports. CI classifies literal Ansible Helm entrypoints without
+certifying remaining review-required or VPN/GPU/backup-excluded paths. Vendor
+baseline expanded to existing monitoring bundle and five dependency symlinks;
+no chart/version/runtime changes or production/backup operations.

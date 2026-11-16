@@ -39,6 +39,20 @@ def check(root=ROOT):
         changed = {p for p in actual.keys() & expected.keys() if actual[p] != expected[p]}
         if added or removed or changed:
             raise ValueError(f'Vendor drift {directory}: added={sorted(added)}, removed={sorted(removed)}, changed={sorted(changed)}')
+    links = contract.get('links', {})
+    discovered = {p.relative_to(root).as_posix()
+                  for pattern in contract.get('linkInventoryGlobs', []) for p in root.glob(pattern)}
+    if discovered != set(links):
+        raise ValueError('Vendor dependency alias inventory drift')
+    for name, target in links.items():
+        link, destination = root/name, root/target
+        if (not link.is_symlink() or not destination.is_file()
+                or not link.resolve().is_relative_to(root.resolve())
+                or link.resolve() != destination.resolve()):
+            raise ValueError('Vendor dependency alias drift: '+name)
+        if not any(target.startswith(tree['path']+'/') and
+                   target[len(tree['path'])+1:] in tree['files'] for tree in contract['trees']):
+            raise ValueError('Vendor alias target has no registered inventory: '+name)
     return len(seen)
 
 if __name__ == '__main__':

@@ -244,6 +244,27 @@
         "values.schema.json": "4dab7d9d11865b2f0545afe17ff762240919b1ef1ca1d8de8bd40d240d38dd5a",
         "values.yaml": "2437498f6383cb92cfb0dc85d71f501de199702b7a8d9d41141460b9ff0094e3"
       }
+    },
+    {
+      "path": "charts/_vendor",
+      "basis": "reviewed-git-baseline",
+      "reviewedCommit": "3abc9bb512fb597318f5c195af03146d10fd1d04",
+      "provenanceNote": "Monitoring bundle SHA equals the existing checked-in .sha256/README assertion; 319 archive members inspected without extraction (regular files/directories only, no absolute or parent traversal paths). Accepted Git baseline, not independent upstream download/signature/authenticity certification. Five existing component aliases remain unchanged.",
+      "files": {
+        "README.md": "9bf0ec67f8637e630cafc7bc8466b7bb337366c23df0e2af1bdcc2ea133253dd",
+        "kube-prometheus-stack-92.10.0.sha256": "5ef35535e795db21fcdd2bf0b3873a1c1d3358cd7450c7eaa6bbf27c43bcfeb3",
+        "kube-prometheus-stack-92.10.0.tgz": "85240efc443d7c2525d72851ab9c7c550c7abdb892b70f768ab8e727d9c3c898"
+      }
     }
-  ]
+  ],
+  "linkInventoryGlobs": [
+    "charts/*/charts/kube-prometheus-stack-*.tgz"
+  ],
+  "links": {
+    "charts/alertmanager/charts/kube-prometheus-stack-92.10.0.tgz": "charts/_vendor/kube-prometheus-stack-92.10.0.tgz",
+    "charts/kube-state-metrics/charts/kube-prometheus-stack-92.10.0.tgz": "charts/_vendor/kube-prometheus-stack-92.10.0.tgz",
+    "charts/node-exporter/charts/kube-prometheus-stack-92.10.0.tgz": "charts/_vendor/kube-prometheus-stack-92.10.0.tgz",
+    "charts/prometheus/charts/kube-prometheus-stack-92.10.0.tgz": "charts/_vendor/kube-prometheus-stack-92.10.0.tgz",
+    "charts/prometheus-operator/charts/kube-prometheus-stack-92.10.0.tgz": "charts/_vendor/kube-prometheus-stack-92.10.0.tgz"
+  }
 }

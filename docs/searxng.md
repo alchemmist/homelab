@@ -1,18 +1,23 @@
 # Private web search
 
-SearXNG runs on `socrat-1` in namespace `llm`, with the internal API at `http://searxng.llm.svc.cluster.local:8080`. Its HTML UI and JSON API share `https://search.socrat.alchemmist.xyz/`, reached through the private Socrat network. The chart creates no public ingress or NodePort.
+SearXNG runs on `socrat-5` in namespace `llm`, with the internal API at `http://searxng.llm.svc.cluster.local:8080`. Its HTML UI and JSON API share `https://search.socrat.alchemmist.xyz/`, reached through the private Socrat network. The chart creates no public ingress or NodePort.
 
 Open WebUI uses its native SearXNG search integration. The query URL is `http://searxng.llm.svc.cluster.local:8080/search?q=<query>&format=json`. WebUI grants search to users and enables it for Qwen independently of the SearXNG service.
 
-Deploy from `ansible/`:
+## Git-owned maintenance
 
-```sh
-ansible-playbook playbooks/search.yml
-```
+Existing owner: `deploy/argocd/apps/searxng.yaml` and `charts/searxng/`.
+Commit reviewed changes to that source and verify the addressed Application.
+`ansible/playbooks/searxng.yml` and the legacy `search.yml` umbrella are retired,
+refusal-only before namespace/key creation, Helm or imported integration/DNS writes.
+Do not use either as a bootstrap/recovery fallback. Preserve the existing signing
+Secret and native WebUI permissions; separately review new installation/recovery.
+Companion access/integration helpers have not been certified as safe-to-run and
+are not authorized by this documentation update. Existing DNS/TLS paths are unchanged.
 
-The umbrella playbook runs `searxng.yml`, `searxng-private-access.yml`, and `open-webui-search.yml` in order. They can also be run individually for targeted maintenance.
-
-The service playbook creates the Kubernetes signing secret once and retains it on subsequent runs. No signing secret or search provider API key is stored in Git. The official `docker.io/searxng/searxng` image is pinned by the registry's multi-platform manifest digest; the initial deployment uses version `2026.10.19-d47cb96bf`.
+The installed image digest/version must be read from the owning Git values and
+accepted runtime revision. The version and network checks below are historical
+receipts, not a recommendation to redeploy the original initializer.
 
 Only free Bing and Brave HTML engines are enabled. During deployment checks on 2026-10-19, Brave returned relevant results for English and Russian queries and Bing returned ten results for an English query. Google returned access denied and DuckDuckGo a CAPTCHA, so they were excluded. Upstream services can still throttle or change their pages; this is not an availability guarantee. Engine selection is managed in `charts/searxng/values.yaml`.
 

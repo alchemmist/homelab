@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class DeploymentOwnership(unittest.TestCase):
     def test_retired_entrypoints_have_no_side_effect_or_followup_play(self):
-        for name in ['rancher','litellm','llm-vision','monitoring-llm']:
+        for name in ['rancher','litellm','llm-vision','monitoring-llm','open-terminal','searxng','search']:
             with self.subTest(name=name):
                 plays = yaml.safe_load((ROOT/f'ansible/playbooks/{name}.yml').read_text())
                 self.assertEqual(len(plays), 1)  # No imports after a failed play.
@@ -21,6 +21,9 @@ class DeploymentOwnership(unittest.TestCase):
                 self.assertEqual(set(task), {'name','ansible.builtin.fail','tags'})
                 self.assertIn('always', task['tags'])
                 paths = {
+                    'open-terminal':['deploy/argocd/apps/open-terminal.yaml','charts/open-terminal'],
+                    'searxng':['deploy/argocd/apps/searxng.yaml','charts/searxng'],
+                    'search':['deploy/argocd/apps/searxng.yaml','charts/searxng','deploy/argocd/apps/open-webui.yaml'],
                     'llm-vision':['deploy/argocd/apps/vllm.yaml','deploy/argocd/apps/litellm.yaml'],
                     'monitoring-llm':['deploy/argocd/apps/monitoring-llm.yaml','charts/monitoring-llm'],
                 }.get(name, [f'deploy/argocd/apps/{name}.yaml',f'charts/{name}',f'deploy/platform/{name}/values.yaml'])

@@ -38,7 +38,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: b57ffadac5ed85507ce6a680a2f3236b095686453effc10c9c022dd29e138ab4
+          graph-digest: dabad7b2e6dce60892d0099ff03e774cd7e52c52a9c9c32a5f2b0b0498d33001
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -83,7 +83,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: b57ffadac5ed85507ce6a680a2f3236b095686453effc10c9c022dd29e138ab4
+          graph-digest: dabad7b2e6dce60892d0099ff03e774cd7e52c52a9c9c32a5f2b0b0498d33001
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -128,7 +128,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: b57ffadac5ed85507ce6a680a2f3236b095686453effc10c9c022dd29e138ab4
+          graph-digest: dabad7b2e6dce60892d0099ff03e774cd7e52c52a9c9c32a5f2b0b0498d33001
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -184,7 +184,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: b57ffadac5ed85507ce6a680a2f3236b095686453effc10c9c022dd29e138ab4
+          graph-digest: dabad7b2e6dce60892d0099ff03e774cd7e52c52a9c9c32a5f2b0b0498d33001
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -229,7 +229,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: b57ffadac5ed85507ce6a680a2f3236b095686453effc10c9c022dd29e138ab4
+          graph-digest: dabad7b2e6dce60892d0099ff03e774cd7e52c52a9c9c32a5f2b0b0498d33001
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -272,6 +272,10 @@ jobs:
 
           uv run python -m unittest discover -s tests -p test_wg_peer15_relay.py
 
+          uv run python scripts/check_operational_entrypoints.py
+
+          uv run python -m unittest discover -s tests -p test_operational_entrypoints.py
+
           uv run python scripts/check_vendor_contracts.py
 
           uv run python -m unittest discover -s tests -p test_vendor_contracts.py
@@ -309,7 +313,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: b57ffadac5ed85507ce6a680a2f3236b095686453effc10c9c022dd29e138ab4
+          graph-digest: dabad7b2e6dce60892d0099ff03e774cd7e52c52a9c9c32a5f2b0b0498d33001
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'
@@ -361,7 +365,7 @@ jobs:
           adapter: exit-code
           report-path: ''
           command-outcome: ${{ steps.quality-command.outcome }}
-          graph-digest: b57ffadac5ed85507ce6a680a2f3236b095686453effc10c9c022dd29e138ab4
+          graph-digest: dabad7b2e6dce60892d0099ff03e774cd7e52c52a9c9c32a5f2b0b0498d33001
           approval-findings: 'true'
           approval-files: 'false'
           approval-node: 'false'

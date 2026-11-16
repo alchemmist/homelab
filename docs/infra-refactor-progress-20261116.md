@@ -112,6 +112,29 @@ update-watch/alert/socrat-bot/Venice source changes were preserved. Four plain
 function update-watch tests were additionally executed with FunctionTestCase
 after normal unittest discovery found none; not counted among the92 gate tests.
 
+## Continuation: operational classifiers and monitoring vendor bundle
+
+Retired `open-terminal.yml`, `searxng.yml` and `search.yml` before Secret creation,
+Helm, workspace instructions or imported access/identity/DNS tasks. Existing Argo
+owners, data, Secrets and native integrations unchanged; runbooks now point to
+Git sources, and SearXNG placement text corrected to socrat-5.
+
+Added lexical Ansible Helm classification gate:23records,15remaining literal
+matches. Seven remain review-required; VPN/mixed-VPN, GPU and backup cases remain
+excluded/deferred, not certified or executed. This is not a whole-repository
+operational safety certificate. Follow-up review should address WebUI lifecycle,
+Terminal cleanup and infrastructure bootstrap/storage, with their prerequisites.
+
+Expanded vendor inventory from three to four trees using the existing immutable
+monitoring bundle, and registered five component dependency aliases. SHA matches
+the existing sidecar; archive header-only inspection found319regular/directory
+members and no link/traversal entries. No downloads, extraction, Helm dependency
+updates or new provenance/authenticity claim. Production and backup work not run.
+99 targeted offline tests passed; all three new refusal entrypoints syntax-checked
+and exercised using an explicit local-only inventory/connection: changed=0,
+unreachable=0, expected failure before any production connection. Quality Graph
+regenerated/validated from qg.yaml; contract checks passed.
+
 ## Remaining implementation gates (backup gate deferred)
 
 1. Complete remaining backup scheduler/destination inventory; choose each app's

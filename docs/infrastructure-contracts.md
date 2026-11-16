@@ -164,3 +164,28 @@ IPAddressDeny=any, DynamicUser/NoNewPrivileges and empty capability sets. A stal
 address, widened CIDR or privilege drift fails even under `--write`; there is no
 network-policy generation. Original endpoint/idempotence/sandbox tests run in CI.
 The preflight playbook was syntax-checked only, never applied in this package.
+
+## Operational entrypoint classification and monitoring dependency continuation
+
+`deploy/contracts/operational-entrypoints.json` records23scoped entrypoints;
+`scripts/check_operational_entrypoints.py` checks classification completeness for
+literal `helm upgrade/install` and `kubernetes.core.helm` in Ansible `*.yml`.
+Unclassified additions or stale records fail CI. This is lexical discovery, not
+proof about dynamically generated commands, all Python/shell helpers or indirect
+mutations; comments can match. A `review-required`/excluded record is explicitly
+not execution authorization or certification. The fifteen remaining literal hits
+include seven requiring review and eight excluded/deferred for VPN, GPU or backups.
+
+Open Terminal and SearXNG installers and the search umbrella now refuse before all
+remote writes and imported follow-ups. Existing integration/access/instruction
+helpers remain separate, require review/authorization, and were not run. The broad
+mixed-VPN `apps.yml` and GPU/VPN installers remain excluded, not silently approved.
+
+Vendor coverage now includes `charts/_vendor`: existing monitoring archive, SHA
+sidecar and README. Existing SHA matches;319archive headers were inspected without
+extraction (only regular files/directories, no absolute/parent-traversal paths).
+This records a Git baseline, not independent upstream authenticity. No chart,
+archive, image/version or runtime setting changed. Five component symlinks are
+registered separately: additions, removal, retargeting, regular-file replacement
+or a target outside inventoried trees fail CI. They remain supported reuse, not
+an excuse to follow arbitrary symlinks in registered vendor trees.

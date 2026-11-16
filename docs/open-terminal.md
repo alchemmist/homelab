@@ -8,13 +8,19 @@ The service is internal: `http://open-terminal.llm.svc.cluster.local:8000`. Ther
 
 This single-workspace deployment was initially administrator-only. At the operator’s request, its connection now has a `user:*` read grant and is visible to all authenticated Open WebUI users. All conversations that select it share the same workspace. Users share files and processes in this deployment. Use isolated workspaces or a suitable multi-user deployment for unrelated users.
 
-Deploy from `ansible/`:
+## Git-owned deployment and native integration
 
-```sh
-ansible-playbook playbooks/open-terminal.yml
-```
+Existing release owner: `deploy/argocd/apps/open-terminal.yaml`, chart and defaults
+`charts/open-terminal/`. Commit reviewed changes there and verify the addressed
+Application/revision. `ansible/playbooks/open-terminal.yml` is retired and refuses
+before key initialization, Helm deployment or imported workspace instruction writes.
+It is not a bootstrap/recovery fallback. Preserve `llm/open-terminal-api`, the
+current PVC and shared workspace; installation/recovery needs separate review.
 
-The playbook generates `llm/open-terminal-api` once and deploys the chart. Preserve this Secret and PVC. To connect, copy `scripts/connect-open-terminal.py` to the controller and run it with `--admin-email <email>`; it prompts for the Open WebUI password without echo. The script verifies the server, preserves other connections, and registers `Socrat Terminal` with administrator-only access. It does not print API keys or save passwords.
+The old automatic registration helper is not a routine deployment prerequisite.
+Do not replay it to test credentials or silently replace existing users' integration
+settings/ACLs. Review any native integration change separately; prefer the existing
+authenticated administration UI and preserve current shared-access decisions.
 
 Alternatively use Settings > Admin > Integrations > Open Terminal: add the internal URL, Bearer authentication and the `api-key` from Secret `open-terminal-api`. The key stays server-side. Select `Socrat Terminal` using the terminal/cloud icon in the chat composer. Native tool calling and Builtin Tools must be enabled for the selected model. Open Terminal provides `write_file`, `run_command`, and `display_file`; use the latter to present a generated artifact in the chat. Model inference continues through LiteLLM.
 

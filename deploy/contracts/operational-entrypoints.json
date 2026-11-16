@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 1,
+  "scope": "Literal helm upgrade/install or kubernetes.core.helm in Ansible *.yml; comments may match. Not all runtime mutations, shell/Python helpers, Jinja-generated commands or indirect imports. Classifications are not execution authorization.",
+  "entries": [
+    {
+      "path": "ansible/playbooks/rancher.yml",
+      "status": "retired",
+      "owners": [
+        "rancher"
+      ],
+      "reason": "Existing Git owner; refusal before provisioning, credentials or imported follow-ups. Historical implementation remains in Git history."
+    },
+    {
+      "path": "ansible/playbooks/litellm.yml",
+      "status": "retired",
+      "owners": [
+        "litellm"
+      ],
+      "reason": "Existing Git owner; refusal before provisioning, credentials or imported follow-ups. Historical implementation remains in Git history."
+    },
+    {
+      "path": "ansible/playbooks/llm-vision.yml",
+      "status": "retired",
+      "owners": [
+        "vllm",
+        "litellm"
+      ],
+      "reason": "Existing Git owner; refusal before provisioning, credentials or imported follow-ups. Historical implementation remains in Git history."
+    },
+    {
+      "path": "ansible/playbooks/monitoring-llm.yml",
+      "status": "retired",
+      "owners": [
+        "monitoring-llm"
+      ],
+      "reason": "Existing Git owner; refusal before provisioning, credentials or imported follow-ups. Historical implementation remains in Git history."
+    },
+    {
+      "path": "ansible/playbooks/open-terminal.yml",
+      "status": "retired",
+      "owners": [
+        "open-terminal"
+      ],
+      "reason": "Existing Git owner; refusal before provisioning, credentials or imported follow-ups. Historical implementation remains in Git history."
+    },
+    {
+      "path": "ansible/playbooks/searxng.yml",
+      "status": "retired",
+      "owners": [
+        "searxng"
+      ],
+      "reason": "Existing Git owner; refusal before provisioning, credentials or imported follow-ups. Historical implementation remains in Git history."
+    },
+    {
+      "path": "ansible/playbooks/search.yml",
+      "status": "retired",
+      "owners": [
+        "searxng",
+        "open-webui"
+      ],
+      "reason": "Existing Git owner; refusal before provisioning, credentials or imported follow-ups. Historical implementation remains in Git history."
+    },
+    {
+      "path": "ansible/playbooks/argocd.yml",
+      "status": "guarded-bootstrap",
+      "owners": [
+        "argo-cd"
+      ],
+      "reason": "Explicit empty-cluster opt-in only; existing-workload refusal and version/values parity tested separately. Not authorized to execute."
+    },
+    {
+      "path": "ansible/playbooks/apps.yml",
+      "status": "excluded-vpn",
+      "owners": [],
+      "reason": "VPN or mixed VPN scope explicitly excluded. No execution, migration or certification; mixed apps installer remains a known competing path."
+    },
+    {
+      "path": "ansible/playbooks/k3s.yml",
+      "status": "review-required",
+      "owners": [],
+      "reason": "Literal competing/bootstrap Helm path remains; requires prerequisite and companion/import audit before retirement. Not a supported routine deployment recommendation."
+    },
+    {
+      "path": "ansible/playbooks/llm.yml",
+      "status": "excluded-gpu",
+      "owners": [],
+      "reason": "GPU/backend maintenance scope excluded; no invocation or certification."
+    },
+    {
+      "path": "ansible/playbooks/open-terminal-browser-cleanup.yml",
+      "status": "review-required",
+      "owners": [
+        "open-terminal"
+      ],
+      "reason": "Literal competing/bootstrap Helm path remains; requires prerequisite and companion/import audit before retirement. Not a supported routine deployment recommendation."
+    },
+    {
+      "path": "ansible/playbooks/open-webui-https.yml",
+      "status": "review-required",
+      "owners": [
+        "open-webui"
+      ],
+      "reason": "Literal competing/bootstrap Helm path remains; requires prerequisite and companion/import audit before retirement. Not a supported routine deployment recommendation."
+    },
+    {
+      "path": "ansible/playbooks/open-webui-tool-guard.yml",
+      "status": "review-required",
+      "owners": [
+        "open-webui"
+      ],
+      "reason": "Literal competing/bootstrap Helm path remains; requires prerequisite and companion/import audit before retirement. Not a supported routine deployment recommendation."
+    },
+    {
+      "path": "ansible/playbooks/open-webui-upgrade.yml",
+      "status": "review-required",
+      "owners": [
+        "open-webui"
+      ],
+      "reason": "Literal competing/bootstrap Helm path remains; requires prerequisite and companion/import audit before retirement. Not a supported routine deployment recommendation."
+    },
+    {
+      "path": "ansible/playbooks/open-webui.yml",
+      "status": "review-required",
+      "owners": [
+        "open-webui"
+      ],
+      "reason": "Literal competing/bootstrap Helm path remains; requires prerequisite and companion/import audit before retirement. Not a supported routine deployment recommendation."
+    },
+    {
+      "path": "ansible/playbooks/private-gateway-migrate.yml",
+      "status": "excluded-vpn",
+      "owners": [],
+      "reason": "VPN or mixed VPN scope explicitly excluded. No execution, migration or certification; mixed apps installer remains a known competing path."
+    },
+    {
+      "path": "ansible/playbooks/storage-nfs.yml",
+      "status": "review-required",
+      "owners": [],
+      "reason": "Literal competing/bootstrap Helm path remains; requires prerequisite and companion/import audit before retirement. Not a supported routine deployment recommendation."
+    },
+    {
+      "path": "ansible/playbooks/syncthing-backups.yml",
+      "status": "deferred-backup",
+      "owners": [],
+      "reason": "Owner explicitly deferred backup implementation; do not execute or modify backup jobs."
+    },
+    {
+      "path": "ansible/playbooks/vpn-edge.yml",
+      "status": "excluded-vpn",
+      "owners": [],
+      "reason": "VPN or mixed VPN scope explicitly excluded. No execution, migration or certification; mixed apps installer remains a known competing path."
+    },
+    {
+      "path": "ansible/playbooks/vpn-upgrade.yml",
+      "status": "excluded-vpn",
+      "owners": [],
+      "reason": "VPN or mixed VPN scope explicitly excluded. No execution, migration or certification; mixed apps installer remains a known competing path."
+    },
+    {
+      "path": "ansible/playbooks/vpn.yml",
+      "status": "excluded-vpn",
+      "owners": [],
+      "reason": "VPN or mixed VPN scope explicitly excluded. No execution, migration or certification; mixed apps installer remains a known competing path."
+    },
+    {
+      "path": "ansible/roles/vpn_consolidation/tasks/main.yml",
+      "status": "excluded-vpn",
+      "owners": [],
+      "reason": "VPN or mixed VPN scope explicitly excluded. No execution, migration or certification; mixed apps installer remains a known competing path."
+    }
+  ]
+}
