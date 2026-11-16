@@ -1,5 +1,5 @@
 ---
-- name: Place Rancher replicas on both home nodes
+- name: Refresh and verify the Git-owned Rancher placement
   hosts: socrat-0
   gather_facts: false
   become: false

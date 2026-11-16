@@ -60,14 +60,23 @@ The sole regular account is `anton.ingrish@gmail.com`, with role `proxy_admin` (
 
 PostgreSQL 18.6 uses a retained 10Gi local-path PVC on socrat-0. This is a single-node database, not HA; local-path capacity is nominal. No backup schedule is configured yet. Redis is disabled for this single-replica deployment; revisit coordination before scaling replicas. Database credentials, master key and salt are generated once and retained in Kubernetes Secrets. Preserve the salt with the database when backing up or restoring.
 
-Deploy from `ansible/`:
+## Current deployment ownership —16 November 2026
 
-```sh
-ansible-playbook playbooks/litellm.yml
-ansible-playbook playbooks/litellm-https.yml --ask-become-pass
-```
+Existing LiteLLM is Git-owned: `deploy/argocd/apps/litellm.yaml`, vendored
+`charts/litellm` and `deploy/platform/litellm/values.yaml`. Commit reviewed model/
+configuration changes there. `ansible/playbooks/litellm.yml` is retired and now
+refuses without creating keys, running Helm, uploading branding or importing
+identity reconciliation. Fresh installation/recovery needs its own reviewed
+prerequisites; no automatic restore or migration-Job activation is provided.
 
-The second playbook waits for the certificate, updates the existing WireGuard HTTPS gateway while verifying Syncthing identity/pause state, and installs private DNS records on all three resolvers. The WireGuard client role installs the matching macOS split resolver. HTTPS forwarding trusts only loopback and the cluster/WireGuard CIDRs, so redirects retain HTTPS.
+The former install/HTTPS commands described the October private gateway/bootstrap.
+They are not the current public HTTPS maintenance procedure; do not replay them
+or change Mac DNS/VPN as part of ordinary deployment. Current application and
+branding data live on socrat-5; PostgreSQL stays on socrat-0. Models, current
+account counts and allowed access must be read from current configuration/runtime,
+not inferred from the dated baseline below.
+
+### Historical validation and capabilities
 
 Validation on 2026-10-15: migration completed, both pods Ready, unauthenticated models request rejected with 401, temporary restricted virtual key generated, model listing and real completion passed, temporary key revoked, HTTPS redirect and browser admin login passed, public route returned 404. The vLLM pod was not restarted. `scripts/check-litellm.py` repeats the API check from a controller with kubectl access without printing credentials.
 
@@ -79,7 +88,7 @@ The local Qwen deployment uses 7200-second request and streaming timeouts to acc
 
 The admin dashboard uses the supplied Socrat portrait with a vector wordmark in light/dark variants and the supplied circular image as the favicon. Assets are versioned under `deploy/litellm/branding/` and served over HTTPS at `/branding/` by a small nginx deployment in the infrastructure chart, backed by a dedicated PVC. No external image host is required. Original raster images remain unchanged.
 
-`ansible/files/configure_litellm_branding.py` verifies public image URLs, enables database-backed management through `/config/update`, and persists the three theme URLs through `/update/ui_theme_settings`, with readback. The LiteLLM playbook uploads assets and applies settings. Theme updates require no restart of LiteLLM or vLLM. Use a new asset filename when replacing an image to avoid stale browser caches.
+`ansible/files/configure_litellm_branding.py` verifies public image URLs, enables database-backed management through `/config/update`, and persists the three theme URLs through `/update/ui_theme_settings`, with readback. The retired LiteLLM installer formerly uploaded assets and applied settings. Do not replay it or overwrite authoritative branding storage; asset changes require a separate reviewed workflow. Theme updates require no restart of LiteLLM or vLLM. Use a new asset filename when replacing an image to avoid stale browser caches.
 
 ## Authentik native SSO — 2026-11-01
 
@@ -91,7 +100,7 @@ Identity is selected by the reviewed **Authentik user UUID**, persisted in `depl
 
 Secret `llm/socrat-authentik-litellm` holds client credentials and Generic SSO environment settings. Helm values retain optional Secret references, so replay preserves SSO while a fresh deployment without this Secret can still bootstrap local recovery. The explicit integration controller creates the provider/scope/application and starts a normal graceful LiteLLM rolling update only when mounting or changing SSO environment. It does not restart vLLM, change OTel settings, reset a password, rotate master/salt/database keys or put browser redirects on machine APIs.
 
-`litellm.yml` and `llm-vision.yml` import an activation-gated post-Helm reconciliation playbook. It preserves an existing integration but does not activate SSO on a fresh install merely because Helm was run.
+`litellm.yml` no longer imports any reconciliation: it is refusal-only. The remaining legacy `llm-vision.yml` has an activation-gated post-Helm reconciliation path; this is not a recommendation to replay it as a general deployment entrypoint. It preserves an existing integration but does not activate SSO on a fresh install merely because Helm was run.
 
 Reconcile from `ansible/`:
 

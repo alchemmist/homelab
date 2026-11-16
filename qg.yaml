@@ -55,6 +55,10 @@ nodes:
     run: |
       command -v helm
       uv run python scripts/check_infrastructure_contracts.py
+      uv run python scripts/check_vendor_contracts.py
+      uv run python -m unittest discover -s tests -p test_vendor_contracts.py
+      uv run python -m unittest discover -s tests -p test_vm105_renderer_lms_litellm.py
+      uv run python -m unittest discover -s tests -p test_target_placement_ownership.py
       uv run python -m unittest discover -s tests -p test_infrastructure_contracts.py
       uv run python -m unittest discover -s tests -p test_vm105_management.py
       uv run python -m unittest discover -s tests -p test_socrat5_app_placement.py

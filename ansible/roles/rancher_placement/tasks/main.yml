@@ -1,7 +1,7 @@
 ---
 # Git owns the vendored, exact2.15.2 chart and native issuer route. The former
 # imperative upstream --reuse-values upgrade ignores hostAliases and can break
-# login on5; it must not silently replace the Git-owned native route.
+# login on socrat-5; it must not silently replace the Git-owned native route.
 - name: Require the existing Git-owned Rancher application
   ansible.builtin.command: >-
     /usr/local/bin/k3s kubectl --kubeconfig {{ rancher_kubeconfig }}

@@ -54,6 +54,25 @@ schedules, receiver credentials or restore operations.
 - 44 targeted offline tests pass after merging concurrent published LiteLLM
   changes. No network/service/storage restart or public Wiki publication.
 
+## Continuation: vendored and operational contracts
+
+- Complete file/hash inventories pin three accepted Git trees: Rancher, LiteLLM
+  including subcharts, Wiki runtime chart. Added/deleted/changed files and symlinks
+  fail CI. Explicit Git-baseline provenance notes; no invented upstream trust.
+- Existing Rancher upstream reconstruction/render tests retained; LiteLLM upstream
+  reconstruction/schema-guard tests now also included in infrastructure CI.
+- Legacy LiteLLM installer retired before key/Helm/branding/identity side effects;
+  local Ansible refusal verified without connecting to the cluster. Installer docs
+  and old two-home-node Rancher placement claims corrected, dated history retained.
+- Rancher verification reuses the same stdlib checker via temporary Ansible script
+  transport. No nested SSH or new remote dependency. Pod readiness gates, exact
+  ready/available/total counts and current ReplicaSet revision/ownership now checked.
+- Live read-only checker passed Rancher/Grafana/Grafana MCP on socrat-5. Ansible
+  transport syntax + simulated CLI transport tests only; no production role run.
+- No backup, restore, paid inference, workflow execution, Wiki publication, image
+  update, network or storage restart. Other maintenance tools still require review;
+  this is not blanket certification of every script or vendor tree.
+
 ## Remaining implementation gates (backup gate deferred)
 
 1. Complete remaining backup scheduler/destination inventory; choose each app's

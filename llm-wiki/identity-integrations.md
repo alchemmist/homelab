@@ -168,8 +168,10 @@ OTel env сохранены; vLLM не перезапускался. LiteLLM п�
 
 Owner DB password recovery: `/fallback/login`, маршрут HTTP 200. Пароль не
 сбрасывался; его реальная recovery-проверка не следует из подтверждения SSO.
-`identity-litellm-reconcile.yml` вызывается после `litellm.yml` и `llm-vision.yml`
-только при уже существующем activation Secret. Fresh Helm install не включает
+`litellm.yml` выведен из эксплуатации и не вызывает никаких reconciliation.
+У оставшегося legacy `llm-vision.yml` activation-gated вызов
+`identity-litellm-reconcile.yml` использует существующий activation Secret; это
+не инструкция повторять Helm deployment для сопровождения Git-owned приложения. Fresh Helm install не включает
 SSO неожиданно. Foundation не создаёт placeholder app без reviewed custom scope.
 Полный runbook/rollback: `docs/litellm.md`.
 
