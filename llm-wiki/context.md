@@ -1,6 +1,36 @@
 # Socrat: текущий контекст
 
-##1↔5 NAT-only follow-up —16Nov, CURRENT
+##1↔5 transport mitigation —16Nov, CURRENT
+
+Owner-authorized router admin investigation completed. Direct WAN→Wi-Fi1 UDP
+still loses~30%; disabling5GHz aggregation and separate source-restricted,
+port-preserving UDP51835 echo (100/63) did not help. Both experiments reverted;
+all10 original forward rows restored, aggregation enable. Exact router/AP vs
+upstream root defect NOT proven; no firmware/reset/router reboot/hidden
+superuser Telnet enablement. During radio A/B, standby lms-ha-2 liveness restart
+at23:37–23:39UTC observed; final CNPG healthy3/3, primary lms-ha-1 on3. Do not
+claim every workload remained restart-free throughout the radio experiment.
+
+**DEPLOYED mitigation, not the earlier SSH design:** only5 peer1 endpoint now
+10.250.0.1:51835. Existing healthy5↔0 WG carries inner unchanged1↔5 ciphertext;
+keyless DynamicUser UDP relay0 accepts only10.250.0.41:51830, fixed LAN source
+192.168.0.23:51836 →192.168.0.24:51830. No public5 listener/address, new public
+router port, key/AllowedIPs change, copied operator key or TCP HOL. Explicit0
+dependency; NOT HA. Other peers/native1↔2 GOST/TLS untouched. Router credentials
+were owner-provided privately and inspection completed; earlier unavailable-
+credentials notes below are historical.
+
+Host loss0% both directions; max-size DF1392 payload100/100 after deployment;
+real Pod six8MiB transfers passed SHA in~2.6–3.0s each,~22–25.5Mbps (30Mbps VM
+cap), repeated successfully after relay-only restart. Restart caused6/120 probe
+loss briefly, then recovered; not zero-downtime acceptance. Temporary Pods,
+policy, native probes removed. Canonical inventory endpoint + relay unit/playbook
++ narrow root-only endpoint helper/backup/rollback in Git. No WG/K3s/app restart
+for transport deployment; no application migration retry. Current placement
+LMS5/LiteLLM0/renderer1 unchanged. Source/health/limitations/collateral event:
+[repair handoff](../docs/wireguard-1-5-router-repair-20261116.md).
+
+##1↔5 NAT-only follow-up — historical, transport status superseded
 
 OWNER CLARIFICATION:5has NO public reachable API/address/listener, inbound access
 is through WG.94.29.124.139 was NAT EGRESS only; never propose public5listener.
@@ -25,7 +55,7 @@ unchanged. All exact /run probes/results cleaned on0/1, private receipts retaine
 [Full evidence and repair options](../docs/wireguard-1-5-nat-followup-20261116.md).
 No retry of prior three-app moves; unrelated Venice API/monitoring work untouched.
 
-##1↔5 network diagnosis —16Nov01:34MSK, CURRENT
+##1↔5 direct-path diagnosis —16Nov01:34MSK, historical evidence
 
 Direct WAN UDP toward1 has confirmed underlay loss, BEFORE WG decryption, not just
 Flannel/app issues. Correct host1 WG address10.250.0.3 (not.11), Arch laptop with

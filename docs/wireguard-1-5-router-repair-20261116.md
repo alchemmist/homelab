@@ -121,3 +121,55 @@ Also revert ONLY the owned5→1 endpoint inventory entry to
 `109.173.40.247:51831`. Keep keys, addresses, AllowedIPs and the1↔2 transport.
 Do not restore an entire stale WG config over independent changes. Rollback
 returns to the documented lossy direct path, not a previously healthy service.
+
+## Persistent activation observed
+
+Source published before activation in `8f2329f0`. Relay0 enabled+active, actual
+DynamicUser=yes, NoNewPrivileges=yes, empty CapabilityBoundingSet, measured
+MemoryCurrent~7.5MiB. Only WG10.250.0.1:51835 frontend; connected LAN socket
+192.168.0.23:51836 accepts replies from fixed1:51830. All owned canary units
+stopped and transient relay/echo files removed.
+
+On5 the helper changed ONLY the peer1 endpoint; all other config bytes and
+runtime peer/AllowedIPs inventory preserved. Original0600 private config is
+retained under the documented root-only preimage directory. A second apply
+was idempotent (`configChanged:false`, same before/after digest). No private
+key was emitted, copied to relay0 or rotated.
+
+Persistent5→1 small ICMP100/100;1→5 small60/60. After controlled restart of ONLY
+the relay service:120 probes/114 replies (6 packets during the restart window,
+about0.6s at10 probes/sec), then steady5→1 DF1392 payload100/100. This is not
+zero-downtime/HA acceptance. No WG, host networking, K3s or app restart was
+requested by the transport deployment.
+
+After restart, the full six8MiB Pod transfers were repeated, all byte/hash
+checks correct:
+
+* client1←server5:2.707/2.796/2.832s (24.79/24.01/23.70Mbps).
+* client5←server1:2.923/2.881/2.934s (22.96/23.29/22.87Mbps).
+
+All four second-run probe Pods and the exact NetworkPolicy were removed.
+Native1→WebUI5 health200/0.021s, root200/11673bytes/0.054s. Terminal context
+SSH TCP attempts to WG0/1/5 were rejected; PyPI verified HTTPS200 still works.
+Checked Argo apps LMS/LiteLLM/WebUI/Terminal/SearXNG/Umami Synced Healthy;
+renderer remains Ready on1, LiteLLM Ready on0, LMS Ready on5, all these app
+containers restart0. No migration retry was performed.
+
+### Disclosed collateral event during earlier radio experiment
+
+Kubernetes events show standby `lms-ha-2` on1 failed liveness at
+2026-11-15T23:37:56Z and restarted at23:39:07Z, overlapping confirmed radio
+aggregation A/B (apply preimage23:37:28Z; rollback preimage23:40:51Z). Its total
+restart count is2; one prior restart was11Nov. This was a kubelet liveness
+restart, NOT an assistant-issued Pod deletion/restart; temporal association is
+strong but the exact internal cause was not separately proven. Do not describe
+all workloads as having remained restart-free throughout router experiments.
+At final check CNPG reports `Cluster in healthy state`,3/3 ready, primary
+`lms-ha-1` (node3), standby1 Ready. Primary failover/data-loss absence is not
+inferred solely from these health fields; no fabricated submissions or workflow
+reruns were used to test the database. No further radio experiments were made.
+
+Router10 original forward rows and aggregation restored by fresh readback.
+A later attempt to take a second vendor download failed (no resulting file);
+do NOT claim byte-identical full before/after backups. Original complete
+vendor backup remains intact. Cold-boot/full VM restore still not exercised.

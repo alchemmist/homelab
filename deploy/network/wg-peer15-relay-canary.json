@@ -1,5 +1,5 @@
 {
-  "status": "real-WG-canary-passed-bulk-pending",
+  "status": "passed-and-superseded-by-persistent-deployment",
   "relayHost": "socrat-0",
   "bind": "10.250.0.1:51835",
   "allowClient": "10.250.0.41:51830",
@@ -35,5 +35,7 @@
     "wg5to1DF1392": "20/20",
     "wg1to5Small": "40/40",
     "endpointRestored": true
-  }
+  },
+  "persistentSource": "ansible/playbooks/wg-peer15-relay.yml",
+  "handoff": "docs/wireguard-1-5-router-repair-20261116.md"
 }
