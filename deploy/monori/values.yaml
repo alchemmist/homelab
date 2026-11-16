@@ -19,3 +19,8 @@ images:
 
 imagePullSecrets:
   - monori-harbor-pull
+
+# Offline phase: backend and sync stop together, frontend is untouched.
+backReplicaCount: 0
+syncReplicaCount: 0
+statefulRecreate: true

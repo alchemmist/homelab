@@ -24,3 +24,11 @@ images:
 imagePullSecrets:
   - monori-harbor-pull
   - ghcr-pull
+
+backReplicaCount: 1
+syncReplicaCount: 1
+statefulNodeName: socrat-0
+statefulRecreate: false
+requireExistingData: false
+backClaim: ""
+syncClaim: ""
