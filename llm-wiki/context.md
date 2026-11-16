@@ -85,3 +85,8 @@ expected codes (Publish-only STORAGE_TRANSIENT сохранён, workflow не �
 Продолжение по запросу владельца: бэкапы пока не делать. Legacy Rancher installer
 выведен в fail-closed refusal-only entrypoint; CI проверяет отсутствие последующих
 plays/imports и согласованность Argo bootstrap version/values с Git Application.
+
+Следующий source-only пакет: inventories трёх vendored trees (Git baseline,
+не upstream trust), retirement legacy LiteLLM installer, единый stricter placement
+checker для CLI/Ansible: current RS revision + Pod Ready gates. Read-only проверка
+Rancher/Grafana/MCP на `socrat-5` пройдена; бэкапы по-прежнему отложены владельцем.

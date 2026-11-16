@@ -6,22 +6,24 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 class DeploymentOwnership(unittest.TestCase):
-    def test_retired_rancher_entrypoint_has_no_side_effect_or_followup_play(self):
-        plays = yaml.safe_load((ROOT/'ansible/playbooks/rancher.yml').read_text())
-        self.assertEqual(len(plays), 1)  # No imports after a failed play.
-        play = plays[0]
-        self.assertFalse(play['gather_facts'])
-        self.assertFalse(play['become'])
-        self.assertTrue(play['any_errors_fatal'])
-        self.assertEqual(set(play), {'name','hosts','gather_facts','become','any_errors_fatal','tasks'})
-        self.assertEqual(len(play['tasks']), 1)
-        task = play['tasks'][0]
-        self.assertEqual(set(task), {'name','ansible.builtin.fail','tags'})
-        self.assertIn('always', task['tags'])
-        for path in ['deploy/argocd/apps/rancher.yaml','charts/rancher',
-                     'deploy/platform/rancher/values.yaml']:
-            self.assertIn(path, task['ansible.builtin.fail']['msg'])
-            self.assertTrue((ROOT/path).exists())
+    def test_retired_entrypoints_have_no_side_effect_or_followup_play(self):
+        for name in ['rancher','litellm']:
+            with self.subTest(name=name):
+                plays = yaml.safe_load((ROOT/f'ansible/playbooks/{name}.yml').read_text())
+                self.assertEqual(len(plays), 1)  # No imports after a failed play.
+                play = plays[0]
+                self.assertFalse(play['gather_facts'])
+                self.assertFalse(play['become'])
+                self.assertTrue(play['any_errors_fatal'])
+                self.assertEqual(set(play), {'name','hosts','gather_facts','become','any_errors_fatal','tasks'})
+                self.assertEqual(len(play['tasks']), 1)
+                task = play['tasks'][0]
+                self.assertEqual(set(task), {'name','ansible.builtin.fail','tags'})
+                self.assertIn('always', task['tags'])
+                for path in [f'deploy/argocd/apps/{name}.yaml',f'charts/{name}',
+                             f'deploy/platform/{name}/values.yaml']:
+                    self.assertIn(path, task['ansible.builtin.fail']['msg'])
+                    self.assertTrue((ROOT/path).exists())
 
     def test_monitoring_entrypoint_only_imports_fail_closed_guard(self):
         tasks = yaml.safe_load((ROOT/'ansible/roles/monitoring_stack/tasks/main.yml').read_text())

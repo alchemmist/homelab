@@ -15,9 +15,10 @@ placement = module('placement', 'scripts/check_target_placement.py')
 class Convergence(unittest.TestCase):
     def fixture(self):
         d = {'metadata':{'generation':2}, 'spec':{'replicas':1},
-             'status':{'observedGeneration':2,'updatedReplicas':1,'readyReplicas':1}}
+             'status':{'observedGeneration':2,'updatedReplicas':1,'readyReplicas':1,'replicas':1,'availableReplicas':1}}
         p = {'metadata':{},'spec':{'nodeName':'socrat-5','containers':[{'name':'grafana'}]},
-             'status':{'containerStatuses':[{'name':'grafana','ready':True}]}}
+             'status':{'phase':'Running','conditions':[{'type':'Ready','status':'True'}],
+                       'containerStatuses':[{'name':'grafana','ready':True}]}}
         return d, [p]
     def test_ready_desired_node(self):
         d,p = self.fixture()

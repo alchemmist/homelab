@@ -54,8 +54,10 @@ class MigrationTests(unittest.TestCase):
 
  def test_ansible_cannot_silently_revert_to_old_node_or_oci_chart(self):
   s=(R/'ansible/playbooks/litellm.yml').read_text()
-  self.assertIn('src: ../../deploy/platform/litellm/values.yaml',s)
-  self.assertIn('src: ../../charts/litellm/',s)
-  self.assertNotIn('oci://ghcr.io/berriai/litellm-helm',s)
+  p=yaml.safe_load(s);self.assertEqual(len(p),1)
+  self.assertEqual(len(p[0]['tasks']),1)
+  self.assertIn('ansible.builtin.fail',p[0]['tasks'][0])
+  self.assertNotIn('helm upgrade',s)
+  self.assertIn('deploy/platform/litellm/values.yaml',s)
   g=(R/'ansible/roles/monitoring_llm_gateway/files/configure_gateway.py').read_text()
   self.assertLess(g.index("source.get('path') == 'charts/litellm'"),g.index("run(helm + ['upgrade'"))
