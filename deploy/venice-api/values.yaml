@@ -23,3 +23,5 @@ imagePullSecrets:
   - venice-api-harbor-pull
 nodeSelector:
   kubernetes.io/hostname: socrat-5
+hostNetwork: true
+proxyServer: http://127.0.0.1:8899

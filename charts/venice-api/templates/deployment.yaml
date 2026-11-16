@@ -20,6 +20,10 @@ spec:
       nodeSelector:
 {{ toYaml . | indent 8 }}
       {{- end }}
+      {{- if .Values.hostNetwork }}
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      {{- end }}
       {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- range .Values.imagePullSecrets }}
@@ -48,6 +52,10 @@ spec:
               value: /secrets/cookies.json
             - name: PROFILE_DIR
               value: /data/profile
+            {{- if .Values.proxyServer }}
+            - name: PROXY_SERVER
+              value: {{ .Values.proxyServer | quote }}
+            {{- end }}
           ports:
             - containerPort: {{ .Values.service.targetPort }}
           readinessProbe:
