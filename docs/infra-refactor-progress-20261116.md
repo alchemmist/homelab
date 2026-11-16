@@ -135,6 +135,25 @@ and exercised using an explicit local-only inventory/connection: changed=0,
 unreachable=0, expected failure before any production connection. Quality Graph
 regenerated/validated from qg.yaml; contract checks passed.
 
+## Continuation: WebUI lifecycle and Terminal cleanup entrypoints
+
+Retired five competing playbooks: WebUI install/upgrade/HTTPS/tool-guard and
+Terminal browser cleanup. Refusal is before any tasks, imported plays, backup,
+scale/image operations, persisted setting or group DNS/firewall/identity writes.
+Chart-owned protection/defaults and native data/identity unchanged. Runbooks no
+longer recommend adapting the old-node/PVC backup/upgrade sequence or imperative
+Helm --reuse-values maintenance. Historical migration receipts remain unchanged.
+
+Registry still has23records; literal Helm hits reduced from15to10. Only k3s and
+storage-nfs remain review-required within this gate; eight paths remain excluded
+or deferred. This is not certification of all operational/Python/native helpers.
+No backup, inference, process probe, identity or production operation performed.
+100 targeted offline tests plus14mocked watchdog tests passed. Five entrypoints
+syntax-checked and exercised with explicit local inventory/connection: expected
+refusal, changed=0, unreachable=0. Three updated current runbooks added to source
+link checking and WebUI claim mention bound to its actual consuming Application.
+Quality Graph and source/vendor/infrastructure/operational contracts validated.
+
 ## Remaining implementation gates (backup gate deferred)
 
 1. Complete remaining backup scheduler/destination inventory; choose each app's

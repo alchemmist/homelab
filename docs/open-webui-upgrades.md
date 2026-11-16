@@ -1,40 +1,36 @@
 # Open WebUI upgrades
 
-> **15Nov migration supersedes node0 data assumptions below.** The authoritative
-> WebUI now runs on socrat-5 with `open-webui-socrat5`, dedicated data path
-> `/mnt/files/homelab/open-webui/data`. Original node0 `open-webui-data` is a STALE
-> retained recovery copy. The existing upgrade playbook is node0/old-PVC-specific
-> and fails closed against the current deployment; adapt its backup path/execution
-> for VM105 before using it. Never bypass its assertions, back up the old claim as
-> if current, or repoint a writer to the old copy. [Current handoff/rollback](llm-apps-vm105-20261115.md).
+## Current owner and data authority
 
-The Helm chart pins the official `ghcr.io/open-webui/open-webui` slim image by
-version and manifest digest. Update `charts/open-webui/values.yaml` and the chart
-version and `appVersion` in `Chart.yaml` together.
+Existing release: `deploy/argocd/apps/open-webui.yaml`; chart/defaults:
+`charts/open-webui/`. The authoritative WebUI runs on socrat-5 using
+`open-webui-socrat5`, `/mnt/files/homelab/open-webui/data`. The retained original
+`open-webui-data` on socrat-0 is stale, not a current rollback copy.
+[Accepted handoff and rollback constraints](llm-apps-vm105-20261115.md).
 
-From `ansible/`, run:
+`open-webui.yml`, `open-webui-upgrade.yml`, `open-webui-https.yml` and
+`open-webui-tool-guard.yml` are retired refusal-only entrypoints, not supported
+upgrade or recovery procedures. They stop before key creation, Helm, image pull,
+backup/scaling, persisted-setting updates, group DNS/firewall or imported identity
+reconciliation. Do not adapt the historical old-node/old-PVC sequence or bypass
+its former checks. Original implementation remains in Git history.
 
-```sh
-ansible-playbook -i inventory/hosts.yml playbooks/open-webui-upgrade.yml --ask-become-pass
-```
+Review upstream release/schema notes, native compatibility/patch anchors and
+rendered changes before committing the pinned image/version and any required
+chart metadata to the owning source. Runtime rollout/maintenance requires its
+own authorization and addressed reconcile, not a competing Helm upgrade or
+blanket sync. Preserve credentials, users/chats/files/models and native SSO/TLS.
+Do not silently reconcile identity or persisted model/retrieval settings merely
+to test an upgrade. Existing admin operations are separate from chart deployment.
 
-The upgrade playbook targets the existing single-replica deployment in namespace
-`llm` on socrat-0. It validates the chart and downloads the image before downtime,
-stops the application, and archives the complete local PVC in a root-only
-directory under `/var/backups/homelab-open-webui/upgrade-*`. Each directory contains
-`data.tar.gz` and `release.json`, recording the previous Helm revision.
+Backup implementation and restore work remain explicitly deferred by the owner.
+This retirement creates no archive/schedule and makes no new recovery claim.
+Do not undertake a stateful upgrade that needs an unavailable consistency/recovery
+prerequisite. Rollback after schema/data writes is not a Helm revision rewind;
+it requires a fresh, separately reviewed consistent data handoff.
 
-After archive validation, Helm applies the chart and waits for readiness. The
-playbook checks `/api/version`. Existing authentication Secrets, model defaults
-and DNS configuration are not recreated by this workflow. A backup failure
-restarts the original deployment; an upgrade failure stops the playbook for
-supervised recovery rather than automatically rolling application code back
-against a potentially migrated database.
-
-Before deployment, compare the rendered chart with the installed Helm manifest
-and inspect upstream release notes. After deployment, check HTTPS, database
-integrity, preserved user/chat/file/model counts and the configured inference
-connection. Backups contain private chats and credentials and must stay private.
+The release details below are historical compatibility evidence, not a current
+installed-version assertion or permission to replay the original upgrade.
 
 ## Version 0.12.3
 

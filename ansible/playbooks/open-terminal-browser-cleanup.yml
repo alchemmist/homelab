@@ -1,30 +1,21 @@
 ---
-- name: Deploy managed browser test cleanup
+- name: Refuse the retired competing open-terminal-browser-cleanup maintenance entrypoint
   hosts: socrat-0
   gather_facts: false
   become: false
   any_errors_fatal: true
-  environment:
-    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-  vars:
-    terminal_cleanup_chart: '{{ homelab_user_home }}/tmp-charts/open-terminal-browser-cleanup'
   tasks:
-    - name: Copy the managed terminal chart
-      ansible.builtin.copy:
-        src: '{{ playbook_dir }}/../../charts/open-terminal/'
-        dest: '{{ terminal_cleanup_chart }}/'
-        mode: preserve
-
-    - name: Validate the terminal chart
-      ansible.builtin.command: helm lint {{ terminal_cleanup_chart }}
-      changed_when: false
-
-    - name: Deploy cleanup while preserving existing terminal settings
-      ansible.builtin.command: >-
-        helm upgrade open-terminal {{ terminal_cleanup_chart }} -n llm --reuse-values
-        --set-json 'systemPackages={{ (lookup("file", playbook_dir + "/../../charts/open-terminal/values.yaml") | from_yaml).systemPackages | to_json }}'
-        --set browserCleanup.enabled=true --set browserCleanup.maxAgeSeconds=900
-        --set browserCleanup.pollSeconds=15 --set browserCleanup.graceSeconds=5
-        --atomic --wait --timeout 10m
-
-- import_playbook: open-terminal-instructions.yml
+    - name: Require the existing Git-owned Application
+      ansible.builtin.fail:
+        msg: >-
+          This legacy entrypoint is retired. Existing workloads belong to
+          deploy/argocd/apps/open-terminal.yaml and charts/open-terminal.
+          Commit reviewed changes to these sources; preserve native identity,
+          existing credentials, current authoritative data and access policies.
+          No Helm, Secret creation, backup, scaling, image pull, runtime setting,
+          DNS/firewall, shared-host or imported identity/instruction change is
+          performed. Never adapt the historical old-node/old-PVC upgrade sequence
+          as a fallback. Recovery or new installation needs separate review;
+          current backup work remains explicitly deferred by the owner.
+          See docs/infrastructure-contracts.md and docs/open-webui-upgrades.md.
+      tags: [always]

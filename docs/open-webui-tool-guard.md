@@ -22,7 +22,13 @@ The deduplication and compaction of the context gateway remain necessary: they k
 
 The helper and a verified-anchor patch are delivered by the Open WebUI Helm chart. An init container patches the middleware from the pinned image into an ephemeral volume; the original image is unchanged. If an upstream upgrade changes an expected anchor, initialization fails rather than silently losing protection. Disable `toolGuard.enabled` and redeploy to use unmodified upstream middleware.
 
-Apply to an existing installation with `ansible-playbook playbooks/open-webui-tool-guard.yml` from `ansible/`. It preserves existing Helm release values and performs an atomic upgrade. WebUI restarts; the terminal and model do not. Apply `playbooks/open-terminal-instructions.yml` as well to refresh the file-editing guidance.
+Protection is owned by `deploy/argocd/apps/open-webui.yaml` and
+`charts/open-webui/values.yaml` (`toolGuard.enabled`). Commit reviewed changes
+there. `playbooks/open-webui-tool-guard.yml` is retired before Helm, persisted
+retrieval-setting changes and imported identity reconciliation. Retirement does
+not disable the existing chart guard. Workspace instruction updates are a
+separate native-data change, not an implicit deployment follow-up; review them
+independently and preserve existing files/instructions.
 
 Run focused checks with `uv run --with jsonschema python -m unittest discover -s tests -p test_webui_tool_guard.py -q`.
 
@@ -32,7 +38,9 @@ The live check runs inside the WebUI container: `kubectl -n llm exec -i deployme
 
 On 2026-10-21 a Thanos documentation response stalled midway through its body. The native `fetch_url` call waited almost two hours until the user stopped it. `web.loader.timeout` was empty, leaving the synchronous Requests loader without a read timeout. Detailed tool state is stored in `chat_message.output`; the legacy `chat.chat` JSON alone does not describe the current execution state.
 
-The same playbook now sets `WEB_LOADER_TIMEOUT` to `15` seconds through the authenticated retrieval configuration API, preserving and verifying all other settings. This is a network inactivity timeout, not a total duration limit.
+The historical playbook set `WEB_LOADER_TIMEOUT` to `15` seconds through the authenticated retrieval configuration API, preserving and verifying all other settings at that dated acceptance. The retired
+entrypoint must not be replayed to change this persisted setting; its current
+value requires separate read-only/native verification. This is a network inactivity timeout, not a total duration limit.
 
 The guard executes only the built-in, non-direct `fetch_url` in a disposable Python process with a 45-second deadline. The child uses the installed upstream fetch implementation, persisted loader settings, content truncation, and SSRF validation. Timeout or Stop kills and reaps the child, rather than abandoning a blocked worker thread. Empty results and worker failures become explicit tool errors; successful page text retains its original format. Each fetch pays the cost of importing WebUI in the child. Disabling `toolGuard.enabled` removes process isolation, but the persisted 15-second loader setting remains.
 

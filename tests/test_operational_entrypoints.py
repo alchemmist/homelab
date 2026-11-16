@@ -21,7 +21,7 @@ class OperationalEntrypoints(unittest.TestCase):
         (root/'deploy/contracts/operational-entrypoints.json').write_text(json.dumps(c))
 
     def test_current_inventory_is_read_only(self):
-        self.assertEqual(entrypoints.check(ROOT),(23,15))
+        self.assertEqual(entrypoints.check(ROOT),(23,10))
         with tempfile.TemporaryDirectory() as d:
             root,c=self.fixture(d);before={p:p.read_bytes() for p in root.rglob('*') if p.is_file()}
             self.assertEqual(entrypoints.check(root),(1,1))

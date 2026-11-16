@@ -11,7 +11,10 @@
     "wiki/README.md",
     "docs/litellm.md",
     "docs/monitoring-llm.md",
-    "llm-wiki/cluster-deploy.md"
+    "llm-wiki/cluster-deploy.md",
+    "docs/open-webui-upgrades.md",
+    "docs/open-webui-tool-guard.md",
+    "docs/open-terminal-browser-cleanup.md"
   ],
   "currentValues": [
     {
@@ -48,6 +51,17 @@
       ],
       "documents": [
         "llm-wiki/cluster-deploy.md"
+      ]
+    },
+    {
+      "application": "open-webui",
+      "source": "charts/open-webui/values.yaml",
+      "path": [
+        "persistence",
+        "claimName"
+      ],
+      "documents": [
+        "docs/open-webui-upgrades.md"
       ]
     }
   ],

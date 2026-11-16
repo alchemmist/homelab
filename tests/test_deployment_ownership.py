@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class DeploymentOwnership(unittest.TestCase):
     def test_retired_entrypoints_have_no_side_effect_or_followup_play(self):
-        for name in ['rancher','litellm','llm-vision','monitoring-llm','open-terminal','searxng','search']:
+        for name in ['rancher','litellm','llm-vision','monitoring-llm','open-terminal','searxng','search','open-webui','open-webui-upgrade','open-webui-https','open-webui-tool-guard','open-terminal-browser-cleanup']:
             with self.subTest(name=name):
                 plays = yaml.safe_load((ROOT/f'ansible/playbooks/{name}.yml').read_text())
                 self.assertEqual(len(plays), 1)  # No imports after a failed play.
@@ -21,6 +21,8 @@ class DeploymentOwnership(unittest.TestCase):
                 self.assertEqual(set(task), {'name','ansible.builtin.fail','tags'})
                 self.assertIn('always', task['tags'])
                 paths = {
+                    **{name:['deploy/argocd/apps/open-webui.yaml','charts/open-webui'] for name in ['open-webui','open-webui-upgrade','open-webui-https','open-webui-tool-guard']},
+                    'open-terminal-browser-cleanup':['deploy/argocd/apps/open-terminal.yaml','charts/open-terminal'],
                     'open-terminal':['deploy/argocd/apps/open-terminal.yaml','charts/open-terminal'],
                     'searxng':['deploy/argocd/apps/searxng.yaml','charts/searxng'],
                     'search':['deploy/argocd/apps/searxng.yaml','charts/searxng','deploy/argocd/apps/open-webui.yaml'],
@@ -30,6 +32,19 @@ class DeploymentOwnership(unittest.TestCase):
                 for path in paths:
                     self.assertIn(path, task['ansible.builtin.fail']['msg'])
                     self.assertTrue((ROOT/path).exists())
+
+    def test_retirement_preserves_chart_owned_protection_intent(self):
+        webui=yaml.safe_load((ROOT/'charts/open-webui/values.yaml').read_text())
+        terminal=yaml.safe_load((ROOT/'charts/open-terminal/values.yaml').read_text())
+        self.assertTrue(webui['toolGuard']['enabled'])
+        self.assertTrue(webui['gateway']['redirectHttps'])
+        self.assertTrue(terminal['browserCleanup']['enabled'])
+        self.assertEqual(terminal['browserCleanup']['maxAgeSeconds'],900)
+        for name in ['open-webui','open-terminal']:
+            app=yaml.safe_load((ROOT/f'deploy/argocd/apps/{name}.yaml').read_text())
+            self.assertEqual(app['spec']['source']['path'],'charts/'+name)
+            self.assertEqual(app['spec']['source']['helm']['releaseName'],name)
+            self.assertEqual(app['spec']['destination']['namespace'],'llm')
 
     def test_monitoring_entrypoint_only_imports_fail_closed_guard(self):
         tasks = yaml.safe_load((ROOT/'ansible/roles/monitoring_stack/tasks/main.yml').read_text())

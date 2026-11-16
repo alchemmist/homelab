@@ -1,3 +1,12 @@
+> **Current maintenance boundary (16 November 2026):** the dated bring-up below
+> is incident/history context, not a deployment recipe. WebUI is Git-owned and
+> runs on socrat-5 with native authentication and authoritative migrated data.
+> Legacy WebUI install/upgrade/HTTPS/tool-guard entrypoints are refusal-only;
+> do not restore shared no-auth mode, private DNS assumptions or old-PVC writers.
+> GPU, VPN/Mac resolver and backup changes are outside this refactor.
+> See [current WebUI ownership](open-webui-upgrades.md) and
+> [current context](../llm-wiki/context.md).
+
 ## Current model selection (2026-10-16)
 
 Qwen3.8-27B INT4 is the only installed model. LiteLLM routes through the internal serialized gateway to one vLLM engine, with vision, 112K context and a 95% GPU-memory target. See [model serving](model-switching.md). Earlier configuration snapshots below are retained as history.
@@ -48,15 +57,10 @@ The user-requested vLLM resource changes are now applied: gpu-memory-utilization
 
 The API smoke suite passed at 95%, followed by four requests at concurrency two. The model also answered a Russian prompt through the actual HTTPS browser chat. No new kernel/NVIDIA errors or host reboot occurred during this observation. Evidence is under /Users/antonmoss/.antex/artifacts/socrat-0-20261015/gpu95/.
 
-Reapply from ansible/:
-
-```sh
-ansible-playbook playbooks/llm.yml
-ansible-playbook playbooks/open-webui.yml --ask-become-pass
-ansible-playbook playbooks/open-webui-https.yml --ask-become-pass
-```
-
-The HTTPS playbook waits for the Certificate, snapshots Syncthing state, updates its existing private proxy and enables the redirect. The extra virtual host is persisted in inventory/host_vars/socrat-0.yml so later app deployments preserve it. Recreating the Mac resolver uses playbooks/wireguard-admin-client.yml with --tags dns and local administrator privileges. Do not switch this no-auth installation to a public Ingress without revisiting authentication.
+The original bootstrap/reapply commands are retained in Git history, not offered
+as current maintenance instructions. Their historical HTTPS flow updated the
+private proxy and redirect and involved shared DNS/firewall state. It is retired;
+do not replay it or modify the Mac resolver to accompany a routine WebUI update.
 
 ## Initial kernel panic
 

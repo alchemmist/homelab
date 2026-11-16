@@ -10,7 +10,13 @@ The chart deploys both scripts through a ConfigMap. The sidecar runs as the same
 
 Chromium system libraries are declared in `systemPackages` and installed through the image's native `OPEN_TERMINAL_PACKAGES` startup setting. Previously manually installed libraries disappeared on container replacement even though the browser executable survived in the workspace. Startup now requires access to Debian package repositories to restore these dependencies.
 
-Deploy with `ansible-playbook playbooks/open-terminal-browser-cleanup.yml` from `ansible/`. Existing release values are preserved. The standard terminal playbook also deploys cleanup from the chart.
+Deployment owner is `deploy/argocd/apps/open-terminal.yaml` and
+`charts/open-terminal/values.yaml` (`browserCleanup`/`systemPackages`). Commit
+reviewed changes to those sources. Both `open-terminal-browser-cleanup.yml` and
+the standard terminal installer are retired refusal-only; neither is a supported
+Helm fallback or an implicit workspace-instruction updater. The existing chart
+cleanup remains enabled; retirement changes no sidecar, timeout or workspace.
+Runtime changes/restarts and live process probes require separate authorization.
 
 Run watchdog unit tests with `python3 -m unittest discover -s tests -p test_browser_watchdog.py -q`. Run `test_browser_test_runner.py` on Linux: its real process tests intentionally skip on other operating systems. These cover successful and failed commands leaving detached children, hard timeout, signal interruption, double-forked descendants and survival of an unrelated process.
 

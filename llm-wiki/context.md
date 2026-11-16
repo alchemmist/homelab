@@ -106,3 +106,8 @@ before keys/Helm/imports. CI classifies literal Ansible Helm entrypoints without
 certifying remaining review-required or VPN/GPU/backup-excluded paths. Vendor
 baseline expanded to existing monitoring bundle and five dependency symlinks;
 no chart/version/runtime changes or production/backup operations.
+
+WebUI lifecycle/HTTPS/tool-guard and Terminal browser-cleanup entrypoints now
+refuse before all remote tasks/imports; chart-owned protection remains unchanged.
+Old-PVC backup/upgrade instructions are not a fallback. Within the literal Helm
+gate only k3s/storage-nfs remain review-required; no maintenance was performed.

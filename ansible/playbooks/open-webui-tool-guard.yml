@@ -1,57 +1,21 @@
 ---
-- name: Deploy terminal validation and repeated failure protection
+- name: Refuse the retired competing open-webui-tool-guard maintenance entrypoint
   hosts: socrat-0
   gather_facts: false
   become: false
   any_errors_fatal: true
-  environment:
-    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-  vars:
-    webui_guard_chart: '{{ homelab_user_home }}/tmp-charts/open-webui-tool-guard'
   tasks:
-    - name: Configure a finite web loader timeout
-      ansible.builtin.command:
-        argv:
-          - kubectl
-          - -n
-          - llm
-          - exec
-          - -i
-          - deployment/open-webui
-          - --
-          - python
-          - '-'
-        stdin: "{{ lookup('file', playbook_dir + '/../files/configure_webui_fetch_timeout.py') }}"
-      register: webui_fetch_timeout
-      changed_when: '"\"changed\": true" in webui_fetch_timeout.stdout'
-
-    - name: Copy the managed WebUI chart
-      ansible.builtin.copy:
-        src: '{{ playbook_dir }}/../../charts/open-webui/'
-        dest: '{{ webui_guard_chart }}/'
-        mode: preserve
-
-    - name: Validate the managed chart
-      ansible.builtin.command: helm lint {{ webui_guard_chart }}
-      changed_when: false
-
-    - name: Apply protection while preserving existing release settings
-      ansible.builtin.command: >-
-        helm upgrade open-webui {{ webui_guard_chart }} --namespace llm
-        --reuse-values --set toolGuard.enabled=true --atomic --wait --timeout 10m
-
-    - name: Verify the running guard
-      ansible.builtin.command:
-        argv:
-          - kubectl
-          - -n
-          - llm
-          - exec
-          - deployment/open-webui
-          - --
-          - python
-          - -c
-          - "from pathlib import Path; import open_webui.utils.homelab_tool_guard; s = Path('/app/backend/open_webui/utils/middleware.py').read_text(); assert 'homelab_tool_guard' in s; print('tool guard installed')"
-      changed_when: false
-
-- ansible.builtin.import_playbook: identity-webui-reconcile.yml
+    - name: Require the existing Git-owned Application
+      ansible.builtin.fail:
+        msg: >-
+          This legacy entrypoint is retired. Existing workloads belong to
+          deploy/argocd/apps/open-webui.yaml and charts/open-webui.
+          Commit reviewed changes to these sources; preserve native identity,
+          existing credentials, current authoritative data and access policies.
+          No Helm, Secret creation, backup, scaling, image pull, runtime setting,
+          DNS/firewall, shared-host or imported identity/instruction change is
+          performed. Never adapt the historical old-node/old-PVC upgrade sequence
+          as a fallback. Recovery or new installation needs separate review;
+          current backup work remains explicitly deferred by the owner.
+          See docs/infrastructure-contracts.md and docs/open-webui-upgrades.md.
+      tags: [always]

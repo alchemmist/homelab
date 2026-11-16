@@ -173,8 +173,8 @@ literal `helm upgrade/install` and `kubernetes.core.helm` in Ansible `*.yml`.
 Unclassified additions or stale records fail CI. This is lexical discovery, not
 proof about dynamically generated commands, all Python/shell helpers or indirect
 mutations; comments can match. A `review-required`/excluded record is explicitly
-not execution authorization or certification. The fifteen remaining literal hits
-include seven requiring review and eight excluded/deferred for VPN, GPU or backups.
+not execution authorization or certification. The ten remaining literal hits
+include two requiring infrastructure review and eight excluded/deferred for VPN, GPU or backups.
 
 Open Terminal and SearXNG installers and the search umbrella now refuse before all
 remote writes and imported follow-ups. Existing integration/access/instruction
@@ -189,3 +189,18 @@ archive, image/version or runtime setting changed. Five component symlinks are
 registered separately: additions, removal, retargeting, regular-file replacement
 or a target outside inventoried trees fail CI. They remain supported reuse, not
 an excuse to follow arbitrary symlinks in registered vendor trees.
+
+## WebUI lifecycle and Terminal cleanup retirement
+
+The WebUI install/upgrade/HTTPS/tool-guard playbooks and Terminal browser-cleanup
+playbook are now refusal-only, covered by both the operational registry and
+independent deployment ownership tests. Refusal precedes even the old backup,
+scaling, image pull, persisted retrieval settings, all-host Syncthing/DNS/firewall
+plays and identity/instruction imports. No replacement maintenance executor was
+introduced. The current Git-owned tool guard, HTTPS redirect and900s browser
+cleanup intent remains enabled and tested; charts/values/runtime are unchanged.
+
+`k3s.yml` and `storage-nfs.yml` remain review-required infrastructure paths, not
+approved bootstrap/recovery routines. Their shared-host and existing-storage
+prerequisites require separate source review; no such playbook was run. Python
+and native-data companions remain outside this literal Helm classification gate.

@@ -88,43 +88,43 @@
     },
     {
       "path": "ansible/playbooks/open-terminal-browser-cleanup.yml",
-      "status": "review-required",
+      "status": "retired",
       "owners": [
         "open-terminal"
       ],
-      "reason": "Literal competing/bootstrap Helm path remains; requires prerequisite and companion/import audit before retirement. Not a supported routine deployment recommendation."
+      "reason": "Competing Helm/lifecycle entrypoint replaced by unconditional refusal before all tasks/imports, including old-PVC backup/scaling, persisted settings, group DNS/firewall and identity reconciliation. Existing chart-owned protection preserved; no maintenance execution."
     },
     {
       "path": "ansible/playbooks/open-webui-https.yml",
-      "status": "review-required",
+      "status": "retired",
       "owners": [
         "open-webui"
       ],
-      "reason": "Literal competing/bootstrap Helm path remains; requires prerequisite and companion/import audit before retirement. Not a supported routine deployment recommendation."
+      "reason": "Competing Helm/lifecycle entrypoint replaced by unconditional refusal before all tasks/imports, including old-PVC backup/scaling, persisted settings, group DNS/firewall and identity reconciliation. Existing chart-owned protection preserved; no maintenance execution."
     },
     {
       "path": "ansible/playbooks/open-webui-tool-guard.yml",
-      "status": "review-required",
+      "status": "retired",
       "owners": [
         "open-webui"
       ],
-      "reason": "Literal competing/bootstrap Helm path remains; requires prerequisite and companion/import audit before retirement. Not a supported routine deployment recommendation."
+      "reason": "Competing Helm/lifecycle entrypoint replaced by unconditional refusal before all tasks/imports, including old-PVC backup/scaling, persisted settings, group DNS/firewall and identity reconciliation. Existing chart-owned protection preserved; no maintenance execution."
     },
     {
       "path": "ansible/playbooks/open-webui-upgrade.yml",
-      "status": "review-required",
+      "status": "retired",
       "owners": [
         "open-webui"
       ],
-      "reason": "Literal competing/bootstrap Helm path remains; requires prerequisite and companion/import audit before retirement. Not a supported routine deployment recommendation."
+      "reason": "Competing Helm/lifecycle entrypoint replaced by unconditional refusal before all tasks/imports, including old-PVC backup/scaling, persisted settings, group DNS/firewall and identity reconciliation. Existing chart-owned protection preserved; no maintenance execution."
     },
     {
       "path": "ansible/playbooks/open-webui.yml",
-      "status": "review-required",
+      "status": "retired",
       "owners": [
         "open-webui"
       ],
-      "reason": "Literal competing/bootstrap Helm path remains; requires prerequisite and companion/import audit before retirement. Not a supported routine deployment recommendation."
+      "reason": "Competing Helm/lifecycle entrypoint replaced by unconditional refusal before all tasks/imports, including old-PVC backup/scaling, persisted settings, group DNS/firewall and identity reconciliation. Existing chart-owned protection preserved; no maintenance execution."
     },
     {
       "path": "ansible/playbooks/private-gateway-migrate.yml",
