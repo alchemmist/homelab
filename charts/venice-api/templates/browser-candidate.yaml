@@ -47,6 +47,39 @@ spec:
       imagePullSecrets:
         - name: venice-api-harbor-pull
       containers:
+        {{- if .Values.browserCandidate.bridgeEnabled }}
+        - name: bridge
+          {{- $bridgeImage := printf "%s:%s" .Values.image.repository .Values.image.tag -}}
+          {{- if .Values.image.digest }}
+          {{- $bridgeImage = printf "%s@%s" .Values.image.repository .Values.image.digest -}}
+          {{- end }}
+          image: {{ default $bridgeImage .Values.browserCandidate.bridgeImage | quote }}
+          env:
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: venice-api-env
+                  key: API_KEY
+            - name: HOST
+              value: "0.0.0.0"
+            - name: CDP_URL
+              value: http://127.0.0.1:9224
+            - name: AUTO_GOOGLE_LOGIN
+              value: "true"
+          ports:
+            - {name: http, containerPort: 8080}
+          readinessProbe:
+            httpGet: {path: /healthz, port: 8080}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {memory: 1Gi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+        {{- end }}
         - name: chrome
           image: {{ .Values.browserCandidate.image | quote }}
           env:
@@ -138,7 +171,13 @@ spec:
     matchLabels:
       app: venice-browser-candidate
   policyTypes: [Ingress, Egress]
+  {{- if .Values.browserCandidate.serveApi }}
+  ingress:
+    - ports:
+        - {protocol: TCP, port: 8080}
+  {{- else }}
   ingress: []
+  {{- end }}
   egress:
     - to:
         - ipBlock: {cidr: 10.250.0.2/32}

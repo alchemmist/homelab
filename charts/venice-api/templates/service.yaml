@@ -4,8 +4,12 @@ metadata:
   name: {{ .Release.Name }}
 spec:
   selector:
+    {{- if .Values.browserCandidate.serveApi }}
+    app: venice-browser-candidate
+    {{- else }}
     app.kubernetes.io/name: {{ .Chart.Name }}
     app.kubernetes.io/instance: {{ .Release.Name }}
+    {{- end }}
   ports:
     - name: http
       port: {{ .Values.service.port }}
