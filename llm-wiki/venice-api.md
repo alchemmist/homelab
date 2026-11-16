@@ -58,9 +58,10 @@ legitimate answer lines. Generation deadline errors are not reported as normal s
 SSE is deliberately BUFFERED until the DOM answer is final: Venice can rewrite
 partial Markdown and append-only forwarding corrupted it in acceptance testing.
 Initial role event + keepalive comments are sent while waiting; final assistant
-text/stop/[DONE] follow. This is not native token streaming. Roles remain flattened
-into a prompt; temperature/top_p/max_tokens and tools are not native backend API
-semantics. Do not advertise full OpenAI feature compatibility.
+text/stop/[DONE] follow. This is not native token streaming. Plain-chat roles
+remain flattened; tool-bearing requests now use the strict Pi adapter described
+below. temperature/top_p/max_tokens and tools are not native Venice API semantics.
+Do not advertise full OpenAI feature compatibility.
 
 ## Acceptance evidence
 
@@ -208,3 +209,89 @@ one non-stream and one SSE request were started together. Both returned200/pong,
 completed in11.0/19.5s, SSE ended with[DONE]. This tests the real UI upstream route,
 not a replay of the owner's private chat or a claim of browser/UI-click acceptance.
 The existing failed chat message is unchanged; retry/regenerate it in the UI.
+
+
+## Pi text-function adapter — 16 November 2026
+
+Source `alchemmist/venice-api` commit **0c2bfc7**, CI **43892239711**
+(second attempt SUCCESS; first failed at Harbor TLS handshake, before publish).
+GitOps release `3abc9bb5`, immutable bridge image:
+`sha256:4c4b66c38283289dee0b67a985b779b8ee57f48dc5f4d66363334f8c84a22106`.
+Deployment UID unchanged; new server Chrome pod Ready3/3 and Argo Synced/Healthy.
+Google session recovered through the existing profile, no manual login or Mac
+browser/proxy dependency. Local test adapter was stopped before final acceptance.
+
+### Implemented contract
+
+- OpenAI text function tools, single call per step; auto/none/required/named choice.
+  JSON Schema argument validation, no coercion, external refs rejected. Custom/
+  grammar tools and non-text blocks rejected, not silently treated as supported.
+- Ordered role/content/tool_calls/tool_call_id history, null assistant content,
+  multiple matching results and tool errors preserved. Unknown tools, malformed
+  JSON, duplicate JSON keys, mismatched results and oversized envelopes fail closed.
+- Non-stream assistant.tool_calls with bridge-generated IDs and JSON-string
+  arguments; buffered SSE indexed delta.tool_calls, finish_reason=tool_calls,
+  [DONE]. Final text uses stop. No cluster command runner: Pi runs tools locally.
+- Sole complete raw envelope is recognized only from the current assistant's
+  pre-Markdown source, using bounded/validated React Markdown props traversal.
+  Missing/ambiguous UI props fail closed; no lossy DOM-text fallback, regex command
+  extraction, clipboard use or hidden format-repair generations.
+- Protocol namespace is pi_bridge/action/target/payload (invoke), or action=answer
+  with text. Ordinary Markdown strips JSON backslashes; fenced/inline code
+  experiments triggered native Venice tool attempts or delimiter collisions and
+  FAILED acceptance. Those intermediate results are not successful releases.
+  The source-based raw JSON path passed the real tests below.
+- Queue4/wait180s, one actual browser generation, cancellation and no bridge retry
+  of submitted prompts retained. Pi itself may retry model errors; the bridge is
+  not an exactly-once shell execution ledger. Pi/user permissions remain authority.
+- Agent prompt budget120000 UTF-8 bytes, response envelope65536 bytes. These are
+  conservative adapter budgets, not proven model context limits. Approximate
+  character-count usage now reaches Pi via SSE finish events, allowing context
+  tracking/compaction heuristics; it is NOT native token or Venice-credit accounting.
+
+### Evidence and limits
+
+- **31 application contract/unit tests** pass (including original browser/queue
+  tests and lossless-source/boundary tests); **5 homelab integration tests** pass.
+- Final real Pi1.5.2 through PUBLIC LiteLLM, existing owner's virtual key, buffered
+  SSE, isolated temporary fixture: two read calls; bash unittest exit1; edit
+  subtraction to addition; bash unittest exit0; write JSON with quotes/backslashes/
+  newline; read-back. All seven tool calls occurred locally, not in Venice.
+  Independent local JSON check passed. Approximate usage is nonzero in Pi events.
+- Pre-release source-based bounded run: 12 separate reads of random fixture values,
+  write collected.json, bash verifier exit0: **14 calls /182.5s**, zero model errors;
+  independent manifest comparison matched all12 values. This used a localhost
+  adapter forwarding to the same server browser; do not claim it was the final
+  public-LiteLLM route or a multi-hour soak.
+- Final public LiteLLM non-stream named read choice -> tool_calls; linked synthetic
+  result + tool_choice=none -> final with the actual result string. No rights edited.
+- After final rollout, concurrent non-stream/SSE from Open WebUI pod using its real
+  existing upstream configuration both returned pong (13.0/22.9s, SSE [DONE]).
+  This is upstream-route acceptance, not replay of a private owner chat/UI clicks.
+- Existing Qwen user route returned200 during acceptance. No LiteLLM upgrade,
+  database migration, global provider API change, model ACL expansion or secret
+  rotation. Pi retains per-model openai-completions; only Venice's
+  supportsUsageInStreaming was changed from false to true so it requests
+  stream_options.include_usage. LiteLLM strips usage without that request.
+  A fresh real public Pi session then recorded input1655/output20 for read and
+  input1735/output73 for final. First repeat hit public connect timeout; the
+  following read-only run passed. Dotfiles already had unrelated dirty changes;
+  only that Venice flag was edited and no dotfiles commit/push was made.
+- A Pi process interrupted with SIGINT emitted no local tool events; a following
+  independent session completed pong. Detailed lock/slot release is unit-tested;
+  do not infer exactly-once distributed execution from this disconnect smoke test.
+
+Start a **new** Pi session, choose `litellm/venice-deepseek` (or
+`pi --provider litellm --model venice-deepseek`). Old chats containing claims about
+missing shell access are not useful acceptance fixtures. Built-in read/bash/edit/
+write were tested; arbitrary extensions/custom tools are not collectively certified.
+
+**Hours-long unattended operation is NOT certified.** Native Venice instructions,
+UI/React changes, navigation/network timeouts, approximate compaction/context and
+Google-session revocation remain risks. One initial bounded attempt hit navigation
+90s timeout and malformed JSON; validation emitted no write, Pi retried and stopped.
+Long-running work should remain bounded and inspected, with normal Pi permissions.
+
+Detailed adapter contract: `venice-api/docs/pi-agent-protocol.md`. Private real Pi
+journals/preimages/fixtures: controller `~/venice-auth/agent-adapter-20261116/`;
+no credentials or private transcript payloads committed here.
