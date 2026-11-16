@@ -71,6 +71,10 @@ spec:
             - name: OTEL_EXPORTER_OTLP_TRACES_CLIENT_KEY
               value: /etc/otel-client/tls.key
           {{- end }}
+          {{- if .Values.images.enabled }}
+            - name: IMAGE_OPTIMIZER_URL
+              value: http://{{ .Release.Name }}-image-optimizer:{{ .Values.images.optimizerPort }}
+          {{- end }}
             - name: DATA_DIR
               value: /data
             - name: PUBLIC_URL
@@ -88,12 +92,17 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data
+            - name: media-cache
+              mountPath: /data/media-cache
           {{- if .Values.observability.enabled }}
             - name: otel-client
               mountPath: /etc/otel-client
               readOnly: true
           {{- end }}
       volumes:
+        - name: media-cache
+          emptyDir:
+            sizeLimit: 2Gi
       {{- if .Values.observability.enabled }}
         - name: otel-client
           secret:

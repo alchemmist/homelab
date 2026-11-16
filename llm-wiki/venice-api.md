@@ -346,3 +346,88 @@ Private evidence: `~/venice-auth/agent-adapter-20261116/normal-pi-acceptance/`,
 including real session/tool events, compaction and abort RPC receipts, unchanged
 test hash and generated reports. This strengthens actual normal Pi compatibility;
 it still does not certify every one of13 tools or unattended multi-hour work.
+
+## Five-point hardening release — 16 November 2026
+
+Implemented by owner request, source `af1c640` (application changes `f7475e4`),
+CI **43921572102 SUCCESS**, GitOps image update `15b6479e`:
+`sha256:3cf6143c948c182661942eb65dacc7b6284876a32a021678f45e4cfc747585b1`.
+Production deployment UID remains `2d7c20a1-cf02-4185-a7e9-237cb1be9d00`;
+new pod Ready3/3, Argo Synced/Healthy. Hashes of deployed main.py and
+agent_protocol.py match the checkout exactly. No live image override, secret
+rotation, profile migration/deletion, Google login reset or Chrome image upgrade.
+
+### Changes
+
+1. Shared default-deny `.dockerignore` allows exactly8 required build/runtime
+   files for BOTH recipes. CI uses real BuildKit scratch export on staged allowed
+   sources plus synthetic .env/Git/profile/cookies/debug/private-script canaries.
+   It does NOT stage the controller's actual profile or secrets. Runtime COPY
+   dependencies are checked by unit tests. No arbitrary future directory is
+   implicitly included.
+2. Agent budget failure now returns OpenAI-style HTTP400
+   `error.code=context_length_exceeded` before browser generation or SSE headers.
+   Safe accounting includes total/limit, serialized UTF-8 message sizes,
+   non-message overhead, fixed instructions/tools budget, count and largest3
+   message indices/roles/sizes. No contents/paths/arguments/call IDs are echoed;
+   no trimming. Guidance distinguishes message compaction/output reduction from
+   tool definitions that cannot fit even with empty history. Size hints are also
+   in the message because LiteLLM1.105.1 normalizes error.code to the string400
+   and may not preserve all extra fields. The installed Pi1.5.2 overflow detector
+   recognizes the error text.
+3. JSON floating overflow, including deeply nested1e999, is rejected at parsing,
+   in addition to nested duplicate keys and NaN/Infinity. Native nonfinite values
+   in schema/message extras are rejected before serialization.
+4. History validates call/function shape, role placement, names/IDs, JSON-object
+   arguments, ordered matching results and non-null non-assistant content.
+   Assistant text plus calls remains LEGAL. Arguments are checked against current
+   schemas; old invalid attempts/schema evolution/removed tools are annotated via
+   history_validation and retained with linked results, not coerced or rejected
+   wholesale. No inference of error semantics from arbitrary text, no historical
+   re-execution, and no weakening of validation for NEW calls.
+5. Root README now documents runtime ownership, mode-specific env, build context,
+   secret wiring, context errors and limitations. Old infrastructure audit has an
+   explicit historical warning. Bridge image no longer implies a cookie-file
+   mount; standalone cookie import is explicit COOKIES_FILE only, never auto-read
+   from home. A missing explicit file fails initialization and closes the created
+   context. Default standalone profile is outside the checkout under XDG/home,
+   private0700, with no automatic migration of existing data. Production remains
+   CDP plus the existing server Chrome PVC; observed CDP env present, implicit
+   cookie env absent.
+
+### CI and actual acceptance
+
+- **57 application tests**, including all previous queue/browser tests, passed
+  locally and on native CI Python3.12. **5 homelab integration tests** passed.
+- CI BuildKit audit verified exactly8 files; actual bridge image imports passed.
+  First attempt failed Harbor login TLS; second built/published but extra pull for
+  smoke hit token-service TLS timeout, so no deployment occurred. The final
+  workflow publishes AND loads the same BuildKit result, then smoke-tests its
+  local source-SHA tag with `--pull=never`; deployment still uses the published
+  immutable digest. Job/build/smoke have bounded timeouts. No shared DNS/network
+  configuration was changed to mask those failures.
+- Direct running bridge: stream/non-stream over-budget ->400 with typed code and
+  safe largest-message accounting; nested1e999/NaN/Infinity/-Infinity and duplicate
+  keys ->400. No private canary content appeared in diagnostics.
+- PUBLIC LiteLLM: both over-budget modes ->400 with actionable size/compaction
+  hints (normalized code400); nested numeric overflow history ->400. Synthetic
+  history with path17 plus a linked validation error was accepted for replay;
+  named next call used schema-valid string path fixture.txt. This last probe
+  validates wire correction, not actual filesystem execution.
+- Ordinary owner's Pi, real configuration/extensions, public LiteLLM, disposable
+  fixture: **7 actual calls, zero model protocol errors**. read missing-note.txt
+  intentionally failed; two real reads succeeded; unwrapped unittest returned
+  actual exit1; edit fixed discount addition to subtraction; unwrapped rerun
+  returned exit0; write created REPORT.md. Independent test run passed2/2 and
+  original test SHA was unchanged. Error results therefore remain replayable.
+- Concurrent ordinary chat and SSE from Open WebUI pod using its existing
+  upstream config both passed pong (9.0/18.4s, SSE DONE). No private owner chat
+  replay or UI-click acceptance claimed. Helm render/server dry-run passed.
+
+Private receipts/preimages/Pi events/report: controller
+`~/venice-auth/bridge-hardening-20261116/`.
+
+**Scope limit:** this package does NOT fix the separate intermittent native
+Venice agent/tool-registry confusion reported by the owner. Successful fixture
+runs are not a guarantee for every project/session or unattended hours. Public
+connectivity/failover limitations and approximate context accounting also remain.
