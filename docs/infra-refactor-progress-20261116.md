@@ -106,6 +106,11 @@ read-only client and private credential setup now point to current runbook;
 server-side sync grant is explicitly preserved/not represented as revoked, and
 current default role is unassigned. Historical ConfigMap patch is not a fallback.
 RBAC/configuration/credentials were not changed. Backup work remains deferred.
+92 targeted offline tests passed; post-merge source/contract/alert-graph checks
+passed. GitHub run43887890615 for mergefd773197 completed successfully; concurrent
+update-watch/alert/socrat-bot/Venice source changes were preserved. Four plain
+function update-watch tests were additionally executed with FunctionTestCase
+after normal unittest discovery found none; not counted among the92 gate tests.
 
 ## Remaining implementation gates (backup gate deferred)
 
