@@ -30,6 +30,6 @@ cdpUrl: http://127.0.0.1:9223
 browserCandidate:
   enabled: true
   bridgeEnabled: true
-  bridgeImage: harbor.socrat.alchemmist.xyz/homelab/venice-api@sha256:ecbfdd489e5e222e9154ac33ab3859595d256e555aa6cea9fa1cc3945a93e10f
+  bridgeImage: harbor.socrat.alchemmist.xyz/homelab/venice-api@sha256:feaf0e5f9a9f407ef1f64a90d918d5d53bcd99d36f9310546acab8703078ea2e
   serveApi: false
   image: harbor.socrat.alchemmist.xyz/homelab/venice-browser@sha256:10f6a5c13bfbaee22ae1648d34f454a9537e3f4da5004f7218b2035214f9708b

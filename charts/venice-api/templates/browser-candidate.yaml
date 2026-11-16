@@ -49,7 +49,11 @@ spec:
       containers:
         {{- if .Values.browserCandidate.bridgeEnabled }}
         - name: bridge
-          image: {{ .Values.browserCandidate.bridgeImage | quote }}
+          {{- $bridgeImage := printf "%s:%s" .Values.image.repository .Values.image.tag -}}
+          {{- if .Values.image.digest }}
+          {{- $bridgeImage = printf "%s@%s" .Values.image.repository .Values.image.digest -}}
+          {{- end }}
+          image: {{ default $bridgeImage .Values.browserCandidate.bridgeImage | quote }}
           env:
             - name: API_KEY
               valueFrom:
