@@ -45,3 +45,6 @@ workerReplicas: 1
 dataClaim: spi-triage-data
 requireExistingData: false
 maintenanceIngressPaused: false
+
+# App-only migration must not drag the existing installation-token broker.
+brokerNodeName: socrat-1

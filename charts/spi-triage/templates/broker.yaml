@@ -45,7 +45,7 @@ spec:
       template:
         spec:
           nodeSelector:
-            kubernetes.io/hostname: {{ .Values.nodeName | quote }}
+            kubernetes.io/hostname: {{ .Values.brokerNodeName | quote }}
           {{- if .Values.bundleEnabled }}
           {{- with .Values.imagePullSecrets }}
           imagePullSecrets:
