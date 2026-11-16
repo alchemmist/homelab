@@ -6,7 +6,7 @@ extraNodeSelectorTerms:
 - key: kubernetes.io/hostname
   operator: In
   values:
-  - socrat-1
+  - socrat-5
 hostname: rancher.socrat.alchemmist.xyz
 ingress:
   enabled: false
@@ -16,7 +16,7 @@ letsEncrypt:
   email: antropophag@gmail.com
   ingress:
     class: traefik
-# Single non-HA server;15Nov recovery returns it to1 until VM105 IdP routing is fixed.
+# Single non-HA server; verified scoped issuer transport enables VM105 return.
 replicas: 1
 resources:
   limits:
@@ -30,3 +30,7 @@ resources:
 extraEnv:
   - name: SSL_CERT_FILE
     value: /var/lib/ca-certificates/ca-bundle.pem
+
+hostAliases:
+  - ip: 10.43.218.222
+    hostnames: [auth.socrat.alchemmist.xyz]

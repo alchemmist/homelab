@@ -11,9 +11,9 @@ metadata:
 spec:
   project: default
   sources:
-    - repoURL: https://releases.rancher.com/server-charts/stable
-      chart: rancher
-      targetRevision: 2.15.2
+    - repoURL: https://github.com/alchemmist/homelab.git
+      path: charts/rancher
+      targetRevision: main
       helm:
         valueFiles:
           - $values/deploy/platform/rancher/values.yaml

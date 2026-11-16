@@ -7,3 +7,5 @@ extraNodeSelectorTerms:
 extraEnv:
   - name: SSL_CERT_FILE
     value: {{ rancher_ssl_cert_file | to_json }}
+
+hostAliases: {{ rancher_host_aliases | to_json }}

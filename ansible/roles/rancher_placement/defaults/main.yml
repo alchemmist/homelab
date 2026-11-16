@@ -2,6 +2,10 @@
 rancher_chart_version: 2.15.2
 rancher_replicas: 1
 rancher_placement_nodes:
-  - socrat-1
+  - socrat-5
 rancher_kubeconfig: /etc/rancher/k3s/k3s.yaml
 rancher_ssl_cert_file: /var/lib/ca-certificates/ca-bundle.pem
+
+rancher_host_aliases:
+  - ip: 10.43.218.222
+    hostnames: [auth.socrat.alchemmist.xyz]
