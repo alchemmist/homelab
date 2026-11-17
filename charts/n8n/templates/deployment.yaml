@@ -1,3 +1,6 @@
+{{- if and .Values.googleEgress.enabled (not .Values.googleTransportEnabled) }}
+{{- fail "Google egress requires scoped verified Google transport" }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -16,6 +19,10 @@ spec:
       labels:
         app: n8n
     spec:
+      {{- if .Values.googleEgress.enabled }}
+      imagePullSecrets:
+        - name: n8n-google-egress-pull
+      {{- end }}
       automountServiceAccountToken: false
       enableServiceLinks: false
       tolerations:
@@ -39,6 +46,10 @@ spec:
             {{- else if .Values.googleDnsEnabled }}
             - name: NODE_OPTIONS
               value: '--require=/opt/n8n/yandex-extension/google-dns-preload.js'
+            {{- end }}
+            {{- if .Values.googleEgress.enabled }}
+            - name: N8N_GOOGLE_SSH_EGRESS
+              value: '1'
             {{- end }}
             - name: EXECUTIONS_TIMEOUT_MAX
               value: '21600'
@@ -90,7 +101,65 @@ spec:
               readOnly: true
             - name: data
               mountPath: /home/node/.n8n
+        {{- if .Values.googleEgress.enabled }}
+        - name: google-egress
+          image: {{ .Values.googleEgress.image | quote }}
+          command: [ssh]
+          args:
+            - -F
+            - /dev/null
+            - -N
+            - -T
+            - -L
+            - 127.0.0.1:18443:www.googleapis.com:443
+            - -L
+            - 127.0.0.1:18444:oauth2.googleapis.com:443
+            - -i
+            - /egress/id_ed25519
+            - -p
+            - '2222'
+            - -o
+            - BatchMode=yes
+            - -o
+            - IdentitiesOnly=yes
+            - -o
+            - StrictHostKeyChecking=yes
+            - -o
+            - UserKnownHostsFile=/egress/known_hosts
+            - -o
+            - HostKeyAlias=[socrat.alchemmist.xyz]:2224
+            - -o
+            - ExitOnForwardFailure=yes
+            - -o
+            - ServerAliveInterval=15
+            - -o
+            - ServerAliveCountMax=3
+            - -o
+            - ConnectTimeout=10
+            - alchemmist@10.250.0.2
+          readinessProbe:
+            exec:
+              command: [python, -c, "import socket; [socket.create_connection(('127.0.0.1',p),2).close() for p in (18443,18444)]"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 20m, memory: 32Mi}
+            limits: {cpu: 100m, memory: 128Mi}
+          volumeMounts:
+            - {name: google-egress, mountPath: /egress, readOnly: true}
+        {{- end }}
       volumes:
+        {{- if .Values.googleEgress.enabled }}
+        - name: google-egress
+          secret:
+            secretName: {{ .Values.googleEgress.secretName }}
+            defaultMode: 0440
+        {{- end }}
         - name: yandex-extension
           configMap:
             name: n8n-yandex-extension

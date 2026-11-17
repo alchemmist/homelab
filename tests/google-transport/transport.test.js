@@ -64,3 +64,15 @@ test('whole deadline destroys both in-flight sockets and ignores late events',as
 test('fatal certificate failure destroys racing sibling and never retries',async()=>{
  const sockets=[];const f=createConnection(()=>{const s=sock();sockets.push(s);if(sockets.length===2)setImmediate(()=>s.emit('error',{code:'CERT_HAS_EXPIRED'}));return s;},lookup,()=>{},{attemptMs:100,totalMs:200,hedgeMs:1});await assert.rejects(run(f),{code:'GOOGLE_TLS_REJECTED'});assert.equal(sockets.length,2);assert.ok(sockets.every(s=>s.destroyed));
 });
+test('SSH egress rewrites only TCP endpoint; CA/SNI/identity and scope preserved',async()=>{
+ const {createEgressConnection}=require('../../charts/n8n/extensions/google-transport');const seen=[];
+ const native=o=>{seen.push(o);const s=sock();setImmediate(()=>s.emit('secureConnect'));return s;};const f=createEgressConnection(native,()=>{});
+ for(const [host,port]of [['www.googleapis.com',18443],['oauth2.googleapis.com',18444]]){const s=await run(f,{...options,host,servername:host});const o=seen.at(-1);assert.equal(o.host,'127.0.0.1');assert.equal(o.port,port);assert.equal(o.servername,host);assert.equal(o.ca,options.ca);s.destroy();}
+ await assert.rejects(run(f,{...options,rejectUnauthorized:false}),{code:'GOOGLE_TLS_POLICY_REJECTED'});
+ const o={...options,host:'yandex.ru'};f(o,()=>{});assert.equal(seen.at(-1),o);
+});
+test('SSH egress failure never falls back to direct DNS/Google IPs',async()=>{
+ const {createEgressConnection}=require('../../charts/n8n/extensions/google-transport');let calls=0;
+ const f=createEgressConnection(o=>{calls++;assert.equal(o.host,'127.0.0.1');const s=sock();setImmediate(()=>s.emit('error',{code:'ECONNREFUSED'}));return s;},()=>{}, {totalMs:100});
+ await assert.rejects(run(f),{code:'GOOGLE_CONNECT_EXHAUSTED'});assert.equal(calls,1);
+});
