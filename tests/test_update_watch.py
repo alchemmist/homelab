@@ -1,3 +1,5 @@
+"""Offline checks for update-watch version comparison."""
+
 import importlib.util
 from pathlib import Path
 
@@ -11,7 +13,8 @@ def load_module():
     return module
 
 
-def test_open_webui_style_gap_is_an_update():
+def test_open_webui_style_gap_is_an_update() -> None:
+    """Treat the newest stable tag as newer than an older slim build."""
     watch = load_module()
     releases = [
         {"tag_name": "v0.13.3", "draft": False, "prerelease": False},
@@ -23,7 +26,8 @@ def test_open_webui_style_gap_is_an_update():
     assert latest > watch.parse_version("v0.12.3-slim")
 
 
-def test_equal_version_is_not_an_update():
+def test_equal_version_is_not_an_update() -> None:
+    """Report no update and a successful lookup when versions match."""
     watch = load_module()
 
     def fetch(_repo, _timeout):
@@ -40,7 +44,8 @@ def test_equal_version_is_not_an_update():
     assert 'current="1.2.3"' in body and "} 0" in body
 
 
-def test_failed_lookup_does_not_claim_an_update():
+def test_failed_lookup_does_not_claim_an_update() -> None:
+    """Keep the update gauge at zero when the lookup raises OSError."""
     watch = load_module()
 
     def fetch(_repo, _timeout):
@@ -55,7 +60,8 @@ def test_failed_lookup_does_not_claim_an_update():
     assert samples[0]["success"] == 0
 
 
-def test_catalog_lists_open_webui():
+def test_catalog_lists_open_webui() -> None:
+    """Require the Open WebUI catalog pin recorded in the chart values."""
     text = Path("charts/monitoring-k3s/values.yaml").read_text()
     assert "github: open-webui/open-webui" in text
     assert 'current: "0.12.3"' in text

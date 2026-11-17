@@ -9,7 +9,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class PublicationOrigin(unittest.TestCase):
-    def test_publication_origin_changes_links_not_objects(self):
+    """Keep publication links on the reviewed origin and leave objects unchanged."""
+
+    def test_publication_origin_changes_links_not_objects(self) -> None:
+        """Rewrite markdown links for the reviewed origin and reject the others."""
         code = ROOT / "charts/spi-triage/files"
         sys.path.insert(0, str(code))
         try:
@@ -46,7 +49,8 @@ class PublicationOrigin(unittest.TestCase):
         finally:
             sys.path.pop(0)
 
-    def test_live_activation_is_only_publication_origin(self):
+    def test_live_activation_is_only_publication_origin(self) -> None:
+        """Render the live-off chart and reject an unreviewed public origin."""
         import subprocess, yaml, copy
 
         raw = subprocess.check_output(

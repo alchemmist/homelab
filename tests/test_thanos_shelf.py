@@ -24,7 +24,10 @@ ULID = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
 
 
 class ShelfTransferTest(unittest.TestCase):
-    def test_upload_lists_and_marks_without_path_escape(self):
+    """Upload, list, and mark one shelf block without leaving the temp root."""
+
+    def test_upload_lists_and_marks_without_path_escape(self) -> None:
+        """Store one block, mark it deleted, and reject a path escape."""
         with tempfile.TemporaryDirectory() as tmp:
             source = Path(tmp) / "raw" / ULID
             (source / "chunks").mkdir(parents=True)

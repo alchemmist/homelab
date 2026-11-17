@@ -51,7 +51,8 @@ class IdentityGuards(unittest.TestCase):
         self.assertIn("PolicyBinding.objects.create(target_id=app.pk", source)
         self.assertNotIn("PolicyBinding.objects.create(target=app.pk", source)
 
-    def test_normalized_authority_guard(self):
+    def test_normalized_authority_guard(self) -> None:
+        """Equivalent origins share one authority and unsafe URLs are refused."""
         import importlib.util
 
         spec = importlib.util.spec_from_file_location(

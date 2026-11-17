@@ -1,3 +1,5 @@
+"""SSH welcome rendering keeps node roles, links, and terminal-safe text."""
+
 import importlib.util
 import json
 import re
@@ -14,6 +16,8 @@ SPEC.loader.exec_module(WELCOME)
 
 
 class WelcomeTests(unittest.TestCase):
+    """Role labels, node links, and rendered text stay bounded and injectable-safe."""
+
     def setUp(self):
         self.config = dict(
             node="socrat-3",
@@ -29,7 +33,8 @@ class WelcomeTests(unittest.TestCase):
         )
         self.portraits = json.loads((ROOT / "assets/socrates-braille.json").read_text())
 
-    def test_etcd_is_not_reported_as_worker(self):
+    def test_etcd_is_not_reported_as_worker(self) -> None:
+        """Verify etcd and control-plane labels are not collapsed into worker."""
         self.assertEqual(WELCOME.role({"node-role.kubernetes.io/etcd": "true"}), "etcd")
         self.assertEqual(
             WELCOME.role(
@@ -39,19 +44,22 @@ class WelcomeTests(unittest.TestCase):
         )
         self.assertEqual(WELCOME.role({}), "worker")
 
-    def test_links_target_current_node(self):
+    def test_links_target_current_node(self) -> None:
+        """Verify monitoring and Rancher links select this node's address."""
         monitoring, rancher = WELCOME.urls(self.config, "10.250.0.5")
         self.assertEqual(parse_qs(urlsplit(monitoring).query)["var-instance"], ["10.250.0.5:9796"])
         self.assertTrue(rancher.endswith("/node/socrat-3"))
 
-    def test_description_cannot_inject_terminal_commands(self):
+    def test_description_cannot_inject_terminal_commands(self) -> None:
+        """Verify description control characters are removed before display."""
         self.config["description"] = "MSI\x1b]52;clipboard\x07\nnext"
         result = WELCOME.render(self.config, self.portraits, [], 100, False, False)
         self.assertNotIn("\x1b", result)
         self.assertNotIn("\x07", result)
         self.assertIn("MSI", result)
 
-    def test_small_terminal_stacks_information(self):
+    def test_small_terminal_stacks_information(self) -> None:
+        """Verify a narrow terminal stacks identity text inside its width."""
         result = WELCOME.render(self.config, self.portraits, [], 50, False, True)
         self.assertIn("Internal IP: 10.250.0.5", result)
         self.assertIn("Description: Old MSI", result)
@@ -60,7 +68,8 @@ class WelcomeTests(unittest.TestCase):
         self.assertIn("@alchemmist", result)
         self.assertTrue(all(len(line) <= 50 for line in result.splitlines() if "\x1b" not in line))
 
-    def test_default_terminal_output_has_visible_urls_without_osc8(self):
+    def test_default_terminal_output_has_visible_urls_without_osc8(self) -> None:
+        """Verify default color output shows both URLs without OSC 8 links."""
         result = WELCOME.render(self.config, self.portraits, [])
         monitoring, rancher = WELCOME.urls(self.config, "10.250.0.5")
         self.assertIn("\033[1mMonitoring:\033[0m", result)
@@ -79,7 +88,8 @@ class WelcomeTests(unittest.TestCase):
         self.assertNotIn("Admin:", result)
         self.assertNotIn("see link below", result)
 
-    def test_admin_note_is_compact_on_wide_terminal(self):
+    def test_admin_note_is_compact_on_wide_terminal(self) -> None:
+        """Verify the admin note stays inside its wrap width on a wide terminal."""
         result = WELCOME.render(self.config, self.portraits, [], 180, False, False)
         note = result[result.index("This node is managed") :].strip()
         self.assertTrue(all(len(line) <= 76 for line in note.splitlines()))
@@ -88,7 +98,8 @@ class WelcomeTests(unittest.TestCase):
         )
         self.assertIn("https://wiki.socrat.alchemmist.xyz/", note)
 
-    def test_plain_output_retains_full_urls(self):
+    def test_plain_output_retains_full_urls(self) -> None:
+        """Verify plain output keeps resource stats and full monitoring URLs."""
         result = WELCOME.render(
             self.config, self.portraits, [("RAM", "13 / 32 GiB used")], 110, False, False
         )

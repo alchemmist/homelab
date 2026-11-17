@@ -1,3 +1,5 @@
+"""Offline scheduling contracts for the Syncthing chart's private GUI."""
+
 import json
 import os
 from pathlib import Path
@@ -18,6 +20,8 @@ HELM = os.environ.get("HELM_BIN") or shutil.which("helm")
 
 @unittest.skipUnless(HELM and yaml, "Helm and PyYAML are required")
 class SyncthingSchedulingTests(unittest.TestCase):
+    """Render the local chart and keep node eligibility tied to sidecar config."""
+
     def render(self, overrides):
         with tempfile.TemporaryDirectory() as directory:
             values = Path(directory) / "values.json"
@@ -46,7 +50,8 @@ class SyncthingSchedulingTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         return [item for item in yaml.safe_load_all(result.stdout) if item]
 
-    def test_only_nodes_with_sidecar_configuration_are_eligible(self):
+    def test_only_nodes_with_sidecar_configuration_are_eligible(self) -> None:
+        """Admit only nodes that have a rendered sidecar configuration."""
         for overrides in [
             {},
             {
@@ -91,7 +96,8 @@ class SyncthingSchedulingTests(unittest.TestCase):
                 )
                 self.assertNotIn("socrat-3", eligible)
 
-    def test_explicit_node_selector_remains_an_additional_constraint(self):
+    def test_explicit_node_selector_remains_an_additional_constraint(self) -> None:
+        """Keep an explicit node selector beside the required node affinity."""
         resources = self.resources(
             {"nodeSelector": {"homelab.io/storage": "true", "kubernetes.io/hostname": "socrat-0"}}
         )
@@ -106,7 +112,8 @@ class SyncthingSchedulingTests(unittest.TestCase):
         )
         self.assertIn("nodeAffinity", pod["affinity"])
 
-    def test_public_gui_does_not_require_private_node_configuration(self):
+    def test_public_gui_does_not_require_private_node_configuration(self) -> None:
+        """Leave affinity unset when the private GUI is disabled."""
         resources = self.resources({"privateGui": {"enabled": False, "nodes": []}})
         pod = next(
             item
@@ -115,7 +122,8 @@ class SyncthingSchedulingTests(unittest.TestCase):
         )["spec"]["template"]["spec"]
         self.assertNotIn("affinity", pod)
 
-    def test_private_gui_rejects_empty_enrollment(self):
+    def test_private_gui_rejects_empty_enrollment(self) -> None:
+        """Refuse a private GUI that has no configured node."""
         result = self.render({"privateGui": {"nodes": []}})
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("privateGui requires at least one configured node", result.stderr)

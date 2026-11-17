@@ -4,7 +4,8 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_default_prepares_without_activating_and_has_explicit_acceptance():
+def test_default_prepares_without_activating_and_has_explicit_acceptance() -> None:
+    """Require preflight by default and one gated activation task."""
     p = yaml.safe_load((ROOT / "ansible/playbooks/moscow-native-primary.yml").read_text())[0]
     assert p["hosts"] == "socrat-4" and p["any_errors_fatal"]
     assert 'default("preflight")' in p["vars"]["phase"]
@@ -21,7 +22,8 @@ def test_default_prepares_without_activating_and_has_explicit_acceptance():
     assert "state: absent" not in text and "k3s-uninstall" not in text
 
 
-def test_enrollment_cannot_release_native_fence():
+def test_enrollment_cannot_release_native_fence() -> None:
+    """Keep worker enrollment from releasing the native fence."""
     p = yaml.safe_load((ROOT / "ansible/playbooks/k3s-transit-worker.yml").read_text())[0]
     assert any(
         t.get("ansible.builtin.assert", {}).get("that") == "not native_fence.stat.exists"
@@ -40,7 +42,8 @@ def runtime_module():
     return m
 
 
-def test_runtime_refuses_unknown_workloads_and_pvc():
+def test_runtime_refuses_unknown_workloads_and_pvc() -> None:
+    """Refuse an empty plan and any pod that still has a PVC."""
     import pytest
 
     m = runtime_module()
@@ -70,7 +73,8 @@ def test_runtime_refuses_unknown_workloads_and_pvc():
         m.allowed({"items": []})
 
 
-def test_retirement_requires_gitops_zero_and_uid_precondition():
+def test_retirement_requires_gitops_zero_and_uid_precondition() -> None:
+    """Require GitOps scale-down and the reviewed confirmation gates."""
     text = (ROOT / "ansible/playbooks/moscow-retire-worker.yml").read_text()
     p = yaml.safe_load(text)[0]
     assert p["hosts"] == "socrat-4" and p["any_errors_fatal"]

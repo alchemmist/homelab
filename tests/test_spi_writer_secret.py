@@ -1,3 +1,5 @@
+"""Offline refusal checks for the dedicated SPI writer Secret renderer."""
+
 import base64
 import hashlib
 import importlib.util
@@ -14,7 +16,10 @@ spec.loader.exec_module(helper)
 
 
 class WriterSecret(unittest.TestCase):
-    def test_offline_and_refusals(self):
+    """Prove unsafe writer-secret inputs are refused and a valid render is idempotent."""
+
+    def test_offline_and_refusals(self) -> None:
+        """Render a mode-0600 writer Secret only when the journal matches storage."""
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(tmp)
             storage = {

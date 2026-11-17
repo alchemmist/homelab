@@ -24,7 +24,10 @@ def controller():
 
 
 class LiteLLMIdentityTests(unittest.TestCase):
-    def test_identity_mapping_uses_uuid_not_email_or_name(self):
+    """Prove subject, group, PKCE, and icon boundaries without a live provider."""
+
+    def test_identity_mapping_uses_uuid_not_email_or_name(self) -> None:
+        """Select the owner by UUID and refuse an email or username match."""
         module = controller()
         owner = "ad03842b-12a5-41e1-b875-fb712657e326"
         expression = module.identity_expression(owner, "owner@example.org")
@@ -46,7 +49,8 @@ class LiteLLMIdentityTests(unittest.TestCase):
         self.assertEqual(result["litellm_user_role"], "internal_user_viewer")
         self.assertNotEqual(result["litellm_user_email"], "owner@example.org")
 
-    def test_reviewed_subject_gets_only_internal_user(self):
+    def test_reviewed_subject_gets_only_internal_user(self) -> None:
+        """Grant a reviewed subject internal_user and keep the owner as proxy admin."""
         module = controller()
         owner = "ad03842b-12a5-41e1-b875-fb712657e326"
         member = "ed03842b-12a5-41e1-b875-fb712657e326"
@@ -62,7 +66,8 @@ class LiteLLMIdentityTests(unittest.TestCase):
         namespace["request"].user.uuid = "00000000-0000-0000-0000-000000000001"
         self.assertEqual(namespace["mapping"]()["litellm_user_role"], "internal_user_viewer")
 
-    def test_app_group_controls_role_without_per_user_uuid_grant(self):
+    def test_app_group_controls_role_without_per_user_uuid_grant(self) -> None:
+        """Let the reviewed group grant internal_user without a per-user UUID."""
         module = controller()
         owner = "ad03842b-12a5-41e1-b875-fb712657e326"
         other = "ed03842b-12a5-41e1-b875-fb712657e326"
@@ -80,7 +85,8 @@ class LiteLLMIdentityTests(unittest.TestCase):
         user.uuid = owner
         self.assertEqual(namespace["mapping"]()["litellm_user_role"], "proxy_admin")
 
-    def test_catalog_is_owner_only_and_explicit_native_oidc(self):
+    def test_catalog_is_owner_only_and_explicit_native_oidc(self) -> None:
+        """Keep the catalog on the owner group and the explicit native OIDC mapping."""
         service = json.loads((ROOT / "deploy/identity/services.json").read_text())["litellm"]
         self.assertEqual(service["groups"], ["homelab-owner"])
         self.assertEqual(service["redirect"], "https://llm.alchemmist.xyz/sso/callback")
@@ -91,7 +97,8 @@ class LiteLLMIdentityTests(unittest.TestCase):
         ]
         self.assertEqual(account["litellmUserId"], "socrat-admin")
 
-    def test_native_pkce_and_capacity_gate_are_not_bypassed(self):
+    def test_native_pkce_and_capacity_gate_are_not_bypassed(self) -> None:
+        """Require PKCE and the user cap, and keep the local-password boundary unchanged."""
         source = ast.unparse(
             ast.parse(
                 (ROOT / "ansible/roles/identity_integrations/files/litellm_oidc.py").read_text()
@@ -106,7 +113,8 @@ class LiteLLMIdentityTests(unittest.TestCase):
             "'password'", source
         )  # Checks non-owner local-password boundary, does not reset it.
 
-    def test_helm_replay_uses_optional_secret_refs(self):
+    def test_helm_replay_uses_optional_secret_refs(self) -> None:
+        """Reference the Authentik secret optionally and disable env credential login."""
         import yaml
 
         values = yaml.safe_load((ROOT / "deploy/litellm/values.yaml").read_text())
@@ -118,7 +126,8 @@ class LiteLLMIdentityTests(unittest.TestCase):
             self.assertEqual(ref["name"], "socrat-authentik-litellm")
         self.assertTrue(values["proxy_config"]["general_settings"]["disable_env_credential_login"])
 
-    def test_circle_is_original_high_resolution_artwork(self):
+    def test_circle_is_original_high_resolution_artwork(self) -> None:
+        """Match the reviewed wiki artwork digest and its 512-pixel raster."""
         sources = json.loads((ROOT / "assets/service-icons/sources.json").read_text())["files"]
         for slug in ["wiki"]:
             record = sources[slug + ".svg"]
@@ -134,7 +143,8 @@ class LiteLLMIdentityTests(unittest.TestCase):
             self.assertEqual(struct.unpack(">II", content[16:24]), (512, 512))
         self.assertIn("/svg/argo-cd.svg", sources["argocd.svg"]["url"])
 
-    def test_litellm_uses_official_product_logo_not_wiki_artwork(self):
+    def test_litellm_uses_official_product_logo_not_wiki_artwork(self) -> None:
+        """Use the pinned LiteLLM monogram rather than the wiki artwork."""
         sources = json.loads((ROOT / "assets/service-icons/sources.json").read_text())["files"]
         record = sources["litellm.svg"]
         self.assertIn("githubusercontent.com/BerriAI/litellm/", record["url"])
@@ -152,7 +162,8 @@ class LiteLLMIdentityTests(unittest.TestCase):
         service = json.loads((ROOT / "deploy/identity/services.json").read_text())["litellm"]
         self.assertEqual(service["icon"], "service-icons/litellm-" + record["sha256"][:12] + ".svg")
 
-    def test_icon_reconciler_patches_only_icon_metadata(self):
+    def test_icon_reconciler_patches_only_icon_metadata(self) -> None:
+        """Allow one Authentik patch and restrict its body to the icon field."""
         tree = ast.parse((ROOT / "ansible/roles/authentik/files/icons.py").read_text())
         patches = [
             n

@@ -1,3 +1,5 @@
+"""Check logging coverage classification without inventory or query clients."""
+
 import importlib.util
 from pathlib import Path
 import unittest
@@ -10,7 +12,10 @@ SPEC.loader.exec_module(M)
 
 
 class CoverageTests(unittest.TestCase):
-    def test_inventory_includes_all_container_types_and_empty_controllers(self):
+    """Classify inventory and metadata fixtures without contacting a cluster."""
+
+    def test_inventory_includes_all_container_types_and_empty_controllers(self) -> None:
+        """Count every container type and keep an empty controller in the inventory."""
         pod = {
             "metadata": {"namespace": "ns", "name": "pod"},
             "spec": {
@@ -26,7 +31,8 @@ class CoverageTests(unittest.TestCase):
         self.assertEqual(M.assess(sources, [], [])[-1]["status"], "exists")
         self.assertEqual(M.assess(sources, [], [])[0]["status"], "unknown")
 
-    def test_delivery_is_distinct_from_canonical_labels_and_silence(self):
+    def test_delivery_is_distinct_from_canonical_labels_and_silence(self) -> None:
+        """Separate raw emission, canonical labels, missing points, and expected silence."""
         source = {
             "kind": "host",
             "host": "node",
@@ -43,7 +49,8 @@ class CoverageTests(unittest.TestCase):
         source["emission"] = "silent"
         self.assertEqual(M.assess([source], [], [])[0]["status"], "silent")
 
-    def test_mixed_contract_is_not_verified(self):
+    def test_mixed_contract_is_not_verified(self) -> None:
+        """Keep a source at emits when only some fresh points carry the contract."""
         source = {"kind": "host", "host": "n", "unit": "u"}
         points = [
             {"labels": {"host_name": "n", "service_name": "u", **extra}, "count": 1}
@@ -51,7 +58,8 @@ class CoverageTests(unittest.TestCase):
         ]
         self.assertEqual(M.assess([source], points, points)[0]["status"], "emits")
 
-    def test_bounds_and_metadata_validation(self):
+    def test_bounds_and_metadata_validation(self) -> None:
+        """Build bounded queries and reject partial or unsafe metadata documents."""
         for window in (600, 3600):
             query = M.query('{host_name!=""}', window)
             self.assertIn("count_over_time", query)
@@ -73,7 +81,8 @@ class CoverageTests(unittest.TestCase):
                 }
             )
 
-    def test_structured_host_unit_and_zero_counts(self):
+    def test_structured_host_unit_and_zero_counts(self) -> None:
+        """Require a positive count before a structured host unit is verified."""
         source = {"kind": "host", "host": "n", "unit": "u"}
         point = {
             "labels": {
@@ -88,7 +97,8 @@ class CoverageTests(unittest.TestCase):
         point["count"] = 2
         self.assertEqual(M.assess([source], [point], [point])[0]["status"], "verified")
 
-    def test_kubernetes_requires_host_and_all_source_identities(self):
+    def test_kubernetes_requires_host_and_all_source_identities(self) -> None:
+        """Drop canonical verification when any required Kubernetes identity is absent."""
         source = {"kind": "container", "namespace": "ns", "pod": "pod", "container": "app"}
         labels = {
             "host_name": "node",
@@ -113,7 +123,8 @@ class CoverageTests(unittest.TestCase):
         self.assertFalse(row["canonical"])
         self.assertTrue(row["legacyObserved"])
 
-    def test_host_inventory_does_not_infer_emission_from_installed_or_running(self):
+    def test_host_inventory_does_not_infer_emission_from_installed_or_running(self) -> None:
+        """Record systemd units as present without treating service state as emission."""
         snapshots = [
             {
                 "host": "node",
@@ -141,7 +152,8 @@ class CoverageTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             M.host_registry(snapshots + snapshots)
 
-    def test_host_canonical_requires_matching_host_and_unit(self):
+    def test_host_canonical_requires_matching_host_and_unit(self) -> None:
+        """Accept a host identity only when every required label still matches."""
         source = {"kind": "host", "host": "node", "unit": "unit.service"}
         labels = {
             "host_name": "node",

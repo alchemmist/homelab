@@ -19,7 +19,10 @@ def load():
 
 
 class LiteLLMRolloutTests(unittest.TestCase):
-    def test_only_callback_and_source_privacy_settings_change(self):
+    """Callback privacy, exporter pins, and refusal before cluster access."""
+
+    def test_only_callback_and_source_privacy_settings_change(self) -> None:
+        """Preserve model settings while adding only the otel callback and privacy flag."""
         module = load()
         before = {
             "model_list": [
@@ -41,11 +44,13 @@ class LiteLLMRolloutTests(unittest.TestCase):
         self.assertTrue(after["litellm_settings"]["require_auth_for_metrics_endpoint"])
         self.assertTrue(after["litellm_settings"]["turn_off_message_logging"])
 
-    def test_missing_existing_metrics_callback_is_rejected(self):
+    def test_missing_existing_metrics_callback_is_rejected(self) -> None:
+        """Reject a configuration that drops the Prometheus callback."""
         with self.assertRaises(ValueError):
             load().configuration({"litellm_settings": {"callbacks": []}})
 
-    def test_sdk_does_not_create_second_metrics_or_log_owner(self):
+    def test_sdk_does_not_create_second_metrics_or_log_owner(self) -> None:
+        """Keep metrics and log exporters disabled on the SDK environment."""
         environment = load().sdk_environment()
         self.assertEqual(environment["OTEL_TRACES_SAMPLER"], "always_on")
         self.assertEqual(environment["OTEL_METRICS_EXPORTER"], "none")
@@ -55,7 +60,8 @@ class LiteLLMRolloutTests(unittest.TestCase):
             environment["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"], "NO_CONTENT"
         )
 
-    def test_apply_is_blocked_before_cluster_access_without_verified_reload(self):
+    def test_apply_is_blocked_before_cluster_access_without_verified_reload(self) -> None:
+        """Refuse apply before any cluster call when SDK reload is not verified."""
         module = load()
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory)

@@ -10,10 +10,14 @@ SPEC.loader.exec_module(MODULE)
 
 
 class LoginRedirectTests(unittest.TestCase):
-    def test_expected_lms_login(self):
+    """Exercise healthy and unhealthy login redirect headers."""
+
+    def test_expected_lms_login(self) -> None:
+        """Accept the expected LMS login location."""
         self.assertTrue(MODULE.redirect_matches("lms.alchemmist.xyz", "Location: /auth/login\r\n"))
 
-    def test_expected_panel_login(self):
+    def test_expected_panel_login(self) -> None:
+        """Accept the expected panel login location."""
         self.assertTrue(
             MODULE.redirect_matches(
                 "vpn.alchemmist.xyz",
@@ -21,7 +25,8 @@ class LoginRedirectTests(unittest.TestCase):
             )
         )
 
-    def test_unrelated_redirect_is_not_healthy(self):
+    def test_unrelated_redirect_is_not_healthy(self) -> None:
+        """Reject unrelated login redirect targets."""
         for value in [
             "https://example.com/auth/login",
             "//example.com/auth/login",
@@ -30,7 +35,8 @@ class LoginRedirectTests(unittest.TestCase):
         ]:
             self.assertFalse(MODULE.redirect_matches("lms.alchemmist.xyz", "Location: " + value))
 
-    def test_missing_or_duplicate_location_is_not_healthy(self):
+    def test_missing_or_duplicate_location_is_not_healthy(self) -> None:
+        """Reject missing and duplicate Location headers."""
         self.assertFalse(MODULE.redirect_matches("lms.alchemmist.xyz", ""))
         self.assertFalse(
             MODULE.redirect_matches(

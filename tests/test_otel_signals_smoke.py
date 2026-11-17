@@ -1,3 +1,5 @@
+"""Offline contracts for isolated OpenTelemetry signal fixtures."""
+
 import importlib.util
 from pathlib import Path
 import unittest
@@ -12,7 +14,10 @@ SPEC.loader.exec_module(SMOKE)
 
 
 class SignalSmokeTests(unittest.TestCase):
-    def test_trace_fixtures_cover_sampling_categories_with_unique_ids(self):
+    """Sampling, duration, and log-timestamp contracts for synthetic signals."""
+
+    def test_trace_fixtures_cover_sampling_categories_with_unique_ids(self) -> None:
+        """Require 232 unique traces and the fixed category counts."""
         body, groups = SMOKE.trace_fixtures(10**18)
         spans = body["resourceSpans"][0]["scopeSpans"][0]["spans"]
         self.assertEqual(len(spans), 232)
@@ -23,7 +28,8 @@ class SignalSmokeTests(unittest.TestCase):
         )
         self.assertEqual(sum(span["status"]["code"] == 2 for span in spans), 8)
 
-    def test_slow_trace_duration_exceeds_the_native_sampling_threshold(self):
+    def test_slow_trace_duration_exceeds_the_native_sampling_threshold(self) -> None:
+        """Require slow traces to last three seconds and the rest one tenth."""
         body, groups = SMOKE.trace_fixtures(10**18)
         for span in body["resourceSpans"][0]["scopeSpans"][0]["spans"]:
             duration = int(span["endTimeUnixNano"]) - int(span["startTimeUnixNano"])
@@ -31,7 +37,8 @@ class SignalSmokeTests(unittest.TestCase):
                 duration, 3_000_000_000 if span["traceId"] in groups["slow"] else 100_000_000
             )
 
-    def test_logs_include_separate_zero_historical_and_fresh_cases(self):
+    def test_logs_include_separate_zero_historical_and_fresh_cases(self) -> None:
+        """Require fresh, zero, and one-hour-old log timestamps in that order."""
         now = 10**18
         records = SMOKE.logs_fixture(now)["resourceLogs"][0]["scopeLogs"][0]["logRecords"]
         self.assertEqual(

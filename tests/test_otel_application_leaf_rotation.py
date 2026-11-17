@@ -1,3 +1,5 @@
+"""Application client-leaf renewal preserves the certificate and public material only."""
+
 import base64
 import copy
 import importlib.util
@@ -19,6 +21,8 @@ def load():
 
 
 class LeafRotationTests(unittest.TestCase):
+    """Manual renewal keeps the existing spec and refuses private material."""
+
     def certificate(self):
         return {
             "metadata": {
@@ -30,7 +34,8 @@ class LeafRotationTests(unittest.TestCase):
             "status": {"conditions": [{"type": "Ready", "status": "True"}]},
         }
 
-    def test_native_manual_renewal_preserves_existing_conditions_and_spec(self):
+    def test_native_manual_renewal_preserves_existing_conditions_and_spec(self) -> None:
+        """Verify manual renewal appends Issuing without mutating the certificate."""
         module = load()
         before = self.certificate()
         untouched = copy.deepcopy(before)
@@ -41,7 +46,8 @@ class LeafRotationTests(unittest.TestCase):
         self.assertEqual(conditions[1]["reason"], "ManuallyTriggered")
         self.assertEqual(conditions[1]["observedGeneration"], 1)
 
-    def test_wrong_identity_unready_and_overlapping_issuance_are_rejected(self):
+    def test_wrong_identity_unready_and_overlapping_issuance_are_rejected(self) -> None:
+        """Verify identity, readiness, and overlapping issuance each fail closed."""
         module = load()
         for kind in ["wrong-name", "wrong-namespace", "unready", "already-issuing"]:
             cert = self.certificate()
@@ -56,7 +62,8 @@ class LeafRotationTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 module.renewal_conditions(cert)
 
-    def test_inspection_selects_only_public_pem_not_private_key(self):
+    def test_inspection_selects_only_public_pem_not_private_key(self) -> None:
+        """Verify inspection requests only the public certificate template."""
         module = load()
         calls = []
 
@@ -78,7 +85,8 @@ class LeafRotationTests(unittest.TestCase):
         self.assertNotIn("tls.key", calls[0][-1])
         self.assertTrue(calls[0][-1].startswith("go-template="))
 
-    def test_explicit_vllm_identity_and_default_litellm_are_separate(self):
+    def test_explicit_vllm_identity_and_default_litellm_are_separate(self) -> None:
+        """Verify vLLM and LiteLLM leaves stay distinct and unknown names fail."""
         module = load()
         cert = self.certificate()
         cert["metadata"]["name"] = "otel-app-tls-vllm"
@@ -89,7 +97,8 @@ class LeafRotationTests(unittest.TestCase):
             module.leaf_name("otel-root-ca")
         self.assertEqual(module.leaf_name("litellm"), "otel-app-tls-litellm")
 
-    def test_private_key_is_never_accepted_as_public_certificate(self):
+    def test_private_key_is_never_accepted_as_public_certificate(self) -> None:
+        """Verify a private key payload is rejected before it is treated as public."""
         module = load()
         with self.assertRaises(ValueError):
             module.public_certificate_identity(

@@ -1,3 +1,5 @@
+"""Check the private Syncthing monitor migration against a temporary database."""
+
 import importlib.util
 import json
 import sqlite3
@@ -15,6 +17,8 @@ SPEC.loader.exec_module(MIGRATION)
 
 
 class SyncthingMonitorMigrationTests(unittest.TestCase):
+    """Migrate one named monitor and leave every other stored row unchanged."""
+
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
@@ -49,14 +53,16 @@ class SyncthingMonitorMigrationTests(unittest.TestCase):
         connection.close()
         return rows
 
-    def test_check_is_read_only_and_creates_no_backup(self):
+    def test_check_is_read_only_and_creates_no_backup(self) -> None:
+        """Report a pending change without writing the database or a backup."""
         before = self.read_rows()
         result = MIGRATION.migrate(self.database, self.plan, check=True)
         self.assertTrue(result["changed"])
         self.assertEqual(self.read_rows(), before)
         self.assertFalse((self.database.parent / "backups").exists())
 
-    def test_migration_preserves_unrelated_data_and_original_backup(self):
+    def test_migration_preserves_unrelated_data_and_original_backup(self) -> None:
+        """Update only the Syncthing URL and method and keep a private original backup."""
         before = self.read_rows()
         result = MIGRATION.migrate(self.database, self.plan)
         after = self.read_rows()
@@ -68,7 +74,8 @@ class SyncthingMonitorMigrationTests(unittest.TestCase):
         self.assertEqual(json.loads(after[0][4]), ["200"])
         self.assertEqual(Path(result["backup"]).stat().st_mode & 0o777, 0o600)
 
-    def test_repeat_and_unknown_monitor_are_noops(self):
+    def test_repeat_and_unknown_monitor_are_noops(self) -> None:
+        """Leave an already migrated database unchanged when an unknown monitor appears."""
         MIGRATION.migrate(self.database, self.plan)
         before = self.read_rows()
         plan = self.plan + [{"name": "Not configured", "url": "http://10.250.0.3:18444/healthz"}]

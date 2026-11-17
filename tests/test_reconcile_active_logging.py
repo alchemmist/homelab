@@ -1,3 +1,5 @@
+"""Active-log reconciliation explains silence without treating it as lost data."""
+
 import json
 import subprocess
 import sys
@@ -9,6 +11,8 @@ SCRIPT = Path(__file__).resolve().parents[1] / "scripts/reconcile-active-logging
 
 
 class ReconciliationTests(unittest.TestCase):
+    """Snapshot reconciliation stays local to fixture files and fails closed."""
+
     def run_case(self, names, counts, aligned=True):
         with tempfile.TemporaryDirectory() as d:
             p = Path(d)
@@ -71,7 +75,8 @@ class ReconciliationTests(unittest.TestCase):
                 (p / "out.json").read_text()
             ) if result.returncode == 0 else None
 
-    def test_silent_window_is_explicit_not_loss(self):
+    def test_silent_window_is_explicit_not_loss(self) -> None:
+        """Verify a zero stdout window is unobserved rather than recorded as loss."""
         result, report = self.run_case([("app", "app")], [0])
         self.assertEqual(result.returncode, 0)
         self.assertEqual(
@@ -80,7 +85,8 @@ class ReconciliationTests(unittest.TestCase):
         self.assertEqual(report["sources"][0]["normalization"], "unobserved")
         self.assertIsNone(report["sources"][0]["emits"])
 
-    def test_only_actual_collector_excluded_not_backends(self):
+    def test_only_actual_collector_excluded_not_backends(self) -> None:
+        """Verify only the collector container is excluded, not Loki or Tempo."""
         _, report = self.run_case(
             [
                 ("prometheus-kube-prometheus-stack-prometheus-0", "otel-cluster"),
@@ -97,7 +103,8 @@ class ReconciliationTests(unittest.TestCase):
             )
         )
 
-    def test_unaligned_windows_fail_closed(self):
+    def test_unaligned_windows_fail_closed(self) -> None:
+        """Verify an unaligned source window is rejected and produces no report."""
         result, report = self.run_case([("app", "app")], [0], aligned=False)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("not aligned", result.stderr)

@@ -12,7 +12,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class UnifiedOrigin(unittest.TestCase):
-    def test_routes_are_guarded_and_exactly_prioritized(self):
+    """Guarded route priority and the inactive unified-origin default."""
+
+    def test_routes_are_guarded_and_exactly_prioritized(self) -> None:
+        """Require browser, outpost, evidence, gateway, and isolation contracts."""
         text = subprocess.check_output(
             [
                 "helm",
@@ -64,7 +67,8 @@ class UnifiedOrigin(unittest.TestCase):
             self.assertTrue({p["port"] for p in ingress["ports"]} <= {9000, 9001})
         self.assertNotIn("0.0.0.0/0", text)
 
-    def test_activation_remains_off(self):
+    def test_activation_remains_off(self) -> None:
+        """Keep the unified browser origin absent unless explicitly enabled."""
         text = subprocess.check_output(
             [
                 "helm",
