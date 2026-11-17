@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: swe-mini
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/alchemmist/homelab.git
+    targetRevision: main
+    path: charts/swe-mini
+    helm:
+      releaseName: swe-mini
+      valueFiles:
+        - ../../deploy/swe-mini/values.yaml
+      parameters: []
+  destination:
+    namespace: swe-mini
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

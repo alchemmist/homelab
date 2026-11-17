@@ -1,0 +1,57 @@
+name: SWE Mini Release
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['services/swe-mini/**', '.github/workflows/swe-mini-release.yml']
+permissions:
+  contents: read
+concurrency:
+  group: swe-mini-release
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test publication boundaries
+        run: python -m unittest discover -s tests/swe_mini -v
+      - name: Verify existing scoped Harbor robot
+        env:
+          HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+          HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
+        run: python3 scripts/harbor_ci_auth.py --repository homelab/swe-mini
+      - uses: docker/setup-buildx-action@v3
+        with:
+          # Existing hosted-runner transport workaround; no global TLS or DNS change.
+          driver-opts: |
+            env.GODEBUG=tlsmlkem=0
+      - uses: docker/build-push-action@v6
+        id: image
+        with:
+          context: services/swe-mini
+          push: true
+          platforms: linux/amd64
+          outputs: type=image,compression=zstd,compression-level=12,force-compression=true
+          tags: harbor.socrat.alchemmist.xyz/homelab/swe-mini:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Deploy to Socrat
+        uses: alchemmist/deploy-to-socrat@v1
+        with:
+          token: ${{ secrets.HOMELAB_DEPLOY_KEY }}
+          app: swe-mini
+          image_version: ${{ steps.image.outputs.digest }}
+      - name: Remove ephemeral registry credentials
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import os, pathlib
+          directory = pathlib.Path(os.environ.get('DOCKER_CONFIG', '/nonexistent'))
+          if directory.name.startswith('harbor-ci-auth-') and directory.parent == pathlib.Path(os.environ['RUNNER_TEMP']):
+              (directory / 'config.json').unlink(missing_ok=True)
+          PY

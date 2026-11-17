@@ -33,3 +33,9 @@ recoveryStorage:
   nodeName: socrat-1
   path: /home/alchemmist/.local/share/homelab/n8n-recovery-20261114/data
   size: 5Gi
+
+# VPN-as-service identity in native 3x-ui; NOT wg-socrat or SSH forwarding.
+serviceVpn:
+  enabled: true
+  secretName: n8n-service-vpn
+  image: ghcr.io/mhsanaei/3x-ui@sha256:1628adbd9bed680d25d6f714bef4a20f132105f4612ea294952f6665dad32e5b

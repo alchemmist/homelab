@@ -1,0 +1,188 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: swe-mini-worker
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: swe-mini-controller
+imagePullSecrets:
+  {{- toYaml .Values.imagePullSecrets | nindent 2 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: swe-mini-controller
+rules:
+  - apiGroups: [batch]
+    resources: [jobs]
+    verbs: [create, get, list]
+  - apiGroups: ['']
+    resources: [pods, pods/log]
+    verbs: [get, list]
+  - apiGroups: ['']
+    resources: [configmaps]
+    verbs: [create, get, list, delete]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: swe-mini-controller
+subjects:
+  - kind: ServiceAccount
+    name: swe-mini-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: swe-mini-controller
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: swe-mini-state
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: {{ .Values.storage.className }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.size }}
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: swe-mini-budget
+spec:
+  hard:
+    pods: '4'
+    requests.cpu: '2'
+    limits.cpu: '5'
+    requests.memory: 4Gi
+    limits.memory: 12Gi
+    requests.storage: 2Gi
+    count/jobs.batch: '40'
+    count/configmaps: '40'
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: swe-mini-defaults
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: '2'
+        memory: 5Gi
+      defaultRequest:
+        cpu: 100m
+        memory: 256Mi
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: workers-isolated
+spec:
+  podSelector:
+    matchLabels:
+      app: swe-mini-worker
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: llm
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: litellm
+      ports:
+        - {protocol: TCP, port: 4000}
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 127.0.0.0/8, 100.64.0.0/10]
+      ports:
+        - {protocol: TCP, port: 443}
+        - {protocol: TCP, port: 80}
+{{/* Native release writes the first digest; do not start a placeholder image. */}}
+{{- if and .Values.enabled .Values.image.digest }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: swe-mini-controller
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: {app: swe-mini-controller}
+  template:
+    metadata:
+      labels: {app: swe-mini-controller}
+    spec:
+      serviceAccountName: swe-mini-controller
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.nodeName }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: controller
+          image: {{ .Values.image.repository }}@{{ required "Immutable release digest required" .Values.image.digest }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          env:
+            - name: WORKER_IMAGE
+              value: {{ printf "%s@%s" .Values.image.repository .Values.image.digest | quote }}
+            - name: PAUSED
+              value: {{ .Values.paused | quote }}
+            - name: MIN_INTERVAL_SECONDS
+              value: {{ .Values.minIntervalSeconds | quote }}
+          ports:
+            - {name: http, containerPort: 9090}
+          readinessProbe:
+            httpGet: {path: /healthz, port: http}
+            initialDelaySeconds: 10
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            initialDelaySeconds: 120
+            periodSeconds: 60
+            failureThreshold: 5
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {cpu: '1', memory: 1Gi}
+          volumeMounts:
+            - {name: state, mountPath: /state}
+            - {name: github, mountPath: /github, readOnly: true}
+      volumes:
+        - name: state
+          persistentVolumeClaim: {claimName: swe-mini-state}
+        - name: github
+          secret: {secretName: swe-mini-github, defaultMode: 0440}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: swe-mini-controller
+  labels: {app: swe-mini-controller}
+spec:
+  selector: {app: swe-mini-controller}
+  ports:
+    - {name: http, port: 9090, targetPort: http}
+{{- end }}

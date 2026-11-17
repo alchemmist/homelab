@@ -1,3 +1,67 @@
+## CURRENT: 17Nov — SSH-egress заменён на VPN-as-service
+
+Владелец отклонил отдельные SSH-туннели как архитектуру прикладного egress.
+Текущий n8n использует отдельного native 3x-ui клиента **svc-n8n-google, ID40**,
+его подписку и официальный Xray-core sidecar. Путь: российская нода → штатный
+московский вход VPN-as-service → NL. `wg-socrat` остаётся инфраструктурой,
+не подменяет service-identity. [Штатный runbook](service-vpn-egress.md).
+
+Source5b722c5c, fresh global nativepending[] + SPIowner/processing/paid0,
+48 Node-тестов; Pod n8n-7bc974f784-cbbfn Ready2/2, ArgoHealthy. Подписка
+получается init через native JSON endpoint при старте, не hot-refresh.
+Группа `services`; по решению владельца quota0/expiry0 — без квоты и
+автоматического истечения. limitIp1 сохранён; накопленный трафик не сброшен.
+Все7 графов/настроек/credentialrefs/static/pin/activities/PVC/Secret сохранены.
+Google-only scope и сквозной TLS остались, GitHub/прочие сервисы напрямую.
+Старый n8n SSH-sidecar удалён, отдельный SSH-key отозван, его2Secret удалены;
+общий registryrobot не отозван. Venice не меняли; его SSH-вариант — отклонение,
+НЕ шаблон для новых сервисов. Нижние SSH-acceptance записи — история, superseded.
+
+## CURRENT17Nov owner-approved follow-up: Google NL egress + SPI compaction LIVE
+
+Supersedes the earlier PARTIAL/no-egress status BELOW; keep it as incident history.
+[Authoritative follow-up](../docs/n8n/google-only-nl-egress-20261117.md).
+
+Owner authorizedGoogle-onlyNLegress and askedreuseVenicepattern. N8Nnowusesown
+pinnedSSHidentityandTWOstaticloopbackforwards onlywww/oauth2Google443, NOTVenice
+privatekey/profileoragenericexit. Originalend-to-endTLS/SNI/CA/nativecredentials
+retained, noHTTP/OAuthPOSTreplay. Otherworkflowsnative. NoVPN/route/MTU/DNSchange.
+InitialmissingHarborpullcredentialcausedshort1/2Readydowntime/49624error; corrected
+viaGit2f26a12fafterNEWfreshglobaldrain. Noalertmute/historycleanup. Node5Pod
+n8n-8679f69fc9-x8j9rReady2/2,restart0,45Nodetests,realstrictTLS/negativeSSHtests,
+all7nativegraphs/settings/static/pin/activities/PVC/Googlecredentials unchanged.
+VeniceUID/specunchanged. FiniteCalendar14naturalsuccesses08:37–08:50; laterfinal
+sampleinprivatehandoff. Noovernight/voice/refreshPOSTacceptanceclaim.
+
+SPI8c89246LIVE viaexplicitrelease44050085445/freshglobaldrain: ALWAYS rawmetrics→
+observedextrema/trend→lossless100/100rowtablecompaction→boundedprose→tokenfit→
+finalmodel. Actualoriginalcontext25618vs39595reservation underSAME30000budget,
+same10artifactIDs/candidate174,model/networkcalls0forproof.469nativeCItests0skips;
+image185bd5cd…aec71e6d,exactruntimehashes/health200/ArgoHealthy. NoextraLLMcall,
+paidbudget/attempt/backoff/deadlinereset/state-schema/workflowgraphchange. Full
+snapshotsunaltered; unknownformatsfailclosed; sensitivekeyredactionandtable
+identitiesprotected. Finalfallbackprefixstilldisclosesomissions. Newlossless
+naturalreportacceptancePENDING. Botholdmorningcontextjobsnaturallycompletedwith
+reporttrue/attempt8BEFOREthisnewrelease(2cfc5ccbprefix16),soNOTitsacceptance.
+
+## CURRENT17Nov: morning failures, Calendar PARTIAL / SPI context fix LIVE
+
+Calendar initial16Nov acceptance was finite, notall-nightstability. Morning
+four-candidate exhaustion exposedmultipleflakyGoogleaddresses.0ab81dac fixes
+candidatecoverage(max8/two pre-HTTP sockets/same9.5sbudget), BUT subsequent
+5naturalruns stillfailedall8; do NOT callCalendarfullyfixed. Source/path-dependent
+TLSfailures reproducedoutsidePod, while same8IPs allverifyfromNL. Headers-only
+capture confirmsClientHelloretransmission/nopeerTLSdata onbadflows; precise
+provider/Google/DPIcauseunproven. Network/MTU/VPN/DNSunchanged; noSNI/TLSbypass.
+A narrowlyprivateGoogle-onlyNLegress wouldbeaseparateroutingdecision, NOT deployed.
+
+SeparateSPI2cfc5ccb nowlive imagec25911c5…e2b2cabe4: explicitmodel-onlymetricseries
+projection fixes100seriescontext(39595→16810reservation) WITHOUT extra modelcalls/
+quota/deadlineresets or changingfullstoredoriginals/IDs.464nativeCItests0skips,
+freshglobaldrain, SPIactivityrestored. Twojobs retainoriginalfuturebackoff; new
+naturalreportacceptancePENDING. OneLLMnetworkerroralreadyrecovered naturally.
+[Full current evidence/status](../docs/n8n/google-calendar-transport-20261117.md).
+
 ## CURRENT16Nov23:22MSK: Calendar TLS address failover LIVE
 
 Follow-up research isolated a CURRENT DNS-provided GoogleIPv4 whoseTCP connects

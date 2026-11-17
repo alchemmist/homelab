@@ -9,3 +9,4 @@ weight: 40
 - [VPN и NetBird: разные назначения]({{< relref "network/vpn.md" >}}).
 - [Доступ администратора к нодам по SSH]({{< relref "network/ssh.md" >}}).
 - [Как получить доступ и исключения из SSO]({{< relref "start/access.md" >}}).
+- [Как сервису получить VPN-доступ]({{< relref "network/service-vpn.md" >}}).

@@ -1,3 +1,6 @@
+{{- if and .Values.serviceVpn.enabled (not .Values.googleTransportEnabled) }}
+{{- fail "Service VPN requires scoped verified Google transport" }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -12,6 +15,7 @@ spec:
   template:
     metadata:
       annotations:
+        checksum/service-vpn-script: {{ include (print $.Template.BasePath "/service-vpn.yaml") . | sha256sum }}
         checksum/yandex-extension: {{ include (print $.Template.BasePath "/yandex-extension.yaml") . | sha256sum }}
       labels:
         app: n8n
@@ -29,6 +33,23 @@ spec:
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
+      {{- if .Values.serviceVpn.enabled }}
+      initContainers:
+        - name: prepare-service-vpn
+          image: {{ .Values.image | quote }}
+          command: [node, /vpn-script/prepare.js]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 20m, memory: 32Mi}
+            limits: {cpu: 200m, memory: 128Mi}
+          volumeMounts:
+            - {name: service-vpn-script, mountPath: /vpn-script, readOnly: true}
+            - {name: service-vpn-identity, mountPath: /vpn-identity, readOnly: true}
+            - {name: service-vpn-runtime, mountPath: /vpn-runtime}
+      {{- end }}
       containers:
         - name: n8n
           image: {{ .Values.image | quote }}
@@ -39,6 +60,10 @@ spec:
             {{- else if .Values.googleDnsEnabled }}
             - name: NODE_OPTIONS
               value: '--require=/opt/n8n/yandex-extension/google-dns-preload.js'
+            {{- end }}
+            {{- if .Values.serviceVpn.enabled }}
+            - name: N8N_GOOGLE_SERVICE_VPN
+              value: '1'
             {{- end }}
             - name: EXECUTIONS_TIMEOUT_MAX
               value: '21600'
@@ -90,7 +115,39 @@ spec:
               readOnly: true
             - name: data
               mountPath: /home/node/.n8n
+        {{- if .Values.serviceVpn.enabled }}
+        - name: service-vpn
+          image: {{ .Values.serviceVpn.image | quote }}
+          command: [/app/bin/xray-linux-amd64]
+          args: [run, -c, /vpn-runtime/client.json]
+          readinessProbe:
+            exec:
+              command: [/bin/sh, -ec, "nc -z -w 2 127.0.0.1 18443 && nc -z -w 2 127.0.0.1 18444"]
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            timeoutSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 20m, memory: 32Mi}
+            limits: {cpu: 200m, memory: 128Mi}
+          volumeMounts:
+            - {name: service-vpn-runtime, mountPath: /vpn-runtime, readOnly: true}
+        {{- end }}
       volumes:
+        {{- if .Values.serviceVpn.enabled }}
+        - name: service-vpn-identity
+          secret:
+            secretName: {{ .Values.serviceVpn.secretName }}
+            defaultMode: 0440
+        - name: service-vpn-runtime
+          emptyDir: {medium: Memory, sizeLimit: 1Mi}
+        - name: service-vpn-script
+          configMap:
+            name: n8n-service-vpn-script
+        {{- end }}
         - name: yandex-extension
           configMap:
             name: n8n-yandex-extension
