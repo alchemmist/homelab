@@ -1,3 +1,21 @@
+## CURRENT17Nov: morning failures, Calendar PARTIAL / SPI context fix LIVE
+
+Calendar initial16Nov acceptance was finite, notall-nightstability. Morning
+four-candidate exhaustion exposedmultipleflakyGoogleaddresses.0ab81dac fixes
+candidatecoverage(max8/two pre-HTTP sockets/same9.5sbudget), BUT subsequent
+5naturalruns stillfailedall8; do NOT callCalendarfullyfixed. Source/path-dependent
+TLSfailures reproducedoutsidePod, while same8IPs allverifyfromNL. Headers-only
+capture confirmsClientHelloretransmission/nopeerTLSdata onbadflows; precise
+provider/Google/DPIcauseunproven. Network/MTU/VPN/DNSunchanged; noSNI/TLSbypass.
+A narrowlyprivateGoogle-onlyNLegress wouldbeaseparateroutingdecision, NOT deployed.
+
+SeparateSPI2cfc5ccb nowlive imagec25911c5…e2b2cabe4: explicitmodel-onlymetricseries
+projection fixes100seriescontext(39595→16810reservation) WITHOUT extra modelcalls/
+quota/deadlineresets or changingfullstoredoriginals/IDs.464nativeCItests0skips,
+freshglobaldrain, SPIactivityrestored. Twojobs retainoriginalfuturebackoff; new
+naturalreportacceptancePENDING. OneLLMnetworkerroralreadyrecovered naturally.
+[Full current evidence/status](../docs/n8n/google-calendar-transport-20261117.md).
+
 ## CURRENT16Nov23:22MSK: Calendar TLS address failover LIVE
 
 Follow-up research isolated a CURRENT DNS-provided GoogleIPv4 whoseTCP connects
