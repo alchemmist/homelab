@@ -1,3 +1,30 @@
+## CURRENT17Nov owner-approved follow-up: Google NL egress + SPI compaction LIVE
+
+Supersedes the earlier PARTIAL/no-egress status BELOW; keep it as incident history.
+[Authoritative follow-up](../docs/n8n/google-only-nl-egress-20261117.md).
+
+Owner authorizedGoogle-onlyNLegress and askedreuseVenicepattern. N8Nnowusesown
+pinnedSSHidentityandTWOstaticloopbackforwards onlywww/oauth2Google443, NOTVenice
+privatekey/profileoragenericexit. Originalend-to-endTLS/SNI/CA/nativecredentials
+retained, noHTTP/OAuthPOSTreplay. Otherworkflowsnative. NoVPN/route/MTU/DNSchange.
+InitialmissingHarborpullcredentialcausedshort1/2Readydowntime/49624error; corrected
+viaGit2f26a12fafterNEWfreshglobaldrain. Noalertmute/historycleanup. Node5Pod
+n8n-8679f69fc9-x8j9rReady2/2,restart0,45Nodetests,realstrictTLS/negativeSSHtests,
+all7nativegraphs/settings/static/pin/activities/PVC/Googlecredentials unchanged.
+VeniceUID/specunchanged. FiniteCalendar14naturalsuccesses08:37–08:50; laterfinal
+sampleinprivatehandoff. Noovernight/voice/refreshPOSTacceptanceclaim.
+
+SPI8c89246LIVE viaexplicitrelease44050085445/freshglobaldrain: ALWAYS rawmetrics→
+observedextrema/trend→lossless100/100rowtablecompaction→boundedprose→tokenfit→
+finalmodel. Actualoriginalcontext25618vs39595reservation underSAME30000budget,
+same10artifactIDs/candidate174,model/networkcalls0forproof.469nativeCItests0skips;
+image185bd5cd…aec71e6d,exactruntimehashes/health200/ArgoHealthy. NoextraLLMcall,
+paidbudget/attempt/backoff/deadlinereset/state-schema/workflowgraphchange. Full
+snapshotsunaltered; unknownformatsfailclosed; sensitivekeyredactionandtable
+identitiesprotected. Finalfallbackprefixstilldisclosesomissions. Newlossless
+naturalreportacceptancePENDING. Botholdmorningcontextjobsnaturallycompletedwith
+reporttrue/attempt8BEFOREthisnewrelease(2cfc5ccbprefix16),soNOTitsacceptance.
+
 ## CURRENT17Nov: morning failures, Calendar PARTIAL / SPI context fix LIVE
 
 Calendar initial16Nov acceptance was finite, notall-nightstability. Morning
