@@ -139,10 +139,10 @@ def continue_openhands(conversation, sandbox, directory, acceptance=None):
     for round_number in range(limit):
         conversation.run()
         if acceptance is None:
-            return
+            return 'completed'
         facts = acceptance(sandbox, directory, round_number)
         if facts.get('continue') is not True:
-            return
+            return 'stopped'
         if round_number + 1 >= limit:
             return 'exhausted'
         conversation.send_message('Independent acceptance rejected this completed response. '

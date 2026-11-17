@@ -34,7 +34,7 @@ class ContinueOpenHandsTests(unittest.TestCase):
 
     def test_continue_false_stops_without_follow_up(self):
         conversation = Conversation()
-        continue_openhands(conversation, None, None, facts(False))
+        self.assertEqual(continue_openhands(conversation, None, None, facts(False)), 'stopped')
         self.assertEqual(conversation.runs, 1)
         self.assertEqual(conversation.messages, [])
 
