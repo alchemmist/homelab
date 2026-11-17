@@ -9,16 +9,20 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class IdentityGuards(unittest.TestCase):
     def test_helper_is_explicit_atomic_and_scoped(self):
-        source = (ROOT / "scripts/rustfs/unified_identity.py").read_text()
-        ast.parse(source)
+        tree = ast.parse((ROOT / "scripts/rustfs/unified_identity.py").read_text())
+        source = ast.unparse(tree)
+        integers = {
+            node.value
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Constant) and type(node.value) is int
+        }
+        self.assertTrue({0o600, 0o700} <= integers)
         for guard in (
             "with transaction.atomic():",
             "select_for_update()",
             "if action == 'plan':",
             "if action == 'rollback':",
             "os.O_EXCL",
-            "0o600",
-            "0o700",
             "native_guard",
             "'created_hash'",
             "rollback CAS drift",
@@ -70,5 +74,6 @@ class IdentityGuards(unittest.TestCase):
             with self.assertRaises(ValueError):
                 module.authority(url)
         self.assertIn(
-            "actual['client_id']", (ROOT / "scripts/rustfs/unified_identity.py").read_text()
+            "actual['client_id']",
+            ast.unparse(ast.parse((ROOT / "scripts/rustfs/unified_identity.py").read_text())),
         )

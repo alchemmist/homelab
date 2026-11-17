@@ -1,3 +1,4 @@
+import ast
 import importlib.util
 import json
 from pathlib import Path
@@ -113,11 +114,27 @@ class InfrastructureContracts(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             root = self.fixture(d)
             p = root / "scripts/wg-peer15-relay.py"
-            p.write_text(
-                p.read_text().replace("FRONT = ('10.250.0.1', 51835)", "FRONT = ('0.0.0.0', 51835)")
-            )
+            self.assertEqual(contract.check(root), 9)
+            original = p.read_text()
+            tree = ast.parse(original)
+            front = [
+                node
+                for node in tree.body
+                if isinstance(node, ast.Assign)
+                and any(
+                    isinstance(target, ast.Name) and target.id == "FRONT" for target in node.targets
+                )
+            ]
+            self.assertEqual(len(front), 1)
+            self.assertIsInstance(front[0].value, ast.Tuple)
+            front[0].value.elts[0] = ast.Constant(value="0.0.0.0")
+            mutated = ast.unparse(tree) + "\n"
+            self.assertNotEqual(ast.dump(ast.parse(original)), ast.dump(ast.parse(mutated)))
+            p.write_text(mutated)
+            before = {path: path.read_bytes() for path in root.rglob("*") if path.is_file()}
             with self.assertRaisesRegex(ValueError, "Fixed relay topology drift"):
                 contract.check(root, write=True)
+            self.assertEqual(before, {path: path.read_bytes() for path in before})
 
     def test_relay_sandbox_widening_or_stale_endpoint_rejected_without_writes(self):
         for replacement in ["10.250.0.0/16", "10.250.0.99/32"]:

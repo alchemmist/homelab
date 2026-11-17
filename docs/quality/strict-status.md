@@ -83,3 +83,33 @@ Yamllint `key-ordering`, `empty-values`, and `quoted-strings` stay off. They col
 `SC2250` on `scripts/testing-class-wg-guard.sh` stays unbraced because the reviewed test requires the exact text `-A "$CHAIN" -j DROP`. `SC2310` and `SC2312` on `scripts/nightnode/nightnode` and `scripts/rustfs/deploy.sh` stay because splitting the substitutions would change `set -e` behavior. The two shell `*) ;;` arms are no-ops; an exiting default would reject valid backup ids and extra Deployments.
 
 Local Kind did not run: rootless Podman refused `homelab-qg-1ed5690f29b8` without systemd `Delegate=yes`, and no cluster was left behind. The generated `tests-cluster` job needs the manifest, Ansible, and medium-test jobs, which fail closed on remaining findings, so Quality Graph run `43985778073` skipped it. `.github/workflows/strict-kind-lifecycle.yml` is the hand-written reproduction that produced run `43985778237`. It runs on a pull request only when that workflow file changes, because GitHub will not dispatch a workflow that is absent from the default branch. It is not a trusted-base registration and it does not edit the generated workflows. Missing stack checks, not counted as passes: ESLint, Prettier execution, a separate Bandit run, and Vulture. `quality/rules.json` is not the enforcement catalog. `qg.yaml` was not changed and was not registered through trusted-base. Draft PR 182 tracks this branch. PR 181 is a separate draft and was not updated.
+
+## Parent continuation: semantic source contracts
+
+The failed Grok fan-out was not integrated. Parent directly repaired the concrete
+formatting regressions on top of284c0c2d, without removing checks or changing
+production state. The Authentik retirement prerequisite now parses the reviewed
+bootstrap recipe rather than matching quote/space-sensitive text. It requires
+journal/token refusal, both administrative credential removals and use of the
+filtered map before manifest construction. This is a bounded source prerequisite,
+not proof of live identity state. Seven genuine AST mutations and decoy/comment,
+formatting, invalid-syntax and size-limit cases cover the verifier without running
+identity operations.
+
+Relay scope mutation now modifies the actual AST, proves a change happened, then
+checks rejection and no writes. Source assertions for LiteLLM, RustFS, queue auth,
+gateway ownership, Kuma recovery and scoped DNS use parsed representations rather
+than a particular quote style; security properties and scenarios remain intact.
+Byte-pinned inputs and their existing hashes are unchanged.
+
+Validation of this code change (before its documentation commit):
+- Targeted seven modules:75passed.
+- Curated fast:607passed,1existing fixture skip,329subtests passed.
+- Curated medium on macOS:274passed,5existing Linux-only skips,313subtests passed.
+- strict_guard:0inline suppressions; configuration validation passed.
+- No new full strict lint count or current-head hosted/Kind acceptance claimed.
+
+Private evidence: parent-semantic-fast.txt and parent-semantic-medium.txt in the
+existing private quality-strict evidence directory. The stale102045/117026totals
+are historical, not a current count. The overall strict refactor remains red and
+unfinished; this successful regression checkpoint is not global lint acceptance.

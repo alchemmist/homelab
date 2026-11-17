@@ -4,6 +4,7 @@ apply/check never delete humans; retire-akadmin is a separate explicit guarded a
 """
 
 import argparse
+import ast
 import fcntl
 from datetime import datetime, timezone
 import json
@@ -18,6 +19,86 @@ NAME = "homelab-identity-automation"
 GROUP = "homelab-identity-automation-admin"
 OWNER_UUID = "9e33877a-3eaa-4541-98eb-8cdc10088ef6"
 BASE = "https://auth.socrat.alchemmist.xyz/api/v3/"
+
+
+def bootstrap_is_migration_aware(source: str) -> bool:
+    """Check the reviewed credential-removal recipe without executing bootstrap.
+
+    Whitespace, quote style and comments carry no authority. The active-journal
+    check and removal loop must precede the manifest that uses runtime_values.
+    This is a bounded source prerequisite, not proof of live identity state.
+    """
+    if len(source) > 1_048_576:
+        return False
+    try:
+        tree = ast.parse(source)
+    except (SyntaxError, ValueError, RecursionError):
+        return False
+
+    def expression_matches(node: ast.AST, expected: str) -> bool:
+        return ast.dump(node) == ast.dump(ast.parse(expected, mode="eval").body)
+
+    assignments = {
+        node.targets[0].id: (index, node.value)
+        for index, node in enumerate(tree.body)
+        if isinstance(node, ast.Assign)
+        and len(node.targets) == 1
+        and isinstance(node.targets[0], ast.Name)
+    }
+    if not {"runtime_values", "automation_path", "manifest"} <= assignments.keys():
+        return False
+    runtime_index, runtime = assignments["runtime_values"]
+    journal_index, journal = assignments["automation_path"]
+    manifest_index, manifest = assignments["manifest"]
+    if not expression_matches(runtime, "dict(values)") or not expression_matches(
+        journal, 'root / "automation-api.json"'
+    ):
+        return False
+    if not isinstance(manifest, ast.Dict) or not any(
+        isinstance(key, ast.Constant)
+        and key.value == "stringData"
+        and expression_matches(value, "runtime_values")
+        for key, value in zip(manifest.keys, manifest.values)
+    ):
+        return False
+    for index, conditional in enumerate(tree.body):
+        if not isinstance(conditional, ast.If) or not expression_matches(
+            conditional.test, "automation_path.exists()"
+        ):
+            continue
+        if not runtime_index < journal_index < index < manifest_index:
+            continue
+        # Require the actual source statements, not matching text in a comment,
+        # string or unreachable nested function. Additional statements need review.
+        if conditional.orelse or len(conditional.body) != 3:
+            continue
+        load, guard, removal = conditional.body
+        expected_load = ast.parse("automation = json.loads(automation_path.read_text())").body[0]
+        if ast.dump(load) != ast.dump(expected_load):
+            continue
+        if not isinstance(guard, ast.If) or not expression_matches(
+            guard.test,
+            'automation.get("status") != "active" or '
+            'automation.get("token") != values["AUTHENTIK_BOOTSTRAP_TOKEN"]',
+        ):
+            continue
+        if guard.orelse or len(guard.body) != 1:
+            continue
+        refusal = guard.body[0]
+        if not (
+            isinstance(refusal, ast.Raise)
+            and isinstance(refusal.exc, ast.Call)
+            and isinstance(refusal.exc.func, ast.Name)
+            and refusal.exc.func.id == "SystemExit"
+        ):
+            continue
+        expected_removal = ast.parse(
+            'for key in ["AUTHENTIK_BOOTSTRAP_TOKEN", "AUTHENTIK_BOOTSTRAP_PASSWORD"]:\n'
+            "    runtime_values.pop(key, None)"
+        ).body[0]
+        if ast.dump(removal) == ast.dump(expected_removal):
+            return True
+    return False
 
 
 def save(path, data):
@@ -252,7 +333,7 @@ def retire_default_admin(root):
             if keys.intersection(e["name"] for e in c.get("env", [])):
                 raise RuntimeError("Explicit pod bootstrap environment remains")
     bootstrap = (root / "bootstrap.py").read_text()
-    if "runtime_values.pop(key,None)" not in bootstrap or "automation-api.json" not in bootstrap:
+    if not bootstrap_is_migration_aware(bootstrap):
         raise RuntimeError("Future bootstrap reconciliation is not migration-aware")
     token = journal["token"]
     target = exact(token, "core/users/", "username", "akadmin")

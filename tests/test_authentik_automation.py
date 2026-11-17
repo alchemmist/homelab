@@ -1,3 +1,4 @@
+import ast
 import contextlib
 import importlib.util
 import io
@@ -9,6 +10,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 from urllib.parse import parse_qs
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 FILES = ROOT / "ansible/roles/authentik/files"
@@ -273,3 +276,58 @@ class AutomationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_bootstrap_source_guard_accepts_formatting_not_decoy_text() -> None:
+    """Accept the real recipe independently of layout; reject comments/strings."""
+    source = (FILES / "bootstrap.py").read_text()
+    assert a.bootstrap_is_migration_aware(source)
+    assert a.bootstrap_is_migration_aware(ast.unparse(ast.parse(source)))
+    assert not a.bootstrap_is_migration_aware("# " + repr(source))
+    assert not a.bootstrap_is_migration_aware("example = " + repr(source))
+    assert not a.bootstrap_is_migration_aware("def invalid(:")
+    assert not a.bootstrap_is_migration_aware(" " * 1_048_577)
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    ["password-key", "removal", "guard", "refusal", "journal", "manifest", "order"],
+)
+def test_bootstrap_source_guard_rejects_real_boundary_mutations(mutation: str) -> None:
+    """Reject changes that would reintroduce administrative runtime credentials."""
+    source = (FILES / "bootstrap.py").read_text()
+    tree = ast.parse(source)
+    conditional = next(
+        node
+        for node in tree.body
+        if isinstance(node, ast.If) and ast.unparse(node.test) == "automation_path.exists()"
+    )
+    load, guard, removal = conditional.body
+    if mutation == "password-key":
+        removal.iter.elts.pop()
+    elif mutation == "removal":
+        removal.body = [ast.Pass()]
+    elif mutation == "guard":
+        guard.test = ast.Constant(False)
+    elif mutation == "refusal":
+        guard.body = [ast.Pass()]
+    elif mutation == "journal":
+        load.value = ast.Constant(None)
+    elif mutation == "manifest":
+        manifest = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.Assign)
+            and any(
+                isinstance(target, ast.Name) and target.id == "manifest" for target in node.targets
+            )
+        )
+        for index, key in enumerate(manifest.value.keys):
+            if isinstance(key, ast.Constant) and key.value == "stringData":
+                manifest.value.values[index] = ast.Name(id="values", ctx=ast.Load())
+    elif mutation == "order":
+        tree.body.remove(conditional)
+        tree.body.append(conditional)
+    changed = ast.unparse(ast.fix_missing_locations(tree))
+    assert ast.dump(ast.parse(source)) != ast.dump(ast.parse(changed))
+    assert not a.bootstrap_is_migration_aware(changed)

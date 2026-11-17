@@ -92,7 +92,11 @@ class LiteLLMIdentityTests(unittest.TestCase):
         self.assertEqual(account["litellmUserId"], "socrat-admin")
 
     def test_native_pkce_and_capacity_gate_are_not_bypassed(self):
-        source = (ROOT / "ansible/roles/identity_integrations/files/litellm_oidc.py").read_text()
+        source = ast.unparse(
+            ast.parse(
+                (ROOT / "ansible/roles/identity_integrations/files/litellm_oidc.py").read_text()
+            )
+        )
         self.assertIn("'GENERIC_CLIENT_USE_PKCE': 'true'", source)
         self.assertIn("len(users) > 5", source)
         self.assertNotIn("LITELLM_LICENSE", source)

@@ -1,5 +1,6 @@
 """Native auth/storage-preserving VM105 application-only placement contracts."""
 
+import ast
 from pathlib import Path
 import hashlib, json, subprocess, tempfile, unittest, yaml
 
@@ -134,7 +135,11 @@ class MigrationTests(unittest.TestCase):
         self.assertIn("ansible.builtin.fail", p[0]["tasks"][0])
         self.assertNotIn("helm upgrade", s)
         self.assertIn("deploy/platform/litellm/values.yaml", s)
-        g = (R / "ansible/roles/monitoring_llm_gateway/files/configure_gateway.py").read_text()
+        g = ast.unparse(
+            ast.parse(
+                (R / "ansible/roles/monitoring_llm_gateway/files/configure_gateway.py").read_text()
+            )
+        )
         self.assertIn("s.get('path') == 'charts/litellm'", g)
         self.assertNotIn("['upgrade'", g)
         self.assertNotIn("/key/generate", g)

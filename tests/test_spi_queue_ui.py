@@ -1,5 +1,6 @@
 """Local-only HTTP/Helm checks; never calls live cluster or inference."""
 
+import ast
 import http.client
 import importlib.util
 import json
@@ -178,9 +179,14 @@ class QueueHelmTests(unittest.TestCase):
             "traefik.ingress.kubernetes.io/router.middlewares", ingress["metadata"]["annotations"]
         )
         # Cookie is verified directly at the same fixed TLS endpoint as Reader.
+        tree = ast.parse((ROOT / "charts/spi-triage/ui/queue_web.py").read_text())
         self.assertIn(
-            "'/outpost.goauthentik.io/auth/nginx'",
-            (ROOT / "charts/spi-triage/ui/queue_web.py").read_text(),
+            "/outpost.goauthentik.io/auth/nginx",
+            {
+                node.value
+                for node in ast.walk(tree)
+                if isinstance(node, ast.Constant) and isinstance(node.value, str)
+            },
         )
         pod = get("Deployment", "spi-queue-ui")["spec"]["template"]["spec"]
         self.assertFalse(pod["automountServiceAccountToken"])

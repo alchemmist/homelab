@@ -1,3 +1,4 @@
+import ast
 import importlib.util, json, subprocess, copy
 from pathlib import Path
 import pytest, yaml
@@ -146,7 +147,7 @@ def test_kuma_no_gitops_random_secret_by_default():
 
 
 def test_schema_recovery_never_resets_existing_passwords_or_restarts_database():
-    text = (ROOT / "scripts/kuma-db-account-recovery.py").read_text()
+    text = ast.unparse(ast.parse((ROOT / "scripts/kuma-db-account-recovery.py").read_text()))
     assert "CREATE USER" in text and "ALTER USER" not in text and "DROP USER" not in text
     assert "rollout restart" not in text and "secret['metadata']['resourceVersion']" in text
     assert "schema_grant.replace" in text and "--patch-file=/dev/stdin" in text
@@ -181,7 +182,11 @@ def test_dns_cleanup_only_owned_files_and_no_global_flush_or_vpn_commands():
         "set State:/Network/Global/DNS",
     ]:
         assert forbidden not in text
-    assert "['/bin/launchctl','bootout','system/'+LABEL]" in text
+    expected = ast.parse("run(['/bin/launchctl', 'bootout', 'system/' + LABEL])", mode="eval").body
+    assert any(
+        isinstance(node, ast.Call) and ast.dump(node) == ast.dump(expected)
+        for node in ast.walk(ast.parse(text))
+    )
     assert "Backup verification failed" in text and "Fresh exact plan approval required" in text
 
 
