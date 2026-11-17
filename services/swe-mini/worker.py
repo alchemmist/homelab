@@ -8,7 +8,7 @@ import subprocess
 import sys
 import time
 
-from policy import LANES, encode_result, validate_changes
+from policy import LANES, encode_result, validate_changes, dependency_repair, validate_dependency_update
 
 ROOT = Path('/workspace/repo')
 ART = Path('/workspace/artifacts')
@@ -101,9 +101,13 @@ def main():
         'python': command(['uv', 'sync', '--locked', '--group', 'test', '--group', 'analyze', '--group', 'audit']),
         'node': command(['npm', 'ci', '--ignore-scripts', '--no-audit', '--no-fund'], cwd=ROOT / 'web'),
     }
-    if any(setup.values()):
-        raise RuntimeError('Dependency setup failed; see bounded command log')
-    baseline = checks()
+    if setup['python']:
+        raise RuntimeError('Python dependency setup failed; see bounded command log')
+    original_package = json.loads(subprocess.check_output(['git', 'show', revision + ':web/package.json'], cwd=ROOT))
+    baseline = checks() if not setup['node'] else {
+        'backend': command(['uv','run','--locked','--group','test','pytest','-q','server/tests','-m','not integration']),
+        'frontend': 125, 'build': 125}
+    bootstrap = bool(setup['node'])
     candidate_checks = None
     if phase == 'review':
         proposal = json.loads(Path('/proposal/proposal.json').read_text())
@@ -113,6 +117,10 @@ def main():
             p.write_bytes(base64.b64decode(item['content']))
         # Fresh installation, BEFORE any reviewer-model command can alter tools or .venv.
         # A work-agent's writable dependency cache is never trusted as validation.
+        if dependency_repair(proposal['changes']):
+            validate_dependency_update(proposal['changes'], original_package)
+            if command(['npm','ci','--ignore-scripts','--no-audit','--no-fund'], cwd=ROOT / 'web'):
+                raise RuntimeError('Candidate dependencies do not install cleanly')
         candidate_checks = checks()
         task = '''Independently review the existing uncommitted patch. Do not implement or change the patch.
 Read AGENTS.md. Reproduce claims, inspect regression tests and look for security/correctness problems.
@@ -136,12 +144,22 @@ limitations and public research URLs. No finding is better than speculative chur
 At most one small patch. Do not commit; the supervisor extracts working-tree changes.
 Baseline checks: {json.dumps(baseline)}. Baseline failures must be reported, not hidden.
 '''
+    if bootstrap and phase == 'work':
+        task += '''\nPRIORITY: npm ci failed before your run. Inspect /workspace/artifacts/commands.log.
+Instead of the normal lane, repair ONLY web/package.json AND web/package-lock.json.
+Only change existing dependency semantic versions to resolve the demonstrated peer conflict.
+Do not add/remove packages, alter scripts/engines/metadata, use force/legacy-peer-deps, or change other files.
+Run npm ci --ignore-scripts --no-audit --no-fund and the full tests/build; document the original failure.
+This narrow bootstrap exception overrides the general ban on dependency manifests above.
+'''
     (ART / 'task.txt').write_text(task)
     (ART / 'history.txt').write_text(os.environ.get('HISTORY', 'No previous results.'))
     # Only this subprocess is the model-driven agent; supervisor's post-check commands are fixed.
     rc = command([sys.executable, '/app/worker.py', '--agent'], timeout=4800)
+    if bootstrap:
+        command(['npm','ci','--ignore-scripts','--no-audit','--no-fund'], cwd=ROOT / 'web')
     after = checks()
-    result = dict(lane=lane, phase=phase, revision=revision, baseline=baseline, checks=after,
+    result = dict(lane=lane, phase=phase, revision=revision, baseline=baseline, checks=after, setup=setup,
                   agent_rc=rc, started=int(time.time()), changes=[], report='')
     exit_file = ART / 'agent-exit.json'
     result['agent_status'] = json.loads(exit_file.read_text()).get('exit_status') if exit_file.exists() else 'MissingExit'
@@ -166,6 +184,8 @@ Baseline checks: {json.dumps(baseline)}. Baseline failures must be reported, not
             result['changes'].append({'path': path, 'mode': '100644', 'content': base64.b64encode(p.read_bytes()).decode()})
         if result['changes']:
             validate_changes(result['changes'])
+            if any(i['path'] in {'web/package.json','web/package-lock.json'} for i in result['changes']):
+                validate_dependency_update(result['changes'], original_package)
     result['command_tail'] = (ART / 'commands.log').read_text(errors='replace')[-16000:]
     # No model transcript or shell stdout is streamed into cluster logs.
     print(signed_result(result), flush=True)

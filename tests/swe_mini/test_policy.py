@@ -1,5 +1,6 @@
 import base64
 import importlib.util
+import json
 from pathlib import Path
 import unittest
 
@@ -19,6 +20,23 @@ class PublicationPolicy(unittest.TestCase):
         for path in ['.github/workflows/run.yml', 'deploy/x', 'scripts/x.py', 'web/package.json', 'server/migrations/a.py', '/etc/passwd', 'server/app/../../x', 'common/.env', 'common/AGENTS.md', 'server/app//a.py', 'server/app/./a.py', 'server/app/a\\b']:
             with self.subTest(path=path), self.assertRaises(ValueError):
                 p.validate_changes([self.item(path)])
+
+    def test_dependency_repair_boundary(self):
+        original = {'scripts': {'build': 'vite build'}, 'dependencies': {'@mantine/core': '^9.5.2'}}
+        updated = json.loads(json.dumps(original)); updated['dependencies']['@mantine/core'] = '^9.6.0'
+        def changes():
+            return [self.item('web/package.json', content=json.dumps(updated).encode()),
+                    self.item('web/package-lock.json', content=b'{"lockfileVersion":3,"packages":{}}')]
+        p.validate_dependency_update(p.validate_changes(changes()), original)
+        updated['scripts']['build'] = 'true'
+        with self.assertRaises(ValueError):
+            p.validate_dependency_update(changes(), original)
+        updated['scripts']['build'] = 'vite build'
+        updated['dependencies']['new-package'] = '1.0.0'
+        with self.assertRaises(ValueError):
+            p.validate_dependency_update(changes(), original)
+        with self.assertRaises(ValueError):
+            p.validate_changes(changes() + [self.item()])
 
     def test_modes(self):
         for mode in ['120000', '160000', '100755']:

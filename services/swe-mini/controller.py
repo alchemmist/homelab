@@ -16,7 +16,7 @@ import uuid
 import jwt
 import requests
 from kubernetes import client, config
-from policy import LANES, decode_result, validate_changes
+from policy import LANES, decode_result, validate_changes, dependency_repair, validate_dependency_update
 
 NS = os.getenv('NAMESPACE', 'swe-mini')
 REPO = 'alchemmist/monori'
@@ -193,8 +193,15 @@ def tick():
         if result.get('error') or result.get('revision') != run['revision'] or result.get('agent_status') != 'Submitted' or result.get('agent_rc') != 0:
             save(run['id'], state='failed')
             return
-        # Conservative: all baseline and after checks must pass. Never publish a known-red patch.
-        if not result.get('checks') or any(result['checks'].values()) or any(result['baseline'].values()):
+        candidate = result.get('changes', []) if run['state'] == 'work' else json.loads(run['result'] or '{}').get('changes', [])
+        repair = dependency_repair(candidate)
+        if any(i['path'] in {'web/package.json','web/package-lock.json'} for i in candidate):
+            base = github(f"repos/{REPO}/contents/web/package.json?ref={run['revision']}", auth=False)
+            validate_dependency_update(candidate, json.loads(base64.b64decode(base['content'])))
+        # Only a narrowly validated dependency repair may start from a red frontend install.
+        baseline_ok = not any(result.get('baseline', {'missing': 1}).values())
+        bootstrap_ok = repair and result.get('setup', {}).get('node', 0) != 0 and result.get('baseline', {}).get('backend') == 0
+        if not result.get('checks') or any(result['checks'].values()) or not (baseline_ok or bootstrap_ok):
             save(run['id'], state='rejected')
             return
         if run['state'] == 'work':

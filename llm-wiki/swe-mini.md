@@ -121,3 +121,26 @@ Must separately prove: native image release, Argo Synced/Healthy, correct node a
 imageID, scoped model route, isolated worker shell and tests, denied private/metadata
 egress, persisted queue recovery, independent review and actual PR. A running
 controller alone is NOT proof of a complete autonomous engineering pipeline.
+
+### First live acceptance (2026-11-17)
+
+Native release44145648310 succeeded; GitOps commit6e918a1f recorded immutable
+`sha256:f48c542932282dc9274922d076661ffba4dcfb777fe486a618093a90b1926073`.
+Controller Ready on socrat-5, PVC Bound, Argo Synced/Healthy. Real provider smoke
+261117184641-9f68e finished Submitted: synthetic shell marker and multiple calls
+both passed; controller authenticated the result. The next Monori backend Job
+261117184946-f9bf3 started automatically, proving continuation without a laptop.
+It failed before model execution on an existing npm peer conflict: charts9.5.2
+requires core9.5.2 but main pins core9.6.0. Main-branch CI44020975264 also fails.
+No actual improvement PR or end-to-end publication has passed yet.
+
+Bootstrap exception: when frontend dependency installation fails, the agent can
+propose EXACTLY web/package.json + web/package-lock.json (combined <=600KB).
+Only semantic-version changes to EXISTING dependencies/devDependencies are allowed;
+no package additions/removals, scripts/engines/metadata changes, source mixing or
+nonstandard registry URLs. Controller compares against original manifest fetched
+from GitHub at the exact revision, independently of model claims. Backend baseline
+must pass; the repaired candidate's ENTIRE test/build suite must pass. A fresh
+review environment must install the candidate successfully before its pre-model
+checks, and a separate review must approve. No force/legacy-peer-deps or auto-merge.
+All ordinary source patches retain the350KB budget and all-green baseline gate.

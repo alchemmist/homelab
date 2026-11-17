@@ -4,6 +4,7 @@ import gzip
 import hashlib
 import hmac
 import json
+import re
 from pathlib import PurePosixPath
 
 LANES = {
@@ -13,12 +14,15 @@ LANES = {
     "polish": "Find one concrete small usability or API error-handling inconsistency, demonstrate it and make a minimal tested improvement. No speculative features or wholesale refactors.",
     "tests": "Find a real untested edge case across frontend/backend, reproduce a defect and add regression coverage plus a minimal fix.",
 }
-MAX_BYTES = 350_000
+MAX_BYTES = 600_000
+DEPENDENCY_PATHS = {"web/package.json", "web/package-lock.json"}
 
 
 def validate_changes(changes):
     if not changes or len(changes) > 20:
         raise ValueError("Expected 1..20 changed files")
+    if any(i["path"] in DEPENDENCY_PATHS for i in changes) and not dependency_repair(changes):
+        raise ValueError("Dependency files cannot mix with source changes")
     total = 0
     for item in changes:
         path = item["path"]
@@ -26,7 +30,7 @@ def validate_changes(changes):
         if p.is_absolute() or ".." in p.parts or "\\" in path or str(p) != path:
             raise ValueError("Unsafe path")
         # Do not let an untrusted patch alter CI, release, dependencies, agent instructions or tooling.
-        if not path.startswith(("server/app/", "server/tests/", "web/src/", "web/tests/", "common/")):
+        if path not in DEPENDENCY_PATHS and not path.startswith(("server/app/", "server/tests/", "web/src/", "web/tests/", "common/")):
             raise ValueError("Path outside publication allowlist: " + path)
         if any(part.startswith(".") for part in p.parts) or p.name in {"AGENTS.md", "CLAUDE.md"}:
             raise ValueError("Protected path")
@@ -35,7 +39,7 @@ def validate_changes(changes):
         data = base64.b64decode(item["content"], validate=True)
         data.decode("utf-8")
         total += len(data)
-        if total > MAX_BYTES or b"\x00" in data:
+        if total > (MAX_BYTES if dependency_repair(changes) else 350_000) or b"\x00" in data:
             raise ValueError("Oversize or binary patch")
     if len({item['path'] for item in changes}) != len(changes):
         raise ValueError("Duplicate paths")
@@ -68,3 +72,37 @@ def decode_result(log, key=None):
     if len(raw) > 900_000:
         raise ValueError("Result exceeds limit")
     return json.loads(raw)
+
+
+def dependency_repair(changes):
+    return {item['path'] for item in changes} == DEPENDENCY_PATHS
+
+
+def validate_dependency_update(changes, original):
+    if not dependency_repair(changes):
+        raise ValueError('Dependency repair must contain exactly manifest and lock, no source changes')
+    files = {i['path']: json.loads(base64.b64decode(i['content'])) for i in changes}
+    updated = files['web/package.json']
+    groups = {'dependencies', 'devDependencies'}
+    if {k:v for k,v in original.items() if k not in groups} != {k:v for k,v in updated.items() if k not in groups}:
+        raise ValueError('Dependency repair cannot modify scripts, engines, metadata or tooling')
+    changed = False
+    for group in groups:
+        before, after = original.get(group, {}), updated.get(group, {})
+        if before.keys() != after.keys():
+            raise ValueError('No dependency additions/removals')
+        for name, version in after.items():
+            if version != before[name]:
+                changed = True
+                if not isinstance(version, str) or not re.fullmatch(r'[~^]?\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?', version):
+                    raise ValueError('Only registry semantic version changes')
+    if not changed:
+        raise ValueError('No dependency version change')
+    lock = files['web/package-lock.json']
+    if lock.get('lockfileVersion') != 3:
+        raise ValueError('Unexpected lockfile format')
+    for entry in lock.get('packages', {}).values():
+        url = entry.get('resolved', '')
+        if url and not url.startswith('https://registry.npmjs.org/'):
+            raise ValueError('Nonstandard dependency registry')
+    return changes
