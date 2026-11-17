@@ -7,11 +7,11 @@
 - name: Configure the Debian Internet time pool
   ansible.builtin.lineinfile:
     path: /etc/chrony/chrony.conf
-    regexp: '^pool\s+\S*debian\.pool\.ntp\.org\b'
+    regexp: ^pool\s+\S*debian\.pool\.ntp\.org\b
     line: pool 2.debian.pool.ntp.org iburst
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
   register: homelab_chrony_pool
 
 - name: Use the local administration timezone

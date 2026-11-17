@@ -117,3 +117,37 @@ python -m pytest -q tests/test_quality_p56_52_n8n_cpu_quote.py tests/test_qualit
 
 Exits 0, 0, 0, and 0. Ruff reports 0 findings. Pytest reports 3 passed.
 The new tests remain unregistered until the parent adds them.
+
+## Repair: Ansible scalar quotes
+
+Two pure `quoted-strings` files were normalized. Composed tags, values, order,
+and alias-sharing count `0` match the previous bytes under both `SafeLoader`
+and the default `Loader`.
+
+- `ansible/playbooks/identity-rbac.yml`: the kubectl `argv` filename flag
+  changes from `'-'` to `"-"`. The argument stays the string `-`. The stdin
+  lookup is unchanged.
+- `ansible/roles/debian_laptop/tasks/time.yml`: the chrony regexp loses
+  redundant single quotes. Its value still contains the same six backslash
+  escapes. `mode` changes from `'0644'` to `"0644"`, so it stays a string.
+  A bare `0644` resolves as an integer and was not used.
+
+Regression: `tests/test_quality_p56_52_ansible_scalar_quotes.py`.
+Yamllint on each of these two files alone exits 0.
+
+The 57-file yamllint command now exits 1 with 599 findings: quoted-strings 229,
+line-length 211, indentation 76, comments-indentation 41, braces 22,
+document-end 9, comments 8, document-start 3.
+
+```text
+ruff check --config quality/ruff.toml tests/test_quality_p56_52_ansible_scalar_quotes.py
+ruff format --check --config quality/ruff.toml tests/test_quality_p56_52_ansible_scalar_quotes.py
+mypy --config-file quality/mypy.ini tests/test_quality_p56_52_ansible_scalar_quotes.py
+python -m pytest -q tests/test_quality_p56_52_ansible_scalar_quotes.py tests/test_quality_p56_52_n8n_cpu_quote.py tests/test_quality_p56_52_chart_app_version.py tests/test_quality_p56_52_wiki_storage_framing.py
+```
+
+Exits 0, 0, 0, and 0. Ruff reports 0 findings. Pytest reports 5 passed.
+
+Remaining lane findings are still blocking. The larger quoted-string files mix
+Jinja, flow sequences, and long lines, so they were not rewritten in this pass.
+No test was added to `quality/test-suites.json`.
