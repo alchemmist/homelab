@@ -37,7 +37,9 @@ controller-only state. The wrapper removes result authority before spawning any
 child and sets Linux PR_SET_DUMPABLE=0, denying same-UID child access to parent
 /proc environ/memory/stdout. The build tests this boundary. This prevents a trivial
 agent-written forged PASS marker; it does not prove semantic correctness of tests.
-A separate fresh-container mini invocation reproduces/reviews the exact candidate;
+A separate fresh container installs dependencies from scratch and tests the exact
+candidate BEFORE running any reviewer-model commands, avoiding trust in a work
+agent's writable .venv/tools. Then mini independently reproduces/reviews it;
 reviewer modifications reject publication. Model review is fallible and is not
 independent-model consensus. Trusted controller, not the agent, creates the branch
 and PR via GitHub Git Data API, then leaves merge to the owner. At most5open mini

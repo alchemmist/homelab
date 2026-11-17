@@ -34,7 +34,7 @@ class QueueTransitions(unittest.TestCase):
         c.BATCH = MagicMock()
         c.BATCH.read_namespaced_job.return_value.status = SimpleNamespace(succeeded=1, failed=0)
         c.CORE.list_namespaced_pod.return_value.items = [SimpleNamespace(metadata=SimpleNamespace(name='worker'))]
-        self.result = {'revision': 'a' * 40, 'agent_status': 'Submitted', 'agent_rc': 0, 'checks': {'backend': 0}, 'baseline': {'backend': 0}, 'changes': [], 'report': 'evidence'}
+        self.result = {'revision': 'a' * 40, 'agent_status': 'Submitted', 'agent_rc': 0, 'checks': {'backend': 0}, 'baseline': {'backend': 0}, 'changes': [], 'report': 'evidence', 'candidate_checks': {'backend': 0}}
 
     def state(self):
         return c.DB.execute("SELECT state FROM runs WHERE id='test'").fetchone()[0]
@@ -86,6 +86,18 @@ class QueueTransitions(unittest.TestCase):
         self.tick()
         self.assertEqual(self.state(), 'publishing')
         c.CORE.delete_namespaced_config_map.assert_called_once()
+
+    def test_model_approval_cannot_override_fresh_candidate_test_failure(self):
+        c.save('test', state='review')
+        self.result['candidate_checks'] = {'backend': 1}
+        self.result['review'] = {'approved': True, 'reason': 'model claims it passes'}
+        self.tick()
+        self.assertEqual(self.state(), 'rejected')
+
+    def test_forged_unsigned_worker_result_is_refused(self):
+        c.CORE.read_namespaced_pod_log.return_value = policy.encode_result(self.result)
+        c.tick()
+        self.assertEqual(self.state(), 'failed')
 
     def test_no_unstructured_log_completion(self):
         c.CORE.read_namespaced_pod_log.return_value = 'I am done!'

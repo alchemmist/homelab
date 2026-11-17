@@ -205,7 +205,8 @@ def tick():
             run['result'] = json.dumps(result)
             start_job(run, 'review')
         else:
-            if result.get('review', {}).get('approved') is not True:
+            if (not result.get('candidate_checks') or any(result['candidate_checks'].values())
+                    or result.get('review', {}).get('approved') is not True):
                 save(run['id'], state='rejected')
             else:
                 save(run['id'], state='publishing')

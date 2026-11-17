@@ -104,12 +104,16 @@ def main():
     if any(setup.values()):
         raise RuntimeError('Dependency setup failed; see bounded command log')
     baseline = checks()
+    candidate_checks = None
     if phase == 'review':
         proposal = json.loads(Path('/proposal/proposal.json').read_text())
         for item in validate_changes(proposal['changes']):
             p = ROOT / item['path']
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_bytes(base64.b64decode(item['content']))
+        # Fresh installation, BEFORE any reviewer-model command can alter tools or .venv.
+        # A work-agent's writable dependency cache is never trusted as validation.
+        candidate_checks = checks()
         task = '''Independently review the existing uncommitted patch. Do not implement or change the patch.
 Read AGENTS.md. Reproduce claims, inspect regression tests and look for security/correctness problems.
 You have NO authority over production. Use local synthetic fixtures only.
@@ -142,6 +146,7 @@ Baseline checks: {json.dumps(baseline)}. Baseline failures must be reported, not
     exit_file = ART / 'agent-exit.json'
     result['agent_status'] = json.loads(exit_file.read_text()).get('exit_status') if exit_file.exists() else 'MissingExit'
     if phase == 'review':
+        result['candidate_checks'] = candidate_checks
         review = ART / 'review.json'
         result['review'] = json.loads(review.read_text()) if review.exists() else {'approved': False, 'reason': 'No review'}
         command(['git', 'add', '-N', '--', '.'])
