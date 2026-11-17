@@ -50,6 +50,7 @@
       "tests/test_public_web_access.py",
       "tests/test_quality_evidence_regressions.py",
       "tests/test_quality_dependency_coverage.py",
+      "tests/test_quality_p56_45_service_availability_quotes.py",
       "tests/test_quality_system.py",
       "tests/test_refactor_acceptance.py",
       "tests/test_resource_budget.py",
