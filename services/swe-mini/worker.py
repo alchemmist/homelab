@@ -46,10 +46,13 @@ def agent_main():
         api_base=os.environ['LLM_BASE'], api_key=os.environ['LLM_KEY'], timeout=900,
         num_retries=0, max_tokens=4096,
     )
-    cfg = config['agent'] | dict(step_limit=100, cost_limit=0, wall_time_limit_seconds=4500,
+    smoke = os.getenv('LANE') == 'smoke'
+    cfg = config['agent'] | dict(step_limit=8 if smoke else 100, cost_limit=0,
+                                 wall_time_limit_seconds=600 if smoke else 4500,
                                  output_path=ART / 'trajectory.json')
     agent = DefaultAgent(LitellmTextbasedModel(**model_config), LocalEnvironment(cwd=str(ROOT), timeout=180), **cfg)
     result = agent.run((ART / 'task.txt').read_text())
+    result['n_calls'] = agent.n_calls
     (ART / 'agent-exit.json').write_text(json.dumps(result))
 
 
@@ -61,6 +64,19 @@ def main():
     revision = os.environ['REVISION']
     assert len(revision) == 40 and all(c in '0123456789abcdef' for c in revision)
     ROOT.parent.mkdir(exist_ok=True)
+    if lane == 'smoke':
+        ROOT.mkdir(exist_ok=True)
+        (ART / 'task.txt').write_text('This is an isolated autonomy acceptance test. Execute a bash command to write exactly swe-mini-autonomy-ok to /workspace/repo/proof.txt. Then read the file using a separate bash command, verify its contents, and explicitly submit with echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT. Do not access the network or any other files.')
+        rc = command([sys.executable, '/app/worker.py', '--agent'], timeout=900)
+        exit_file = ART / 'agent-exit.json'
+        exit_result = json.loads(exit_file.read_text()) if exit_file.exists() else {}
+        status = exit_result.get('exit_status', 'MissingExit')
+        marker = ROOT / 'proof.txt'
+        valid = marker.exists() and marker.read_text().strip() == 'swe-mini-autonomy-ok'
+        print(encode_result(dict(lane=lane, phase=phase, revision=revision, agent_rc=rc,
+              agent_status=status, baseline={'isolated_shell': 0}, checks={'marker': 0 if valid else 1, 'multiple_calls': 0 if exit_result.get('n_calls', 0) >= 2 else 1},
+              changes=[], report='Native mini-swe-agent + configured DeepSeek: isolated shell execution and explicit submission acceptance. Next real task must start automatically.')), flush=True)
+        return
     if command(['git', 'clone', '--quiet', 'https://github.com/alchemmist/monori.git', str(ROOT)], cwd=ROOT.parent):
         raise RuntimeError('Clone failed')
     if command(['git', 'checkout', '--detach', revision]):

@@ -188,8 +188,9 @@ def tick():
     if os.getenv('PAUSED', 'false') == 'true':
         STATUS['state'] = 'paused'
         return
-    latest = DB.execute('SELECT max(created) FROM runs').fetchone()[0] or 0
-    if time.time() - latest < int(os.getenv('MIN_INTERVAL_SECONDS', '1800')):
+    previous = DB.execute('SELECT created,lane FROM runs ORDER BY created DESC LIMIT 1').fetchone()
+    latest = previous[0] if previous else 0
+    if previous and previous[1] != 'smoke' and time.time() - latest < int(os.getenv('MIN_INTERVAL_SECONDS', '1800')):
         return
     # Backpressure: bounded open PRs. Never keep creating PRs faster than a human can review.
     prs = github(f'repos/{REPO}/pulls?state=open&per_page=100')
@@ -198,7 +199,7 @@ def tick():
         return
     revision = github(f'repos/{REPO}/commits/main', auth=False)['sha']
     index = DB.execute('SELECT count(*) FROM runs').fetchone()[0]
-    lane = list(LANES)[index % len(LANES)]
+    lane = 'smoke' if index == 0 else list(LANES)[(index - 1) % len(LANES)]
     run_id = time.strftime('%y%m%d%H%M%S') + '-' + uuid.uuid4().hex[:5]
     DB.execute('INSERT INTO runs (id,lane,revision,state,created) VALUES (?,?,?,?,?)', (run_id, lane, revision, 'queued', time.time()))
     DB.commit()
