@@ -4,8 +4,10 @@
 
 Owning Application: `deploy/argocd/apps/swe-mini.yaml`; local chart `charts/swe-mini`,
 values `deploy/swe-mini/values.yaml`. Implementation and hash-locked dependencies:
-`services/swe-mini`. First release is deliberately disabled until its immutable
-image and private prerequisites exist. This document is not evidence of rollout.
+`services/swe-mini`. Activation is requested (`enabled:true`), but the chart
+renders NO controller until the native release has written its first immutable
+image digest. Private prerequisites have been provisioned. This document is not
+evidence of a running agent; inspect actual release/Argo/queue state.
 
 Single Recreate controller on socrat-5, SQLite queue on a protected 2Gi PVC.
 One active work/review job globally. First run is a provider-backed synthetic shell
@@ -66,9 +68,17 @@ mutation or paid-model fallback. Venice browser login/VPN remains untouched.
 
 `SWE Mini Release` tests boundaries, builds an immutable full-SHA Harbor image,
 then calls existing `deploy-to-socrat@v1` in the SAME publish job (`app:swe-mini`).
-CI never calls Argo sync. Prerequisites are Secrets outside Git. First activate
-`enabled:true` in both values ONLY after native release records digest, secrets
-exist, and offline/server dry-run passes. No live image override.
+CI never calls Argo sync. Prerequisites are Secrets outside Git. Bootstrap uses
+an explicit empty-digest fence: activation is already requested in both values,
+but no controller is rendered before the first successful native release records
+its digest. Secrets must exist and offline/server dry-run must pass before this
+release. Argo then activates automatically, without a manual laptop-side step.
+No live image override. The first hosted-runner push stalled on large blob uploads;
+registry observed partial transfers/client disconnects, not a missing robot grant.
+The image now uses a slim Python base, separate dependency/browser layers, headless
+Chromium only and OCI zstd compression. The existing isolated BuildKit TLS workaround
+from `docs/harbor.md` is retained; no ingress/global TLS/VPN settings were changed.
+CI has a bounded60minute budget for the observed slow external upload path.
 
 Pause new tasks with `paused:true` in Git; active job/review finishes. Set
 `enabled:false` to stop controller (not an emergency cancellation of existing Jobs).

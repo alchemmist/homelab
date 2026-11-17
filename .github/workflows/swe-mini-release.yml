@@ -12,7 +12,7 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -36,6 +36,7 @@ jobs:
           context: services/swe-mini
           push: true
           platforms: linux/amd64
+          outputs: type=image,compression=zstd,compression-level=12,force-compression=true
           tags: harbor.socrat.alchemmist.xyz/homelab/swe-mini:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

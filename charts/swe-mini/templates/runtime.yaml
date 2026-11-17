@@ -114,7 +114,8 @@ spec:
       ports:
         - {protocol: TCP, port: 443}
         - {protocol: TCP, port: 80}
-{{- if .Values.enabled }}
+{{/* Native release writes the first digest; do not start a placeholder image. */}}
+{{- if and .Values.enabled .Values.image.digest }}
 ---
 apiVersion: apps/v1
 kind: Deployment
