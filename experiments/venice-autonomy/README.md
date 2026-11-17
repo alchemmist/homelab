@@ -129,8 +129,21 @@ The combined unit suite is `test_lab`, `test_controller_faults`, and `test_conti
 receipt directory `live-20261117-234501`, finished in 176.587 seconds with
 `accepted=true`, `clean_finish=true`, `ConversationExecutionStatus.FINISHED`,
 11 recorded commands, one acceptance round and `continue=false`. That receipt
-does not exercise rejected-then-continued acceptance. It is not a multi-hour
-autonomy result. Missing model-price mapping is not measured zero cost.
+does not exercise rejected-then-continued acceptance.
+
+`live-20261117-235900` is a later run of the same adapter with
+`AUTONOMY_FORCE_CONTINUE_ONCE=1`. It finished in 314.009 seconds:
+`accepted=true`, `clean_finish=true`, `ConversationExecutionStatus.FINISHED`,
+18 commands, visible repro `462306b47604…`, and no cleanup error. Acceptance
+rounds were: round 0 `real_accepted=false` because new comments were present
+(`continue=true`; the force flag was also set, but the real verdict was already
+a rejection); round 1 same candidate hash, `real_accepted=false`, `continue=true`
+with the force flag unset; round 2 `real_accepted=true`, `continue=false`,
+comments gone. The final container grade passed, including the two-method
+boundary. An earlier continuation attempt, `live-20261117-235439`, stopped on
+`BadGatewayError` after round 0 and is not a success. Neither receipt is a
+multi-hour autonomy result. Missing model-price mapping is not measured zero cost.
+The historical grader now lives in this tree as `protocol_regression.py`.
 
 ## k3s direction
 

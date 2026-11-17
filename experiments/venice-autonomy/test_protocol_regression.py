@@ -1,0 +1,118 @@
+import hashlib
+import json
+import os
+import shutil
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+import protocol_regression as pilot
+
+
+def repo_path():
+    return Path(os.environ["PROTOCOL_REGRESSION_REPO"])
+
+
+def python_path():
+    raw = os.environ.get("PROTOCOL_REGRESSION_PYTHON")
+    return Path(raw) if raw else Path(sys.executable)
+
+
+class SnapshotTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.dest = Path(self.temp.name) / "snapshot"
+        self.manifest = pilot.export_snapshot(repo_path(), self.dest)
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def test_export_is_deterministic_and_grader_stays_outside_agent(self):
+        again = Path(self.temp.name) / "again"
+        second = pilot.export_snapshot(repo_path(), again)
+        self.assertEqual(self.manifest["manifest_sha256"], second["manifest_sha256"])
+        self.assertEqual(
+            (self.dest / "manifest.json").read_bytes(),
+            (again / "manifest.json").read_bytes(),
+        )
+        verified = pilot.verify_snapshot(self.dest)
+        self.assertEqual(verified["label"], "historical_regression_exercise")
+        self.assertEqual(verified["claim"], "not_fresh_bug_discovery")
+        self.assertFalse((self.dest / "agent" / "test_protocol_recovery.py").exists())
+        self.assertTrue((self.dest / "grader" / "test_protocol_recovery.py").is_file())
+        names = sorted(path.name for path in self.dest.rglob("*") if path.is_file())
+        self.assertEqual(
+            names,
+            ["agent_protocol.py", "main.py", "manifest.json", "test_protocol_recovery.py"],
+        )
+        self.assertNotIn(".git", names)
+        for item in verified["files"]:
+            data = (self.dest / item["path"]).read_bytes()
+            self.assertEqual(hashlib.sha256(data).hexdigest(), item["sha256"])
+
+    def test_verify_rejects_tamper_extra_file_and_grader_inside_agent(self):
+        main = self.dest / "agent" / "main.py"
+        original = main.read_bytes()
+        main.write_bytes(original + b"\n")
+        with self.assertRaises(ValueError) as tampered:
+            pilot.verify_snapshot(self.dest)
+        self.assertIn("hash mismatch", str(tampered.exception))
+        main.write_bytes(original)
+        extra = self.dest / "agent" / "extra.py"
+        extra.write_text("x = 1\n", encoding="utf-8")
+        with self.assertRaises(ValueError) as unexpected:
+            pilot.verify_snapshot(self.dest)
+        self.assertIn("differ from manifest", str(unexpected.exception))
+        extra.unlink()
+        shutil.copyfile(self.dest / "grader" / "test_protocol_recovery.py", self.dest / "agent" / "test_protocol_recovery.py")
+        with self.assertRaises(ValueError) as embedded:
+            pilot.verify_snapshot(self.dest)
+        self.assertIn("grader is inside the agent snapshot", str(embedded.exception))
+
+    def test_allowed_method_boundary(self):
+        baseline = (self.dest / "agent" / "main.py").read_text(encoding="utf-8")
+        spans = pilot.method_spans(baseline)
+        lines = baseline.splitlines(keepends=True)
+        start, end = spans["_answer"]
+        self.assertGreater(end, start)
+        lines.insert(end - 1, "        return None\n")
+        inside = "".join(lines)
+        inside_report = pilot.allowed_edit_report(baseline, inside)
+        self.assertTrue(inside_report["allowed"], inside_report)
+        outside_report = pilot.allowed_edit_report(baseline, baseline + "\nOUTSIDE = 1\n")
+        self.assertFalse(outside_report["allowed"])
+        broken = pilot.allowed_edit_report("class BrowserSession:\n    pass\n", baseline)
+        self.assertFalse(broken["allowed"])
+        python = python_path()
+        protocol = Path(self.temp.name) / "protocol"
+        shutil.copytree(self.dest / "agent", protocol)
+        protocol_text = (protocol / "agent_protocol.py").read_text(encoding="utf-8")
+        (protocol / "agent_protocol.py").write_text(protocol_text + "\nPROTOCOL_TAMPER = 1\n", encoding="utf-8")
+        rejected_protocol = pilot.grade_candidate(python, self.dest, protocol)
+        self.assertFalse(rejected_protocol["graded"])
+        self.assertFalse(rejected_protocol["passed"])
+        self.assertFalse(rejected_protocol["agent_protocol_unchanged"])
+        outside = Path(self.temp.name) / "outside"
+        shutil.copytree(self.dest / "agent", outside)
+        (outside / "main.py").write_text(baseline + "\nOUTSIDE_TAMPER = 1\n", encoding="utf-8")
+        rejected = pilot.grade_candidate(python, self.dest, outside)
+        self.assertFalse(rejected["graded"])
+        self.assertFalse(rejected["passed"])
+        self.assertFalse(rejected["allowed_edits"]["allowed"])
+
+    def test_fail_pass_gate_on_persistent_interpreter(self):
+        python = python_path()
+        baseline = pilot.grade_candidate(python, self.dest, self.dest / "agent")
+        self.assertFalse(baseline["passed"])
+        self.assertTrue(baseline["graded"])
+        self.assertTrue(all(item["exit_code"] != 0 for item in baseline["grade"]["tests"]))
+        fixed_dir = Path(self.temp.name) / "fixed"
+        pilot.materialize_known_fixed(repo_path(), self.dest, fixed_dir)
+        fixed = pilot.grade_candidate(python, self.dest, fixed_dir)
+        self.assertTrue(fixed["passed"], json.dumps(fixed, sort_keys=True))
+        self.assertTrue(fixed["allowed_edits"]["allowed"])
+
+
+if __name__ == "__main__":
+    unittest.main()
