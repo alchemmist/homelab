@@ -16,7 +16,7 @@ s3Evidence:
   publicOrigin: https://spi-evidence.socrat.alchemmist.xyz
   enabled: false
   retainCredentials: false
-  writerSecret: ''
+  writerSecret: ""
 durableWaitEnabled: false
 llmMinuteTokens: 30000
 queueUI:

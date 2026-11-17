@@ -218,11 +218,11 @@ kube-prometheus-stack:
             summary: Cluster memory requests exceed total allocatable memory.
             rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer
             runbook_url: https://runbooks.prometheus-operator.dev/runbooks/kubernetes/kubememoryovercommit
-          expr: 'sum(namespace_memory:kube_pod_container_resource_requests:sum{})
+          expr: "sum(namespace_memory:kube_pod_container_resource_requests:sum{})
 
-            - sum(kube_node_status_allocatable{job="kube-state-metrics",resource="memory"}) > 0
+            - sum(kube_node_status_allocatable{job=\"kube-state-metrics\",resource=\"memory\"}) > 0
 
-            '
+            "
           for: 10m
           labels:
             severity: warning

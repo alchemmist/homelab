@@ -48,7 +48,7 @@ global:
 
   leaderElection:
     # Override the namespace used for the leader election lease.
-    namespace: "kube-system"
+    namespace: kube-system
 
     # The duration that non-leader candidates will wait after observing a
     # leadership renewal until attempting to acquire leadership of a led but
@@ -735,8 +735,8 @@ webhook:
     # +docs:property
     namespaceSelector:
       matchExpressions:
-        - key: "cert-manager.io/disable-validation"
-          operator: "NotIn"
+        - key: cert-manager.io/disable-validation
+          operator: NotIn
           values:
             - "true"
 
@@ -1445,7 +1445,7 @@ extraObjects: []
 # The field defaults to "helm" but is set to "static" when we render
 # the static YAML manifests.
 # +docs:hidden
-creator: "helm"
+creator: helm
 
 # Field that can be used as a condition when cert-manager is a dependency.
 # This definition is only here as a placeholder such that it is included in

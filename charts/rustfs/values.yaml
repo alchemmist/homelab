@@ -5,7 +5,7 @@ image: rustfs/rustfs:1.0.4@sha256:ed9210d6411d77ffceb70d94b964a3cb7d225983368bc2
 rootSecret: rustfs-root
 resources:
   requests: {cpu: 500m, memory: 4Gi}
-  limits: {cpu: '2', memory: 4Gi}
+  limits: {cpu: "2", memory: 4Gi}
 oidc:
   enabled: false
   secret: rustfs-oidc

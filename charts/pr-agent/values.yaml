@@ -26,7 +26,7 @@ suggestionsMaxCalls: "100"
 persistentInlineComments: true
 handlePushTrigger: true
 # /improve stays manual. Automatic runs on every push reposted the same inline suggestion.
-pushCommands: '["/review"]'
+pushCommands: "[\"/review\"]"
 # Publish describe/review as GitHub checks: in progress while the agent runs, then success or failure.
 publishAsCheckRun: true
 gunicornWorkers: "6"
