@@ -1,3 +1,4 @@
+import ast
 import importlib.util
 from pathlib import Path
 import unittest
@@ -69,10 +70,37 @@ class EndpointTests(unittest.TestCase):
             self.assertIn(required, service)
         self.assertNotIn("PrivateKey", service)
         relay = (ROOT / "scripts/wg-peer15-relay.py").read_text()
-        self.assertIn("FRONT = ('10.250.0.1', 51835)", relay)
-        self.assertIn("CLIENT = ('10.250.0.41', 51830)", relay)
-        self.assertIn("TARGET = ('192.168.0.24', 51830)", relay)
-        self.assertIn("if source != CLIENT", relay)
+        tree = ast.parse(relay)
+        expected = {
+            "FRONT": ("10.250.0.1", 51835),
+            "CLIENT": ("10.250.0.41", 51830),
+            "BACK": ("192.168.0.23", 51836),
+            "TARGET": ("192.168.0.24", 51830),
+        }
+        constants = {
+            node.targets[0].id: ast.literal_eval(node.value)
+            for node in tree.body
+            if isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id in expected
+        }
+        self.assertEqual(constants, expected)
+        self.assertTrue(
+            any(
+                isinstance(part, ast.Compare)
+                and isinstance(part.left, ast.Name)
+                and part.left.id == "source"
+                and len(part.ops) == 1
+                and isinstance(part.ops[0], ast.NotEq)
+                and len(part.comparators) == 1
+                and isinstance(part.comparators[0], ast.Name)
+                and part.comparators[0].id == "CLIENT"
+                for node in ast.walk(tree)
+                if isinstance(node, ast.If)
+                for part in ast.walk(node.test)
+            )
+        )
         self.assertNotIn("0.0.0.0", relay)
 
 

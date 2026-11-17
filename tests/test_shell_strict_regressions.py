@@ -467,6 +467,7 @@ shift
 shift
 cmd=$1
 shift
+if [ "$cmd" = "${FIXTURE_FAIL:-}" ]; then exit 73; fi
 case "$cmd" in
   status)
     if [ -n "${FIXTURE_STATUS:-}" ]; then printf '%s\n' "$FIXTURE_STATUS"; fi
@@ -559,3 +560,20 @@ def test_deploy_refuses_before_helm() -> None:
     assert result.stderr.strip() == USAGE
     assert "rev-parse" in git_text
     assert helm_text == ""
+
+
+def test_deploy_git_failure_refuses_before_any_helm_invocation() -> None:
+    """A failing inspection must not turn into an empty successful answer."""
+    for command in ("status", "ls-files", "rev-parse"):
+        with tempfile.TemporaryDirectory() as raw:
+            directory = Path(raw)
+            values = directory / "runtime.yaml"
+            values.write_text("{}\n", encoding="utf-8")
+            result, _git_text, helm_text = _deploy(
+                directory,
+                ["--apply", "", str(values)],
+                {"FIXTURE_FAIL": command},
+            )
+        assert result.returncode == REFUSAL_EXIT
+        assert "Refusing failed source verification:" in result.stderr
+        assert helm_text == ""

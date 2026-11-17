@@ -947,3 +947,12 @@ def test_evidence_directory_symlinks_are_rejected_before_target_mutation(
     assert outside.stat().st_mode == before
     assert list(outside.iterdir()) == [sentinel]
     assert sentinel.read_text() == "untouched"
+
+
+@pytest.mark.parametrize("omitted", sorted(contracts.RETAINED_PUSH_TESTS))
+def test_existing_main_push_regression_cannot_be_deferred(omitted: str) -> None:
+    """A complete classification is insufficient when it drops an existing gate."""
+    complete = set(contracts.RETAINED_PUSH_TESTS)
+    contracts.require_retained_push_tests(complete)
+    with pytest.raises(ValueError, match="push regression lost"):
+        contracts.require_retained_push_tests(complete - {omitted})

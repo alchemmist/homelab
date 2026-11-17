@@ -46,6 +46,7 @@
       "tests/test_public_entry_resilience.py",
       "tests/test_public_ingress_redirects.py",
       "tests/test_public_web_access.py",
+      "tests/test_quality_evidence_regressions.py",
       "tests/test_quality_system.py",
       "tests/test_refactor_acceptance.py",
       "tests/test_resource_budget.py",
@@ -70,12 +71,14 @@
       "tests/test_vendor_contracts.py",
       "tests/test_webui_fetch_timeout.py",
       "tests/test_webui_tool_guard.py",
+      "tests/test_wg_peer15_relay.py",
       "tests/test_wishlist_images.py",
       "tests/test_wishlist_observability.py"
     ],
     "medium": [
       "tests/test_alert_graph_inventory.py",
       "tests/test_alert_graphs_chart.py",
+      "tests/test_ansible_quality_policy.py",
       "tests/test_app_iam.py",
       "tests/test_argocd_refresh.py",
       "tests/test_authentik_branding.py",
@@ -102,6 +105,7 @@
       "tests/test_rustfs_gateway.py",
       "tests/test_rustfs_namespace.py",
       "tests/test_rustfs_unified_origin.py",
+      "tests/test_shell_strict_regressions.py",
       "tests/test_spi_bundle.py",
       "tests/test_spi_queue_oidc.py",
       "tests/test_spi_queue_ui.py",
@@ -117,8 +121,7 @@
       "tests/test_vm105_renderer_lms_litellm.py",
       "tests/test_vm105_stateful_batch.py",
       "tests/test_wiki_socrat0_placement.py",
-      "tests/test_wishlist_vm105.py",
-      "tests/test_ansible_quality_policy.py"
+      "tests/test_wishlist_vm105.py"
     ],
     "cluster": [
       "tests/kubernetes/test_cluster.py"
@@ -240,7 +243,6 @@
     "tests/test_vps_ip_migration.py": "Not yet scheduled: requires individual dependency/side-effect/platform review; not certified by this CI expansion.",
     "tests/test_vps_panel_host_migrate.py": "Not yet scheduled: requires individual dependency/side-effect/platform review; not certified by this CI expansion.",
     "tests/test_vps_workload_offload.py": "Not yet scheduled: requires individual dependency/side-effect/platform review; not certified by this CI expansion.",
-    "tests/test_wg_peer15_relay.py": "Not yet scheduled: requires individual dependency/side-effect/platform review; not certified by this CI expansion.",
     "tests/test_wiki_editor_resolver.py": "Not yet scheduled: requires individual dependency/side-effect/platform review; not certified by this CI expansion.",
     "tests/test_wiki_runtime_bootstrap.py": "Not yet scheduled: requires individual dependency/side-effect/platform review; not certified by this CI expansion.",
     "tests/test_wiki_runtime_migration.py": "Not yet scheduled: requires individual dependency/side-effect/platform review; not certified by this CI expansion.",

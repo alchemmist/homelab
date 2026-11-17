@@ -10,7 +10,7 @@ from common import ROOT, frozen_source_files, tracked
 import boundaries
 
 
-def require(condition, message):
+def require(condition: object, message: str) -> None:
     if not condition:
         raise ValueError(message)
 
@@ -36,6 +36,43 @@ def local_refs(value):
     elif isinstance(value, list):
         for item in value:
             local_refs(item)
+
+
+# Offline modules executed by the seven push gates at main181eca75.
+# This is coverage preservation, not acceptance of findings or unscheduled work.
+RETAINED_PUSH_TESTS = frozenset(
+    [
+        "tests/test_alert_graph_panel_ids.py",
+        "tests/test_alert_graphs_chart.py",
+        "tests/test_argocd_refresh.py",
+        "tests/test_deployment_ownership.py",
+        "tests/test_gateway_readonly.py",
+        "tests/test_infrastructure_contracts.py",
+        "tests/test_n8n_failure_alert_policy.py",
+        "tests/test_operational_entrypoints.py",
+        "tests/test_otel_application_credentials.py",
+        "tests/test_otel_application_leaf_rotation.py",
+        "tests/test_otel_application_registry.py",
+        "tests/test_refactor_acceptance.py",
+        "tests/test_socrat5_app_placement.py",
+        "tests/test_source_pointers.py",
+        "tests/test_spi_execution_links.py",
+        "tests/test_target_placement_ownership.py",
+        "tests/test_vendor_contracts.py",
+        "tests/test_vm105_management.py",
+        "tests/test_vm105_renderer_lms_litellm.py",
+        "tests/test_wg_peer15_relay.py",
+        "tests/test_wishlist_observability.py",
+    ]
+)
+
+
+def require_retained_push_tests(scheduled: set[str]) -> None:
+    """Reject replacement DAGs that silently drop existing main push regressions."""
+    require(
+        RETAINED_PUSH_TESTS <= scheduled,
+        "Existing main push regression lost from scheduled suites",
+    )
 
 
 def check():
@@ -98,6 +135,7 @@ def check():
     }
     scheduled = [p for paths in inventory["suites"].values() for p in paths]
     require(len(scheduled) == len(set(scheduled)), "Test assigned to multiple suites")
+    require_retained_push_tests(set(scheduled))
     deferred = set(inventory["notScheduled"])
     require(not set(scheduled) & deferred, "Quality integrity contract failed")
     require(

@@ -241,13 +241,8 @@ def unique(findings: Iterable[Finding]) -> list[Finding]:
     for item in findings:
         base = item["id"]
         counts[base] += 1
-        copied: Finding = {
-            "id": f"{base}.{counts[base]}",
-            "ruleId": item["ruleId"],
-            "severity": item["severity"],
-            "message": item["message"],
-            "location": item["location"],
-        }
+        copied = item.copy()
+        copied["id"] = f"{base}.{counts[base]}"
         result.append(copied)
     return result
 
