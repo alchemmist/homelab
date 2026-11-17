@@ -10,13 +10,27 @@ import sys
 import tempfile
 import uuid
 from pathlib import Path
-from typing import TypedDict
+from typing import TYPE_CHECKING, TypedDict
 
 import lint
-from common import ROOT, command, failure, finding, owned, report, tracked, use_project_tools
+from common import (
+    ROOT,
+    command,
+    failure,
+    finding,
+    owned,
+    report,
+    tracked,
+    use_project_tools,
+)
 from strict_guard import partition, suppression_hits, verify_configuration
 
 import charts
+
+if TYPE_CHECKING:
+    from collections.abc import Collection, Mapping
+
+    from common import Finding
 
 LOGGER = logging.getLogger(__name__)
 
@@ -32,6 +46,7 @@ TOOLS = [
     "ansible",
     "dependencies",
 ]
+_MESSAGE_LIMIT = 300
 
 
 class _ToolStats(TypedDict, total=False):
@@ -59,6 +74,14 @@ class _AuditSummary(TypedDict):
     blockers: list[dict[str, str]]
     sourceClean: bool
     pendingPartitions: list[str]
+
+
+class _FindingRow(TypedDict):
+    rule: str
+    path: str
+    line: int
+    partition: str
+    message: str
 
 
 def write_private(path: Path, text: str) -> None:
@@ -107,16 +130,104 @@ def snapshot_is_stable(start: tuple[str, bool], end: tuple[str, bool]) -> bool:
     return start[1] and end[1] and start[0] == end[0]
 
 
-def summarize(tool, payload):
+def _json_object(value: object) -> dict[str, object]:
+    """Copy a JSON object without dropping keys or reordering them."""
+    if not isinstance(value, dict):
+        message = "Expected a JSON object"
+        raise TypeError(message)
+    parsed: dict[str, object] = {}
+    for key, item in value.items():
+        if not isinstance(key, str):
+            message = "JSON object keys must be strings"
+            raise TypeError(message)
+        parsed[key] = item
+    return parsed
+
+
+def _require_finding(value: object) -> Finding:
+    """Return the finding fields the summary reads, leaving the original payload intact."""
+    if not isinstance(value, dict):
+        message = "Finding must be an object"
+        raise TypeError(message)
+    identity = value.get("id")
+    rule_id = value.get("ruleId")
+    severity = value.get("severity")
+    text = value.get("message")
+    location = value.get("location")
+    if (
+        not isinstance(identity, str)
+        or not isinstance(rule_id, str)
+        or not isinstance(severity, str)
+        or not isinstance(text, str)
+        or not isinstance(location, dict)
+    ):
+        message = "Finding fields have an unexpected shape"
+        raise TypeError(message)
+    path = location.get("path")
+    start_line = location.get("startLine")
+    end_line = location.get("endLine")
+    if (
+        not isinstance(path, str)
+        or not isinstance(start_line, int)
+        or isinstance(start_line, bool)
+        or not isinstance(end_line, int)
+        or isinstance(end_line, bool)
+    ):
+        message = "Finding location has an unexpected shape"
+        raise TypeError(message)
+    checked: Finding = {
+        "id": identity,
+        "ruleId": rule_id,
+        "severity": severity,
+        "message": text,
+        "location": {"path": path, "startLine": start_line, "endLine": end_line},
+    }
+    return checked
+
+
+def _string_or_absent(value: object, label: str) -> str | None:
+    """Accept a string field or a missing JSON null, and reject other shapes."""
+    if value is None or isinstance(value, str):
+        return value
+    message = label + " must be a string or absent"
+    raise TypeError(message)
+
+
+def _partition_name(path: str) -> str:
+    """Use the shared ownership partition without treating it as acceptance."""
+    part = partition(path)
+    if not isinstance(part, str) or not part:
+        message = "Finding partition must be a non-empty string"
+        raise TypeError(message)
+    return part
+
+
+def _lint_check_result(findings: object, count: object) -> tuple[list[Finding], int]:
+    """Narrow one linter return value to the report writer contract."""
+    if not isinstance(count, int) or isinstance(count, bool):
+        message = "Linter target count must be an integer"
+        raise TypeError(message)
+    if not isinstance(findings, list):
+        message = "Linter findings must be a list"
+        raise TypeError(message)
+    return [_require_finding(item) for item in findings], count
+
+
+def summarize(tool: str, payload: Mapping[str, object]) -> tuple[_ToolStats, list[_FindingRow]]:
     """Partition genuine findings without interpreting collection as acceptance."""
-    by_rule = {}
-    by_partition = {}
-    by_rule_partition = {}
-    rows = []
-    for item in payload.get("findings", []):
-        rule = item["ruleId"]
-        path = item["location"]["path"]
-        part = partition(path)
+    by_rule: dict[str, int] = {}
+    by_partition: dict[str, int] = {}
+    by_rule_partition: dict[str, dict[str, int]] = {}
+    rows: list[_FindingRow] = []
+    raw_findings = payload.get("findings", [])
+    if not isinstance(raw_findings, list):
+        message = "Report findings must be a list"
+        raise TypeError(message)
+    for item in raw_findings:
+        checked = _require_finding(item)
+        rule = checked["ruleId"]
+        path = checked["location"]["path"]
+        part = _partition_name(path)
         by_rule[rule] = by_rule.get(rule, 0) + 1
         by_partition[part] = by_partition.get(part, 0) + 1
         by_rule_partition.setdefault(rule, {})
@@ -125,48 +236,78 @@ def summarize(tool, payload):
             {
                 "rule": rule,
                 "path": path,
-                "line": item["location"]["startLine"],
+                "line": checked["location"]["startLine"],
                 "partition": part,
-                "message": item["message"][:300],
+                "message": checked["message"][:_MESSAGE_LIMIT],
             }
         )
     files = "0"
-    for metric in payload.get("metrics", []):
-        if metric["label"] == "Files / targets checked":
-            files = metric["value"]
-    return {
+    raw_metrics = payload.get("metrics", [])
+    if not isinstance(raw_metrics, list):
+        message = "Report metrics must be a list"
+        raise TypeError(message)
+    for metric in raw_metrics:
+        if not isinstance(metric, dict):
+            message = "Report metric must be an object"
+            raise TypeError(message)
+        if metric["label"] != "Files / targets checked":
+            continue
+        value = metric["value"]
+        if not isinstance(value, str):
+            message = "Files metric must be a string"
+            raise TypeError(message)
+        files = value
+    stats: _ToolStats = {
         "tool": tool,
         "files": files,
-        "status": payload.get("status"),
-        "failureKind": payload.get("failureKind"),
-        "blocking": len(payload.get("findings", [])),
+        "status": _string_or_absent(payload.get("status"), "Report status"),
+        "failureKind": _string_or_absent(payload.get("failureKind"), "Report failure kind"),
+        "blocking": len(raw_findings),
         "byRule": dict(sorted(by_rule.items())),
         "byPartition": dict(sorted(by_partition.items())),
         "byRuleAndPartition": {
             rule: dict(sorted(parts.items())) for rule, parts in sorted(by_rule_partition.items())
         },
-    }, rows
+    }
+    return stats, rows
 
 
-def run_tool(name):
+def run_tool(name: str) -> dict[str, object]:
     """Collect the actual linter result and its native report."""
-    findings, count = lint.check(name)
+    raw_findings, raw_count = lint.check(name)
+    findings, count = _lint_check_result(raw_findings, raw_count)
     output = ROOT / "reports" / f"{name}.json"
     report(name, findings, count, output)
-    return json.loads(output.read_text())
+    return _json_object(json.loads(output.read_text()))
 
 
-def run_manifests():
+def run_manifests() -> dict[str, object]:
     """Render and validate actual chart outputs without a production cluster."""
-    findings, count, _inventory = charts.check(validate=True)
+    raw_findings, raw_count, _inventory = charts.check(validate=True)
+    findings, count = _lint_check_result(raw_findings, raw_count)
     output = ROOT / "reports/manifests.json"
     report("manifests", findings, count, output)
-    return json.loads(output.read_text())
+    return _json_object(json.loads(output.read_text()))
 
 
-def suppression_payload(hits):
+def _suppression_hit_list(hits: object) -> list[str]:
+    """Narrow suppression hits to the path:line strings the payload records."""
+    if not isinstance(hits, list):
+        message = "Suppression hits must be a list"
+        raise TypeError(message)
+    typed: list[str] = []
+    for hit in hits:
+        if not isinstance(hit, str):
+            message = "Suppression hit must be a string"
+            raise TypeError(message)
+        typed.append(hit)
+    return typed
+
+
+def suppression_payload(hits: Collection[str]) -> dict[str, object]:
     """Keep every forbidden suppression visible as a blocking finding."""
-    findings = []
+    findings: list[Finding] = []
+    detail = "Inline suppression is a blocking finding and does not waive the underlying rule."
     for hit in hits:
         path, line = hit.rsplit(":", 1)
         findings.append(
@@ -174,17 +315,18 @@ def suppression_payload(hits):
                 "inline-suppression",
                 path,
                 int(line),
-                "Inline suppression is a blocking finding and does not waive the underlying rule.",
+                detail,
                 hit,
             )
         )
-    return {
+    payload: dict[str, object] = {
         "reportVersion": 0,
         "status": "failed" if findings else "passed",
         "failureKind": "quality" if findings else None,
         "metrics": [{"label": "Files / targets checked", "value": str(len(hits))}],
         "findings": findings,
     }
+    return payload
 
 
 def audit_exit_code(*, configuration_ready: bool, source_clean: bool) -> int:
@@ -237,7 +379,8 @@ def main() -> int:
     for name in ("suppressions", *TOOLS, "manifests"):
         try:
             if name == "suppressions":
-                payload = suppression_payload(suppression_hits(owned(tracked())))
+                hits = _suppression_hit_list(suppression_hits(owned(tracked())))
+                payload = suppression_payload(hits)
             elif name == "manifests":
                 payload = run_manifests()
             else:
