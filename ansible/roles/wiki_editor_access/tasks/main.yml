@@ -26,20 +26,20 @@
 
 - name: Discover DNS service
   ansible.builtin.command:
-    argv: [kubectl, --kubeconfig, "{{ wiki_editor_kubeconfig }}", -n, kube-system, get, service, kube-dns, -o, 'jsonpath={.spec.clusterIP}']
+    argv: [kubectl, --kubeconfig, "{{ wiki_editor_kubeconfig }}", -n, kube-system, get, service, kube-dns, -o, "jsonpath={.spec.clusterIP}"]
   register: wiki_editor_cluster_dns
   changed_when: false
 
 - name: Issue private gateway certificate
   ansible.builtin.command:
-    argv: [kubectl, --kubeconfig, "{{ wiki_editor_kubeconfig }}", apply, -f, '-']
+    argv: [kubectl, --kubeconfig, "{{ wiki_editor_kubeconfig }}", apply, -f, "-"]
     stdin: "{{ {'apiVersion': 'cert-manager.io/v1', 'kind': 'Certificate', 'metadata': {'name': wiki_editor_tls_secret, 'namespace': wiki_editor_gateway_namespace}, 'spec': {'secretName': wiki_editor_tls_secret, 'dnsNames': [wiki_editor_host], 'issuerRef': {'name': wiki_editor_cluster_issuer, 'kind': 'ClusterIssuer'}}} | to_nice_yaml }}"
   register: wiki_editor_cert
   changed_when: "'created' in wiki_editor_cert.stdout or 'configured' in wiki_editor_cert.stdout"
 
 - name: Wait for certificate
   ansible.builtin.command:
-    argv: [kubectl, --kubeconfig, "{{ wiki_editor_kubeconfig }}", -n, "{{ wiki_editor_gateway_namespace }}", wait, --for=condition=Ready, 'certificate/{{ wiki_editor_tls_secret }}', --timeout=300s]
+    argv: [kubectl, --kubeconfig, "{{ wiki_editor_kubeconfig }}", -n, "{{ wiki_editor_gateway_namespace }}", wait, --for=condition=Ready, "certificate/{{ wiki_editor_tls_secret }}", --timeout=300s]
   changed_when: false
 
 - name: Preserve other private virtual hosts

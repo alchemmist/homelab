@@ -1,7 +1,7 @@
 ---
 - name: Gather platform facts for the SSH client
   ansible.builtin.setup:
-    gather_subset: ['!all', '!min', os_family]
+    gather_subset: ["!all", "!min", os_family]
 
 - name: Validate the internal node alias registry
   ansible.builtin.assert:
@@ -53,7 +53,7 @@
   ansible.builtin.blockinfile:
     path: /etc/ssh/ssh_config
     insertbefore: BOF
-    marker: '# {mark} HOMELAB NODE SSH ALIASES'
+    marker: "# {mark} HOMELAB NODE SSH ALIASES"
     block: Include /etc/ssh/ssh_config.d/10-homelab-nodes.conf
     owner: root
     group: root

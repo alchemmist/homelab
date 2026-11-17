@@ -9,7 +9,7 @@
   tasks:
     - name: Verify the existing partition type without formatting it
       ansible.builtin.command:
-        argv: [blkid, -s, TYPE, -o, value, '{{ host_swap_device }}']
+        argv: [blkid, -s, TYPE, -o, value, "{{ host_swap_device }}"]
       register: host_swap_type
       changed_when: false
 
@@ -72,7 +72,7 @@
 
     - name: Activate only the existing swap partition
       ansible.builtin.command:
-        argv: [swapon, '{{ host_swap_device }}']
+        argv: [swapon, "{{ host_swap_device }}"]
       when: host_swap_uuid not in host_swap_active.stdout.split()
       changed_when: true
 

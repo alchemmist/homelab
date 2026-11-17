@@ -25,21 +25,21 @@
 
 - name: Integrate selected native OIDC services while preserving local emergency logins
   ansible.builtin.command:
-    argv: [python3, /home/alchemmist/.cache/homelab-authentik/integrate.py, /home/alchemmist/.cache/homelab-authentik, '{{ item }}']
+    argv: [python3, /home/alchemmist/.cache/homelab-authentik/integrate.py, /home/alchemmist/.cache/homelab-authentik, "{{ item }}"]
   loop: "{{ identity_oidc_services | reject('equalto', 'litellm') | list }}"
   no_log: true
   changed_when: true
 
 - name: Copy explicit reviewed identity mapping for LiteLLM
   ansible.builtin.copy:
-    src: '{{ playbook_dir }}/../../deploy/identity/account-mappings.json'
+    src: "{{ playbook_dir }}/../../deploy/identity/account-mappings.json"
     dest: /home/alchemmist/.cache/homelab-authentik/account-mappings.json
     mode: "0600"
   when: "'litellm' in identity_oidc_services"
 
 - name: Copy reviewed non-admin LiteLLM subjects
   ansible.builtin.copy:
-    src: '{{ playbook_dir }}/../../deploy/identity/litellm-users.json'
+    src: "{{ playbook_dir }}/../../deploy/identity/litellm-users.json"
     dest: /home/alchemmist/.cache/homelab-authentik/litellm-users.json
     mode: "0600"
   when: "'litellm' in identity_oidc_services"

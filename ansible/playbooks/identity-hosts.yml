@@ -15,13 +15,13 @@
     - name: Persist safe K3s kubeconfig mode
       ansible.builtin.lineinfile:
         path: /etc/rancher/k3s/config.yaml
-        regexp: '^write-kubeconfig-mode:'
+        regexp: "^write-kubeconfig-mode:"
         line: 'write-kubeconfig-mode: "0640"'
     - name: Persist owner-only kubeconfig group
       ansible.builtin.lineinfile:
         path: /etc/rancher/k3s/config.yaml
-        regexp: '^write-kubeconfig-group:'
-        line: 'write-kubeconfig-group: alchemmist'
+        regexp: "^write-kubeconfig-group:"
+        line: "write-kubeconfig-group: alchemmist"
     - name: Close world-readable cluster-admin credential immediately
       ansible.builtin.file:
         path: /etc/rancher/k3s/k3s.yaml
@@ -30,12 +30,12 @@
         mode: "0640"
     - name: Verify a non-owner cannot read cluster-admin credentials
       ansible.builtin.command:
-        argv: [runuser, -u, tim, --, test, '!', -r, /etc/rancher/k3s/k3s.yaml]
+        argv: [runuser, -u, tim, --, test, "!", -r, /etc/rancher/k3s/k3s.yaml]
       changed_when: false
     - name: Verify owner automation still works
       become: false
       ansible.builtin.command:
-        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, auth, can-i, '*', '*', --all-namespaces]
+        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, auth, can-i, "*", "*", --all-namespaces]
       environment:
         K3S_CONFIG_FILE: /dev/null
       changed_when: false

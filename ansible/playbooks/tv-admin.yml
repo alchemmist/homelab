@@ -185,7 +185,7 @@
 
     - name: Restore the last input when the television starts
       ansible.builtin.command:
-        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, settings, put, global, set_auto_play, '1']
+        argv: [adb, -s, "{{ homelab_tv_serial }}", shell, settings, put, global, set_auto_play, "1"]
       when: homelab_tv_restore_source.stdout != '1'
 
     - name: Select HDMI 1 when explicitly requested

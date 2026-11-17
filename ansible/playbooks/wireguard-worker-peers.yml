@@ -54,7 +54,7 @@
     - name: Persist the dedicated worker peer
       ansible.builtin.blockinfile:
         path: /etc/wireguard/wg-socrat.conf
-        marker: '# {mark} homelab socrat-3 peer'
+        marker: "# {mark} homelab socrat-3 peer"
         block: |
           [Peer]
           PublicKey = {{ wg_socrat_nodes['socrat-3'].public_key }}
