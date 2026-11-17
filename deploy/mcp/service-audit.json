@@ -283,6 +283,11 @@
       "application": "wishlist",
       "decision": "no-client",
       "reason": "Source-only review: no dedicated deployed read-only MCP endpoint is declared for this Application; no client or credential access authorized."
+    },
+    {
+      "application": "swe-mini",
+      "decision": "no-client",
+      "reason": "Source-only controller/job queue review: no dedicated first-party read-only MCP endpoint is declared; no new client, credential access or runtime acceptance is authorized."
     }
   ],
   "workloads": [

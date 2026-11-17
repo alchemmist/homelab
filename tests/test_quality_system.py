@@ -314,14 +314,19 @@ def test_dependency_audit_uses_installed_environment_and_deduplicates(monkeypatc
 
     def run(argv, **kwargs):
         calls.append(argv)
-        return SimpleNamespace(stdout=json.dumps({"dependencies": [item, item]}))
+        return SimpleNamespace(returncode=1, stdout=json.dumps({"dependencies": [item, item]}))
 
     monkeypatch.setattr(lint, "command", run)
+    # This original unit exercises the installed environment; separate regressions
+    # require complete service-lock coverage and reject unsupported ecosystems.
+    monkeypatch.setattr(lint, "tracked", lambda: ["uv.lock"])
     findings, _ = lint.check("dependencies")
     assert len(findings) == 1
     assert "--no-deps" not in calls[0]
     assert "--disable-pip" not in calls[0]
     assert "--local" in calls[0]
+    assert "--strict" in calls[0]
+    assert len(calls) == 1
 
 
 def test_nonsecret_tokenizer_exception_cannot_hide_other_values(tmp_path, monkeypatch):
