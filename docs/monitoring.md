@@ -221,3 +221,16 @@ against the tracked JSON before publishing; backups/ownership receipts and URL
 are operator-private (0700) in `~/.local/state/homelab-grafana-llm-public/`. Time selection is
 allowed; annotations are disabled. The public URL is shareable read-only access.
 Do not publish the existing full LLM dashboard or relax datasource/API gates.
+
+### socrat-4 contention exception — 2026-11-17
+
+Owner requested much less sensitive PSI warning on this single-vCPU host. Only
+`SocratNodeResourceContention` on `socrat-4` now requires CPU PSI some >90%, memory
+>50%, or I/O >60%, continuously for 30m (input remains a 5m average). Other nodes
+retain CPU >50%, memory/I/O >25%, for 10m. Disjoint node selectors preserve the
+existing alert name, labels and graph routing. Other resource/availability alerts
+are untouched. This intentionally trades earlier overload detection for less
+noise, not a claim that the host has no contention. Prior 24h CPU PSI max 81.9%,
+mean 24.2%; memory max 0.12%, I/O max 4.0%. No silences or host changes.
+Regression: `python3 tests/test_socrat4_contention.py` runs native promtool boundary,
+duration and other-node tests plus the existing node hardware suite.

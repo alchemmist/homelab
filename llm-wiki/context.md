@@ -127,3 +127,10 @@ not nonoverlapping buckets (do not sum adjacentpoints).30daytable unchanged; own
 live panels matchedGit before edit. Range queries5m/30m/1h/3h populated afterfix;
 ArgoSyncedHealthy, GrafanaAPI serves exactfixedpanels. Regression test
  tests/test_llm_keys_window.py; no backend/collector mutation or missing→0 fallback.
+
+17Nov owner architecture correction: `wg-socrat` is VPN-as-infrastructure only.
+Application foreign egress must use a distinct native3x-ui service client and
+its subscription with an official Pod VPN client, NOT a new SSH-to-NL tunnel.
+[Reusable service-VPN runbook](service-vpn-egress.md). N8N corrected in5b722c5c;
+[finite acceptance and cleanup](../docs/n8n/service-vpn-20261117.md). Venice's
+pre-existing SSH-egress remains a separately recorded deviation, not a template.

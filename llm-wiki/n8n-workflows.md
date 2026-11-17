@@ -1,3 +1,22 @@
+## CURRENT: 17Nov — SSH-egress заменён на VPN-as-service
+
+Владелец отклонил отдельные SSH-туннели как архитектуру прикладного egress.
+Текущий n8n использует отдельного native 3x-ui клиента **svc-n8n-google, ID40**,
+его подписку и официальный Xray-core sidecar. Путь: российская нода → штатный
+московский вход VPN-as-service → NL. `wg-socrat` остаётся инфраструктурой,
+не подменяет service-identity. [Штатный runbook](service-vpn-egress.md).
+
+Source5b722c5c, fresh global nativepending[] + SPIowner/processing/paid0,
+48 Node-тестов; Pod n8n-7bc974f784-cbbfn Ready2/2, ArgoHealthy. Подписка
+получается init через native JSON endpoint при старте, не hot-refresh.
+Группа `services`; по решению владельца quota0/expiry0 — без квоты и
+автоматического истечения. limitIp1 сохранён; накопленный трафик не сброшен.
+Все7 графов/настроек/credentialrefs/static/pin/activities/PVC/Secret сохранены.
+Google-only scope и сквозной TLS остались, GitHub/прочие сервисы напрямую.
+Старый n8n SSH-sidecar удалён, отдельный SSH-key отозван, его2Secret удалены;
+общий registryrobot не отозван. Venice не меняли; его SSH-вариант — отклонение,
+НЕ шаблон для новых сервисов. Нижние SSH-acceptance записи — история, superseded.
+
 ## CURRENT17Nov owner-approved follow-up: Google NL egress + SPI compaction LIVE
 
 Supersedes the earlier PARTIAL/no-egress status BELOW; keep it as incident history.
