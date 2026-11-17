@@ -16,7 +16,8 @@
       ansible.builtin.stat:
         path: "{{ tv_state }}/tv-uncertain.json"
       register: tv_uncertain
-    - ansible.builtin.assert:
+    - name: Refuse to continue while an uncertain import receipt exists
+      ansible.builtin.assert:
         that: not tv_uncertain.stat.exists
         fail_msg: Inspect the private TV receipts before retrying an uncertain import.
     - name: Read the owned native share URL
@@ -25,10 +26,12 @@
         src: "{{ tv_state }}/fully-url.json"
       register: tv_url_file
       no_log: true
-    - ansible.builtin.set_fact:
+    - name: Decode the approved Fully start URL
+      ansible.builtin.set_fact:
         tv_start_url: "{{ ((tv_url_file.content | b64decode | from_json).startURL) }}"
       no_log: true
-    - ansible.builtin.assert:
+    - name: Require the approved public dashboard URL
+      ansible.builtin.assert:
         that: tv_start_url is match('^https://grafana\.socrat\.alchemmist\.xyz/public-dashboards/[a-f0-9]{32}\?kiosk=1&hideLogo=1&autofitpanels=true&socratTv=1$')
       no_log: true
     - name: Verify the already-authorized TV (never reconnect or change VPN)
@@ -46,7 +49,8 @@
         argv: [adb, '-s', '{{ tv_adb }}', shell, 'test -e /sdcard/fully-once-settings.json && echo PENDING || echo EMPTY']
       register: tv_pending
       changed_when: false
-    - ansible.builtin.assert:
+    - name: Require the known TV model, Fully focus, and an empty import
+      ansible.builtin.assert:
         that:
           - tv_model.stdout | trim == 'MiTV-MOOQ1'
           - "'de.ozerov.fully/de.ozerov.fully.FullyActivity' in tv_focus.stdout"
@@ -57,35 +61,42 @@
       register: tv_network_before
       changed_when: false
       no_log: true
-    - ansible.builtin.set_fact:
+    - name: Record the plan digest and receipt id
+      ansible.builtin.set_fact:
         tv_plan_hash: "{{ ({'target':tv_adb,'url':tv_start_url,'model':tv_model.stdout,'focus':tv_focus.stdout,'network':tv_network_before.stdout} | to_json) | hash('sha256') }}"
         tv_receipt_id: "{{ now(utc=true,fmt='%Y%m%dT%H%M%SZ') }}"
       no_log: true
-    - ansible.builtin.debug:
+    - name: Report the URL-only plan digest
+      ansible.builtin.debug:
         msg: "URL-only operation=1, plan_hash={{ tv_plan_hash }}; existing Fully scale/fonts, APKs, keys, VPN, DNS and HDMI are not configured."
-    - ansible.builtin.assert:
+    - name: Require the approved plan digest before apply
+      ansible.builtin.assert:
         that: tv_public_hash == tv_plan_hash
       when: tv_public_apply | default(false) | bool
     - name: Apply exactly one Fully preference, with uncertain-write stop
       when: tv_public_apply | default(false) | bool
       block:
-        - become: true
+        - name: Record the pre-change URL receipt
+          become: true
           ansible.builtin.copy:
             dest: "{{ tv_state }}/tv-before-{{ tv_receipt_id }}.json"
             content: "{{ {'plan_hash':tv_plan_hash,'network':tv_network_before.stdout,'focus':tv_focus.stdout,'url_sha256':tv_start_url | hash('sha256')} | to_nice_json }}"
             mode: '0600'
           no_log: true
-        - become: true
+        - name: Mark the import uncertain until consumption is proven
+          become: true
           ansible.builtin.copy:
             dest: "{{ tv_state }}/tv-uncertain.json"
             content: "{{ {'plan_hash':tv_plan_hash,'receipt':tv_receipt_id} | to_json }}"
             mode: '0600'
-        - ansible.builtin.copy:
+        - name: Write the single startURL candidate
+          ansible.builtin.copy:
             dest: "{{ tv_candidate }}"
             content: "{{ {'startURL':tv_start_url} | to_json }}"
             mode: '0600'
           no_log: true
-        - ansible.builtin.command:
+        - name: Push the single startURL file to the TV
+          ansible.builtin.command:
             argv: [adb, '-s', '{{ tv_adb }}', push, '{{ tv_candidate }}', /sdcard/fully-once-settings.json]
         - name: Restart only the already-foreground Fully browser
           ansible.builtin.command:
@@ -98,22 +109,26 @@
           until: tv_consumed.stdout | trim == 'EMPTY'
           retries: 10
           delay: 1
-        - ansible.builtin.command:
+        - name: Read DNS and VPN state after the URL import
+          ansible.builtin.command:
             argv: [adb, '-s', '{{ tv_adb }}', shell, '{{ tv_network_guard }}']
           register: tv_network_after
           changed_when: false
           no_log: true
-        - ansible.builtin.assert:
+        - name: Require DNS and VPN state to stay unchanged
+          ansible.builtin.assert:
             that: tv_network_after.stdout == tv_network_before.stdout
             fail_msg: TV network guard changed; inspect receipts, no automatic retry.
           no_log: true
-        - become: true
+        - name: Record the consumed URL-only receipt
+          become: true
           ansible.builtin.copy:
             dest: "{{ tv_state }}/tv-after-{{ tv_receipt_id }}.json"
             content: "{{ {'plan_hash':tv_plan_hash,'url_sha256':tv_start_url | hash('sha256'),'import_consumed':true,'network_unchanged':true,'preference_keys':['startURL']} | to_nice_json }}"
             mode: '0600'
           no_log: true
-        - become: true
+        - name: Clear the uncertain import marker after success
+          become: true
           ansible.builtin.file:
             path: "{{ tv_state }}/tv-uncertain.json"
             state: absent
