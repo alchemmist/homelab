@@ -27,8 +27,17 @@ rules:
     forbid-inf: false
   # Unsatisfiable with ansible-lint key-order on the same mappings.
   key-ordering: disable
-  # Empty maps are load-bearing. permissions: {} is least privilege, not a null defect.
-  empty-values: disable
-  # Required quotes change booleans, numbers, and the GitHub on key into strings.
-  quoted-strings: disable
+  # Explicit null and an empty map remain valid; only implicit empty values fail.
+  empty-values:
+    level: error
+    forbid-in-block-mappings: true
+    forbid-in-flow-mappings: true
+    forbid-in-block-sequences: true
+  # Enforce one compatible quote style, not a blanket exception for strings.
+  quoted-strings:
+    level: error
+    quote-type: double
+    required: only-when-needed
+    check-keys: false
+    allow-quoted-quotes: false
 ...

@@ -179,12 +179,23 @@
         "forbid-scientific-notation": false,
         "forbid-nan": false,
         "forbid-inf": false
+      },
+      "empty-values": {
+        "level": "error",
+        "forbid-in-block-mappings": true,
+        "forbid-in-flow-mappings": true,
+        "forbid-in-block-sequences": true
+      },
+      "quoted-strings": {
+        "level": "error",
+        "quote-type": "double",
+        "required": "only-when-needed",
+        "check-keys": false,
+        "allow-quoted-quotes": false
       }
     },
     "disabled": {
-      "key-ordering": "Unsatisfiable beside ansible-lint key-order. Task mappings use that semantic order, not Unicode alphabetical order, so both rules cannot pass on the same mapping.",
-      "empty-values": "Intentional empty mappings are load-bearing. Workflow permissions set to an empty map are least privilege; flagging that map would pressure a wider token.",
-      "quoted-strings": "Forcing quotes turns booleans, numbers, and the GitHub on key into strings. only-when-needed still rewrites intentional quotes inside templates. The rule is not semantics-preserving."
+      "key-ordering": "Unsatisfiable beside ansible-lint key-order. Task mappings use that semantic order, not Unicode alphabetical order, so both rules cannot pass on the same mapping."
     }
   },
   "generatedWorkflows": {

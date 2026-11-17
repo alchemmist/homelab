@@ -5,15 +5,15 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from pathlib import Path
 import subprocess
 from collections import Counter
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable, Sequence
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def use_project_tools():
+def use_project_tools() -> None:
     """Prefer this worktree's pinned virtualenv and checksum-locked tool binaries."""
     prefix = os.pathsep.join((str(ROOT / ".venv/bin"), str(ROOT / ".quality-tools/bin")))
     current = os.environ.get("PATH", "")
@@ -21,7 +21,14 @@ def use_project_tools():
         os.environ["PATH"] = prefix + (os.pathsep + current if current else "")
 
 
-def command(argv, *, stdin=None, allowed=(0,), timeout=120):
+def command(
+    argv: Sequence[str | os.PathLike[str]],
+    *,
+    stdin: str | None = None,
+    allowed: Collection[int] = (0,),
+    timeout: float | None = 120,
+) -> subprocess.CompletedProcess[str]:
+    """Run a bounded source tool; never expose arbitrary failure output."""
     process = subprocess.run(
         argv,
         input=stdin,
@@ -37,7 +44,7 @@ def command(argv, *, stdin=None, allowed=(0,), timeout=120):
     return process
 
 
-def tracked():
+def tracked() -> list[str]:
     names = command(["git", "ls-files", "-z"]).stdout.split("\0")
     result = []
     for name in names:
@@ -51,7 +58,7 @@ def tracked():
     return sorted(set(result))
 
 
-def vendor_prefixes():
+def vendor_prefixes() -> tuple[str, ...]:
     vendors = json.loads((ROOT / "deploy/contracts/vendors.json").read_text())
     prefixes = []
     for tree in vendors["trees"]:

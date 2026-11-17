@@ -24,11 +24,20 @@ Monori (`/Users/antonmoss/code/monori`) is the reference for strict Python, read
 
 yamllint `1.38.0` extends `default`. `line-length.max` is 100, the same length Ruff uses, not the yamllint default of 80. Truthy values are only `true` and `false`. `check-keys: false` is required because GitHub Actions and several schemas use the key `on`, which is a truthy word and not a boolean value. Comment, comment-indentation, document-start, and truthy findings are errors. `document-end` requires the document end marker. Implicit octal values are rejected; explicit `0o` forms stay allowed because they are the unambiguous spelling. Floats must have a numeral before the decimal point. Scientific notation, NaN, and infinity stay allowed because forbidding them would reject real numeric data. Helm and Ansible templates under `/templates/` and `*.j2` are not parsed as YAML.
 
-Three default-disabled rules stay off, each for a conflict rather than taste:
+`key-ordering` cannot pass together with ansible-lint `key-order`: task mappings
+use that semantic order, not Unicode alphabetical order. Its scope outside
+Ansible still requires review; it is not a completed architecture-policy audit.
 
-- `key-ordering` cannot pass together with ansible-lint `key-order`. Task mappings use that semantic order, not Unicode alphabetical order.
-- `empty-values` flags empty mappings. `permissions: {}` is the least-privilege workflow default; treating it as a defect would pressure a wider token.
-- `quoted-strings` is not semantics-preserving. Required quotes turn booleans, numbers, and the GitHub `on` key into strings.
+Two earlier disable rationales were factually wrong and have been removed.
+`empty-values` flags implicit nulls, **not** `permissions: {}`. Explicit null and
+empty maps stay valid; implicit empty mapping and sequence values now fail.
+`quoted-strings` applies to string scalars, not boolean/number coercion. It now
+enforces double quotes when necessary and rejects unnecessary quotation, the
+compatible bare-scalar style rather than an exception. Key checking stays off
+for the same cross-schema `on` boundary as truthy-key checking. These are blocking
+rules, not accepted historical debt. A pinned-tool stdin test proves both rules
+reject violations while least-privilege empty permissions and typed booleans/
+numbers remain valid. Newly revealed findings must be repaired, not baselined.
 
 Shellcheck uses `--enable=all` on `*.sh` and shell shebangs. Jinja templates are not shellchecked. Inline workflow scripts are parsed as Python or checked with the pinned shell dialect. An unrecognized shell is `workflow-shell-unreviewed`, not a skip.
 

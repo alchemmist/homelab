@@ -5,6 +5,8 @@ import importlib.util
 import json
 from pathlib import Path
 import shutil
+import stat
+import subprocess
 import sys
 from unittest.mock import patch
 
@@ -12,10 +14,15 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts/quality"))
-from common import finding, report, unique, failure
+from common import finding, report, unique, failure, command
 import charts
 import contracts
-from strict_report import audit_exit_code
+from strict_report import (
+    audit_exit_code,
+    create_evidence_directory,
+    snapshot_is_stable,
+    write_private,
+)
 
 
 @pytest.mark.parametrize(
@@ -746,3 +753,197 @@ def test_frozen_path_escape_rejected_even_with_updated_fixture_digest(tmp_path: 
     policy_path.write_text(json.dumps(policy))
     with patch.object(common, "ROOT", root), pytest.raises(ValueError, match="Unsafe frozen"):
         common.owned(["charts/spi-triage/files/anything.py"])
+
+
+@pytest.mark.parametrize(
+    ("first_clean", "last_clean", "same_head", "expected"),
+    [
+        (True, True, True, True),
+        (False, True, True, False),
+        (True, False, True, False),
+        (True, True, False, False),
+    ],
+)
+def test_audit_snapshot_requires_same_clean_source_at_both_boundaries(
+    first_clean: bool, last_clean: bool, same_head: bool, expected: bool
+) -> None:
+    """Reject dirty inputs or a commit race even when all collectors pass."""
+    head = "a" * 40
+    last_head = head if same_head else "b" * 40
+    assert snapshot_is_stable((head, first_clean), (last_head, last_clean)) is expected
+
+
+def test_private_evidence_reruns_are_separate_and_restricted(tmp_path: Path) -> None:
+    """Keep previous run bytes instead of silently replacing evidence at one path."""
+    base = tmp_path / "private"
+    first = create_evidence_directory(base, "a" * 40)
+    write_private(first / "summary.json", "previous run")
+    second = create_evidence_directory(base, "a" * 40)
+    assert first != second
+    assert (first / "summary.json").read_text() == "previous run"
+    assert not (second / "summary.json").exists()
+    for directory in (base, base / "runs", first, second):
+        assert stat.S_IMODE(directory.stat().st_mode) == stat.S_IRWXU
+    assert stat.S_IMODE((first / "summary.json").stat().st_mode) == (stat.S_IRUSR | stat.S_IWUSR)
+    write_private(first / "summary.json", "replacement within same run")
+    assert (first / "summary.json").read_text() == "replacement within same run"
+    assert list(first.iterdir()) == [first / "summary.json"]
+
+
+@pytest.mark.parametrize("head", ["", "../escape", "g" * 40])
+def test_evidence_invalid_commit_rejected_before_directory_creation(
+    tmp_path: Path, head: str
+) -> None:
+    """Never derive an evidence path from an unvalidated source identifier."""
+    base = tmp_path / "private"
+    with pytest.raises(ValueError, match="Invalid source commit"):
+        create_evidence_directory(base, head)
+    assert not base.exists()
+
+
+@pytest.mark.parametrize("kind", ["file", "directory"])
+def test_private_evidence_symlink_refuses_without_touching_target(
+    tmp_path: Path, kind: str
+) -> None:
+    """Refuse redirection of evidence into another path before any file write."""
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    victim = outside / "evidence.json"
+    victim.write_text("untouched")
+    if kind == "file":
+        destination = tmp_path / "evidence.json"
+        destination.symlink_to(victim)
+    else:
+        alias = tmp_path / "alias"
+        alias.symlink_to(outside, target_is_directory=True)
+        destination = alias / "evidence.json"
+    with pytest.raises(ValueError, match="symlink"):
+        write_private(destination, "must not be written")
+    assert victim.read_text() == "untouched"
+    assert list(outside.iterdir()) == [victim]
+
+
+@pytest.mark.parametrize(
+    "fault", ["none", "suppressions", "configuration", "dirty", "head-change", "interrupt"]
+)
+def test_full_audit_preserves_tool_failures_and_unstable_snapshot_as_incomplete(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fault: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Use isolated fake collectors, never actual hosts, credentials or lint runs."""
+    module = sys.modules["strict_report"]
+    root = tmp_path / "repo"
+    root.mkdir()
+    base = tmp_path / "private"
+    head = "a" * 40
+    snapshots = iter(
+        [
+            (head, fault != "dirty"),
+            ("b" * 40 if fault == "head-change" else head, True),
+        ]
+    )
+    calls: list[str] = []
+
+    def fake_tool(name: str) -> dict[str, object]:
+        calls.append(name)
+        if fault == "interrupt":
+            raise KeyboardInterrupt
+        return {"reportVersion": 0, "status": "passed", "findings": [], "metrics": []}
+
+    def fake_manifests() -> dict[str, object]:
+        return fake_tool("manifests")
+
+    def fake_failure(path: Path, _error: Exception) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"failureKind": "command", "findings": []}))
+
+    def fake_configuration() -> None:
+        if fault == "configuration":
+            message = "Synthetic private configuration diagnostics"
+            raise ValueError(message)
+
+    def fake_owned(names: list[str]) -> list[str]:
+        if fault == "suppressions":
+            message = "Synthetic frozen-provenance failure"
+            raise ValueError(message)
+        return names
+
+    monkeypatch.setattr(module, "PRIVATE", base)
+    monkeypatch.setattr(module, "ROOT", root)
+    monkeypatch.setattr(module, "use_project_tools", lambda: None)
+    monkeypatch.setattr(module, "verify_configuration", fake_configuration)
+    monkeypatch.setattr(module, "source_snapshot", lambda: next(snapshots))
+    monkeypatch.setattr(
+        module, "command", lambda argv: subprocess.CompletedProcess(argv, 0, "test\n", "")
+    )
+    monkeypatch.setattr(module, "tracked", list)
+    monkeypatch.setattr(module, "owned", fake_owned)
+    monkeypatch.setattr(module, "suppression_hits", lambda _names: [])
+    monkeypatch.setattr(module, "run_tool", fake_tool)
+    monkeypatch.setattr(module, "run_manifests", fake_manifests)
+    monkeypatch.setattr(module, "failure", fake_failure)
+    base.mkdir(mode=0o700)
+    write_private(base / "summary.json", json.dumps({"head": "previous", "sourceClean": True}))
+    if fault == "interrupt":
+        with pytest.raises(KeyboardInterrupt):
+            module.main()
+        interrupted = json.loads((base / "summary.json").read_text())
+        assert interrupted["head"] == head
+        assert interrupted["sourceClean"] is False
+        assert interrupted["configurationReady"] is False
+        assert interrupted["collectionFinished"] is False
+        return
+    expected = 0 if fault == "none" else 2
+    assert module.main() == expected
+    summary = json.loads((base / "summary.json").read_text())
+    assert summary["collectionFinished"] is True
+    assert summary["configurationReady"] is (fault == "none")
+    assert summary["sourceClean"] is (fault == "none")
+    assert calls == [*module.TOOLS, "manifests"]
+    directory = Path(summary["evidenceDirectory"])
+    assert (directory / "summary.json").read_bytes() == (base / "summary.json").read_bytes()
+    if fault == "suppressions":
+        assert summary["tools"]["suppressions"]["failureKind"] == "command"
+        assert summary["tools"]["suppressions"]["blocking"] is None
+    elif fault == "configuration":
+        assert summary["tools"]["configuration"]["failureKind"] == "command"
+    elif fault != "none":
+        assert summary["snapshotStable"] is False
+        assert any(item["tool"] == "source-snapshot" for item in summary["blockers"])
+    assert "Synthetic frozen-provenance failure" not in caplog.text
+    assert "Synthetic private configuration diagnostics" not in caplog.text
+
+
+def test_yaml_empty_and_quote_rules_do_not_confuse_maps_or_typed_values() -> None:
+    """Check the real pinned tool, not the previous incorrect disable rationale."""
+    argv = ["yamllint", "--format", "parsable", "--config-file", "quality/yamllint.yaml", "-"]
+    valid = '---\npermissions: {}\nflag: true\ncount: 1\nintentionalNull: null\nstringBoolean: "yes"\n...\n'
+    good = command(argv, stdin=valid, allowed=(0, 1))
+    assert good.returncode == 0
+    invalid = "---\nmissing:\nlabel: 'plain string'\n...\n"
+    bad = command(argv, stdin=invalid, allowed=(0, 1))
+    assert bad.returncode == 1
+    assert "empty-values" in bad.stdout
+    assert "quoted-strings" in bad.stdout
+
+
+@pytest.mark.parametrize("link_at", ["base", "runs"])
+def test_evidence_directory_symlinks_are_rejected_before_target_mutation(
+    tmp_path: Path, link_at: str
+) -> None:
+    """Do not chmod or populate a symlinked private evidence directory."""
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    sentinel = outside / "sentinel"
+    sentinel.write_text("untouched")
+    before = outside.stat().st_mode
+    base = tmp_path / "private"
+    if link_at == "base":
+        base.symlink_to(outside, target_is_directory=True)
+    else:
+        base.mkdir(mode=0o700)
+        (base / "runs").symlink_to(outside, target_is_directory=True)
+    with pytest.raises(ValueError, match="symlink"):
+        create_evidence_directory(base, "a" * 40)
+    assert outside.stat().st_mode == before
+    assert list(outside.iterdir()) == [sentinel]
+    assert sentinel.read_text() == "untouched"
