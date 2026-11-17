@@ -108,6 +108,7 @@
       "tests/test_rustfs_unified_origin.py",
       "tests/test_shell_strict_regressions.py",
       "tests/test_shell_strict_second_batch.py",
+      "tests/test_socrat4_contention.py",
       "tests/test_spi_bundle.py",
       "tests/test_spi_queue_oidc.py",
       "tests/test_spi_queue_ui.py",
