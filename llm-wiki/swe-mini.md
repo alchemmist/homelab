@@ -32,6 +32,11 @@ Candidates must be small UTF8 regular-file changes to server/app, server/tests,
 web/src, web/tests or common (20files/350KB maximum); dependency upgrades, CI,
 deployment, migrations, tooling and agent instruction changes are not published.
 All baseline and post-checks must pass; model completion alone is insufficient.
+Worker results have per-run/per-phase HMAC authentication derived from durable
+controller-only state. The wrapper removes result authority before spawning any
+child and sets Linux PR_SET_DUMPABLE=0, denying same-UID child access to parent
+/proc environ/memory/stdout. The build tests this boundary. This prevents a trivial
+agent-written forged PASS marker; it does not prove semantic correctness of tests.
 A separate fresh-container mini invocation reproduces/reviews the exact candidate;
 reviewer modifications reject publication. Model review is fallible and is not
 independent-model consensus. Trusted controller, not the agent, creates the branch

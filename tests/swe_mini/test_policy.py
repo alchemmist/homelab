@@ -39,6 +39,14 @@ class PublicationPolicy(unittest.TestCase):
         result = {'phase': 'work', 'checks': {'backend': 0}}
         self.assertEqual(p.decode_result(p.encode_result(result)), result)
 
+    def test_result_authentication(self):
+        marker = p.encode_result({'checks': {'backend': 0}}, 'parent-only-key')
+        self.assertEqual(p.decode_result(marker, 'parent-only-key')['checks']['backend'], 0)
+        with self.assertRaises(ValueError):
+            p.decode_result(marker, 'wrong-key')
+        with self.assertRaises(ValueError):
+            p.decode_result(p.encode_result({}), 'parent-only-key')
+
     def test_missing_ambiguous_result(self):
         marker = p.encode_result({})
         for text in ['', marker + '\n' + marker]:

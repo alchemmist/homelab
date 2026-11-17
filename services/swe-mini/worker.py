@@ -12,6 +12,12 @@ from policy import LANES, encode_result, validate_changes
 
 ROOT = Path('/workspace/repo')
 ART = Path('/workspace/artifacts')
+# Remove before ANY subprocess: model-driven children must not inherit result authority.
+RESULT_KEY = os.environ.pop('RESULT_KEY', '')
+
+
+def signed_result(result):
+    return encode_result(result, RESULT_KEY)
 
 
 def command(args, *, cwd=ROOT, timeout=900):
@@ -56,7 +62,17 @@ def agent_main():
     (ART / 'agent-exit.json').write_text(json.dumps(result))
 
 
+def harden_parent():
+    import ctypes
+    # Deny same-UID children /proc/<parent>/{environ,mem,fd}, including Pod stdout.
+    # Together with a parent-only HMAC key this prevents an agent from simply
+    # printing a forged passing test envelope through /proc/1/fd/1.
+    if len(RESULT_KEY) != 64 or ctypes.CDLL(None).prctl(4, 0, 0, 0, 0) != 0:
+        raise RuntimeError('Authenticated non-dumpable worker wrapper required')
+
+
 def main():
+    harden_parent()
     ART.mkdir(parents=True, exist_ok=True)
     Path('/workspace/tmp').mkdir(exist_ok=True)
     lane = os.environ['LANE']
@@ -73,7 +89,7 @@ def main():
         status = exit_result.get('exit_status', 'MissingExit')
         marker = ROOT / 'proof.txt'
         valid = marker.exists() and marker.read_text().strip() == 'swe-mini-autonomy-ok'
-        print(encode_result(dict(lane=lane, phase=phase, revision=revision, agent_rc=rc,
+        print(signed_result(dict(lane=lane, phase=phase, revision=revision, agent_rc=rc,
               agent_status=status, baseline={'isolated_shell': 0}, checks={'marker': 0 if valid else 1, 'multiple_calls': 0 if exit_result.get('n_calls', 0) >= 2 else 1},
               changes=[], report='Native mini-swe-agent + configured DeepSeek: isolated shell execution and explicit submission acceptance. Next real task must start automatically.')), flush=True)
         return
@@ -147,7 +163,7 @@ Baseline checks: {json.dumps(baseline)}. Baseline failures must be reported, not
             validate_changes(result['changes'])
     result['command_tail'] = (ART / 'commands.log').read_text(errors='replace')[-16000:]
     # No model transcript or shell stdout is streamed into cluster logs.
-    print(encode_result(result), flush=True)
+    print(signed_result(result), flush=True)
 
 
 if __name__ == '__main__':
@@ -159,5 +175,5 @@ if __name__ == '__main__':
             main()
         except Exception as exc:
             tail = (ART / 'commands.log').read_text(errors='replace')[-12000:] if (ART / 'commands.log').exists() else ''
-            print(encode_result({'error': type(exc).__name__ + ': ' + str(exc)[:400], 'command_tail': tail}), flush=True)
+            print(signed_result({'error': type(exc).__name__ + ': ' + str(exc)[:400], 'command_tail': tail}), flush=True)
             sys.exit(1)

@@ -1,6 +1,8 @@
 """Trusted publication boundaries. No repository-supplied code is executed here."""
 import base64
 import gzip
+import hashlib
+import hmac
 import json
 from pathlib import PurePosixPath
 
@@ -40,19 +42,28 @@ def validate_changes(changes):
     return changes
 
 
-def encode_result(result):
+def encode_result(result, key=None):
     raw = json.dumps(result).encode()
     if len(raw) > 900_000:
         raise ValueError("Result too large")
-    return "SWE_RESULT:" + base64.b64encode(gzip.compress(raw)).decode()
+    payload = base64.b64encode(gzip.compress(raw)).decode()
+    if key:
+        payload += '.' + hmac.new(key.encode(), payload.encode(), hashlib.sha256).hexdigest()
+    return "SWE_RESULT:" + payload
 
 
-def decode_result(log):
+def decode_result(log, key=None):
     lines = [line.removeprefix("SWE_RESULT:") for line in log.splitlines() if line.startswith("SWE_RESULT:")]
     if len(lines) != 1:
         raise ValueError("Missing or ambiguous result")
+    payload = lines[0]
+    if key:
+        payload, signature = payload.rsplit('.', 1)
+        expected = hmac.new(key.encode(), payload.encode(), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(signature, expected):
+            raise ValueError('Unauthenticated worker result')
     import io
-    with gzip.GzipFile(fileobj=io.BytesIO(base64.b64decode(lines[0], validate=True))) as f:
+    with gzip.GzipFile(fileobj=io.BytesIO(base64.b64decode(payload, validate=True))) as f:
         raw = f.read(900_001)
     if len(raw) > 900_000:
         raise ValueError("Result exceeds limit")

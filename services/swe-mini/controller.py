@@ -2,6 +2,9 @@
 import base64
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
+import hashlib
+import hmac
+import secrets
 import logging
 import os
 from pathlib import Path
@@ -19,11 +22,18 @@ NS = os.getenv('NAMESPACE', 'swe-mini')
 REPO = 'alchemmist/monori'
 DB = sqlite3.connect(os.getenv('STATE_PATH', '/state/queue.sqlite'), check_same_thread=False)
 DB.execute('CREATE TABLE IF NOT EXISTS runs (id TEXT PRIMARY KEY, lane TEXT, revision TEXT, state TEXT, job TEXT, result TEXT, review TEXT, pr TEXT, created REAL)')
+DB.execute('CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
+DB.execute('INSERT OR IGNORE INTO metadata (key,value) VALUES (?,?)', ('result-master-key', secrets.token_hex(32)))
 DB.commit()
+RESULT_MASTER = bytes.fromhex(DB.execute('SELECT value FROM metadata WHERE key=?', ('result-master-key',)).fetchone()[0])
 SESSION = requests.Session()
 SESSION.headers['Accept'] = 'application/vnd.github+json'
 TOKEN = {'value': '', 'expires': 0}
 STATUS = {'state': 'starting', 'last_tick': 0, 'error': ''}
+
+
+def signing_key(run_id, phase):
+    return hmac.new(RESULT_MASTER, f'{run_id}:{phase}'.encode(), hashlib.sha256).hexdigest()
 
 
 def github(path, method='GET', data=None, auth=True):
@@ -85,6 +95,7 @@ def start_job(run, phase):
                 'resources': {'requests': {'cpu': '250m', 'memory': '1Gi', 'ephemeral-storage': '2Gi'}, 'limits': {'cpu': '2', 'memory': '5Gi', 'ephemeral-storage': '9Gi'}},
                 'env': [{'name': k, 'value': v} for k,v in {
                     'LANE': lane, 'PHASE': phase, 'REVISION': revision, 'HISTORY': history[:20000],
+                    'RESULT_KEY': signing_key(run_id, phase),
                     'HOME': '/workspace', 'TMPDIR': '/workspace/tmp', 'UV_CACHE_DIR': '/workspace/.cache/uv',
                     'LLM_BASE': 'http://litellm.llm.svc.cluster.local:4000/v1',
                 }.items()] + [{'name': 'LLM_KEY', 'valueFrom': {'secretKeyRef': {'name': 'swe-mini-model', 'key': 'api-key'}}}],
@@ -161,7 +172,7 @@ def tick():
             return
         log = CORE.read_namespaced_pod_log(pods[0].metadata.name, NS, limit_bytes=2_000_000)
         try:
-            result = decode_result(log)
+            result = decode_result(log, signing_key(run['id'], run['state']))
         except Exception:
             if run['state'] == 'review':
                 try:

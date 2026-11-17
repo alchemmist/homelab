@@ -5,9 +5,25 @@ import os
 from pathlib import Path
 import tempfile
 import threading
+import subprocess
+import sys
 import worker
 
 calls = []
+if sys.platform == 'linux':
+    worker.RESULT_KEY = 'a' * 64  # synthetic fixture, not a real job key
+    worker.harden_parent()
+    probe = '''import os
+assert 'RESULT_KEY' not in os.environ
+try:
+    open('/proc/%d/environ').read()
+except PermissionError:
+    pass
+else:
+    raise AssertionError('Child can inspect trusted parent')
+''' % os.getpid()
+    subprocess.run([sys.executable, '-c', probe], check=True)
+    print('Parent-only result authority and /proc isolation PASS')
 
 
 class Handler(BaseHTTPRequestHandler):

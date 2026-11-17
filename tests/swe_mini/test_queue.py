@@ -40,7 +40,7 @@ class QueueTransitions(unittest.TestCase):
         return c.DB.execute("SELECT state FROM runs WHERE id='test'").fetchone()[0]
 
     def tick(self):
-        c.CORE.read_namespaced_pod_log.return_value = policy.encode_result(self.result)
+        c.CORE.read_namespaced_pod_log.return_value = policy.encode_result(self.result, c.signing_key('test', self.state()))
         c.tick()
 
     def test_clean_no_finding_done(self):
