@@ -1,6 +1,12 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
+  name: swe-mini-worker
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
   name: swe-mini-controller
 imagePullSecrets:
   {{- toYaml .Values.imagePullSecrets | nindent 2 }}
@@ -178,15 +184,4 @@ spec:
   selector: {app: swe-mini-controller}
   ports:
     - {name: http, port: 9090, targetPort: http}
----
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: swe-mini
-  labels: {release: kube-prometheus-stack}
-spec:
-  selector:
-    matchLabels: {app: swe-mini-controller}
-  endpoints:
-    - {port: http, path: /metrics, interval: 60s}
 {{- end }}

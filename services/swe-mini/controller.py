@@ -50,6 +50,8 @@ def github(path, method='GET', data=None, auth=True):
 def save(run_id, **fields):
     DB.execute('UPDATE runs SET ' + ','.join(key + '=?' for key in fields) + ' WHERE id=?', [*fields.values(), run_id])
     DB.commit()
+    if 'state' in fields:
+        logging.info('Run %s state=%s', run_id, fields['state'])
 
 
 def start_job(run, phase):
@@ -75,7 +77,7 @@ def start_job(run, phase):
         'metadata': {'labels': {'app': 'swe-mini-worker', 'phase': phase}},
         'spec': {
             'nodeSelector': {'kubernetes.io/hostname': 'socrat-5'},
-            'automountServiceAccountToken': False, 'restartPolicy': 'Never',
+            'automountServiceAccountToken': False, 'restartPolicy': 'Never', 'serviceAccountName': 'swe-mini-worker',
             'imagePullSecrets': [{'name': 'swe-mini-harbor-pull'}],
             'securityContext': {'runAsNonRoot': True, 'runAsUser': 1000, 'runAsGroup': 1000, 'fsGroup': 1000, 'seccompProfile': {'type': 'RuntimeDefault'}},
             'containers': [{'name': 'worker', 'image': os.environ['WORKER_IMAGE'], 'command': ['python', '/app/worker.py'],
@@ -204,12 +206,13 @@ def tick():
     DB.execute('INSERT INTO runs (id,lane,revision,state,created) VALUES (?,?,?,?,?)', (run_id, lane, revision, 'queued', time.time()))
     DB.commit()
     STATUS['state'] = 'running'
+    logging.info('Queued run %s lane=%s revision=%s', run_id, lane, revision[:12])
 
 
 class Health(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == '/healthz':
-            self.send_response(200 if time.time() - STATUS['last_tick'] < 180 else 503)
+            self.send_response(200 if time.time() - STATUS['last_tick'] < 180 and not STATUS['error'] else 503)
             payload = json.dumps(STATUS).encode()
         elif self.path == '/metrics':
             self.send_response(200)

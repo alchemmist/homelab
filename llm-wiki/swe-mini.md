@@ -8,8 +8,9 @@ values `deploy/swe-mini/values.yaml`. Implementation and hash-locked dependencie
 image and private prerequisites exist. This document is not evidence of rollout.
 
 Single Recreate controller on socrat-5, SQLite queue on a protected 2Gi PVC.
-One active work/review job globally, rotating backend, frontend, security, polish,
-and tests. Continuous scheduling, at least30minutes between task admissions;
+One active work/review job globally. First run is a provider-backed synthetic shell
+acceptance; the next Monori run is admitted automatically without the usual idle
+interval. Then rotate backend, frontend, security, polish and tests. Continuous scheduling, at least30minutes between task admissions;
 100model steps /4500agent seconds,6900job seconds, no automatic retry of failed
 jobs. The next queue task starts independently of model termination. State survives
 controller restart; current Jobs continue without the laptop. This is not HA or
@@ -77,19 +78,24 @@ reset queue. Worker Jobs TTL24h; review proposal ConfigMaps removed on completio
 
 Read-only inspection:
 ```
+python3 scripts/swe-mini-status.py
 kubectl -n swe-mini get deploy,pods,jobs,pvc
 kubectl -n swe-mini logs deploy/swe-mini-controller --tail=50
 kubectl -n swe-mini port-forward svc/swe-mini-controller 9090:9090
 # http://127.0.0.1:9090/healthz and /metrics; no public ingress
 ```
 
-Prometheus ServiceMonitor exports queue-state counts. Worker result envelope in
+The private /metrics endpoint exposes queue-state counts. This cluster uses OTel
+as sole scraper with a frozen native scrape bundle; a new ServiceMonitor would
+NOT be collected. Custom queue metrics/dashboard/alerts are NOT yet integrated;
+standard Kubernetes deployment/job health remains visible to platform monitoring.
+Do not enable a second Prometheus scrape path as a shortcut. Worker result envelope in
 private Pod logs is gzip/base64 JSON, NOT encryption; it includes candidate text,
 report and bounded command-log tail, never intentionally keys. Full trajectories
 and commands remain only in disposable job storage until TTL, not in the durable
 queue. Queue database retains reports/checks/candidates/reviews/PR URLs; access via
 trusted controller, keep copies private. No Grafana dashboard/alert acceptance
-or artifact off-node retention is implied by the ServiceMonitor definition.
+or artifact off-node retention is implied by the private metrics endpoint.
 
 ## Acceptance gates
 
