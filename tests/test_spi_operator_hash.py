@@ -14,13 +14,16 @@ spec.loader.exec_module(m)
 
 
 class HashTests(unittest.TestCase):
+    """In-memory checks for transaction-local table hashes."""
+
     def connection(self):
         c = sqlite3.connect(":memory:", isolation_level=None)
         c.row_factory = sqlite3.Row
         self.addCleanup(c.close)
         return c
 
-    def test_orders_and_identifiers(self):
+    def test_orders_and_identifiers(self) -> None:
+        """Keep hashes stable across rollback and sensitive to row changes."""
         for ddl in (
             'CREATE TABLE "a""b"("rowid" TEXT, "oid" TEXT, k TEXT, v BLOB)',
             'CREATE TABLE "a""b"(k TEXT, v BLOB, PRIMARY KEY(k DESC)) WITHOUT ROWID',
@@ -42,19 +45,22 @@ class HashTests(unittest.TestCase):
                 c.rollback()
                 self.assertEqual(before, m.table_hashes(c))
 
-    def test_shadowed_aliases_refused(self):
+    def test_shadowed_aliases_refused(self) -> None:
+        """Refuse tables whose names shadow SQLite rowid aliases."""
         c = self.connection()
         c.execute("CREATE TABLE t(rowid, _rowid_, oid, value)")
         with self.assertRaisesRegex(ValueError, "shadowed"):
             m.table_hashes(c)
 
-    def test_virtual_refused(self):
+    def test_virtual_refused(self) -> None:
+        """Refuse virtual tables that have no physical btree order."""
         c = self.connection()
         c.execute("CREATE VIRTUAL TABLE t USING fts5(value)")
         with self.assertRaisesRegex(ValueError, "unsupported table kind"):
             m.table_hashes(c)
 
-    def test_physical_order_is_not_external_canonical(self):
+    def test_physical_order_is_not_external_canonical(self) -> None:
+        """Show that insertion order changes the external hash."""
         hashes = []
         for values in (("a", "b"), ("b", "a")):
             c = self.connection()
@@ -66,7 +72,8 @@ class HashTests(unittest.TestCase):
     @unittest.skipUnless(
         os.environ.get("SPI_SORT_FIXTURE"), "requires host fixture and tiny container tmpfs"
     )
-    def test_disk_full_sort_reproduction(self):
+    def test_disk_full_sort_reproduction(self) -> None:
+        """Reproduce a read-only sort failure only when the host fixture is present."""
         c = sqlite3.connect(
             "file:" + os.environ["SPI_SORT_FIXTURE"] + "?mode=ro", uri=True, isolation_level=None
         )

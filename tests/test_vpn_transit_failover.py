@@ -1,3 +1,5 @@
+"""Check VPN transit failover decisions, image bytes, and source contracts."""
+
 import importlib.util, json, pathlib, hashlib, tarfile, io
 import pytest, yaml
 
@@ -101,7 +103,8 @@ def test_image_determinism_and_binary_integrity(tmp_path, monkeypatch):
         m.build(binary, a)
 
 
-def test_deployment_single_host_no_api_token_and_native_boot_fence():
+def test_deployment_single_host_no_api_token_and_native_boot_fence() -> None:
+    """Keep one host, no API token, and a boot fence that does not start the agent."""
     s = (ROOT / "charts/vpn-transit/templates/deployment.yaml").read_text()
     assert (
         "type: Recreate" in s
@@ -135,7 +138,8 @@ def test_tcp_time_wait_reuse_never_allows_a_live_owner_or_udp_reuse():
     assert "if typ==socket.SOCK_STREAM:s.setsockopt" in source
 
 
-def test_machine_https_exception_is_exact_not_a_human_acl_relaxation():
+def test_machine_https_exception_is_exact_not_a_human_acl_relaxation() -> None:
+    """Keep the machine passthrough exact and the role default empty."""
     host = yaml.safe_load((ROOT / "ansible/inventory/host_vars/socrat-2.yml").read_text())
     defaults = yaml.safe_load(
         (ROOT / "ansible/roles/wireguard_private_web/defaults/main.yml").read_text()

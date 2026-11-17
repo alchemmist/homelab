@@ -9,7 +9,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ArgoRefreshTests(unittest.TestCase):
-    def test_short_tokens_with_refresh_and_native_tls(self):
+    """Check Argo CD refresh tokens, session length, and native TLS."""
+
+    def test_short_tokens_with_refresh_and_native_tls(self) -> None:
+        """Require offline access, a short refresh threshold, and native TLS."""
         v = yaml.safe_load((ROOT / "deploy/argocd/values.yaml").read_text())
         oidc = yaml.safe_load(v["configs"]["cm"]["oidc.config"])
         self.assertIn("offline_access", oidc["requestedScopes"])
@@ -28,7 +31,8 @@ class ArgoRefreshTests(unittest.TestCase):
             '"access_token_validity":"minutes=5","refresh_token_validity":"hours=8"', source
         )
 
-    def test_live_gitops_and_bootstrap_values_cannot_drift(self):
+    def test_live_gitops_and_bootstrap_values_cannot_drift(self) -> None:
+        """Require live GitOps values to match the bootstrap chart and transport."""
         bootstrap = yaml.safe_load((ROOT / "deploy/argocd/values.yaml").read_text())
         live = yaml.safe_load((ROOT / "deploy/platform/argo-cd/values.yaml").read_text())
         self.assertEqual(live, bootstrap)
@@ -40,7 +44,8 @@ class ArgoRefreshTests(unittest.TestCase):
             ["$values/deploy/platform/argo-cd/values.yaml"],
         )
 
-    def test_backend_certificate_verification_is_enabled(self):
+    def test_backend_certificate_verification_is_enabled(self) -> None:
+        """Require the named backend certificate and refuse skipped verification."""
         v = yaml.safe_load((ROOT / "deploy/argocd/server-transport.yaml").read_text())
         self.assertEqual(v["metadata"]["namespace"], "argocd")
         self.assertEqual(v["metadata"]["labels"]["homelab.alchemmist.xyz/edge-transport"], "argocd")

@@ -1,3 +1,5 @@
+"""Keep OpenTelemetry queue, retention, TLS, and sampling contracts."""
+
 from pathlib import Path
 import unittest
 
@@ -12,7 +14,10 @@ def config(name):
 
 
 class ObservabilityConfigTests(unittest.TestCase):
-    def test_persistent_queues_have_byte_not_request_limits(self):
+    """Check owned collector and store documents."""
+
+    def test_persistent_queues_have_byte_not_request_limits(self) -> None:
+        """Require persistent exporter queues to use bytes and file storage."""
         for name, limit in [
             ("agent", 128 * 2**20),
             ("cluster", 256 * 2**20),
@@ -26,7 +31,8 @@ class ObservabilityConfigTests(unittest.TestCase):
                 self.assertEqual(queue["queue_size"], limit)
                 self.assertEqual(queue["storage"], "file_storage")
 
-    def test_new_file_startup_records_and_historical_cut_are_separate(self):
+    def test_new_file_startup_records_and_historical_cut_are_separate(self) -> None:
+        """Require new-file startup and the historical cut to stay separate."""
         self.assertEqual(config("agent")["receivers"]["filelog"]["start_at"], "beginning")
         for name in ["agent", "cluster"]:
             document = config(name)
@@ -36,7 +42,8 @@ class ObservabilityConfigTests(unittest.TestCase):
             self.assertIn("time_unix_nano == 0", condition)
             self.assertIn("${env:OTEL_LOG_INGESTION_START_NS}", condition)
 
-    def test_public_otlp_cannot_be_enabled_without_client_authentication(self):
+    def test_public_otlp_cannot_be_enabled_without_client_authentication(self) -> None:
+        """Require public OTLP listeners to present client-authenticated TLS."""
         for name in ["cluster", "trace-gateway"]:
             for protocol in config(name)["receivers"]["otlp"]["protocols"].values():
                 self.assertIn("${env:OTEL_BIND_IP}", protocol["endpoint"])
@@ -48,7 +55,8 @@ class ObservabilityConfigTests(unittest.TestCase):
                 if "reload_interval" in protocol["tls"]:
                     self.assertEqual(protocol["tls"]["reload_interval"], "1m")
 
-    def test_retention_is_not_shortened(self):
+    def test_retention_is_not_shortened(self) -> None:
+        """Require Loki and Tempo retention periods to stay at their current lengths."""
         self.assertEqual(config("loki")["limits_config"]["retention_period"], "336h")
         self.assertTrue(config("loki")["compactor"]["retention_enabled"])
         self.assertEqual(config("tempo")["compactor"]["compaction"]["block_retention"], "168h")
@@ -58,7 +66,8 @@ class ObservabilityConfigTests(unittest.TestCase):
                 "RequireAndVerifyClientCert",
             )
 
-    def test_sampling_contract_includes_both_http_conventions(self):
+    def test_sampling_contract_includes_both_http_conventions(self) -> None:
+        """Require tail sampling to match both HTTP status conventions."""
         sampling = config("trace-gateway")["processors"]["tail_sampling"]
         self.assertEqual(sampling["decision_wait"], "30s")
         policies = {entry["name"]: entry for entry in sampling["policies"]}

@@ -8,7 +8,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class Socrat5WorkerSourceTests(unittest.TestCase):
-    def test_native_vm_has_full_nfs_admission(self):
+    """Check native socrat-5 worker source without applying it."""
+
+    def test_native_vm_has_full_nfs_admission(self) -> None:
+        """Keep full NFS admission on the headless native worker."""
         host = yaml.safe_load((ROOT / "ansible/inventory/host_vars/socrat-5.yml").read_text())
         self.assertEqual(host["k3s_worker_taints"], [])
         self.assertTrue(host["k3s_worker_nfs_enabled"])
@@ -18,7 +21,8 @@ class Socrat5WorkerSourceTests(unittest.TestCase):
         self.assertFalse(host["k3s_worker_user_namespace"])
         self.assertFalse(host["k3s_worker_prefer_bundled_bin"])
 
-    def test_native_nfs_does_not_recreate_the_lxc_storage_guard(self):
+    def test_native_nfs_does_not_recreate_the_lxc_storage_guard(self) -> None:
+        """Keep the native NFS guard distinct from the retired LXC binding."""
         play = yaml.safe_load((ROOT / "ansible/playbooks/socrat-5-worker.yml").read_text())[0]
         legacy = next(
             t
@@ -41,7 +45,8 @@ class Socrat5WorkerSourceTests(unittest.TestCase):
             "k3s_worker_nfs_enabled", guard["pre_tasks"][0]["ansible.builtin.assert"]["that"]
         )
 
-    def test_original_n8n_pv_requires_dedicated_data_mounts(self):
+    def test_original_n8n_pv_requires_dedicated_data_mounts(self) -> None:
+        """Keep the original n8n data bind and its required parent mounts."""
         host = yaml.safe_load((ROOT / "ansible/inventory/host_vars/socrat-5.yml").read_text())
         self.assertEqual(
             host["k3s_worker_data_bind_mounts"],
@@ -74,21 +79,24 @@ class Socrat5WorkerSourceTests(unittest.TestCase):
         )
         self.assertIn("database.sqlite", tasks[0]["ansible.builtin.stat"]["path"])
 
-    def test_exact_advertised_home_routes_only(self):
+    def test_exact_advertised_home_routes_only(self) -> None:
+        """Keep only the existing advertised home peer routes."""
         host = yaml.safe_load((ROOT / "ansible/inventory/host_vars/socrat-5.yml").read_text())
         self.assertEqual(
             host["wg_socrat_extra_allowed_peer_ips"],
             {"socrat-5": {"socrat-0": ["192.168.0.23/32"], "socrat-1": ["192.168.0.24/32"]}},
         )
 
-    def test_only_worker5_nl_endpoint_changes_to_existing_relay(self):
+    def test_only_worker5_nl_endpoint_changes_to_existing_relay(self) -> None:
+        """Keep worker5's NL endpoint pinned to the existing relay."""
         group = yaml.safe_load((ROOT / "ansible/inventory/group_vars/Socrat.yml").read_text())
         peers = group["wg_socrat_peer_endpoints"]
         self.assertEqual(peers["socrat-5"]["socrat-2"], peers["socrat-0"]["socrat-2"])
         self.assertEqual(peers["socrat-5"]["socrat-2"], "91.189.82.238:51832")
         self.assertEqual(peers["socrat-5"]["socrat-3"], "46.8.146.172:46559")
 
-    def test_unprivileged_exporter_can_traverse_fresh_parent_directories(self):
+    def test_unprivileged_exporter_can_traverse_fresh_parent_directories(self) -> None:
+        """Keep parent directories traversable for the unprivileged exporter."""
         play = yaml.safe_load((ROOT / "ansible/playbooks/otel-production-agents.yml").read_text())[
             0
         ]
@@ -108,7 +116,8 @@ class Socrat5WorkerSourceTests(unittest.TestCase):
         ]:
             self.assertIn(path, task["loop"])
 
-    def test_password_tasks_are_private_and_do_not_change_ssh_policy(self):
+    def test_password_tasks_are_private_and_do_not_change_ssh_policy(self) -> None:
+        """Keep password tasks private and leave SSH policy untouched."""
         play = yaml.safe_load((ROOT / "ansible/playbooks/socrat-5-headless.yml").read_text())[0]
         users = [t for t in play["pre_tasks"] if "ansible.builtin.user" in t]
         self.assertEqual({t["ansible.builtin.user"]["name"] for t in users}, {"alchemmist", "root"})
@@ -116,17 +125,20 @@ class Socrat5WorkerSourceTests(unittest.TestCase):
         self.assertTrue(all("password" in t["ansible.builtin.user"] for t in users))
         self.assertNotIn("sshd_config", str(users))
 
-    def test_no_desktop_roles(self):
+    def test_no_desktop_roles(self) -> None:
+        """Keep the headless play limited to the starship role."""
         play = yaml.safe_load((ROOT / "ansible/playbooks/socrat-5-headless.yml").read_text())[0]
         self.assertEqual(play["roles"], ["starship"])
 
-    def test_native_pipeline_is_durable(self):
+    def test_native_pipeline_is_durable(self) -> None:
+        """Keep native file storage durable and retries unbounded."""
         cfg = yaml.safe_load((ROOT / "deploy/monitoring/native/socrat-5/agent.yaml").read_text())
         self.assertTrue(cfg["extensions"]["file_storage"]["fsync"])
         for name in ["journald", "filelog"]:
             self.assertEqual(cfg["receivers"][name]["retry_on_failure"]["max_elapsed_time"], "0s")
 
-    def test_real_blockers_documented(self):
+    def test_real_blockers_documented(self) -> None:
+        """Keep the recorded native-worker blockers visible."""
         text = (ROOT / "docs/socrat-5-worker-20261110.md").read_text()
         self.assertIn("Negative NetworkPolicy acceptance failed", text)
         self.assertIn("NFS mount denied", text)

@@ -11,7 +11,8 @@ def dashboard():
     return json.loads(PATH.read_text())
 
 
-def test_native_panels_and_existing_datasource_only():
+def test_native_panels_and_existing_datasource_only() -> None:
+    """Require unique native panels and the existing Prometheus datasource."""
     d = dashboard()
     assert d["uid"] == "socrat-network"
     assert d["refresh"] == "30s"
@@ -23,7 +24,8 @@ def test_native_panels_and_existing_datasource_only():
             assert "vector(" not in t["expr"]  # No fabricated discovery or healthy fallback.
 
 
-def test_graphs_have_native_edge_schema_and_instant_tables():
+def test_graphs_have_native_edge_schema_and_instant_tables() -> None:
+    """Require both node graphs to expose instant edge tables."""
     graphs = [p for p in dashboard()["panels"] if p["type"] == "nodeGraph"]
     assert len(graphs) == 2
     for p in graphs:
@@ -36,7 +38,8 @@ def test_graphs_have_native_edge_schema_and_instant_tables():
         assert "timestamp(" in t["expr"] and "< 120" in t["expr"]
 
 
-def test_probe_color_requires_real_fresh_success_or_failure():
+def test_probe_color_requires_real_fresh_success_or_failure() -> None:
+    """Require probe color to reflect fresh real success or failure."""
     p = next(p for p in dashboard()["panels"] if p["id"] == 4)
     q = p["targets"][0]["expr"]
     assert "probe_success" in q and 'job="service-probes"' in q
@@ -46,7 +49,8 @@ def test_probe_color_requires_real_fresh_success_or_failure():
     assert "${probe_group:regex}" in q
 
 
-def test_placement_is_not_colored_as_connectivity():
+def test_placement_is_not_colored_as_connectivity() -> None:
+    """Keep pod placement distinct from connectivity coloring."""
     p = next(p for p in dashboard()["panels"] if p["id"] == 5)
     q = p["targets"][0]["expr"]
     assert "kube_pod_info" in q and "kube_pod_status_phase" in q
@@ -56,7 +60,8 @@ def test_placement_is_not_colored_as_connectivity():
     assert "not imply network health" in p["description"]
 
 
-def test_scope_and_unknown_state_are_explicit():
+def test_scope_and_unknown_state_are_explicit() -> None:
+    """State that missing data is not discovery or recovery."""
     text = next(p for p in dashboard()["panels"] if p["type"] == "text")["options"]["content"]
     assert "не обнаруживает" in text
     assert "No data" in text and "не восстановление" in text
@@ -64,7 +69,8 @@ def test_scope_and_unknown_state_are_explicit():
     assert "Ready ≠" in text
 
 
-def test_dashboard_uses_existing_provisioning_owner():
+def test_dashboard_uses_existing_provisioning_owner() -> None:
+    """Bind the overview to the existing Grafana provisioning template."""
     template = (ROOT / "charts/monitoring-k3s/templates/socrat-dashboard.yaml").read_text()
     assert '"network"' in template
     assert 'grafana_dashboard: "1"' in template

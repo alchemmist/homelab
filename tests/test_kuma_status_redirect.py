@@ -7,14 +7,18 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class KumaStatusRedirectTests(unittest.TestCase):
-    def test_redirect_stays_on_public_origin(self):
+    """Nginx policy checks for the public Uptime Kuma status redirect."""
+
+    def test_redirect_stays_on_public_origin(self) -> None:
+        """Require the status redirect to stay on the public origin."""
         conf = (ROOT / "charts/uptime-kuma/files/kuma-policy.conf").read_text()
         self.assertIn("absolute_redirect off;", conf)
         self.assertIn("location = / { return 302 /status/socrat; }", conf)
         self.assertIn("proxy_set_header X-Forwarded-Proto https;", conf)
         self.assertNotIn("return 302 http://", conf)
 
-    def test_access_boundaries_preserved(self):
+    def test_access_boundaries_preserved(self) -> None:
+        """Require socket, method, and public HTTPS boundaries to stay."""
         conf = (ROOT / "charts/uptime-kuma/files/kuma-policy.conf").read_text()
         self.assertIn("location ^~ /socket.io { return 404; }", conf)
         self.assertIn("limit_except GET HEAD { deny all; }", conf)

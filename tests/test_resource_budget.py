@@ -1,3 +1,5 @@
+"""Check the read-only resource budget calculator with synthetic fixtures."""
+
 import copy
 import importlib.util
 from pathlib import Path
@@ -52,7 +54,10 @@ def nodes():
 
 
 class BudgetTests(unittest.TestCase):
-    def test_quantities(self):
+    """Check synthetic resource-budget behavior."""
+
+    def test_quantities(self) -> None:
+        """Keep equivalent quantity spellings and reject invalid ones."""
         for first, second in [
             ("1", "1000m"),
             ("1Gi", "1024Mi"),
@@ -65,7 +70,8 @@ class BudgetTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 BUDGET.quantity(invalid)
 
-    def test_ordered_init_sidecars(self):
+    def test_ordered_init_sidecars(self) -> None:
+        """Keep sidecar CPU in the effective total without double counting."""
         value = pod()
         value["spec"]["initContainers"] = [
             container("first", "3"),
@@ -76,17 +82,20 @@ class BudgetTests(unittest.TestCase):
         value["spec"]["initContainers"].reverse()
         self.assertEqual(BUDGET.effective_requests(value)["cpu"], 5)
 
-    def test_regular_init_max_not_sum(self):
+    def test_regular_init_max_not_sum(self) -> None:
+        """Keep regular init CPU as the maximum, not the sum."""
         value = pod()
         value["spec"]["initContainers"] = [container("a", "1"), container("b", "2")]
         self.assertEqual(BUDGET.effective_requests(value)["cpu"], 2)
 
-    def test_sidecars_added_to_running_containers(self):
+    def test_sidecars_added_to_running_containers(self) -> None:
+        """Add an always-restart sidecar to the running container requests."""
         value = pod()
         value["spec"]["initContainers"] = [container("sidecar", "2", restartPolicy="Always")]
         self.assertEqual(BUDGET.effective_requests(value)["cpu"], BUDGET.quantity("2.1"))
 
-    def test_overhead_and_pod_resources(self):
+    def test_overhead_and_pod_resources(self) -> None:
+        """Replace pod-level requests and keep overhead in the total."""
         value = pod()
         value["spec"].update(
             resources={"requests": {"cpu": "2"}}, overhead={"cpu": "250m", "memory": "1Mi"}
@@ -95,7 +104,8 @@ class BudgetTests(unittest.TestCase):
         self.assertEqual(result["cpu"], BUDGET.quantity("2.25"))
         self.assertEqual(result["memory"], BUDGET.quantity("129Mi"))
 
-    def test_current_and_proposed_budget(self):
+    def test_current_and_proposed_budget(self) -> None:
+        """Keep the current and proposed totals for the synthetic node."""
         result = BUDGET.budget([pod()], nodes(), profiles())
         self.assertTrue(result["ok"])
         self.assertEqual(
@@ -105,14 +115,16 @@ class BudgetTests(unittest.TestCase):
             result["nodes"]["node"]["proposed_remaining"]["memory"], BUDGET.quantity("1792Mi")
         )
 
-    def test_over_capacity_fails(self):
+    def test_over_capacity_fails(self) -> None:
+        """Fail when proposed memory exceeds allocatable capacity."""
         expected = profiles()
         expected[0]["containers"]["app"]["requests"]["memory"] = "3Gi"
         result = BUDGET.budget([pod()], nodes(), expected)
         self.assertFalse(result["ok"])
         self.assertIn("exceed allocatable memory", result["errors"][0])
 
-    def test_ambiguous_unmatched_fail(self):
+    def test_ambiguous_unmatched_fail(self) -> None:
+        """Fail closed for no profile, duplicate profiles, and uncovered containers."""
         for expected in [[], profiles() * 2]:
             self.assertFalse(BUDGET.budget([pod()], nodes(), expected)["ok"])
         value = pod()
@@ -121,19 +133,22 @@ class BudgetTests(unittest.TestCase):
             "unmatched container", BUDGET.budget([value], nodes(), profiles())["errors"][0]
         )
 
-    def test_completed_pods_excluded(self):
+    def test_completed_pods_excluded(self) -> None:
+        """Exclude a succeeded pod from the budget."""
         value = pod()
         value["status"]["phase"] = "Succeeded"
         self.assertTrue(BUDGET.budget([value], nodes(), [])["ok"])
 
-    def test_unassigned_reported_not_charged(self):
+    def test_unassigned_reported_not_charged(self) -> None:
+        """Report a pod without a node and do not charge that node."""
         value = pod()
         value["spec"].pop("nodeName")
         result = BUDGET.budget([value], nodes(), profiles())
         self.assertEqual(len(result["unassigned"]), 1)
         self.assertEqual(result["nodes"]["node"]["pods"], 0)
 
-    def test_profile_preserves_custom_resources_and_input(self):
+    def test_profile_preserves_custom_resources_and_input(self) -> None:
+        """Keep custom limit keys and leave the input pod unchanged."""
         value = pod()
         value["spec"]["containers"][0]["resources"]["limits"] = {"cpu": "2", "nvidia.com/gpu": "1"}
         original = copy.deepcopy(value)
@@ -143,14 +158,16 @@ class BudgetTests(unittest.TestCase):
         )
         self.assertEqual(value, original)
 
-    def test_invalid_profile_requests_fail(self):
+    def test_invalid_profile_requests_fail(self) -> None:
+        """Reject negative, zero, and non-quantity profile requests."""
         for invalid in ["-1", "0", "invalid"]:
             expected = profiles()
             expected[0]["containers"]["app"]["requests"]["cpu"] = invalid
             with self.assertRaises(ValueError):
                 BUDGET.budget([pod()], nodes(), expected)
 
-    def test_unknown_node_fails(self):
+    def test_unknown_node_fails(self) -> None:
+        """Fail when the pod names a node that is not in the inventory."""
         self.assertFalse(BUDGET.budget([pod()], [], profiles())["ok"])
 
 

@@ -1,3 +1,5 @@
+"""Offline contracts for in-process source-privacy redaction helpers."""
+
 import importlib.util
 import math
 from pathlib import Path
@@ -16,7 +18,10 @@ def load():
 
 
 class SourcePrivacyTests(unittest.TestCase):
-    def test_only_private_attributes_removed_and_numeric_values_preserved(self):
+    """Private attributes and URL secrets are removed; numeric values stay."""
+
+    def test_only_private_attributes_removed_and_numeric_values_preserved(self) -> None:
+        """Drop private keys, keep numbers, and leave the input mapping intact."""
         module = load()
         before = {
             "authorization": "synthetic",
@@ -35,7 +40,8 @@ class SourcePrivacyTests(unittest.TestCase):
         self.assertEqual(math.copysign(1, after["negative_zero"]), -1)
         self.assertIn("authorization", before)
 
-    def test_url_credentials_query_and_fragment_do_not_survive(self):
+    def test_url_credentials_query_and_fragment_do_not_survive(self) -> None:
+        """Remove URL userinfo, query, and fragment from redacted copies."""
         module = load()
         value = "https://synthetic-user:synthetic-password@example.test:443/path?api_key=synthetic-token#fragment"
         cleaned = module.safe_url(value)
@@ -47,5 +53,6 @@ class SourcePrivacyTests(unittest.TestCase):
         )
         self.assertEqual(module.safe_name("GET " + value), "GET " + cleaned)
 
-    def test_invalid_url_fails_closed_without_forwarding_original(self):
+    def test_invalid_url_fails_closed_without_forwarding_original(self) -> None:
+        """Replace an unparsable URL with the closed redaction marker."""
         self.assertEqual(load().safe_url("https://[invalid?secret=value"), "<redacted-invalid-url>")

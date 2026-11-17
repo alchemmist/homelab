@@ -7,14 +7,18 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class SpiServiceVipTests(unittest.TestCase):
-    def test_existing_service_vip_is_declared_and_rendered_only_on_service(self):
+    """Require the fixed SPI Service VIP on values, the chart, and n8n stages."""
+
+    def test_existing_service_vip_is_declared_and_rendered_only_on_service(self) -> None:
+        """Require the VIP in values and only in the Service half of the worker chart."""
         values = (ROOT / "deploy/spi-triage/values.yaml").read_text()
         self.assertRegex(values, r"(?m)^serviceClusterIP: 10\.43\.194\.185 ")
         worker = (ROOT / "charts/spi-triage/templates/worker.yaml").read_text()
         self.assertEqual(worker.count(".Values.serviceClusterIP"), 2)
         self.assertNotIn(".Values.serviceClusterIP", worker.split("kind: Service")[0])
 
-    def test_five_native_stage_urls_no_post_retry(self):
+    def test_five_native_stage_urls_no_post_retry(self) -> None:
+        """Require five exact stage URLs and no HTTP Request retryOnFail."""
         w = json.loads((ROOT / "docs/n8n/spi/triage-workflow.json").read_text())
         found = []
         for n in w["nodes"]:

@@ -1,3 +1,5 @@
+"""Check node disk-reserve refusal and pause behavior with local fixtures."""
+
 import importlib.util
 from pathlib import Path
 import stat
@@ -18,6 +20,8 @@ SPEC.loader.exec_module(MODULE)
 
 
 class PauseFolderTests(unittest.TestCase):
+    """Check that only the backup folder is paused in a local config."""
+
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
@@ -27,7 +31,8 @@ class PauseFolderTests(unittest.TestCase):
         )
         self.config.chmod(0o600)
 
-    def test_only_backup_folder_is_paused_and_credentials_are_preserved(self):
+    def test_only_backup_folder_is_paused_and_credentials_are_preserved(self) -> None:
+        """Pause the backup folder and keep the other folder and API key."""
         with patch.object(
             MODULE.subprocess, "run", return_value=subprocess.CompletedProcess([], 1)
         ):
@@ -38,7 +43,8 @@ class PauseFolderTests(unittest.TestCase):
         self.assertEqual(root.findtext("gui/apikey"), "test-key")
         self.assertEqual(stat.S_IMODE(self.config.stat().st_mode), 0o600)
 
-    def test_repeated_pause_does_not_rewrite_configuration(self):
+    def test_repeated_pause_does_not_rewrite_configuration(self) -> None:
+        """Leave an already paused folder's bytes and mtime unchanged."""
         with patch.object(
             MODULE.subprocess, "run", return_value=subprocess.CompletedProcess([], 1)
         ):
@@ -47,7 +53,8 @@ class PauseFolderTests(unittest.TestCase):
         self.assertFalse(MODULE.pause_folder(self.config, "pg-mdb-backups"))
         self.assertEqual(self.config.stat().st_mtime_ns, before)
 
-    def test_missing_folder_leaves_configuration_unchanged(self):
+    def test_missing_folder_leaves_configuration_unchanged(self) -> None:
+        """Refuse a missing folder before rewriting the configuration."""
         original = self.config.read_bytes()
         with self.assertRaisesRegex(RuntimeError, "Missing Syncthing folder"):
             MODULE.pause_folder(self.config, "missing")
@@ -55,7 +62,10 @@ class PauseFolderTests(unittest.TestCase):
 
 
 class ServiceSelectionTests(unittest.TestCase):
-    def test_service_policy_controls_apply_and_rollback(self):
+    """Check service selection and rollback without contacting a host."""
+
+    def test_service_policy_controls_apply_and_rollback(self) -> None:
+        """Restart the selected service and restore the previous kubelet file."""
         for service in (None, "k3s.service"):
             for fail_restart in (False, True):
                 with (

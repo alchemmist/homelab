@@ -1,3 +1,5 @@
+"""Offline infrastructure contract checks using copied fixtures, never live hosts."""
+
 import ast
 import importlib.util
 import json
@@ -16,7 +18,10 @@ spec.loader.exec_module(contract)
 
 
 class InfrastructureContracts(unittest.TestCase):
-    def test_registered_consumers_and_mesh(self):
+    """Drift rejection for mesh, issuer, inventory, and fixed-relay contracts."""
+
+    def test_registered_consumers_and_mesh(self) -> None:
+        """Accept the canonical repository contract set unchanged."""
         self.assertEqual(contract.check(ROOT), 9)
 
     def fixture(self, directory):
@@ -41,7 +46,8 @@ class InfrastructureContracts(unittest.TestCase):
             shutil.copyfile(ROOT / name, p)
         return root
 
-    def test_drift_rejected_and_generation_only_changes_ip(self):
+    def test_drift_rejected_and_generation_only_changes_ip(self) -> None:
+        """Reject issuer IP drift and restore the original bytes on write."""
         with tempfile.TemporaryDirectory() as d:
             root = self.fixture(d)
             p = root / "deploy/platform/rancher/values.yaml"
@@ -52,7 +58,8 @@ class InfrastructureContracts(unittest.TestCase):
             contract.check(root, write=True)
             self.assertEqual(p.read_text(), original)
 
-    def test_late_scope_error_leaves_earlier_drifted_files_untouched(self):
+    def test_late_scope_error_leaves_earlier_drifted_files_untouched(self) -> None:
+        """Leave earlier files untouched when a later scope error aborts a write."""
         with tempfile.TemporaryDirectory() as d:
             root = self.fixture(d)
             c = json.loads((root / "deploy/contracts/infrastructure.json").read_text())
@@ -69,7 +76,8 @@ class InfrastructureContracts(unittest.TestCase):
                 contract.check(root, write=True)
             self.assertEqual(before, {p: p.read_bytes() for p in before})
 
-    def test_multiple_registered_scalars_in_one_file_are_preserved(self):
+    def test_multiple_registered_scalars_in_one_file_are_preserved(self) -> None:
+        """Preserve every registered scalar when one file contains an alias block."""
         with tempfile.TemporaryDirectory() as d:
             root = self.fixture(d)
             config = root / "deploy/contracts/infrastructure.json"
@@ -98,7 +106,8 @@ class InfrastructureContracts(unittest.TestCase):
             self.assertEqual(contract.check(root, write=True), 10)
             self.assertEqual(p.read_text(), expected)
 
-    def test_scope_widening_not_regenerated(self):
+    def test_scope_widening_not_regenerated(self) -> None:
+        """Refuse to regenerate a hostname list that gained an extra name."""
         with tempfile.TemporaryDirectory() as d:
             root = self.fixture(d)
             p = root / "deploy/platform/rancher/values.yaml"
@@ -110,7 +119,8 @@ class InfrastructureContracts(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "scope widened"):
                 contract.check(root, write=True)
 
-    def test_inventory_drift_rejected(self):
+    def test_inventory_drift_rejected(self) -> None:
+        """Reject an inventory address that no longer matches the mesh registry."""
         with tempfile.TemporaryDirectory() as d:
             root = self.fixture(d)
             p = root / "ansible/inventory/hosts.yml"
@@ -120,7 +130,8 @@ class InfrastructureContracts(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Inventory endpoint drift: socrat-5"):
                 contract.check(root)
 
-    def test_relay_scope_drift_is_not_automatically_rewritten(self):
+    def test_relay_scope_drift_is_not_automatically_rewritten(self) -> None:
+        """Reject an all-interfaces relay mutation and leave the fixture bytes unchanged."""
         with tempfile.TemporaryDirectory() as d:
             root = self.fixture(d)
             p = root / "scripts/wg-peer15-relay.py"
@@ -146,7 +157,8 @@ class InfrastructureContracts(unittest.TestCase):
                 contract.check(root, write=True)
             self.assertEqual(before, {path: path.read_bytes() for path in before})
 
-    def test_relay_sandbox_widening_or_stale_endpoint_rejected_without_writes(self):
+    def test_relay_sandbox_widening_or_stale_endpoint_rejected_without_writes(self) -> None:
+        """Reject widened or stale sandbox endpoints without rewriting the unit."""
         for replacement in ["10.250.0.0/16", "10.250.0.99/32"]:
             with tempfile.TemporaryDirectory() as d:
                 root = self.fixture(d)
@@ -157,7 +169,8 @@ class InfrastructureContracts(unittest.TestCase):
                     contract.check(root, write=True)
                 self.assertEqual(p.read_bytes(), before)
 
-    def test_relay_sandbox_privilege_drift_rejected(self):
+    def test_relay_sandbox_privilege_drift_rejected(self) -> None:
+        """Reject a sandbox unit that gains CAP_NET_ADMIN."""
         with tempfile.TemporaryDirectory() as d:
             root = self.fixture(d)
             p = root / "ansible/files/wg-peer15-relay.service"
@@ -169,7 +182,8 @@ class InfrastructureContracts(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "sandbox privilege drift"):
                 contract.check(root)
 
-    def test_bootstrap_requires_opt_in_and_refuses_existing_workloads(self):
+    def test_bootstrap_requires_opt_in_and_refuses_existing_workloads(self) -> None:
+        """Keep empty bootstrap opt-in false and install-only for the Argo playbook."""
         p = yaml.safe_load((ROOT / "ansible/playbooks/argocd.yml").read_text())[0]
         self.assertFalse(p["vars"]["argocd_allow_empty_bootstrap"])
         self.assertTrue(
@@ -187,7 +201,8 @@ class InfrastructureContracts(unittest.TestCase):
         self.assertNotIn("upgrade", helm)
         self.assertNotIn("--install", helm)
 
-    def test_bootstrap_compatibility_path_is_same_canonical_source(self):
+    def test_bootstrap_compatibility_path_is_same_canonical_source(self) -> None:
+        """Require the compatibility values path to be the canonical Argo source."""
         alias = ROOT / "deploy/argocd/values.yaml"
         self.assertTrue(alias.is_symlink())
         self.assertEqual(alias.resolve(), (ROOT / "deploy/platform/argo-cd/values.yaml").resolve())

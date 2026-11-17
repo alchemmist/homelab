@@ -1,3 +1,5 @@
+"""Offline checks for bounded native log-count selection; no network client."""
+
 import importlib.util
 from pathlib import Path
 import unittest
@@ -15,7 +17,10 @@ def module():
 
 
 class LogDeliveryMatrixTests(unittest.TestCase):
-    def test_only_bounded_native_count_queries_and_metadata(self):
+    """Selector checks for metadata-only Loki count documents."""
+
+    def test_only_bounded_native_count_queries_and_metadata(self) -> None:
+        """Accept only one-hour count queries and return their vector rows."""
         helper = module()
         self.assertTrue(
             all("count_over_time" in query and "[1h]" in query for query in helper.QUERIES.values())
@@ -38,7 +43,8 @@ class LogDeliveryMatrixTests(unittest.TestCase):
         }
         self.assertEqual(helper.select_counts(document), document["data"]["result"])
 
-    def test_partial_results_and_non_finite_counts_rejected(self):
+    def test_partial_results_and_non_finite_counts_rejected(self) -> None:
+        """Reject partial responses and non-finite or negative counts."""
         helper = module()
         for value in ["NaN", "inf", "-1"]:
             with self.assertRaises(ValueError):
@@ -56,7 +62,8 @@ class LogDeliveryMatrixTests(unittest.TestCase):
                 {"status": "success", "warnings": ["partial"], "data": {"resultType": "vector"}}
             )
 
-    def test_unexpected_body_or_attribute_label_rejected(self):
+    def test_unexpected_body_or_attribute_label_rejected(self) -> None:
+        """Reject log bodies and labels outside the metadata allowlist."""
         for labels in [
             {"body": "private"},
             {"service_name": "https://user:password@example.invalid"},

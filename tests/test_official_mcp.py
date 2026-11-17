@@ -1,3 +1,5 @@
+"""Offline checks for pinned official MCP config, launchers, and chart ownership."""
+
 import importlib.util
 import json
 import os
@@ -16,7 +18,8 @@ def module(name):
     return m
 
 
-def test_real_project_config_has_no_inline_credentials_and_blocks_pending_clients():
+def test_real_project_config_has_no_inline_credentials_and_blocks_pending_clients() -> None:
+    """Require disabled pending clients and command-backed credential headers."""
     config = json.loads((ROOT / ".pi/mcp.json").read_text())["mcpServers"]
     assert set(config) == {"socrat-grafana", "argocd", "socrat-metrics", "n8n", "umami", "github"}
     for name in ("n8n", "umami", "github"):
@@ -30,7 +33,8 @@ def test_real_project_config_has_no_inline_credentials_and_blocks_pending_client
     assert "/.pi/mcp.json" not in (ROOT / ".gitignore").read_text().splitlines()
 
 
-def test_all_current_applications_are_audited_with_reason():
+def test_all_current_applications_are_audited_with_reason() -> None:
+    """Require every current application audit row to carry a decision and reason."""
     audit = json.loads((ROOT / "deploy/mcp/service-audit.json").read_text())
     declared = {p.stem for p in (ROOT / "deploy/argocd/apps").glob("*.yaml")} | {"root"}
     assert {r["application"] for r in audit["applications"]} == declared
@@ -39,7 +43,8 @@ def test_all_current_applications_are_audited_with_reason():
     assert set(audit["hostRunningUnits"]) == {"socrat-0", "socrat-1", "socrat-2", "socrat-3"}
 
 
-def test_official_launchers_pin_read_only_and_do_not_override_tool_allowlist(monkeypatch):
+def test_official_launchers_pin_read_only_and_do_not_override_tool_allowlist(monkeypatch) -> None:
+    """Pin read-only launcher args and reject an unknown server name."""
     m = module("run-official-mcp")
     monkeypatch.setattr(m.creds, "read_private", lambda p: "unit-test-token")
     args, env = m.command("argocd")
@@ -55,7 +60,8 @@ def test_official_launchers_pin_read_only_and_do_not_override_tool_allowlist(mon
         m.command("unknown")
 
 
-def test_secret_reader_rejects_symlink_and_unsafe_mode(tmp_path):
+def test_secret_reader_rejects_symlink_and_unsafe_mode(tmp_path) -> None:
+    """Accept only a mode 0600 regular file and reject links or multiline text."""
     m = module("mcp-credential")
     p = tmp_path / "key"
     p.write_text("unit-test-token")
@@ -74,7 +80,8 @@ def test_secret_reader_rejects_symlink_and_unsafe_mode(tmp_path):
         m.read_private(p)
 
 
-def test_package_lock_and_release_checksums_are_pinned():
+def test_package_lock_and_release_checksums_are_pinned() -> None:
+    """Require pinned package versions and 64-character release checksums."""
     p = json.loads((ROOT / "tools/official-mcp/package.json").read_text())
     assert p["dependencies"] == {"argocd-mcp": "0.9.0", "@umami/mcp": "0.2.0"}
     lock = json.loads((ROOT / "tools/official-mcp/package-lock.json").read_text())
@@ -87,7 +94,8 @@ def test_package_lock_and_release_checksums_are_pinned():
     assert all(len(v[1]) == 64 for v in m.ARTIFACTS.values())
 
 
-def test_native_n8n_mcp_is_exact_service_owned_without_bypassing_ui():
+def test_native_n8n_mcp_is_exact_service_owned_without_bypassing_ui() -> None:
+    """Keep the native n8n UI and an exact machine MCP path on the same service."""
     docs = list(yaml.safe_load_all((ROOT / "charts/n8n/templates/access.yaml").read_text()))
     assert len(docs) == 1
     machine = docs[0]
@@ -107,7 +115,8 @@ def test_native_n8n_mcp_is_exact_service_owned_without_bypassing_ui():
     assert not (ROOT / "deploy/identity/n8n-gateway.yaml").exists()
 
 
-def test_grafana_remains_viewer_read_only_with_telemetry_and_cost_limits():
+def test_grafana_remains_viewer_read_only_with_telemetry_and_cost_limits() -> None:
+    """Keep Grafana MCP write-disabled with the reviewed tool and guardrail pins."""
     text = (ROOT / "charts/grafana-mcp/templates/deployment.yaml").read_text()
     assert "--disable-write" in text
     assert (

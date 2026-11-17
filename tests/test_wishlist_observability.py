@@ -1,3 +1,5 @@
+"""Check Wishlist metrics, traces, and dashboard scope from source."""
+
 import json
 from pathlib import Path
 import unittest
@@ -7,7 +9,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class WishlistObservabilityTests(unittest.TestCase):
-    def test_private_metrics_and_verified_dedicated_trace_identity(self):
+    """Check Wishlist observability source contracts."""
+
+    def test_private_metrics_and_verified_dedicated_trace_identity(self) -> None:
+        """Keep the private metrics port and the dedicated trace identity."""
         values = yaml.safe_load((ROOT / "charts/wishlist/values.yaml").read_text())["observability"]
         self.assertEqual(values["metricsPort"], 8001)
         self.assertEqual(values["clientSecret"], "otel-app-tls-wishlist")
@@ -25,7 +30,8 @@ class WishlistObservabilityTests(unittest.TestCase):
         self.assertNotIn("8001", ingress)
         self.assertNotIn("insecure", deployment.lower())
 
-    def test_single_existing_collector_job_no_second_prometheus_scraper(self):
+    def test_single_existing_collector_job_no_second_prometheus_scraper(self) -> None:
+        """Keep one collector job and reject a second Prometheus scraper."""
         pipeline = (ROOT / "charts/monitoring-k3s/templates/_tv-native-metrics.tpl").read_text()
         self.assertEqual(pipeline.count("job_name: wishlist"), 1)
         self.assertEqual(pipeline.count("wishlist.wishlist.svc.cluster.local:8001"), 1)
@@ -36,7 +42,8 @@ class WishlistObservabilityTests(unittest.TestCase):
         for path in (ROOT / "charts/wishlist/templates").glob("*"):
             self.assertNotIn("kind: ServiceMonitor", path.read_text())
 
-    def test_dashboard_queries_and_mirror_scope(self):
+    def test_dashboard_queries_and_mirror_scope(self) -> None:
+        """Keep dashboard queries and the credential role's exact scope."""
         dashboard = json.loads(
             (ROOT / "charts/wishlist/files/wishlist-performance.json").read_text()
         )

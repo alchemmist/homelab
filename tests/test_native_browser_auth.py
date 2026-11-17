@@ -18,7 +18,10 @@ ROOT = Path(__file__).resolve().parents[1]
         ("syncthing", "syncthing", "public-web-syncthing-0", "native-login"),
     ],
 )
-def test_direct_route_and_reject_mislabeled_backend(chart, ns, service, authorization, tmp_path):
+def test_direct_route_and_reject_mislabeled_backend(
+    chart, ns, service, authorization, tmp_path
+) -> None:
+    """Require each published route identity and reject a substituted service name."""
     values = yaml.safe_load((ROOT / f"charts/{chart}/values.yaml").read_text())
     route = values["publicEntry"]["routes"][0]
     assert (
@@ -37,7 +40,8 @@ def test_direct_route_and_reject_mislabeled_backend(chart, ns, service, authoriz
     assert p.returncode != 0
 
 
-def test_private_reader_has_only_pinned_idp_egress_and_storage_keeps_s3_iam():
+def test_private_reader_has_only_pinned_idp_egress_and_storage_keeps_s3_iam() -> None:
+    """Require pinned IdP egress for the RustFS reader and S3 IAM on storage."""
     text = subprocess.check_output(
         [
             "helm",
@@ -101,13 +105,15 @@ def test_private_reader_has_only_pinned_idp_egress_and_storage_keeps_s3_iam():
     )
 
 
-def test_syncthing_public_route_has_no_extra_basic_auth_wrapper():
+def test_syncthing_public_route_has_no_extra_basic_auth_wrapper() -> None:
+    """Require the Syncthing public route to proxy without a second auth wrapper."""
     nginx = (ROOT / "charts/syncthing/files/syncthing-policy.conf").read_text()
     assert "auth_basic" not in nginx and "auth_request" not in nginx
     assert "return 410" in nginx
     assert "proxy_pass http://gui0" in nginx
 
 
-def test_obsolete_xui_controller_source_is_removed():
+def test_obsolete_xui_controller_source_is_removed() -> None:
+    """Require the obsolete x-ui controller chart and Application source to stay absent."""
     assert not (ROOT / "deploy/argocd/apps/xui-auth-gateway.yaml").exists()
     assert not (ROOT / "deploy/xui-auth-gateway").exists()
