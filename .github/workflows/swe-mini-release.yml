@@ -11,7 +11,8 @@ concurrency:
   cancel-in-progress: false
 jobs:
   publish:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -19,12 +20,16 @@ jobs:
           python-version: '3.12'
       - name: Test publication boundaries
         run: python -m unittest discover -s tests/swe_mini -v
+      - name: Verify existing scoped Harbor robot
+        env:
+          HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+          HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
+        run: python3 scripts/harbor_ci_auth.py --repository homelab/swe-mini
       - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
         with:
-          registry: harbor.socrat.alchemmist.xyz
-          username: ${{ secrets.HARBOR_USERNAME }}
-          password: ${{ secrets.HARBOR_PASSWORD }}
+          # Existing hosted-runner transport workaround; no global TLS or DNS change.
+          driver-opts: |
+            env.GODEBUG=tlsmlkem=0
       - uses: docker/build-push-action@v6
         id: image
         with:
@@ -40,3 +45,12 @@ jobs:
           token: ${{ secrets.HOMELAB_DEPLOY_KEY }}
           app: swe-mini
           image_version: ${{ steps.image.outputs.digest }}
+      - name: Remove ephemeral registry credentials
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import os, pathlib
+          directory = pathlib.Path(os.environ.get('DOCKER_CONFIG', '/nonexistent'))
+          if directory.name.startswith('harbor-ci-auth-') and directory.parent == pathlib.Path(os.environ['RUNNER_TEMP']):
+              (directory / 'config.json').unlink(missing_ok=True)
+          PY

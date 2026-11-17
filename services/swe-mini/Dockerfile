@@ -6,7 +6,12 @@ RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && ln -s ../
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PLAYWRIGHT_BROWSERS_PATH=/opt/browsers
 WORKDIR /app
 COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir --require-hashes -r requirements.txt && playwright install --with-deps chromium && chmod -R a+rX /opt/browsers && useradd -u 1000 -m agent
+# Keep large dependency/browser payloads in separate registry blobs. A single
+# combined layer exceeds the existing public ingress upload-duration budget.
+RUN pip install --no-cache-dir --require-hashes -r requirements.txt
+RUN playwright install-deps chromium && rm -rf /var/lib/apt/lists/*
+RUN playwright install --only-shell chromium && chmod -R a+rX /opt/browsers
+RUN useradd -u 1000 -m agent
 COPY policy.py worker.py controller.py selftest.py /app/
 RUN python /app/selftest.py
 USER 1000:1000
