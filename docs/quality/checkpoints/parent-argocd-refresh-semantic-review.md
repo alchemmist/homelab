@@ -1,0 +1,9 @@
+# Argo CD refresh/TLS full assertion-preserving repair
+
+Selected lane23's single existing test file, not its completion label. Current source already included the separately proved metadata port. Read the full worker diff and original module: no live requests, subprocess calls, credentials, mutation helpers or fixture writes. Three read-only YAML/source tests pass before and after.
+
+Independently canonicalized the complete module with exactly the reviewed equivalences: assertEqual(a,b) to assert a==b for these built-in YAML/string/list/dict values; assertIn(a,b) to assert a in b; assertFalse(a) to assert not a. Compared all15predicate ASTs in their original order plus the entire surrounding module. No message/keyword argument was dropped; canonicalizer refuses unknown assertion methods, altered argument counts or keywords. All resource paths, scopes, token/session durations, source-string checks, transport name/backend identity, namespaces/labels, certificate verification pins and GitOps value-file selection remain exact.
+
+The sole removed import is unused subprocess, with zero Name references verified in the original full AST. Remaining imports have unchanged inventory and only reviewed standard-library ordering. TestCase class/main entrypoint, test names/counts, argument defaults and fixtures are preserved. No raises-context, loader, protocol, cast/Any, skip, ignore or suppression change.
+
+Pinned scoped checks: Ruff17→0; mypy0 before and after; formatter passes;3tests pass before and after, no skips. Proof and raw logs retained privately in `argocd-refresh-parent-review/`, directories0700/files0600. Existing scheduling remains unchanged; no production application/identity/security/owner/source configuration changed. Full committed-head validation and native admission are separate gates; this is not whole-repository green or production acceptance.
