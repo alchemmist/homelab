@@ -26,9 +26,10 @@ def test_strict_report_cannot_exit_success_for_dirty_or_incomplete_audit(
     configuration_ready: bool, source_clean: bool, expected: int
 ) -> None:
     """Keep configuration completeness separate from actual source acceptance."""
-    assert audit_exit_code(
-        configuration_ready=configuration_ready, source_clean=source_clean
-    ) == expected
+    assert (
+        audit_exit_code(configuration_ready=configuration_ready, source_clean=source_clean)
+        == expected
+    )
 
 
 def test_semantic_ids_survive_line_movement_and_do_not_store_source():
@@ -381,7 +382,11 @@ def test_mesh_address_drift_fails_the_inventory_contract(tmp_path):
     reserved = set(contract["sshEndpointFromPublicPeer"]) | {
         contract["relayContract"][key] for key in ("frontNode", "clientNode", "targetNode")
     }
-    name = next(node for node in mesh if node not in reserved and text.count(str(mesh[node]["address"])) == 1)
+    name = next(
+        node
+        for node in mesh
+        if node not in reserved and text.count(str(mesh[node]["address"])) == 1
+    )
     old = str(mesh[name]["address"])
     mesh_path.write_text(text.replace(old, "203.0.113.10", 1))
     with pytest.raises(ValueError, match="drift"):
@@ -544,7 +549,9 @@ def test_unclassified_helm_provisioning_fails(tmp_path):
     ops = _load_checker("check_operational_entrypoints.py")
     _entrypoint_fixture(tmp_path)
     assert ops.check(tmp_path) == (1, 0)
-    (tmp_path / "ansible/playbooks/rogue.yml").write_text("name: rogue\ncommand: helm upgrade demo chart\n")
+    (tmp_path / "ansible/playbooks/rogue.yml").write_text(
+        "name: rogue\ncommand: helm upgrade demo chart\n"
+    )
     with pytest.raises(ValueError, match="Unclassified literal Helm entrypoints"):
         ops.check(tmp_path)
 

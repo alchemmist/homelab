@@ -326,9 +326,7 @@ def main():
             digest(fresh, policy, planner.build(fresh, policy)) == approved,
             "Concurrent configuration change",
         )
-        run = args.state / datetime.datetime.now(datetime.UTC).strftime(
-            "%Y%m%dT%H%M%S.%fZ"
-        )
+        run = args.state / datetime.datetime.now(datetime.UTC).strftime("%Y%m%dT%H%M%S.%fZ")
         run.mkdir(mode=0o700)
         save(run / "before.json", before)
         save(run / "operations.json", operations)

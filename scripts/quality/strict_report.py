@@ -158,7 +158,11 @@ def main():
         except Exception as error:
             failure(ROOT / "reports" / f"{name}.json", error)
             summary["blockers"].append({"tool": name, "error": type(error).__name__})
-            summary["tools"][name] = {"status": "failed", "failureKind": "command", "blocking": None}
+            summary["tools"][name] = {
+                "status": "failed",
+                "failureKind": "command",
+                "blocking": None,
+            }
             print(f"{name}: {type(error).__name__}; report blocked", file=sys.stderr)
             continue
         stats, rows = summarize(name, payload)

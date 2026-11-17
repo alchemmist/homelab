@@ -145,7 +145,11 @@ def verify_configuration():
     if ruff["lint"]["per-file-ignores"] != data["ruff"]["perFileIgnores"]:
         raise ValueError("Ruff per-file ignores drifted")
     mypy = (ROOT / "quality/mypy.ini").read_text()
-    if "strict = true" not in mypy or "disable_error_code" in mypy or "ignore_missing_imports" in mypy:
+    if (
+        "strict = true" not in mypy
+        or "disable_error_code" in mypy
+        or "ignore_missing_imports" in mypy
+    ):
         raise ValueError("mypy strict mode drifted")
     if "follow_imports" in mypy:
         raise ValueError("mypy must not skip imports from the config file")
@@ -189,7 +193,11 @@ def verify_configuration():
     ansible = yaml.safe_load((ROOT / "quality/ansible-lint.yaml").read_text())
     if set(ansible) != {"profile", "offline", "strict", "enable_list"}:
         raise ValueError("Ansible lint config has an unexpected key")
-    if ansible["profile"] != "min" or ansible["offline"] is not True or ansible["strict"] is not True:
+    if (
+        ansible["profile"] != "min"
+        or ansible["offline"] is not True
+        or ansible["strict"] is not True
+    ):
         raise ValueError("Ansible lint mode drifted")
     enable = set(ansible["enable_list"])
     excluded = set(data["ansible"]["excluded"])
@@ -202,7 +210,9 @@ def verify_configuration():
     if catalog != enable | excluded | profile_min:
         missing = catalog - (enable | excluded | profile_min)
         extra = (enable | excluded | profile_min) - catalog
-        raise ValueError(f"Ansible rule partition does not cover the installed catalog {missing or extra}")
+        raise ValueError(
+            f"Ansible rule partition does not cover the installed catalog {missing or extra}"
+        )
     unknown = discovered_ansible_rules() - catalog
     if unknown:
         raise ValueError("Unreviewed ansible-lint rule")
@@ -221,7 +231,9 @@ def verify_configuration():
     vendors = json.loads((ROOT / "deploy/contracts/vendors.json").read_text())
     if sorted(tree["path"] for tree in vendors["trees"]) != sorted(data["vendorPaths"]):
         raise ValueError("Vendor provenance drifted")
-    if [item.rstrip("/") for item in vendor_prefixes()] != [tree["path"] for tree in vendors["trees"]]:
+    if [item.rstrip("/") for item in vendor_prefixes()] != [
+        tree["path"] for tree in vendors["trees"]
+    ]:
         raise ValueError("Vendor prefix adapter drifted")
     secret_path = ROOT / "quality/secret-false-positives.json"
     digest = hashlib.sha256(secret_path.read_bytes()).hexdigest()
@@ -255,7 +267,10 @@ def verify_configuration():
             raise ValueError("Strict linter invocation drifted")
     if "mypy coverage incomplete" not in lint_text:
         raise ValueError("mypy can report a partial run as complete")
-    if "returncode == 2 and not parsed" in lint_text or "returncode == 2 and duplicate" in lint_text:
+    if (
+        "returncode == 2 and not parsed" in lint_text
+        or "returncode == 2 and duplicate" in lint_text
+    ):
         raise ValueError("mypy still accepts a fatal partial run")
     if "quality-graph-publish" in lint_text or ".github/workflows" not in lint_text:
         raise ValueError("workflow scanner special-cases or drops workflow files")

@@ -141,7 +141,7 @@ class CascadePlanTests(unittest.TestCase):
         self.assertEqual(result["markFiveShelf"], ["older", "oldest"])
 
     def test_disk_pressure_never_marks_an_uncovered_shelf_block(self):
-        shelf = [block("open", 1 * DAY, 2 * DAY, FIVE, size=10 ** 12)]
+        shelf = [block("open", 1 * DAY, 2 * DAY, FIVE, size=10**12)]
         result = call([], shelf, [], now=3 * DAY, disk=0)
         self.assertEqual(result["markFiveShelf"], [])
 
@@ -180,17 +180,23 @@ class CascadePlanTests(unittest.TestCase):
 
 class ParseTests(unittest.TestCase):
     def test_parse_ls_reads_concatenated_meta_and_resolutions(self):
-        text = json.dumps({
-            "ulid": "A",
-            "minTime": 1,
-            "maxTime": 2,
-            "thanos": {"downsample": {"resolution": 0}},
-        }, indent="\t") + json.dumps({
-            "ulid": "B",
-            "minTime": 3,
-            "maxTime": 4,
-            "thanos": {"downsample": {"resolution": 300000}},
-        }, indent="\t")
+        text = json.dumps(
+            {
+                "ulid": "A",
+                "minTime": 1,
+                "maxTime": 2,
+                "thanos": {"downsample": {"resolution": 0}},
+            },
+            indent="\t",
+        ) + json.dumps(
+            {
+                "ulid": "B",
+                "minTime": 3,
+                "maxTime": 4,
+                "thanos": {"downsample": {"resolution": 300000}},
+            },
+            indent="\t",
+        )
         parsed = CASCADE.parse_ls(text)
         self.assertEqual([item["ulid"] for item in parsed], ["A", "B"])
         self.assertEqual([item["resolution"] for item in parsed], [0, 300000])

@@ -3,6 +3,7 @@
 All OAuth client material remains in the private homelab-authentik cache and the
 Kubernetes argocd-secret. It is never written to stdout, Ansible output, or Git.
 """
+
 from __future__ import annotations
 
 import base64
@@ -26,7 +27,7 @@ REDIRECT_URI = "https://argocd.socrat.alchemmist.xyz/auth/callback"
 
 # Runs in the Authentik server pod so the bootstrap token stays inside the pod
 # environment and API traffic uses the cluster service, not public DNS/TLS.
-PROBE_CODE = r'''import json, os, urllib.parse, urllib.request
+PROBE_CODE = r"""import json, os, urllib.parse, urllib.request
 base="http://authentik-server.identity.svc/api/v3/"
 token=os.environ["AUTHENTIK_BOOTSTRAP_TOKEN"]
 def get(path):
@@ -37,9 +38,9 @@ p=[x for x in rows("providers/oauth2/") if x.get("name")=="homelab-argocd"]
 a=get("core/applications/?superuser_full_list=true&page_size=100")["results"]
 a=[x for x in a if x.get("slug")=="argocd"]
 if len(p)>1 or len(a)>1:raise SystemExit(2)
-print(json.dumps({"provider_exists":bool(p),"application_exists":bool(a)}))'''
+print(json.dumps({"provider_exists":bool(p),"application_exists":bool(a)}))"""
 
-RECONCILE_CODE = r'''import json, os, sys, urllib.parse, urllib.request
+RECONCILE_CODE = r"""import json, os, sys, urllib.parse, urllib.request
 base="http://authentik-server.identity.svc/api/v3/"
 token=os.environ["AUTHENTIK_BOOTSTRAP_TOKEN"]
 client=json.load(sys.stdin)
@@ -123,7 +124,7 @@ for order,name in enumerate(allowed):
         api("POST","policies/bindings/",{"target":app["pk"],"group":known[name],
             "order":order,"enabled":True,"failure_result":False})
         changed=True
-print(json.dumps({"ok":True,"changed":changed}))'''
+print(json.dumps({"ok":True,"changed":changed}))"""
 
 
 def run(args: list[str], *, input_text: str | None = None, check: bool = True) -> str:
@@ -173,7 +174,9 @@ def main() -> None:
     state = exec_authentik(PROBE_CODE)
     if entry is None:
         if state["provider_exists"]:
-            raise RuntimeError("Existing provider has no local credential journal; refusing rotation")
+            raise RuntimeError(
+                "Existing provider has no local credential journal; refusing rotation"
+            )
         entry = {"client_id": "socrat-argocd", "client_secret": secrets.token_urlsafe(48)}
         clients["argocd"] = entry
         STAGE = "persist-client-credential-journal"
@@ -186,25 +189,51 @@ def main() -> None:
         detail = result.get("operation") or result.get("stage", "reconcile")
         endpoint = result.get("endpoint", "")
         error_type = result.get("error_type", "rejected")
-        STAGE = "Authentik-" + str(detail) + (":" + str(endpoint) if endpoint else "") + ":" + str(error_type)
+        STAGE = (
+            "Authentik-"
+            + str(detail)
+            + (":" + str(endpoint) if endpoint else "")
+            + ":"
+            + str(error_type)
+        )
         raise RuntimeError("Authentik did not confirm the Argo CD client")
 
     desired = base64.b64encode(entry["client_secret"].encode()).decode()
     STAGE = "read-Argo-CD-runtime-secret"
-    current = json.loads(run(KUBECTL + ["-n", NAMESPACE, "get", "secret",
-                                        "argocd-secret", "-o", "json"]))
+    current = json.loads(
+        run(KUBECTL + ["-n", NAMESPACE, "get", "secret", "argocd-secret", "-o", "json"])
+    )
     if current.get("data", {}).get(SECRET_KEY) != desired:
         patch = {"data": {SECRET_KEY: desired}}
         STAGE = "inject-OIDC-client-secret"
-        run(KUBECTL + ["-n", NAMESPACE, "patch", "secret", "argocd-secret",
-                       "--type=merge", "--patch-file", "/dev/stdin"],
-            input_text=json.dumps(patch))
+        run(
+            KUBECTL
+            + [
+                "-n",
+                NAMESPACE,
+                "patch",
+                "secret",
+                "argocd-secret",
+                "--type=merge",
+                "--patch-file",
+                "/dev/stdin",
+            ],
+            input_text=json.dumps(patch),
+        )
         STAGE = "restart-Argo-CD-server"
-        run(KUBECTL + ["-n", NAMESPACE, "rollout", "restart",
-                       "deployment/argo-cd-argocd-server"])
+        run(KUBECTL + ["-n", NAMESPACE, "rollout", "restart", "deployment/argo-cd-argocd-server"])
         STAGE = "wait-for-Argo-CD-server"
-        run(KUBECTL + ["-n", NAMESPACE, "rollout", "status",
-                       "deployment/argo-cd-argocd-server", "--timeout=180s"])
+        run(
+            KUBECTL
+            + [
+                "-n",
+                NAMESPACE,
+                "rollout",
+                "status",
+                "deployment/argo-cd-argocd-server",
+                "--timeout=180s",
+            ]
+        )
         result["changed"] = True
     print("changed=" + str(bool(result.get("changed"))).lower())
 
@@ -216,13 +245,23 @@ if __name__ == "__main__":
             if not (ROOT / "credentials.json").is_file():
                 raise RuntimeError("Authentik runtime credential file is missing")
             state = exec_authentik(PROBE_CODE)
-            print("preflight=ok provider_exists=" + str(state["provider_exists"]).lower() +
-                  " application_exists=" + str(state["application_exists"]).lower())
+            print(
+                "preflight=ok provider_exists="
+                + str(state["provider_exists"]).lower()
+                + " application_exists="
+                + str(state["application_exists"]).lower()
+            )
         elif not sys.argv[1:]:
             main()
         else:
             raise RuntimeError("unsupported option")
     except Exception as exc:
-        print("Argo CD Authentik OIDC setup failed at " + STAGE +
-              " (" + type(exc).__name__ + "); sensitive output suppressed", file=sys.stderr)
+        print(
+            "Argo CD Authentik OIDC setup failed at "
+            + STAGE
+            + " ("
+            + type(exc).__name__
+            + "); sensitive output suppressed",
+            file=sys.stderr,
+        )
         raise SystemExit(1)

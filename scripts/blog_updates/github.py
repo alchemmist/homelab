@@ -101,8 +101,7 @@ class GitHub:
                 "base": "main",
                 "draft": draft,
                 "body": "Automatically proposed; human review required. No auto-merge.\n\n"
-                 f"Source commit: https://github.com/{REPO}/commit/{after}\n\n"
-                + reason[:2000],
+                f"Source commit: https://github.com/{REPO}/commit/{after}\n\n" + reason[:2000],
             },
         )
         return {"status": "created", "url": pr["html_url"]}

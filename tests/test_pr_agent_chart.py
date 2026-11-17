@@ -30,7 +30,9 @@ class PrAgentChartTest(unittest.TestCase):
         self.assertIn("--timeout", rendered)
         self.assertIn('"0"', rendered)
         self.assertIn("CONFIG__FALLBACK_MODELS", rendered)
-        fallback_at = next(i for i, line in enumerate(rendered.splitlines()) if "CONFIG__FALLBACK_MODELS" in line)
+        fallback_at = next(
+            i for i, line in enumerate(rendered.splitlines()) if "CONFIG__FALLBACK_MODELS" in line
+        )
         fallback_value = rendered.splitlines()[fallback_at + 1]
         self.assertEqual(fallback_value.count("openai/qwen3.8-27b"), 9)
         self.assertIn("CONFIG__MAX_MODEL_TOKENS", rendered)
@@ -42,7 +44,11 @@ class PrAgentChartTest(unittest.TestCase):
         self.assertIn("GITHUB_APP__HANDLE_PUSH_TRIGGER", rendered)
         self.assertIn("GITHUB_APP__PUSH_COMMANDS", rendered)
         self.assertIn("GITHUB__PUBLISH_AS_CHECK_RUN", rendered)
-        check_at = next(i for i, line in enumerate(rendered.splitlines()) if "GITHUB__PUBLISH_AS_CHECK_RUN" in line)
+        check_at = next(
+            i
+            for i, line in enumerate(rendered.splitlines())
+            if "GITHUB__PUBLISH_AS_CHECK_RUN" in line
+        )
         self.assertIn('"true"', rendered.splitlines()[check_at + 1])
         lines = rendered.splitlines()
         push_at = next(i for i, line in enumerate(lines) if "GITHUB_APP__PUSH_COMMANDS" in line)

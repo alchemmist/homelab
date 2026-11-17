@@ -41,9 +41,7 @@ def create(bundle, binaries, prometheus, exporter_path, backend_ip):
     ):
         raise ValueError("Explicit already verified native source executable path required")
     contract = json.loads((bundle / "contract.json").read_text())
-    age = (
-        datetime.now(UTC) - datetime.fromisoformat(contract["collectedAt"])
-    ).total_seconds()
+    age = (datetime.now(UTC) - datetime.fromisoformat(contract["collectedAt"])).total_seconds()
     if not 0 <= age <= 900:
         raise ValueError("Fresh complete scrape contract required")
     labels, hashes = {}, {}

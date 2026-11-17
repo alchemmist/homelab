@@ -118,9 +118,7 @@ def workflow_runs(names):
 
 def workflow_files(names):
     return [
-        p
-        for p in names
-        if p.startswith(".github/workflows/") and p.endswith((".yml", ".yaml"))
+        p for p in names if p.startswith(".github/workflows/") and p.endswith((".yml", ".yaml"))
     ]
 
 
@@ -254,13 +252,25 @@ def format_findings(files):
         line_no, _, message = rest.partition(":")
         if not separator or not line_no.isdigit():
             continue
-        result.append(finding("ruff-syntax", path.strip(), int(line_no), message.strip() or "Ruff could not parse this file"))
+        result.append(
+            finding(
+                "ruff-syntax",
+                path.strip(),
+                int(line_no),
+                message.strip() or "Ruff could not parse this file",
+            )
+        )
     if process.returncode:
         for line in process.stdout.splitlines():
             prefix = "Would reformat: "
             if line.startswith(prefix):
                 result.append(
-                    finding("ruff-format", line.removeprefix(prefix).strip(), 1, "Ruff format check failed")
+                    finding(
+                        "ruff-format",
+                        line.removeprefix(prefix).strip(),
+                        1,
+                        "Ruff format check failed",
+                    )
                 )
     if process.returncode not in (0, 1) and not result:
         raise RuntimeError("ruff format failed without a file list")
@@ -276,7 +286,10 @@ def shellcheck_files(files):
         timeout=180,
     )
     data = json.loads(process.stdout.strip() or "[]")
-    return [finding("SC" + str(item["code"]), item["file"], item["line"], item["message"]) for item in data]
+    return [
+        finding("SC" + str(item["code"]), item["file"], item["line"], item["message"])
+        for item in data
+    ]
 
 
 def workflow_script_findings(names, kind):
@@ -324,12 +337,22 @@ def workflow_script_findings(names, kind):
             if not paths:
                 continue
             process = command(
-                ["shellcheck", "--norc", "--enable=all", "--shell", dialect, "--format=json", *paths],
+                [
+                    "shellcheck",
+                    "--norc",
+                    "--enable=all",
+                    "--shell",
+                    dialect,
+                    "--format=json",
+                    *paths,
+                ],
                 allowed=(0, 1),
                 timeout=180,
             )
             for item in json.loads(process.stdout.strip() or "[]"):
-                source = labels.get(str(Path(item["file"]).resolve()), labels.get(item["file"], item["file"]))
+                source = labels.get(
+                    str(Path(item["file"]).resolve()), labels.get(item["file"], item["file"])
+                )
                 result.append(
                     finding(
                         "SC" + str(item["code"]),
@@ -363,7 +386,12 @@ def check(tool):
         if not isinstance(data, list):
             raise RuntimeError("ruff failed")
         result = [
-            finding(item.get("code") or "ruff-syntax", item["filename"], item["location"]["row"], item["message"])
+            finding(
+                item.get("code") or "ruff-syntax",
+                item["filename"],
+                item["location"]["row"],
+                item["message"],
+            )
             for item in data
         ]
         result.extend(format_findings(files))
@@ -482,7 +510,9 @@ def check(tool):
         return result, len(files)
     if tool == "dependencies":
         data = json.loads(
-            command(["pip-audit", "--local", "--format", "json"], allowed=(0, 1), timeout=300).stdout
+            command(
+                ["pip-audit", "--local", "--format", "json"], allowed=(0, 1), timeout=300
+            ).stdout
         )
         result = []
         seen = set()

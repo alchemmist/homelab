@@ -134,11 +134,7 @@ def classify(check, findings):
     reviewed = []
     for item in findings:
         prior = index.get(item["id"])
-        if (
-            prior
-            and prior["path"] == item["location"]["path"]
-            and prior["rule"] == item["ruleId"]
-        ):
+        if prior and prior["path"] == item["location"]["path"] and prior["rule"] == item["ruleId"]:
             reviewed.append(item)
         else:
             blocking.append(item)

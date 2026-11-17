@@ -7,9 +7,9 @@ import tempfile
 import unittest
 
 
-SOURCE = os.environ.get('ALX_SOURCE')
-COMPILER = shutil.which('cc')
-HARNESS = r'''
+SOURCE = os.environ.get("ALX_SOURCE")
+COMPILER = shutil.which("cc")
+HARNESS = r"""
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -43,8 +43,8 @@ static bool netif_tx_queue_stopped(struct netdev_queue *q) { return false; }
 static bool netif_carrier_ok(void *dev) { return true; }
 static int alx_tpd_avail(struct alx_tx_queue *q) { return 255; }
 static void netif_tx_wake_queue(struct netdev_queue *q) { }
-'''
-MAIN = r'''
+"""
+MAIN = r"""
 int main(int argc, char **argv) {
     struct alx_tx_queue q = { .count = 256 };
     struct sk_buff skb = { .len = 100 };
@@ -57,37 +57,47 @@ int main(int argc, char **argv) {
     printf("%u %u %u %u %u %u\n", complete, resets, freed, q.read_idx, packets, bytes);
     return 0;
 }
-'''
+"""
 
 
-@unittest.skipUnless(SOURCE and COMPILER, 'ALX_SOURCE and a C compiler are required')
+@unittest.skipUnless(SOURCE and COMPILER, "ALX_SOURCE and a C compiler are required")
 class AlxTxGuardTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         source = Path(SOURCE).read_text()
-        match = re.search(r'static bool alx_clean_tx_irq\(struct alx_tx_queue \*txq\)\s*\{', source)
+        match = re.search(r"static bool alx_clean_tx_irq\(struct alx_tx_queue \*txq\)\s*\{", source)
         if match is None:
-            raise AssertionError('alx_clean_tx_irq definition not found')
+            raise AssertionError("alx_clean_tx_irq definition not found")
         depth = 1
         end = match.end()
         while depth and end < len(source):
-            depth += (source[end] == '{') - (source[end] == '}')
+            depth += (source[end] == "{") - (source[end] == "}")
             end += 1
         if depth:
-            raise AssertionError('unterminated alx_clean_tx_irq definition')
-        function = source[match.start():end]
+            raise AssertionError("unterminated alx_clean_tx_irq definition")
+        function = source[match.start() : end]
         cls.temporary = tempfile.TemporaryDirectory()
         cls.addClassCleanup(cls.temporary.cleanup)
         directory = Path(cls.temporary.name)
-        c_file = directory / 'guard.c'
+        c_file = directory / "guard.c"
         c_file.write_text(HARNESS + function + MAIN)
-        cls.binary = directory / 'guard'
-        subprocess.run([COMPILER, '-O0', '-std=c11', str(c_file), '-o', str(cls.binary)],
-                       check=True, capture_output=True, text=True, timeout=30)
+        cls.binary = directory / "guard"
+        subprocess.run(
+            [COMPILER, "-O0", "-std=c11", str(c_file), "-o", str(cls.binary)],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
 
     def run_cleanup(self, hardware_index, software_index, occupied):
-        result = subprocess.run([str(self.binary), str(hardware_index), str(software_index), str(occupied)],
-                                check=True, capture_output=True, text=True, timeout=1)
+        result = subprocess.run(
+            [str(self.binary), str(hardware_index), str(software_index), str(occupied)],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=1,
+        )
         return tuple(map(int, result.stdout.split()))
 
     def test_invalid_indices_schedule_reset_without_consuming_descriptors(self):
@@ -108,5 +118,5 @@ class AlxTxGuardTests(unittest.TestCase):
         self.assertEqual(self.run_cleanup(200, 0, 200), (0, 0, 128, 128, 128, 12800))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

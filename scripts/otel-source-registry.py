@@ -37,7 +37,8 @@ CLUSTER_JOBS = {
 }
 LOCAL_JOBS = {"node-exporter"}
 SENSITIVE = re.compile(
-    r"token|secret|password|cookie|credential|authorization|bearer|api[_-]?key|^key$|username", re.IGNORECASE
+    r"token|secret|password|cookie|credential|authorization|bearer|api[_-]?key|^key$|username",
+    re.IGNORECASE,
 )
 
 

@@ -11,7 +11,8 @@ import socket
 import subprocess
 from pathlib import Path
 
-KEY='2iba8vq4KkAZmoLR+5u9t/WUlvtrHOtS+ys/k8oN4wQ='; IP='10.250.0.8/32'
+KEY = "2iba8vq4KkAZmoLR+5u9t/WUlvtrHOtS+ys/k8oN4wQ="
+IP = "10.250.0.8/32"
 ROOT = Path("/var/lib/homelab-tv-wireguard-retirement")
 CONF = Path("/etc/wireguard/wg-socrat.conf")
 

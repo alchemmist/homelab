@@ -8,6 +8,7 @@ root/branch в шелле и, если кэш протух, запускает �
   arc-pr.py refresh <root> <branch> <base>
     пишет <base>.pr -> "(#14031057)" либо пусто
 """
+
 import json
 import os
 import subprocess
@@ -17,8 +18,11 @@ import sys
 def arc(args, cwd=None):
     try:
         return subprocess.run(
-            ["arc"] + args, cwd=cwd,
-            capture_output=True, text=True, timeout=15,
+            ["arc"] + args,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=15,
         ).stdout.strip()
     except Exception:
         return ""

@@ -13,8 +13,10 @@ class MetricsDiskTest(unittest.TestCase):
     def test_counts_prometheus_raw_and_shelf_without_other_volumes(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            prom = root / "rancher/k3s/storage" / (
-                "pvc-1_cattle-monitoring-system_" + DISK.PROMETHEUS_MARKER + "-0"
+            prom = (
+                root
+                / "rancher/k3s/storage"
+                / ("pvc-1_cattle-monitoring-system_" + DISK.PROMETHEUS_MARKER + "-0")
             )
             other = root / "rancher/k3s/storage/pvc-2_other"
             raw = root / "socrat-thanos"

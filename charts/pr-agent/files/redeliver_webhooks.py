@@ -42,12 +42,16 @@ def request(method: str, path: str, bearer: str):
     # HTTPSConnection verifies TLS and never follows redirects with the bearer.
     connection = http.client.HTTPSConnection("api.github.com", timeout=30)
     try:
-        connection.request(method, path, headers={
-            "Authorization": f"Bearer {bearer}",
-            "Accept": "application/vnd.github+json",
-            "User-Agent": "pr-agent-webhook-redelivery",
-            "X-GitHub-Api-Version": "2022-11-28",
-        })
+        connection.request(
+            method,
+            path,
+            headers={
+                "Authorization": f"Bearer {bearer}",
+                "Accept": "application/vnd.github+json",
+                "User-Agent": "pr-agent-webhook-redelivery",
+                "X-GitHub-Api-Version": "2022-11-28",
+            },
+        )
         response = connection.getresponse()
         if not 200 <= response.status < 300:
             raise RuntimeError(f"GitHub delivery request failed: HTTP {response.status}")

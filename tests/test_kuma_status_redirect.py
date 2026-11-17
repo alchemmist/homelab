@@ -1,8 +1,10 @@
 """Public status redirects must not expose the internal HTTP listener."""
+
 from pathlib import Path
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
+
 
 class KumaStatusRedirectTests(unittest.TestCase):
     def test_redirect_stays_on_public_origin(self):

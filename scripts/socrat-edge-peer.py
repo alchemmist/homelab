@@ -9,7 +9,7 @@ import re
 import subprocess
 from pathlib import Path
 
-KEY = 'rOXEc8nrYHuYG0D5t+LwY9jxv05zsjxt0P2scF+Sf0k='
+KEY = "rOXEc8nrYHuYG0D5t+LwY9jxv05zsjxt0P2scF+Sf0k="
 ADDRESS = "10.250.0.40/32"
 ENDPOINT = "91.189.82.238:51830"
 

@@ -44,12 +44,7 @@ def latest_stable(releases):
 
 
 def escape_label(value):
-    return (
-        str(value)
-        .replace("\\", r"\\")
-        .replace("\n", r"\n")
-        .replace('"', r'\"')
-    )
+    return str(value).replace("\\", r"\\").replace("\n", r"\n").replace('"', r"\"")
 
 
 def fetch_releases(repo, timeout):
@@ -181,12 +176,19 @@ def deployment_image(target, timeout):
     port = os.environ.get("KUBERNETES_SERVICE_PORT", "443")
     if ":" in host and not host.startswith("["):
         host = f"[{host}]"
-    token = open("/var/run/secrets/kubernetes.io/serviceaccount/token", encoding="utf-8").read().strip()
+    token = (
+        open("/var/run/secrets/kubernetes.io/serviceaccount/token", encoding="utf-8").read().strip()
+    )
     url = f"https://{host}:{port}/apis/apps/v1/namespaces/{namespace}/deployments/{name}"
-    request = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}", "Accept": "application/json"})
+    request = urllib.request.Request(
+        url, headers={"Authorization": f"Bearer {token}", "Accept": "application/json"}
+    )
     context = None
     import ssl
-    context = ssl.create_default_context(cafile="/var/run/secrets/kubernetes.io/serviceaccount/ca.crt")
+
+    context = ssl.create_default_context(
+        cafile="/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+    )
     with urllib.request.urlopen(request, timeout=timeout, context=context) as response:
         payload = json.load(response)
     for item in payload["spec"]["template"]["spec"]["containers"]:

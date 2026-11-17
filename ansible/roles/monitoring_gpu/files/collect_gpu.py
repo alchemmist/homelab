@@ -29,13 +29,19 @@ REASONS = (
     "sw_power_cap",
     "hw_power_brake_slowdown",
 )
-QUERY = ["uuid", "name", "index"] + [field[0] for field in FIELDS] + [
-    "clocks_event_reasons." + reason for reason in REASONS
-]
+QUERY = (
+    ["uuid", "name", "index"]
+    + [field[0] for field in FIELDS]
+    + ["clocks_event_reasons." + reason for reason in REASONS]
+)
 
 
 def sample(name, labels, value):
-    suffix = "{" + ",".join(key + "=" + json.dumps(value) for key, value in labels.items()) + "}" if labels else ""
+    suffix = (
+        "{" + ",".join(key + "=" + json.dumps(value) for key, value in labels.items()) + "}"
+        if labels
+        else ""
+    )
     return name + suffix + " " + format(value, ".15g") + "\n"
 
 
@@ -61,9 +67,15 @@ def parse_metrics(output):
                 continue
             if math.isfinite(value):
                 metrics.append(sample("socrat_gpu_" + metric, labels, value))
-        for reason, raw in zip(REASONS, row[3 + len(FIELDS):]):
+        for reason, raw in zip(REASONS, row[3 + len(FIELDS) :]):
             if raw in ("Active", "Not Active"):
-                metrics.append(sample("socrat_gpu_throttle_active", {**labels, "reason": reason}, float(raw == "Active")))
+                metrics.append(
+                    sample(
+                        "socrat_gpu_throttle_active",
+                        {**labels, "reason": reason},
+                        float(raw == "Active"),
+                    )
+                )
     if not count:
         raise ValueError("No NVIDIA GPU returned")
     return "".join(metrics)
@@ -90,7 +102,10 @@ def collect(binary, destination):
     try:
         result = subprocess.run(
             [binary, "--query-gpu=" + ",".join(QUERY), "--format=csv,noheader,nounits"],
-            check=True, capture_output=True, text=True, timeout=20,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=20,
             env={**os.environ, "LC_ALL": "C"},
         )
         metrics = parse_metrics(result.stdout)

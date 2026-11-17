@@ -46,24 +46,41 @@ def test_total_probe_failure_keeps_both_addresses():
 
 def test_rustfs_names_additive_without_changes_to_existing_records():
     import subprocess
-    original = subprocess.check_output(['git', 'show', 'cde1027:scripts/public_dns_zone.py'], text=True)
+
+    original = subprocess.check_output(
+        ["git", "show", "cde1027:scripts/public_dns_zone.py"], text=True
+    )
     prior = {}
-    exec(compile(original, 'prior_public_dns_zone.py', 'exec'), prior)
+    exec(compile(original, "prior_public_dns_zone.py", "exec"), prior)
     # The additive-name contract is independent of the approved VPS IP migration.
     # Normalize only that address in the historical fixture; compare all records.
-    prior['VPS'] = zone.VPS
-    prior['STATIC_A']['netbird-relay-vps.socrat'] = [zone.VPS]
+    prior["VPS"] = zone.VPS
+    prior["STATIC_A"]["netbird-relay-vps.socrat"] = [zone.VPS]
     # Independently approved VPN-only Moscow cutover; do not normalize other names.
-    prior['FAILOVER'].remove('vpn')
-    prior['STATIC_A']['vpn'] = ['91.189.82.238']
+    prior["FAILOVER"].remove("vpn")
+    prior["STATIC_A"]["vpn"] = ["91.189.82.238"]
     for home, vps in [(True, True), (False, True), (True, False), (False, False)]:
         new = zone.render(123, home, vps).splitlines()
         # Independently approved concurrent SPI DNS addition is also historical-fixture scope.
-        names = ('rustfs.socrat IN A ', 'spi-evidence.socrat IN A ', 'kuma.socrat IN A ', 'tv IN A ', 'spi.socrat IN A ', 'wishlist IN A ', 'venice.socrat IN A ', 'password.socrat IN A ')
-        assert [line for line in new if not line.startswith(names) and line not in ("@ IN NS ns3.alchemmist.xyz.", "ns3 IN A 91.189.82.238")] == prior['render'](123, home, vps).splitlines()
-        for name in ('rustfs.socrat', 'spi-evidence.socrat'):
+        names = (
+            "rustfs.socrat IN A ",
+            "spi-evidence.socrat IN A ",
+            "kuma.socrat IN A ",
+            "tv IN A ",
+            "spi.socrat IN A ",
+            "wishlist IN A ",
+            "venice.socrat IN A ",
+            "password.socrat IN A ",
+        )
+        assert [
+            line
+            for line in new
+            if not line.startswith(names)
+            and line not in ("@ IN NS ns3.alchemmist.xyz.", "ns3 IN A 91.189.82.238")
+        ] == prior["render"](123, home, vps).splitlines()
+        for name in ("rustfs.socrat", "spi-evidence.socrat"):
             for address in zone.healthy_addresses(home, vps):
-                assert new.count(f'{name} IN A {address}') == 1
+                assert new.count(f"{name} IN A {address}") == 1
 
 
 def test_current_vps_address_after_provider_migration():
@@ -71,21 +88,23 @@ def test_current_vps_address_after_provider_migration():
 
 
 def test_kuma_administration_name_follows_both_reviewed_entrances():
-    for home,vps in [(True,True),(False,True),(True,False),(False,False)]:
-        text=zone.render(7,home,vps)
-        for ip in [zone.HOME,zone.VPS]:
-            assert (f"kuma.socrat IN A {ip}" in text)==(ip in zone.healthy_addresses(home,vps))
+    for home, vps in [(True, True), (False, True), (True, False), (False, False)]:
+        text = zone.render(7, home, vps)
+        for ip in [zone.HOME, zone.VPS]:
+            assert (f"kuma.socrat IN A {ip}" in text) == (ip in zone.healthy_addresses(home, vps))
 
 
 def test_retired_tv_alias_is_not_rendered():
-    for home,vps in [(True,True),(True,False),(False,True),(False,False)]:
-        assert 'tv IN A ' not in zone.render(8,home,vps)
+    for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
+        assert "tv IN A " not in zone.render(8, home, vps)
 
 
 def test_vpn_has_only_moscow_even_when_original_entrances_fail():
-    assert 'vpn' not in zone.FAILOVER
-    for home,vps in [(True,True),(True,False),(False,True),(False,False)]:
-        lines=zone.render(123,home,vps).splitlines()
-        assert [line for line in lines if line.startswith('vpn IN A ')]==['vpn IN A 91.189.82.238']
-        assert 'ns1 IN A 109.173.40.247' in lines
-        assert 'ns2 IN A 109.120.141.60' in lines
+    assert "vpn" not in zone.FAILOVER
+    for home, vps in [(True, True), (True, False), (False, True), (False, False)]:
+        lines = zone.render(123, home, vps).splitlines()
+        assert [line for line in lines if line.startswith("vpn IN A ")] == [
+            "vpn IN A 91.189.82.238"
+        ]
+        assert "ns1 IN A 109.173.40.247" in lines
+        assert "ns2 IN A 109.120.141.60" in lines

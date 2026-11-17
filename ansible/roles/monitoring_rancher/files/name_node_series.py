@@ -7,25 +7,25 @@ import yaml
 from dashboard_descriptions import apply_descriptions
 
 
-DASHBOARD_UID = 'rancher-cluster-nodes-1'
+DASHBOARD_UID = "rancher-cluster-nodes-1"
 RANCHER_DASHBOARD_UIDS = {
-    'rancher-cluster-1',
-    'rancher-cluster-nodes-1',
-    'rancher-etcd-1',
-    'rancher-etcd-nodes-1',
-    'rancher-k8s-components-1',
-    'rancher-k8s-components-nodes-1',
-    'rancher-node-1',
-    'rancher-node-detail-1',
-    'rancher-pod-1',
-    'rancher-pod-containers-1',
-    'rancher-workload-1',
-    'rancher-workload-pods-1',
+    "rancher-cluster-1",
+    "rancher-cluster-nodes-1",
+    "rancher-etcd-1",
+    "rancher-etcd-nodes-1",
+    "rancher-k8s-components-1",
+    "rancher-k8s-components-nodes-1",
+    "rancher-node-1",
+    "rancher-node-detail-1",
+    "rancher-pod-1",
+    "rancher-pod-containers-1",
+    "rancher-workload-1",
+    "rancher-workload-pods-1",
 }
 NODE_NAMES = 'max by (instance, nodename) (node_uname_info{job="node-exporter"})'
 
-NODE_DASHBOARD_UIDS = {'rancher-node-1', 'rancher-node-detail-1'}
-NODE_SELECTOR_QUERY = 'query_result(' + NODE_NAMES + ')'
+NODE_DASHBOARD_UIDS = {"rancher-node-1", "rancher-node-detail-1"}
+NODE_SELECTOR_QUERY = "query_result(" + NODE_NAMES + ")"
 EXPORTER_QUERY = (
     'query_result(label_replace(node_uname_info{job="node-exporter"}, '
     '"node_ip", "$1", "instance", "(.+):[0-9]+") and on (node_ip) '
@@ -36,85 +36,123 @@ EXPORTER_QUERY = (
 CPU_TEMPERATURE_PANEL_ID = 1001
 CPU_TEMPERATURE_BASE = (
     '(avg by (instance, chip, sensor) (node_hwmon_temp_celsius{job="node-exporter",instance="$exporter_instance"}) '
-    '* on (instance, chip) group_left (chip_name) '
+    "* on (instance, chip) group_left (chip_name) "
     'max by (instance, chip, chip_name) (node_hwmon_chip_names{job="node-exporter",chip_name=~"coretemp|k10temp|zenpower"}))'
 )
-CPU_SENSOR_LABELS = 'max by (instance, chip, sensor, label) (node_hwmon_sensor_label{job="node-exporter"})'
+CPU_SENSOR_LABELS = (
+    'max by (instance, chip, sensor, label) (node_hwmon_sensor_label{job="node-exporter"})'
+)
 CPU_TEMPERATURE_QUERY = (
-    '(' + CPU_TEMPERATURE_BASE + ' * on (instance, chip, sensor) group_left (label) '
-    + CPU_SENSOR_LABELS + ') or label_replace(('
-    + CPU_TEMPERATURE_BASE + ' unless on (instance, chip, sensor) '
-    + CPU_SENSOR_LABELS + '), "label", "$1", "sensor", "(.+)")'
+    "("
+    + CPU_TEMPERATURE_BASE
+    + " * on (instance, chip, sensor) group_left (label) "
+    + CPU_SENSOR_LABELS
+    + ") or label_replace(("
+    + CPU_TEMPERATURE_BASE
+    + " unless on (instance, chip, sensor) "
+    + CPU_SENSOR_LABELS
+    + '), "label", "$1", "sensor", "(.+)")'
 )
 
 
 def add_cpu_temperature(dashboard):
-    existing = next((p for p in dashboard['panels'] if p['id'] == CPU_TEMPERATURE_PANEL_ID), None)
-    position = existing['gridPos'] if existing else {
-        'x': 0, 'y': max(p['gridPos']['y'] + p['gridPos']['h'] for p in dashboard['panels']),
-        'w': 24, 'h': 10,
-    }
-    dashboard['panels'] = [p for p in dashboard['panels'] if p['id'] != CPU_TEMPERATURE_PANEL_ID]
-    dashboard['panels'].append({
-        'id': CPU_TEMPERATURE_PANEL_ID,
-        'title': 'CPU temperature',
-        'description': 'Individual core and package/control temperatures where hardware exposes them. AMD systems may provide only shared CPU sensors. VPS hosts usually expose no sensors. Missing data does not mean 0 °C. GPU and disk sensors are excluded.',
-        'type': 'timeseries',
-        'gridPos': position,
-        'datasource': {'type': 'prometheus', 'uid': '${datasource}'},
-        'targets': [{'refId': 'A', 'expr': CPU_TEMPERATURE_QUERY,
-                     'legendFormat': '{{chip_name}} · {{label}} · {{chip}}/{{sensor}}', 'range': True}],
-        'fieldConfig': {'defaults': {
-            'unit': 'celsius', 'decimals': 1,
-            'color': {'mode': 'palette-classic'},
-            'custom': {'drawStyle': 'line', 'lineWidth': 1, 'fillOpacity': 0,
-                       'showPoints': 'never', 'spanNulls': False},
-        }, 'overrides': []},
-        'options': {
-            'legend': {'displayMode': 'table', 'placement': 'right', 'calcs': ['lastNotNull', 'max']},
-            'tooltip': {'mode': 'multi', 'sort': 'desc'},
-        },
-    })
+    existing = next((p for p in dashboard["panels"] if p["id"] == CPU_TEMPERATURE_PANEL_ID), None)
+    position = (
+        existing["gridPos"]
+        if existing
+        else {
+            "x": 0,
+            "y": max(p["gridPos"]["y"] + p["gridPos"]["h"] for p in dashboard["panels"]),
+            "w": 24,
+            "h": 10,
+        }
+    )
+    dashboard["panels"] = [p for p in dashboard["panels"] if p["id"] != CPU_TEMPERATURE_PANEL_ID]
+    dashboard["panels"].append(
+        {
+            "id": CPU_TEMPERATURE_PANEL_ID,
+            "title": "CPU temperature",
+            "description": "Individual core and package/control temperatures where hardware exposes them. AMD systems may provide only shared CPU sensors. VPS hosts usually expose no sensors. Missing data does not mean 0 °C. GPU and disk sensors are excluded.",
+            "type": "timeseries",
+            "gridPos": position,
+            "datasource": {"type": "prometheus", "uid": "${datasource}"},
+            "targets": [
+                {
+                    "refId": "A",
+                    "expr": CPU_TEMPERATURE_QUERY,
+                    "legendFormat": "{{chip_name}} · {{label}} · {{chip}}/{{sensor}}",
+                    "range": True,
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "celsius",
+                    "decimals": 1,
+                    "color": {"mode": "palette-classic"},
+                    "custom": {
+                        "drawStyle": "line",
+                        "lineWidth": 1,
+                        "fillOpacity": 0,
+                        "showPoints": "never",
+                        "spanNulls": False,
+                    },
+                },
+                "overrides": [],
+            },
+            "options": {
+                "legend": {
+                    "displayMode": "table",
+                    "placement": "right",
+                    "calcs": ["lastNotNull", "max"],
+                },
+                "tooltip": {"mode": "multi", "sort": "desc"},
+            },
+        }
+    )
 
 
 def resolve_node_exporter(dashboard):
-    variables = dashboard.setdefault('templating', {}).setdefault('list', [])
-    instance = next(variable for variable in variables if variable.get('name') == 'instance')
-    instance.update({
-        'label': 'Node',
-        'datasource': {'type': 'prometheus', 'uid': '${datasource}'},
-        'query': {'query': NODE_SELECTOR_QUERY, 'refId': 'nodeNames'},
-        'definition': NODE_SELECTOR_QUERY,
-        'regex': '/instance="(?<value>[^"]+)".*nodename="(?<text>[^"]+)"/',
-        'sort': 1,
-        'options': [],
-    })
-    variables[:] = [v for v in variables if v.get('name') != 'exporter_instance']
-    variables.append({
-        'name': 'exporter_instance',
-        'label': 'Exporter instance',
-        'type': 'query',
-        'hide': 2,
-        'datasource': {'type': 'prometheus', 'uid': '${datasource}'},
-        'query': {'query': EXPORTER_QUERY, 'refId': 'nodeExporterInstance'},
-        'definition': EXPORTER_QUERY,
-        'regex': '/(?:^|[,{ ])instance="([^"]+)"/',
-        'refresh': 1,
-        'sort': 1,
-        'multi': False,
-        'includeAll': False,
-        'options': [],
-    })
+    variables = dashboard.setdefault("templating", {}).setdefault("list", [])
+    instance = next(variable for variable in variables if variable.get("name") == "instance")
+    instance.update(
+        {
+            "label": "Node",
+            "datasource": {"type": "prometheus", "uid": "${datasource}"},
+            "query": {"query": NODE_SELECTOR_QUERY, "refId": "nodeNames"},
+            "definition": NODE_SELECTOR_QUERY,
+            "regex": '/instance="(?<value>[^"]+)".*nodename="(?<text>[^"]+)"/',
+            "sort": 1,
+            "options": [],
+        }
+    )
+    variables[:] = [v for v in variables if v.get("name") != "exporter_instance"]
+    variables.append(
+        {
+            "name": "exporter_instance",
+            "label": "Exporter instance",
+            "type": "query",
+            "hide": 2,
+            "datasource": {"type": "prometheus", "uid": "${datasource}"},
+            "query": {"query": EXPORTER_QUERY, "refId": "nodeExporterInstance"},
+            "definition": EXPORTER_QUERY,
+            "regex": '/(?:^|[,{ ])instance="([^"]+)"/',
+            "refresh": 1,
+            "sort": 1,
+            "multi": False,
+            "includeAll": False,
+            "options": [],
+        }
+    )
     for panel in panels(dashboard):
-        for target in panel.get('targets', []):
-            if 'expr' in target:
-                target['expr'] = target['expr'].replace('$instance', '$exporter_instance')
-                if dashboard['uid'] == 'rancher-node-detail-1' and panel.get('id') == 4:
-                    target['expr'] = 'avg(' + target['expr'].strip() + ')'
+        for target in panel.get("targets", []):
+            if "expr" in target:
+                target["expr"] = target["expr"].replace("$instance", "$exporter_instance")
+                if dashboard["uid"] == "rancher-node-detail-1" and panel.get("id") == 4:
+                    target["expr"] = "avg(" + target["expr"].strip() + ")"
 
 
 def panels(dashboard):
-    for panel in dashboard.get('panels', []):
+    for panel in dashboard.get("panels", []):
         yield panel
         yield from panels(panel)
 
@@ -124,65 +162,83 @@ def main():
     found = set()
     retained = []
     for manifest in manifests:
-        if not manifest or manifest.get('kind') != 'ConfigMap':
+        if not manifest or manifest.get("kind") != "ConfigMap":
             retained.append(manifest)
             continue
         dashboard_uids = set()
         removed_dashboard = False
-        for name, content in list(manifest.get('data', {}).items()):
-            if not name.endswith('.json'):
+        for name, content in list(manifest.get("data", {}).items()):
+            if not name.endswith(".json"):
                 continue
             try:
                 dashboard = json.loads(content)
             except (TypeError, ValueError):
                 continue
-            if not isinstance(dashboard, dict) or not isinstance(dashboard.get('panels'), list):
+            if not isinstance(dashboard, dict) or not isinstance(dashboard.get("panels"), list):
                 continue
-            uid = dashboard.get('uid')
+            uid = dashboard.get("uid")
             if not uid:
                 continue
             if uid not in RANCHER_DASHBOARD_UIDS:
-                del manifest['data'][name]
+                del manifest["data"][name]
                 removed_dashboard = True
                 continue
             dashboard_uids.add(uid)
             if uid in RANCHER_DASHBOARD_UIDS:
                 found.add(uid)
-                title = dashboard['title'].removeprefix('Rancher / ').removeprefix('[Rancher] ')
-                dashboard['title'] = title
-                manifest['data'][name] = json.dumps(dashboard, ensure_ascii=False, separators=(',', ':'))
+                title = dashboard["title"].removeprefix("Rancher / ").removeprefix("[Rancher] ")
+                dashboard["title"] = title
+                manifest["data"][name] = json.dumps(
+                    dashboard, ensure_ascii=False, separators=(",", ":")
+                )
             if uid in NODE_DASHBOARD_UIDS:
                 resolve_node_exporter(dashboard)
                 add_cpu_temperature(dashboard)
-                manifest['data'][name] = json.dumps(dashboard, ensure_ascii=False, separators=(',', ':'))
+                manifest["data"][name] = json.dumps(
+                    dashboard, ensure_ascii=False, separators=(",", ":")
+                )
             if uid != DASHBOARD_UID:
                 apply_descriptions(dashboard)
-                manifest['data'][name] = json.dumps(dashboard, ensure_ascii=False, separators=(',', ':'))
+                manifest["data"][name] = json.dumps(
+                    dashboard, ensure_ascii=False, separators=(",", ":")
+                )
                 continue
             for panel in panels(dashboard):
-                for target in panel.get('targets', []):
-                    legend = target.get('legendFormat', '')
-                    if '{{instance}}' not in legend:
+                for target in panel.get("targets", []):
+                    legend = target.get("legendFormat", "")
+                    if "{{instance}}" not in legend:
                         continue
-                    target['expr'] = '(' + target['expr'].strip() + ') * on (instance) group_left (nodename) ' + NODE_NAMES
-                    target['legendFormat'] = legend.replace('{{instance}}', '{{nodename}}')
-                for override in panel.get('fieldConfig', {}).get('overrides', []):
-                    matcher = override.get('matcher', {})
-                    if matcher.get('id') == 'byName' and isinstance(matcher.get('options'), str):
-                        matcher['options'] = matcher['options'].replace('{{instance}}', '{{nodename}}')
+                    target["expr"] = (
+                        "("
+                        + target["expr"].strip()
+                        + ") * on (instance) group_left (nodename) "
+                        + NODE_NAMES
+                    )
+                    target["legendFormat"] = legend.replace("{{instance}}", "{{nodename}}")
+                for override in panel.get("fieldConfig", {}).get("overrides", []):
+                    matcher = override.get("matcher", {})
+                    if matcher.get("id") == "byName" and isinstance(matcher.get("options"), str):
+                        matcher["options"] = matcher["options"].replace(
+                            "{{instance}}", "{{nodename}}"
+                        )
             apply_descriptions(dashboard)
-            manifest['data'][name] = json.dumps(dashboard, ensure_ascii=False, separators=(',', ':'))
+            manifest["data"][name] = json.dumps(
+                dashboard, ensure_ascii=False, separators=(",", ":")
+            )
         if dashboard_uids:
-            metadata = manifest.setdefault('metadata', {})
-            metadata['annotations'] = metadata.get('annotations') or {}
-            metadata['annotations']['grafana_folder'] = '/tmp/dashboards/Rancher'
-        if removed_dashboard and not manifest.get('data') and not manifest.get('binaryData'):
+            metadata = manifest.setdefault("metadata", {})
+            metadata["annotations"] = metadata.get("annotations") or {}
+            metadata["annotations"]["grafana_folder"] = "/tmp/dashboards/Rancher"
+        if removed_dashboard and not manifest.get("data") and not manifest.get("binaryData"):
             continue
         retained.append(manifest)
     if found != RANCHER_DASHBOARD_UIDS:
-        raise RuntimeError('The pinned chart is missing Rancher dashboards: ' + ', '.join(sorted(RANCHER_DASHBOARD_UIDS - found)))
+        raise RuntimeError(
+            "The pinned chart is missing Rancher dashboards: "
+            + ", ".join(sorted(RANCHER_DASHBOARD_UIDS - found))
+        )
     yaml.safe_dump_all(retained, sys.stdout, sort_keys=False)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

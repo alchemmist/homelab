@@ -80,10 +80,17 @@ class GraphicsWake(unittest.TestCase):
         calls = []
         spawned = []
         graphics.command_running = lambda command: False
-        graphics.graphics_up(blank=lambda *args: calls.append(args), spawn=lambda command: spawned.append(command))
-        graphics.graphics_up(blank=lambda *args: calls.append(args), spawn=lambda command: spawned.append(command))
+        graphics.graphics_up(
+            blank=lambda *args: calls.append(args), spawn=lambda command: spawned.append(command)
+        )
+        graphics.graphics_up(
+            blank=lambda *args: calls.append(args), spawn=lambda command: spawned.append(command)
+        )
         self.assertEqual(calls[0], ("output", "*", "dpms", "on"))
-        self.assertEqual([item[0] for item in spawned], ["/usr/bin/waybar", "/usr/local/bin/homelab-sway-shortcuts", "/usr/bin/mako"])
+        self.assertEqual(
+            [item[0] for item in spawned],
+            ["/usr/bin/waybar", "/usr/local/bin/homelab-sway-shortcuts", "/usr/bin/mako"],
+        )
         self.assertTrue(graphics.graphics_active())
         self.assertEqual(len(spawned), 3)
 

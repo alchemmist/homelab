@@ -44,9 +44,7 @@ def private(path, data):
 
 def evidence(root, name):
     data = json.loads((root / "journal" / (name + ".evidence.json")).read_text())
-    age = datetime.datetime.now(datetime.UTC) - datetime.datetime.fromisoformat(
-        data["created_at"]
-    )
+    age = datetime.datetime.now(datetime.UTC) - datetime.datetime.fromisoformat(data["created_at"])
     require(
         data["encrypted"] is True
         and data["decrypt_verified"] is True

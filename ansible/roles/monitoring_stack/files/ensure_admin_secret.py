@@ -5,7 +5,12 @@ import sys
 
 binary, kubeconfig, namespace, name = sys.argv[1:]
 command = [binary, "kubectl", "--kubeconfig", kubeconfig, "-n", namespace]
-result = subprocess.run(command + ["get", "secret", name, "--ignore-not-found", "-o", "name"], check=True, capture_output=True, text=True)
+result = subprocess.run(
+    command + ["get", "secret", name, "--ignore-not-found", "-o", "name"],
+    check=True,
+    capture_output=True,
+    text=True,
+)
 if result.stdout.strip():
     print("unchanged")
 else:
@@ -16,5 +21,11 @@ else:
         "type": "Opaque",
         "stringData": {"admin-user": "admin", "admin-password": secrets.token_urlsafe(36)},
     }
-    subprocess.run(command + ["create", "-f", "-"], input=json.dumps(secret), text=True, check=True, capture_output=True)
+    subprocess.run(
+        command + ["create", "-f", "-"],
+        input=json.dumps(secret),
+        text=True,
+        check=True,
+        capture_output=True,
+    )
     print("created")

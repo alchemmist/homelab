@@ -25,9 +25,7 @@ class SPIOnlyDNSTests(unittest.TestCase):
             with self.subTest(home=home, vps=vps):
                 before = old.render(123, home, vps).splitlines()
                 after = new.render(123, home, vps).splitlines()
-                self.assertEqual(
-                    [r for r in after if not r.startswith("spi.socrat IN A ")], before
-                )
+                self.assertEqual([r for r in after if not r.startswith("spi.socrat IN A ")], before)
                 self.assertEqual(
                     [r for r in after if r.startswith("spi.socrat IN A ")],
                     ["spi.socrat IN A " + a for a in old.healthy_addresses(home, vps)],
@@ -66,9 +64,7 @@ class DNSPreflightSafetyTests(unittest.TestCase):
                 path.write_text(content)
                 with (
                     self.subTest(content=content),
-                    self.assertRaisesRegex(
-                        RuntimeError, "^Invalid DNS renderer: proposed.py$"
-                    ),
+                    self.assertRaisesRegex(RuntimeError, "^Invalid DNS renderer: proposed.py$"),
                 ):
                     guard.load(path, "malformed")
 
@@ -156,9 +152,7 @@ class ExclusiveRendererTests(unittest.TestCase):
                 link.symlink_to(target)
                 with (
                     self.subTest(existing=existing),
-                    self.assertRaisesRegex(
-                        RuntimeError, "Unexpected temporary renderer"
-                    ),
+                    self.assertRaisesRegex(RuntimeError, "Unexpected temporary renderer"),
                 ):
                     guard.stage_renderer(link, b"replacement")
                 self.assertTrue(link.is_symlink())

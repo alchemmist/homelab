@@ -252,9 +252,7 @@ def main():
             bootstrap.digest(fresh, policy, build(fresh, policy)) == approved,
             "Concurrent migration change",
         )
-        run = args.state / datetime.datetime.now(datetime.UTC).strftime(
-            "%Y%m%dT%H%M%S.%fZ"
-        )
+        run = args.state / datetime.datetime.now(datetime.UTC).strftime("%Y%m%dT%H%M%S.%fZ")
         run.mkdir(mode=0o700)
         bootstrap.save(run / "before.json", before)
         bootstrap.save(run / "operations.json", operations)

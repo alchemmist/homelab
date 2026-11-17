@@ -10,9 +10,7 @@ from unittest.mock import Mock
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location(
-    "spi_oidc", ROOT / "scripts/spi-queue-oidc.py"
-)
+spec = importlib.util.spec_from_file_location("spi_oidc", ROOT / "scripts/spi-queue-oidc.py")
 identity = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(identity)
 
@@ -63,9 +61,7 @@ class NativeQueueChartTests(unittest.TestCase):
 
     def test_client_credential_mount_is_frontend_only_and_read_only(self):
         docs = render()
-        pod = docs["Deployment", "automation", "spi-queue-ui"]["spec"]["template"][
-            "spec"
-        ]
+        pod = docs["Deployment", "automation", "spi-queue-ui"]["spec"]["template"]["spec"]
         self.assertIn(
             {
                 "name": "oidc-client",
@@ -80,9 +76,7 @@ class NativeQueueChartTests(unittest.TestCase):
         self.assertFalse(pod["automountServiceAccountToken"])
         for name in ("spi-triage",):
             self.assertNotIn("oidc-client", str(docs["Deployment", "automation", name]))
-        self.assertNotIn(
-            "spi-queue-oidc", str(docs["CronJob", "pr-agent", "spi-github-broker"])
-        )
+        self.assertNotIn("spi-queue-oidc", str(docs["CronJob", "pr-agent", "spi-github-broker"]))
         self.assertFalse(any(k[0] == "Secret" for k in docs))
 
     def test_native_entry_does_not_change_backend_pvc_rbac_jobs_or_limits(self):
@@ -95,9 +89,9 @@ class NativeQueueChartTests(unittest.TestCase):
             ]:
                 continue
             self.assertEqual(old[k], new[k], k)
-        pod = lambda docs: docs["Deployment", "automation", "spi-queue-ui"]["spec"][
-            "template"
-        ]["spec"]
+        pod = lambda docs: docs["Deployment", "automation", "spi-queue-ui"]["spec"]["template"][
+            "spec"
+        ]
         self.assertEqual(
             pod(old)["containers"][0]["resources"],
             pod(new)["containers"][0]["resources"],
@@ -114,9 +108,7 @@ class NativeQueueChartTests(unittest.TestCase):
         self.assertNotIn("9000", text)
 
     def test_catalog_has_exact_native_callback_groups_and_no_human_assignment(self):
-        catalog = json.loads(
-            (ROOT / "deploy/identity/spi-triage-oidc.json").read_text()
-        )
+        catalog = json.loads((ROOT / "deploy/identity/spi-triage-oidc.json").read_text())
         self.assertEqual(
             catalog["provider"]["redirect_uris"],
             [
@@ -217,9 +209,7 @@ class NativeOIDCDefaultTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             overlay = Path(directory) / "partial.yaml"
-            overlay.write_text(
-                "queueUI:\n  oidc:\n    existingSecret: alternate-client\n"
-            )
+            overlay.write_text("queueUI:\n  oidc:\n    existingSecret: alternate-client\n")
             subprocess.run(
                 [
                     "helm",
@@ -286,9 +276,7 @@ class NativeStatePersistenceTests(unittest.TestCase):
             path = Path(directory) / "credentials.json"
             identity.save(path, {"fixture": "not a real credential"})
             self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
-            self.assertEqual(
-                json.loads(path.read_text()), {"fixture": "not a real credential"}
-            )
+            self.assertEqual(json.loads(path.read_text()), {"fixture": "not a real credential"})
             with self.assertRaises(FileExistsError):
                 identity.save(path, {})
 
