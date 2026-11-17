@@ -23,9 +23,9 @@ args:
   - "0.95"
   - --enforce-eager
   - --limit-mm-per-prompt
-  - '{"image":{"count":64,"width":1024,"height":1024},"video":0}'
+  - "{\"image\":{\"count\":64,\"width\":1024,\"height\":1024},\"video\":0}"
   - --mm-processor-kwargs
-  - '{"images_kwargs":{"size":{"longest_edge":1048576,"shortest_edge":65536}}}'
+  - "{\"images_kwargs\":{\"size\":{\"longest_edge\":1048576,\"shortest_edge\":65536}}}"
   - --mm-processor-cache-gb
   - "0.25"
   - --kv-cache-dtype
@@ -36,7 +36,7 @@ args:
   - --reasoning-parser
   - qwen3
   - --default-chat-template-kwargs
-  - '{"enable_thinking":false}'
+  - "{\"enable_thinking\":false}"
 resources:
   requests:
     cpu: "2"

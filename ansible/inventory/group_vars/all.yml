@@ -1,5 +1,5 @@
 ---
 homelab_user: alchemmist
-homelab_user_home: "/home/{{ homelab_user }}"
+homelab_user_home: /home/{{ homelab_user }}
 ansible_shell_executable: /bin/sh
 ...

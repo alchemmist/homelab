@@ -6,7 +6,7 @@ image:
   pullPolicy: IfNotPresent
 tracing:
   enabled: true
-  sampleRatio: '1'
+  sampleRatio: "1"
   endpoint: https://10.250.0.3:44318/v1/traces
   secretName: otel-app-tls-lms
   grafanaDashboard: true

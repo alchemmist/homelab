@@ -11,8 +11,8 @@
 - name: Gather operating system facts
   ansible.builtin.setup:
     gather_subset:
-      - '!all'
-      - '!min'
+      - "!all"
+      - "!min"
       - distribution
       - os_family
 
@@ -81,7 +81,7 @@
     state: directory
     owner: root
     group: root
-    mode: '0755'
+    mode: "0755"
 
 - name: Add the desired port while preserving existing access
   ansible.builtin.copy:
@@ -89,14 +89,14 @@
     content: "{{ homelab_ssh_transition_ports | map('regex_replace', '^', 'Port ') | join('\n') }}\n"
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
     validate: "{{ homelab_sshd_binary }} -t -f %s"
   register: homelab_ssh_transition
 
 - name: Include managed SSH configuration
   ansible.builtin.lineinfile:
     path: /etc/ssh/sshd_config
-    regexp: '^Include /etc/ssh/sshd_config\.d/\*\.conf$'
+    regexp: ^Include /etc/ssh/sshd_config\.d/\*\.conf$
     line: Include /etc/ssh/sshd_config.d/*.conf
     insertbefore: BOF
     validate: "{{ homelab_sshd_binary }} -t -f %s"
@@ -108,7 +108,7 @@
   check_mode: false
 
 - name: Check whether SSH socket activation is available
-  ansible.builtin.command: "systemctl show {{ homelab_ssh_socket_name }} --property=LoadState --value"
+  ansible.builtin.command: systemctl show {{ homelab_ssh_socket_name }} --property=LoadState --value
   register: homelab_ssh_socket_unit
   changed_when: false
   check_mode: false
@@ -166,7 +166,7 @@
         content: "{{ homelab_ssh_final_ports | map('regex_replace', '^', 'Port ') | join('\n') }}\n"
         owner: root
         group: root
-        mode: '0644'
+        mode: "0644"
         validate: "{{ homelab_sshd_binary }} -t -f %s"
       register: homelab_ssh_final
 
@@ -189,12 +189,12 @@
         content: "{{ homelab_ssh_transition_ports | map('regex_replace', '^', 'Port ') | join('\n') }}\n"
         owner: root
         group: root
-        mode: '0644'
+        mode: "0644"
         validate: "{{ homelab_sshd_binary }} -t -f %s"
 
     - name: Report the configuration conflict
       ansible.builtin.fail:
-        msg: "Final SSH configuration failed validation. Transitional ports remain available. {{ ansible_failed_result.msg | default('Inspect sshd configuration.') }}"
+        msg: Final SSH configuration failed validation. Transitional ports remain available. {{ ansible_failed_result.msg | default('Inspect sshd configuration.') }}
 
 - name: Apply the final SSH server port
   ansible.builtin.systemd_service:

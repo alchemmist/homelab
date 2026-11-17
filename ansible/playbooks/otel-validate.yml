@@ -34,7 +34,7 @@
         path: "{{ otel_validation_cache }}/{{ item }}"
         state: directory
         mode: "0700"
-      loop: ['', bin, tls, config, state, assets]
+      loop: ["", bin, tls, config, state, assets]
 
     - name: Copy pinned Linux validation binaries
       ansible.builtin.copy:
@@ -75,7 +75,7 @@
         argv:
           - "{{ otel_validation_cache }}/bin/otelcol-contrib"
           - validate
-          - "--config={{ otel_validation_cache }}/config/{{ item }}.yaml"
+          - --config={{ otel_validation_cache }}/config/{{ item }}.yaml
       environment: "{{ otel_validation_environment }}"
       loop: [agent, cluster, trace-gateway]
       changed_when: false
@@ -84,7 +84,7 @@
       ansible.builtin.command:
         argv:
           - "{{ otel_validation_cache }}/bin/loki"
-          - "-config.file={{ otel_validation_cache }}/config/loki.yaml"
+          - -config.file={{ otel_validation_cache }}/config/loki.yaml
           - -config.expand-env=true
           - -verify-config=true
       environment: "{{ otel_validation_environment }}"
@@ -94,7 +94,7 @@
       ansible.builtin.command:
         argv:
           - "{{ otel_validation_cache }}/bin/tempo"
-          - "-config.file={{ otel_validation_cache }}/config/tempo.yaml"
+          - -config.file={{ otel_validation_cache }}/config/tempo.yaml
           - -config.expand-env=true
           - -config.verify=true
       environment: "{{ otel_validation_environment }}"
@@ -102,7 +102,7 @@
 
     - name: Inspect Tempo validation options
       ansible.builtin.command:
-        argv: ["{{ otel_validation_cache }}/bin/tempo", '-help']
+        argv: ["{{ otel_validation_cache }}/bin/tempo", -help]
       changed_when: false
       register: otel_tempo_options
       failed_when: otel_tempo_options.rc not in [0, 2]
@@ -134,7 +134,7 @@
         argv:
           - "{{ otel_validation_cache }}/bin/otelcol-contrib"
           - validate
-          - "--config={{ otel_validation_cache }}/config/{{ 'cluster' if item == 'cluster' else 'agent' }}.yaml"
+          - --config={{ otel_validation_cache }}/config/{{ 'cluster' if item == 'cluster' else 'agent' }}.yaml
       environment: "{{ otel_validation_environment | combine({'OTEL_SCRAPE_CONFIG': otel_validation_cache + '/config/scrape-' + item + '.yaml'}) }}"
       loop: [cluster, socrat-0, socrat-1, socrat-2, socrat-3]
       when: otel_validation_scrape_bundle is defined

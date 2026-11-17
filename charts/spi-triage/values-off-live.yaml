@@ -20,7 +20,7 @@ bundleEnabled: false
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/spi-triage
   tag: bootstrap-disabled
-  digest: ''
+  digest: ""
 imagePullSecrets:
 - name: spi-triage-harbor-pull
 ...

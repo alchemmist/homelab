@@ -116,9 +116,9 @@
               - "{{ uptime_kuma_namespace }}"
               - --reset-values
               - --set-string
-              - "nodeName={{ uptime_kuma_source }}"
+              - nodeName={{ uptime_kuma_source }}
               - --set-string
-              - "hostPath={{ uptime_kuma_directory }}"
+              - hostPath={{ uptime_kuma_directory }}
               - --wait
               - --timeout
               - 5m
@@ -126,7 +126,7 @@
 
         - name: Report the failed migration
           ansible.builtin.fail:
-            msg: "Kuma migration failed; the preserved source was restored. {{ ansible_failed_result.msg | default('Inspect the failed task above.') }}"
+            msg: Kuma migration failed; the preserved source was restored. {{ ansible_failed_result.msg | default('Inspect the failed task above.') }}
 
       always:
         - name: Remove the private local transfer

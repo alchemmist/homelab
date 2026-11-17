@@ -27,7 +27,7 @@
     - name: Copy Syncthing Helm chart to control-plane user temp dir
       ansible.builtin.copy:
         src: "{{ playbook_dir }}/../../charts/syncthing/"
-        dest: "~/tmp-charts/syncthing/"
+        dest: ~/tmp-charts/syncthing/
         mode: preserve
 
     - name: Install or upgrade Syncthing Helm release

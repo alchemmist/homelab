@@ -7,10 +7,10 @@
     value: "{{ item.value }}"
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
     backup: true
   loop:
-    - {option: AutomaticLoginEnable, value: 'true'}
+    - {option: AutomaticLoginEnable, value: "true"}
     - {option: AutomaticLogin, value: alchemmist}
 
 - name: Select GNOME only when it is the requested desktop
@@ -21,7 +21,7 @@
     value: "{{ item.value }}"
     owner: root
     group: root
-    mode: '0600'
+    mode: "0600"
     backup: true
   loop:
     - {key: XSession, value: gnome}
@@ -37,21 +37,21 @@
     value: gnome
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
-    mode: '0644'
+    mode: "0644"
   when: homelab_laptop_desktop == 'gnome'
 
 - name: Create the package cache for the pinned system monitor
   ansible.builtin.file:
     path: /var/cache/homelab
     state: directory
-    mode: '0755'
+    mode: "0755"
 
 - name: Download the official bottom package with checksum verification
   ansible.builtin.get_url:
     url: https://github.com/ClementTsang/bottom/releases/download/0.14.9/bottom_0.14.9-1_amd64.deb
     checksum: sha256:e8312526746c1190c3433e6ce0843f64c6e0c501003ee377552745c040dc6d56
     dest: /var/cache/homelab/bottom_0.14.9-1_amd64.deb
-    mode: '0644'
+    mode: "0644"
 
 - name: Install the verified monitor package
   ansible.builtin.apt:
@@ -67,7 +67,7 @@
     state: directory
     owner: alchemmist
     group: alchemmist
-    mode: '0755'
+    mode: "0755"
 
 - name: Start the shared monitor terminal after graphical login
   ansible.builtin.copy:
@@ -82,5 +82,5 @@
       X-GNOME-Autostart-enabled=true
     owner: alchemmist
     group: alchemmist
-    mode: '0644'
+    mode: "0644"
 ...

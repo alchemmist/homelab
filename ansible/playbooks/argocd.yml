@@ -7,7 +7,7 @@
   vars:
     # Explicit empty-cluster bootstrap only; existing releases belong to Argo.
     argocd_allow_empty_bootstrap: false
-    argocd_chart_version: "10.11.6"
+    argocd_chart_version: 10.11.6
     argocd_chart_repo_name: argo
     argocd_chart_repo_url: https://argoproj.github.io/argo-helm
     argocd_namespace: argocd
@@ -40,7 +40,7 @@
     - name: Read the VPS ingress backend transport prerequisite
       ansible.builtin.command:
         argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, -n, traefik-edge,
-               get, deployment, traefik-edge, '-o=jsonpath={.spec.template.spec.containers[0].args}']
+               get, deployment, traefik-edge, "-o=jsonpath={.spec.template.spec.containers[0].args}"]
       environment:
         K3S_CONFIG_FILE: /dev/null
       register: argocd_edge_args
@@ -73,11 +73,11 @@
       ansible.builtin.copy:
         src: "{{ argocd_values_local }}"
         dest: "{{ argocd_values_remote }}"
-        mode: '0600'
+        mode: "0600"
 
     - name: Apply verified Argo CD backend transport before enabling HTTPS
       ansible.builtin.command:
-        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, apply, -f, '-']
+        argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, apply, -f, "-"]
         stdin: "{{ lookup('file', playbook_dir + '/../../deploy/argocd/server-transport.yaml') }}"
       environment:
         K3S_CONFIG_FILE: /dev/null
@@ -112,7 +112,7 @@
       ansible.builtin.copy:
         src: "{{ argocd_oidc_script_local }}"
         dest: "{{ argocd_oidc_script_remote }}"
-        mode: '0600'
+        mode: "0600"
 
     - name: Verify the Authentik API and private credential journal before reconciliation
       ansible.builtin.command:

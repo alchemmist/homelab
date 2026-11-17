@@ -9,14 +9,14 @@
   ansible.builtin.file:
     path: "{{ authentik_directory }}"
     state: directory
-    mode: '0700'
+    mode: "0700"
 
 - name: Download checksum-pinned official Authentik chart
   ansible.builtin.get_url:
-    url: "https://github.com/goauthentik/helm/releases/download/authentik-{{ authentik_chart_version }}/authentik-{{ authentik_chart_version }}.tgz"
+    url: https://github.com/goauthentik/helm/releases/download/authentik-{{ authentik_chart_version }}/authentik-{{ authentik_chart_version }}.tgz
     dest: "{{ authentik_directory }}/chart.tgz"
-    checksum: "sha256:{{ authentik_chart_sha256 }}"
-    mode: '0600'
+    checksum: sha256:{{ authentik_chart_sha256 }}
+    mode: "0600"
     timeout: 120
   register: authentik_download
   retries: 3
@@ -25,8 +25,8 @@
 
 - name: Create identity namespace
   ansible.builtin.command:
-    argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, apply, -f, '-']
-    stdin: '{"apiVersion":"v1","kind":"Namespace","metadata":{"name":"identity"}}'
+    argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, apply, -f, "-"]
+    stdin: "{\"apiVersion\":\"v1\",\"kind\":\"Namespace\",\"metadata\":{\"name\":\"identity\"}}"
   register: identity_namespace
   changed_when: "'created' in identity_namespace.stdout"
 
@@ -34,29 +34,29 @@
   ansible.builtin.copy:
     src: "{{ item.src }}"
     dest: "{{ authentik_directory }}/{{ item.name }}"
-    mode: '0600'
+    mode: "0600"
   loop:
-    - {src: '{{ playbook_dir }}/../../deploy/authentik/values.yaml', name: values.yaml}
-    - {src: '{{ playbook_dir }}/../../deploy/authentik/foundation.yaml', name: foundation.yaml}
+    - {src: "{{ playbook_dir }}/../../deploy/authentik/values.yaml", name: values.yaml}
+    - {src: "{{ playbook_dir }}/../../deploy/authentik/foundation.yaml", name: foundation.yaml}
     - {src: bootstrap.py, name: bootstrap.py}
     - {src: configure.py, name: configure.py}
     - {src: app_iam.py, name: app_iam.py}
     - {src: lifecycle.py, name: lifecycle.py}
-    - {src: '{{ playbook_dir }}/../../deploy/identity/lifecycle.json', name: lifecycle.json}
+    - {src: "{{ playbook_dir }}/../../deploy/identity/lifecycle.json", name: lifecycle.json}
     - {src: icons.py, name: icons.py}
-    - {src: '{{ playbook_dir }}/../../deploy/identity/services.json', name: services.json}
-    - {src: '{{ playbook_dir }}/../../deploy/identity/observer/profile.json', name: observer-profile.json}
-    - {src: '{{ playbook_dir }}/../../deploy/identity/account-mappings.json', name: account-mappings.json}
+    - {src: "{{ playbook_dir }}/../../deploy/identity/services.json", name: services.json}
+    - {src: "{{ playbook_dir }}/../../deploy/identity/observer/profile.json", name: observer-profile.json}
+    - {src: "{{ playbook_dir }}/../../deploy/identity/account-mappings.json", name: account-mappings.json}
 
 - name: Initialize stable credentials without exposing them
   ansible.builtin.command:
-    argv: [python3, '{{ authentik_directory }}/bootstrap.py', '{{ authentik_directory }}']
+    argv: [python3, "{{ authentik_directory }}/bootstrap.py", "{{ authentik_directory }}"]
   no_log: true
   changed_when: false
 
 - name: Apply persistent database and runtime account
   ansible.builtin.command:
-    argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, apply, -f, '{{ authentik_directory }}/foundation.yaml']
+    argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, apply, -f, "{{ authentik_directory }}/foundation.yaml"]
   register: authentik_foundation
   changed_when: "'created' in authentik_foundation.stdout or 'configured' in authentik_foundation.stdout"
 
@@ -67,7 +67,7 @@
 
 - name: Deploy Authentik without printing secrets or deleting data on failure
   ansible.builtin.command:
-    argv: [helm, upgrade, --install, authentik, '{{ authentik_directory }}/chart.tgz', --namespace, identity, --kubeconfig, /etc/rancher/k3s/k3s.yaml, --values, '{{ authentik_directory }}/values.yaml', --wait, --timeout, 15m]
+    argv: [helm, upgrade, --install, authentik, "{{ authentik_directory }}/chart.tgz", --namespace, identity, --kubeconfig, /etc/rancher/k3s/k3s.yaml, --values, "{{ authentik_directory }}/values.yaml", --wait, --timeout, 15m]
   changed_when: true
 
 - name: Wait for trusted certificate
@@ -79,18 +79,18 @@
   ansible.builtin.copy:
     src: "{{ playbook_dir }}/../../assets/service-icons/"
     dest: "{{ authentik_directory }}/service-icons/"
-    mode: '0600'
-    directory_mode: '0700'
+    mode: "0600"
+    directory_mode: "0700"
 
 - name: Upload icons to local identity media storage
   ansible.builtin.command:
-    argv: [python3, '{{ authentik_directory }}/icons.py', '{{ authentik_directory }}']
+    argv: [python3, "{{ authentik_directory }}/icons.py", "{{ authentik_directory }}"]
   no_log: true
   changed_when: false
 
 - name: Configure additive empty app groups and reviewed legacy application providers
   ansible.builtin.command:
-    argv: [python3, '{{ authentik_directory }}/configure.py', '{{ authentik_directory }}']
+    argv: [python3, "{{ authentik_directory }}/configure.py", "{{ authentik_directory }}"]
   no_log: true
   changed_when: false
 
@@ -102,10 +102,10 @@
 
 - name: Retain identity state on accidental claim removal
   ansible.builtin.command:
-    argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, patch, pv, '{{ item.spec.volumeName }}', --type=merge, '-p={"spec":{"persistentVolumeReclaimPolicy":"Retain"}}']
+    argv: [kubectl, --kubeconfig, /etc/rancher/k3s/k3s.yaml, patch, pv, "{{ item.spec.volumeName }}", --type=merge, "-p={\"spec\":{\"persistentVolumeReclaimPolicy\":\"Retain\"}}"]
   loop: "{{ (authentik_pvcs.stdout | from_json)['items'] }}"
   loop_control:
-    label: '{{ item.metadata.name }}'
+    label: "{{ item.metadata.name }}"
   changed_when: true
 
 - name: Automatically prepare catalog application groups after registration

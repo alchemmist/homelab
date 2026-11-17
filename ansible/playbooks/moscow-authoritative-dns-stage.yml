@@ -10,12 +10,12 @@
   any_errors_fatal: true
   vars:
     moscow_dns_apply: false
-    moscow_dns_approved_renderer_sha256: ''
+    moscow_dns_approved_renderer_sha256: ""
     public_dns_install_policy_rc_d: 101
     public_dns_config_validate: /usr/sbin/knotc -c %s conf-check
     public_dns_config_backup: true
     public_dns_listen:
-      socrat-4: ['91.189.82.238@53']
+      socrat-4: [91.189.82.238@53]
     public_dns_local_probe:
       socrat-4: 91.189.82.238
   tasks:
@@ -55,7 +55,7 @@
 
     - name: Compute the local renderer digest
       ansible.builtin.stat:
-        path: '{{ playbook_dir }}/../../scripts/public_dns_zone.py'
+        path: "{{ playbook_dir }}/../../scripts/public_dns_zone.py"
         checksum_algorithm: sha256
       delegate_to: localhost
       register: moscow_dns_renderer
@@ -64,13 +64,13 @@
       ansible.builtin.debug:
         msg:
           phase: staging-only
-          renderer_sha256: '{{ moscow_dns_renderer.stat.checksum }}'
-          public_listener: '91.189.82.238:53 TCP+UDP'
-          preserved_relay: '10.250.0.40:53'
+          renderer_sha256: "{{ moscow_dns_renderer.stat.checksum }}"
+          public_listener: 91.189.82.238:53 TCP+UDP
+          preserved_relay: 10.250.0.40:53
           changes_registrar: false
           publishes_ns3: true
           adds_web_address: false
-          apply: '{{ moscow_dns_apply | bool }}'
+          apply: "{{ moscow_dns_apply | bool }}"
 
     - name: Apply only the reviewed new authority
       when: moscow_dns_apply | bool
