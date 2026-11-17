@@ -1,0 +1,4 @@
+apiVersion: v2
+name: swe-mini
+version: 0.1.0
+description: Durable mini-swe-agent work and independent review queue for Monori
