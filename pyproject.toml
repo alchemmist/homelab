@@ -16,6 +16,7 @@ dev = [
   "quality-graph-cli==0.2.0",
   "quality-graph-github==0.2.0",
   "ruff==0.15.12",
+  "types-pyyaml==6.0.12.20261113",
   "yamllint==1.38.0",
   "zizmor==1.22.0",
 ]
