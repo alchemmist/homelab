@@ -4,8 +4,10 @@
 
 Owning Application: `deploy/argocd/apps/swe-mini.yaml`; local chart `charts/swe-mini`,
 values `deploy/swe-mini/values.yaml`. Implementation and hash-locked dependencies:
-`services/swe-mini`. First release is deliberately disabled until its immutable
-image and private prerequisites exist. This document is not evidence of rollout.
+`services/swe-mini`. Activation is requested (`enabled:true`), but the chart
+renders NO controller until the native release has written its first immutable
+image digest. Private prerequisites have been provisioned. This document is not
+evidence of a running agent; inspect actual release/Argo/queue state.
 
 Single Recreate controller on socrat-5, SQLite queue on a protected 2Gi PVC.
 One active work/review job globally. First run is a provider-backed synthetic shell
@@ -30,7 +32,14 @@ Candidates must be small UTF8 regular-file changes to server/app, server/tests,
 web/src, web/tests or common (20files/350KB maximum); dependency upgrades, CI,
 deployment, migrations, tooling and agent instruction changes are not published.
 All baseline and post-checks must pass; model completion alone is insufficient.
-A separate fresh-container mini invocation reproduces/reviews the exact candidate;
+Worker results have per-run/per-phase HMAC authentication derived from durable
+controller-only state. The wrapper removes result authority before spawning any
+child and sets Linux PR_SET_DUMPABLE=0, denying same-UID child access to parent
+/proc environ/memory/stdout. The build tests this boundary. This prevents a trivial
+agent-written forged PASS marker; it does not prove semantic correctness of tests.
+A separate fresh container installs dependencies from scratch and tests the exact
+candidate BEFORE running any reviewer-model commands, avoiding trust in a work
+agent's writable .venv/tools. Then mini independently reproduces/reviews it;
 reviewer modifications reject publication. Model review is fallible and is not
 independent-model consensus. Trusted controller, not the agent, creates the branch
 and PR via GitHub Git Data API, then leaves merge to the owner. At most5open mini
@@ -66,9 +75,17 @@ mutation or paid-model fallback. Venice browser login/VPN remains untouched.
 
 `SWE Mini Release` tests boundaries, builds an immutable full-SHA Harbor image,
 then calls existing `deploy-to-socrat@v1` in the SAME publish job (`app:swe-mini`).
-CI never calls Argo sync. Prerequisites are Secrets outside Git. First activate
-`enabled:true` in both values ONLY after native release records digest, secrets
-exist, and offline/server dry-run passes. No live image override.
+CI never calls Argo sync. Prerequisites are Secrets outside Git. Bootstrap uses
+an explicit empty-digest fence: activation is already requested in both values,
+but no controller is rendered before the first successful native release records
+its digest. Secrets must exist and offline/server dry-run must pass before this
+release. Argo then activates automatically, without a manual laptop-side step.
+No live image override. The first hosted-runner push stalled on large blob uploads;
+registry observed partial transfers/client disconnects, not a missing robot grant.
+The image now uses a slim Python base, separate dependency/browser layers, headless
+Chromium only and OCI zstd compression. The existing isolated BuildKit TLS workaround
+from `docs/harbor.md` is retained; no ingress/global TLS/VPN settings were changed.
+CI has a bounded60minute budget for the observed slow external upload path.
 
 Pause new tasks with `paused:true` in Git; active job/review finishes. Set
 `enabled:false` to stop controller (not an emergency cancellation of existing Jobs).
@@ -104,3 +121,49 @@ Must separately prove: native image release, Argo Synced/Healthy, correct node a
 imageID, scoped model route, isolated worker shell and tests, denied private/metadata
 egress, persisted queue recovery, independent review and actual PR. A running
 controller alone is NOT proof of a complete autonomous engineering pipeline.
+
+### First live acceptance (2026-11-17)
+
+Native release44145648310 succeeded; GitOps commit6e918a1f recorded immutable
+`sha256:f48c542932282dc9274922d076661ffba4dcfb777fe486a618093a90b1926073`.
+Controller Ready on socrat-5, PVC Bound, Argo Synced/Healthy. Real provider smoke
+261117184641-9f68e finished Submitted: synthetic shell marker and multiple calls
+both passed; controller authenticated the result. The next Monori backend Job
+261117184946-f9bf3 started automatically, proving continuation without a laptop.
+It failed before model execution on an existing npm peer conflict: charts9.5.2
+requires core9.5.2 but main pins core9.6.0. Main-branch CI44020975264 also fails.
+No actual improvement PR or end-to-end publication has passed yet.
+
+Bootstrap exception: when frontend dependency installation fails, the agent can
+propose EXACTLY web/package.json + web/package-lock.json (combined <=600KB).
+Only semantic-version changes to EXISTING dependencies/devDependencies are allowed;
+no package additions/removals, scripts/engines/metadata changes, source mixing or
+nonstandard registry URLs. Controller compares against original manifest fetched
+from GitHub at the exact revision, independently of model claims. Backend baseline
+must pass; the repaired candidate's ENTIRE test/build suite must pass. A fresh
+review environment must install the candidate successfully before its pre-model
+checks, and a separate review must approve. No force/legacy-peer-deps or auto-merge.
+All ordinary source patches retain the350KB budget and all-green baseline gate.
+
+Network acceptance Job swe-network-acceptance-v2 ran with worker labels, non-root
+security context and no model/GitHub credentials. DNS/model TCP4000/public GitHub
+TCP443 succeeded; private Kubernetes API TCP443 and metadata TCP80 were rejected.
+The controller independently reached that same API endpoint, confirming the worker
+private-API failure is not simply an absent endpoint. Initial probe incorrectly
+expected DROP/timeouts rather than CNI REJECT and was corrected; do not interpret
+its failed assertion as permitted private access. No domain-level production block
+is claimed. Admission backoff is now300seconds (single active task and5open-PR cap
+unchanged), avoiding a30minute idle gap after a fast failed/no-op task.
+An open dependency-repair PR blocks duplicate repair tasks against the SAME main
+revision (health state waiting_for_dependency_merge). Once main advances or the
+PR closes, admission resumes automatically; merge authority remains human-only.
+
+Live Monori task261117190224-efbb4 started automatically after the bootstrap release.
+Its real backend baseline passed430tests (243integration tests deselected) in35.61s.
+Read-only credential-free ephemeral diagnostics confirmed actual model shell actions
+and autonomous error/format recovery, not just a Running Pod. The model reached a
+candidate whose npm ci succeeded (815packages); tests/build, exact candidate review
+and actual PR publication remain unproven at this checkpoint. Controller Recreate
+rollouts preserved this SAME active Job/run through the durable queue; no duplicate
+worker was launched. Do not exec a debug process inheriting RESULT_KEY into an
+active model container; use an env-empty read-only ephemeral inspector if needed.

@@ -40,13 +40,13 @@ class QueueTransitions(unittest.TestCase):
         c.BATCH = MagicMock()
         c.BATCH.read_namespaced_job.return_value.status = SimpleNamespace(succeeded=1, failed=0)
         c.CORE.list_namespaced_pod.return_value.items = [SimpleNamespace(metadata=SimpleNamespace(name='worker'))]
-        self.result = {'revision': 'a' * 40, 'agent_status': 'Submitted', 'agent_rc': 0, 'checks': {'backend': 0}, 'baseline': {'backend': 0}, 'changes': [], 'report': 'evidence'}
+        self.result = {'revision': 'a' * 40, 'agent_status': 'Submitted', 'agent_rc': 0, 'checks': {'backend': 0}, 'baseline': {'backend': 0}, 'changes': [], 'report': 'evidence', 'candidate_checks': {'backend': 0}}
 
     def state(self):
         return c.DB.execute("SELECT state FROM runs WHERE id='test'").fetchone()[0]
 
     def tick(self):
-        c.CORE.read_namespaced_pod_log.return_value = policy.encode_result(self.result)
+        c.CORE.read_namespaced_pod_log.return_value = policy.encode_result(self.result, c.signing_key('test', self.state()))
         c.tick()
 
     def test_clean_no_finding_done(self):
@@ -93,6 +93,23 @@ class QueueTransitions(unittest.TestCase):
         self.assertEqual(self.state(), 'publishing')
         c.CORE.delete_namespaced_config_map.assert_called_once()
 
+    def test_model_approval_cannot_override_fresh_candidate_test_failure(self):
+        c.save('test', state='review')
+        self.result['candidate_checks'] = {'backend': 1}
+        self.result['review'] = {'approved': True, 'reason': 'model claims it passes'}
+        self.tick()
+        self.assertEqual(self.state(), 'rejected')
+
+    def test_forged_unsigned_worker_result_is_refused(self):
+        c.CORE.read_namespaced_pod_log.return_value = policy.encode_result(self.result)
+        c.tick()
+        self.assertEqual(self.state(), 'failed')
+
+    def test_invalid_candidate_is_terminal_not_infinite_retry(self):
+        self.result['changes'] = [{'path': '.github/workflows/evil.yml', 'content': 'dHJ1ZQ=='}]
+        self.tick()
+        self.assertEqual(self.state(), 'rejected')
+
     def test_no_unstructured_log_completion(self):
         c.CORE.read_namespaced_pod_log.return_value = 'I am done!'
         c.tick()
@@ -104,6 +121,34 @@ class QueueTransitions(unittest.TestCase):
             c.tick()
             start.assert_not_called()
         self.assertEqual(self.state(), 'work')
+
+    def test_expired_job_fails_and_next_task_is_admitted(self):
+        class NotFound(Exception):
+            status = 404
+        c.client.ApiException = NotFound
+        c.BATCH.read_namespaced_job.side_effect = NotFound()
+        c.tick()
+        self.assertEqual(self.state(), 'failed')
+        with patch.object(c, 'github', side_effect=[[], {'sha': 'b' * 40}]):
+            c.tick()
+        self.assertEqual(c.DB.execute("SELECT count(*) FROM runs WHERE state='queued'").fetchone()[0], 1)
+
+    def test_missing_terminal_pod_does_not_wedge_queue(self):
+        c.CORE.list_namespaced_pod.return_value.items = []
+        c.tick()
+        self.assertEqual(self.state(), 'failed')
+
+    def test_dependency_pr_blocks_duplicates_until_base_changes(self):
+        payload = {'changes': [{'path': p} for p in policy.DEPENDENCY_PATHS]}
+        c.save('test', state='published', pr='https://github.com/example/pr', result=json.dumps(payload))
+        prs = [{'html_url': 'https://github.com/example/pr', 'head': {'ref': 'swe-mini/test'}}]
+        with patch.object(c, 'github', side_effect=[prs, {'sha': 'a' * 40}]):
+            c.tick()
+        self.assertEqual(c.STATUS['state'], 'waiting_for_dependency_merge')
+        self.assertEqual(c.DB.execute('SELECT count(*) FROM runs').fetchone()[0], 1)
+        with patch.object(c, 'github', side_effect=[prs, {'sha': 'b' * 40}]):
+            c.tick()
+        self.assertEqual(c.DB.execute('SELECT count(*) FROM runs').fetchone()[0], 2)
 
     def test_persisted_queued_run_resumes(self):
         c.save('test', state='queued')

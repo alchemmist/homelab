@@ -2,6 +2,9 @@
 import base64
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
+import hashlib
+import hmac
+import secrets
 import logging
 import os
 from pathlib import Path
@@ -13,17 +16,24 @@ import uuid
 import jwt
 import requests
 from kubernetes import client, config
-from policy import LANES, decode_result, validate_changes
+from policy import LANES, decode_result, validate_changes, dependency_repair, validate_dependency_update
 
 NS = os.getenv('NAMESPACE', 'swe-mini')
 REPO = 'alchemmist/monori'
 DB = sqlite3.connect(os.getenv('STATE_PATH', '/state/queue.sqlite'), check_same_thread=False)
 DB.execute('CREATE TABLE IF NOT EXISTS runs (id TEXT PRIMARY KEY, lane TEXT, revision TEXT, state TEXT, job TEXT, result TEXT, review TEXT, pr TEXT, created REAL)')
+DB.execute('CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
+DB.execute('INSERT OR IGNORE INTO metadata (key,value) VALUES (?,?)', ('result-master-key', secrets.token_hex(32)))
 DB.commit()
+RESULT_MASTER = bytes.fromhex(DB.execute('SELECT value FROM metadata WHERE key=?', ('result-master-key',)).fetchone()[0])
 SESSION = requests.Session()
 SESSION.headers['Accept'] = 'application/vnd.github+json'
 TOKEN = {'value': '', 'expires': 0}
 STATUS = {'state': 'starting', 'last_tick': 0, 'error': ''}
+
+
+def signing_key(run_id, phase):
+    return hmac.new(RESULT_MASTER, f'{run_id}:{phase}'.encode(), hashlib.sha256).hexdigest()
 
 
 def github(path, method='GET', data=None, auth=True):
@@ -85,6 +95,7 @@ def start_job(run, phase):
                 'resources': {'requests': {'cpu': '250m', 'memory': '1Gi', 'ephemeral-storage': '2Gi'}, 'limits': {'cpu': '2', 'memory': '5Gi', 'ephemeral-storage': '9Gi'}},
                 'env': [{'name': k, 'value': v} for k,v in {
                     'LANE': lane, 'PHASE': phase, 'REVISION': revision, 'HISTORY': history[:20000],
+                    'RESULT_KEY': signing_key(run_id, phase),
                     'HOME': '/workspace', 'TMPDIR': '/workspace/tmp', 'UV_CACHE_DIR': '/workspace/.cache/uv',
                     'LLM_BASE': 'http://litellm.llm.svc.cluster.local:4000/v1',
                 }.items()] + [{'name': 'LLM_KEY', 'valueFrom': {'secretKeyRef': {'name': 'swe-mini-model', 'key': 'api-key'}}}],
@@ -145,18 +156,30 @@ def tick():
             url = publish(run, json.loads(run['result']), json.loads(run['review']))
             save(run['id'], state='published', pr=url)
             return
-        job = BATCH.read_namespaced_job(run['job'], NS)
+        try:
+            job = BATCH.read_namespaced_job(run['job'], NS)
+        except client.ApiException as exc:
+            if exc.status != 404:
+                raise
+            field = 'result' if run['state'] == 'work' else 'review'
+            save(run['id'], state='failed', **{field: json.dumps({'error': 'Worker Job expired or was removed; queue will continue with a fresh task'})})
+            return
         if not job.status.succeeded and not job.status.failed:
             return
         pods = CORE.list_namespaced_pod(NS, label_selector='job-name=' + run['job']).items
         if len(pods) != 1:
-            raise ValueError('Expected one worker pod')
+            save(run['id'], state='failed', review=json.dumps({'error': 'Missing or ambiguous worker Pod; no publication'}))
+            return
         log = CORE.read_namespaced_pod_log(pods[0].metadata.name, NS, limit_bytes=2_000_000)
         try:
-            result = decode_result(log)
+            result = decode_result(log, signing_key(run['id'], run['state']))
         except Exception:
             if run['state'] == 'review':
-                CORE.delete_namespaced_config_map(run['job'] + '-proposal', NS)
+                try:
+                    CORE.delete_namespaced_config_map(run['job'] + '-proposal', NS)
+                except client.ApiException as exc:
+                    if exc.status != 404:
+                        raise
             save(run['id'], state='failed', review=json.dumps({'error': 'Missing worker result; inspect job status'}))
             return
         if run['state'] == 'review':
@@ -170,8 +193,21 @@ def tick():
         if result.get('error') or result.get('revision') != run['revision'] or result.get('agent_status') != 'Submitted' or result.get('agent_rc') != 0:
             save(run['id'], state='failed')
             return
-        # Conservative: all baseline and after checks must pass. Never publish a known-red patch.
-        if not result.get('checks') or any(result['checks'].values()) or any(result['baseline'].values()):
+        candidate = result.get('changes', []) if run['state'] == 'work' else json.loads(run['result'] or '{}').get('changes', [])
+        repair = dependency_repair(candidate)
+        try:
+            if candidate:
+                validate_changes(candidate)
+            if any(i['path'] in {'web/package.json','web/package-lock.json'} for i in candidate):
+                base = github(f"repos/{REPO}/contents/web/package.json?ref={run['revision']}", auth=False)
+                validate_dependency_update(candidate, json.loads(base64.b64decode(base['content'])))
+        except (ValueError, KeyError, TypeError):
+            save(run['id'], state='rejected')
+            return
+        # Only a narrowly validated dependency repair may start from a red frontend install.
+        baseline_ok = not any(result.get('baseline', {'missing': 1}).values())
+        bootstrap_ok = repair and result.get('setup', {}).get('node', 0) != 0 and result.get('baseline', {}).get('backend') == 0
+        if not result.get('checks') or any(result['checks'].values()) or not (baseline_ok or bootstrap_ok):
             save(run['id'], state='rejected')
             return
         if run['state'] == 'work':
@@ -182,7 +218,8 @@ def tick():
             run['result'] = json.dumps(result)
             start_job(run, 'review')
         else:
-            if result.get('review', {}).get('approved') is not True:
+            if (not result.get('candidate_checks') or any(result['candidate_checks'].values())
+                    or result.get('review', {}).get('approved') is not True):
                 save(run['id'], state='rejected')
             else:
                 save(run['id'], state='publishing')
@@ -200,6 +237,11 @@ def tick():
         STATUS['state'] = 'waiting_for_pr_review'
         return
     revision = github(f'repos/{REPO}/commits/main', auth=False)['sha']
+    open_urls = {p['html_url'] for p in prs}
+    for pr, payload in DB.execute("SELECT pr,result FROM runs WHERE state='published' AND revision=? ORDER BY created DESC LIMIT 100", (revision,)):
+        if pr in open_urls and dependency_repair(json.loads(payload or '{}').get('changes', [])):
+            STATUS['state'] = 'waiting_for_dependency_merge'
+            return
     index = DB.execute('SELECT count(*) FROM runs').fetchone()[0]
     lane = 'smoke' if index == 0 else list(LANES)[(index - 1) % len(LANES)]
     run_id = time.strftime('%y%m%d%H%M%S') + '-' + uuid.uuid4().hex[:5]

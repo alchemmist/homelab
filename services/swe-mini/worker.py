@@ -8,10 +8,16 @@ import subprocess
 import sys
 import time
 
-from policy import LANES, encode_result, validate_changes
+from policy import LANES, encode_result, validate_changes, dependency_repair, validate_dependency_update
 
 ROOT = Path('/workspace/repo')
 ART = Path('/workspace/artifacts')
+# Remove before ANY subprocess: model-driven children must not inherit result authority.
+RESULT_KEY = os.environ.pop('RESULT_KEY', '')
+
+
+def signed_result(result):
+    return encode_result(result, RESULT_KEY)
 
 
 def command(args, *, cwd=ROOT, timeout=900):
@@ -56,7 +62,17 @@ def agent_main():
     (ART / 'agent-exit.json').write_text(json.dumps(result))
 
 
+def harden_parent():
+    import ctypes
+    # Deny same-UID children /proc/<parent>/{environ,mem,fd}, including Pod stdout.
+    # Together with a parent-only HMAC key this prevents an agent from simply
+    # printing a forged passing test envelope through /proc/1/fd/1.
+    if len(RESULT_KEY) != 64 or ctypes.CDLL(None).prctl(4, 0, 0, 0, 0) != 0:
+        raise RuntimeError('Authenticated non-dumpable worker wrapper required')
+
+
 def main():
+    harden_parent()
     ART.mkdir(parents=True, exist_ok=True)
     Path('/workspace/tmp').mkdir(exist_ok=True)
     lane = os.environ['LANE']
@@ -73,7 +89,7 @@ def main():
         status = exit_result.get('exit_status', 'MissingExit')
         marker = ROOT / 'proof.txt'
         valid = marker.exists() and marker.read_text().strip() == 'swe-mini-autonomy-ok'
-        print(encode_result(dict(lane=lane, phase=phase, revision=revision, agent_rc=rc,
+        print(signed_result(dict(lane=lane, phase=phase, revision=revision, agent_rc=rc,
               agent_status=status, baseline={'isolated_shell': 0}, checks={'marker': 0 if valid else 1, 'multiple_calls': 0 if exit_result.get('n_calls', 0) >= 2 else 1},
               changes=[], report='Native mini-swe-agent + configured DeepSeek: isolated shell execution and explicit submission acceptance. Next real task must start automatically.')), flush=True)
         return
@@ -85,15 +101,27 @@ def main():
         'python': command(['uv', 'sync', '--locked', '--group', 'test', '--group', 'analyze', '--group', 'audit']),
         'node': command(['npm', 'ci', '--ignore-scripts', '--no-audit', '--no-fund'], cwd=ROOT / 'web'),
     }
-    if any(setup.values()):
-        raise RuntimeError('Dependency setup failed; see bounded command log')
-    baseline = checks()
+    if setup['python']:
+        raise RuntimeError('Python dependency setup failed; see bounded command log')
+    original_package = json.loads(subprocess.check_output(['git', 'show', revision + ':web/package.json'], cwd=ROOT))
+    baseline = checks() if not setup['node'] else {
+        'backend': command(['uv','run','--locked','--group','test','pytest','-q','server/tests','-m','not integration']),
+        'frontend': 125, 'build': 125}
+    bootstrap = bool(setup['node'])
+    candidate_checks = None
     if phase == 'review':
         proposal = json.loads(Path('/proposal/proposal.json').read_text())
         for item in validate_changes(proposal['changes']):
             p = ROOT / item['path']
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_bytes(base64.b64decode(item['content']))
+        # Fresh installation, BEFORE any reviewer-model command can alter tools or .venv.
+        # A work-agent's writable dependency cache is never trusted as validation.
+        if dependency_repair(proposal['changes']):
+            validate_dependency_update(proposal['changes'], original_package)
+            if command(['npm','ci','--ignore-scripts','--no-audit','--no-fund'], cwd=ROOT / 'web'):
+                raise RuntimeError('Candidate dependencies do not install cleanly')
+        candidate_checks = checks()
         task = '''Independently review the existing uncommitted patch. Do not implement or change the patch.
 Read AGENTS.md. Reproduce claims, inspect regression tests and look for security/correctness problems.
 You have NO authority over production. Use local synthetic fixtures only.
@@ -116,16 +144,27 @@ limitations and public research URLs. No finding is better than speculative chur
 At most one small patch. Do not commit; the supervisor extracts working-tree changes.
 Baseline checks: {json.dumps(baseline)}. Baseline failures must be reported, not hidden.
 '''
+    if bootstrap and phase == 'work':
+        task += '''\nPRIORITY: npm ci failed before your run. Inspect /workspace/artifacts/commands.log.
+Instead of the normal lane, repair ONLY web/package.json AND web/package-lock.json.
+Only change existing dependency semantic versions to resolve the demonstrated peer conflict.
+Do not add/remove packages, alter scripts/engines/metadata, use force/legacy-peer-deps, or change other files.
+Run npm ci --ignore-scripts --no-audit --no-fund and the full tests/build; document the original failure.
+This narrow bootstrap exception overrides the general ban on dependency manifests above.
+'''
     (ART / 'task.txt').write_text(task)
     (ART / 'history.txt').write_text(os.environ.get('HISTORY', 'No previous results.'))
     # Only this subprocess is the model-driven agent; supervisor's post-check commands are fixed.
     rc = command([sys.executable, '/app/worker.py', '--agent'], timeout=4800)
+    if bootstrap:
+        command(['npm','ci','--ignore-scripts','--no-audit','--no-fund'], cwd=ROOT / 'web')
     after = checks()
-    result = dict(lane=lane, phase=phase, revision=revision, baseline=baseline, checks=after,
+    result = dict(lane=lane, phase=phase, revision=revision, baseline=baseline, checks=after, setup=setup,
                   agent_rc=rc, started=int(time.time()), changes=[], report='')
     exit_file = ART / 'agent-exit.json'
     result['agent_status'] = json.loads(exit_file.read_text()).get('exit_status') if exit_file.exists() else 'MissingExit'
     if phase == 'review':
+        result['candidate_checks'] = candidate_checks
         review = ART / 'review.json'
         result['review'] = json.loads(review.read_text()) if review.exists() else {'approved': False, 'reason': 'No review'}
         command(['git', 'add', '-N', '--', '.'])
@@ -145,9 +184,11 @@ Baseline checks: {json.dumps(baseline)}. Baseline failures must be reported, not
             result['changes'].append({'path': path, 'mode': '100644', 'content': base64.b64encode(p.read_bytes()).decode()})
         if result['changes']:
             validate_changes(result['changes'])
+            if any(i['path'] in {'web/package.json','web/package-lock.json'} for i in result['changes']):
+                validate_dependency_update(result['changes'], original_package)
     result['command_tail'] = (ART / 'commands.log').read_text(errors='replace')[-16000:]
     # No model transcript or shell stdout is streamed into cluster logs.
-    print(encode_result(result), flush=True)
+    print(signed_result(result), flush=True)
 
 
 if __name__ == '__main__':
@@ -159,5 +200,5 @@ if __name__ == '__main__':
             main()
         except Exception as exc:
             tail = (ART / 'commands.log').read_text(errors='replace')[-12000:] if (ART / 'commands.log').exists() else ''
-            print(encode_result({'error': type(exc).__name__ + ': ' + str(exc)[:400], 'command_tail': tail}), flush=True)
+            print(signed_result({'error': type(exc).__name__ + ': ' + str(exc)[:400], 'command_tail': tail}), flush=True)
             sys.exit(1)

@@ -1,13 +1,13 @@
-enabled: false
+enabled: true
 paused: false
 nodeName: socrat-5
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/swe-mini
-  tag: bootstrap-disabled
-  digest: ""
+  tag: 6a90968ee247f48274bb582b3ab283534b8ea047
+  digest: sha256:6f6247ff3d2a804dd0d5849bee18d61d3d6c4f9bae0b1d9d2e1f788badcebecb
 imagePullSecrets:
   - name: swe-mini-harbor-pull
-minIntervalSeconds: 1800
+minIntervalSeconds: 300
 storage:
   size: 2Gi
   className: local-path
