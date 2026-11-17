@@ -75,23 +75,123 @@ def cases_for(task, seed):
     return copy.deepcopy(cases)
 
 
+VERIFIER_SCRIPT = r"""const fs = require('node:fs');
+const vm = require('node:vm');
+const source = fs.readFileSync('./lib.cjs', 'utf8');
+const cases = JSON.parse(fs.readFileSync(0, 'utf8'));
+if (!Array.isArray(cases)) throw new Error('invalid cases');
+const context = vm.createContext(Object.create(null), {
+  codeGeneration: {strings: false, wasm: false}, microtaskMode: 'afterEvaluate'
+});
+const bootstrap = `(() => {
+  const parse = JSON.parse;
+  const stringify = JSON.stringify;
+  const apply = Reflect.apply;
+  const get = Reflect.get;
+  const set = Reflect.set;
+  const define = Reflect.defineProperty;
+  const remove = Reflect.deleteProperty;
+  const setProto = Reflect.setPrototypeOf;
+  const prevent = Reflect.preventExtensions;
+  const create = Object.create;
+  const isArray = Array.isArray;
+  const finite = Number.isFinite;
+  const ProxyType = Proxy;
+  const MapType = WeakMap;
+  const mapGet = WeakMap.prototype.get;
+  const mapSet = WeakMap.prototype.set;
+  const moduleRecord = {exports: create(null)};
+  Object.defineProperty(globalThis, 'module', {value: moduleRecord});
+  Object.defineProperty(globalThis, 'exports', {value: moduleRecord.exports});
+  Object.defineProperty(globalThis, '__trustedRun', {value: function (encoded) {
+    let mutated = false;
+    const cache = new MapType();
+    function wrap(value) {
+      if (value === null || typeof value !== 'object') return value;
+      const old = apply(mapGet, cache, [value]);
+      if (old) return old;
+      const proxy = new ProxyType(value, {
+        get(target, key, receiver) {return wrap(get(target, key, receiver));},
+        set(target, key, item) {mutated = true; return set(target, key, item);},
+        deleteProperty(target, key) {mutated = true; return remove(target, key);},
+        defineProperty(target, key, item) {mutated = true; return define(target, key, item);},
+        setPrototypeOf(target, item) {mutated = true; return setProto(target, item);},
+        preventExtensions(target) {mutated = true; return prevent(target);}
+      });
+      apply(mapSet, cache, [value, proxy]);
+      return proxy;
+    }
+    const record = create(null);
+    try {
+      const args = parse(encoded);
+      if (!isArray(args)) throw new TypeError('invalid args');
+      const value = apply(moduleRecord.exports.solve, undefined, wrap(args));
+      const kind = typeof value;
+      if (kind === 'string' || kind === 'boolean' || value === null || (kind === 'number' && finite(value))) {
+        record.value = value;
+      } else {
+        record.invalid = 'nonprimitive result';
+      }
+    } catch (error) {
+      let name = 'Error';
+      try {
+        const value = error && error.name;
+        if (typeof value === 'string' && value.length <= 64) name = value;
+      } catch (ignored) {}
+      record.error = name;
+    }
+    record.mutated = mutated;
+    return stringify(record);
+  }});
+  for (const target of [Object.prototype, Array.prototype, Function.prototype,
+                        WeakMap.prototype, JSON, Reflect]) Object.freeze(target);
+})()`;
+vm.runInContext(bootstrap, context, {timeout: 1000});
+vm.runInContext(source, context, {filename: 'lib.cjs', timeout: 1000});
+const results = [];
+for (const args of cases) {
+  const invocation = '__trustedRun(' + JSON.stringify(JSON.stringify(args)) + ')';
+  try {
+    const encoded = vm.runInContext(invocation, context, {timeout: 100});
+    if (typeof encoded !== 'string') throw new Error('nonprimitive boundary');
+    results.push(JSON.parse(encoded));
+  } catch (ignored) {
+    results.push({error: 'VerifierExecutionError', mutated: true});
+  }
+}
+process.stdout.write(JSON.stringify({results}));
+"""
+
+
 def verifier_command(task, seed):
     cases = cases_for(task, seed)
     nonce = secrets.token_hex(16)
-    script = ('const cases=' + json.dumps(cases) + ';const nonce=' + json.dumps(nonce) + ';'
-              'const {solve}=require("./lib.cjs");'
-              'const results=cases.map(args=>{const before=JSON.stringify(args);let r;'
-              'try{r={value:solve(...args)}}catch(e){r={error:e.name}}'
-              'r.mutated=JSON.stringify(args)!==before;return r});'
-              'console.log(JSON.stringify({nonce,results}));')
-    return 'node -e ' + shlex.quote(script), nonce, cases
+    return 'node -e ' + shlex.quote(VERIFIER_SCRIPT), nonce, cases
+
+
+def seal_execution(nonce, result):
+    if not isinstance(result, dict):
+        return result
+    sealed = dict(result)
+    try:
+        data = json.loads(result.get('output'))
+    except (ValueError, TypeError):
+        return sealed
+    if (not isinstance(data, dict) or 'nonce' in data or not isinstance(data.get('results'), list)):
+        sealed['output'] = ''
+        return sealed
+    sealed['output'] = json.dumps({'nonce': nonce, 'results': data['results']})
+    return sealed
 
 
 def check_verdict(task, nonce, cases, result):
-    if result['returncode'] != 0:
-        return {'accepted': False, 'reason': 'verifier process failed', 'exit_code': result['returncode']}
+    if not isinstance(result, dict):
+        return {'accepted': False, 'reason': 'missing or invalid verifier output'}
+    code = result.get('returncode')
+    if type(code) is not int or code != 0:
+        return {'accepted': False, 'reason': 'verifier process failed', 'exit_code': code}
     try:
-        data = json.loads(result['output'])
+        data = json.loads(result.get('output'))
     except (ValueError, TypeError):
         return {'accepted': False, 'reason': 'missing or invalid verifier output'}
     if (not isinstance(data, dict) or data.get('nonce') != nonce or
@@ -99,7 +199,8 @@ def check_verdict(task, nonce, cases, result):
         return {'accepted': False, 'reason': 'incomplete verifier output'}
     for index, (args, actual) in enumerate(zip(cases, data['results'])):
         want = expected(task, args) | {'mutated': False}
-        if actual != want or (isinstance(actual, dict) and isinstance(actual.get('value'), bool)):
+        if (not isinstance(actual, dict) or actual.get('mutated') is not False or
+                isinstance(actual.get('value'), bool) or actual != want):
             return {'accepted': False, 'reason': 'contract mismatch', 'case': index,
                     'arguments': args, 'expected': want, 'actual': actual}
     return {'accepted': True, 'cases': len(cases)}

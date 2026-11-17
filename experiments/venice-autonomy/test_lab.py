@@ -58,6 +58,31 @@ class ArchiveTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             inspect_archive(archive([('lib.cjs', b'x', tarfile.REGTYPE), ('test.cjs', b'x', tarfile.REGTYPE), ('other', b'x', tarfile.REGTYPE)]))
 
+    def test_dot_suffix_name_is_rejected(self):
+        with self.assertRaises(ValueError):
+            inspect_archive(archive([('lib.cjs/.', b'code', tarfile.REGTYPE), ('test.cjs', b'test', tarfile.REGTYPE)]))
+
+    def test_nul_smuggled_name_is_rejected(self):
+        blob = bytearray(archive([('lib.cjs', b'code', tarfile.REGTYPE), ('test.cjs', b'test', tarfile.REGTYPE)]))
+        payload = bytes([108,105,98,46,99,106,115,0]) + b'/../../../../tmp/pwned'
+        blob[0:len(payload)] = payload
+        header = bytearray(blob[:512])
+        header[148:156] = b'        '
+        checksum = sum(header)
+        blob[148:155] = format(checksum, '06o').encode('ascii') + bytes([0])
+        blob[155:156] = b' '
+        with self.assertRaises(ValueError):
+            inspect_archive(bytes(blob))
+
+    def test_decode_and_format_errors_are_value_errors(self):
+        with self.assertRaises(ValueError):
+            inspect_archive(b'not a tar')
+        with self.assertRaises(ValueError):
+            inspect_archive(archive([('lib.cjs', bytes([255]), tarfile.REGTYPE), ('test.cjs', b't', tarfile.REGTYPE)]))
+        short = archive([('lib.cjs', b'code', tarfile.REGTYPE), ('test.cjs', b'test', tarfile.REGTYPE)])[:200]
+        with self.assertRaises(ValueError):
+            inspect_archive(short)
+
 
 class VerifierTests(unittest.TestCase):
     def test_expected(self):
@@ -92,6 +117,120 @@ class VerifierTests(unittest.TestCase):
     def test_deterministic_cases(self):
         self.assertEqual(cases_for('median', 123), cases_for('median', 123))
         self.assertNotEqual(cases_for('median', 123), cases_for('median', 124))
+
+    def test_loose_types_and_missing_output_fail_closed(self):
+        cases = [[[10, 2, 1]]]
+        good = expected('median', cases[0]) | {'mutated': False}
+        body = {'nonce': 'n', 'results': [dict(good)]}
+        for flag in (0, 0.0, True):
+            payload = json.loads(json.dumps(body))
+            payload['results'][0]['mutated'] = flag
+            verdict = check_verdict('median', 'n', cases, {'returncode': 0, 'output': json.dumps(payload)})
+            self.assertFalse(verdict['accepted'])
+        payload = json.loads(json.dumps(body))
+        payload['results'][0]['value'] = True
+        self.assertFalse(check_verdict('median', 'n', cases, {'returncode': 0, 'output': json.dumps(payload)})['accepted'])
+        self.assertFalse(check_verdict('median', 'n', cases, {'returncode': False, 'output': json.dumps(body)})['accepted'])
+        self.assertFalse(check_verdict('median', 'n', cases, {'returncode': 0.0, 'output': json.dumps(body)})['accepted'])
+        self.assertFalse(check_verdict('median', 'n', cases, {'returncode': 0})['accepted'])
+        self.assertFalse(check_verdict('median', 'n', cases, {'returncode': 0, 'output': json.dumps({'nonce': 'n', 'results': [{}]})})['accepted'])
+
+
+GOOD = {
+    'median': "exports.solve = values => {\n"
+              "  if (!Array.isArray(values) || values.length === 0) throw new RangeError('empty');\n"
+              "  const a = values.slice().sort((x, y) => x - y);\n"
+              "  const n = a.length;\n"
+              "  return n % 2 ? a[n >> 1] : (a[n / 2 - 1] + a[n / 2]) / 2;\n"
+              "};\n",
+    'clamp': "exports.solve = (value, low, high) => {\n"
+             "  if (low > high) throw new RangeError('bounds');\n"
+             "  return Math.max(low, Math.min(high, value));\n"
+             "};\n",
+    'escape_html': "exports.solve = text => text\n"
+                   "  .replace(/&/g, '&amp;')\n"
+                   "  .replace(/</g, '&lt;')\n"
+                   "  .replace(/>/g, '&gt;')\n"
+                   "  .replace(/\"/g, '&quot;')\n"
+                   "  .replace(/'/g, '&#39;');\n",
+}
+
+SPOOF = (
+    "exports.solve = values => {\n"
+    "  if (!Array.isArray(values) || values.length === 0) throw new RangeError('empty');\n"
+    "  const snap = values.slice();\n"
+    "  const a = values.sort((x, y) => x - y);\n"
+    "  values.toJSON = () => snap;\n"
+    "  const n = a.length;\n"
+    "  return n % 2 ? a[n >> 1] : (a[n / 2 - 1] + a[n / 2]) / 2;\n"
+    "};\n"
+)
+
+
+class NodeVerifierTests(unittest.TestCase):
+    def run_source(self, task, source, seed=7):
+        import pathlib
+        import subprocess
+        import tempfile
+        from fixtures import verifier_command, seal_execution
+        command, nonce, cases = verifier_command(task, seed)
+        with tempfile.TemporaryDirectory() as directory:
+            pathlib.Path(directory, 'lib.cjs').write_text(source)
+            proc = subprocess.run(command, shell=True, cwd=directory, capture_output=True, text=True, input=json.dumps(cases), timeout=15)
+        return check_verdict(task, nonce, cases, seal_execution(nonce, {'returncode': proc.returncode, 'output': proc.stdout})), proc
+
+    def test_good_solutions_pass(self):
+        for task, source in GOOD.items():
+            verdict, proc = self.run_source(task, source)
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            self.assertTrue(verdict['accepted'], verdict)
+
+    def test_tojson_mutation_spoof_is_rejected(self):
+        verdict, proc = self.run_source('median', SPOOF)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertFalse(verdict['accepted'])
+        self.assertEqual(verdict['reason'], 'contract mismatch')
+
+
+    def test_process_eval_stdout_forgery_is_rejected(self):
+        source = r"""exports.solve = () => 42;
+const match = process._eval.match(/const cases=(.*?);const nonce=([^;]+);/s);
+const cases = JSON.parse(match[1]);
+const nonce = JSON.parse(match[2]);
+const results = cases.map(args => {
+  const a = args[0].slice().sort((x,y) => x-y);
+  if (!a.length) return {error:'RangeError',mutated:false};
+  const n = a.length;
+  return {value:n%2?a[n>>1]:(a[n/2-1]+a[n/2])/2,mutated:false};
+});
+process.stdout.write(JSON.stringify({nonce,results}));
+process.exit(0);
+"""
+        verdict, proc = self.run_source('median',source)
+        self.assertFalse(verdict['accepted'])
+
+    def test_host_constructor_access_is_blocked(self):
+        for root in ('module', 'globalThis'):
+            source = "try {const p="+root+".constructor.constructor('return process')();p.stdout.write('HOST_ESCAPE_SUCCEEDED');}catch(ignored){} exports.solve=()=>42;"
+            verdict, proc = self.run_source('median',source)
+            self.assertFalse(verdict['accepted'])
+            self.assertNotIn('HOST_ESCAPE_SUCCEEDED',proc.stdout)
+
+    def test_prototype_json_poisoning_cannot_forge_results(self):
+        source = "Object.prototype.toJSON=()=>({value:42,mutated:false}); exports.solve=()=>42;"
+        verdict, proc = self.run_source('median',source)
+        self.assertFalse(verdict['accepted'])
+
+    def test_exception_getter_is_bounded_in_candidate_realm(self):
+        source = "exports.solve=()=>{throw new Proxy({}, {get(){while(true){}}});};"
+        verdict, proc = self.run_source('median',source)
+        self.assertFalse(verdict['accepted'])
+
+    def test_restored_input_mutation_is_still_rejected(self):
+        source = "exports.solve=a=>{if(!a.length)throw new RangeError();const v=a[0];a[0]=999;a[0]=v;const b=a.slice().sort((x,y)=>x-y);const n=b.length;return n%2?b[n>>1]:(b[n/2-1]+b[n/2])/2;};"
+        verdict, proc = self.run_source('median',source)
+        self.assertFalse(verdict['accepted'])
+
 
 class ControllerTests(unittest.TestCase):
     def test_rejection_retries_then_blocks(self):

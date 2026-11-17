@@ -6,6 +6,7 @@ import selectors
 import shlex
 import subprocess
 import tarfile
+import tempfile
 import time
 import uuid
 
@@ -15,8 +16,17 @@ MAX_FILE = 65536
 MAX_OUTPUT = 24000
 
 
-def bounded_process(args, limit, timeout=55):
-    process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+def bounded_process(args, limit, timeout=55, input_bytes=None):
+    source = None
+    try:
+        if input_bytes is not None:
+            source = tempfile.TemporaryFile()
+            source.write(input_bytes)
+            source.seek(0)
+        process = subprocess.Popen(args, stdin=source, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    finally:
+        if source is not None:
+            source.close()
     selector = selectors.DefaultSelector()
     selector.register(process.stdout, selectors.EVENT_READ)
     output = bytearray()
@@ -43,20 +53,55 @@ def bounded_process(args, limit, timeout=55):
         process.stdout.close()
 
 
+def _raw_member_name(data, offset):
+    if not isinstance(offset, int) or offset < 0 or offset + 512 > len(data):
+        raise ValueError('invalid archive')
+    header = data[offset:offset + 512]
+
+    def take(field):
+        if b'\0' in field:
+            head, tail = field.split(b'\0', 1)
+            if tail.replace(b'\0', b''):
+                raise ValueError('unsafe archive path')
+            field = head
+        try:
+            return field.decode('utf-8')
+        except UnicodeDecodeError as exc:
+            raise ValueError('invalid archive') from exc
+
+    name = take(header[0:100])
+    prefix = take(header[345:500]) if header[257:262] == b'ustar' else ''
+    return prefix + '/' + name if prefix else name
+
+
 def inspect_archive(data):
     result = {}
-    with tarfile.open(fileobj=io.BytesIO(data), mode='r:*') as archive:
+    try:
+        archive = tarfile.open(fileobj=io.BytesIO(data), mode='r:*')
+    except (tarfile.ReadError, OSError, EOFError) as exc:
+        raise ValueError('invalid archive') from exc
+    try:
         for member in archive:
-            path = pathlib.PurePosixPath(member.name)
-            if path.is_absolute() or '..' in path.parts:
+            raw_name = _raw_member_name(data, member.offset)
+            if raw_name != member.name:
                 raise ValueError('unsafe archive path')
-            if member.isdir() and str(path) == '.':
+            if member.name == '.' and member.isdir():
                 continue
-            if str(path) not in ('lib.cjs', 'test.cjs') or not member.isfile():
+            if member.name not in ('lib.cjs', 'test.cjs') or member.type not in (tarfile.REGTYPE, tarfile.AREGTYPE):
                 raise ValueError('unexpected workspace entry or file type')
-            if member.size > MAX_FILE or str(path) in result:
+            if member.size > MAX_FILE or member.name in result:
                 raise ValueError('oversized or duplicate workspace entry')
-            result[str(path)] = archive.extractfile(member).read().decode('utf-8')
+            extracted = archive.extractfile(member)
+            if extracted is None:
+                raise ValueError('invalid archive')
+            try:
+                result[member.name] = extracted.read().decode('utf-8')
+            except UnicodeDecodeError as exc:
+                raise ValueError('invalid archive') from exc
+    except (tarfile.ReadError, OSError, EOFError) as exc:
+        raise ValueError('invalid archive') from exc
+    finally:
+        archive.close()
     if set(result) != {'lib.cjs', 'test.cjs'}:
         raise ValueError('workspace is missing expected files')
     return result
@@ -149,13 +194,14 @@ class Sandbox:
             raise ValueError('sandbox security preflight failed')
         return result
 
-    def execute(self, action, **kwargs):
+    def execute(self, action, input_bytes=None, **kwargs):
         command = action['command']
         wrapped = ('timeout -k 2 40 bash -lc ' + shlex.quote(command) +
                    ' 2>&1 | head -c ' + str(MAX_OUTPUT) + '; status=${PIPESTATUS[0]}; exit "$status"')
         started = time.time()
-        code, output = bounded_process(['docker', 'exec', '-w', '/workspace', self.container_id,
-                                        'bash', '-lc', wrapped], MAX_OUTPUT, timeout=50)
+        arguments = ['docker', 'exec'] + (['-i'] if input_bytes is not None else [])
+        arguments += ['-w', '/workspace', self.container_id, 'bash', '-lc', wrapped]
+        code, output = bounded_process(arguments, MAX_OUTPUT, timeout=50, input_bytes=input_bytes)
         text = output.decode('utf-8', errors='replace')
         event = {'command': command, 'returncode': code, 'output': text,
                  'started': started, 'elapsed': round(time.time()-started, 3), 'verifier': self.verifier}

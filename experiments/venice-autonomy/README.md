@@ -121,7 +121,11 @@ without a replay. `repository_runner.py` calls `run_openhands(..., acceptance=..
 from this worktree; it does not exec a rewritten copy of the function. Paths,
 image, snapshot and output root come from `AUTONOMY_*` environment variables.
 
-Unit coverage is `test_continue.py`. A live OpenHands run through this adapter,
+Unit coverage is `test_continue.py`. The verifier contract from
+`fix/autonomy-verifier-contract` (`f11e35ea`) is combined here: cases go to the
+verifier on stdin, the host seals the execution, and archive names are checked
+before acceptance. Owned-resource cleanup labels from this branch stay in place.
+The combined unit suite is `test_lab`, `test_controller_faults`, and `test_continue`. A live OpenHands run through this adapter,
 receipt directory `live-20261117-234501`, finished in 176.587 seconds with
 `accepted=true`, `clean_finish=true`, `ConversationExecutionStatus.FINISHED`,
 11 recorded commands, one acceptance round and `continue=false`. That receipt

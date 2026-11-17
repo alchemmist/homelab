@@ -6,7 +6,7 @@ import pathlib
 import signal
 import time
 
-from fixtures import check_verdict, fixture_files, task_prompt, verifier_command
+from fixtures import check_verdict, fixture_files, task_prompt, verifier_command, seal_execution
 from sandbox import Sandbox
 
 
@@ -237,7 +237,8 @@ def attempt(engine, task, directory, seed, feedback=''):
             (directory/'candidate.json').write_text(json.dumps(snapshot, indent=2))
         with Sandbox(snapshot, directory/'verifier', verifier=True) as verifier:
             command, nonce, cases = verifier_command(task, seed)
-            verdict = check_verdict(task, nonce, cases, verifier.execute({'command': command}))
+            execution = verifier.execute({'command': command}, input_bytes=json.dumps(cases).encode())
+            verdict = check_verdict(task, nonce, cases, seal_execution(nonce, execution))
             summary['verdict'] = verdict
             summary['accepted'] = verdict['accepted'] and summary['test_unchanged']
     except (Exception, KeyboardInterrupt) as error:
