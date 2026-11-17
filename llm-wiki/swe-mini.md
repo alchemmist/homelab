@@ -154,3 +154,6 @@ expected DROP/timeouts rather than CNI REJECT and was corrected; do not interpre
 its failed assertion as permitted private access. No domain-level production block
 is claimed. Admission backoff is now300seconds (single active task and5open-PR cap
 unchanged), avoiding a30minute idle gap after a fast failed/no-op task.
+An open dependency-repair PR blocks duplicate repair tasks against the SAME main
+revision (health state waiting_for_dependency_merge). Once main advances or the
+PR closes, admission resumes automatically; merge authority remains human-only.

@@ -237,6 +237,11 @@ def tick():
         STATUS['state'] = 'waiting_for_pr_review'
         return
     revision = github(f'repos/{REPO}/commits/main', auth=False)['sha']
+    open_urls = {p['html_url'] for p in prs}
+    for pr, payload in DB.execute("SELECT pr,result FROM runs WHERE state='published' AND revision=? ORDER BY created DESC LIMIT 100", (revision,)):
+        if pr in open_urls and dependency_repair(json.loads(payload or '{}').get('changes', [])):
+            STATUS['state'] = 'waiting_for_dependency_merge'
+            return
     index = DB.execute('SELECT count(*) FROM runs').fetchone()[0]
     lane = 'smoke' if index == 0 else list(LANES)[(index - 1) % len(LANES)]
     run_id = time.strftime('%y%m%d%H%M%S') + '-' + uuid.uuid4().hex[:5]

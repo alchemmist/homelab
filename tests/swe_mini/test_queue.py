@@ -132,6 +132,18 @@ class QueueTransitions(unittest.TestCase):
         c.tick()
         self.assertEqual(self.state(), 'failed')
 
+    def test_dependency_pr_blocks_duplicates_until_base_changes(self):
+        payload = {'changes': [{'path': p} for p in policy.DEPENDENCY_PATHS]}
+        c.save('test', state='published', pr='https://github.com/example/pr', result=json.dumps(payload))
+        prs = [{'html_url': 'https://github.com/example/pr', 'head': {'ref': 'swe-mini/test'}}]
+        with patch.object(c, 'github', side_effect=[prs, {'sha': 'a' * 40}]):
+            c.tick()
+        self.assertEqual(c.STATUS['state'], 'waiting_for_dependency_merge')
+        self.assertEqual(c.DB.execute('SELECT count(*) FROM runs').fetchone()[0], 1)
+        with patch.object(c, 'github', side_effect=[prs, {'sha': 'b' * 40}]):
+            c.tick()
+        self.assertEqual(c.DB.execute('SELECT count(*) FROM runs').fetchone()[0], 2)
+
     def test_persisted_queued_run_resumes(self):
         c.save('test', state='queued')
         with patch.object(c, 'start_job') as start:
