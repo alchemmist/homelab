@@ -41,17 +41,12 @@ def test_only_telemetry_is_restarted_and_rollback_exists() -> None:
         assert len(services) == 1
         assert services[0]["name"] == "homelab-otel-agent.service"
     assert activation["rescue"][0]["ansible.builtin.file"]["state"] == "absent"
-    assert (
-        activation["block"][1]["ansible.builtin.uri"]["status_code"]
-        == HEALTHY_AGENT_STATUS
-    )
+    assert activation["block"][1]["ansible.builtin.uri"]["status_code"] == HEALTHY_AGENT_STATUS
 
 
 def test_production_owner_preserves_the_same_moscow_only_override() -> None:
     """Verify production ownership keeps the same Moscow-only override."""
-    p = yaml.safe_load(
-        (ROOT / "ansible/playbooks/otel-production-agents.yml").read_text()
-    )[0]
+    p = yaml.safe_load((ROOT / "ansible/playbooks/otel-production-agents.yml").read_text())[0]
     t = next(
         t
         for t in p["tasks"]
