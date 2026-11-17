@@ -2,41 +2,61 @@
 
 This is the tracked receipt for the strict configuration on `quality/strict-all`. It is not a clean-tree claim and not production acceptance. The full per-finding report is private, mode `0700`/`0600`, at `~/Library/Application Support/homelab/quality-strict/`. No raw secret values are in that report.
 
-`configurationReady` is true: the strict policy is enforced, debt does not decide success, and the checks below actually ran. `sourceClean` is false. Five source partitions remain for later owners and independent review: `scripts`, `tests`, `ansible`, `manifests`/`services`, and `workflows`.
+`configurationReady` is true: the strict policy is enforced, debt does not decide success, and the checks below actually ran. `sourceClean` is false. `scripts/quality/strict_report.py` returns 0 when the tools finish, including when findings remain. That exit code is not a clean tree.
 
-The audit ran on parent `adc8581ef6ba20c1a0a38a7335be18d56f526698` plus the uncommitted strict adapters in this commit. The private `summary.json` records that parent HEAD because the commit is created after the run.
+## Integration
+
+Base `9cf5e13885b86375d0306933ed6e4cee018d96b6` was clean. Three reviewed ranges were cherry-picked. They do not share files. These were not integrated:
+
+- `pi-subagents/manifests-services-2ec348c-442f-s0-t0` at `ccbe2964b60339015fa8c42a41b6b2f4b16de927`. The first commit replaces explicit nulls in vendored Grafana values and does not restore them. The second commit does not restore those values either.
+- `pi-subagents/ansible-7148291-4628-s0-t0` is still `9cf5e138` with a dirty worktree, including backup, secret, identity, SSH, and VPN helpers. Nothing there was committed.
+- `pi-subagents/tests-b2ddff5-09d1-s0-t0` is still `9cf5e138` with no reviewed test commit.
+- Fifteen uncommitted scripts in `pi-subagents/scripts-4154a7e-9683-s0-t0` stay in that worktree. Tests outside `scripts/` pin their exact text. They are not in these commits.
+
+`origin/main` (`ded215cbd41cf120d537814ec6c3fa6bb922f84e`) was merged. Its only delta was the Venice API digest and wiki note. No file overlapped the integrated ranges.
 
 ## Commands
 
-- `python scripts/quality/strict_guard.py` completed. Configuration checks passed. Exit 1 is the 11 inline suppressions, which are findings, not a tool crash.
-- `pytest tests/test_quality_system.py tests/test_ansible_quality_policy.py`: 27 passed.
-- `python scripts/quality/strict_report.py` ran yaml, shell, workflow, secrets, docker, javascript, ansible, dependencies, and manifests. The first Python pass stopped with `RuntimeError` because `ruff format --check` exits 2 when a file cannot be parsed. The adapter now records that as `ruff-syntax` plus the reformat list. Python was then rerun through the same reporter and merged into the private summary. No command blocker remains.
+Recorded on the full-report commit `e6bcac5b95e80e632bf983e7ee50cfbe33d80f74`, then a secrets-only rescan after the reviewed-line restore:
 
-Tool path was this worktree's `.venv/bin` and checksum-locked `.quality-tools/bin`. No production SSH, kubeconfig, live cluster mutation, or credential helper was used.
+- `pytest tests/test_quality_system.py tests/test_ansible_quality_policy.py`: exit 0, 40 passed.
+- `python scripts/quality/strict_guard.py`: configuration checks passed. Exit 1 is 11 inline suppressions, not a tool crash.
+- `ruff check --config quality/ruff.toml scripts/quality/boundaries.py`: exit 1, `INP001` once.
+- `zizmor --offline --persona auditor .github/workflows`: exit 0, and the SARIF still has 3 findings. Exit 0 is not a clean audit.
+- `yamllint` and `actionlint` on the two hand-written workflows, and `shellcheck --enable=all` on `android/build.sh`: exit 0 after the document-end markers.
+- `python scripts/quality/strict_report.py`: exit 0, `configurationReady=true`, `sourceClean=false`. No command blocker. Private `summary.json` records head `e6bcac5b95e80e632bf983e7ee50cfbe33d80f74`.
+- `python scripts/quality/tests.py cluster`: exit 1. Kind could not create `homelab-qg-1ed5690f29b8` because this rootless Podman provider requires systemd `Delegate=yes`. No host or VM setting was changed. `kind get clusters` was empty afterwards. The private kubeconfig never left the test tmp directory. This is not a passed Kind lifecycle.
+- After restoring the two reviewed public-key lines and renaming the digest pin: `python scripts/quality/lint.py secrets` printed 0 blocking and 51 reviewed non-secrets, exit 0.
+
+Tool path was this worktree's `.venv/bin` and checksum-locked `.quality-tools/bin`. No production SSH, operator kubeconfig, live cluster mutation, backup, identity, VPN, GPU, workflow, or Wiki operation was used.
 
 ## Counts
 
-Total blocking findings: 117026. Historical debt entries were ignored for success.
+The full report below is head `e6bcac5b`. It includes 3 `generic-api-key` hits that the follow-up restore removed from the blocking set. Other tools were not rerun after that restore. Total blocking findings in that report: 102045. Historical debt entries were ignored for success.
 
 | Check | Targets | Blocking | Status | Partitions |
 | --- | ---: | ---: | --- | --- |
-| python | 648 | 110582 | failed | scripts 42496, tests 46871, ansible 12327, manifests 8164, services 437, quality-policy 287 |
-| yaml | 604 | 4684 | failed | tests 2060, manifests 1736, ansible 848, quality-policy 31, workflows 5, other-owned 4 |
-| shell | 23 | 335 | failed | ansible 149, scripts 97, other-owned 65, services 17, manifests 7 |
-| workflow | 5 | 7 | failed | workflows 7 |
+| python | 651 | 95118 | failed | scripts 16616, tests 54088, ansible 13746, manifests 9453, services 536, quality-policy 679 |
+| yaml | 604 | 5319 | failed | tests 2066, manifests 2007, ansible 1207, quality-policy 36, workflows 3 |
+| shell | 23 | 184 | failed | ansible 149, scripts 11, services 17, manifests 7 |
+| workflow | 5 | 3 | failed | workflows 3 |
 | ansible | 358 | 384 | failed | ansible 384 |
 | manifests | 58 | 1023 | failed | manifests 997, vendor 26 |
 | suppressions | 11 | 11 | failed | quality-policy 4, tests 4, scripts 3 |
-| secrets | 2760 | 0 | passed | 51 reviewed non-secrets, unchanged |
+| secrets | 2767 | 3 | failed | quality-policy 1, scripts 2; 49 reviewed non-secrets still matched |
 | docker | 5 | 0 | passed | none |
 | javascript | 32 | 0 | passed | none |
 | dependencies | 70 | 0 | passed | none |
 
-Largest Python rules: `Q000` 69389, `E501` 5541, `PT009` 5243, `ANN201` 4080, `ANN001` 3934, `E702` 2766. Largest YAML rules: `yaml-line-length` 2760, `yaml-indentation` 1379, `yaml-document-start` 293. Largest shell rules: `SC2250` 271, `SC2312` 26, `SC2292` 22. Ansible: `name[missing]` 196, `no-changed-when` 71, `command-instead-of-module` 26. Manifests: `kube-linter-use-namespace` 139, `kube-linter-non-isolated-pod` 95, `schema-unavailable` 92. The private `summary.json` has every rule.
+The secrets rescan after the restore is the current secrets result: 2767 targets, 0 blocking, 51 reviewed. It replaces the secrets row above. It does not by itself make `sourceClean` true.
+
+Largest Python rules in the full report: `Q000` 43024, `no-untyped-call` 7966, `PT009` 5243, `no-untyped-def` 4714, `ANN201` 4112, `ANN001` 3969, `E501` 3385. `python-syntax` 1 and `ruff-syntax` 1 were recorded, and mypy still reported `invalid-syntax` 8. The python tool finished; those syntax findings did not abort the rest of the owned set. Largest YAML rules: `yaml-line-length` 2759, `yaml-indentation` 1377, `yaml-document-end` 644, `yaml-document-start` 289. The three workflow YAML hits are `document-end` on the three generated Quality Graph workflows. Largest shell rules: `SC2250` 130, `SC2312` 25, `SC2292` 15. Ansible: `name[missing]` 196, `no-changed-when` 71, `command-instead-of-module` 26. Manifests: `kube-linter-use-namespace` 139, `kube-linter-non-isolated-pod` 95, `schema-unavailable` 92. The private `summary.json` has every rule from the full report.
+
+Compared with the previous 117026 receipt, integrated script formatting and the hand-written workflow fixes account for the lower Python, shell, and workflow totals. New document-end, comment, and sorted-keys rules raised the YAML total. This is not a sign-off of any partition.
 
 ## Suppressions still present
 
-These are blocking. They are not an allowlist.
+These are blocking. They are not an allowlist. The new suppression test writes its marker into a temporary file. The tracked test does not contain a contiguous marker, so it is not a twelfth hit.
 
 - `scripts/nightnode/nightnode:27`
 - `scripts/ns3-public-dns.py:30`
@@ -47,21 +67,17 @@ These are blocking. They are not an allowlist.
 - `scripts/quality/tests.py:72`
 - `tests/kubernetes/test_cluster.py:21`
 - `tests/test_ansible_quality_policy.py:38`
-- `tests/test_quality_system.py:162`
-- `tests/test_quality_system.py:168`
-
-## Policy delta after the initial strict snapshot
-
-The 117026 count above is the last full-tree audit. It was not rerun for this commit. Later partitions will see additional findings from rules that are now enabled: yamllint `document-end`, implicit-octal rejection, float values that omit the leading numeral, comment and document-start errors, and kube-linter `sorted-keys`. Those are applicable style checks. They do not change single-writer, replica, admission, or public role-variable behavior.
-
-`quality/strict-policy.json` records three yamllint rules that stay disabled because they conflict with another enforced rule or with load-bearing types: `key-ordering` (ansible-lint `key-order`), `empty-values` (least-privilege `permissions: {}`), and `quoted-strings` (quotes change scalar types). Ansible `var-naming`, `role-name`, and `name[prefix]` stay off because they rename external task and variable interfaces. The kube-linter replica, rolling-update, exposure, DNS, affinity, restart-policy, and unlocked-schema omissions stay off for the same architecture reasons as the initial snapshot.
-
-The mypy adapter no longer treats exit 2 as a finished audit of all 648 owned Python files. A syntax error is recorded for that file and the other files are still type-checked.
+- `tests/test_quality_system.py:165`
+- `tests/test_quality_system.py:171`
 
 ## Blockers
 
-Generated `.github/workflows/quality-graph-publish.yml` is a real blocker. `quality-graph-github==0.2.0` `_publication_workflow` hardcodes `workflow_run` (`requested`, `completed`) and `issue_comment` (`created`, `edited`), plus job permissions with no comment. `qg.yaml` cannot change that surface. Hand-editing the generated file would be overwritten by `qg generate`, and this partition does not widen `actions: write`. On this tree `zizmor --persona auditor` reports `dangerous-triggers` once and `undocumented-permissions` twice for that file. Those findings are not waived. Generated workflows are not trusted code.
+Generated `.github/workflows/quality-graph-publish.yml` stays untrusted. `quality-graph-github==0.2.0` `_publication_workflow` hardcodes `workflow_run` (`requested`, `completed`) and `issue_comment` (`created`, `edited`), plus uncommented job permissions, including `actions: write`. `qg.yaml` cannot narrow that. Hand-editing the generated file is overwritten by `qg generate`. `generatedWorkflows.trusted` and `waiver` are both false. zizmor reports `dangerous-triggers` once and `undocumented-permissions` twice. The same three generated workflows also fail yamllint `document-end`. Those findings are not waived.
 
-The same zizmor run still reports `anonymous-definition` and `concurrency-limits` on `observer-profile.yml` and `vpn-hardening.yml`. Those files belong to the workflows partition, not this policy ownership.
+Yamllint `key-ordering`, `empty-values`, and `quoted-strings` stay off. They collide with ansible-lint `key-order`, least-privilege `permissions: {}`, and scalar types. Ansible `var-naming`, `role-name`, and `name[prefix]` stay off because they rename external task and variable interfaces. kube-linter replica, `Recreate`, NodePort/LoadBalancer, DNS `ndots`, affinity, and Job `restartPolicy` omissions stay documented conflicts. `sorted-keys` is enabled.
 
-Kind, curated suites other than the two quality tests, and the five source partitions were not cleaned or signed off. Missing stack checks, not counted as passes: ESLint, Prettier execution, a separate Bandit run, and Vulture. Architecture mutation tests now cover unregistered issuer aliases, inventory and relay drift, duplicate Application identity, unclassified Helm provisioning, a retired play that stops refusing, and vendor hash drift. `quality/rules.json` is not the enforcement catalog. `qg.yaml` was not changed and was not registered through trusted-base.
+`INP001` wants `scripts/quality/__init__.py`. Those modules are imported as top-level names through `sys.path` (`import boundaries`). Adding a package init would change that import identity. The finding is not ignored.
+
+`SC2250` on `scripts/testing-class-wg-guard.sh` stays unbraced because the reviewed test requires the exact text `-A "$CHAIN" -j DROP`. `SC2310` and `SC2312` on `scripts/nightnode/nightnode` and `scripts/rustfs/deploy.sh` stay because splitting the substitutions would change `set -e` behavior. The two shell `*) ;;` arms are no-ops; an exiting default would reject valid backup ids and extra Deployments.
+
+Local Kind did not run. Hosted `ubuntu-24.04` job `tests-cluster` is the unchecked lifecycle for this branch. Missing stack checks, not counted as passes: ESLint, Prettier execution, a separate Bandit run, and Vulture. `quality/rules.json` is not the enforcement catalog. `qg.yaml` was not changed and was not registered through trusted-base. PR 181 is a separate draft and was not updated.

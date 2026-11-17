@@ -225,7 +225,7 @@ def verify_configuration():
         raise ValueError("Vendor prefix adapter drifted")
     secret_path = ROOT / "quality/secret-false-positives.json"
     digest = hashlib.sha256(secret_path.read_bytes()).hexdigest()
-    if digest != data["secretFalsePositivesSha256"]:
+    if digest != data["reviewedExceptionDigest"]:
         raise ValueError("Secret false-positive list changed without a policy review")
     for name in ("scripts/quality/lint.py", "scripts/quality/charts.py"):
         if "--record-debt" in (ROOT / name).read_text():

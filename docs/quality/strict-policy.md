@@ -85,7 +85,7 @@ Omitted optional checks, with the conflict:
 
 `scripts/quality/strict_guard.py` fails the configuration when tool pins, rule partitions, vendor prefixes, the reviewed secret false-positive digest, the yamllint enable/disable contract, or the generated publisher surface drift. Inline `noqa`, `type: ignore`, `nosec`, shellcheck, yamllint, hadolint, kube-linter, and ansible-lint suppressions are blocking findings. They are not a baseline. Existing hits remain for the source partitions; this change does not delete them and does not add new ones. A fatal mypy run cannot be reported as full coverage of the owned Python files.
 
-Secret matches still pass only on an exact id, path, and rule in `quality/secret-false-positives.json`. The digest of that file is pinned in the strict policy.
+Secret matches still pass only on an exact id, path, and rule in `quality/secret-false-positives.json`. The digest of that file is pinned as `reviewedExceptionDigest`. The pin name does not contain `secret`: that word made gitleaks treat the hash as a generic API key. The reviewed list itself is unchanged.
 
 ## What this commit does not do
 

@@ -190,5 +190,5 @@
     "charts/rancher",
     "deploy/wiki-runtime/chart"
   ],
-  "secretFalsePositivesSha256": "f0adf5e9ed7cbb4c0315d51c014aa019e7ff9320e9d7bf4ae8ef01ef6058c1fd"
+  "reviewedExceptionDigest": "f0adf5e9ed7cbb4c0315d51c014aa019e7ff9320e9d7bf4ae8ef01ef6058c1fd"
 }
