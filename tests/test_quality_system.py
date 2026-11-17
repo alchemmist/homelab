@@ -15,6 +15,20 @@ sys.path.insert(0, str(ROOT / "scripts/quality"))
 from common import finding, report, unique, failure
 import charts
 import contracts
+from strict_report import audit_exit_code
+
+
+@pytest.mark.parametrize(
+    ("configuration_ready", "source_clean", "expected"),
+    [(True, True, 0), (True, False, 1), (False, False, 2), (False, True, 2)],
+)
+def test_strict_report_cannot_exit_success_for_dirty_or_incomplete_audit(
+    configuration_ready: bool, source_clean: bool, expected: int
+) -> None:
+    """Keep configuration completeness separate from actual source acceptance."""
+    assert audit_exit_code(
+        configuration_ready=configuration_ready, source_clean=source_clean
+    ) == expected
 
 
 def test_semantic_ids_survive_line_movement_and_do_not_store_source():
@@ -162,13 +176,13 @@ def test_duplicate_rendered_keys_are_rejected():
     import yaml
 
     with pytest.raises(yaml.YAMLError):
-        yaml.load("metadata: {name: first, name: second}", Loader=charts.ManifestLoader)  # noqa: S506 -- subclass of SafeLoader, rejects duplicate keys
+        yaml.load("metadata: {name: first, name: second}", Loader=charts.ManifestLoader)
 
 
 def test_scalar_equals_is_valid_kubernetes_yaml():
     import yaml
 
-    assert yaml.load("expr: =", Loader=charts.ManifestLoader) == {"expr": "="}  # noqa: S506 -- SafeLoader subclass
+    assert yaml.load("expr: =", Loader=charts.ManifestLoader) == {"expr": "="}
 
 
 def test_installer_rejects_escaping_binary_name(tmp_path):

@@ -18,7 +18,7 @@ NGINX_DIGEST = "sha256:b3c656d55d7ad751196f21b7fd2e8d4da9cb430e32f646adcf92441b7
 
 
 def run(argv, *, data=None, check=True, timeout=180):
-    result = subprocess.run(  # noqa: S603 -- fixed test commands and explicit ephemeral kubeconfig/context
+    result = subprocess.run(
         argv, input=data, text=True, capture_output=True, check=False, timeout=timeout
     )
     if check and result.returncode:

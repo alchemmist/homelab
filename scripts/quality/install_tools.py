@@ -26,7 +26,7 @@ def install(record, destination):
         "kube-linter",
     }:
         raise ValueError("Unknown or escaping tool name")
-    process = subprocess.run(  # noqa: S603 -- fixed tool/test argv, no shell or operational execution
+    process = subprocess.run(
         [
             "/usr/bin/curl",
             "--proto",

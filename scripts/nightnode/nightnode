@@ -24,7 +24,6 @@ die() { printf 'nightnode: %s\n' "$*" >&2; exit 1; }
 
 load_config() {
   if [[ -f "${CONFIG_FILE}" ]]; then
-    # shellcheck disable=SC1090
     source "${CONFIG_FILE}"
   fi
 }

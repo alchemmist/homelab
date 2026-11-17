@@ -69,7 +69,7 @@ def main():
             "PATH=" + env["PATH"],
             *argv,
         ]
-    return subprocess.run(  # noqa: S603 -- fixed tool/test argv, no shell or operational execution
+    return subprocess.run(
         argv, cwd=ROOT, env=env, check=False, timeout=840 if args.suite == "cluster" else 240
     ).returncode
 

@@ -26,7 +26,7 @@ def main():
             ):
                 raise ValueError("Invalid collection version/digest")
             filename = item["name"] + "-" + item["version"] + ".tar.gz"
-            data = subprocess.run(  # noqa: S603 -- fixed HTTPS artifact origin, checksum verified
+            data = subprocess.run(
                 [
                     "/usr/bin/curl",
                     "--proto",
@@ -50,7 +50,7 @@ def main():
                 raise ValueError("Collection checksum mismatch")
             archive = Path(directory) / filename
             archive.write_bytes(data)
-            subprocess.run(  # noqa: S603 -- only the verified local archive, no implicit dependencies
+            subprocess.run(
                 [
                     executable,
                     "collection",

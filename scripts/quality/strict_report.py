@@ -110,6 +110,13 @@ def suppression_payload(hits):
     }
 
 
+def audit_exit_code(*, configuration_ready: bool, source_clean: bool) -> int:
+    """Distinguish clean source, quality failures, and incomplete configuration."""
+    if not configuration_ready:
+        return 2
+    return 0 if source_clean else 1
+
+
 def main():
     use_project_tools()
     PRIVATE.mkdir(parents=True, exist_ok=True)
@@ -173,7 +180,8 @@ def main():
     )
     write_private(PRIVATE / "summary.json", json.dumps(summary, indent=2) + "\n")
     print(f"configurationReady={str(ready).lower()}")
-    return 0 if ready else 1
+    print(f"sourceClean={str(summary['sourceClean']).lower()}")
+    return audit_exit_code(configuration_ready=ready, source_clean=summary["sourceClean"])
 
 
 if __name__ == "__main__":

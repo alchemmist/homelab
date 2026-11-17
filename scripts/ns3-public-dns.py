@@ -27,7 +27,7 @@ def load(path, name):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         return module
-    except Exception:  # noqa: BLE001 - contain trusted renderer import errors before any DNS write
+    except Exception:
         raise RuntimeError("Invalid DNS renderer: " + path.name) from None
 
 

@@ -35,7 +35,7 @@ def test_real_linter_rejects_unsafe_or_unresolved_tasks(tmp_path, task, rule):
     )
     executable = shutil.which("ansible-lint")
     assert executable is not None
-    result = subprocess.run(  # noqa: S603 -- fixed parser argv; fixture plays are never executed
+    result = subprocess.run(
         [
             executable,
             "--offline",
