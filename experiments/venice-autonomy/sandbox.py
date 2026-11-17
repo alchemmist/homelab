@@ -81,7 +81,9 @@ class Sandbox:
             path.write_text(content)
             path.chmod(0o444 if verifier else 0o666)
         name = 'venice-lab-' + uuid.uuid4().hex[:12]
+        run_key = str(self.directory.resolve())
         arguments = ['docker', 'run', '-d', '--name', name, '--label', 'venice-autonomy-lab=true',
+                     '--label', 'venice-autonomy-run=' + run_key,
                      '--rm', '--network', 'none', '--read-only', '--cap-drop', 'ALL',
                      '--security-opt', 'no-new-privileges', '--pids-limit', '128',
                      '--memory', '512m', '--cpus', '1', '--user', '1000:1000',
@@ -90,7 +92,9 @@ class Sandbox:
                      '-e', 'HOME=/tmp', '-e', 'GIT_CONFIG_NOSYSTEM=1', IMAGE, 'sleep', '35m']
         try:
             subprocess.run(['docker', 'volume', 'create', '--driver', 'local', '--opt', 'type=tmpfs',
-                            '--opt', 'device=tmpfs', '--opt', 'o=size=32m,mode=0777', self.volume_name],
+                            '--opt', 'device=tmpfs', '--opt', 'o=size=32m,mode=0777',
+                            '--label', 'venice-autonomy-lab=true', '--label', 'venice-autonomy-run=' + run_key,
+                            self.volume_name],
                            capture_output=True, check=True, timeout=30)
             (self.directory / 'volume-name').write_text(self.volume_name)
             self.container_id = subprocess.check_output(arguments, text=True, timeout=45).strip()
@@ -175,12 +179,25 @@ class Sandbox:
         return {'info': {'environment': self.config, 'security': self.security}}
 
     def close(self):
+        import owned_resources
+        expected = str(self.directory.resolve())
+        errors = []
         if self.container_id:
-            subprocess.run(['docker', 'rm', '-f', self.container_id], capture_output=True, timeout=20)
-            self.container_id = None
+            try:
+                owned_resources.remove_container(self.container_id, expected)
+            except Exception as error:
+                errors.append(str(error))
+            else:
+                self.container_id = None
         if self.volume_name:
-            subprocess.run(['docker', 'volume', 'rm', self.volume_name], capture_output=True, timeout=20)
-            self.volume_name = None
+            try:
+                owned_resources.remove_volume(self.volume_name, expected)
+            except Exception as error:
+                errors.append(str(error))
+            else:
+                self.volume_name = None
+        if errors:
+            raise ValueError('; '.join(errors))
 
     def __enter__(self):
         return self

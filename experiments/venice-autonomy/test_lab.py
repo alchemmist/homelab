@@ -143,8 +143,11 @@ class MiniAdapterTests(unittest.TestCase):
         self.assertFalse(mini_submission({'returncode': 0, 'output': ''}))
 
     def test_completed_receipt_formats_for_both_action_protocols(self):
+        try:
+            from minisweagent.models.litellm_model import LitellmModel
+        except ModuleNotFoundError as error:
+            self.skipTest(f'mini-swe-agent is not installed: {error}')
         from unittest.mock import patch
-        from minisweagent.models.litellm_model import LitellmModel
         from minisweagent.models.litellm_textbased_model import LitellmTextbasedModel
         from sandbox import Sandbox
         import pathlib

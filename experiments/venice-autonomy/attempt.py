@@ -10,6 +10,54 @@ from fixtures import check_verdict, fixture_files, task_prompt, verifier_command
 from sandbox import Sandbox
 
 
+
+def exception_chain(error):
+    chain = []
+    seen = set()
+    current = error
+    while isinstance(current, BaseException) and id(current) not in seen:
+        seen.add(id(current))
+        chain.append({'type': type(current).__name__, 'message': str(current)[:500]})
+        nxt = current.__cause__
+        if nxt is None:
+            for attr in ('original_exception', 'cause', 'error'):
+                candidate = getattr(current, attr, None)
+                if isinstance(candidate, BaseException):
+                    nxt = candidate
+                    break
+        if nxt is None and current.__context__ is not None and not current.__suppress_context__:
+            nxt = current.__context__
+        current = nxt
+    return chain
+
+
+def record_exception(summary, error, key, prefix):
+    chain = exception_chain(error)
+    redacted = []
+    for item in chain:
+        message = item['message'].replace(key, '[redacted]')[:2000] if key else item['message'][:2000]
+        redacted.append({'type': item['type'], 'message': message})
+    summary[prefix + '_type'] = redacted[0]['type']
+    summary[prefix] = redacted[0]['message']
+    summary[prefix + '_chain'] = redacted
+    if prefix == 'run_error':
+        summary['error_chain'] = redacted
+        if len(redacted) > 1:
+            summary['cause_type'] = redacted[1]['type']
+    return redacted
+
+
+def resolved_mini_exit(result, directory):
+    status = result.get('exit_status') if isinstance(result, dict) else None
+    if isinstance(status, str) and status:
+        return status, 'agent_result.exit_status'
+    path = directory/'trajectory.json'
+    if path.is_symlink() or not path.is_file():
+        return None, 'unknown'
+    from controller import resolve_mini_exit
+    return resolve_mini_exit(json.loads(path.read_text()))
+
+
 def provider_settings():
     source = pathlib.Path(os.environ.get('LAB_PI_MODELS', str(pathlib.Path.home()/'.pi/agent/models.json')))
     provider = json.loads(source.read_text())['providers']['litellm']
@@ -81,11 +129,32 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key):
                          step_limit=18, cost_limit=0, wall_time_limit_seconds=600,
                          max_consecutive_format_errors=2, output_path=directory/'trajectory.json')
     result = agent.run(prompt)
-    return {'exit_status': result.get('exit_status'), 'api_attempts': len(calls),
+    status, provenance = resolved_mini_exit(result, directory)
+    return {'exit_status': status, 'exit_provenance': provenance, 'api_attempts': len(calls),
             'package': 'mini-swe-agent', 'version': importlib.metadata.version('mini-swe-agent')}
 
 
-def run_openhands(sandbox, directory, prompt, base_url, key):
+def continue_openhands(conversation, sandbox, directory, acceptance=None):
+    limit = 3 if acceptance is not None else 1
+    for round_number in range(limit):
+        conversation.run()
+        if acceptance is None:
+            return
+        facts = acceptance(sandbox, directory, round_number)
+        if facts.get('continue') is not True:
+            return
+        exhausted = round_number + 1 >= limit
+        if exhausted:
+            conversation.send_message('Independent acceptance rejected this completed response. '
+                                      'The continuation budget is exhausted; no further run will start. '
+                                      'Receipt: ' + json.dumps(facts))
+            return
+        conversation.send_message('Independent acceptance rejected this completed response. '
+                                  'Continue in this same conversation from the actual files. '
+                                  'No transport request is replayed. Receipt: ' + json.dumps(facts))
+
+
+def run_openhands(sandbox, directory, prompt, base_url, key, acceptance=None, max_iterations=18, language='Node'):
     for name in list(os.environ):
         if name.startswith(('LMNR_', 'OTEL_', 'OPENHANDS_')):
             os.environ.pop(name)
@@ -112,7 +181,7 @@ def run_openhands(sandbox, directory, prompt, base_url, key):
         @classmethod
         def create(cls, conv_state=None, **kwargs):
             return [cls(description='Execute bash inside the isolated offline coding workspace. '
-                        'Node and standard Linux tools are available. No host filesystem access.',
+                        + language + ' and standard Linux tools are available. No host filesystem access.',
                         action_type=BashAction, observation_type=BashObservation, executor=BashExecutor())]
 
     register_tool(BashTool.name, BashTool)
@@ -128,16 +197,16 @@ def run_openhands(sandbox, directory, prompt, base_url, key):
             stream.write(json.dumps(event.model_dump(mode='json'))+'\n')
 
     conversation = Conversation(agent=agent, workspace=str(workspace), persistence_dir=str(directory/'conversation'),
-                                callbacks=[observe], visualizer=None, max_iteration_per_run=18,
+                                callbacks=[observe], visualizer=None, max_iteration_per_run=max_iterations,
                                 delete_on_close=False)
     try:
         conversation.send_message(prompt)
-        conversation.run()
+        continue_openhands(conversation,sandbox,directory,acceptance)
         status = str(conversation.state.execution_status)
     finally:
         conversation.close()
-    return {'exit_status': status, 'package': 'openhands-sdk',
-            'version': importlib.metadata.version('openhands-sdk')}
+    return {'exit_status': status, 'exit_provenance': 'conversation.state.execution_status',
+            'package': 'openhands-sdk', 'version': importlib.metadata.version('openhands-sdk')}
 
 
 def attempt(engine, task, directory, seed, feedback=''):
@@ -161,8 +230,7 @@ def attempt(engine, task, directory, seed, feedback=''):
                     result = run_openhands(sandbox, directory, prompt, base_url, key)
                 summary.update(result)
             except (Exception, KeyboardInterrupt) as error:
-                summary['run_error_type'] = type(error).__name__
-                summary['run_error'] = str(error).replace(key, '[redacted]')[:2000]
+                record_exception(summary, error, key, 'run_error')
             summary['actual_commands'] = len(sandbox.events)
             snapshot = sandbox.snapshot()
             summary['test_unchanged'] = snapshot['test.cjs'] == files['test.cjs']
@@ -173,7 +241,7 @@ def attempt(engine, task, directory, seed, feedback=''):
             summary['verdict'] = verdict
             summary['accepted'] = verdict['accepted'] and summary['test_unchanged']
     except (Exception, KeyboardInterrupt) as error:
-        summary['infrastructure_error_type'] = type(error).__name__
+        record_exception(summary, error, key, 'infrastructure_error')
     summary['elapsed_seconds'] = round(time.time()-started, 3)
     (directory/'summary.json').write_text(json.dumps(summary, indent=2))
     print(json.dumps(summary), flush=True)

@@ -47,7 +47,7 @@ rework attempt with verifier feedback, then marks that entry blocked. Every new
 attempt starts from the same buggy fixture, not a previous model's patch.
 `queue_finished` means entries were processed; consult accepted/blocked counts.
 
-The initial run has a fixed 90-minute deadline and at most 27 entries / 54 attempts.
+The default matrix is native mini and OpenHands. Text-only mini is opt-in with `--include-text`. A three-round default run has 18 entries; including text restores the historical 27 entries / 54 attempts. The deadline stays the original stored value across restart.
 Each child has an outer 900-second limit; shell commands have a 40-second limit.
 Mini has an 18-step/600-second budget; OpenHands has an 18-iteration budget.
 HTTP requests allow 720 seconds because queueing plus one bridge regeneration can
@@ -55,7 +55,7 @@ exceed shorter client timeouts. Client automatic retries are disabled. The bridg
 existing one visible format regeneration is unchanged. Two consecutive recognized
 provider exceptions stop the controller. Missing/malformed summaries or recognized
 runner integration errors stop immediately instead of wasting the entire queue.
-A stop is not silently retried forever. Process/worker cancellation is not proof
+A stop is not silently retried forever. `BadGatewayError` counts as a provider failure, including when the verifier already accepted the artifact. An SDK wrapper counts only when a structured cause, `cause_type`, or `error_chain` names a known provider exception. Unknown exception types stop with an explicit `unknown error type` error. `ContextWindowExceededError` stops as `context_length_exceeded`, and `BadRequestError`, `InvalidRequestError`, `UnprocessableEntityError`, or `RejectedRequestError` stop as `client_input_rejected`. Neither is a provider outage. Message text alone does not invent those types or change the live stop decision. `REPORT.md` keeps artifact acceptance separate from a clean Submitted or finished exit. A null mini `exit_status` is a clean finish only when the stored trajectory has a top-level exit event of `Submitted`. Otherwise it stays unknown. Historical receipts are not rewritten. Process/worker cancellation is not proof
 that a non-streaming HTTP disconnect instantly releases the upstream Venice
 browser slot; that remains an explicit acceptance gap for these clients.
 
@@ -109,6 +109,24 @@ reliability. An initial controller run was also stopped for a runner integration
 bug: the mini observation dictionary lacked `exception_info`. It is not scored.
 The replacement run retains the original absolute deadline instead of granting
 another 90 minutes. Cancellation cleanup covers both agent and verifier resources. Earlier scaffold failures are retained separately and not scored.
+
+## Same-conversation continuation
+
+`continue_openhands` runs once when no acceptance callback is supplied. With a
+callback it runs at most three times and sends another turn only when
+`facts['continue'] is True`. A non-boolean value does not authorize another run.
+After the third rejection it records that the continuation budget is exhausted
+and does not ask for another turn. An exception from `conversation.run` propagates
+without a replay. `repository_runner.py` calls `run_openhands(..., acceptance=...)`
+from this worktree; it does not exec a rewritten copy of the function. Paths,
+image, snapshot and output root come from `AUTONOMY_*` environment variables.
+
+Unit coverage is `test_continue.py`. A live OpenHands run through this adapter,
+receipt directory `live-20261117-234501`, finished in 176.587 seconds with
+`accepted=true`, `clean_finish=true`, `ConversationExecutionStatus.FINISHED`,
+11 recorded commands, one acceptance round and `continue=false`. That receipt
+does not exercise rejected-then-continued acceptance. It is not a multi-hour
+autonomy result. Missing model-price mapping is not measured zero cost.
 
 ## k3s direction
 
