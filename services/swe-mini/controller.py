@@ -145,18 +145,30 @@ def tick():
             url = publish(run, json.loads(run['result']), json.loads(run['review']))
             save(run['id'], state='published', pr=url)
             return
-        job = BATCH.read_namespaced_job(run['job'], NS)
+        try:
+            job = BATCH.read_namespaced_job(run['job'], NS)
+        except client.ApiException as exc:
+            if exc.status != 404:
+                raise
+            field = 'result' if run['state'] == 'work' else 'review'
+            save(run['id'], state='failed', **{field: json.dumps({'error': 'Worker Job expired or was removed; queue will continue with a fresh task'})})
+            return
         if not job.status.succeeded and not job.status.failed:
             return
         pods = CORE.list_namespaced_pod(NS, label_selector='job-name=' + run['job']).items
         if len(pods) != 1:
-            raise ValueError('Expected one worker pod')
+            save(run['id'], state='failed', review=json.dumps({'error': 'Missing or ambiguous worker Pod; no publication'}))
+            return
         log = CORE.read_namespaced_pod_log(pods[0].metadata.name, NS, limit_bytes=2_000_000)
         try:
             result = decode_result(log)
         except Exception:
             if run['state'] == 'review':
-                CORE.delete_namespaced_config_map(run['job'] + '-proposal', NS)
+                try:
+                    CORE.delete_namespaced_config_map(run['job'] + '-proposal', NS)
+                except client.ApiException as exc:
+                    if exc.status != 404:
+                        raise
             save(run['id'], state='failed', review=json.dumps({'error': 'Missing worker result; inspect job status'}))
             return
         if run['state'] == 'review':

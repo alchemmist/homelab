@@ -99,6 +99,22 @@ class QueueTransitions(unittest.TestCase):
             start.assert_not_called()
         self.assertEqual(self.state(), 'work')
 
+    def test_expired_job_fails_and_next_task_is_admitted(self):
+        class NotFound(Exception):
+            status = 404
+        c.client.ApiException = NotFound
+        c.BATCH.read_namespaced_job.side_effect = NotFound()
+        c.tick()
+        self.assertEqual(self.state(), 'failed')
+        with patch.object(c, 'github', side_effect=[[], {'sha': 'b' * 40}]):
+            c.tick()
+        self.assertEqual(c.DB.execute("SELECT count(*) FROM runs WHERE state='queued'").fetchone()[0], 1)
+
+    def test_missing_terminal_pod_does_not_wedge_queue(self):
+        c.CORE.list_namespaced_pod.return_value.items = []
+        c.tick()
+        self.assertEqual(self.state(), 'failed')
+
     def test_persisted_queued_run_resumes(self):
         c.save('test', state='queued')
         with patch.object(c, 'start_job') as start:
