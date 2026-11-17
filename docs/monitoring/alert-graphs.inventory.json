@@ -1089,7 +1089,38 @@
     "resource": "monitoring-k3s-shared-registry",
     "group": "socrat.nodes.hardware",
     "alert": "SocratNodeCPUStealHigh",
-    "expr": "socrat:node_cpu_steal:ratio5m > 0.10",
+    "expr": "socrat:node_cpu_steal:ratio5m{node!=\"socrat-4\"} > 0.10",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "SocratNodeCPUStealHigh",
+          "dashboard_uid": "alerts-9943c0b05432b778",
+          "panel_id": 1,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "SocratNodeCPUStealHigh / rule evaluations",
+          "dashboard_uid": "alerts-9943c0b05432b778",
+          "panel_id": 2,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
+    "resource": "monitoring-k3s-shared-registry",
+    "group": "socrat.nodes.hardware",
+    "alert": "SocratNodeCPUStealHigh",
+    "expr": "socrat:node_cpu_steal:ratio5m{node=\"socrat-4\"} > 0.30",
     "uid": null,
     "graphs": {
       "version": 1,

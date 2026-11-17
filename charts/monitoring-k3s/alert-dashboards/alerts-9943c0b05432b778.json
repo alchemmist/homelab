@@ -30,7 +30,15 @@
       "targets": [
         {
           "refId": "1",
-          "expr": "socrat:node_cpu_steal:ratio5m",
+          "expr": "socrat:node_cpu_steal:ratio5m{node!=\"socrat-4\"}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "refId": "2",
+          "expr": "socrat:node_cpu_steal:ratio5m{node=\"socrat-4\"}",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -60,6 +68,10 @@
               {
                 "color": "gray",
                 "value": 0.1
+              },
+              {
+                "color": "gray",
+                "value": 0.3
               }
             ]
           }
@@ -88,7 +100,15 @@
       "targets": [
         {
           "refId": "1",
-          "expr": "socrat:node_cpu_steal:ratio5m > 0.10",
+          "expr": "socrat:node_cpu_steal:ratio5m{node!=\"socrat-4\"} > 0.10",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "refId": "2",
+          "expr": "socrat:node_cpu_steal:ratio5m{node=\"socrat-4\"} > 0.30",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -118,6 +138,10 @@
               {
                 "color": "gray",
                 "value": 0.1
+              },
+              {
+                "color": "gray",
+                "value": 0.3
               }
             ]
           }
