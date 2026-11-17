@@ -17,7 +17,8 @@ ROOT = Path(__file__).resolve().parents[1]
         ({"unavailable.collection.fake_module": {}}, "syntax-check"),
     ],
 )
-def test_real_linter_rejects_unsafe_or_unresolved_tasks(tmp_path, task, rule):
+def test_real_linter_rejects_unsafe_or_unresolved_tasks(tmp_path, task, rule) -> None:
+    """Reject unsafe or unresolved tasks with offline ansible-lint."""
     import yaml
 
     playbook = tmp_path / "playbook.yml"

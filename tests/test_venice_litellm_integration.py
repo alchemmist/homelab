@@ -9,12 +9,15 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 class VeniceLiteLLMIntegrationTests(unittest.TestCase):
+    """Pin the Venice browser bridge and the existing Qwen route."""
+
     @classmethod
     def setUpClass(cls):
         cls.values = yaml.safe_load((ROOT / "deploy/platform/litellm/values.yaml").read_text())
         cls.models = {m["model_name"]: m for m in cls.values["proxy_config"]["model_list"]}
 
-    def test_routes_to_internal_browser_bridge(self):
+    def test_routes_to_internal_browser_bridge(self) -> None:
+        """Route Venice through the internal browser bridge."""
         params = self.models["venice-deepseek"]["litellm_params"]
         self.assertEqual(params["model"], "openai/venice-agentic-deepseek-v4.1-flash-uncensored")
         self.assertEqual(
@@ -22,7 +25,8 @@ class VeniceLiteLLMIntegrationTests(unittest.TestCase):
         )
         self.assertNotIn("api.venice.ai", params["api_base"])
 
-    def test_credential_is_an_explicit_secret_reference(self):
+    def test_credential_is_an_explicit_secret_reference(self) -> None:
+        """Read the Venice credential only from the named bridge secret."""
         self.assertEqual(
             self.models["venice-deepseek"]["litellm_params"]["api_key"],
             "os.environ/VENICE_BRIDGE_API_KEY",
@@ -33,7 +37,8 @@ class VeniceLiteLLMIntegrationTests(unittest.TestCase):
             env["valueFrom"]["secretKeyRef"], {"name": "venice-bridge-upstream", "key": "api-key"}
         )
 
-    def test_single_browser_is_not_overloaded_or_replayed(self):
+    def test_single_browser_is_not_overloaded_or_replayed(self) -> None:
+        """Keep one browser worker and disable request retries."""
         params = self.models["venice-deepseek"]["litellm_params"]
         self.assertEqual(params["max_parallel_requests"], 4)
         browser = yaml.safe_load((ROOT / "charts/venice-api/values.yaml").read_text())[
@@ -47,7 +52,8 @@ class VeniceLiteLLMIntegrationTests(unittest.TestCase):
         self.assertEqual(self.values["numWorkers"], 1)
         self.assertEqual(self.values["replicaCount"], 1)
 
-    def test_qwen_route_and_existing_credential_are_preserved(self):
+    def test_qwen_route_and_existing_credential_are_preserved(self) -> None:
+        """Preserve the existing Qwen route and its credential reference."""
         self.assertEqual(
             self.models["qwen3.8-27b"]["litellm_params"],
             {
@@ -59,7 +65,8 @@ class VeniceLiteLLMIntegrationTests(unittest.TestCase):
             },
         )
 
-    def test_no_database_upgrade_or_synthetic_credit_billing(self):
+    def test_no_database_upgrade_or_synthetic_credit_billing(self) -> None:
+        """Keep the image tag and leave migration and synthetic billing off."""
         self.assertFalse(self.values["migrationJob"]["enabled"])
         self.assertEqual(self.values["image"]["tag"], "1.105.1")
         info = self.models["venice-deepseek"]["model_info"]

@@ -8,7 +8,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class VPSWorkloadOffloadTests(unittest.TestCase):
-    def test_selected_profiles_preserve_explicit_node_placement(self):
+    """Read-only placement checks for the selected VPS offload sources."""
+
+    def test_selected_profiles_preserve_explicit_node_placement(self) -> None:
+        """Keep img-proxy and kube-system profiles on their explicit nodes."""
         profiles = yaml.safe_load((ROOT / "ansible/vars/container-resources.yml").read_text())[
             "container_resource_policy_profiles"
         ]
@@ -35,7 +38,8 @@ class VPSWorkloadOffloadTests(unittest.TestCase):
                 },
             )
 
-    def test_rollout_is_sequential_and_scoped(self):
+    def test_rollout_is_sequential_and_scoped(self) -> None:
+        """Include exactly the two kube-system workloads, without Helm or deletion."""
         tasks = yaml.safe_load(
             (ROOT / "ansible/roles/vps_workload_offload/tasks/main.yml").read_text()
         )
@@ -56,7 +60,8 @@ class VPSWorkloadOffloadTests(unittest.TestCase):
             any("helm" in str(task.get("ansible.builtin.command", {})) for task in tasks)
         )
 
-    def test_playbook_refuses_cluster_wide_eviction(self):
+    def test_playbook_refuses_cluster_wide_eviction(self) -> None:
+        """Keep reconcile disabled and the play limited to the two roles."""
         play = yaml.safe_load((ROOT / "ansible/playbooks/socrat-2-offload.yml").read_text())[0]
         checks = [
             task["ansible.builtin.assert"]
@@ -68,7 +73,8 @@ class VPSWorkloadOffloadTests(unittest.TestCase):
         )
         self.assertEqual(play["roles"], ["container_resource_policy", "vps_workload_offload"])
 
-    def test_image_proxy_helm_values_require_vps_placement(self):
+    def test_image_proxy_helm_values_require_vps_placement(self) -> None:
+        """Require the image-proxy chart to select the VPS node."""
         values = yaml.safe_load((ROOT / "charts/img-proxy/values.yaml").read_text())
         self.assertEqual(values["nodeSelector"], {"kubernetes.io/hostname": "socrat-2"})
         deployment = (ROOT / "charts/img-proxy/templates/deployment.yaml").read_text()

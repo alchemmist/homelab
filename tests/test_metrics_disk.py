@@ -10,7 +10,10 @@ SPEC.loader.exec_module(DISK)
 
 
 class MetricsDiskTest(unittest.TestCase):
-    def test_counts_prometheus_raw_and_shelf_without_other_volumes(self):
+    """Temporary-directory checks for Prometheus, raw, and shelf bytes."""
+
+    def test_counts_prometheus_raw_and_shelf_without_other_volumes(self) -> None:
+        """Count Prometheus, raw, and shelf bytes without other volumes."""
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             prom = (

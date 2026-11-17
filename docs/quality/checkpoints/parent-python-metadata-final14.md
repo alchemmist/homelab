@@ -1,0 +1,11 @@
+# Final14files in the conservative test metadata selection
+
+Selected14remaining eligible existing test files from retained native lanes26/29/31/32/33/34/35/36. Read the complete proposed documentation inventory. Current file bytes matched the actual managed bases. Ported only missing single-line documentation and literal return-None annotations on matching existing test functions; no body, helper, import, argument/default, fixture, assertion, decorator, skip or scheduling rewrite was accepted.
+
+Complete module AST equality, retaining embedded fixtures and all executable statements, was checked after removing only docstrings and return annotations and repeated after formatting. Full canonical hashes, exact provenance and before/after bytes are private in `python-metadata-fourth24-review/verified.json` (folder denotes the maximum planned selection; actual delivered count is14).
+
+Pinned scoped results: Ruff332→209; mypy213→164. Only no-untyped-def changed93→44. Every other mypy category remained identical: arg-type7, union-attr14, explicit-override12, var-annotated1, attr-defined24, no-untyped-call56, misc6. Remaining diagnostics stay blocking. No new Any/cast/TypeGuard, suppression, debt baseline, approval or report-size/count bypass was introduced.
+
+This exhausts this byte-identical-base metadata-only selection through lane36, not all worker repairs. Already modified files, interfaces, loader/assertion/fixture transformations and production-script changes require separate proof and review. Do not infer completion or acceptance from all56workers having finished. No extra test was run or scheduled. Existing GPU, VPN, route, browser/provider, configuration, backup/archive/restore and other operational paths were not executed to prepare these source edits. Only the previously reviewed complete suites are used for exact-head validation; metadata alone does not certify unscheduled test side effects.
+
+Source settings, versions/resource identities, native identity/security, existing storage and ownership guards remain unchanged. No production maintenance or new credentials. Private evidence directories0700/files0600; exact committed-head suites, full immutable audit and hosted checks remain separate gates before any green/merge claim.

@@ -1,3 +1,5 @@
+"""Offline contracts for VPN subscription identity and configuration snapshots."""
+
 import base64
 import importlib.util
 from pathlib import Path
@@ -13,7 +15,10 @@ SPEC.loader.exec_module(VPN)
 
 
 class SubscriptionTests(unittest.TestCase):
-    def test_reality_short_id_rotation_keeps_identity(self):
+    """Subscription normalization contracts for the offline VPN verifier."""
+
+    def test_reality_short_id_rotation_keeps_identity(self) -> None:
+        """Keep client identity when only the reality short id rotates."""
         first = b"vless://client@example.org:443?security=reality&sid=aaa&pbk=key#name"
         second = b"vless://client@example.org:443?pbk=key&sid=bbb&security=reality#name"
         self.assertEqual(
@@ -28,25 +33,31 @@ class SubscriptionTests(unittest.TestCase):
             VPN.normalize_subscription(second.replace(b"pbk=key", b"pbk=other")),
         )
 
-    def test_non_reality_sid_is_preserved(self):
+    def test_non_reality_sid_is_preserved(self) -> None:
+        """Preserve a non-reality sid as part of the subscription identity."""
         first = b"vless://client@example.org:443?security=tls&sid=aaa"
         self.assertNotEqual(
             VPN.normalize_subscription(first),
             VPN.normalize_subscription(first.replace(b"aaa", b"bbb")),
         )
 
-    def test_duplicate_links_remain_visible(self):
+    def test_duplicate_links_remain_visible(self) -> None:
+        """Count duplicate links instead of collapsing them."""
         link = b"vless://client@example.org:443?security=tls"
         self.assertEqual(len(VPN.normalize_subscription(link + b"\n" + link)), 2)
 
-    def test_empty_and_invalid_payloads_fail(self):
+    def test_empty_and_invalid_payloads_fail(self) -> None:
+        """Reject empty and non-subscription payloads."""
         for value in (b"", b"<html>not a subscription</html>", base64.b64encode(b"invalid")):
             with self.assertRaises(ValueError):
                 VPN.normalize_subscription(value)
 
 
 class ConfigurationTests(unittest.TestCase):
-    def test_traffic_changes_ignored_but_quota_and_password_changes_detected(self):
+    """SQLite configuration snapshot contracts for the offline VPN verifier."""
+
+    def test_traffic_changes_ignored_but_quota_and_password_changes_detected(self) -> None:
+        """Ignore traffic counters while detecting quota and password changes."""
         with sqlite3.connect(":memory:") as connection:
             for table in VPN.TABLES:
                 if table == "inbounds":

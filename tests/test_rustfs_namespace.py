@@ -11,6 +11,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class Namespace(unittest.TestCase):
+    """Rendered RustFS namespace boundaries and the fixed S3 destination."""
+
     def render(self, namespace):
         return subprocess.check_output(
             [
@@ -30,7 +32,8 @@ class Namespace(unittest.TestCase):
             text=True,
         )
 
-    def test_placements_and_isolation(self):
+    def test_placements_and_isolation(self) -> None:
+        """Keep gateway, storage, and browser namespaces isolated."""
         for ns in ("rustfs", "identity"):
             text = self.render(ns)
             docs = text.split("---")
@@ -62,7 +65,8 @@ class Namespace(unittest.TestCase):
         with self.assertRaises(subprocess.CalledProcessError):
             self.render("default")
 
-    def test_fixed_destination(self):
+    def test_fixed_destination(self) -> None:
+        """Require the in-cluster S3 endpoint and reject other origins."""
         env = dict(
             AUTH_URL="https://rustfs.socrat.alchemmist.xyz/outpost.goauthentik.io/auth/nginx",
             S3_ACCESS_KEY="offline",

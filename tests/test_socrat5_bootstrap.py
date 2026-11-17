@@ -1,3 +1,5 @@
+"""Offline contracts for the socrat-5 bootstrap guard and peer admission."""
+
 import ast
 import json
 import pathlib
@@ -23,7 +25,10 @@ def has_cas_assertion(tree: ast.Module) -> bool:
 
 
 class BootstrapTests(unittest.TestCase):
+    """Inventory, guard, and CAS checks for the socrat-5 bootstrap sources."""
+
     def test_manifest_matches_inventory_and_scoped_template(self):
+        """Match the manifest peer to inventory and the rendered unit allowlist."""
         m = json.loads((ROOT / "deploy/network/socrat-5-bootstrap.json").read_text())
         v = {}
         for f in [
@@ -51,7 +56,8 @@ class BootstrapTests(unittest.TestCase):
             if name != "socrat-4":
                 self.assertIn(p["public_key"], rendered)
 
-    def test_guard_is_pre_dnat_and_source_scoped(self):
+    def test_guard_is_pre_dnat_and_source_scoped(self) -> None:
+        """Keep the guard inserted before DNAT and scoped to the testing-class source."""
         s = (ROOT / "scripts/testing-class-wg-guard.sh").read_text()
         self.assertIn("-t mangle -I PREROUTING 1 -i wg-socrat -s 10.250.0.41/32", s)
         self.assertIn("--sport 22 -m conntrack --ctstate ESTABLISHED", s)
@@ -60,7 +66,8 @@ class BootstrapTests(unittest.TestCase):
         for bad in ["iptables-restore", " -F ", " -P ", "MASQUERADE", "--dport 6443"]:
             self.assertNotIn(bad, s)
 
-    def test_peer_admission_is_cas_and_no_transport_restart(self):
+    def test_peer_admission_is_cas_and_no_transport_restart(self) -> None:
+        """Require CAS peer admission and reject transport restart tokens."""
         s = (ROOT / "scripts/wg-testing-class-admit.py").read_text()
         tree = ast.parse(s)
         assert has_cas_assertion(tree)
@@ -93,7 +100,8 @@ class BootstrapTests(unittest.TestCase):
         }
         assert not {"syncconf", "restart", "down", "up"} & tokens
 
-    def test_cas_assertion_rejects_real_mutations_and_comment_decoys(self):
+    def test_cas_assertion_rejects_real_mutations_and_comment_decoys(self) -> None:
+        """Reject a replaced CAS assertion and a comment that only quotes the check."""
         source = (ROOT / "scripts/wg-testing-class-admit.py").read_text()
         tree = ast.parse(source)
         assert has_cas_assertion(tree)
@@ -103,7 +111,8 @@ class BootstrapTests(unittest.TestCase):
         assert not has_cas_assertion(tree)
         assert not has_cas_assertion(ast.parse("# " + ast.unparse(ast.parse(CAS_SOURCE))))
 
-    def test_guard_declared_before_transport_on_boot(self):
+    def test_guard_declared_before_transport_on_boot(self) -> None:
+        """Declare the guard before the WireGuard unit and never restart it."""
         s = (ROOT / "ansible/playbooks/testing-class-bootstrap-guard.yml").read_text()
         self.assertIn("Requires=testing-class-wg-guard.service", s)
         self.assertIn("Before=wg-quick@wg-socrat.service", s)

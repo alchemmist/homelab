@@ -1,3 +1,5 @@
+"""Offline checks for the Moscow API route repair parser and committed routes."""
+
 import importlib.util
 from pathlib import Path
 import pytest, yaml
@@ -25,7 +27,8 @@ def fixture():
     return text, peers
 
 
-def test_only_two_allowedip_lines_change_preserving_private_key_and_other_peers():
+def test_only_two_allowedip_lines_change_preserving_private_key_and_other_peers() -> None:
+    """Keep every non-AllowedIPs line and the unrelated peer."""
     text, peers = fixture()
     new, after = m.candidate(text, peers)
     assert m.project(new)[1] == after and after["other"] == peers["other"]
@@ -36,7 +39,8 @@ def test_only_two_allowedip_lines_change_preserving_private_key_and_other_peers(
     ]
 
 
-def test_rejects_runtime_drift_and_conflicting_cryptokey_owner():
+def test_rejects_runtime_drift_and_conflicting_cryptokey_owner() -> None:
+    """Refuse drifted runtime peers and an address owned by another peer."""
     text, peers = fixture()
     bad = dict(peers)
     bad["other"] = ["0.0.0.0/0"]
@@ -47,7 +51,8 @@ def test_rejects_runtime_drift_and_conflicting_cryptokey_owner():
         m.candidate(text, bad)
 
 
-def test_inventory_keeps_exact_api_host_routes_and_no_default():
+def test_inventory_keeps_exact_api_host_routes_and_no_default() -> None:
+    """Keep the committed socrat-4 peer routes and refuse live route mutation."""
     host = yaml.safe_load((ROOT / "ansible/inventory/host_vars/socrat-4.yml").read_text())
     assert host["wg_socrat_extra_allowed_peer_ips"] == {
         "socrat-4": {"socrat-0": ["192.168.0.23/32"], "socrat-1": ["192.168.0.24/32"]}
@@ -57,7 +62,8 @@ def test_inventory_keeps_exact_api_host_routes_and_no_default():
     assert "'systemctl'" not in source and "private-key" not in source
 
 
-def test_runtime_parser_retains_every_prefix_with_tabs_spaces_or_commas():
+def test_runtime_parser_retains_every_prefix_with_tabs_spaces_or_commas() -> None:
+    """Retain every prefix when runtime peers use tabs, spaces, or commas."""
     assert m.allowed_ips("key\t10.0.0.1/32 192.168.0.1/32\n") == {
         "key": ["10.0.0.1/32", "192.168.0.1/32"]
     }

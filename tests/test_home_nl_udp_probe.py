@@ -1,3 +1,5 @@
+"""Offline checks for the HOME/NL UDP echo predicate; no sockets are opened."""
+
 import importlib.util
 from pathlib import Path
 
@@ -9,7 +11,8 @@ m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 
 
-def test_only_small_exact_shape_from_home_gets_echoed():
+def test_only_small_exact_shape_from_home_gets_echoed() -> None:
+    """Accept only a 16-byte payload from HOME with the fixed prefix."""
     valid = m.PREFIX + b"x" * 16
     assert m.valid(valid, (m.HOME, 51843))
     assert not m.valid(valid, ("91.189.82.238", 51843))
@@ -17,7 +20,8 @@ def test_only_small_exact_shape_from_home_gets_echoed():
     assert not m.valid(b"bad" + b"x" * 100, (m.HOME, 51843))
 
 
-def test_bounded_no_reuse_or_network_state_mutation():
+def test_bounded_no_reuse_or_network_state_mutation() -> None:
+    """Require a bounded diagnostic that does not mutate routes, firewalls, or VPN state."""
     s = (ROOT / "scripts/vpn-home-nl-udp-probe.py").read_text()
     assert "1<=timeout<=45" in s
     assert "s.sendto(data,peer)" in s

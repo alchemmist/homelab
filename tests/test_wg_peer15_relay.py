@@ -1,3 +1,5 @@
+"""Offline contracts for the peer15 endpoint relay replacement."""
+
 import ast
 import importlib.util
 from pathlib import Path
@@ -12,6 +14,8 @@ spec.loader.exec_module(endpoint)
 
 
 class EndpointTests(unittest.TestCase):
+    """Synthetic config checks and the static relay service contract."""
+
     def config(self):
         return (
             "[Interface]\nPrivateKey = SYNTHETIC-NOT-A-KEY\nListenPort = 51830\n\n"
@@ -22,33 +26,39 @@ class EndpointTests(unittest.TestCase):
             "[Peer]\nPublicKey = another-peer\nEndpoint = example.test:1234\n"
         )
 
-    def test_only_one_endpoint_changed(self):
+    def test_only_one_endpoint_changed(self) -> None:
+        """Replacing the direct endpoint is reversible and touches no other byte."""
         before = self.config()
         after = endpoint.replace_endpoint(before, endpoint.RELAY)
         self.assertEqual(after, before.replace(endpoint.DIRECT, endpoint.RELAY))
         self.assertEqual(endpoint.replace_endpoint(after, endpoint.DIRECT), before)
 
-    def test_idempotent(self):
+    def test_idempotent(self) -> None:
+        """Applying the relay endpoint twice leaves the replaced config unchanged."""
         once = endpoint.replace_endpoint(self.config(), endpoint.RELAY)
         self.assertEqual(endpoint.replace_endpoint(once, endpoint.RELAY), once)
 
-    def test_unknown_endpoint_rejected(self):
+    def test_unknown_endpoint_rejected(self) -> None:
+        """An endpoint outside the direct and relay pair is rejected."""
         with self.assertRaises(ValueError):
             endpoint.replace_endpoint(
                 self.config().replace(endpoint.DIRECT, "192.0.2.1:1234"), endpoint.RELAY
             )
 
-    def test_duplicate_peer_rejected(self):
+    def test_duplicate_peer_rejected(self) -> None:
+        """Two copies of the peer block are rejected."""
         with self.assertRaises(ValueError):
             endpoint.replace_endpoint(self.config() + self.config(), endpoint.RELAY)
 
-    def test_missing_peer_rejected(self):
+    def test_missing_peer_rejected(self) -> None:
+        """A config without the peer1 key is rejected."""
         with self.assertRaises(ValueError):
             endpoint.replace_endpoint(
                 self.config().replace(endpoint.PEER, "absent"), endpoint.RELAY
             )
 
-    def test_duplicate_endpoint_rejected(self):
+    def test_duplicate_endpoint_rejected(self) -> None:
+        """Two endpoint lines in the peer block are rejected."""
         with self.assertRaises(ValueError):
             endpoint.replace_endpoint(
                 self.config().replace(
@@ -58,7 +68,8 @@ class EndpointTests(unittest.TestCase):
                 endpoint.RELAY,
             )
 
-    def test_service_has_no_keys_or_privileged_capabilities(self):
+    def test_service_has_no_keys_or_privileged_capabilities(self) -> None:
+        """The relay unit has no key material and no privileged capabilities."""
         service = (ROOT / "ansible/files/wg-peer15-relay.service").read_text()
         for required in [
             "DynamicUser=yes",

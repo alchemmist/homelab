@@ -1,3 +1,5 @@
+"""Offline contracts for GPU metric text and failure replacement."""
+
 import importlib.util
 from pathlib import Path
 import subprocess
@@ -14,7 +16,10 @@ ROW = "GPU-123, NVIDIA RTX 3090, 0, 50, 20, 30, 1024, 24576, 100, 350, 40, 210, 
 
 
 class GPUCollectorTests(unittest.TestCase):
-    def test_multiple_cards_units_and_unsupported_values(self):
+    """Check per-card metrics and replacement of earlier samples on failure."""
+
+    def test_multiple_cards_units_and_unsupported_values(self) -> None:
+        """Publish finite per-card units and skip unsupported power-brake samples."""
         output = COLLECTOR.parse_metrics(
             ROW + ROW.replace("GPU-123", "GPU-456").replace(", 50,", ", N/A,")
         )
@@ -30,11 +35,13 @@ class GPUCollectorTests(unittest.TestCase):
         self.assertNotIn('reason="hw_power_brake_slowdown"', output)
         self.assertIn('reason="sw_thermal_slowdown"} 1', output)
 
-    def test_nonfinite_values_are_not_published(self):
+    def test_nonfinite_values_are_not_published(self) -> None:
+        """Omit temperature when the sample is non-finite."""
         output = COLLECTOR.parse_metrics(ROW.replace(", 50,", ", inf,"))
         self.assertNotIn("temperature_celsius", output)
 
-    def test_failure_replaces_previous_gpu_values(self):
+    def test_failure_replaces_previous_gpu_values(self) -> None:
+        """Replace a previous success text when collection times out."""
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "nvidia.prom"
             output.write_text(COLLECTOR.parse_metrics(ROW))
@@ -48,7 +55,8 @@ class GPUCollectorTests(unittest.TestCase):
             self.assertEqual(output.stat().st_mode & 0o777, 0o644)
             self.assertEqual(list(Path(directory).iterdir()), [output])
 
-    def test_malformed_result_is_failure_without_partial_metrics(self):
+    def test_malformed_result_is_failure_without_partial_metrics(self) -> None:
+        """Publish failure instead of partial metrics when a row is malformed."""
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "nvidia.prom"
             result = subprocess.CompletedProcess([], 0, stdout=ROW + "bad,row\n")

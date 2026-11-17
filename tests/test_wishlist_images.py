@@ -1,3 +1,5 @@
+"""Offline contracts for the private wishlist image optimizer."""
+
 from pathlib import Path
 import unittest
 import yaml
@@ -6,7 +8,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class WishlistImages(unittest.TestCase):
-    def test_private_resource_isolation_no_external_optimizer(self):
+    """Pinned chart contracts for the in-namespace image optimizer."""
+
+    def test_private_resource_isolation_no_external_optimizer(self) -> None:
+        """The optimizer stays cluster-internal, with no ingress or secret mount."""
         source = (ROOT / "charts/wishlist/templates/image-optimizer.yaml").read_text()
         self.assertIn("if .Values.images.enabled", source)
         self.assertEqual(source.count('argocd.argoproj.io/sync-wave: "-1"'), 3)
@@ -30,7 +35,8 @@ class WishlistImages(unittest.TestCase):
         ingress = (ROOT / "charts/wishlist/templates/ingress.yaml").read_text()
         self.assertNotIn("optimizer", ingress)
 
-    def test_app_image_and_same_namespace_only(self):
+    def test_app_image_and_same_namespace_only(self) -> None:
+        """The optimizer image stays digest-pinned in the release namespace."""
         source = (ROOT / "charts/wishlist/templates/image-optimizer.yaml").read_text()
         self.assertIn(".Values.image.digest", source)
         self.assertIn("app.kubernetes.io/name: {{ .Chart.Name }}", source)
@@ -44,7 +50,8 @@ class WishlistImages(unittest.TestCase):
             app,
         )
 
-    def test_native_memory_limit_no_application_job_semaphore(self):
+    def test_native_memory_limit_no_application_job_semaphore(self) -> None:
+        """Memory and ephemeral storage stay native limits, with no CPU pin."""
         values = yaml.safe_load((ROOT / "charts/wishlist/values.yaml").read_text())["images"]
         self.assertEqual(values["optimizerPort"], 8081)
         self.assertEqual(values["resources"]["limits"]["memory"], "2Gi")
