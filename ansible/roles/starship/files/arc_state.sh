@@ -6,14 +6,14 @@
 # даёт «1/2»), поэтому показываем только символ состояния.
 
 arc info >/dev/null 2>&1 || exit 0
-seq=$(arc info 2>/dev/null | sed -n 's/^sequencer: //p')
-[ -z "$seq" ] && exit 0
+seq=$(arc info 2>/dev/null | sed -n 's/^sequencer: //p') || true
+[[ -z ${seq} ]] && exit 0
 
 Y=$'\033[33m'; Z=$'\033[0m'
-case "$seq" in
+case "${seq}" in
   rebase)       sym="" ;;
   cherry-pick)  sym="" ;;
   bisect)       sym="" ;;
   *)            sym="" ;;
 esac
-printf '%s%s%s ' "$Y" "$sym" "$Z"
+printf '%s%s%s ' "${Y}" "${sym}" "${Z}"

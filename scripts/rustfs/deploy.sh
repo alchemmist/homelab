@@ -2,16 +2,26 @@
 set -euo pipefail
 # This explicit operator script is NEVER invoked by source tests/Argo automation.
 # An operator must independently review source and record the approved commit.
-repo=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
+script_dir=$(dirname -- "${BASH_SOURCE[0]}") || true
+repo=$(cd -- "${script_dir}/../.." && pwd)
 chart="${repo}/charts/rustfs"
-if [[ -n $(git -C "${repo}" status --porcelain --untracked-files=no) ]]; then
+tracked=$(git -C "${repo}" status --porcelain --untracked-files=no) || true
+if [[ -n ${tracked} ]]; then
   echo 'Refusing dirty tracked source' >&2; exit 2
 fi
-if [[ -n $(git -C "${repo}" ls-files --others --exclude-standard -- charts/rustfs) ||
-      -n $(git -C "${repo}" ls-files --others --ignored --exclude-standard -- charts/rustfs) ]]; then
+untracked=$(git -C "${repo}" ls-files --others --exclude-standard -- charts/rustfs) || true
+if [[ -n ${untracked} ]]; then
   echo 'Refusing untracked or ignored chart inputs' >&2; exit 2
 fi
-if [[ $# != 3 || $1 != --apply || $2 != "$(git -C "${repo}" rev-parse HEAD)" ]]; then
+ignored=$(git -C "${repo}" ls-files --others --ignored --exclude-standard -- charts/rustfs) || true
+if [[ -n ${ignored} ]]; then
+  echo 'Refusing untracked or ignored chart inputs' >&2; exit 2
+fi
+if [[ $# != 3 || $1 != --apply ]]; then
+  echo 'Usage: deploy.sh --apply <independently-approved-HEAD> <private-runtime-values.yaml>' >&2; exit 2
+fi
+approved=$(git -C "${repo}" rev-parse HEAD) || true
+if [[ $2 != "${approved}" ]]; then
   echo 'Usage: deploy.sh --apply <independently-approved-HEAD> <private-runtime-values.yaml>' >&2; exit 2
 fi
 values=$3
