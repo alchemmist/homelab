@@ -19,6 +19,10 @@ spec:
       labels:
         app: n8n
     spec:
+      {{- if .Values.googleEgress.enabled }}
+      imagePullSecrets:
+        - name: n8n-google-egress-pull
+      {{- end }}
       automountServiceAccountToken: false
       enableServiceLinks: false
       tolerations:
