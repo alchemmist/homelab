@@ -120,7 +120,7 @@
 - name: Disable persistent swap entries on the worker
   ansible.builtin.replace:
     path: /etc/fstab
-    regexp: '^(\s*[^#\s]\S*\s+\S+\s+swap\s+.*)$'
+    regexp: ^(\s*[^#\s]\S*\s+\S+\s+swap\s+.*)$
     replace: '# \1'
     backup: true
   when: not k3s_worker_swap_enabled | bool
@@ -166,8 +166,8 @@
 
 - name: Download the pinned verified Kubernetes binary
   ansible.builtin.get_url:
-    url: "https://github.com/k3s-io/k3s/releases/download/{{ k3s_worker_version }}/k3s"
-    checksum: "sha256:https://github.com/k3s-io/k3s/releases/download/{{ k3s_worker_version }}/sha256sum-amd64.txt"
+    url: https://github.com/k3s-io/k3s/releases/download/{{ k3s_worker_version }}/k3s
+    checksum: sha256:https://github.com/k3s-io/k3s/releases/download/{{ k3s_worker_version }}/sha256sum-amd64.txt
     dest: /usr/local/bin/k3s
     owner: root
     group: root

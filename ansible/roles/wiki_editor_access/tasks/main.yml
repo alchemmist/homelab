@@ -39,7 +39,7 @@
 
 - name: Wait for certificate
   ansible.builtin.command:
-    argv: [kubectl, --kubeconfig, "{{ wiki_editor_kubeconfig }}", -n, "{{ wiki_editor_gateway_namespace }}", wait, '--for=condition=Ready', 'certificate/{{ wiki_editor_tls_secret }}', --timeout=300s]
+    argv: [kubectl, --kubeconfig, "{{ wiki_editor_kubeconfig }}", -n, "{{ wiki_editor_gateway_namespace }}", wait, --for=condition=Ready, 'certificate/{{ wiki_editor_tls_secret }}', --timeout=300s]
   changed_when: false
 
 - name: Preserve other private virtual hosts

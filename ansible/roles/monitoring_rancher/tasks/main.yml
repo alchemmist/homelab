@@ -7,9 +7,9 @@
 
 - name: Download verified Rancher dashboards chart
   ansible.builtin.get_url:
-    url: "https://raw.githubusercontent.com/rancher/charts/release-v2.15/assets/rancher-monitoring-dashboards/rancher-monitoring-dashboards-{{ monitoring_rancher_chart_version }}.tgz"
+    url: https://raw.githubusercontent.com/rancher/charts/release-v2.15/assets/rancher-monitoring-dashboards/rancher-monitoring-dashboards-{{ monitoring_rancher_chart_version }}.tgz
     dest: "{{ monitoring_rancher_workdir }}/rancher-monitoring-dashboards-{{ monitoring_rancher_chart_version }}.tgz"
-    checksum: "sha256:{{ monitoring_rancher_chart_sha256 }}"
+    checksum: sha256:{{ monitoring_rancher_chart_sha256 }}
     mode: "0600"
 
 - name: Stage Rancher dashboard integration values
@@ -64,7 +64,7 @@
 
 - name: Inspect the obsolete public Grafana release
   ansible.builtin.command:
-    argv: [helm, list, --namespace, "{{ monitoring_rancher_namespace }}", --kubeconfig, "{{ monitoring_rancher_kubeconfig }}", --filter, '^monitoring-access$', --output, json]
+    argv: [helm, list, --namespace, "{{ monitoring_rancher_namespace }}", --kubeconfig, "{{ monitoring_rancher_kubeconfig }}", --filter, ^monitoring-access$, --output, json]
   register: monitoring_public_release
   changed_when: false
 

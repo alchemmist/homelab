@@ -11,9 +11,9 @@
         mode: "0755"
     - name: Download exact stock executables, no shell installer
       ansible.builtin.get_url:
-        url: 'http://10.250.0.1:18195/{{ item.name }}'
-        dest: '/var/tmp/homelab-socrat5-native/{{ item.name }}'
-        checksum: 'sha256:{{ item.sha }}'
+        url: http://10.250.0.1:18195/{{ item.name }}
+        dest: /var/tmp/homelab-socrat5-native/{{ item.name }}
+        checksum: sha256:{{ item.sha }}
         mode: "0755"
         timeout: 120
       loop:

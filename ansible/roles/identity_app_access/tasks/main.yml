@@ -3,7 +3,7 @@
 - name: Copy catalog and bounded app-access reconciler
   ansible.builtin.copy:
     src: '{{ item.src }}'
-    dest: '/home/alchemmist/.cache/homelab-authentik/{{ item.name }}'
+    dest: /home/alchemmist/.cache/homelab-authentik/{{ item.name }}
     mode: "0600"
     backup: true
   loop:

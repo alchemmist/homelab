@@ -49,7 +49,7 @@
   loop:
     - {section: temperature, option: default_sort, value: Temperature}
     - {section: temperature, option: sort_order, value: Descending}
-    - {section: processes, option: default_sort, value: 'CPU%'}
+    - {section: processes, option: default_sort, value: CPU%}
     - {section: processes, option: sort_order, value: Descending}
     - {section: disk, option: default_sort, value: Used}
     - {section: disk, option: sort_order, value: Descending}
@@ -60,7 +60,7 @@
     argv:
       - /usr/bin/python3
       - -c
-      - 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))'
+      - import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))
       - "{{ homelab_bottom_config.stdout }}"
   changed_when: false
   when: not ansible_check_mode

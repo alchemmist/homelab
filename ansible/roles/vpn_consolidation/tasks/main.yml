@@ -5,7 +5,7 @@
 
 - name: Inspect recovery and maintenance markers
   ansible.builtin.stat:
-    path: "/var/lib/homelab-vpn-failover/{{ item }}"
+    path: /var/lib/homelab-vpn-failover/{{ item }}
   loop: [active, inhibit]
   register: vpn_consolidation_markers
 

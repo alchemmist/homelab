@@ -5,7 +5,7 @@
       - homelab_ssh_router_mapping_mode in ['upnp', 'static']
 
 - name: Check required gateway tools
-  ansible.builtin.command: "test -x {{ item }}"
+  ansible.builtin.command: test -x {{ item }}
   loop:
     - /usr/bin/python3
     - /usr/bin/upnpc
@@ -13,12 +13,12 @@
   changed_when: false
 
 - name: Read user linger state
-  ansible.builtin.command: "loginctl show-user {{ homelab_user }} --property=Linger --value"
+  ansible.builtin.command: loginctl show-user {{ homelab_user }} --property=Linger --value
   register: homelab_ssh_linger
   changed_when: false
 
 - name: Enable gateway services without an interactive login
-  ansible.builtin.command: "loginctl enable-linger {{ homelab_user }}"
+  ansible.builtin.command: loginctl enable-linger {{ homelab_user }}
   when: homelab_ssh_linger.stdout != 'yes'
 
 - name: Create gateway configuration directories
@@ -72,7 +72,7 @@
 - name: Enable WireGuard relay sockets
   ansible.builtin.systemd_service:
     scope: user
-    name: "homelab-ssh-relay-{{ item.item }}.socket"
+    name: homelab-ssh-relay-{{ item.item }}.socket
     enabled: true
     state: "{{ 'restarted' if item.changed else 'started' }}"
     daemon_reload: true

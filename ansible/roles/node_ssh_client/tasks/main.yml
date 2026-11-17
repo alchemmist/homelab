@@ -47,7 +47,7 @@
     owner: root
     group: root
     mode: "0644"
-    validate: '/usr/bin/ssh -G -F %s socrat-0'
+    validate: /usr/bin/ssh -G -F %s socrat-0
 
 - name: Load private aliases before system host defaults
   ansible.builtin.blockinfile:
@@ -59,7 +59,7 @@
     group: root
     mode: "0644"
     backup: true
-    validate: '/usr/bin/ssh -G -F %s socrat-0'
+    validate: /usr/bin/ssh -G -F %s socrat-0
 
 - name: Resolve installed node aliases
   ansible.builtin.command:
@@ -75,8 +75,8 @@
   ansible.builtin.assert:
     quiet: true
     that:
-      - "('hostname ' ~ item.item.value.address) in item.stdout_lines"
-      - "('port ' ~ (node_port | string)) in item.stdout_lines"
+      - ('hostname ' ~ item.item.value.address) in item.stdout_lines
+      - ('port ' ~ (node_port | string)) in item.stdout_lines
   vars:
     node_port: "{{ item.item.value.ssh_port | default(hostvars.get(item.item.key, {}).get('homelab_ssh_port', homelab_node_ssh_port)) }}"
   loop: "{{ node_ssh_resolved.results }}"
