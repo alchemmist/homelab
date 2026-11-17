@@ -9,18 +9,22 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class UnifiedLogsDashboardTest(unittest.TestCase):
+    """Offline checks for the unified logs Grafana dashboard contract."""
+
     def setUp(self):
         self.dashboard = json.loads(
             (ROOT / "charts/monitoring-k3s/dashboards/logs.json").read_text()
         )
 
-    def test_provisioning(self):
+    def test_provisioning(self) -> None:
+        """Require the logs dashboard label and its stable uid."""
         template = (ROOT / "charts/monitoring-k3s/templates/socrat-dashboard.yaml").read_text()
         self.assertIn('"logs"', template)
         self.assertIn('grafana_dashboard: "1"', template)
         self.assertEqual(self.dashboard["uid"], "socrat-unified-logs")
 
-    def test_selectors_and_queries(self):
+    def test_selectors_and_queries(self) -> None:
+        """Require complete selectors, Loki queries, and top-aligned panels."""
         variables = self.dashboard["templating"]["list"]
         self.assertEqual(
             [v["name"] for v in variables], ["service", "namespace", "node", "severity"]
@@ -37,7 +41,8 @@ class UnifiedLogsDashboardTest(unittest.TestCase):
         self.assertFalse(any(p["type"] == "text" for p in self.dashboard["panels"]))
         self.assertEqual(min(p["gridPos"]["y"] for p in self.dashboard["panels"]), 0)
 
-    def test_explore_preserves_queries_and_time(self):
+    def test_explore_preserves_queries_and_time(self) -> None:
+        """Require Explore links to keep the query and the dashboard time range."""
         url = self.dashboard["links"][0]["url"]
         state = json.loads(unquote(url.split("&left=", 1)[1]))
         self.assertEqual(state["range"], {"from": "${__from}", "to": "${__to}"})

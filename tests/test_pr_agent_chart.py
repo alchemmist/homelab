@@ -1,3 +1,5 @@
+"""Check the offline Helm render contract for the PR Agent chart."""
+
 import subprocess
 import unittest
 from pathlib import Path
@@ -7,7 +9,10 @@ CHART = ROOT / "charts" / "pr-agent"
 
 
 class PrAgentChartTest(unittest.TestCase):
-    def test_template_renders_webhook_and_local_model(self):
+    """Require the reviewed webhook, model, and push-command pins."""
+
+    def test_template_renders_webhook_and_local_model(self) -> None:
+        """Pin the image, local model, host, resources, and push commands."""
         rendered = subprocess.check_output(
             ["helm", "template", "pr-agent", str(CHART), "--namespace", "pr-agent"],
             text=True,

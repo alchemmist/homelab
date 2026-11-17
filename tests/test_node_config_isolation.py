@@ -1,3 +1,5 @@
+"""Offline checks for detaching symlinked account configuration inside a temp home."""
+
 import importlib.util
 from pathlib import Path
 import tempfile
@@ -14,6 +16,8 @@ SPEC.loader.exec_module(MODULE)
 
 
 class IsolationTests(unittest.TestCase):
+    """Materialize configuration links under a disposable home directory."""
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
@@ -22,7 +26,8 @@ class IsolationTests(unittest.TestCase):
         self.source.mkdir(parents=True)
         (self.home / ".config").mkdir()
 
-    def test_directory_and_nested_file_links_materialize_without_source_changes(self):
+    def test_directory_and_nested_file_links_materialize_without_source_changes(self) -> None:
+        """Copy linked config into the home and leave the dotfiles source untouched."""
         source = self.source / "hypr"
         source.mkdir()
         (source / "hyprland.conf").write_text("original")
@@ -42,7 +47,8 @@ class IsolationTests(unittest.TestCase):
         self.assertTrue((Path(result["backup"]) / "original/.config/waybar/config").is_symlink())
         self.assertFalse(MODULE.isolate(self.home)["changed"])
 
-    def test_profile_script_and_service_links_are_detached(self):
+    def test_profile_script_and_service_links_are_detached(self) -> None:
+        """Replace profile, script, and service links without editing their source."""
         source = self.source / "file"
         source.write_text("original")
         paths = [
@@ -60,7 +66,8 @@ class IsolationTests(unittest.TestCase):
             self.assertFalse((self.home / relative).is_symlink())
         self.assertEqual(source.read_text(), "original")
 
-    def test_scripts_directory_symlink_preserves_unmanaged_scripts(self):
+    def test_scripts_directory_symlink_preserves_unmanaged_scripts(self) -> None:
+        """Materialize a scripts directory link and keep unmanaged script text."""
         source = self.source / "scripts"
         source.mkdir()
         (source / "other.sh").write_text("keep")
@@ -70,7 +77,8 @@ class IsolationTests(unittest.TestCase):
         self.assertEqual((self.home / "scripts/other.sh").read_text(), "keep")
         self.assertEqual((source / "other.sh").read_text(), "keep")
 
-    def test_dry_run_is_read_only(self):
+    def test_dry_run_is_read_only(self) -> None:
+        """Report a pending change without writing a backup or replacing the link."""
         source = self.source / "profile"
         source.write_text("original")
         (self.home / ".zprofile").symlink_to(source)
@@ -80,14 +88,16 @@ class IsolationTests(unittest.TestCase):
         self.assertTrue((self.home / ".zprofile").is_symlink())
         self.assertFalse((self.home / ".local").exists())
 
-    def test_outside_home_rejected_before_any_change(self):
+    def test_outside_home_rejected_before_any_change(self) -> None:
+        """Reject a link that leaves the home before creating isolation state."""
         (self.home / ".tmux.conf").symlink_to("/etc/passwd")
         with self.assertRaisesRegex(ValueError, "outside"):
             MODULE.isolate(self.home)
         self.assertTrue((self.home / ".tmux.conf").is_symlink())
         self.assertFalse((self.home / ".local").exists())
 
-    def test_nested_cycle_rejected(self):
+    def test_nested_cycle_rejected(self) -> None:
+        """Reject a configuration symlink cycle."""
         source = self.source / "hypr"
         source.mkdir()
         (source / "cycle").symlink_to(source, target_is_directory=True)
@@ -95,7 +105,8 @@ class IsolationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "cycle"):
             MODULE.isolate(self.home)
 
-    def test_symlink_parent_rejected(self):
+    def test_symlink_parent_rejected(self) -> None:
+        """Reject isolation when a parent directory is itself a symlink."""
         (self.home / ".config").rmdir()
         (self.home / ".config").symlink_to(self.source, target_is_directory=True)
         with self.assertRaisesRegex(ValueError, "parent"):

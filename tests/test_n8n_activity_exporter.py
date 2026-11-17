@@ -1,3 +1,5 @@
+"""Offline checks for the read-only n8n activity exporter."""
+
 import importlib.util
 import unittest
 from pathlib import Path
@@ -9,7 +11,10 @@ spec.loader.exec_module(observer)
 
 
 class ActivityTest(unittest.TestCase):
-    def test_count_by_start_not_completion_and_no_duplicates(self):
+    """Check start-time counting, separate running fetches, and read-only source."""
+
+    def test_count_by_start_not_completion_and_no_duplicates(self) -> None:
+        """Count distinct starts in each window and ignore a late completion."""
         now = observer.timestamp("2026-11-07T10:00:00Z")
         rows = [
             {"id": "1", "startedAt": "2026-11-07T09:58:00Z", "status": "success"},
@@ -31,7 +36,8 @@ class ActivityTest(unittest.TestCase):
         self.assertEqual(counts["running", 300], 0)
         self.assertEqual(counts["waiting", 300], 1)
 
-    def test_running_is_fetched_separately_and_old_runs_still_count(self):
+    def test_running_is_fetched_separately_and_old_runs_still_count(self) -> None:
+        """Count an old running row fetched by the explicit running query."""
         old = observer.get_page
         observer.get_page = lambda cursor=None, status=None: {
             "data": [{"id": "old", "startedAt": "2020-01-01T00:00:00Z", "status": "running"}]
@@ -44,7 +50,8 @@ class ActivityTest(unittest.TestCase):
         finally:
             observer.get_page = old
 
-    def test_scan_budget_does_not_publish_partial_counts(self):
+    def test_scan_budget_does_not_publish_partial_counts(self) -> None:
+        """Refuse a history scan that never reaches the end of the window."""
         old = observer.get_page
         observer.get_page = lambda *args: {"data": [], "nextCursor": "more"}
         try:
@@ -53,7 +60,8 @@ class ActivityTest(unittest.TestCase):
         finally:
             observer.get_page = old
 
-    def test_read_only_and_no_execution_payloads(self):
+    def test_read_only_and_no_execution_payloads(self) -> None:
+        """Require the exporter source to stay read-only and free of payload prints."""
         source = PATH.read_text()
         self.assertIn("'includeData': 'false'", source)
         self.assertNotIn("method=", source)

@@ -8,7 +8,8 @@ m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 
 
-def test_only_home0_local_probe_uid_tcp443_is_exempt():
+def test_only_home0_local_probe_uid_tcp443_is_exempt() -> None:
+    """Require only the home-0 local probe uid on tcp/443 to bypass DNAT."""
     with patch.object(m.socket, "gethostname", return_value="socrat-0"):
         new = m.rules()
     with patch.object(m.socket, "gethostname", return_value="socrat-1"):
@@ -24,7 +25,8 @@ def test_only_home0_local_probe_uid_tcp443_is_exempt():
     assert "skuid" not in new.split("chain output")[0]
 
 
-def test_cas_migration_preserves_receipts_and_rejects_unreviewed_drift():
+def test_cas_migration_preserves_receipts_and_rejects_unreviewed_drift() -> None:
+    """Require the migration source to keep its receipt checks and refuse flush."""
     source = (ROOT / "scripts/vpn-home-transit-egress.py").read_text()
     assert "assert without == before" in source
     assert "assert not receipt.exists()" in source

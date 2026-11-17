@@ -20,7 +20,8 @@ def render(chart, *args):
     ]
 
 
-def test_backend_is_persistent_bounded_unprivileged_and_private():
+def test_backend_is_persistent_bounded_unprivileged_and_private() -> None:
+    """Keep Pyroscope persistent, bounded, unprivileged, and cluster-private."""
     docs = render("pyroscope")
     dep = next(d for d in docs if d["kind"] == "Deployment")
     pod = dep["spec"]["template"]["spec"]
@@ -51,7 +52,8 @@ def test_backend_is_persistent_bounded_unprivileged_and_private():
     assert all("namespaceSelector" in p for p in peers)
 
 
-def test_flamegraph_is_native_pyroscope_not_a_span_waterfall():
+def test_flamegraph_is_native_pyroscope_not_a_span_waterfall() -> None:
+    """Expose native Pyroscope flamegraphs instead of a tracing waterfall."""
     docs = render("pyroscope")
     cm = next(d for d in docs if d["metadata"]["name"] == "service-cpu-profiling-dashboard")
     d = json.loads(cm["data"]["service-cpu-profiling.json"])
@@ -73,7 +75,8 @@ def test_flamegraph_is_native_pyroscope_not_a_span_waterfall():
     assert ds["url"] == "http://pyroscope.cattle-monitoring-system.svc.cluster.local:4040"
 
 
-def test_lms_profiling_is_opt_in_and_production_enabled():
+def test_lms_profiling_is_opt_in_and_production_enabled() -> None:
+    """Enable LMS profiling only for the production values overlay."""
     for args, enabled in [((), False), (("-f", str(ROOT / "deploy/lms/values.yaml")), True)]:
         docs = render("lms", *args)
         dep = next(d for d in docs if d["kind"] == "Deployment" and d["metadata"]["name"] == "lms")

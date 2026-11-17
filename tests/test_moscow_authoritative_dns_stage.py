@@ -8,7 +8,8 @@ ROOT = Path(__file__).resolve().parents[1]
 PLAY = ROOT / "ansible/playbooks/moscow-authoritative-dns-stage.yml"
 
 
-def test_stage_is_one_host_and_read_only_by_default():
+def test_stage_is_one_host_and_read_only_by_default() -> None:
+    """Require one socrat-4 play that stays read-only until apply is enabled."""
     plays = yaml.safe_load(PLAY.read_text())
     assert len(plays) == 1
     play = plays[0]
@@ -25,7 +26,8 @@ def test_stage_is_one_host_and_read_only_by_default():
     )
 
 
-def test_listener_does_not_replace_relay_or_require_wireguard():
+def test_listener_does_not_replace_relay_or_require_wireguard() -> None:
+    """Keep the public listener beside the relay, with no WireGuard, k3s, or firewall hooks."""
     play = yaml.safe_load(PLAY.read_text())[0]
     assert play["vars"]["public_dns_listen"] == {"socrat-4": ["91.189.82.238@53"]}
     assert play["vars"]["public_dns_install_policy_rc_d"] == 101
@@ -38,7 +40,8 @@ def test_listener_does_not_replace_relay_or_require_wireguard():
     assert "iptables" not in text and "nft " not in text
 
 
-def test_staging_does_not_publish_moscow_web_records():
+def test_staging_does_not_publish_moscow_web_records() -> None:
+    """Publish the VPN address from staging and withhold Moscow web failover names."""
     spec = importlib.util.spec_from_file_location(
         "moscow_stage_zone", ROOT / "scripts/public_dns_zone.py"
     )
@@ -51,7 +54,8 @@ def test_staging_does_not_publish_moscow_web_records():
         assert "vpn IN A 91.189.82.238" in text
 
 
-def test_shared_role_safety_knobs_are_opt_in():
+def test_shared_role_safety_knobs_are_opt_in() -> None:
+    """Leave policy-rc.d, validation, and backup omitted unless the play sets them."""
     text = (ROOT / "ansible/roles/public_authoritative_dns/tasks/main.yml").read_text()
     assert 'policy_rc_d: "{{ public_dns_install_policy_rc_d | default(omit) }}"' in text
     assert 'validate: "{{ public_dns_config_validate | default(omit) }}"' in text

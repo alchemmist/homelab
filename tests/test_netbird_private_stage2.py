@@ -9,7 +9,8 @@ stage2 = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(stage2)
 
 
-def test_settings_schema_and_private_local_auth():
+def test_settings_schema_and_private_local_auth() -> None:
+    """Require private local auth and the fixed peer-login lifetime."""
     body = stage2.settings_body(
         {
             "settings": {
@@ -25,7 +26,8 @@ def test_settings_schema_and_private_local_auth():
     assert body["settings"]["peer_expose_enabled"] is False
 
 
-def test_only_exact_native_default_can_be_deleted():
+def test_only_exact_native_default_can_be_deleted() -> None:
+    """Accept only one exact native Default policy for deletion."""
     rule = dict(
         action="accept",
         protocol="all",
@@ -42,7 +44,8 @@ def test_only_exact_native_default_can_be_deleted():
         stage2.default_policy([policy])
 
 
-def test_private_files_never_overwrite(tmp_path):
+def test_private_files_never_overwrite(tmp_path) -> None:
+    """Create a mode-0600 file and refuse to replace it."""
     path = tmp_path / "secret.json"
     stage2.private(path, {"secret": "fixture"})
     assert path.stat().st_mode & 0o777 == 0o600
