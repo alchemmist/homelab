@@ -39,7 +39,7 @@
         state: directory
         owner: root
         group: root
-        mode: '0755'
+        mode: "0755"
 
     - name: Publish both private Rancher addresses
       ansible.builtin.copy:
@@ -47,7 +47,7 @@
         dest: /etc/homelab-private-dns.d/rancher.conf
         owner: root
         group: root
-        mode: '0644'
+        mode: "0644"
       register: rancher_private_dns
 
     - name: Validate private DNS configuration
@@ -76,7 +76,7 @@
         dest: /usr/local/libexec/check-home-ingress
         owner: root
         group: root
-        mode: '0755'
+        mode: "0755"
 
     - name: Verify the public ingress health probe
       ansible.builtin.command: /usr/local/libexec/check-home-ingress

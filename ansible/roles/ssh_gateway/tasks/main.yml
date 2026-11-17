@@ -25,7 +25,7 @@
   ansible.builtin.file:
     path: "{{ homelab_user_home }}/{{ item }}"
     state: directory
-    mode: '0700'
+    mode: "0700"
   loop:
     - .local/bin
     - .config/homelab
@@ -35,19 +35,19 @@
   ansible.builtin.copy:
     src: homelab_ssh_gateway.py
     dest: "{{ homelab_user_home }}/.local/bin/homelab-ssh-gateway"
-    mode: '0755'
+    mode: "0755"
 
 - name: Configure gateway nodes from inventory
   ansible.builtin.template:
     src: ssh-gateway.json.j2
     dest: "{{ homelab_user_home }}/.config/homelab/ssh-gateway.json"
-    mode: '0600'
+    mode: "0600"
 
 - name: Install mapping reconciliation service and timer
   ansible.builtin.template:
     src: "{{ item }}.j2"
     dest: "{{ homelab_user_home }}/.config/systemd/user/{{ item }}"
-    mode: '0644'
+    mode: "0644"
   loop:
     - homelab-ssh-gateway.service
     - homelab-ssh-gateway.timer
@@ -56,7 +56,7 @@
   ansible.builtin.template:
     src: relay.socket.j2
     dest: "{{ homelab_user_home }}/.config/systemd/user/homelab-ssh-relay-{{ item }}.socket"
-    mode: '0644'
+    mode: "0644"
   loop: "{{ groups['Socrat'] }}"
   when: hostvars[item].homelab_ssh_relay | default(false)
   register: homelab_ssh_relay_sockets
@@ -65,7 +65,7 @@
   ansible.builtin.template:
     src: relay@.service.j2
     dest: "{{ homelab_user_home }}/.config/systemd/user/homelab-ssh-relay-{{ item }}@.service"
-    mode: '0644'
+    mode: "0644"
   loop: "{{ groups['Socrat'] }}"
   when: hostvars[item].homelab_ssh_relay | default(false)
 

@@ -38,7 +38,7 @@
     state: directory
     owner: root
     group: root
-    mode: '0755'
+    mode: "0755"
 
 - name: Generate private aliases for every local user
   ansible.builtin.template:
@@ -46,7 +46,7 @@
     dest: /etc/ssh/ssh_config.d/10-homelab-nodes.conf
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
     validate: '/usr/bin/ssh -G -F %s socrat-0'
 
 - name: Load private aliases before system host defaults
@@ -57,7 +57,7 @@
     block: Include /etc/ssh/ssh_config.d/10-homelab-nodes.conf
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
     backup: true
     validate: '/usr/bin/ssh -G -F %s socrat-0'
 

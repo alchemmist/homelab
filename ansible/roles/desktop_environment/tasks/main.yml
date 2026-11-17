@@ -20,7 +20,7 @@
     state: directory
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
-    mode: '0755'
+    mode: "0755"
     follow: true
   loop:
     - .config/hypr
@@ -34,7 +34,7 @@
     dest: "{{ homelab_user_home }}/.config/hypr/local.conf"
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
-    mode: '0644'
+    mode: "0644"
     force: false
 
 - name: Deliver the desktop support scripts
@@ -43,7 +43,7 @@
     dest: "{{ homelab_user_home }}/scripts/{{ item }}"
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
-    mode: '0755'
+    mode: "0755"
     follow: true
     backup: true
     validate: /bin/bash -n %s
@@ -58,7 +58,7 @@
     dest: "{{ homelab_user_home }}/.config/systemd/user/caffeine-lid-inhibit.service"
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
-    mode: '0644'
+    mode: "0644"
     follow: true
     backup: true
   register: homelab_caffeine_unit
@@ -76,7 +76,7 @@
     dest: /usr/local/bin/homelab-wallpaper
     owner: root
     group: root
-    mode: '0755'
+    mode: "0755"
     validate: /bin/sh -n %s
 
 - name: Select the default image for desktop and lockscreen
@@ -96,7 +96,7 @@
     dest: "{{ homelab_user_home }}/.config/hypr/hypridle.conf"
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
-    mode: '0644'
+    mode: "0644"
     follow: true
     backup: true
 
@@ -106,7 +106,7 @@
   ansible.builtin.template:
     src: hyprland.conf.j2
     dest: "{{ homelab_user_home }}/.config/hypr/hyprland.conf"
-    mode: '0644'
+    mode: "0644"
     follow: true
     backup: true
     validate: /usr/bin/Hyprland --verify-config --config %s

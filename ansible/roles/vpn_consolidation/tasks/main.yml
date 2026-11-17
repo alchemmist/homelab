@@ -76,7 +76,7 @@
     dest: /usr/local/sbin/homelab-verify-vpn
     owner: root
     group: root
-    mode: '0700'
+    mode: "0700"
 
 - name: Install authenticated VPN tunnel probe
   ansible.builtin.copy:
@@ -84,7 +84,7 @@
     dest: /usr/local/sbin/homelab-probe-vpn
     owner: root
     group: root
-    mode: '0700'
+    mode: "0700"
 
 - name: Verify the existing authenticated VPN tunnel
   ansible.builtin.command: /usr/bin/python3 /usr/local/sbin/homelab-probe-vpn
@@ -96,7 +96,7 @@
     state: directory
     owner: root
     group: root
-    mode: '0700'
+    mode: "0700"
 
 - name: Allocate a private migration snapshot
   ansible.builtin.command: mktemp -d /var/backups/homelab-vpn/consolidation-XXXXXXXX

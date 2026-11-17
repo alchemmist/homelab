@@ -39,7 +39,7 @@
         dest: /etc/sysctl.d/90-homelab-swap.conf
         owner: root
         group: root
-        mode: '0644'
+        mode: "0644"
         content: "vm.swappiness = 10\n"
 
     - name: Read current swappiness

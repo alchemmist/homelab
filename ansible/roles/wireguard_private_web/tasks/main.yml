@@ -38,7 +38,7 @@
     state: directory
     owner: root
     group: root
-    mode: '0700'
+    mode: "0700"
   when: wireguard_private_web_enabled | bool
 
 - name: Install private web NAT script
@@ -47,7 +47,7 @@
     dest: "{{ wireguard_private_web_script_path }}"
     owner: root
     group: root
-    mode: '0755'
+    mode: "0755"
   notify: Restart private web NAT
   when: wireguard_private_web_enabled | bool
 
@@ -57,7 +57,7 @@
     dest: "/etc/systemd/system/{{ wireguard_private_web_service_name }}"
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
   notify: Restart private web NAT
   when: wireguard_private_web_enabled | bool
 

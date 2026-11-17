@@ -51,10 +51,10 @@
     - ansible.builtin.file:
         path: /etc/systemd/system/knot.service.d
         state: directory
-        mode: '0755'
+        mode: "0755"
     - ansible.builtin.copy:
         dest: /etc/systemd/system/knot.service.d/30-vpn-transit-listener.conf
-        mode: '0644'
+        mode: "0644"
         content: |
           [Unit]
           Requires=wg-quick@wg-socrat.service

@@ -4,7 +4,7 @@
   ansible.builtin.copy:
     src: '{{ item.src }}'
     dest: '/home/alchemmist/.cache/homelab-authentik/{{ item.name }}'
-    mode: '0600'
+    mode: "0600"
     backup: true
   loop:
     - {src: '{{ playbook_dir }}/../../deploy/identity/services.json', name: services.json}

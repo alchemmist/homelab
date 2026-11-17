@@ -3,25 +3,25 @@
   ansible.builtin.copy:
     src: integrate.py
     dest: /home/alchemmist/.cache/homelab-authentik/integrate.py
-    mode: '0600'
+    mode: "0600"
 
 - name: Copy pure observer admission guard
   ansible.builtin.copy:
     src: observer_admission.py
     dest: /home/alchemmist/.cache/homelab-authentik/observer_admission.py
-    mode: '0600'
+    mode: "0600"
 
 - name: Copy non-secret Grafana environment settings
   ansible.builtin.copy:
     content: "{{ (lookup('file', playbook_dir + '/../../deploy/identity/grafana-oidc-values.yaml') | from_yaml).grafana.env | to_json }}"
     dest: /home/alchemmist/.cache/homelab-authentik/grafana-public-env.json
-    mode: '0600'
+    mode: "0600"
 
 - name: Copy non-secret Open WebUI environment settings
   ansible.builtin.copy:
     src: "{{ playbook_dir }}/../../deploy/identity/open-webui-env.json"
     dest: /home/alchemmist/.cache/homelab-authentik/open-webui-env.json
-    mode: '0600'
+    mode: "0600"
 
 - name: Integrate selected native OIDC services while preserving local emergency logins
   ansible.builtin.command:
@@ -34,21 +34,21 @@
   ansible.builtin.copy:
     src: '{{ playbook_dir }}/../../deploy/identity/account-mappings.json'
     dest: /home/alchemmist/.cache/homelab-authentik/account-mappings.json
-    mode: '0600'
+    mode: "0600"
   when: "'litellm' in identity_oidc_services"
 
 - name: Copy reviewed non-admin LiteLLM subjects
   ansible.builtin.copy:
     src: '{{ playbook_dir }}/../../deploy/identity/litellm-users.json'
     dest: /home/alchemmist/.cache/homelab-authentik/litellm-users.json
-    mode: '0600'
+    mode: "0600"
   when: "'litellm' in identity_oidc_services"
 
 - name: Copy reviewed LiteLLM native OIDC controller
   ansible.builtin.copy:
     src: litellm_oidc.py
     dest: /home/alchemmist/.cache/homelab-authentik/litellm_oidc.py
-    mode: '0600'
+    mode: "0600"
   when: "'litellm' in identity_oidc_services"
 
 - name: Reconcile explicitly selected LiteLLM native OIDC

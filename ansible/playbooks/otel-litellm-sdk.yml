@@ -32,7 +32,7 @@
     - name: Maintain deterministic SDK binding; changes reset the real continuous window
       ansible.builtin.copy:
         dest: /var/lib/homelab-otel-soak/configuration-epoch.json
-        mode: '0600'
+        mode: "0600"
         content: |
           {{ (litellm_existing_epoch.content | b64decode | from_json) | combine({'litellmSdkConfigurationSHA256': hostvars['localhost'].litellm_sdk_configuration_sha256}) | to_json(sort_keys=True) }}
 ...

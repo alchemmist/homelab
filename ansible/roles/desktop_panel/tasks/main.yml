@@ -21,7 +21,7 @@
     state: directory
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
-    mode: '0755'
+    mode: "0755"
   loop: "{{ homelab_panel_directories.results }}"
   when: not item.stat.exists
   loop_control:
@@ -33,7 +33,7 @@
     dest: "{{ homelab_user_home }}/scripts/{{ item }}"
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
-    mode: '0755'
+    mode: "0755"
     follow: true
     backup: true
   loop: "{{ ['toggle_noscreenshare.sh'] + (['waybar-gpu.py'] if homelab_waybar_profile == 'desktop' else ['battery-degradation.sh', 'pacman_updates.sh', 'paru_updates.sh']) }}"
@@ -45,7 +45,7 @@
     dest: "{{ homelab_user_home }}/.config/waybar/hypr-config.json"
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
-    mode: '0644'
+    mode: "0644"
     follow: true
     backup: true
     validate: /usr/bin/python3 -m json.tool %s
@@ -58,7 +58,7 @@
     dest: "{{ homelab_user_home }}/.config/waybar/hypr-style.css"
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
-    mode: '0644'
+    mode: "0644"
     follow: true
     backup: true
   register: homelab_waybar_style
@@ -72,7 +72,7 @@
     no_extra_spaces: true
     owner: "{{ homelab_user }}"
     group: "{{ homelab_user }}"
-    mode: '0644'
+    mode: "0644"
     backup: true
   when: homelab_hide_flameshot_tray
 ...

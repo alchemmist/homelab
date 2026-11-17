@@ -13,7 +13,7 @@
         state: directory
         owner: root
         group: root
-        mode: '0700'
+        mode: "0700"
       loop:
         - "{{ syncthing_private_monitors_plan | dirname }}"
 
@@ -23,7 +23,7 @@
         state: directory
         owner: root
         group: root
-        mode: '0755'
+        mode: "0755"
 
     - name: Install the scoped monitor migration utility
       ansible.builtin.copy:
@@ -31,7 +31,7 @@
         dest: /usr/local/libexec/migrate-syncthing-health-monitors.py
         owner: root
         group: root
-        mode: '0644'
+        mode: "0644"
 
     - name: Initialize the node health endpoint plan
       ansible.builtin.set_fact:
@@ -50,7 +50,7 @@
         content: "{{ syncthing_private_monitors_nodes | to_nice_json }}\n"
         owner: root
         group: root
-        mode: '0600'
+        mode: "0600"
 
     - name: Check whether existing monitors need migration
       ansible.builtin.command:

@@ -62,7 +62,7 @@
           PersistentKeepalive = {{ wg_socrat_keepalive }}
         owner: root
         group: root
-        mode: '0600'
+        mode: "0600"
         backup: true
       no_log: true
       when: not (worker_peer_state.stdout | from_json).persisted

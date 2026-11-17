@@ -27,7 +27,7 @@
         path: /etc/rancher/k3s/k3s.yaml
         owner: root
         group: alchemmist
-        mode: '0640'
+        mode: "0640"
     - name: Verify a non-owner cannot read cluster-admin credentials
       ansible.builtin.command:
         argv: [runuser, -u, tim, --, test, '!', -r, /etc/rancher/k3s/k3s.yaml]

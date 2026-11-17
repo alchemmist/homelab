@@ -72,7 +72,7 @@
       ansible.builtin.file:
         path: "{{ homelab_user_home }}/.ssh"
         state: directory
-        mode: '0700'
+        mode: "0700"
 
     - name: Create a dedicated TV administration key
       ansible.builtin.command:
@@ -120,13 +120,13 @@
       ansible.builtin.file:
         path: "{{ homelab_tv_helper_apk_dir }}"
         state: directory
-        mode: '0755'
+        mode: "0755"
 
     - name: Copy homelab Android TV helper APKs
       ansible.builtin.copy:
         src: "{{ playbook_dir }}/../../android/releases/{{ item.name }}"
         dest: "{{ homelab_tv_helper_apk_dir }}/{{ item.name }}"
-        mode: '0644'
+        mode: "0644"
       loop: "{{ homelab_tv_helper_apks }}"
 
     - name: Install homelab Android TV helper APKs
@@ -367,13 +367,13 @@
       ansible.builtin.file:
         path: "{{ homelab_tv_fully_settings_path | dirname }}"
         state: directory
-        mode: '0700'
+        mode: "0700"
 
     - name: Render Fully one-shot settings
       ansible.builtin.copy:
         dest: "{{ homelab_tv_fully_settings_path }}"
         content: "{{ (homelab_tv_fully_settings | to_nice_json) ~ '\n' }}"
-        mode: '0600'
+        mode: "0600"
       register: homelab_tv_fully_settings_file
 
     - name: Push Fully one-shot settings

@@ -57,7 +57,7 @@
   ansible.builtin.file:
     path: "{{ wiki_editor_directory }}"
     state: directory
-    mode: '0700'
+    mode: "0700"
 
 - name: Stage gateway chart
   ansible.builtin.copy:
@@ -69,14 +69,14 @@
   ansible.builtin.copy:
     dest: "{{ wiki_editor_directory }}/values.yaml"
     content: "{{ wiki_editor_gateway_values | combine({'privateGui': {'extraVirtualHosts': wiki_editor_gateway_hosts, 'editorAuthSecret': (wiki_editor_gateway_auth_secret if (wiki_editor_gateway_hosts | selectattr('editorUpstream', 'defined') | list | length > 0) else '')}}, recursive=true) | to_nice_yaml }}"
-    mode: '0600'
+    mode: "0600"
   no_log: true
 
 - name: Stage manifest comparison
   ansible.builtin.copy:
     src: "{{ role_path }}/../../files/helm_manifest_changed.py"
     dest: "{{ wiki_editor_directory }}/compare.py"
-    mode: '0600'
+    mode: "0600"
 
 - name: Compare gateway manifest
   ansible.builtin.command:

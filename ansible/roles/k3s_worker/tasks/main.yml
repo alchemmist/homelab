@@ -62,7 +62,7 @@
     state: directory
     owner: root
     group: root
-    mode: '0755'
+    mode: "0755"
 
 - name: Exclude pod network interfaces from NetworkManager
   ansible.builtin.copy:
@@ -72,7 +72,7 @@
       unmanaged-devices+=interface-name:cni0;interface-name:flannel.1;interface-name:veth*
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
   register: k3s_worker_nm_config
 
 - name: Inspect whether NetworkManager manages this worker
@@ -131,7 +131,7 @@
     content: "net.ipv4.ip_forward = 1\n"
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
   register: k3s_worker_sysctl
 
 - name: Apply worker forwarding configuration
@@ -145,7 +145,7 @@
     state: directory
     owner: root
     group: root
-    mode: '0700'
+    mode: "0700"
 
 - name: Read the existing agent join token
   ansible.builtin.slurp:
@@ -160,7 +160,7 @@
     content: "{{ k3s_worker_token.content | b64decode | trim }}\n"
     owner: root
     group: root
-    mode: '0600'
+    mode: "0600"
   no_log: true
   notify: Restart dedicated k3s worker
 
@@ -171,7 +171,7 @@
     dest: /usr/local/bin/k3s
     owner: root
     group: root
-    mode: '0755'
+    mode: "0755"
   notify: Restart dedicated k3s worker
 
 - name: Configure the worker with admission protection and desktop reservations
@@ -180,7 +180,7 @@
     dest: /etc/rancher/k3s/config.yaml
     owner: root
     group: root
-    mode: '0600'
+    mode: "0600"
   notify: Restart dedicated k3s worker
 
 - name: Install the worker systemd service
@@ -189,14 +189,14 @@
     dest: /etc/systemd/system/k3s-agent.service
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
   notify: Restart dedicated k3s worker
 
 - name: Create the management network retry directory
   ansible.builtin.file:
     path: /etc/systemd/system/wg-quick@wg-socrat.service.d
     state: directory
-    mode: '0755'
+    mode: "0755"
 
 - name: Retry management network startup if DNS is not ready at boot
   ansible.builtin.copy:
@@ -205,7 +205,7 @@
       [Service]
       Restart=on-failure
       RestartSec=5s
-    mode: '0644'
+    mode: "0644"
 
 - name: Start the configured worker
   ansible.builtin.meta: flush_handlers
