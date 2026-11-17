@@ -3,6 +3,7 @@
 import ast
 import importlib.util
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -43,18 +44,18 @@ class OperationalEntrypoints(unittest.TestCase):
         (root / "deploy/contracts/operational-entrypoints.json").write_text(json.dumps(c))
 
     def test_current_inventory_is_read_only(self):
-        self.assertEqual(entrypoints.check(ROOT), (23, 10))
+        assert entrypoints.check(ROOT) == (23, 10)
         with tempfile.TemporaryDirectory() as d:
-            root, c = self.fixture(d)
+            root, _c = self.fixture(d)
             before = {p: p.read_bytes() for p in root.rglob("*") if p.is_file()}
-            self.assertEqual(entrypoints.check(root), (1, 1))
-            self.assertEqual(before, {p: p.read_bytes() for p in before})
+            assert entrypoints.check(root) == (1, 1)
+            assert before == {p: p.read_bytes() for p in before}
 
     def test_new_unclassified_helm_entrypoint_fails(self):
         with tempfile.TemporaryDirectory() as d:
-            root, c = self.fixture(d)
+            root, _c = self.fixture(d)
             (root / "ansible/other.yml").write_text("command: helm install other ./chart\n")
-            with self.assertRaisesRegex(ValueError, "Unclassified"):
+            with pytest.raises(ValueError, match="Unclassified"):
                 entrypoints.check(root)
 
     def test_duplicate_or_stale_classification_fails(self):
@@ -63,12 +64,15 @@ class OperationalEntrypoints(unittest.TestCase):
                 root, c = self.fixture(d)
                 if mode == "duplicate":
                     c["entries"] *= 2
+                    expected = "Duplicate operational entrypoint"
                 elif mode == "stale":
                     (root / "ansible/demo.yml").write_text("tasks: []\n")
+                    expected = "Stale Helm classification; re-review removal: ansible/demo.yml"
                 else:
                     c["entries"][0]["status"] = "safe-to-run"
+                    expected = "Invalid operational classification: ansible/demo.yml"
                 self.save(root, c)
-                with self.assertRaises(ValueError):
+                with pytest.raises(ValueError, match=re.escape(expected)):
                     entrypoints.check(root)
 
     def test_retired_import_or_remote_action_fails(self):
@@ -93,13 +97,15 @@ class OperationalEntrypoints(unittest.TestCase):
                 }
                 p = root / "ansible/demo.yml"
                 p.write_text(yaml.safe_dump([play]))
-                self.assertEqual(entrypoints.check(root), (1, 0))
+                assert entrypoints.check(root) == (1, 0)
                 if mode == "import":
                     p.write_text(yaml.safe_dump([play, {"import_playbook": "later.yml"}]))
+                    expected = "Retired follow-up play: ansible/demo.yml"
                 else:
                     play["tasks"].append({"ansible.builtin.command": "true"})
                     p.write_text(yaml.safe_dump([play]))
-                with self.assertRaises(ValueError):
+                    expected = "Retired entrypoint side effects: ansible/demo.yml"
+                with pytest.raises(ValueError, match=re.escape(expected)):
                     entrypoints.check(root)
 
     def test_missing_owner_is_not_silently_accepted(self):
@@ -107,14 +113,14 @@ class OperationalEntrypoints(unittest.TestCase):
             root, c = self.fixture(d)
             c["entries"][0]["owners"] = ["missing"]
             self.save(root, c)
-            with self.assertRaisesRegex(ValueError, "Missing operational source owner"):
+            with pytest.raises(ValueError, match="Missing operational source owner"):
                 entrypoints.check(root)
 
     def test_scan_symlink_escape_rejected_before_read(self):
         with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as other:
-            root, c = self.fixture(d)
+            root, _c = self.fixture(d)
             (root / "ansible/outside.yml").symlink_to(Path(other) / "nonexistent-private.yml")
-            with self.assertRaisesRegex(ValueError, "symlink escapes"):
+            with pytest.raises(ValueError, match="symlink escapes"):
                 entrypoints.check(root)
 
 

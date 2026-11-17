@@ -1,8 +1,10 @@
 import importlib.util
 import json
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
@@ -31,20 +33,21 @@ class VendorContracts(unittest.TestCase):
         return root
 
     def test_registered_real_trees(self):
-        self.assertEqual(vendor.check(ROOT), 4)
+        registered_trees = 4
+        assert vendor.check(ROOT) == registered_trees
 
     def test_baseline_is_read_only(self):
         with tempfile.TemporaryDirectory() as d:
             root = self.fixture(d)
             before = {p: p.read_bytes() for p in root.rglob("*") if p.is_file()}
-            self.assertEqual(vendor.check(root), 1)
-            self.assertEqual(before, {p: p.read_bytes() for p in before})
+            assert vendor.check(root) == 1
+            assert before == {p: p.read_bytes() for p in before}
 
     def test_added_file_is_rejected(self):
         with tempfile.TemporaryDirectory() as d:
             root = self.fixture(d)
             (root / "chart/templates/unreviewed-hook.yaml").write_text("hook")
-            with self.assertRaisesRegex(ValueError, "added=.*unreviewed-hook"):
+            with pytest.raises(ValueError, match=r"added=.*unreviewed-hook"):
                 vendor.check(root)
 
     def test_removed_or_changed_file_is_rejected(self):
@@ -56,14 +59,14 @@ class VendorContracts(unittest.TestCase):
                     p.unlink()
                 else:
                     p.write_text("different template")
-                with self.assertRaisesRegex(ValueError, mode + "=.*deployment.yaml"):
+                with pytest.raises(ValueError, match=rf"{mode}=.*deployment\.yaml"):
                     vendor.check(root)
 
     def test_symlink_not_followed(self):
         with tempfile.TemporaryDirectory() as d:
             root = self.fixture(d)
             (root / "chart/escape").symlink_to(root / "deploy", target_is_directory=True)
-            with self.assertRaisesRegex(ValueError, "Symlink"):
+            with pytest.raises(ValueError, match="Symlink"):
                 vendor.check(root)
 
     def test_duplicate_tree_rejected(self):
@@ -73,7 +76,7 @@ class VendorContracts(unittest.TestCase):
             c = json.loads(p.read_text())
             c["trees"] *= 2
             p.write_text(json.dumps(c))
-            with self.assertRaisesRegex(ValueError, "Duplicate"):
+            with pytest.raises(ValueError, match="Duplicate"):
                 vendor.check(root)
 
     def test_registered_alias_cannot_be_retargeted_or_copied(self):
@@ -89,7 +92,7 @@ class VendorContracts(unittest.TestCase):
                 c["linkInventoryGlobs"] = ["aliases/*.tgz"]
                 c["links"] = {"aliases/component.tgz": "chart/templates/deployment.yaml"}
                 p.write_text(json.dumps(c))
-                self.assertEqual(vendor.check(root), 1)
+                assert vendor.check(root) == 1
                 if mode == "extra":
                     (link.parent / "unknown.tgz").symlink_to(target)
                 else:
@@ -98,7 +101,7 @@ class VendorContracts(unittest.TestCase):
                         link.symlink_to(root / "deploy/contracts/vendors.json")
                     elif mode == "copy":
                         link.write_bytes(target.read_bytes())
-                with self.assertRaisesRegex(ValueError, "alias"):
+                with pytest.raises(ValueError, match="alias"):
                     vendor.check(root)
 
 

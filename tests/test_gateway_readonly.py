@@ -3,11 +3,13 @@ import copy
 import importlib.util
 import io
 import json
+import unittest
+import urllib.parse
 from pathlib import Path
 from types import SimpleNamespace
-import unittest
 from unittest.mock import patch
-import urllib.parse
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
@@ -75,17 +77,17 @@ class GatewayReadonly(unittest.TestCase):
         }
         commands, requests = [], []
 
-        def runner(command, **kwargs):
+        def runner(command, **_kwargs):
             commands.append(command)
-            self.assertIn("get", command)
-            self.assertNotIn("helm", command)
+            assert "get" in command
+            assert "helm" not in command
             i = command.index("get")
             key = tuple(command[i + 1 : i + 3])
             return SimpleNamespace(returncode=0, stdout=json.dumps(objects[key]))
 
-        def opener(request, **kwargs):
+        def opener(request, **_kwargs):
             requests.append(request)
-            self.assertEqual(request.get_method(), "GET")
+            assert request.get_method() == "GET"
             path = urllib.parse.urlsplit(request.full_url).path
             if path == "/key/info":
                 return Response(200, {"info": {"allowed_routes": ["/metrics"]}})
@@ -100,15 +102,17 @@ class GatewayReadonly(unittest.TestCase):
     def test_success_only_reads_and_preserves_existing_restricted_key(self):
         args, objects, commands, requests, runner, opener = self.fixture()
         before = copy.deepcopy(objects)
-        self.assertFalse(g.verify(args, runner, opener))
-        self.assertEqual(len(commands), 5)
-        self.assertEqual(len(requests), 4)
-        self.assertEqual(before, objects)
+        assert not g.verify(args, runner, opener)
+        cluster_reads = 5
+        api_reads = 4
+        assert len(commands) == cluster_reads
+        assert len(requests) == api_reads
+        assert before == objects
 
     def test_every_failed_cluster_read_stops_without_fallback(self):
         for fail_at in range(1, 6):
             with self.subTest(fail_at=fail_at):
-                args, objects, commands, requests, runner, opener = self.fixture()
+                args, _objects, commands, requests, runner, opener = self.fixture()
 
                 def failed(command, **kwargs):
                     if len(commands) + 1 == fail_at:
@@ -116,10 +120,10 @@ class GatewayReadonly(unittest.TestCase):
                         return SimpleNamespace(returncode=1, stdout="")
                     return runner(command, **kwargs)
 
-                with self.assertRaises(RuntimeError):
+                with pytest.raises(RuntimeError):
                     g.verify(args, failed, opener)
-                self.assertEqual(len(commands), fail_at)
-                self.assertEqual(requests, [])
+                assert len(commands) == fail_at
+                assert requests == []
 
     def test_absent_or_changed_owner_fails_before_credential_reads(self):
         for change in ["empty", "wrong-source", "wrong-destination", "wrong-cluster"]:
@@ -133,10 +137,10 @@ class GatewayReadonly(unittest.TestCase):
                 app["spec"]["destination"]["namespace"] = "other"
             else:
                 app["spec"]["destination"]["server"] = "https://other.example"
-            with self.assertRaises(RuntimeError):
+            with pytest.raises(RuntimeError):
                 g.verify(args, runner, opener)
-            self.assertEqual(len(commands), 1)
-            self.assertEqual(requests, [])
+            assert len(commands) == 1
+            assert requests == []
 
     def test_no_master_reference_or_chart_drift_fails_closed(self):
         for change in ["reference", "chart"]:
@@ -146,38 +150,42 @@ class GatewayReadonly(unittest.TestCase):
                 d["metadata"]["labels"]["helm.sh/chart"] = "unreviewed"
             else:
                 d["spec"]["template"]["spec"]["containers"][0]["env"] = []
-            with self.assertRaises(RuntimeError):
+            with pytest.raises(RuntimeError):
                 g.verify(args, runner, opener)
-            self.assertEqual(len(commands), 2)
-            self.assertEqual(requests, [])
+            reads_before_credentials = 2
+            assert len(commands) == reads_before_credentials
+            assert requests == []
 
     def test_api_acl_or_redirect_mismatch_never_triggers_repair(self):
         for path, status in [("/key/info", 302), ("/metrics", 200), ("/v1/models", 200)]:
             with self.subTest(path=path):
-                args, objects, commands, requests, runner, opener = self.fixture()
+                args, _objects, commands, _requests, runner, opener = self.fixture()
 
                 def bad(req, **kwargs):
                     if urllib.parse.urlsplit(req.full_url).path == path:
                         return Response(status, {})
                     return opener(req, **kwargs)
 
-                with self.assertRaises(RuntimeError):
+                with pytest.raises(RuntimeError):
                     g.verify(args, runner, bad)
-                self.assertEqual(len(commands), 5)
+                cluster_reads = 5
+                assert len(commands) == cluster_reads
 
     def test_broader_key_is_rejected_not_repaired(self):
-        args, objects, commands, requests, runner, opener = self.fixture()
+        args, _objects, commands, _requests, runner, _opener = self.fixture()
 
-        def bad(req, **kwargs):
+        def bad(_req, **_kwargs):
             return Response(200, {"info": {"allowed_routes": ["/metrics", "/v1/models"]}})
 
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             g.verify(args, runner, bad)
-        self.assertEqual(len(commands), 5)
+        cluster_reads = 5
+        assert len(commands) == cluster_reads
 
     def test_authorization_redirects_are_not_followed(self):
-        self.assertIsNone(
+        assert (
             g.NoRedirect().redirect_request(None, None, 302, "redirect", {}, "http://other/")
+            is None
         )
 
     def test_public_or_loopback_service_address_never_receives_credentials(self):
@@ -185,10 +193,11 @@ class GatewayReadonly(unittest.TestCase):
             with self.subTest(address=address):
                 args, objects, commands, requests, runner, opener = self.fixture()
                 objects["service", "litellm"]["spec"]["clusterIP"] = address
-                with self.assertRaises(RuntimeError):
+                with pytest.raises(RuntimeError):
                     g.verify(args, runner, opener)
-                self.assertEqual(len(commands), 3)
-                self.assertEqual(requests, [])
+                reads_before_credentials = 3
+                assert len(commands) == reads_before_credentials
+                assert requests == []
 
     def test_cli_does_not_echo_credential_bearing_failures(self):
         argv = [
@@ -209,11 +218,11 @@ class GatewayReadonly(unittest.TestCase):
             patch.object(
                 g, "verify", side_effect=RuntimeError("http://fixture/key/info?key=private-fixture")
             ),
+            pytest.raises(SystemExit) as error,
         ):
-            with self.assertRaises(SystemExit) as error:
-                g.main()
-        self.assertNotIn("private-fixture", str(error.exception))
-        self.assertNotIn("http://", str(error.exception))
+            g.main()
+        assert "private-fixture" not in str(error.value)
+        assert "http://" not in str(error.value)
 
 
 if __name__ == "__main__":
