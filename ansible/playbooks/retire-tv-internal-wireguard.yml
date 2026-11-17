@@ -29,3 +29,4 @@
       when: tv_peer_apply | default(false) | bool
       register: tv_peer_result
       changed_when: (tv_peer_result.stdout | from_json).applied
+...

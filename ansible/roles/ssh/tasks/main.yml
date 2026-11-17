@@ -216,3 +216,4 @@
 - name: Configure private SSH aliases between cluster nodes
   ansible.builtin.import_role:
     name: node_ssh_client
+...

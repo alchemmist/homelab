@@ -6,3 +6,4 @@
   any_errors_fatal: true
   roles:
     - netbird_access
+...

@@ -1,3 +1,4 @@
+---
 issuer: letsencrypt-http01
 routes:
 - name: rancher
@@ -15,3 +16,4 @@ observerAccess:
   enabled: true
   group: homelab-observer
   cluster: local
+...

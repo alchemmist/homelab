@@ -19,3 +19,4 @@
       loop:
         - {name: otelcol-contrib, sha: 57911a9d902cfe2c287dac09fcee4b054630b4ec248fa190a3115d860a32f81f}
         - {name: node_exporter, sha: 1108f7453ecfe4a72f131c73b69537c171840ad4f1713a2402328ad56cf12e09}
+...

@@ -26,3 +26,4 @@
       loop: "{{ wg_socrat_admin_clients | dict2items }}"
       loop_control:
         label: "{{ item.key }}"
+...

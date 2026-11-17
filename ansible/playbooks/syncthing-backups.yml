@@ -49,3 +49,4 @@
     - name: Print Syncthing status
       ansible.builtin.debug:
         var: syncthing_status.stdout_lines
+...

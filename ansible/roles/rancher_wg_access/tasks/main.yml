@@ -1,3 +1,4 @@
+---
 - name: Read installed private gateway values
   ansible.builtin.command:
     argv: [helm, get, values, "{{ rancher_wg_release }}", --namespace, "{{ rancher_wg_namespace }}", --kubeconfig, "{{ rancher_wg_kubeconfig }}", --output, json]
@@ -141,3 +142,4 @@
   register: rancher_wg_ping
   changed_when: false
   failed_when: rancher_wg_ping.rc != 0 or rancher_wg_ping.stdout | trim != 'pong'
+...

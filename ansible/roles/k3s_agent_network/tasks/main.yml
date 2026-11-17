@@ -38,3 +38,4 @@
   when:
     - homelab_k3s_agent_network.changed
     - homelab_k3s_agent_unit.stat.exists
+...

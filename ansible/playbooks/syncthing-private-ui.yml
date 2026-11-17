@@ -1,3 +1,4 @@
+---
 - name: Record Syncthing identities and folder policy before migration
   hosts: Socrat
   any_errors_fatal: true
@@ -78,3 +79,4 @@
   become: true
   roles:
     - syncthing_private_monitors
+...

@@ -113,3 +113,4 @@
         content: '{{ after.stdout }}'
         dest: '{{ recovery_root }}/{{ phase }}-accepted.json'
         mode: '0600'
+...

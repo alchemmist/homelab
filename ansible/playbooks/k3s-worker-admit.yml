@@ -40,3 +40,4 @@
     - name: Confirm all four nodes are Ready
       ansible.builtin.command: kubectl wait --for=condition=Ready node/socrat-0 node/socrat-1 node/socrat-2 node/socrat-3 --timeout=60s
       changed_when: false
+...

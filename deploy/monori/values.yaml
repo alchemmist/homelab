@@ -1,3 +1,4 @@
+---
 frontNodeName: socrat-5
 images:
   front:
@@ -29,3 +30,4 @@ statefulNodeName: socrat-5
 requireExistingData: true
 backClaim: monori-back-socrat5
 syncClaim: monori-sync-socrat5
+...

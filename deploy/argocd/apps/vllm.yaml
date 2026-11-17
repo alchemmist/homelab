@@ -1,3 +1,4 @@
+---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -35,3 +36,4 @@ spec:
         - /spec/template/spec/containers/0/args
         - /spec/template/spec/containers/0/env
         - /spec/template/spec/containers/0/volumeMounts
+...

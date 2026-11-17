@@ -27,3 +27,4 @@
         python /tmp/configure-terminal-uploads.py
       register: terminal_upload_config
       changed_when: (terminal_upload_config.stdout | from_json).changed
+...

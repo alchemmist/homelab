@@ -1,3 +1,4 @@
+---
 # Enable only after asserted global natural n8n/SPI drain. False renders the original runtime exactly.
 googleDnsEnabled: false
 # Pre-HTTP TCP/TLS address failover for the two exact Google API/OAuth hosts.
@@ -33,3 +34,4 @@ recoveryStorage:
   nodeName: socrat-1
   path: /home/alchemmist/.local/share/homelab/n8n-recovery-20261114/data
   size: 5Gi
+...

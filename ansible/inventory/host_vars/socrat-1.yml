@@ -65,3 +65,4 @@ homelab_kubelet_disk_config:
   evictionMaxPodGracePeriod: 60
   imageGCHighThresholdPercent: 96
   imageGCLowThresholdPercent: 95
+...

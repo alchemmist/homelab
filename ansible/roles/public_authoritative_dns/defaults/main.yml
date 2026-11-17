@@ -14,3 +14,4 @@ public_dns_local_probe:
   socrat-0: "{{ public_dns_home_vip }}"
   socrat-1: "{{ public_dns_home_vip }}"
   socrat-2: 127.0.0.1
+...

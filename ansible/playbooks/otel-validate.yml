@@ -140,3 +140,4 @@
       when: otel_validation_scrape_bundle is defined
       changed_when: false
       no_log: true
+...

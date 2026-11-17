@@ -232,3 +232,4 @@
 - name: Validate the generated boot menu
   ansible.builtin.command: grub-script-check /boot/grub/grub.cfg
   changed_when: false
+...

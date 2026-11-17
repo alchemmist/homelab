@@ -1,3 +1,4 @@
+---
 - name: Check whether the desired Syncthing release differs
   ansible.builtin.command:
     argv:
@@ -82,3 +83,4 @@
     - --timeout=120s
   changed_when: false
   when: syncthing_private_ui_gateway_nodes | length > 0
+...

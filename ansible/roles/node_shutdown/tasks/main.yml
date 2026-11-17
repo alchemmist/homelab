@@ -82,3 +82,4 @@
   ansible.builtin.command: "systemctl is-active {{ homelab_boot_k3s_service }}"
   changed_when: false
   when: not ansible_check_mode
+...

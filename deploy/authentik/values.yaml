@@ -1,3 +1,4 @@
+---
 # Single-node identity foundation, not HA. Preserve local break-glass service logins.
 global:
   image:
@@ -50,3 +51,4 @@ worker:
     limits: {memory: 1536Mi, ephemeral-storage: 1Gi}
 geoip:
   enabled: false
+...

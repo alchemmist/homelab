@@ -35,3 +35,4 @@
         mode: '0600'
         content: |
           {{ (litellm_existing_epoch.content | b64decode | from_json) | combine({'litellmSdkConfigurationSHA256': hostvars['localhost'].litellm_sdk_configuration_sha256}) | to_json(sort_keys=True) }}
+...

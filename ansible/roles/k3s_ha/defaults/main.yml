@@ -15,3 +15,4 @@ k3s_ha_nodes:
     node_ip: 10.250.0.2
     advertise_ip: 10.250.0.2
     etcd_only: true
+...

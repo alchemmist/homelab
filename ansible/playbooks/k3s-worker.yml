@@ -7,3 +7,4 @@
   roles:
     - k3s_worker
     - netbird_node
+...

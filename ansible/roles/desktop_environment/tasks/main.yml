@@ -111,3 +111,4 @@
     backup: true
     validate: /usr/bin/Hyprland --verify-config --config %s
   register: homelab_hyprland_config
+...

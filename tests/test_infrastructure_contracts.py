@@ -76,10 +76,20 @@ class InfrastructureContracts(unittest.TestCase):
             c = json.loads(config.read_text())
             first = c["issuerTransport"]["consumers"][0]
             p = root / first["file"]
+            source = p.read_text()
+            ends = [
+                token
+                for token in yaml.scan(source)
+                if isinstance(token, yaml.tokens.DocumentEndToken)
+            ]
+            self.assertLessEqual(len(ends), 1)
+            insertion = ends[0].start_mark.index if ends else len(source)
             expected = (
-                p.read_text()
+                source[:insertion]
                 + "\ncontractTestAliases:\n  - ip: 10.43.218.222\n    hostnames: [auth.socrat.alchemmist.xyz]\n"
+                + source[insertion:]
             )
+            self.assertEqual(len(list(yaml.compose_all(expected))), 1)
             p.write_text(expected.replace("10.43.218.222", "10.43.218.223"))
             c["issuerTransport"]["consumers"].append(
                 {"file": first["file"], "path": ["contractTestAliases"]}

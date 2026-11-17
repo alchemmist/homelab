@@ -12,3 +12,4 @@
         K3S_CONFIG_FILE: /dev/null
       register: identity_rbac
       changed_when: "'created' in identity_rbac.stdout or 'configured' in identity_rbac.stdout"
+...

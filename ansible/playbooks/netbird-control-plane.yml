@@ -10,3 +10,4 @@
   become: false
   roles:
     - netbird_control_plane
+...

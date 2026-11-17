@@ -1,4 +1,6 @@
+---
 apiVersion: v2
 name: n8n
 version: 0.1.1
 appVersion: '1.123.87'
+...

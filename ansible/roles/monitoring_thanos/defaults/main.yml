@@ -18,3 +18,4 @@ monitoring_thanos_nodes:
   - name: socrat-3
     disk_bytes: 21474836480
     memory_bytes: 0
+...

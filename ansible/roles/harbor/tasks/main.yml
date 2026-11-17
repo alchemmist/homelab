@@ -142,3 +142,4 @@
   loop_control:
     label: "{{ item.metadata.name }}"
   changed_when: true
+...

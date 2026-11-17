@@ -1,3 +1,4 @@
+---
 - name: Record persistent server mode
   ansible.builtin.copy:
     dest: /etc/rancher/k3s/server-mode
@@ -47,3 +48,4 @@
   until: k3s_ha_member_ready.rc == 0
   args:
     executable: /bin/bash
+...

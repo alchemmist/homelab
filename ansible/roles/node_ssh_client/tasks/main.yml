@@ -83,3 +83,4 @@
   loop_control:
     label: "{{ item.item.key }}"
   when: not ansible_check_mode
+...

@@ -39,3 +39,4 @@
     name: homelab-guarded-wifi.service
     daemon_reload: true
     enabled: true
+...

@@ -6,3 +6,4 @@
   any_errors_fatal: true
   roles:
     - rancher_wg_access
+...

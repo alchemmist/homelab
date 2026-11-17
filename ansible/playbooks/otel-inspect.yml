@@ -52,3 +52,4 @@
     - name: Report measurement availability
       ansible.builtin.debug:
         msg: "{{ inventory_hostname }}: privileged journal counts saved; raw messages were not persisted"
+...

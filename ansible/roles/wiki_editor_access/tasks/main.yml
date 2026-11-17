@@ -1,3 +1,4 @@
+---
 - name: Read private gateway values
   ansible.builtin.command:
     argv: [helm, get, values, --all, "{{ wiki_editor_gateway_release }}", -n, "{{ wiki_editor_gateway_namespace }}", --kubeconfig, "{{ wiki_editor_kubeconfig }}", -o, json]
@@ -88,3 +89,4 @@
     argv: [helm, upgrade, "{{ wiki_editor_gateway_release }}", "{{ wiki_editor_directory }}/chart", -n, "{{ wiki_editor_gateway_namespace }}", --kubeconfig, "{{ wiki_editor_kubeconfig }}", --reuse-values, -f, "{{ wiki_editor_directory }}/values.yaml", --atomic, --wait, --timeout, 5m]
   when: (wiki_editor_manifest.stdout | from_json).changed
   changed_when: true
+...

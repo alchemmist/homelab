@@ -65,3 +65,4 @@
       - "{{ {'data': {'rancher-webhook': ha_webhook_values | to_nice_yaml}} | to_json }}"
   register: ha_webhook_config_patch
   changed_when: "'(no change)' not in ha_webhook_config_patch.stdout"
+...

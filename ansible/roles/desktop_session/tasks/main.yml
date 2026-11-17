@@ -128,3 +128,4 @@
       - "('--autologin ' ~ homelab_user) in homelab_getty_command.stdout"
     quiet: true
   when: not ansible_check_mode
+...

@@ -1,3 +1,4 @@
+---
 wireguard_private_web_interface: wg-socrat
 wireguard_private_web_service_name: wireguard-private-web.service
 wireguard_private_web_script_path: /usr/local/libexec/wireguard-private-web
@@ -20,3 +21,4 @@ wireguard_private_web_pod_cidrs: []
 
 # Machine relay only; not a human/private-web authorization grant.
 wireguard_private_web_passthrough_sources: []
+...

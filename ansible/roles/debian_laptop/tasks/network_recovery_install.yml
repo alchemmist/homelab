@@ -1,3 +1,4 @@
+---
 - name: Require the validated socrat-3 installation target
   ansible.builtin.assert:
     that:
@@ -119,3 +120,4 @@
   changed_when: false
   args:
     executable: /bin/bash
+...

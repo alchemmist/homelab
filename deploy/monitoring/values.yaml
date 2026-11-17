@@ -1,3 +1,4 @@
+---
 defaultRules:
   disabled:
     # Full largest-node N-1 memory capacity is not a requirement for this homelab.
@@ -282,3 +283,4 @@ prometheus-node-exporter:
       memory: 24Mi
     limits:
       memory: 64Mi
+...

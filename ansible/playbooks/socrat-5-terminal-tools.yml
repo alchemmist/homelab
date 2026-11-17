@@ -46,3 +46,4 @@
           set -g mouse on
           set -g history-limit 20000
           set -g default-terminal "screen-256color"
+...

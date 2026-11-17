@@ -31,3 +31,4 @@
   register: homelab_config_isolation
   check_mode: false
   changed_when: (homelab_config_isolation.stdout | from_json).changed
+...

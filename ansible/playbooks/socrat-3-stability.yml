@@ -156,3 +156,4 @@
       delay: 1
       register: host_watchdog_verified
       until: host_watchdog_verified.rc == 0
+...

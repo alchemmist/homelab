@@ -4,3 +4,4 @@
     name: "{{ homelab_boot_k3s_service }}"
     daemon_reload: true
     state: restarted
+...

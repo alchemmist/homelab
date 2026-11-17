@@ -108,3 +108,4 @@
         var: app_status.stdout_lines
 
 - ansible.builtin.import_playbook: rancher-namespaces.yml
+...

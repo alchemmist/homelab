@@ -37,3 +37,4 @@ vpn_failover_confirmation_checks: 2
 vpn_failover_confirmation_interval_seconds: 1
 vpn_failover_native_start_grace_seconds: 30
 vpn_failover_kubernetes_start_timeout_seconds: 180
+...

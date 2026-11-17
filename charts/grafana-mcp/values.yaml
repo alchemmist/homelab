@@ -1,3 +1,4 @@
+---
 replicaCount: 1
 image:
   repository: grafana/mcp-grafana
@@ -31,3 +32,4 @@ publicEntry:
     port: 8000
     authorization: mcp-bearer
     path: /mcp
+...

@@ -46,3 +46,4 @@
         test -f /etc/rancher/k3s/worker-mode
         test ! -e /etc/rancher/k3s/server-mode
       changed_when: false
+...

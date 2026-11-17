@@ -1,3 +1,4 @@
+---
 container_resource_policy_name: socrat-container-resource-defaults
 container_resource_policy_default_limits:
   memory: 1Gi
@@ -10,3 +11,4 @@ container_resource_policy_directory: /home/alchemmist/.cache/homelab-resource-po
 container_resource_policy_reconcile: false
 container_resource_policy_exclude_nodes: []
 container_resource_policy_profiles: []
+...

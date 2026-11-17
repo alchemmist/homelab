@@ -108,3 +108,4 @@
       retries: 6
       delay: 3
       until: router_public_probe.rc == 0 and router_public_probe.stdout == '404'
+...

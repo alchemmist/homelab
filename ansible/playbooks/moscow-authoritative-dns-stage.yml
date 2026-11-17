@@ -95,3 +95,4 @@
         - name: Verify both the old relay and new authority are active
           ansible.builtin.command: systemctl is-active knot homelab-vpn-dns-transit
           changed_when: false
+...

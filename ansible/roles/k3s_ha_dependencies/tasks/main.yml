@@ -7,3 +7,4 @@
   loop: "{{ k3s_ha_dependencies_deployments }}"
   loop_control:
     loop_var: ha_dependency
+...

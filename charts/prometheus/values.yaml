@@ -1,3 +1,4 @@
+---
 kube-prometheus-stack:
   grafana:
     enabled: false
@@ -249,3 +250,4 @@ kube-prometheus-stack:
         sourceLabels:
         - instance
         - __name__
+...

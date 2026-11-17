@@ -29,3 +29,4 @@
 - name: Show sanitized operation counts and approval hash
   ansible.builtin.debug:
     msg: "{{ netbird_access_result.stdout | from_json }}"
+...

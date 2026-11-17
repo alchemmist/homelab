@@ -35,3 +35,4 @@ wg_socrat_extra_allowed_peer_ips:
   socrat-5:
     socrat-0: [192.168.0.23/32]
     socrat-1: [192.168.0.24/32]
+...

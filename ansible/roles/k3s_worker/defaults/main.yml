@@ -8,3 +8,4 @@ k3s_worker_system_reserved: cpu=300m,memory=768Mi
 k3s_worker_kube_reserved: cpu=100m,memory=256Mi
 k3s_worker_bootstrap_taint: homelab.io/bootstrap=true:NoSchedule
 k3s_worker_swap_enabled: false
+...

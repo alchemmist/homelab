@@ -1,3 +1,4 @@
+---
 - name: Read the installed certificate controller release
   ansible.builtin.command:
     argv: [helm, list, --namespace, cert-manager, --kubeconfig, "{{ rancher_wg_kubeconfig }}", --filter, '^cert-manager$', --output, json]
@@ -101,3 +102,4 @@
     argv: [kubectl, --kubeconfig, "{{ rancher_wg_kubeconfig }}", -n, kube-system, patch, configmap, coredns-custom, --type, merge, -p, "{{ {'data': {'rancher-private.server': rancher_wg_cluster_dns_zone}} | to_json }}"]
   register: rancher_wg_dns_patch
   changed_when: "'(no change)' not in rancher_wg_dns_patch.stdout"
+...

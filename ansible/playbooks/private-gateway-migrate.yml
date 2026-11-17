@@ -140,3 +140,4 @@
       register: private_gateway_post_syncthing_ready
       changed_when: false
       failed_when: private_gateway_post_syncthing_ready.stdout != '1'
+...

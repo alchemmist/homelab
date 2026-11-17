@@ -28,3 +28,4 @@
     - name: Report placement result
       ansible.builtin.debug:
         msg: '{{ capacity_placement.stdout | from_json }}'
+...

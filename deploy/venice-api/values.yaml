@@ -1,3 +1,4 @@
+---
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/venice-api
   tag: "85437b7ab921b8f2a099bed6e648ccec9ab2d35e"
@@ -33,3 +34,4 @@ browserCandidate:
   bridgeImage: ""
   serveApi: true
   image: harbor.socrat.alchemmist.xyz/homelab/venice-browser@sha256:10f6a5c13bfbaee22ae1648d34f454a9537e3f4da5004f7218b2035214f9708b
+...

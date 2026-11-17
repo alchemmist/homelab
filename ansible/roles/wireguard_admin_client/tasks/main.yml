@@ -176,3 +176,4 @@
     mode: '0644'
   when: wireguard_admin_dns_mode == 'split'
   tags: dns
+...

@@ -1,3 +1,4 @@
+---
 - name: Prepare redundant private Rancher HTTPS gateways
   hosts: socrat-0
   gather_facts: false
@@ -91,3 +92,4 @@
       ansible.builtin.include_role:
         name: rancher_wg_access
         tasks_from: disable_ingress
+...

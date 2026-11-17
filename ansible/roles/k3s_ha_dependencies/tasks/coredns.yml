@@ -52,3 +52,4 @@
   become: true
   delegate_to: "{{ item }}"
   loop: "{{ k3s_ha_dependencies_manifest_servers }}"
+...

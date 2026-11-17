@@ -1,3 +1,4 @@
+---
 - name: Read installed private gateway values
   ansible.builtin.command:
     argv: [helm, get, values, "{{ monitoring_wg_release }}", --namespace, "{{ monitoring_wg_namespace }}", --kubeconfig, "{{ monitoring_wg_kubeconfig }}", --output, json]
@@ -131,3 +132,4 @@
   failed_when: >-
     monitoring_wg_grafana.rc != 0 or
     (monitoring_wg_grafana.stdout | from_json | selectattr('uid', 'equalto', 'socrat-overview') | list | length == 0)
+...

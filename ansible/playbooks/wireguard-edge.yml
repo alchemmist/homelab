@@ -33,3 +33,4 @@
         name: wg-quick@wg-socrat
         state: restarted
       when: "'10.250.0.40' not in edge_wg_address.stdout"
+...

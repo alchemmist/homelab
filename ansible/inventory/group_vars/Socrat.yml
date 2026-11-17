@@ -78,3 +78,4 @@ homelab_users:
       - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN1C4WZYz4ma1tgpP4Bzw509lCXlHva6ybdSV79nNyv0 phone"
 
 homelab_private_dns_upstream_servers: [1.1.1.1, 9.9.9.9]
+...

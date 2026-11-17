@@ -1,3 +1,4 @@
+---
 # Compatibility fixture only; Application now reads deploy/spi-triage/values.yaml.
 tokenAccountingMode: local-qwen-v1
 durableWaitEnabled: true
@@ -22,3 +23,4 @@ image:
   digest: ''
 imagePullSecrets:
 - name: spi-triage-harbor-pull
+...

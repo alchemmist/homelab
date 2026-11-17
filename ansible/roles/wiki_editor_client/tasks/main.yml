@@ -1,3 +1,4 @@
+---
 - name: Require macOS
   ansible.builtin.assert:
     that: ansible_system == 'Darwin'
@@ -10,3 +11,4 @@
 - name: Explicit legacy private-DNS recovery only (never normal onboarding)
   ansible.builtin.include_tasks: legacy-resolver.yml
   when: wiki_editor_client_private_dns_legacy | default(false) | bool
+...

@@ -36,3 +36,4 @@
     chdir: "{{ netbird_repo_root }}"
   changed_when: false
   when: netbird_action == 'plan'
+...

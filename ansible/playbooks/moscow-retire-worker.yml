@@ -79,3 +79,4 @@
         content: '{{ final.stdout }}'
         dest: '{{ recovery_root }}/host-only-accepted.json'
         mode: '0600'
+...

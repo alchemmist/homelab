@@ -18,3 +18,4 @@
         flat: true
       no_log: true
       loop: [token.json, kubernetes-ca.crt, credentials.json]
+...

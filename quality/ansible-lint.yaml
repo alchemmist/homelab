@@ -1,3 +1,4 @@
+---
 # Profile min is the parser floor. Every other installed ansible-lint 26.11.0
 # rule is enabled below or named in docs/quality/strict-policy.md. No skip_list.
 profile: min
@@ -39,3 +40,4 @@ enable_list:
   - run-once
   - sanity
   - schema
+...

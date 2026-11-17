@@ -36,3 +36,4 @@
     - name: Wait for all configured Syncthing instances
       ansible.builtin.command: kubectl -n syncthing rollout status deployment/syncthing --timeout=300s
       changed_when: false
+...

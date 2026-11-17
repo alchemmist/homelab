@@ -61,3 +61,4 @@
 - name: Verify public DNS resolution
   ansible.builtin.command: timeout 10 getent ahostsv4 github.com
   changed_when: false
+...

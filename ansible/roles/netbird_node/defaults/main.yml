@@ -6,3 +6,4 @@ netbird_node_state_dir: /var/lib/homelab-netbird-nodes
 # Explicit one-time migration inputs; never store token values in inventory.
 netbird_node_bootstrap_token_file: ""
 netbird_node_adopt_state: ""
+...

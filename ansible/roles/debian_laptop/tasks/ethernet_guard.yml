@@ -31,3 +31,4 @@
       - /usr/local/sbin/homelab-ethernet-guard
   when: homelab_ethernet_guard_active.stdout | trim != 'active'
   changed_when: true
+...

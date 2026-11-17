@@ -7,3 +7,4 @@
     K3S_CONFIG_FILE: /dev/null
   roles:
     - uptime_kuma_private_monitoring
+...

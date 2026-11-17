@@ -145,3 +145,4 @@
     - name: Print Argo CD workload health
       ansible.builtin.debug:
         var: argocd_status.stdout_lines
+...

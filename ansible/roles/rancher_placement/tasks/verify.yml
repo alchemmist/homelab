@@ -18,3 +18,4 @@
     executable: /usr/bin/python3
   register: rancher_placement_verification
   changed_when: false
+...

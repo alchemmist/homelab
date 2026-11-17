@@ -1161,3 +1161,4 @@ postgresql:
 
 # -- additional resources to deploy. Those objects are templated.
 additionalObjects: []
+...

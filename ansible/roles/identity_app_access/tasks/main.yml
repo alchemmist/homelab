@@ -34,3 +34,4 @@
     - (app_access_plan.stdout | from_json).operations | length > 0
   register: app_access_apply
   changed_when: true
+...

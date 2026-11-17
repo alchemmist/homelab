@@ -17,3 +17,4 @@ wg_socrat_extra_allowed_peer_ips:
 # Non-public worker: admin clients enter through the existing routed mesh.
 # In particular .4 must belong to the socrat-0 peer, never a direct Mac peer.
 wg_socrat_admin_clients: {}
+...

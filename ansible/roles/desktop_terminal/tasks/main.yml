@@ -100,3 +100,4 @@
 - name: Configure the shared Alacritty appearance
   ansible.builtin.import_tasks: alacritty.yml
   tags: alacritty
+...

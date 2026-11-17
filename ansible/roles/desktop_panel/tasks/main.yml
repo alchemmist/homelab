@@ -75,3 +75,4 @@
     mode: '0644'
     backup: true
   when: homelab_hide_flameshot_tray
+...

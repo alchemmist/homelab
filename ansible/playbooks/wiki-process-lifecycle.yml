@@ -52,3 +52,4 @@
         env K3S_CONFIG_FILE=/dev/null k3s kubectl -n wiki
         rollout status deployment/wiki-runtime-wiki --timeout=180s
       changed_when: false
+...

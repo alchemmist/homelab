@@ -1,3 +1,4 @@
+---
 - name: Install k3s server on socrat-0
   hosts: socrat-0
   gather_facts: true
@@ -390,3 +391,4 @@
   - name: Print cluster status
     ansible.builtin.debug:
       var: cluster_status.stdout_lines
+...

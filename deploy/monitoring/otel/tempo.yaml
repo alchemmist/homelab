@@ -1,3 +1,4 @@
+---
 server:
   http_listen_address: ${OTEL_BIND_IP}
   http_listen_port: 3200
@@ -38,3 +39,4 @@ storage:
       path: ${OTEL_STORAGE_DIR}/tempo/blocks
 usage_report:
   reporting_enabled: false
+...

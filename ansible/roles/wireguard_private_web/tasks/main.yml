@@ -1,3 +1,4 @@
+---
 - name: Require Linux for the private web NAT
   ansible.builtin.assert:
     that:
@@ -67,3 +68,4 @@
     state: started
     daemon_reload: true
   when: wireguard_private_web_enabled | bool
+...

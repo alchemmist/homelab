@@ -1,3 +1,4 @@
+---
 extensions:
   file_storage:
     create_directory: true
@@ -79,3 +80,4 @@ service:
       - batch
       exporters:
       - otlp/global-sampler
+...

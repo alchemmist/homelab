@@ -1,3 +1,4 @@
+---
 extends: default
 rules:
   line-length:
@@ -30,3 +31,4 @@ rules:
   empty-values: disable
   # Required quotes change booleans, numbers, and the GitHub on key into strings.
   quoted-strings: disable
+...

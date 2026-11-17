@@ -27,3 +27,4 @@
         python /tmp/configure-webui-sampling.py
       register: webui_sampling_config
       changed_when: (webui_sampling_config.stdout | from_json).changed
+...

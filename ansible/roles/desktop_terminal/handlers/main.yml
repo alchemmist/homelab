@@ -1,3 +1,4 @@
+---
 - name: Restart running desktop monitors
   become: true
   become_user: "{{ homelab_user }}"
@@ -17,3 +18,4 @@
   changed_when: "'restarted' in homelab_monitor_restart.stdout"
   args:
     executable: /bin/bash
+...

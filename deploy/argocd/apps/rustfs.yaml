@@ -1,3 +1,4 @@
+---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -18,3 +19,4 @@ spec:
   # Manual sync only; explicit tracked foundation activation, browser routes off.
   syncPolicy:
     syncOptions: [CreateNamespace=true]
+...

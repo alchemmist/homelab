@@ -1,3 +1,4 @@
+---
 - name: Discover Rancher pods before removing the public route
   ansible.builtin.command:
     argv: [kubectl, --kubeconfig, "{{ rancher_wg_kubeconfig }}", -n, cattle-system, get, pods, -l, app=rancher, -o, json]
@@ -70,3 +71,4 @@
   register: rancher_wg_ingress
   changed_when: false
   failed_when: rancher_wg_ingress.stdout | trim | length > 0
+...

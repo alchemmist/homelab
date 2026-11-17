@@ -87,3 +87,4 @@
       changed_when: false
       failed_when: (wg_socrat_nodes['socrat-3'].public_key + '\t' + wg_socrat_nodes['socrat-3'].address + '/32') not in worker_peer_addresses.stdout_lines
       when: not ansible_check_mode
+...

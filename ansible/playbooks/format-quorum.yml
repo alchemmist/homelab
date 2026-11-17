@@ -33,3 +33,4 @@
           - argocd.argoproj.io/refresh=hard
           - --overwrite
       changed_when: false
+...

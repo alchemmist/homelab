@@ -18,3 +18,4 @@
       vars:
         identity_oidc_services: [open-webui]
       when: webui_identity_active.stdout | trim | length > 0
+...

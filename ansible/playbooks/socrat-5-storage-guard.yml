@@ -26,3 +26,4 @@
           --manifest /var/lib/homelab-socrat5-storage-guard.json
           {{ '--apply' if socrat5_storage_guard_apply | default(false) | bool else '' }}
       changed_when: false
+...

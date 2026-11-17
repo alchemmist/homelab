@@ -1,3 +1,4 @@
+---
 # Infrastructure public identities only; private keys remain root-only on each node.
 vpn_transit_public_keys:
   socrat-1:
@@ -20,3 +21,4 @@ vpn_gateway_homes:
   socrat-1: 10.252.4.3
   socrat-3: 10.252.4.5
 vpn_transit_xray_sha256: a27e3f95ab6ce270956d0cecd32eda4686a811afc71c64a6a734a3dede14883e
+...

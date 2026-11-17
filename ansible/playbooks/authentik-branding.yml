@@ -112,3 +112,4 @@
       changed_when: "'titles updated' in authentik_title_result.stdout"
       no_log: true
       when: authentik_branding_action in ['apply', 'rollback']
+...

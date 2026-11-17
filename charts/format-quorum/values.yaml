@@ -1,3 +1,4 @@
+---
 replicaCount: 1
 nodeSelector:
   kubernetes.io/hostname: socrat-1
@@ -39,3 +40,4 @@ imagePullSecrets:
   - ghcr-pull
 
 requireExistingData: false
+...

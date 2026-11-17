@@ -1,3 +1,4 @@
+---
 image: nginx:1.31.2-alpine
 secretName: monitoring-etcd-metrics-token
 prometheusRelease: kube-prometheus-stack
@@ -307,3 +308,4 @@ updateWatch:
       title: NVIDIA device plugin
       current: "0.20.1"
       github: NVIDIA/k8s-device-plugin
+...

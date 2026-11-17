@@ -18,3 +18,4 @@
       vars:
         identity_oidc_services: [litellm]
       when: litellm_identity_active.stdout | trim | length > 0
+...

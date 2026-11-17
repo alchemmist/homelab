@@ -77,3 +77,4 @@
       - 'import sys,tomllib; tomllib.load(open(sys.argv[1], "rb"))'
       - "{{ homelab_user_home }}/.config/alacritty/alacritty.toml"
   changed_when: false
+...

@@ -1,3 +1,4 @@
+---
 - name: Require a registered WireGuard address for every Socrat node
   ansible.builtin.assert:
     that:
@@ -38,3 +39,4 @@
     src: "{{ role_path }}/../../files/helm_manifest_changed.py"
     dest: "{{ syncthing_private_ui_chart_dir }}/check-installed-manifest.py"
     mode: '0644'
+...

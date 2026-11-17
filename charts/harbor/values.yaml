@@ -1,3 +1,4 @@
+---
 # GitOps: do not regenerate existing credentials/signing keys during rendering.
 externallyManagedRuntimeSecrets: false
 expose:
@@ -1268,3 +1269,4 @@ exporter:
   #   whenUnsatisfiable: DoNotSchedule
   cacheDuration: 23
   cacheCleanInterval: 14400
+...

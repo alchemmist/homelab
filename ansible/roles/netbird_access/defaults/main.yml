@@ -5,3 +5,4 @@ netbird_access_approve_plan_hash: ''
 netbird_access_username: ''
 netbird_access_expected_user_uuid: ''
 netbird_access_state_dir: /var/lib/homelab-netbird-access
+...

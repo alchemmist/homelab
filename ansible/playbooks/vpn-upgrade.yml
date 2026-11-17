@@ -183,3 +183,4 @@
     - name: Report the private backup location
       ansible.builtin.debug:
         msg: "Verified VPN upgrade; backups and previous recovery runtime retained in {{ vpn_upgrade_backup.stdout }}"
+...

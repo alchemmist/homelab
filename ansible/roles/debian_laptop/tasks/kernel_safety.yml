@@ -41,3 +41,4 @@
     - not homelab_wifi_autoconnect | bool
     - homelab_wifi_autoconnect_state.rc == 0
     - homelab_wifi_autoconnect_state.stdout | trim == 'yes'
+...

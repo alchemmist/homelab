@@ -99,3 +99,4 @@
       loop: '{{ postimages.results }}'
       loop_control:
         label: '{{ item.item.path }}'
+...

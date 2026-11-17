@@ -22,3 +22,4 @@ vpn_failover_kubernetes_start_timeout_seconds: 600
 
 # Exact machine exception: relay HTTPS must reach Traefik, not human private web.
 wireguard_private_web_passthrough_sources: ["10.250.0.40"]
+...

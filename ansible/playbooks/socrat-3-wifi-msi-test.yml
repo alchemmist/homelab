@@ -55,3 +55,4 @@
     - name: Report the bounded trial result
       ansible.builtin.debug:
         var: wifi_trial_result.stdout_lines
+...

@@ -1,3 +1,4 @@
+---
 image: rancher/mirrored-library-traefik@sha256:f86a2cab1b5c649070c49f883c743dd32d8485a56e3368c5f93b9e91f1e91259
 nodeName: socrat-2
 publicIP: 109.120.141.60
@@ -83,3 +84,4 @@ vpnTransit:
   canaryPath: /__homelab_msk_transit_canary
   middlewareNamespace: argocd
   allowedSourceRanges: ["10.250.0.40/32", "127.0.0.1/32"]
+...

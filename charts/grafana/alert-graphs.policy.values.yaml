@@ -1,3 +1,4 @@
+---
 alertGraphs:
   panels:
     alerts-02b1bb4d009e59f4:1: []
@@ -382,3 +383,4 @@ alertGraphs:
     alerts-fecd28c436b33c6a:2: []
     alerts-fecd28c436b33c6a:3: []
     alerts-fecd28c436b33c6a:4: []
+...

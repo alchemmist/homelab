@@ -1,3 +1,4 @@
+---
 - name: Discover installed bootable kernel images
   ansible.builtin.find:
     paths: /boot
@@ -126,3 +127,4 @@
   changed_when: false
   args:
     executable: /bin/bash
+...

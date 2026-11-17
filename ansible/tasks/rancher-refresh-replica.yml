@@ -5,3 +5,4 @@
 - name: Wait for both replicas to be ready before proceeding
   ansible.builtin.command: kubectl -n cattle-system rollout status deployment/rancher --timeout=300s
   changed_when: false
+...

@@ -1,3 +1,4 @@
+---
 replicaCount: 2
 image:
   repository: harbor.socrat.alchemmist.xyz/homelab/blog
@@ -26,3 +27,4 @@ nodeAffinity: {}
 
 podAntiAffinity:
   enabled: true
+...

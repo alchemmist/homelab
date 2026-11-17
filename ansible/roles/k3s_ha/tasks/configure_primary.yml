@@ -23,3 +23,4 @@
       ExecStart=
       ExecStart=/usr/local/bin/k3s server
   register: k3s_ha_primary_unit
+...

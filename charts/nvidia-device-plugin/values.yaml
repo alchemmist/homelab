@@ -1,3 +1,4 @@
+---
 image:
   repository: nvcr.io/nvidia/k8s-device-plugin
   tag: v0.20.1
@@ -26,3 +27,4 @@ resources:
   limits:
     cpu: 250m
     memory: 256Mi
+...

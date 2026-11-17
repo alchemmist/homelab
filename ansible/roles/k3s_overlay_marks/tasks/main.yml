@@ -30,3 +30,4 @@
   register: overlay_verify
   failed_when: overlay_verify.rc != 0 or (overlay_verify.stdout | from_json).operations != 0
   when: not ansible_check_mode
+...

@@ -1,3 +1,4 @@
+---
 # Applied only after the identity integration Secret exists; local login is retained.
 grafana:
   env:
@@ -30,3 +31,4 @@ grafana:
       secretKeyRef:
         name: socrat-authentik-grafana
         key: client-secret
+...
