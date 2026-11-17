@@ -149,7 +149,7 @@ spec:
               These are hardware events, not container CPU-limit throttling or a percentage of lost performance.
             rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ "{{ $labels.node }}" }}
         - alert: SocratNodeResourceContention
-          expr: socrat:node_pressure_waiting:ratio5m{resource="cpu"} > 0.50 or socrat:node_pressure_waiting:ratio5m{resource=~"memory|io"}
+          expr: socrat:node_pressure_waiting:ratio5m{node!="socrat-4",resource="cpu"} > 0.50 or socrat:node_pressure_waiting:ratio5m{node!="socrat-4",resource=~"memory|io"}
             > 0.25
           for: 10m
           labels:
@@ -162,6 +162,23 @@ spec:
             description: 'Node {{ "{{ $labels.node }}" }} has sustained {{ "{{ $labels.resource }}" }} PSI some pressure for 10m: above 50% for
               CPU or 25% for memory or I/O, averaged over 5m. This measures time with at least one stalled task, not resource
               utilization or Kubernetes eviction pressure.'
+            rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ "{{ $labels.node }}" }}
+        - alert: SocratNodeResourceContention
+          # Owner-approved noisy single-vCPU host exception; other nodes retain defaults.
+          expr: socrat:node_pressure_waiting:ratio5m{node="socrat-4",resource="cpu"} > 0.90
+            or socrat:node_pressure_waiting:ratio5m{node="socrat-4",resource="memory"} > 0.50
+            or socrat:node_pressure_waiting:ratio5m{node="socrat-4",resource="io"} > 0.60
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "SocratNodeResourceContention" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
+            summary: Tasks are persistently waiting for a node resource.
+            description: 'Node {{ "{{ $labels.node }}" }} has sustained {{ "{{ $labels.resource }}" }} PSI some pressure for 30m: above 90% for CPU,
+              50% for memory or 60% for I/O, averaged over 5m. Owner-approved socrat-4 exception. This measures time with at least
+              one stalled task, not resource utilization or Kubernetes eviction pressure.'
             rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ "{{ $labels.node }}" }}
         - alert: SocratNodeCPUStealHigh
           expr: socrat:node_cpu_steal:ratio5m > 0.10
