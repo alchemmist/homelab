@@ -72,6 +72,40 @@ def test_ci_cannot_automatically_record_debt(tmp_path, monkeypatch):
         )
 
 
+@pytest.mark.parametrize("explicit_cwd", [False, True])
+def test_native_command_preserves_checked_capture_and_explicit_test_directory(
+    tmp_path: Path, *, explicit_cwd: bool
+) -> None:
+    """Test-directory support must retain the existing bounded checked transport."""
+    result = subprocess.CompletedProcess(["native-fixture"], 0, stdout="", stderr="")
+    selected = tmp_path if explicit_cwd else None
+    with patch("common.subprocess.run", return_value=result) as run:
+        assert command(["native-fixture"], cwd=selected) is result
+    expected_timeout = 120
+    assert run.call_args.args == (["native-fixture"],)
+    assert run.call_args.kwargs == {
+        "input": None,
+        "text": True,
+        "capture_output": True,
+        "cwd": tmp_path if explicit_cwd else ROOT,
+        "timeout": expected_timeout,
+        "check": False,
+    }
+
+
+def test_native_command_test_directory_does_not_accept_failed_processes(tmp_path: Path) -> None:
+    """Nonzero native exits still fail without disclosing captured source output."""
+    payload = "private-native-fixture-payload"
+    result = subprocess.CompletedProcess(["native-fixture"], 1, stdout=payload, stderr=payload)
+    with (
+        patch("common.subprocess.run", return_value=result) as run,
+        pytest.raises(RuntimeError, match="no fallback") as error,
+    ):
+        command(["native-fixture"], cwd=tmp_path)
+    assert run.call_args.kwargs["cwd"] == tmp_path
+    assert payload not in str(error.value)
+
+
 def test_new_findings_fail_and_resolved_debt_does_not_hide_them(tmp_path):
     f = finding("RULE", "tests/test_quality_system.py", 1, "message", "new context")
     with patch("common.ROOT", tmp_path):

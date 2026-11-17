@@ -64,14 +64,15 @@ def command(
     stdin: str | None = None,
     allowed: Collection[int] = (0,),
     timeout: float | None = 120,
+    cwd: Path | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    """Run a bounded source tool; never expose arbitrary failure output."""
+    """Run a bounded source tool with explicit cwd; never expose failure output."""
     process = subprocess.run(
         argv,
         input=stdin,
         text=True,
         capture_output=True,
-        cwd=ROOT,
+        cwd=ROOT if cwd is None else cwd,
         timeout=timeout,
         check=False,
     )
