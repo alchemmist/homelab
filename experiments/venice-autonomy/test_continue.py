@@ -1,6 +1,7 @@
 import unittest
 
 from attempt import continue_openhands
+from repository_runner import apply_continuation_policy
 
 
 class Conversation:
@@ -72,6 +73,28 @@ class ContinueOpenHandsTests(unittest.TestCase):
         continue_openhands(conversation, None, None, facts(1))
         self.assertEqual(conversation.runs, 2)
         self.assertEqual(conversation.messages, [])
+
+
+class ContinuationPolicyTests(unittest.TestCase):
+    def test_real_rejection_continues_until_two_unchanged_rounds(self):
+        first = apply_continuation_policy({'accepted': False, 'consecutive_no_progress': 0}, 0)
+        second = apply_continuation_policy({'accepted': False, 'consecutive_no_progress': 1}, 1)
+        third = apply_continuation_policy({'accepted': False, 'consecutive_no_progress': 2}, 2)
+        self.assertTrue(first['continue'])
+        self.assertTrue(second['continue'])
+        self.assertFalse(third['continue'])
+        self.assertFalse(first['real_accepted'])
+
+    def test_force_once_rejects_only_the_first_round(self):
+        forced = apply_continuation_policy({'accepted': True, 'consecutive_no_progress': 0}, 0, True)
+        later = apply_continuation_policy({'accepted': True, 'consecutive_no_progress': 0}, 1, True)
+        self.assertTrue(forced['real_accepted'])
+        self.assertFalse(forced['accepted'])
+        self.assertTrue(forced['continue'])
+        self.assertTrue(forced['forced_rejection'])
+        self.assertTrue(later['accepted'])
+        self.assertFalse(later['continue'])
+        self.assertNotIn('forced_rejection', later)
 
 
 if __name__ == '__main__':

@@ -161,6 +161,18 @@ class RepositoryEnvironment:
             self.volume_name = None
 
 
+def apply_continuation_policy(facts, round_number, force_once=False):
+    facts['real_accepted'] = facts['accepted']
+    facts['continue'] = (not facts['accepted']) and facts.get('consecutive_no_progress', 0) < 2
+    if force_once and round_number == 0:
+        facts['forced_rejection'] = True
+        facts['accepted'] = False
+        facts['continue'] = True
+        facts['required_action'] = ('External continuation check only. Keep a correct fix, '
+                                    'do not revert passing code, rerun the read-only reproduction, and finish.')
+    return facts
+
+
 def sdk_acceptance(environment, directory, round_number):
     protocol = environment.protocol
     snapshot = pathlib.Path(os.environ['AUTONOMY_SNAPSHOT'])
@@ -187,14 +199,7 @@ def sdk_acceptance(environment, directory, round_number):
         'candidate_sha256': current,
         'consecutive_no_progress': environment.no_progress,
     }
-    facts['real_accepted'] = facts['accepted']
-    facts['continue'] = (not facts['accepted']) and environment.no_progress < 2
-    if os.getenv('AUTONOMY_FORCE_CONTINUE_ONCE') == '1' and round_number == 0:
-        facts['forced_rejection'] = True
-        facts['accepted'] = False
-        facts['continue'] = True
-        facts['required_action'] = ('External continuation check only. Keep a correct fix, '
-                                    'do not revert passing code, rerun the read-only reproduction, and finish.')
+    apply_continuation_policy(facts, round_number, os.getenv('AUTONOMY_FORCE_CONTINUE_ONCE') == '1')
     with (directory / 'acceptance-rounds.jsonl').open('a') as stream:
         stream.write(json.dumps(facts) + '\n')
     return facts
