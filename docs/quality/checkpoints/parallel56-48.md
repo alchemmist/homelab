@@ -56,10 +56,41 @@ Mypy exit 2 (`Duplicate module named "__main__"` when several YAML paths are
 passed together). Those statuses are unchanged by quote style and were not
 treated as defects to repair by rewriting YAML.
 
+First repair commit: `96cba44036485d09f947c2c64c3b0994b9bf3b83`.
+
+## Second repair
+
+Removed redundant quotes around ten more scalars whose plain form stays
+`tag:yaml.org,2002:str` with the same characters:
+
+- `deploy/authentik/values.yaml` image tag `2026.8.5`
+- `deploy/monitoring/values.yaml`: six `rancher_url` values and two relabel
+  regexes (backslashes and Jinja placeholders unchanged)
+- `ansible/playbooks/k3s-transit-worker.yml` enrollment `fail_msg`
+
+`yaml.compose` default and `SafeLoader` matched before and after on tags,
+values, order, and alias sharing (0 alias nodes). The only differences were
+those scalar styles moving to plain. `yaml.safe_load` documents compared equal.
+No line crossed the 100-character limit in either direction. The transit
+`fail_msg` stayed over the limit (111 to 109).
+
+`tests/test_quality_p56_48_plain_scalars.py` locks the resulting lines.
+Inspected `tests/test_identity.py::IdentityTests::test_runtime_is_not_a_cluster_administrator`
+only reads `deploy/authentik/values.yaml`; import of `app_iam` defines functions
+and does not connect. Pytest with plugin autoload off and no cache, covering
+both lane modules plus that identity method: exit 0, 5 passed. `ruff check`,
+`ruff format --check`, and `mypy` on the new test: exit 0.
+
+Yamllint on the 55 lane files after this edit: exit 1, 597 findings.
+`quoted-strings` 237. `line-length` 273. `indentation` 65. `document-end` 13.
+`document-start` 4. `braces` 4. `comments` 1. `deploy/authentik/values.yaml`
+is clear. `k3s-transit-worker.yml` keeps one line-length finding.
+
 ## Remaining blockers
 
-607 yamllint findings remain on this lane. 247 are `quoted-strings` (43
-redundant quotes, 204 single quotes that still need double quotes). 273 are
-`line-length`. Indentation, document markers, braces, and one comment remain.
-File modes, Jinja, PKI, and alert-expression scalars were not rewritten in this
-commit. No production, Ansible, SSH, or credential command was run.
+597 yamllint findings remain. 237 are `quoted-strings`: 33 redundant quotes,
+mostly Jinja or prose inside Ansible tasks, and 204 single quotes that still
+need double quotes. 273 are `line-length`. Indentation, document markers,
+braces, and one comment remain. Alert-graph values, PKI, and file-mode scalars
+were not edited. Ansible-lint was not run. No production, playbook, SSH, or
+credential command was run.

@@ -2,7 +2,7 @@
 # Single-node identity foundation, not HA. Preserve local break-glass service logins.
 global:
   image:
-    tag: '2026.8.5'
+    tag: 2026.8.5
   nodeSelector:
     kubernetes.io/hostname: socrat-0
   deploymentStrategy:
