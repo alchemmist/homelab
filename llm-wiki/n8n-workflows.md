@@ -9,7 +9,8 @@
 Source5b722c5c, fresh global nativepending[] + SPIowner/processing/paid0,
 48 Node-тестов; Pod n8n-7bc974f784-cbbfn Ready2/2, ArgoHealthy. Подписка
 получается init через native JSON endpoint при старте, не hot-refresh.
-Квота5GiB/90дней/limitIp1 — параметры нового клиента, требуют nativerenewal.
+Группа `services`; по решению владельца quota0/expiry0 — без квоты и
+автоматического истечения. limitIp1 сохранён; накопленный трафик не сброшен.
 Все7 графов/настроек/credentialrefs/static/pin/activities/PVC/Secret сохранены.
 Google-only scope и сквозной TLS остались, GitHub/прочие сервисы напрямую.
 Старый n8n SSH-sidecar удалён, отдельный SSH-key отозван, его2Secret удалены;
