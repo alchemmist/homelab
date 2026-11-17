@@ -4,9 +4,12 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+# Grafana dashboard coordinates use a 24-column grid. This panel spans it.
+PUBLIC_PANEL_GRID_WIDTH = 24
 
 
-def test_public_llm_dashboard_is_one_safe_panel():
+def test_public_llm_dashboard_is_one_safe_panel() -> None:
+    """Require one aggregate panel and the fixed public rate expression."""
     d = json.loads((ROOT / "charts/monitoring-k3s/dashboards/llm-activity-public.json").read_text())
     assert d["uid"] == "socrat-llm-activity-public"
     assert len(d["panels"]) == 1
@@ -15,10 +18,11 @@ def test_public_llm_dashboard_is_one_safe_panel():
     assert d["links"] == []
     assert d["refresh"] == "10s"
     p = d["panels"][0]
-    assert p["gridPos"]["w"] == 24
-    assert (
-        p["targets"][0]["expr"]
-        == 'sum by (api_key_alias) (rate(litellm_requests_metric_total{job="litellm",api_key_alias!="",api_key_alias!="None"}[$__rate_interval])) * 60'
+    assert p["gridPos"]["w"] == PUBLIC_PANEL_GRID_WIDTH
+    assert p["targets"][0]["expr"] == (
+        "sum by (api_key_alias) (rate(litellm_requests_metric_total"
+        '{job="litellm",api_key_alias!="",api_key_alias!="None"}'
+        "[$__rate_interval])) * 60"
     )
     assert p["targets"][0]["legendFormat"] == "{{api_key_alias}}"
     assert p["fieldConfig"]["defaults"]["custom"]["spanNulls"] is False
@@ -26,7 +30,8 @@ def test_public_llm_dashboard_is_one_safe_panel():
     assert "completed" in p["title"]
 
 
-def test_public_sharing_does_not_enable_org_anonymous():
+def test_public_sharing_does_not_enable_org_anonymous() -> None:
+    """Keep the public share helper from enabling organization-wide anonymous access."""
     source = (ROOT / "scripts/grafana-llm-public.py").read_text()
     assert "settings.get('auth.anonymous'" in source
     assert "'annotationsEnabled':False" in source

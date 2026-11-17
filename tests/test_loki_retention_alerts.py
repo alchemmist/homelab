@@ -1,14 +1,20 @@
+"""Offline checks for the rendered Loki retention PrometheusRule."""
+
 import pathlib
 import subprocess
 import tempfile
 import unittest
+
 import yaml
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
 class LokiRetentionAlertTests(unittest.TestCase):
-    def test_render_and_prometheus_syntax(self):
+    """PrometheusRule contract for Loki retention alerts."""
+
+    def test_render_and_prometheus_syntax(self) -> None:
+        """Render the Loki chart and check the retention rule with promtool."""
         docs = list(
             yaml.safe_load_all(
                 subprocess.check_output(

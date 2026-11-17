@@ -1,10 +1,14 @@
+"""Offline contracts for the 2026-11-09 vLLM memory budget and worker mesh pins."""
+
 from pathlib import Path
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_vllm_chart_and_authoritative_admission_agree():
+def test_vllm_chart_and_authoritative_admission_agree() -> None:
+    """Require the vLLM chart memory budget to match the admission profile."""
     catalog = yaml.safe_load((ROOT / "ansible/vars/container-resources.yml").read_text())
     profiles = catalog["container_resource_policy_profiles"]
     matches = [
@@ -20,7 +24,8 @@ def test_vllm_chart_and_authoritative_admission_agree():
         assert values["resources"]["limits"]["memory"] == "24Gi"
 
 
-def test_worker_private_vip_route_is_narrow_and_preserves_admin_mesh():
+def test_worker_private_vip_route_is_narrow_and_preserves_admin_mesh() -> None:
+    """Require the socrat-3 peer allowlist to stay narrow and the admin mesh empty."""
     values = yaml.safe_load((ROOT / "ansible/inventory/host_vars/socrat-3.yml").read_text())
     peers = values["wg_socrat_extra_allowed_peer_ips"]["socrat-3"]
     assert peers["socrat-0"] == ["192.168.0.23/32", "10.250.0.4/32", "192.168.0.250/32"]

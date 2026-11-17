@@ -78,6 +78,7 @@ class _ClusterObject(TypedDict):
 
 
 ROOT = Path(__file__).resolve().parents[1]
+MISSING_AUTHORIZATION_STATUS = 401
 spec = importlib.util.spec_from_file_location(
     "gateway", ROOT / "ansible/roles/monitoring_llm_gateway/files/configure_gateway.py"
 )
@@ -218,7 +219,9 @@ class GatewayReadonly(unittest.TestCase):
             if path == "/key/info":
                 return Response(200, {"info": {"allowed_routes": ["/metrics"]}})
             if path == "/metrics":
-                return Response(200 if request.get_header("Authorization") else 401)
+                return Response(
+                    200 if request.get_header("Authorization") else MISSING_AUTHORIZATION_STATUS
+                )
             if path == "/v1/models":
                 return Response(403)
             message = "Unexpected API path"
@@ -249,7 +252,7 @@ class GatewayReadonly(unittest.TestCase):
             request = urllib.request.Request("http://fixture" + path)
             assert callback(request).status == status
             fallback = urllib.request.Request("http://fixture/metrics")
-            assert callback(fallback).status == 401
+            assert callback(fallback).status == MISSING_AUTHORIZATION_STATUS
 
     def test_success_only_reads_and_preserves_existing_restricted_key(self) -> None:
         """Verify success only reads and preserves existing restricted key."""

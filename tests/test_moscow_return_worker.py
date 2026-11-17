@@ -1,12 +1,14 @@
 """Owner requires Moscow membership; preserve fallback fences and bounded return."""
 
 from pathlib import Path
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_worker_desired_and_no_runtime_reinstallation():
+def test_worker_desired_and_no_runtime_reinstallation() -> None:
+    """Require one socrat-4 worker and a playbook that never reinstalls the runtime."""
     values = yaml.safe_load((ROOT / "charts/vpn-transit/values.yaml").read_text())
     assert values["replicas"] == 1
     assert values["nodeName"] == "socrat-4"
@@ -17,7 +19,8 @@ def test_worker_desired_and_no_runtime_reinstallation():
     assert "mode == 'native-primary'" in source
     assert "item.stat.checksum == item.item.sha" in source
     assert "spec.replicas == 1" in source
-    assert "client-kubelet.crt" in source and "meta.db" in source
+    assert "client-kubelet.crt" in source
+    assert "meta.db" in source
     assert "ExecCondition=/usr/bin/test ! -e" in source
     assert "ExecCondition=+/usr/bin/test -e" in source
     assert source.index(" }} demote") < source.index("enabled: true") < source.index(" }} failback")

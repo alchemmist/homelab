@@ -4,13 +4,15 @@ import re
 import shutil
 import subprocess
 from pathlib import Path
+
 import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_umami_image_is_immutable_and_secret_external():
+def test_umami_image_is_immutable_and_secret_external() -> None:
+    """Require an immutable Umami image and an external secret name."""
     values = yaml.safe_load((ROOT / "charts/umami/values.yaml").read_text())
     assert re.fullmatch(r"ghcr.io/umami-software/umami@sha256:[0-9a-f]{64}", values["umamiImage"])
     assert values["secretName"] == "umami-env"
@@ -20,7 +22,8 @@ def test_umami_image_is_immutable_and_secret_external():
 
 
 @pytest.mark.skipif(not shutil.which("helm"), reason="Helm binary required")
-def test_offline_render_references_but_never_replaces_credentials():
+def test_offline_render_references_but_never_replaces_credentials() -> None:
+    """Require rendered resources to reference credentials without embedding them."""
     rendered = subprocess.check_output(
         ["helm", "template", "umami", str(ROOT / "charts/umami"), "--namespace", "umami"], text=True
     )
