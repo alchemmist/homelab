@@ -7,7 +7,7 @@ image:
   digest: sha256:15df5f76a373481ef21921e831737251e24fbe88747a48b2c60967ced964ae18
 imagePullSecrets:
   - name: swe-mini-harbor-pull
-minIntervalSeconds: 1800
+minIntervalSeconds: 300
 storage:
   size: 2Gi
   className: local-path

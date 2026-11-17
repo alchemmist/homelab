@@ -144,3 +144,13 @@ must pass; the repaired candidate's ENTIRE test/build suite must pass. A fresh
 review environment must install the candidate successfully before its pre-model
 checks, and a separate review must approve. No force/legacy-peer-deps or auto-merge.
 All ordinary source patches retain the350KB budget and all-green baseline gate.
+
+Network acceptance Job swe-network-acceptance-v2 ran with worker labels, non-root
+security context and no model/GitHub credentials. DNS/model TCP4000/public GitHub
+TCP443 succeeded; private Kubernetes API TCP443 and metadata TCP80 were rejected.
+The controller independently reached that same API endpoint, confirming the worker
+private-API failure is not simply an absent endpoint. Initial probe incorrectly
+expected DROP/timeouts rather than CNI REJECT and was corrected; do not interpret
+its failed assertion as permitted private access. No domain-level production block
+is claimed. Admission backoff is now300seconds (single active task and5open-PR cap
+unchanged), avoiding a30minute idle gap after a fast failed/no-op task.
