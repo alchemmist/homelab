@@ -57,6 +57,7 @@ passed together). Those statuses are unchanged by quote style and were not
 treated as defects to repair by rewriting YAML.
 
 First repair commit: `96cba44036485d09f947c2c64c3b0994b9bf3b83`.
+Second repair commit: `62e3a9a271d42b4ddde82a644d5d0d16525c74a4`.
 
 ## Second repair
 
