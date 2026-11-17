@@ -99,6 +99,11 @@ class QueueTransitions(unittest.TestCase):
         c.tick()
         self.assertEqual(self.state(), 'failed')
 
+    def test_invalid_candidate_is_terminal_not_infinite_retry(self):
+        self.result['changes'] = [{'path': '.github/workflows/evil.yml', 'content': 'dHJ1ZQ=='}]
+        self.tick()
+        self.assertEqual(self.state(), 'rejected')
+
     def test_no_unstructured_log_completion(self):
         c.CORE.read_namespaced_pod_log.return_value = 'I am done!'
         c.tick()

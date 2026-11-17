@@ -195,9 +195,15 @@ def tick():
             return
         candidate = result.get('changes', []) if run['state'] == 'work' else json.loads(run['result'] or '{}').get('changes', [])
         repair = dependency_repair(candidate)
-        if any(i['path'] in {'web/package.json','web/package-lock.json'} for i in candidate):
-            base = github(f"repos/{REPO}/contents/web/package.json?ref={run['revision']}", auth=False)
-            validate_dependency_update(candidate, json.loads(base64.b64decode(base['content'])))
+        try:
+            if candidate:
+                validate_changes(candidate)
+            if any(i['path'] in {'web/package.json','web/package-lock.json'} for i in candidate):
+                base = github(f"repos/{REPO}/contents/web/package.json?ref={run['revision']}", auth=False)
+                validate_dependency_update(candidate, json.loads(base64.b64decode(base['content'])))
+        except (ValueError, KeyError, TypeError):
+            save(run['id'], state='rejected')
+            return
         # Only a narrowly validated dependency repair may start from a red frontend install.
         baseline_ok = not any(result.get('baseline', {'missing': 1}).values())
         bootstrap_ok = repair and result.get('setup', {}).get('node', 0) != 0 and result.get('baseline', {}).get('backend') == 0
