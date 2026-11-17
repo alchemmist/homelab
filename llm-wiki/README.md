@@ -26,6 +26,7 @@ Research is not a pending deployment task. Private recovery evidence remains off
 | Тема | Документы |
 | --- | --- |
 | Сетевой onboarding, devices, JWT policies и node agents | [NetBird](netbird.md), [DNS](public-dns.md) |
+| Зарубежный egress приложений на российских нодах | [VPN-as-service: отдельный клиент 3x-ui и подписка](service-vpn-egress.md) |
 | VPN: Москва frontend → NL backend, сохранённые клиенты, реальные границы | [Текущий production и история](vpn-hardening.md), [приёмка/инцидент](../docs/vpn-production-cutover-20261109.md) |
 | Публичный SSH key, обычный Linux account и отзыв | [SSH user](ssh-user.md), [host/RBAC](identity-host-access.md) |
 | Observer: обычное групповое подключение, Danila, отзыв доступа | [Native observer](native-observer.md), [приёмка](../docs/identity/observer-acceptance-20261108.md) |
