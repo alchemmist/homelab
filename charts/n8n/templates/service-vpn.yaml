@@ -1,0 +1,9 @@
+{{- if .Values.serviceVpn.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: n8n-service-vpn-script
+data:
+  prepare.js: |
+{{ .Files.Get "service-vpn/prepare.js" | indent 4 }}
+{{- end }}
