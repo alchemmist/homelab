@@ -53,12 +53,12 @@ class ContinueOpenHandsTests(unittest.TestCase):
 
     def test_persistent_rejection_stops_at_three_and_states_exhaustion(self):
         conversation = Conversation()
-        continue_openhands(conversation, None, None, facts(True))
+        outcome = continue_openhands(conversation, None, None, facts(True))
+        self.assertEqual(outcome, 'exhausted')
         self.assertEqual(conversation.runs, 3)
-        self.assertEqual(len(conversation.messages), 3)
-        self.assertTrue(all('Continue in this same conversation' in message for message in conversation.messages[:2]))
-        self.assertIn('continuation budget is exhausted', conversation.messages[2])
-        self.assertNotIn('Continue in this same conversation', conversation.messages[2])
+        self.assertEqual(len(conversation.messages), 2)
+        self.assertTrue(all('Continue in this same conversation' in message for message in conversation.messages))
+        self.assertTrue(all('continuation budget is exhausted' not in message for message in conversation.messages))
 
     def test_provider_exception_is_not_replayed(self):
         conversation = Conversation(failures=1)

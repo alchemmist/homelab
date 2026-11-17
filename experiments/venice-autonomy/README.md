@@ -115,8 +115,10 @@ another 90 minutes. Cancellation cleanup covers both agent and verifier resource
 `continue_openhands` runs once when no acceptance callback is supplied. With a
 callback it runs at most three times and sends another turn only when
 `facts['continue'] is True`. A non-boolean value does not authorize another run.
-After the third rejection it records that the continuation budget is exhausted
-and does not ask for another turn. An exception from `conversation.run` propagates
+After the third rejection it returns `exhausted` and does not call
+`send_message`. OpenHands sets `execution_status` to idle when a message is
+sent without a following run, so an exhaustion notice would hide a finished
+third run. The rejection receipt remains in `acceptance-rounds.jsonl`. An exception from `conversation.run` propagates
 without a replay. `repository_runner.py` calls `run_openhands(..., acceptance=...)`
 from this worktree; it does not exec a rewritten copy of the function.
 Round and final artifact acceptance share `artifact_accepted`: a functional

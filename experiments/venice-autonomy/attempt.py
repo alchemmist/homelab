@@ -143,15 +143,12 @@ def continue_openhands(conversation, sandbox, directory, acceptance=None):
         facts = acceptance(sandbox, directory, round_number)
         if facts.get('continue') is not True:
             return
-        exhausted = round_number + 1 >= limit
-        if exhausted:
-            conversation.send_message('Independent acceptance rejected this completed response. '
-                                      'The continuation budget is exhausted; no further run will start. '
-                                      'Receipt: ' + json.dumps(facts))
-            return
+        if round_number + 1 >= limit:
+            return 'exhausted'
         conversation.send_message('Independent acceptance rejected this completed response. '
                                   'Continue in this same conversation from the actual files. '
                                   'No transport request is replayed. Receipt: ' + json.dumps(facts))
+    return 'completed'
 
 
 def run_openhands(sandbox, directory, prompt, base_url, key, acceptance=None, max_iterations=18, language='Node'):
@@ -201,12 +198,13 @@ def run_openhands(sandbox, directory, prompt, base_url, key, acceptance=None, ma
                                 delete_on_close=False)
     try:
         conversation.send_message(prompt)
-        continue_openhands(conversation,sandbox,directory,acceptance)
+        continuation = continue_openhands(conversation,sandbox,directory,acceptance)
         status = str(conversation.state.execution_status)
     finally:
         conversation.close()
     return {'exit_status': status, 'exit_provenance': 'conversation.state.execution_status',
-            'package': 'openhands-sdk', 'version': importlib.metadata.version('openhands-sdk')}
+            'continuation': continuation, 'package': 'openhands-sdk',
+            'version': importlib.metadata.version('openhands-sdk')}
 
 
 def attempt(engine, task, directory, seed, feedback=''):
