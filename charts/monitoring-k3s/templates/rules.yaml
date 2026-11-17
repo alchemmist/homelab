@@ -181,7 +181,7 @@ spec:
               one stalled task, not resource utilization or Kubernetes eviction pressure.'
             rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ "{{ $labels.node }}" }}
         - alert: SocratNodeCPUStealHigh
-          expr: socrat:node_cpu_steal:ratio5m > 0.10
+          expr: socrat:node_cpu_steal:ratio5m{node!="socrat-4"} > 0.10
           for: 15m
           labels:
             severity: warning
@@ -192,6 +192,19 @@ spec:
             summary: Hypervisor CPU steal time is high.
             description: Node {{ "{{ $labels.node }}" }} spends more than 10% of CPU time waiting for the hypervisor, averaged across
               CPUs over 5m, for 15m. Check contention on the virtualization host; this is distinct from application CPU usage.
+            rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ "{{ $labels.node }}" }}
+        - alert: SocratNodeCPUStealHigh
+          expr: socrat:node_cpu_steal:ratio5m{node="socrat-4"} > 0.30
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            {{- with index ($.Values.alertGraphAnnotations | default dict) "SocratNodeCPUStealHigh" }}
+            spi_graphs: {{ . | quote }}
+            {{- end }}
+            summary: Hypervisor CPU steal time is high.
+            description: Node {{ "{{ $labels.node }}" }} spends more than 30% of CPU time waiting for the hypervisor, averaged across
+              CPUs over 5m, for 30m. Owner-approved socrat-4 exception. Check contention on the virtualization host; this is distinct from application CPU usage.
             rancher_url: https://rancher.socrat.alchemmist.xyz/dashboard/c/local/explorer/node/{{ "{{ $labels.node }}" }}
     - name: socrat.nodes.certificates
       rules:

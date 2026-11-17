@@ -234,3 +234,13 @@ noise, not a claim that the host has no contention. Prior 24h CPU PSI max 81.9%,
 mean 24.2%; memory max 0.12%, I/O max 4.0%. No silences or host changes.
 Regression: `python3 tests/test_socrat4_contention.py` runs native promtool boundary,
 duration and other-node tests plus the existing node hardware suite.
+
+### socrat-4 CPU steal exception — 2026-11-17
+
+Owner also requested less sensitive `SocratNodeCPUStealHigh` for socrat-4 after
+repeated firing/resolved notifications. Only this node now requires CPU steal
+>30% continuously for 30m (5m average across CPUs), instead of >10% for 15m.
+All other nodes retain the original threshold/duration. This intentionally delays
+warning about hypervisor CPU contention; it does not fix the hypervisor or change
+host resources. Alert name, severity and graph routing remain unchanged; no
+silence or restart. Native regression: `python3 tests/test_socrat4_steal.py`.
