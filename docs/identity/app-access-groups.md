@@ -32,6 +32,17 @@ account was preserved; the former exact-user admission binding and per-UUID role
 exception were removed. `litellm-users.json` is empty. No password, MFA, owner
 membership or machine API key was changed/generated.
 
+## Historical manual Grafana preparation entrypoint
+
+`scripts/grafana-app-admission.py` is retired and refuses every invocation with
+exit2before reading arguments, credentials, locks, HTTP state or application data.
+It does not repair its historical malformed writer, import a reconciler, or forward
+`plan`/`apply`. Its previous implementation remains in Git history. The current
+catalog-driven owner and its independently reviewed plan/apply prerequisites are
+listed below; retirement does not authorize running them. Offline AST/capability
+and negative-mutation tests protect this refusal before any import execution.
+No live identity state, groups, users, bindings or credentials changed here.
+
 ## Automatic creation and registration contract
 
 Sources:
