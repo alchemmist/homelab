@@ -298,3 +298,26 @@ def test_symlinked_evidence_directory_is_not_mutated(tmp_path: Path, link_at: st
     assert outside.stat().st_mode == before
     assert list(outside.iterdir()) == [sentinel]
     assert sentinel.read_text() == "untouched"
+
+
+@pytest.mark.parametrize("value", [None, False, 0, "", [], {}])
+def test_partition_provider_runtime_violation_cannot_pass(
+    value: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Annotations must not remove runtime rejection of a broken provider."""
+    monkeypatch.setattr(strict_report, "partition", lambda _path: value)
+    with pytest.raises(TypeError, match="Finding partition must be a non-empty string"):
+        strict_report.summarize(
+            "fixture",
+            {
+                "findings": [
+                    common.finding(
+                        "RULE",
+                        "tests/test_quality_evidence_regressions.py",
+                        1,
+                        "runtime classification boundary",
+                        "synthetic boundary",
+                    )
+                ]
+            },
+        )

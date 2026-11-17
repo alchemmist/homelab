@@ -193,13 +193,17 @@ def _string_or_absent(value: object, label: str) -> str | None:
     raise TypeError(message)
 
 
-def _partition_name(path: str) -> str:
-    """Use the shared ownership partition without treating it as acceptance."""
-    part = partition(path)
+def _require_partition(part: object) -> str:
+    """Validate even a faulty or substituted provider at the runtime boundary."""
     if not isinstance(part, str) or not part:
         message = "Finding partition must be a non-empty string"
         raise TypeError(message)
     return part
+
+
+def _partition_name(path: str) -> str:
+    """Use the shared ownership partition without treating it as acceptance."""
+    return _require_partition(partition(path))
 
 
 def _lint_check_result(findings: object, count: object) -> tuple[list[Finding], int]:

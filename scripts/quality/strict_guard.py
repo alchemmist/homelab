@@ -5,13 +5,13 @@ from __future__ import annotations
 import ast
 import hashlib
 import json
-from pathlib import Path
 import re
 import sys
 import tomllib
+from collections.abc import Iterable
+from pathlib import Path
 
 import yaml
-
 from common import (
     ROOT,
     command,
@@ -23,7 +23,7 @@ from common import (
 )
 
 
-def marker(*parts):
+def marker(*parts: str) -> str:
     return "".join(parts)
 
 
@@ -51,11 +51,11 @@ def policy():
     return json.loads((ROOT / "quality/strict-policy.json").read_text())
 
 
-def line_is_suppression(line):
+def line_is_suppression(line: str) -> bool:
     return bool(SUPPRESSION.search(line))
 
 
-def suppression_paths(names):
+def suppression_paths(names: Iterable[str]) -> list[str]:
     selected = []
     for name in names:
         path = Path(name)
@@ -73,7 +73,7 @@ def suppression_paths(names):
     return selected
 
 
-def suppression_hits(names):
+def suppression_hits(names: Iterable[str]) -> list[str]:
     hits = []
     for name in suppression_paths(names):
         for number, line in enumerate((ROOT / name).read_text(errors="ignore").splitlines(), 1):
@@ -82,7 +82,7 @@ def suppression_hits(names):
     return hits
 
 
-def partition(path):
+def partition(path: str) -> str:
     for prefix in vendor_prefixes():
         if path.startswith(prefix):
             return "vendor"
@@ -101,7 +101,7 @@ def partition(path):
     }.get(top, "other-owned")
 
 
-def discovered_ansible_rules():
+def discovered_ansible_rules() -> set[str]:
     import ansiblelint
 
     root = Path(ansiblelint.__file__).parent / "rules"
@@ -125,7 +125,7 @@ def discovered_ansible_rules():
     return found
 
 
-def listed_ansible_rules():
+def listed_ansible_rules() -> set[str]:
     use_project_tools()
     process = command(
         ["ansible-lint", "-L", "-f", "brief", "--offline", "--nocolor"],
@@ -140,7 +140,7 @@ def listed_ansible_rules():
     return found
 
 
-def verify_configuration():
+def verify_configuration() -> None:
     frozen_source_files()
     use_project_tools()
     data = policy()
@@ -296,7 +296,7 @@ def verify_configuration():
             raise ValueError("Historical debt file is not marked non-accepting")
 
 
-def main():
+def main() -> int:
     try:
         verify_configuration()
     except Exception as error:
