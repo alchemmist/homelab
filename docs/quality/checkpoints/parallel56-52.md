@@ -87,3 +87,33 @@ Exits 0, 0, 0, and 0. Ruff reports 0 findings. Pytest reports 2 passed.
 
 Neither new test is listed in `quality/test-suites.json`. Parent owns that
 registration.
+
+## Repair: wiki-runtime storage document markers
+
+`ansible/files/wiki-runtime-storage-socrat-0.yaml` had one missing document
+start and two missing document ends. The edit adds `---` after the two header
+comments, `...` before the existing document separator, and `...` at the end.
+No volume name, claim name, host path, `Retain` policy, capacity, access mode,
+storage class, or node selector was edited. `git diff` adds only those three
+marker lines.
+
+`yaml.compose_all` with `SafeLoader` and the default `Loader` matches the
+pre-edit bytes, including scalar style, flow style, tags, values, order, both
+documents, and alias-sharing count `0`.
+
+Regression: `tests/test_quality_p56_52_wiki_storage_framing.py`.
+Yamllint on this file alone exits 0.
+
+The 57-file yamllint command now exits 1 with 602 findings: quoted-strings 232,
+line-length 211, indentation 76, comments-indentation 41, braces 22,
+document-end 9, comments 8, document-start 3.
+
+```text
+ruff check --config quality/ruff.toml tests/test_quality_p56_52_wiki_storage_framing.py
+ruff format --check --config quality/ruff.toml tests/test_quality_p56_52_wiki_storage_framing.py
+mypy --config-file quality/mypy.ini tests/test_quality_p56_52_wiki_storage_framing.py
+python -m pytest -q tests/test_quality_p56_52_n8n_cpu_quote.py tests/test_quality_p56_52_chart_app_version.py tests/test_quality_p56_52_wiki_storage_framing.py
+```
+
+Exits 0, 0, 0, and 0. Ruff reports 0 findings. Pytest reports 3 passed.
+The new tests remain unregistered until the parent adds them.

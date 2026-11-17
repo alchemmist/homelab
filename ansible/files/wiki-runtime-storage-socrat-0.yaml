@@ -1,5 +1,6 @@
 # Restored offline on 2026-11-01. This manifest does not copy or initialize data.
 # Restore and verify the directory before binding this volume on a new host.
+---
 apiVersion: v1
 kind: PersistentVolume
 metadata:
@@ -23,6 +24,7 @@ spec:
             - key: kubernetes.io/hostname
               operator: In
               values: [socrat-0]
+...
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -36,3 +38,4 @@ spec:
   resources:
     requests:
       storage: 5Gi
+...
