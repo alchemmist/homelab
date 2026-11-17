@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import argparse
 import ast
+import base64
+import binascii
+import http.client
 import json
 import os
 import re
 import shutil
+import ssl
 import sys
 import tempfile
 from pathlib import Path
@@ -39,6 +43,56 @@ _PINNED_REQUIREMENT = re.compile(
     r"==[A-Za-z0-9][A-Za-z0-9_.+!-]*(?:\s*;[^\n]*)?"
 )
 _REQUIREMENT_HASH = re.compile(r"--hash=sha256:[0-9a-fA-F]{64}")
+_NPM_LOCKFILE_VERSION = 3
+_MAX_NPM_DISTRIBUTIONS = 1000
+_MAX_ADVISORY_RESPONSE_BYTES = _MAX_REQUIREMENT_LOCK_BYTES
+_OSV_HOST = "api.osv.dev"
+_OSV_AUDIT_PATH = "/v1/querybatch"
+_OSV_TIMEOUT_SECONDS = 30
+_OSV_SUCCESS_STATUS = 200
+_SHA512_DIGEST_BYTES = 64
+_MAX_PACKAGE_PATH_SEGMENTS = 32
+_BARE_NAME_SEGMENTS = 1
+_SCOPED_NAME_SEGMENTS = 2
+_NPM_NAME_PART = r"[a-z0-9~_][a-z0-9._~_-]*"
+_NPM_NAME = re.compile(rf"^(?:@{_NPM_NAME_PART}/)?{_NPM_NAME_PART}$")
+_NPM_VERSION = re.compile(
+    r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
+    r"(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$"
+)
+_NPM_RANGE = re.compile(r"^[0-9A-Za-z^~<>=.* |_xX-]+$")
+_NPM_LOCK_KEYS = frozenset({"name", "version", "lockfileVersion", "requires", "packages"})
+_NPM_ROOT_KEYS = frozenset(
+    {"name", "version", "dependencies", "devDependencies", "optionalDependencies"}
+)
+_NPM_PACKAGE_KEYS = frozenset(
+    {
+        "bin",
+        "cpu",
+        "dependencies",
+        "dev",
+        "devDependencies",
+        "engines",
+        "funding",
+        "hasInstallScript",
+        "inBundle",
+        "integrity",
+        "license",
+        "link",
+        "name",
+        "optional",
+        "optionalDependencies",
+        "os",
+        "peer",
+        "peerDependencies",
+        "peerDependenciesMeta",
+        "resolved",
+        "version",
+    }
+)
+_NPM_ROOT_DEP_FIELDS = ("dependencies", "devDependencies", "optionalDependencies")
+_NPM_NESTED_DEP_FIELDS = ("dependencies", "devDependencies", "optionalDependencies")
+_DEPENDENCY_NPM_LOCK_FAILURE = "npm lock contains unsupported or unsafe package sources"
 
 
 def validate_requirement_lock(path: Path) -> None:
@@ -130,8 +184,418 @@ def _audit_python_source(argv: Sequence[str], source: str) -> tuple[list[Finding
     return findings, count
 
 
+def _string_key_dict(value: object) -> dict[str, object] | None:
+    """Copy a JSON object whose keys are strings."""
+    if not isinstance(value, dict):
+        return None
+    copied: dict[str, object] = {}
+    for key, item in value.items():
+        if not isinstance(key, str):
+            return None
+        copied[key] = item
+    return copied
+
+
+def _read_lock_text(path: Path) -> str | None:
+    """Read one regular lock file, refusing links and oversized inputs."""
+    if path.is_symlink() or not path.is_file():
+        raise ValueError(_DEPENDENCY_PATH_FAILURE)
+    size = path.stat().st_size
+    if size > _MAX_REQUIREMENT_LOCK_BYTES:
+        raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    raw = path.read_bytes()
+    if len(raw) != size or len(raw) > _MAX_REQUIREMENT_LOCK_BYTES:
+        raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
+
+
+def _parse_json_value(text: str) -> object | None:
+    """Parse JSON without treating a decode error as an empty audit."""
+    try:
+        value: object = json.loads(text)
+    except json.JSONDecodeError:
+        return None
+    return value
+
+
+def _sha512_integrity(value: object) -> bool:
+    """Accept one sha512 Subresource Integrity digest and nothing else."""
+    if not isinstance(value, str) or not value.startswith("sha512-"):
+        return False
+    try:
+        digest = base64.b64decode(value.removeprefix("sha512-"), validate=True)
+    except binascii.Error:
+        return False
+    return len(digest) == _SHA512_DIGEST_BYTES
+
+
+def _registry_tarball(name: str, version: str) -> str:
+    """Return the canonical npmjs tarball URL for one exact distribution."""
+    filename = name.rsplit("/", 1)[-1]
+    return f"https://registry.npmjs.org/{name}/-/{filename}-{version}.tgz"
+
+
+def _package_name(package_path: str) -> str:
+    """Derive the npm package name from a lockfileVersion 3 packages key."""
+    if (
+        not package_path.startswith("node_modules/")
+        or "\\" in package_path
+        or len(package_path.split("/")) > _MAX_PACKAGE_PATH_SEGMENTS
+    ):
+        raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    segments = package_path.split("/")
+    if any(segment in {"", ".", ".."} for segment in segments):
+        raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    indexes = [index for index, segment in enumerate(segments) if segment == "node_modules"]
+    rest = segments[indexes[-1] + 1 :]
+    if len(rest) == _BARE_NAME_SEGMENTS:
+        name = rest[0]
+    elif len(rest) == _SCOPED_NAME_SEGMENTS and rest[0].startswith("@") and len(rest[0]) > 1:
+        name = f"{rest[0]}/{rest[1]}"
+    else:
+        raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    if _NPM_NAME.fullmatch(name) is None or not package_path.endswith("node_modules/" + name):
+        raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    return name
+
+
+def _plausible_range(spec: str) -> bool:
+    """Reject alternate sources while still allowing ordinary npm version ranges."""
+    if _NPM_RANGE.fullmatch(spec) is None:
+        return False
+    return any(character.isdigit() or character in "*xX" for character in spec)
+
+
+def _dependency_map(value: object, *, exact: bool) -> dict[str, str]:
+    """Parse a dependency map, refusing aliases, URLs and non-string specs."""
+    if value is None:
+        return {}
+    mapping = _string_key_dict(value)
+    if mapping is None:
+        raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    parsed: dict[str, str] = {}
+    for name, spec in mapping.items():
+        if _NPM_NAME.fullmatch(name) is None or not isinstance(spec, str):
+            raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+        allowed = _NPM_VERSION.fullmatch(spec) is not None if exact else _plausible_range(spec)
+        if not allowed:
+            raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+        parsed[name] = spec
+    return parsed
+
+
+def _disabled_flag(meta: dict[str, object], key: str) -> None:
+    """Refuse metadata that would select install scripts, links or bundles."""
+    value = meta.get(key)
+    if value is True:
+        raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    if value is not None and value is not False:
+        raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+
+
+def _optional_peers(meta: dict[str, object]) -> set[str]:
+    """Return peer names explicitly marked optional."""
+    raw = meta.get("peerDependenciesMeta")
+    if raw is None:
+        return set()
+    mapping = _string_key_dict(raw)
+    if mapping is None:
+        raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    optional: set[str] = set()
+    for name, item in mapping.items():
+        if _NPM_NAME.fullmatch(name) is None or not isinstance(item, dict):
+            raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+        flag = item.get("optional")
+        if flag is True:
+            optional.add(name)
+        elif flag is not False and flag is not None:
+            raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    return optional
+
+
+def _npm_lock_document(path: Path) -> dict[str, object] | None:
+    """Return a lockfileVersion 3 object, or None when this is not that document."""
+    text = _read_lock_text(path)
+    if text is None:
+        return None
+    value = _parse_json_value(text)
+    document = _string_key_dict(value)
+    if document is None:
+        return None
+    version = document.get("lockfileVersion")
+    if isinstance(version, bool) or not isinstance(version, int):
+        return None
+    if version != _NPM_LOCKFILE_VERSION:
+        return None
+    if set(document) != _NPM_LOCK_KEYS or document.get("requires") is not True:
+        raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    return document
+
+
+def _distribution(package_path: str, meta: object) -> tuple[str, str]:
+    """Validate one registry distribution and return its name and exact version."""
+    parsed = _string_key_dict(meta)
+    if parsed is None or set(parsed) - _NPM_PACKAGE_KEYS:
+        raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    for key in ("hasInstallScript", "inBundle", "link"):
+        _disabled_flag(parsed, key)
+    for key in ("dev", "optional", "peer"):
+        value = parsed.get(key)
+        if value is not None and not isinstance(value, bool):
+            raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    name = _package_name(package_path)
+    version = parsed.get("version")
+    if not isinstance(version, str) or _NPM_VERSION.fullmatch(version) is None:
+        raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    if parsed.get("resolved") != _registry_tarball(name, version):
+        raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    if not _sha512_integrity(parsed.get("integrity")):
+        raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    declared = parsed.get("name")
+    if declared is not None and declared != name:
+        raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    return name, version
+
+
+def _root_pins(root: dict[str, object]) -> dict[str, str]:
+    """Return exact root pins from every direct dependency map."""
+    if set(root) - _NPM_ROOT_KEYS:
+        raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    pins: dict[str, str] = {}
+    for field in _NPM_ROOT_DEP_FIELDS:
+        for name, version in _dependency_map(root.get(field), exact=True).items():
+            previous = pins.get(name)
+            if previous is not None and previous != version:
+                raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+            pins[name] = version
+    return pins
+
+
+def _lock_identity(document: dict[str, object]) -> tuple[str, str, dict[str, object]]:
+    """Return the root name, version and packages map for one version 3 lock."""
+    name = document.get("name")
+    version = document.get("version")
+    packages = _string_key_dict(document.get("packages"))
+    if (
+        packages is None
+        or not isinstance(name, str)
+        or _NPM_NAME.fullmatch(name) is None
+        or not isinstance(version, str)
+        or _NPM_VERSION.fullmatch(version) is None
+    ):
+        raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    return name, version, packages
+
+
+def _located_distributions(packages: dict[str, object]) -> dict[str, tuple[str, str]]:
+    """Validate every non-root package entry before any advisory request."""
+    located: dict[str, tuple[str, str]] = {}
+    for package_path, meta in packages.items():
+        if package_path == "":
+            continue
+        located[package_path] = _distribution(package_path, meta)
+    if not located or len(located) > _MAX_NPM_DISTRIBUTIONS:
+        raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    return located
+
+
+def _require_root_pins(located: dict[str, tuple[str, str]], pins: dict[str, str]) -> None:
+    """Require each exact root pin to match its top-level package entry."""
+    for dep, spec in pins.items():
+        if located.get(f"node_modules/{dep}") != (dep, spec):
+            raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+
+
+def _require_graph_names(parsed: dict[str, object], names: set[str]) -> None:
+    """Require declared dependencies to exist in the locked distribution set."""
+    for field in _NPM_NESTED_DEP_FIELDS:
+        for dep in _dependency_map(parsed.get(field), exact=False):
+            if dep not in names:
+                raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    optional = _optional_peers(parsed)
+    for dep in _dependency_map(parsed.get("peerDependencies"), exact=False):
+        if dep not in names and dep not in optional:
+            raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+
+
+def _require_named_dependencies(packages: dict[str, object], names: set[str]) -> None:
+    """Apply the graph check to every non-root package entry."""
+    for package_path, meta in packages.items():
+        if package_path == "":
+            continue
+        parsed = _string_key_dict(meta)
+        if parsed is None:
+            raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+        _require_graph_names(parsed, names)
+
+
+def _unique_distributions(
+    located: dict[str, tuple[str, str]],
+) -> list[tuple[str, str]]:
+    """Return sorted unique distributions without dropping distinct versions."""
+    unique = set(located.values())
+    if len(unique) > _MAX_NPM_DISTRIBUTIONS:
+        raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    return sorted(unique)
+
+
+def node_lock_packages(path: Path) -> list[tuple[str, str]] | None:
+    """Return every exact npm distribution in a supported lock, without fetching it.
+
+    None means the file is not a lockfileVersion 3 document and must stay a
+    blocking coverage finding. A version 3 document with unsafe sources raises
+    before any advisory request.
+    """
+    document = _npm_lock_document(path)
+    if document is None:
+        return None
+    name, version, packages = _lock_identity(document)
+    root = _string_key_dict(packages.get(""))
+    if root is None or root.get("name") != name or root.get("version") != version:
+        raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    located = _located_distributions(packages)
+    _require_root_pins(located, _root_pins(root))
+    names = {dep for dep, _spec in located.values()}
+    _require_named_dependencies(packages, names)
+    return _unique_distributions(located)
+
+
+def _advisory_ids(result: object) -> list[str]:
+    """Return advisory identities for one distribution, rejecting malformed rows."""
+    if not isinstance(result, dict):
+        raise TypeError(_DEPENDENCY_PROTOCOL_FAILURE)
+    if "vulns" not in result:
+        return []
+    vulns = result["vulns"]
+    if not isinstance(vulns, list):
+        raise TypeError(_DEPENDENCY_PROTOCOL_FAILURE)
+    identities: list[str] = []
+    for item in vulns:
+        parsed = _string_key_dict(item)
+        if parsed is None:
+            raise TypeError(_DEPENDENCY_PROTOCOL_FAILURE)
+        identity = parsed.get("id")
+        if not isinstance(identity, str):
+            raise TypeError(_DEPENDENCY_PROTOCOL_FAILURE)
+        if not identity or any(character in identity for character in "\n\r\x00"):
+            raise ValueError(_DEPENDENCY_PROTOCOL_FAILURE)
+        identities.append(identity)
+    return identities
+
+
+def node_advisory_report(
+    payload: object,
+    packages: Sequence[tuple[str, str]],
+    source: str,
+) -> tuple[list[Finding], int]:
+    """Retain every advisory for the exact locked distributions and reject gaps."""
+    if not isinstance(payload, dict):
+        raise TypeError(_DEPENDENCY_PROTOCOL_FAILURE)
+    results = payload.get("results")
+    if not isinstance(results, list):
+        raise TypeError(_DEPENDENCY_PROTOCOL_FAILURE)
+    if not packages or len(results) != len(packages):
+        raise ValueError(_DEPENDENCY_PROTOCOL_FAILURE)
+    findings: list[Finding] = []
+    seen: set[tuple[str, str, str]] = set()
+    for (name, version), result in zip(packages, results, strict=True):
+        for identity in _advisory_ids(result):
+            key = (name, version, identity)
+            if key in seen:
+                continue
+            seen.add(key)
+            findings.append(
+                finding(
+                    identity,
+                    source,
+                    1,
+                    f"{name} {version}: {identity}",
+                    f"{name}:{version}:{identity}",
+                )
+            )
+    return findings, len(packages)
+
+
+def post_node_advisory_batch(packages: Sequence[tuple[str, str]]) -> object:
+    """Ask the fixed OSV batch endpoint about exact npm distributions.
+
+    The connection is a direct TLS request to api.osv.dev. It does not read npm
+    configuration, environment credentials, proxies, netrc or package tarballs,
+    and it does not run lifecycle scripts or install anything.
+    """
+    if not packages or len(packages) > _MAX_NPM_DISTRIBUTIONS:
+        raise ValueError(_DEPENDENCY_PROTOCOL_FAILURE)
+    queries: list[dict[str, object]] = []
+    for name, version in packages:
+        if _NPM_NAME.fullmatch(name) is None or _NPM_VERSION.fullmatch(version) is None:
+            raise ValueError(_DEPENDENCY_PROTOCOL_FAILURE)
+        queries.append({"package": {"ecosystem": "npm", "name": name}, "version": version})
+    body = json.dumps({"queries": queries}, separators=(",", ":")).encode("utf-8")
+    if len(body) > _MAX_ADVISORY_RESPONSE_BYTES:
+        raise ValueError(_DEPENDENCY_PROTOCOL_FAILURE)
+    context = ssl.create_default_context()
+    connection = http.client.HTTPSConnection(
+        _OSV_HOST,
+        timeout=_OSV_TIMEOUT_SECONDS,
+        context=context,
+    )
+    try:
+        connection.request(
+            "POST",
+            _OSV_AUDIT_PATH,
+            body=body,
+            headers={
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "User-Agent": "homelab-quality-node-lock-audit",
+            },
+        )
+        response = connection.getresponse()
+        status = response.status
+        raw = response.read(_MAX_ADVISORY_RESPONSE_BYTES + 1)
+    except (http.client.HTTPException, OSError):
+        raise ValueError(_DEPENDENCY_PROTOCOL_FAILURE) from None
+    finally:
+        connection.close()
+    if status != _OSV_SUCCESS_STATUS or not raw or len(raw) > _MAX_ADVISORY_RESPONSE_BYTES:
+        raise ValueError(_DEPENDENCY_PROTOCOL_FAILURE)
+    try:
+        decoded: object = json.loads(raw)
+    except json.JSONDecodeError:
+        raise ValueError(_DEPENDENCY_PROTOCOL_FAILURE) from None
+    return decoded
+
+
+def _npm_lock_audit(path: Path, source: str) -> tuple[list[Finding], int] | None:
+    """Audit one npm lock. None keeps an unsupported document blocking."""
+    packages = node_lock_packages(path)
+    if packages is None:
+        return None
+    payload = post_node_advisory_batch(packages)
+    return node_advisory_report(payload, packages, source)
+
+
+def _unimplemented_lock_finding(rule: str, name: str) -> Finding:
+    """Report one blocking coverage gap without calling it a vulnerability."""
+    result: Finding = finding(
+        rule,
+        name,
+        1,
+        "Owned dependency metadata lacks complete implemented lockfile auditing.",
+        name,
+    )
+    return result
+
+
 def check_dependencies(names: Sequence[str]) -> tuple[list[Finding], int]:
-    """Audit owned Python locks without installation and block unimplemented lock coverage."""
+    """Audit Python locks and npm lockfileVersion 3 graphs without installing them.
+
+    Requirement hashes and pip-audit exit binding stay in place. Other lock
+    ecosystems still produce blocking coverage findings.
+    """
     findings, count = _audit_python_source(
         ["pip-audit", "--local", "--strict", "--format", "json"], "uv.lock"
     )
@@ -141,9 +605,8 @@ def check_dependencies(names: Sequence[str]) -> tuple[list[Finding], int]:
         requirement = path.name == "requirements.txt" or (
             path.name.startswith("requirements-") and path.suffix == ".txt"
         )
+        npm_lock = path.name in {"package-lock.json", "npm-shrinkwrap.json"}
         other_lock = path.name in {
-            "package-lock.json",
-            "npm-shrinkwrap.json",
             "poetry.lock",
             "Pipfile.lock",
             "pnpm-lock.yaml",
@@ -168,7 +631,7 @@ def check_dependencies(names: Sequence[str]) -> tuple[list[Finding], int]:
                 )
             )
         )
-        if not (requirement or other_lock or missing_lock):
+        if not (requirement or npm_lock or other_lock or missing_lock):
             continue
         actual = ROOT / path
         if path.is_absolute() or not actual.resolve().is_relative_to(ROOT):
@@ -193,16 +656,17 @@ def check_dependencies(names: Sequence[str]) -> tuple[list[Finding], int]:
             )
             findings.extend(rows)
             count += scanned
+        elif npm_lock:
+            audited = _npm_lock_audit(actual, name)
+            if audited is None:
+                findings.append(_unimplemented_lock_finding("DEPENDENCY_LOCK_UNAUDITED", name))
+            else:
+                rows, scanned = audited
+                findings.extend(rows)
+                count += scanned
         else:
-            findings.append(
-                finding(
-                    "DEPENDENCY_LOCK_MISSING" if missing_lock else "DEPENDENCY_LOCK_UNAUDITED",
-                    name,
-                    1,
-                    "Owned dependency metadata lacks complete implemented lockfile auditing.",
-                    name,
-                )
-            )
+            rule = "DEPENDENCY_LOCK_MISSING" if missing_lock else "DEPENDENCY_LOCK_UNAUDITED"
+            findings.append(_unimplemented_lock_finding(rule, name))
     return findings, count
 
 
