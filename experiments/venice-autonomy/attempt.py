@@ -65,7 +65,8 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key):
     def execute_with_submission(action, **kwargs):
         result = execute(action, **kwargs)
         if mini_submission(result):
-            raise Submitted({'role': 'exit', 'content': '', 'exit_status': 'Submitted'})
+            raise Submitted({'role': 'exit', 'content': 'Submitted',
+                             'extra': {'exit_status': 'Submitted', 'submission': result['output']}})
         return result
 
     sandbox.execute = execute_with_submission

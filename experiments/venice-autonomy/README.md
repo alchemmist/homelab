@@ -28,7 +28,8 @@ No paid provider or OpenHands Cloud backend is configured.
   traversal and duplicate members fail closed. Archives are never extracted.
 - A fresh credential-free container verifies the frozen candidate. A zero exit
   without complete nonce-bound JSON results is not success. Oracle expectations
-  and mutation checks live outside the candidate process. This is testing, not a
+  and the acceptance decision live outside the candidate process. Mutation
+  observations are produced in the candidate Node process; this is testing, not a
   proof against adversarial JavaScript or container/kernel exploits.
 - No automatic commits, pushes, deployments, credential requests or permissions
   changes. Only containers/volumes recorded as belonging to this lab are removed.
