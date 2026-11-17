@@ -212,11 +212,28 @@ def _read_lock_text(path: Path) -> str | None:
         return None
 
 
+def _unique_json_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    """Reject duplicate JSON keys instead of silently replacing earlier findings."""
+    result: dict[str, object] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(_DEPENDENCY_PROTOCOL_FAILURE)
+        result[key] = value
+    return result
+
+
+def _reject_nonfinite_json(_value: str) -> None:
+    """Reject JavaScript constants that are not valid JSON numbers."""
+    raise ValueError(_DEPENDENCY_PROTOCOL_FAILURE)
+
+
 def _parse_json_value(text: str) -> object | None:
     """Parse JSON without treating a decode error as an empty audit."""
     try:
-        value: object = json.loads(text)
-    except json.JSONDecodeError:
+        value: object = json.loads(
+            text, object_pairs_hook=_unique_json_object, parse_constant=_reject_nonfinite_json
+        )
+    except ValueError:
         return None
     return value
 
@@ -250,6 +267,10 @@ def _package_name(package_path: str) -> str:
     if any(segment in {"", ".", ".."} for segment in segments):
         raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
     indexes = [index for index, segment in enumerate(segments) if segment == "node_modules"]
+    for start, end in zip(indexes, [*indexes[1:], len(segments)], strict=True):
+        component = "/".join(segments[start + 1 : end])
+        if _NPM_NAME.fullmatch(component) is None:
+            raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
     rest = segments[indexes[-1] + 1 :]
     if len(rest) == _BARE_NAME_SEGMENTS:
         name = rest[0]
@@ -442,6 +463,31 @@ def _unique_distributions(
     return sorted(unique)
 
 
+def _require_matching_npm_manifest(path: Path, root: dict[str, object]) -> None:
+    """Bind a present manifest to its lock; never skip newly declared dependencies."""
+    manifest_path = path.with_name("package.json")
+    if not manifest_path.exists() and not manifest_path.is_symlink():
+        return
+    text = _read_lock_text(manifest_path)
+    manifest = _string_key_dict(_parse_json_value(text)) if text is not None else None
+    if manifest is None:
+        raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    if set(manifest) & {
+        "overrides",
+        "resolutions",
+        "workspaces",
+        "bundledDependencies",
+        "bundleDependencies",
+    }:
+        raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    if manifest.get("name") != root.get("name") or manifest.get("version") != root.get("version"):
+        raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    for field in _NPM_ROOT_DEP_FIELDS:
+        declared = _dependency_map(manifest.get(field), exact=True)
+        if declared != _dependency_map(root.get(field), exact=True):
+            raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+
+
 def node_lock_packages(path: Path) -> list[tuple[str, str]] | None:
     """Return every exact npm distribution in a supported lock, without fetching it.
 
@@ -456,6 +502,7 @@ def node_lock_packages(path: Path) -> list[tuple[str, str]] | None:
     root = _string_key_dict(packages.get(""))
     if root is None or root.get("name") != name or root.get("version") != version:
         raise ValueError(_DEPENDENCY_NPM_LOCK_FAILURE)
+    _require_matching_npm_manifest(path, root)
     located = _located_distributions(packages)
     _require_root_pins(located, _root_pins(root))
     names = {dep for dep, _spec in located.values()}
@@ -467,6 +514,12 @@ def _advisory_ids(result: object) -> list[str]:
     """Return advisory identities for one distribution, rejecting malformed rows."""
     if not isinstance(result, dict):
         raise TypeError(_DEPENDENCY_PROTOCOL_FAILURE)
+    if set(result) - {"vulns", "next_page_token"}:
+        raise TypeError(_DEPENDENCY_PROTOCOL_FAILURE)
+    token = result.get("next_page_token", "")
+    if not isinstance(token, str) or token:
+        # Until pagination is implemented, incomplete results remain blocking.
+        raise ValueError(_DEPENDENCY_PROTOCOL_FAILURE)
     if "vulns" not in result:
         return []
     vulns = result["vulns"]
@@ -492,7 +545,7 @@ def node_advisory_report(
     source: str,
 ) -> tuple[list[Finding], int]:
     """Retain every advisory for the exact locked distributions and reject gaps."""
-    if not isinstance(payload, dict):
+    if not isinstance(payload, dict) or set(payload) != {"results"}:
         raise TypeError(_DEPENDENCY_PROTOCOL_FAILURE)
     results = payload.get("results")
     if not isinstance(results, list):
@@ -563,8 +616,10 @@ def post_node_advisory_batch(packages: Sequence[tuple[str, str]]) -> object:
     if status != _OSV_SUCCESS_STATUS or not raw or len(raw) > _MAX_ADVISORY_RESPONSE_BYTES:
         raise ValueError(_DEPENDENCY_PROTOCOL_FAILURE)
     try:
-        decoded: object = json.loads(raw)
-    except json.JSONDecodeError:
+        decoded: object = json.loads(
+            raw, object_pairs_hook=_unique_json_object, parse_constant=_reject_nonfinite_json
+        )
+    except ValueError:
         raise ValueError(_DEPENDENCY_PROTOCOL_FAILURE) from None
     return decoded
 

@@ -436,6 +436,7 @@ def test_requirement_audit_does_not_call_the_npm_feed(
         "range",
         "missing",
         "peer",
+        "path",
     ],
 )
 def test_unsafe_version_three_lock_refuses_before_the_advisory_request(
@@ -459,6 +460,10 @@ def test_unsafe_version_three_lock_refuses_before_the_advisory_request(
         root["dependencies"] = {"fixture-package": "^1.0.0"}
     elif mutate == "missing":
         entry["dependencies"] = {"missing-package": "^1.0.0"}
+    elif mutate == "path":
+        packages = document["packages"]
+        assert isinstance(packages, dict)
+        packages["node_modules/parent/arbitrary/node_modules/fixture-package"] = dict(entry)
     else:
         entry["peerDependencies"] = {"required-peer": "^1.2.3"}
     _write(tmp_path, relative, json.dumps(document))
@@ -537,6 +542,14 @@ def test_npm_symlink_and_absolute_path_refuse_before_the_feed(
         {"results": []},
         {"results": [{}, {}]},
         {"results": [None]},
+        {"results": [{}], "error": "fixture outage"},
+        {"results": [{"error": "fixture outage"}]},
+        {"results": [{"next_page_token": "fixture-more"}]},
+        {"results": [{"vulns": [], "next_page_token": "fixture-more"}]},
+        {"results": [{"next_page_token": None}]},
+        {"results": [{"next_page_token": False}]},
+        {"results": [{"skipped": True}]},
+        {"results": [{"vulns": [], "unknown": True}]},
         {"results": [{"vulns": None}]},
         {"results": [{"vulns": [{}]}]},
         {"results": [{"vulns": [{"id": ""}]}]},
@@ -590,7 +603,9 @@ def test_advisory_batch_uses_direct_tls_without_credential_config(
     assert payload == {"results": [{"vulns": [{"id": "GHSA-fixture"}]}]}
 
 
-@pytest.mark.parametrize("mode", ["status", "json", "transport", "oversized"])
+@pytest.mark.parametrize(
+    "mode", ["status", "json", "transport", "oversized", "duplicate", "nonfinite", "encoding"]
+)
 def test_advisory_transport_failures_hide_response_bodies(
     monkeypatch: pytest.MonkeyPatch,
     mode: str,
@@ -607,6 +622,12 @@ def test_advisory_transport_failures_hide_response_bodies(
         body = b"NOT-JSON-advisory-body"
     elif mode == "transport":
         error = OSError("network-down")
+    elif mode == "duplicate":
+        body = b'{"results":[{"vulns":[{"id":"fixture"}],"vulns":[]}]}'
+    elif mode == "nonfinite":
+        body = b'{"results":[{"vulns":NaN}]}'
+    elif mode == "encoding":
+        body = b"\xff"
     else:
         oversized = True
     connection = _Connection("unused")
@@ -672,3 +693,53 @@ def test_advisory_function_does_not_name_credential_files() -> None:
     assert "urlopen" not in names
     for forbidden in ("npmrc", "netrc", ".npmrc", "NODE_AUTH_TOKEN", "registry.npmjs.org"):
         assert all(forbidden not in value for value in constants)
+
+
+@pytest.mark.parametrize(
+    "mutation", ["name", "version", "dependency", "workspaces", "override", "duplicate", "symlink"]
+)
+def test_manifest_drift_refuses_before_advisory_transport(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mutation: str
+) -> None:
+    """A paired lock cannot hide a changed, ambiguous or redirected manifest."""
+    relative = "tools/fixture/package-lock.json"
+    manifest: dict[str, object] = {
+        "name": "fixture",
+        "version": "1.0.0",
+        "dependencies": {"fixture-package": "1.0.0"},
+    }
+    if mutation == "name":
+        manifest["name"] = "another-package"
+    elif mutation == "version":
+        manifest["version"] = "2.0.0"
+    elif mutation == "dependency":
+        manifest["dependencies"] = {"new-package": "1.0.0"}
+    elif mutation == "workspaces":
+        manifest["workspaces"] = ["packages/*"]
+    elif mutation == "override":
+        manifest["overrides"] = {"fixture-package": "2.0.0"}
+    _write(tmp_path, relative, json.dumps(_document({"fixture-package": "1.0.0"})))
+    manifest_path = tmp_path / "tools/fixture/package.json"
+    text = json.dumps(manifest)
+    if mutation == "duplicate":
+        text = text[:-1] + ',"dependencies":{}}'
+    _write(tmp_path, "tools/fixture/package.json", text)
+    if mutation == "symlink":
+        original = manifest_path.with_name("manifest-source.json")
+        manifest_path.rename(original)
+        manifest_path.symlink_to(original)
+    monkeypatch.setattr(lint, "ROOT", tmp_path)
+    monkeypatch.setattr(lint, "command", _command)
+
+    def post(_packages: object) -> object:
+        message = "advisory transport must not run"
+        raise AssertionError(message)
+
+    monkeypatch.setattr(lint, "post_node_advisory_batch", post)
+    refusal = (
+        "Dependency metadata must be a tracked regular repository file"
+        if mutation == "symlink"
+        else "npm lock contains unsupported or unsafe package sources"
+    )
+    with pytest.raises(ValueError, match=refusal):
+        lint.check_dependencies([relative, "tools/fixture/package.json"])
