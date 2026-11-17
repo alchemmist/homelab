@@ -49,9 +49,11 @@ d=pathlib.Path(a.directory);d.mkdir(parents=True)
             root, command = self.setup_case(directory, 'malformed_summary')
             subprocess.run(command, stdout=subprocess.DEVNULL, check=True, timeout=15)
             state = json.loads((root/'state.json').read_text())
-            self.assertTrue(all(task['status'] == 'blocked' for task in state['tasks']))
-            self.assertTrue(all(attempt['controller_error'] == 'missing_or_invalid_summary'
-                                for task in state['tasks'] for attempt in task['attempts']))
+            self.assertEqual(state['phase'], 'runner_infrastructure_error')
+            attempts = [attempt for task in state['tasks'] for attempt in task['attempts']]
+            self.assertEqual(len(attempts), 1)
+            self.assertEqual(attempts[0]['controller_error'], 'missing_or_invalid_summary')
+            self.assertFalse(any(task['status'] == 'accepted' for task in state['tasks']))
 
     def test_kill_resume_preserves_deadline_and_stops_after_repeated_provider_errors(self):
         with tempfile.TemporaryDirectory() as directory:

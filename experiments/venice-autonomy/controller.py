@@ -11,6 +11,7 @@ import time
 
 ENGINES = ('mini_native', 'openhands', 'mini_text')
 TASKS = ('median', 'clamp', 'escape_html')
+RUNNER_ERRORS = ('TypeError', 'AttributeError', 'ImportError', 'ModuleNotFoundError', 'UndefinedError')
 PROVIDER_ERRORS = ('APIError', 'APITimeoutError', 'Timeout', 'AuthenticationError', 'PermissionDeniedError',
                    'BadRequestError', 'InternalServerError', 'RateLimitError', 'NotFoundError')
 
@@ -73,22 +74,23 @@ def cleanup_interrupted(running):
                 pass
     except (ProcessLookupError, subprocess.CalledProcessError):
         pass
-    root = pathlib.Path(running['directory'])/'agent'
-    container_file = root/'container-id'
-    if container_file.exists():
-        container_id = container_file.read_text().strip()
-        inspection = subprocess.run(['docker', 'inspect', container_id], capture_output=True, text=True, timeout=15)
-        if inspection.returncode == 0:
-            info = json.loads(inspection.stdout)[0]
-            if info['Config'].get('Labels', {}).get('venice-autonomy-lab') != 'true':
-                raise ValueError('refusing to clean an unlabelled container')
-            subprocess.run(['docker', 'rm', '-f', container_id], capture_output=True, check=True, timeout=25)
-    volume_file = root/'volume-name'
-    if volume_file.exists():
-        volume = volume_file.read_text().strip()
-        if not volume.startswith('venice-lab-'):
-            raise ValueError('refusing to clean an unrelated volume')
-        subprocess.run(['docker', 'volume', 'rm', volume], capture_output=True, timeout=20)
+    for role in ('agent', 'verifier'):
+        root = pathlib.Path(running['directory'])/role
+        container_file = root/'container-id'
+        if container_file.exists():
+            container_id = container_file.read_text().strip()
+            inspection = subprocess.run(['docker', 'inspect', container_id], capture_output=True, text=True, timeout=15)
+            if inspection.returncode == 0:
+                info = json.loads(inspection.stdout)[0]
+                if info['Config'].get('Labels', {}).get('venice-autonomy-lab') != 'true':
+                    raise ValueError('refusing to clean an unlabelled container')
+                subprocess.run(['docker', 'rm', '-f', container_id], capture_output=True, check=True, timeout=25)
+        volume_file = root/'volume-name'
+        if volume_file.exists():
+            volume = volume_file.read_text().strip()
+            if not volume.startswith('venice-lab-'):
+                raise ValueError('refusing to clean an unrelated volume')
+            subprocess.run(['docker', 'volume', 'rm', volume], capture_output=True, timeout=20)
 
 
 def write_report(root, state):
@@ -162,6 +164,9 @@ def run(root, mini_python, openhands_python, duration, rounds):
                               'process_exit': process.returncode}
                 result['directory'] = str(directory)
                 settle_task(task, result)
+                if (result.get('infrastructure_error_type') or result.get('controller_error') or
+                        result.get('run_error_type') in RUNNER_ERRORS):
+                    state['phase'] = 'runner_infrastructure_error'
                 if result.get('run_error_type') in PROVIDER_ERRORS:
                     state['consecutive_provider_failures'] += 1
                 else:

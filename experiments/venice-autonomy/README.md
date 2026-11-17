@@ -52,7 +52,11 @@ Mini has an 18-step/600-second budget; OpenHands has an 18-iteration budget.
 HTTP requests allow 720 seconds because queueing plus one bridge regeneration can
 exceed shorter client timeouts. Client automatic retries are disabled. The bridge's
 existing one visible format regeneration is unchanged. Two consecutive recognized
-provider exceptions stop the controller. A stop is not silently retried forever.
+provider exceptions stop the controller. Missing/malformed summaries or recognized
+runner integration errors stop immediately instead of wasting the entire queue.
+A stop is not silently retried forever. Process/worker cancellation is not proof
+that a non-streaming HTTP disconnect instantly releases the upstream Venice
+browser slot; that remains an explicit acceptance gap for these clients.
 
 State checkpoints are fsynced and atomically replaced under an exclusive lock.
 Restart preserves the original deadline, terminates a matching orphan child,
@@ -100,7 +104,10 @@ Initial compatibility checks: mini native completed a median repair with actual
 commands and independent tests; text-only stopped on multiple-action format
 errors. OpenHands SDK completed a median repair with 65 fresh-container cases.
 Those one-off checks establish compatibility, not relative latency or multi-hour
-reliability. Earlier scaffold failures are retained separately and not scored.
+reliability. An initial controller run was also stopped for a runner integration
+bug: the mini observation dictionary lacked `exception_info`. It is not scored.
+The replacement run retains the original absolute deadline instead of granting
+another 90 minutes. Cancellation cleanup covers both agent and verifier resources. Earlier scaffold failures are retained separately and not scored.
 
 ## k3s direction
 

@@ -132,5 +132,29 @@ class ControllerTests(unittest.TestCase):
             self.assertFalse(path.with_suffix('.new').exists())
 
 
+class MiniAdapterTests(unittest.TestCase):
+    def test_completed_receipt_formats_for_both_action_protocols(self):
+        from unittest.mock import patch
+        from minisweagent.models.litellm_model import LitellmModel
+        from minisweagent.models.litellm_textbased_model import LitellmTextbasedModel
+        from sandbox import Sandbox
+        import pathlib
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory:
+            sandbox = Sandbox.__new__(Sandbox)
+            sandbox.directory = pathlib.Path(directory)
+            sandbox.events = []
+            sandbox.container_id = 'isolated-test-double'
+            sandbox.verifier = False
+            with patch('sandbox.bounded_process', return_value=(0, b'observed\n')):
+                output = sandbox.execute({'command': 'echo observed'})
+            self.assertIsNone(output['exception_info'])
+            for model_type in (LitellmModel, LitellmTextbasedModel):
+                model = model_type(model_name='openai/venice-deepseek', cost_tracking='ignore_errors')
+                message = {'extra': {'actions': [{'command': 'echo observed', 'tool_call_id': 'call_fixture'}]}}
+                messages = model.format_observation_messages(message, [output])
+                self.assertIn('observed', messages[0]['content'])
+
+
 if __name__ == '__main__':
     unittest.main()

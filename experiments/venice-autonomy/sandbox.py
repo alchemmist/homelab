@@ -158,7 +158,7 @@ class Sandbox:
         self.events.append(event)
         with (self.directory / 'executions.jsonl').open('a') as stream:
             stream.write(json.dumps(event) + '\n')
-        return {'returncode': code, 'output': text}
+        return {'returncode': code, 'output': text, 'exception_info': None}
 
     def snapshot(self):
         subprocess.run(['docker', 'pause', self.container_id], capture_output=True, check=True, timeout=15)
