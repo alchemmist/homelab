@@ -1,9 +1,18 @@
 {
   "ruff": {
-    "select": ["ALL"],
-    "ignore": ["D203", "D213", "ISC001", "COM812"],
+    "select": [
+      "ALL"
+    ],
+    "ignore": [
+      "D203",
+      "D213",
+      "ISC001",
+      "COM812"
+    ],
     "perFileIgnores": {
-      "**/tests/**": ["S101"]
+      "**/tests/**": [
+        "S101"
+      ]
     },
     "ignoreReasons": {
       "D203": "Unsatisfiable with D211. PEP 257 keeps no blank line before a class docstring, so D211 stays.",
@@ -136,13 +145,35 @@
   },
   "yamllint": {
     "enabled": {
-      "line-length": {"max": 100},
-      "truthy": {"allowed-values": ["true", "false"], "check-keys": false, "level": "error"},
-      "comments": {"level": "error"},
-      "comments-indentation": {"level": "error"},
-      "document-start": {"level": "error", "present": true},
-      "document-end": {"level": "error", "present": true},
-      "octal-values": {"forbid-implicit-octal": true, "forbid-explicit-octal": false},
+      "line-length": {
+        "max": 100
+      },
+      "truthy": {
+        "allowed-values": [
+          "true",
+          "false"
+        ],
+        "check-keys": false,
+        "level": "error"
+      },
+      "comments": {
+        "level": "error"
+      },
+      "comments-indentation": {
+        "level": "error"
+      },
+      "document-start": {
+        "level": "error",
+        "present": true
+      },
+      "document-end": {
+        "level": "error",
+        "present": true
+      },
+      "octal-values": {
+        "forbid-implicit-octal": true,
+        "forbid-explicit-octal": false
+      },
       "float-values": {
         "require-numeral-before-decimal": true,
         "forbid-scientific-notation": false,
@@ -162,8 +193,21 @@
     "publisher": ".github/workflows/quality-graph-publish.yml",
     "compiler": "quality-graph-github==0.2.0 _publication_workflow",
     "triggers": {
-      "workflow_run": {"workflows": ["Quality Graph"], "types": ["requested", "completed"]},
-      "issue_comment": {"types": ["created", "edited"]}
+      "workflow_run": {
+        "workflows": [
+          "Quality Graph"
+        ],
+        "types": [
+          "requested",
+          "completed"
+        ]
+      },
+      "issue_comment": {
+        "types": [
+          "created",
+          "edited"
+        ]
+      }
     },
     "topPermissions": {},
     "jobs": {
@@ -181,7 +225,10 @@
         "pull-requests": "write"
       }
     },
-    "zizmor": ["zizmor/dangerous-triggers", "zizmor/undocumented-permissions"],
+    "zizmor": [
+      "zizmor/dangerous-triggers",
+      "zizmor/undocumented-permissions"
+    ],
     "blocker": "The pinned compiler hardcodes workflow_run and issue_comment plus job permissions with no comment field. qg.yaml cannot narrow those triggers or document the token. Hand-editing the generated file is overwritten by qg generate. Findings stay blocking; generated workflows are not trusted code."
   },
   "vendorPaths": [
@@ -190,5 +237,12 @@
     "charts/rancher",
     "deploy/wiki-runtime/chart"
   ],
-  "reviewedExceptionDigest": "f0adf5e9ed7cbb4c0315d51c014aa019e7ff9320e9d7bf4ae8ef01ef6058c1fd"
+  "reviewedExceptionDigest": "f0adf5e9ed7cbb4c0315d51c014aa019e7ff9320e9d7bf4ae8ef01ef6058c1fd",
+  "frozenCompatibility": {
+    "manifest": "charts/spi-triage/LEGACY-SOURCE-MANIFEST.json",
+    "sha256": "914d01d41c891823fafc9f911183fc5ec2c9fc1e509e42cb9245300d26ea8847",
+    "canonicalRepository": "https://github.com/alchemmist/spi-triage",
+    "directory": "charts/spi-triage/files",
+    "count": 17
+  }
 }

@@ -666,3 +666,83 @@ def test_strict_configuration_contract_holds():
     import strict_guard
 
     strict_guard.verify_configuration()
+
+
+def _frozen_fixture(root: Path) -> Path:
+    """Copy only repository source/provenance needed for isolated ownership tests."""
+    policy = json.loads((ROOT / "quality/strict-policy.json").read_text())
+    record = policy["frozenCompatibility"]
+    manifest = json.loads((ROOT / record["manifest"]).read_text())
+    names = ["quality/strict-policy.json", "deploy/contracts/vendors.json", record["manifest"]]
+    names.extend(record["directory"] + "/" + name for name in manifest["backend_sha256"])
+    for name in names:
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes((ROOT / name).read_bytes())
+    return root
+
+
+def test_frozen_scope_excludes_exact_existing_files_not_new_neighbours(tmp_path: Path) -> None:
+    """A new neighbouring file remains owned; no whole-directory exemption exists."""
+    import common
+
+    root = _frozen_fixture(tmp_path)
+    neighbour = "charts/spi-triage/files/new_owned.py"
+    (root / neighbour).write_text('"""New owned source."""\n')
+    with patch.object(common, "ROOT", root):
+        frozen = common.frozen_source_files()
+        assert len(frozen) == 17
+        assert common.owned([*frozen, neighbour]) == [neighbour]
+        assert common.owned(["charts/spi-triage/ui/queue_web.py"]) == [
+            "charts/spi-triage/ui/queue_web.py"
+        ]
+
+
+@pytest.mark.parametrize("mutation", ["bytes", "missing", "symlink", "manifest", "new-entry"])
+def test_frozen_provenance_mutations_fail_before_ownership_exclusion(
+    tmp_path: Path, mutation: str
+) -> None:
+    """Never make drift disappear from lint by calling it third-party source."""
+    import common
+
+    root = _frozen_fixture(tmp_path)
+    record = json.loads((root / "quality/strict-policy.json").read_text())["frozenCompatibility"]
+    manifest_path = root / record["manifest"]
+    manifest = json.loads(manifest_path.read_text())
+    name = next(iter(manifest["backend_sha256"]))
+    frozen_file = root / record["directory"] / name
+    if mutation == "bytes":
+        frozen_file.write_text(frozen_file.read_text() + "\n# byte drift\n")
+    elif mutation == "missing":
+        frozen_file.unlink()
+    elif mutation == "symlink":
+        copy = root / "substitute.py"
+        copy.write_bytes(frozen_file.read_bytes())
+        frozen_file.unlink()
+        frozen_file.symlink_to(copy)
+    elif mutation == "manifest":
+        manifest_path.write_bytes(manifest_path.read_bytes() + b"\n")
+    elif mutation == "new-entry":
+        manifest["backend_sha256"]["new_owned.py"] = "a" * 64
+        manifest_path.write_text(json.dumps(manifest))
+    with patch.object(common, "ROOT", root), pytest.raises(ValueError, match="[Ff]rozen"):
+        common.owned([record["directory"] + "/" + name])
+
+
+def test_frozen_path_escape_rejected_even_with_updated_fixture_digest(tmp_path: Path) -> None:
+    """A reviewed manifest digest is not permission to escape the owned tree."""
+    import common
+
+    root = _frozen_fixture(tmp_path)
+    policy_path = root / "quality/strict-policy.json"
+    policy = json.loads(policy_path.read_text())
+    record = policy["frozenCompatibility"]
+    manifest_path = root / record["manifest"]
+    manifest = json.loads(manifest_path.read_text())
+    digest = manifest["backend_sha256"].pop(next(iter(manifest["backend_sha256"])))
+    manifest["backend_sha256"]["../escape.py"] = digest
+    manifest_path.write_text(json.dumps(manifest))
+    record["sha256"] = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+    policy_path.write_text(json.dumps(policy))
+    with patch.object(common, "ROOT", root), pytest.raises(ValueError, match="Unsafe frozen"):
+        common.owned(["charts/spi-triage/files/anything.py"])

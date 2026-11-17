@@ -12,7 +12,15 @@ import tomllib
 
 import yaml
 
-from common import ROOT, command, owned, tracked, use_project_tools, vendor_prefixes
+from common import (
+    ROOT,
+    command,
+    frozen_source_files,
+    owned,
+    tracked,
+    use_project_tools,
+    vendor_prefixes,
+)
 
 
 def marker(*parts):
@@ -133,6 +141,7 @@ def listed_ansible_rules():
 
 
 def verify_configuration():
+    frozen_source_files()
     use_project_tools()
     data = policy()
     ruff = tomllib.loads((ROOT / "quality/ruff.toml").read_text())

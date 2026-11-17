@@ -6,7 +6,7 @@ import importlib.util
 import json
 from pathlib import Path
 import re
-from common import ROOT, tracked
+from common import ROOT, frozen_source_files, tracked
 import boundaries
 
 
@@ -39,6 +39,7 @@ def local_refs(value):
 
 
 def check():
+    frozen_source_files()
     for policy in (ROOT / "quality").rglob("*.json"):
         require(policy.resolve().is_relative_to(ROOT / "quality"), "Quality policy path escape")
         json.loads(policy.read_text(), object_pairs_hook=unique_json)

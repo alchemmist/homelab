@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import subprocess
 from collections import Counter
+from collections.abc import Iterable
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -61,9 +62,81 @@ def vendor_prefixes():
     return tuple(prefixes)
 
 
-def owned(names):
+def frozen_source_files() -> frozenset[str]:
+    """Verify exact preexisting third-party compatibility inputs before exclusion.
+
+    No unlisted path or whole directory becomes exempt. Any manifest, path or
+    frozen-byte drift is an error rather than an opportunity to hide new code.
+    """
+    policy = json.loads((ROOT / "quality/strict-policy.json").read_text())
+    record = policy.get("frozenCompatibility")
+    if not isinstance(record, dict) or set(record) != {
+        "manifest",
+        "sha256",
+        "canonicalRepository",
+        "directory",
+        "count",
+    }:
+        raise ValueError("Frozen compatibility ownership contract missing or malformed")
+    if (
+        record["manifest"] != "charts/spi-triage/LEGACY-SOURCE-MANIFEST.json"
+        or record["directory"] != "charts/spi-triage/files"
+        or record["canonicalRepository"] != "https://github.com/alchemmist/spi-triage"
+        or record["count"] != 17
+        or not isinstance(record["sha256"], str)
+        or len(record["sha256"]) != 64
+    ):
+        raise ValueError("Frozen compatibility ownership scope drift")
+    manifest_path = ROOT / record["manifest"]
+    if (
+        manifest_path.is_symlink()
+        or not manifest_path.is_file()
+        or not manifest_path.resolve().is_relative_to(ROOT.resolve())
+        or manifest_path.stat().st_size > 1_048_576
+    ):
+        raise ValueError("Unsafe frozen compatibility manifest path")
+    raw = manifest_path.read_bytes()
+    if hashlib.sha256(raw).hexdigest() != record["sha256"]:
+        raise ValueError("Frozen compatibility manifest drift; reviewed source update required")
+    manifest = json.loads(raw)
+    if manifest.get("canonical_repository") != record["canonicalRepository"]:
+        raise ValueError("Frozen compatibility canonical repository drift")
+    files = manifest.get("backend_sha256")
+    if not isinstance(files, dict) or len(files) != record["count"]:
+        raise ValueError("Frozen compatibility input count drift")
+    verified: set[str] = set()
+    for name, expected in files.items():
+        if (
+            not isinstance(name, str)
+            or Path(name).name != name
+            or not name.endswith(".py")
+            or name in {".py", "..py"}
+            or not isinstance(expected, str)
+            or len(expected) != 64
+        ):
+            raise ValueError("Unsafe frozen compatibility input")
+        relative = record["directory"] + "/" + name
+        path = ROOT / relative
+        if (
+            path.is_symlink()
+            or not path.is_file()
+            or not path.resolve().is_relative_to(ROOT.resolve())
+            or hashlib.sha256(path.read_bytes()).hexdigest() != expected
+        ):
+            raise ValueError("Frozen compatibility bytes drift: " + relative)
+        verified.add(relative)
+    return frozenset(verified)
+
+
+def owned(names: Iterable[str]) -> list[str]:
+    """Select owned inputs only after immutable third-party provenance is checked."""
     prefixes = vendor_prefixes()
-    return [p for p in names if not any(p.startswith(prefix) for prefix in prefixes)]
+    frozen = frozen_source_files()
+    return [
+        path
+        for path in names
+        if path not in frozen and not any(path.startswith(prefix) for prefix in prefixes)
+    ]
 
 
 def digest(value):
