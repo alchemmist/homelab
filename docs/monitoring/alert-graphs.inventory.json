@@ -1213,7 +1213,38 @@
     "resource": "monitoring-k3s-shared-registry",
     "group": "socrat.nodes.hardware",
     "alert": "SocratNodeResourceContention",
-    "expr": "socrat:node_pressure_waiting:ratio5m{resource=\"cpu\"} > 0.50 or socrat:node_pressure_waiting:ratio5m{resource=~\"memory|io\"} > 0.25",
+    "expr": "socrat:node_pressure_waiting:ratio5m{node!=\"socrat-4\",resource=\"cpu\"} > 0.50 or socrat:node_pressure_waiting:ratio5m{node!=\"socrat-4\",resource=~\"memory|io\"} > 0.25",
+    "uid": null,
+    "graphs": {
+      "version": 1,
+      "graphs": [
+        {
+          "id": "primary",
+          "title": "SocratNodeResourceContention",
+          "dashboard_uid": "alerts-9943c0b05432b778",
+          "panel_id": 5,
+          "variables": {},
+          "before_seconds": 1800,
+          "after_seconds": 300
+        },
+        {
+          "id": "condition",
+          "title": "SocratNodeResourceContention / rule evaluations",
+          "dashboard_uid": "alerts-9943c0b05432b778",
+          "panel_id": 6,
+          "variables": {},
+          "before_seconds": 7200,
+          "after_seconds": 300
+        }
+      ]
+    }
+  },
+  {
+    "owner": "monitoring-k3s",
+    "resource": "monitoring-k3s-shared-registry",
+    "group": "socrat.nodes.hardware",
+    "alert": "SocratNodeResourceContention",
+    "expr": "socrat:node_pressure_waiting:ratio5m{node=\"socrat-4\",resource=\"cpu\"} > 0.90 or socrat:node_pressure_waiting:ratio5m{node=\"socrat-4\",resource=\"memory\"} > 0.50 or socrat:node_pressure_waiting:ratio5m{node=\"socrat-4\",resource=\"io\"} > 0.60",
     "uid": null,
     "graphs": {
       "version": 1,

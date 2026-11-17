@@ -54,6 +54,26 @@ class StablePanelIds(unittest.TestCase):
             ):
                 m.build([], {"fixture": values})
 
+    def test_condition_variant_keeps_links_and_both_exact_queries(self) -> None:
+        """An owner-approved condition split must not renumber or drop either variant."""
+        ids: dict[str, dict[str, int]] = {}
+        original = rule("Pressure")
+        _, before, _ = m.build([original], ids)
+        snapshot = copy.deepcopy(ids)
+        variant = rule("Pressure")
+        variant["rule"] = {"alert": "Pressure", "expr": "up == 1", "labels": {}}
+        dashboards, after, rows = m.build([original, variant], ids)
+        assert before == after
+        assert ids == snapshot
+        expected_variants = 2
+        assert len(rows) == expected_variants
+        for row in rows:
+            assert row["graphs"] == after["fixture"]["Pressure"]
+        condition = after["fixture"]["Pressure"]["graphs"][1]
+        dashboard = dashboards[condition["dashboard_uid"]]
+        panel = next(p for p in dashboard["panels"] if p["id"] == condition["panel_id"])
+        assert [target["expr"] for target in panel["targets"]] == ["up == 0", "up == 1"]
+
     def test_stable_fixed_point(self) -> None:
         """Verify stable fixed point."""
         ids: dict[str, dict[str, int]] = {}

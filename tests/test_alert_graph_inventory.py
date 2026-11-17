@@ -26,7 +26,9 @@ class AlertGraphInventoryTests(unittest.TestCase):
 
     def test_all_source_rules_have_real_panel_queries_and_priority(self):
         rows = json.loads((ROOT / "docs/monitoring/alert-graphs.inventory.json").read_text())
-        self.assertEqual(len(rows), 203)
+        # Main split PSI into ordinary-node and socrat-4 variants of the same alert.
+        expected_source_rule_count = 204
+        self.assertEqual(len(rows), expected_source_rule_count)
         for row in rows:
             with self.subTest(alert=row["alert"]):
                 spec = row["graphs"]

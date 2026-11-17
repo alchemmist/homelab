@@ -262,7 +262,7 @@
       "targets": [
         {
           "refId": "1",
-          "expr": "socrat:node_pressure_waiting:ratio5m{resource=\"cpu\"}",
+          "expr": "socrat:node_pressure_waiting:ratio5m{node!=\"socrat-4\",resource=\"cpu\"}",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -270,7 +270,31 @@
         },
         {
           "refId": "2",
-          "expr": "socrat:node_pressure_waiting:ratio5m{resource=~\"memory|io\"}",
+          "expr": "socrat:node_pressure_waiting:ratio5m{node!=\"socrat-4\",resource=~\"memory|io\"}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "refId": "3",
+          "expr": "socrat:node_pressure_waiting:ratio5m{node=\"socrat-4\",resource=\"cpu\"}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "refId": "4",
+          "expr": "socrat:node_pressure_waiting:ratio5m{node=\"socrat-4\",resource=\"memory\"}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "refId": "5",
+          "expr": "socrat:node_pressure_waiting:ratio5m{node=\"socrat-4\",resource=\"io\"}",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -304,6 +328,14 @@
               {
                 "color": "gray",
                 "value": 0.5
+              },
+              {
+                "color": "gray",
+                "value": 0.6
+              },
+              {
+                "color": "gray",
+                "value": 0.9
               }
             ]
           }
@@ -332,7 +364,15 @@
       "targets": [
         {
           "refId": "1",
-          "expr": "socrat:node_pressure_waiting:ratio5m{resource=\"cpu\"} > 0.50 or socrat:node_pressure_waiting:ratio5m{resource=~\"memory|io\"} > 0.25",
+          "expr": "socrat:node_pressure_waiting:ratio5m{node!=\"socrat-4\",resource=\"cpu\"} > 0.50 or socrat:node_pressure_waiting:ratio5m{node!=\"socrat-4\",resource=~\"memory|io\"} > 0.25",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "refId": "2",
+          "expr": "socrat:node_pressure_waiting:ratio5m{node=\"socrat-4\",resource=\"cpu\"} > 0.90 or socrat:node_pressure_waiting:ratio5m{node=\"socrat-4\",resource=\"memory\"} > 0.50 or socrat:node_pressure_waiting:ratio5m{node=\"socrat-4\",resource=\"io\"} > 0.60",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
@@ -366,6 +406,14 @@
               {
                 "color": "gray",
                 "value": 0.5
+              },
+              {
+                "color": "gray",
+                "value": 0.6
+              },
+              {
+                "color": "gray",
+                "value": 0.9
               }
             ]
           }
