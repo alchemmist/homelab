@@ -634,7 +634,8 @@ def test_new_suppression_marker_is_reported(tmp_path, monkeypatch):
     """A newly added suppression marker is a finding, not configuration success."""
     import strict_guard
 
-    (tmp_path / "owned.py").write_text("value = 1  # noqa: ANN001\n")
+    marker = strict_guard.marker("# ", "no", "qa: ANN001")
+    (tmp_path / "owned.py").write_text("value = 1  " + marker + "\n")
     monkeypatch.setattr(strict_guard, "ROOT", tmp_path)
     assert strict_guard.suppression_hits(["owned.py"]) == ["owned.py:1"]
 
