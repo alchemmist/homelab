@@ -1,7 +1,7 @@
 # Parallel 56 lane 52 checkpoint
 
-Lane 52 is the yaml-semantic allocation. This checkpoint records one committed
-source repair. It is not a clean-tree claim. Remaining yamllint findings stay
+Lane 52 is the yaml-semantic allocation. This checkpoint records the committed
+source repairs. It is not a clean-tree claim. Remaining yamllint findings stay
 visible. No yamllint disable, file ignore, debt approval, or policy change was
 added. No Helm, Ansible, Kubernetes, SSH, or credential command was run.
 
@@ -56,5 +56,34 @@ python -m pytest -q tests/test_quality_p56_52_n8n_cpu_quote.py
 
 Exits 0, 0, 0, and 0. Ruff reports 0 findings. Pytest reports 1 passed.
 
-The new test is not listed in `quality/test-suites.json`. Parent owns that
-registration. No other lane file was edited.
+## Repair: plain Helm appVersion strings
+
+Four chart metadata files had a redundantly double-quoted `appVersion`.
+The quotes were removed. The composed scalar stays `tag:yaml.org,2002:str`
+with the same version text, and chart `name` / `version` are unchanged:
+
+- `charts/netbird/Chart.yaml`: `0.82.0`
+- `charts/pr-agent/Chart.yaml`: `0.49.0`
+- `charts/syncthing/Chart.yaml`: `2.1.3`
+- `charts/x-ui/Chart.yaml`: `3.10.2`
+
+`yaml.compose_all` with `SafeLoader` and the default `Loader` matched the
+quoted form on tags, values, mapping order, and alias-sharing count `0`.
+
+Regression: `tests/test_quality_p56_52_chart_app_version.py`.
+
+After this edit the same 57-file yamllint command exits 1 with 605 findings.
+`quoted-strings` is 232. Every other rule count matches the baseline.
+Each of the four chart files, and `deploy/n8n/values.yaml`, now has 0 findings.
+
+```text
+ruff check --config quality/ruff.toml tests/test_quality_p56_52_chart_app_version.py
+ruff format --check --config quality/ruff.toml tests/test_quality_p56_52_chart_app_version.py
+mypy --config-file quality/mypy.ini tests/test_quality_p56_52_chart_app_version.py
+python -m pytest -q tests/test_quality_p56_52_chart_app_version.py tests/test_quality_p56_52_n8n_cpu_quote.py
+```
+
+Exits 0, 0, 0, and 0. Ruff reports 0 findings. Pytest reports 2 passed.
+
+Neither new test is listed in `quality/test-suites.json`. Parent owns that
+registration.
