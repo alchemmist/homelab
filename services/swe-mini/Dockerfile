@@ -14,6 +14,6 @@ RUN playwright install-deps chromium && rm -rf /var/lib/apt/lists/*
 RUN playwright install --only-shell chromium && chmod -R a+rX /opt/browsers
 RUN useradd -u 1000 -m agent
 COPY policy.py worker.py controller.py selftest.py /app/
-RUN python /app/selftest.py
 USER 1000:1000
+RUN python /app/selftest.py
 CMD ["python", "/app/controller.py"]
