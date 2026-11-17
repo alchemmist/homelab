@@ -133,6 +133,15 @@ class ControllerTests(unittest.TestCase):
 
 
 class MiniAdapterTests(unittest.TestCase):
+    def test_completion_uses_executed_output_not_command_spelling(self):
+        from attempt import mini_submission
+        marker = 'COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT'
+        self.assertTrue(mini_submission({'returncode': 0, 'output': marker+'\n'}))
+        self.assertTrue(mini_submission({'returncode': 0, 'output': '\n'+marker+'\nsummary'}))
+        self.assertFalse(mini_submission({'returncode': 1, 'output': marker}))
+        self.assertFalse(mini_submission({'returncode': 0, 'output': 'other\n'+marker}))
+        self.assertFalse(mini_submission({'returncode': 0, 'output': ''}))
+
     def test_completed_receipt_formats_for_both_action_protocols(self):
         from unittest.mock import patch
         from minisweagent.models.litellm_model import LitellmModel

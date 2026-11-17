@@ -22,6 +22,11 @@ def provider_settings():
     return provider['baseUrl'], key
 
 
+def mini_submission(result):
+    lines = result.get('output', '').lstrip().splitlines()
+    return result.get('returncode') == 0 and bool(lines) and lines[0].strip() == 'COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT'
+
+
 def run_mini(engine, sandbox, directory, prompt, base_url, key):
     os.environ['MSWEA_GLOBAL_CONFIG_DIR'] = str(directory/'mini-config')
     os.environ['MSWEA_SILENT_STARTUP'] = '1'
@@ -59,8 +64,7 @@ def run_mini(engine, sandbox, directory, prompt, base_url, key):
 
     def execute_with_submission(action, **kwargs):
         result = execute(action, **kwargs)
-        if (action['command'].strip() == 'echo COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT' and
-                result['returncode'] == 0 and result['output'].strip() == 'COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT'):
+        if mini_submission(result):
             raise Submitted({'role': 'exit', 'content': '', 'exit_status': 'Submitted'})
         return result
 
