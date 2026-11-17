@@ -1,10 +1,13 @@
+"""Offline contracts for the socrat-5 management move and Rancher provenance."""
+
 import hashlib
 import json
-from pathlib import Path
 import shutil
 import subprocess
 import tempfile
 import unittest
+from pathlib import Path
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -17,7 +20,10 @@ SUFFIX = (
 
 
 class ManagementMove(unittest.TestCase):
-    def test_controller_only_placement(self):
+    """Keep controller placement, Rancher source, and upstream bytes unchanged."""
+
+    def test_controller_only_placement(self) -> None:
+        """Pin the controller to socrat-5 and the rest of Argo CD to socrat-0."""
         v = yaml.safe_load((ROOT / "deploy/platform/argo-cd/values.yaml").read_text())
         self.assertEqual(v["controller"]["nodeSelector"]["kubernetes.io/hostname"], "socrat-5")
         self.assertEqual(v["global"]["nodeSelector"]["kubernetes.io/hostname"], "socrat-0")
@@ -26,7 +32,8 @@ class ManagementMove(unittest.TestCase):
         app = yaml.safe_load((ROOT / "deploy/argocd/apps/argo-cd.yaml").read_text())
         self.assertEqual(app["spec"]["sources"][0]["targetRevision"], "10.11.6")
 
-    def test_exact_rancher_source_native_route_and_security(self):
+    def test_exact_rancher_source_native_route_and_security(self) -> None:
+        """Require the pinned Rancher chart, native route, and verified TLS bundle."""
         chart = yaml.safe_load((ROOT / "charts/rancher/Chart.yaml").read_text())
         self.assertEqual(chart["version"], "2.15.2")
         self.assertEqual(chart["appVersion"], "v2.15.2")
@@ -46,7 +53,8 @@ class ManagementMove(unittest.TestCase):
         self.assertEqual(a["spec"]["sources"][0]["path"], "charts/rancher")
         self.assertFalse(a["spec"]["syncPolicy"]["automated"]["prune"])
 
-    def upstream(self, target):
+    def upstream(self, target: Path) -> None:
+        """Check every vendored Rancher file against its recorded upstream digest."""
         src = ROOT / "charts/rancher"
         for name, digest in json.loads((src / "UPSTREAM-SHA256.json").read_text()).items():
             data = (src / name).read_bytes()
@@ -61,16 +69,19 @@ class ManagementMove(unittest.TestCase):
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_bytes(data)
 
-    def test_complete_upstream_provenance(self):
+    def test_complete_upstream_provenance(self) -> None:
+        """Require the full upstream digest set, not a sampled subset."""
         with tempfile.TemporaryDirectory() as d:
             self.upstream(Path(d))
 
     @unittest.skipUnless(shutil.which("helm"), "helm needed for render equivalence")
-    def test_empty_alias_defaults_byte_identical_to_upstream(self):
+    def test_empty_alias_defaults_byte_identical_to_upstream(self) -> None:
+        """Show empty host alias defaults render the same bytes as upstream."""
         with tempfile.TemporaryDirectory() as d:
             self.upstream(Path(d))
 
-            def render(path):
+            def render(path: str | Path) -> bytes:
+                """Render one local chart with the pinned Helm template arguments."""
                 return subprocess.check_output(
                     [
                         "helm",
@@ -86,7 +97,8 @@ class ManagementMove(unittest.TestCase):
 
             self.assertEqual(render(d), render(ROOT / "charts/rancher"))
 
-    def test_ansible_cannot_resurrect_unpatched_upstream_chart(self):
+    def test_ansible_cannot_resurrect_unpatched_upstream_chart(self) -> None:
+        """Keep the placement role on annotation, not a Helm upgrade or pod patch."""
         tasks = (ROOT / "ansible/roles/rancher_placement/tasks/main.yml").read_text()
         self.assertNotIn(
             "--reuse-values",

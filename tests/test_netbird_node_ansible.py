@@ -1,17 +1,24 @@
-from pathlib import Path
+"""Offline source contracts for NetBird node onboarding in Ansible."""
+
 import unittest
+from pathlib import Path
+
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class NodeAnsibleTest(unittest.TestCase):
-    def test_baseline_and_membership_playbooks_include_onboarding(self):
+    """Read committed Ansible source and keep NetBird onboarding explicit."""
+
+    def test_baseline_and_membership_playbooks_include_onboarding(self) -> None:
+        """Require the node role in every baseline and membership playbook."""
         for name in ["base.yml", "site.yml", "k3s-worker.yml", "k3s-ha.yml", "netbird-nodes.yml"]:
             plays = yaml.safe_load((ROOT / "ansible/playbooks" / name).read_text())
             self.assertTrue(any("netbird_node" in p.get("roles", []) for p in plays), name)
 
-    def test_controller_connection_is_strict_and_outside_node_group(self):
+    def test_controller_connection_is_strict_and_outside_node_group(self) -> None:
+        """Keep the controller host strict, ungrouped, and token-free by default."""
         v = yaml.safe_load((ROOT / "ansible/inventory/netbird-controller.yml").read_text())
         self.assertNotIn("children", v["all"])
         connection = v["all"]["hosts"]["netbird-controller"]
@@ -26,7 +33,8 @@ class NodeAnsibleTest(unittest.TestCase):
         self.assertEqual(defaults["netbird_node_bootstrap_token_file"], "")
         self.assertEqual(defaults["netbird_node_adopt_state"], "")
 
-    def test_inventory_scope_not_limited_to_one_requested_host(self):
+    def test_inventory_scope_not_limited_to_one_requested_host(self) -> None:
+        """Keep the node inventory template on the full Socrat group."""
         tasks = yaml.safe_load((ROOT / "ansible/roles/netbird_node/tasks/main.yml").read_text())[0][
             "block"
         ]
@@ -43,7 +51,8 @@ class NodeAnsibleTest(unittest.TestCase):
         self.assertIn("inventory/hosts.yml", cfg)
         self.assertIn("inventory/netbird-controller.yml", cfg)
 
-    def test_token_timer_is_not_permission_replay(self):
+    def test_token_timer_is_not_permission_replay(self) -> None:
+        """Bind the credential timer to the credential unit and keep it secret."""
         tasks = yaml.safe_load((ROOT / "ansible/roles/netbird_node/tasks/main.yml").read_text())[0][
             "block"
         ]
