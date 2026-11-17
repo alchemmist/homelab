@@ -6,12 +6,18 @@ import argparse
 import ast
 import json
 import os
-from pathlib import Path
 import re
 import shutil
-import tempfile
 import sys
+import tempfile
+from pathlib import Path
+from typing import TYPE_CHECKING
 from urllib.parse import unquote, urlparse
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from scripts.quality.common import Finding
 
 from common import ROOT, command, failure, finding, owned, report, tracked, use_project_tools
 
@@ -20,6 +26,184 @@ MYPY_ERROR = re.compile(
     r"(?P<message>.*?)(?:\s+\[(?P<code>[A-Za-z0-9_-]+)\])?$"
 )
 GITHUB_EXPR = re.compile(r"\$\{\{.*?\}\}", re.DOTALL)
+
+
+_DEPENDENCY_PROTOCOL_FAILURE = "Dependency audit returned malformed, empty, or skipped data"
+_DEPENDENCY_PATH_FAILURE = "Dependency metadata must be a tracked regular repository file"
+_DEPENDENCY_REQUIREMENT_FAILURE = (
+    "Requirement lock contains unsupported or unsafe source directives"
+)
+_MAX_REQUIREMENT_LOCK_BYTES = 4 * 1024 * 1024
+_PINNED_REQUIREMENT = re.compile(
+    r"[A-Za-z0-9][A-Za-z0-9_.-]*(?:\[[A-Za-z0-9_.,-]+\])?"
+    r"==[A-Za-z0-9][A-Za-z0-9_.+!-]*(?:\s*;[^\n]*)?"
+)
+_REQUIREMENT_HASH = re.compile(r"--hash=sha256:[0-9a-fA-F]{64}")
+
+
+def validate_requirement_lock(path: Path) -> None:
+    """Refuse includes, indexes and direct references before an auditor can read them."""
+    if path.stat().st_size > _MAX_REQUIREMENT_LOCK_BYTES:
+        raise ValueError(_DEPENDENCY_REQUIREMENT_FAILURE)
+    pinned = False
+    hashed = False
+    for line in path.read_text().splitlines():
+        candidate = line.strip()
+        if not candidate or candidate.startswith("#"):
+            continue
+        candidate = candidate.removesuffix("\\").strip()
+        if _REQUIREMENT_HASH.fullmatch(candidate) and pinned:
+            hashed = True
+        elif _PINNED_REQUIREMENT.fullmatch(candidate):
+            pinned = True
+        else:
+            raise ValueError(_DEPENDENCY_REQUIREMENT_FAILURE)
+    if not pinned or not hashed:
+        raise ValueError(_DEPENDENCY_REQUIREMENT_FAILURE)
+
+
+def _distribution_fields(value: object) -> tuple[str, str, list[object]]:
+    """Validate a collected distribution without trusting the auditor's JSON shape."""
+    if not isinstance(value, dict):
+        raise TypeError(_DEPENDENCY_PROTOCOL_FAILURE)
+    if value.get("skip_reason"):
+        raise ValueError(_DEPENDENCY_PROTOCOL_FAILURE)
+    name, version, vulnerabilities = value.get("name"), value.get("version"), value.get("vulns")
+    if not isinstance(name, str) or not isinstance(version, str):
+        raise TypeError(_DEPENDENCY_PROTOCOL_FAILURE)
+    if not name or not version:
+        raise ValueError(_DEPENDENCY_PROTOCOL_FAILURE)
+    if not isinstance(vulnerabilities, list):
+        raise TypeError(_DEPENDENCY_PROTOCOL_FAILURE)
+    return name, version, list(vulnerabilities)
+
+
+def _vulnerability_id(value: object) -> str:
+    """Reject malformed advisory identities instead of silently omitting them."""
+    if not isinstance(value, dict):
+        raise TypeError(_DEPENDENCY_PROTOCOL_FAILURE)
+    identity = value.get("id")
+    if not isinstance(identity, str):
+        raise TypeError(_DEPENDENCY_PROTOCOL_FAILURE)
+    if not identity:
+        raise ValueError(_DEPENDENCY_PROTOCOL_FAILURE)
+    return identity
+
+
+def dependency_report(payload: object, source: str) -> tuple[list[Finding], int]:
+    """Retain every distribution vulnerability and reject incomplete audit protocols."""
+    if not isinstance(payload, dict):
+        raise TypeError(_DEPENDENCY_PROTOCOL_FAILURE)
+    rows = payload.get("dependencies")
+    if not isinstance(rows, list):
+        raise TypeError(_DEPENDENCY_PROTOCOL_FAILURE)
+    if not rows:
+        raise ValueError(_DEPENDENCY_PROTOCOL_FAILURE)
+    findings: list[Finding] = []
+    seen: set[tuple[str, str, str]] = set()
+    for row in rows:
+        name, version, vulnerabilities = _distribution_fields(row)
+        for vulnerability in vulnerabilities:
+            identity = _vulnerability_id(vulnerability)
+            key = (name, version, identity)
+            if key in seen:
+                continue
+            seen.add(key)
+            findings.append(
+                finding(
+                    identity,
+                    source,
+                    1,
+                    f"{name} {version}: {identity}",
+                    f"{name}:{version}:{identity}",
+                )
+            )
+    return findings, len(rows)
+
+
+def _audit_python_source(argv: Sequence[str], source: str) -> tuple[list[Finding], int]:
+    """Bind the auditor's exit status to its complete vulnerability report."""
+    process = command(argv, allowed=(0, 1), timeout=300)
+    findings, count = dependency_report(json.loads(process.stdout), source)
+    if (process.returncode == 0) != (not findings):
+        raise ValueError(_DEPENDENCY_PROTOCOL_FAILURE)
+    return findings, count
+
+
+def check_dependencies(names: Sequence[str]) -> tuple[list[Finding], int]:
+    """Audit owned Python locks without installation and block unimplemented lock coverage."""
+    findings, count = _audit_python_source(
+        ["pip-audit", "--local", "--strict", "--format", "json"], "uv.lock"
+    )
+    inventory = set(names)
+    for name in sorted(inventory):
+        path = Path(name)
+        requirement = path.name == "requirements.txt" or (
+            path.name.startswith("requirements-") and path.suffix == ".txt"
+        )
+        other_lock = path.name in {
+            "package-lock.json",
+            "npm-shrinkwrap.json",
+            "poetry.lock",
+            "Pipfile.lock",
+            "pnpm-lock.yaml",
+            "yarn.lock",
+            "bun.lock",
+            "bun.lockb",
+            "pylock.toml",
+        } or (path.name == "uv.lock" and name != "uv.lock")
+        missing_lock = (
+            path.name == "requirements.in" and str(path.with_suffix(".txt")) not in inventory
+        ) or (
+            path.name == "package.json"
+            and not any(
+                str(path.with_name(lock)) in inventory
+                for lock in (
+                    "package-lock.json",
+                    "npm-shrinkwrap.json",
+                    "pnpm-lock.yaml",
+                    "yarn.lock",
+                    "bun.lock",
+                    "bun.lockb",
+                )
+            )
+        )
+        if not (requirement or other_lock or missing_lock):
+            continue
+        actual = ROOT / path
+        if path.is_absolute() or not actual.resolve().is_relative_to(ROOT):
+            raise ValueError(_DEPENDENCY_PATH_FAILURE)
+        if actual.is_symlink() or not actual.is_file():
+            raise ValueError(_DEPENDENCY_PATH_FAILURE)
+        if requirement:
+            validate_requirement_lock(actual)
+            rows, scanned = _audit_python_source(
+                [
+                    "pip-audit",
+                    "--strict",
+                    "--disable-pip",
+                    "--no-deps",
+                    "--require-hashes",
+                    "--requirement",
+                    name,
+                    "--format",
+                    "json",
+                ],
+                name,
+            )
+            findings.extend(rows)
+            count += scanned
+        else:
+            findings.append(
+                finding(
+                    "DEPENDENCY_LOCK_MISSING" if missing_lock else "DEPENDENCY_LOCK_UNAUDITED",
+                    name,
+                    1,
+                    "Owned dependency metadata lacks complete implemented lockfile auditing.",
+                    name,
+                )
+            )
+    return findings, count
 
 
 def sarif(data, prefix=""):
@@ -509,29 +693,7 @@ def check(tool):
                 )
         return result, len(files)
     if tool == "dependencies":
-        data = json.loads(
-            command(
-                ["pip-audit", "--local", "--format", "json"], allowed=(0, 1), timeout=300
-            ).stdout
-        )
-        result = []
-        seen = set()
-        for item in data["dependencies"]:
-            for vuln in item.get("vulns", []):
-                identity = (item["name"], vuln["id"])
-                if identity in seen:
-                    continue
-                seen.add(identity)
-                result.append(
-                    finding(
-                        vuln["id"],
-                        "uv.lock",
-                        1,
-                        item["name"] + ": " + vuln["id"],
-                        item["name"] + ":" + vuln["id"],
-                    )
-                )
-        return result, len(data["dependencies"])
+        return check_dependencies(names)
     if tool == "secrets":
         with tempfile.TemporaryDirectory(prefix="homelab-secret-scan-") as temp:
             stage = Path(temp) / "source"

@@ -2,6 +2,8 @@
   "version": 1,
   "suites": {
     "fast": [
+      "tests/swe_mini/test_policy.py",
+      "tests/swe_mini/test_queue.py",
       "tests/test_alert_graph_panel_ids.py",
       "tests/test_app_access_reconciler.py",
       "tests/test_authentik_automation.py",
@@ -47,6 +49,7 @@
       "tests/test_public_ingress_redirects.py",
       "tests/test_public_web_access.py",
       "tests/test_quality_evidence_regressions.py",
+      "tests/test_quality_dependency_coverage.py",
       "tests/test_quality_system.py",
       "tests/test_refactor_acceptance.py",
       "tests/test_resource_budget.py",

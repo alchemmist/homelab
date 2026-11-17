@@ -27,6 +27,12 @@ with patch.dict(sys.modules, {'policy': policy, 'jwt': MagicMock(), 'requests': 
 
 class QueueTransitions(unittest.TestCase):
     def setUp(self):
+        # A transition regression must never reach credential files or the real API.
+        github_guard = patch.object(
+            c, 'github', side_effect=AssertionError('Real GitHub access forbidden in queue fixtures')
+        )
+        github_guard.start()
+        self.addCleanup(github_guard.stop)
         c.DB.execute('DELETE FROM runs')
         c.DB.execute("INSERT INTO runs (id,lane,revision,state,job,created) VALUES ('test','backend',?,'work','test-work',0)", ('a' * 40,))
         c.DB.commit()
