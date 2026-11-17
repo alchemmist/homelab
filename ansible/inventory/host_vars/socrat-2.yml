@@ -13,7 +13,7 @@ homelab_ssh_direct_host: 109.120.141.60
 homelab_ssh_direct_port: 22
 
 # Private authoritative listener for the encrypted Moscow DNS hop.
-public_dns_extra_listen: ["10.250.0.2@5354"]
+public_dns_extra_listen: [10.250.0.2@5354]
 public_dns_transit_listener_enabled: true
 
 # Measured native etcd catch-up exceeds180s over the Moscow management relay.
@@ -21,5 +21,5 @@ public_dns_transit_listener_enabled: true
 vpn_failover_kubernetes_start_timeout_seconds: 600
 
 # Exact machine exception: relay HTTPS must reach Traefik, not human private web.
-wireguard_private_web_passthrough_sources: ["10.250.0.40"]
+wireguard_private_web_passthrough_sources: [10.250.0.40]
 ...

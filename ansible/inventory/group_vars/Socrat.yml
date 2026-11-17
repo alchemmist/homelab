@@ -36,7 +36,7 @@ wg_socrat_peer_endpoints:
   socrat-1:
     socrat-2: 127.0.0.1:51840
   socrat-2:
-    socrat-1: ''
+    socrat-1: ""
 wg_socrat_admin_clients:
   tim-phone:
     address: 10.250.0.7
