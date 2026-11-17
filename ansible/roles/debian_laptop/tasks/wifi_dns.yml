@@ -16,7 +16,7 @@
     dest: /etc/resolv.conf
     remote_src: true
     backup: true
-    mode: '0644'
+    mode: "0644"
   when: homelab_dns_present.rc == 1
 
 - name: Install the shared resolver manager for wired and wireless DHCP
@@ -31,7 +31,7 @@
       [main]
       dns=default
       rc-manager=resolvconf
-    mode: '0644'
+    mode: "0644"
 
 - name: Enable shared resolver updates
   ansible.builtin.systemd_service:
