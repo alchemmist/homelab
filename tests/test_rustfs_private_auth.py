@@ -4,7 +4,7 @@ import http.client
 import threading
 import unittest
 import urllib.error
-from test_rustfs_gateway import g, BASE
+from tests.test_rustfs_gateway import g, BASE
 
 
 class PrivateAuth(unittest.TestCase):

@@ -1,7 +1,7 @@
 import copy, importlib.util, json
 from pathlib import Path
 import pytest
-from public_entry_contract import CHARTS, render, values as entry_values
+from tests.public_entry_contract import CHARTS, render, values as entry_values
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(

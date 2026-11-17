@@ -10,7 +10,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ExecutionLinks(unittest.TestCase):
-    def test_id_is_annotation_not_alert_instance_or_threshold_input(self):
+    """Keep execution IDs in annotations and preserve native deferred-code guards."""
+
+    def test_id_is_annotation_not_alert_instance_or_threshold_input(self) -> None:
+        """Verify id is annotation not alert instance or threshold input."""
         definition = json.loads((ROOT / "docs/n8n/spi/alerts.json").read_text())
         rule = next(r for r in definition["rules"] if r["uid"] == "spi-triage-failures")
         by_id = {q["refId"]: q for q in rule["data"]}
@@ -34,7 +37,8 @@ class ExecutionLinks(unittest.TestCase):
         assert "/workflow/J9akzlydrf9XZiID/executions/" in template
         assert "16473" not in template  # no hard-coded historical execution
 
-    def test_native_workflow_accepts_all_current_safe_deferred_codes(self):
+    def test_native_workflow_accepts_all_current_safe_deferred_codes(self) -> None:
+        """Verify native workflow accepts all current safe deferred codes."""
         workflow = json.loads((ROOT / "docs/n8n/spi/triage-workflow.json").read_text())
         code = next(
             n["parameters"]["jsCode"]

@@ -8,25 +8,59 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import TypedDict
 
 import pytest
 import yaml
+
+
+class _Entrypoint(TypedDict):
+    """One temporary ownership classification, including its explicit review reason."""
+
+    path: str
+    status: str
+    owners: list[str]
+    reason: str
+
+
+class _EntrypointConfig(TypedDict):
+    """Fixture schema and all classified operational entries."""
+
+    schemaVersion: int
+    entries: list[_Entrypoint]
+
+
+class _RefusalPlay(TypedDict):
+    """The only allowed retired play shape, before deliberate effect mutations."""
+
+    name: str
+    hosts: str
+    gather_facts: bool
+    become: bool
+    any_errors_fatal: bool
+    tasks: list[dict[str, object]]
+
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
     "entrypoints", ROOT / "scripts/check_operational_entrypoints.py"
 )
+assert spec is not None
+assert spec.loader is not None
 entrypoints = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(entrypoints)
 
 
 class OperationalEntrypoints(unittest.TestCase):
-    def fixture(self, d):
+    """Detect stale classifications, unowned installers and retired entrypoint effects."""
+
+    def fixture(self, d: str) -> tuple[Path, _EntrypointConfig]:
+        """Create a review-required competing installer in an isolated directory."""
         root = Path(d)
         (root / "ansible").mkdir()
         (root / "deploy/contracts").mkdir(parents=True)
         (root / "ansible/demo.yml").write_text("command: helm upgrade demo ./chart\n")
-        c = {
+        c: _EntrypointConfig = {
             "schemaVersion": 1,
             "entries": [
                 {
@@ -40,10 +74,12 @@ class OperationalEntrypoints(unittest.TestCase):
         self.save(root, c)
         return root, c
 
-    def save(self, root, c):
+    def save(self, root: Path, c: _EntrypointConfig) -> None:
+        """Persist only the temporary classification used by a mutation test."""
         (root / "deploy/contracts/operational-entrypoints.json").write_text(json.dumps(c))
 
-    def test_current_inventory_is_read_only(self):
+    def test_current_inventory_is_read_only(self) -> None:
+        """Verify current inventory is read only."""
         assert entrypoints.check(ROOT) == (23, 10)
         with tempfile.TemporaryDirectory() as d:
             root, _c = self.fixture(d)
@@ -51,14 +87,16 @@ class OperationalEntrypoints(unittest.TestCase):
             assert entrypoints.check(root) == (1, 1)
             assert before == {p: p.read_bytes() for p in before}
 
-    def test_new_unclassified_helm_entrypoint_fails(self):
+    def test_new_unclassified_helm_entrypoint_fails(self) -> None:
+        """Verify new unclassified helm entrypoint fails."""
         with tempfile.TemporaryDirectory() as d:
             root, _c = self.fixture(d)
             (root / "ansible/other.yml").write_text("command: helm install other ./chart\n")
             with pytest.raises(ValueError, match="Unclassified"):
                 entrypoints.check(root)
 
-    def test_duplicate_or_stale_classification_fails(self):
+    def test_duplicate_or_stale_classification_fails(self) -> None:
+        """Verify duplicate or stale classification fails."""
         for mode in ["duplicate", "stale", "invalid"]:
             with self.subTest(mode=mode), tempfile.TemporaryDirectory() as d:
                 root, c = self.fixture(d)
@@ -75,13 +113,14 @@ class OperationalEntrypoints(unittest.TestCase):
                 with pytest.raises(ValueError, match=re.escape(expected)):
                     entrypoints.check(root)
 
-    def test_retired_import_or_remote_action_fails(self):
+    def test_retired_import_or_remote_action_fails(self) -> None:
+        """Verify retired import or remote action fails."""
         for mode in ["import", "command"]:
             with self.subTest(mode=mode), tempfile.TemporaryDirectory() as d:
                 root, c = self.fixture(d)
                 c["entries"][0]["status"] = "retired"
                 self.save(root, c)
-                play = {
+                play: _RefusalPlay = {
                     "name": "refuse",
                     "hosts": "socrat-0",
                     "gather_facts": False,
@@ -108,7 +147,8 @@ class OperationalEntrypoints(unittest.TestCase):
                 with pytest.raises(ValueError, match=re.escape(expected)):
                     entrypoints.check(root)
 
-    def test_missing_owner_is_not_silently_accepted(self):
+    def test_missing_owner_is_not_silently_accepted(self) -> None:
+        """Verify missing owner is not silently accepted."""
         with tempfile.TemporaryDirectory() as d:
             root, c = self.fixture(d)
             c["entries"][0]["owners"] = ["missing"]
@@ -116,7 +156,8 @@ class OperationalEntrypoints(unittest.TestCase):
             with pytest.raises(ValueError, match="Missing operational source owner"):
                 entrypoints.check(root)
 
-    def test_scan_symlink_escape_rejected_before_read(self):
+    def test_scan_symlink_escape_rejected_before_read(self) -> None:
+        """Verify scan symlink escape rejected before read."""
         with tempfile.TemporaryDirectory() as d, tempfile.TemporaryDirectory() as other:
             root, _c = self.fixture(d)
             (root / "ansible/outside.yml").symlink_to(Path(other) / "nonexistent-private.yml")

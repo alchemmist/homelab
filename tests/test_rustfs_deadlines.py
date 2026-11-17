@@ -5,7 +5,7 @@ import threading
 import time
 import unittest
 from unittest.mock import patch
-from test_rustfs_gateway import g
+from tests.test_rustfs_gateway import g
 
 
 class Deadlines(unittest.TestCase):

@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import unittest
 import yaml
-from public_entry_contract import CHARTS, ROOT, render
+from tests.public_entry_contract import CHARTS, ROOT, render
 
 
 class OwnershipTests(unittest.TestCase):

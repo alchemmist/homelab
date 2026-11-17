@@ -94,7 +94,7 @@ def test_live_update_is_url_only_and_does_not_reprovision_tv():
 
 def test_no_dedicated_tv_alias_or_internal_vpn_in_helpers():
     import yaml
-    from public_entry_contract import CHARTS, values
+    from tests.public_entry_contract import CHARTS, values
 
     assert not any(
         r["host"] == "tv.alchemmist.xyz" for owner in CHARTS for r in values(owner)["routes"]

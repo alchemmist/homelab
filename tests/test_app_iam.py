@@ -18,7 +18,7 @@ FILES = ROOT / "ansible/roles/authentik/files"
 sys.path.insert(0, str(FILES))
 import app_iam
 import lifecycle
-import test_identity as identity
+from tests import test_identity as identity
 
 
 class LifecycleAPI:

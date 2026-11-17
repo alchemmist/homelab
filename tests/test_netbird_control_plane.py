@@ -247,7 +247,7 @@ class ControlPlaneTests(unittest.TestCase):
             )
             # Full validate is required by runtime-config; the dict above is incomplete for peers.
             # Use the synthetic access fixture shape from the pilot tests via a local complete object.
-            from test_netbird_pilot import inputs
+            from tests.test_netbird_pilot import inputs
 
             source.write_text(json.dumps(inputs()))
             env = {

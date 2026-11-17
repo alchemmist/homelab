@@ -9,7 +9,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class DeploymentOwnership(unittest.TestCase):
-    def test_retired_entrypoints_have_no_side_effect_or_followup_play(self):
+    """Retired installers refuse before effects while Git-owned protections remain intact."""
+
+    def test_retired_entrypoints_have_no_side_effect_or_followup_play(self) -> None:
+        """Verify retired entrypoints have no side effect or followup play."""
         for name in [
             "rancher",
             "litellm",
@@ -87,7 +90,8 @@ class DeploymentOwnership(unittest.TestCase):
                     assert path in task["ansible.builtin.fail"]["msg"]
                     assert (ROOT / path).exists()
 
-    def test_retirement_preserves_chart_owned_protection_intent(self):
+    def test_retirement_preserves_chart_owned_protection_intent(self) -> None:
+        """Verify retirement preserves chart owned protection intent."""
         webui = yaml.safe_load((ROOT / "charts/open-webui/values.yaml").read_text())
         terminal = yaml.safe_load((ROOT / "charts/open-terminal/values.yaml").read_text())
         assert webui["toolGuard"]["enabled"]
@@ -101,7 +105,8 @@ class DeploymentOwnership(unittest.TestCase):
             assert app["spec"]["source"]["helm"]["releaseName"] == name
             assert app["spec"]["destination"]["namespace"] == "llm"
 
-    def test_monitoring_entrypoint_only_imports_fail_closed_guard(self):
+    def test_monitoring_entrypoint_only_imports_fail_closed_guard(self) -> None:
+        """Verify monitoring entrypoint only imports fail closed guard."""
         tasks = yaml.safe_load((ROOT / "ansible/roles/monitoring_stack/tasks/main.yml").read_text())
         assert len(tasks) == 1
         assert tasks[0]["ansible.builtin.import_tasks"] == "gitops-guard.yml"
@@ -112,7 +117,8 @@ class DeploymentOwnership(unittest.TestCase):
         assert set(guard[0]) == {"name", "ansible.builtin.fail", "tags"}
         assert "always" in guard[0]["tags"]
 
-    def test_argocd_bootstrap_version_and_values_match_git_owner(self):
+    def test_argocd_bootstrap_version_and_values_match_git_owner(self) -> None:
+        """Verify argocd bootstrap version and values match git owner."""
         bootstrap = yaml.safe_load((ROOT / "ansible/playbooks/argocd.yml").read_text())[0]
         app = yaml.safe_load((ROOT / "deploy/argocd/apps/argo-cd.yaml").read_text())
         source = next(s for s in app["spec"]["sources"] if s.get("chart") == "argo-cd")
