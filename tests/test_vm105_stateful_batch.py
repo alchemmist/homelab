@@ -6,10 +6,15 @@ R = pathlib.Path(__file__).resolve().parents[1]
 BASE = "ba7a1f34"
 
 
-def render(root, chart, values, ns, release):
+def render(root, chart, values, ns, release, *, release_image: dict[str, str] | None = None):
     cmd = ["helm", "template", release, str(root / chart), "-n", ns]
     if values:
         cmd += ["-f", str(root / values)]
+    if release_image is not None:
+        # Release version is an input independent of historical placement. Only
+        # the before-render receives it; a wrong current template still differs.
+        for key, value in release_image.items():
+            cmd += ["--set-string", f"image.{key}={value}"]
     return {
         (d["kind"], d["metadata"]["name"]): d
         for d in yaml.safe_load_all(subprocess.check_output(cmd, text=True))
@@ -76,8 +81,15 @@ class StatefulBoundaries(unittest.TestCase):
         ]
         for chart, values, ns, release, allowed in cases:
             with self.subTest(chart=chart):
+                release_image = None
+                if chart == "charts/spi-triage":
+                    # Do not freeze the SPI application version at the migration
+                    # date or revert a subsequent canonical release from main.
+                    release_image = yaml.safe_load((R / values).read_text())["image"]
+                    self.assertEqual(set(release_image), {"repository", "tag", "digest"})
+                    self.assertTrue(all(isinstance(value, str) for value in release_image.values()))
                 a, b = (
-                    render(self.old, chart, values, ns, release),
+                    render(self.old, chart, values, ns, release, release_image=release_image),
                     render(R, chart, values, ns, release),
                 )
                 self.assertEqual(set(a), set(b))
