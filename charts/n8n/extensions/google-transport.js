@@ -6,11 +6,15 @@ const {createLookup,HOSTS}=require('./google-dns');
 const ATTEMPT_MS=2000, TOTAL_MS=9500, MAX_ATTEMPTS=8, MAX_PARALLEL=2, HEDGE_MS=250;
 const TRANSIENT=new Set(['ETIMEDOUT','ECONNRESET','ECONNREFUSED','EHOSTUNREACH','ENETUNREACH','EPIPE','ERR_TLS_HANDSHAKE_TIMEOUT']);
 function safeError(code){return Object.assign(new Error('Google TLS connection could not be established'),{code});}
+function scopedHost(options,callback){
+ const host=typeof options?.host==='string'?options.host.toLowerCase().replace(/\.$/,''):'';
+ return HOSTS.has(host)&&Number(options.port??443)===443&&typeof callback==='function'&&!options.socket&&!options.path&&options.family!==6&&options.family!=='IPv6'?host:'';
+}
 function createConnection(original,lookup=createLookup(),report=()=>{},limits={}){
  const attemptMs=limits.attemptMs??ATTEMPT_MS,totalMs=limits.totalMs??TOTAL_MS,hedgeMs=limits.hedgeMs??HEDGE_MS;
  return function(options,callback){
-  const args=arguments,host=typeof options?.host==='string'?options.host.toLowerCase().replace(/\.$/,''):'';
-  if(!HOSTS.has(host)||Number(options.port??443)!==443||typeof callback!=='function'||options.socket||options.path||options.family===6||options.family==='IPv6')return original.apply(this,args);
+  const args=arguments,host=scopedHost(options,callback);
+  if(!host)return original.apply(this,args);
   if(options.rejectUnauthorized===false||(options.servername&&options.servername.toLowerCase().replace(/\.$/,'')!==host)){
    queueMicrotask(()=>callback(safeError('GOOGLE_TLS_POLICY_REJECTED')));return undefined;
   }
@@ -65,9 +69,19 @@ function createConnection(original,lookup=createLookup(),report=()=>{},limits={}
   return undefined;
  };
 }
-function install(report){
+// Two static SSH local forwards, NOT a generic SOCKS/HTTP proxy. The remote
+// sshd key restricts destinations to the same two exact Google names:443.
+function createEgressConnection(original,report,limits){
+ const ports={'www.googleapis.com':18443,'oauth2.googleapis.com':18444};
+ const loopback=(host,options,callback)=>callback(null,[{address:'127.0.0.1',family:4}]);
+ const scoped=createConnection(function(options){
+  return original.call(this,{...options,host:'127.0.0.1',hostname:'127.0.0.1',port:ports[options.servername]});
+ },loopback,report,limits);
+ return function(options,callback){return (scopedHost(options,callback)?scoped:original).apply(this,arguments);};
+}
+function install(report,egress=process.env.N8N_GOOGLE_SSH_EGRESS==='1'){
  const original=https.Agent.prototype.createConnection;
- https.Agent.prototype.createConnection=createConnection(original,undefined,report);
+ https.Agent.prototype.createConnection=egress?createEgressConnection(original,report):createConnection(original,undefined,report);
  return ()=>{https.Agent.prototype.createConnection=original;};
 }
-module.exports={createConnection,install,ATTEMPT_MS,TOTAL_MS,MAX_ATTEMPTS,MAX_PARALLEL,HEDGE_MS};
+module.exports={createConnection,createEgressConnection,install,ATTEMPT_MS,TOTAL_MS,MAX_ATTEMPTS,MAX_PARALLEL,HEDGE_MS};
