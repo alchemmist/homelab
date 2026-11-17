@@ -69,8 +69,8 @@ function createConnection(original,lookup=createLookup(),report=()=>{},limits={}
   return undefined;
  };
 }
-// Two static SSH local forwards, NOT a generic SOCKS/HTTP proxy. The remote
-// sshd key restricts destinations to the same two exact Google names:443.
+// Two loopback dokodemo-door inbounds of official Xray-core. Its VLESS
+// outbound comes from the dedicated native 3x-ui service subscription.
 function createEgressConnection(original,report,limits){
  const ports={'www.googleapis.com':18443,'oauth2.googleapis.com':18444};
  const loopback=(host,options,callback)=>callback(null,[{address:'127.0.0.1',family:4}]);
@@ -79,7 +79,7 @@ function createEgressConnection(original,report,limits){
  },loopback,report,limits);
  return function(options,callback){return (scopedHost(options,callback)?scoped:original).apply(this,arguments);};
 }
-function install(report,egress=process.env.N8N_GOOGLE_SSH_EGRESS==='1'){
+function install(report,egress=process.env.N8N_GOOGLE_SERVICE_VPN==='1'){
  const original=https.Agent.prototype.createConnection;
  https.Agent.prototype.createConnection=egress?createEgressConnection(original,report):createConnection(original,undefined,report);
  return ()=>{https.Agent.prototype.createConnection=original;};
