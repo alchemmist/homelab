@@ -28,7 +28,7 @@ def command(args, *, cwd=ROOT, timeout=900):
 def checks():
     return {
         'backend': command(['uv', 'run', '--locked', '--group', 'test', 'pytest', '-q', 'server/tests', '-m', 'not integration']),
-        'frontend': command(['npm', 'exec', '--', 'vitest', 'run'], cwd=ROOT / 'web'),
+        'frontend': command(['npm', 'exec', '--', 'vitest', 'run', '--maxWorkers=2'], cwd=ROOT / 'web'),
         'build': command(['npm', 'run', 'build'], cwd=ROOT / 'web'),
     }
 
@@ -38,7 +38,7 @@ def agent_main():
     from minisweagent import package_dir
     from minisweagent.agents.default import DefaultAgent
     from minisweagent.environments.local import LocalEnvironment
-    from minisweagent.models.litellm_model import LitellmModel
+    from minisweagent.models.litellm_textbased_model import LitellmTextbasedModel
     config = yaml.safe_load((Path(package_dir) / 'config/default.yaml').read_text())
     model_config = config['model']
     model_config.update(model_name='openai/venice-deepseek', cost_tracking='ignore_errors')
@@ -48,7 +48,7 @@ def agent_main():
     )
     cfg = config['agent'] | dict(step_limit=100, cost_limit=0, wall_time_limit_seconds=4500,
                                  output_path=ART / 'trajectory.json')
-    agent = DefaultAgent(LitellmModel(**model_config), LocalEnvironment(cwd=str(ROOT), timeout=180), **cfg)
+    agent = DefaultAgent(LitellmTextbasedModel(**model_config), LocalEnvironment(cwd=str(ROOT), timeout=180), **cfg)
     result = agent.run((ART / 'task.txt').read_text())
     (ART / 'agent-exit.json').write_text(json.dumps(result))
 

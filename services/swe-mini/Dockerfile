@@ -7,6 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PLAYWRIGHT_BROWSERS_PATH=/opt/b
 WORKDIR /app
 COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir --require-hashes -r requirements.txt && playwright install --with-deps chromium && chmod -R a+rX /opt/browsers && useradd -u 1000 -m agent
-COPY policy.py worker.py controller.py /app/
+COPY policy.py worker.py controller.py selftest.py /app/
+RUN python /app/selftest.py
 USER 1000:1000
 CMD ["python", "/app/controller.py"]
