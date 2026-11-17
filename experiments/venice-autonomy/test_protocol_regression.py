@@ -112,6 +112,17 @@ class SnapshotTests(unittest.TestCase):
         fixed = pilot.grade_candidate(python, self.dest, fixed_dir)
         self.assertTrue(fixed["passed"], json.dumps(fixed, sort_keys=True))
         self.assertTrue(fixed["allowed_edits"]["allowed"])
+        commented = Path(self.temp.name) / "commented"
+        shutil.copytree(fixed_dir, commented)
+        text = (commented / "main.py").read_text(encoding="utf-8")
+        start = pilot.method_spans(text)["_answer"][0]
+        lines = text.splitlines(keepends=True)
+        lines.insert(start, "        # added comment\n")
+        (commented / "main.py").write_text("".join(lines), encoding="utf-8")
+        graded = pilot.grade_candidate(python, self.dest, commented)
+        self.assertTrue(graded["passed"], json.dumps(graded, sort_keys=True))
+        from repository_runner import artifact_accepted
+        self.assertFalse(artifact_accepted(graded, self.dest, commented))
 
 
 if __name__ == "__main__":

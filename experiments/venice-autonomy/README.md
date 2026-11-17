@@ -118,7 +118,12 @@ callback it runs at most three times and sends another turn only when
 After the third rejection it records that the continuation budget is exhausted
 and does not ask for another turn. An exception from `conversation.run` propagates
 without a replay. `repository_runner.py` calls `run_openhands(..., acceptance=...)`
-from this worktree; it does not exec a rewritten copy of the function. Paths,
+from this worktree; it does not exec a rewritten copy of the function.
+Round and final artifact acceptance share `artifact_accepted`: a functional
+pass is not enough when new comments, protocol edits, or edits outside the two
+allowed methods are present. `overall_success` also requires a clean finish and
+the absence of provider, infrastructure, and cleanup errors. A valid artifact
+after a provider error stays accepted as an artifact and still fails the process. Paths,
 image, snapshot and output root come from `AUTONOMY_*` environment variables.
 
 Unit coverage is `test_continue.py`. The verifier contract from

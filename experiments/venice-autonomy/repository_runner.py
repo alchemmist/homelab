@@ -161,6 +161,42 @@ class RepositoryEnvironment:
             self.volume_name = None
 
 
+def comment_delta(snapshot, candidate):
+    def comments(path):
+        return collections.Counter(
+            token.string for token in tokenize.generate_tokens(io.StringIO(path.read_text()).readline)
+            if token.type == tokenize.COMMENT)
+    return comments(candidate / 'main.py') - comments(snapshot / 'agent' / 'main.py')
+
+
+def artifact_accepted(verdict, snapshot, candidate):
+    if not isinstance(verdict, dict) or verdict.get('passed') is not True:
+        return False
+    if verdict.get('agent_protocol_unchanged') is not True:
+        return False
+    edits = verdict.get('allowed_edits')
+    if not isinstance(edits, dict) or edits.get('allowed') is not True:
+        return False
+    try:
+        if comment_delta(snapshot, candidate):
+            return False
+    except (OSError, SyntaxError, tokenize.TokenError, UnicodeError):
+        return False
+    return True
+
+
+def overall_success(summary):
+    return (
+        summary.get('accepted') is True
+        and summary.get('clean_finish') is True
+        and not summary.get('cleanup_error_type')
+        and not summary.get('run_error')
+        and not summary.get('run_error_type')
+        and not summary.get('infrastructure_error')
+        and not summary.get('infrastructure_error_type')
+    )
+
+
 def apply_continuation_policy(facts, round_number, force_once=False):
     facts['real_accepted'] = facts['accepted']
     facts['continue'] = (not facts['accepted']) and facts.get('consecutive_no_progress', 0) < 2
@@ -182,11 +218,7 @@ def sdk_acceptance(environment, directory, round_number):
     finally:
         subprocess.run(['docker', 'unpause', environment.container_id], capture_output=True, check=True, timeout=15)
     verdict = protocol.grade_candidate_container('docker', environment.image, snapshot, candidate)
-
-    def comments(path):
-        return collections.Counter(token.string for token in tokenize.generate_tokens(io.StringIO(path.read_text()).readline) if token.type == tokenize.COMMENT)
-
-    added = comments(candidate / 'main.py') - comments(snapshot / 'agent' / 'main.py')
+    added = comment_delta(snapshot, candidate)
     current = hashlib.sha256((candidate / 'main.py').read_bytes()).hexdigest()
     source = pathlib.Path(os.environ['AUTONOMY_SOURCE_CANDIDATE']) if os.getenv('AUTONOMY_SOURCE_CANDIDATE') else snapshot / 'agent'
     previous = getattr(environment, 'last_candidate_hash', hashlib.sha256((source / 'main.py').read_bytes()).hexdigest())
@@ -194,7 +226,7 @@ def sdk_acceptance(environment, directory, round_number):
     environment.last_candidate_hash = current
     facts = {
         'round': round_number,
-        'accepted': bool(verdict.get('passed')) and not added,
+        'accepted': artifact_accepted(verdict, snapshot, candidate),
         'no_added_comments': not bool(added),
         'candidate_sha256': current,
         'consecutive_no_progress': environment.no_progress,
@@ -288,10 +320,14 @@ def main(argv=None):
         candidate = directory / 'candidate'
         environment.snapshot(candidate)
         subprocess.run(['docker', 'unpause', environment.container_id], capture_output=True, timeout=15)
-        environment.close()
         summary['agent_commands'] = len(environment.events)
         summary['verdict'] = protocol.grade_candidate_container('docker', image, snapshot, candidate)
-        summary['accepted'] = bool(summary['verdict'].get('passed'))
+        summary['accepted'] = artifact_accepted(summary['verdict'], snapshot, candidate)
+        try:
+            environment.close()
+        except Exception as error:
+            summary['cleanup_error_type'] = type(error).__name__
+            environment.container_id = None
     except BaseException as error:
         if isinstance(error, (KeyboardInterrupt, SystemExit)):
             raise
@@ -310,7 +346,7 @@ def main(argv=None):
             'accepted', 'clean_finish', 'exit_status', 'elapsed_seconds', 'adapter', 'run_error_type', 'infrastructure_error_type', 'cleanup_error_type')}
         public['directory'] = directory.name
         print(json.dumps(public), flush=True)
-    return 0 if summary.get('accepted') and summary.get('clean_finish') and not summary.get('cleanup_error_type') and not summary.get('run_error') else 1
+    return 0 if overall_success(summary) else 1
 
 
 if __name__ == '__main__':
