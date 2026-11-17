@@ -17,7 +17,7 @@ _WORKFLOW = _ROOT / ".github/workflows/swe-mini-release.yml"
 _GIT_SHA_LENGTH = 40
 _STEP_COUNT = 8
 _STATEMENT_COUNT = 3
-_TIMEOUT_MINUTES = 20
+_TIMEOUT_MINUTES = 60
 _PAIR_COUNT = 2
 _CHECKOUT = "actions/checkout@11d5960a326750d5838078e36cf38b85af677262"
 _SETUP_PYTHON = "actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065"
@@ -163,6 +163,7 @@ def test_release_image_build_and_deploy_inputs_stay_unchanged() -> None:
         "context": "services/swe-mini",
         "push": True,
         "platforms": "linux/amd64",
+        "outputs": "type=image,compression=zstd,compression-level=12,force-compression=true",
         "tags": "harbor.socrat.alchemmist.xyz/homelab/swe-mini:${{ github.sha }}",
         "cache-from": "type=gha",
         "cache-to": "type=gha,mode=max",
