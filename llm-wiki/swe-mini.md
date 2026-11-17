@@ -157,3 +157,13 @@ unchanged), avoiding a30minute idle gap after a fast failed/no-op task.
 An open dependency-repair PR blocks duplicate repair tasks against the SAME main
 revision (health state waiting_for_dependency_merge). Once main advances or the
 PR closes, admission resumes automatically; merge authority remains human-only.
+
+Live Monori task261117190224-efbb4 started automatically after the bootstrap release.
+Its real backend baseline passed430tests (243integration tests deselected) in35.61s.
+Read-only credential-free ephemeral diagnostics confirmed actual model shell actions
+and autonomous error/format recovery, not just a Running Pod. The model reached a
+candidate whose npm ci succeeded (815packages); tests/build, exact candidate review
+and actual PR publication remain unproven at this checkpoint. Controller Recreate
+rollouts preserved this SAME active Job/run through the durable queue; no duplicate
+worker was launched. Do not exec a debug process inheriting RESULT_KEY into an
+active model container; use an env-empty read-only ephemeral inspector if needed.

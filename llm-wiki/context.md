@@ -38,6 +38,10 @@ production-операции. Датированные результаты не 
   SPI worker, format-quorum, LiteLLM branding. [Authoritative handoff](../docs/vm105-stateful-20261116.md).
   Новые записи на `socrat-5` авторитетны. Старые claims — stale recovery, не
   актуальная копия. Rollback после новых записей требует fresh reverse handoff.
+- `socrat-5`: [SWE Mini](swe-mini.md), автономная очередь mini-swe-agent для Monori.
+  Durable SQLite PVC, отдельные non-root Jobs, только `venice-deepseek` через LiteLLM.
+  Реальный smoke и переход к Monori приняты17ноября; первый PR/review ещё не принят.
+  Production Monori/PVC/банковские credentials не подключены, merge не автоматический.
 - Wiki: `deploy/wiki-runtime/values.yaml`, claim `wiki-runtime-socrat5`;
   `/mnt/files/homelab/wiki-runtime/data`. Runtime volume авторитетен, Git sync
   может отставать. Нельзя править managed tree параллельно writer.
