@@ -92,7 +92,7 @@ def start_job(run, phase):
         },
     }
     job = {'apiVersion': 'batch/v1', 'kind': 'Job', 'metadata': {'name': name, 'labels': {'app': 'swe-mini-worker'}},
-           'spec': {'backoffLimit': 0, 'activeDeadlineSeconds': 6900, 'ttlSecondsAfterFinished': 86400, 'template': pod}}
+           'spec': {'backoffLimit': 0, 'activeDeadlineSeconds': 6900, 'ttlSecondsAfterFinished': 3600, 'template': pod}}
     try:
         BATCH.create_namespaced_job(NS, job)
     except client.ApiException as e:

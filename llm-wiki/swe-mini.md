@@ -74,7 +74,8 @@ Pause new tasks with `paused:true` in Git; active job/review finishes. Set
 `enabled:false` to stop controller (not an emergency cancellation of existing Jobs).
 Emergency worker cancellation is a separate bounded operator action; do not
 blanket-delete workloads. PVC has Prune=false/Delete=false; never delete it to
-reset queue. Worker Jobs TTL24h; review proposal ConfigMaps removed on completion.
+reset queue. Worker Jobs TTL1h after completion to bound retained node-local checkouts/dependencies;
+review proposal ConfigMaps removed on completion.
 
 Read-only inspection:
 ```
