@@ -61,13 +61,17 @@ write_lima_yaml() {
 }
 
 vm_status() {
-  limactl list --format '{{.Name}} {{.Status}}' 2>/dev/null | awk -v n="${NAME}" '$1==n { print $2 }'
+  local status_line=""
+  if status_line="$(limactl list --format '{{.Name}} {{.Status}}' 2>/dev/null | awk -v n="${NAME}" '$1==n { print $2 }')"; then
+    :
+  fi
+  printf '%s' "${status_line}"
 }
 
 cmd_status() {
   need_lima
   local st
-  st="$(vm_status || true)"
+  st="$(vm_status)"
   if [[ -z "${st}" ]]; then
     log "vm: absent"
   else
@@ -90,7 +94,7 @@ cmd_up() {
   fi
   write_lima_yaml
   local st
-  st="$(vm_status || true)"
+  st="$(vm_status)"
   if [[ "${st}" == "Running" ]]; then
     log "vm already running"
     return 0
@@ -106,7 +110,7 @@ cmd_up() {
 cmd_down() {
   need_lima
   local st
-  st="$(vm_status || true)"
+  st="$(vm_status)"
   if command -v kubectl >/dev/null 2>&1 && kubectl get node "${NAME}" >/dev/null 2>&1; then
     log "cordon ${NAME}"
     kubectl cordon "${NAME}" || true
@@ -126,12 +130,19 @@ cmd_down() {
 
 
 cmd_menu() {
-  local st resources node ip pods
-  st="$(vm_status || true)"
+  local st resources node ip pods menu_line
+  st="$(vm_status)"
   [[ -n "${st}" ]] || st="absent"
   resources=""
   if [[ "${st}" != "absent" ]]; then
-    read -r cpus mem < <(limactl list --format '{{.Name}} {{.CPUs}} {{.Memory}}' 2>/dev/null | awk -v n="${NAME}" '$1==n { print $2, $3 }')
+    menu_line=""
+    if menu_line="$(limactl list --format '{{.Name}} {{.CPUs}} {{.Memory}}' 2>/dev/null | awk -v n="${NAME}" '$1==n { print $2, $3 }')"; then
+      :
+    fi
+    if [[ -z "${menu_line}" ]]; then
+      return 1
+    fi
+    read -r cpus mem <<< "${menu_line}"
     if [[ "${mem:-}" =~ ^[0-9]+$ ]] && (( mem >= 1073741824 )); then
       mem="$(( mem / 1073741824 ))GiB"
     fi

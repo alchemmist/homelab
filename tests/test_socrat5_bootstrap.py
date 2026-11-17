@@ -39,7 +39,7 @@ class BootstrapTests(unittest.TestCase):
         self.assertIn("-t mangle -I PREROUTING 1 -i wg-socrat -s 10.250.0.41/32", s)
         self.assertIn("--sport 22 -m conntrack --ctstate ESTABLISHED", s)
         self.assertIn("-d 10.250.0.40/32", s)
-        self.assertIn('-A "$CHAIN" -j DROP', s)
+        self.assertIn('-A "${CHAIN}" -j DROP', s)
         for bad in ["iptables-restore", " -F ", " -P ", "MASQUERADE", "--dport 6443"]:
             self.assertNotIn(bad, s)
 

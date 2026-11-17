@@ -8,7 +8,7 @@ if ! "${IPT}" -w 10 -t mangle -S "${CHAIN}" >/dev/null 2>&1; then
     "${IPT}" -w 10 -t mangle -A "${CHAIN}" -d 10.250.0.40/32 -p icmp --icmp-type echo-request -j RETURN
     "${IPT}" -w 10 -t mangle -A "${CHAIN}" -d 10.250.0.40/32 -p icmp --icmp-type echo-reply -j RETURN
     "${IPT}" -w 10 -t mangle -A "${CHAIN}" -d 10.250.0.40/32 -p tcp --sport 22 -m conntrack --ctstate ESTABLISHED -j RETURN
-    "${IPT}" -w 10 -t mangle -A "$CHAIN" -j DROP
+    "${IPT}" -w 10 -t mangle -A "${CHAIN}" -j DROP
 fi
 # Validate exact owned chain; stop on partial/unknown state, never flush/rebuild.
 actual=$("${IPT}" -w 10 -t mangle -S "${CHAIN}")

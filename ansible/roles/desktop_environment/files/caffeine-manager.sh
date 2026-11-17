@@ -8,58 +8,70 @@ readonly STATUS_ENABLED='{"text":"Hypridle enabled","class":"enabled","alt":"ena
 readonly STATUS_DISABLED='{"text":"Caffeine enabled","class":"disabled","alt":"disabled","tooltip":"Режим молнии: таймеры hypridle отключены, закрытие крышки игнорируется"}'
 readonly STATUS_PARTIAL='{"text":"Hypridle disabled","class":"disabled","alt":"disabled","tooltip":"Hypridle остановлен, но блокировка крышки не активна"}'
 
-is_enabled() {
-    pgrep -u "$UID" -x hypridle >/dev/null
+refresh_hypridle_enabled() {
+    hypridle_enabled=0
+    if pgrep -u "${UID}" -x hypridle >/dev/null; then
+        hypridle_enabled=1
+    fi
 }
 
-lid_is_inhibited() {
-    systemctl --user is-active --quiet "$LID_SERVICE" &&
-        systemd-inhibit --list --no-pager --no-legend | grep -q '^waybar-caffeine[[:space:]].*handle-lid-switch'
+refresh_lid_inhibited() {
+    lid_inhibited=0
+    if systemctl --user is-active --quiet "${LID_SERVICE}" &&
+        systemd-inhibit --list --no-pager --no-legend | grep -q '^waybar-caffeine[[:space:]].*handle-lid-switch'; then
+        lid_inhibited=1
+    fi
 }
 
 print_status() {
-    if is_enabled; then
-        printf '%s\n' "$STATUS_ENABLED"
-    elif lid_is_inhibited; then
-        printf '%s\n' "$STATUS_DISABLED"
+    refresh_hypridle_enabled
+    if [[ "${hypridle_enabled}" -eq 1 ]]; then
+        printf '%s\n' "${STATUS_ENABLED}"
     else
-        printf '%s\n' "$STATUS_PARTIAL"
+        refresh_lid_inhibited
+        if [[ "${lid_inhibited}" -eq 1 ]]; then
+            printf '%s\n' "${STATUS_DISABLED}"
+        else
+            printf '%s\n' "${STATUS_PARTIAL}"
+        fi
     fi
 }
 
 notify_waybar() {
-    pkill -u "$UID" -SIGRTMIN+"$WAYBAR_SIGNAL" waybar 2>/dev/null || true
+    pkill -u "${UID}" -SIGRTMIN+"${WAYBAR_SIGNAL}" waybar 2>/dev/null || true
 }
 
 start_hypridle() {
-    systemctl --user start "$SERVICE"
-    systemctl --user stop "$LID_SERVICE"
+    systemctl --user start "${SERVICE}"
+    systemctl --user stop "${LID_SERVICE}"
 }
 
 stop_hypridle() {
-    systemctl --user start "$LID_SERVICE"
+    systemctl --user start "${LID_SERVICE}"
     local ready=false i
     for ((i=0; i<30; i++)); do
-        if lid_is_inhibited; then
+        refresh_lid_inhibited
+        if [[ "${lid_inhibited}" -eq 1 ]]; then
             ready=true
             break
         fi
         sleep 0.1
     done
-    if [[ "$ready" != true ]]; then
-        systemctl --user stop "$LID_SERVICE"
+    if [[ "${ready}" != true ]]; then
+        systemctl --user stop "${LID_SERVICE}"
         printf 'Could not inhibit lid events\n' >&2
         return 1
     fi
-    if ! systemctl --user stop "$SERVICE"; then
-        systemctl --user stop "$LID_SERVICE"
+    if ! systemctl --user stop "${SERVICE}"; then
+        systemctl --user stop "${LID_SERVICE}"
         return 1
     fi
-    pkill -u "$UID" -x hypridle 2>/dev/null || true
+    pkill -u "${UID}" -x hypridle 2>/dev/null || true
 }
 
 toggle() {
-    if is_enabled; then
+    refresh_hypridle_enabled
+    if [[ "${hypridle_enabled}" -eq 1 ]]; then
         stop_hypridle
     else
         start_hypridle
@@ -72,5 +84,5 @@ case "${1:-}" in
     --disable) start_hypridle; notify_waybar ;;
     -t|--toggle) toggle ;;
     -s|--status|"") print_status ;;
-    *) printf 'Usage: %s [--status|--toggle]\n' "$0" >&2; exit 2 ;;
+    *) printf 'Usage: %s [--status|--toggle]\n' "${0}" >&2; exit 2 ;;
 esac

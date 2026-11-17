@@ -8,15 +8,16 @@
 
 arc info >/dev/null 2>&1 || exit 0
 info=$(arc info 2>/dev/null)
-base=$(printf '%s' "$info" | sed -n 's/^remote_head: //p')
-[ -z "$base" ] && base="arcadia/trunk"
+base=$(printf '%s' "${info}" | sed -n 's/^remote_head: //p')
+[[ -z "${base}" ]] && base="arcadia/trunk"
 
-case "$1" in
-  ahead)  range="$base..HEAD"; glyph="" ;;
-  behind) range="HEAD..$base"; glyph="" ;;
+case "${1}" in
+  ahead)  range="${base}..HEAD"; glyph="" ;;
+  behind) range="HEAD..${base}"; glyph="" ;;
   *) exit 0 ;;
 esac
 
-n=$(arc log "$range" --oneline 2>/dev/null | grep -c .)
+log_out=$(arc log "${range}" --oneline 2>/dev/null)
+n=$(printf '%s\n' "${log_out}" | grep -c .)
 i=0
-while [ "$i" -lt "$n" ]; do printf '%s' "$glyph"; i=$((i + 1)); done
+while [[ "${i}" -lt "${n}" ]]; do printf '%s' "${glyph}"; i=$((i + 1)); done
