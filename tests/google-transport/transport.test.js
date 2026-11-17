@@ -1,7 +1,7 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),{EventEmitter}=require('node:events');
 const {createConnection,MAX_ATTEMPTS}=require('../../charts/n8n/extensions/google-transport');
-const records=['192.0.2.1','192.0.2.2','192.0.2.3','192.0.2.4','192.0.2.5'].map(address=>({address,family:4}));
+const records=Array.from({length:12},(_,i)=>({address:'192.0.2.'+(i+1),family:4}));
 const lookup=(h,o,cb)=>cb(null,records);const options={host:'www.googleapis.com',port:443,servername:'www.googleapis.com',_agentKey:'fixture',ca:'fixture-ca'};
 function sock(){const s=new EventEmitter();s.destroyed=false;s.destroy=()=>{s.destroyed=true;};s.authorized=true;return s;}
 function run(fn,opts=options){return new Promise((res,rej)=>{const v=fn(opts,(e,s)=>e?rej(e):res(s));assert.equal(v,undefined,'raw socket must not reach HTTP');});}
@@ -23,7 +23,7 @@ test('certificate rejection never retries even with more DNS addresses',async()=
 test('unauthorized secureConnect fails closed',async()=>{
  const f=createConnection(()=>{const s=sock();s.authorized=false;setImmediate(()=>s.emit('secureConnect'));return s;},lookup);await assert.rejects(run(f),{code:'GOOGLE_TLS_REJECTED'});
 });
-test('at most four fresh-DNS candidates, all failed sockets destroyed',async()=>{
+test('at most eight fresh-DNS candidates, all failed sockets destroyed',async()=>{
  const sockets=[];const f=createConnection(()=>{const s=sock();sockets.push(s);return s;},lookup,()=>{},{attemptMs:5,totalMs:200});await assert.rejects(run(f),{code:'GOOGLE_CONNECT_EXHAUSTED'});assert.equal(sockets.length,MAX_ATTEMPTS);assert.ok(sockets.every(s=>s.destroyed));
 });
 test('whole deadline covers DNS; late answer cannot start connection',async()=>{
@@ -47,4 +47,20 @@ test('real native HTTPS: stalled handshake -> verified next socket -> one lost P
  const original=https.Agent.prototype.createConnection;const agent=new https.Agent({ca:fs.readFileSync(dir+'/cert')});agent.createConnection=createConnection(function(o){connections++;return original.call(this,{...o,host:'127.0.0.1',port:connections===1?stall.address().port:good.address().port});},lookup,()=>{},{attemptMs:40,totalMs:1000});
  await assert.rejects(new Promise((resolve,reject)=>{const req=https.request('https://www.googleapis.com/',{method:'POST',agent},resolve);req.on('error',reject);req.end('fixture-only');}),{code:'ECONNRESET'});
  assert.equal(connections,2);assert.equal(requests,1);agent.destroy();
+});
+test('regression: first four stalled DNS candidates do not exclude healthy fifth',async()=>{
+ const sockets=[];let active=0,peak=0;const f=createConnection(()=>{const s=sock();sockets.push(s);active++;peak=Math.max(peak,active);const destroy=s.destroy;s.destroy=()=>{if(!s.destroyed)active--;destroy();};if(sockets.length===5)setImmediate(()=>s.emit('secureConnect'));return s;},lookup,()=>{},{attemptMs:20,totalMs:200,hedgeMs:2});
+ const winner=await run(f);assert.equal(winner,sockets[4]);assert.ok(peak<=2);assert.ok(sockets.filter(s=>s!==winner).every(s=>s.destroyed));winner.destroy();assert.equal(active,0);
+});
+test('fast healthy first socket avoids unnecessary hedge',async()=>{
+ let calls=0;const f=createConnection(()=>{calls++;const s=sock();setImmediate(()=>s.emit('secureConnect'));return s;},lookup,()=>{},{hedgeMs:30});const winner=await run(f);await new Promise(r=>setTimeout(r,40));assert.equal(calls,1);winner.destroy();
+});
+test('simultaneous verified candidates yield only one callback and destroy loser',async()=>{
+ const sockets=[];let callbacks=0;const f=createConnection(()=>{const s=sock();sockets.push(s);if(sockets.length===2)setImmediate(()=>{for(const x of sockets)x.emit('secureConnect');});return s;},lookup,()=>{},{attemptMs:100,totalMs:200,hedgeMs:1});const winner=await new Promise((r,j)=>f(options,(e,s)=>{callbacks++;e?j(e):r(s)}));assert.equal(callbacks,1);assert.equal(sockets.filter(s=>s.destroyed).length,1);winner.destroy();
+});
+test('whole deadline destroys both in-flight sockets and ignores late events',async()=>{
+ const sockets=[];const f=createConnection(()=>{const s=sock();sockets.push(s);return s;},lookup,()=>{},{attemptMs:100,totalMs:15,hedgeMs:1});await assert.rejects(run(f),{code:'GOOGLE_CONNECT_DEADLINE'});assert.equal(sockets.length,2);assert.ok(sockets.every(s=>s.destroyed));for(const s of sockets)s.emit('secureConnect');
+});
+test('fatal certificate failure destroys racing sibling and never retries',async()=>{
+ const sockets=[];const f=createConnection(()=>{const s=sock();sockets.push(s);if(sockets.length===2)setImmediate(()=>s.emit('error',{code:'CERT_HAS_EXPIRED'}));return s;},lookup,()=>{},{attemptMs:100,totalMs:200,hedgeMs:1});await assert.rejects(run(f),{code:'GOOGLE_TLS_REJECTED'});assert.equal(sockets.length,2);assert.ok(sockets.every(s=>s.destroyed));
 });
