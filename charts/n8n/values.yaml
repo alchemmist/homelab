@@ -37,6 +37,6 @@ recoveryStorage:
 # Separate identity; never mount Venice's private key or use a generic proxy.
 # Enable only after machine credential provisioning and fresh global drain.
 googleEgress:
-  enabled: false
+  enabled: true
   secretName: n8n-google-egress
   image: harbor.socrat.alchemmist.xyz/homelab/venice-browser@sha256:10f6a5c13bfbaee22ae1648d34f454a9537e3f4da5004f7218b2035214f9708b
