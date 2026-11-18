@@ -31,7 +31,7 @@ class TrafficLightArgoTest(unittest.TestCase):
     def test_current_strip_is_per_application_native_bar_gauge_without_chrome(self):
         p = self.panels[909]
         self.assertEqual(p['type'], 'bargauge')
-        self.assertEqual(p['gridPos'], {'x': 0, 'y': 19, 'w': 12, 'h': 1})
+        self.assertEqual(p['gridPos'], {'x': 0, 'y': 18, 'w': 12, 'h': 1})
         self.assertEqual(p['title'], '')
         self.assertTrue(p['transparent'])
         self.assertEqual(p['fieldConfig']['defaults']['min'], 0)

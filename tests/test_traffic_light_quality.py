@@ -101,16 +101,16 @@ class QualityPanelsTest(unittest.TestCase):
     def test_more_service_room_without_moving_originals(self):
         self.assertNotIn(933,self.p)
         for i in [931,932]:
-            self.assertEqual(self.p[i]['gridPos']['w'],4)
+            self.assertEqual(self.p[i]['gridPos']['w'],5)
             self.assertEqual(self.p[i]['options']['graphMode'],'area')
         self.assertNotIn('socrat:node_pressure',json.dumps([self.p[i] for i in Q.IDS & self.p.keys()]))
 
     def test_cascade_split_cards_without_new_css(self):
-        for i,x in [(934,12),(935,14)]:
-            self.assertEqual(self.p[i]['gridPos'],{'x':x,'y':16,'w':2,'h':2})
-        for i,x in [(936,12),(939,14)]:
+        for i,x,y in [(934,4,12),(935,6,14)]:
+            self.assertEqual(self.p[i]['gridPos'],{'x':x,'y':y,'w':2,'h':2})
+        for i,x in [(936,2),(939,0)]:
             p=self.p[i]
-            self.assertEqual(p['gridPos'],{'x':x,'y':18,'w':2,'h':2})
+            self.assertEqual(p['gridPos'],{'x':x,'y':12,'w':2,'h':2})
             self.assertEqual(len(p['targets']),1)
             t=p['targets'][0]
             self.assertTrue(t['instant'])
