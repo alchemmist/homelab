@@ -18,8 +18,12 @@ class ReadyContract(unittest.TestCase):
             "headRefOid": self.sha,
             "mergeable": "MERGEABLE",
             "isDraft": False,
-            "commits": {"nodes": [{"commit": {"oid": self.sha}}]},
+            "commits": {
+                "nodes": [{"commit": {"oid": self.sha}}],
+                "pageInfo": {"hasPreviousPage": False},
+            },
             "reviews": {
+                "pageInfo": {"hasNextPage": False},
                 "nodes": [
                     {
                         "id": "review",
@@ -28,12 +32,13 @@ class ReadyContract(unittest.TestCase):
                         "body": "",
                         "commit": {"oid": self.sha},
                     }
-                ]
+                ],
             },
-            "comments": {"nodes": []},
-            "reviewThreads": {"nodes": []},
+            "comments": {"nodes": [], "pageInfo": {"hasNextPage": False}},
+            "reviewThreads": {"nodes": [], "pageInfo": {"hasNextPage": False}},
             "statusCheckRollup": {
                 "contexts": {
+                    "pageInfo": {"hasNextPage": False},
                     "nodes": [
                         {
                             "__typename": "CheckRun",
@@ -41,15 +46,10 @@ class ReadyContract(unittest.TestCase):
                             "status": "COMPLETED",
                             "conclusion": "SUCCESS",
                         }
-                    ]
+                    ],
                 }
             },
         }
-
-        for name in ("reviews", "comments", "reviewThreads"):
-            self.p[name]["pageInfo"] = {"hasNextPage": False}
-        self.p["commits"]["pageInfo"] = {"hasPreviousPage": False}
-        self.p["statusCheckRollup"]["contexts"]["pageInfo"] = {"hasNextPage": False}
 
     def result(self):
         return m.assess(self.p, {"review-bot"}, {"publisher"})
