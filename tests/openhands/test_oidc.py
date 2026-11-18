@@ -89,6 +89,14 @@ class OIDCRender(unittest.TestCase):
         self.assertIn({'ipBlock':{'cidr':'10.42.0.0/32'}},p['spec']['ingress'][0]['from'])
         self.assertEqual(p['spec']['ingress'][0]['ports'],[{'port':4180,'protocol':'TCP'}])
 
+    def test_identity_uses_immutable_subject_not_unverified_mail(self):
+        d = next(v for v in self.objects() if v['kind']=='Deployment' and v['metadata']['name']=='openhands-oidc')
+        args = d['spec']['template']['spec']['containers'][0]['args']
+        self.assertIn('--oidc-email-claim=sub',args)
+        self.assertIn('--scope=openid profile groups offline_access',args)
+        self.assertIn('--allowed-group=homelab-owner',args)
+        self.assertFalse(any('allow-unverified-email' in a or 'skip-issuer-verification' in a for a in args))
+
     def test_oidc_not_custom_auth_or_bearer_bypass(self):
         d = next(v for v in self.objects() if v['kind']=='Deployment' and v['metadata']['name']=='openhands-oidc')
         pod = d['spec']['template']['spec']; c = pod['containers'][0]

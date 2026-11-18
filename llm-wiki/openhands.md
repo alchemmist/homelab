@@ -197,3 +197,14 @@ Current main `e2738ad` contains newer maintainer dependency updates that must no
 downgraded by conflict resolution. CodeRabbit needs a deliberate current-head review
 request through the trusted handler. Never bulk-resolve remarks or treat skipped as
 green. No merge or Ready-to-Review handoff has been performed.
+
+### First real owner callback correction —18November
+
+The real owner callback failed403: oauth2-proxy rejected `email_verified=false`.
+No user/email-verification flag or membership was changed. This owner-only shell
+service now explicitly uses the signed immutable OIDC `sub` as its internal
+identity (`--oidc-email-claim=sub`); mail scope is not requested or used for linking.
+Issuer/audience/signature/expiry/PKCE/CSRF checks and both owner-group gates remain.
+No insecure allow-unverified-email switch was enabled. Retry from `/canvas/`, not
+by replaying an already redeemed callback authorization code. Successful full owner
+callback/UI acceptance remains pending until actually observed after this repair.

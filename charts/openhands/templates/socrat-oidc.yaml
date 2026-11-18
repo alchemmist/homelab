@@ -37,7 +37,10 @@ spec:
             - --oidc-issuer-url=https://auth.socrat.alchemmist.xyz/application/o/openhands/
             - --redirect-url=https://openhands.socrat.alchemmist.xyz/oauth2/callback
             - --upstream=http://openhands.openhands.svc.cluster.local:8000/
-            - --scope=openid profile email groups offline_access
+            # Subject UUID + verified owner-group claims are the identity boundary;
+            # mail is not used for account linking or authorization in this shell UI.
+            - --scope=openid profile groups offline_access
+            - --oidc-email-claim=sub
             - --allowed-group=homelab-owner
             - --oidc-groups-claim=groups
             - --email-domain=*
