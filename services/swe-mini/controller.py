@@ -235,7 +235,7 @@ def tick():
         return
     # Waiting is healthy; external discovery is bounded, including after failures.
     if time.monotonic() < NEXT_IDLE_CHECK:
-        return
+        return False
     NEXT_IDLE_CHECK = time.monotonic() + 300
     # Backpressure: bounded open PRs. Never keep creating PRs faster than a human can review.
     prs = github(f'repos/{REPO}/pulls?state=open&per_page=100')
@@ -279,19 +279,25 @@ class Health(BaseHTTPRequestHandler):
         pass
 
 
+def run_once():
+    try:
+        if tick() is not False:
+            STATUS['error'] = ''
+    except Exception as exc:
+        # Never log bodies, tokens or raw third-party error responses.
+        STATUS['error'] = type(exc).__name__
+        response = getattr(exc, 'response', None)
+        logging.error('Queue tick failed: %s status=%s; bounded retry, no process restart required',
+                      type(exc).__name__, getattr(response, 'status_code', None))
+    finally:
+        STATUS['last_tick'] = time.time()
+
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     config.load_incluster_config()
     CORE, BATCH = client.CoreV1Api(), client.BatchV1Api()
     threading.Thread(target=HTTPServer(('0.0.0.0', 9090), Health).serve_forever, daemon=True).start()
     while True:
-        try:
-            tick()
-            STATUS.update(last_tick=time.time(), error='')
-        except Exception as exc:
-            # Never log request bodies, tokens or raw third-party error responses.
-            STATUS.update(last_tick=time.time(), error=type(exc).__name__)
-            response = getattr(exc, 'response', None)
-            code = getattr(response, 'status_code', None)
-            logging.error('Queue tick failed: %s status=%s; bounded retry, no process restart required', type(exc).__name__, code)
+        run_once()
         time.sleep(30)
