@@ -7,6 +7,7 @@ import unittest
 from unittest import mock
 
 import repository_runner
+import attempt
 
 
 class FakeEnvironment:
@@ -74,6 +75,9 @@ class FinalDecisionTests(unittest.TestCase):
         with mock.patch.dict(os.environ, env, clear=False):
             with mock.patch.object(repository_runner, 'RepositoryEnvironment', Environment), \
                     mock.patch.object(repository_runner, 'invoke_openhands', invoke), \
+                    mock.patch.object(repository_runner, 'load_local', return_value=mock.Mock(
+                        provider_settings=lambda: ('https://unit-test.invalid/v1', 'unit-test-key'),
+                        record_exception=attempt.record_exception)), \
                     mock.patch.object(repository_runner, 'load_protocol', return_value=mock.Mock(
                         verify_snapshot=lambda path: {},
                         grade_candidate_container=lambda *args, **kwargs: verdict,
