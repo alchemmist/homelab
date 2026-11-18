@@ -37,8 +37,8 @@ LLM_BASE_URL and LLM_API_KEY did not configure native settings and were removed.
 Native backend owner key is saved, without printing, in
 `~/.config/homelab/openhands/session-key` (directory0700/file0600). Do not commit,
 paste into chat, put into URLs or share it: access allows shell and file operations.
-`pbcopy < ~/.config/homelab/openhands/session-key` copies it for the native backend
-password field without printing it. Browser usage-reporting consent was opted out
+`pbcopy < ~/.config/homelab/openhands/session-key` is private diagnostic/recovery
+only, not the public login UX. Public access uses Authentik OIDC. Browser usage-reporting consent was opted out
 in the diagnostic browser; do not assume that proves all SDK telemetry is disabled.
 
 ## Proven and not proven
@@ -74,41 +74,86 @@ in the diagnostic browser; do not assume that proves all SDK telemetry is disabl
   NOT connected. `services/openhands/READY_TO_REVIEW.md` is policy, not enforcement.
   `scripts/openhands-pr-ready.py` is a read-only fail-closed audit, not an orchestrator.
 
-## Public entrance: blocked on privileged DNS step
+## Public entrance: standard Authentik OIDC, DNS/TLS acceptance pending
 
-Ingress remains **disabled**. Intended URL `https://openhands.socrat.alchemmist.xyz`
-is not yet a working public service. Existing native LAN session-key disclosure is
-disabled; before enabling ingress, validate remote anonymous auth, TLS and UI.
+Canonical URL: **https://openhands.socrat.alchemmist.xyz/canvas/**.
+This is the intended final browser entrance, not a diagnostic port-forward.
+Agent Canvas1.41.0 has no native human OIDC/RBAC; its owner backend API key is not
+per-user SSO. The deployment uses official **oauth2-proxy7.15.6**, digest-pinned,
+with native Authentik OIDC. There is no custom login handler or universal proxy rollout.
 
-All four installed authoritative renderer hashes matched the tracked baseline
-`833d1fea75afe5ff76c172b7f73fb7ed82192b11f1b4ea4900b43d79dbfc6b3c` at inspection.
-SSH succeeds through existing strictly pinned local aliases. The default inventory's
-host-key-file/alias combination failed verification; no check was disabled or new
-key accepted. Existing `sudo -n true` fails on all four nodes. Passwords are not
-retained and must never be sent through chat.
+- `charts/openhands/templates/socrat-oidc.yaml`: dedicated gateway, Service, Ingress
+  and NetworkPolicy in **identity**, which both existing Traefiks already watch.
+  No shared ingress-controller restart/reconfiguration is necessary. The explicit
+  Certificate is tracked by Argo, so pending TLS is not hidden behind healthy pods.
+- Canvas stays in **openhands** on socrat-5. Its native direct ingress stays disabled;
+  the ONLY application ingress terminates at oauth2-proxy, not Canvas8000.
+  Canvas ingress NetworkPolicy permits only the labeled identity gateway pods.
+- Authentik app `openhands`, confidential client `socrat-openhands`, strict callback
+  `/oauth2/callback`, Code+PKCE S256. Existing signing key and authentication,
+  explicit-consent and invalidation flows are reused without modification.
+- **Only existing `homelab-owner`** is admitted, both by the Authentik application
+  binding and by oauth2-proxy's verified `groups` claim. No users, memberships,
+  platform roles, foundation objects or outposts are changed. Do not widen this
+  to Internal/External/platform-operator: this backend is single-tenant shell access.
+- Secure/HttpOnly/host-only/SameSite=Lax session cookie; configured8h maximum,
+ 2m refresh and5m access tokens. Live owner MFA, silent refresh, logout and group
+  revocation remain human/roundtrip acceptance items, not claimed proven.
+- oauth2-proxy's client/cookie credentials exist only in **identity/openhands-oidc**.
+  Canvas/coding tools do not receive them or the operator's Authentik API token.
+  No access/ID token or identity header is passed to the backend. Bearer bypass is off.
+- Native `AGENT_CANVAS_ALLOW_LAN_SESSION_KEY=true` provides Canvas's supported HTML
+  bootstrap AFTER the OIDC gate. This avoids a second manual backend-key login.
+  Helm fails if this bootstrap is enabled without OIDC, or if the native direct
+  ingress is enabled alongside OIDC. Backend keys alone must not bypass the gateway.
+- As in existing SPI on S5, proxy-only hostAliases resolves the canonical Authentik
+  hostname to existing Traefik Service IP **10.43.218.222**. Issuer/Host/SNI and TLS
+  verification stay unchanged. Split-DNS192.168.0.250 is unreachable from S5.
+  Egress covers the ServiceLB443/Traefik8443 DNAT path, not arbitrary private hosts.
+  If that existing Service is recreated with a new ClusterIP, review this pin too.
 
-A narrow DNS addition is prepared in `scripts/openhands-public-dns.py` and
-`ansible/playbooks/openhands-public-dns.yml`: all four health combinations must keep
-every unrelated record byte-identical; whole-fleet preflight, fresh exact hash,
-serial refresh, private before/after receipts, no daemon restart. The source adds
-only `openhands.socrat`; it has NOT been applied to authoritative servers.
+Verified18November12:55UTC:
 
-Owner can run from the checkout, using existing SSH aliases and an interactive
-sudo prompt (one-time infrastructure bootstrap, not the task UX):
+- Canvas and official gateway both1/1, gateway0 restarts after fixing initial startup.
+  Argo **Synced / Progressing**, explicitly tracking Certificate readiness; its TLS
+  Secret is not issued and `Certificate Ready=False`. Not advertised as ready.
+- Private service-only HTTP test (NOT public TLS acceptance): `/canvas/`302 to the
+  canonical Authentik authorization endpoint, expected callback and PKCE S256.
+  Anonymous API, valid native backend-key-only, bearer-key-only, forged identity
+  headers, forged cookie and WebSocket handshake all401. Callback with an actual
+  generated state but no CSRF cookie403. Malformed state syntax instead yields the
+  upstream500 error; neither case authorizes access or is represented as success.
+- Restricted, no-token/no-secret/no-volume ephemeral acceptance Job on S5 verified
+  issuer metadata using normal TLS validation, then proved a non-gateway pod cannot
+  open TCP8000 to Canvas. Job completed and TTL cleanup removed it.
+- Existing browser-closed proof is still exact on the retained PVC after rollout.
+-20 OpenHands unit/render tests, Helm lint and server-side manifest dry-run pass.
+- Both public edges tested with DNS-only `curl --resolve`, NO `-k`: certificate
+  validation fails (curl60). Current authoritative `ns1/2/3.alchemmist.xyz`, resolved
+  independently, all answer NXDOMAIN for the concrete OpenHands hostname.
 
-```sh
-ANSIBLE_CONFIG=ansible/ansible.cfg ansible-playbook \
-  -i 'socrat-0,socrat-1,socrat-2,socrat-4,' \
-  ansible/playbooks/openhands-public-dns.yml --ask-become-pass \
-  -e openhands_public_dns_apply=true \
-  -e openhands_public_dns_hash=4aba95fb60852174e00eb5ea98cdc848ee4b3b42e112622c5eb82860d40ac42f
-```
+`python3 scripts/provision-openhands-oidc.py` is a GET-only plan. Initial apply
+requires its exact fresh plan hash and a <=1h encrypted identity backup receipt.
+It creates only this provider/application/owner binding, uses private0600 journals,
+stops on uncertain writes or identity drift, and delivers the dedicated proxy Secret.
+It does not replay the identity foundation or rotate existing IdP credentials.
+Existing private operator input: `~/.config/homelab/openhands/authentik-api-token.json`;
+never mount it in Canvas or print token/client/cookie values. Initial pre-first-start
+cookie encoding was corrected to Go's URL-safe base64 alphabet; this was not an
+IdP signing/client-key rotation. Regression coverage uses deterministic non-secret bytes.
 
-Any renderer/script drift invalidates that hash; stop and obtain a fresh plan.
-An uncertain marker is a blocker, not permission to retry. Afterwards independently
-verify authoritative and recursive DNS, then enable ingress in Git, accept TLS/auth
-and demonstrate a browser-started task continuing after closing its tab. Do not use
-live ingress overrides or describe the diagnostic forward as the final entrance.
+**Public DNS/TLS are not accepted yet.** The owner reported an existing wildcard;
+read-only checks on18November against all three public authoritative NS returned
+`NXDOMAIN` for `*.socrat.alchemmist.xyz`; Google/Cloudflare and cert-manager's
+in-cluster resolver also could not resolve the concrete OpenHands name. The HTTP-01
+Challenge is pending on that lookup failure. Do not call a default certificate or
+TLS-verification bypass a successful HTTPS test. No DNS record or authoritative
+renderer was changed; the old unexecuted exact-name DNS bootstrap was retired.
+
+After public wildcard resolution is actually confirmed, cert-manager should complete
+its native HTTP-01 challenge. Then verify trusted TLS, root→Authentik and anonymous
+API401, and perform the real owner MFA/browser-close/reopen acceptance through this
+URL. Pending DNS/TLS/positive MFA means this is not yet a working accepted public UI.
 
 ## PR500 was externally closed, not accepted as Ready
 
