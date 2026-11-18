@@ -25,9 +25,11 @@ numMaxFindings: "12"
 committableSuggestions: true
 suggestionsMaxCalls: "100"
 persistentInlineComments: true
-handlePushTrigger: true
-# /improve stays manual. Automatic runs on every push reposted the same inline suggestion.
-pushCommands: '["/review"]'
+# A push used to start another full /review. The model rewords the same findings, so the
+# inline-comment fingerprint does not match and GitHub gets another copy of each thread.
+# /review stays available as a manual comment.
+handlePushTrigger: false
+pushCommands: '[]'
 # Publish describe/review as GitHub checks: in progress while the agent runs, then success or failure.
 publishAsCheckRun: true
 gunicornWorkers: "6"
