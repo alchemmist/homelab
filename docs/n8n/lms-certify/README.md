@@ -31,3 +31,11 @@ longer than the workflow timeout. Test runner HTTP 5xx is not a grading verdict.
 Before activation verify the target cluster's metric labels and freshness,
 connectivity and credential bindings with a real isolated smoke run, then
 exercise repair and coverage branches before treating the pilot as certified.
+
+Cluster pilot: `deploy_lms_certify_pilot.py` provisions the private services
+and binds credentials without activating the workflow. It assumes the sandbox
+image `lms-certification-sandbox:pilot` was built ahead of time from
+`runner/sandbox.Dockerfile` in the rootless daemon on `socrat-1`. The pilot
+uses its own persistent Postgres instance (not the LMS or n8n database).
+The current provisioning uses the dedicated instance's bootstrap role; replace
+it with the narrower role above before expanding beyond the pilot.
