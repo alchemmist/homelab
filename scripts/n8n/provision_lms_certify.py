@@ -67,7 +67,7 @@ def ensure_secret():
 def main():
     token = ensure_secret()
     code = {"server.py": (BASE / "services/lms-certify/server.py").read_text(),
-            "idle_step.py": (BASE.parent / "lms" / "migration" / "idle_step.py").read_text()}
+            "certify_loop.py": (BASE.parent / "lms" / "migration" / "certify_loop.py").read_text()}
     apply({"apiVersion": "v1", "kind": "ConfigMap", "metadata": {"name": "lms-certify-code", "namespace": "automation"}, "data": code})
     queue_path = Path('/tmp/lms-certify-queue.json')
     queue_path.write_text(json.dumps(queue(), ensure_ascii=False))

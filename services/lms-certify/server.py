@@ -1,21 +1,33 @@
-"""One LMS certification step per request. n8n calls this only when Qwen is idle."""
+"""Run one full certification loop when n8n sees Qwen idle.
+
+The HTTP call returns as soon as the loop is started. The loop keeps the same
+task across model calls, isolated runs and mutation rounds. If other requests
+are waiting on vLLM, the loop saves its place and the next idle minute resumes it.
+"""
 import json
 import os
+import resource
 import subprocess
 import sys
 import tempfile
+import threading
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 sys.path.insert(0, "/app")
-from idle_step import advance
+from certify_loop import certify
 
 ROOT = Path(os.environ.get("STATE_DIR", "/state"))
 QUEUE = Path(os.environ.get("QUEUE_FILE", "/tasks/queue.json"))
 TOKEN = os.environ["WORKER_TOKEN"]
 BASE = os.environ.get("LITELLM_BASE", "http://litellm.llm.svc.cluster.local:4000/v1").rstrip("/")
 MODEL = os.environ.get("LITELLM_MODEL", "qwen3.8-27b")
+PROMETHEUS = os.environ.get(
+    "PROMETHEUS_URL",
+    "http://kube-prometheus-stack-prometheus.cattle-monitoring-system.svc.cluster.local:9090",
+).rstrip("/")
+LOCK = ROOT / "step.lock"
 
 
 def log(event, **fields):
@@ -35,18 +47,27 @@ def save_json(path, value):
     tmp.replace(path)
 
 
+def _limits():
+    resource.setrlimit(resource.RLIMIT_CPU, (2, 2))
+    resource.setrlimit(resource.RLIMIT_AS, (256 * 1024 * 1024, 256 * 1024 * 1024))
+    resource.setrlimit(resource.RLIMIT_NOFILE, (32, 32))
+
+
 def run_python(source, stdin):
+    """Isolated student process: fresh directory, no secrets, CPU and memory caps."""
     with tempfile.TemporaryDirectory(prefix="lms-") as folder:
         path = Path(folder) / "main.py"
         path.write_text(source)
         try:
             result = subprocess.run(
-                [sys.executable, "-I", str(path)],
+                [sys.executable, "-I", "-B", str(path)],
                 input=stdin.encode(),
                 capture_output=True,
                 timeout=2,
                 cwd=folder,
-                env={"PATH": "/usr/bin", "PYTHONNOUSERSITE": "1"},
+                env={"PATH": "/usr/local/bin:/usr/bin", "PYTHONNOUSERSITE": "1", "PYTHONDONTWRITEBYTECODE": "1"},
+                start_new_session=True,
+                preexec_fn=_limits,
             )
         except subprocess.TimeoutExpired:
             return 124, ""
@@ -57,7 +78,7 @@ def llm(role, prompt):
     body = {
         "model": MODEL,
         "temperature": 0,
-        "max_tokens": 1200,
+        "max_tokens": 1600,
         "messages": [
             {"role": "system", "content": "Reply with one JSON object only. No markdown."},
             {"role": "user", "content": prompt},
@@ -68,7 +89,7 @@ def llm(role, prompt):
         data=json.dumps(body).encode(),
         headers={"Authorization": "Bearer " + os.environ["LITELLM_KEY"], "Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(request, timeout=80) as response:
+    with urllib.request.urlopen(request, timeout=120) as response:
         payload = json.load(response)
     text = payload["choices"][0]["message"].get("content") or ""
     start, end = text.find("{"), text.rfind("}")
@@ -77,43 +98,72 @@ def llm(role, prompt):
     return json.loads(text[start:end + 1])
 
 
-def step():
-    lock = ROOT / "step.lock"
-    if lock.exists():
-        return {"action": "busy"}
-    lock.write_text("1")
+def others_waiting():
+    query = 'vllm:num_requests_waiting{model_name="qwen3.8-27b"}'
+    url = PROMETHEUS + "/api/v1/query?query=" + urllib.request.quote(query)
     try:
-        queue = load_json(QUEUE, [])
+        with urllib.request.urlopen(url, timeout=5) as response:
+            payload = json.load(response)
+    except Exception:
+        return False
+    waiting = 0
+    for row in payload.get("data", {}).get("result", []):
+        waiting += float(row["value"][1])
+    return waiting > 0
+
+
+def open_task(queue, state):
+    for item in queue:
+        record = state["tasks"].get(item["id"], {})
+        if record.get("loop") == "v2" and record.get("phase") in {"certified", "needs_review"}:
+            continue
+        return item
+    return None
+
+
+def run_loop(task_id, statement):
+    try:
         state = load_json(ROOT / "state.json", {"tasks": {}})
-        chosen = None
-        for item in queue:
-            record = state["tasks"].get(item["id"], {})
-            if record.get("phase") not in {"certified", "needs_review"}:
-                chosen = item
-                break
-        if chosen is None:
-            log("idle", reason="queue_done", size=len(queue))
-            return {"action": "idle", "reason": "queue_done", "size": len(queue)}
-        record, phase = advance(
-            {"statement": chosen["statement"], "tests": chosen.get("tests") or []},
-            state["tasks"].get(chosen["id"]),
+        record = certify(
+            {"statement": statement},
+            state["tasks"].get(task_id),
             llm,
             run_python,
+            pause=others_waiting,
         )
-        state["tasks"][chosen["id"]] = record
+        state = load_json(ROOT / "state.json", {"tasks": {}})
+        state["tasks"][task_id] = record
         save_json(ROOT / "state.json", state)
-        summary = {
-            "action": "step",
-            "task": chosen["id"],
-            "phase": phase,
-            "status": record.get("phase"),
-            "reason": record.get("reason", ""),
-            "cases": len(record.get("cases") or []),
-        }
-        log("step", **summary)
-        return summary
+        log(
+            "loop",
+            task=task_id,
+            status=record.get("phase"),
+            reason=record.get("reason", ""),
+            rounds=record.get("rounds", 0),
+            cases=len(record.get("cases") or []),
+            killed=(record.get("mutation") or {}).get("killed"),
+            mutants=(record.get("mutation") or {}).get("total"),
+        )
+    except Exception as exc:
+        log("error", task=task_id, kind=type(exc).__name__)
     finally:
-        lock.unlink(missing_ok=True)
+        LOCK.unlink(missing_ok=True)
+
+
+def step():
+    if LOCK.exists():
+        return {"action": "running"}
+    queue = load_json(QUEUE, [])
+    state = load_json(ROOT / "state.json", {"tasks": {}})
+    chosen = open_task(queue, state)
+    if chosen is None:
+        log("idle", reason="queue_done", size=len(queue))
+        return {"action": "idle", "reason": "queue_done", "size": len(queue)}
+    ROOT.mkdir(parents=True, exist_ok=True)
+    LOCK.write_text(chosen["id"])
+    threading.Thread(target=run_loop, args=(chosen["id"], chosen["statement"]), daemon=True).start()
+    log("started", task=chosen["id"])
+    return {"action": "started", "task": chosen["id"]}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -121,7 +171,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path != "/healthz":
             self.send_error(404)
             return
-        self._send({"ok": True})
+        self._send({"ok": True, "running": LOCK.exists()})
 
     def do_POST(self):
         if self.path != "/step" or self.headers.get("X-Worker-Token") != TOKEN:
