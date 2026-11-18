@@ -50,6 +50,24 @@ def main():
         finally:
             forward.terminate(); forward.wait(timeout=10)
     key = base64.b64decode(kube_secret('openhands','openhands-model')['data']['api-key']).decode()
+    # Keep the virtual key aligned with this script. A later run must not leave a
+    # hand-edited higher parallelism or the web-bridge model in place.
+    master = base64.b64decode(kube_secret('llm', 'litellm-env')['data']['LITELLM_MASTER_KEY']).decode().strip()
+    with socket.socket() as s:
+        s.bind(('127.0.0.1', 0)); port = s.getsockname()[1]
+    forward = subprocess.Popen(['kubectl', '-n', 'llm', 'port-forward', 'svc/litellm', f'{port}:4000'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        for _ in range(40):
+            try:
+                with socket.create_connection(('127.0.0.1', port), timeout=1): break
+            except OSError: time.sleep(.25)
+        headers = {'Authorization': 'Bearer ' + master, 'Content-Type': 'application/json'}
+        request = urllib.request.Request(f'http://127.0.0.1:{port}/key/update',
+            headers=headers,
+            data=json.dumps({'key': key, 'models': ['v-deepseek-uc'], 'max_parallel_requests': 1}).encode())
+        urllib.request.urlopen(request, timeout=30).close()
+    finally:
+        forward.terminate(); forward.wait(timeout=10)
     policy = Path(__file__).resolve().parents[1].joinpath('services/openhands/READY_TO_REVIEW.md').read_text()
     settings = {'agent_settings_diff':{'agent_kind':'openhands','llm':{
         'model':'openai/v-deepseek-uc','base_url':'http://litellm.llm.svc.cluster.local:4000/v1',

@@ -1,0 +1,49 @@
+FROM docker.io/library/node:22-bookworm
+
+ENV NODE_ENV=production \
+    HOST=0.0.0.0 \
+    PORT=9655 \
+    NON_INTERACTIVE=1 \
+    DEEPSEEK_AUTH_PATH=/data/deepseek-auth.json \
+    PROXY_API_KEY_FILE=/run/secrets/proxy-api-key \
+    REQUIRE_PROXY_API_KEY=1 \
+    DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates curl wget gnupg xvfb x11vnc novnc websockify \
+      fonts-liberation libnss3 libatk-bridge2.0-0 libgtk-3-0 libxss1 libasound2 \
+    && wget -qO /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
+    && apt-get install -y /tmp/chrome.deb \
+    && rm -rf /var/lib/apt/lists/* /tmp/chrome.deb
+
+WORKDIR /app
+COPY package.json server.js refresh-auth.js ./
+COPY lib/pow.js lib/env.js ./lib/
+RUN python3 - <<'PY'
+from pathlib import Path
+path = Path('/app/server.js')
+text = path.read_text()
+needle = 'const server = http.createServer(async (req, res) => {\n'
+fn = '''
+let deepSeekAuthMtime = 0;
+function reloadDeepSeekAuthIfChanged() {
+    try {
+        const st = fs.statSync(DS_CONFIG_PATH);
+        if (st.mtimeMs !== deepSeekAuthMtime) {
+            deepSeekAuthMtime = st.mtimeMs;
+            loadDeepSeekConfig({ fatal: false });
+        }
+    } catch {}
+}
+'''
+if needle not in text:
+    raise SystemExit('server.js request handler not found')
+text = text.replace(needle, fn + needle + '    reloadDeepSeekAuthIfChanged();\n', 1)
+path.write_text(text)
+PY
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod 755 /entrypoint.sh && chown -R 1000:1000 /app
+
+USER 1000:1000
+EXPOSE 9655 6080
+ENTRYPOINT ["/entrypoint.sh"]

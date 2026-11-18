@@ -1,0 +1,342 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: free-deepseek-chrome
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 8Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: free-deepseek-proxy-start
+data:
+  start.js: |
+    const { spawn } = require('child_process');
+    const fs = require('fs');
+    const serverPath = '/app/server.js';
+    let source = fs.readFileSync(serverPath, 'utf8');
+    if (!source.includes('reloadDeepSeekAuthIfChanged')) {
+      const needle = 'const server = http.createServer(async (req, res) => {\n';
+      const hook = [
+        'let deepSeekAuthMtime = 0;',
+        'function reloadDeepSeekAuthIfChanged() {',
+        '    try {',
+        '        const st = fs.statSync(DS_CONFIG_PATH);',
+        '        if (st.mtimeMs !== deepSeekAuthMtime) {',
+        '            deepSeekAuthMtime = st.mtimeMs;',
+        '            loadDeepSeekConfig({ fatal: false });',
+        '        }',
+        '    } catch {}',
+        '}',
+        '',
+      ].join('\n');
+      if (!source.includes(needle)) throw new Error('server.js request handler not found');
+      source = source.replace(needle, hook + needle + '    reloadDeepSeekAuthIfChanged();\n');
+      fs.writeFileSync(serverPath, source);
+    }
+    const readyNeedle = [
+        "    if (req.method === 'GET' && url.pathname === '/readyz') {",
+        "        const now = Date.now();",
+        "        const ready = accounts.filter(a => a.config.token && a.config.cookie && a.cooldownUntil <= now).length;",
+        "        res.writeHead(ready > 0 ? 200 : 503, { 'Content-Type': 'application/json' });",
+        "        res.end(JSON.stringify({ ready: ready > 0, ready_accounts: ready, total_accounts: accounts.length }));",
+        "        return;",
+        "    }",
+    ].join('\n');
+    const readyCall = [
+        "    if (req.method === 'GET' && url.pathname === '/readyz') {",
+        "        const probe = await deepReady();",
+        "        res.writeHead(probe.ok ? 200 : 503, { 'Content-Type': 'application/json' });",
+        "        res.end(JSON.stringify({ ready: probe.ok, reason: probe.reason }));",
+        "        return;",
+        "    }",
+    ].join('\n');
+        const readyBody = fs.readFileSync('/opt/homelab/deep-ready.js', 'utf8');
+    if (!source.includes('async function deepReady()')) {
+        if (!source.includes(readyNeedle)) throw new Error('readyz handler not found');
+        source = source.replace('#!/usr/bin/env node\n', '#!/usr/bin/env node\n' + readyBody + '\n').replace(readyNeedle, readyCall);
+        fs.writeFileSync(serverPath, source);
+    }
+    fs.mkdirSync('/data', { recursive: true });
+    if (!fs.existsSync('/data/deepseek-auth.json')) fs.writeFileSync('/data/deepseek-auth.json', '{"token":"","cookie":""}');
+    const refresh = spawn(process.execPath, ['/opt/homelab/refresh-auth.js'], { stdio: 'inherit' });
+    refresh.on('exit', (code) => process.exit(code || 1));
+    const server = spawn(process.execPath, [serverPath], { stdio: 'inherit' });
+    server.on('exit', (code) => process.exit(code || 0));
+  refresh-auth.js: |
+{{ .Files.Get "files/refresh-auth.js" | indent 4 }}
+  deep-ready.js: |
+{{ .Files.Get "files/deep-ready.js" | indent 4 }}
+  wrapped-chrome: |
+{{ .Files.Get "files/wrapped-chrome" | indent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: free-deepseek-service-vpn-script
+data:
+  prepare.py: |
+{{ .Files.Get "files/prepare-service-vpn.py" | indent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: free-deepseek-api
+  labels:
+    app: free-deepseek-api
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: free-deepseek-api
+  template:
+    metadata:
+      labels:
+        app: free-deepseek-api
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      imagePullSecrets:
+        {{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+        {{- end }}
+      nodeSelector:
+        kubernetes.io/hostname: {{ .Values.nodeName }}
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        fsGroup: 1000
+      initContainers:
+        - name: prepare-service-vpn
+          image: {{ .Values.vpn.image | quote }}
+          imagePullPolicy: IfNotPresent
+          command: [python3, /vpn-script/prepare.py]
+          env:
+            - name: VPN_ENDPOINT
+              value: {{ .Values.vpn.endpoint | quote }}
+            - name: VPN_PORT
+              value: {{ .Values.vpn.port | quote }}
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          volumeMounts:
+            - name: service-vpn-script
+              mountPath: /vpn-script
+              readOnly: true
+            - name: service-vpn-identity
+              mountPath: /vpn-identity
+              readOnly: true
+            - name: service-vpn-runtime
+              mountPath: /vpn-runtime
+      containers:
+        - name: chrome
+          image: {{ .Values.chrome.image | quote }}
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/bash", "-c"]
+          args:
+            - cp /opt/homelab/wrapped-chrome /usr/bin/wrapped-chrome && chmod 755 /usr/bin/wrapped-chrome && exec /init
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: Europe/Moscow
+            - name: CUSTOM_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secretName }}
+                  key: desktop-user
+            - name: PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secretName }}
+                  key: desktop-password
+            - name: CHROME_CLI
+              value: {{ .Values.chrome.cli | quote }}
+          ports:
+            - name: desktop
+              containerPort: 3001
+          resources:
+            requests:
+              cpu: 200m
+              memory: 1Gi
+            limits:
+              memory: 3Gi
+          volumeMounts:
+            - name: profile
+              mountPath: /config
+            - name: homelab
+              mountPath: /opt/homelab
+              readOnly: true
+            - name: shm
+              mountPath: /dev/shm
+        - name: service-vpn
+          image: {{ .Values.vpn.image | quote }}
+          imagePullPolicy: IfNotPresent
+          command: [/app/bin/xray-linux-amd64]
+          args: [run, -c, /vpn-runtime/client.json]
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          volumeMounts:
+            - name: service-vpn-runtime
+              mountPath: /vpn-runtime
+              readOnly: true
+        - name: proxy
+          image: {{ .Values.image.repository }}@{{ .Values.image.digest }}
+          imagePullPolicy: IfNotPresent
+          command: [node, /opt/homelab/start.js]
+          ports:
+            - name: http
+              containerPort: 9655
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: HOST
+              value: 0.0.0.0
+            - name: PORT
+              value: "9655"
+            - name: NON_INTERACTIVE
+              value: "1"
+            - name: DEEPSEEK_AUTH_PATH
+              value: /data/deepseek-auth.json
+            - name: PROXY_API_KEY_FILE
+              value: /run/secrets/proxy-api-key
+            - name: REQUIRE_PROXY_API_KEY
+              value: "1"
+            - name: AUTH_REFRESH_MS
+              value: "30000"
+            - name: DEEPSEEK_CHROME_PORT
+              value: "9222"
+            - name: CHROME_PROFILE
+              value: /chrome-profile/chrome-profile/Default
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 60
+            timeoutSeconds: 25
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          volumeMounts:
+            - name: secrets
+              mountPath: /run/secrets
+              readOnly: true
+            - name: auth
+              mountPath: /data
+            - name: homelab
+              mountPath: /opt/homelab
+            - name: profile
+              mountPath: /chrome-profile
+              readOnly: true
+      volumes:
+        - name: service-vpn-identity
+          secret:
+            secretName: {{ .Values.vpn.secretName }}
+            defaultMode: 288
+        - name: service-vpn-runtime
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Mi
+        - name: service-vpn-script
+          configMap:
+            name: free-deepseek-service-vpn-script
+            defaultMode: 420
+        - name: secrets
+          secret:
+            secretName: {{ .Values.secretName }}
+            defaultMode: 256
+            items:
+              - key: proxy-api-key
+                path: proxy-api-key
+        - name: profile
+          persistentVolumeClaim:
+            claimName: free-deepseek-chrome
+        - name: auth
+          emptyDir:
+            sizeLimit: 8Mi
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi
+        - name: homelab
+          configMap:
+            name: free-deepseek-proxy-start
+            defaultMode: 256
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: free-deepseek-api
+  labels:
+    app: free-deepseek-api
+spec:
+  type: ClusterIP
+  selector:
+    app: free-deepseek-api
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: free-deepseek-desktop
+  labels:
+    app: free-deepseek-api
+spec:
+  type: ClusterIP
+  selector:
+    app: free-deepseek-api
+  ports:
+    - name: desktop
+      port: 3001
+      targetPort: desktop
