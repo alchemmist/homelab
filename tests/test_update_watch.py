@@ -59,3 +59,28 @@ def test_catalog_lists_open_webui():
     text = Path("charts/monitoring-k3s/values.yaml").read_text()
     assert "github: open-webui/open-webui" in text
     assert 'current: "0.12.3"' in text
+
+
+def test_statefulset_target_and_ambiguous_workload():
+    import pytest
+    watch=load_module()
+    assert watch.workload_ref({'statefulset':'openhands'}) == ('statefulsets','openhands')
+    assert watch.workload_ref({'deployment':'open-webui'}) == ('deployments','open-webui')
+    with pytest.raises(ValueError):
+        watch.workload_ref({'deployment':'a','statefulset':'b'})
+
+
+def test_openhands_uses_running_canvas_tag_not_sdk_version():
+    import yaml
+    watch=load_module()
+    catalog=yaml.safe_load(Path('charts/monitoring-k3s/values.yaml').read_text())['updateWatch']['targets']
+    target=next(x for x in catalog if x['id']=='openhands')
+    assert target['github']=='OpenHands/OpenHands'
+    assert target['statefulset']=='openhands'
+    assert target['namespace']=='openhands'
+    assert target['container']=='agent-canvas'
+    samples=watch.evaluate([target],lambda repo,t:[{'tag_name':'v1.42.0'}],1,{'openhands':'ghcr.io/openhands/agent-canvas:1.41.0@sha256:fixture'})
+    assert samples[0]['current']=='1.41.0'
+    assert samples[0]['latest']=='1.42.0'
+    assert samples[0]['available']==1
+    assert samples[0]['success']==1

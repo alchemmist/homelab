@@ -225,6 +225,13 @@ updateWatch:
   intervalSeconds: "21600"
   timeoutSeconds: "20"
   targets:
+    - id: openhands
+      title: OpenHands Agent Canvas
+      current: "1.41.0"
+      github: OpenHands/OpenHands
+      namespace: openhands
+      statefulset: openhands
+      container: agent-canvas
     - id: open-webui
       title: Open WebUI
       current: "0.12.3"

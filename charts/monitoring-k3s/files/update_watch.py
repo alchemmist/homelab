@@ -171,9 +171,17 @@ def serve(state, port):
     server.serve_forever()
 
 
+def workload_ref(target):
+    if target.get("deployment") and target.get("statefulset"):
+        raise ValueError("ambiguous workload target")
+    if target.get("statefulset"):
+        return "statefulsets", target["statefulset"]
+    return "deployments", target.get("deployment")
+
+
 def deployment_image(target, timeout):
     namespace = target.get("namespace")
-    name = target.get("deployment")
+    resource, name = workload_ref(target)
     container = target.get("container")
     if not (namespace and name and container):
         return None
@@ -182,7 +190,7 @@ def deployment_image(target, timeout):
     if ":" in host and not host.startswith("["):
         host = f"[{host}]"
     token = open("/var/run/secrets/kubernetes.io/serviceaccount/token", encoding="utf-8").read().strip()
-    url = f"https://{host}:{port}/apis/apps/v1/namespaces/{namespace}/deployments/{name}"
+    url = f"https://{host}:{port}/apis/apps/v1/namespaces/{namespace}/{resource}/{name}"
     request = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}", "Accept": "application/json"})
     context = None
     import ssl
@@ -198,7 +206,7 @@ def deployment_image(target, timeout):
 def load_images(targets, timeout):
     images = {}
     for target in targets:
-        if not target.get("deployment"):
+        if not (target.get("deployment") or target.get("statefulset")):
             continue
         try:
             images[target["id"]] = deployment_image(target, timeout)
