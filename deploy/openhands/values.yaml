@@ -1,0 +1,56 @@
+fullnameOverride: openhands
+image:
+  repository: ghcr.io/openhands/agent-canvas
+  tag: 1.41.0@sha256:dcae97b63c9845fd1d4313857af6b10fb5888324a154238c4795ef86233d227c
+serviceAccount:
+  automountServiceAccountToken: false
+rbac:
+  enabled: false
+nodeSelector:
+  kubernetes.io/hostname: socrat-5
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: [ALL]
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+persistence:
+  size: 6Gi
+  storageClassName: local-path
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+    ephemeral-storage: 1Gi
+  limits:
+    cpu: '2'
+    memory: 6Gi
+    ephemeral-storage: 6Gi
+ingress:
+  enabled: false
+config:
+  extraEnv:
+    - name: AGENT_CANVAS_ALLOW_LAN_SESSION_KEY
+      value: 'false'
+    - name: LLM_MODEL
+      value: openai/venice-deepseek
+    - name: LLM_BASE_URL
+      value: http://litellm.llm.svc.cluster.local:4000/v1
+    - name: LLM_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: openhands-model
+          key: api-key
+    - name: AUTOMATION_BASE_URL
+      value: https://openhands.socrat.alchemmist.xyz
+statefulSet:
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
