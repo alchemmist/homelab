@@ -167,6 +167,12 @@ def fetch(repo, number):
 _HANDOFF_SNAPSHOT_COUNT = 2
 
 
+def _error_report(error_name: str) -> int:
+    """Emit the existing sanitized CLI failure schema, never exception payloads."""
+    print(json.dumps({"ready_to_review": False, "error": error_name}))
+    return 2
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", default="alchemmist/monori")
@@ -188,14 +194,12 @@ def main():
                 fresh_report["blockers"].append("PR state changed during audit")
             report = fresh_report
         if report is None:
-            message = "Missing handoff snapshot assessment"
-            raise RuntimeError(message)
+            return _error_report("RuntimeError")
         report["checked_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0 if report["ready_to_review"] else 1
     except Exception as exc:
-        print(json.dumps({"ready_to_review": False, "error": type(exc).__name__}))
-        return 2
+        return _error_report(type(exc).__name__)
 
 
 if __name__ == "__main__":

@@ -548,3 +548,40 @@ def test_handoff_cli_requires_stable_ready_assessment(
     else:
         assert report["blockers"] == []
     assert calls == [("example/example", 1), ("example/example", 1)]
+
+
+def test_handoff_cli_sanitizes_failed_mock_fetch(
+    handoff_gate: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Error output keeps its original exit2/schema and withholds transport details."""
+    calls: list[tuple[str, int]] = []
+
+    def fetch(repo: str, number: int) -> dict[str, object]:
+        calls.append((repo, number))
+        message = "withheld synthetic transport payload"
+        raise ValueError(message)
+
+    monkeypatch.setattr(handoff_gate, "fetch", fetch)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "gate",
+            "--repo",
+            "example/example",
+            "--pr",
+            "1",
+            "--reviewer",
+            "review-bot",
+            "--handler",
+            "publisher",
+        ],
+    )
+    failure_exit = 2
+    assert handoff_gate.main() == failure_exit
+    output = capsys.readouterr().out
+    assert json.loads(output) == {"ready_to_review": False, "error": "ValueError"}
+    assert "withheld synthetic transport payload" not in output
+    assert calls == [("example/example", 1)]
