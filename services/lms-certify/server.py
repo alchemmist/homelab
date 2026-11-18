@@ -9,7 +9,9 @@ import os
 import resource
 import subprocess
 import sys
+import re
 import tempfile
+import time
 import threading
 import urllib.error
 import urllib.request
@@ -79,6 +81,17 @@ class ModelBusy(Exception):
     pass
 
 
+def _wait_budget(detail):
+    match = re.search(r"resets at: ([0-9-]{10} [0-9:]{8}) UTC", detail)
+    delay = 20
+    if match:
+        from datetime import datetime, timezone
+        reset = datetime.strptime(match.group(1), "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+        delay = min(90, max(1, int((reset - datetime.now(timezone.utc)).total_seconds()) + 1))
+    log("wait_budget", seconds=delay)
+    time.sleep(delay)
+
+
 def llm(role, prompt):
     body = {
         "model": MODEL,
@@ -94,12 +107,18 @@ def llm(role, prompt):
         data=json.dumps(body).encode(),
         headers={"Authorization": "Bearer " + os.environ["LITELLM_KEY"], "Content-Type": "application/json"},
     )
-    try:
-        response = urllib.request.urlopen(request, timeout=120)
-    except urllib.error.HTTPError as exc:
-        if exc.code in {408, 409, 429, 500, 502, 503, 504}:
-            raise ModelBusy(str(exc.code))
-        raise
+    for attempt in range(6):
+        try:
+            response = urllib.request.urlopen(request, timeout=180)
+            break
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", "replace")[:240]
+            if exc.code == 429 and attempt < 5:
+                _wait_budget(detail)
+                continue
+            if exc.code in {408, 409, 429, 500, 502, 503, 504}:
+                raise ModelBusy(str(exc.code))
+            raise
     with response:
         payload = json.load(response)
     text = payload["choices"][0]["message"].get("content") or ""
@@ -135,12 +154,19 @@ def open_task(queue, state):
 def run_loop(task_id, statement):
     try:
         state = load_json(ROOT / "state.json", {"tasks": {}})
+        def hook(record):
+            current = load_json(ROOT / "state.json", {"tasks": {}})
+            current["tasks"][task_id] = record
+            save_json(ROOT / "state.json", current)
+            log("round", task=task_id, status=record.get("phase"), reason=record.get("reason", ""), rounds=record.get("rounds"), cases=len(record.get("cases") or []))
+
         record = certify(
             {"statement": statement},
             state["tasks"].get(task_id),
             llm,
             run_python,
             pause=others_waiting,
+            hook=hook,
         )
         state = load_json(ROOT / "state.json", {"tasks": {}})
         state["tasks"][task_id] = record
