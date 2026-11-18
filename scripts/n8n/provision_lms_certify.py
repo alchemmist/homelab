@@ -69,8 +69,12 @@ def main():
     code = {"server.py": (BASE / "services/lms-certify/server.py").read_text(),
             "idle_step.py": (BASE.parent / "lms" / "migration" / "idle_step.py").read_text()}
     apply({"apiVersion": "v1", "kind": "ConfigMap", "metadata": {"name": "lms-certify-code", "namespace": "automation"}, "data": code})
-    apply({"apiVersion": "v1", "kind": "ConfigMap", "metadata": {"name": "lms-certify-queue", "namespace": "automation"},
-           "data": {"queue.json": json.dumps(queue(), ensure_ascii=False)}})
+    queue_path = Path('/tmp/lms-certify-queue.json')
+    queue_path.write_text(json.dumps(queue(), ensure_ascii=False))
+    subprocess.run(['scp', '-o', 'BatchMode=yes', str(queue_path), 'socrat-0:/tmp/lms-certify-queue.json'], check=True)
+    kubectl('delete', 'configmap', '-n', 'automation', 'lms-certify-queue', '--ignore-not-found')
+    kubectl('create', 'configmap', '-n', 'automation', 'lms-certify-queue', '--from-file=queue.json=/tmp/lms-certify-queue.json')
+    subprocess.run(['ssh', '-o', 'BatchMode=yes', 'socrat-0', 'rm -f /tmp/lms-certify-queue.json'], check=True)
     kubectl("apply", "-f", "-", input_text=(BASE / "deploy/lms-certify/worker.yaml").read_text())
     kubectl("rollout", "restart", "deployment/lms-certify", "-n", "automation")
     mapping_path = CONFIG / "lms-certify-credentials.json"
