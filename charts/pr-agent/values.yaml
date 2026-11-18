@@ -13,15 +13,23 @@ model: openai/venice-deepseek
 invalidOutputAttempts: 10
 # venice-deepseek is the LiteLLM alias of the 32768-context Venice bridge model.
 customModelMaxTokens: "32768"
-# Per-call cap. A diff is split once it exceeds this. 12288 leaves room for the
-# prompt and the answer inside the 32768 window. max calls is only the ceiling:
-# unused slots are not extra chunks. PR-Agent has no unlimited setting, so the
-# ceiling is deliberately high.
-maxModelTokens: "12288"
+# Per-call cap. A diff is split once it exceeds this. 24576 keeps the call inside the
+# 32768 window and avoids cutting one function across many independent reviews.
+# max calls is only the ceiling: unused slots are not extra chunks.
+maxModelTokens: "24576"
 inlineKeyIssues: true
 largePrChunking: true
-reviewMaxCalls: "100"
-numMaxFindings: "12"
+reviewMaxCalls: "8"
+numMaxFindings: "4"
+# Earlier findings are shown back to the model so it repeats them instead of paraphrasing.
+maxPreviousFindingsChars: "24000"
+# Host-only. Repository settings and /review arguments cannot override this.
+systemInstructions: >-
+  Act like a careful human reviewer. Publish only a defect you can point at in the shown code.
+  Do not claim a statement was removed unless that line is absent from the diff.
+  Do not restate an open inline thread, even in different words.
+  Skip cosmetic import aliases and formatting-only hunks.
+  If the hunk does not contain the whole function, do not invent the missing part.
 committableSuggestions: true
 suggestionsMaxCalls: "100"
 persistentInlineComments: true
@@ -30,8 +38,9 @@ persistentInlineComments: true
 # A manual /review comment still reviews the whole pull request.
 handlePushTrigger: true
 pushCommands: '["/review -i"]'
-# Publish describe/review as GitHub checks: in progress while the agent runs, then success or failure.
-publishAsCheckRun: true
+# The review summary is one comment that later runs update. A check run replaces that
+# comment with an empty review body, which is not how people read CodeRabbit.
+publishAsCheckRun: false
 gunicornWorkers: "6"
 # Match LiteLLM's request_timeout. The webhook returns immediately, but each model
 # call used to give up after 120s while the proxy would still be waiting in queue.
