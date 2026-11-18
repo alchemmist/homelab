@@ -1,0 +1,10 @@
+{
+  "name": "Socrat the-loop — daily verification (paused)",
+  "description": "Bounded acceptance run; original demo only, no external services. Will be paused after first scheduled run.",
+  "prompt": "Use only the local fixture /home/openhands/workspace/the-loop-demo. Do not change intervals.py, tests, hooks or profiles. In one terminal command run python3 -m unittest -v test_intervals.py from that directory. If tests succeed, write scheduled-proof.json there containing current UTC time, tests_passed true, and source native-cron. Finish with the actual command/result, no future intent. No internet, package installation, production access or GitHub. No more than two terminal commands.",
+  "trigger": {"type": "cron", "schedule": "0 8 * * *", "timezone": "Europe/Moscow"},
+  "timeout": 300,
+  "keep_alive": false,
+  "enabled": false,
+  "runtime": {"setup_script_path": null, "entrypoint": "python main.py"}
+}

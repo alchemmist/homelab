@@ -208,3 +208,57 @@ Issuer/audience/signature/expiry/PKCE/CSRF checks and both owner-group gates rem
 No insecure allow-unverified-email switch was enabled. Retry from `/canvas/`, not
 by replaying an already redeemed callback authorization code. Successful full owner
 callback/UI acceptance remains pending until actually observed after this repair.
+
+## Configured coding-loop demo — 18 November, 14:43 UTC
+
+Owner reports Skip reached the main Canvas UI. Native active agent profile is now
+`socrat-the-loop` (`b8cb1891-7251-47a3-96a6-ec38d238ae89`), backed by the existing
+Venice-only `socrat-deepseek` profile, no additional secrets/integrations. Policy:
+[THE_LOOP.md](../services/openhands/THE_LOOP.md). `scripts/configure-openhands-loop.py`
+installs the official filesystem MCP 2.4.0 using the tracked npm integrity lock,
+`--ignore-scripts`, scoped only to `/home/openhands/workspace/the-loop-demo`.
+MCP returned 16 tools, read TASK.md in the actual coding run, and rejected an
+out-of-scope `/etc/hostname` read. This does not restrict the separate terminal
+or turn the shared owner container into a malicious-agent isolation boundary.
+
+Actual conversation `5787a58a-ed18-457f-805b-15103bc66608` ran without an attached
+browser, recorded 7 failing / 3 passing baseline tests, implemented merge_intervals,
+ran all 10 green and wrote HANDOFF.md. Agent's empty git diff on untracked tests
+was NOT accepted as evidence: operator byte-compared to the tracked original and
+validated the snapshot in fresh no-token/no-PVC/read-only, deny-all Jobs.
+`scripts/validate-openhands-demo.py` repeats this without executing candidate code
+on the laptop. It rejects overlapping NetworkPolicies (additive policy semantics)
+and retains isolation until foreground Job/pod deletion succeeds. Last successful
+candidate SHA256 `5d8ed77cb15618bc931c9adbba51ed8b8d7144a4489e78c3971d72512fea053b`,
+original tests `ff6b7b66653b0d324d8cd6f521badb0acaac57f2dc6cd748d669117e3c377350`.
+The workspace Stop hook uses exit2 on failure; feedback only, not security enforcement.
+
+Native automation `54373c5f-fc35-4049-971b-52dd45fb3645` really fired by cron (not
+manual dispatch). First run `c784db9a-9c3f-4733-8e42-eb78743ab4bb` FAILED at cold SDK
+installation after timeout; retained as failed. Supported per-automation runtime
+config now uses `setup_script_path:null`, `entrypoint:"python main.py"` with SDK,
+tools and workspace packages already installed as 1.62.0 in the pinned image.
+This is a workaround for this owned schedule, NOT a fix to every upstream preset.
+New UI presets or prompt edits may restore cold installation; inspect runtime
+settings rather than silently assuming scheduling works globally.
+
+Second real cron run `bc3c6f26-20bc-422d-9c79-b0c33be3e9d9` COMPLETED, conversation
+`8a801cb9-c41b-4640-ada0-2c87d28e5a0b`, wrote scheduled-proof.json at
+`2026-11-18T14:36:05.061491+00:00`, actual test success. Future runs deliberately
+INACTIVE, daily 08:00 Europe/Moscow (05:00 UTC), timeout300s, keep_alive false.
+`scripts/configure-openhands-schedule.py` defaults GET-only; --apply creates/updates
+only the matching owned schedule, always paused, never dispatches model work, and
+refuses duplicates, incomplete listing, drift and active runs. Applied twice with
+one schedule remaining. Source template: `services/openhands/the-loop-demo/schedule.json`.
+Internal callback base is loopback8000, not browser OIDC; public auth stays enabled.
+
+Private loopback Playwright diagnostic independently reopened the persisted coding
+history after rollout, showed `socrat-the-loop` + `socrat-deepseek` selected, MCP
+connection test reported reachable (filesystem has no credentials), and Automate
+showed inactive / latest Successful / 2 runs / 50% success, preserving the old failure.
+This is NOT automated positive public SSO/MFA acceptance. Public owner onboarding
+success is owner-reported; do not invent an observed public task/browser-close test.
+
+Full the-loop PR publication/CI/current-head bot reviews, critical comment handling,
+replies-before-resolve and trusted publisher are still NOT implemented. Demo code
+success, cron, checklist completion and hooks must not be presented as PR Ready.
