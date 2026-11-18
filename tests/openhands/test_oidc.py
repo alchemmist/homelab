@@ -84,6 +84,11 @@ class OIDCRender(unittest.TestCase):
         p = next(v for v in self.objects() if v['kind']=='NetworkPolicy' and v['metadata']['name']=='openhands-boundary')
         self.assertEqual(p['spec']['ingress'][0]['from'],[{'namespaceSelector':{'matchLabels':{'kubernetes.io/metadata.name':'identity'}},'podSelector':{'matchLabels':{'app':'openhands-oidc'}}}])
 
+    def test_vps_hostnetwork_source_is_exact_and_proxy_only(self):
+        p = next(v for v in self.objects() if v['kind']=='NetworkPolicy' and v['metadata']['name']=='openhands-oidc')
+        self.assertIn({'ipBlock':{'cidr':'10.42.0.0/32'}},p['spec']['ingress'][0]['from'])
+        self.assertEqual(p['spec']['ingress'][0]['ports'],[{'port':4180,'protocol':'TCP'}])
+
     def test_oidc_not_custom_auth_or_bearer_bypass(self):
         d = next(v for v in self.objects() if v['kind']=='Deployment' and v['metadata']['name']=='openhands-oidc')
         pod = d['spec']['template']['spec']; c = pod['containers'][0]

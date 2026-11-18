@@ -145,8 +145,9 @@ spec:
     - from:
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
         - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: traefik-edge}}
-        # VPS Traefik uses hostNetwork, so namespace peers do not match its source.
-        - ipBlock: {cidr: 10.250.0.2/32}
+        # VPS hostNetwork Traefik selects flannel.1 src10.42.0.0 for S5 pods
+        # (verified with ip route get); namespace peers cannot match this source.
+        - ipBlock: {cidr: 10.42.0.0/32}
       ports: [{port: 4180, protocol: TCP}]
   egress:
     - to:
