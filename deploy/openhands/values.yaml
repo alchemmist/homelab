@@ -62,3 +62,7 @@ oidc:
 
 # Issue #509: trusted GitHub writer, no credentials in Canvas.
 monoriPublisher: true
+
+# Continue only MaxIterationsReached for the owner's Monori mutation task.
+# Set to an empty string to disarm. No other chat or error is retried.
+continueIterationChat: '1ab3985a-2193-4177-8dd2-8ec7d54dbfeb'

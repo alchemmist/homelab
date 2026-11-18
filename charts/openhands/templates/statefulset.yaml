@@ -126,6 +126,29 @@ spec:
               {{- end }}
             {{- end }}
           {{- end }}
+        {{- if .Values.continueIterationChat }}
+        - name: iteration-continuation
+          image: {{ include "agent-canvas.image" . }}
+          command: [python, -IBu, -c]
+          args:
+            - |
+{{ .Files.Get "files/continue_iterations.py" | indent 14 }}
+          env:
+            - name: CONVERSATION_ID
+              value: {{ .Values.continueIterationChat | quote }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 10m, memory: 24Mi}
+            limits: {cpu: 100m, memory: 96Mi}
+          volumeMounts:
+            - name: {{ include "agent-canvas.pvcClaimName" . }}
+              mountPath: /session-key
+              subPath: openhands/agent-canvas/api-key.txt
+              readOnly: true
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

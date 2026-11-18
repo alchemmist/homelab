@@ -361,3 +361,14 @@ that diagnostic. Resume through `/run` ONLY after checking persisted state and
 latest events; check new post-recovery actions, not just `running`. Never erase
 historical errors or silently substitute a different provider. Rollback default
 profile by activating saved `socrat-the-loop`; no PVC change required.
+
+## Monori long run: continuation at SDK iteration boundary
+
+`continueIterationChat` opts exactly one conversation into a localhost-only
+supervisor. SDK1.62 requires `max_iterations > 0` and resets its local counter
+on each `/run`; no native unlimited sentinel. Inspect current status and latest
+event; resume only environment `MaxIterationsReached`. Do not resume finished,
+paused, approval waits, auth/budget failures or other chats. No cross-run cap.
+Disable by clearing this Helm value. Sidecar mounts only existing Canvas session
+key read-only (not workspace, IdP, SA or publisher credentials). This is not a
+PR readiness evaluator, all-error recovery, auto-merge or guarantee of progress.
