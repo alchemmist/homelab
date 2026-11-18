@@ -106,7 +106,6 @@ metadata:
   name: openhands-oidc
   namespace: identity
   annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-http01
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
     traefik.ingress.kubernetes.io/router.tls: 'true'
     # OAuth codes/backend WS keys must not enter access logs or traces.
@@ -125,6 +124,16 @@ spec:
             pathType: Prefix
             backend:
               service: {name: openhands-oidc, port: {number: 4180}}
+---
+# Explicitly tracked by Argo: pending/failed TLS must not disappear behind
+# a Healthy Deployment/Ingress. cert-manager retains issuance/renewal ownership.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata: {name: openhands-oidc-tls, namespace: identity}
+spec:
+  secretName: openhands-oidc-tls
+  dnsNames: [openhands.socrat.alchemmist.xyz]
+  issuerRef: {name: letsencrypt-http01, kind: ClusterIssuer}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

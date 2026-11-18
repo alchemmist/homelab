@@ -74,6 +74,12 @@ class OIDCRender(unittest.TestCase):
         self.assertEqual(i['metadata']['namespace'],'identity')
         self.assertEqual(i['spec']['rules'][0]['http']['paths'][0]['backend']['service']['name'],'openhands-oidc')
 
+    def test_tls_is_tracked_not_hidden_by_healthy_proxy(self):
+        cert = next(v for v in self.objects() if v['kind']=='Certificate')
+        self.assertEqual(cert['spec']['secretName'],'openhands-oidc-tls')
+        self.assertEqual(cert['spec']['dnsNames'],['openhands.socrat.alchemmist.xyz'])
+        self.assertEqual(cert['spec']['issuerRef']['kind'],'ClusterIssuer')
+
     def test_backend_only_reachable_from_gateway(self):
         p = next(v for v in self.objects() if v['kind']=='NetworkPolicy' and v['metadata']['name']=='openhands-boundary')
         self.assertEqual(p['spec']['ingress'][0]['from'],[{'namespaceSelector':{'matchLabels':{'kubernetes.io/metadata.name':'identity'}},'podSelector':{'matchLabels':{'app':'openhands-oidc'}}}])
