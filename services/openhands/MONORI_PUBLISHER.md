@@ -5,6 +5,7 @@ From Canvas use plain anonymous HTTPS for clone, issue, comments, checks and PR 
 - `{"action":"capabilities"}` is read-only.
 - `create`: `action`, `head` (current full main SHA), `title`, `files` (object mapping changed repo-relative paths to full UTF-8 contents). Test locally first. Allowed Python files under `server/tests/` or `server/app/`, max12 files and250000-byte JSON. A new server-selected branch, commit and non-draft PR for review; no merge. At most5 open publisher PRs. No deletes, workflow files or arbitrary refs.
 - `update`: same plus `pr` number; `head` must be the current SHA of an open publisher PR. No force pushes. Check existing branches/PRs after a lost response; a multi-call create may leave a branch without a PR.
+- `threads`: `action`, `pr`, `head`; lists review thread IDs, resolution state and first comments on that publisher PR (bounded pagination, never silent truncation).
 - `report`: `action`, `pr`, `head`; posts a fixed progress comment on issue509, never edits the issue.
 - `reply_then_resolve`: `action`, `pr`, `head`, `thread` (GitHub GraphQL PRRT node ID), `decision` (`fixed` or `declined`), `reason` (specific single-line explanation,30–2000 characters). Assess each finding first. For fixed findings, push the tested fix first. Checks ownership, replies with head SHA, rechecks head, then resolves. Re-inspect before retry after partial failure.
 

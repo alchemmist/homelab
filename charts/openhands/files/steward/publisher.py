@@ -32,6 +32,14 @@ def owned_pr(n,sha):
 
 def review(x):
     p=owned_pr(x['pr'],x['head']);a=x['action'];sha=x['head']
+    if a=='threads':
+        check(set(x)=={'action','pr','head'});q='query($n:Int!,$c:String){repository(owner:"alchemmist",name:"monori"){pullRequest(number:$n){reviewThreads(first:50,after:$c){pageInfo{hasNextPage endCursor} nodes{id isResolved path line comments(first:1){nodes{body author{login} url}}}}}}}'
+        rows=[];cursor=None
+        for _ in range(10):
+            data=api('graphql',{'query':q,'variables':{'n':x['pr'],'c':cursor}});check(not data.get('errors'));page=data['data']['repository']['pullRequest']['reviewThreads'];rows.extend(page['nodes'])
+            if not page['pageInfo']['hasNextPage']:return {'threads':rows,'head':sha}
+            cursor=page['pageInfo']['endCursor'];check(cursor)
+        raise ValueError('Incomplete pagination')
     if a=='report':
         check(set(x)=={'action','pr','head'});res=api('issues/509/comments',{'body':f"OpenHands: mutation coverage PR #{p['number']}, head `{sha}`. Review/CI status is tracked on the PR."});return {'url':res['html_url']}
     check(set(x)=={'action','pr','head','thread','reason','decision'});t=x['thread'];reason=x['reason'];check(isinstance(t,str) and re.fullmatch('PRRT_[A-Za-z0-9_-]{4,150}',t));check(x['decision'] in ('fixed','declined') and isinstance(reason,str) and 30<=len(reason)<=2000 and all(c.isprintable() for c in reason) and '@' not in reason and not any(c in reason for c in '<>'))
@@ -45,8 +53,8 @@ def review(x):
 
 def dispatch(x):
     check(isinstance(x,dict));action=x.get('action')
-    if action=='capabilities':return {'repository':REPO,'issue':509,'actions':['create','update','report','reply_then_resolve'],'merge':False,'main_write':False}
-    if action in ('report','reply_then_resolve'):return review(x)
+    if action=='capabilities':return {'repository':REPO,'issue':509,'actions':['create','update','report','threads','reply_then_resolve'],'merge':False,'main_write':False}
+    if action in ('report','threads','reply_then_resolve'):return review(x)
     check(action in ('create','update')); required={'action','head','files','title'}|({'pr'} if action=='update' else set());check(set(x)==required)
     sha=x['head'];check(isinstance(sha,str) and re.fullmatch('[a-f0-9]{40}',sha)); title=x['title'];check(isinstance(title,str) and 4<=len(title)<=110 and all(c.isprintable() for c in title) and '@' not in title)
     files=changes(x['files'])
