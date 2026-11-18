@@ -328,3 +328,36 @@ plaintext tar archives and own stuck backup processes were removed. No verified
 recovery receipt exists, no upgrade/rollback/backup-success claim. PVC, history,
 SSO and running1.41.0 unchanged. Need verified bounded backup transport before
 GitOps image bump, then active profile/MCP/history/schedule/SSO regressions.
+
+## Red chats —18 November: distinguish three errors
+
+The running Venice bridge `/app/agent_protocol.py` serializes protocol instructions,
+all declared tool schemas, history metadata and all messages into UTF-8. Its
+`MAX_AGENT_PROMPT_BYTES=120_000` is a guard on that FULL representation, not the
+model's native token context. Original Monori conversation exceeded it: system
+44,885 bytes plus ~55,433 non-message bytes left <20KB for everything else.
+The provisioned live `v-deepseek-uc` agent had default broad tools, demo-only
+filesystem MCP, and 240-event condensation without a token threshold. Repeated
+`/run` and manual condensation did not fix that fixed-cost problem.
+
+`e4bc9aaf…` briefly executed tools but its condenser lacked a resolved credential:
+never roundtrip a redacted GET `agent` into a new conversation. Switching the
+main LLM afterwards did not repair this separate summarizer. An unrelated
+`o-deepseek` chat hit provider-side proof-of-work auth failure; that proxy was
+not ready (separate owner), not a Canvas budget error.
+
+Use `kubectl -n openhands exec -i openhands-0 -- python - < scripts/openhands-compact-profile.py`
+for native compact profile creation/activation. Launch with `agent_profile_id`,
+NOT a serialized agent. Existing profiles remain selectable. Only terminal/editor,
+no MCP; existing encrypted Venice connection resolved at launch. SDK constructor
+copies resolved LLM for condensation. Budget threshold 9000 estimated tokens or
+32 events, not a proof for arbitrary large single messages. No adapter increase.
+Current Monori continuation `1ab3985a-2193-4177-8dd2-8ec7d54dbfeb` shares workspace;
+initial system event ~15.5KB. No changes to runner identity, model keys or history.
+
+Do NOT trigger `/condense` concurrently with an active run. Observed max_parallel=1
+contention, hung agent-server health checks and Canvas supervisor restart during
+that diagnostic. Resume through `/run` ONLY after checking persisted state and
+latest events; check new post-recovery actions, not just `running`. Never erase
+historical errors or silently substitute a different provider. Rollback default
+profile by activating saved `socrat-the-loop`; no PVC change required.
