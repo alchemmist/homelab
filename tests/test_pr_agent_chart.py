@@ -1,25 +1,30 @@
 """Check the offline Helm render contract for the PR Agent chart."""
 
+import json
 import subprocess
 import unittest
 from pathlib import Path
 
+import pytest
+import yaml
+
 ROOT = Path(__file__).resolve().parents[1]
 CHART = ROOT / "charts" / "pr-agent"
 EXPECTED_FALLBACK_MODEL_COUNT = 9
+EXPECTED_REVIEW_MODEL = "openai/venice-deepseek"
 
 
 class PrAgentChartTest(unittest.TestCase):
     """Require the reviewed webhook, model, and push-command pins."""
 
     def test_template_renders_webhook_and_local_model(self) -> None:
-        """Pin the image, local model, host, resources, and push commands."""
+        """Pin the image, owner-selected model, local gateway and push boundaries."""
         rendered = subprocess.check_output(
             ["helm", "template", "pr-agent", str(CHART), "--namespace", "pr-agent"],
             text=True,
         )
         assert "pragent/pr-agent:0.49.0-github_app" in rendered
-        assert "openai/qwen3.8-27b" in rendered
+        assert EXPECTED_REVIEW_MODEL in rendered
         assert "http://litellm.llm.svc.cluster.local:4000/v1" in rendered
         assert "pr-agent.socrat.alchemmist.xyz" in rendered
         assert "github-webhook-secret" in rendered
@@ -40,7 +45,7 @@ class PrAgentChartTest(unittest.TestCase):
             i for i, line in enumerate(rendered.splitlines()) if "CONFIG__FALLBACK_MODELS" in line
         )
         fallback_value = rendered.splitlines()[fallback_at + 1]
-        assert fallback_value.count("openai/qwen3.8-27b") == EXPECTED_FALLBACK_MODEL_COUNT
+        assert fallback_value.count(EXPECTED_REVIEW_MODEL) == EXPECTED_FALLBACK_MODEL_COUNT
         assert "CONFIG__MAX_MODEL_TOKENS" in rendered
         assert 'value: "12288"' in rendered
         assert 'value: "100"' in rendered
@@ -61,3 +66,89 @@ class PrAgentChartTest(unittest.TestCase):
         push_value = lines[push_at + 1]
         assert "/review" in push_value
         assert "/improve" not in push_value
+        _review_model_contract(rendered)
+
+
+EXPECTED_MODEL_SETTINGS = {
+    "CONFIG__MODEL": EXPECTED_REVIEW_MODEL,
+    "CONFIG__CUSTOM_MODEL_MAX_TOKENS": "32768",
+    "CONFIG__MAX_MODEL_TOKENS": "12288",
+    "OPENAI__API_BASE": "http://litellm.llm.svc.cluster.local:4000/v1",
+}
+
+
+def _review_model_contract(rendered: str) -> None:
+    """Check exact deployment env values and nine same-model fallbacks, without a client."""
+    deployments = [
+        d
+        for d in yaml.safe_load_all(rendered)
+        if isinstance(d, dict)
+        and d.get("kind") == "Deployment"
+        and d.get("metadata", {}).get("name") == "pr-agent"
+    ]
+    assert len(deployments) == 1
+    containers = deployments[0]["spec"]["template"]["spec"]["containers"]
+    assert len(containers) == 1
+    assert containers[0]["name"] == "pr-agent"
+    settings: dict[str, str] = {}
+    for name in [*EXPECTED_MODEL_SETTINGS, "CONFIG__FALLBACK_MODELS"]:
+        matches = [entry for entry in containers[0]["env"] if entry["name"] == name]
+        assert len(matches) == 1
+        value: object = matches[0]["value"]
+        assert isinstance(value, str)
+        settings[name] = value
+    for name, expected in EXPECTED_MODEL_SETTINGS.items():
+        assert settings[name] == expected
+    assert json.loads(settings["CONFIG__FALLBACK_MODELS"]) == (
+        [EXPECTED_REVIEW_MODEL] * EXPECTED_FALLBACK_MODEL_COUNT
+    )
+
+
+@pytest.mark.parametrize(
+    ("field", "bad_value"),
+    [
+        ("CONFIG__MODEL", "openai/qwen3.8-27b"),
+        ("CONFIG__CUSTOM_MODEL_MAX_TOKENS", "131072"),
+        ("CONFIG__MAX_MODEL_TOKENS", "131072"),
+        ("OPENAI__API_BASE", "https://public.example/v1"),
+        ("CONFIG__FALLBACK_MODELS", "[]"),
+        (
+            "CONFIG__FALLBACK_MODELS",
+            json.dumps(
+                [EXPECTED_REVIEW_MODEL] * EXPECTED_FALLBACK_MODEL_COUNT + ["openai/qwen3.8-27b"]
+            ),
+        ),
+    ],
+)
+def test_review_model_contract_rejects_drift(field: str, bad_value: str) -> None:
+    """Reject context, gateway, model and mixed/empty fallback drift on synthetic YAML."""
+    settings = {
+        **EXPECTED_MODEL_SETTINGS,
+        "CONFIG__FALLBACK_MODELS": json.dumps(
+            [EXPECTED_REVIEW_MODEL] * EXPECTED_FALLBACK_MODEL_COUNT
+        ),
+    }
+    settings[field] = bad_value
+    rendered = yaml.safe_dump(
+        {
+            "kind": "Deployment",
+            "metadata": {"name": "pr-agent"},
+            "spec": {
+                "template": {
+                    "spec": {
+                        "containers": [
+                            {
+                                "name": "pr-agent",
+                                "env": [
+                                    {"name": name, "value": value}
+                                    for name, value in settings.items()
+                                ],
+                            }
+                        ]
+                    }
+                }
+            },
+        }
+    )
+    with pytest.raises(AssertionError):
+        _review_model_contract(rendered)
