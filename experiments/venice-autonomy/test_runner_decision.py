@@ -180,3 +180,17 @@ class ResumePromptTests(unittest.TestCase):
             self.assertIn('not the original snapshot', prompt)
             self.assertIn('async def _answer(self) -> str:', prompt)
             self.assertIn('Restore these exact headers', prompt)
+
+
+class SnapshotRejectionTests(unittest.TestCase):
+    def test_archive_policy_rejection_is_actionable_without_becoming_a_pass(self):
+        with tempfile.TemporaryDirectory() as temp:
+            environment = mock.Mock()
+            environment.snapshot_rejections = 0
+            environment.snapshot.side_effect = repository_runner.CandidateRejected("unexpected candidate member: 'debug'")
+            with mock.patch.dict(os.environ, {'AUTONOMY_SNAPSHOT': temp}), mock.patch.object(repository_runner.subprocess, 'run'):
+                facts = repository_runner.sdk_acceptance(environment, pathlib.Path(temp), 0)
+            self.assertFalse(facts['accepted'])
+            self.assertTrue(facts['continue'])
+            self.assertIn('debug', facts['verification']['snapshot_error'])
+            environment.protocol.grade_candidate_container.assert_not_called()
