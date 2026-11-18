@@ -20,5 +20,18 @@ def test_requests_window_is_independent_of_time_picker():
 def test_temporary_acceptance_keys_are_not_user_activity():
     d = json.loads((Path(__file__).resolve().parents[1] / 'charts/monitoring-k3s/dashboards/llm-keys.json').read_text())
     targets = [t for p in d['panels'] for t in p.get('targets', [])]
-    assert len(targets) == 3
+    assert len(targets) == 4
     assert all('api_key_alias!~"venice-acceptance-.*"' in t['expr'] for t in targets)
+
+
+def test_models_are_separate_and_public_content_is_aggregate():
+    d = json.loads((Path(__file__).resolve().parents[1] / 'charts/monitoring-k3s/dashboards/llm-keys.json').read_text())
+    assert len(d['panels']) == 3
+    assert d['annotations'] == {'list': []}
+    assert d['time']['from'] == 'now-1h'
+    for panel, model in zip(d['panels'][:2], ['qwen3.8-27b', 'venice-agentic-deepseek-v4.1-flash-uncensored']):
+        expr = panel['targets'][0]['expr']
+        assert 'model="' + model + '"' in expr
+        assert 'sum by (api_key_alias)' in expr
+        assert '[1m]' in expr and '$__interval' not in expr
+    assert d['panels'][2]['gridPos']['y'] == 20
