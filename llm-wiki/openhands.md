@@ -47,13 +47,29 @@ in the diagnostic browser; do not assume that proves all SDK telemetry is disabl
   two terminal commands, `openhands-autonomy-ok` read back, then finish; no client
   connection was held open. Events and workspace are on PVC. Initial connection
   failure was a wrong NetworkPolicy pod selector; corrected via GitOps, then retried.
-- Browser Canvas loaded through an operator-only loopback forward; native backend
-  login and persistent conversation listing were inspected. This is NOT a public
-  browser/close-laptop end-to-end acceptance.
+- `3760c11e-5e47-41c7-ba94-f8fed7fa3d43`: task submitted through the actual Canvas
+  workspace picker/chat, waited for server acceptance, then closed the tab. Without
+  a connected Canvas page, the agent executed a45-second wait/write command and a
+  separate read/verify command, both exit0; exact `openhands-browser-closed-ok` proof,
+  status `finished`, no conversation errors. Reopened the saved conversation in the
+  browser and inspected both commands and final result in the native UI.
+  This proves browser disconnect for this fixture, NOT public access/long PR autonomy.
+- First browser attempt `d74c92f6-fd50-4b2a-a4bd-e14046763b4e` hit max_parallel_requests
+  because native automatic naming overlapped the agent call. Restored SDK-default
+  bounded `num_retries=5`; key limit remains1, no paid fallback or limit relaxation.
+  The failed conversation is retained, not rewritten as successful. Closing a tab
+  before the UI acknowledges creation can cancel submission; wait for acceptance.
 - Longer PR500 pilot `e23f711a-5db2-47ce-a428-026d97a9bac9` cloned/read the repo but
   stopped with a future-intent sentence after a condensation event, without a
-  candidate. `finished` is NOT evidence of task completion. Native Stop-hook
-  behavior is under investigation; do not claim unattended long-task reliability.
+  candidate. `finished` is NOT evidence of task completion.
+- Native Stop-hook fixture `1b272f96-cd72-4cdd-a59f-6d82455f14fd` deliberately attempted
+  to finish without a file; the configured hook exited2, generated native environment
+  feedback, and the agent automatically executed the missing command and finished.
+  No manual continue message. This is a tested native feature, not a general task
+  completion predicate installed for all UI tasks and NOT a PR-readiness guarantee.
+  Exit1 is fail-open in the SDK hook contract; blocking hooks must exit2.
+- GitOps pod replacement preserved native profile activation, owner key, earlier
+  conversation history and workspace proof; no copied SWE model key remains in env.
 - Publication, remote-CI follow-up and per-comment reply/resolve integration are
   NOT connected. `services/openhands/READY_TO_REVIEW.md` is policy, not enforcement.
   `scripts/openhands-pr-ready.py` is a read-only fail-closed audit, not an orchestrator.
@@ -94,9 +110,19 @@ verify authoritative and recursive DNS, then enable ingress in Git, accept TLS/a
 and demonstrate a browser-started task continuing after closing its tab. Do not use
 live ingress overrides or describe the diagnostic forward as the final entrance.
 
-## PR500 handoff is still blocked
+## PR500 was externally closed, not accepted as Ready
 
-Last inspected head `c2be67056ea0e5c00a8d1be5238bd8c4fd50a820`, merge conflicts,
+Latest inspection: CLOSED, unmerged at `2026-11-18T11:46:34Z`, head
+`c538f659856d4cec8c966529c09ecca6dd942756`. This session had converted it to draft
+while gates were red. Another writer merged main/regenerated workflows and closed
+it as superseded by #503. These commits/closure were NOT performed by the OpenHands
+pilot or this session. Do not reopen or overwrite that decision implicitly. Graph
+validation is now green, Format check/Lint/Quality Graph remain red and dependent
+jobs skipped; bot reviews are incomplete. Closing obsolete work is not a successful
+Ready-to-Review acceptance. The audit now explicitly blocks CLOSED/MERGED/unknown
+state and reassesses the final snapshot before reporting; no handoff or merge.
+
+Earlier inspected head `c2be67056ea0e5c00a8d1be5238bd8c4fd50a820`, merge conflicts,
 Workflow graph validation/Quality Graph red, other jobs skipped, CodeRabbit review
 skipped for bot-authored PR. The actual graph error was three stale generated workflow
 files (`uv run --locked --group quality-graph qg validate`); npm ci itself passed.

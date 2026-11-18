@@ -54,7 +54,7 @@ def main():
     settings = {'agent_settings_diff':{'agent_kind':'openhands','llm':{
         'model':'openai/venice-deepseek','base_url':'http://litellm.llm.svc.cluster.local:4000/v1',
         'api_key':key,'api_mode':'chat','native_tool_calling':True,
-        'max_input_tokens':30000,'max_output_tokens':4096,'num_retries':0,'timeout':900,
+        'max_input_tokens':30000,'max_output_tokens':4096,'num_retries':5,'timeout':900,
         'reasoning_effort':None,'enable_encrypted_reasoning':False,'caching_prompt':False,
         'prompt_cache_retention':None,'input_cost_per_token':0,'output_cost_per_token':0},
         'agent_context':{'system_message_suffix':policy},

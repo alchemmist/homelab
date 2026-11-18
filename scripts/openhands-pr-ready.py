@@ -11,7 +11,7 @@ import re
 import subprocess
 
 QUERY = '''query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$number){
-url headRefOid isDraft mergeable
+url headRefOid state isDraft mergeable
 commits(last:100){nodes{commit{oid}} pageInfo{hasPreviousPage}}
 reviews(first:100){nodes{id author{login __typename} state body url commit{oid}} pageInfo{hasNextPage}}
 comments(first:100){nodes{id author{login __typename} body url} pageInfo{hasNextPage}}
@@ -22,6 +22,8 @@ tip:commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100){nodes{__t
 
 def assess(pr, reviewers, handlers):
     blockers = []
+    if pr.get('state') != 'OPEN':
+        blockers.append('PR is not open')
     if not reviewers or not handlers:
         blockers.append('Required reviewer and trusted handler identities must be configured')
     if pr.get('mergeable') != 'MERGEABLE':
@@ -85,7 +87,7 @@ def assess(pr, reviewers, handlers):
         bot_thread = any((c.get('author') or {}).get('__typename') == 'Bot' or (c.get('author') or {}).get('login') in reviewers for c in thread.get('comments', {}).get('nodes', []))
         if bot_thread and not thread.get('isResolved'):
             blockers.append('Unresolved bot thread: ' + thread['id'])
-    return {'ready_to_review': not blockers, 'head': pr.get('headRefOid'), 'url': pr.get('url'), 'blockers': blockers}
+    return {'ready_to_review': not blockers, 'head': pr.get('headRefOid'), 'state': pr.get('state'), 'url': pr.get('url'), 'blockers': blockers}
 
 
 def fetch(repo, number):
@@ -108,8 +110,9 @@ def main():
     args = parser.parse_args()
     try:
         pr = fetch(args.repo, args.pr)
-        report = assess(pr, set(args.reviewer), set(args.handler))
-        if fetch(args.repo, args.pr)['headRefOid'] != report['head']:
+        final = fetch(args.repo, args.pr)
+        report = assess(final, set(args.reviewer), set(args.handler))
+        if pr['headRefOid'] != report['head']:
             report['ready_to_review'] = False
             report['blockers'].append('Head changed during audit')
         report['checked_at'] = datetime.datetime.now(datetime.timezone.utc).isoformat()

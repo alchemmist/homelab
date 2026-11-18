@@ -39,7 +39,7 @@ production-операции. Датированные результаты не 
   Новые записи на `socrat-5` авторитетны. Старые claims — stale recovery, не
   актуальная копия. Rollback после новых записей требует fresh reverse handoff.
 - `socrat-5`: [SWE Mini](swe-mini.md), автономная очередь mini-swe-agent для Monori; приём новых задач приостановлен, PVC сохранён.
-- `socrat-5`: [OpenHands Canvas](openhands.md), готовый upstream UI + Agent Server. Короткий model/tool smoke прошёл; длинный пилот преждевременно остановился. Ingress выключен, DNS требует sudo, полный PR lifecycle не подключён/не принят.
+- `socrat-5`: [OpenHands Canvas](openhands.md), готовый upstream UI + Agent Server. Browser→закрытая вкладка→shell/result и native Stop-hook fixture прошли; полный длинный PR loop не принят. Ingress выключен, DNS требует sudo, GitHub publisher не подключён. PR#500 закрыт извне как superseded, не выдан за Ready.
   Durable SQLite PVC, отдельные non-root Jobs, только `venice-deepseek` через LiteLLM.
   Реальный smoke и переход к Monori приняты17ноября; первый PR/review ещё не принят.
   Production Monori/PVC/банковские credentials не подключены, merge не автоматический.

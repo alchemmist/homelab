@@ -10,7 +10,7 @@ m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
 class ReadyContract(unittest.TestCase):
     def setUp(self):
         self.sha = 'a' * 40
-        self.p = {'url':'https://github.com/o/r/pull/1','headRefOid':self.sha,'mergeable':'MERGEABLE','isDraft':False,
+        self.p = {'url':'https://github.com/o/r/pull/1','headRefOid':self.sha,'mergeable':'MERGEABLE','isDraft':False,'state':'OPEN',
           'commits':{'nodes':[{'commit':{'oid':self.sha}}]},
           'reviews':{'nodes':[{'id':'review','author':{'login':'review-bot','__typename':'Bot'},'state':'APPROVED','body':'','commit':{'oid':self.sha}}]},
           'comments':{'nodes':[]},'reviewThreads':{'nodes':[]},
@@ -25,6 +25,11 @@ class ReadyContract(unittest.TestCase):
 
     def test_green_complete(self):
         self.assertTrue(self.result()['ready_to_review'])
+
+    def test_closed_merged_unknown_state_are_not_ready(self):
+        for state in ('CLOSED', 'MERGED', None):
+            self.p['state'] = state
+            self.assertFalse(self.result()['ready_to_review'])
 
     def test_skipped_failed_and_pending_are_not_green(self):
         for conclusion in ('SKIPPED','NEUTRAL','FAILURE',None):
