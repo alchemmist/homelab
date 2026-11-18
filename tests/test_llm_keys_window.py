@@ -34,4 +34,5 @@ def test_models_are_separate_and_public_content_is_aggregate():
         assert 'model="' + model + '"' in expr
         assert 'sum by (api_key_alias)' in expr
         assert '[1m]' in expr and '$__interval' not in expr
-    assert d['panels'][2]['gridPos']['y'] == 20
+    assert d['panels'][2]['gridPos']['y'] == 16
+    assert all(p['gridPos']['h'] == 8 for p in d['panels'][:2])
