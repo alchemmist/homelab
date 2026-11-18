@@ -1,0 +1,15 @@
+# Cats, PR Agent and Kuma full semantic review
+
+Read the full retained lane05/08/22differences against authoritative native bases and the complete current three test modules. Selected file-specific candidates, not whole worker commits. All five original cases pass before and after the candidate changes, with zero skips. Only source reads and existing local `helm template` commands execute; no install, deployment, model/provider request, identity operation, credential helper or network/production operation.
+
+Proved complete module equality under the exact reviewed transformations: unittest membership/nonmembership/equality assertions become the same ordered native predicates, annotations/docstrings are erased only for the proof, and unchanged standard-library import inventories are sorted. All42predicates, image/digest/fallback pins, model names and nine-entry fallback count, GitHub command boundaries, resources, private/local-model URL, Kuma method/socket/HTTPS rules, generator/index expressions, helper subprocess arguments, skip decorator and main entrypoint remain present. No fixture, variable, timeout, environment, resource/version or runtime-helper rewrite was normalized away.
+
+Cats render now has concrete str varargs and str return, justified by its unchanged text=True subprocess call and all existing literal-str callers. No Any/cast/TypeGuard, fake callable shape or new import. The extracted Cats image pin is exactly the original immutable string, with one module binding, no shadowing/reassignment/argument/global/nonlocal binding and checked full AST equality after literal inlining.
+
+Parent additionally converted the one remaining PR Agent assertEqual on the fallback count. The resulting magic-number diagnostic was repaired by naming EXPECTED_FALLBACK_MODEL_COUNT=9, not by ignoring it. Verified one unshadowed literal binding and exact whole-module AST equality after inlining. This preserves the exact nine-model assertion rather than relaxing it.
+
+Pinned scoped diagnostics: Ruff52→4; mypy3→0; formatter passes. The four remaining Ruff findings are the original S603/S607 on unchanged local Helm calls, still visible and blocking. Raw intermediate/final logs, full canonical hashes and exact constant-binding proofs are private in `chart-and-redirect-parent-review/`, directories0700/files0600.
+
+Cats and PR Agent remain in their existing medium suite. Newly inspected Kuma is pure source-only: moved its existing module from notScheduled to fast and removed exactly that stale deferred entry. No new skip or test-body omission. Full committed-head fast/medium/contracts/guard/graph and immutable audit remain independent gates.
+
+Hosted preceding4341e8fa: graph run44185687407 failed; native Python artifact again explicitly fails fixed10485760-byte admission. Exact job metadata and Python artifact are private in `hosted-4341e8fa/`. Separate Kind44185687143, observer44185687118 and VPN44185687337 passed for that head only. Complete native report admission remains mandatory, without truncation/sharding/cap bypass. No green/merge or production acceptance is inferred.

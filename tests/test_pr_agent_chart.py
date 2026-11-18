@@ -6,6 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CHART = ROOT / "charts" / "pr-agent"
+EXPECTED_FALLBACK_MODEL_COUNT = 9
 
 
 class PrAgentChartTest(unittest.TestCase):
@@ -17,46 +18,46 @@ class PrAgentChartTest(unittest.TestCase):
             ["helm", "template", "pr-agent", str(CHART), "--namespace", "pr-agent"],
             text=True,
         )
-        self.assertIn("pragent/pr-agent:0.49.0-github_app", rendered)
-        self.assertIn("openai/qwen3.8-27b", rendered)
-        self.assertIn("http://litellm.llm.svc.cluster.local:4000/v1", rendered)
-        self.assertIn("pr-agent.socrat.alchemmist.xyz", rendered)
-        self.assertIn("github-webhook-secret", rendered)
-        self.assertIn("readOnlyRootFilesystem: true", rendered)
-        self.assertIn('kubernetes.io/hostname: "socrat-5"', rendered)
-        self.assertIn("CONFIG__LOG_LEVEL", rendered)
-        self.assertIn('value: "INFO"', rendered)
-        self.assertIn("GUNICORN_WORKERS", rendered)
-        self.assertIn('value: "6"', rendered)
-        self.assertIn("pr-agent-webhook-redelivery", rendered)
-        self.assertIn("redeliver_webhooks.py", rendered)
-        self.assertIn("CONFIG__AI_TIMEOUT", rendered)
-        self.assertIn('value: "7200"', rendered)
-        self.assertIn("--timeout", rendered)
-        self.assertIn('"0"', rendered)
-        self.assertIn("CONFIG__FALLBACK_MODELS", rendered)
+        assert "pragent/pr-agent:0.49.0-github_app" in rendered
+        assert "openai/qwen3.8-27b" in rendered
+        assert "http://litellm.llm.svc.cluster.local:4000/v1" in rendered
+        assert "pr-agent.socrat.alchemmist.xyz" in rendered
+        assert "github-webhook-secret" in rendered
+        assert "readOnlyRootFilesystem: true" in rendered
+        assert 'kubernetes.io/hostname: "socrat-5"' in rendered
+        assert "CONFIG__LOG_LEVEL" in rendered
+        assert 'value: "INFO"' in rendered
+        assert "GUNICORN_WORKERS" in rendered
+        assert 'value: "6"' in rendered
+        assert "pr-agent-webhook-redelivery" in rendered
+        assert "redeliver_webhooks.py" in rendered
+        assert "CONFIG__AI_TIMEOUT" in rendered
+        assert 'value: "7200"' in rendered
+        assert "--timeout" in rendered
+        assert '"0"' in rendered
+        assert "CONFIG__FALLBACK_MODELS" in rendered
         fallback_at = next(
             i for i, line in enumerate(rendered.splitlines()) if "CONFIG__FALLBACK_MODELS" in line
         )
         fallback_value = rendered.splitlines()[fallback_at + 1]
-        self.assertEqual(fallback_value.count("openai/qwen3.8-27b"), 9)
-        self.assertIn("CONFIG__MAX_MODEL_TOKENS", rendered)
-        self.assertIn('value: "12288"', rendered)
-        self.assertIn('value: "100"', rendered)
-        self.assertIn("PR_REVIEWER__ENABLE_LARGE_PR_CHUNKING", rendered)
-        self.assertIn("PR_REVIEWER__INLINE_KEY_ISSUES", rendered)
-        self.assertIn("PR_CODE_SUGGESTIONS__COMMITTABLE_CODE_SUGGESTIONS", rendered)
-        self.assertIn("GITHUB_APP__HANDLE_PUSH_TRIGGER", rendered)
-        self.assertIn("GITHUB_APP__PUSH_COMMANDS", rendered)
-        self.assertIn("GITHUB__PUBLISH_AS_CHECK_RUN", rendered)
+        assert fallback_value.count("openai/qwen3.8-27b") == EXPECTED_FALLBACK_MODEL_COUNT
+        assert "CONFIG__MAX_MODEL_TOKENS" in rendered
+        assert 'value: "12288"' in rendered
+        assert 'value: "100"' in rendered
+        assert "PR_REVIEWER__ENABLE_LARGE_PR_CHUNKING" in rendered
+        assert "PR_REVIEWER__INLINE_KEY_ISSUES" in rendered
+        assert "PR_CODE_SUGGESTIONS__COMMITTABLE_CODE_SUGGESTIONS" in rendered
+        assert "GITHUB_APP__HANDLE_PUSH_TRIGGER" in rendered
+        assert "GITHUB_APP__PUSH_COMMANDS" in rendered
+        assert "GITHUB__PUBLISH_AS_CHECK_RUN" in rendered
         check_at = next(
             i
             for i, line in enumerate(rendered.splitlines())
             if "GITHUB__PUBLISH_AS_CHECK_RUN" in line
         )
-        self.assertIn('"true"', rendered.splitlines()[check_at + 1])
+        assert '"true"' in rendered.splitlines()[check_at + 1]
         lines = rendered.splitlines()
         push_at = next(i for i, line in enumerate(lines) if "GITHUB_APP__PUSH_COMMANDS" in line)
         push_value = lines[push_at + 1]
-        self.assertIn("/review", push_value)
-        self.assertNotIn("/improve", push_value)
+        assert "/review" in push_value
+        assert "/improve" not in push_value
