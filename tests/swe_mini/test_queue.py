@@ -160,6 +160,40 @@ class QueueTransitions(unittest.TestCase):
             c.tick()
             self.assertTrue(api.call_args.kwargs.get('auth'))
 
+    def test_backoff_preserves_dependency_error_and_heartbeat(self):
+        c.save('test', state='failed')
+        with patch.object(c, 'github', side_effect=RuntimeError('external API unavailable')):
+            c.run_once()
+            c.run_once()
+        self.assertEqual(c.STATUS['error'], 'RuntimeError')
+        self.assertGreater(c.STATUS['last_tick'], 0)
+        c.NEXT_IDLE_CHECK = 0
+        with patch.object(c, 'github', side_effect=[[], {'sha': 'b' * 40}]):
+            c.run_once()
+        self.assertEqual(c.STATUS['error'], '')
+
+    def test_api_error_does_not_fail_process_health(self):
+        import threading, urllib.request, urllib.error, time
+        saved = dict(c.STATUS)
+        server = c.HTTPServer(('127.0.0.1', 0), c.Health)
+        thread = threading.Thread(target=server.serve_forever, daemon=True); thread.start()
+        def status(path):
+            try:
+                with urllib.request.urlopen('http://127.0.0.1:%d%s' % (server.server_port,path), timeout=3) as r:
+                    return r.status
+            except urllib.error.HTTPError as exc:
+                return exc.code
+        try:
+            c.STATUS.update(last_tick=time.time(), error='HTTPError')
+            self.assertEqual(status('/livez'), 200)
+            self.assertEqual(status('/healthz'), 200)
+            self.assertEqual(status('/dependencies'), 503)
+            c.STATUS['last_tick'] = time.time() - 181
+            self.assertEqual(status('/livez'), 503)
+        finally:
+            server.shutdown(); server.server_close(); thread.join()
+            c.STATUS.clear(); c.STATUS.update(saved)
+
     def test_persisted_queued_run_resumes(self):
         c.save('test', state='queued')
         with patch.object(c, 'start_job') as start:
