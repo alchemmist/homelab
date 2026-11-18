@@ -1,3 +1,10 @@
+{{- range .Values.config.extraEnv }}
+{{- if and (eq .name "AGENT_CANVAS_ALLOW_LAN_SESSION_KEY") (eq (toString .value) "true") }}
+{{- if not (and $.Values.oidc $.Values.oidc.enabled) }}
+{{- fail "Session-key HTML bootstrap requires the protected OIDC frontdoor" }}
+{{- end }}
+{{- end }}
+{{- end }}
 # Local safety additions to the otherwise unmodified upstream chart.
 apiVersion: v1
 kind: Namespace
@@ -32,9 +39,17 @@ spec:
   policyTypes: [Ingress, Egress]
   ingress:
     - from:
+        {{- if and .Values.oidc .Values.oidc.enabled }}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: identity
+          podSelector:
+            matchLabels: {app: openhands-oidc}
+        {{- else }}
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kube-system
+        {{- end }}
       ports:
         - {port: 8000, protocol: TCP}
   egress:

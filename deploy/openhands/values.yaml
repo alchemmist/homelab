@@ -38,10 +38,15 @@ ingress:
 config:
   extraEnv:
     - name: AGENT_CANVAS_ALLOW_LAN_SESSION_KEY
-      value: 'false'
+      value: 'true'
     - name: AUTOMATION_BASE_URL
       value: https://openhands.socrat.alchemmist.xyz
 statefulSet:
   persistentVolumeClaimRetentionPolicy:
     whenDeleted: Retain
     whenScaled: Retain
+
+# Public route terminates at standard Authentik OIDC, never directly at Canvas.
+oidc:
+  enabled: true
+  image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.6@sha256:01da265f8e371e6d3043b97829e171f3e4d53f9dc3817be15fb4fc29c92fe2a6

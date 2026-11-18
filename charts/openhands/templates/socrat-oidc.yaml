@@ -1,0 +1,147 @@
+{{- if and .Values.oidc .Values.oidc.enabled }}
+{{- if .Values.ingress.enabled }}
+{{- fail "OIDC requires the native unprotected ingress to remain disabled" }}
+{{- end }}
+# Standard OIDC gateway in the already watched identity namespace. No custom auth.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openhands-oidc
+  namespace: identity
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: openhands-oidc}
+  template:
+    metadata:
+      labels: {app: openhands-oidc}
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector: {kubernetes.io/hostname: socrat-5}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: oauth2-proxy
+          image: {{ .Values.oidc.image | quote }}
+          args:
+            - --http-address=0.0.0.0:4180
+            - --provider=oidc
+            - --oidc-issuer-url=https://auth.socrat.alchemmist.xyz/application/o/openhands/
+            - --redirect-url=https://openhands.socrat.alchemmist.xyz/oauth2/callback
+            - --upstream=http://openhands.openhands.svc.cluster.local:8000/
+            - --scope=openid profile email groups offline_access
+            - --allowed-group=homelab-owner
+            - --oidc-groups-claim=groups
+            - --email-domain=*
+            - --code-challenge-method=S256
+            - --reverse-proxy=true
+            - --skip-provider-button=true
+            - --skip-jwt-bearer-tokens=false
+            - --cookie-name=__Host-openhands_oidc
+            - --cookie-secure=true
+            - --cookie-httponly=true
+            - --cookie-samesite=lax
+            - --cookie-path=/
+            - --cookie-expire=8h
+            - --cookie-refresh=2m
+            - --cookie-csrf-per-request=true
+            - --cookie-csrf-expire=5m
+            - --whitelist-domain=openhands.socrat.alchemmist.xyz
+            - --proxy-websockets=true
+            - --pass-access-token=false
+            - --pass-authorization-header=false
+            - --set-authorization-header=false
+            - --pass-basic-auth=false
+            - --pass-user-headers=false
+            - --api-route=^/api(/|$)
+            - --api-route=^/sockets(/|$)
+            - --api-route=^/server_info$
+            - --api-route=^/openapi[.]json$
+            - --request-logging=false
+            - --auth-logging=true
+          env:
+            - name: OAUTH2_PROXY_CLIENT_ID
+              valueFrom: {secretKeyRef: {name: openhands-oidc, key: client-id}}
+            - name: OAUTH2_PROXY_CLIENT_SECRET
+              valueFrom: {secretKeyRef: {name: openhands-oidc, key: client-secret}}
+            - name: OAUTH2_PROXY_COOKIE_SECRET
+              valueFrom: {secretKeyRef: {name: openhands-oidc, key: cookie-secret}}
+          ports: [{name: http, containerPort: 4180}]
+          readinessProbe:
+            httpGet: {path: /ready, port: http}
+            initialDelaySeconds: 3
+          livenessProbe:
+            httpGet: {path: /ping, port: http}
+            initialDelaySeconds: 10
+          resources:
+            requests: {cpu: 50m, memory: 64Mi, ephemeral-storage: 16Mi}
+            limits: {cpu: 500m, memory: 256Mi, ephemeral-storage: 128Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: openhands-oidc, namespace: identity}
+spec:
+  selector: {app: openhands-oidc}
+  ports: [{name: http, port: 4180, targetPort: http}]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: openhands-oidc
+  namespace: identity
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-http01
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: 'true'
+    # OAuth codes/backend WS keys must not enter access logs or traces.
+    traefik.ingress.kubernetes.io/router.observability.accesslogs: 'false'
+    traefik.ingress.kubernetes.io/router.observability.tracing: 'false'
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts: [openhands.socrat.alchemmist.xyz]
+      secretName: openhands-oidc-tls
+  rules:
+    - host: openhands.socrat.alchemmist.xyz
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: {name: openhands-oidc, port: {number: 4180}}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: openhands-oidc, namespace: identity}
+spec:
+  podSelector: {matchLabels: {app: openhands-oidc}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: traefik-edge}}
+      ports: [{port: 4180, protocol: TCP}]
+  egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+      ports: [{port: 53, protocol: UDP}, {port: 53, protocol: TCP}]
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: openhands}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: agent-canvas}}
+      ports: [{port: 8000, protocol: TCP}]
+    # Existing canonical Authentik DNS resolves to the private HA ingress VIP.
+    - to: [{ipBlock: {cidr: 192.168.0.250/32}}]
+      ports: [{port: 443, protocol: TCP}]
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16, 127.0.0.0/8, 100.64.0.0/10]
+      ports: [{port: 443, protocol: TCP}]
+{{- end }}
