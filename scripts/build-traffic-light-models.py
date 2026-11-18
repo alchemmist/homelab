@@ -44,7 +44,7 @@ def write(d):
     quality['write'](d)
     text = SOURCE.read_text()
     for p in d['panels']:
-        if p['id'] not in IDS:
+        if p['id'] not in IDS | {909}:
             continue
         block = '\n'.join('    '+line for line in json.dumps(p,ensure_ascii=False,indent=2).splitlines())
         assert text.count(block) == 1
