@@ -19,7 +19,7 @@ assert.equal(idle(values,[timestamps[0],{...timestamps[1],value:[now,String(now-
 assert.equal(idle([values[0],{...values[1],value:[now,'1']}],timestamps),false);
 const response = payload => ({statusCode:200,body:{choices:[{message:{content:JSON.stringify(payload)}}]}});
 const cases = ['  Leading  \n','Two Words\n','\n'].map(input=>({input,output:input}));
-const validated = run('Verify new tests against echo specification',response({cases:[...cases,{input:'Oops\n',output:'Bad\n'}]}),{phase:'tests',data:{calls:1,source:'print(input())'}});
+const validated = run('Verify new tests against reviewed specification',response({cases:[...cases,{input:'Oops\n',output:'Bad\n'}]}),{phase:'tests',data:{calls:1,source:'print(input())',contract:'echo',examples:[],faults:[['empty program','pass'],['strip whitespace','x'],['first word','x'],['lower','x'],['trim','x']]}});
 assert.equal(validated.phase,'public');
 assert.deepEqual(validated.data.cases,cases);
 const verdict = (v, test_index) => ({statusCode:200,body:{verdict:v,test_index}});
@@ -36,3 +36,8 @@ assert.equal(mutation.data.faultsKilled,4);
 assert.deepEqual(mutation.data.survivors,['strip whitespace']);
 assert.deepEqual(run('Validate repaired solution format',{statusCode:429},bad),{pause:true});
 console.log('Graph routing, admission and reducers passed');
+for (const [contract,input,output] of [['sum','999999999999999999999999\n1\n','1000000000000000000000000\n'],['length',' а😀 \n','Слово  а😀  имеет длину 4\n'],['parity','-2\n','чётное\n'],['sign','-0.25\n','-\n']]) {
+ const r=run('Verify new tests against reviewed specification',response({cases:[{input,output},{input,output:'wrong\n'}]}),{phase:'tests',data:{contract,cases:[],examples:[],calls:0}});
+ assert.equal(r.data.cases.length,1,contract);
+}
+console.log('Reviewed queue oracles passed');

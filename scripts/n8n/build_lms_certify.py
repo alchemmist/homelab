@@ -91,29 +91,27 @@ return {{json: {{idle: expected.every(n => v.some(r => r.metric.__name__ === n))
 
 start = node('Every minute', 'scheduleTrigger', 1.2, {'rule': {'interval': [{'field': 'minutes', 'minutesInterval': 1}]}}, 0, 0)
 entry, gate = idle('Admission:', 220, 0)
-claim = pg('Claim pilot and load checkpoint', '''UPDATE lms_certification.pilot
-SET owner = $1, lease_until = clock_timestamp() + interval '15 minutes'
-WHERE id = 'echo-0-v1' AND phase NOT IN ('certified','needs_review')
-AND (lease_until IS NULL OR lease_until < clock_timestamp())
-RETURNING phase, data''', '[$execution.id]', 1100, 0)
+claim = pg('Claim next queued task and load checkpoint', '''WITH candidate AS (
+ SELECT id FROM lms_certification.pilot
+ WHERE phase NOT IN ('certified','needs_review')
+ AND (lease_until IS NULL OR lease_until < clock_timestamp())
+ AND NOT EXISTS (SELECT 1 FROM lms_certification.pilot WHERE lease_until > clock_timestamp())
+ ORDER BY updated_at, id FOR UPDATE SKIP LOCKED LIMIT 1
+)
+UPDATE lms_certification.pilot p SET owner=$1, lease_until=clock_timestamp()+interval '15 minutes'
+FROM candidate c WHERE p.id=c.id RETURNING p.phase,p.data''', '[$execution.id]', 1100, 0)
 chain(start, entry)
 link(gate, claim)
 checkpoint = pg('Checkpoint and dispatch next phase', '''UPDATE lms_certification.pilot
 SET phase = $2, data = $3::jsonb, updated_at = clock_timestamp(),
 lease_until = CASE WHEN $2 IN ('certified','needs_review') THEN NULL ELSE clock_timestamp() + interval '15 minutes' END
-WHERE id = 'echo-0-v1' AND owner = $1 AND lease_until > clock_timestamp()
+WHERE owner = $1 AND lease_until > clock_timestamp()
 RETURNING phase, data''', '[$execution.id, $json.phase, JSON.stringify($json.data)]', 1480, -380)
 release = pg('Pause and release lease', '''UPDATE lms_certification.pilot SET lease_until = NULL
-WHERE id = 'echo-0-v1' AND owner = $1 RETURNING phase''', '[$execution.id]', 1140, -580)
-terminal = code('Private outcome recorded', 'return {json: {status: $json.phase}};', 4900, -380)
+WHERE owner = $1 RETURNING phase''', '[$execution.id]', 1140, -580)
+terminal = pg('Private outcome recorded', '''SELECT phase, count(*)::int AS tasks,
+ max(updated_at) AS latest_update FROM lms_certification.pilot GROUP BY phase ORDER BY phase''', '[]', 4900, -380)
 
-statement = 'Напишите программу, которая считывает слово (или фразу, неважно) и тут же выводит её, и больше ничего не делает. Особое условие: одна строка, не более 14 символов.'
-examples = [{'input': 'Привет, мир!\n', 'output': 'Привет, мир!\n'}]
-faults = [
-    ('empty program', 'pass'), ('strip whitespace', 'print(input().strip())'),
-    ('truncate at first word', 'print(input().split(" ")[0])'),
-    ('lowercase', 'print(input().lower())'), ('lose leading characters', 'print(input()[1:])'),
-]
 
 
 def ref(name):
@@ -152,13 +150,13 @@ for i, (phase, title) in enumerate(phase_specs):
         link(route, first)
         link(free, release, 1)
         test_prompt = ('Придумай корректные закрытые тесты по условию. JSON {"cases":[{"input":"строка\\n","output":"строка\\n"}]}. '
-                       'Добавь случаи с пробелами по краям, несколько слов, смешанный регистр и пустую строку. Условие: ' + statement)
+                       'Добавь допустимые граничные случаи: нули, отрицательные числа или особенности строк, если они разрешены условием. ' + 'Не придумывай недопустимые входы. Верни не менее 6 различных случаев. ')
         if phase in {'tests','expand'}:
-            prompt = json.dumps(test_prompt, ensure_ascii=False)
+            prompt = json.dumps(test_prompt, ensure_ascii=False) + f" + '\\nУсловие: ' + {r}.data.statement"
             if phase == 'expand':
                 prompt += f''' + '\\nУже проверенные входы: ' + JSON.stringify({r}.data.cases.map(c => c.input)) + '\\nЧто не поймано: ' + JSON.stringify({r}.data.survivors)'''
         else:
-            prompt = json.dumps('Верни решение на Python 3 в формате JSON {"source":"..."}. Условие: ' + statement, ensure_ascii=False)
+            prompt = json.dumps('Верни решение на Python 3 в формате JSON {"source":"..."}. Только учебный Python, без файлов и сети. Условие: ', ensure_ascii=False) + f' + {r}.data.statement'
             if phase == 'repair':
                 prompt += f''' + '\\nПредыдущее решение: ' + JSON.stringify({r}.data.source) + '\\nПроваленный проверенный тест: ' + JSON.stringify({r}.data.failure)'''
         req = http('LLM: ' + title, LLM, x+880, y, role='LITELLM', body=
@@ -170,33 +168,54 @@ try { payload = JSON.parse($json.body.choices[0].message.content); } catch { pay
 '''
         if phase in {'solve','repair'}:
             logic = '''const source = typeof payload?.source === 'string' ? payload.source.trim() : '';
-if (!source || /[\\r\\n]/.test(source) || [...source].length > 14) return out(phase);
+if (!source || source.length > 6000 || (data.contract === 'echo' && (/[\\r\\n]/.test(source) || [...source].length > 14))) return out(phase);
 data.source = source;
 return out(phase === 'solve' ? 'tests' : 'public');'''
             label = 'Validate solution format' if phase == 'solve' else 'Validate repaired solution format'
         else:
-            logic = '''// Independently verify the echo task's expected output; never consult the candidate.
-const cases = data.cases || [];
-const seen = new Set(cases.map(c => c.input));
-for (const c of (Array.isArray(payload?.cases) ? payload.cases.slice(0, 16) : [])) {
-  if (typeof c?.input !== 'string' || c.input.length > 256 || !/^[^\\r\\n]*\\n$/.test(c.input) ||
-      c.output !== c.input || seen.has(c.input) || c.input === 'Привет, мир!\\n' || cases.length >= 12) continue;
-  cases.push({input:c.input,output:c.output}); seen.add(c.input);
+            logic = r'''// Reviewed deterministic oracle: no candidate source is read here.
+function expected(input) {
+ const lines = input.endsWith('\n') ? input.slice(0,-1).split('\n') : [];
+ if (data.contract === 'echo' || data.contract === 'length') {
+  if (lines.length !== 1 || input.includes('\r')) return null;
+  return data.contract === 'echo' ? input : `Слово ${lines[0]} имеет длину ${[...lines[0]].length}\n`;
+ }
+ if (data.contract === 'sum') {
+  if (lines.length !== 2 || !lines.every(x => /^[+-]?\d{1,30}$/.test(x))) return null;
+  return String(BigInt(lines[0])+BigInt(lines[1]))+'\n';
+ }
+ if (data.contract === 'parity') {
+  if (lines.length !== 1 || !/^[+-]?\d{1,30}$/.test(lines[0])) return null;
+  return BigInt(lines[0])%2n === 0n ? 'чётное\n' : 'нечётное\n';
+ }
+ if (data.contract === 'sign') {
+  if (lines.length !== 1 || !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(lines[0])) return null;
+  const n=Number(lines[0]); if (!Number.isFinite(n) || Math.abs(n)>1e100) return null;
+  return (n>0?'+':n<0?'-':'0')+'\n';
+ }
+ throw new Error('Unsupported reviewed contract');
 }
-data.cases = cases;
-return out(cases.length < 3 ? phase : 'public');'''
-            label = 'Verify new tests against echo specification' if phase == 'tests' else 'Verify added cases and preserve existing tests'
+const cases=data.cases || [], seen=new Set(cases.map(c=>c.input));
+for (const c of (Array.isArray(payload?.cases)?payload.cases.slice(0,16):[])) {
+ if (typeof c?.input !== 'string' || c.input.length>256 || typeof c.output !== 'string' ||
+     expected(c.input) !== c.output || seen.has(c.input) ||
+     data.examples.some(e=>e.input===c.input) || cases.length>=12) continue;
+ cases.push({input:c.input,output:c.output});seen.add(c.input);
+}
+data.cases=cases;
+return out(cases.length<3?phase:'public');'''
+            label = 'Verify new tests against reviewed specification' if phase == 'tests' else 'Verify added cases and preserve existing tests'
         chain(free, req, reducer(label, route, parse+logic, x+1100, y))
     else:
-        cases = json.dumps(examples, ensure_ascii=False) if phase == 'public' else r + '.data.cases'
-        source = r + '.data.source' if phase != 'mutate' else json.dumps(faults) + '[' + r + '.data.variant][1]'
+        cases = r + '.data.examples' if phase == 'public' else r + '.data.cases'
+        source = r + '.data.source' if phase != 'mutate' else r + '.data.faults[' + r + '.data.variant][1]'
         req = http('Sandbox: ' + title, RUNNER, x, y, role='SANDBOX', body=f'{{source:{source}, cases:{cases}}}')
         logic = '''const verdict = $json.body?.verdict;
 if (!['accepted','wrong_answer','runtime_error','time_limit','output_limit','memory_limit'].includes(verdict))
   throw new Error('Invalid sandbox verdict');
 '''
         if phase == 'mutate':
-            logic += f'''const variants = {json.dumps(faults)};
+            logic += f'''const variants = data.faults;
 if (verdict !== 'wrong_answer') data.survivors.push(variants[data.variant][0]);
 data.variant++;
 const next = data.variant < variants.length ? 'mutate' :
@@ -209,13 +228,13 @@ return {{json: {{phase:next,data}}}};'''
 if (verdict !== 'accepted') {{
   data.failure = {{case: ({cases})[$json.body.test_index-1], verdict}};
   next = data.calls < 12 ? 'repair' : 'needs_review';
-}} else if (next === 'mutate') {{ data.variant = 0; data.survivors = []; }}
+}} else if (next === 'mutate') {{ data.variant = 0; data.survivors = []; data.faultsKilled = 0; }}
 return {{json: {{phase:next,data}}}};'''
             label = 'Route public example verdict' if phase == 'public' else 'Route private test verdict'
         chain(route, req, reducer(label, route, logic, x+220, y))
 link(previous, terminal, 1)
 
-workflow = dict(name='LMS certification — echo pilot', nodes=nodes, connections=edges,
+workflow = dict(name='LMS certification — reviewed queue', nodes=nodes, connections=edges,
                 settings=dict(errorWorkflow='iZn7biFh6321a1w8', executionOrder='v1', timezone='Europe/Moscow',
                               executionTimeout=720, saveDataSuccessExecution='none', saveDataErrorExecution='none',
                               saveExecutionProgress=False, saveManualExecutions=False))

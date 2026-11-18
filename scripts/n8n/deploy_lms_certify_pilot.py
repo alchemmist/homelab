@@ -21,7 +21,7 @@ def deploy(name,container,volumes,**pod):
 def access(name,port):
  put('Service',name,spec={'selector':{'app':name},'ports':[{'port':port,'targetPort':port}]});put('NetworkPolicy',name,spec={'podSelector':{'matchLabels':{'app':name}},'policyTypes':['Ingress'],'ingress':[{'from':[{'podSelector':{'matchLabels':{'app':'n8n'}}}],'ports':[{'protocol':'TCP','port':port}]}]})
 put('PersistentVolumeClaim',db,spec={'storageClassName':'local-path','accessModes':['ReadWriteOnce'],'resources':{'requests':{'storage':'1Gi'}}})
-put('ConfigMap',db,data={'01-pilot.sql':(docs/'pilot-state.sql').read_text()})
+put('ConfigMap',db,data={'01-pilot.sql':(docs/'pilot-state.sql').read_text(), '02-audit.sql':(docs/'queue-audit.sql').read_text()})
 access(db,5432)
 deploy(db,{'name':'postgres','image':'postgres:16-alpine','env':[{'name':'POSTGRES_USER','value':'certification'},{'name':'POSTGRES_DB','value':'certification'},env('POSTGRES_PASSWORD','POSTGRES_PASSWORD')],'volumeMounts':[{'name':'data','mountPath':'/var/lib/postgresql/data'},{'name':'sql','mountPath':'/docker-entrypoint-initdb.d'}],'readinessProbe':{'tcpSocket':{'port':5432}}},[{'name':'data','persistentVolumeClaim':{'claimName':db}},{'name':'sql','configMap':{'name':db}}])
 files={p.name:p.read_text() for p in (lms/'runner').glob('*.py')};files['requirements.txt']=(lms/'runner/requirements.txt').read_text(); files['launch.py']='import uvicorn\nfrom runner.app import create_app\nfrom runner.engine import DockerEngine\napp=create_app(catalog={},engine=DockerEngine("lms-certification-sandbox:pilot",owner="certification-pilot"))\nuvicorn.run(app,host="0.0.0.0",port=9000,access_log=False)\n'; put('ConfigMap',runner,data=files)

@@ -39,3 +39,28 @@ image `lms-certification-sandbox:pilot` was built ahead of time from
 uses its own persistent Postgres instance (not the LMS or n8n database).
 The current provisioning uses the dedicated instance's bootstrap role; replace
 it with the narrower role above before expanding beyond the pilot.
+
+## Reviewed queue rollout (2026-11-19)
+
+The workflow now claims the oldest eligible row using `FOR UPDATE SKIP LOCKED`,
+checks for a live lease, and resumes checkpoints by execution owner. It no longer
+selects only echo-0. `seed_lms_certify_queue.py` emits idempotent inserts for
+four reviewed stdin/stdout tasks: integer sum, string length, parity and sign.
+Statements and public examples come from canonical content; parity/sign have
+explicit operator fixtures because canonical examples are absent. Existing
+public examples never become private tests.
+
+Expected outputs for generated tests are verified by reviewed deterministic
+oracles (including Unicode code points and large integer sums), not by the
+candidate. Each task has fixed meaningful fault probes; these are still not
+AST mutants. This is an incremental finite queue, **not admission of all 781
+exercises**. Other contracts require explicit validators before admission.
+At queue exhaustion the model is intentionally idle; completed tasks are never
+reset merely to create load. The final graph node reports queue counts.
+
+Verified live queue results: sum 3 model responses / 7 tests / 5 fault probes;
+length 2 / 6 / 4; parity 2 / 6 / 4; sign 3 / 7 / 4. Sign initially killed only
+3/4 probes and entered `expand`; execution `52949` then added cases and reached
+`certified` after re-running examples, suite and all probes. `queue-audit.sql`
+records sanitized phase transitions keyed by n8n execution ID; apply it to an
+existing database explicitly (init scripts only run on empty databases).
