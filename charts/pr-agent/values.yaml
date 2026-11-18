@@ -25,9 +25,11 @@ numMaxFindings: "12"
 committableSuggestions: true
 suggestionsMaxCalls: "100"
 persistentInlineComments: true
+# Push reviews only the commits added since the previous review. A full /review rewrites
+# old findings, the inline fingerprint misses the paraphrase, and the PR gets another copy.
+# A manual /review comment still reviews the whole pull request.
 handlePushTrigger: true
-# /improve stays manual. Automatic runs on every push reposted the same inline suggestion.
-pushCommands: '["/review"]'
+pushCommands: '["/review -i"]'
 # Publish describe/review as GitHub checks: in progress while the agent runs, then success or failure.
 publishAsCheckRun: true
 gunicornWorkers: "6"
