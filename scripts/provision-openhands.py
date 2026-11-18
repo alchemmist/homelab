@@ -7,6 +7,7 @@ credentials and policy are persisted by OpenHands, not a custom runtime service.
 """
 import base64
 import json
+import os
 from pathlib import Path
 import socket
 import subprocess
@@ -15,12 +16,13 @@ import urllib.request
 
 
 def kube_secret(ns, name):
-    return json.loads(subprocess.check_output(['kubectl', '-n', ns, 'get', 'secret', name, '-o', 'json'], stderr=subprocess.DEVNULL))
+    raw = subprocess.check_output(['kubectl', '-n', ns, 'get', 'secret', name, '-o', 'json', '--ignore-not-found'], stderr=subprocess.DEVNULL)
+    return json.loads(raw) if raw.strip() else None
 
 
 def main():
     current = kube_secret('openhands', 'openhands-model')
-    if current['metadata'].get('annotations', {}).get('homelab/key-alias') != 'openhands-monori':
+    if not current or current['metadata'].get('annotations', {}).get('homelab/key-alias') != 'openhands-monori':
         master = base64.b64decode(kube_secret('llm', 'litellm-env')['data']['LITELLM_MASTER_KEY']).decode().strip()
         with socket.socket() as s:
             s.bind(('127.0.0.1', 0)); port = s.getsockname()[1]
@@ -56,17 +58,41 @@ def main():
         'reasoning_effort':None,'enable_encrypted_reasoning':False,'caching_prompt':False,
         'prompt_cache_retention':None,'input_cost_per_token':0,'output_cost_per_token':0},
         'agent_context':{'system_message_suffix':policy},
-        'condenser':{'max_size':40,'max_tokens':20000}},
+        'condenser':{'max_size':240,'max_tokens':24000}},
         'conversation_settings_diff':{'max_iterations':200}}
     # Input travels on a private exec stream, not argv, logs, chat or Git.
     code = '''import json,sys,pathlib,urllib.request
 settings=json.load(sys.stdin)
 key=pathlib.Path('/home/openhands/.openhands/agent-canvas/api-key.txt').read_text().strip()
-r=urllib.request.Request('http://127.0.0.1:8000/api/settings',method='PATCH',data=json.dumps(settings).encode(),headers={'X-Session-API-Key':key,'Content-Type':'application/json'})
-with urllib.request.urlopen(r,timeout=30) as response:
- d=json.load(response);print('Native settings configured; model:',d['agent_settings']['llm']['model'],'key_set:',d['llm_api_key_is_set'])
+def api(path,body=None,method=None):
+ r=urllib.request.Request('http://127.0.0.1:8000'+path,method=method,data=json.dumps(body).encode() if body is not None else None,headers={'X-Session-API-Key':key,'Content-Type':'application/json'})
+ with urllib.request.urlopen(r,timeout=30) as response:return json.load(response)
+api('/api/settings',settings,'PATCH')
+name='socrat-deepseek'
+connections=[c for c in api('/api/llm/provider-connections') if c['display_name']=='Socrat LiteLLM (Venice only)']
+if len(connections)>1:raise RuntimeError('Ambiguous provider connections; stop')
+connection={'display_name':'Socrat LiteLLM (Venice only)','provider':'custom','api_key':settings['agent_settings_diff']['llm']['api_key'],'base_url':settings['agent_settings_diff']['llm']['base_url']}
+if connections: c=api('/api/llm/provider-connections/'+connections[0]['id'],connection,'PATCH')
+else:c=api('/api/llm/provider-connections',connection)
+llm=dict(settings['agent_settings_diff']['llm']);llm.pop('api_key');llm['provider_connection_id']=c['id']
+api('/api/profiles/'+name,{'llm':llm,'include_secrets':False})
+api('/api/agent-profiles/'+name,{'agent_kind':'openhands','llm_profile_ref':name,'mcp_server_refs':[],'secret_refs':[],'integration_refs':[],'system_message_suffix':settings['agent_settings_diff']['agent_context']['system_message_suffix'],'condenser':settings['agent_settings_diff']['condenser']})
+p=api('/api/agent-profiles/'+name)['profile']
+api('/api/agent-profiles/'+p['id']+'/activate',{})
+d=api('/api/settings');print('Native agent profile active:',name,'key_set:',d['llm_api_key_is_set'])
 '''
     subprocess.run(['kubectl','-n','openhands','exec','-i','openhands-0','--','python','-c',code],input=json.dumps(settings),text=True,check=True)
+    private = Path.home() / '.config/homelab/openhands'
+    private.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if private.is_symlink(): raise RuntimeError('Unsafe private state directory')
+    os.chmod(private, 0o700)
+    owner_key = subprocess.check_output(['kubectl','-n','openhands','exec','openhands-0','--','cat','/home/openhands/.openhands/agent-canvas/api-key.txt'])
+    fd = os.open(private / 'session-key', os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(fd, 'wb') as stream:
+        os.fchmod(stream.fileno(), 0o600)
+        stream.write(owner_key)
+    print('Owner login key saved privately: ~/.config/homelab/openhands/session-key')
+
 
 
 if __name__ == '__main__':
