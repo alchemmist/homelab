@@ -699,8 +699,10 @@ def check_dependencies(names: Sequence[str]) -> tuple[list[Finding], int]:
     for name in sorted(inventory):
         path = Path(name)
         alternate_requirement = path.name.endswith("-requirements.txt")
-        requirement = alternate_requirement or path.name == "requirements.txt" or (
-            path.name.startswith("requirements-") and path.suffix == ".txt"
+        requirement = (
+            alternate_requirement
+            or path.name == "requirements.txt"
+            or (path.name.startswith("requirements-") and path.suffix == ".txt")
         )
         npm_lock = path.name in {"package-lock.json", "npm-shrinkwrap.json"}
         other_lock = path.name in {
