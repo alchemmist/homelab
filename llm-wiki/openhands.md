@@ -74,9 +74,30 @@ in the diagnostic browser; do not assume that proves all SDK telemetry is disabl
   NOT connected. `services/openhands/READY_TO_REVIEW.md` is policy, not enforcement.
   `scripts/openhands-pr-ready.py` is a read-only fail-closed audit, not an orchestrator.
 
-## Public entrance: standard Authentik OIDC, DNS/TLS acceptance pending
+## Public entrance: standard Authentik OIDC; public DNS/TLS accepted
 
 Canonical URL: **https://openhands.socrat.alchemmist.xyz/canvas/**.
+
+**Current acceptance,18November after authorized DNS repair:** all four existing
+Knot nodes received only the exact `openhands.socrat` failover name. Whole-fleet
+preflight matched; all four health-state deltas preserve unrelated records; serial
+refresh completed with private receipts and no daemon/node/VPN restart. REG.RU
+nameservers/glue and other records were not changed. All three authoritative NS,
+Google and Cloudflare now return both existing HOME/VPS entrances. The restored
+`scripts/openhands-public-dns.py`/Ansible playbook is exact-name-only, not a general
+zone editor; source and tests are committed.
+
+Certificate `identity/openhands-oidc-tls` is **Ready=True**. Both public edges pass
+normal trusted TLS (no `-k`), `/canvas/`302 to Authentik, API and WebSocket401
+without SSO. Normal DNS HTTPS and valid-backend-key-only/forged-group denial also
+pass. VPS initially returned502: its hostNetwork route selects **10.42.0.0** as
+flannel source (verified on S2), so a precise `/32` ingress exception to proxy4180
+was added; it does NOT open Canvas8000. Argo is **Synced/Healthy**, both pods Ready.
+25 OpenHands unit/render tests pass. Browser opened the real public URL and reached
+Authentik's existing login flow. **Positive owner MFA/callback/UI and public-domain
+browser-close/reopen still need the owner's genuine login**; sudo credentials are
+not reused as SSO credentials. Earlier loopback fixture is not substituted for this.
+
 This is the intended final browser entrance, not a diagnostic port-forward.
 Agent Canvas1.41.0 has no native human OIDC/RBAC; its owner backend API key is not
 per-user SSO. The deployment uses official **oauth2-proxy7.15.6**, digest-pinned,
@@ -112,7 +133,7 @@ with native Authentik OIDC. There is no custom login handler or universal proxy 
   Egress covers the ServiceLB443/Traefik8443 DNAT path, not arbitrary private hosts.
   If that existing Service is recreated with a new ClusterIP, review this pin too.
 
-Verified18November12:55UTC:
+Historical pre-DNS snapshot,18November12:55UTC (superseded above):
 
 - Canvas and official gateway both1/1, gateway0 restarts after fixing initial startup.
   Argo **Synced / Progressing**, explicitly tracking Certificate readiness; its TLS
@@ -142,18 +163,19 @@ never mount it in Canvas or print token/client/cookie values. Initial pre-first-
 cookie encoding was corrected to Go's URL-safe base64 alphabet; this was not an
 IdP signing/client-key rotation. Regression coverage uses deterministic non-secret bytes.
 
-**Public DNS/TLS are not accepted yet.** The owner reported an existing wildcard;
+**Historical DNS blocker, now repaired by the exact-name addition above.** The owner reported an existing wildcard;
 read-only checks on18November against all three public authoritative NS returned
 `NXDOMAIN` for `*.socrat.alchemmist.xyz`; Google/Cloudflare and cert-manager's
 in-cluster resolver also could not resolve the concrete OpenHands name. The HTTP-01
 Challenge is pending on that lookup failure. Do not call a default certificate or
-TLS-verification bypass a successful HTTPS test. No DNS record or authoritative
-renderer was changed; the old unexecuted exact-name DNS bootstrap was retired.
+TLS-verification bypass a successful HTTPS test. At that snapshot no DNS record or authoritative renderer had been changed. The
+retired exact-name helper was subsequently restored and applied with owner-authorized
+sudo; it is now the tracked source for this scoped repair.
 
-After public wildcard resolution is actually confirmed, cert-manager should complete
-its native HTTP-01 challenge. Then verify trusted TLS, root→Authentik and anonymous
-API401, and perform the real owner MFA/browser-close/reopen acceptance through this
-URL. Pending DNS/TLS/positive MFA means this is not yet a working accepted public UI.
+A wildcard is not required for the now-published exact name. DNS, native HTTP-01,
+trusted TLS and anonymous-auth checks have since passed. Complete real owner MFA
+and browser-close/reopen acceptance through the canonical URL; these remain distinct
+from gateway availability and the earlier loopback-only fixture.
 
 ## PR500 was externally closed, not accepted as Ready
 

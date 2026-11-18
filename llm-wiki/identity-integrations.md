@@ -414,4 +414,5 @@ single-tenant shell-service exception, NOT restoration of universal proxy gates.
 No users, memberships, IdP keys or other applications changed. Proxy credentials
 live in identity, outside coding tools; the native direct ingress stays disabled.
 GitOps source, dedicated native-API bootstrap, network/TLS details and remaining
-DNS/positive-MFA acceptance: [OpenHands runbook](openhands.md).
+public DNS/TLS acceptance and remaining positive-MFA acceptance:
+[OpenHands runbook](openhands.md).
