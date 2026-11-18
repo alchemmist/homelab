@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import http.client
 import json
 import subprocess
 import sys
@@ -243,3 +244,87 @@ def test_dependency_exit_status_cannot_contradict_report(
         pytest.raises(ValueError, match="malformed, empty, or skipped"),
     ):
         lint.check_dependencies([])
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        '{"dependencies":[{"name":"fixture","version":"1","vulns":[{"id":"GHSA-first"}],"vulns":[]}]}',
+        '{"dependencies":[{"name":"bad","version":"1","vulns":[{"id":"GHSA-first"}]}],"dependencies":[{"name":"fixture","version":"1","vulns":[]}]}',
+        '{"dependencies":[{"name":"fixture","version":"1","vulns":[{"id":"GHSA-first","id":"GHSA-second"}]}]}',
+        '{"dependencies":[],"metadata":NaN}',
+        '{"dependencies":[],"metadata":Infinity}',
+        '{"dependencies":[],"metadata":-Infinity}',
+        '{"dependencies":[],"metadata":1e999}',
+        '{"dependencies":[],"metadata":-1e999}',
+        '{"dependencies":[],"metadata":{"duration":NaN}}',
+        '{"dependencies":[],"metadata":"fixture-body-not-for-errors",',
+        "",
+    ],
+)
+def test_python_audit_refuses_ambiguous_json_before_schema(text: str) -> None:
+    """Duplicate keys and nonfinite values cannot erase findings or reach admission."""
+    with (
+        patch.object(
+            lint,
+            "command",
+            return_value=subprocess.CompletedProcess(_LOCAL_AUDIT, 0, stdout=text, stderr=""),
+        ) as audit,
+        patch.object(
+            lint,
+            "dependency_report",
+            side_effect=AssertionError("Malformed JSON must not reach schema admission"),
+        ) as schema,
+        pytest.raises(ValueError, match="malformed, empty, or skipped") as caught,
+    ):
+        lint.check_dependencies([])
+    audit.assert_called_once_with(_LOCAL_AUDIT, allowed=(0, 1), timeout=300)
+    schema.assert_not_called()
+    assert "fixture-body-not-for-errors" not in str(caught.value)
+
+
+@pytest.mark.parametrize("skip_reason", [None, False, 0, "", [], {}])
+def test_presence_of_falsy_skip_marker_is_not_complete_audit(skip_reason: object) -> None:
+    """A contradictory distribution cannot pass just because skip_reason is falsy."""
+    payload = {
+        "dependencies": [
+            {"name": "fixture", "version": "1", "vulns": [], "skip_reason": skip_reason}
+        ]
+    }
+    with pytest.raises(ValueError, match="malformed, empty, or skipped"):
+        lint.dependency_report(payload, "uv.lock")
+
+
+@pytest.mark.parametrize("vulnerable", [False, True])
+def test_strict_python_decoder_preserves_native_report_contract(*, vulnerable: bool) -> None:
+    """Real formatter fields, finite metadata, findings and exit binding remain valid."""
+    payload = {
+        "dependencies": [
+            {
+                "name": "fixture",
+                "version": "1.0",
+                "vulns": [{"id": "GHSA-fixture", "fix_versions": ["2.0"], "aliases": []}]
+                if vulnerable
+                else [],
+            }
+        ],
+        "fixes": [],
+        "metadata": {"duration": 0.25},
+    }
+    with patch.object(
+        lint,
+        "command",
+        return_value=subprocess.CompletedProcess(
+            _LOCAL_AUDIT, int(vulnerable), stdout=json.dumps(payload), stderr=""
+        ),
+    ) as audit:
+        findings, count = lint.check_dependencies([])
+    assert count == 1
+    assert [row["ruleId"] for row in findings] == (["GHSA-fixture"] if vulnerable else [])
+    assert all(row["location"]["path"] == "uv.lock" for row in findings)
+    audit.assert_called_once_with(_LOCAL_AUDIT, allowed=(0, 1), timeout=300)
+
+
+def test_dependency_fixture_keeps_http_module_identity() -> None:
+    """Temporary common aliases must not remove the transport module from sys.modules."""
+    assert sys.modules["http.client"] is http.client

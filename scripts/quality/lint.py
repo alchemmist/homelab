@@ -8,6 +8,7 @@ import base64
 import binascii
 import http.client
 import json
+import math
 import os
 import re
 import shutil
@@ -138,7 +139,7 @@ def _distribution_fields(value: object) -> tuple[str, str, list[object]]:
     """Validate a collected distribution without trusting the auditor's JSON shape."""
     if not isinstance(value, dict):
         raise TypeError(_DEPENDENCY_PROTOCOL_FAILURE)
-    if value.get("skip_reason"):
+    if "skip_reason" in value:
         raise ValueError(_DEPENDENCY_PROTOCOL_FAILURE)
     name, version, vulnerabilities = value.get("name"), value.get("version"), value.get("vulns")
     if not isinstance(name, str) or not isinstance(version, str):
@@ -196,10 +197,32 @@ def dependency_report(payload: object, source: str) -> tuple[list[Finding], int]
 def _audit_python_source(argv: Sequence[str], source: str) -> tuple[list[Finding], int]:
     """Bind the auditor's exit status to its complete vulnerability report."""
     process = command(argv, allowed=(0, 1), timeout=300)
-    findings, count = dependency_report(json.loads(process.stdout), source)
+    findings, count = dependency_report(_python_audit_payload(process.stdout), source)
     if (process.returncode == 0) != (not findings):
         raise ValueError(_DEPENDENCY_PROTOCOL_FAILURE)
     return findings, count
+
+
+def _finite_audit_float(value: str) -> float:
+    """Reject JSON exponents that overflow into an infinite Python float."""
+    number = float(value)
+    if not math.isfinite(number):
+        raise ValueError(_DEPENDENCY_PROTOCOL_FAILURE)
+    return number
+
+
+def _python_audit_payload(text: str) -> object:
+    """Refuse ambiguous or nonfinite audit JSON without echoing its payload."""
+    try:
+        payload: object = json.loads(
+            text,
+            object_pairs_hook=_unique_json_object,
+            parse_constant=_reject_nonfinite_json,
+            parse_float=_finite_audit_float,
+        )
+    except ValueError:
+        raise ValueError(_DEPENDENCY_PROTOCOL_FAILURE) from None
+    return payload
 
 
 def _string_key_dict(value: object) -> dict[str, object] | None:

@@ -125,6 +125,26 @@ def _digest(name: str) -> str:
     module = ast.parse(source)
     for node in module.body:
         if isinstance(node, ast.FunctionDef) and node.name == name:
+            if name == "_distribution_fields":
+                expected = ast.parse('"skip_reason" in value', mode="eval").body
+                guards = [
+                    item
+                    for item in ast.walk(node)
+                    if isinstance(item, ast.If) and ast.dump(item.test) == ast.dump(expected)
+                ]
+                assert len(guards) == 1, "Unexpected skipped-distribution guard"
+                guards[0].test = ast.parse('value.get("skip_reason")', mode="eval").body
+            if name == "_audit_python_source":
+                expected = ast.parse("_python_audit_payload(process.stdout)", mode="eval").body
+                decoders = [
+                    item
+                    for item in ast.walk(node)
+                    if isinstance(item, ast.Call) and ast.dump(item) == ast.dump(expected)
+                ]
+                assert len(decoders) == 1, "Unexpected Python audit decoder"
+                decoders[0].func = ast.Attribute(
+                    value=ast.Name(id="json", ctx=ast.Load()), attr="loads", ctx=ast.Load()
+                )
             if name == "check":
                 # Prove the reviewed concrete API annotations and sole selector
                 # expansion; every surrounding AST node retains its fingerprint.
@@ -800,3 +820,33 @@ def test_docker_selector_proof_preserves_surrounding_body(
     destination.write_text(source.replace(original, 'if tool == "javascript-disabled":'))
     monkeypatch.setattr(sys.modules[__name__], "_REPO", tmp_path)
     assert _digest("check") != _UNCHANGED_FUNCTION_DIGESTS["check"]
+
+
+def test_python_decoder_proof_refuses_wrong_stream(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The reviewed strict decoder cannot silently switch from stdout to stderr."""
+    source = (_REPO / "scripts/quality/lint.py").read_text()
+    original = "_python_audit_payload(process.stdout)"
+    assert source.count(original) == 1
+    destination = tmp_path / "scripts/quality/lint.py"
+    destination.parent.mkdir(parents=True)
+    destination.write_text(source.replace(original, "_python_audit_payload(process.stderr)"))
+    monkeypatch.setattr(sys.modules[__name__], "_REPO", tmp_path)
+    with pytest.raises(AssertionError, match="Unexpected Python audit decoder"):
+        _digest("_audit_python_source")
+
+
+def test_skip_presence_proof_refuses_empty_container(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A syntactically similar guard that never observes the row must be rejected."""
+    source = (_REPO / "scripts/quality/lint.py").read_text()
+    original = 'if "skip_reason" in value:'
+    assert source.count(original) == 1
+    destination = tmp_path / "scripts/quality/lint.py"
+    destination.parent.mkdir(parents=True)
+    destination.write_text(source.replace(original, 'if "skip_reason" in {}:'))
+    monkeypatch.setattr(sys.modules[__name__], "_REPO", tmp_path)
+    with pytest.raises(AssertionError, match="Unexpected skipped-distribution guard"):
+        _digest("_distribution_fields")
